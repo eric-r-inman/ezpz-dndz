@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
 import Url exposing (Url)
@@ -55,6 +56,7 @@ type alias Model =
     , url : Url
     , route : Route
     , me : MeStatus
+    , creatures : List Creature
     }
 
 
@@ -62,6 +64,12 @@ type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | GotMe (Result Http.Error MeInfo)
+    | ToggleSurprised String
+    | CycleCover String
+    | ToggleConcentration String
+    | ToggleHiding String
+    | ToggleFlying String
+    | AdjustFlyHeight String Int
 
 
 main : Program () Model Msg
@@ -82,7 +90,12 @@ init _ url key =
         route =
             routeFromUrl url
     in
-    ( { key = key, url = url, route = route, me = Loading }
+    ( { key = key
+      , url = url
+      , route = route
+      , me = Loading
+      , creatures = initialCreatures
+      }
     , cmdForRoute route
     )
 
@@ -138,6 +151,65 @@ update msg model =
                 Err _ ->
                     ( { model | me = Failed }, Cmd.none )
 
+        ToggleSurprised name ->
+            ( mapCreature name (\c -> { c | surprised = not c.surprised }) model
+            , Cmd.none
+            )
+
+        CycleCover name ->
+            ( mapCreature name (\c -> { c | cover = nextCover c.cover }) model
+            , Cmd.none
+            )
+
+        ToggleConcentration name ->
+            ( mapCreature name (\c -> { c | concentrating = not c.concentrating }) model
+            , Cmd.none
+            )
+
+        ToggleHiding name ->
+            ( mapCreature name (\c -> { c | hiding = not c.hiding }) model
+            , Cmd.none
+            )
+
+        ToggleFlying name ->
+            ( mapCreature name (\c -> { c | flying = not c.flying }) model
+            , Cmd.none
+            )
+
+        AdjustFlyHeight name delta ->
+            ( mapCreature name (\c -> { c | flyHeight = Basics.max 0 (c.flyHeight + delta) }) model
+            , Cmd.none
+            )
+
+
+mapCreature : String -> (Creature -> Creature) -> Model -> Model
+mapCreature name fn model =
+    let
+        apply c =
+            if c.name == name then
+                fn c
+
+            else
+                c
+    in
+    { model | creatures = List.map apply model.creatures }
+
+
+nextCover : Cover -> Cover
+nextCover c =
+    case c of
+        NoCover ->
+            HalfCover
+
+        HalfCover ->
+            ThreeQuartersCover
+
+        ThreeQuartersCover ->
+            FullCover
+
+        FullCover ->
+            NoCover
+
 
 
 -- VIEW
@@ -174,7 +246,7 @@ viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Home ->
-            viewWorkspace
+            viewWorkspace model
 
         Me ->
             div [ class "workspace" ]
@@ -228,23 +300,23 @@ viewMe status =
 -- WORKSPACE (mock)
 
 
-viewWorkspace : Html Msg
-viewWorkspace =
+viewWorkspace : Model -> Html Msg
+viewWorkspace model =
     main_ [ class "workspace" ]
-        [ viewPanelMain
+        [ viewPanelMain model.creatures
         , viewPanelControls
         , viewPanelDetail
         ]
 
 
-viewPanelMain : Html Msg
-viewPanelMain =
+viewPanelMain : List Creature -> Html Msg
+viewPanelMain creatures =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ viewEncounterBar ]
         , div [ class "panel__body" ]
             [ div [ class "creature-grid" ]
-                (List.map (viewCreatureCard mockSelectedName) mockCreatures)
+                (List.map (viewCreatureCard mockSelectedName) creatures)
             ]
         ]
 
@@ -340,6 +412,13 @@ viewPanelDetail =
 -- MOCK DATA TYPES
 
 
+type Cover
+    = NoCover
+    | HalfCover
+    | ThreeQuartersCover
+    | FullCover
+
+
 type alias Creature =
     { name : String
     , kind : String
@@ -350,6 +429,12 @@ type alias Creature =
     , speed : Int
     , conditions : List String
     , selected : Bool
+    , surprised : Bool
+    , cover : Cover
+    , concentrating : Bool
+    , hiding : Bool
+    , flying : Bool
+    , flyHeight : Int
     }
 
 
@@ -381,8 +466,8 @@ mockSelectedName =
     "Brakka, Ogre Brute"
 
 
-mockCreatures : List Creature
-mockCreatures =
+initialCreatures : List Creature
+initialCreatures =
     [ { name = "Lyra Vale (PC)"
       , kind = "Half-elf rogue, lvl 5"
       , initiative = 22
@@ -392,6 +477,12 @@ mockCreatures =
       , speed = 30
       , conditions = [ "Hidden" ]
       , selected = False
+      , surprised = False
+      , cover = HalfCover
+      , concentrating = False
+      , hiding = True
+      , flying = False
+      , flyHeight = 0
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -402,6 +493,12 @@ mockCreatures =
       , speed = 40
       , conditions = [ "Bloodied", "Frightened" ]
       , selected = True
+      , surprised = True
+      , cover = NoCover
+      , concentrating = False
+      , hiding = False
+      , flying = False
+      , flyHeight = 0
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -412,6 +509,12 @@ mockCreatures =
       , speed = 30
       , conditions = []
       , selected = False
+      , surprised = False
+      , cover = ThreeQuartersCover
+      , concentrating = False
+      , hiding = False
+      , flying = False
+      , flyHeight = 0
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -422,6 +525,12 @@ mockCreatures =
       , speed = 30
       , conditions = []
       , selected = False
+      , surprised = False
+      , cover = FullCover
+      , concentrating = False
+      , hiding = False
+      , flying = False
+      , flyHeight = 0
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -432,6 +541,12 @@ mockCreatures =
       , speed = 30
       , conditions = [ "Concentrating" ]
       , selected = True
+      , surprised = False
+      , cover = NoCover
+      , concentrating = True
+      , hiding = False
+      , flying = True
+      , flyHeight = 30
       }
     ]
 
@@ -511,7 +626,7 @@ viewCreatureCard activeName creature =
             ]
         , div [ class "creature-card__center" ]
             [ viewCardRowTop creature
-            , div [ class "creature-card__row" ] [ text "row 2 — to be mocked" ]
+            , viewCardRowMid creature
             , div [ class "creature-card__row" ] [ text "row 3 — to be mocked" ]
             ]
         , div [ class "creature-card__rail creature-card__rail--right" ]
@@ -549,7 +664,7 @@ viewCardRowTop creature =
             , title ("Initiative roll: " ++ String.fromInt creature.initiative)
             ]
             [ text (String.fromInt creature.initiative) ]
-        , viewFaceToggle
+        , viewSurprisedToggle creature
         , span [ class "creature-name creature-name--default" ]
             [ text creature.name ]
         , button
@@ -568,26 +683,155 @@ viewCardRowTop creature =
         ]
 
 
-viewFaceToggle : Html Msg
-viewFaceToggle =
-    div
-        [ class "face-toggle"
-        , attribute "role" "group"
-        , attribute "aria-label" "Surprise state"
+viewSurprisedToggle : Creature -> Html Msg
+viewSurprisedToggle creature =
+    let
+        ( emoji, label ) =
+            if creature.surprised then
+                ( "😲", "Surprised — click for normal" )
+
+            else
+                ( "😠", "Normal — click for surprised" )
+    in
+    button
+        [ class "surprise-btn"
+        , onClick (ToggleSurprised creature.name)
+        , title label
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if creature.surprised then
+                "true"
+
+             else
+                "false"
+            )
         ]
-        [ button
-            [ class "face-toggle__btn"
-            , attribute "aria-pressed" "true"
-            , title "Normal"
-            ]
-            [ text "😠" ]
-        , button
-            [ class "face-toggle__btn"
-            , attribute "aria-pressed" "false"
-            , title "Surprised"
-            ]
-            [ text "😲" ]
+        [ text emoji ]
+
+
+viewCardRowMid : Creature -> Html Msg
+viewCardRowMid creature =
+    div [ class "creature-card__row creature-card__row--mid" ]
+        [ viewHpDisplay
+        , viewCoverToggle creature
+        , span [ class "status-toggles__sep" ] [ text "|" ]
+        , viewBoolToggle "🧠"
+            "Concentration"
+            creature.concentrating
+            (ToggleConcentration creature.name)
+        , span [ class "status-toggles__sep" ] [ text "|" ]
+        , viewBoolToggle "👤"
+            "Hiding"
+            creature.hiding
+            (ToggleHiding creature.name)
+        , span [ class "status-toggles__sep" ] [ text "|" ]
+        , viewBoolToggle "🪽"
+            "Flying"
+            creature.flying
+            (ToggleFlying creature.name)
+        , viewFlyHeight creature
         ]
+
+
+viewHpDisplay : Html Msg
+viewHpDisplay =
+    span [ class "hp-display" ]
+        [ span [ class "hp-display__current" ] [ text "100" ]
+        , span [ class "hp-display__sep" ] [ text "/" ]
+        , span [ class "hp-display__max" ] [ text "100" ]
+        ]
+
+
+viewBoolToggle : String -> String -> Bool -> Msg -> Html Msg
+viewBoolToggle icon label isOn msg =
+    let
+        cls =
+            if isOn then
+                "status-toggle status-toggle--on"
+
+            else
+                "status-toggle"
+
+        tip =
+            if isOn then
+                label ++ " — click to clear"
+
+            else
+                "Not " ++ String.toLower label ++ " — click to set"
+    in
+    button
+        [ class cls
+        , onClick msg
+        , title tip
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if isOn then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text icon ]
+
+
+viewCoverToggle : Creature -> Html Msg
+viewCoverToggle creature =
+    let
+        ( glyph, label, modifier ) =
+            case creature.cover of
+                NoCover ->
+                    ( "○", "No cover", "status-toggle--off" )
+
+                HalfCover ->
+                    ( "◐", "½ cover", "status-toggle--on" )
+
+                ThreeQuartersCover ->
+                    ( "◕", "¾ cover", "status-toggle--on" )
+
+                FullCover ->
+                    ( "●", "Full cover", "status-toggle--on" )
+    in
+    button
+        [ class ("status-toggle " ++ modifier)
+        , onClick (CycleCover creature.name)
+        , title (label ++ " — click to cycle")
+        , attribute "aria-label" ("Cover: " ++ label)
+        ]
+        [ text glyph ]
+
+
+viewFlyHeight : Creature -> Html Msg
+viewFlyHeight creature =
+    if creature.flying then
+        span [ class "fly-height" ]
+            [ button
+                [ class "fly-height__btn"
+                , onClick (AdjustFlyHeight creature.name 5)
+                , title "Increase by 5 ft"
+                , attribute "aria-label" "Increase flight height by 5 feet"
+                ]
+                [ text "▲" ]
+            , span [ class "fly-height__value" ]
+                [ text (String.fromInt creature.flyHeight) ]
+            , button
+                [ class "fly-height__btn"
+                , onClick (AdjustFlyHeight creature.name -5)
+                , title "Decrease by 5 ft"
+                , attribute "aria-label" "Decrease flight height by 5 feet"
+                ]
+                [ text "▼" ]
+            , span [ class "fly-height__unit" ] [ text "ft" ]
+            , button
+                [ class "icon-btn icon-btn--sm fly-height__fall"
+                , title "Calculate falling damage (placeholder)"
+                , attribute "aria-label" "Calculate falling damage"
+                ]
+                [ text "↯" ]
+            ]
+
+    else
+        text ""
 
 
 viewStat : String -> String -> Html Msg
