@@ -1,0 +1,59 @@
+#+title:     ezpz-dndz
+#+language:  en
+
+A D&D combat encounter manager and monster database — a server with an
+Elm frontend for running combat at the table, plus a CLI for managing
+the underlying monster catalog.
+
+* Introduction
+
+Running combat at a D&D table involves a lot of bookkeeping: initiative
+order, hit points, conditions, legendary actions, lair effects, and the
+ever-present need to look up a monster's stat block.  ~ezpz-dndz~ aims
+to take that bookkeeping off the DM's plate so the table can focus on
+the fiction.
+
+The project ships two binaries and a shared library:
+
+- ~ezpz-dndz-server~ :: HTTP server hosting the encounter-manager UI
+  and the monster database REST API.
+- ~ezpz-dndz-cli~ :: Terminal companion for importing, querying, and
+  curating the monster catalog without spinning up the server.
+- ~ezpz-dndz-lib~ :: Shared domain types (creatures, encounters,
+  initiative, conditions) and persistence logic.
+
+* Status
+
+Early scaffolding.  The Rust workspace, Nix dev shell, and Elm frontend
+shell are wired up; the encounter-manager logic is not yet implemented.
+
+* Installation
+
+** From source
+
+Requires Nix with flakes enabled.
+
+#+begin_src sh :exports code
+git clone https://github.com/ericrinman/ezpz-dndz
+cd ezpz-dndz
+nix develop
+cargo build --workspace
+#+end_src
+
+* Usage
+
+Start the server:
+
+#+begin_src sh :exports code
+cargo run -p ezpz-dndz-server
+#+end_src
+
+Run the CLI:
+
+#+begin_src sh :exports code
+cargo run -p ezpz-dndz-cli -- --help
+#+end_src
+
+* Contributing
+
+See [[file:CONTRIBUTING.org][CONTRIBUTING.org]].
