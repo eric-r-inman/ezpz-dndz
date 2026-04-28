@@ -349,6 +349,7 @@ type alias Creature =
     , armorClass : Int
     , speed : Int
     , conditions : List String
+    , selected : Bool
     }
 
 
@@ -390,6 +391,7 @@ mockCreatures =
       , armorClass = 16
       , speed = 30
       , conditions = [ "Hidden" ]
+      , selected = False
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -399,6 +401,7 @@ mockCreatures =
       , armorClass = 11
       , speed = 40
       , conditions = [ "Bloodied", "Frightened" ]
+      , selected = True
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -408,6 +411,7 @@ mockCreatures =
       , armorClass = 15
       , speed = 30
       , conditions = []
+      , selected = False
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -417,6 +421,7 @@ mockCreatures =
       , armorClass = 17
       , speed = 30
       , conditions = []
+      , selected = False
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -426,6 +431,7 @@ mockCreatures =
       , armorClass = 13
       , speed = 30
       , conditions = [ "Concentrating" ]
+      , selected = True
       }
     ]
 
@@ -472,23 +478,65 @@ viewCreatureCard activeName creature =
                 "creature-card"
     in
     article [ class cardClass ]
-        [ div [ class "creature-card__top" ]
-            [ div [ class "creature-card__name" ] [ text creature.name ]
-            , div [ class "creature-card__init" ]
-                [ text ("init " ++ String.fromInt creature.initiative) ]
+        [ div [ class "creature-card__rail creature-card__rail--left" ]
+            [ div [ class "creature-card__rail-group" ]
+                [ input
+                    [ type_ "checkbox"
+                    , class "creature-card__select"
+                    , checked creature.selected
+                    , attribute "aria-label" ("Select " ++ creature.name)
+                    ]
+                    []
+                , button
+                    [ class "icon-btn"
+                    , title "Move up in initiative"
+                    , attribute "aria-label" "Move up"
+                    ]
+                    [ text "↑" ]
+                , button
+                    [ class "icon-btn"
+                    , title "Move down in initiative"
+                    , attribute "aria-label" "Move down"
+                    ]
+                    [ text "↓" ]
+                ]
+            , div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class "icon-btn icon-btn--accent"
+                    , title "Make active creature"
+                    , attribute "aria-label" "Make active"
+                    ]
+                    [ text "→" ]
+                ]
             ]
-        , div [ class "creature-card__kind" ] [ text creature.kind ]
-        , viewHp creature.currentHp creature.maxHp
-        , div [ class "creature-card__stats" ]
-            [ viewStat "AC" (String.fromInt creature.armorClass)
-            , viewStat "Speed" (String.fromInt creature.speed ++ " ft")
-            , viewStat "Init" (signed creature.initiative)
+        , div [ class "creature-card__center" ]
+            [ div [ class "creature-card__row" ] [ text "row 1 — to be mocked" ]
+            , div [ class "creature-card__row" ] [ text "row 2 — to be mocked" ]
+            , div [ class "creature-card__row" ] [ text "row 3 — to be mocked" ]
             ]
-        , viewConditions creature.conditions
-        , div [ class "creature-card__actions" ]
-            [ button [ class "btn btn--sm btn--danger" ] [ text "Damage" ]
-            , button [ class "btn btn--sm btn--success" ] [ text "Heal" ]
-            , button [ class "btn btn--sm btn--ghost" ] [ text "Detail" ]
+        , div [ class "creature-card__rail creature-card__rail--right" ]
+            [ div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class "icon-btn icon-btn--danger"
+                    , title "Remove from queue"
+                    , attribute "aria-label" "Remove"
+                    ]
+                    [ text "×" ]
+                ]
+            , div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class "icon-btn"
+                    , title "Convert to minion"
+                    , attribute "aria-label" "Convert to minion"
+                    ]
+                    [ text "👿" ]
+                , button
+                    [ class "icon-btn"
+                    , title "Duplicate creature"
+                    , attribute "aria-label" "Duplicate"
+                    ]
+                    [ text "⧉" ]
+                ]
             ]
         ]
 
@@ -499,74 +547,6 @@ viewStat label value =
         [ div [ class "stat__label" ] [ text label ]
         , div [ class "stat__value" ] [ text value ]
         ]
-
-
-viewHp : Int -> Int -> Html Msg
-viewHp current maxHp =
-    let
-        ratio =
-            if maxHp <= 0 then
-                0
-
-            else
-                toFloat current / toFloat maxHp
-
-        fillClass =
-            if ratio <= 0.25 then
-                "hp-bar__fill hp-bar__fill--critical"
-
-            else if ratio <= 0.5 then
-                "hp-bar__fill hp-bar__fill--bloodied"
-
-            else
-                "hp-bar__fill hp-bar__fill--healthy"
-
-        widthPct =
-            String.fromInt (round (ratio * 100)) ++ "%"
-    in
-    div [ class "hp" ]
-        [ div [ class "hp__label" ]
-            [ span [] [ text "Hit points" ]
-            , span [ class "hp__numbers" ]
-                [ text (String.fromInt current ++ " / " ++ String.fromInt maxHp) ]
-            ]
-        , div [ class "hp-bar" ]
-            [ div [ class fillClass, style "width" widthPct ] [] ]
-        ]
-
-
-viewConditions : List String -> Html Msg
-viewConditions conditions =
-    if List.isEmpty conditions then
-        div [ class "conditions" ]
-            [ span [ class "chip" ] [ text "No conditions" ] ]
-
-    else
-        div [ class "conditions" ]
-            (List.map viewCondition conditions)
-
-
-viewCondition : String -> Html Msg
-viewCondition name =
-    let
-        chipClass =
-            case String.toLower name of
-                "bloodied" ->
-                    "chip chip--danger"
-
-                "frightened" ->
-                    "chip chip--danger"
-
-                "concentrating" ->
-                    "chip chip--accent"
-
-                "hidden" ->
-                    "chip chip--accent"
-
-                _ ->
-                    "chip"
-    in
-    span [ class chipClass ] [ text name ]
 
 
 signed : Int -> String
