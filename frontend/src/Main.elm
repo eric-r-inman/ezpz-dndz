@@ -510,7 +510,7 @@ viewCreatureCard activeName creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ div [ class "creature-card__row" ] [ text "row 1 — to be mocked" ]
+            [ viewCardRowTop creature
             , div [ class "creature-card__row" ] [ text "row 2 — to be mocked" ]
             , div [ class "creature-card__row" ] [ text "row 3 — to be mocked" ]
             ]
@@ -538,6 +538,55 @@ viewCreatureCard activeName creature =
                     [ text "⧉" ]
                 ]
             ]
+        ]
+
+
+viewCardRowTop : Creature -> Html Msg
+viewCardRowTop creature =
+    div [ class "creature-card__row creature-card__row--top" ]
+        [ span
+            [ class "init-circle"
+            , title ("Initiative roll: " ++ String.fromInt creature.initiative)
+            ]
+            [ text (String.fromInt creature.initiative) ]
+        , viewFaceToggle
+        , span [ class "creature-name creature-name--default" ]
+            [ text creature.name ]
+        , button
+            [ class "icon-btn icon-btn--sm"
+            , title "Edit note"
+            , attribute "aria-label" "Edit note"
+            ]
+            [ text "✏️" ]
+        , span [ class "ac-readout" ]
+            [ text ("AC: " ++ String.fromInt creature.armorClass) ]
+        , span [ class "condition-list" ]
+            [ span [ class "condition-list__item" ] [ text "Paralyzed" ]
+            , span [ class "condition-list__sep" ] [ text "|" ]
+            , span [ class "condition-list__item" ] [ text "Poisoned" ]
+            ]
+        ]
+
+
+viewFaceToggle : Html Msg
+viewFaceToggle =
+    div
+        [ class "face-toggle"
+        , attribute "role" "group"
+        , attribute "aria-label" "Surprise state"
+        ]
+        [ button
+            [ class "face-toggle__btn"
+            , attribute "aria-pressed" "true"
+            , title "Normal"
+            ]
+            [ text "😠" ]
+        , button
+            [ class "face-toggle__btn"
+            , attribute "aria-pressed" "false"
+            , title "Surprised"
+            ]
+            [ text "😲" ]
         ]
 
 

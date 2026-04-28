@@ -27,6 +27,8 @@
   --space-5: 24px;
   --header-height: 56px;
   --color-yellow: #b07900;
+  --color-init-blue: #3b82f6;
+  --color-orange-dark: #b8521c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +50,8 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
     --color-yellow: #ffd95a;
+    --color-init-blue: #4d9bff;
+    --color-orange-dark: #ff9a3c;
   }
 }
 
@@ -334,6 +338,121 @@ body {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   border-color: transparent;
+}
+
+.icon-btn--sm {
+  width: 22px;
+  height: 22px;
+  font-size: 0.85rem;
+  opacity: 0.55;
+}
+
+.icon-btn--sm:hover {
+  opacity: 1;
+}
+
+.creature-card__row--top {
+  background: transparent;
+  border: none;
+  font-style: normal;
+  letter-spacing: 0;
+  color: var(--color-text);
+  padding: 4px 0;
+  font-size: 0.85rem;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.init-circle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--color-init-blue);
+  color: #000000;
+  display: inline-grid;
+  place-items: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.face-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-surface);
+  flex: 0 0 auto;
+}
+
+.face-toggle__btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 26px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.4;
+  transition:
+    opacity 0.1s ease,
+    background 0.1s ease;
+  font-family: inherit;
+}
+
+.face-toggle__btn:hover {
+  opacity: 0.85;
+  background: var(--color-surface-2);
+}
+
+.face-toggle__btn[aria-pressed="true"] {
+  opacity: 1;
+  background: var(--color-surface-2);
+}
+
+.creature-name {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.creature-name--default {
+  color: var(--color-orange-dark);
+}
+
+.ac-readout {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.condition-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.condition-list__item {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.condition-list__sep {
+  color: var(--color-text);
+  user-select: none;
 }
 
 .stat {
