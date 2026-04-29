@@ -18,6 +18,10 @@ frontend/public/elm.js
 # Per-user Claude Code overrides (the shared .claude/settings.json IS checked in).
 .claude/settings.local.json
 
+# Claude Code session memory — must never be committed even if a session
+# accidentally writes there instead of ~/.claude/projects/.
+.claude/projects/
+
 # Personal scratchpads — design prompts and ad-hoc notes; not part of the project.
 docs/PROMPTS.md
 docs/SCRATCH.md
