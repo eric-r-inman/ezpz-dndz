@@ -1,6 +1,7 @@
 module HpChange exposing
     ( Change(..), DamageSpec
     , apply, describe
+    , setCurrentHp, setMaxHp
     )
 
 {-| HP-change engine.
@@ -26,6 +27,11 @@ prompts upstream and hand the engine a final integer amount.
 # Apply
 
 @docs apply, describe
+
+
+# Manual edit helpers
+
+@docs setCurrentHp, setMaxHp
 
 -}
 
@@ -170,6 +176,39 @@ clamped to zero.
 applyTempHp : Int -> Creature -> Creature
 applyTempHp n c =
     { c | tempHp = Basics.max c.tempHp (Basics.max 0 n) }
+
+
+{-| Manual GM override: write `currentHp` directly, clamped to
+0..maxHp. Skips the rule-flavored side effects (no temp-HP soak, no
+death-save clearing) — this is the "I just want to set it to 23"
+button. Bloodied is still auto-recomputed so the badge stays
+honest.
+-}
+setCurrentHp : Int -> Creature -> Creature
+setCurrentHp n c =
+    let
+        clamped =
+            Basics.max 0 (Basics.min c.maxHp n)
+    in
+    recomputeBloodied { c | currentHp = clamped }
+
+
+{-| Manual GM override: write `maxHp` directly, clamped to >= 1.
+If the new max is below `currentHp`, current follows down so the
+invariant `currentHp <= maxHp` holds. Tempo HP is left alone (it's
+its own pool).
+-}
+setMaxHp : Int -> Creature -> Creature
+setMaxHp n c =
+    let
+        newMax =
+            Basics.max 1 n
+    in
+    recomputeBloodied
+        { c
+            | maxHp = newMax
+            , currentHp = Basics.min c.currentHp newMax
+        }
 
 
 {-| Recompute the bloodied flag from current vs. max HP.

@@ -77,7 +77,54 @@ type alias Model =
     , encounter : Encounter
     , dice : DiceUi
     , hpChange : Maybe HpChangeUi
+    , hpChangeLog : List HpChangeEntry
+    , hpEdit : Maybe HpEdit
     }
+
+
+{-| One row in the recent-HP-changes log shown at the bottom of the
+Damage / Heal / Temp HP modals. Captures who, what kind, the input
+amount, and the before/after HP+temp snapshots so the row can render
+"27/59 (+0) → 14/59 (+0)" without re-querying the encounter state.
+-}
+type alias HpChangeEntry =
+    { kind : HpKind
+    , target : String
+    , amount : Int
+    , beforeHp : Int
+    , beforeTemp : Int
+    , afterHp : Int
+    , afterTemp : Int
+    }
+
+
+{-| Active inline-HP edit. When set, the corresponding `<span>` on
+the matching creature card renders as an `<input>` instead. Only one
+edit at a time so we don't have to disambiguate keyboard focus.
+
+`text` mirrors the `<input>` value (same trick as the dice modifier
+field — keeps transient typing states like the empty string from
+being clobbered on every re-render).
+
+-}
+type alias HpEdit =
+    { target : String
+    , field : HpField
+    , text : String
+    }
+
+
+type HpField
+    = CurrentHpField
+    | MaxHpField
+
+
+{-| Cap on the HP-change log size. Matches the user's request for
+"last 10 applications".
+-}
+maxHpLogEntries : Int
+maxHpLogEntries =
+    10
 
 
 {-| Per-instance state for the HP-change modal.
@@ -221,6 +268,11 @@ type Msg
     | HpChangeIgnoreTempToggle
     | HpChangeApply
     | HpChangeRollLanded Dice.Roll
+      -- Inline HP edit on the creature card
+    | HpEditStart String HpField Int
+    | HpEditChange String
+    | HpEditCommit
+    | HpEditCancel
     | NoOp
 
 
@@ -271,6 +323,8 @@ init _ url key =
       , encounter = Encounter.initialEncounter
       , dice = emptyDice
       , hpChange = Nothing
+      , hpChangeLog = []
+      , hpEdit = Nothing
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -656,6 +710,65 @@ update msg model =
             in
             ( committed, persistRollCmd roll )
 
+        -- Inline HP edit on a creature card
+        HpEditStart name field current ->
+            ( { model
+                | hpEdit =
+                    Just
+                        { target = name
+                        , field = field
+                        , text = String.fromInt current
+                        }
+              }
+            , Cmd.none
+            )
+
+        HpEditChange text ->
+            ( case model.hpEdit of
+                Just edit ->
+                    { model | hpEdit = Just { edit | text = text } }
+
+                Nothing ->
+                    model
+            , Cmd.none
+            )
+
+        HpEditCommit ->
+            -- Parse the text. On success, write through HpChange's
+            -- manual-edit helpers (which clamp + recompute bloodied).
+            -- On parse failure, just close the editor without
+            -- changing anything — easier than surfacing a transient
+            -- error inline.
+            case model.hpEdit of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just edit ->
+                    case String.toInt (String.trim edit.text) of
+                        Just n ->
+                            let
+                                transform =
+                                    case edit.field of
+                                        CurrentHpField ->
+                                            HpChange.setCurrentHp n
+
+                                        MaxHpField ->
+                                            HpChange.setMaxHp n
+                            in
+                            ( { model
+                                | encounter =
+                                    Encounter.mapCreature edit.target transform model.encounter
+                                , hpEdit = Nothing
+                              }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            ( { model | hpEdit = Nothing }, Cmd.none )
+
+        HpEditCancel ->
+            ( { model | hpEdit = Nothing }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -717,9 +830,10 @@ hpChangeSource ui =
 
 {-| Resolve the modal's kind + flags into an `HpChange.Change`,
 hand it to the engine, write the updated creature back through
-`Encounter.mapCreature`, and close the modal. The caller decides the
-amount — it comes from the manual input on the manual path or from
-the rolled total on the dice path.
+`Encounter.mapCreature`, push a log entry capturing the before/after
+snapshot, and close the modal. The caller decides the amount — it
+comes from the manual input on the manual path or from the rolled
+total on the dice path.
 -}
 applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
 applyHpChangeAndClose ui amount model =
@@ -737,11 +851,51 @@ applyHpChangeAndClose ui amount model =
 
                 TempHpKind ->
                     HpChange.TempHp amount
+
+        before =
+            findCreature ui.target model.encounter
+
+        newEncounter =
+            Encounter.mapCreature ui.target (HpChange.apply change) model.encounter
+
+        after =
+            findCreature ui.target newEncounter
+
+        logEntry =
+            Maybe.map2
+                (\b a ->
+                    { kind = ui.kind
+                    , target = ui.target
+                    , amount = amount
+                    , beforeHp = b.currentHp
+                    , beforeTemp = b.tempHp
+                    , afterHp = a.currentHp
+                    , afterTemp = a.tempHp
+                    }
+                )
+                before
+                after
     in
     { model
-        | encounter = Encounter.mapCreature ui.target (HpChange.apply change) model.encounter
+        | encounter = newEncounter
         , hpChange = Nothing
+        , hpChangeLog =
+            case logEntry of
+                Just e ->
+                    e :: List.take (maxHpLogEntries - 1) model.hpChangeLog
+
+                Nothing ->
+                    model.hpChangeLog
     }
+
+
+{-| Look up a creature by name in an encounter. Used by the HP-change
+log to grab before/after snapshots.
+-}
+findCreature : String -> Encounter -> Maybe Creature
+findCreature name enc =
+    List.filter (\c -> c.name == name) enc.creatures
+        |> List.head
 
 
 {-| Parse a numeric `<input>`'s string value into an Int, clamping
@@ -909,20 +1063,23 @@ viewMe status =
 viewWorkspace : Model -> Html Msg
 viewWorkspace model =
     main_ [ class "workspace" ]
-        [ viewPanelMain model.encounter
+        [ viewPanelMain model.encounter model.hpEdit
         , viewPanelControls
         , viewPanelDetail
         ]
 
 
-viewPanelMain : Encounter -> Html Msg
-viewPanelMain enc =
+{-| The encounter pane. `hpEdit` is threaded through so any open
+inline-edit input (current/max HP) renders on the right card.
+-}
+viewPanelMain : Encounter -> Maybe HpEdit -> Html Msg
+viewPanelMain enc hpEdit =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ viewEncounterBar enc ]
         , div [ class "panel__body" ]
             [ div [ class "creature-grid" ]
-                (List.map (viewCreatureCard enc.activeName) enc.creatures)
+                (List.map (viewCreatureCard enc.activeName hpEdit) enc.creatures)
             ]
         ]
 
@@ -1122,8 +1279,8 @@ mockStatBlock =
 -- CREATURE CARD
 
 
-viewCreatureCard : String -> Creature -> Html Msg
-viewCreatureCard activeName creature =
+viewCreatureCard : String -> Maybe HpEdit -> Creature -> Html Msg
+viewCreatureCard activeName hpEdit creature =
     let
         isActive =
             creature.name == activeName
@@ -1170,7 +1327,7 @@ viewCreatureCard activeName creature =
             ]
         , div [ class "creature-card__center" ]
             [ viewCardRowTop creature
-            , viewCardRowMid creature
+            , viewCardRowMid creature hpEdit
             , viewCardRowBot creature
             ]
         , div [ class "creature-card__rail creature-card__rail--right" ]
@@ -1253,10 +1410,10 @@ viewSurprisedToggle creature =
         [ text emoji ]
 
 
-viewCardRowMid : Creature -> Html Msg
-viewCardRowMid creature =
+viewCardRowMid : Creature -> Maybe HpEdit -> Html Msg
+viewCardRowMid creature hpEdit =
     div [ class "creature-card__row creature-card__row--mid" ]
-        [ viewHpDisplay creature
+        [ viewHpDisplay creature hpEdit
         , viewBloodied creature
         , viewDeathSaves creature
         , viewCoverToggle creature
@@ -1280,18 +1437,19 @@ viewCardRowMid creature =
 
 
 {-| Card row 2 HP readout: green current / muted max, plus an inline
-"+N" temp-HP chip when the creature is buffed. Renders the actual
-creature state — the placeholder "100/100" is gone now that the HP
-change engine writes to currentHp / tempHp on apply.
+"+N" temp-HP marker when the creature is buffed. Renders the actual
+creature state. Both the current and max values are click-to-edit:
+clicking swaps the span for a small `<input>` (autofocus + onBlur
+commits, Enter commits, Esc cancels). The temp HP doesn't get an
+inline editor — it's not a value the GM normally types directly,
+and the Temp HP modal is the canonical write path.
 -}
-viewHpDisplay : Creature -> Html Msg
-viewHpDisplay creature =
+viewHpDisplay : Creature -> Maybe HpEdit -> Html Msg
+viewHpDisplay creature hpEdit =
     span [ class "hp-display" ]
-        [ span [ class "hp-display__current" ]
-            [ text (String.fromInt creature.currentHp) ]
+        [ viewHpEditable creature hpEdit CurrentHpField creature.currentHp "hp-display__current"
         , span [ class "hp-display__sep" ] [ text "/" ]
-        , span [ class "hp-display__max" ]
-            [ text (String.fromInt creature.maxHp) ]
+        , viewHpEditable creature hpEdit MaxHpField creature.maxHp "hp-display__max"
         , if creature.tempHp > 0 then
             span
                 [ class "hp-display__temp"
@@ -1302,6 +1460,66 @@ viewHpDisplay creature =
           else
             text ""
         ]
+
+
+{-| Render either a clickable value or the active inline-edit
+input, depending on whether `hpEdit` is targeting this creature +
+field. Same shape as the dice modifier field — the input value
+mirrors `edit.text` (raw characters) so transient empty / "-"
+states aren't clobbered.
+-}
+viewHpEditable : Creature -> Maybe HpEdit -> HpField -> Int -> String -> Html Msg
+viewHpEditable creature hpEdit field current cls =
+    let
+        isEditing =
+            case hpEdit of
+                Just e ->
+                    e.target == creature.name && e.field == field
+
+                Nothing ->
+                    False
+    in
+    if isEditing then
+        input
+            [ class "hp-display__edit"
+            , type_ "number"
+            , Html.Attributes.min "0"
+            , Html.Attributes.max "9999"
+            , value (Maybe.withDefault "" (Maybe.map .text hpEdit))
+            , onInput HpEditChange
+            , Html.Events.onBlur HpEditCommit
+            , Html.Events.on "keydown" hpEditKeyDecoder
+            , autofocus True
+            ]
+            []
+
+    else
+        span
+            [ class (cls ++ " hp-display__editable")
+            , onClick (HpEditStart creature.name field current)
+            , title "Click to edit"
+            ]
+            [ text (String.fromInt current) ]
+
+
+{-| Enter commits the inline HP edit, Esc cancels. Other keys fall
+through to the input's normal handling.
+-}
+hpEditKeyDecoder : Decode.Decoder Msg
+hpEditKeyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                case key of
+                    "Enter" ->
+                        Decode.succeed HpEditCommit
+
+                    "Escape" ->
+                        Decode.succeed HpEditCancel
+
+                    _ ->
+                        Decode.fail "ignore"
+            )
 
 
 viewBloodied : Creature -> Html Msg
@@ -1961,6 +2179,7 @@ viewHpChangeModal model =
                             Nothing ->
                                 text ""
                         , viewHpChangeFooter
+                        , viewHpChangeLog model.hpChangeLog
                         ]
                     ]
                 ]
@@ -2185,3 +2404,77 @@ viewHpChangeFooter =
             ]
             [ text "Apply" ]
         ]
+
+
+{-| Last-N HP-change log shown at the bottom of the modal. Includes
+every kind (damage / heal / temp) so the GM can see recent table
+context without flipping between the three modal verbs. Empty state
+shows a small "No HP changes yet" line so the section doesn't
+collapse to nothing on first open.
+-}
+viewHpChangeLog : List HpChangeEntry -> Html Msg
+viewHpChangeLog entries =
+    div [ class "hp-change__log" ]
+        [ div [ class "hp-change__log-title" ]
+            [ text ("Recent HP changes (" ++ String.fromInt (List.length entries) ++ ")") ]
+        , if List.isEmpty entries then
+            div [ class "hp-change__log-empty" ]
+                [ text "No HP changes yet." ]
+
+          else
+            ul [ class "hp-change__log-list" ]
+                (List.map viewHpChangeLogEntry entries)
+        ]
+
+
+viewHpChangeLogEntry : HpChangeEntry -> Html Msg
+viewHpChangeLogEntry entry =
+    let
+        kindLabel =
+            case entry.kind of
+                DamageKind ->
+                    "Damage"
+
+                HealKind ->
+                    "Heal"
+
+                TempHpKind ->
+                    "Temp HP"
+
+        kindClass =
+            case entry.kind of
+                DamageKind ->
+                    "hp-change__log-kind hp-change__log-kind--damage"
+
+                HealKind ->
+                    "hp-change__log-kind hp-change__log-kind--heal"
+
+                TempHpKind ->
+                    "hp-change__log-kind hp-change__log-kind--temp"
+
+        beforeStr =
+            hpSnapshot entry.beforeHp entry.beforeTemp
+
+        afterStr =
+            hpSnapshot entry.afterHp entry.afterTemp
+    in
+    li [ class "hp-change__log-entry" ]
+        [ span [ class kindClass ] [ text kindLabel ]
+        , span [ class "hp-change__log-target" ] [ text entry.target ]
+        , span [ class "hp-change__log-amount" ]
+            [ text (String.fromInt entry.amount) ]
+        , span [ class "hp-change__log-trans" ]
+            [ text (beforeStr ++ " → " ++ afterStr) ]
+        ]
+
+
+{-| Render an HP+temp pair for the log: "27/59" or "27/59 +5" when
+temp HP is positive. Reused for both before and after columns.
+-}
+hpSnapshot : Int -> Int -> String
+hpSnapshot hp temp =
+    if temp > 0 then
+        String.fromInt hp ++ " +" ++ String.fromInt temp
+
+    else
+        String.fromInt hp

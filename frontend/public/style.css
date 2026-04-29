@@ -29,6 +29,7 @@
   --color-yellow: #b07900;
   --color-init-blue: #3b82f6;
   --color-orange-dark: #b8521c;
+  --color-temp-blue: #2589e0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,6 +53,7 @@
     --color-yellow: #ffd95a;
     --color-init-blue: #4d9bff;
     --color-orange-dark: #ff9a3c;
+    --color-temp-blue: #4d9bff;
   }
 }
 
@@ -656,27 +658,33 @@ body {
   outline-offset: 2px;
 }
 
+/* Card row 3 colored buttons: slightly lightened from their original
+   saturated tones so the row reads as a softer toolbar; all label
+   text in white for legibility on the new lighter fills. The
+   --temp variant shares its hex with --color-temp-blue so the temp
+   HP card chip matches the button it came from. */
+
 .action-btn--damage {
-  background: #c62828;
+  background: #d63b3b;
   color: #ffffff;
   border-color: transparent;
 }
 
 .action-btn--heal {
-  background: #2f9e44;
-  color: #000000;
+  background: #3cb455;
+  color: #ffffff;
   border-color: transparent;
 }
 
 .action-btn--temp {
-  background: #1976d2;
-  color: #000000;
+  background: var(--color-temp-blue);
+  color: #ffffff;
   border-color: transparent;
 }
 
 .action-btn--condition {
-  background: #7e3ad8;
-  color: #000000;
+  background: #9355e0;
+  color: #ffffff;
   border-color: transparent;
 }
 
@@ -1730,14 +1738,140 @@ body {
   padding-top: 4px;
 }
 
-.hp-display__temp {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 0 6px;
+.hp-change__log {
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hp-change__log-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.hp-change__log-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.82rem;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.hp-change__log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.hp-change__log-entry {
+  display: grid;
+  grid-template-columns: 64px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+}
+
+.hp-change__log-kind {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 2px 6px;
   border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: 0.72rem;
+  color: #ffffff;
+}
+
+.hp-change__log-kind--damage {
+  background: #d63b3b;
+}
+
+.hp-change__log-kind--heal {
+  background: #3cb455;
+}
+
+.hp-change__log-kind--temp {
+  background: var(--color-temp-blue);
+}
+
+.hp-change__log-target {
+  color: var(--color-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hp-change__log-amount {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.hp-change__log-trans {
+  color: var(--color-text);
+  font-family: ui-monospace, "Menlo", monospace;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hp-display__temp {
+  margin-left: 4px;
+  color: var(--color-temp-blue);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Click-to-edit affordance on the current/max HP values. The hover
+   ring is faint until you mouse over so it doesn't look like a
+   permanent input. */
+.hp-display__editable {
+  cursor: text;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition:
+    background 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.hp-display__editable:hover {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.hp-display__edit {
+  appearance: textfield;
+  width: 56px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin: 0 2px;
+  outline: none;
+}
+
+.hp-display__edit::-webkit-outer-spin-button,
+.hp-display__edit::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
