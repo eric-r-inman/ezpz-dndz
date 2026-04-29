@@ -75,14 +75,17 @@ deployment context.
    - Probably uses `axum::extract::ws` + a broadcast channel keyed
      by encounter id.
 
-9. **Initiative roller**
-   - The existing "🎲 Roll" button → integrated with the dice domain.
-   - Auto-sorts the encounter queue by rolled values + tiebreakers.
+9. **Encounter timer / round timer**
+   - The stopwatch icon on card row 3 gets a real implementation.
+   - Per-creature time-on-turn tracking, optional total-encounter
+     stopwatch.
 
-10. **Encounter timer / round timer**
-    - The stopwatch icon on card row 3 gets a real implementation.
-    - Per-creature time-on-turn tracking, optional total-encounter
-      stopwatch.
+10. **Condition / Effect engine**
+    - Card row 3 "Condition/Effect" button currently does nothing.
+    - Wire to a modal that picks from the standard 5e conditions
+      list + custom effects, with optional duration in rounds and
+      hooks into the turn lifecycle (begin/end/off-turn) so e.g.
+      poisoned ticks down at end-of-turn.
 
 ## Smaller polish (any time)
 
@@ -92,5 +95,49 @@ deployment context.
   cyan, fiends red, etc.).
 - Branch protection + CI workflow (Rust check, Elm compile check) on
   the GitHub repo.
-- Replace hard-coded color hexes in `style.css` with CSS variables
-  so all dice / button colors are themable in one place.
+- Replace remaining hard-coded color hexes in `style.css` with CSS
+  variables so all dice / button colors are themable in one place.
+- Damage scaling: resistance / vulnerability / immunity multipliers
+  on `HpChange.DamageSpec`, surfaced as a select in the Damage
+  modal.
+- Save-against-half flow on the Damage modal (ability + DC + roll),
+  per the JS app's Roll Save toggle.
+
+## Done in recent sessions
+
+- Encounter title bar with live round / active-creature / HP /
+  conditions placeholders.
+- Three-column creature card with selection / queue arrows /
+  set-active arrow on the left rail; ✕ / 👿 / ⧉ on the right rail.
+- Card center column rows 1–3 (init pip + face toggle + name +
+  pencil + AC + condition placeholders; HP + bloodied + death
+  saves + cover/conc/hide/fly toggles + fly-height stepper;
+  Damage / Heal / Temp HP / Condition + hold action + memo /
+  stopwatch / dice).
+- Encounter Controls panel reflow with 🎲 Roll, ➕ Add Creature,
+  💾 Save, 📁 Load, ⏭ Next Turn, ⟲ Reset, 🗑 Clear.
+- Compendium panel renamed; toolbar shows 🔍 Quick View / 📖 Open /
+  ⚔️ CR Calculator (the last greyed out as a future feature).
+- Encounter / view layering split: `Encounter.elm`, `Dice.elm`,
+  `HpChange.elm` are pure rules engines.
+- Real turn tracking: `Encounter.nextTurn` advances the queue and
+  bumps `round` on wrap; `Encounter.setActive` is a no-side-effect
+  manual scrub.
+- Dice roller: `Dice.elm` parses standard / compound / damage-
+  tagged / stat-block-average notation, generates standard /
+  advantage / disadvantage / coin rolls, batch rolls via
+  `Dice.batchRollCmd`, scans stat-block traits for inline
+  clickable formulas, and tags every roll with a
+  `Source { feature, target }` for the history.
+- Server-side dice history at `/api/dice/history` (atomic-rename
+  writes, async-mutex'd, configurable path).
+- HP change engine: `HpChange.elm` with damage / heal / temp HP
+  arithmetic + auto-bloodied + revive-clears-death-saves; modal
+  with manual + dice modes; last-10 log; click-to-edit current /
+  max HP via `HpChange.setCurrentHp` / `setMaxHp`.
+- Initiative manager: clickable init-circle, Quick Sort, batch
+  Auto-roll for target / all / selected, Custom value apply for
+  target / selected.
+- Manual queue reordering via row 1 up/down arrows.
+- Selection: row 1 checkbox (single toggle) + Shift+click bulk
+  select-all / deselect-all.

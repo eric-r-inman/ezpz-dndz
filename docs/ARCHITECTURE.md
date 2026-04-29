@@ -26,9 +26,12 @@ codebase is organized and the conventions you're expected to follow.
 ├── frontend/
 │   ├── src/
 │   │   ├── Main.elm        application shell + view code
-│   │   ├── Encounter.elm   encounter domain (types, rules, turn logic)
-│   │   └── Dice.elm        dice-roller domain (parser, rolls, history,
-│   │                       stat-block scanner, JSON encode/decode)
+│   │   ├── Encounter.elm   encounter domain (types, rules, turn logic,
+│   │   │                   queue reorder, sort)
+│   │   ├── Dice.elm        dice-roller domain (parser, rolls, batch
+│   │   │                   rolls, history, stat-block scanner, JSON)
+│   │   └── HpChange.elm    HP-change engine (damage / heal / temp HP
+│   │                       arithmetic, manual setCurrentHp / setMaxHp)
 │   └── public/
 │       ├── index.html      mounts Elm into #app
 │       ├── style.css       all styles, dual light/dark via vars
@@ -40,9 +43,10 @@ codebase is organized and the conventions you're expected to follow.
 
 ## Layering: domain vs view
 
-> **The rule:** D&D rules logic lives in `Encounter.elm`. UI code (`Main.elm`,
-> any future View modules) imports `Encounter` and uses its types and
-> functions. Logic code never imports view code.
+> **The rule:** D&D rules logic lives in domain modules
+> (`Encounter.elm`, `Dice.elm`, `HpChange.elm`, …). UI code
+> (`Main.elm`, any future View modules) imports them and uses their
+> types and functions. Logic code never imports view code.
 
 The reason this matters now: we're going to ship multiple UI layouts
 (a "simple view" stripped of advanced controls, possibly a tablet
@@ -52,9 +56,9 @@ swapping layouts means rewriting rules — not acceptable.
 
 In practice this means:
 
-- `Encounter.elm` does not `import Html`, `Browser`, `Url`, or any
-  rendering primitive. The compiler will tell you if you accidentally
-  reach for one.
+- `Encounter.elm`, `Dice.elm`, and `HpChange.elm` do not
+  `import Html`, `Browser`, `Url`, or any rendering primitive. The
+  compiler will tell you if you accidentally reach for one.
 - A `Msg` branch in `Main.elm`'s `update` should be a one-liner that
   delegates the rules-y work into `Encounter`. If the branch starts
   doing list walks, comparisons against initiative, or HP arithmetic
@@ -63,11 +67,18 @@ In practice this means:
   authoritative starting state. `Main.init` just wires it into the
   Model; it doesn't pick its own creatures.
 
-There's a tiny seam: `Main.elm` defines a `withEncounter` helper that
-lifts an `Encounter -> Encounter` transformation into a `Model -> Model`
-update. That keeps every per-creature toggle one line and keeps the
-rest of `Model` (route, auth, nav key) literally invisible to domain
-code, which is what we want.
+There are a few small seams in `Main.elm` that lift domain-shaped
+transformations into `Model -> Model` updates so individual `update`
+branches stay one-liners and the rest of `Model` (route, auth, nav
+key) stays invisible to domain code:
+
+- `withEncounter : (Encounter -> Encounter) -> Model -> Model`
+- `withDice : (DiceUi -> DiceUi) -> Model -> Model`
+- `withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model`
+- `withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model`
+
+Each modal/UI substate has its own `with*` helper. New ones follow
+the same pattern.
 
 ## Turn lifecycle
 
@@ -108,6 +119,87 @@ creature nor the would-be beginning-of-turn for the new one. Future
 hook composers must therefore branch off `nextTurn`, never
 `setActive`. This mirrors how a GM at the table sometimes just says
 "OK, switch to X next" without it counting as a round event.
+
+## Initiative manager
+
+Clicking the blue init-circle on any creature card opens the
+**Initiative Manager** modal. It exposes three actions:
+
+- **Quick Sort Encounter** re-orders the queue by descending
+  initiative via `Encounter.sortByInitiative`. Stable tiebreakers
+  are bonus desc, then name. `activeName` is preserved across the
+  sort so re-sorting mid-combat doesn't reset whose turn it is.
+- **Auto-roll Initiative** rolls `1d20 + creature.initiativeBonus`
+  for either the click target, all creatures, or every creature
+  with `selected = True`. Goes through `Dice.batchRollCmd`, which
+  shares one timestamp + one sequenced seed-step across the whole
+  batch — solves the "8 creatures all roll the same number"
+  collision a per-call `Dice.rollCmd` would hit when fired N times
+  in the same millisecond. Each roll lands in the dice history
+  tagged `Initiative → <creature>` and persists via
+  `/api/dice/history`.
+- **Custom Initiative** sets each named creature's initiative to a
+  manually-entered number, then sorts.
+
+Manual queue reordering also exists at the row level: the up/down
+arrows on each card swap the creature one slot via
+`Encounter.moveUp` / `Encounter.moveDown` without touching
+initiative numbers. The contract is: any `sortByInitiative` call
+afterward (Quick Sort, Auto-roll & Sort) wipes the manual order.
+Per-card moves are temporary; sorts are authoritative.
+
+The selection checkboxes drive the modal's "Selected" buttons.
+A plain click toggles one creature; **Shift+click** dispatches
+`ShiftToggleSelected`, which selects all when any are unselected
+and deselects all when every creature is selected. Implemented as
+a `preventDefaultOn "click"` handler that decodes
+`event.shiftKey` so model is the single source of truth for
+checkbox state (no double-toggle from the browser default).
+
+
+## HP change engine
+
+The Damage / Heal / Temp HP buttons on card row 3 — and the future
+ongoing-effect ticks, save-against-half resolutions, and direct GM
+overrides — all funnel through `HpChange.elm`'s single
+`apply : Change -> Creature -> Creature` entry point so the
+arithmetic doesn't drift between code paths.
+
+`Change` is an ADT:
+
+  - `Damage { amount, ignoreTemp }` — temp HP soaks first (skippable
+    via `ignoreTemp`); current HP clamps at 0.
+  - `Heal Int` — caps at maxHp; clears `inDeathSaves` and the three
+    death-save slots when reviving from 0.
+  - `TempHp Int` — replace-if-higher (5e never-stacks rule).
+
+`bloodied` is auto-recomputed after every `apply` from current vs.
+max HP, so the row 2 🩸 chip stays honest without anyone touching
+it manually.
+
+The engine also exposes manual GM overrides:
+
+  - `setCurrentHp : Int -> Creature -> Creature`
+  - `setMaxHp : Int -> Creature -> Creature`
+
+These skip the rule-flavored side effects (no temp soak, no death-
+save clearing) — they're the "I just want to type 23" path. The
+inline click-to-edit on the card row 2 HP values uses these.
+
+UI side, the HP-change modal supports two input modes:
+
+  - **Manual**: type the amount, see the before → after preview.
+  - **Roll dice**: type a Dice expression (using the same parser as
+    the dice modal). Apply rolls and applies in one shot, also
+    logging the roll to the dice history tagged `Damage → Brakka,
+    Ogre Brute` (or Heal / Temp HP) and persisting via
+    `/api/dice/history`.
+
+A bounded log of the last 10 HP changes lives at the bottom of the
+modal (across all three verbs), so the GM can see recent table
+context. The log is `Model.hpChangeLog : List HpChangeEntry`,
+capped at `maxHpLogEntries = 10`.
+
 
 ## Creature identity
 
@@ -221,12 +313,15 @@ just test     # all Rust tests + Elm compile check
 |--------------------------------------------------|------------------------------------------|
 | A new per-creature toggle / state field          | `Encounter.Creature` + a `Msg` + an `update` branch + a view helper |
 | A new turn-phase rule                            | a new pure function in `Encounter.elm`, called from the relevant `Msg` branch |
+| A new HP-affecting effect                        | a new `HpChange.Change` variant + clause in `apply`; HP-change modal callers route through it |
+| A new tag / source for a roll (so it shows up in dice history) | a `Dice.Source { feature, target }` value at the call site; `Dice.rollCmd` + friends accept it |
 | A new visual element on a card / panel           | a view function in `Main.elm` (or a future View module) |
+| A new modal                                      | `Maybe SomeUi` field on `Model`, `with*` helper next to `withEncounter`, view function returning `text ""` when closed |
 | A new color / spacing token                      | a CSS custom property in `:root` (and its dark-mode override) in `style.css` |
 | A new creature for the seed encounter            | `Encounter.seedCreatures`                |
 | A new dice operator or notation form             | `Dice.elm` parser + (if shape changes) `encodeRoll` / `decodeRoll` |
 | A new HTTP route handled by the backend          | `crates/server/src/web_base.rs` (or a sibling module merged in) |
 | A new dev script (build / serve / package)       | `justfile`                               |
 
-When in doubt: rules in `Encounter` / `Dice`, presentation in `Main` /
-CSS, ops in `justfile`.
+When in doubt: rules in `Encounter` / `Dice` / `HpChange`,
+presentation in `Main` / CSS, ops in `justfile`.

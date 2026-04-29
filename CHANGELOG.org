@@ -83,3 +83,91 @@
     logging the roll to the dice history (POST /api/dice/history).
 - Damage gets an "Ignore temporary HP" checkbox; heal and temp HP
   show only the amount input.
+
+** Initiative manager
+
+- Clicking the blue init-circle on a creature card opens an
+  Initiative Manager modal with three sections: *Quick Sort
+  Encounter* (re-orders the queue by descending initiative via
+  =Encounter.sortByInitiative=), *Auto-roll Initiative* (rolls
+  =1d20 + initiativeBonus= for the click target / all / selected
+  via =Dice.batchRollCmd=), and *Custom Initiative* (manual value
+  apply for target / selected).
+- New ~Encounter.sortByInitiative=, ~Encounter.moveUp=, and
+  ~Encounter.moveDown= functions.  =activeName= is preserved across
+  sorts so re-sorting mid-combat doesn't reset whose turn it is.
+- New ~Dice.batchRollCmd= rolls a list of expressions in a single
+  Cmd, sharing one timestamp + one sequenced seed-step.  This
+  prevents the "8 creatures all roll the same number" collision
+  that would happen with N per-call =rollCmd= invocations in the
+  same millisecond.
+- =Creature= gains ~initiativeBonus : Int=.  Seed values are
+  set per creature (Lyra +5, Brakka -1, Vex/Goblins +2, Shaman
+  +1, Sentinel -1, Wisp +3).
+- Up / down arrows on each card's left rail now move the creature
+  one slot up or down in the queue (via =moveUp= / =moveDown=)
+  without touching initiative.  A subsequent =sortByInitiative=
+  wipes the manual order — that's the documented contract.
+- Selection checkbox in the row 1 left rail is now interactive.
+  Plain click toggles a single creature; *Shift+click* selects all
+  if any are unselected, deselects all if every creature is
+  selected.  Implemented via =preventDefaultOn "click"= so model
+  is the single source of truth for the checkbox state.
+
+** Dice source tagging
+
+- =Dice.Roll= gains a =source : Source= field where
+  =Source = { feature : String, target : Maybe String }=.  The
+  dice history renders a chip per entry — "Damage → Brakka, Ogre
+  Brute", "Heal → Lyra Vale (PC)", "Initiative → Goblin Boss",
+  "Stat block → Brakka, Ogre Brute".  The chip is hidden for the
+  default ~manualSource~ since the dice modal's own buttons make
+  the context obvious.
+- All ~Dice.*Cmd~ entry points (~rollCmd~, ~advantageCmd~,
+  ~disadvantageCmd~, ~coinCmd~, ~batchRollCmd~) take a Source.
+  =Dice.rollWithTime= stamps it onto the rolled Roll so callers
+  don't have to remember to overwrite afterwards.
+- JSON encode / decode round-trip the source.  The decoder uses
+  =Decode.oneOf= with =manualSource= as a fallback so legacy
+  =dice-history.json= entries from before this field continue to
+  load.
+- =DiceRerun= preserves the original entry's source so a re-rolled
+  "Damage → Brakka" stays labelled the same way.
+
+** Card row 2 HP polish
+
+- New ~Model.hpChangeLog : List HpChangeEntry= (capped at 10)
+  records each application via the HP-change modal.  Rendered as
+  a list of "[Damage] Brakka 13 27/59 → 14/59" rows at the
+  bottom of the modal — shared across the Damage / Heal / Temp
+  HP verbs so the GM sees recent table context regardless of
+  which modal is open.
+- Click-to-edit current and max HP on the card.  Clicking either
+  value swaps the span for an autofocused ~<input>~; Enter or
+  blur commits, Esc cancels.  Commits go through new
+  ~HpChange.setCurrentHp= and ~HpChange.setMaxHp= helpers that
+  clamp current to =0..maxHp= and max to =>= 1=, dragging
+  current with it if it would otherwise exceed.  =bloodied= is
+  auto-recomputed.
+- Temp HP readout in card row 2 now matches the rest of the HP
+  text in size and color — drops the pill background, uses the
+  same blue as the Temp HP button.  Reads inline as "38/42 +5".
+- Card row 3 colored buttons (Damage / Heal / Temp HP /
+  Condition/Effect) lightened ~10% from their original saturated
+  hues; all label text is now white for legibility.
+
+** Dice modal polish
+
+- Added a ❌ reset button to the right of the Modifier field;
+  clicking restores count → 1 and modifier → 0 in one click.
+- Modifier field now allows transient negative input ("-" alone,
+  "-5", "-12") without the controlled input clobbering the user's
+  characters between keystrokes.  =DiceUi= now carries a
+  =modifierText : String= alongside the parsed integer.
+
+** Encounter title bar
+
+- Active-creature HP in the title bar now uses the same shared
+  =.hp-display*= classes as the card row 2, so the green / muted
+  / blue palette stays in lockstep.  Temp HP shows inline as
+  "+N" when nonzero.
