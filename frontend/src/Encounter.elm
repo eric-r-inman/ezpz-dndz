@@ -91,6 +91,7 @@ type alias Creature =
     , initiative : Int
     , currentHp : Int
     , maxHp : Int
+    , tempHp : Int
     , armorClass : Int
     , speed : Int
     , conditions : List String
@@ -151,6 +152,7 @@ seedCreatures =
       , initiative = 22
       , currentHp = 38
       , maxHp = 42
+      , tempHp = 0
       , armorClass = 16
       , speed = 30
       , conditions = [ "Hidden" ]
@@ -171,6 +173,7 @@ seedCreatures =
       , initiative = 18
       , currentHp = 27
       , maxHp = 59
+      , tempHp = 0
       , armorClass = 11
       , speed = 40
       , conditions = [ "Bloodied", "Frightened" ]
@@ -191,6 +194,7 @@ seedCreatures =
       , initiative = 17
       , currentHp = 34
       , maxHp = 65
+      , tempHp = 0
       , armorClass = 15
       , speed = 30
       , conditions = []
@@ -211,6 +215,7 @@ seedCreatures =
       , initiative = 15
       , currentHp = 7
       , maxHp = 7
+      , tempHp = 0
       , armorClass = 15
       , speed = 30
       , conditions = []
@@ -231,6 +236,7 @@ seedCreatures =
       , initiative = 12
       , currentHp = 21
       , maxHp = 21
+      , tempHp = 0
       , armorClass = 17
       , speed = 30
       , conditions = []
@@ -251,6 +257,7 @@ seedCreatures =
       , initiative = 9
       , currentHp = 4
       , maxHp = 27
+      , tempHp = 0
       , armorClass = 13
       , speed = 30
       , conditions = [ "Concentrating" ]
@@ -271,6 +278,7 @@ seedCreatures =
       , initiative = 8
       , currentHp = 78
       , maxHp = 78
+      , tempHp = 0
       , armorClass = 18
       , speed = 25
       , conditions = []
@@ -291,6 +299,7 @@ seedCreatures =
       , initiative = 6
       , currentHp = 12
       , maxHp = 18
+      , tempHp = 0
       , armorClass = 12
       , speed = 0
       , conditions = []

@@ -10,6 +10,7 @@ import Encounter
         , Creature
         , Encounter
         )
+import HpChange
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, stopPropagationOn)
@@ -75,6 +76,60 @@ type alias Model =
     , me : MeStatus
     , encounter : Encounter
     , dice : DiceUi
+    , hpChange : Maybe HpChangeUi
+    }
+
+
+{-| Per-instance state for the HP-change modal.
+
+Open ↔ closed lives at the `Model.hpChange` field (Just / Nothing)
+rather than as a flag here, so an `Encounter.mapCreature` that
+deletes the targeted creature can't leave a stale modal pointing at
+something that no longer exists.
+
+`amountText` mirrors the `<input>` characters for the same reason
+`DiceUi.modifierText` does — to allow transient states like a bare
+"-" while the user is mid-typing without the controlled input
+overwriting their text.
+
+-}
+type alias HpChangeUi =
+    { target : String
+    , kind : HpKind
+    , mode : HpInputMode
+    , amount : Int
+    , amountText : String
+    , expression : String
+    , parseError : Maybe Dice.Error
+    , ignoreTemp : Bool
+    }
+
+
+type HpKind
+    = DamageKind
+    | HealKind
+    | TempHpKind
+
+
+type HpInputMode
+    = ManualMode
+    | DiceMode
+
+
+{-| Initial state for opening the HP-change modal targeted at a
+creature. The kind picks Damage / Heal / Temp HP; the rest defaults
+to a 0-amount manual entry.
+-}
+freshHpChangeUi : String -> HpKind -> HpChangeUi
+freshHpChangeUi target kind =
+    { target = target
+    , kind = kind
+    , mode = ManualMode
+    , amount = 0
+    , amountText = "0"
+    , expression = ""
+    , parseError = Nothing
+    , ignoreTemp = False
     }
 
 
@@ -157,6 +212,15 @@ type Msg
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
     | RollFromStatBlock Dice.Expression
+      -- HP change modal
+    | HpChangeOpen String HpKind
+    | HpChangeClose
+    | HpChangeModeSet HpInputMode
+    | HpChangeAmountChanged String
+    | HpChangeExpressionChanged String
+    | HpChangeIgnoreTempToggle
+    | HpChangeApply
+    | HpChangeRollLanded Dice.Roll
     | NoOp
 
 
@@ -206,6 +270,7 @@ init _ url key =
       , me = Loading
       , encounter = Encounter.initialEncounter
       , dice = emptyDice
+      , hpChange = Nothing
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -489,6 +554,101 @@ update msg model =
             , Dice.rollCmd DiceRollLanded expr
             )
 
+        -- HP change modal lifecycle
+        HpChangeOpen target kind ->
+            ( { model | hpChange = Just (freshHpChangeUi target kind) }
+            , Cmd.none
+            )
+
+        HpChangeClose ->
+            ( { model | hpChange = Nothing }, Cmd.none )
+
+        HpChangeModeSet mode ->
+            ( withHpChange (\u -> { u | mode = mode, parseError = Nothing }) model
+            , Cmd.none
+            )
+
+        HpChangeAmountChanged text ->
+            -- Mirror the dice-modifier pattern: track raw text for
+            -- the controlled input, only update the parsed integer
+            -- when the input actually parses. Unsigned here — heal
+            -- and temp-HP can't be negative, and damage flips the
+            -- sign internally via the engine.
+            ( withHpChange
+                (\u ->
+                    { u
+                        | amountText = text
+                        , amount =
+                            String.toInt (String.trim text)
+                                |> Maybe.map (Basics.max 0)
+                                |> Maybe.withDefault u.amount
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        HpChangeExpressionChanged text ->
+            ( withHpChange (\u -> { u | expression = text, parseError = Nothing }) model
+            , Cmd.none
+            )
+
+        HpChangeIgnoreTempToggle ->
+            ( withHpChange (\u -> { u | ignoreTemp = not u.ignoreTemp }) model
+            , Cmd.none
+            )
+
+        HpChangeApply ->
+            -- Manual mode commits ui.amount via the engine straight
+            -- away. Dice mode parses the expression and fires
+            -- Dice.rollCmd; the resulting roll comes back via
+            -- HpChangeRollLanded which then commits with the rolled
+            -- total AND logs the roll to the dice history. So both
+            -- paths converge on a single applyHpChange step.
+            case model.hpChange of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just ui ->
+                    case ui.mode of
+                        ManualMode ->
+                            ( applyHpChangeAndClose ui ui.amount model
+                            , Cmd.none
+                            )
+
+                        DiceMode ->
+                            case Dice.parse ui.expression of
+                                Ok expr ->
+                                    ( model
+                                    , Dice.rollCmd HpChangeRollLanded expr
+                                    )
+
+                                Err err ->
+                                    ( withHpChange (\u -> { u | parseError = Just err }) model
+                                    , Cmd.none
+                                    )
+
+        HpChangeRollLanded roll ->
+            -- The dice-mode path lands here. We commit the change
+            -- with roll.total, log the roll to the dice history (so
+            -- the user has a record), and persist it server-side
+            -- through the same /api/dice/history pipe the dice modal
+            -- uses. If the modal got closed mid-flight (defensive),
+            -- still log/persist so we don't drop rolls on the floor.
+            let
+                logged =
+                    withDice (\d -> { d | history = Dice.push roll d.history }) model
+
+                committed =
+                    case logged.hpChange of
+                        Just ui ->
+                            applyHpChangeAndClose ui roll.total logged
+
+                        Nothing ->
+                            logged
+            in
+            ( committed, persistRollCmd roll )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -512,6 +672,48 @@ inline at every call site.
 withDice : (DiceUi -> DiceUi) -> Model -> Model
 withDice fn model =
     { model | dice = fn model.dice }
+
+
+{-| Apply `fn` to the open HP-change modal. No-op when the modal is
+closed (the field is `Nothing`).
+-}
+withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
+withHpChange fn model =
+    case model.hpChange of
+        Just ui ->
+            { model | hpChange = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Resolve the modal's kind + flags into an `HpChange.Change`,
+hand it to the engine, write the updated creature back through
+`Encounter.mapCreature`, and close the modal. The caller decides the
+amount — it comes from the manual input on the manual path or from
+the rolled total on the dice path.
+-}
+applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
+applyHpChangeAndClose ui amount model =
+    let
+        change =
+            case ui.kind of
+                DamageKind ->
+                    HpChange.Damage
+                        { amount = amount
+                        , ignoreTemp = ui.ignoreTemp
+                        }
+
+                HealKind ->
+                    HpChange.Heal amount
+
+                TempHpKind ->
+                    HpChange.TempHp amount
+    in
+    { model
+        | encounter = Encounter.mapCreature ui.target (HpChange.apply change) model.encounter
+        , hpChange = Nothing
+    }
 
 
 {-| Parse a numeric `<input>`'s string value into an Int, clamping
@@ -598,6 +800,7 @@ view model =
             [ viewAppBar
             , viewPage model
             , viewDiceModal model.dice
+            , viewHpChangeModal model
             ]
         ]
     }
@@ -1025,7 +1228,7 @@ viewSurprisedToggle creature =
 viewCardRowMid : Creature -> Html Msg
 viewCardRowMid creature =
     div [ class "creature-card__row creature-card__row--mid" ]
-        [ viewHpDisplay
+        [ viewHpDisplay creature
         , viewBloodied creature
         , viewDeathSaves creature
         , viewCoverToggle creature
@@ -1048,12 +1251,28 @@ viewCardRowMid creature =
         ]
 
 
-viewHpDisplay : Html Msg
-viewHpDisplay =
+{-| Card row 2 HP readout: green current / muted max, plus an inline
+"+N" temp-HP chip when the creature is buffed. Renders the actual
+creature state — the placeholder "100/100" is gone now that the HP
+change engine writes to currentHp / tempHp on apply.
+-}
+viewHpDisplay : Creature -> Html Msg
+viewHpDisplay creature =
     span [ class "hp-display" ]
-        [ span [ class "hp-display__current" ] [ text "100" ]
+        [ span [ class "hp-display__current" ]
+            [ text (String.fromInt creature.currentHp) ]
         , span [ class "hp-display__sep" ] [ text "/" ]
-        , span [ class "hp-display__max" ] [ text "100" ]
+        , span [ class "hp-display__max" ]
+            [ text (String.fromInt creature.maxHp) ]
+        , if creature.tempHp > 0 then
+            span
+                [ class "hp-display__temp"
+                , title "Temporary hit points"
+                ]
+                [ text ("+" ++ String.fromInt creature.tempHp) ]
+
+          else
+            text ""
         ]
 
 
@@ -1097,16 +1316,19 @@ viewCardRowBot creature =
     div [ class "creature-card__row creature-card__row--bot" ]
         [ button
             [ class "action-btn action-btn--damage"
+            , onClick (HpChangeOpen creature.name DamageKind)
             , title "Apply damage"
             ]
             [ text "Damage" ]
         , button
             [ class "action-btn action-btn--heal"
+            , onClick (HpChangeOpen creature.name HealKind)
             , title "Heal hit points"
             ]
             [ text "Heal" ]
         , button
             [ class "action-btn action-btn--temp"
+            , onClick (HpChangeOpen creature.name TempHpKind)
             , title "Add temporary hit points"
             ]
             [ text "Temp HP" ]
@@ -1637,3 +1859,271 @@ rolledString roll =
                 ""
     in
     "rolled " ++ faces ++ modifierText
+
+
+
+-- HP CHANGE MODAL
+
+
+{-| Renders the HP-change modal when one is open. Reuses the dice
+modal's backdrop / panel shell — the chrome is the same, only the
+body differs. Closes on backdrop click, ✕, or Cancel.
+-}
+viewHpChangeModal : Model -> Html Msg
+viewHpChangeModal model =
+    case model.hpChange of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            let
+                target =
+                    List.filter (\c -> c.name == ui.target) model.encounter.creatures
+                        |> List.head
+            in
+            div
+                [ class "modal-backdrop"
+                , onClick HpChangeClose
+                ]
+                [ div
+                    [ class "modal modal--hp-change"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    ]
+                    [ viewHpChangeHeader ui
+                    , div [ class "modal__body" ]
+                        [ viewHpChangeModeToggle ui
+                        , viewHpChangeAmount ui
+                        , viewHpChangeOptions ui
+                        , case target of
+                            Just c ->
+                                viewHpChangePreview ui c
+
+                            Nothing ->
+                                text ""
+                        , viewHpChangeFooter
+                        ]
+                    ]
+                ]
+
+
+viewHpChangeHeader : HpChangeUi -> Html Msg
+viewHpChangeHeader ui =
+    let
+        verb =
+            case ui.kind of
+                DamageKind ->
+                    "Damage"
+
+                HealKind ->
+                    "Heal"
+
+                TempHpKind ->
+                    "Temp HP"
+    in
+    div [ class "modal__header" ]
+        [ div [ class "modal__title" ]
+            [ text (verb ++ " — " ++ ui.target) ]
+        , button
+            [ class "modal__close"
+            , onClick HpChangeClose
+            , title "Cancel"
+            , attribute "aria-label" "Cancel"
+            ]
+            [ text "×" ]
+        ]
+
+
+viewHpChangeModeToggle : HpChangeUi -> Html Msg
+viewHpChangeModeToggle ui =
+    div [ class "hp-change__mode" ]
+        [ modeRadio "Manual" (ui.mode == ManualMode) (HpChangeModeSet ManualMode)
+        , modeRadio "Roll dice" (ui.mode == DiceMode) (HpChangeModeSet DiceMode)
+        ]
+
+
+modeRadio : String -> Bool -> Msg -> Html Msg
+modeRadio label isOn msg =
+    button
+        [ class
+            (if isOn then
+                "hp-change__mode-btn hp-change__mode-btn--active"
+
+             else
+                "hp-change__mode-btn"
+            )
+        , onClick msg
+        , attribute "aria-pressed"
+            (if isOn then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text label ]
+
+
+viewHpChangeAmount : HpChangeUi -> Html Msg
+viewHpChangeAmount ui =
+    case ui.mode of
+        ManualMode ->
+            div [ class "hp-change__row" ]
+                [ Html.label [ for "hp-amount" ] [ text "Amount" ]
+                , input
+                    [ id "hp-amount"
+                    , class "hp-change__input"
+                    , type_ "number"
+                    , Html.Attributes.min "0"
+                    , Html.Attributes.max "999"
+                    , value ui.amountText
+                    , onInput HpChangeAmountChanged
+                    , Html.Events.on "keydown" (enterKey HpChangeApply)
+                    ]
+                    []
+                ]
+
+        DiceMode ->
+            div []
+                [ div [ class "hp-change__row" ]
+                    [ Html.label [ for "hp-expression" ] [ text "Expression" ]
+                    , input
+                        [ id "hp-expression"
+                        , class "hp-change__input"
+                        , type_ "text"
+                        , placeholder "e.g. 2d6+3"
+                        , value ui.expression
+                        , onInput HpChangeExpressionChanged
+                        , Html.Events.on "keydown" (enterKey HpChangeApply)
+                        ]
+                        []
+                    ]
+                , case ui.parseError of
+                    Just (Dice.ParseError raw) ->
+                        div [ class "hp-change__error" ]
+                            [ text ("Couldn't parse: " ++ raw) ]
+
+                    Nothing ->
+                        text ""
+                ]
+
+
+viewHpChangeOptions : HpChangeUi -> Html Msg
+viewHpChangeOptions ui =
+    case ui.kind of
+        DamageKind ->
+            div [ class "hp-change__row" ]
+                [ Html.label [ class "hp-change__checkbox" ]
+                    [ input
+                        [ type_ "checkbox"
+                        , checked ui.ignoreTemp
+                        , onClick HpChangeIgnoreTempToggle
+                        ]
+                        []
+                    , text " Ignore temporary HP"
+                    ]
+                ]
+
+        _ ->
+            text ""
+
+
+{-| Preview of the manual-mode arithmetic: shows what the change
+would do to the target's HP if Apply were clicked right now. In
+dice mode the result depends on the roll, so we show the expression
+that will be rolled instead of a numeric prediction.
+-}
+viewHpChangePreview : HpChangeUi -> Creature -> Html Msg
+viewHpChangePreview ui c =
+    let
+        before =
+            hpBeforeText c
+    in
+    div [ class "hp-change__preview" ]
+        [ div [ class "hp-change__preview-label" ] [ text "Preview" ]
+        , div [ class "hp-change__preview-body" ]
+            (case ui.mode of
+                ManualMode ->
+                    let
+                        change =
+                            buildPreviewChange ui ui.amount
+
+                        after =
+                            HpChange.apply change c
+                    in
+                    [ text before
+                    , span [ class "hp-change__preview-arrow" ] [ text " → " ]
+                    , text (hpAfterText after)
+                    ]
+
+                DiceMode ->
+                    [ text before
+                    , span [ class "hp-change__preview-arrow" ] [ text " → " ]
+                    , span [ class "hp-change__preview-roll" ]
+                        [ text
+                            (if String.isEmpty (String.trim ui.expression) then
+                                "(enter an expression)"
+
+                             else
+                                "roll " ++ String.trim ui.expression
+                            )
+                        ]
+                    ]
+            )
+        ]
+
+
+buildPreviewChange : HpChangeUi -> Int -> HpChange.Change
+buildPreviewChange ui amount =
+    case ui.kind of
+        DamageKind ->
+            HpChange.Damage { amount = amount, ignoreTemp = ui.ignoreTemp }
+
+        HealKind ->
+            HpChange.Heal amount
+
+        TempHpKind ->
+            HpChange.TempHp amount
+
+
+hpBeforeText : Creature -> String
+hpBeforeText c =
+    String.fromInt c.currentHp
+        ++ "/"
+        ++ String.fromInt c.maxHp
+        ++ (if c.tempHp > 0 then
+                " (+" ++ String.fromInt c.tempHp ++ " temp)"
+
+            else
+                ""
+           )
+
+
+hpAfterText : Creature -> String
+hpAfterText c =
+    String.fromInt c.currentHp
+        ++ "/"
+        ++ String.fromInt c.maxHp
+        ++ (if c.tempHp > 0 then
+                " (+" ++ String.fromInt c.tempHp ++ " temp)"
+
+            else
+                ""
+           )
+
+
+viewHpChangeFooter : Html Msg
+viewHpChangeFooter =
+    div [ class "hp-change__footer" ]
+        [ button
+            [ class "action-btn"
+            , onClick HpChangeClose
+            ]
+            [ text "Cancel" ]
+        , button
+            [ class "action-btn action-btn--green"
+            , onClick HpChangeApply
+            ]
+            [ text "Apply" ]
+        ]

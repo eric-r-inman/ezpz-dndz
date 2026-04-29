@@ -62,3 +62,24 @@
   feature pipeline (compendium read API, encounter save/load,
   per-user dice history, SQLite migration, OIDC polish, real-time
   co-DM mode).
+
+** HP Change engine
+
+- New ~HpChange.elm~ pure module implementing 5e HP arithmetic for
+  damage / heal / temp HP through a single ~apply~ entry point so
+  the three buttons can't drift apart.  Damage absorbs temp HP
+  first (with optional ~ignoreTemp~ override); heal caps at maxHP
+  and clears death-save tracking when reviving from 0; temp HP
+  follows the replace-if-higher rule.  ~bloodied~ is now auto-
+  derived from current vs. max HP.
+- Creature gains a ~tempHp : Int~ field; the row 2 HP display shows
+  it as a "+N" chip when nonzero.
+- The Damage / Heal / Temp HP buttons in card row 3 are wired to a
+  shared modal (~viewHpChangeModal~) with two input modes:
+  - *Manual*: enter the amount as a number; live preview shows the
+    before / after HP.
+  - *Roll dice*: enter a Dice expression (using the same parser as
+    the dice modal); Apply rolls and applies in one shot, also
+    logging the roll to the dice history (POST /api/dice/history).
+- Damage gets an "Ignore temporary HP" checkbox; heal and temp HP
+  show only the amount input.
