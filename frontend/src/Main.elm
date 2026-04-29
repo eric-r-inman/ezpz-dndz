@@ -716,17 +716,17 @@ viewCardRowMid creature =
         , viewCoverToggle creature
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , viewBoolToggle "🧠"
-            "Concentration"
+            "concentrating"
             creature.concentrating
             (ToggleConcentration creature.name)
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , viewBoolToggle "👤"
-            "Hiding"
+            "hiding"
             creature.hiding
             (ToggleHiding creature.name)
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , viewBoolToggle "🪽"
-            "Flying"
+            "flying"
             creature.flying
             (ToggleFlying creature.name)
         , viewFlyHeight creature
@@ -745,19 +745,18 @@ viewHpDisplay =
 viewBoolToggle : String -> String -> Bool -> Msg -> Html Msg
 viewBoolToggle icon label isOn msg =
     let
-        cls =
+        ( bodyText, cls, tip ) =
             if isOn then
-                "status-toggle status-toggle--on"
+                ( icon ++ " " ++ label
+                , "status-toggle status-toggle--on"
+                , label ++ " — click to clear"
+                )
 
             else
-                "status-toggle"
-
-        tip =
-            if isOn then
-                label ++ " — click to clear"
-
-            else
-                "Not " ++ String.toLower label ++ " — click to set"
+                ( "not " ++ label
+                , "status-toggle"
+                , "not " ++ label ++ " — click to set"
+                )
     in
     button
         [ class cls
@@ -772,7 +771,7 @@ viewBoolToggle icon label isOn msg =
                 "false"
             )
         ]
-        [ text icon ]
+        [ text bodyText ]
 
 
 viewCoverToggle : Creature -> Html Msg
