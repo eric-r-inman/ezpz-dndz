@@ -777,19 +777,19 @@ viewBoolToggle icon label isOn msg =
 viewCoverToggle : Creature -> Html Msg
 viewCoverToggle creature =
     let
-        ( glyph, label, modifier ) =
+        ( bodyText, label, modifier ) =
             case creature.cover of
                 NoCover ->
-                    ( "○", "No cover", "status-toggle--off" )
+                    ( "○ no cover", "No cover", "status-toggle--off" )
 
                 HalfCover ->
-                    ( "◐", "½ cover", "status-toggle--on" )
+                    ( "◐ ½ cover", "Half cover", "status-toggle--on" )
 
                 ThreeQuartersCover ->
-                    ( "◕", "¾ cover", "status-toggle--on" )
+                    ( "◕ ¾ cover", "Three-quarters cover", "status-toggle--on" )
 
                 FullCover ->
-                    ( "●", "Full cover", "status-toggle--on" )
+                    ( "● full cover", "Full cover", "status-toggle--on" )
     in
     button
         [ class ("status-toggle " ++ modifier)
@@ -797,7 +797,7 @@ viewCoverToggle creature =
         , title (label ++ " — click to cycle")
         , attribute "aria-label" ("Cover: " ++ label)
         ]
-        [ text glyph ]
+        [ text bodyText ]
 
 
 viewFlyHeight : Creature -> Html Msg
