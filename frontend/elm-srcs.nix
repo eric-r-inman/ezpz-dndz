@@ -24,6 +24,21 @@
     version = "1.1.3";
   };
 
+  "elm/parser" = {
+    sha256 = "0a3cxrvbm7mwg9ykynhp7vjid58zsw03r63qxipxp3z09qks7512";
+    version = "1.1.0";
+  };
+
+  "elm/random" = {
+    sha256 = "138n2455wdjwa657w6sjq18wx2r0k60ibpc4frhbqr50sncxrfdl";
+    version = "1.0.0";
+  };
+
+  "elm/time" = {
+    sha256 = "0vch7i86vn0x8b850w1p69vplll1bnbkp8s383z7pinyg94cm2z1";
+    version = "1.0.0";
+  };
+
   "elm/url" = {
     sha256 = "0av8x5syid40sgpl5vd7pry2rq0q4pga28b4yykn9gd9v12rs3l4";
     version = "1.0.0";
@@ -37,11 +52,6 @@
   "elm/file" = {
     sha256 = "1rljcb41dl97myidyjih2yliyzddkr2m7n74x7gg46rcw4jl0ny8";
     version = "1.0.5";
-  };
-
-  "elm/time" = {
-    sha256 = "0vch7i86vn0x8b850w1p69vplll1bnbkp8s383z7pinyg94cm2z1";
-    version = "1.0.0";
   };
 
   "elm/virtual-dom" = {

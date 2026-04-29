@@ -1,0 +1,751 @@
+module Dice exposing
+    ( Dice, Sign(..), Expression, Roll, RollGroup, RolledDie, RollKind(..), Error(..), History
+    , parse, expressionToString
+    , emptyHistory, push, historyEntries, maxHistoryEntries
+    , generator, advantageGenerator, disadvantageGenerator, coinGenerator
+    , rollCmd, advantageCmd, disadvantageCmd, coinCmd
+    )
+
+{-| Pure dice-roller domain layer.
+
+Owns dice notation parsing, the random-roll evaluator, and a bounded
+in-memory history of past rolls. Like `Encounter`, this module
+imports nothing from `Html`, `Browser`, or `Url` — UI code dispatches
+into it but never the other way round, so alternate UI layouts can
+share the same engine.
+
+The notation we parse mirrors what the original JS dice-roller
+accepted, so port plans stay one-for-one:
+
+  - Standard: `1d6`, `2d8+3`, `3d10-2`
+  - Compound: `1d8 + 2d6`, `2d6 - 1d4 + 5`
+  - Damage tagged: `2d6+3 fire damage`, `1d8 piercing`
+  - Stat-block avg: `7 (1d8 + 3)` — the leading "7" and parens are
+    stripped; the inner formula becomes the parsed expression.
+
+Advantage / disadvantage / coin flip have their own generators rather
+than custom syntax; the JS UI worked the same way.
+
+
+# Types
+
+@docs Dice, Sign, Expression, Roll, RollGroup, RolledDie, RollKind, Error, History
+
+
+# Parsing
+
+@docs parse, expressionToString
+
+
+# History
+
+@docs emptyHistory, push, historyEntries, maxHistoryEntries
+
+
+# Rolling — generators
+
+For when you need a `Random.Generator` directly (testing, composition).
+
+@docs generator, advantageGenerator, disadvantageGenerator, coinGenerator
+
+
+# Rolling — Cmds
+
+The convenient call site for `update`. Each `*Cmd` reads `Time.now`,
+seeds the RNG with the millisecond timestamp, runs the appropriate
+generator, and stamps the resulting `Roll` with that timestamp.
+
+@docs rollCmd, advantageCmd, disadvantageCmd, coinCmd
+
+-}
+
+import Parser exposing ((|.), (|=), Parser)
+import Random
+import Task
+import Time
+
+
+
+-- TYPES
+
+
+{-| Sign of a dice term in a compound expression. `1d8 + 2d6` reads
+the second group as `Positive`; `2d6 - 1d4` reads the second as
+`Negative`.
+-}
+type Sign
+    = Positive
+    | Negative
+
+
+{-| One dice group: count + face count + sign.
+
+`count` is clamped to 1..99 by the parser. `faces` accepts any
+positive integer for forward compatibility, though the standard
+buttons stick to 4 / 6 / 8 / 10 / 12 / 20 / 100.
+
+-}
+type alias Dice =
+    { count : Int
+    , faces : Int
+    , sign : Sign
+    }
+
+
+{-| A parsed dice expression.
+
+Holds zero-or-more dice groups, a signed integer constant, and an
+optional damage type tag. Constants accumulate across the expression,
+so `1d6 + 2 - 1` parses with `constant = 1`.
+
+Examples (with `Positive` and `Negative` abbreviated `+` / `-`):
+
+  - `1d6` → `{ dice = [1d6+], constant = 0, damageType = Nothing }`
+  - `2d8+3` → `{ dice = [2d8+], constant = 3, damageType = Nothing }`
+  - `2d6+3 fire` → `{ dice = [2d6+], constant = 3, damageType = Just "fire" }`
+  - `1d8 + 2d6` → `{ dice = [1d8+, 2d6+], constant = 0, damageType = Nothing }`
+  - `2d6 - 1d4` → `{ dice = [2d6+, 1d4-], constant = 0, damageType = Nothing }`
+
+-}
+type alias Expression =
+    { dice : List Dice
+    , constant : Int
+    , damageType : Maybe String
+    }
+
+
+{-| One face from one rolled die. `kept = False` if the face was
+dropped by a keep rule (advantage drops the lower of two d20s).
+-}
+type alias RolledDie =
+    { face : Int
+    , kept : Bool
+    }
+
+
+{-| All faces rolled for one Dice group, plus the group's signed sum.
+-}
+type alias RollGroup =
+    { dice : Dice
+    , rolled : List RolledDie
+    , subtotal : Int
+    }
+
+
+{-| The five distinct roll kinds. `Standard` covers normal rolls
+(including compound); `Advantage` / `Disadvantage` are d20-specific
+shortcuts that always roll twice and keep one; `Coin` is the
+50/50 flip the JS roller had.
+-}
+type RollKind
+    = Standard
+    | Advantage
+    | Disadvantage
+    | Coin
+
+
+{-| A complete roll result. The single source of truth a UI needs to
+render a history row.
+
+  - `formula` is precomputed for display; `expression` is the parsed
+    structure if you need to re-roll the same thing.
+  - `timestamp` is set by the `*Cmd` helpers using `Time.now`.
+
+-}
+type alias Roll =
+    { kind : RollKind
+    , expression : Expression
+    , groups : List RollGroup
+    , total : Int
+    , formula : String
+    , timestamp : Time.Posix
+    }
+
+
+{-| Parser failures. The string is the original input so the UI can
+show "couldn't read 'a-b-c'" verbatim.
+-}
+type Error
+    = ParseError String
+
+
+
+-- HISTORY
+
+
+{-| Bounded list of recent rolls, newest first.
+-}
+type alias History =
+    { entries : List Roll
+    , max : Int
+    }
+
+
+{-| Default history size (matches the JS roller's 30).
+-}
+maxHistoryEntries : Int
+maxHistoryEntries =
+    30
+
+
+{-| Empty history at the default cap.
+-}
+emptyHistory : History
+emptyHistory =
+    { entries = [], max = maxHistoryEntries }
+
+
+{-| Push a fresh roll onto the history; truncate to `max`.
+-}
+push : Roll -> History -> History
+push roll h =
+    { h | entries = roll :: List.take (h.max - 1) h.entries }
+
+
+{-| Read the entries (newest first).
+-}
+historyEntries : History -> List Roll
+historyEntries h =
+    h.entries
+
+
+
+-- PARSING
+
+
+{-| Parse a dice notation string into an `Expression`.
+
+Returns `Err (ParseError input)` for unparseable input or for inputs
+that resolve to a no-op (no dice and no constant).
+
+-}
+parse : String -> Result Error Expression
+parse input =
+    let
+        cleaned =
+            unwrapAverage (String.trim input)
+    in
+    if String.isEmpty cleaned then
+        Err (ParseError input)
+
+    else
+        Parser.run expressionParser cleaned
+            |> Result.mapError (\_ -> ParseError input)
+            |> Result.andThen
+                (\expr ->
+                    if List.isEmpty expr.dice && expr.constant == 0 then
+                        Err (ParseError input)
+
+                    else
+                        Ok expr
+                )
+
+
+{-| Stat-block dice notation often appears as `7 (1d8 + 3)` — the
+average rounded, then the formula in parens. Strip the wrapper if it
+matches; otherwise pass the input through unchanged.
+-}
+unwrapAverage : String -> String
+unwrapAverage s =
+    case Parser.run averageWrapParser s of
+        Ok inner ->
+            String.trim inner
+
+        Err _ ->
+            s
+
+
+averageWrapParser : Parser String
+averageWrapParser =
+    Parser.succeed identity
+        |. Parser.spaces
+        |. Parser.int
+        |. Parser.spaces
+        |. Parser.symbol "("
+        |= Parser.getChompedString (Parser.chompUntil ")")
+        |. Parser.symbol ")"
+        |. Parser.spaces
+        |. Parser.end
+
+
+{-| What one term of an expression resolves to before we fold it into
+the accumulator. Either a dice group or a bare integer.
+-}
+type Term
+    = TermDice Dice
+    | TermConstant Int
+
+
+{-| Loop accumulator while we're walking the expression. `first` flips
+to `False` after the first term so subsequent terms know they need an
+explicit sign; the first term may omit the sign.
+-}
+type alias Acc =
+    { dice : List Dice
+    , constant : Int
+    , first : Bool
+    }
+
+
+emptyAcc : Acc
+emptyAcc =
+    { dice = [], constant = 0, first = True }
+
+
+expressionParser : Parser Expression
+expressionParser =
+    Parser.succeed identity
+        |. Parser.spaces
+        |= Parser.loop emptyAcc loopStep
+
+
+loopStep : Acc -> Parser (Parser.Step Acc Expression)
+loopStep acc =
+    Parser.oneOf
+        -- The "consume another term" branch is wrapped in
+        -- Parser.backtrackable so a missing trailing sign (e.g. " fire")
+        -- doesn't block us from falling through to the Done branch.
+        [ Parser.backtrackable
+            (Parser.succeed (\sign term -> Parser.Loop (foldTerm sign term acc))
+                |. Parser.spaces
+                |= signFor acc.first
+                |. Parser.spaces
+                |= termParser
+            )
+        , Parser.succeed
+            (\damageType ->
+                Parser.Done
+                    { dice = List.reverse acc.dice
+                    , constant = acc.constant
+                    , damageType = damageType
+                    }
+            )
+            |= damageTypeParser
+            |. Parser.end
+        ]
+
+
+{-| The first term may omit its sign (treated as positive); subsequent
+terms must have one.
+-}
+signFor : Bool -> Parser Sign
+signFor isFirst =
+    if isFirst then
+        Parser.oneOf
+            [ Parser.succeed Negative |. Parser.symbol "-"
+            , Parser.succeed Positive |. Parser.symbol "+"
+            , Parser.succeed Positive
+            ]
+
+    else
+        Parser.oneOf
+            [ Parser.succeed Negative |. Parser.symbol "-"
+            , Parser.succeed Positive |. Parser.symbol "+"
+            ]
+
+
+termParser : Parser Term
+termParser =
+    Parser.oneOf
+        [ Parser.backtrackable diceParser |> Parser.map TermDice
+        , Parser.int |> Parser.map TermConstant
+        ]
+
+
+diceParser : Parser Dice
+diceParser =
+    Parser.succeed
+        (\c f ->
+            { count = clampCount c
+            , faces = clampFaces f
+            , sign = Positive
+            }
+        )
+        |= Parser.oneOf [ Parser.int, Parser.succeed 1 ]
+        |. Parser.symbol "d"
+        |= Parser.int
+
+
+foldTerm : Sign -> Term -> Acc -> Acc
+foldTerm sign term acc =
+    case term of
+        TermDice d ->
+            { acc | dice = { d | sign = sign } :: acc.dice, first = False }
+
+        TermConstant n ->
+            { acc
+                | constant = acc.constant + signedInt sign n
+                , first = False
+            }
+
+
+signedInt : Sign -> Int -> Int
+signedInt sign n =
+    case sign of
+        Positive ->
+            n
+
+        Negative ->
+            -n
+
+
+{-| The damage-type tail. Restricted to alpha + spaces so we don't
+silently swallow malformed dice notation as a "damage type."
+Strips a trailing " damage" word for cleanliness.
+-}
+damageTypeParser : Parser (Maybe String)
+damageTypeParser =
+    Parser.succeed identity
+        |. Parser.spaces
+        |= (Parser.getChompedString
+                (Parser.chompWhile (\c -> Char.isAlpha c || c == ' '))
+                |> Parser.map
+                    (\s ->
+                        let
+                            cleaned =
+                                stripTrailingDamage (String.trim s)
+                        in
+                        if String.isEmpty cleaned then
+                            Nothing
+
+                        else
+                            Just cleaned
+                    )
+           )
+
+
+stripTrailingDamage : String -> String
+stripTrailingDamage s =
+    let
+        lower =
+            String.toLower s
+    in
+    if String.endsWith " damage" lower then
+        String.left (String.length s - 7) s |> String.trim
+
+    else if lower == "damage" then
+        ""
+
+    else
+        s
+
+
+clampCount : Int -> Int
+clampCount c =
+    Basics.max 1 (Basics.min 99 c)
+
+
+clampFaces : Int -> Int
+clampFaces f =
+    Basics.max 1 f
+
+
+
+-- DISPLAY
+
+
+{-| Render an `Expression` back to a notation string. Round-trips with
+`parse` for normalized inputs (e.g. extra whitespace and the average
+wrapper get dropped).
+-}
+expressionToString : Expression -> String
+expressionToString expr =
+    let
+        dicePart =
+            expr.dice
+                |> List.indexedMap diceToken
+                |> String.concat
+                |> String.trim
+
+        constPart =
+            if expr.constant == 0 then
+                ""
+
+            else if expr.constant > 0 then
+                if String.isEmpty dicePart then
+                    String.fromInt expr.constant
+
+                else
+                    " + " ++ String.fromInt expr.constant
+
+            else if String.isEmpty dicePart then
+                String.fromInt expr.constant
+
+            else
+                " - " ++ String.fromInt (abs expr.constant)
+
+        damagePart =
+            case expr.damageType of
+                Just s ->
+                    " " ++ s
+
+                Nothing ->
+                    ""
+    in
+    dicePart ++ constPart ++ damagePart
+
+
+diceToken : Int -> Dice -> String
+diceToken idx d =
+    let
+        signStr =
+            case ( idx, d.sign ) of
+                ( 0, Positive ) ->
+                    ""
+
+                ( 0, Negative ) ->
+                    "-"
+
+                ( _, Positive ) ->
+                    " + "
+
+                ( _, Negative ) ->
+                    " - "
+    in
+    signStr ++ String.fromInt d.count ++ "d" ++ String.fromInt d.faces
+
+
+
+-- GENERATORS
+
+
+{-| Standard roll generator. The result's `timestamp` is filled in by
+the `*Cmd` helpers; if you call this directly you'll see epoch.
+-}
+generator : Expression -> Random.Generator Roll
+generator expr =
+    sequenceGen (List.map groupGenerator expr.dice)
+        |> Random.map (toStandardRoll expr)
+
+
+groupGenerator : Dice -> Random.Generator RollGroup
+groupGenerator d =
+    Random.list d.count (Random.int 1 d.faces)
+        |> Random.map
+            (\faces ->
+                let
+                    rolled =
+                        List.map (\f -> { face = f, kept = True }) faces
+
+                    sum =
+                        List.sum faces
+                in
+                { dice = d
+                , rolled = rolled
+                , subtotal = signedInt d.sign sum
+                }
+            )
+
+
+toStandardRoll : Expression -> List RollGroup -> Roll
+toStandardRoll expr groups =
+    let
+        diceSum =
+            List.sum (List.map .subtotal groups)
+
+        total =
+            diceSum + expr.constant
+    in
+    { kind = Standard
+    , expression = expr
+    , groups = groups
+    , total = total
+    , formula = expressionToString expr
+    , timestamp = Time.millisToPosix 0
+    }
+
+
+{-| Roll 2d20 and keep the higher; add `modifier`. The `Roll`'s
+`groups` carries both faces with `kept` flagged on whichever was
+higher, so the UI can show "rolled 17 and 8, kept 17."
+-}
+advantageGenerator : Int -> Random.Generator Roll
+advantageGenerator modifier =
+    Random.map2 (toAdvOrDis Advantage modifier)
+        (Random.int 1 20)
+        (Random.int 1 20)
+
+
+{-| Roll 2d20 and keep the lower; add `modifier`.
+-}
+disadvantageGenerator : Int -> Random.Generator Roll
+disadvantageGenerator modifier =
+    Random.map2 (toAdvOrDis Disadvantage modifier)
+        (Random.int 1 20)
+        (Random.int 1 20)
+
+
+toAdvOrDis : RollKind -> Int -> Int -> Int -> Roll
+toAdvOrDis kind modifier a b =
+    let
+        kept =
+            case kind of
+                Advantage ->
+                    Basics.max a b
+
+                Disadvantage ->
+                    Basics.min a b
+
+                _ ->
+                    a
+
+        rolled =
+            [ { face = a, kept = a == kept }
+            , { face = b, kept = b == kept }
+            ]
+
+        d =
+            { count = 2, faces = 20, sign = Positive }
+
+        group =
+            { dice = d, rolled = rolled, subtotal = kept }
+
+        expr =
+            { dice = [ d ]
+            , constant = modifier
+            , damageType = Nothing
+            }
+
+        prefix =
+            case kind of
+                Advantage ->
+                    "Adv: "
+
+                Disadvantage ->
+                    "Dis: "
+
+                _ ->
+                    ""
+    in
+    { kind = kind
+    , expression = expr
+    , groups = [ group ]
+    , total = kept + modifier
+    , formula = prefix ++ "1d20" ++ formatModifier modifier
+    , timestamp = Time.millisToPosix 0
+    }
+
+
+formatModifier : Int -> String
+formatModifier m =
+    if m == 0 then
+        ""
+
+    else if m > 0 then
+        "+" ++ String.fromInt m
+
+    else
+        String.fromInt m
+
+
+{-| Coin flip. Encoded as 1d2 internally so it shares the `Roll`
+shape; the `formula` field holds "Coin → heads" or "Coin → tails"
+for display.
+-}
+coinGenerator : Random.Generator Roll
+coinGenerator =
+    Random.int 1 2
+        |> Random.map
+            (\n ->
+                let
+                    rolled =
+                        [ { face = n, kept = True } ]
+
+                    d =
+                        { count = 1, faces = 2, sign = Positive }
+
+                    group =
+                        { dice = d, rolled = rolled, subtotal = n }
+
+                    label =
+                        if n == 1 then
+                            "Coin → heads"
+
+                        else
+                            "Coin → tails"
+                in
+                { kind = Coin
+                , expression =
+                    { dice = [ d ]
+                    , constant = 0
+                    , damageType = Nothing
+                    }
+                , groups = [ group ]
+                , total = n
+                , formula = label
+                , timestamp = Time.millisToPosix 0
+                }
+            )
+
+
+{-| Sequence a list of generators into a generator of a list. We use
+this so a compound expression like `1d8 + 2d6` produces the rolls in
+order. elm/random doesn't ship a `traverse`-style helper.
+-}
+sequenceGen : List (Random.Generator a) -> Random.Generator (List a)
+sequenceGen gens =
+    case gens of
+        [] ->
+            Random.constant []
+
+        g :: rest ->
+            Random.map2 (::) g (sequenceGen rest)
+
+
+
+-- CMD HELPERS
+
+
+{-| Roll an expression and dispatch the result.
+
+Reads `Time.now`, seeds the RNG with the millisecond, evaluates the
+expression, and wraps the resulting `Roll` (with the timestamp) in a
+single Msg. One Cmd, one Msg, deterministic per millisecond — which
+is the only edge case worth knowing about: clicks within the same
+millisecond produce identical rolls. In practice human reflexes don't
+hit that.
+
+-}
+rollCmd : (Roll -> msg) -> Expression -> Cmd msg
+rollCmd toMsg expr =
+    rollWithTime toMsg (generator expr)
+
+
+{-| Roll d20 with advantage and dispatch.
+-}
+advantageCmd : (Roll -> msg) -> Int -> Cmd msg
+advantageCmd toMsg modifier =
+    rollWithTime toMsg (advantageGenerator modifier)
+
+
+{-| Roll d20 with disadvantage and dispatch.
+-}
+disadvantageCmd : (Roll -> msg) -> Int -> Cmd msg
+disadvantageCmd toMsg modifier =
+    rollWithTime toMsg (disadvantageGenerator modifier)
+
+
+{-| Flip a coin and dispatch.
+-}
+coinCmd : (Roll -> msg) -> Cmd msg
+coinCmd toMsg =
+    rollWithTime toMsg coinGenerator
+
+
+{-| Internal: drive a generator off `Time.now`, producing one Cmd.
+-}
+rollWithTime : (Roll -> msg) -> Random.Generator Roll -> Cmd msg
+rollWithTime toMsg gen =
+    Time.now
+        |> Task.map
+            (\now ->
+                let
+                    seed =
+                        Random.initialSeed (Time.posixToMillis now)
+
+                    ( roll, _ ) =
+                        Random.step gen seed
+                in
+                { roll | timestamp = now }
+            )
+        |> Task.perform toMsg
