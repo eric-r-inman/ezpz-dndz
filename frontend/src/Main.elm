@@ -1,7 +1,9 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Events
 import Browser.Navigation as Nav
+import Dice
 import Encounter
     exposing
         ( Cover(..)
@@ -10,7 +12,7 @@ import Encounter
         )
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput, stopPropagationOn)
 import Http
 import Json.Decode as Decode
 import Url exposing (Url)
@@ -72,6 +74,34 @@ type alias Model =
     , route : Route
     , me : MeStatus
     , encounter : Encounter
+    , dice : DiceUi
+    }
+
+
+{-| UI state for the dice-roller modal. Holds presentation-only
+fields (open/closed, current text input, count/modifier sliders)
+plus the persisted-this-session roll history. The actual rules and
+random-roll logic live in `Dice`; this record exists in `Main` so
+it stays adjacent to the view code that consumes it.
+-}
+type alias DiceUi =
+    { open : Bool
+    , input : String
+    , inputError : Maybe Dice.Error
+    , count : Int
+    , modifier : Int
+    , history : Dice.History
+    }
+
+
+emptyDice : DiceUi
+emptyDice =
+    { open = False
+    , input = ""
+    , inputError = Nothing
+    , count = 1
+    , modifier = 0
+    , history = Dice.emptyHistory
     }
 
 
@@ -98,6 +128,21 @@ type Msg
     | AdjustFlyHeight String Int
     | ToggleDeathSave String Int
     | ToggleHolding String
+      -- Dice modal
+    | OpenDice
+    | CloseDice
+    | DiceInputChanged String
+    | DiceCountChanged String
+    | DiceModifierChanged String
+    | DiceRollFromInput
+    | DiceRollFaces Int
+    | DiceRollAdvantage
+    | DiceRollDisadvantage
+    | DiceFlipCoin
+    | DiceRerun Dice.Roll
+    | DiceClearHistory
+    | DiceRollLanded Dice.Roll
+    | NoOp
 
 
 main : Program () Model Msg
@@ -106,10 +151,32 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         , onUrlRequest = UrlRequested
         , onUrlChange = UrlChanged
         }
+
+
+{-| Subscribe to keyboard events while the dice modal is open so Esc
+can close it. Other routes don't need any subscriptions yet.
+-}
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if model.dice.open then
+        Browser.Events.onKeyDown
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\key ->
+                        if key == "Escape" then
+                            Decode.succeed CloseDice
+
+                        else
+                            Decode.fail "ignore"
+                    )
+            )
+
+    else
+        Sub.none
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -123,6 +190,7 @@ init _ url key =
       , route = route
       , me = Loading
       , encounter = Encounter.initialEncounter
+      , dice = emptyDice
       }
     , cmdForRoute route
     )
@@ -235,6 +303,93 @@ update msg model =
             , Cmd.none
             )
 
+        -- Dice modal lifecycle
+        OpenDice ->
+            ( withDice (\d -> { d | open = True, inputError = Nothing }) model
+            , Cmd.none
+            )
+
+        CloseDice ->
+            ( withDice (\d -> { d | open = False, inputError = Nothing }) model
+            , Cmd.none
+            )
+
+        DiceInputChanged text ->
+            ( withDice (\d -> { d | input = text, inputError = Nothing }) model
+            , Cmd.none
+            )
+
+        DiceCountChanged text ->
+            ( withDice (\d -> { d | count = parseClamp 1 99 1 text }) model
+            , Cmd.none
+            )
+
+        DiceModifierChanged text ->
+            ( withDice (\d -> { d | modifier = parseClamp -999 999 0 text }) model
+            , Cmd.none
+            )
+
+        DiceRollFromInput ->
+            -- Parse the free-text expression. On failure, stash the
+            -- error in the modal so the input can show "couldn't read
+            -- 'xyz'"; on success, fire the roll Cmd.
+            case Dice.parse model.dice.input of
+                Ok expr ->
+                    ( withDice (\d -> { d | inputError = Nothing }) model
+                    , Dice.rollCmd DiceRollLanded expr
+                    )
+
+                Err err ->
+                    ( withDice (\d -> { d | inputError = Just err }) model
+                    , Cmd.none
+                    )
+
+        DiceRollFaces faces ->
+            -- Each rainbow face button rolls (count)d(faces) + modifier
+            -- using the current sliders. No parse needed.
+            ( model
+            , Dice.rollCmd DiceRollLanded (faceExpression model.dice faces)
+            )
+
+        DiceRollAdvantage ->
+            ( model, Dice.advantageCmd DiceRollLanded model.dice.modifier )
+
+        DiceRollDisadvantage ->
+            ( model, Dice.disadvantageCmd DiceRollLanded model.dice.modifier )
+
+        DiceFlipCoin ->
+            ( model, Dice.coinCmd DiceRollLanded )
+
+        DiceRerun roll ->
+            -- Re-execute a historical roll using the same kind. Coin
+            -- and adv/dis bypass the parsed expression because their
+            -- semantics aren't fully captured by Expression alone.
+            case roll.kind of
+                Dice.Standard ->
+                    ( model, Dice.rollCmd DiceRollLanded roll.expression )
+
+                Dice.Advantage ->
+                    ( model, Dice.advantageCmd DiceRollLanded roll.expression.constant )
+
+                Dice.Disadvantage ->
+                    ( model, Dice.disadvantageCmd DiceRollLanded roll.expression.constant )
+
+                Dice.Coin ->
+                    ( model, Dice.coinCmd DiceRollLanded )
+
+        DiceClearHistory ->
+            ( withDice (\d -> { d | history = Dice.emptyHistory }) model
+            , Cmd.none
+            )
+
+        DiceRollLanded roll ->
+            ( withDice (\d -> { d | history = Dice.push roll d.history }) model
+            , Cmd.none
+            )
+
+        NoOp ->
+            ( model, Cmd.none )
+
 
 {-| Lift an `Encounter -> Encounter` transformation into a
 `Model -> Model` transformation by threading it through the encounter
@@ -245,6 +400,47 @@ domain code, which is what the layering discipline demands.
 withEncounter : (Encounter -> Encounter) -> Model -> Model
 withEncounter fn model =
     { model | encounter = fn model.encounter }
+
+
+{-| Same trick as `withEncounter`, but for the dice-roller UI state.
+Threading the field-level update through a helper keeps the dice
+update branches as one-liners and avoids destructuring `model.dice`
+inline at every call site.
+-}
+withDice : (DiceUi -> DiceUi) -> Model -> Model
+withDice fn model =
+    { model | dice = fn model.dice }
+
+
+{-| Parse a numeric `<input>`'s string value into an Int, clamping
+to `lo..hi`. Falls back to `def` when the input is empty or
+unparseable so the form never crashes on transient bad states like
+the user mid-typing "-".
+-}
+parseClamp : Int -> Int -> Int -> String -> Int
+parseClamp lo hi def text =
+    case String.toInt (String.trim text) of
+        Just n ->
+            Basics.max lo (Basics.min hi n)
+
+        Nothing ->
+            def
+
+
+{-| Build the `Dice.Expression` that one rainbow face-button rolls.
+Uses the modal's current count/modifier sliders.
+-}
+faceExpression : DiceUi -> Int -> Dice.Expression
+faceExpression ui faces =
+    { dice =
+        [ { count = ui.count
+          , faces = faces
+          , sign = Dice.Positive
+          }
+        ]
+    , constant = ui.modifier
+    , damageType = Nothing
+    }
 
 
 
@@ -258,6 +454,7 @@ view model =
         [ div [ class "app-shell" ]
             [ viewAppBar
             , viewPage model
+            , viewDiceModal model.dice
             ]
         ]
     }
@@ -438,6 +635,7 @@ viewPanelControls =
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
             , button
                 [ class "action-btn action-btn--green"
+                , onClick OpenDice
                 , title "Roll dice"
                 , attribute "aria-label" "Roll dice"
                 ]
@@ -1017,3 +1215,259 @@ viewTrait ( name, body ) =
         [ strong [] [ text (name ++ ". ") ]
         , text body
         ]
+
+
+
+-- DICE MODAL
+
+
+{-| Renders nothing while closed, the full overlay while open. The
+backdrop click closes the modal; clicks inside stop propagation so
+they don't bubble out.
+-}
+viewDiceModal : DiceUi -> Html Msg
+viewDiceModal ui =
+    if ui.open then
+        div
+            [ class "modal-backdrop"
+            , onClick CloseDice
+            ]
+            [ div
+                [ class "modal modal--dice"
+                , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                , attribute "role" "dialog"
+                , attribute "aria-modal" "true"
+                , attribute "aria-label" "Dice roller"
+                ]
+                [ viewDiceModalHeader
+                , div [ class "modal__body" ]
+                    [ viewDiceForm ui
+                    , viewDiceFaceButtons
+                    , viewDiceSpecialButtons
+                    , viewDiceHistory ui.history
+                    ]
+                ]
+            ]
+
+    else
+        text ""
+
+
+viewDiceModalHeader : Html Msg
+viewDiceModalHeader =
+    div [ class "modal__header" ]
+        [ div [ class "modal__title" ] [ text "🎲 Dice Roller" ]
+        , button
+            [ class "modal__close"
+            , onClick CloseDice
+            , title "Close (Esc)"
+            , attribute "aria-label" "Close dice roller"
+            ]
+            [ text "×" ]
+        ]
+
+
+viewDiceForm : DiceUi -> Html Msg
+viewDiceForm ui =
+    div [ class "dice-form" ]
+        [ div [ class "dice-form__row" ]
+            [ label [ for "dice-input" ] [ text "Expression" ]
+            , input
+                [ id "dice-input"
+                , class "dice-form__input"
+                , type_ "text"
+                , placeholder "e.g. 2d6+3 fire damage"
+                , value ui.input
+                , onInput DiceInputChanged
+                , Html.Events.on "keydown" (enterKey DiceRollFromInput)
+                ]
+                []
+            , button
+                [ class "action-btn action-btn--green"
+                , onClick DiceRollFromInput
+                ]
+                [ text "Roll" ]
+            ]
+        , case ui.inputError of
+            Just (Dice.ParseError raw) ->
+                div [ class "dice-form__error" ]
+                    [ text ("Couldn't parse: " ++ raw) ]
+
+            Nothing ->
+                text ""
+        , div [ class "dice-form__row" ]
+            [ label [ for "dice-count" ] [ text "Count" ]
+            , input
+                [ id "dice-count"
+                , class "dice-form__input dice-form__numeric"
+                , type_ "number"
+                , Html.Attributes.min "1"
+                , Html.Attributes.max "99"
+                , value (String.fromInt ui.count)
+                , onInput DiceCountChanged
+                ]
+                []
+            , label [ for "dice-modifier", class "dice-form__row-spacer" ] [ text "Modifier" ]
+            , input
+                [ id "dice-modifier"
+                , class "dice-form__input dice-form__numeric"
+                , type_ "number"
+                , Html.Attributes.min "-999"
+                , Html.Attributes.max "999"
+                , value (String.fromInt ui.modifier)
+                , onInput DiceModifierChanged
+                ]
+                []
+            ]
+        ]
+
+
+{-| Decode an Enter keypress into the given Msg; otherwise fail (which
+silences the event handler).
+-}
+enterKey : Msg -> Decode.Decoder Msg
+enterKey msg =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Enter" then
+                    Decode.succeed msg
+
+                else
+                    Decode.fail "ignore"
+            )
+
+
+viewDiceFaceButtons : Html Msg
+viewDiceFaceButtons =
+    div [ class "die-btn-grid" ]
+        [ faceButton 4 "die-btn--d4"
+        , faceButton 6 "die-btn--d6"
+        , faceButton 8 "die-btn--d8"
+        , faceButton 10 "die-btn--d10"
+        , faceButton 12 "die-btn--d12"
+        , faceButton 20 "die-btn--d20"
+        , faceButton 100 "die-btn--d100"
+        ]
+
+
+faceButton : Int -> String -> Html Msg
+faceButton faces colorClass =
+    button
+        [ class ("die-btn " ++ colorClass)
+        , onClick (DiceRollFaces faces)
+        , title ("Roll d" ++ String.fromInt faces)
+        ]
+        [ text ("d" ++ String.fromInt faces) ]
+
+
+viewDiceSpecialButtons : Html Msg
+viewDiceSpecialButtons =
+    div [ class "dice-special-row" ]
+        [ button
+            [ class "action-btn action-btn--green"
+            , onClick DiceRollAdvantage
+            , title "Roll 2d20, keep highest"
+            ]
+            [ text "Advantage" ]
+        , button
+            [ class "action-btn action-btn--orange"
+            , onClick DiceRollDisadvantage
+            , title "Roll 2d20, keep lowest"
+            ]
+            [ text "Disadvantage" ]
+        , button
+            [ class "action-btn"
+            , onClick DiceFlipCoin
+            , title "50/50 coin flip"
+            ]
+            [ text "🪙 Coin Flip" ]
+        ]
+
+
+viewDiceHistory : Dice.History -> Html Msg
+viewDiceHistory history =
+    let
+        entries =
+            Dice.historyEntries history
+    in
+    div [ class "dice-history" ]
+        [ div [ class "dice-history__head" ]
+            [ div [ class "dice-history__title" ]
+                [ text ("Recent rolls (" ++ String.fromInt (List.length entries) ++ ")") ]
+            , if List.isEmpty entries then
+                text ""
+
+              else
+                button
+                    [ class "dice-history__rerun"
+                    , onClick DiceClearHistory
+                    , title "Clear roll history"
+                    ]
+                    [ text "Clear" ]
+            ]
+        , if List.isEmpty entries then
+            div [ class "dice-history__empty" ]
+                [ text "No rolls yet. Click a die above or type an expression." ]
+
+          else
+            ul [ class "dice-history__list" ]
+                (List.map viewHistoryEntry entries)
+        ]
+
+
+viewHistoryEntry : Dice.Roll -> Html Msg
+viewHistoryEntry roll =
+    li [ class "dice-history__entry" ]
+        [ div [ class "dice-history__formula" ]
+            [ text roll.formula
+            , span [ class "dice-history__rolled" ]
+                [ text (" — " ++ rolledString roll) ]
+            , case roll.expression.damageType of
+                Just damage ->
+                    span [ class "dice-history__damage" ] [ text damage ]
+
+                Nothing ->
+                    text ""
+            ]
+        , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
+        , button
+            [ class "dice-history__rerun"
+            , onClick (DiceRerun roll)
+            , title "Roll this again"
+            ]
+            [ text "↻" ]
+        ]
+
+
+{-| Format the individual face values for a Roll, with kept faces
+inline and dropped (advantage/disadvantage loser) ones bracketed.
+"rolled 14, +3" or "rolled 17 (8 dropped)" etc.
+-}
+rolledString : Dice.Roll -> String
+rolledString roll =
+    let
+        faces =
+            roll.groups
+                |> List.concatMap .rolled
+                |> List.map
+                    (\d ->
+                        if d.kept then
+                            String.fromInt d.face
+
+                        else
+                            "[" ++ String.fromInt d.face ++ "]"
+                    )
+                |> String.join ", "
+
+        modifierText =
+            if roll.expression.constant > 0 then
+                " + " ++ String.fromInt roll.expression.constant
+
+            else if roll.expression.constant < 0 then
+                " − " ++ String.fromInt (abs roll.expression.constant)
+
+            else
+                ""
+    in
+    "rolled " ++ faces ++ modifierText

@@ -1196,3 +1196,312 @@ body {
     grid-row: 3;
   }
 }
+
+/* Dice roller modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  animation: dice-fade-in 0.15s ease-out;
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  max-width: 640px;
+  width: calc(100% - 32px);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  flex: 0 0 auto;
+}
+
+.modal__title {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.modal__close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: var(--color-text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: inline-grid;
+  place-items: center;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.modal__close:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.modal__body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 1 auto;
+}
+
+.dice-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dice-form__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dice-form__row label {
+  min-width: 72px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.dice-form__row-spacer {
+  margin-left: 12px;
+}
+
+.dice-form__input {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.dice-form__input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.dice-form__numeric {
+  flex: 0 0 auto;
+  width: 80px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dice-form__error {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+  font-family: ui-monospace, "Menlo", monospace;
+}
+
+.die-btn-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.die-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 12px 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+  transition:
+    filter 0.1s ease,
+    transform 0.05s ease;
+}
+
+.die-btn:hover {
+  filter: brightness(1.15);
+}
+
+.die-btn:active {
+  transform: translateY(1px);
+}
+
+.die-btn--d4 {
+  background: #ef4444;
+}
+
+.die-btn--d6 {
+  background: #f97316;
+}
+
+.die-btn--d8 {
+  background: #eab308;
+  color: #000000;
+}
+
+.die-btn--d10 {
+  background: #22c55e;
+  color: #000000;
+}
+
+.die-btn--d12 {
+  background: #3b82f6;
+}
+
+.die-btn--d20 {
+  background: #6366f1;
+}
+
+.die-btn--d100 {
+  background: #a855f7;
+}
+
+.dice-special-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dice-history {
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dice-history__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dice-history__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.dice-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.dice-history__entry {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.dice-history__formula {
+  font-family: ui-monospace, "Menlo", monospace;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dice-history__rolled {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dice-history__damage {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.dice-history__total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  color: var(--color-text);
+}
+
+.dice-history__rerun {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-family: inherit;
+}
+
+.dice-history__rerun:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.dice-history__empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+@keyframes dice-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .die-btn-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
