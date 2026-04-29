@@ -25,3 +25,25 @@
   creature without advancing the turn (no round bump, no turn-
   progression hooks).  Wires =Encounter.setActive=, distinct from
   =Encounter.nextTurn=.
+
+** Dice roller
+
+- New ~Dice.elm~ domain layer: notation parser (=1d6=, =2d8+3=,
+  compound =1d8 + 2d6=, damage-tagged =2d6+3 fire damage=, and the
+  stat-block average wrap =7 (1d8 + 3)=); random-roll generators for
+  standard / advantage / disadvantage / coin; bounded in-memory
+  history (max 30, matching the JS roller).
+- New dice modal in =Main.elm=, wired to the existing *🎲 Roll*
+  button.  Free-text expression input with Enter-to-roll, count and
+  modifier sliders, rainbow d4–d100 face buttons, advantage /
+  disadvantage / coin-flip, history list with re-roll and clear.
+  Closes on backdrop click, ✕, or Esc.
+- Stat-block traits in the Compendium now have clickable inline
+  dice notation (=Dice.scan= splits text into literal runs and
+  recognized formulas); clicking rolls the formula and opens the
+  modal in one gesture.
+- Server-side history persistence so the dice log survives reloads
+  without any handwritten JS.  =GET / POST / DELETE /api/dice/history=
+  are handled in =crates/server/src/dice.rs=, persisting to
+  =dice-history.json= (configurable via =--dice-history-path=) with
+  atomic-rename writes and an async mutex around the file.

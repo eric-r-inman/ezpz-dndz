@@ -3,6 +3,7 @@ use axum::{
   http::{Request, StatusCode},
   Router,
 };
+use ezpz_dndz_server::web_base::{base_router, AppState};
 use openidconnect::{
   core::{
     CoreClient, CoreJwsSigningAlgorithm, CoreProviderMetadata,
@@ -12,7 +13,6 @@ use openidconnect::{
   JsonWebKeySetUrl, ResponseTypes,
 };
 use prometheus::{IntCounter, Registry};
-use ezpz_dndz_server::web_base::{base_router, AppState};
 use std::{path::PathBuf, sync::Arc};
 use tower::ServiceExt;
 use tower_sessions::{cookie::SameSite, MemoryStore, SessionManagerLayer};
@@ -32,6 +32,12 @@ fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
     registry: Arc::new(registry),
     request_counter,
     frontend_path,
+    dice_store: ezpz_dndz_server::dice::DiceStore::new(
+      tempfile::NamedTempFile::new()
+        .expect("tempfile")
+        .into_temp_path()
+        .to_path_buf(),
+    ),
     oidc_client: None,
   }
 }
@@ -65,6 +71,12 @@ fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
     registry: Arc::new(registry),
     request_counter,
     frontend_path,
+    dice_store: ezpz_dndz_server::dice::DiceStore::new(
+      tempfile::NamedTempFile::new()
+        .expect("tempfile")
+        .into_temp_path()
+        .to_path_buf(),
+    ),
     oidc_client: Some(Arc::new(oidc_client)),
   }
 }
@@ -343,6 +355,7 @@ async fn test_config_no_oidc() {
     config: None,
     listen: None,
     frontend_path: None,
+    dice_history_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: None,
     oidc_client_id: None,
@@ -366,6 +379,7 @@ async fn test_config_full_oidc() {
     config: None,
     listen: None,
     frontend_path: None,
+    dice_history_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: Some("my-client".to_string()),
@@ -389,6 +403,7 @@ async fn test_config_partial_oidc_errors() {
     config: None,
     listen: None,
     frontend_path: None,
+    dice_history_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: None,

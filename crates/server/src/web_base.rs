@@ -33,6 +33,7 @@ pub struct AppState {
   pub registry: Arc<Registry>,
   pub request_counter: IntCounter,
   pub frontend_path: PathBuf,
+  pub dice_store: crate::dice::DiceStore,
   pub oidc_client: Option<Arc<CoreClient>>,
 }
 
@@ -109,6 +110,7 @@ impl AppState {
       registry: Arc::new(registry),
       request_counter,
       frontend_path: config.frontend_path.clone(),
+      dice_store: crate::dice::DiceStore::new(config.dice_history_path.clone()),
       oidc_client,
     })
   }
@@ -159,6 +161,7 @@ pub fn base_router(state: AppState) -> Router {
   aide::generate::extract_schemas(true);
   let frontend_path = state.frontend_path.clone();
   let me_state = state.clone();
+  let dice_router = crate::dice::router(state.dice_store.clone());
   let mut api = OpenApi::default();
 
   let app_router = ApiRouter::new()
@@ -181,6 +184,7 @@ pub fn base_router(state: AppState) -> Router {
 
   Router::new()
     .merge(app_router)
+    .merge(dice_router)
     .route("/me", get(me_handler).with_state(me_state))
     .route(
       "/api-docs/openapi.json",

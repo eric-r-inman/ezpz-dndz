@@ -4,6 +4,7 @@ module Dice exposing
     , emptyHistory, push, historyEntries, maxHistoryEntries
     , generator, advantageGenerator, disadvantageGenerator, coinGenerator
     , rollCmd, advantageCmd, disadvantageCmd, coinCmd
+    , encodeRoll, decodeRoll
     )
 
 {-| Pure dice-roller domain layer.
@@ -57,8 +58,19 @@ generator, and stamps the resulting `Roll` with that timestamp.
 
 @docs rollCmd, advantageCmd, disadvantageCmd, coinCmd
 
+
+# JSON
+
+For wire-format persistence (the server stores the history file as
+JSON). The shapes are stable; if you change them you'll need to
+clear out any existing `dice-history.json`.
+
+@docs encodeRoll, decodeRoll
+
 -}
 
+import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Parser exposing ((|.), (|=), Parser)
 import Random
 import Task
@@ -909,3 +921,190 @@ rollWithTime toMsg gen =
                 { roll | timestamp = now }
             )
         |> Task.perform toMsg
+
+
+
+-- JSON
+
+
+{-| Encode a `Roll` as JSON for persistence. Round-trips with
+`decodeRoll`. The schema:
+
+    {
+      "kind": "standard" | "advantage" | "disadvantage" | "coin",
+      "formula": "2d6+3",
+      "total": 12,
+      "timestamp": 1714502400000,    // millis since epoch
+      "expression": { "dice": [...], "constant": 3, "damageType": null },
+      "groups":     [{ "dice": ..., "rolled": [...], "subtotal": 9 }]
+    }
+
+-}
+encodeRoll : Roll -> Encode.Value
+encodeRoll roll =
+    Encode.object
+        [ ( "kind", encodeKind roll.kind )
+        , ( "formula", Encode.string roll.formula )
+        , ( "total", Encode.int roll.total )
+        , ( "timestamp", Encode.int (Time.posixToMillis roll.timestamp) )
+        , ( "expression", encodeExpression roll.expression )
+        , ( "groups", Encode.list encodeGroup roll.groups )
+        ]
+
+
+{-| Decode a `Roll` from JSON. Tolerant of missing optional fields
+where reasonable; outright fails on bad enum values so a corrupt
+file surfaces immediately rather than degrading silently.
+-}
+decodeRoll : Decoder Roll
+decodeRoll =
+    Decode.map6 Roll
+        (Decode.field "kind" decodeKind)
+        (Decode.field "expression" decodeExpression)
+        (Decode.field "groups" (Decode.list decodeGroup))
+        (Decode.field "total" Decode.int)
+        (Decode.field "formula" Decode.string)
+        (Decode.field "timestamp" (Decode.map Time.millisToPosix Decode.int))
+
+
+encodeKind : RollKind -> Encode.Value
+encodeKind kind =
+    Encode.string
+        (case kind of
+            Standard ->
+                "standard"
+
+            Advantage ->
+                "advantage"
+
+            Disadvantage ->
+                "disadvantage"
+
+            Coin ->
+                "coin"
+        )
+
+
+decodeKind : Decoder RollKind
+decodeKind =
+    Decode.string
+        |> Decode.andThen
+            (\s ->
+                case s of
+                    "standard" ->
+                        Decode.succeed Standard
+
+                    "advantage" ->
+                        Decode.succeed Advantage
+
+                    "disadvantage" ->
+                        Decode.succeed Disadvantage
+
+                    "coin" ->
+                        Decode.succeed Coin
+
+                    other ->
+                        Decode.fail ("unknown roll kind: " ++ other)
+            )
+
+
+encodeSign : Sign -> Encode.Value
+encodeSign sign =
+    Encode.string
+        (case sign of
+            Positive ->
+                "positive"
+
+            Negative ->
+                "negative"
+        )
+
+
+decodeSign : Decoder Sign
+decodeSign =
+    Decode.string
+        |> Decode.andThen
+            (\s ->
+                case s of
+                    "positive" ->
+                        Decode.succeed Positive
+
+                    "negative" ->
+                        Decode.succeed Negative
+
+                    other ->
+                        Decode.fail ("unknown sign: " ++ other)
+            )
+
+
+encodeDice : Dice -> Encode.Value
+encodeDice d =
+    Encode.object
+        [ ( "count", Encode.int d.count )
+        , ( "faces", Encode.int d.faces )
+        , ( "sign", encodeSign d.sign )
+        ]
+
+
+decodeDice : Decoder Dice
+decodeDice =
+    Decode.map3 Dice
+        (Decode.field "count" Decode.int)
+        (Decode.field "faces" Decode.int)
+        (Decode.field "sign" decodeSign)
+
+
+encodeExpression : Expression -> Encode.Value
+encodeExpression e =
+    Encode.object
+        [ ( "dice", Encode.list encodeDice e.dice )
+        , ( "constant", Encode.int e.constant )
+        , ( "damageType"
+          , case e.damageType of
+                Just s ->
+                    Encode.string s
+
+                Nothing ->
+                    Encode.null
+          )
+        ]
+
+
+decodeExpression : Decoder Expression
+decodeExpression =
+    Decode.map3 Expression
+        (Decode.field "dice" (Decode.list decodeDice))
+        (Decode.field "constant" Decode.int)
+        (Decode.field "damageType" (Decode.nullable Decode.string))
+
+
+encodeRolledDie : RolledDie -> Encode.Value
+encodeRolledDie d =
+    Encode.object
+        [ ( "face", Encode.int d.face )
+        , ( "kept", Encode.bool d.kept )
+        ]
+
+
+decodeRolledDie : Decoder RolledDie
+decodeRolledDie =
+    Decode.map2 RolledDie
+        (Decode.field "face" Decode.int)
+        (Decode.field "kept" Decode.bool)
+
+
+encodeGroup : RollGroup -> Encode.Value
+encodeGroup g =
+    Encode.object
+        [ ( "dice", encodeDice g.dice )
+        , ( "rolled", Encode.list encodeRolledDie g.rolled )
+        , ( "subtotal", Encode.int g.subtotal )
+        ]
+
+
+decodeGroup : Decoder RollGroup
+decodeGroup =
+    Decode.map3 RollGroup
+        (Decode.field "dice" decodeDice)
+        (Decode.field "rolled" (Decode.list decodeRolledDie))
+        (Decode.field "subtotal" Decode.int)

@@ -21,12 +21,14 @@ codebase is organized and the conventions you're expected to follow.
 .
 ├── crates/
 │   ├── cli/      ezpz-dndz-cli (binary)
-│   ├── server/   ezpz-dndz-server (axum)
+│   ├── server/   ezpz-dndz-server (axum, hosts /api/dice/* + frontend)
 │   └── lib/      ezpz-dndz-lib (shared types, logging)
 ├── frontend/
 │   ├── src/
 │   │   ├── Main.elm        application shell + view code
-│   │   └── Encounter.elm   domain layer (types, rules, turn logic)
+│   │   ├── Encounter.elm   encounter domain (types, rules, turn logic)
+│   │   └── Dice.elm        dice-roller domain (parser, rolls, history,
+│   │                       stat-block scanner, JSON encode/decode)
 │   └── public/
 │       ├── index.html      mounts Elm into #app
 │       ├── style.css       all styles, dual light/dark via vars
@@ -121,6 +123,38 @@ encounter has e.g. four "Goblin Skirmisher"s. When that day comes:
 
 This is intentionally deferred until the feature actually demands it.
 
+## Dice roller
+
+The dice roller is split across the layering boundary the same way
+the encounter is. `Dice.elm` is the rules engine: notation parser
+(supports `1d6`, compound `1d8 + 2d6`, damage tags `2d6 fire damage`,
+and stat-block average wrap `7 (1d8 + 3)`), random-roll generators,
+in-memory `History`, and `Dice.scan` for finding inline notation in
+stat-block text. Advantage / disadvantage / coin flip have their own
+generators rather than custom syntax — the JS roller worked the same
+way.
+
+`Main.elm`'s modal is the view layer. Clicking the **🎲 Roll** button
+in the encounter controls header opens it; clicking any inline dice
+notation rendered into a Compendium trait fires `RollFromStatBlock`,
+which opens the modal *and* rolls in one user gesture.
+
+Persistence is server-side rather than `localStorage` so the frontend
+stays JS-free. Three endpoints handled in `crates/server/src/dice.rs`:
+
+  - `GET    /api/dice/history`  → JSON array of rolls, newest first.
+  - `POST   /api/dice/history`  → append one roll, truncate to 30
+    (matches `Dice.maxHistoryEntries`), respond with the new list.
+  - `DELETE /api/dice/history`  → clear.
+
+The on-disk file location is configurable via `--dice-history-path`
+(default `dice-history.json` in cwd; gitignored). The server treats
+each roll as opaque JSON — the schema lives in `Dice.encodeRoll` /
+`Dice.decodeRoll` on the Elm side, so you can extend it without
+touching the server. Concurrent writes are serialized through an
+async mutex, and writes go to a sibling tempfile that's renamed over
+the target so a crash mid-write can't truncate the log.
+
 ## Run / build / test
 
 ```sh
@@ -142,8 +176,9 @@ just test     # all Rust tests + Elm compile check
 | A new visual element on a card / panel           | a view function in `Main.elm` (or a future View module) |
 | A new color / spacing token                      | a CSS custom property in `:root` (and its dark-mode override) in `style.css` |
 | A new creature for the seed encounter            | `Encounter.seedCreatures`                |
-| A new HTTP route handled by the backend          | `crates/server/src/web_base.rs`          |
+| A new dice operator or notation form             | `Dice.elm` parser + (if shape changes) `encodeRoll` / `decodeRoll` |
+| A new HTTP route handled by the backend          | `crates/server/src/web_base.rs` (or a sibling module merged in) |
 | A new dev script (build / serve / package)       | `justfile`                               |
 
-When in doubt: rules in `Encounter`, presentation in `Main` / CSS,
-ops in `justfile`.
+When in doubt: rules in `Encounter` / `Dice`, presentation in `Main` /
+CSS, ops in `justfile`.

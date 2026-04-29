@@ -142,6 +142,9 @@ type Msg
     | DiceRerun Dice.Roll
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
+    | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
+    | DicePersistResponse (Result Http.Error (List Dice.Roll))
+    | DiceClearResponse (Result Http.Error ())
     | RollFromStatBlock Dice.Expression
     | NoOp
 
@@ -193,7 +196,10 @@ init _ url key =
       , encounter = Encounter.initialEncounter
       , dice = emptyDice
       }
-    , cmdForRoute route
+      -- Always fetch the persisted dice history alongside whatever
+      -- the current route needs. Failures are silently swallowed so
+      -- a fresh server (no dice-history.json yet) still loads.
+    , Cmd.batch [ cmdForRoute route, fetchDiceHistoryCmd ]
     )
 
 
@@ -380,13 +386,69 @@ update msg model =
 
         DiceClearHistory ->
             ( withDice (\d -> { d | history = Dice.emptyHistory }) model
-            , Cmd.none
+            , clearDiceHistoryCmd
             )
 
         DiceRollLanded roll ->
+            -- Update the local history immediately for snappy UI; fire
+            -- the persistence POST in parallel. The server response
+            -- replaces the local view in DicePersistResponse so the two
+            -- stay in sync (and any older entries surfacing from disk
+            -- after init come through that same path).
             ( withDice (\d -> { d | history = Dice.push roll d.history }) model
-            , Cmd.none
+            , persistRollCmd roll
             )
+
+        DiceHistoryLoaded result ->
+            case result of
+                Ok rolls ->
+                    ( withDice
+                        (\d ->
+                            { d
+                                | history =
+                                    { entries = rolls
+                                    , max = Dice.maxHistoryEntries
+                                    }
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    -- No persisted history yet, or the server is
+                    -- unreachable. Either way, fall back to the
+                    -- already-empty in-memory history.
+                    ( model, Cmd.none )
+
+        DicePersistResponse result ->
+            case result of
+                Ok rolls ->
+                    -- Server is now the source of truth for what's
+                    -- persisted; reflect its truncation/ordering back
+                    -- into the local UI so reroll buttons match disk.
+                    ( withDice
+                        (\d ->
+                            { d
+                                | history =
+                                    { entries = rolls
+                                    , max = Dice.maxHistoryEntries
+                                    }
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    -- Persistence failure is non-fatal; the local copy
+                    -- of the history already has the new roll.
+                    ( model, Cmd.none )
+
+        DiceClearResponse _ ->
+            -- Server-side clear succeeded or didn't; either way the
+            -- local history has already been emptied in DiceClearHistory.
+            ( model, Cmd.none )
 
         RollFromStatBlock expr ->
             -- Click on inline dice notation in a stat-block trait.
@@ -451,6 +513,47 @@ faceExpression ui faces =
     , constant = ui.modifier
     , damageType = Nothing
     }
+
+
+{-| GET the persisted dice history from the server. Failures (no
+server, no file yet, malformed JSON) are not surfaced — the modal
+just shows whatever is in the local in-memory copy.
+-}
+fetchDiceHistoryCmd : Cmd Msg
+fetchDiceHistoryCmd =
+    Http.get
+        { url = "/api/dice/history"
+        , expect = Http.expectJson DiceHistoryLoaded (Decode.list Dice.decodeRoll)
+        }
+
+
+{-| POST a fresh roll to the server's history endpoint. The response
+body is the new (truncated) list, which we use to overwrite the local
+view in `DicePersistResponse`.
+-}
+persistRollCmd : Dice.Roll -> Cmd Msg
+persistRollCmd roll =
+    Http.post
+        { url = "/api/dice/history"
+        , body = Http.jsonBody (Dice.encodeRoll roll)
+        , expect = Http.expectJson DicePersistResponse (Decode.list Dice.decodeRoll)
+        }
+
+
+{-| DELETE the persisted history. Wraps `Http.request` because
+elm/http doesn't ship an `Http.delete` shorthand.
+-}
+clearDiceHistoryCmd : Cmd Msg
+clearDiceHistoryCmd =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/dice/history"
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever DiceClearResponse
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
 

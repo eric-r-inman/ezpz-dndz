@@ -57,6 +57,11 @@ pub struct CliRaw {
   #[arg(long, env = "FRONTEND_PATH")]
   pub frontend_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing the dice-roller history. Defaults
+  /// to `dice-history.json` in the working directory.
+  #[arg(long, env = "DICE_HISTORY_PATH")]
+  pub dice_history_path: Option<PathBuf>,
+
   /// Base URL of the service (e.g. https://example.com), used to construct
   /// the OIDC redirect URI
   #[arg(long, env = "BASE_URL")]
@@ -81,6 +86,7 @@ pub struct ConfigFileRaw {
   pub log_format: Option<String>,
   pub listen: Option<String>,
   pub frontend_path: Option<PathBuf>,
+  pub dice_history_path: Option<PathBuf>,
   pub base_url: Option<String>,
   pub oidc_issuer: Option<String>,
   pub oidc_client_id: Option<String>,
@@ -119,6 +125,7 @@ pub struct Config {
   pub log_format: LogFormat,
   pub listen_address: ListenerAddress,
   pub frontend_path: PathBuf,
+  pub dice_history_path: PathBuf,
   pub base_url: String,
   pub oidc: Option<OidcConfig>,
 }
@@ -171,6 +178,11 @@ impl Config {
       .frontend_path
       .or(config_file.frontend_path)
       .unwrap_or_else(|| PathBuf::from("frontend/public"));
+
+    let dice_history_path = cli
+      .dice_history_path
+      .or(config_file.dice_history_path)
+      .unwrap_or_else(|| PathBuf::from("dice-history.json"));
 
     let base_url = cli.base_url.or(config_file.base_url).ok_or_else(|| {
       ConfigError::Validation("base_url is required".to_string())
@@ -240,6 +252,7 @@ impl Config {
       log_format,
       listen_address,
       frontend_path,
+      dice_history_path,
       base_url,
       oidc,
     })
