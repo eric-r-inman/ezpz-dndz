@@ -1,5 +1,5 @@
 module Dice exposing
-    ( Dice, Sign(..), Expression, Roll, RollGroup, RolledDie, RollKind(..), Error(..), History, Segment(..)
+    ( Dice, Sign(..), Expression, Roll, RollGroup, RolledDie, RollKind(..), Error(..), History, Segment(..), Source, manualSource
     , parse, expressionToString, scan
     , emptyHistory, push, historyEntries, maxHistoryEntries
     , generator, advantageGenerator, disadvantageGenerator, coinGenerator
@@ -30,7 +30,7 @@ than custom syntax; the JS UI worked the same way.
 
 # Types
 
-@docs Dice, Sign, Expression, Roll, RollGroup, RolledDie, RollKind, Error, History, Segment
+@docs Dice, Sign, Expression, Roll, RollGroup, RolledDie, RollKind, Error, History, Segment, Source, manualSource
 
 
 # Parsing
@@ -156,6 +156,35 @@ type RollKind
     | Coin
 
 
+{-| Where a roll was triggered from. Lets the dice history show
+"Damage → Brakka, Ogre Brute" rather than just "rolled 2d6+3."
+
+  - `feature` is a short label like "Damage", "Heal", "Manual",
+    "Stat block".
+  - `target` is whoever the roll affects (a creature name) when that
+    makes sense; `Nothing` for source-less rolls like the standalone
+    dice modal.
+
+This is intentionally a free-form record rather than an enum so the
+domain layer doesn't have to know every possible feature in advance.
+Each call site picks its own labels; the UI just renders them.
+
+-}
+type alias Source =
+    { feature : String
+    , target : Maybe String
+    }
+
+
+{-| The default source applied to rolls that haven't been tagged.
+Used by the standalone dice modal and as a fallback when a persisted
+roll predates the source field.
+-}
+manualSource : Source
+manualSource =
+    { feature = "Manual", target = Nothing }
+
+
 {-| A complete roll result. The single source of truth a UI needs to
 render a history row.
 
@@ -171,6 +200,7 @@ type alias Roll =
     , total : Int
     , formula : String
     , timestamp : Time.Posix
+    , source : Source
     }
 
 
@@ -724,6 +754,7 @@ toStandardRoll expr groups =
     , total = total
     , formula = expressionToString expr
     , timestamp = Time.millisToPosix 0
+    , source = manualSource
     }
 
 
@@ -795,6 +826,7 @@ toAdvOrDis kind modifier a b =
     , total = kept + modifier
     , formula = prefix ++ "1d20" ++ formatModifier modifier
     , timestamp = Time.millisToPosix 0
+    , source = manualSource
     }
 
 
@@ -846,6 +878,7 @@ coinGenerator =
                 , total = n
                 , formula = label
                 , timestamp = Time.millisToPosix 0
+                , source = manualSource
                 }
             )
 
@@ -878,36 +911,39 @@ millisecond produce identical rolls. In practice human reflexes don't
 hit that.
 
 -}
-rollCmd : (Roll -> msg) -> Expression -> Cmd msg
-rollCmd toMsg expr =
-    rollWithTime toMsg (generator expr)
+rollCmd : (Roll -> msg) -> Source -> Expression -> Cmd msg
+rollCmd toMsg source expr =
+    rollWithTime toMsg source (generator expr)
 
 
-{-| Roll d20 with advantage and dispatch.
+{-| Roll d20 with advantage and dispatch, tagged with `source`.
 -}
-advantageCmd : (Roll -> msg) -> Int -> Cmd msg
-advantageCmd toMsg modifier =
-    rollWithTime toMsg (advantageGenerator modifier)
+advantageCmd : (Roll -> msg) -> Source -> Int -> Cmd msg
+advantageCmd toMsg source modifier =
+    rollWithTime toMsg source (advantageGenerator modifier)
 
 
-{-| Roll d20 with disadvantage and dispatch.
+{-| Roll d20 with disadvantage and dispatch, tagged with `source`.
 -}
-disadvantageCmd : (Roll -> msg) -> Int -> Cmd msg
-disadvantageCmd toMsg modifier =
-    rollWithTime toMsg (disadvantageGenerator modifier)
+disadvantageCmd : (Roll -> msg) -> Source -> Int -> Cmd msg
+disadvantageCmd toMsg source modifier =
+    rollWithTime toMsg source (disadvantageGenerator modifier)
 
 
-{-| Flip a coin and dispatch.
+{-| Flip a coin and dispatch, tagged with `source`.
 -}
-coinCmd : (Roll -> msg) -> Cmd msg
-coinCmd toMsg =
-    rollWithTime toMsg coinGenerator
+coinCmd : (Roll -> msg) -> Source -> Cmd msg
+coinCmd toMsg source =
+    rollWithTime toMsg source coinGenerator
 
 
 {-| Internal: drive a generator off `Time.now`, producing one Cmd.
+Stamps the timestamp and the caller's `source` onto the resulting
+Roll so the dice history can show "Damage → Brakka, Ogre Brute"
+rather than just the bare formula.
 -}
-rollWithTime : (Roll -> msg) -> Random.Generator Roll -> Cmd msg
-rollWithTime toMsg gen =
+rollWithTime : (Roll -> msg) -> Source -> Random.Generator Roll -> Cmd msg
+rollWithTime toMsg source gen =
     Time.now
         |> Task.map
             (\now ->
@@ -918,7 +954,7 @@ rollWithTime toMsg gen =
                     ( roll, _ ) =
                         Random.step gen seed
                 in
-                { roll | timestamp = now }
+                { roll | timestamp = now, source = source }
             )
         |> Task.perform toMsg
 
@@ -949,22 +985,52 @@ encodeRoll roll =
         , ( "timestamp", Encode.int (Time.posixToMillis roll.timestamp) )
         , ( "expression", encodeExpression roll.expression )
         , ( "groups", Encode.list encodeGroup roll.groups )
+        , ( "source", encodeSource roll.source )
         ]
 
 
 {-| Decode a `Roll` from JSON. Tolerant of missing optional fields
 where reasonable; outright fails on bad enum values so a corrupt
-file surfaces immediately rather than degrading silently.
+file surfaces immediately rather than degrading silently. The
+`source` field is back-compat: legacy persisted rolls without it
+default to `manualSource`.
 -}
 decodeRoll : Decoder Roll
 decodeRoll =
-    Decode.map6 Roll
+    Decode.map7 Roll
         (Decode.field "kind" decodeKind)
         (Decode.field "expression" decodeExpression)
         (Decode.field "groups" (Decode.list decodeGroup))
         (Decode.field "total" Decode.int)
         (Decode.field "formula" Decode.string)
         (Decode.field "timestamp" (Decode.map Time.millisToPosix Decode.int))
+        (Decode.oneOf
+            [ Decode.field "source" decodeSource
+            , Decode.succeed manualSource
+            ]
+        )
+
+
+encodeSource : Source -> Encode.Value
+encodeSource s =
+    Encode.object
+        [ ( "feature", Encode.string s.feature )
+        , ( "target"
+          , case s.target of
+                Just t ->
+                    Encode.string t
+
+                Nothing ->
+                    Encode.null
+          )
+        ]
+
+
+decodeSource : Decoder Source
+decodeSource =
+    Decode.map2 Source
+        (Decode.field "feature" Decode.string)
+        (Decode.field "target" (Decode.nullable Decode.string))
 
 
 encodeKind : RollKind -> Encode.Value

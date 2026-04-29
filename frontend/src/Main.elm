@@ -211,7 +211,7 @@ type Msg
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
-    | RollFromStatBlock Dice.Expression
+    | RollFromStatBlock String Dice.Expression
       -- HP change modal
     | HpChangeOpen String HpKind
     | HpChangeClose
@@ -438,7 +438,7 @@ update msg model =
             case Dice.parse model.dice.input of
                 Ok expr ->
                     ( withDice (\d -> { d | inputError = Nothing }) model
-                    , Dice.rollCmd DiceRollLanded expr
+                    , Dice.rollCmd DiceRollLanded Dice.manualSource expr
                     )
 
                 Err err ->
@@ -450,34 +450,35 @@ update msg model =
             -- Each rainbow face button rolls (count)d(faces) + modifier
             -- using the current sliders. No parse needed.
             ( model
-            , Dice.rollCmd DiceRollLanded (faceExpression model.dice faces)
+            , Dice.rollCmd DiceRollLanded Dice.manualSource (faceExpression model.dice faces)
             )
 
         DiceRollAdvantage ->
-            ( model, Dice.advantageCmd DiceRollLanded model.dice.modifier )
+            ( model, Dice.advantageCmd DiceRollLanded Dice.manualSource model.dice.modifier )
 
         DiceRollDisadvantage ->
-            ( model, Dice.disadvantageCmd DiceRollLanded model.dice.modifier )
+            ( model, Dice.disadvantageCmd DiceRollLanded Dice.manualSource model.dice.modifier )
 
         DiceFlipCoin ->
-            ( model, Dice.coinCmd DiceRollLanded )
+            ( model, Dice.coinCmd DiceRollLanded Dice.manualSource )
 
         DiceRerun roll ->
-            -- Re-execute a historical roll using the same kind. Coin
-            -- and adv/dis bypass the parsed expression because their
-            -- semantics aren't fully captured by Expression alone.
+            -- Re-execute a historical roll using the same kind AND the
+            -- original source label, so a re-rolled "Damage → Brakka"
+            -- still reads as such in the history (rather than silently
+            -- demoting to "Manual").
             case roll.kind of
                 Dice.Standard ->
-                    ( model, Dice.rollCmd DiceRollLanded roll.expression )
+                    ( model, Dice.rollCmd DiceRollLanded roll.source roll.expression )
 
                 Dice.Advantage ->
-                    ( model, Dice.advantageCmd DiceRollLanded roll.expression.constant )
+                    ( model, Dice.advantageCmd DiceRollLanded roll.source roll.expression.constant )
 
                 Dice.Disadvantage ->
-                    ( model, Dice.disadvantageCmd DiceRollLanded roll.expression.constant )
+                    ( model, Dice.disadvantageCmd DiceRollLanded roll.source roll.expression.constant )
 
                 Dice.Coin ->
-                    ( model, Dice.coinCmd DiceRollLanded )
+                    ( model, Dice.coinCmd DiceRollLanded roll.source )
 
         DiceClearHistory ->
             ( withDice (\d -> { d | history = Dice.emptyHistory }) model
@@ -545,13 +546,17 @@ update msg model =
             -- local history has already been emptied in DiceClearHistory.
             ( model, Cmd.none )
 
-        RollFromStatBlock expr ->
+        RollFromStatBlock creatureName expr ->
             -- Click on inline dice notation in a stat-block trait.
             -- Open the modal so the user sees the result land, and
             -- fire the roll through the same code path as the modal's
-            -- own buttons.
+            -- own buttons. The source is tagged "Stat block" with the
+            -- creature name so it shows up in the history as
+            -- "Stat block → Brakka, Ogre Brute".
             ( withDice (\d -> { d | open = True, inputError = Nothing }) model
-            , Dice.rollCmd DiceRollLanded expr
+            , Dice.rollCmd DiceRollLanded
+                { feature = "Stat block", target = Just creatureName }
+                expr
             )
 
         -- HP change modal lifecycle
@@ -620,7 +625,9 @@ update msg model =
                             case Dice.parse ui.expression of
                                 Ok expr ->
                                     ( model
-                                    , Dice.rollCmd HpChangeRollLanded expr
+                                    , Dice.rollCmd HpChangeRollLanded
+                                        (hpChangeSource ui)
+                                        expr
                                     )
 
                                 Err err ->
@@ -685,6 +692,27 @@ withHpChange fn model =
 
         Nothing ->
             model
+
+
+{-| Build the dice-roller `Source` label for an HP-change roll, so
+the dice history reads e.g. "Damage → Brakka, Ogre Brute" rather
+than just the formula.
+-}
+hpChangeSource : HpChangeUi -> Dice.Source
+hpChangeSource ui =
+    let
+        feature =
+            case ui.kind of
+                DamageKind ->
+                    "Damage"
+
+                HealKind ->
+                    "Heal"
+
+                TempHpKind ->
+                    "Temp HP"
+    in
+    { feature = feature, target = Just ui.target }
 
 
 {-| Resolve the modal's kind + flags into an `HpChange.Change`,
@@ -1557,7 +1585,7 @@ viewStatBlock sb =
             ]
         , hr [ class "statblock__divider" ] []
         , div [ class "statblock__traits" ]
-            (List.map viewTrait sb.traits)
+            (List.map (viewTrait sb.name) sb.traits)
         ]
 
 
@@ -1574,17 +1602,22 @@ viewAbility label score =
         ]
 
 
-viewTrait : ( String, String ) -> Html Msg
-viewTrait ( name, body ) =
-    p [] (strong [] [ text (name ++ ". ") ] :: List.map viewSegment (Dice.scan body))
+viewTrait : String -> ( String, String ) -> Html Msg
+viewTrait creatureName ( name, body ) =
+    p []
+        (strong [] [ text (name ++ ". ") ]
+            :: List.map (viewSegment creatureName) (Dice.scan body)
+        )
 
 
 {-| Render one segment of scanned trait body. `Literal` runs render
 as plain text; `DiceLink` segments render as clickable inline buttons
-that fire a roll via the dice modal.
+that fire a roll via the dice modal. `creatureName` is threaded
+through so the resulting roll's `source` records which stat block
+the formula came from.
 -}
-viewSegment : Dice.Segment -> Html Msg
-viewSegment segment =
+viewSegment : String -> Dice.Segment -> Html Msg
+viewSegment creatureName segment =
     case segment of
         Dice.Literal s ->
             text s
@@ -1592,7 +1625,7 @@ viewSegment segment =
         Dice.DiceLink shown expr ->
             button
                 [ class "dice-link"
-                , onClick (RollFromStatBlock expr)
+                , onClick (RollFromStatBlock creatureName expr)
                 , title ("Roll " ++ shown)
                 ]
                 [ text shown ]
@@ -1808,7 +1841,8 @@ viewHistoryEntry : Dice.Roll -> Html Msg
 viewHistoryEntry roll =
     li [ class "dice-history__entry" ]
         [ div [ class "dice-history__formula" ]
-            [ text roll.formula
+            [ viewRollSource roll.source
+            , text roll.formula
             , span [ class "dice-history__rolled" ]
                 [ text (" — " ++ rolledString roll) ]
             , case roll.expression.damageType of
@@ -1826,6 +1860,30 @@ viewHistoryEntry roll =
             ]
             [ text "↻" ]
         ]
+
+
+{-| Render the source chip on a history entry: "Damage → Brakka,
+Ogre Brute" / "Stat block → Goblin Boss" / etc. Hides the chip for
+the default `Manual` source since the dice modal's own buttons
+already make the context obvious.
+-}
+viewRollSource : Dice.Source -> Html Msg
+viewRollSource source =
+    if source.feature == "Manual" then
+        text ""
+
+    else
+        let
+            label =
+                case source.target of
+                    Just t ->
+                        source.feature ++ " → " ++ t
+
+                    Nothing ->
+                        source.feature
+        in
+        span [ class "dice-history__source", title label ]
+            [ text label ]
 
 
 {-| Format the individual face values for a Roll, with kept faces
