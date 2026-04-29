@@ -403,15 +403,22 @@ viewPanelControls : Html Msg
 viewPanelControls =
     section [ class "panel panel--controls" ]
         [ div [ class "panel__header" ]
-            [ div [ class "panel__title" ] [ text "Encounter Controls" ] ]
+            [ div [ class "panel__title" ] [ text "Encounter Controls" ]
+            , button
+                [ class "action-btn action-btn--green"
+                , title "Roll dice"
+                , attribute "aria-label" "Roll dice"
+                ]
+                [ text "🎲 Roll" ]
+            ]
         , div [ class "panel__body" ]
             [ div [ class "btn-grid btn-grid--two-rows" ]
-                [ button [ class "btn btn--primary" ] [ text "Add Monster" ]
-                , button [ class "btn" ] [ text "Roll Initiative" ]
-                , button [ class "btn" ] [ text "Next Turn" ]
-                , button [ class "btn" ] [ text "Save" ]
-                , button [ class "btn" ] [ text "Load" ]
-                , button [ class "btn btn--ghost" ] [ text "Reset" ]
+                [ button [ class "action-btn action-btn--blue" ] [ text "➕ Add Creature" ]
+                , button [ class "action-btn action-btn--blue" ] [ text "💾 Save" ]
+                , button [ class "action-btn action-btn--blue" ] [ text "📁 Load" ]
+                , button [ class "action-btn action-btn--green" ] [ text "⏭ Next Turn" ]
+                , button [ class "action-btn action-btn--orange" ] [ text "⟲ Reset" ]
+                , button [ class "action-btn action-btn--red" ] [ text "🗑 Clear" ]
                 ]
             ]
         ]

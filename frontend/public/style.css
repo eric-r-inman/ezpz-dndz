@@ -634,7 +634,7 @@ body {
 
 .action-btn {
   appearance: none;
-  border: 1px solid #cccccc;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0 10px;
@@ -699,11 +699,34 @@ body {
 .action-btn--hold {
   background: #111111;
   color: var(--color-text-muted);
-  border: 1px solid #cccccc;
 }
 
 .action-btn--hold:hover {
   color: var(--color-text);
+}
+
+.action-btn--blue {
+  background: #1976d2;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--green {
+  background: #2f9e44;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--red {
+  background: #c62828;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--orange {
+  background: #d97706;
+  color: #000000;
+  border-color: transparent;
 }
 
 .action-btn--holding {
@@ -760,12 +783,16 @@ body {
 
 .btn-grid {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .btn-grid--two-rows {
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+}
+
+.btn-grid > .action-btn {
+  width: 100%;
 }
 
 .btn {
