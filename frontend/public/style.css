@@ -482,6 +482,52 @@ body {
   color: var(--color-text-muted);
 }
 
+.bloodied {
+  font-size: 0.95rem;
+  margin-right: var(--space-2);
+  line-height: 1;
+  cursor: help;
+  filter: saturate(1.2);
+}
+
+.death-saves {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: var(--space-2);
+}
+
+.death-save {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  padding: 0;
+  transition:
+    color 0.1s ease,
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.death-save:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.death-save[aria-pressed="true"] {
+  color: var(--color-text);
+}
+
 .status-toggle {
   appearance: none;
   background: transparent;

@@ -70,6 +70,7 @@ type Msg
     | ToggleHiding String
     | ToggleFlying String
     | AdjustFlyHeight String Int
+    | ToggleDeathSave String Int
 
 
 main : Program () Model Msg
@@ -181,6 +182,11 @@ update msg model =
             , Cmd.none
             )
 
+        ToggleDeathSave name idx ->
+            ( mapCreature name (\c -> { c | deathSaves = toggleSlot idx c.deathSaves }) model
+            , Cmd.none
+            )
+
 
 mapCreature : String -> (Creature -> Creature) -> Model -> Model
 mapCreature name fn model =
@@ -209,6 +215,19 @@ nextCover c =
 
         FullCover ->
             NoCover
+
+
+toggleSlot : Int -> ( Bool, Bool, Bool ) -> ( Bool, Bool, Bool )
+toggleSlot idx ( a, b, c ) =
+    case idx of
+        0 ->
+            ( not a, b, c )
+
+        1 ->
+            ( a, not b, c )
+
+        _ ->
+            ( a, b, not c )
 
 
 
@@ -435,6 +454,9 @@ type alias Creature =
     , hiding : Bool
     , flying : Bool
     , flyHeight : Int
+    , bloodied : Bool
+    , inDeathSaves : Bool
+    , deathSaves : ( Bool, Bool, Bool )
     }
 
 
@@ -483,6 +505,9 @@ initialCreatures =
       , hiding = True
       , flying = False
       , flyHeight = 0
+      , bloodied = False
+      , inDeathSaves = True
+      , deathSaves = ( True, False, False )
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -499,6 +524,9 @@ initialCreatures =
       , hiding = False
       , flying = False
       , flyHeight = 0
+      , bloodied = True
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -515,6 +543,9 @@ initialCreatures =
       , hiding = False
       , flying = False
       , flyHeight = 0
+      , bloodied = False
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -531,6 +562,9 @@ initialCreatures =
       , hiding = False
       , flying = False
       , flyHeight = 0
+      , bloodied = False
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -547,6 +581,9 @@ initialCreatures =
       , hiding = False
       , flying = True
       , flyHeight = 30
+      , bloodied = False
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
       }
     ]
 
@@ -713,6 +750,8 @@ viewCardRowMid : Creature -> Html Msg
 viewCardRowMid creature =
     div [ class "creature-card__row creature-card__row--mid" ]
         [ viewHpDisplay
+        , viewBloodied creature
+        , viewDeathSaves creature
         , viewCoverToggle creature
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , viewBoolToggle "🧠"
@@ -740,6 +779,70 @@ viewHpDisplay =
         , span [ class "hp-display__sep" ] [ text "/" ]
         , span [ class "hp-display__max" ] [ text "100" ]
         ]
+
+
+viewBloodied : Creature -> Html Msg
+viewBloodied creature =
+    if creature.bloodied then
+        span
+            [ class "bloodied"
+            , title "Bloodied — below half hit points"
+            , attribute "aria-label" "Bloodied"
+            ]
+            [ text "🩸" ]
+
+    else
+        text ""
+
+
+viewDeathSaves : Creature -> Html Msg
+viewDeathSaves creature =
+    if creature.inDeathSaves then
+        let
+            ( a, b, c ) =
+                creature.deathSaves
+        in
+        span
+            [ class "death-saves"
+            , attribute "role" "group"
+            , attribute "aria-label" "Death saving throws"
+            ]
+            [ viewDeathSave creature.name 0 a
+            , viewDeathSave creature.name 1 b
+            , viewDeathSave creature.name 2 c
+            ]
+
+    else
+        text ""
+
+
+viewDeathSave : String -> Int -> Bool -> Html Msg
+viewDeathSave name idx isFailed =
+    let
+        ( glyph, state ) =
+            if isFailed then
+                ( "💀", "failed" )
+
+            else
+                ( "○", "open" )
+
+        label =
+            "Death save " ++ String.fromInt (idx + 1) ++ ": " ++ state
+    in
+    button
+        [ class "death-save"
+        , onClick (ToggleDeathSave name idx)
+        , title label
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if isFailed then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text glyph ]
 
 
 viewBoolToggle : String -> String -> Bool -> Msg -> Html Msg
