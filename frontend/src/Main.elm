@@ -142,6 +142,7 @@ type Msg
     | DiceRerun Dice.Roll
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
+    | RollFromStatBlock Dice.Expression
     | NoOp
 
 
@@ -385,6 +386,15 @@ update msg model =
         DiceRollLanded roll ->
             ( withDice (\d -> { d | history = Dice.push roll d.history }) model
             , Cmd.none
+            )
+
+        RollFromStatBlock expr ->
+            -- Click on inline dice notation in a stat-block trait.
+            -- Open the modal so the user sees the result land, and
+            -- fire the roll through the same code path as the modal's
+            -- own buttons.
+            ( withDice (\d -> { d | open = True, inputError = Nothing }) model
+            , Dice.rollCmd DiceRollLanded expr
             )
 
         NoOp ->
@@ -1211,10 +1221,26 @@ viewAbility label score =
 
 viewTrait : ( String, String ) -> Html Msg
 viewTrait ( name, body ) =
-    p []
-        [ strong [] [ text (name ++ ". ") ]
-        , text body
-        ]
+    p [] (strong [] [ text (name ++ ". ") ] :: List.map viewSegment (Dice.scan body))
+
+
+{-| Render one segment of scanned trait body. `Literal` runs render
+as plain text; `DiceLink` segments render as clickable inline buttons
+that fire a roll via the dice modal.
+-}
+viewSegment : Dice.Segment -> Html Msg
+viewSegment segment =
+    case segment of
+        Dice.Literal s ->
+            text s
+
+        Dice.DiceLink shown expr ->
+            button
+                [ class "dice-link"
+                , onClick (RollFromStatBlock expr)
+                , title ("Roll " ++ shown)
+                ]
+                [ text shown ]
 
 
 

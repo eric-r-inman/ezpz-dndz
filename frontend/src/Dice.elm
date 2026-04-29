@@ -1,6 +1,6 @@
 module Dice exposing
-    ( Dice, Sign(..), Expression, Roll, RollGroup, RolledDie, RollKind(..), Error(..), History
-    , parse, expressionToString
+    ( Dice, Sign(..), Expression, Roll, RollGroup, RolledDie, RollKind(..), Error(..), History, Segment(..)
+    , parse, expressionToString, scan
     , emptyHistory, push, historyEntries, maxHistoryEntries
     , generator, advantageGenerator, disadvantageGenerator, coinGenerator
     , rollCmd, advantageCmd, disadvantageCmd, coinCmd
@@ -29,12 +29,12 @@ than custom syntax; the JS UI worked the same way.
 
 # Types
 
-@docs Dice, Sign, Expression, Roll, RollGroup, RolledDie, RollKind, Error, History
+@docs Dice, Sign, Expression, Roll, RollGroup, RolledDie, RollKind, Error, History, Segment
 
 
 # Parsing
 
-@docs parse, expressionToString
+@docs parse, expressionToString, scan
 
 
 # History
@@ -503,6 +503,166 @@ diceToken idx d =
                     " - "
     in
     signStr ++ String.fromInt d.count ++ "d" ++ String.fromInt d.faces
+
+
+
+-- INLINE NOTATION SCANNER
+
+
+{-| One slice of a stat-block trait body. View code renders a `Literal`
+as plain text and a `DiceLink` as a clickable button that fires a
+roll. The first field of `DiceLink` is the original matched substring
+(so it shows the same notation the GM saw); the second is the parsed
+form for actually rolling.
+-}
+type Segment
+    = Literal String
+    | DiceLink String Expression
+
+
+{-| Walk a paragraph of text and split it into literal runs and
+recognized dice-notation matches.
+
+Two patterns are recognized, in priority order:
+
+  - Stat-block average wrap: `13 (2d8 + 4)` — the whole substring
+    becomes a single DiceLink, parsing the inner formula.
+  - Plain dice notation: `1d6`, `2d8 + 3`, `3d10-2`. Whitespace
+    around `+`/`-` is optional.
+
+Anything else is preserved verbatim in `Literal` runs. The scanner
+falls back to a single `Literal input` if anything goes wrong, so
+view code never has to handle a parse-failure path.
+
+-}
+scan : String -> List Segment
+scan input =
+    Parser.run scanParser input
+        |> Result.withDefault [ Literal input ]
+
+
+{-| Loop accumulator while scanning. `segments` is in reverse order
+and gets flipped on Done; `currentLit` accumulates non-dice characters
+between matches and is flushed into a `Literal` whenever we hit a
+match or the end of input.
+-}
+type alias ScanAcc =
+    { segments : List Segment
+    , currentLit : String
+    }
+
+
+emptyScanAcc : ScanAcc
+emptyScanAcc =
+    { segments = [], currentLit = "" }
+
+
+scanParser : Parser (List Segment)
+scanParser =
+    Parser.loop emptyScanAcc scanStep
+
+
+scanStep : ScanAcc -> Parser (Parser.Step ScanAcc (List Segment))
+scanStep acc =
+    Parser.oneOf
+        [ Parser.succeed
+            (Parser.Done (List.reverse (flushLit acc.currentLit acc.segments)))
+            |. Parser.end
+        , Parser.backtrackable averageWrapMatchParser
+            |> Parser.map
+                (\( matched, expr ) ->
+                    Parser.Loop
+                        { segments = DiceLink matched expr :: flushLit acc.currentLit acc.segments
+                        , currentLit = ""
+                        }
+                )
+        , Parser.backtrackable diceMatchParser
+            |> Parser.map
+                (\( matched, expr ) ->
+                    Parser.Loop
+                        { segments = DiceLink matched expr :: flushLit acc.currentLit acc.segments
+                        , currentLit = ""
+                        }
+                )
+        , Parser.getChompedString (Parser.chompIf (always True))
+            |> Parser.map
+                (\c ->
+                    Parser.Loop
+                        { segments = acc.segments
+                        , currentLit = acc.currentLit ++ c
+                        }
+                )
+        ]
+
+
+flushLit : String -> List Segment -> List Segment
+flushLit lit segments =
+    if String.isEmpty lit then
+        segments
+
+    else
+        Literal lit :: segments
+
+
+{-| Match a "13 (2d8 + 4)" style average-wrapped formula. Captures the
+whole matched substring so the rendered button preserves the leading
+average; the inner formula is what we actually roll.
+-}
+averageWrapMatchParser : Parser ( String, Expression )
+averageWrapMatchParser =
+    Parser.getChompedString averageWrapInline
+        |> Parser.andThen tryParseMatch
+
+
+averageWrapInline : Parser ()
+averageWrapInline =
+    Parser.succeed ()
+        |. Parser.int
+        |. Parser.spaces
+        |. Parser.symbol "("
+        |. Parser.chompUntil ")"
+        |. Parser.symbol ")"
+
+
+{-| Match a bare "1d6" / "2d8 + 3" / "3d10-2" formula.
+-}
+diceMatchParser : Parser ( String, Expression )
+diceMatchParser =
+    Parser.getChompedString diceInline
+        |> Parser.andThen tryParseMatch
+
+
+diceInline : Parser ()
+diceInline =
+    Parser.succeed ()
+        |. Parser.oneOf
+            [ Parser.int |> Parser.map (always ())
+            , Parser.succeed ()
+            ]
+        |. Parser.symbol "d"
+        |. Parser.int
+        |. Parser.oneOf
+            [ Parser.succeed ()
+                |. Parser.spaces
+                |. Parser.oneOf [ Parser.symbol "+", Parser.symbol "-" ]
+                |. Parser.spaces
+                |. Parser.int
+            , Parser.succeed ()
+            ]
+
+
+{-| Wraps `parse` so that a non-parseable match becomes a Parser
+problem rather than an Ok value, letting the surrounding
+backtrackable in scanStep fall through to the next alternative.
+-}
+tryParseMatch : String -> Parser ( String, Expression )
+tryParseMatch matched =
+    case parse matched of
+        Ok expr ->
+            Parser.succeed ( matched, expr )
+
+        Err _ ->
+            Parser.problem "not a dice expression"
 
 
 
