@@ -189,3 +189,22 @@ nix develop --command git commit -m "your message"
 
 Run ~cargo test --workspace~ after making any change to verify nothing is
 broken.
+
+* Frontend layering
+
+The Elm frontend has a strict separation between domain logic and view
+code; see [[file:docs/ARCHITECTURE.md][docs/ARCHITECTURE.md]] for the full discussion.
+
+- ~frontend/src/Encounter.elm~ owns all D&D rules: types (=Creature=,
+  =Cover=, =Encounter=), seed data, and pure functions like =nextTurn=
+  and =mapCreature=.  It must not import =Html=, =Browser=, =Url=, or
+  any rendering primitive.
+- ~frontend/src/Main.elm~ is the application shell: =Browser.application=,
+  =Model=, =Msg=, =update=, and all view code.  It imports =Encounter=
+  and dispatches to its functions; it never reimplements rules logic.
+- A =Msg= branch in =update= should be a one-liner that calls into
+  =Encounter=.  If the branch starts walking the queue, comparing
+  initiative, or doing HP arithmetic, the work belongs in =Encounter=.
+
+This split is what lets us add alternate UI layouts (e.g. an upcoming
+"simple view") without rewriting rules.

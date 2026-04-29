@@ -104,27 +104,11 @@ body {
   gap: var(--space-3);
 }
 
-.app-bar__mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--color-accent), #d23a85);
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-}
-
 .app-bar__title {
   font-weight: 700;
   font-size: 1.05rem;
   letter-spacing: 0.06em;
-  background: linear-gradient(90deg, var(--color-accent), #d23a85);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--color-text);
 }
 
 .app-bar__nav {

@@ -3,3 +3,21 @@
 
 * Upcoming
 
+** Architecture
+
+- Split the Elm frontend into two modules: ~Encounter.elm~ (domain
+  layer — types, seed data, turn logic) and ~Main.elm~ (application
+  shell + view code).  Domain code does not import rendering
+  primitives.  See [[file:docs/ARCHITECTURE.md][docs/ARCHITECTURE.md]] for the full discussion and
+  the discipline that goes with it.
+
+** Frontend
+
+- Introduce real turn tracking.  =Encounter.nextTurn= advances the
+  active creature in initiative order and increments =round= on wrap.
+  Wired to the *⏭ Next Turn* button in Encounter Controls.
+- Encounter title bar shows live =round=, active creature name, and
+  active creature HP (state icons and the conditions summary stay
+  placeholder for now).
+- Brand mark dropped; title renders as "eZpZ-dndZ" in plain text
+  rather than the gradient mark + wordmark.

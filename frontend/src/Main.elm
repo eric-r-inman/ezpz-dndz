@@ -2,6 +2,12 @@ module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Nav
+import Encounter
+    exposing
+        ( Cover(..)
+        , Creature
+        , Encounter
+        )
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
@@ -51,19 +57,38 @@ type MeStatus
     | Failed
 
 
+{-| The single source of truth for the running app.
+
+`encounter` holds all D&D-specific state (queue, active creature,
+round). `route` / `url` / `key` / `me` are presentation/auth concerns
+that have nothing to do with the rules. The split mirrors the larger
+discipline: domain state goes through `Encounter`, everything else
+stays here.
+
+-}
 type alias Model =
     { key : Nav.Key
     , url : Url
     , route : Route
     , me : MeStatus
-    , creatures : List Creature
+    , encounter : Encounter
     }
 
 
+{-| Every message the runtime can send the update loop. Per-creature
+messages carry the target creature's `name` as their identity; that's
+how we look up which row of `encounter.creatures` to operate on.
+
+`NextTurn` advances the queue one slot — it's the first piece of real
+turn logic in the app and the place where future per-phase hooks
+(begin / end / off / on) will land as separate pure functions.
+
+-}
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | GotMe (Result Http.Error MeInfo)
+    | NextTurn
     | ToggleSurprised String
     | CycleCover String
     | ToggleConcentration String
@@ -96,7 +121,7 @@ init _ url key =
       , url = url
       , route = route
       , me = Loading
-      , creatures = initialCreatures
+      , encounter = Encounter.initialEncounter
       }
     , cmdForRoute route
     )
@@ -153,87 +178,64 @@ update msg model =
                 Err _ ->
                     ( { model | me = Failed }, Cmd.none )
 
+        NextTurn ->
+            -- Domain layer owns the queue walk and round bookkeeping; this
+            -- branch is intentionally a one-liner so all the rules-y
+            -- behavior is inspectable in one place (Encounter.nextTurn).
+            ( { model | encounter = Encounter.nextTurn model.encounter }
+            , Cmd.none
+            )
+
         ToggleSurprised name ->
-            ( mapCreature name (\c -> { c | surprised = not c.surprised }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | surprised = not c.surprised })) model
             , Cmd.none
             )
 
         CycleCover name ->
-            ( mapCreature name (\c -> { c | cover = nextCover c.cover }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.nextCover c.cover })) model
             , Cmd.none
             )
 
         ToggleConcentration name ->
-            ( mapCreature name (\c -> { c | concentrating = not c.concentrating }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | concentrating = not c.concentrating })) model
             , Cmd.none
             )
 
         ToggleHiding name ->
-            ( mapCreature name (\c -> { c | hiding = not c.hiding }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | hiding = not c.hiding })) model
             , Cmd.none
             )
 
         ToggleFlying name ->
-            ( mapCreature name (\c -> { c | flying = not c.flying }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | flying = not c.flying })) model
             , Cmd.none
             )
 
         AdjustFlyHeight name delta ->
-            ( mapCreature name (\c -> { c | flyHeight = Basics.max 0 (c.flyHeight + delta) }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | flyHeight = Basics.max 0 (c.flyHeight + delta) })) model
             , Cmd.none
             )
 
         ToggleDeathSave name idx ->
-            ( mapCreature name (\c -> { c | deathSaves = toggleSlot idx c.deathSaves }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | deathSaves = Encounter.toggleDeathSave idx c.deathSaves })) model
             , Cmd.none
             )
 
         ToggleHolding name ->
-            ( mapCreature name (\c -> { c | holding = not c.holding }) model
+            ( withEncounter (Encounter.mapCreature name (\c -> { c | holding = not c.holding })) model
             , Cmd.none
             )
 
 
-mapCreature : String -> (Creature -> Creature) -> Model -> Model
-mapCreature name fn model =
-    let
-        apply c =
-            if c.name == name then
-                fn c
-
-            else
-                c
-    in
-    { model | creatures = List.map apply model.creatures }
-
-
-nextCover : Cover -> Cover
-nextCover c =
-    case c of
-        NoCover ->
-            HalfCover
-
-        HalfCover ->
-            ThreeQuartersCover
-
-        ThreeQuartersCover ->
-            FullCover
-
-        FullCover ->
-            NoCover
-
-
-toggleSlot : Int -> ( Bool, Bool, Bool ) -> ( Bool, Bool, Bool )
-toggleSlot idx ( a, b, c ) =
-    case idx of
-        0 ->
-            ( not a, b, c )
-
-        1 ->
-            ( a, not b, c )
-
-        _ ->
-            ( a, b, not c )
+{-| Lift an `Encounter -> Encounter` transformation into a
+`Model -> Model` transformation by threading it through the encounter
+field. Keeps every per-creature update branch a one-liner and makes
+the rest of `Model` (route, auth, nav key) literally invisible to
+domain code, which is what the layering discipline demands.
+-}
+withEncounter : (Encounter -> Encounter) -> Model -> Model
+withEncounter fn model =
+    { model | encounter = fn model.encounter }
 
 
 
@@ -242,7 +244,7 @@ toggleSlot idx ( a, b, c ) =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "EZPZ-DnDZ"
+    { title = "eZpZ-dndZ"
     , body =
         [ div [ class "app-shell" ]
             [ viewAppBar
@@ -256,8 +258,7 @@ viewAppBar : Html Msg
 viewAppBar =
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
-            [ div [ class "app-bar__mark" ] [ text "d20" ]
-            , div [ class "app-bar__title" ] [ text "EZPZ-DnDZ" ]
+            [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
             ]
         , nav [ class "app-bar__nav" ]
             [ a [ href "/" ] [ text "Encounter" ]
@@ -328,26 +329,42 @@ viewMe status =
 viewWorkspace : Model -> Html Msg
 viewWorkspace model =
     main_ [ class "workspace" ]
-        [ viewPanelMain model.creatures
+        [ viewPanelMain model.encounter
         , viewPanelControls
         , viewPanelDetail
         ]
 
 
-viewPanelMain : List Creature -> Html Msg
-viewPanelMain creatures =
+viewPanelMain : Encounter -> Html Msg
+viewPanelMain enc =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ viewEncounterBar ]
+            [ viewEncounterBar enc ]
         , div [ class "panel__body" ]
             [ div [ class "creature-grid" ]
-                (List.map (viewCreatureCard mockSelectedName) creatures)
+                (List.map (viewCreatureCard enc.activeName) enc.creatures)
             ]
         ]
 
 
-viewEncounterBar : Html Msg
-viewEncounterBar =
+viewEncounterBar : Encounter -> Html Msg
+viewEncounterBar enc =
+    let
+        active =
+            Encounter.activeCreature enc
+
+        activeName =
+            Maybe.map .name active
+                |> Maybe.withDefault "—"
+
+        hpText =
+            case active of
+                Just c ->
+                    String.fromInt c.currentHp ++ "/" ++ String.fromInt c.maxHp
+
+                Nothing ->
+                    "—"
+    in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
             [ span
@@ -357,10 +374,11 @@ viewEncounterBar =
                 , tabindex 0
                 ]
                 [ text "ⓘ" ]
-            , span [ class "encounter-bar__round" ] [ text "Round X" ]
+            , span [ class "encounter-bar__round" ]
+                [ text ("Round " ++ String.fromInt enc.round) ]
             , span [ class "encounter-bar__sep" ] [ text "|" ]
-            , span [ class "encounter-bar__active" ] [ text "Creature Name" ]
-            , span [ class "encounter-bar__hp" ] [ text "100/100" ]
+            , span [ class "encounter-bar__active" ] [ text activeName ]
+            , span [ class "encounter-bar__hp" ] [ text hpText ]
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
             , div [ class "encounter-bar__states" ]
                 [ span [ class "encounter-bar__state", title "State 1 (placeholder)" ] [ text "✊" ]
@@ -421,7 +439,12 @@ viewPanelControls =
                 [ button [ class "action-btn action-btn--blue" ] [ text "➕ Add Creature" ]
                 , button [ class "action-btn action-btn--blue" ] [ text "💾 Save" ]
                 , button [ class "action-btn action-btn--blue" ] [ text "📁 Load" ]
-                , button [ class "action-btn action-btn--green" ] [ text "⏭ Next Turn" ]
+                , button
+                    [ class "action-btn action-btn--green"
+                    , onClick NextTurn
+                    , title "Advance to the next creature in initiative order"
+                    ]
+                    [ text "⏭ Next Turn" ]
                 , button [ class "action-btn action-btn--orange" ]
                     [ span [ class "btn-glyph" ] [ text "⟲" ]
                     , text " Reset"
@@ -455,37 +478,11 @@ viewPanelDetail =
 
 
 
--- MOCK DATA TYPES
-
-
-type Cover
-    = NoCover
-    | HalfCover
-    | ThreeQuartersCover
-    | FullCover
-
-
-type alias Creature =
-    { name : String
-    , kind : String
-    , initiative : Int
-    , currentHp : Int
-    , maxHp : Int
-    , armorClass : Int
-    , speed : Int
-    , conditions : List String
-    , selected : Bool
-    , surprised : Bool
-    , cover : Cover
-    , concentrating : Bool
-    , hiding : Bool
-    , flying : Bool
-    , flyHeight : Int
-    , bloodied : Bool
-    , inDeathSaves : Bool
-    , deathSaves : ( Bool, Bool, Bool )
-    , holding : Bool
-    }
+-- COMPENDIUM MOCK DATA
+--
+-- The stat-block panel still renders against this hard-coded record;
+-- it'll move into the domain layer alongside a real monster catalog
+-- once the compendium feature actually does anything beyond display.
 
 
 type alias StatBlock =
@@ -509,176 +506,6 @@ type alias Abilities =
     , wis : Int
     , cha : Int
     }
-
-
-mockSelectedName : String
-mockSelectedName =
-    "Brakka, Ogre Brute"
-
-
-initialCreatures : List Creature
-initialCreatures =
-    [ { name = "Lyra Vale (PC)"
-      , kind = "Half-elf rogue, lvl 5"
-      , initiative = 22
-      , currentHp = 38
-      , maxHp = 42
-      , armorClass = 16
-      , speed = 30
-      , conditions = [ "Hidden" ]
-      , selected = False
-      , surprised = False
-      , cover = HalfCover
-      , concentrating = False
-      , hiding = True
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , inDeathSaves = True
-      , deathSaves = ( True, False, False )
-      , holding = False
-      }
-    , { name = "Brakka, Ogre Brute"
-      , kind = "Large giant, chaotic evil"
-      , initiative = 18
-      , currentHp = 27
-      , maxHp = 59
-      , armorClass = 11
-      , speed = 40
-      , conditions = [ "Bloodied", "Frightened" ]
-      , selected = True
-      , surprised = True
-      , cover = NoCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = True
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = False
-      }
-    , { name = "Goblin Skirmisher"
-      , kind = "Small humanoid, neutral evil"
-      , initiative = 15
-      , currentHp = 7
-      , maxHp = 7
-      , armorClass = 15
-      , speed = 30
-      , conditions = []
-      , selected = False
-      , surprised = False
-      , cover = ThreeQuartersCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = False
-      }
-    , { name = "Goblin Boss"
-      , kind = "Small humanoid, neutral evil"
-      , initiative = 12
-      , currentHp = 21
-      , maxHp = 21
-      , armorClass = 17
-      , speed = 30
-      , conditions = []
-      , selected = False
-      , surprised = False
-      , cover = FullCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = True
-      }
-    , { name = "Thornwhip Shaman"
-      , kind = "Small humanoid, druid"
-      , initiative = 9
-      , currentHp = 4
-      , maxHp = 27
-      , armorClass = 13
-      , speed = 30
-      , conditions = [ "Concentrating" ]
-      , selected = True
-      , surprised = False
-      , cover = NoCover
-      , concentrating = True
-      , hiding = False
-      , flying = True
-      , flyHeight = 30
-      , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = False
-      }
-    , { name = "Captain Vex"
-      , kind = "Medium humanoid (human), bandit captain"
-      , initiative = 17
-      , currentHp = 34
-      , maxHp = 65
-      , armorClass = 15
-      , speed = 30
-      , conditions = []
-      , selected = False
-      , surprised = False
-      , cover = NoCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = True
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = True
-      }
-    , { name = "Stone Sentinel"
-      , kind = "Large construct, unaligned"
-      , initiative = 8
-      , currentHp = 78
-      , maxHp = 78
-      , armorClass = 18
-      , speed = 25
-      , conditions = []
-      , selected = False
-      , surprised = False
-      , cover = HalfCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = False
-      }
-    , { name = "Shadow Wisp"
-      , kind = "Tiny undead, neutral evil"
-      , initiative = 6
-      , currentHp = 12
-      , maxHp = 18
-      , armorClass = 12
-      , speed = 0
-      , conditions = []
-      , selected = False
-      , surprised = False
-      , cover = NoCover
-      , concentrating = False
-      , hiding = True
-      , flying = True
-      , flyHeight = 15
-      , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
-      , holding = False
-      }
-    ]
 
 
 mockStatBlock : StatBlock
