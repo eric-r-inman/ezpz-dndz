@@ -620,6 +620,104 @@ body {
   margin-left: 4px;
 }
 
+.creature-card__row--bot {
+  background: transparent;
+  border: none;
+  font-style: normal;
+  letter-spacing: 0;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  appearance: none;
+  border: 1px solid #cccccc;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  background: #111111;
+  color: var(--color-text);
+  transition:
+    filter 0.1s ease,
+    transform 0.05s ease,
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+  white-space: nowrap;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  letter-spacing: 0.02em;
+}
+
+.action-btn:hover {
+  filter: brightness(1.15);
+}
+
+.action-btn:active {
+  transform: translateY(1px);
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.action-btn--damage {
+  background: #c62828;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.action-btn--heal {
+  background: #2f9e44;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--temp {
+  background: #1976d2;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--condition {
+  background: #7e3ad8;
+  color: #000000;
+  border-color: transparent;
+}
+
+.action-btn--hold {
+  background: #111111;
+  color: var(--color-text-muted);
+  border: 1px solid #cccccc;
+}
+
+.action-btn--hold:hover {
+  color: var(--color-text);
+}
+
+.action-btn--holding {
+  background: #d97706;
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.action-btn--icon {
+  width: 30px;
+  padding: 0;
+  font-size: 0.95rem;
+}
+
 .stat {
   display: flex;
   flex-direction: column;

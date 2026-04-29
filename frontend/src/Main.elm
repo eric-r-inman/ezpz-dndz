@@ -71,6 +71,7 @@ type Msg
     | ToggleFlying String
     | AdjustFlyHeight String Int
     | ToggleDeathSave String Int
+    | ToggleHolding String
 
 
 main : Program () Model Msg
@@ -184,6 +185,11 @@ update msg model =
 
         ToggleDeathSave name idx ->
             ( mapCreature name (\c -> { c | deathSaves = toggleSlot idx c.deathSaves }) model
+            , Cmd.none
+            )
+
+        ToggleHolding name ->
+            ( mapCreature name (\c -> { c | holding = not c.holding }) model
             , Cmd.none
             )
 
@@ -457,6 +463,7 @@ type alias Creature =
     , bloodied : Bool
     , inDeathSaves : Bool
     , deathSaves : ( Bool, Bool, Bool )
+    , holding : Bool
     }
 
 
@@ -508,6 +515,7 @@ initialCreatures =
       , bloodied = False
       , inDeathSaves = True
       , deathSaves = ( True, False, False )
+      , holding = False
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -527,6 +535,7 @@ initialCreatures =
       , bloodied = True
       , inDeathSaves = False
       , deathSaves = ( False, False, False )
+      , holding = False
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -546,6 +555,7 @@ initialCreatures =
       , bloodied = False
       , inDeathSaves = False
       , deathSaves = ( False, False, False )
+      , holding = False
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -565,6 +575,7 @@ initialCreatures =
       , bloodied = False
       , inDeathSaves = False
       , deathSaves = ( False, False, False )
+      , holding = True
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -584,6 +595,67 @@ initialCreatures =
       , bloodied = False
       , inDeathSaves = False
       , deathSaves = ( False, False, False )
+      , holding = False
+      }
+    , { name = "Captain Vex"
+      , kind = "Medium humanoid (human), bandit captain"
+      , initiative = 17
+      , currentHp = 34
+      , maxHp = 65
+      , armorClass = 15
+      , speed = 30
+      , conditions = []
+      , selected = False
+      , surprised = False
+      , cover = NoCover
+      , concentrating = False
+      , hiding = False
+      , flying = False
+      , flyHeight = 0
+      , bloodied = True
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
+      , holding = True
+      }
+    , { name = "Stone Sentinel"
+      , kind = "Large construct, unaligned"
+      , initiative = 8
+      , currentHp = 78
+      , maxHp = 78
+      , armorClass = 18
+      , speed = 25
+      , conditions = []
+      , selected = False
+      , surprised = False
+      , cover = HalfCover
+      , concentrating = False
+      , hiding = False
+      , flying = False
+      , flyHeight = 0
+      , bloodied = False
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
+      , holding = False
+      }
+    , { name = "Shadow Wisp"
+      , kind = "Tiny undead, neutral evil"
+      , initiative = 6
+      , currentHp = 12
+      , maxHp = 18
+      , armorClass = 12
+      , speed = 0
+      , conditions = []
+      , selected = False
+      , surprised = False
+      , cover = NoCover
+      , concentrating = False
+      , hiding = True
+      , flying = True
+      , flyHeight = 15
+      , bloodied = False
+      , inDeathSaves = False
+      , deathSaves = ( False, False, False )
+      , holding = False
       }
     ]
 
@@ -606,8 +678,13 @@ mockStatBlock =
         , cha = 7
         }
     , traits =
-        [ ( "Greatclub", "Melee Weapon Attack: +6 to hit, reach 5 ft. Hit: 13 (2d8 + 4) bludgeoning damage." )
-        , ( "Javelin", "Melee or Ranged: +6 to hit, reach 5 ft. or range 30/120 ft. Hit: 11 (2d6 + 4) piercing." )
+        [ ( "Multiattack", "Brakka makes two greatclub attacks, or one greatclub attack and one javelin attack." )
+        , ( "Greatclub", "Melee Weapon Attack: +6 to hit, reach 5 ft. Hit: 13 (2d8 + 4) bludgeoning damage." )
+        , ( "Javelin", "Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft. Hit: 11 (2d6 + 4) piercing damage." )
+        , ( "Reckless", "At the start of its turn, Brakka can gain advantage on all melee weapon attack rolls during that turn, but attack rolls against it have advantage until the start of its next turn." )
+        , ( "Brutish Charge", "If Brakka moves at least 10 feet straight toward a target and then hits it with a greatclub attack on the same turn, the target takes an extra 9 (2d8) bludgeoning damage and must succeed on a DC 14 Strength saving throw or be knocked prone." )
+        , ( "Furious Roar", "Brakka unleashes a guttural roar. Each creature within 30 feet that can hear it must make a DC 13 Wisdom saving throw or be frightened until the end of Brakka's next turn." )
+        , ( "Thick Hide", "Brakka has resistance to bludgeoning, piercing, and slashing damage from nonmagical attacks not made with silvered weapons." )
         ]
     }
 
@@ -664,7 +741,7 @@ viewCreatureCard activeName creature =
         , div [ class "creature-card__center" ]
             [ viewCardRowTop creature
             , viewCardRowMid creature
-            , div [ class "creature-card__row" ] [ text "row 3 — to be mocked" ]
+            , viewCardRowBot creature
             ]
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
@@ -814,6 +891,83 @@ viewDeathSaves creature =
 
     else
         text ""
+
+
+viewCardRowBot : Creature -> Html Msg
+viewCardRowBot creature =
+    div [ class "creature-card__row creature-card__row--bot" ]
+        [ button
+            [ class "action-btn action-btn--damage"
+            , title "Apply damage"
+            ]
+            [ text "Damage" ]
+        , button
+            [ class "action-btn action-btn--heal"
+            , title "Heal hit points"
+            ]
+            [ text "Heal" ]
+        , button
+            [ class "action-btn action-btn--temp"
+            , title "Add temporary hit points"
+            ]
+            [ text "Temp HP" ]
+        , button
+            [ class "action-btn action-btn--condition"
+            , title "Apply condition or effect"
+            ]
+            [ text "Condition/Effect" ]
+        , viewHoldToggle creature
+        , button
+            [ class "action-btn action-btn--icon"
+            , title "Memo"
+            , attribute "aria-label" "Memo"
+            ]
+            [ text "📝" ]
+        , button
+            [ class "action-btn action-btn--icon"
+            , title "Stopwatch / timer"
+            , attribute "aria-label" "Timer"
+            ]
+            [ text "⏱️" ]
+        , button
+            [ class "action-btn action-btn--icon"
+            , title "Roll dice"
+            , attribute "aria-label" "Roll dice"
+            ]
+            [ text "🎲" ]
+        ]
+
+
+viewHoldToggle : Creature -> Html Msg
+viewHoldToggle creature =
+    let
+        ( bodyText, cls, label ) =
+            if creature.holding then
+                ( "✊ Holding"
+                , "action-btn action-btn--holding"
+                , "Holding action — click to release"
+                )
+
+            else
+                ( "✋ Hold"
+                , "action-btn action-btn--hold"
+                , "Hold action — click to set"
+                )
+    in
+    button
+        [ class cls
+        , onClick (ToggleHolding creature.name)
+        , title label
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if creature.holding then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text bodyText ]
 
 
 viewDeathSave : String -> Int -> Bool -> Html Msg
