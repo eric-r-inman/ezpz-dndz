@@ -741,6 +741,30 @@ body {
   font-size: 0.95rem;
 }
 
+.action-btn:disabled,
+.action-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.action-btn:disabled:hover,
+.action-btn[aria-disabled="true"]:hover {
+  filter: grayscale(0.6);
+  transform: none;
+}
+
+.btn-glyph {
+  font-size: 1.25em;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.compendium-toolbar {
+  margin-bottom: var(--space-3);
+}
+
 .stat {
   display: flex;
   flex-direction: column;

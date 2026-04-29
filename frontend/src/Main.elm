@@ -368,6 +368,11 @@ viewEncounterBar =
                 , span [ class "encounter-bar__state", title "State 3 (placeholder)" ] [ text "🧠" ]
                 , span [ class "encounter-bar__state", title "State 4 (placeholder)" ] [ text "🪽" ]
                 ]
+            , span [ class "condition-list" ]
+                [ span [ class "condition-list__item" ] [ text "Paralyzed" ]
+                , span [ class "condition-list__sep" ] [ text "|" ]
+                , span [ class "condition-list__item" ] [ text "Poisoned" ]
+                ]
             ]
         , div [ class "encounter-bar__group encounter-bar__right" ]
             [ span [ class "encounter-bar__xp" ] [ text "93,000 XP" ]
@@ -417,7 +422,10 @@ viewPanelControls =
                 , button [ class "action-btn action-btn--blue" ] [ text "💾 Save" ]
                 , button [ class "action-btn action-btn--blue" ] [ text "📁 Load" ]
                 , button [ class "action-btn action-btn--green" ] [ text "⏭ Next Turn" ]
-                , button [ class "action-btn action-btn--orange" ] [ text "⟲ Reset" ]
+                , button [ class "action-btn action-btn--orange" ]
+                    [ span [ class "btn-glyph" ] [ text "⟲" ]
+                    , text " Reset"
+                    ]
                 , button [ class "action-btn action-btn--red" ] [ text "🗑 Clear" ]
                 ]
             ]
@@ -428,12 +436,18 @@ viewPanelDetail : Html Msg
 viewPanelDetail =
     section [ class "panel panel--detail" ]
         [ div [ class "panel__header" ]
-            [ div [ class "panel__title" ] [ text "Selected Stat Block" ] ]
+            [ div [ class "panel__title" ] [ text "Compendium" ] ]
         , div [ class "panel__body" ]
-            [ div [ class "btn-grid" ]
-                [ button [ class "btn btn--danger" ] [ text "Damage" ]
-                , button [ class "btn btn--success" ] [ text "Heal" ]
-                , button [ class "btn" ] [ text "Condition" ]
+            [ div [ class "btn-grid compendium-toolbar" ]
+                [ button [ class "action-btn action-btn--blue" ] [ text "🔍 Quick View" ]
+                , button [ class "action-btn action-btn--blue" ] [ text "📖 Open" ]
+                , button
+                    [ class "action-btn action-btn--blue"
+                    , disabled True
+                    , attribute "aria-disabled" "true"
+                    , title "CR Calculator (not yet available)"
+                    ]
+                    [ text "⚔️ CR Calculator" ]
                 ]
             , viewStatBlock mockStatBlock
             ]
