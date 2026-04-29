@@ -2,6 +2,7 @@ module Encounter exposing
     ( Cover(..), Creature, Encounter
     , initialEncounter
     , nextTurn, setActive, activeCreature, sortByInitiative
+    , moveUp, moveDown
     , mapCreature, nextCover, toggleDeathSave
     )
 
@@ -47,6 +48,11 @@ run any phase hooks; those are pure functions to be added per
 feature, with the `update` loop composing them around `nextTurn`.
 
 @docs nextTurn, setActive, activeCreature, sortByInitiative
+
+
+# Manual queue reordering
+
+@docs moveUp, moveDown
 
 
 # State helpers
@@ -338,6 +344,59 @@ summary.
 activeCreature : Encounter -> Maybe Creature
 activeCreature enc =
     findByName enc.activeName enc.creatures
+
+
+{-| Swap a creature with its predecessor in the queue. No-op when
+the named creature is already at the top, or isn't in the queue at
+all.
+
+This is purely a queue-position move — initiative isn't touched.
+A subsequent `sortByInitiative` will re-order the queue back to
+initiative order, which is the documented contract: manual moves
+are temporary, and the next sort wipes them.
+
+-}
+moveUp : String -> Encounter -> Encounter
+moveUp name enc =
+    { enc | creatures = swapWithPrev name enc.creatures }
+
+
+swapWithPrev : String -> List Creature -> List Creature
+swapWithPrev name creatures =
+    case creatures of
+        a :: b :: rest ->
+            if b.name == name then
+                b :: a :: rest
+
+            else
+                a :: swapWithPrev name (b :: rest)
+
+        _ ->
+            creatures
+
+
+{-| Swap a creature with its successor in the queue. No-op when the
+named creature is already at the bottom, or isn't in the queue.
+Same caveat as [`moveUp`](#moveUp): pure position move, no
+initiative change.
+-}
+moveDown : String -> Encounter -> Encounter
+moveDown name enc =
+    { enc | creatures = swapWithNext name enc.creatures }
+
+
+swapWithNext : String -> List Creature -> List Creature
+swapWithNext name creatures =
+    case creatures of
+        a :: b :: rest ->
+            if a.name == name then
+                b :: a :: rest
+
+            else
+                a :: swapWithNext name (b :: rest)
+
+        _ ->
+            creatures
 
 
 {-| Re-order the encounter queue by descending initiative.

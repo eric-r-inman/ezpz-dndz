@@ -13,7 +13,7 @@ import Encounter
 import HpChange
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onCheck, onClick, onInput, stopPropagationOn)
+import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Http
 import Json.Decode as Decode
 import Url exposing (Url)
@@ -299,6 +299,10 @@ type Msg
     | HpEditCancel
       -- Selection
     | ToggleSelected String
+    | ShiftToggleSelected
+      -- Manual queue reordering
+    | MoveCreatureUp String
+    | MoveCreatureDown String
       -- Initiative manager modal
     | InitiativeOpen String
     | InitiativeClose
@@ -815,6 +819,40 @@ update msg model =
             , Cmd.none
             )
 
+        ShiftToggleSelected ->
+            -- Bulk: if every creature is already selected, deselect
+            -- all; otherwise select all. The clicked creature ends up
+            -- in the resulting bulk state regardless of where it
+            -- started.
+            let
+                allSelected =
+                    List.all .selected model.encounter.creatures
+
+                newValue =
+                    not allSelected
+            in
+            ( withEncounter
+                (\enc ->
+                    { enc
+                        | creatures =
+                            List.map (\c -> { c | selected = newValue })
+                                enc.creatures
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        -- Manual queue reordering (the up/down arrows on each card).
+        -- Pure position swaps; initiative isn't touched. A later
+        -- sortByInitiative wipes the manual order, which matches
+        -- the documented contract.
+        MoveCreatureUp name ->
+            ( withEncounter (Encounter.moveUp name) model, Cmd.none )
+
+        MoveCreatureDown name ->
+            ( withEncounter (Encounter.moveDown name) model, Cmd.none )
+
         -- Initiative manager
         InitiativeOpen target ->
             ( { model | initiative = Just (freshInitiativeUi target) }
@@ -957,6 +995,33 @@ withHpChange fn model =
 
         Nothing ->
             model
+
+
+{-| Click handler for the row 1 selection checkbox.
+
+We intercept the raw `click` event so we can read the Shift modifier:
+holding Shift while clicking dispatches `ShiftToggleSelected` (bulk
+select-all / deselect-all), and a plain click toggles just the
+clicked creature. We always `preventDefault` so the browser doesn't
+auto-toggle the checkbox visual — its `checked` attribute is driven
+straight from the model on the next render, keeping a single source
+of truth and avoiding the double-toggle that an `onCheck` listener
+plus the browser's default would cause.
+
+-}
+selectionClickHandler : String -> Html.Attribute Msg
+selectionClickHandler creatureName =
+    preventDefaultOn "click"
+        (Decode.field "shiftKey" Decode.bool
+            |> Decode.map
+                (\shift ->
+                    if shift then
+                        ( ShiftToggleSelected, True )
+
+                    else
+                        ( ToggleSelected creatureName, True )
+                )
+        )
 
 
 {-| Apply `fn` to the open initiative-manager modal. No-op when the
@@ -1542,20 +1607,23 @@ viewCreatureCard activeName hpEdit creature =
                     [ type_ "checkbox"
                     , class "creature-card__select"
                     , checked creature.selected
-                    , onCheck (\_ -> ToggleSelected creature.name)
+                    , selectionClickHandler creature.name
                     , attribute "aria-label" ("Select " ++ creature.name)
+                    , title "Shift-click to select / deselect all"
                     ]
                     []
                 , button
                     [ class "icon-btn"
-                    , title "Move up in initiative"
-                    , attribute "aria-label" "Move up"
+                    , onClick (MoveCreatureUp creature.name)
+                    , title "Move up in queue (manual; ignores initiative)"
+                    , attribute "aria-label" "Move up in queue"
                     ]
                     [ text "↑" ]
                 , button
                     [ class "icon-btn"
-                    , title "Move down in initiative"
-                    , attribute "aria-label" "Move down"
+                    , onClick (MoveCreatureDown creature.name)
+                    , title "Move down in queue (manual; ignores initiative)"
+                    , attribute "aria-label" "Move down in queue"
                     ]
                     [ text "↓" ]
                 ]
