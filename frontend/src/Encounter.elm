@@ -1,7 +1,7 @@
 module Encounter exposing
     ( Cover(..), Creature, Encounter
     , initialEncounter
-    , nextTurn, setActive, activeCreature
+    , nextTurn, setActive, activeCreature, sortByInitiative
     , mapCreature, nextCover, toggleDeathSave
     )
 
@@ -46,7 +46,7 @@ The lifecycle has four phases that downstream features may hook:
 run any phase hooks; those are pure functions to be added per
 feature, with the `update` loop composing them around `nextTurn`.
 
-@docs nextTurn, setActive, activeCreature
+@docs nextTurn, setActive, activeCreature, sortByInitiative
 
 
 # State helpers
@@ -89,6 +89,7 @@ type alias Creature =
     { name : String
     , kind : String
     , initiative : Int
+    , initiativeBonus : Int
     , currentHp : Int
     , maxHp : Int
     , tempHp : Int
@@ -150,6 +151,7 @@ seedCreatures =
     [ { name = "Lyra Vale (PC)"
       , kind = "Half-elf rogue, lvl 5"
       , initiative = 22
+      , initiativeBonus = 5
       , currentHp = 38
       , maxHp = 42
       , tempHp = 0
@@ -171,6 +173,7 @@ seedCreatures =
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
       , initiative = 18
+      , initiativeBonus = -1
       , currentHp = 27
       , maxHp = 59
       , tempHp = 0
@@ -192,6 +195,7 @@ seedCreatures =
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
       , initiative = 17
+      , initiativeBonus = 2
       , currentHp = 34
       , maxHp = 65
       , tempHp = 0
@@ -213,6 +217,7 @@ seedCreatures =
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
       , initiative = 15
+      , initiativeBonus = 2
       , currentHp = 7
       , maxHp = 7
       , tempHp = 0
@@ -234,6 +239,7 @@ seedCreatures =
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
       , initiative = 12
+      , initiativeBonus = 2
       , currentHp = 21
       , maxHp = 21
       , tempHp = 0
@@ -255,6 +261,7 @@ seedCreatures =
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
       , initiative = 9
+      , initiativeBonus = 1
       , currentHp = 4
       , maxHp = 27
       , tempHp = 0
@@ -276,6 +283,7 @@ seedCreatures =
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
       , initiative = 8
+      , initiativeBonus = -1
       , currentHp = 78
       , maxHp = 78
       , tempHp = 0
@@ -297,6 +305,7 @@ seedCreatures =
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
       , initiative = 6
+      , initiativeBonus = 3
       , currentHp = 12
       , maxHp = 18
       , tempHp = 0
@@ -329,6 +338,27 @@ summary.
 activeCreature : Encounter -> Maybe Creature
 activeCreature enc =
     findByName enc.activeName enc.creatures
+
+
+{-| Re-order the encounter queue by descending initiative.
+
+5e ties are normally broken by Dexterity score; we use the recorded
+`initiativeBonus` as a stand-in (it's effectively the modifier the
+roll added). If both are equal we fall back to creature name for a
+stable, alphabetic tiebreaker — better than letting `List.sortBy`
+pick an arbitrary ordering on a re-render.
+
+`activeName` is preserved across the sort, so a re-sort mid-combat
+doesn't reset whose turn it is.
+
+-}
+sortByInitiative : Encounter -> Encounter
+sortByInitiative enc =
+    let
+        sortKey c =
+            ( negate c.initiative, negate c.initiativeBonus, c.name )
+    in
+    { enc | creatures = List.sortBy sortKey enc.creatures }
 
 
 {-| Move the active marker to a specific creature WITHOUT counting it

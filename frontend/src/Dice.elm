@@ -3,7 +3,7 @@ module Dice exposing
     , parse, expressionToString, scan
     , emptyHistory, push, historyEntries, maxHistoryEntries
     , generator, advantageGenerator, disadvantageGenerator, coinGenerator
-    , rollCmd, advantageCmd, disadvantageCmd, coinCmd
+    , rollCmd, advantageCmd, disadvantageCmd, coinCmd, batchRollCmd
     , encodeRoll, decodeRoll
     )
 
@@ -56,7 +56,7 @@ The convenient call site for `update`. Each `*Cmd` reads `Time.now`,
 seeds the RNG with the millisecond timestamp, runs the appropriate
 generator, and stamps the resulting `Roll` with that timestamp.
 
-@docs rollCmd, advantageCmd, disadvantageCmd, coinCmd
+@docs rollCmd, advantageCmd, disadvantageCmd, coinCmd, batchRollCmd
 
 
 # JSON
@@ -935,6 +935,55 @@ disadvantageCmd toMsg source modifier =
 coinCmd : (Roll -> msg) -> Source -> Cmd msg
 coinCmd toMsg source =
     rollWithTime toMsg source coinGenerator
+
+
+{-| Roll a batch of expressions in a single Cmd, returning one
+labeled `Roll` per spec.
+
+Each spec is `(label, source, expression)` — the label is whatever
+opaque identifier the caller wants to associate with the spec
+(typically a creature name) and is paired with the resulting `Roll`
+so the receiver knows which input spec produced which output.
+
+Why this exists: the per-call `rollCmd` seeds its RNG from the
+millisecond timestamp, which is fine for human click cadences but
+collides when rolling 8 things at once (every roll the same
+millisecond → every roll the same seed → every roll identical).
+Batch rolls share one timestamp and step a sequenced generator
+once, so the rolls are all independent without any same-millisecond
+worries.
+
+-}
+batchRollCmd :
+    (List ( String, Roll ) -> msg)
+    -> List ( String, Source, Expression )
+    -> Cmd msg
+batchRollCmd toMsg specs =
+    Time.now
+        |> Task.map
+            (\now ->
+                let
+                    seed =
+                        Random.initialSeed (Time.posixToMillis now)
+
+                    -- Wrap each input in a generator that pre-stamps
+                    -- the source label, so the sequenced generator
+                    -- yields fully-attributed rolls in one step.
+                    perSpecGen ( label, source, expr ) =
+                        Random.map
+                            (\roll ->
+                                ( label
+                                , { roll | source = source, timestamp = now }
+                                )
+                            )
+                            (generator expr)
+
+                    ( results, _ ) =
+                        Random.step (sequenceGen (List.map perSpecGen specs)) seed
+                in
+                results
+            )
+        |> Task.perform toMsg
 
 
 {-| Internal: drive a generator off `Time.now`, producing one Cmd.

@@ -13,7 +13,7 @@ import Encounter
 import HpChange
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput, stopPropagationOn)
+import Html.Events exposing (onCheck, onClick, onInput, stopPropagationOn)
 import Http
 import Json.Decode as Decode
 import Url exposing (Url)
@@ -79,6 +79,30 @@ type alias Model =
     , hpChange : Maybe HpChangeUi
     , hpChangeLog : List HpChangeEntry
     , hpEdit : Maybe HpEdit
+    , initiative : Maybe InitiativeUi
+    }
+
+
+{-| Initiative-manager modal state. `target` is the creature whose
+init circle was clicked (the modal's per-creature buttons read
+"Roll Initiative & Sort: <target>" / "Apply & Sort: <target>").
+
+`customValueText` is the raw text in the "Initiative Value:" input.
+Same trick as the dice modifier and HP edit fields: tracking the
+characters lets the user type a transient `-` while typing a
+negative initiative without the controlled input clobbering it.
+
+-}
+type alias InitiativeUi =
+    { target : String
+    , customValueText : String
+    }
+
+
+freshInitiativeUi : String -> InitiativeUi
+freshInitiativeUi target =
+    { target = target
+    , customValueText = ""
     }
 
 
@@ -273,6 +297,19 @@ type Msg
     | HpEditChange String
     | HpEditCommit
     | HpEditCancel
+      -- Selection
+    | ToggleSelected String
+      -- Initiative manager modal
+    | InitiativeOpen String
+    | InitiativeClose
+    | InitiativeCustomChanged String
+    | InitiativeQuickSort
+    | InitiativeAutoRollTarget
+    | InitiativeAutoRollAll
+    | InitiativeAutoRollSelected
+    | InitiativeApplyTarget
+    | InitiativeApplySelected
+    | InitiativeRollsLanded (List ( String, Dice.Roll ))
     | NoOp
 
 
@@ -325,6 +362,7 @@ init _ url key =
       , hpChange = Nothing
       , hpChangeLog = []
       , hpEdit = Nothing
+      , initiative = Nothing
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -769,6 +807,120 @@ update msg model =
         HpEditCancel ->
             ( { model | hpEdit = Nothing }, Cmd.none )
 
+        -- Selection
+        ToggleSelected name ->
+            ( withEncounter
+                (Encounter.mapCreature name (\c -> { c | selected = not c.selected }))
+                model
+            , Cmd.none
+            )
+
+        -- Initiative manager
+        InitiativeOpen target ->
+            ( { model | initiative = Just (freshInitiativeUi target) }
+            , Cmd.none
+            )
+
+        InitiativeClose ->
+            ( { model | initiative = Nothing }, Cmd.none )
+
+        InitiativeCustomChanged text ->
+            ( withInitiative (\u -> { u | customValueText = text }) model
+            , Cmd.none
+            )
+
+        InitiativeQuickSort ->
+            ( { model
+                | encounter = Encounter.sortByInitiative model.encounter
+                , initiative = Nothing
+              }
+            , Cmd.none
+            )
+
+        InitiativeAutoRollTarget ->
+            -- Roll just the target's initiative. The handler is
+            -- batchRollCmd-shaped (list of specs) so the resulting
+            -- Msg arrives in the same shape as multi-creature rolls;
+            -- the receiver handles 1-element and N-element batches
+            -- through the same pipeline.
+            case model.initiative of
+                Just ui ->
+                    ( model
+                    , initiativeRollCmd
+                        (List.filter (\c -> c.name == ui.target) model.encounter.creatures)
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        InitiativeAutoRollAll ->
+            ( model, initiativeRollCmd model.encounter.creatures )
+
+        InitiativeAutoRollSelected ->
+            ( model
+            , initiativeRollCmd
+                (List.filter .selected model.encounter.creatures)
+            )
+
+        InitiativeApplyTarget ->
+            -- Manual override for one creature. Closes the modal
+            -- whether or not the value parsed; an unparsable input
+            -- gets silently discarded (same UX as the HP edit).
+            case model.initiative of
+                Just ui ->
+                    ( applyCustomInitiative [ ui.target ] ui model
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        InitiativeApplySelected ->
+            case model.initiative of
+                Just ui ->
+                    let
+                        targets =
+                            List.filter .selected model.encounter.creatures
+                                |> List.map .name
+                    in
+                    ( applyCustomInitiative targets ui model
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        InitiativeRollsLanded results ->
+            -- Fold each (creature name, roll) pair into a fresh
+            -- Model: stamp the rolled total onto the creature's
+            -- initiative, push the roll into the dice history.
+            -- Then sort the queue, close the modal, and persist all
+            -- the rolls server-side. mapCreature silently no-ops on
+            -- unknown names so a stale roll (defensive) won't blow
+            -- up.
+            let
+                applyOne ( name, roll ) m =
+                    { m
+                        | encounter =
+                            Encounter.mapCreature name
+                                (\c -> { c | initiative = roll.total })
+                                m.encounter
+                    }
+                        |> withDice (\d -> { d | history = Dice.push roll d.history })
+
+                m1 =
+                    List.foldl applyOne model results
+
+                rolls =
+                    List.map Tuple.second results
+            in
+            ( { m1
+                | encounter = Encounter.sortByInitiative m1.encounter
+                , initiative = Nothing
+              }
+            , Cmd.batch (List.map persistRollCmd rolls)
+            )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -805,6 +957,96 @@ withHpChange fn model =
 
         Nothing ->
             model
+
+
+{-| Apply `fn` to the open initiative-manager modal. No-op when the
+modal is closed.
+-}
+withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
+withInitiative fn model =
+    case model.initiative of
+        Just ui ->
+            { model | initiative = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Build the `Cmd` for an initiative roll batch. The per-creature
+expression is `1d20 + initiativeBonus` (matching the modal's caption
+"Rolls 1d20 + creature's initiative bonus from stat block"), and
+each roll is tagged so the dice history reads
+"Initiative → Brakka, Ogre Brute".
+
+Empty input → `Cmd.none` (handles the "Selected" buttons being
+clicked when no creatures are selected).
+
+-}
+initiativeRollCmd : List Creature -> Cmd Msg
+initiativeRollCmd creatures =
+    if List.isEmpty creatures then
+        Cmd.none
+
+    else
+        Dice.batchRollCmd InitiativeRollsLanded
+            (List.map
+                (\c ->
+                    ( c.name
+                    , initiativeSource c.name
+                    , initiativeExpression c
+                    )
+                )
+                creatures
+            )
+
+
+{-| `1d20 + creature.initiativeBonus`, the standard 5e initiative roll.
+-}
+initiativeExpression : Creature -> Dice.Expression
+initiativeExpression c =
+    { dice =
+        [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = c.initiativeBonus
+    , damageType = Nothing
+    }
+
+
+{-| Source label for initiative rolls so the dice history shows
+"Initiative → <creature>".
+-}
+initiativeSource : String -> Dice.Source
+initiativeSource name =
+    { feature = "Initiative", target = Just name }
+
+
+{-| Custom-initiative apply path: parse the modal's text input, set
+each named creature's initiative to that value, sort the queue,
+close the modal. An unparseable text just closes the modal without
+mutating anything.
+-}
+applyCustomInitiative : List String -> InitiativeUi -> Model -> Model
+applyCustomInitiative names ui model =
+    case String.toInt (String.trim ui.customValueText) of
+        Just n ->
+            let
+                applyOne name m =
+                    { m
+                        | encounter =
+                            Encounter.mapCreature name
+                                (\c -> { c | initiative = n })
+                                m.encounter
+                    }
+
+                m1 =
+                    List.foldl applyOne model names
+            in
+            { m1
+                | encounter = Encounter.sortByInitiative m1.encounter
+                , initiative = Nothing
+            }
+
+        Nothing ->
+            { model | initiative = Nothing }
 
 
 {-| Build the dice-roller `Source` label for an HP-change roll, so
@@ -983,6 +1225,7 @@ view model =
             , viewPage model
             , viewDiceModal model.dice
             , viewHpChangeModal model
+            , viewInitiativeModal model
             ]
         ]
     }
@@ -1299,6 +1542,7 @@ viewCreatureCard activeName hpEdit creature =
                     [ type_ "checkbox"
                     , class "creature-card__select"
                     , checked creature.selected
+                    , onCheck (\_ -> ToggleSelected creature.name)
                     , attribute "aria-label" ("Select " ++ creature.name)
                     ]
                     []
@@ -1360,9 +1604,12 @@ viewCreatureCard activeName hpEdit creature =
 viewCardRowTop : Creature -> Html Msg
 viewCardRowTop creature =
     div [ class "creature-card__row creature-card__row--top" ]
-        [ span
-            [ class "init-circle"
-            , title ("Initiative roll: " ++ String.fromInt creature.initiative)
+        [ button
+            [ class "init-circle init-circle--clickable"
+            , onClick (InitiativeOpen creature.name)
+            , title "Click to open the initiative manager"
+            , attribute "aria-label"
+                ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
             [ text (String.fromInt creature.initiative) ]
         , viewSurprisedToggle creature
@@ -2478,3 +2725,186 @@ hpSnapshot hp temp =
 
     else
         String.fromInt hp
+
+
+
+-- INITIATIVE MANAGER MODAL
+
+
+{-| Renders the initiative manager when one is open. Three stacked
+sections: a single-button quick sort, an auto-roll batch (one button
+each for target / all / selected), and a custom value entry with
+target / selected apply. Closes on backdrop click or Cancel.
+-}
+viewInitiativeModal : Model -> Html Msg
+viewInitiativeModal model =
+    case model.initiative of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            let
+                selectedCount =
+                    List.length (List.filter .selected model.encounter.creatures)
+            in
+            div
+                [ class "modal-backdrop"
+                , onClick InitiativeClose
+                ]
+                [ div
+                    [ class "modal modal--initiative"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" "Initiative manager"
+                    ]
+                    [ viewInitiativeHeader ui
+                    , div [ class "modal__body" ]
+                        [ viewInitiativeQuickSort
+                        , viewInitiativeAutoRoll ui selectedCount
+                        , viewInitiativeCustom ui selectedCount
+                        , viewInitiativeFooter
+                        ]
+                    ]
+                ]
+
+
+viewInitiativeHeader : InitiativeUi -> Html Msg
+viewInitiativeHeader ui =
+    div [ class "modal__header" ]
+        [ div [ class "modal__title" ]
+            [ text ("Initiative — " ++ ui.target) ]
+        , button
+            [ class "modal__close"
+            , onClick InitiativeClose
+            , title "Cancel"
+            , attribute "aria-label" "Cancel"
+            ]
+            [ text "×" ]
+        ]
+
+
+viewInitiativeQuickSort : Html Msg
+viewInitiativeQuickSort =
+    div [ class "init-section" ]
+        [ button
+            [ class "action-btn action-btn--blue init-btn-block"
+            , onClick InitiativeQuickSort
+            ]
+            [ text "🔄 Quick Sort Encounter" ]
+        , div [ class "init-section__caption" ]
+            [ text "Sort all creatures by their current initiative values" ]
+        ]
+
+
+viewInitiativeAutoRoll : InitiativeUi -> Int -> Html Msg
+viewInitiativeAutoRoll ui selectedCount =
+    div [ class "init-section" ]
+        [ h3 [ class "init-section__heading" ]
+            [ text "Auto-roll Initiative" ]
+        , button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick InitiativeAutoRollTarget
+            ]
+            [ text ("🎲 Roll Initiative & Sort: " ++ ui.target) ]
+        , button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick InitiativeAutoRollAll
+            ]
+            [ text "🎲 Roll Initiative & Sort: All" ]
+        , button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick InitiativeAutoRollSelected
+            , disabled (selectedCount == 0)
+            , attribute "aria-disabled"
+                (if selectedCount == 0 then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , title (selectedTitle selectedCount)
+            ]
+            [ text ("🎲 Roll Initiative & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
+        , div [ class "init-section__caption" ]
+            [ text "Rolls 1d20 + creature's initiative bonus from stat block" ]
+        ]
+
+
+viewInitiativeCustom : InitiativeUi -> Int -> Html Msg
+viewInitiativeCustom ui selectedCount =
+    div [ class "init-section" ]
+        [ h3 [ class "init-section__heading" ]
+            [ text "Custom Initiative" ]
+        , div [ class "init-section__row" ]
+            [ Html.label [ for "init-custom-value" ]
+                [ text "Initiative Value:" ]
+            , input
+                [ id "init-custom-value"
+                , class "init-section__input"
+                , type_ "number"
+                , Html.Attributes.min "-99"
+                , Html.Attributes.max "99"
+                , value ui.customValueText
+                , onInput InitiativeCustomChanged
+                , Html.Events.on "keydown" (enterKey InitiativeApplyTarget)
+                ]
+                []
+            ]
+        , button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick InitiativeApplyTarget
+            ]
+            [ text ("Apply & Sort: " ++ ui.target) ]
+        , button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick InitiativeApplySelected
+            , disabled (selectedCount == 0)
+            , attribute "aria-disabled"
+                (if selectedCount == 0 then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , title (selectedTitle selectedCount)
+            ]
+            [ text ("Apply & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
+        ]
+
+
+{-| Tooltip for "Selected" buttons: explains why they're disabled
+when no creatures are checked, and confirms the count when at least
+one is. Saves the GM a click to figure out why nothing happens.
+-}
+selectedTitle : Int -> String
+selectedTitle n =
+    case n of
+        0 ->
+            "No creatures are selected — tick the row 1 checkbox on the cards you want first"
+
+        1 ->
+            "1 creature selected"
+
+        _ ->
+            String.fromInt n ++ " creatures selected"
+
+
+selectedCountSuffix : Int -> String
+selectedCountSuffix n =
+    if n > 0 then
+        " (" ++ String.fromInt n ++ ")"
+
+    else
+        ""
+
+
+viewInitiativeFooter : Html Msg
+viewInitiativeFooter =
+    div [ class "init-footer" ]
+        [ button
+            [ class "action-btn"
+            , onClick InitiativeClose
+            ]
+            [ text "Close" ]
+        ]
