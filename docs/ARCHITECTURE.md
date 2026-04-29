@@ -155,6 +155,54 @@ touching the server. Concurrent writes are serialized through an
 async mutex, and writes go to a sibling tempfile that's renamed over
 the target so a crash mid-write can't truncate the log.
 
+## Production deployment
+
+The intended target is a homelab-scale deployment: a handful of
+concurrent users (say 1–20), self-hosted on a small Linux box,
+fronted by a reverse proxy. We are explicitly NOT designing for
+public internet scale or thousands of users.
+
+**Auth.** The server already ships an OIDC scaffold
+(`crates/server/src/auth.rs`). In a typical homelab deployment a
+front-end SSO (Authelia, Keycloak, Authentik, Pocket ID) issues
+tokens for `ezpz-dndz`; set `--oidc-issuer / --oidc-client-id /
+--oidc-client-secret-file` (or the `OIDC_ISSUER` / `OIDC_CLIENT_ID`
+/ `OIDC_CLIENT_SECRET_FILE` env vars) and the server uses the OIDC
+client. With OIDC unconfigured, the server runs unauthenticated and
+`/me` returns a stubbed `admin` user; that's the local-dev mode.
+
+**Persistence root.** Everything the server writes at runtime lives
+under `--data-dir` (default: cwd). Today that's only the dice
+history JSON (`<data_dir>/dice-history.json`); the planned SQLite
+database, saved encounters, and per-user uploads will all default
+to `<data_dir>/...` so a deployment only has to bind-mount one
+directory. See [ROADMAP.md](ROADMAP.md) for the planned data model.
+
+**Service unit.** The systemd service expectations live in
+[systemd.org](systemd.org). `sd-notify` is wired up and the server
+honors socket activation via `--listen sd-listen`.
+
+**TLS.** Out of scope for this server. Run behind a reverse proxy
+(Caddy, nginx, traefik) that terminates TLS and forwards to the
+listen address. `--base-url` should be the externally-visible URL
+the proxy publishes — that's what shows up in OIDC redirect URIs.
+
+## Planned data model
+
+Sketch of the storage we expect to land as features ship; subject
+to change. Current implementation persists dice history only.
+
+| Concern              | Today                        | Target                     |
+|----------------------|------------------------------|----------------------------|
+| User identity        | OIDC subject in session      | `users` table, OIDC subject as natural key |
+| Compendium creatures | hardcoded `Encounter.seedCreatures` (Elm) | `creatures` table with shared/private visibility |
+| Encounter saves      | none (in-memory only)        | `encounters` table, owner-scoped |
+| Dice history         | per-deployment JSON file     | `dice_rolls` table, optionally per-user |
+
+The first feature that needs persistence beyond dice will likely
+introduce SQLite (rusqlite or sqlx). Until then, rolls live in JSON
+and the rest is in-Elm seed data.
+
 ## Run / build / test
 
 ```sh

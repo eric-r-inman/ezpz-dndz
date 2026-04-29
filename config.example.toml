@@ -13,3 +13,21 @@ log_format = "text"  # Options: text, json
 # listen = "/run/myapp/myapp.sock"  # Unix domain socket path
 # listen = "sd-listen"  # Inherit socket from systemd (socket activation)
 # frontend_path = "frontend/public"  # Path to compiled Elm frontend assets
+
+# Runtime persistence root. The dice history file (and the SQLite DB
+# / compendium / saved encounters when those land) lives under this
+# directory unless their path is set explicitly. Default: cwd.
+# data_dir = "/var/lib/ezpz-dndz"
+
+# Override the dice history file path. Defaults to
+# <data_dir>/dice-history.json.
+# dice_history_path = "/var/lib/ezpz-dndz/dice-history.json"
+
+# OIDC (single-sign-on). Leave commented to run unauthenticated.
+# Production deployments behind Authelia / Keycloak / similar set
+# all three fields. See docs/ARCHITECTURE.md for the deployment
+# notes.
+# base_url = "https://dndz.example.com"
+# oidc_issuer = "https://sso.example.com/application/o/ezpz-dndz"
+# oidc_client_id = "ezpz-dndz"
+# oidc_client_secret_file = "/etc/credentials/ezpz-dndz-oidc.secret"

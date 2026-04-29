@@ -47,3 +47,18 @@
   are handled in =crates/server/src/dice.rs=, persisting to
   =dice-history.json= (configurable via =--dice-history-path=) with
   atomic-rename writes and an async mutex around the file.
+
+** Production prep
+
+- New =--data-dir= / =DATA_DIR= config option (default: cwd).  All
+  runtime persistence will derive from this so a deployment only has
+  to bind-mount one directory.  =--dice-history-path= now defaults to
+  =<data_dir>/dice-history.json= (still overridable explicitly).
+- =config.example.toml= grows commented-out blocks for =data_dir=,
+  =dice_history_path=, and the OIDC fields, with a pointer at
+  [[file:docs/ARCHITECTURE.md][docs/ARCHITECTURE.md]] for deployment notes.
+- New [[file:docs/ARCHITECTURE.md][docs/ARCHITECTURE.md]] section "Production deployment" plus
+  "Planned data model".  New [[file:docs/ROADMAP.md][docs/ROADMAP.md]] tracks the upcoming
+  feature pipeline (compendium read API, encounter save/load,
+  per-user dice history, SQLite migration, OIDC polish, real-time
+  co-DM mode).

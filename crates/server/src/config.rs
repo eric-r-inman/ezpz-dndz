@@ -57,8 +57,15 @@ pub struct CliRaw {
   #[arg(long, env = "FRONTEND_PATH")]
   pub frontend_path: Option<PathBuf>,
 
+  /// Root directory for runtime persistence (dice history today; the
+  /// SQLite database, compendium, and saved encounters when those
+  /// land). Files outside this directory should not be created at
+  /// runtime. Defaults to the current working directory.
+  #[arg(long, env = "DATA_DIR")]
+  pub data_dir: Option<PathBuf>,
+
   /// Path to the JSON file backing the dice-roller history. Defaults
-  /// to `dice-history.json` in the working directory.
+  /// to `<data_dir>/dice-history.json`.
   #[arg(long, env = "DICE_HISTORY_PATH")]
   pub dice_history_path: Option<PathBuf>,
 
@@ -86,6 +93,7 @@ pub struct ConfigFileRaw {
   pub log_format: Option<String>,
   pub listen: Option<String>,
   pub frontend_path: Option<PathBuf>,
+  pub data_dir: Option<PathBuf>,
   pub dice_history_path: Option<PathBuf>,
   pub base_url: Option<String>,
   pub oidc_issuer: Option<String>,
@@ -125,6 +133,7 @@ pub struct Config {
   pub log_format: LogFormat,
   pub listen_address: ListenerAddress,
   pub frontend_path: PathBuf,
+  pub data_dir: PathBuf,
   pub dice_history_path: PathBuf,
   pub base_url: String,
   pub oidc: Option<OidcConfig>,
@@ -179,10 +188,19 @@ impl Config {
       .or(config_file.frontend_path)
       .unwrap_or_else(|| PathBuf::from("frontend/public"));
 
+    // Runtime persistence root. When future features (SQLite DB,
+    // compendium, encounters) land they all derive their paths from
+    // this so a deployment only has to bind-mount one directory.
+    let data_dir = cli
+      .data_dir
+      .or(config_file.data_dir)
+      .unwrap_or_else(|| PathBuf::from("."));
+
+    // Explicit --dice-history-path wins; otherwise default into data_dir.
     let dice_history_path = cli
       .dice_history_path
       .or(config_file.dice_history_path)
-      .unwrap_or_else(|| PathBuf::from("dice-history.json"));
+      .unwrap_or_else(|| data_dir.join("dice-history.json"));
 
     let base_url = cli.base_url.or(config_file.base_url).ok_or_else(|| {
       ConfigError::Validation("base_url is required".to_string())
@@ -252,6 +270,7 @@ impl Config {
       log_format,
       listen_address,
       frontend_path,
+      data_dir,
       dice_history_path,
       base_url,
       oidc,
