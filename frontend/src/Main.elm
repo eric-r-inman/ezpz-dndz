@@ -90,10 +90,19 @@ type alias DiceUi =
     , inputError : Maybe Dice.Error
     , count : Int
     , modifier : Int
+    , modifierText : String
     , history : Dice.History
     }
 
 
+{-| The parsed `modifier` is what generators consume; `modifierText`
+mirrors the literal characters in the `<input>`. The two diverge
+during transient typing — e.g. while the user is typing "-5", the
+field briefly contains just "-", which doesn't parse as an Int. We
+keep the raw text in the model so re-renders don't overwrite the
+"-" with a stringified previous value, which used to make negative
+input feel impossible.
+-}
 emptyDice : DiceUi
 emptyDice =
     { open = False
@@ -101,6 +110,7 @@ emptyDice =
     , inputError = Nothing
     , count = 1
     , modifier = 0
+    , modifierText = "0"
     , history = Dice.emptyHistory
     }
 
@@ -333,12 +343,26 @@ update msg model =
             )
 
         DiceModifierChanged text ->
-            ( withDice (\d -> { d | modifier = parseClamp -999 999 0 text }) model
+            -- Track the raw characters in `modifierText`; only update
+            -- the parsed `modifier` when the input is actually a
+            -- number. Lets the user type "-" before "-5" without
+            -- losing the minus on re-render.
+            ( withDice
+                (\d ->
+                    { d
+                        | modifierText = text
+                        , modifier =
+                            String.toInt (String.trim text)
+                                |> Maybe.map (Basics.max -999 >> Basics.min 999)
+                                |> Maybe.withDefault d.modifier
+                    }
+                )
+                model
             , Cmd.none
             )
 
         DiceResetSliders ->
-            ( withDice (\d -> { d | count = 1, modifier = 0 }) model
+            ( withDice (\d -> { d | count = 1, modifier = 0, modifierText = "0" }) model
             , Cmd.none
             )
 
@@ -1449,7 +1473,7 @@ viewDiceForm ui =
                 , type_ "number"
                 , Html.Attributes.min "-999"
                 , Html.Attributes.max "999"
-                , value (String.fromInt ui.modifier)
+                , value ui.modifierText
                 , onInput DiceModifierChanged
                 ]
                 []
