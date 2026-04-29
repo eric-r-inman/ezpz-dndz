@@ -89,6 +89,7 @@ type Msg
     | UrlChanged Url
     | GotMe (Result Http.Error MeInfo)
     | NextTurn
+    | SetActive String
     | ToggleSurprised String
     | CycleCover String
     | ToggleConcentration String
@@ -183,6 +184,14 @@ update msg model =
             -- branch is intentionally a one-liner so all the rules-y
             -- behavior is inspectable in one place (Encounter.nextTurn).
             ( { model | encounter = Encounter.nextTurn model.encounter }
+            , Cmd.none
+            )
+
+        SetActive name ->
+            -- Manual jump (the right-arrow button on a card). Distinct
+            -- from NextTurn: no round bump, no turn-progression hooks
+            -- when those land. See Encounter.setActive for rationale.
+            ( withEncounter (Encounter.setActive name) model
             , Cmd.none
             )
 
@@ -580,7 +589,8 @@ viewCreatureCard activeName creature =
             , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn icon-btn--accent"
-                    , title "Make active creature"
+                    , onClick (SetActive creature.name)
+                    , title "Make active creature (does not advance the turn)"
                     , attribute "aria-label" "Make active"
                     ]
                     [ text "→" ]

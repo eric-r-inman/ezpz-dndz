@@ -1,7 +1,7 @@
 module Encounter exposing
     ( Cover(..), Creature, Encounter
     , initialEncounter
-    , nextTurn, activeCreature
+    , nextTurn, setActive, activeCreature
     , mapCreature, nextCover, toggleDeathSave
     )
 
@@ -46,7 +46,7 @@ The lifecycle has four phases that downstream features may hook:
 run any phase hooks; those are pure functions to be added per
 feature, with the `update` loop composing them around `nextTurn`.
 
-@docs nextTurn, activeCreature
+@docs nextTurn, setActive, activeCreature
 
 
 # State helpers
@@ -320,6 +320,34 @@ summary.
 activeCreature : Encounter -> Maybe Creature
 activeCreature enc =
     findByName enc.activeName enc.creatures
+
+
+{-| Move the active marker to a specific creature WITHOUT counting it
+as turn progression.
+
+Use this when the GM wants to scrub the turn marker manually (the
+right-arrow button on each creature card). It deliberately does NOT:
+
+  - increment `round`,
+  - run the would-be "end of turn" hooks for the outgoing creature,
+  - run the would-be "beginning of turn" hooks for the incoming one.
+
+The contrast with [`nextTurn`](#nextTurn) is exactly that: `nextTurn`
+is "advance the clock"; `setActive` is "skip to whoever I picked".
+Future per-phase hook composers should branch off `nextTurn` only.
+
+If `name` isn't in the queue, the encounter is returned unchanged so
+the call site can no-op safely.
+
+-}
+setActive : String -> Encounter -> Encounter
+setActive name enc =
+    case findByName name enc.creatures of
+        Just _ ->
+            { enc | activeName = name }
+
+        Nothing ->
+            enc
 
 
 {-| Advance the turn marker by one slot.

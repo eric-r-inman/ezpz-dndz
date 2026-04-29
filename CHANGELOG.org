@@ -21,3 +21,7 @@
   placeholder for now).
 - Brand mark dropped; title renders as "eZpZ-dndZ" in plain text
   rather than the gradient mark + wordmark.
+- Right-arrow on a creature card now jumps the active marker to that
+  creature without advancing the turn (no round bump, no turn-
+  progression hooks).  Wires =Encounter.setActive=, distinct from
+  =Encounter.nextTurn=.

@@ -96,6 +96,17 @@ Today only the queue advance is implemented. Each phase will land as
 its own pure function in `Encounter.elm`, and `Main`'s `update` for
 `NextTurn` will compose them around the existing `nextTurn` call.
 
+There is also a "manual scrub" path: clicking the **→** arrow on any
+creature card immediately makes that creature active without
+advancing the turn. It dispatches `SetActive` rather than `NextTurn`,
+which routes to `Encounter.setActive`. By design, `setActive`
+deliberately *does not* increment `round` or fire turn-progression
+hooks — neither the would-be end-of-turn for the previous active
+creature nor the would-be beginning-of-turn for the new one. Future
+hook composers must therefore branch off `nextTurn`, never
+`setActive`. This mirrors how a GM at the table sometimes just says
+"OK, switch to X next" without it counting as a round event.
+
 ## Creature identity
 
 Creatures are currently identified by `name : String`. Every per-
