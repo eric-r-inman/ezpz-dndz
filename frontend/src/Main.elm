@@ -134,6 +134,7 @@ type Msg
     | DiceInputChanged String
     | DiceCountChanged String
     | DiceModifierChanged String
+    | DiceResetSliders
     | DiceRollFromInput
     | DiceRollFaces Int
     | DiceRollAdvantage
@@ -333,6 +334,11 @@ update msg model =
 
         DiceModifierChanged text ->
             ( withDice (\d -> { d | modifier = parseClamp -999 999 0 text }) model
+            , Cmd.none
+            )
+
+        DiceResetSliders ->
+            ( withDice (\d -> { d | count = 1, modifier = 0 }) model
             , Cmd.none
             )
 
@@ -1447,6 +1453,13 @@ viewDiceForm ui =
                 , onInput DiceModifierChanged
                 ]
                 []
+            , button
+                [ class "dice-form__reset"
+                , onClick DiceResetSliders
+                , title "Reset count to 1 and modifier to 0"
+                , attribute "aria-label" "Reset count and modifier"
+                ]
+                [ text "❌" ]
             ]
         ]
 
