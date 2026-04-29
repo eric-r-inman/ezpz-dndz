@@ -1401,14 +1401,6 @@ viewEncounterBar enc =
         activeName =
             Maybe.map .name active
                 |> Maybe.withDefault "—"
-
-        hpText =
-            case active of
-                Just c ->
-                    String.fromInt c.currentHp ++ "/" ++ String.fromInt c.maxHp
-
-                Nothing ->
-                    "—"
     in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
@@ -1423,7 +1415,7 @@ viewEncounterBar enc =
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , span [ class "encounter-bar__sep" ] [ text "|" ]
             , span [ class "encounter-bar__active" ] [ text activeName ]
-            , span [ class "encounter-bar__hp" ] [ text hpText ]
+            , viewEncounterBarHp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
             , div [ class "encounter-bar__states" ]
                 [ span [ class "encounter-bar__state", title "State 1 (placeholder)" ] [ text "✊" ]
@@ -1443,6 +1435,37 @@ viewEncounterBar enc =
             , viewXpFilter
             ]
         ]
+
+
+{-| HP readout for the encounter title bar. Reuses the same
+.hp-display\* classes the card row 2 uses so the green/muted/blue
+colors line up exactly. Renders an em-dash when no creature is
+active (empty queue or activeName drift).
+-}
+viewEncounterBarHp : Maybe Creature -> Html Msg
+viewEncounterBarHp active =
+    case active of
+        Just c ->
+            span [ class "hp-display" ]
+                [ span [ class "hp-display__current" ]
+                    [ text (String.fromInt c.currentHp) ]
+                , span [ class "hp-display__sep" ] [ text "/" ]
+                , span [ class "hp-display__max" ]
+                    [ text (String.fromInt c.maxHp) ]
+                , if c.tempHp > 0 then
+                    span
+                        [ class "hp-display__temp"
+                        , title "Temporary hit points"
+                        ]
+                        [ text ("+" ++ String.fromInt c.tempHp) ]
+
+                  else
+                    text ""
+                ]
+
+        Nothing ->
+            span [ class "hp-display" ]
+                [ span [ class "hp-display__max" ] [ text "—" ] ]
 
 
 viewXpFilter : Html Msg

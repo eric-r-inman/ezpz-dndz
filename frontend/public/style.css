@@ -1048,10 +1048,14 @@ body {
   max-width: 240px;
 }
 
-.encounter-bar__hp {
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
+/* The numeric HP for the active creature is rendered via the
+   shared .hp-display* classes the card row 2 uses, so the colors
+   line up automatically. We only need a small size + spacing
+   override here so the HP doesn't bump up to its 1rem default and
+   tower over the rest of the title-bar text. */
+.encounter-bar .hp-display {
+  font-size: inherit;
+  margin-right: 0;
 }
 
 .encounter-bar__hp-label {
