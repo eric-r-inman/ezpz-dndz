@@ -136,8 +136,12 @@ deployment context.
   with manual + dice modes; last-10 log; click-to-edit current /
   max HP via `HpChange.setCurrentHp` / `setMaxHp`.
 - Initiative manager: clickable init-circle, Quick Sort, batch
-  Auto-roll for target / all / selected, Custom value apply for
+  Auto-roll for target / all / selected (with Advantage sister
+  buttons that roll 2d20-keep-highest), Custom value apply for
   target / selected.
 - Manual queue reordering via row 1 up/down arrows.
 - Selection: row 1 checkbox (single toggle) + Shift+click bulk
   select-all / deselect-all.
+- 5e surprise rule: `Encounter.nextTurn` skips creatures with
+  `surprised = True`, auto-clearing their flag in the same step
+  so their next turn after the skip happens normally.

@@ -137,13 +137,21 @@ Clicking the blue init-circle on any creature card opens the
   sort so re-sorting mid-combat doesn't reset whose turn it is.
 - **Auto-roll Initiative** rolls `1d20 + creature.initiativeBonus`
   for either the click target, all creatures, or every creature
-  with `selected = True`. Goes through `Dice.batchRollCmd`, which
-  shares one timestamp + one sequenced seed-step across the whole
-  batch — solves the "8 creatures all roll the same number"
-  collision a per-call `Dice.rollCmd` would hit when fired N times
-  in the same millisecond. Each roll lands in the dice history
-  tagged `Initiative → <creature>` and persists via
-  `/api/dice/history`.
+  with `selected = True`. Each main button has a green **Advantage**
+  sibling on its right that uses `Dice.advantageGenerator`
+  (2d20 keep highest, plus the bonus) instead. The Msg
+  `InitiativeAutoRoll RollScope RollMode` is parameterized over the
+  combination — `RollScope = ScopeTarget | ScopeAll | ScopeSelected`,
+  `RollMode = ModeStandard | ModeAdvantage`. A future Disadvantage
+  sister drops in as a third `RollMode` constructor. Goes through
+  `Dice.batchRollCmd`, which is generic over the per-spec
+  `Random.Generator Roll` and shares one timestamp + one sequenced
+  seed-step across the batch — solves the "8 creatures all roll
+  the same number" collision a per-call `Dice.rollCmd` would hit
+  when fired N times in the same millisecond. Each roll lands in
+  the dice history tagged `Initiative → <creature>` (advantage
+  rolls render with the formula `Adv: 1d20+N` so the mode is
+  visible at a glance) and persists via `/api/dice/history`.
 - **Custom Initiative** sets each named creature's initiative to a
   manually-entered number, then sorts.
 

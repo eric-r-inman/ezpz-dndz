@@ -172,6 +172,21 @@
   / blue palette stays in lockstep.  Temp HP shows inline as
   "+N" when nonzero.
 
+** Initiative: Advantage sister buttons
+
+- Each Auto-roll button in the Initiative Manager modal now has a
+  green *Advantage* sibling on its right that rolls 2d20-keep-
+  highest + bonus instead of 1d20 + bonus (5e advantage).
+- =Dice.batchRollCmd= is now generic over the per-spec generator
+  (~Random.Generator Roll~ instead of ~Expression~), so callers
+  pick whichever generator they want and mixed-mode batches are
+  fine.
+- Replaced the three separate Msgs (=InitiativeAutoRollTarget /
+  All / Selected=) with one parameterized
+  =InitiativeAutoRoll RollScope RollMode=.  Future Disadvantage
+  drops in as a third =RollMode= constructor without churning
+  the Msg shape.
+
 ** Surprise rule (turn skip)
 
 - =Encounter.nextTurn= now honors the per-creature ~surprised~
