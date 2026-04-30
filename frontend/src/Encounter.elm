@@ -1,9 +1,15 @@
 module Encounter exposing
-    ( Cover(..), Creature, Encounter
+    ( Cover(..), Creature, DeathSaves, Encounter
+    , Condition, ConditionDraft, Duration(..), TurnPhase(..), SaveToEnd
+    , standardConditions
     , initialEncounter
     , nextTurn, setActive, activeCreature, sortByInitiative
     , moveUp, moveDown
-    , mapCreature, nextCover, toggleDeathSave
+    , mapCreature, nextCover
+    , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
+    , isDeathSaveStable, isDeathSaveDead
+    , addCondition, updateCondition, removeCondition, findCondition
+    , describeDuration
     )
 
 {-| Domain layer for the encounter manager.
@@ -20,7 +26,9 @@ damage), it belongs here.
 
 # Types
 
-@docs Cover, Creature, Encounter
+@docs Cover, Creature, DeathSaves, Encounter
+@docs Condition, ConditionDraft, Duration, TurnPhase, SaveToEnd
+@docs standardConditions
 
 
 # Initial state
@@ -57,7 +65,19 @@ feature, with the `update` loop composing them around `nextTurn`.
 
 # State helpers
 
-@docs mapCreature, nextCover, toggleDeathSave
+@docs mapCreature, nextCover
+
+
+# Death saves
+
+@docs emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
+@docs isDeathSaveStable, isDeathSaveDead
+
+
+# Conditions / effects
+
+@docs addCondition, updateCondition, removeCondition, findCondition
+@docs describeDuration
 
 -}
 
@@ -75,6 +95,153 @@ type Cover
     | FullCover
 
 
+{-| 5e death-save tracker. A creature at 0 HP rolls a d20 at the
+start of each of its turns:
+
+  - 10+ → success
+  - 9 or less → failure
+  - natural 20 → revive at 1 HP (handled outside this type, in the
+    HP-change engine)
+  - natural 1 → counts as two failures
+
+Three successes → stable (still at 0 HP, but no more rolls).
+Three failures → dead.
+
+This record holds just the running counts, clamped 0..3 by the
+[`addDeathSaveSuccesses`](#addDeathSaveSuccesses) and
+[`addDeathSaveFailures`](#addDeathSaveFailures) helpers. Stable /
+dead are derived states — see [`isDeathSaveStable`](#isDeathSaveStable)
+and [`isDeathSaveDead`](#isDeathSaveDead).
+
+-}
+type alias DeathSaves =
+    { successes : Int
+    , failures : Int
+    }
+
+
+{-| One condition or effect riding on a creature. The data is shaped
+to cover both the standard 5e conditions ("Poisoned", "Frightened",
+etc.) and freeform GM-authored effects ("Bardic inspiration", "On
+fire from torch").
+
+  - `id` is a per-encounter unique integer assigned at insert. It's
+    what edit / delete operations use as the lookup key, since
+    `name` isn't unique (you might have two stacks of Exhaustion or
+    two custom effects with the same label).
+  - `name` is the display label — either one of
+    [`standardConditions`](#standardConditions) or the GM's free
+    text. The view doesn't care which.
+  - `note` is an optional 10-char hint shown next to the chip
+    ("from Lyra", "DC 13"); UI enforces the length cap.
+  - `duration` is what makes the condition end (manual removal,
+    a queue-relative turn phase, or a turn countdown). See
+    [`Duration`](#Duration).
+  - `saveToEnd` is the optional saving-throw conditional that
+    can clear the condition on success. See [`SaveToEnd`](#SaveToEnd).
+
+-}
+type alias Condition =
+    { id : Int
+    , name : String
+    , note : String
+    , duration : Duration
+    , saveToEnd : Maybe SaveToEnd
+    }
+
+
+{-| Same shape as [`Condition`](#Condition) minus the `id` field —
+used by [`addCondition`](#addCondition) so callers don't have to
+allocate ids themselves. The encounter assigns ids monotonically.
+-}
+type alias ConditionDraft =
+    { name : String
+    , note : String
+    , duration : Duration
+    , saveToEnd : Maybe SaveToEnd
+    }
+
+
+{-| What ends a condition.
+
+  - `DurationManual` — sticks until the GM explicitly removes it.
+    This is the "I'll remember when to take this off" path.
+  - `DurationUntilTurn phase creatureName` — removed at the
+    begin/end of `creatureName`'s turn. Maps directly to the 5e
+    spell duration "until the start/end of your next turn".
+    The reference creature can be any creature in the queue; the
+    common case is the caster, but effects like "until the end of
+    the target's next turn" land here too.
+  - `DurationCountdown phase remaining skipNextTick` — runs for
+    `remaining` of the bearer's own turns, ticking at begin/end.
+    `skipNextTick` is set when the countdown was created with
+    `phase = AtEnd` during the bearer's currently-active turn:
+    the bearer's NEXT end-of-turn isn't really a full turn
+    elapsed, so we skip that one tick. See the discussion in
+    [`nextTurn`](#nextTurn).
+
+-}
+type Duration
+    = DurationManual
+    | DurationUntilTurn TurnPhase String
+    | DurationCountdown TurnPhase Int Bool
+
+
+{-| Which slice of a creature's turn a hook fires on.
+-}
+type TurnPhase
+    = AtBegin
+    | AtEnd
+
+
+{-| Saving-throw conditional for ending a condition.
+
+  - `ability` is a short label like "WIS", "CON" — used for
+    display; we don't validate it against a fixed enum so house
+    rules can pick any abbreviation.
+  - `dc` is the difficulty class.
+  - `bonus` is the save bonus to add when rolling.
+  - `autoRoll = True` means the save fires automatically at the
+    bearer's begin-of-turn; `False` keeps the chip but waits for
+    the GM to click it.
+
+-}
+type alias SaveToEnd =
+    { ability : String
+    , dc : Int
+    , bonus : Int
+    , autoRoll : Bool
+    }
+
+
+{-| The 15 standard 5e conditions, in alphabetical order. Used to
+populate the radio-button section of the condition modal.
+
+Exhaustion is included as a single entry rather than the six
+levels, since the UI's `note` slot is a fine place for "Lvl 2"
+shorthand and the rules treat them as a stack on one condition.
+
+-}
+standardConditions : List String
+standardConditions =
+    [ "Blinded"
+    , "Charmed"
+    , "Deafened"
+    , "Exhaustion"
+    , "Frightened"
+    , "Grappled"
+    , "Incapacitated"
+    , "Invisible"
+    , "Paralyzed"
+    , "Petrified"
+    , "Poisoned"
+    , "Prone"
+    , "Restrained"
+    , "Stunned"
+    , "Unconscious"
+    ]
+
+
 {-| Per-creature state. Identity is by `.name` for now; when we add
 real save/load with name collisions we'll switch to a stable id
 (probably a UUID seeded into a new field).
@@ -84,8 +251,17 @@ center column rows 1–3:
 
   - `surprised` — row 1 face toggle.
   - `cover`, `concentrating`, `hiding`, `flying`, `flyHeight` — row 2.
-  - `bloodied`, `inDeathSaves`, `deathSaves` — row 2 HP indicators.
+  - `bloodied`, `deathSaves` — row 2 HP indicators. The death-save
+    tracker (see [`DeathSaves`](#DeathSaves)) is rendered exactly
+    when `currentHp == 0`; there's no separate visibility flag.
+    Healing back above 0 resets the counts via the HP-change
+    engine.
   - `holding` — row 3 hold-action toggle.
+
+`note` is a short free-text label edited via the row 1 pencil
+button; it surfaces inline next to the creature name when set
+(white italics) so the GM can pin a one-liner like "boss" or
+"summoned" without spending a whole condition slot.
 
 `selected` is the row 1 multi-select checkbox; it's independent of
 the active creature (which marks who is currently taking their turn).
@@ -101,7 +277,7 @@ type alias Creature =
     , tempHp : Int
     , armorClass : Int
     , speed : Int
-    , conditions : List String
+    , conditions : List Condition
     , selected : Bool
     , surprised : Bool
     , cover : Cover
@@ -110,9 +286,9 @@ type alias Creature =
     , flying : Bool
     , flyHeight : Int
     , bloodied : Bool
-    , inDeathSaves : Bool
-    , deathSaves : ( Bool, Bool, Bool )
+    , deathSaves : DeathSaves
     , holding : Bool
+    , note : String
     }
 
 
@@ -158,12 +334,12 @@ seedCreatures =
       , kind = "Half-elf rogue, lvl 5"
       , initiative = 22
       , initiativeBonus = 5
-      , currentHp = 38
+      , currentHp = 0
       , maxHp = 42
       , tempHp = 0
       , armorClass = 16
       , speed = 30
-      , conditions = [ "Hidden" ]
+      , conditions = []
       , selected = False
       , surprised = False
       , cover = HalfCover
@@ -172,9 +348,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = False
-      , inDeathSaves = True
-      , deathSaves = ( True, False, False )
+      , deathSaves = { successes = 0, failures = 1 }
       , holding = False
+      , note = ""
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -185,7 +361,14 @@ seedCreatures =
       , tempHp = 0
       , armorClass = 11
       , speed = 40
-      , conditions = [ "Bloodied", "Frightened" ]
+      , conditions =
+            [ { id = 1
+              , name = "Frightened"
+              , note = "of Lyra"
+              , duration = DurationCountdown AtEnd 3 False
+              , saveToEnd = Just { ability = "WIS", dc = 13, bonus = 1, autoRoll = False }
+              }
+            ]
       , selected = True
       , surprised = True
       , cover = NoCover
@@ -194,9 +377,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = True
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -216,9 +399,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = True
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = True
+      , note = ""
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -238,9 +421,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -260,9 +443,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -273,7 +456,7 @@ seedCreatures =
       , tempHp = 0
       , armorClass = 13
       , speed = 30
-      , conditions = [ "Concentrating" ]
+      , conditions = []
       , selected = True
       , surprised = False
       , cover = NoCover
@@ -282,9 +465,9 @@ seedCreatures =
       , flying = True
       , flyHeight = 30
       , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -304,9 +487,9 @@ seedCreatures =
       , flying = False
       , flyHeight = 0
       , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -326,9 +509,9 @@ seedCreatures =
       , flying = True
       , flyHeight = 15
       , bloodied = False
-      , inDeathSaves = False
-      , deathSaves = ( False, False, False )
+      , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , note = ""
       }
     ]
 
@@ -467,6 +650,12 @@ prevents an all-surprised queue from spinning indefinitely; if the
 cap is hit we leave the marker wherever it landed with everyone's
 surprised flag now clear.
 
+Dead creatures (3 failed death saves, see [`isDeathSaveDead`](#isDeathSaveDead))
+are also skipped — but unlike surprised, the dead state isn't
+cleared. They stay dead, the marker keeps walking past them on
+every subsequent Next Turn. The same iteration cap protects the
+edge case of an all-dead queue (e.g. a TPK).
+
 Edge cases:
 
   - Empty queue: returns the encounter unchanged so the update loop
@@ -476,24 +665,39 @@ Edge cases:
   - `activeName` not in the queue (defensive): we treat it as if we
     were on the last creature so the next click jumps to the first.
 
-This function only updates the turn marker (and the surprise side
-effect). Other phase-specific effects (begin / end / off / on)
-will live in their own functions; the update loop will compose
-them around `nextTurn` when those features land.
+In addition to the queue walk, this function fires two condition
+hooks once per Next Turn click:
+
+  - End-of-turn for the OUTGOING active creature: tick down their
+    `DurationCountdown AtEnd` conditions, expire any
+    `DurationUntilTurn AtEnd <name>` across the whole encounter
+    where `<name>` matches.
+  - Begin-of-turn for the INCOMING active creature (after skips):
+    symmetric, but for `AtBegin` durations.
+
+The skip loop runs between the two hooks so a multi-skip click
+still only fires hooks for the outgoing-once and the final
+incoming-once. Surprised / dead creatures' begin-of-turn hooks
+don't fire — their turn doesn't actually happen, so neither
+should any of their start-of-turn ticks.
 
 -}
 nextTurn : Encounter -> Encounter
 nextTurn enc =
-    -- Outer loop with an iteration cap so an all-surprised queue
-    -- can't spin forever. Each iteration is one queue advance plus
-    -- a possible surprised-clear; the cap is set to the queue
-    -- length, which is the most slots we could possibly skip
-    -- through before reaching every creature.
-    skipSurprised (List.length enc.creatures) enc
+    -- Outer loop with an iteration cap so an all-skip queue (every
+    -- creature surprised, or every creature dead, or some mix)
+    -- can't spin forever. The hooks bracket the skip walk: end-of-
+    -- turn for whoever was active before the click, then advance
+    -- and skip to the next playable creature, then begin-of-turn
+    -- for them.
+    enc
+        |> applyEndOfTurn enc.activeName
+        |> skipUnplayable (List.length enc.creatures)
+        |> applyBeginOfTurnHook
 
 
-skipSurprised : Int -> Encounter -> Encounter
-skipSurprised budget enc =
+skipUnplayable : Int -> Encounter -> Encounter
+skipUnplayable budget enc =
     if budget <= 0 then
         enc
 
@@ -504,10 +708,19 @@ skipSurprised budget enc =
         in
         case findByName advanced.activeName advanced.creatures of
             Just c ->
-                if c.surprised then
+                if isDeathSaveDead c.deathSaves then
+                    -- Dead → skip permanently. No state change; the
+                    -- marker keeps walking past on every future
+                    -- Next Turn click.
+                    skipUnplayable (budget - 1) advanced
+
+                else if c.surprised then
+                    -- Surprised → skip once and clear the flag so
+                    -- the next round's pass actually runs their
+                    -- turn.
                     advanced
                         |> mapCreature c.name (\cr -> { cr | surprised = False })
-                        |> skipSurprised (budget - 1)
+                        |> skipUnplayable (budget - 1)
 
                 else
                     advanced
@@ -516,10 +729,107 @@ skipSurprised budget enc =
                 advanced
 
 
+{-| Begin-of-turn hook for whoever is currently the active creature
+after the queue advance and skips. Wrapper that locates the active
+creature and dispatches to [`applyBeginOfTurn`](#applyBeginOfTurn).
+-}
+applyBeginOfTurnHook : Encounter -> Encounter
+applyBeginOfTurnHook enc =
+    applyBeginOfTurn enc.activeName enc
+
+
+{-| End-of-turn hook for the named creature: tick down their own
+`DurationCountdown AtEnd` conditions (or clear the skipNextTick
+flag), expire any `DurationUntilTurn AtEnd <name>` across the
+whole encounter, then drop conditions whose countdown hit 0.
+-}
+applyEndOfTurn : String -> Encounter -> Encounter
+applyEndOfTurn name enc =
+    enc
+        |> tickCountdownFor name AtEnd
+        |> expireUntilTurn AtEnd name
+
+
+{-| Begin-of-turn hook for the named creature: symmetric to
+[`applyEndOfTurn`](#applyEndOfTurn) but for `AtBegin` durations.
+-}
+applyBeginOfTurn : String -> Encounter -> Encounter
+applyBeginOfTurn name enc =
+    enc
+        |> tickCountdownFor name AtBegin
+        |> expireUntilTurn AtBegin name
+
+
+{-| Tick down the named creature's `DurationCountdown` conditions
+that match `phase`. The skipNextTick flag is consumed (cleared)
+without decrementing if it was set; otherwise we decrement the
+remaining count. Conditions whose count would drop to 0 are
+removed in the same step.
+-}
+tickCountdownFor : String -> TurnPhase -> Encounter -> Encounter
+tickCountdownFor name phase enc =
+    mapCreature name (\c -> { c | conditions = List.filterMap (tickCondition phase) c.conditions }) enc
+
+
+tickCondition : TurnPhase -> Condition -> Maybe Condition
+tickCondition phase cond =
+    case cond.duration of
+        DurationCountdown condPhase remaining skipNextTick ->
+            if condPhase /= phase then
+                Just cond
+
+            else if skipNextTick then
+                Just { cond | duration = DurationCountdown condPhase remaining False }
+
+            else
+                let
+                    next =
+                        remaining - 1
+                in
+                if next <= 0 then
+                    Nothing
+
+                else
+                    Just { cond | duration = DurationCountdown condPhase next False }
+
+        _ ->
+            Just cond
+
+
+{-| Walk every creature's condition list and drop any whose
+`DurationUntilTurn` matches the phase / creature pair we just hit.
+A condition placed on Brakka with `DurationUntilTurn AtEnd "Lyra"`
+gets removed when Lyra's end-of-turn hook fires — which is exactly
+what "until the end of Lyra's turn" means.
+-}
+expireUntilTurn : TurnPhase -> String -> Encounter -> Encounter
+expireUntilTurn phase name enc =
+    { enc
+        | creatures =
+            List.map
+                (\c ->
+                    { c
+                        | conditions =
+                            List.filter
+                                (\cond ->
+                                    case cond.duration of
+                                        DurationUntilTurn condPhase ref ->
+                                            not (condPhase == phase && ref == name)
+
+                                        _ ->
+                                            True
+                                )
+                                c.conditions
+                    }
+                )
+                enc.creatures
+    }
+
+
 {-| Advance the marker by exactly one slot, no surprise handling.
 The wrap-detection / round-bump logic that used to live in
-`nextTurn` itself; pulled out so `skipSurprised` can call it on
-each iteration of the skip loop.
+`nextTurn` itself; pulled out so the skip loop and hook composition
+can call it on each iteration.
 -}
 advanceOne : Encounter -> Encounter
 advanceOne enc =
@@ -644,19 +954,168 @@ nextCover c =
             NoCover
 
 
-{-| Flip one of the three death-save slots in the
-`(Bool, Bool, Bool)` tuple. Index must be 0, 1, or 2; out-of-range
-falls through to slot 2 defensively (better than crashing on bad
-input, and the call site only ever passes 0/1/2 anyway).
+{-| Fresh death-save tracker — zero successes, zero failures. Used
+to reset the tracker on heal-to-positive or on revive (nat 20).
 -}
-toggleDeathSave : Int -> ( Bool, Bool, Bool ) -> ( Bool, Bool, Bool )
-toggleDeathSave idx ( a, b, c ) =
-    case idx of
-        0 ->
-            ( not a, b, c )
+emptyDeathSaves : DeathSaves
+emptyDeathSaves =
+    { successes = 0, failures = 0 }
 
-        1 ->
-            ( a, not b, c )
 
-        _ ->
-            ( a, b, not c )
+{-| Add `n` successes (negative `n` removes), clamped to 0..3 so
+the pip group never overflows or goes negative.
+-}
+addDeathSaveSuccesses : Int -> DeathSaves -> DeathSaves
+addDeathSaveSuccesses n ds =
+    { ds | successes = clampPip (ds.successes + n) }
+
+
+{-| Add `n` failures (negative `n` removes), clamped to 0..3.
+A natural-1 d20 in 5e adds 2 — pass `n = 2` for that.
+-}
+addDeathSaveFailures : Int -> DeathSaves -> DeathSaves
+addDeathSaveFailures n ds =
+    { ds | failures = clampPip (ds.failures + n) }
+
+
+{-| 5e: three successes → stabilized. Still unconscious at 0 HP,
+but no more death rolls. The view code uses this to grey out the
+pip group and show a "Stable" badge.
+-}
+isDeathSaveStable : DeathSaves -> Bool
+isDeathSaveStable ds =
+    ds.successes >= 3 && ds.failures < 3
+
+
+{-| 5e: three failures → dead. The view shows a skull badge and
+disables further interaction; a heal still revives via the
+HP-change engine (PCs do come back from "dead" if a player has a
+revivify spell scroll, etc., so we don't lock the heal path).
+-}
+isDeathSaveDead : DeathSaves -> Bool
+isDeathSaveDead ds =
+    ds.failures >= 3
+
+
+clampPip : Int -> Int
+clampPip n =
+    Basics.max 0 (Basics.min 3 n)
+
+
+
+-- CONDITIONS / EFFECTS
+
+
+{-| Append a new condition to the named creature's conditions list.
+The id is allocated as one-past-the-current-max across the whole
+encounter so it's stable across edits and renames.
+
+If the target creature isn't in the queue this is a no-op (matches
+the contract of [`mapCreature`](#mapCreature)).
+
+-}
+addCondition : String -> ConditionDraft -> Encounter -> Encounter
+addCondition target draft enc =
+    let
+        nextId =
+            allConditionIds enc
+                |> List.maximum
+                |> Maybe.withDefault 0
+                |> (+) 1
+
+        newCondition =
+            { id = nextId
+            , name = draft.name
+            , note = draft.note
+            , duration = draft.duration
+            , saveToEnd = draft.saveToEnd
+            }
+    in
+    mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
+
+
+{-| Apply `fn` to one specific condition, identified by its id, on
+the named creature. Useful for in-place edits from the modal:
+"the user changed the DC; update only this condition."
+-}
+updateCondition : String -> Int -> (Condition -> Condition) -> Encounter -> Encounter
+updateCondition target id fn enc =
+    mapCreature target
+        (\c ->
+            { c
+                | conditions =
+                    List.map
+                        (\cond ->
+                            if cond.id == id then
+                                fn cond
+
+                            else
+                                cond
+                        )
+                        c.conditions
+            }
+        )
+        enc
+
+
+{-| Drop the condition with the given id from the named creature's
+list. No-op if the creature or condition isn't found.
+-}
+removeCondition : String -> Int -> Encounter -> Encounter
+removeCondition target id enc =
+    mapCreature target
+        (\c -> { c | conditions = List.filter (\cond -> cond.id /= id) c.conditions })
+        enc
+
+
+{-| Look up a condition by `(creatureName, conditionId)`. Returns
+the (creature, condition) pair so callers can act on both — e.g.
+"open the modal pre-filled with this existing condition."
+-}
+findCondition : String -> Int -> Encounter -> Maybe ( Creature, Condition )
+findCondition target id enc =
+    findByName target enc.creatures
+        |> Maybe.andThen
+            (\c ->
+                c.conditions
+                    |> List.filter (\cond -> cond.id == id)
+                    |> List.head
+                    |> Maybe.map (\cond -> ( c, cond ))
+            )
+
+
+{-| Render a one-line human-readable description of a duration
+("Until end of Lyra's turn", "3 turns (begin)", "Manual"). Used by
+condition chips on cards and by the modal's preview.
+-}
+describeDuration : Duration -> String
+describeDuration duration =
+    case duration of
+        DurationManual ->
+            "Manual"
+
+        DurationUntilTurn AtBegin name ->
+            "Until start of " ++ name ++ "'s turn"
+
+        DurationUntilTurn AtEnd name ->
+            "Until end of " ++ name ++ "'s turn"
+
+        DurationCountdown AtBegin n _ ->
+            String.fromInt n ++ " " ++ pluralizeTurns n ++ " (start)"
+
+        DurationCountdown AtEnd n _ ->
+            String.fromInt n ++ " " ++ pluralizeTurns n ++ " (end)"
+
+
+pluralizeTurns : Int -> String
+pluralizeTurns n =
+    if n == 1 then
+        "turn"
+
+    else
+        "turns"
+
+
+allConditionIds : Encounter -> List Int
+allConditionIds enc =
+    List.concatMap (\c -> List.map .id c.conditions) enc.creatures

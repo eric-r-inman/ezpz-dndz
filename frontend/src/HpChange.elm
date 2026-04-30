@@ -50,15 +50,15 @@ upstream and pass the integer total.
     (unless `ignoreTemp` is set, which models effects like force
     damage to a temporary-HP-granting spell that bypasses the buffer),
     then the remainder reduces `currentHp`. Current HP is clamped at
-    0; we don't auto-flip `inDeathSaves` because the JS app didn't
-    either — the user toggles death-save tracking manually via the
-    row 2 ○/💀 slots.
+    1.  The death-save tracker shows automatically once `currentHp`
+        is 0 (the view code reads that directly), so we don't need a
+        side flag here.
 
   - `Heal` adds to `currentHp`, capped at `maxHp`. Doesn't touch
     `tempHp` (5e: temp HP is its own pool). If healing brings a
-    creature from 0 HP to positive, also clears `inDeathSaves` and
-    the three death-save slots — matches the JS app's behavior and
-    saves the GM a couple of clicks at the table.
+    creature from 0 HP to positive, also clears the death-save
+    tracker — they're conscious again, so the running counts are
+    meaningless.
 
   - `TempHp` follows 5e's "doesn't stack" rule — the new value
     replaces the existing `tempHp` only if greater. (Negative
@@ -116,7 +116,9 @@ apply change c =
 
 {-| Damage: temp HP absorbs first, then current HP. Negative amounts
 are clamped to zero so passing in a misparsed roll can't accidentally
-heal.
+heal. The death-save tracker becomes visible automatically once
+`currentHp == 0` (handled in view code) — no flag bookkeeping
+needed here.
 -}
 applyDamage : DamageSpec -> Creature -> Creature
 applyDamage spec c =
@@ -141,8 +143,8 @@ applyDamage spec c =
 
 
 {-| Heal: add, cap at maxHp. If a creature was at 0 and lands above
-0 because of this heal, also clear the three death-save slots and
-the `inDeathSaves` flag — they're meaningless once you're conscious.
+0 because of this heal, also clear the death-save tracker counts
+— they're meaningless once you're conscious.
 -}
 applyHeal : Int -> Creature -> Creature
 applyHeal n c =
@@ -162,8 +164,7 @@ applyHeal n c =
     if revived then
         { c
             | currentHp = afterHp
-            , inDeathSaves = False
-            , deathSaves = ( False, False, False )
+            , deathSaves = Encounter.emptyDeathSaves
         }
 
     else

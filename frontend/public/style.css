@@ -234,6 +234,29 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+/* Dead creature: greyed-out card. Combat continues, but the
+   `Encounter.nextTurn` queue walker now skips dead creatures, so
+   this is purely a visual signal that the GM can stop tracking
+   them. Pips, name, controls all stay clickable so a GM can still
+   un-set the third failure pip if it was a misclick. */
+.creature-card--dead {
+  filter: grayscale(0.85);
+  opacity: 0.55;
+}
+
+.creature-card--dead:hover {
+  opacity: 0.75;
+}
+
+/* If a dead creature somehow has the active marker (e.g. died
+   on their own turn before the GM clicked Next Turn), the active
+   highlight wins on border but the grey filter still applies so
+   it's obvious they're dead. */
+.creature-card--dead.creature-card--active {
+  filter: grayscale(0.6);
+  opacity: 0.7;
+}
+
 .creature-card__rail {
   display: flex;
   flex-direction: column;
@@ -415,22 +438,101 @@ body {
   font-weight: 500;
 }
 
-.condition-list {
+/* Live condition chips on row 1 of each creature card and in the
+   encounter title bar. Empty wrapper collapses (no separator
+   shown when there are zero conditions). */
+.condition-chips-wrap {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
-  white-space: nowrap;
-  font-size: 0.82rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.condition-list__item {
-  color: var(--color-accent);
+.condition-chips-wrap--bar {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.condition-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 0.78rem;
   font-weight: 500;
+  background: rgba(120, 170, 255, 0.12);
+  color: var(--color-text);
+  border: 1px solid rgba(120, 170, 255, 0.35);
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
 }
 
-.condition-list__sep {
+.condition-chip__name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.condition-chip__name:hover {
+  text-decoration: underline;
+}
+
+.condition-chip__note {
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.condition-chip__save,
+.condition-chip__remove {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.condition-chip__save {
   color: var(--color-text);
-  user-select: none;
+  font-size: 0.85rem;
+}
+
+.condition-chip__save:hover {
+  background: rgba(120, 170, 255, 0.2);
+}
+
+.condition-chip__remove {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.condition-chip__remove:hover {
+  color: var(--color-danger);
+  background: rgba(214, 59, 59, 0.15);
+}
+
+.condition-chip__duration {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-feature-settings: "tnum";
+  white-space: nowrap;
 }
 
 .creature-card__row--mid {
@@ -476,42 +578,122 @@ body {
   filter: saturate(1.2);
 }
 
+/* 5e death-save tracker. Layout:
+     [ ✓ ✓ ○ ]   [ ✗ ○ ○ ]   🎲   (Stable / Dead badge)
+   Two strips of three pips (success green, failure red), a roll
+   button that fires a 1d20, and a status badge once the run ends. */
 .death-saves {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin-right: var(--space-2);
 }
 
-.death-save {
+.death-saves__strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+/* Non-interactive icon prefix at the head of each strip — a visual
+   hint that this strip is the 🌟 successes / 💀 failures group.
+   Slightly larger than the pips themselves so the label reads as
+   "this is what fills these circles" rather than as a fourth pip. */
+.death-saves__label {
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 2px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.death-save-pip {
   appearance: none;
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  padding: 0;
+  border-radius: 3px;
+  transition:
+    color 0.1s ease,
+    background 0.1s ease;
+}
+
+.death-save-pip:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.death-save-pip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.death-saves__strip--success .death-save-pip--filled {
+  color: #3cb455;
+  font-weight: 700;
+}
+
+.death-saves__strip--failure .death-save-pip--filled {
+  color: #d63b3b;
+  font-weight: 700;
+}
+
+.death-saves__roll {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  width: 22px;
+  width: 24px;
   height: 22px;
   display: inline-grid;
   place-items: center;
   font-size: 0.9rem;
   line-height: 1;
-  color: var(--color-text-muted);
   font-family: inherit;
   padding: 0;
   transition:
-    color 0.1s ease,
     background 0.1s ease,
     border-color 0.1s ease;
 }
 
-.death-save:hover {
+.death-saves__roll:hover {
   background: var(--color-surface-2);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  border-color: var(--color-accent);
 }
 
-.death-save[aria-pressed="true"] {
-  color: var(--color-text);
+.death-saves__badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+
+.death-saves__badge--stable {
+  color: #3cb455;
+  background: rgba(60, 180, 85, 0.12);
+  border: 1px solid rgba(60, 180, 85, 0.4);
+}
+
+.death-saves__badge--dead {
+  color: #d63b3b;
+  background: rgba(214, 59, 59, 0.12);
+  border: 1px solid rgba(214, 59, 59, 0.4);
 }
 
 .status-toggle {
@@ -2002,4 +2184,324 @@ body {
 .hp-display__edit::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* Inline creature note + pipe separator wrapper sitting between
+   the name and the AC readout in row 1. Local gap is small so the
+   pipe hugs the note text instead of floating in empty space; the
+   wrapper itself participates in the row's regular flex gap. */
+.creature-note-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* The note text itself. White italics per the spec; rendered as
+   a <button> (chrome reset) because clicking it re-opens the edit
+   modal — the pencil is hidden whenever a note exists, so the
+   note IS the edit affordance. */
+.creature-note {
+  font-style: italic;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.creature-note--clickable {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0 2px;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+  transition:
+    background 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.creature-note--clickable:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.creature-note--clickable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* Pipe between the note and the AC readout. Same muted color the
+   condition-list separator uses so the row 1 separators stay
+   visually consistent. */
+.creature-note__sep {
+  color: var(--color-text);
+  user-select: none;
+  opacity: 0.5;
+}
+
+/* Generic row-1 separator (currently used after the AC readout
+   before the conditions list). Same muted color and opacity as
+   the note pipe so the row's separators read consistently. */
+.row-top__sep {
+  color: var(--color-text);
+  user-select: none;
+  opacity: 0.5;
+}
+
+/* Note-edit modal — reuses .modal-backdrop / .modal / .modal__header
+   chrome from the dice modal. The modal itself is narrow since it
+   only holds a single short text input. */
+.modal--note-edit {
+  max-width: 420px;
+}
+
+.note-edit__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.note-edit__input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
+}
+
+.note-edit__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Condition / effect modal — same .modal-backdrop / .modal /
+   .modal__header chrome as the others. The body holds five
+   sections (standard radios, custom name, note, duration,
+   save-to-end) with a flex footer pinned at the bottom. */
+.modal--condition {
+  max-width: 620px;
+  width: 100%;
+}
+
+.cond-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.cond-section:last-child {
+  border-bottom: none;
+}
+
+.cond-section__heading {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+}
+
+.cond-section__caption {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.cond-radio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px;
+}
+
+.cond-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cond-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  background: var(--color-surface);
+}
+
+.cond-radio:hover {
+  border-color: var(--color-text-muted);
+}
+
+.cond-radio--selected {
+  background: rgba(120, 170, 255, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.cond-radio input[type="radio"] {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-muted);
+  margin: 0;
+}
+
+.cond-radio--selected input[type="radio"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.cond-radio__label {
+  white-space: nowrap;
+}
+
+.cond-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.cond-input--narrow {
+  width: 64px;
+  appearance: textfield;
+}
+
+.cond-input--narrow::-webkit-outer-spin-button,
+.cond-input--narrow::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cond-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
+}
+
+.cond-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.cond-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cond-select {
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+/* Two-button begin / end phase toggle inside duration / save
+   sections. Built from radio inputs but styled like a small
+   toggle group. */
+.cond-phase-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cond-phase {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-right: 1px solid var(--color-border);
+}
+
+.cond-phase:last-child {
+  border-right: none;
+}
+
+.cond-phase--on {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.cond-phase input[type="radio"] {
+  display: none;
+}
+
+.cond-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* Dice "Roll" button cluster in the encounter-controls panel
+   header. The cluster groups the latest-total readout with the
+   button so they share a single flex baseline regardless of the
+   total's width. */
+.dice-roll-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dice-last-total {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  min-width: 1.2em;
+  text-align: right;
+}
+
+.dice-arrow {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  user-select: none;
+  line-height: 1;
+}
+
+/* Yellow border indicator: rolls landed while the modal was
+   closed. Cleared when the modal opens. The 2px outset stays
+   inside the existing button rhythm so the surrounding layout
+   doesn't reflow when the indicator toggles. */
+.dice-roll-btn--unread {
+  box-shadow:
+    0 0 0 2px var(--color-yellow, #f5c842),
+    0 0 12px rgba(245, 200, 66, 0.45);
 }

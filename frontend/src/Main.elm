@@ -81,6 +81,193 @@ type alias Model =
     , hpChangeLog : List HpChangeEntry
     , hpEdit : Maybe HpEdit
     , initiative : Maybe InitiativeUi
+    , noteEdit : Maybe NoteEditUi
+    , conditionUi : Maybe ConditionUi
+    }
+
+
+{-| Note-edit modal state. Open when the user clicks the row 1
+pencil button on a creature card. `target` identifies the creature;
+`text` mirrors the `<input>` value so re-renders don't clobber
+transient typing. The text is hard-capped at `maxNoteLength`
+characters at input time so we never have to truncate on commit.
+-}
+type alias NoteEditUi =
+    { target : String
+    , text : String
+    }
+
+
+{-| Hard cap on creature notes. Twenty characters keeps the inline
+display next to the name from blowing out the card width — anything
+longer belongs in a real journal entry, not a card sticky.
+-}
+maxNoteLength : Int
+maxNoteLength =
+    20
+
+
+freshNoteEditUi : String -> String -> NoteEditUi
+freshNoteEditUi target current =
+    { target = target
+    , text = current
+    }
+
+
+{-| Condition / effect modal state.
+
+`target` is the creature whose Condition/Effect button (or chip)
+was clicked. `editingId` is `Nothing` when creating a new condition
+and `Just id` when editing an existing one — the latter unlocks a
+"Delete" button in the modal footer.
+
+The remaining fields mirror the rendered form. We track raw text
+inputs alongside parsed integers (the same trick as the dice
+modifier and HP edit fields) so transient typing states don't get
+clobbered between keystrokes.
+
+`customName` is the free-text input under the radio group; the
+radio group itself sets `name` directly. When the user clicks a
+radio, `customName` is cleared and `name` becomes the chosen label.
+When the user types into the custom input, `name` and `customName`
+are both updated to that value (so the radios visually deselect).
+
+`saveToEnd : Maybe SaveToEndUi` controls visibility of the save
+section: `Nothing` hides it, `Just _` reveals.
+
+-}
+type alias ConditionUi =
+    { target : String
+    , editingId : Maybe Int
+    , name : String
+    , customName : String
+    , note : String
+    , durationKind : DurationKind
+    , untilCreature : String
+    , untilPhase : Encounter.TurnPhase
+    , countdownTurnsText : String
+    , countdownTurns : Int
+    , countdownPhase : Encounter.TurnPhase
+    , saveToEnd : Maybe SaveToEndUi
+    }
+
+
+type DurationKind
+    = DurKindManual
+    | DurKindUntilTurn
+    | DurKindCountdown
+
+
+type alias SaveToEndUi =
+    { ability : String
+    , dcText : String
+    , dc : Int
+    , bonusText : String
+    , bonus : Int
+    , autoRoll : Bool
+    }
+
+
+{-| Default save spec when the user enables "save to end" — DC 10
+neutral save, no bonus, no auto-roll. The GM tweaks from there.
+-}
+freshSaveToEndUi : SaveToEndUi
+freshSaveToEndUi =
+    { ability = "WIS"
+    , dcText = "10"
+    , dc = 10
+    , bonusText = "0"
+    , bonus = 0
+    , autoRoll = False
+    }
+
+
+{-| Fresh condition-modal state for creating a new condition on
+`target`. The "until X's turn" reference defaults to the target
+itself — common for self-effects like "Concentrating until end of
+my next turn".
+-}
+freshConditionUi : String -> ConditionUi
+freshConditionUi target =
+    { target = target
+    , editingId = Nothing
+    , name = ""
+    , customName = ""
+    , note = ""
+    , durationKind = DurKindManual
+    , untilCreature = target
+    , untilPhase = Encounter.AtEnd
+    , countdownTurnsText = "1"
+    , countdownTurns = 1
+    , countdownPhase = Encounter.AtEnd
+    , saveToEnd = Nothing
+    }
+
+
+{-| Pre-fill the modal's form fields from an existing condition so
+the GM can edit it. Reverse of [`uiToConditionDraft`](#uiToConditionDraft):
+break a stored Condition apart into the raw text states the form
+needs.
+-}
+conditionToUi : String -> Encounter.Condition -> ConditionUi
+conditionToUi target cond =
+    let
+        durFields =
+            case cond.duration of
+                Encounter.DurationManual ->
+                    { kind = DurKindManual
+                    , untilCreature = target
+                    , untilPhase = Encounter.AtEnd
+                    , countdownTurns = 1
+                    , countdownPhase = Encounter.AtEnd
+                    }
+
+                Encounter.DurationUntilTurn phase ref ->
+                    { kind = DurKindUntilTurn
+                    , untilCreature = ref
+                    , untilPhase = phase
+                    , countdownTurns = 1
+                    , countdownPhase = Encounter.AtEnd
+                    }
+
+                Encounter.DurationCountdown phase n _ ->
+                    { kind = DurKindCountdown
+                    , untilCreature = target
+                    , untilPhase = Encounter.AtEnd
+                    , countdownTurns = n
+                    , countdownPhase = phase
+                    }
+
+        saveUi =
+            cond.saveToEnd
+                |> Maybe.map
+                    (\s ->
+                        { ability = s.ability
+                        , dcText = String.fromInt s.dc
+                        , dc = s.dc
+                        , bonusText = String.fromInt s.bonus
+                        , bonus = s.bonus
+                        , autoRoll = s.autoRoll
+                        }
+                    )
+    in
+    { target = target
+    , editingId = Just cond.id
+    , name = cond.name
+    , customName =
+        if List.member cond.name Encounter.standardConditions then
+            ""
+
+        else
+            cond.name
+    , note = cond.note
+    , durationKind = durFields.kind
+    , untilCreature = durFields.untilCreature
+    , untilPhase = durFields.untilPhase
+    , countdownTurnsText = String.fromInt durFields.countdownTurns
+    , countdownTurns = durFields.countdownTurns
+    , countdownPhase = durFields.countdownPhase
+    , saveToEnd = saveUi
     }
 
 
@@ -244,6 +431,7 @@ type alias DiceUi =
     , modifier : Int
     , modifierText : String
     , history : Dice.History
+    , unread : Bool
     }
 
 
@@ -264,6 +452,7 @@ emptyDice =
     , modifier = 0
     , modifierText = "0"
     , history = Dice.emptyHistory
+    , unread = False
     }
 
 
@@ -288,7 +477,10 @@ type Msg
     | ToggleHiding String
     | ToggleFlying String
     | AdjustFlyHeight String Int
-    | ToggleDeathSave String Int
+    | DeathSaveToggleSuccess String Int
+    | DeathSaveToggleFailure String Int
+    | DeathSaveRoll String
+    | DeathSaveRollLanded String Dice.Roll
     | ToggleHolding String
       -- Dice modal
     | OpenDice
@@ -338,6 +530,33 @@ type Msg
     | InitiativeApplyTarget
     | InitiativeApplySelected
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
+      -- Note-edit modal (the row 1 pencil button)
+    | NoteEditOpen String String
+    | NoteEditChange String
+    | NoteEditCommit
+    | NoteEditCancel
+      -- Condition / effect modal
+    | ConditionOpenNew String
+    | ConditionOpenEdit String Int
+    | ConditionClose
+    | ConditionPickStandard String
+    | ConditionCustomNameChanged String
+    | ConditionNoteChanged String
+    | ConditionDurationKindSet DurationKind
+    | ConditionUntilCreatureChanged String
+    | ConditionUntilPhaseSet Encounter.TurnPhase
+    | ConditionCountdownTurnsChanged String
+    | ConditionCountdownPhaseSet Encounter.TurnPhase
+    | ConditionSaveToggle
+    | ConditionSaveAbilityChanged String
+    | ConditionSaveDcChanged String
+    | ConditionSaveBonusChanged String
+    | ConditionSaveAutoRollToggle
+    | ConditionSubmit
+    | ConditionDelete
+    | ConditionRemoveChip String Int
+    | ConditionRollSave String Int
+    | ConditionSaveLanded String Int Int Dice.Roll
     | NoOp
 
 
@@ -359,20 +578,29 @@ can close it. Other routes don't need any subscriptions yet.
 subscriptions : Model -> Sub Msg
 subscriptions model =
     if model.dice.open then
-        Browser.Events.onKeyDown
-            (Decode.field "key" Decode.string
-                |> Decode.andThen
-                    (\key ->
-                        if key == "Escape" then
-                            Decode.succeed CloseDice
+        Browser.Events.onKeyDown (escKey CloseDice)
 
-                        else
-                            Decode.fail "ignore"
-                    )
-            )
+    else if model.noteEdit /= Nothing then
+        Browser.Events.onKeyDown (escKey NoteEditCancel)
 
     else
         Sub.none
+
+
+{-| Keyboard decoder for the Esc key — yields `msg` on Escape and
+fails on every other key so the runtime ignores them.
+-}
+escKey : Msg -> Decode.Decoder Msg
+escKey msg =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Escape" then
+                    Decode.succeed msg
+
+                else
+                    Decode.fail "ignore"
+            )
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -391,6 +619,8 @@ init _ url key =
       , hpChangeLog = []
       , hpEdit = Nothing
       , initiative = Nothing
+      , noteEdit = Nothing
+      , conditionUi = Nothing
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -451,11 +681,20 @@ update msg model =
                     ( { model | me = Failed }, Cmd.none )
 
         NextTurn ->
-            -- Domain layer owns the queue walk and round bookkeeping; this
-            -- branch is intentionally a one-liner so all the rules-y
-            -- behavior is inspectable in one place (Encounter.nextTurn).
-            ( { model | encounter = Encounter.nextTurn model.encounter }
-            , Cmd.none
+            -- Domain layer owns the queue walk, round bookkeeping,
+            -- and condition lifecycle hooks (begin / end of turn).
+            -- The only side effect we need from the update layer is
+            -- firing auto-roll save Cmds for the new active
+            -- creature's conditions tagged `autoRoll = True`.
+            let
+                newEnc =
+                    Encounter.nextTurn model.encounter
+
+                autoRolls =
+                    autoRollCmds newEnc
+            in
+            ( { model | encounter = newEnc }
+            , Cmd.batch autoRolls
             )
 
         SetActive name ->
@@ -496,9 +735,75 @@ update msg model =
             , Cmd.none
             )
 
-        ToggleDeathSave name idx ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | deathSaves = Encounter.toggleDeathSave idx c.deathSaves })) model
+        DeathSaveToggleSuccess name idx ->
+            -- Click on success pip `idx` (0..2). Star-rating
+            -- semantics: clicking a filled pip clears it and every
+            -- later one (so unchecking pip 0 wipes pips 1 and 2);
+            -- clicking an empty pip fills up to and including it.
+            -- Pure visual toggle — no roll fired here.
+            ( withEncounter
+                (Encounter.mapCreature name
+                    (\c ->
+                        { c
+                            | deathSaves =
+                                let
+                                    ds =
+                                        c.deathSaves
+                                in
+                                { ds | successes = pipStripTarget idx ds.successes }
+                        }
+                    )
+                )
+                model
             , Cmd.none
+            )
+
+        DeathSaveToggleFailure name idx ->
+            ( withEncounter
+                (Encounter.mapCreature name
+                    (\c ->
+                        { c
+                            | deathSaves =
+                                let
+                                    ds =
+                                        c.deathSaves
+                                in
+                                { ds | failures = pipStripTarget idx ds.failures }
+                        }
+                    )
+                )
+                model
+            , Cmd.none
+            )
+
+        DeathSaveRoll name ->
+            -- Fire a 1d20 roll tagged so the dice history reads
+            -- "Death save → <name>". The result lands in
+            -- DeathSaveRollLanded which interprets it per 5e.
+            ( model
+            , Dice.rollCmd (DeathSaveRollLanded name)
+                (deathSaveSource name)
+                deathSaveExpression
+            )
+
+        DeathSaveRollLanded name roll ->
+            -- 5e death-save rules:
+            --   nat 1  → +2 failures
+            --   2..9   → +1 failure
+            --   10..19 → +1 success
+            --   nat 20 → revive at 1 HP, clear tracker, conscious
+            -- The roll itself is a plain 1d20 with no modifier so
+            -- `roll.total` is the d20 face. Apply the rule, push
+            -- the roll into the dice history, and persist.
+            let
+                applyRule c =
+                    applyDeathSaveResult roll.total c
+            in
+            ( { model
+                | encounter = Encounter.mapCreature name applyRule model.encounter
+              }
+                |> pushDiceRoll roll
+            , persistRollCmd roll
             )
 
         ToggleHolding name ->
@@ -508,7 +813,10 @@ update msg model =
 
         -- Dice modal lifecycle
         OpenDice ->
-            ( withDice (\d -> { d | open = True, inputError = Nothing }) model
+            -- Clear the "unread rolls landed" flag whenever the
+            -- modal opens; whatever the user is about to see, they
+            -- are now caught up.
+            ( withDice (\d -> { d | open = True, inputError = Nothing, unread = False }) model
             , Cmd.none
             )
 
@@ -611,7 +919,7 @@ update msg model =
             -- replaces the local view in DicePersistResponse so the two
             -- stay in sync (and any older entries surfacing from disk
             -- after init come through that same path).
-            ( withDice (\d -> { d | history = Dice.push roll d.history }) model
+            ( pushDiceRoll roll model
             , persistRollCmd roll
             )
 
@@ -764,7 +1072,7 @@ update msg model =
             -- still log/persist so we don't drop rolls on the floor.
             let
                 logged =
-                    withDice (\d -> { d | history = Dice.push roll d.history }) model
+                    pushDiceRoll roll model
 
                 committed =
                     case logged.hpChange of
@@ -971,7 +1279,7 @@ update msg model =
                                 (\c -> { c | initiative = roll.total })
                                 m.encounter
                     }
-                        |> withDice (\d -> { d | history = Dice.push roll d.history })
+                        |> pushDiceRoll roll
 
                 m1 =
                     List.foldl applyOne model results
@@ -984,6 +1292,276 @@ update msg model =
                 , initiative = Nothing
               }
             , Cmd.batch (List.map persistRollCmd rolls)
+            )
+
+        -- Note-edit modal
+        NoteEditOpen name current ->
+            ( { model | noteEdit = Just (freshNoteEditUi name current) }
+            , Cmd.none
+            )
+
+        NoteEditChange text ->
+            -- Cap the text at maxNoteLength here so the model never
+            -- holds an over-long note even if a paste sneaks past
+            -- the input's `maxlength` attribute.
+            ( withNoteEdit (\u -> { u | text = String.left maxNoteLength text }) model
+            , Cmd.none
+            )
+
+        NoteEditCommit ->
+            -- Trim trailing whitespace before stamping. Empty strings
+            -- are valid (clears the note) — that's how the user
+            -- removes a note without a separate "delete" action.
+            case model.noteEdit of
+                Just ui ->
+                    let
+                        trimmed =
+                            String.trim ui.text
+                    in
+                    ( { model
+                        | encounter =
+                            Encounter.mapCreature ui.target
+                                (\c -> { c | note = trimmed })
+                                model.encounter
+                        , noteEdit = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        NoteEditCancel ->
+            ( { model | noteEdit = Nothing }, Cmd.none )
+
+        -- Condition / effect modal lifecycle
+        ConditionOpenNew name ->
+            ( { model | conditionUi = Just (freshConditionUi name) }, Cmd.none )
+
+        ConditionOpenEdit name id ->
+            ( case Encounter.findCondition name id model.encounter of
+                Just ( _, cond ) ->
+                    { model | conditionUi = Just (conditionToUi name cond) }
+
+                Nothing ->
+                    model
+            , Cmd.none
+            )
+
+        ConditionClose ->
+            ( { model | conditionUi = Nothing }, Cmd.none )
+
+        ConditionPickStandard label ->
+            ( withConditionUi
+                (\u -> { u | name = label, customName = "" })
+                model
+            , Cmd.none
+            )
+
+        ConditionCustomNameChanged text ->
+            -- Typing in the custom field both populates the name
+            -- and clears the standard radio selection (logically:
+            -- "name" is whatever the user last touched).
+            ( withConditionUi
+                (\u -> { u | name = text, customName = text })
+                model
+            , Cmd.none
+            )
+
+        ConditionNoteChanged text ->
+            ( withConditionUi
+                (\u -> { u | note = String.left maxConditionNoteLength text })
+                model
+            , Cmd.none
+            )
+
+        ConditionDurationKindSet kind ->
+            ( withConditionUi (\u -> { u | durationKind = kind }) model, Cmd.none )
+
+        ConditionUntilCreatureChanged name ->
+            ( withConditionUi (\u -> { u | untilCreature = name }) model, Cmd.none )
+
+        ConditionUntilPhaseSet phase ->
+            ( withConditionUi (\u -> { u | untilPhase = phase }) model, Cmd.none )
+
+        ConditionCountdownTurnsChanged text ->
+            ( withConditionUi
+                (\u ->
+                    { u
+                        | countdownTurnsText = text
+                        , countdownTurns =
+                            String.toInt (String.trim text)
+                                |> Maybe.map (Basics.max 1 >> Basics.min 99)
+                                |> Maybe.withDefault u.countdownTurns
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        ConditionCountdownPhaseSet phase ->
+            ( withConditionUi (\u -> { u | countdownPhase = phase }) model, Cmd.none )
+
+        ConditionSaveToggle ->
+            ( withConditionUi
+                (\u ->
+                    { u
+                        | saveToEnd =
+                            case u.saveToEnd of
+                                Just _ ->
+                                    Nothing
+
+                                Nothing ->
+                                    Just freshSaveToEndUi
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        ConditionSaveAbilityChanged ability ->
+            ( withConditionUi
+                (\u -> { u | saveToEnd = Maybe.map (\s -> { s | ability = ability }) u.saveToEnd })
+                model
+            , Cmd.none
+            )
+
+        ConditionSaveDcChanged text ->
+            ( withConditionUi
+                (\u ->
+                    { u
+                        | saveToEnd =
+                            Maybe.map
+                                (\s ->
+                                    { s
+                                        | dcText = text
+                                        , dc =
+                                            String.toInt (String.trim text)
+                                                |> Maybe.withDefault s.dc
+                                    }
+                                )
+                                u.saveToEnd
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        ConditionSaveBonusChanged text ->
+            ( withConditionUi
+                (\u ->
+                    { u
+                        | saveToEnd =
+                            Maybe.map
+                                (\s ->
+                                    { s
+                                        | bonusText = text
+                                        , bonus =
+                                            String.toInt (String.trim text)
+                                                |> Maybe.withDefault s.bonus
+                                    }
+                                )
+                                u.saveToEnd
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        ConditionSaveAutoRollToggle ->
+            ( withConditionUi
+                (\u ->
+                    { u
+                        | saveToEnd =
+                            Maybe.map (\s -> { s | autoRoll = not s.autoRoll })
+                                u.saveToEnd
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        ConditionSubmit ->
+            -- Validate that there's a name; empty-name conditions
+            -- are silently dropped (close the modal). Build a draft,
+            -- then either insert (creating) or update (editing).
+            case model.conditionUi of
+                Just ui ->
+                    let
+                        name =
+                            String.trim ui.name
+                    in
+                    if String.isEmpty name then
+                        ( { model | conditionUi = Nothing }, Cmd.none )
+
+                    else
+                        ( commitCondition ui name model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ConditionDelete ->
+            -- Delete from the modal's footer (only visible when editing).
+            case model.conditionUi of
+                Just ui ->
+                    case ui.editingId of
+                        Just id ->
+                            ( { model
+                                | encounter = Encounter.removeCondition ui.target id model.encounter
+                                , conditionUi = Nothing
+                              }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            ( { model | conditionUi = Nothing }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ConditionRemoveChip name id ->
+            ( { model | encounter = Encounter.removeCondition name id model.encounter }
+            , Cmd.none
+            )
+
+        ConditionRollSave name id ->
+            -- Manual click on the save chip's d20 button. Same flow
+            -- as the auto-roll path: fire a 1d20 + bonus, the
+            -- result lands in ConditionSaveLanded which decides if
+            -- the save succeeded.
+            case Encounter.findCondition name id model.encounter of
+                Just ( _, cond ) ->
+                    case cond.saveToEnd of
+                        Just spec ->
+                            ( model
+                            , Dice.rollCmd (ConditionSaveLanded name id spec.dc)
+                                (saveSource cond name spec)
+                                (saveExpression spec.bonus)
+                            )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        ConditionSaveLanded name id dc roll ->
+            -- Save resolves: roll.total >= dc means the condition
+            -- ends. Either way log + persist the roll. We don't
+            -- bubble a "did it succeed" signal anywhere else;
+            -- presence of the chip after the click is the answer.
+            let
+                m1 =
+                    if roll.total >= dc then
+                        { model
+                            | encounter = Encounter.removeCondition name id model.encounter
+                        }
+
+                    else
+                        model
+            in
+            ( m1 |> pushDiceRoll roll
+            , persistRollCmd roll
             )
 
         NoOp ->
@@ -1009,6 +1587,35 @@ inline at every call site.
 withDice : (DiceUi -> DiceUi) -> Model -> Model
 withDice fn model =
     { model | dice = fn model.dice }
+
+
+{-| Land one roll into the dice history. Single chokepoint so the
+"unread" indicator on the encounter-controls Roll button stays in
+sync — every Cmd that returns a Roll funnels through here.
+
+`unread = True` only when the modal is closed at land time. When
+the modal is already open, the user can already see the roll, so
+no indicator is needed.
+
+-}
+pushDiceRoll : Dice.Roll -> Model -> Model
+pushDiceRoll roll model =
+    let
+        d =
+            model.dice
+    in
+    { model
+        | dice =
+            { d
+                | history = Dice.push roll d.history
+                , unread =
+                    if d.open then
+                        d.unread
+
+                    else
+                        True
+            }
+    }
 
 
 {-| Apply `fn` to the open HP-change modal. No-op when the modal is
@@ -1062,6 +1669,182 @@ withInitiative fn model =
 
         Nothing ->
             model
+
+
+{-| Apply `fn` to the open note-edit modal. No-op when closed.
+-}
+withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
+withNoteEdit fn model =
+    case model.noteEdit of
+        Just ui ->
+            { model | noteEdit = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Apply `fn` to the open condition modal. No-op when closed.
+-}
+withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
+withConditionUi fn model =
+    case model.conditionUi of
+        Just ui ->
+            { model | conditionUi = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Hard cap on the chip-note text. Ten characters keeps the chip
+small and prevents wrap-overflow on the card row 1.
+-}
+maxConditionNoteLength : Int
+maxConditionNoteLength =
+    10
+
+
+{-| Translate the modal's UI state into a domain-level
+`ConditionDraft`, then either insert it (when creating) or replace
+the existing condition's fields (when editing). The "skip first
+end-of-turn tick" rule is applied here for AtEnd countdowns
+created on the currently-active creature.
+-}
+commitCondition : ConditionUi -> String -> Model -> Model
+commitCondition ui name model =
+    let
+        duration =
+            buildDuration ui model
+
+        saveToEnd =
+            Maybe.map
+                (\s ->
+                    { ability = s.ability
+                    , dc = s.dc
+                    , bonus = s.bonus
+                    , autoRoll = s.autoRoll
+                    }
+                )
+                ui.saveToEnd
+
+        draft =
+            { name = name
+            , note = String.trim ui.note
+            , duration = duration
+            , saveToEnd = saveToEnd
+            }
+    in
+    case ui.editingId of
+        Just id ->
+            { model
+                | encounter =
+                    Encounter.updateCondition ui.target
+                        id
+                        (\c ->
+                            { c
+                                | name = draft.name
+                                , note = draft.note
+                                , duration = draft.duration
+                                , saveToEnd = draft.saveToEnd
+                            }
+                        )
+                        model.encounter
+                , conditionUi = Nothing
+            }
+
+        Nothing ->
+            { model
+                | encounter = Encounter.addCondition ui.target draft model.encounter
+                , conditionUi = Nothing
+            }
+
+
+{-| Build the domain `Duration` from the UI's three sub-states.
+
+For `DurKindCountdown` with `AtEnd` placed on the currently-active
+creature, set `skipNextTick = True` so the bearer's imminent
+end-of-turn (which is right around the corner) doesn't get counted
+as a full turn.
+
+-}
+buildDuration : ConditionUi -> Model -> Encounter.Duration
+buildDuration ui model =
+    case ui.durationKind of
+        DurKindManual ->
+            Encounter.DurationManual
+
+        DurKindUntilTurn ->
+            Encounter.DurationUntilTurn ui.untilPhase ui.untilCreature
+
+        DurKindCountdown ->
+            let
+                isCurrentlyActive =
+                    ui.target == model.encounter.activeName
+
+                skipNextTick =
+                    ui.countdownPhase == Encounter.AtEnd && isCurrentlyActive
+            in
+            Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
+
+
+{-| Build a list of Cmds that fire any auto-roll saves for the
+encounter's currently-active creature. One Cmd per applicable
+condition. Each result lands in `ConditionSaveLanded`, which
+applies the success / failure logic and updates the dice history.
+
+Returns `[]` when there are no auto-roll saves on the active
+creature, which is the common case — the result is a `Cmd.none`-
+equivalent batch.
+
+-}
+autoRollCmds : Encounter.Encounter -> List (Cmd Msg)
+autoRollCmds enc =
+    case Encounter.activeCreature enc of
+        Just c ->
+            c.conditions
+                |> List.filterMap
+                    (\cond ->
+                        case cond.saveToEnd of
+                            Just spec ->
+                                if spec.autoRoll then
+                                    Just
+                                        (Dice.rollCmd
+                                            (ConditionSaveLanded c.name cond.id spec.dc)
+                                            (saveSource cond c.name spec)
+                                            (saveExpression spec.bonus)
+                                        )
+
+                                else
+                                    Nothing
+
+                            Nothing ->
+                                Nothing
+                    )
+
+        Nothing ->
+            []
+
+
+{-| Source label for save-to-end rolls: "Save: WIS DC 13 → Brakka".
+The history reads informatively without the GM having to remember
+which condition the save was for.
+-}
+saveSource : Encounter.Condition -> String -> Encounter.SaveToEnd -> Dice.Source
+saveSource cond target spec =
+    { feature =
+        "Save: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc ++ " (" ++ cond.name ++ ")"
+    , target = Just target
+    }
+
+
+{-| Build a `1d20 + bonus` expression for a save roll. Bonus may
+be 0; in that case `expressionToString` will render just "1d20".
+-}
+saveExpression : Int -> Dice.Expression
+saveExpression bonus =
+    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = bonus
+    , damageType = Nothing
+    }
 
 
 {-| Build the `Cmd` for an initiative roll batch.
@@ -1129,6 +1912,77 @@ initiativeExpression c =
 initiativeSource : String -> Dice.Source
 initiativeSource name =
     { feature = "Initiative", target = Just name }
+
+
+{-| Source label for death-save rolls — "Death save → <creature>"
+in the dice history.
+-}
+deathSaveSource : String -> Dice.Source
+deathSaveSource name =
+    { feature = "Death save", target = Just name }
+
+
+{-| Plain 1d20, no modifier. Built once and re-used so every
+death-save roll has the same expression shape (and the dice
+history's "1d20" label stays stable for searching/filtering).
+-}
+deathSaveExpression : Dice.Expression
+deathSaveExpression =
+    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = 0
+    , damageType = Nothing
+    }
+
+
+{-| Compute the new pip-strip count when pip `idx` (0..2) is
+clicked given the current count. Star-rating semantics — clicking
+a filled pip clears it and every later pip; clicking an empty pip
+fills up to and including it.
+-}
+pipStripTarget : Int -> Int -> Int
+pipStripTarget idx current =
+    if idx < current then
+        idx
+
+    else
+        idx + 1
+
+
+{-| Resolve a 5e death-save d20 face against the creature.
+
+  - 20 → revive at 1 HP, conscious, tracker cleared.
+  - 1 → +2 failures.
+  - 10..19 → +1 success.
+  - 2..9 → +1 failure.
+
+The helper checks for the pre-existing dead/stable state and is a
+no-op there so a stray click on the Roll button after death
+doesn't change anything.
+
+-}
+applyDeathSaveResult : Int -> Creature -> Creature
+applyDeathSaveResult d20 c =
+    if Encounter.isDeathSaveDead c.deathSaves || Encounter.isDeathSaveStable c.deathSaves then
+        c
+
+    else if d20 == 20 then
+        -- Nat 20 revives at 1 HP. Bumping currentHp above 0 also
+        -- hides the tracker (view gates on currentHp == 0) and
+        -- the cleared counts mean the next time they go down
+        -- they start fresh.
+        { c
+            | currentHp = Basics.max 1 c.currentHp
+            , deathSaves = Encounter.emptyDeathSaves
+        }
+
+    else if d20 == 1 then
+        { c | deathSaves = Encounter.addDeathSaveFailures 2 c.deathSaves }
+
+    else if d20 >= 10 then
+        { c | deathSaves = Encounter.addDeathSaveSuccesses 1 c.deathSaves }
+
+    else
+        { c | deathSaves = Encounter.addDeathSaveFailures 1 c.deathSaves }
 
 
 {-| Custom-initiative apply path: parse the modal's text input, set
@@ -1338,6 +2192,8 @@ view model =
             , viewDiceModal model.dice
             , viewHpChangeModal model
             , viewInitiativeModal model
+            , viewNoteEditModal model
+            , viewConditionModal model
             ]
         ]
     }
@@ -1419,7 +2275,7 @@ viewWorkspace : Model -> Html Msg
 viewWorkspace model =
     main_ [ class "workspace" ]
         [ viewPanelMain model.encounter model.hpEdit
-        , viewPanelControls
+        , viewPanelControls model.dice
         , viewPanelDetail
         ]
 
@@ -1470,11 +2326,7 @@ viewEncounterBar enc =
                 , span [ class "encounter-bar__state", title "State 3 (placeholder)" ] [ text "🧠" ]
                 , span [ class "encounter-bar__state", title "State 4 (placeholder)" ] [ text "🪽" ]
                 ]
-            , span [ class "condition-list" ]
-                [ span [ class "condition-list__item" ] [ text "Paralyzed" ]
-                , span [ class "condition-list__sep" ] [ text "|" ]
-                , span [ class "condition-list__item" ] [ text "Poisoned" ]
-                ]
+            , viewActiveCreatureConditions active
             ]
         , div [ class "encounter-bar__group encounter-bar__right" ]
             [ span [ class "encounter-bar__xp" ] [ text "93,000 XP" ]
@@ -1537,18 +2389,71 @@ viewXpFilter =
         ]
 
 
-viewPanelControls : Html Msg
-viewPanelControls =
+{-| Latest dice-roll total displayed left of the Roll button. Bold
+white integer (no formula, no source label) so the most recent
+result is glanceable from across the table even with the modal
+closed. Hidden when no rolls have landed yet.
+-}
+viewDiceLastTotal : DiceUi -> Html Msg
+viewDiceLastTotal dice =
+    case List.head dice.history.entries of
+        Just roll ->
+            span
+                [ class "dice-last-total"
+                , title "Last roll total"
+                ]
+                [ text (String.fromInt roll.total) ]
+
+        Nothing ->
+            text ""
+
+
+{-| Left-facing arrow between the latest-total readout and the
+Roll button, signalling that the number was emitted by the
+roller. Hidden until at least one roll has landed so the cluster
+isn't visually cluttered on first load.
+-}
+viewDiceArrow : DiceUi -> Html Msg
+viewDiceArrow dice =
+    if List.isEmpty dice.history.entries then
+        text ""
+
+    else
+        span
+            [ class "dice-arrow"
+            , attribute "aria-hidden" "true"
+            ]
+            [ text "←" ]
+
+
+viewPanelControls : DiceUi -> Html Msg
+viewPanelControls dice =
     section [ class "panel panel--controls" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
-            , button
-                [ class "action-btn action-btn--green"
-                , onClick OpenDice
-                , title "Roll dice"
-                , attribute "aria-label" "Roll dice"
+            , div [ class "dice-roll-cluster" ]
+                [ viewDiceLastTotal dice
+                , viewDiceArrow dice
+                , button
+                    [ class
+                        (if dice.unread then
+                            "action-btn action-btn--green dice-roll-btn dice-roll-btn--unread"
+
+                         else
+                            "action-btn action-btn--green dice-roll-btn"
+                        )
+                    , onClick OpenDice
+                    , title
+                        (if dice.unread then
+                            "Roll dice (new entries since last open)"
+
+                         else
+                            "Roll dice"
+                        )
+                    , attribute "aria-label" "Roll dice"
+                    ]
+                    [ text "🎲 Roll" ]
                 ]
-                [ text "🎲 Roll" ]
             ]
         , div [ class "panel__body" ]
             [ div [ class "btn-grid btn-grid--two-rows" ]
@@ -1663,12 +2568,25 @@ viewCreatureCard activeName hpEdit creature =
         isActive =
             creature.name == activeName
 
-        cardClass =
-            if isActive then
-                "creature-card creature-card--active"
+        isDead =
+            Encounter.isDeathSaveDead creature.deathSaves
 
-            else
-                "creature-card"
+        cardClass =
+            String.join " "
+                (List.filterMap identity
+                    [ Just "creature-card"
+                    , if isActive then
+                        Just "creature-card--active"
+
+                      else
+                        Nothing
+                    , if isDead then
+                        Just "creature-card--dead"
+
+                      else
+                        Nothing
+                    ]
+                )
     in
     article [ class cardClass ]
         [ div [ class "creature-card__rail creature-card__rail--left" ]
@@ -1753,20 +2671,50 @@ viewCardRowTop creature =
         , viewSurprisedToggle creature
         , span [ class "creature-name creature-name--default" ]
             [ text creature.name ]
-        , button
-            [ class "icon-btn icon-btn--sm"
-            , title "Edit note"
-            , attribute "aria-label" "Edit note"
-            ]
-            [ text "✏️" ]
+        , viewNoteOrPencil creature
         , span [ class "ac-readout" ]
             [ text ("AC: " ++ String.fromInt creature.armorClass) ]
-        , span [ class "condition-list" ]
-            [ span [ class "condition-list__item" ] [ text "Paralyzed" ]
-            , span [ class "condition-list__sep" ] [ text "|" ]
-            , span [ class "condition-list__item" ] [ text "Poisoned" ]
-            ]
+        , viewConditionChips creature
         ]
+
+
+{-| Note-or-pencil sliver of row 1.
+
+Empty note: just the pencil ✏️ button as an "add a note" affordance.
+
+Non-empty note: the note itself (clickable, opens the same edit
+modal so the user can rename or clear it) followed by a pipe
+separator before the AC readout. The pencil is intentionally
+hidden in this state — the note is now the click target, and
+showing both would make the user wonder which one to use.
+
+Returns a `List (Html Msg)` so the caller can splice it into the
+row alongside the rest of the elements without a wrapper div
+(which would break the row's flex gap).
+
+-}
+viewNoteOrPencil : Creature -> Html Msg
+viewNoteOrPencil creature =
+    if String.isEmpty creature.note then
+        button
+            [ class "icon-btn icon-btn--sm"
+            , onClick (NoteEditOpen creature.name creature.note)
+            , title "Add note"
+            , attribute "aria-label" "Add note"
+            ]
+            [ text "✏️" ]
+
+    else
+        span [ class "creature-note-wrap" ]
+            [ button
+                [ class "creature-note creature-note--clickable"
+                , onClick (NoteEditOpen creature.name creature.note)
+                , title "Edit or clear note"
+                , attribute "aria-label" ("Edit note: " ++ creature.note)
+                ]
+                [ text creature.note ]
+            , span [ class "creature-note__sep" ] [ text "|" ]
+            ]
 
 
 viewSurprisedToggle : Creature -> Html Msg
@@ -1907,6 +2855,162 @@ hpEditKeyDecoder =
             )
 
 
+{-| Live render of a creature's conditions on row 1 of the card.
+Empty list → empty text node so the row's flex gap collapses
+naturally. Otherwise we render a separator pipe followed by one
+chip per condition.
+-}
+viewConditionChips : Creature -> Html Msg
+viewConditionChips creature =
+    if List.isEmpty creature.conditions then
+        text ""
+
+    else
+        span [ class "condition-chips-wrap" ]
+            (span [ class "row-top__sep" ] [ text "|" ]
+                :: List.map (viewConditionChip creature.name) creature.conditions
+            )
+
+
+{-| One condition chip. Layout (left → right):
+[ name + note ][ optional save-roll button ] [ duration glyph ][ × ]
+
+Clicking the name opens the edit modal; the × runs the remove
+Msg directly (and stops propagation so it doesn't also open the
+modal). The save-roll button (when the condition has a `saveToEnd`)
+fires a 1d20 vs. the DC and removes the condition on success.
+
+-}
+viewConditionChip : String -> Encounter.Condition -> Html Msg
+viewConditionChip target cond =
+    span
+        [ class "condition-chip"
+        , title (chipTitle cond)
+        ]
+        [ button
+            [ class "condition-chip__name"
+            , onClick (ConditionOpenEdit target cond.id)
+            , title "Click to edit"
+            ]
+            [ text cond.name
+            , if String.isEmpty cond.note then
+                text ""
+
+              else
+                span [ class "condition-chip__note" ]
+                    [ text (" (" ++ cond.note ++ ")") ]
+            ]
+        , viewChipSaveButton target cond
+        , viewChipDurationGlyph cond
+        , button
+            [ class "condition-chip__remove"
+            , stopPropagationOn "click"
+                (Decode.succeed ( ConditionRemoveChip target cond.id, True ))
+            , title "Remove condition"
+            , attribute "aria-label" "Remove condition"
+            ]
+            [ text "×" ]
+        ]
+
+
+{-| Tooltip text for the whole chip. Combines name, duration, and
+(if present) the save-to-end terms so the GM can hover for full
+context without opening the modal.
+-}
+chipTitle : Encounter.Condition -> String
+chipTitle cond =
+    let
+        durPart =
+            Encounter.describeDuration cond.duration
+
+        savePart =
+            case cond.saveToEnd of
+                Just s ->
+                    " · " ++ s.ability ++ " save DC " ++ String.fromInt s.dc
+
+                Nothing ->
+                    ""
+    in
+    cond.name ++ " — " ++ durPart ++ savePart
+
+
+{-| Inline d20 button next to a chip when the condition has a
+saving throw conditional. Click rolls 1d20 + bonus and removes
+the chip on success. Hidden when no save is configured.
+-}
+viewChipSaveButton : String -> Encounter.Condition -> Html Msg
+viewChipSaveButton target cond =
+    case cond.saveToEnd of
+        Just spec ->
+            button
+                [ class "condition-chip__save"
+                , stopPropagationOn "click"
+                    (Decode.succeed ( ConditionRollSave target cond.id, True ))
+                , title
+                    ("Roll "
+                        ++ spec.ability
+                        ++ " save (DC "
+                        ++ String.fromInt spec.dc
+                        ++ ", bonus "
+                        ++ formatBonus spec.bonus
+                        ++ ")"
+                    )
+                , attribute "aria-label" ("Roll save for " ++ cond.name)
+                ]
+                [ text "🎲" ]
+
+        Nothing ->
+            text ""
+
+
+{-| Compact duration glyph appended to a chip. Manual durations
+get nothing (the GM removes by hand); UntilTurn shows ⏱
+N (where N is "Bk" or first 3 chars of the ref creature's name);
+Countdown shows ⏳N.
+-}
+viewChipDurationGlyph : Encounter.Condition -> Html Msg
+viewChipDurationGlyph cond =
+    case cond.duration of
+        Encounter.DurationManual ->
+            text ""
+
+        Encounter.DurationUntilTurn _ ref ->
+            span [ class "condition-chip__duration" ]
+                [ text ("⏱ " ++ String.left 4 ref) ]
+
+        Encounter.DurationCountdown _ remaining _ ->
+            span [ class "condition-chip__duration" ]
+                [ text ("⏳ " ++ String.fromInt remaining) ]
+
+
+formatBonus : Int -> String
+formatBonus n =
+    if n >= 0 then
+        "+" ++ String.fromInt n
+
+    else
+        String.fromInt n
+
+
+{-| Conditions slot in the encounter title bar — same chip render
+as on the card, scoped to the active creature. Empty list →
+empty text node so the title bar doesn't show a stray separator.
+-}
+viewActiveCreatureConditions : Maybe Creature -> Html Msg
+viewActiveCreatureConditions active =
+    case active of
+        Just c ->
+            if List.isEmpty c.conditions then
+                text ""
+
+            else
+                span [ class "condition-chips-wrap condition-chips-wrap--bar" ]
+                    (List.map (viewConditionChip c.name) c.conditions)
+
+        Nothing ->
+            text ""
+
+
 viewBloodied : Creature -> Html Msg
 viewBloodied creature =
     if creature.bloodied then
@@ -1921,21 +3025,84 @@ viewBloodied creature =
         text ""
 
 
+{-| The 5e death-save tracker as it appears in row 2 (right after
+the bloodied indicator). Visibility is keyed off `currentHp == 0`
+exclusively — the moment the creature is back above 0 HP they're
+conscious, and the tracker shouldn't be on screen at all. The
+HP-change engine already resets the counts on heal-to-positive,
+so when the tracker re-appears (next time they hit 0) it starts
+fresh.
+
+Layout: three success pips (🌟), three failure pips (💀), and a
+small 🎲 button that fires a 1d20 death save and resolves it per
+5e. Once stable (3 successes) or dead (3 failures), the Roll
+button disappears — the GM can still un-set pips manually if they
+need to reset, but the automated flow stops.
+
+-}
 viewDeathSaves : Creature -> Html Msg
 viewDeathSaves creature =
-    if creature.inDeathSaves then
+    if creature.currentHp == 0 then
         let
-            ( a, b, c ) =
+            ds =
                 creature.deathSaves
+
+            stable =
+                Encounter.isDeathSaveStable ds
+
+            dead =
+                Encounter.isDeathSaveDead ds
+
+            statusBadge =
+                if dead then
+                    span [ class "death-saves__badge death-saves__badge--dead" ]
+                        [ text "💀 Dead" ]
+
+                else if stable then
+                    span [ class "death-saves__badge death-saves__badge--stable" ]
+                        [ text "🛡 Stable" ]
+
+                else
+                    text ""
+
+            rollButton =
+                if dead || stable then
+                    text ""
+
+                else
+                    button
+                        [ class "death-saves__roll"
+                        , onClick (DeathSaveRoll creature.name)
+                        , title "Roll a 1d20 death save (5e: 10+ success, ≤9 failure, nat 20 revives, nat 1 = 2 failures)"
+                        , attribute "aria-label" "Roll death save"
+                        ]
+                        [ text "🎲" ]
         in
         span
             [ class "death-saves"
             , attribute "role" "group"
             , attribute "aria-label" "Death saving throws"
             ]
-            [ viewDeathSave creature.name 0 a
-            , viewDeathSave creature.name 1 b
-            , viewDeathSave creature.name 2 c
+            [ span [ class "death-saves__strip death-saves__strip--success" ]
+                (span
+                    [ class "death-saves__label"
+                    , title "Successful death saves"
+                    , attribute "aria-hidden" "true"
+                    ]
+                    [ text "🌟" ]
+                    :: List.map (viewDeathSavePip creature.name DeathSaveToggleSuccess "🌟" "Success" ds.successes) [ 0, 1, 2 ]
+                )
+            , span [ class "death-saves__strip death-saves__strip--failure" ]
+                (span
+                    [ class "death-saves__label"
+                    , title "Failed death saves"
+                    , attribute "aria-hidden" "true"
+                    ]
+                    [ text "💀" ]
+                    :: List.map (viewDeathSavePip creature.name DeathSaveToggleFailure "💀" "Failure" ds.failures) [ 0, 1, 2 ]
+                )
+            , rollButton
+            , statusBadge
             ]
 
     else
@@ -1965,6 +3132,7 @@ viewCardRowBot creature =
             [ text "Temp HP" ]
         , button
             [ class "action-btn action-btn--condition"
+            , onClick (ConditionOpenNew creature.name)
             , title "Apply condition or effect"
             ]
             [ text "Condition/Effect" ]
@@ -2022,26 +3190,50 @@ viewHoldToggle creature =
         [ text bodyText ]
 
 
-viewDeathSave : String -> Int -> Bool -> Html Msg
-viewDeathSave name idx isFailed =
+{-| Render one pip of a death-save strip.
+
+`msgFor name idx` is the toggle Msg constructor (success or
+failure variant); `filledGlyph` and `kindLabel` differ between
+strips. `currentCount` is the strip's current filled-pip count,
+used to decide whether THIS pip (`idx`) is filled.
+
+-}
+viewDeathSavePip : String -> (String -> Int -> Msg) -> String -> String -> Int -> Int -> Html Msg
+viewDeathSavePip name msgFor filledGlyph kindLabel currentCount idx =
     let
-        ( glyph, state ) =
-            if isFailed then
-                ( "💀", "failed" )
+        filled =
+            idx < currentCount
+
+        glyph =
+            if filled then
+                filledGlyph
 
             else
-                ( "○", "open" )
+                "○"
 
-        label =
-            "Death save " ++ String.fromInt (idx + 1) ++ ": " ++ state
+        stateLabel =
+            if filled then
+                "filled"
+
+            else
+                "empty"
     in
     button
-        [ class "death-save"
-        , onClick (ToggleDeathSave name idx)
-        , title label
-        , attribute "aria-label" label
+        [ class
+            (String.join " "
+                [ "death-save-pip"
+                , if filled then
+                    "death-save-pip--filled"
+
+                  else
+                    "death-save-pip--empty"
+                ]
+            )
+        , onClick (msgFor name idx)
+        , title (kindLabel ++ " " ++ String.fromInt (idx + 1) ++ ": " ++ stateLabel)
+        , attribute "aria-label" (kindLabel ++ " pip " ++ String.fromInt (idx + 1))
         , attribute "aria-pressed"
-            (if isFailed then
+            (if filled then
                 "true"
 
              else
@@ -3086,4 +4278,492 @@ viewInitiativeFooter =
             , onClick InitiativeClose
             ]
             [ text "Close" ]
+        ]
+
+
+
+-- NOTE-EDIT MODAL
+
+
+{-| Renders the per-creature note editor when the row 1 pencil
+button has been clicked. Single text input capped at
+`maxNoteLength`, with Save / Cancel buttons. Enter commits, Esc /
+backdrop / ✕ / Cancel all close without changes. Saving an empty
+string is the canonical way to clear a note.
+-}
+viewNoteEditModal : Model -> Html Msg
+viewNoteEditModal model =
+    case model.noteEdit of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            div
+                [ class "modal-backdrop"
+                , onClick NoteEditCancel
+                ]
+                [ div
+                    [ class "modal modal--note-edit"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" ("Note for " ++ ui.target)
+                    ]
+                    [ div [ class "modal__header" ]
+                        [ div [ class "modal__title" ]
+                            [ text ("Note — " ++ ui.target) ]
+                        , button
+                            [ class "modal__close"
+                            , onClick NoteEditCancel
+                            , title "Cancel"
+                            , attribute "aria-label" "Cancel"
+                            ]
+                            [ text "×" ]
+                        ]
+                    , div [ class "modal__body" ]
+                        [ Html.label [ for "note-edit-input" ]
+                            [ text ("Short label (max " ++ String.fromInt maxNoteLength ++ " chars)") ]
+                        , input
+                            [ id "note-edit-input"
+                            , class "note-edit__input"
+                            , type_ "text"
+                            , value ui.text
+                            , maxlength maxNoteLength
+                            , placeholder "e.g. boss, summoned, ally"
+                            , autofocus True
+                            , onInput NoteEditChange
+                            , Html.Events.on "keydown" (enterKey NoteEditCommit)
+                            ]
+                            []
+                        , div [ class "note-edit__buttons" ]
+                            [ button
+                                [ class "action-btn action-btn--green"
+                                , onClick NoteEditCommit
+                                ]
+                                [ text "Save" ]
+                            , button
+                                [ class "action-btn"
+                                , onClick NoteEditCancel
+                                ]
+                                [ text "Cancel" ]
+                            ]
+                        ]
+                    ]
+                ]
+
+
+
+-- CONDITION / EFFECT MODAL
+
+
+{-| Render the condition modal when one is open. Sections, top to
+bottom: standard-condition radios, custom name input, note input,
+duration choice (Manual / Until turn / Countdown) with the
+relevant sub-controls, optional save-to-end block, and the action
+footer (Apply / Cancel / Delete-when-editing).
+-}
+viewConditionModal : Model -> Html Msg
+viewConditionModal model =
+    case model.conditionUi of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            div
+                [ class "modal-backdrop"
+                , onClick ConditionClose
+                ]
+                [ div
+                    [ class "modal modal--condition"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" ("Condition for " ++ ui.target)
+                    ]
+                    [ div [ class "modal__header" ]
+                        [ div [ class "modal__title" ]
+                            [ text
+                                ((if ui.editingId == Nothing then
+                                    "Add Condition — "
+
+                                  else
+                                    "Edit Condition — "
+                                 )
+                                    ++ ui.target
+                                )
+                            ]
+                        , button
+                            [ class "modal__close"
+                            , onClick ConditionClose
+                            , title "Cancel"
+                            , attribute "aria-label" "Cancel"
+                            ]
+                            [ text "×" ]
+                        ]
+                    , div [ class "modal__body" ]
+                        [ viewConditionStandardSection ui
+                        , viewConditionCustomSection ui
+                        , viewConditionNoteSection ui
+                        , viewConditionDurationSection ui model
+                        , viewConditionSaveSection ui
+                        , viewConditionFooter ui
+                        ]
+                    ]
+                ]
+
+
+viewConditionStandardSection : ConditionUi -> Html Msg
+viewConditionStandardSection ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ]
+            [ text "Standard 5e Conditions" ]
+        , div [ class "cond-radio-grid" ]
+            (List.map (viewConditionRadio ui) Encounter.standardConditions)
+        ]
+
+
+viewConditionRadio : ConditionUi -> String -> Html Msg
+viewConditionRadio ui label =
+    let
+        isSelected =
+            ui.name == label
+    in
+    Html.label
+        [ class
+            (if isSelected then
+                "cond-radio cond-radio--selected"
+
+             else
+                "cond-radio"
+            )
+        ]
+        [ input
+            [ type_ "radio"
+            , Html.Attributes.name "condition-radio"
+            , checked isSelected
+            , onClick (ConditionPickStandard label)
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text label ]
+        ]
+
+
+viewConditionCustomSection : ConditionUi -> Html Msg
+viewConditionCustomSection ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ]
+            [ text "Custom Name" ]
+        , input
+            [ class "cond-input"
+            , type_ "text"
+            , value ui.customName
+            , placeholder "e.g. Bardic Inspiration, On fire"
+            , onInput ConditionCustomNameChanged
+            ]
+            []
+        , div [ class "cond-section__caption" ]
+            [ text "Typing here overrides the radio selection above." ]
+        ]
+
+
+viewConditionNoteSection : ConditionUi -> Html Msg
+viewConditionNoteSection ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ]
+            [ text ("Note (max " ++ String.fromInt maxConditionNoteLength ++ " chars)") ]
+        , input
+            [ class "cond-input"
+            , type_ "text"
+            , value ui.note
+            , maxlength maxConditionNoteLength
+            , placeholder "e.g. from Lyra"
+            , onInput ConditionNoteChanged
+            ]
+            []
+        ]
+
+
+viewConditionDurationSection : ConditionUi -> Model -> Html Msg
+viewConditionDurationSection ui model =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ]
+            [ text "Duration" ]
+        , div [ class "cond-radio-row" ]
+            [ viewDurationKindRadio ui DurKindManual "Manual"
+            , viewDurationKindRadio ui DurKindUntilTurn "Until turn"
+            , viewDurationKindRadio ui DurKindCountdown "Countdown"
+            ]
+        , case ui.durationKind of
+            DurKindManual ->
+                div [ class "cond-section__caption" ]
+                    [ text "Stays until the GM clicks the chip's × to remove." ]
+
+            DurKindUntilTurn ->
+                viewDurationUntilSubsection ui model
+
+            DurKindCountdown ->
+                viewDurationCountdownSubsection ui
+        ]
+
+
+viewDurationKindRadio : ConditionUi -> DurationKind -> String -> Html Msg
+viewDurationKindRadio ui kind label =
+    Html.label
+        [ class
+            (if ui.durationKind == kind then
+                "cond-radio cond-radio--selected"
+
+             else
+                "cond-radio"
+            )
+        ]
+        [ input
+            [ type_ "radio"
+            , Html.Attributes.name "duration-kind"
+            , checked (ui.durationKind == kind)
+            , onClick (ConditionDurationKindSet kind)
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text label ]
+        ]
+
+
+viewDurationUntilSubsection : ConditionUi -> Model -> Html Msg
+viewDurationUntilSubsection ui model =
+    div [ class "cond-subsection" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [] [ text "At" ]
+            , viewPhaseToggle "until-phase" ui.untilPhase ConditionUntilPhaseSet
+            , Html.label [] [ text "of" ]
+            , Html.select
+                [ class "cond-select"
+                , onInput ConditionUntilCreatureChanged
+                ]
+                (List.map
+                    (\c ->
+                        Html.option
+                            [ value c.name
+                            , Html.Attributes.selected (c.name == ui.untilCreature)
+                            ]
+                            [ text c.name ]
+                    )
+                    model.encounter.creatures
+                )
+            , Html.label [] [ text "'s turn" ]
+            ]
+        ]
+
+
+viewDurationCountdownSubsection : ConditionUi -> Html Msg
+viewDurationCountdownSubsection ui =
+    div [ class "cond-subsection" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ for "cond-countdown-turns" ]
+                [ text "Lasts" ]
+            , input
+                [ id "cond-countdown-turns"
+                , class "cond-input cond-input--narrow"
+                , type_ "number"
+                , Html.Attributes.min "1"
+                , Html.Attributes.max "99"
+                , value ui.countdownTurnsText
+                , onInput ConditionCountdownTurnsChanged
+                ]
+                []
+            , Html.label [] [ text "turns, ticking at" ]
+            , viewPhaseToggle "countdown-phase" ui.countdownPhase ConditionCountdownPhaseSet
+            , Html.label [] [ text "of the bearer's turn" ]
+            ]
+        , div [ class "cond-section__caption" ]
+            [ text
+                ("If you set 'end' while it's already this creature's turn, "
+                    ++ "the countdown skips this end-of-turn so they get a "
+                    ++ "full first turn under the effect."
+                )
+            ]
+        ]
+
+
+viewPhaseToggle : String -> Encounter.TurnPhase -> (Encounter.TurnPhase -> Msg) -> Html Msg
+viewPhaseToggle groupName current toMsg =
+    span [ class "cond-phase-toggle" ]
+        [ Html.label
+            [ class
+                (if current == Encounter.AtBegin then
+                    "cond-phase cond-phase--on"
+
+                 else
+                    "cond-phase"
+                )
+            ]
+            [ input
+                [ type_ "radio"
+                , Html.Attributes.name groupName
+                , checked (current == Encounter.AtBegin)
+                , onClick (toMsg Encounter.AtBegin)
+                ]
+                []
+            , text "beginning"
+            ]
+        , Html.label
+            [ class
+                (if current == Encounter.AtEnd then
+                    "cond-phase cond-phase--on"
+
+                 else
+                    "cond-phase"
+                )
+            ]
+            [ input
+                [ type_ "radio"
+                , Html.Attributes.name groupName
+                , checked (current == Encounter.AtEnd)
+                , onClick (toMsg Encounter.AtEnd)
+                ]
+                []
+            , text "end"
+            ]
+        ]
+
+
+viewConditionSaveSection : ConditionUi -> Html Msg
+viewConditionSaveSection ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ]
+            [ Html.label []
+                [ input
+                    [ type_ "checkbox"
+                    , checked (ui.saveToEnd /= Nothing)
+                    , onClick ConditionSaveToggle
+                    ]
+                    []
+                , text " Save-to-end"
+                ]
+            ]
+        , case ui.saveToEnd of
+            Nothing ->
+                div [ class "cond-section__caption" ]
+                    [ text "Optional: condition can end on a successful saving throw." ]
+
+            Just s ->
+                viewConditionSaveSubsection s
+        ]
+
+
+viewConditionSaveSubsection : SaveToEndUi -> Html Msg
+viewConditionSaveSubsection s =
+    div [ class "cond-subsection" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ for "cond-save-ability" ] [ text "Ability" ]
+            , Html.select
+                [ id "cond-save-ability"
+                , class "cond-select"
+                , onInput ConditionSaveAbilityChanged
+                ]
+                (List.map
+                    (\a ->
+                        Html.option
+                            [ value a
+                            , Html.Attributes.selected (a == s.ability)
+                            ]
+                            [ text a ]
+                    )
+                    [ "STR", "DEX", "CON", "INT", "WIS", "CHA" ]
+                )
+            , Html.label [ for "cond-save-dc" ] [ text "DC" ]
+            , input
+                [ id "cond-save-dc"
+                , class "cond-input cond-input--narrow"
+                , type_ "number"
+                , Html.Attributes.min "1"
+                , Html.Attributes.max "40"
+                , value s.dcText
+                , onInput ConditionSaveDcChanged
+                ]
+                []
+            , Html.label [ for "cond-save-bonus" ] [ text "Bonus" ]
+            , input
+                [ id "cond-save-bonus"
+                , class "cond-input cond-input--narrow"
+                , type_ "number"
+                , Html.Attributes.min "-10"
+                , Html.Attributes.max "20"
+                , value s.bonusText
+                , onInput ConditionSaveBonusChanged
+                ]
+                []
+            ]
+        , div [ class "cond-row" ]
+            [ Html.label []
+                [ input
+                    [ type_ "checkbox"
+                    , checked s.autoRoll
+                    , onClick ConditionSaveAutoRollToggle
+                    ]
+                    []
+                , text " Auto-roll at the bearer's begin-of-turn"
+                ]
+            ]
+        , div [ class "cond-section__caption" ]
+            [ text
+                (if s.autoRoll then
+                    "The save will fire automatically each turn; success removes the condition."
+
+                 else
+                    "The 🎲 button on the chip rolls manually — a reminder, not auto-applied."
+                )
+            ]
+        ]
+
+
+viewConditionFooter : ConditionUi -> Html Msg
+viewConditionFooter ui =
+    let
+        canSubmit =
+            not (String.isEmpty (String.trim ui.name))
+
+        applyLabel =
+            if ui.editingId == Nothing then
+                "Apply"
+
+            else
+                "Save Changes"
+    in
+    div [ class "cond-footer" ]
+        [ button
+            [ class "action-btn action-btn--green"
+            , onClick ConditionSubmit
+            , disabled (not canSubmit)
+            , attribute "aria-disabled"
+                (if canSubmit then
+                    "false"
+
+                 else
+                    "true"
+                )
+            , title
+                (if canSubmit then
+                    applyLabel
+
+                 else
+                    "Pick a condition or type a custom name first"
+                )
+            ]
+            [ text applyLabel ]
+        , case ui.editingId of
+            Just _ ->
+                button
+                    [ class "action-btn action-btn--damage"
+                    , onClick ConditionDelete
+                    , title "Remove this condition"
+                    ]
+                    [ text "Delete" ]
+
+            Nothing ->
+                text ""
+        , button
+            [ class "action-btn"
+            , onClick ConditionClose
+            ]
+            [ text "Cancel" ]
         ]
