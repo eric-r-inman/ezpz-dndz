@@ -105,15 +105,32 @@ We anticipate four lifecycle phases that future features will hook:
 | end of turn       | fired against the *outgoing* creature before successor | save against ongoing condition; "end of turn" durations expire    |
 | off turn          | applies to every creature that is *not* active         | reaction triggers (opportunity attacks); passive observation      |
 
-Today the only phase logic baked into `Encounter.nextTurn` is the
-**surprised-skip rule** (5e surprise): if the marker would land on
-a creature with `surprised = True`, the creature is skipped and the
-flag is cleared in the same step. A run of consecutive surprised
-creatures all get skipped on one Next Turn click. A defensive
-iteration cap (= queue length) prevents an all-surprised queue from
-spinning. Other phase hooks (condition tickdown, regen, "start of
-turn" abilities) will land as their own pure functions called from
-the update loop.
+`Encounter.nextTurn` today bakes in three pieces of phase logic:
+
+1. The **surprised-skip rule** (5e surprise): if the marker would
+   land on a creature with `surprised = True`, the creature is
+   skipped and the flag is cleared in the same step.
+2. The **dead-skip rule**: creatures with three filled death-save
+   failure pips (`Encounter.isDeathSaveDead`) are skipped
+   permanently — the marker walks past on every Next Turn without
+   clearing anything. The same iteration cap (= queue length)
+   covers the all-dead TPK edge case.
+3. **Condition lifecycle hooks** bracketing the queue walk:
+   `applyEndOfTurn outgoing → skipUnplayable → applyBeginOfTurn
+   incoming`. The end-of-turn pass ticks the outgoing creature's
+   `DurationCountdown AtEnd` conditions and expires every
+   `DurationUntilTurn AtEnd <name>` across the encounter; the
+   begin-of-turn pass does the same for the `AtBegin` phase.
+   Surprised / dead creatures don't get a begin-of-turn hook —
+   their turn doesn't actually happen.
+
+The auto-roll save path lives one layer above: when `Main.update`
+processes `NextTurn`, after the encounter mutation it inspects the
+new active creature for any conditions with
+`saveToEnd.autoRoll = True` and batches a `Dice.rollCmd` per
+match. Results land in `ConditionSaveLanded`, which removes the
+condition on `roll.total >= dc`. The pure domain layer doesn't
+fire Cmds; that's the right boundary.
 
 There is also a "manual scrub" path: clicking the **→** arrow on any
 creature card immediately makes that creature active without
@@ -182,9 +199,11 @@ arithmetic doesn't drift between code paths.
 `Change` is an ADT:
 
   - `Damage { amount, ignoreTemp }` — temp HP soaks first (skippable
-    via `ignoreTemp`); current HP clamps at 0.
-  - `Heal Int` — caps at maxHp; clears `inDeathSaves` and the three
-    death-save slots when reviving from 0.
+    via `ignoreTemp`); current HP clamps at 0. The death-save
+    tracker auto-appears once `currentHp == 0` (view-side gate),
+    so no flag bookkeeping is needed here.
+  - `Heal Int` — caps at maxHp; clears the death-save counters
+    via `Encounter.emptyDeathSaves` when reviving from 0.
   - `TempHp Int` — replace-if-higher (5e never-stacks rule).
 
 `bloodied` is auto-recomputed after every `apply` from current vs.
@@ -228,6 +247,60 @@ encounter has e.g. four "Goblin Skirmisher"s. When that day comes:
 3. Keep `name` as a display field that can collide.
 
 This is intentionally deferred until the feature actually demands it.
+
+## Conditions / effects
+
+Each `Creature` carries a `conditions : List Condition` where:
+
+```elm
+type alias Condition =
+    { id : Int
+    , name : String
+    , note : String          -- max 10 chars, enforced in the modal
+    , duration : Duration
+    , saveToEnd : Maybe SaveToEnd
+    }
+
+type Duration
+    = DurationManual
+    | DurationUntilTurn TurnPhase String     -- "until end of Lyra's turn"
+    | DurationCountdown TurnPhase Int Bool   -- N turns; bool = skipNextTick
+
+type TurnPhase = AtBegin | AtEnd
+```
+
+`id` is allocated as one-past-the-current-max across the whole
+encounter by `Encounter.addCondition` so it's stable across edits
+and renames. The third field of `DurationCountdown` is
+**skipNextTick**: set to `True` when an `AtEnd` countdown is
+created on the currently-active creature, so the bearer's
+imminent end-of-turn doesn't get counted as a full turn (the
+countdown commences "starting in the next round" per the user
+request).
+
+The lifecycle hooks fire from `Encounter.nextTurn`:
+
+- `applyEndOfTurn name` ticks `DurationCountdown AtEnd` on
+  `name`'s conditions (clearing skipNextTick instead of
+  decrementing if set), then expires every
+  `DurationUntilTurn AtEnd name` across the whole encounter.
+- `applyBeginOfTurn name` does the same for the `AtBegin` phase.
+
+Both are pure `Encounter -> Encounter` functions in
+`Encounter.elm`; they don't fire Cmds. Auto-roll saves
+(`saveToEnd.autoRoll = True`) are dispatched from the `Main.update`
+side after `nextTurn` completes — `autoRollCmds` walks the new
+active creature's conditions and emits a `Dice.rollCmd` per
+match. Results land in `ConditionSaveLanded` which removes the
+condition on `roll.total >= dc`.
+
+The view side renders each condition as a chip with
+`name (note)  🎲 (when save configured)  ⏱/⏳N  ×` controls.
+Click name → edit modal. Click 🎲 → manual save roll. Click × →
+remove. The same `viewConditionChip` helper is used both on row 1
+of every card and in the encounter title bar (scoped to the
+active creature).
+
 
 ## Dice roller
 

@@ -80,13 +80,6 @@ deployment context.
    - Per-creature time-on-turn tracking, optional total-encounter
      stopwatch.
 
-10. **Condition / Effect engine**
-    - Card row 3 "Condition/Effect" button currently does nothing.
-    - Wire to a modal that picks from the standard 5e conditions
-      list + custom effects, with optional duration in rounds and
-      hooks into the turn lifecycle (begin/end/off-turn) so e.g.
-      poisoned ticks down at end-of-turn.
-
 ## Smaller polish (any time)
 
 - Round-trip parsing tests for `Dice.parse` (set up `elm-test`).
@@ -145,3 +138,26 @@ deployment context.
 - 5e surprise rule: `Encounter.nextTurn` skips creatures with
   `surprised = True`, auto-clearing their flag in the same step
   so their next turn after the skip happens normally.
+- Per-creature note: short white-italic label edited via the row 1
+  pencil button, click-to-edit on the note text once set; pipe
+  separators in the row before AC and before the conditions list.
+- Death-saves engine (5e): `Encounter.DeathSaves` record with
+  successes / failures counters, auto-trigger keyed on
+  `currentHp == 0`, 🌟/💀 pip strips with status badges,
+  🎲 button that rolls 1d20 and resolves per-rule (nat 20 revives,
+  nat 1 = +2 failures, etc.), `nextTurn` skips dead creatures, dead
+  cards visually grey out.
+- Condition / Effect engine: full modal (15 standard 5e conditions
+  + custom name + 10-char note + duration block with Manual /
+  Until-turn-of-X / Countdown variants + optional save-to-end with
+  auto-roll). Live chips on row 1 + the encounter title bar
+  replace the old placeholder. `Encounter.nextTurn` now composes
+  begin / end-of-turn hooks that tick countdowns and expire
+  Until-turn conditions; auto-roll saves fire as `Cmd`s on Next
+  Turn.
+- Dice indicator in encounter controls: bold-white latest-total
+  readout left of the 🎲 Roll button, with a ← arrow signalling
+  it was emitted by the roller. Yellow box-shadow ring on the
+  button when the log has been updated since the modal was last
+  opened; clears on open. All five roll-landing paths funnel
+  through one `pushDiceRoll` helper.

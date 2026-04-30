@@ -49,10 +49,10 @@ upstream and pass the integer total.
   - `Damage` follows 5e order-of-operations: temp HP absorbs first
     (unless `ignoreTemp` is set, which models effects like force
     damage to a temporary-HP-granting spell that bypasses the buffer),
-    then the remainder reduces `currentHp`. Current HP is clamped at
-    1.  The death-save tracker shows automatically once `currentHp`
-        is 0 (the view code reads that directly), so we don't need a
-        side flag here.
+    then the remainder reduces `currentHp` (clamped at zero, not
+    negative). The death-save tracker shows automatically once
+    `currentHp` is 0 (the view code reads that directly), so we
+    don't need a side flag here.
 
   - `Heal` adds to `currentHp`, capped at `maxHp`. Doesn't touch
     `tempHp` (5e: temp HP is its own pool). If healing brings a

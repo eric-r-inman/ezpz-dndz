@@ -198,3 +198,132 @@
   guards against an all-surprised queue spinning.  Implemented
   as the first real "beginning of turn" hook composed around
   the existing queue walk.
+
+** Per-creature note
+
+- New ~note : String~ field on =Creature= (10–20 char short label).
+  Edited via a small modal opened from the row 1 ✏️ pencil button
+  (when empty) or by clicking the note text itself (when set).
+  Saving an empty string clears the note.
+- Display: the note renders inline next to the name in white
+  italics.  The pencil hides as soon as a note exists — the note
+  text /is/ the edit affordance.  A muted pipe separator follows
+  the note before the AC readout, and another pipe sits after AC
+  before the conditions list.
+- Modal chrome reuses =.modal-backdrop / .modal/ .modal__header=
+  shared with the dice / HP / initiative modals.  Esc, ✕, Cancel,
+  and backdrop click all close.
+
+** Death saves engine (5e)
+
+- Replaced the row 2 placeholder ~( Bool, Bool, Bool )~ tracker
+  with a real 5e death-save engine.  New
+  =Encounter.DeathSaves = { successes : Int, failures : Int }=
+  type plus helpers ~emptyDeathSaves~,
+  ~addDeathSaveSuccesses~, ~addDeathSaveFailures~,
+  ~isDeathSaveStable~, ~isDeathSaveDead~ in =Encounter=.
+  ~Encounter.toggleDeathSave~ removed.
+- Tracker visibility is keyed exclusively off ~currentHp == 0~.
+  No more separate ~inDeathSaves~ flag — that field was deleted
+  from =Creature=.  Healing back above 0 hides the tracker; the
+  HP-change engine clears the running counts at the same time so
+  a re-drop starts fresh.
+- Pip layout: a 🌟 prefix label + three success pips, then a 💀
+  prefix label + three failure pips, then a 🎲 Roll button and
+  the Stable / Dead status badge when applicable.  Pips use the
+  star-rating click pattern (clicking pip ~i~ when filled clears
+  it and every later one; clicking when empty fills up to and
+  including ~i~).
+- 🎲 button rolls 1d20 and resolves per 5e:
+  - nat 20 → revive at 1 HP, clear tracker
+  - 10–19 → +1 success
+  - 2–9 → +1 failure
+  - nat 1 → +2 failures
+  Roll is logged to the dice history with source label
+  ~Death save → <creature>~ and persisted server-side via the
+  same /api/dice/history pipe as every other roll.
+- =Encounter.nextTurn=' s skip loop (renamed
+  ~skipUnplayable~) now also skips dead creatures.  Unlike
+  surprised, the dead state isn't cleared — the marker just
+  walks past every Next Turn.  Cards with three filled failure
+  pips get a greyed-out class (~creature-card--dead~) so the GM
+  can see TPK members at a glance; pips remain clickable to
+  unwind a misclick.
+- HP-change engine: ~applyDamage~ is now a clean
+  damage-then-clamp; the auto-toggle of any death-save flag
+  went away with the field.  ~applyHeal~'s revive path resets
+  ~deathSaves~ via ~Encounter.emptyDeathSaves~.
+- Seed: Lyra Vale (PC) now starts at 0/42 HP with one failure
+  recorded so the tracker is demoed on first load.
+
+** Conditions / effects engine
+
+- Full implementation of the row 3 *Condition/Effect* button.
+  ~Creature.conditions~ went from ~List String~ placeholder to
+  ~List Condition~ where:
+  #+begin_src elm :results none :exports code
+  type alias Condition =
+      { id : Int
+      , name : String
+      , note : String
+      , duration : Duration
+      , saveToEnd : Maybe SaveToEnd
+      }
+
+  type Duration
+      = DurationManual
+      | DurationUntilTurn TurnPhase String     -- "until end of Lyra's turn"
+      | DurationCountdown TurnPhase Int Bool   -- N turns; bool = skipNextTick
+
+  type TurnPhase = AtBegin | AtEnd
+  #+end_src
+- Modal opens from the row 3 button or by clicking any chip.
+  Sections (top to bottom): the 15 standard 5e conditions as
+  radio buttons (~Encounter.standardConditions~), a custom-name
+  text input (typing here overrides the radio), a 10-char note
+  input, a duration block (Manual / Until turn / Countdown with
+  the relevant sub-controls), and an optional Save-to-end block
+  (ability dropdown, DC, bonus, auto-roll toggle).  Edit mode
+  surfaces a red Delete button in the footer.
+- Live chips on row 1 of the card and in the encounter title bar
+  replace the old "Paralyzed | Poisoned" placeholder.  Each chip
+  shows ~name (note) 🎲 ⏳N ×~ — click name to edit, click 🎲
+  (when a save-to-end is configured) to roll a manual save,
+  click × to remove.  ⏱ glyph is shown for ~UntilTurn~ durations
+  with the first 4 chars of the reference creature's name.
+- Turn lifecycle hooks: =Encounter.nextTurn= now composes
+  ~applyEndOfTurn outgoing → skipUnplayable → applyBeginOfTurn
+  incoming~.  ~applyEndOfTurn~ ticks ~AtEnd~ countdowns on the
+  outgoing creature and expires every ~DurationUntilTurn AtEnd
+  <name>~ across the encounter; ~applyBeginOfTurn~ does the same
+  for the ~AtBegin~ phase.  Surprised / dead creatures don't get
+  begin-of-turn ticks — their turn doesn't actually happen.
+- The "skip first end-of-turn tick" rule is honored: when a
+  ~DurationCountdown AtEnd~ is created on the currently-active
+  creature, the third Bool of the constructor (~skipNextTick~)
+  is set so the next end-of-turn pass clears the flag instead
+  of decrementing the count.  Means the bearer gets a full
+  first turn under the effect.
+- Save-to-end auto-roll: =NextTurn= now batches a Cmd per
+  active-creature condition with ~saveToEnd.autoRoll = True~,
+  using the same ~Dice.rollCmd~ infrastructure.  Result lands
+  in =ConditionSaveLanded= which removes the condition on
+  ~roll.total >= dc~.  Source label reads
+  ~Save: <ABL> DC <N> (<Condition>) → <creature>~ in the dice
+  history.
+
+** Dice indicator in encounter controls
+
+- The Encounter Controls panel header gained a small "latest
+  roll" cluster left of the existing 🎲 Roll button:
+  ~<total> ← 🎲 Roll~.  ~<total>~ is the most recent roll's
+  =roll.total= rendered in bold white tabular-nums; the ←
+  arrow signals "this number was emitted by the roller."  Both
+  hide until the first roll has landed.
+- Yellow box-shadow ring on the Roll button whenever a roll
+  has landed since the modal was last opened (=DiceUi.unread=
+  set by a new ~pushDiceRoll~ helper).  The flag clears on
+  =OpenDice=.  All five roll-landing paths (manual dice, HP
+  change, initiative batch, death save, condition save) now
+  funnel through the same helper so the indicator stays
+  authoritative without per-branch bookkeeping.
