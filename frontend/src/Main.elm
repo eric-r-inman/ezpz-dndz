@@ -16,6 +16,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Http
 import Json.Decode as Decode
+import Random
 import Url exposing (Url)
 import Url.Parser exposing (Parser, oneOf, top)
 
@@ -104,6 +105,31 @@ freshInitiativeUi target =
     { target = target
     , customValueText = ""
     }
+
+
+{-| Which set of creatures an auto-roll applies to.
+
+  - `ScopeTarget` — the creature whose init-circle was clicked
+    (the modal's `target`).
+  - `ScopeAll` — every creature in the queue.
+  - `ScopeSelected` — only creatures with `selected = True`. The
+    button is disabled (and emits no Cmd) when nothing is selected.
+
+-}
+type RollScope
+    = ScopeTarget
+    | ScopeAll
+    | ScopeSelected
+
+
+{-| Standard 1d20 vs. 5e advantage (roll twice, keep highest). The
+spec only asked for advantage, but the type is left open so a
+future "Disadvantage" sister button drops in as a third constructor
+without churning the Msg shape again.
+-}
+type RollMode
+    = ModeStandard
+    | ModeAdvantage
 
 
 {-| One row in the recent-HP-changes log shown at the bottom of the
@@ -308,9 +334,7 @@ type Msg
     | InitiativeClose
     | InitiativeCustomChanged String
     | InitiativeQuickSort
-    | InitiativeAutoRollTarget
-    | InitiativeAutoRollAll
-    | InitiativeAutoRollSelected
+    | InitiativeAutoRoll RollScope RollMode
     | InitiativeApplyTarget
     | InitiativeApplySelected
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
@@ -875,30 +899,33 @@ update msg model =
             , Cmd.none
             )
 
-        InitiativeAutoRollTarget ->
-            -- Roll just the target's initiative. The handler is
-            -- batchRollCmd-shaped (list of specs) so the resulting
-            -- Msg arrives in the same shape as multi-creature rolls;
-            -- the receiver handles 1-element and N-element batches
-            -- through the same pipeline.
-            case model.initiative of
-                Just ui ->
-                    ( model
-                    , initiativeRollCmd
-                        (List.filter (\c -> c.name == ui.target) model.encounter.creatures)
-                    )
+        InitiativeAutoRoll scope mode ->
+            -- Resolve which creatures the scope picks out and fire
+            -- one batched roll Cmd. Mode picks the per-creature
+            -- generator (standard 1d20+bonus vs. 2d20-keep-high+
+            -- bonus). The handler (InitiativeRollsLanded) is
+            -- shape-agnostic — it works for 1-element or N-element
+            -- batches and for either roll mode.
+            let
+                creatures =
+                    case scope of
+                        ScopeTarget ->
+                            case model.initiative of
+                                Just ui ->
+                                    List.filter
+                                        (\c -> c.name == ui.target)
+                                        model.encounter.creatures
 
-                Nothing ->
-                    ( model, Cmd.none )
+                                Nothing ->
+                                    []
 
-        InitiativeAutoRollAll ->
-            ( model, initiativeRollCmd model.encounter.creatures )
+                        ScopeAll ->
+                            model.encounter.creatures
 
-        InitiativeAutoRollSelected ->
-            ( model
-            , initiativeRollCmd
-                (List.filter .selected model.encounter.creatures)
-            )
+                        ScopeSelected ->
+                            List.filter .selected model.encounter.creatures
+            in
+            ( model, initiativeRollCmd mode creatures )
 
         InitiativeApplyTarget ->
             -- Manual override for one creature. Closes the modal
@@ -1037,18 +1064,22 @@ withInitiative fn model =
             model
 
 
-{-| Build the `Cmd` for an initiative roll batch. The per-creature
-expression is `1d20 + initiativeBonus` (matching the modal's caption
-"Rolls 1d20 + creature's initiative bonus from stat block"), and
-each roll is tagged so the dice history reads
-"Initiative → Brakka, Ogre Brute".
+{-| Build the `Cmd` for an initiative roll batch.
+
+`mode` chooses the per-creature generator: `ModeStandard` rolls
+plain `1d20 + initiativeBonus`; `ModeAdvantage` rolls `2d20`,
+keeps the higher, and adds the bonus (5e advantage). Each roll is
+tagged with a `Source` so the dice history reads "Initiative →
+Brakka, Ogre Brute" — the formula in the entry already encodes
+the mode (advantage rolls render as "Adv: 1d20+5" via
+`Dice.advantageGenerator`'s formula prefix).
 
 Empty input → `Cmd.none` (handles the "Selected" buttons being
 clicked when no creatures are selected).
 
 -}
-initiativeRollCmd : List Creature -> Cmd Msg
-initiativeRollCmd creatures =
+initiativeRollCmd : RollMode -> List Creature -> Cmd Msg
+initiativeRollCmd mode creatures =
     if List.isEmpty creatures then
         Cmd.none
 
@@ -1058,11 +1089,27 @@ initiativeRollCmd creatures =
                 (\c ->
                     ( c.name
                     , initiativeSource c.name
-                    , initiativeExpression c
+                    , initiativeGenerator mode c
                     )
                 )
                 creatures
             )
+
+
+{-| Pick the per-creature roll generator for the given mode.
+Standard uses [`Dice.generator`](Dice#generator) over a 1d20+bonus
+expression; advantage uses [`Dice.advantageGenerator`](Dice#advantageGenerator)
+which natively handles the 2d20-keep-highest mechanic and tags the
+kept die in the resulting `Roll.groups`.
+-}
+initiativeGenerator : RollMode -> Creature -> Random.Generator Dice.Roll
+initiativeGenerator mode c =
+    case mode of
+        ModeStandard ->
+            Dice.generator (initiativeExpression c)
+
+        ModeAdvantage ->
+            Dice.advantageGenerator c.initiativeBonus
 
 
 {-| `1d20 + creature.initiativeBonus`, the standard 5e initiative roll.
@@ -2893,32 +2940,73 @@ viewInitiativeAutoRoll ui selectedCount =
     div [ class "init-section" ]
         [ h3 [ class "init-section__heading" ]
             [ text "Auto-roll Initiative" ]
-        , button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick InitiativeAutoRollTarget
-            ]
-            [ text ("🎲 Roll Initiative & Sort: " ++ ui.target) ]
-        , button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick InitiativeAutoRollAll
-            ]
-            [ text "🎲 Roll Initiative & Sort: All" ]
-        , button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick InitiativeAutoRollSelected
-            , disabled (selectedCount == 0)
-            , attribute "aria-disabled"
-                (if selectedCount == 0 then
-                    "true"
-
-                 else
-                    "false"
-                )
-            , title (selectedTitle selectedCount)
-            ]
-            [ text ("🎲 Roll Initiative & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
+        , viewAutoRollPair ScopeTarget
+            ("🎲 Roll Initiative & Sort: " ++ ui.target)
+            True
+            ""
+        , viewAutoRollPair ScopeAll
+            "🎲 Roll Initiative & Sort: All"
+            True
+            ""
+        , viewAutoRollPair ScopeSelected
+            ("🎲 Roll Initiative & Sort: Selected" ++ selectedCountSuffix selectedCount)
+            (selectedCount > 0)
+            (selectedTitle selectedCount)
         , div [ class "init-section__caption" ]
             [ text "Rolls 1d20 + creature's initiative bonus from stat block" ]
+        ]
+
+
+{-| One row in the Auto-roll section: the main "& Sort" button on
+the left, the Advantage sister button on the right. Both fire
+`InitiativeAutoRoll` with the same scope; only the mode differs.
+-}
+viewAutoRollPair : RollScope -> String -> Bool -> String -> Html Msg
+viewAutoRollPair scope label enabled tipOverride =
+    let
+        mainTitle =
+            if String.isEmpty tipOverride then
+                "Roll 1d20 + initiative bonus"
+
+            else
+                tipOverride
+
+        advTitle =
+            if enabled then
+                "Roll 2d20, keep highest, + initiative bonus (5e advantage)"
+
+            else
+                tipOverride
+    in
+    div [ class "init-btn-row" ]
+        [ button
+            [ class "action-btn action-btn--green init-btn-block"
+            , onClick (InitiativeAutoRoll scope ModeStandard)
+            , disabled (not enabled)
+            , attribute "aria-disabled"
+                (if enabled then
+                    "false"
+
+                 else
+                    "true"
+                )
+            , title mainTitle
+            ]
+            [ text label ]
+        , button
+            [ class "action-btn action-btn--green init-btn-adv"
+            , onClick (InitiativeAutoRoll scope ModeAdvantage)
+            , disabled (not enabled)
+            , attribute "aria-disabled"
+                (if enabled then
+                    "false"
+
+                 else
+                    "true"
+                )
+            , title advTitle
+            ]
+            [ text "Advantage" ]
         ]
 
 

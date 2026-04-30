@@ -937,13 +937,19 @@ coinCmd toMsg source =
     rollWithTime toMsg source coinGenerator
 
 
-{-| Roll a batch of expressions in a single Cmd, returning one
+{-| Roll a batch of generators in a single Cmd, returning one
 labeled `Roll` per spec.
 
-Each spec is `(label, source, expression)` — the label is whatever
-opaque identifier the caller wants to associate with the spec
-(typically a creature name) and is paired with the resulting `Roll`
-so the receiver knows which input spec produced which output.
+Each spec is `(label, source, gen)` — the label is whatever opaque
+identifier the caller wants to associate with the spec (typically a
+creature name) and is paired with the resulting `Roll` so the
+receiver knows which input spec produced which output. The
+generator is whichever `Random.Generator Roll` the caller wants:
+[`generator`](#generator) for standard rolls,
+[`advantageGenerator`](#advantageGenerator) for 2d20-keep-high,
+[`disadvantageGenerator`](#disadvantageGenerator) for 2d20-keep-low,
+or [`coinGenerator`](#coinGenerator). Mixed batches are fine — each
+spec picks its own generator independently.
 
 Why this exists: the per-call `rollCmd` seeds its RNG from the
 millisecond timestamp, which is fine for human click cadences but
@@ -956,7 +962,7 @@ worries.
 -}
 batchRollCmd :
     (List ( String, Roll ) -> msg)
-    -> List ( String, Source, Expression )
+    -> List ( String, Source, Random.Generator Roll )
     -> Cmd msg
 batchRollCmd toMsg specs =
     Time.now
@@ -969,14 +975,14 @@ batchRollCmd toMsg specs =
                     -- Wrap each input in a generator that pre-stamps
                     -- the source label, so the sequenced generator
                     -- yields fully-attributed rolls in one step.
-                    perSpecGen ( label, source, expr ) =
+                    perSpecGen ( label, source, gen ) =
                         Random.map
                             (\roll ->
                                 ( label
                                 , { roll | source = source, timestamp = now }
                                 )
                             )
-                            (generator expr)
+                            gen
 
                     ( results, _ ) =
                         Random.step (sequenceGen (List.map perSpecGen specs)) seed

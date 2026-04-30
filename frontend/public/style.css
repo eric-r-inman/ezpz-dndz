@@ -1907,6 +1907,27 @@ body {
   justify-content: center;
 }
 
+/* Paired "<main button> + Advantage" row in the Auto-roll section.
+   Main button takes whatever space it needs, Advantage sits to the
+   right at its natural width. */
+.init-btn-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.init-btn-row .init-btn-block {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.init-btn-adv {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
 .init-footer {
   display: flex;
   justify-content: flex-end;
