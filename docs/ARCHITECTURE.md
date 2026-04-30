@@ -105,9 +105,15 @@ We anticipate four lifecycle phases that future features will hook:
 | end of turn       | fired against the *outgoing* creature before successor | save against ongoing condition; "end of turn" durations expire    |
 | off turn          | applies to every creature that is *not* active         | reaction triggers (opportunity attacks); passive observation      |
 
-Today only the queue advance is implemented. Each phase will land as
-its own pure function in `Encounter.elm`, and `Main`'s `update` for
-`NextTurn` will compose them around the existing `nextTurn` call.
+Today the only phase logic baked into `Encounter.nextTurn` is the
+**surprised-skip rule** (5e surprise): if the marker would land on
+a creature with `surprised = True`, the creature is skipped and the
+flag is cleared in the same step. A run of consecutive surprised
+creatures all get skipped on one Next Turn click. A defensive
+iteration cap (= queue length) prevents an all-surprised queue from
+spinning. Other phase hooks (condition tickdown, regen, "start of
+turn" abilities) will land as their own pure functions called from
+the update loop.
 
 There is also a "manual scrub" path: clicking the **→** arrow on any
 creature card immediately makes that creature active without

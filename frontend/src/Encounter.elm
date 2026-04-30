@@ -456,39 +456,83 @@ the first creature, which marks the start of a new combat round, so
 `round` increments. Callers don't need to think about wrap detection;
 that's encapsulated here.
 
+**Surprised skipping** (5e surprise rules): when the queue would
+make a creature with `surprised = True` active, that creature is
+skipped — their `surprised` flag is cleared (so their next turn
+happens normally) and the marker advances past them in the same
+step. A run of consecutive surprised creatures all get skipped on
+one Next Turn click, with each iteration potentially incrementing
+`round` if it wraps. A defensive iteration cap of `length creatures`
+prevents an all-surprised queue from spinning indefinitely; if the
+cap is hit we leave the marker wherever it landed with everyone's
+surprised flag now clear.
+
 Edge cases:
 
   - Empty queue: returns the encounter unchanged so the update loop
-    can no-op safely (nothing to advance).
+    can no-op safely.
   - One creature: every "next turn" wraps and ticks the round, which
     is the correct behavior for solo combat.
   - `activeName` not in the queue (defensive): we treat it as if we
     were on the last creature so the next click jumps to the first.
 
-This function only updates the turn marker. Phase-specific effects
-(begin / end / off / on) live in their own functions; the update
-loop will compose them when those features land.
+This function only updates the turn marker (and the surprise side
+effect). Other phase-specific effects (begin / end / off / on)
+will live in their own functions; the update loop will compose
+them around `nextTurn` when those features land.
 
 -}
 nextTurn : Encounter -> Encounter
 nextTurn enc =
+    -- Outer loop with an iteration cap so an all-surprised queue
+    -- can't spin forever. Each iteration is one queue advance plus
+    -- a possible surprised-clear; the cap is set to the queue
+    -- length, which is the most slots we could possibly skip
+    -- through before reaching every creature.
+    skipSurprised (List.length enc.creatures) enc
+
+
+skipSurprised : Int -> Encounter -> Encounter
+skipSurprised budget enc =
+    if budget <= 0 then
+        enc
+
+    else
+        let
+            advanced =
+                advanceOne enc
+        in
+        case findByName advanced.activeName advanced.creatures of
+            Just c ->
+                if c.surprised then
+                    advanced
+                        |> mapCreature c.name (\cr -> { cr | surprised = False })
+                        |> skipSurprised (budget - 1)
+
+                else
+                    advanced
+
+            Nothing ->
+                advanced
+
+
+{-| Advance the marker by exactly one slot, no surprise handling.
+The wrap-detection / round-bump logic that used to live in
+`nextTurn` itself; pulled out so `skipSurprised` can call it on
+each iteration of the skip loop.
+-}
+advanceOne : Encounter -> Encounter
+advanceOne enc =
     case enc.creatures of
         [] ->
             enc
 
         first :: _ ->
             let
-                -- Find the next name. `findNext` walks the list once
-                -- and stops as soon as it sees the current active
-                -- creature, returning whatever comes immediately
-                -- after. If we walk off the end we wrap to `first`.
                 newActive =
                     findNext enc.activeName enc.creatures
                         |> Maybe.withDefault first.name
 
-                -- A wrap happened iff the OLD active was the last
-                -- creature in the queue (or wasn't found at all,
-                -- which we collapse to "treat as last" for resilience).
                 wrapped =
                     isLastInQueue enc.activeName enc.creatures
             in

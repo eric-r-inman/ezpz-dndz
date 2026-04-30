@@ -171,3 +171,15 @@
   =.hp-display*= classes as the card row 2, so the green / muted
   / blue palette stays in lockstep.  Temp HP shows inline as
   "+N" when nonzero.
+
+** Surprise rule (turn skip)
+
+- =Encounter.nextTurn= now honors the per-creature ~surprised~
+  flag.  When the queue would make a surprised creature active,
+  the creature is skipped and the flag is cleared in the same
+  step — their next turn after that happens normally.  A run of
+  consecutive surprised creatures all get skipped on one Next
+  Turn click.  Defensive iteration cap of ~length creatures~
+  guards against an all-surprised queue spinning.  Implemented
+  as the first real "beginning of turn" hook composed around
+  the existing queue walk.
