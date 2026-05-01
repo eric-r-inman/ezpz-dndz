@@ -1,0 +1,355 @@
+[
+  {
+    "id": "3d8a9424-b6a3-4a9b-becf-2845a993624a",
+    "name": "Goblin Skirmisher",
+    "kind": "enemy",
+    "size": "small",
+    "race": "Humanoid (goblinoid)",
+    "subrace": "",
+    "alignment": "Neutral evil",
+    "source": "Bundled (ezpz-dndz)",
+    "description": "",
+    "armor_class": 15,
+    "armor_class_note": "",
+    "max_hp": 7,
+    "hp_formula": "",
+    "initiative_bonus": 2,
+    "speed": {
+      "walk": 30,
+      "fly": 0,
+      "swim": 0,
+      "climb": 0,
+      "burrow": 0,
+      "hover": false
+    },
+    "abilities": {
+      "str": 8,
+      "dex": 14,
+      "con": 10,
+      "int": 10,
+      "wis": 8,
+      "cha": 8
+    },
+    "saving_throws": [],
+    "skills": [],
+    "damage_vulnerabilities": [],
+    "damage_resistances": [],
+    "damage_immunities": [],
+    "condition_immunities": [],
+    "senses": {
+      "blindsight": 0,
+      "darkvision": 60,
+      "tremorsense": 0,
+      "truesight": 0,
+      "passive_perception": 9
+    },
+    "languages": [],
+    "challenge_rating": "1/4",
+    "xp": 50,
+    "proficiency_bonus": 2,
+    "traits": [
+      {
+        "name": "Nimble Escape",
+        "description": "The goblin can take the Disengage or Hide action as a bonus action on each of its turns.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Scimitar",
+        "description": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
+        "usage": null
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "lair_actions": null,
+    "regional_effects": null,
+    "spellcasting": null,
+    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "8ba148b3-683d-4840-903b-35756f247fee",
+    "name": "Brakka, Ogre Brute",
+    "kind": "enemy",
+    "size": "large",
+    "race": "Giant",
+    "subrace": "",
+    "alignment": "Chaotic evil",
+    "source": "Bundled (ezpz-dndz)",
+    "description": "",
+    "armor_class": 11,
+    "armor_class_note": "",
+    "max_hp": 59,
+    "hp_formula": "",
+    "initiative_bonus": -1,
+    "speed": {
+      "walk": 40,
+      "fly": 0,
+      "swim": 0,
+      "climb": 0,
+      "burrow": 0,
+      "hover": false
+    },
+    "abilities": {
+      "str": 19,
+      "dex": 8,
+      "con": 16,
+      "int": 5,
+      "wis": 7,
+      "cha": 7
+    },
+    "saving_throws": [],
+    "skills": [],
+    "damage_vulnerabilities": [],
+    "damage_resistances": [],
+    "damage_immunities": [],
+    "condition_immunities": [],
+    "senses": {
+      "blindsight": 0,
+      "darkvision": 60,
+      "tremorsense": 0,
+      "truesight": 0,
+      "passive_perception": 8
+    },
+    "languages": [],
+    "challenge_rating": "2",
+    "xp": 450,
+    "proficiency_bonus": 2,
+    "traits": [],
+    "actions": [
+      {
+        "name": "Greatclub",
+        "description": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage.",
+        "usage": null
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "lair_actions": null,
+    "regional_effects": null,
+    "spellcasting": null,
+    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "101b89e1-a7e1-4e83-beb3-1d253babb5bb",
+    "name": "Captain Vex",
+    "kind": "npc",
+    "size": "medium",
+    "race": "Humanoid (human), bandit captain",
+    "subrace": "",
+    "alignment": "Lawful evil",
+    "source": "Bundled (ezpz-dndz)",
+    "description": "",
+    "armor_class": 15,
+    "armor_class_note": "",
+    "max_hp": 65,
+    "hp_formula": "",
+    "initiative_bonus": 2,
+    "speed": {
+      "walk": 30,
+      "fly": 0,
+      "swim": 0,
+      "climb": 0,
+      "burrow": 0,
+      "hover": false
+    },
+    "abilities": {
+      "str": 15,
+      "dex": 16,
+      "con": 14,
+      "int": 14,
+      "wis": 11,
+      "cha": 14
+    },
+    "saving_throws": [],
+    "skills": [],
+    "damage_vulnerabilities": [],
+    "damage_resistances": [],
+    "damage_immunities": [],
+    "condition_immunities": [],
+    "senses": {
+      "blindsight": 0,
+      "darkvision": 60,
+      "tremorsense": 0,
+      "truesight": 0,
+      "passive_perception": 10
+    },
+    "languages": [],
+    "challenge_rating": "2",
+    "xp": 450,
+    "proficiency_bonus": 2,
+    "traits": [],
+    "actions": [
+      {
+        "name": "Multiattack",
+        "description": "The captain makes three melee attacks: two with its scimitar and one with its dagger.",
+        "usage": null
+      },
+      {
+        "name": "Scimitar",
+        "description": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) slashing damage.",
+        "usage": null
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "lair_actions": null,
+    "regional_effects": null,
+    "spellcasting": null,
+    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "f6268da2-ec58-469d-a765-beec18341469",
+    "name": "Lyra Vale (PC)",
+    "kind": "player",
+    "size": "medium",
+    "race": "Half-elf rogue, level 5",
+    "subrace": "",
+    "alignment": "Chaotic good",
+    "source": "Bundled (ezpz-dndz)",
+    "description": "",
+    "armor_class": 16,
+    "armor_class_note": "",
+    "max_hp": 42,
+    "hp_formula": "",
+    "initiative_bonus": 5,
+    "speed": {
+      "walk": 30,
+      "fly": 0,
+      "swim": 0,
+      "climb": 0,
+      "burrow": 0,
+      "hover": false
+    },
+    "abilities": {
+      "str": 10,
+      "dex": 18,
+      "con": 14,
+      "int": 12,
+      "wis": 14,
+      "cha": 14
+    },
+    "saving_throws": [],
+    "skills": [],
+    "damage_vulnerabilities": [],
+    "damage_resistances": [],
+    "damage_immunities": [],
+    "condition_immunities": [],
+    "senses": {
+      "blindsight": 0,
+      "darkvision": 60,
+      "tremorsense": 0,
+      "truesight": 0,
+      "passive_perception": 12
+    },
+    "languages": [],
+    "challenge_rating": "\u2014",
+    "xp": 0,
+    "proficiency_bonus": 3,
+    "traits": [
+      {
+        "name": "Sneak Attack (1/turn)",
+        "description": "Once per turn, the rogue deals an extra 3d6 damage to one creature it hits with an attack with advantage.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Rapier",
+        "description": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 8 (1d8 + 4) piercing damage.",
+        "usage": null
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "lair_actions": null,
+    "regional_effects": null,
+    "spellcasting": null,
+    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "c75dafce-a4ae-423b-ad39-2e231c565169",
+    "name": "Stone Sentinel",
+    "kind": "enemy",
+    "size": "large",
+    "race": "Construct, unaligned",
+    "subrace": "",
+    "alignment": "Unaligned",
+    "source": "Bundled (ezpz-dndz)",
+    "description": "",
+    "armor_class": 18,
+    "armor_class_note": "",
+    "max_hp": 78,
+    "hp_formula": "",
+    "initiative_bonus": -1,
+    "speed": {
+      "walk": 25,
+      "fly": 0,
+      "swim": 0,
+      "climb": 0,
+      "burrow": 0,
+      "hover": false
+    },
+    "abilities": {
+      "str": 20,
+      "dex": 9,
+      "con": 18,
+      "int": 3,
+      "wis": 10,
+      "cha": 1
+    },
+    "saving_throws": [],
+    "skills": [],
+    "damage_vulnerabilities": [],
+    "damage_resistances": [],
+    "damage_immunities": [],
+    "condition_immunities": [],
+    "senses": {
+      "blindsight": 0,
+      "darkvision": 60,
+      "tremorsense": 0,
+      "truesight": 0,
+      "passive_perception": 10
+    },
+    "languages": [],
+    "challenge_rating": "5",
+    "xp": 1800,
+    "proficiency_bonus": 3,
+    "traits": [
+      {
+        "name": "Magic Resistance",
+        "description": "Has advantage on saving throws against spells and magical effects.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Slam",
+        "description": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 14 (3d6 + 5) bludgeoning damage.",
+        "usage": null
+      }
+    ],
+    "bonus_actions": [],
+    "reactions": [],
+    "legendary_actions": null,
+    "lair_actions": null,
+    "regional_effects": null,
+    "spellcasting": null,
+    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  }
+]

@@ -26,8 +26,6 @@
         "direct": {
             "elm-explorations/test": "2.2.0"
         },
-        "indirect": {
-            "elm/random": "1.0.0"
-        }
+        "indirect": {}
     }
 }

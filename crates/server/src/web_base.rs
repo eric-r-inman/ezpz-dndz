@@ -34,6 +34,7 @@ pub struct AppState {
   pub request_counter: IntCounter,
   pub frontend_path: PathBuf,
   pub dice_store: crate::dice::DiceStore,
+  pub compendium_store: crate::compendium::CompendiumStore,
   pub oidc_client: Option<Arc<CoreClient>>,
 }
 
@@ -50,6 +51,9 @@ pub enum AppStateError {
 
   #[error("Failed to load dice history store: {0}")]
   DiceStoreLoad(#[source] crate::dice::DiceHistoryError),
+
+  #[error("Failed to load compendium store: {0}")]
+  CompendiumStoreLoad(#[source] crate::compendium::CompendiumStoreError),
 }
 
 impl AppState {
@@ -114,11 +118,19 @@ impl AppState {
         .await
         .map_err(AppStateError::DiceStoreLoad)?;
 
+    let compendium_store =
+      crate::compendium::CompendiumStore::load_or_bootstrap(
+        config.compendium_path.clone(),
+      )
+      .await
+      .map_err(AppStateError::CompendiumStoreLoad)?;
+
     Ok(Self {
       registry: Arc::new(registry),
       request_counter,
       frontend_path: config.frontend_path.clone(),
       dice_store,
+      compendium_store,
       oidc_client,
     })
   }
@@ -189,6 +201,7 @@ pub fn base_router(state: AppState) -> Router {
       }),
     )
     .merge(crate::dice::router())
+    .merge(crate::compendium::router())
     .with_state(state)
     .finish_api_with(&mut api, |a| a.title("ezpz-dndz"));
 

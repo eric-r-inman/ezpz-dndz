@@ -39,6 +39,11 @@ toml = "0.8"
 # Error handling
 thiserror = "2.0"
 
+# UUIDs (compendium creature ids, eventually user ids).  Used to
+# generate the id strings; the wire format keeps them as `String`
+# so the schemars JsonSchema derives stay clean.
+uuid = { version = "1", features = ["v4"] }
+
 # Web framework
 axum = "0.8"
 tokio = { version = "1.41", features = ["full"] }

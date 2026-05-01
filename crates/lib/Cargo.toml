@@ -14,6 +14,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tap = { workspace = true }  # For method chaining, reduces superfluous locals
 tokio = { workspace = true }
+uuid = { workspace = true }
+schemars = { workspace = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

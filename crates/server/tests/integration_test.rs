@@ -40,6 +40,15 @@ async fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
     )
     .await
     .expect("test dice store"),
+    compendium_store:
+      ezpz_dndz_server::compendium::CompendiumStore::load_or_bootstrap(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test compendium store"),
     oidc_client: None,
   }
 }
@@ -81,6 +90,15 @@ async fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
     )
     .await
     .expect("test dice store"),
+    compendium_store:
+      ezpz_dndz_server::compendium::CompendiumStore::load_or_bootstrap(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test compendium store"),
     oidc_client: Some(Arc::new(oidc_client)),
   }
 }
@@ -362,6 +380,7 @@ async fn test_config_no_oidc() {
     frontend_path: None,
     data_dir: None,
     dice_history_path: None,
+    compendium_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: None,
     oidc_client_id: None,
@@ -387,6 +406,7 @@ async fn test_config_full_oidc() {
     frontend_path: None,
     data_dir: None,
     dice_history_path: None,
+    compendium_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: Some("my-client".to_string()),
@@ -412,6 +432,7 @@ async fn test_config_partial_oidc_errors() {
     frontend_path: None,
     data_dir: None,
     dice_history_path: None,
+    compendium_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: None,
