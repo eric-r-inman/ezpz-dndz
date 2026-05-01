@@ -1,15 +1,20 @@
 module Encounter exposing
     ( Cover(..), Creature, DeathSaves, Encounter
-    , Condition, ConditionDraft, Duration(..), TurnPhase(..), SaveToEnd
+    , Condition, ConditionDraft, Duration(..), TurnPhase(..), TurnTarget(..), SaveToEnd
+    , AutoRollMode(..)
+    , SaveNotice
+    , Timer
     , standardConditions
     , initialEncounter
     , nextTurn, setActive, activeCreature, sortByInitiative
     , moveUp, moveDown
     , mapCreature, nextCover
+    , removeCreature, duplicateCreature
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
+    , addSaveNotice, removeSaveNotice
     )
 
 {-| Domain layer for the encounter manager.
@@ -27,7 +32,10 @@ damage), it belongs here.
 # Types
 
 @docs Cover, Creature, DeathSaves, Encounter
-@docs Condition, ConditionDraft, Duration, TurnPhase, SaveToEnd
+@docs Condition, ConditionDraft, Duration, TurnPhase, TurnTarget, SaveToEnd
+@docs AutoRollMode
+@docs SaveNotice
+@docs Timer
 @docs standardConditions
 
 
@@ -68,6 +76,11 @@ feature, with the `update` loop composing them around `nextTurn`.
 @docs mapCreature, nextCover
 
 
+# Roster mutation
+
+@docs removeCreature, duplicateCreature
+
+
 # Death saves
 
 @docs emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
@@ -78,6 +91,11 @@ feature, with the `update` loop composing them around `nextTurn`.
 
 @docs addCondition, updateCondition, removeCondition, findCondition
 @docs describeDuration
+
+
+# Save notices
+
+@docs addSaveNotice, removeSaveNotice
 
 -}
 
@@ -166,12 +184,12 @@ type alias ConditionDraft =
 
   - `DurationManual` — sticks until the GM explicitly removes it.
     This is the "I'll remember when to take this off" path.
-  - `DurationUntilTurn phase creatureName` — removed at the
-    begin/end of `creatureName`'s turn. Maps directly to the 5e
-    spell duration "until the start/end of your next turn".
-    The reference creature can be any creature in the queue; the
-    common case is the caster, but effects like "until the end of
-    the target's next turn" land here too.
+  - `DurationUntilTurn phase target creatureName` — removed at the
+    begin/end of `creatureName`'s turn, with `target` selecting
+    `OnCurrentTurn` (first matching hook fire) vs `OnNextTurn`
+    (skip the first match, expire on the second). Maps to 5e
+    spell durations like "until the end of your current turn" vs
+    "until the end of your next turn".
   - `DurationCountdown phase remaining skipNextTick` — runs for
     `remaining` of the bearer's own turns, ticking at begin/end.
     `skipNextTick` is set when the countdown was created with
@@ -183,7 +201,7 @@ type alias ConditionDraft =
 -}
 type Duration
     = DurationManual
-    | DurationUntilTurn TurnPhase String
+    | DurationUntilTurn TurnPhase TurnTarget String
     | DurationCountdown TurnPhase Int Bool
 
 
@@ -194,6 +212,24 @@ type TurnPhase
     | AtEnd
 
 
+{-| Which iteration of the reference creature's turn ends a
+DurationUntilTurn condition.
+
+  - `OnCurrentTurn` — expire on the first matching hook fire.
+  - `OnNextTurn` — skip the first match (mutating to
+    `OnCurrentTurn` in place), expire on the second.
+
+`OnCurrentTurn` paired with `AtBegin` and a reference creature
+who is currently active is logically nonsense — the begin of
+their current turn already fired when they became active. The
+view layer grays out that combination so the GM can't pick it.
+
+-}
+type TurnTarget
+    = OnCurrentTurn
+    | OnNextTurn
+
+
 {-| Saving-throw conditional for ending a condition.
 
   - `ability` is a short label like "WIS", "CON" — used for
@@ -201,16 +237,77 @@ type TurnPhase
     rules can pick any abbreviation.
   - `dc` is the difficulty class.
   - `bonus` is the save bonus to add when rolling.
-  - `autoRoll = True` means the save fires automatically at the
-    bearer's begin-of-turn; `False` keeps the chip but waits for
-    the GM to click it.
+  - `autoRoll` selects the timing — see [`AutoRollMode`](#AutoRollMode).
 
 -}
 type alias SaveToEnd =
     { ability : String
     , dc : Int
     , bonus : Int
-    , autoRoll : Bool
+    , autoRoll : AutoRollMode
+    }
+
+
+{-| When the save-to-end roll fires.
+
+  - `AutoRollManual` — never fires automatically; the GM clicks
+    the 🎲 button on the chip when they want to roll. The chip
+    just records the DC / bonus as a reminder.
+  - `AutoRollAtBegin` — fires automatically at the start of the
+    bearer's turn. Common for "save at start of your turn" 5e
+    effects like Hold Person.
+  - `AutoRollAtEnd` — fires automatically at the end of the
+    bearer's turn. Common for "save at end of your turn" effects
+    like the standard Frightened / Charmed reroll path.
+
+In all three cases a successful save (roll.total >= dc) removes
+the condition from the bearer.
+
+-}
+type AutoRollMode
+    = AutoRollManual
+    | AutoRollAtBegin
+    | AutoRollAtEnd
+
+
+{-| Transient "Saved: <Condition>" notice shown on a creature card
+after an auto-roll save successfully ends a condition. Manual
+chip 🎲 successes do NOT post these — those just remove silently
+since the GM is already looking at the card.
+
+`turnsRemaining` decrements on the bearer's end-of-turn hook.
+The notice is created with `turnsRemaining = 1`, so it lasts
+through one bearer end-of-turn pass and is then removed
+automatically. The GM can also dismiss it manually via the ×
+on the notice chip.
+
+-}
+type alias SaveNotice =
+    { id : Int
+    , conditionName : String
+    , turnsRemaining : Int
+    }
+
+
+{-| Card row 3 alarm-clock timer. Ticks down once per matching
+turn-phase hook fire on the bearer; rings when it hits 0.
+
+  - `remaining` — current count. Starts wherever the GM set it
+    via the timer-setup modal; decrements on each matching tick;
+    capped at 0.
+  - `phase` — `AtBegin` ticks at the bearer's begin-of-turn,
+    `AtEnd` ticks at the bearer's end-of-turn.
+  - `ringing` — set the moment `remaining` hits 0. While
+    `ringing` is True, no further ticks happen and the card
+    shows a flashing "0" with an × button until the GM
+    dismisses it. The view layer also mounts an `<audio>`
+    element with the ping sound when any timer is ringing.
+
+-}
+type alias Timer =
+    { remaining : Int
+    , phase : TurnPhase
+    , ringing : Bool
     }
 
 
@@ -278,6 +375,7 @@ type alias Creature =
     , armorClass : Int
     , speed : Int
     , conditions : List Condition
+    , saveNotices : List SaveNotice
     , selected : Bool
     , surprised : Bool
     , cover : Cover
@@ -289,6 +387,8 @@ type alias Creature =
     , deathSaves : DeathSaves
     , holding : Bool
     , note : String
+    , memo : String
+    , timer : Maybe Timer
     }
 
 
@@ -340,6 +440,7 @@ seedCreatures =
       , armorClass = 16
       , speed = 30
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = HalfCover
@@ -351,6 +452,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 1 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -366,9 +469,10 @@ seedCreatures =
               , name = "Frightened"
               , note = "of Lyra"
               , duration = DurationCountdown AtEnd 3 False
-              , saveToEnd = Just { ability = "WIS", dc = 13, bonus = 1, autoRoll = False }
+              , saveToEnd = Just { ability = "WIS", dc = 13, bonus = 1, autoRoll = AutoRollManual }
               }
             ]
+      , saveNotices = []
       , selected = True
       , surprised = True
       , cover = NoCover
@@ -380,6 +484,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -391,6 +497,7 @@ seedCreatures =
       , armorClass = 15
       , speed = 30
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = NoCover
@@ -402,6 +509,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = True
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -413,6 +522,7 @@ seedCreatures =
       , armorClass = 15
       , speed = 30
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = ThreeQuartersCover
@@ -424,6 +534,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -435,6 +547,7 @@ seedCreatures =
       , armorClass = 17
       , speed = 30
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = FullCover
@@ -446,6 +559,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -457,6 +572,7 @@ seedCreatures =
       , armorClass = 13
       , speed = 30
       , conditions = []
+      , saveNotices = []
       , selected = True
       , surprised = False
       , cover = NoCover
@@ -468,6 +584,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -479,6 +597,7 @@ seedCreatures =
       , armorClass = 18
       , speed = 25
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = HalfCover
@@ -490,6 +609,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -501,6 +622,7 @@ seedCreatures =
       , armorClass = 12
       , speed = 0
       , conditions = []
+      , saveNotices = []
       , selected = False
       , surprised = False
       , cover = NoCover
@@ -512,6 +634,8 @@ seedCreatures =
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
       , note = ""
+      , memo = ""
+      , timer = Nothing
       }
     ]
 
@@ -747,7 +871,69 @@ applyEndOfTurn : String -> Encounter -> Encounter
 applyEndOfTurn name enc =
     enc
         |> tickCountdownFor name AtEnd
+        |> tickSaveNoticesFor name
+        |> tickTimerFor name AtEnd
         |> expireUntilTurn AtEnd name
+
+
+{-| Decrement every `SaveNotice` on the named creature by 1.
+Notices whose `turnsRemaining` would drop to 0 are removed.
+
+Notices are only created in response to a successful auto-roll
+save (manual chip rolls remove their condition silently), so
+under normal play every notice should clear after exactly one
+bearer end-of-turn.
+
+-}
+tickSaveNoticesFor : String -> Encounter -> Encounter
+tickSaveNoticesFor name enc =
+    mapCreature name
+        (\c -> { c | saveNotices = List.filterMap tickSaveNotice c.saveNotices })
+        enc
+
+
+tickSaveNotice : SaveNotice -> Maybe SaveNotice
+tickSaveNotice notice =
+    let
+        next =
+            notice.turnsRemaining - 1
+    in
+    if next <= 0 then
+        Nothing
+
+    else
+        Just { notice | turnsRemaining = next }
+
+
+{-| Decrement the named creature's `Timer` if its phase matches.
+A timer at `remaining = 0` is already ringing, so subsequent
+ticks are no-ops; the GM dismisses it via the × button on the
+card. Same for "no timer set" (Nothing) and "wrong phase".
+-}
+tickTimerFor : String -> TurnPhase -> Encounter -> Encounter
+tickTimerFor name phase enc =
+    mapCreature name
+        (\c ->
+            case c.timer of
+                Just t ->
+                    if t.ringing || t.phase /= phase then
+                        c
+
+                    else
+                        let
+                            nextRemaining =
+                                t.remaining - 1
+                        in
+                        if nextRemaining <= 0 then
+                            { c | timer = Just { t | remaining = 0, ringing = True } }
+
+                        else
+                            { c | timer = Just { t | remaining = nextRemaining } }
+
+                Nothing ->
+                    c
+        )
+        enc
 
 
 {-| Begin-of-turn hook for the named creature: symmetric to
@@ -757,6 +943,7 @@ applyBeginOfTurn : String -> Encounter -> Encounter
 applyBeginOfTurn name enc =
     enc
         |> tickCountdownFor name AtBegin
+        |> tickTimerFor name AtBegin
         |> expireUntilTurn AtBegin name
 
 
@@ -796,11 +983,19 @@ tickCondition phase cond =
             Just cond
 
 
-{-| Walk every creature's condition list and drop any whose
-`DurationUntilTurn` matches the phase / creature pair we just hit.
-A condition placed on Brakka with `DurationUntilTurn AtEnd "Lyra"`
-gets removed when Lyra's end-of-turn hook fires — which is exactly
-what "until the end of Lyra's turn" means.
+{-| Walk every creature's condition list and advance any whose
+`DurationUntilTurn` matches the phase / creature pair we just
+hit.
+
+`target = OnCurrentTurn` → expire (drop the condition).
+`target = OnNextTurn` → keep the condition but mutate the
+target to `OnCurrentTurn`, so the next matching hook fire will
+expire it.
+
+This implements "until end of Lyra's NEXT turn" as exactly two
+end-of-Lyra hook fires: first one flips next→current, second one
+expires.
+
 -}
 expireUntilTurn : TurnPhase -> String -> Encounter -> Encounter
 expireUntilTurn phase name enc =
@@ -808,22 +1003,29 @@ expireUntilTurn phase name enc =
         | creatures =
             List.map
                 (\c ->
-                    { c
-                        | conditions =
-                            List.filter
-                                (\cond ->
-                                    case cond.duration of
-                                        DurationUntilTurn condPhase ref ->
-                                            not (condPhase == phase && ref == name)
-
-                                        _ ->
-                                            True
-                                )
-                                c.conditions
-                    }
+                    { c | conditions = List.filterMap (advanceUntilTurn phase name) c.conditions }
                 )
                 enc.creatures
     }
+
+
+advanceUntilTurn : TurnPhase -> String -> Condition -> Maybe Condition
+advanceUntilTurn phase name cond =
+    case cond.duration of
+        DurationUntilTurn condPhase target ref ->
+            if condPhase == phase && ref == name then
+                case target of
+                    OnCurrentTurn ->
+                        Nothing
+
+                    OnNextTurn ->
+                        Just { cond | duration = DurationUntilTurn condPhase OnCurrentTurn ref }
+
+            else
+                Just cond
+
+        _ ->
+            Just cond
 
 
 {-| Advance the marker by exactly one slot, no surprise handling.
@@ -918,6 +1120,166 @@ mapCreature name fn enc =
                 c
     in
     { enc | creatures = List.map apply enc.creatures }
+
+
+{-| Remove the named creature from the queue.
+
+If the named creature was the active one, advance the marker to
+their successor (the next creature in queue order, or the first
+if they were last). When the queue empties as a result,
+`activeName` becomes the empty string; the title bar's `Maybe`-
+aware rendering already handles that case.
+
+No-op when the named creature isn't in the queue.
+
+-}
+removeCreature : String -> Encounter -> Encounter
+removeCreature name enc =
+    if List.any (\c -> c.name == name) enc.creatures then
+        let
+            successorName =
+                findNext name enc.creatures
+                    |> Maybe.withDefault
+                        (case enc.creatures of
+                            first :: _ ->
+                                first.name
+
+                            [] ->
+                                ""
+                        )
+
+            newCreatures =
+                List.filter (\c -> c.name /= name) enc.creatures
+
+            newActive =
+                if enc.activeName == name then
+                    if List.any (\c -> c.name == successorName) newCreatures then
+                        successorName
+
+                    else
+                        case newCreatures of
+                            first :: _ ->
+                                first.name
+
+                            [] ->
+                                ""
+
+                else
+                    enc.activeName
+        in
+        { enc | creatures = newCreatures, activeName = newActive }
+
+    else
+        enc
+
+
+{-| Duplicate the named creature, inserting the copy immediately
+after the source in the queue order.
+
+The copy is a literal clone — same HP, same stats, same
+conditions / save notices / timer state — except:
+
+  - `name` gets a `(copy)` / `(copy 2)` / `(copy 3)` suffix so
+    the encounter's name-based identity stays unique.
+  - `selected` is forced to `False` so a multi-target action
+    after duplication doesn't accidentally splatter both copies.
+  - Any `conditions` and `saveNotices` carried over get fresh
+    encounter-wide unique ids — otherwise edits / removes on the
+    source's chips would clobber the duplicate's chips and vice
+    versa.
+
+No-op when the named creature isn't in the queue.
+
+-}
+duplicateCreature : String -> Encounter -> Encounter
+duplicateCreature name enc =
+    case findByName name enc.creatures of
+        Nothing ->
+            enc
+
+        Just src ->
+            let
+                existingNames =
+                    List.map .name enc.creatures
+
+                newName =
+                    uniqueCopyName src.name existingNames
+
+                conditionIdStart =
+                    (allConditionIds enc
+                        |> List.maximum
+                        |> Maybe.withDefault 0
+                    )
+                        + 1
+
+                noticeIdStart =
+                    (allSaveNoticeIds enc
+                        |> List.maximum
+                        |> Maybe.withDefault 0
+                    )
+                        + 1
+
+                reIdConditions =
+                    List.indexedMap
+                        (\i cond -> { cond | id = conditionIdStart + i })
+                        src.conditions
+
+                reIdNotices =
+                    List.indexedMap
+                        (\i n -> { n | id = noticeIdStart + i })
+                        src.saveNotices
+
+                copy =
+                    { src
+                        | name = newName
+                        , selected = False
+                        , conditions = reIdConditions
+                        , saveNotices = reIdNotices
+                    }
+            in
+            { enc | creatures = insertAfter name copy enc.creatures }
+
+
+{-| Generate a unique "<name> (copy)" / "<name> (copy 2)" /
+"<name> (copy 3)" form by walking N upward until the candidate
+isn't already in `existingNames`.
+-}
+uniqueCopyName : String -> List String -> String
+uniqueCopyName base existingNames =
+    let
+        candidate i =
+            if i == 1 then
+                base ++ " (copy)"
+
+            else
+                base ++ " (copy " ++ String.fromInt i ++ ")"
+
+        loop i =
+            if List.member (candidate i) existingNames then
+                loop (i + 1)
+
+            else
+                candidate i
+    in
+    loop 1
+
+
+{-| Insert `newCreature` immediately after the creature with the
+given name. If the anchor name isn't found, the new creature is
+appended at the end so the duplicate still ends up in the queue.
+-}
+insertAfter : String -> Creature -> List Creature -> List Creature
+insertAfter anchorName newCreature creatures =
+    case creatures of
+        [] ->
+            [ newCreature ]
+
+        c :: rest ->
+            if c.name == anchorName then
+                c :: newCreature :: rest
+
+            else
+                c :: insertAfter anchorName newCreature rest
 
 
 {-| Look a creature up by name. Returns `Nothing` if absent.
@@ -1094,11 +1456,25 @@ describeDuration duration =
         DurationManual ->
             "Manual"
 
-        DurationUntilTurn AtBegin name ->
-            "Until start of " ++ name ++ "'s turn"
+        DurationUntilTurn phase target name ->
+            let
+                phaseWord =
+                    case phase of
+                        AtBegin ->
+                            "start"
 
-        DurationUntilTurn AtEnd name ->
-            "Until end of " ++ name ++ "'s turn"
+                        AtEnd ->
+                            "end"
+
+                targetWord =
+                    case target of
+                        OnCurrentTurn ->
+                            "current"
+
+                        OnNextTurn ->
+                            "next"
+            in
+            "Until " ++ phaseWord ++ " of " ++ name ++ "'s " ++ targetWord ++ " turn"
 
         DurationCountdown AtBegin n _ ->
             String.fromInt n ++ " " ++ pluralizeTurns n ++ " (start)"
@@ -1119,3 +1495,51 @@ pluralizeTurns n =
 allConditionIds : Encounter -> List Int
 allConditionIds enc =
     List.concatMap (\c -> List.map .id c.conditions) enc.creatures
+
+
+
+-- SAVE NOTICES
+
+
+{-| Append a "Saved: <Condition>" notice to the named creature.
+Allocated id is one-past-current-max across the encounter so it's
+stable for view diffing and explicit removal.
+
+The notice starts at `turnsRemaining = 1`, so the next time the
+bearer's end-of-turn hook fires it ticks to 0 and the notice
+clears. The GM can dismiss it earlier via the × button.
+
+-}
+addSaveNotice : String -> String -> Encounter -> Encounter
+addSaveNotice target conditionName enc =
+    let
+        nextId =
+            allSaveNoticeIds enc
+                |> List.maximum
+                |> Maybe.withDefault 0
+                |> (+) 1
+
+        newNotice =
+            { id = nextId
+            , conditionName = conditionName
+            , turnsRemaining = 1
+            }
+    in
+    mapCreature target
+        (\c -> { c | saveNotices = c.saveNotices ++ [ newNotice ] })
+        enc
+
+
+{-| Drop the save notice with the given id from the named
+creature's list. No-op if the creature or notice isn't found.
+-}
+removeSaveNotice : String -> Int -> Encounter -> Encounter
+removeSaveNotice target id enc =
+    mapCreature target
+        (\c -> { c | saveNotices = List.filter (\n -> n.id /= id) c.saveNotices })
+        enc
+
+
+allSaveNoticeIds : Encounter -> List Int
+allSaveNoticeIds enc =
+    List.concatMap (\c -> List.map .id c.saveNotices) enc.creatures

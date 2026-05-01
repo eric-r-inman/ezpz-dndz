@@ -462,9 +462,9 @@ body {
   padding: 1px 6px;
   font-size: 0.78rem;
   font-weight: 500;
-  background: rgba(120, 170, 255, 0.12);
-  color: var(--color-text);
-  border: 1px solid rgba(120, 170, 255, 0.35);
+  background: rgba(245, 200, 66, 0.1);
+  color: var(--color-yellow);
+  border: 1px solid rgba(245, 200, 66, 0.35);
   border-radius: 999px;
   white-space: nowrap;
   max-width: 220px;
@@ -514,7 +514,7 @@ body {
 }
 
 .condition-chip__save:hover {
-  background: rgba(120, 170, 255, 0.2);
+  background: rgba(245, 200, 66, 0.2);
 }
 
 .condition-chip__remove {
@@ -533,6 +533,43 @@ body {
   color: var(--color-text-muted);
   font-feature-settings: "tnum";
   white-space: nowrap;
+}
+
+/* "Saved: <Condition>" notice — posted after a successful auto-
+   roll save. Green to signal a positive outcome; auto-clears on
+   the bearer's next end-of-turn, but the × dismisses earlier. */
+.save-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: rgba(60, 180, 85, 0.12);
+  color: #3cb455;
+  border: 1px solid rgba(60, 180, 85, 0.4);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.save-notice__dismiss {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  margin: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.save-notice__dismiss:hover {
+  color: var(--color-danger);
+  background: rgba(214, 59, 59, 0.15);
 }
 
 .creature-card__row--mid {
@@ -1258,14 +1295,20 @@ body {
 }
 
 .encounter-bar__state {
-  width: 24px;
+  min-width: 24px;
   height: 24px;
-  display: inline-grid;
-  place-items: center;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border-radius: 6px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   cursor: default;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   transition:
     transform 0.1s ease,
     border-color 0.1s ease;
@@ -1274,6 +1317,32 @@ body {
 .encounter-bar__state:hover {
   transform: translateY(-1px);
   border-color: var(--color-accent);
+}
+
+/* Active-creature conditions in the title bar — plain purple
+   text, pipe-separated, no interaction. The editable chips live
+   on the card itself; this is the glanceable mirror. */
+.encounter-bar__conditions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.encounter-bar__cond {
+  color: #c084fc;
+}
+
+.encounter-bar__cond-sep {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  user-select: none;
+  padding: 0 10px;
 }
 
 .encounter-bar__xp {
@@ -1807,6 +1876,13 @@ body {
   font-size: 0.85rem;
 }
 
+.hp-change__caption {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  flex-basis: 100%;
+}
+
 .hp-change__input {
   flex: 1 1 auto;
   padding: 6px 10px;
@@ -2332,6 +2408,12 @@ body {
   gap: 6px;
 }
 
+.cond-radio-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .cond-radio {
   display: inline-flex;
   align-items: center;
@@ -2460,6 +2542,131 @@ body {
 
 .cond-phase input[type="radio"] {
   display: none;
+}
+
+/* Disabled segment of a cond-phase-toggle. The label is still
+   visible but greyed and unclickable — the wrapped <input
+   disabled> blocks selection at the form layer. Used for the
+   "current" option in the duration row when "begin" is selected
+   and the reference creature is the active one (their
+   begin-of-turn already fired). */
+.cond-phase--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Card row 3 memo pill: shown in place of the 📝 button when a
+   memo is set. White text per spec; the × dismisses the memo
+   and restores the icon. */
+.memo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.memo-pill__text {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.memo-pill__text:hover {
+  text-decoration: underline;
+}
+
+.memo-pill__dismiss {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  margin: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.memo-pill__dismiss:hover {
+  color: var(--color-danger);
+  background: rgba(214, 59, 59, 0.15);
+}
+
+/* Card row 3 timer pill: shown in place of the ⏱ button when a
+   timer is set. The ringing variant flashes a 0 to draw the eye. */
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(120, 170, 255, 0.1);
+  border: 1px solid rgba(120, 170, 255, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-pill__count {
+  min-width: 1.2em;
+  text-align: center;
+}
+
+.timer-pill__dismiss {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  margin: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.timer-pill__dismiss:hover {
+  color: var(--color-danger);
+  background: rgba(214, 59, 59, 0.15);
+}
+
+.timer-pill--ringing {
+  background: rgba(214, 59, 59, 0.2);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.timer-pill--ringing .timer-pill__count {
+  animation: timer-flash 0.6s steps(1, end) infinite;
+}
+
+@keyframes timer-flash {
+  50% {
+    opacity: 0.2;
+  }
 }
 
 .cond-footer {

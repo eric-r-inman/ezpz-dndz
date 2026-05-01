@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
 import Dice
@@ -17,6 +18,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Random
+import Task
 import Url exposing (Url)
 import Url.Parser exposing (Parser, oneOf, top)
 
@@ -83,6 +85,8 @@ type alias Model =
     , initiative : Maybe InitiativeUi
     , noteEdit : Maybe NoteEditUi
     , conditionUi : Maybe ConditionUi
+    , memoEdit : Maybe MemoEditUi
+    , timerSetup : Maybe TimerSetupUi
     }
 
 
@@ -111,6 +115,50 @@ freshNoteEditUi : String -> String -> NoteEditUi
 freshNoteEditUi target current =
     { target = target
     , text = current
+    }
+
+
+{-| Card row 3 memo edit modal state. Same general shape as
+`NoteEditUi` (the row 1 short label) but writes to a different
+field on `Creature` — `memo` instead of `note` — so the two can
+coexist on a card.
+-}
+type alias MemoEditUi =
+    { target : String
+    , text : String
+    }
+
+
+maxMemoLength : Int
+maxMemoLength =
+    20
+
+
+freshMemoEditUi : String -> String -> MemoEditUi
+freshMemoEditUi target current =
+    { target = target
+    , text = current
+    }
+
+
+{-| Card row 3 timer setup modal state. The GM picks a count
+(1..99) and a phase (begin/end of the bearer's turn). Apply
+writes the timer onto the creature; cancel discards.
+-}
+type alias TimerSetupUi =
+    { target : String
+    , turnsText : String
+    , turns : Int
+    , phase : Encounter.TurnPhase
+    }
+
+
+freshTimerSetupUi : String -> TimerSetupUi
+freshTimerSetupUi target =
+    { target = target
+    , turnsText = "3"
+    , turns = 3
+    , phase = Encounter.AtEnd
     }
 
 
@@ -145,10 +193,12 @@ type alias ConditionUi =
     , durationKind : DurationKind
     , untilCreature : String
     , untilPhase : Encounter.TurnPhase
+    , untilTarget : Encounter.TurnTarget
     , countdownTurnsText : String
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
+    , applyToSelected : Bool
     }
 
 
@@ -164,12 +214,15 @@ type alias SaveToEndUi =
     , dc : Int
     , bonusText : String
     , bonus : Int
-    , autoRoll : Bool
+    , autoRoll : Encounter.AutoRollMode
     }
 
 
 {-| Default save spec when the user enables "save to end" — DC 10
-neutral save, no bonus, no auto-roll. The GM tweaks from there.
+neutral save, no bonus, manual roll. The GM tweaks from there.
+Manual is the safest default since auto-rolling at begin- or
+end-of-turn could surprise the GM with an end-of-condition the
+moment they enable save-to-end at all.
 -}
 freshSaveToEndUi : SaveToEndUi
 freshSaveToEndUi =
@@ -178,7 +231,7 @@ freshSaveToEndUi =
     , dc = 10
     , bonusText = "0"
     , bonus = 0
-    , autoRoll = False
+    , autoRoll = Encounter.AutoRollManual
     }
 
 
@@ -197,10 +250,12 @@ freshConditionUi target =
     , durationKind = DurKindManual
     , untilCreature = target
     , untilPhase = Encounter.AtEnd
+    , untilTarget = Encounter.OnNextTurn
     , countdownTurnsText = "1"
     , countdownTurns = 1
     , countdownPhase = Encounter.AtEnd
     , saveToEnd = Nothing
+    , applyToSelected = False
     }
 
 
@@ -218,14 +273,16 @@ conditionToUi target cond =
                     { kind = DurKindManual
                     , untilCreature = target
                     , untilPhase = Encounter.AtEnd
+                    , untilTarget = Encounter.OnNextTurn
                     , countdownTurns = 1
                     , countdownPhase = Encounter.AtEnd
                     }
 
-                Encounter.DurationUntilTurn phase ref ->
+                Encounter.DurationUntilTurn phase tgt ref ->
                     { kind = DurKindUntilTurn
                     , untilCreature = ref
                     , untilPhase = phase
+                    , untilTarget = tgt
                     , countdownTurns = 1
                     , countdownPhase = Encounter.AtEnd
                     }
@@ -234,6 +291,7 @@ conditionToUi target cond =
                     { kind = DurKindCountdown
                     , untilCreature = target
                     , untilPhase = Encounter.AtEnd
+                    , untilTarget = Encounter.OnNextTurn
                     , countdownTurns = n
                     , countdownPhase = phase
                     }
@@ -264,10 +322,12 @@ conditionToUi target cond =
     , durationKind = durFields.kind
     , untilCreature = durFields.untilCreature
     , untilPhase = durFields.untilPhase
+    , untilTarget = durFields.untilTarget
     , countdownTurnsText = String.fromInt durFields.countdownTurns
     , countdownTurns = durFields.countdownTurns
     , countdownPhase = durFields.countdownPhase
     , saveToEnd = saveUi
+    , applyToSelected = False
     }
 
 
@@ -386,6 +446,7 @@ type alias HpChangeUi =
     , expression : String
     , parseError : Maybe Dice.Error
     , ignoreTemp : Bool
+    , applyToSelected : Bool
     }
 
 
@@ -414,6 +475,7 @@ freshHpChangeUi target kind =
     , expression = ""
     , parseError = Nothing
     , ignoreTemp = False
+    , applyToSelected = False
     }
 
 
@@ -508,6 +570,7 @@ type Msg
     | HpChangeAmountChanged String
     | HpChangeExpressionChanged String
     | HpChangeIgnoreTempToggle
+    | HpChangeApplyToSelectedToggle
     | HpChangeApply
     | HpChangeRollLanded Dice.Roll
       -- Inline HP edit on the creature card
@@ -521,6 +584,9 @@ type Msg
       -- Manual queue reordering
     | MoveCreatureUp String
     | MoveCreatureDown String
+      -- Roster mutation (right rail × / ⧉ buttons)
+    | RemoveCreature String
+    | DuplicateCreature String
       -- Initiative manager modal
     | InitiativeOpen String
     | InitiativeClose
@@ -530,6 +596,7 @@ type Msg
     | InitiativeApplyTarget
     | InitiativeApplySelected
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
+    | ActiveCardScrollChecked (Result Browser.Dom.Error ())
       -- Note-edit modal (the row 1 pencil button)
     | NoteEditOpen String String
     | NoteEditChange String
@@ -545,18 +612,35 @@ type Msg
     | ConditionDurationKindSet DurationKind
     | ConditionUntilCreatureChanged String
     | ConditionUntilPhaseSet Encounter.TurnPhase
+    | ConditionUntilTargetSet Encounter.TurnTarget
     | ConditionCountdownTurnsChanged String
     | ConditionCountdownPhaseSet Encounter.TurnPhase
     | ConditionSaveToggle
     | ConditionSaveAbilityChanged String
     | ConditionSaveDcChanged String
     | ConditionSaveBonusChanged String
-    | ConditionSaveAutoRollToggle
+    | ConditionSaveAutoRollSet Encounter.AutoRollMode
+    | ConditionApplyToSelectedToggle
     | ConditionSubmit
     | ConditionDelete
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
-    | ConditionSaveLanded String Int Int Dice.Roll
+    | ConditionSaveLanded String Int Int Bool Dice.Roll
+      -- (creature, condition id, dc, wasAutoRoll, roll)
+    | SaveNoticeDismiss String Int
+      -- Card row 3 memo
+    | MemoOpen String
+    | MemoChange String
+    | MemoCommit
+    | MemoCancel
+    | MemoClear String
+      -- Card row 3 timer
+    | TimerOpen String
+    | TimerSetupTurnsChanged String
+    | TimerSetupPhaseSet Encounter.TurnPhase
+    | TimerSetupApply
+    | TimerSetupCancel
+    | TimerDismiss String
     | NoOp
 
 
@@ -621,6 +705,8 @@ init _ url key =
       , initiative = Nothing
       , noteEdit = Nothing
       , conditionUi = Nothing
+      , memoEdit = Nothing
+      , timerSetup = Nothing
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -683,26 +769,47 @@ update msg model =
         NextTurn ->
             -- Domain layer owns the queue walk, round bookkeeping,
             -- and condition lifecycle hooks (begin / end of turn).
-            -- The only side effect we need from the update layer is
-            -- firing auto-roll save Cmds for the new active
-            -- creature's conditions tagged `autoRoll = True`.
+            -- The update layer fires the side effects:
+            --   - auto-roll saves at the OUTGOING creature's
+            --     end-of-turn (AutoRollAtEnd),
+            --   - auto-roll saves at the INCOMING creature's
+            --     begin-of-turn (AutoRollAtBegin),
+            --   - and a viewport check so the active card scrolls
+            --     into view.
+            -- Both auto-roll batches read the post-`nextTurn`
+            -- encounter so they see the outgoing creature's
+            -- conditions AFTER end-of-turn ticks (any UntilTurn
+            -- AtEnd <self> already expired, so we don't roll for
+            -- a condition the engine just removed).
             let
+                outgoingName =
+                    model.encounter.activeName
+
                 newEnc =
                     Encounter.nextTurn model.encounter
 
-                autoRolls =
-                    autoRollCmds newEnc
+                endRolls =
+                    autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
+
+                beginRolls =
+                    autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
             in
             ( { model | encounter = newEnc }
-            , Cmd.batch autoRolls
+            , Cmd.batch
+                (scrollActiveIntoViewCmd newEnc.activeName
+                    :: endRolls
+                    ++ beginRolls
+                )
             )
 
         SetActive name ->
             -- Manual jump (the right-arrow button on a card). Distinct
             -- from NextTurn: no round bump, no turn-progression hooks
             -- when those land. See Encounter.setActive for rationale.
+            -- Scroll-into-view still runs so the GM sees the card
+            -- they just promoted.
             ( withEncounter (Encounter.setActive name) model
-            , Cmd.none
+            , scrollActiveIntoViewCmd name
             )
 
         ToggleSurprised name ->
@@ -1031,6 +1138,11 @@ update msg model =
             , Cmd.none
             )
 
+        HpChangeApplyToSelectedToggle ->
+            ( withHpChange (\u -> { u | applyToSelected = not u.applyToSelected }) model
+            , Cmd.none
+            )
+
         HpChangeApply ->
             -- Manual mode commits ui.amount via the engine straight
             -- away. Dice mode parses the expression and fires
@@ -1054,7 +1166,7 @@ update msg model =
                                 Ok expr ->
                                     ( model
                                     , Dice.rollCmd HpChangeRollLanded
-                                        (hpChangeSource ui)
+                                        (hpChangeSource ui model.encounter)
                                         expr
                                     )
 
@@ -1184,6 +1296,13 @@ update msg model =
 
         MoveCreatureDown name ->
             ( withEncounter (Encounter.moveDown name) model, Cmd.none )
+
+        -- Roster mutation
+        RemoveCreature name ->
+            ( withEncounter (Encounter.removeCreature name) model, Cmd.none )
+
+        DuplicateCreature name ->
+            ( withEncounter (Encounter.duplicateCreature name) model, Cmd.none )
 
         -- Initiative manager
         InitiativeOpen target ->
@@ -1379,10 +1498,26 @@ update msg model =
             ( withConditionUi (\u -> { u | durationKind = kind }) model, Cmd.none )
 
         ConditionUntilCreatureChanged name ->
-            ( withConditionUi (\u -> { u | untilCreature = name }) model, Cmd.none )
+            -- Switching the reference creature can make
+            -- "begin + current" newly invalid (or no longer
+            -- invalid). Repair the target field if so — the GM
+            -- doesn't want to babysit the radio after a dropdown
+            -- change.
+            ( withConditionUi
+                (\u -> repairUntilTarget model { u | untilCreature = name })
+                model
+            , Cmd.none
+            )
 
         ConditionUntilPhaseSet phase ->
-            ( withConditionUi (\u -> { u | untilPhase = phase }) model, Cmd.none )
+            ( withConditionUi
+                (\u -> repairUntilTarget model { u | untilPhase = phase })
+                model
+            , Cmd.none
+            )
+
+        ConditionUntilTargetSet target ->
+            ( withConditionUi (\u -> { u | untilTarget = target }) model, Cmd.none )
 
         ConditionCountdownTurnsChanged text ->
             ( withConditionUi
@@ -1468,16 +1603,21 @@ update msg model =
             , Cmd.none
             )
 
-        ConditionSaveAutoRollToggle ->
+        ConditionSaveAutoRollSet mode ->
             ( withConditionUi
                 (\u ->
                     { u
                         | saveToEnd =
-                            Maybe.map (\s -> { s | autoRoll = not s.autoRoll })
+                            Maybe.map (\s -> { s | autoRoll = mode })
                                 u.saveToEnd
                     }
                 )
                 model
+            , Cmd.none
+            )
+
+        ConditionApplyToSelectedToggle ->
+            ( withConditionUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
             , Cmd.none
             )
 
@@ -1525,16 +1665,17 @@ update msg model =
             )
 
         ConditionRollSave name id ->
-            -- Manual click on the save chip's d20 button. Same flow
-            -- as the auto-roll path: fire a 1d20 + bonus, the
-            -- result lands in ConditionSaveLanded which decides if
-            -- the save succeeded.
+            -- Manual click on the save chip's d20 button. Same Cmd
+            -- shape as the auto-roll path, but flagged
+            -- `wasAutoRoll = False` so a successful save removes
+            -- the condition silently rather than posting a
+            -- "Saved: <name>" notice on the card.
             case Encounter.findCondition name id model.encounter of
                 Just ( _, cond ) ->
                     case cond.saveToEnd of
                         Just spec ->
                             ( model
-                            , Dice.rollCmd (ConditionSaveLanded name id spec.dc)
+                            , Dice.rollCmd (ConditionSaveLanded name id spec.dc False)
                                 (saveSource cond name spec)
                                 (saveExpression spec.bonus)
                             )
@@ -1545,23 +1686,164 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
-        ConditionSaveLanded name id dc roll ->
+        ConditionSaveLanded name id dc wasAutoRoll roll ->
             -- Save resolves: roll.total >= dc means the condition
-            -- ends. Either way log + persist the roll. We don't
-            -- bubble a "did it succeed" signal anywhere else;
-            -- presence of the chip after the click is the answer.
+            -- ends. Look up the condition name BEFORE we remove it
+            -- so the auto-roll success path can post a notice with
+            -- the right label. Manual rolls remove silently.
             let
+                conditionName =
+                    Encounter.findCondition name id model.encounter
+                        |> Maybe.map (\( _, cond ) -> cond.name)
+
+                succeeded =
+                    roll.total >= dc
+
                 m1 =
-                    if roll.total >= dc then
-                        { model
-                            | encounter = Encounter.removeCondition name id model.encounter
-                        }
+                    if succeeded then
+                        let
+                            removed =
+                                { model
+                                    | encounter = Encounter.removeCondition name id model.encounter
+                                }
+                        in
+                        case ( wasAutoRoll, conditionName ) of
+                            ( True, Just label ) ->
+                                { removed
+                                    | encounter =
+                                        Encounter.addSaveNotice name label removed.encounter
+                                }
+
+                            _ ->
+                                removed
 
                     else
                         model
             in
             ( m1 |> pushDiceRoll roll
             , persistRollCmd roll
+            )
+
+        SaveNoticeDismiss name id ->
+            ( { model | encounter = Encounter.removeSaveNotice name id model.encounter }
+            , Cmd.none
+            )
+
+        ActiveCardScrollChecked _ ->
+            -- Result of the scroll-into-view Task. Either the scroll
+            -- worked or the element wasn't found (defensive); either
+            -- way, nothing further to do.
+            ( model, Cmd.none )
+
+        -- Memo modal (card row 3 📝)
+        MemoOpen name ->
+            let
+                current =
+                    model.encounter.creatures
+                        |> List.filter (\c -> c.name == name)
+                        |> List.head
+                        |> Maybe.map .memo
+                        |> Maybe.withDefault ""
+            in
+            ( { model | memoEdit = Just (freshMemoEditUi name current) }
+            , Cmd.none
+            )
+
+        MemoChange text ->
+            ( withMemoEdit (\u -> { u | text = String.left maxMemoLength text }) model
+            , Cmd.none
+            )
+
+        MemoCommit ->
+            case model.memoEdit of
+                Just ui ->
+                    let
+                        trimmed =
+                            String.trim ui.text
+                    in
+                    ( { model
+                        | encounter =
+                            Encounter.mapCreature ui.target
+                                (\c -> { c | memo = trimmed })
+                                model.encounter
+                        , memoEdit = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        MemoCancel ->
+            ( { model | memoEdit = Nothing }, Cmd.none )
+
+        MemoClear name ->
+            ( { model
+                | encounter =
+                    Encounter.mapCreature name (\c -> { c | memo = "" }) model.encounter
+              }
+            , Cmd.none
+            )
+
+        -- Timer modal (card row 3 ⏱)
+        TimerOpen name ->
+            ( { model | timerSetup = Just (freshTimerSetupUi name) }
+            , Cmd.none
+            )
+
+        TimerSetupTurnsChanged text ->
+            ( withTimerSetup
+                (\u ->
+                    { u
+                        | turnsText = text
+                        , turns =
+                            String.toInt (String.trim text)
+                                |> Maybe.map (Basics.max 1 >> Basics.min 99)
+                                |> Maybe.withDefault u.turns
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        TimerSetupPhaseSet phase ->
+            ( withTimerSetup (\u -> { u | phase = phase }) model, Cmd.none )
+
+        TimerSetupApply ->
+            case model.timerSetup of
+                Just ui ->
+                    let
+                        newTimer =
+                            { remaining = ui.turns
+                            , phase = ui.phase
+                            , ringing = False
+                            }
+                    in
+                    ( { model
+                        | encounter =
+                            Encounter.mapCreature ui.target
+                                (\c -> { c | timer = Just newTimer })
+                                model.encounter
+                        , timerSetup = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        TimerSetupCancel ->
+            ( { model | timerSetup = Nothing }, Cmd.none )
+
+        TimerDismiss name ->
+            -- Dismiss whether ringing or still counting; the GM
+            -- gets to cancel a timer mid-flight if combat ends
+            -- early or they set the wrong creature.
+            ( { model
+                | encounter =
+                    Encounter.mapCreature name (\c -> { c | timer = Nothing }) model.encounter
+              }
+            , Cmd.none
             )
 
         NoOp ->
@@ -1695,6 +1977,57 @@ withConditionUi fn model =
             model
 
 
+{-| Apply `fn` to the open memo-edit modal. No-op when closed.
+-}
+withMemoEdit : (MemoEditUi -> MemoEditUi) -> Model -> Model
+withMemoEdit fn model =
+    case model.memoEdit of
+        Just ui ->
+            { model | memoEdit = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Apply `fn` to the open timer-setup modal. No-op when closed.
+-}
+withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
+withTimerSetup fn model =
+    case model.timerSetup of
+        Just ui ->
+            { model | timerSetup = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+{-| Auto-correct the `untilTarget` field if the current
+phase / creature combo has made `OnCurrentTurn` nonsensical.
+
+A "Begin + Current turn" pairing is logically invalid when the
+reference creature is currently active: the begin of their
+current turn already fired when they became active, so there's
+no future hook to expire on. Flip to `OnNextTurn` so the
+condition has a real expiration point.
+
+-}
+repairUntilTarget : Model -> ConditionUi -> ConditionUi
+repairUntilTarget model ui =
+    if currentTurnInvalid model ui && ui.untilTarget == Encounter.OnCurrentTurn then
+        { ui | untilTarget = Encounter.OnNextTurn }
+
+    else
+        ui
+
+
+{-| True when `OnCurrentTurn` would be a no-op — only the
+"Begin + active reference creature" case for now.
+-}
+currentTurnInvalid : Model -> ConditionUi -> Bool
+currentTurnInvalid model ui =
+    ui.untilPhase == Encounter.AtBegin && ui.untilCreature == model.encounter.activeName
+
+
 {-| Hard cap on the chip-note text. Ten characters keeps the chip
 small and prevents wrap-overflow on the card row 1.
 -}
@@ -1735,6 +2068,8 @@ commitCondition ui name model =
     in
     case ui.editingId of
         Just id ->
+            -- Editing an existing condition is always single-target —
+            -- you're modifying one specific row, not splatting it.
             { model
                 | encounter =
                     Encounter.updateCondition ui.target
@@ -1752,10 +2087,33 @@ commitCondition ui name model =
             }
 
         Nothing ->
+            let
+                targets =
+                    conditionTargets ui model.encounter
+
+                addOne tgt enc =
+                    Encounter.addCondition tgt draft enc
+            in
             { model
-                | encounter = Encounter.addCondition ui.target draft model.encounter
+                | encounter = List.foldl addOne model.encounter targets
                 , conditionUi = Nothing
             }
+
+
+{-| Resolve which creatures a new condition applies to. When
+`applyToSelected` is True, every creature with `selected = True`
+gets a fresh copy (each gets its own id via `addCondition`).
+Otherwise just the modal's `target`.
+-}
+conditionTargets : ConditionUi -> Encounter -> List String
+conditionTargets ui enc =
+    if ui.applyToSelected then
+        enc.creatures
+            |> List.filter .selected
+            |> List.map .name
+
+    else
+        [ ui.target ]
 
 
 {-| Build the domain `Duration` from the UI's three sub-states.
@@ -1773,7 +2131,7 @@ buildDuration ui model =
             Encounter.DurationManual
 
         DurKindUntilTurn ->
-            Encounter.DurationUntilTurn ui.untilPhase ui.untilCreature
+            Encounter.DurationUntilTurn ui.untilPhase ui.untilTarget ui.untilCreature
 
         DurKindCountdown ->
             let
@@ -1786,42 +2144,115 @@ buildDuration ui model =
             Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
 
 
-{-| Build a list of Cmds that fire any auto-roll saves for the
-encounter's currently-active creature. One Cmd per applicable
-condition. Each result lands in `ConditionSaveLanded`, which
-applies the success / failure logic and updates the dice history.
+{-| DOM id stamped on each creature card's outer `<article>`.
+Used by [`scrollActiveIntoViewCmd`](#scrollActiveIntoViewCmd) to
+locate the active card via `Browser.Dom.getElement`. Spaces and
+punctuation in creature names are mapped to underscores so the
+resulting id meets HTML5's "no ASCII whitespace" rule.
+-}
+cardId : String -> String
+cardId name =
+    "creature-card-" ++ slugifyName name
 
-Returns `[]` when there are no auto-roll saves on the active
-creature, which is the common case — the result is a `Cmd.none`-
-equivalent batch.
+
+slugifyName : String -> String
+slugifyName name =
+    name
+        |> String.toList
+        |> List.map
+            (\c ->
+                if Char.isAlphaNum c then
+                    c
+
+                else
+                    '_'
+            )
+        |> String.fromList
+
+
+{-| If the active creature's card is partially below the browser
+viewport's bottom edge, scroll the document so it's fully
+visible (with a small bottom margin). Otherwise no-op.
+
+Composed from `Browser.Dom.getViewport` and
+`Browser.Dom.getElement` — both are read-only Tasks, so we only
+issue a `setViewport` when the math says we have to. The result
+lands in [`ActiveCardScrollChecked`](#ActiveCardScrollChecked)
+which is a no-op handler.
 
 -}
-autoRollCmds : Encounter.Encounter -> List (Cmd Msg)
-autoRollCmds enc =
-    case Encounter.activeCreature enc of
-        Just c ->
-            c.conditions
-                |> List.filterMap
-                    (\cond ->
-                        case cond.saveToEnd of
-                            Just spec ->
-                                if spec.autoRoll then
-                                    Just
-                                        (Dice.rollCmd
-                                            (ConditionSaveLanded c.name cond.id spec.dc)
-                                            (saveSource cond c.name spec)
-                                            (saveExpression spec.bonus)
-                                        )
+scrollActiveIntoViewCmd : String -> Cmd Msg
+scrollActiveIntoViewCmd name =
+    Task.map2
+        (\viewport element ->
+            let
+                cardBottom =
+                    element.element.y + element.element.height
 
-                                else
-                                    Nothing
+                viewportBottom =
+                    viewport.viewport.y + viewport.viewport.height
 
-                            Nothing ->
-                                Nothing
+                bottomMargin =
+                    16
+
+                overflow =
+                    cardBottom - (viewportBottom - bottomMargin)
+            in
+            if overflow > 0 then
+                Browser.Dom.setViewport
+                    viewport.viewport.x
+                    (viewport.viewport.y + overflow)
+
+            else
+                Task.succeed ()
+        )
+        Browser.Dom.getViewport
+        (Browser.Dom.getElement (cardId name))
+        |> Task.andThen identity
+        |> Task.attempt ActiveCardScrollChecked
+
+
+{-| Build a list of Cmds that fire auto-roll saves for one
+creature in one turn-phase. Each result lands in
+`ConditionSaveLanded`, which applies the success / failure logic
+and updates the dice history.
+
+`mode` filters: only conditions whose `saveToEnd.autoRoll`
+matches `mode` produce a Cmd. The two phases (`AutoRollAtBegin`
+and `AutoRollAtEnd`) are fired separately — see the `NextTurn`
+update branch.
+
+Returns `[]` when the named creature isn't in the queue or has
+no matching auto-roll saves, which is the common case.
+
+-}
+autoRollCmdsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List (Cmd Msg)
+autoRollCmdsFor mode name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.concatMap
+            (\c ->
+                List.filterMap (autoRollCmdForCondition mode c.name) c.conditions
+            )
+
+
+autoRollCmdForCondition : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe (Cmd Msg)
+autoRollCmdForCondition mode bearer cond =
+    case cond.saveToEnd of
+        Just spec ->
+            if spec.autoRoll == mode then
+                Just
+                    (Dice.rollCmd
+                        (ConditionSaveLanded bearer cond.id spec.dc True)
+                        (saveSource cond bearer spec)
+                        (saveExpression spec.bonus)
                     )
 
+            else
+                Nothing
+
         Nothing ->
-            []
+            Nothing
 
 
 {-| Source label for save-to-end rolls: "Save: WIS DC 13 → Brakka".
@@ -2019,8 +2450,8 @@ applyCustomInitiative names ui model =
 the dice history reads e.g. "Damage → Brakka, Ogre Brute" rather
 than just the formula.
 -}
-hpChangeSource : HpChangeUi -> Dice.Source
-hpChangeSource ui =
+hpChangeSource : HpChangeUi -> Encounter -> Dice.Source
+hpChangeSource ui enc =
     let
         feature =
             case ui.kind of
@@ -2032,8 +2463,23 @@ hpChangeSource ui =
 
                 TempHpKind ->
                     "Temp HP"
+
+        targetLabel =
+            if ui.applyToSelected then
+                let
+                    names =
+                        hpChangeTargets ui enc
+                in
+                if List.isEmpty names then
+                    ui.target
+
+                else
+                    String.join ", " names
+
+            else
+                ui.target
     in
-    { feature = feature, target = Just ui.target }
+    { feature = feature, target = Just targetLabel }
 
 
 {-| Resolve the modal's kind + flags into an `HpChange.Change`,
@@ -2042,6 +2488,22 @@ hand it to the engine, write the updated creature back through
 snapshot, and close the modal. The caller decides the amount — it
 comes from the manual input on the manual path or from the rolled
 total on the dice path.
+
+When `ui.applyToSelected` is True, the change is applied to every
+selected creature (`Creature.selected = True`). Same amount
+across all targets — for dice mode this means the GM rolled once
+and N creatures soak the same total, which matches 5e's
+single-roll-per-AOE convention (a Fireball rolls 8d6 once and
+each target takes that much, not 8d6 per target).
+
+When `applyToSelected` is False, only `ui.target` is affected
+(the original single-card flow).
+
+If no creatures match (no selection), the modal still closes
+without applying to anyone — better than silently falling back
+to `ui.target`, which would surprise the GM who explicitly
+checked the multi-target toggle.
+
 -}
 applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
 applyHpChangeAndClose ui amount model =
@@ -2060,41 +2522,73 @@ applyHpChangeAndClose ui amount model =
                 TempHpKind ->
                     HpChange.TempHp amount
 
-        before =
-            findCreature ui.target model.encounter
+        targets =
+            hpChangeTargets ui model.encounter
 
-        newEncounter =
-            Encounter.mapCreature ui.target (HpChange.apply change) model.encounter
+        applyOne name acc =
+            let
+                before =
+                    findCreature name acc.encounter
 
-        after =
-            findCreature ui.target newEncounter
+                newEnc =
+                    Encounter.mapCreature name (HpChange.apply change) acc.encounter
 
-        logEntry =
-            Maybe.map2
-                (\b a ->
-                    { kind = ui.kind
-                    , target = ui.target
-                    , amount = amount
-                    , beforeHp = b.currentHp
-                    , beforeTemp = b.tempHp
-                    , afterHp = a.currentHp
-                    , afterTemp = a.tempHp
-                    }
-                )
-                before
-                after
+                after =
+                    findCreature name newEnc
+
+                entry =
+                    Maybe.map2
+                        (\b a ->
+                            { kind = ui.kind
+                            , target = name
+                            , amount = amount
+                            , beforeHp = b.currentHp
+                            , beforeTemp = b.tempHp
+                            , afterHp = a.currentHp
+                            , afterTemp = a.tempHp
+                            }
+                        )
+                        before
+                        after
+            in
+            { encounter = newEnc
+            , log =
+                case entry of
+                    Just e ->
+                        e :: acc.log
+
+                    Nothing ->
+                        acc.log
+            }
+
+        result =
+            List.foldl applyOne { encounter = model.encounter, log = [] } targets
     in
     { model
-        | encounter = newEncounter
+        | encounter = result.encounter
         , hpChange = Nothing
         , hpChangeLog =
-            case logEntry of
-                Just e ->
-                    e :: List.take (maxHpLogEntries - 1) model.hpChangeLog
-
-                Nothing ->
-                    model.hpChangeLog
+            -- Newly-applied entries are accumulated newest-last in
+            -- the foldl above; reverse so the first target appears
+            -- first when prepended to the existing log.
+            List.reverse result.log
+                ++ List.take (Basics.max 0 (maxHpLogEntries - List.length result.log)) model.hpChangeLog
     }
+
+
+{-| Resolve which creatures the HP-change applies to, based on
+`ui.applyToSelected`. Returns the modal's single target
+otherwise.
+-}
+hpChangeTargets : HpChangeUi -> Encounter -> List String
+hpChangeTargets ui enc =
+    if ui.applyToSelected then
+        enc.creatures
+            |> List.filter .selected
+            |> List.map .name
+
+    else
+        [ ui.target ]
 
 
 {-| Look up a creature by name in an encounter. Used by the HP-change
@@ -2194,6 +2688,9 @@ view model =
             , viewInitiativeModal model
             , viewNoteEditModal model
             , viewConditionModal model
+            , viewMemoEditModal model
+            , viewTimerSetupModal model
+            , viewRingerAudio model
             ]
         ]
     }
@@ -2320,13 +2817,8 @@ viewEncounterBar enc =
             , span [ class "encounter-bar__active" ] [ text activeName ]
             , viewEncounterBarHp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
-            , div [ class "encounter-bar__states" ]
-                [ span [ class "encounter-bar__state", title "State 1 (placeholder)" ] [ text "✊" ]
-                , span [ class "encounter-bar__state", title "State 2 (placeholder)" ] [ text "◕" ]
-                , span [ class "encounter-bar__state", title "State 3 (placeholder)" ] [ text "🧠" ]
-                , span [ class "encounter-bar__state", title "State 4 (placeholder)" ] [ text "🪽" ]
-                ]
-            , viewActiveCreatureConditions active
+            , viewActiveStateIcons active
+            , viewActiveConditionsText active
             ]
         , div [ class "encounter-bar__group encounter-bar__right" ]
             [ span [ class "encounter-bar__xp" ] [ text "93,000 XP" ]
@@ -2588,7 +3080,7 @@ viewCreatureCard activeName hpEdit creature =
                     ]
                 )
     in
-    article [ class cardClass ]
+    article [ id (cardId creature.name), class cardClass ]
         [ div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
                 [ input
@@ -2634,6 +3126,7 @@ viewCreatureCard activeName hpEdit creature =
             [ div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn icon-btn--danger"
+                    , onClick (RemoveCreature creature.name)
                     , title "Remove from queue"
                     , attribute "aria-label" "Remove"
                     ]
@@ -2642,13 +3135,8 @@ viewCreatureCard activeName hpEdit creature =
             , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
-                    , title "Convert to minion"
-                    , attribute "aria-label" "Convert to minion"
-                    ]
-                    [ text "👿" ]
-                , button
-                    [ class "icon-btn"
-                    , title "Duplicate creature"
+                    , onClick (DuplicateCreature creature.name)
+                    , title "Duplicate creature (insert below)"
                     , attribute "aria-label" "Duplicate"
                     ]
                     [ text "⧉" ]
@@ -2855,21 +3343,46 @@ hpEditKeyDecoder =
             )
 
 
-{-| Live render of a creature's conditions on row 1 of the card.
-Empty list → empty text node so the row's flex gap collapses
-naturally. Otherwise we render a separator pipe followed by one
-chip per condition.
+{-| Live render of a creature's conditions and any post-save
+"Saved: <name>" notices on row 1 of the card. Empty for both →
+empty text node so the row's flex gap collapses naturally.
+Otherwise we render a leading separator pipe followed by chips
+(active conditions first, then notices) so the eye lands on the
+condition the GM is most likely to act on.
 -}
 viewConditionChips : Creature -> Html Msg
 viewConditionChips creature =
-    if List.isEmpty creature.conditions then
+    if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
                 :: List.map (viewConditionChip creature.name) creature.conditions
+                ++ List.map (viewSaveNoticeChip creature.name) creature.saveNotices
             )
+
+
+{-| "Saved: <Condition>" notice rendered as a small green chip.
+Posted after a successful AUTO-roll save (manual chip-roll
+successes remove the condition silently). Auto-removes on the
+bearer's next end-of-turn; the × button dismisses earlier.
+-}
+viewSaveNoticeChip : String -> Encounter.SaveNotice -> Html Msg
+viewSaveNoticeChip target notice =
+    span
+        [ class "save-notice"
+        , title ("Saved against " ++ notice.conditionName ++ " — auto-clears on next end-of-turn")
+        ]
+        [ text ("Saved: " ++ notice.conditionName)
+        , button
+            [ class "save-notice__dismiss"
+            , onClick (SaveNoticeDismiss target notice.id)
+            , title "Dismiss"
+            , attribute "aria-label" "Dismiss save notice"
+            ]
+            [ text "×" ]
+        ]
 
 
 {-| One condition chip. Layout (left → right):
@@ -2974,7 +3487,7 @@ viewChipDurationGlyph cond =
         Encounter.DurationManual ->
             text ""
 
-        Encounter.DurationUntilTurn _ ref ->
+        Encounter.DurationUntilTurn _ _ ref ->
             span [ class "condition-chip__duration" ]
                 [ text ("⏱ " ++ String.left 4 ref) ]
 
@@ -2992,20 +3505,121 @@ formatBonus n =
         String.fromInt n
 
 
-{-| Conditions slot in the encounter title bar — same chip render
-as on the card, scoped to the active creature. Empty list →
-empty text node so the title bar doesn't show a stray separator.
+{-| Active-creature state icons in the encounter title bar.
+Renders one icon per actual non-default state (cover, concentrating,
+hiding, flying) — purely indicative, no click handlers. Hidden
+when nothing is active.
+
+Cover uses the same ◐ / ◕ / ● glyph vocabulary as the card row 2
+toggle so the title bar reads consistently with the card.
+
 -}
-viewActiveCreatureConditions : Maybe Creature -> Html Msg
-viewActiveCreatureConditions active =
+viewActiveStateIcons : Maybe Creature -> Html Msg
+viewActiveStateIcons active =
+    case active of
+        Just c ->
+            div [ class "encounter-bar__states" ]
+                (List.filterMap identity
+                    [ coverIcon c
+                    , stateIconIf c.concentrating "🧠" "Concentrating"
+                    , stateIconIf c.hiding "👤" "Hiding"
+                    , flyingIcon c
+                    ]
+                )
+
+        Nothing ->
+            text ""
+
+
+{-| Single state icon, shown only when `on` is True. Tooltip
+labels it for accessibility. Returned as `Maybe (Html msg)` so
+the caller can `filterMap identity` and skip the false ones.
+-}
+stateIconIf : Bool -> String -> String -> Maybe (Html Msg)
+stateIconIf on glyph label =
+    if on then
+        Just
+            (span
+                [ class "encounter-bar__state"
+                , title label
+                , attribute "aria-label" label
+                ]
+                [ text glyph ]
+            )
+
+    else
+        Nothing
+
+
+coverIcon : Creature -> Maybe (Html Msg)
+coverIcon c =
+    case c.cover of
+        Encounter.NoCover ->
+            Nothing
+
+        Encounter.HalfCover ->
+            Just (stateIcon "◐" "Half cover")
+
+        Encounter.ThreeQuartersCover ->
+            Just (stateIcon "◕" "Three-quarters cover")
+
+        Encounter.FullCover ->
+            Just (stateIcon "●" "Full cover")
+
+
+{-| Flying icon includes the height inline so the GM can read
+"how high" at a glance without opening the card.
+-}
+flyingIcon : Creature -> Maybe (Html Msg)
+flyingIcon c =
+    if c.flying then
+        Just
+            (span
+                [ class "encounter-bar__state"
+                , title ("Flying — " ++ String.fromInt c.flyHeight ++ " ft")
+                , attribute "aria-label" "Flying"
+                ]
+                [ text ("🪽 " ++ String.fromInt c.flyHeight) ]
+            )
+
+    else
+        Nothing
+
+
+stateIcon : String -> String -> Html Msg
+stateIcon glyph label =
+    span
+        [ class "encounter-bar__state"
+        , title label
+        , attribute "aria-label" label
+        ]
+        [ text glyph ]
+
+
+{-| Active-creature conditions slot in the title bar. Plain
+purple text separated by " | ", not chips — the GM uses this as
+a glanceable summary; the editable chips are on the card itself.
+Hidden when there are no conditions.
+-}
+viewActiveConditionsText : Maybe Creature -> Html Msg
+viewActiveConditionsText active =
     case active of
         Just c ->
             if List.isEmpty c.conditions then
                 text ""
 
             else
-                span [ class "condition-chips-wrap condition-chips-wrap--bar" ]
-                    (List.map (viewConditionChip c.name) c.conditions)
+                span [ class "encounter-bar__conditions" ]
+                    (List.intersperse
+                        (span [ class "encounter-bar__cond-sep" ] [ text "|" ])
+                        (List.map
+                            (\cond ->
+                                span [ class "encounter-bar__cond" ]
+                                    [ text cond.name ]
+                            )
+                            c.conditions
+                        )
+                    )
 
         Nothing ->
             text ""
@@ -3137,25 +3751,111 @@ viewCardRowBot creature =
             ]
             [ text "Condition/Effect" ]
         , viewHoldToggle creature
-        , button
+        , viewMemoSlot creature
+        , viewTimerSlot creature
+        ]
+
+
+{-| Row 3 memo slot. Empty memo → 📝 button that opens the
+memo-edit modal. Non-empty memo → white-text inline display with
+an × dismiss button (clearing the memo restores the icon).
+-}
+viewMemoSlot : Creature -> Html Msg
+viewMemoSlot creature =
+    if String.isEmpty creature.memo then
+        button
             [ class "action-btn action-btn--icon"
-            , title "Memo"
-            , attribute "aria-label" "Memo"
+            , onClick (MemoOpen creature.name)
+            , title "Add memo"
+            , attribute "aria-label" "Add memo"
             ]
             [ text "📝" ]
-        , button
-            [ class "action-btn action-btn--icon"
-            , title "Stopwatch / timer"
-            , attribute "aria-label" "Timer"
+
+    else
+        span
+            [ class "memo-pill"
+            , title creature.memo
             ]
-            [ text "⏱️" ]
-        , button
-            [ class "action-btn action-btn--icon"
-            , title "Roll dice"
-            , attribute "aria-label" "Roll dice"
+            [ button
+                [ class "memo-pill__text"
+                , onClick (MemoOpen creature.name)
+                , title "Edit memo"
+                ]
+                [ text creature.memo ]
+            , button
+                [ class "memo-pill__dismiss"
+                , onClick (MemoClear creature.name)
+                , title "Clear memo"
+                , attribute "aria-label" "Clear memo"
+                ]
+                [ text "×" ]
             ]
-            [ text "🎲" ]
-        ]
+
+
+{-| Row 3 timer slot. Three states:
+
+  - No timer set → ⏱ button that opens the timer-setup modal.
+  - Timer counting → display the remaining count + × dismiss.
+  - Timer ringing (`remaining = 0`) → flashing 0 + × dismiss.
+    The browser also plays a ping sound courtesy of the
+    page-level `<audio>` element mounted by `viewRingerAudio`.
+
+-}
+viewTimerSlot : Creature -> Html Msg
+viewTimerSlot creature =
+    case creature.timer of
+        Nothing ->
+            button
+                [ class "action-btn action-btn--icon"
+                , onClick (TimerOpen creature.name)
+                , title "Set timer"
+                , attribute "aria-label" "Set timer"
+                ]
+                [ text "⏱️" ]
+
+        Just t ->
+            span
+                [ class
+                    (if t.ringing then
+                        "timer-pill timer-pill--ringing"
+
+                     else
+                        "timer-pill"
+                    )
+                , title (timerTooltip t)
+                ]
+                [ span [ class "timer-pill__count" ]
+                    [ text (String.fromInt t.remaining) ]
+                , button
+                    [ class "timer-pill__dismiss"
+                    , onClick (TimerDismiss creature.name)
+                    , title "Cancel timer"
+                    , attribute "aria-label" "Cancel timer"
+                    ]
+                    [ text "×" ]
+                ]
+
+
+timerTooltip : Encounter.Timer -> String
+timerTooltip t =
+    let
+        phaseWord =
+            case t.phase of
+                Encounter.AtBegin ->
+                    "begin"
+
+                Encounter.AtEnd ->
+                    "end"
+    in
+    if t.ringing then
+        "Timer rang at " ++ phaseWord ++ "-of-turn — click × to dismiss"
+
+    else
+        "Timer: "
+            ++ String.fromInt t.remaining
+            ++ " left, ticks at "
+            ++ phaseWord
+            ++ "-of-turn"
 
 
 viewHoldToggle : Creature -> Html Msg
@@ -3749,6 +4449,7 @@ viewHpChangeModal model =
                         [ viewHpChangeModeToggle ui
                         , viewHpChangeAmount ui
                         , viewHpChangeOptions ui
+                        , viewHpChangeApplyScope ui model.encounter
                         , case target of
                             Just c ->
                                 viewHpChangePreview ui c
@@ -3881,6 +4582,50 @@ viewHpChangeOptions ui =
 
         _ ->
             text ""
+
+
+{-| Multi-target scope checkbox. Hidden entirely when zero
+creatures are selected — there's no useful "apply to all
+selected" when there's no selection. When at least one is
+selected, renders the toggle plus a count hint so the GM knows
+the blast radius.
+
+Dice mode comes with an inline note explaining that all selected
+creatures share the same rolled total (the 5e Fireball
+single-roll-per-AOE convention).
+
+-}
+viewHpChangeApplyScope : HpChangeUi -> Encounter -> Html Msg
+viewHpChangeApplyScope ui enc =
+    let
+        selectedCount =
+            List.length (List.filter .selected enc.creatures)
+    in
+    if selectedCount == 0 then
+        text ""
+
+    else
+        div [ class "hp-change__row" ]
+            [ Html.label [ class "hp-change__checkbox" ]
+                [ input
+                    [ type_ "checkbox"
+                    , checked ui.applyToSelected
+                    , onClick HpChangeApplyToSelectedToggle
+                    ]
+                    []
+                , text
+                    (" Apply to all selected creatures ("
+                        ++ String.fromInt selectedCount
+                        ++ ")"
+                    )
+                ]
+            , if ui.applyToSelected && ui.mode == DiceMode then
+                div [ class "hp-change__caption" ]
+                    [ text "All selected creatures take the same rolled total (one roll, shared across the AOE)." ]
+
+              else
+                text ""
+            ]
 
 
 {-| Preview of the manual-mode arithmetic: shows what the change
@@ -4406,10 +5151,50 @@ viewConditionModal model =
                         , viewConditionNoteSection ui
                         , viewConditionDurationSection ui model
                         , viewConditionSaveSection ui
+                        , viewConditionApplyScope ui model.encounter
                         , viewConditionFooter ui
                         ]
                     ]
                 ]
+
+
+{-| Multi-target scope checkbox for the condition modal. Same
+shape as `viewHpChangeApplyScope`: hidden when no creatures are
+selected, otherwise a toggle that splatters a fresh copy of the
+new condition onto every selected creature (each gets its own
+id).
+
+Hidden entirely when editing an existing condition — you're
+modifying one specific row, not creating new ones in bulk.
+
+-}
+viewConditionApplyScope : ConditionUi -> Encounter -> Html Msg
+viewConditionApplyScope ui enc =
+    let
+        selectedCount =
+            List.length (List.filter .selected enc.creatures)
+    in
+    if ui.editingId /= Nothing || selectedCount == 0 then
+        text ""
+
+    else
+        div [ class "cond-section" ]
+            [ Html.label [ class "hp-change__checkbox" ]
+                [ input
+                    [ type_ "checkbox"
+                    , checked ui.applyToSelected
+                    , onClick ConditionApplyToSelectedToggle
+                    ]
+                    []
+                , text
+                    (" Apply to all selected creatures ("
+                        ++ String.fromInt selectedCount
+                        ++ ")"
+                    )
+                ]
+            , div [ class "cond-section__caption" ]
+                [ text "Each selected creature gets its own copy of the condition (separate ids, independent durations)." ]
+            ]
 
 
 viewConditionStandardSection : ConditionUi -> Html Msg
@@ -4549,7 +5334,82 @@ viewDurationUntilSubsection ui model =
                     )
                     model.encounter.creatures
                 )
-            , Html.label [] [ text "'s turn" ]
+            , Html.label [] [ text "'s" ]
+            , viewTurnTargetToggle ui model
+            , Html.label [] [ text "turn" ]
+            ]
+        ]
+
+
+{-| Two-button current / next radio toggle inserted between the
+reference creature and the word "turn" in the duration row.
+
+The "current" button is disabled when [`currentTurnInvalid`] is
+true — i.e. begin-of-turn paired with the currently-active
+creature, since their current begin-of-turn already fired.
+
+-}
+viewTurnTargetToggle : ConditionUi -> Model -> Html Msg
+viewTurnTargetToggle ui model =
+    let
+        currentDisabled =
+            currentTurnInvalid model ui
+    in
+    span [ class "cond-phase-toggle" ]
+        [ Html.label
+            [ class
+                (String.join " "
+                    (List.filterMap identity
+                        [ Just "cond-phase"
+                        , if ui.untilTarget == Encounter.OnCurrentTurn then
+                            Just "cond-phase--on"
+
+                          else
+                            Nothing
+                        , if currentDisabled then
+                            Just "cond-phase--disabled"
+
+                          else
+                            Nothing
+                        ]
+                    )
+                )
+            , title
+                (if currentDisabled then
+                    "The current begin-of-turn already fired for the active creature — pick 'next' instead"
+
+                 else
+                    "Expire on the first matching hook fire"
+                )
+            ]
+            [ input
+                [ type_ "radio"
+                , Html.Attributes.name "until-target"
+                , checked (ui.untilTarget == Encounter.OnCurrentTurn)
+                , disabled currentDisabled
+                , onClick (ConditionUntilTargetSet Encounter.OnCurrentTurn)
+                ]
+                []
+            , text "current"
+            ]
+        , Html.label
+            [ class
+                (if ui.untilTarget == Encounter.OnNextTurn then
+                    "cond-phase cond-phase--on"
+
+                 else
+                    "cond-phase"
+                )
+            , title "Skip the first matching hook fire and expire on the second"
+            ]
+            [ input
+                [ type_ "radio"
+                , Html.Attributes.name "until-target"
+                , checked (ui.untilTarget == Encounter.OnNextTurn)
+                , onClick (ConditionUntilTargetSet Encounter.OnNextTurn)
+                ]
+                []
+            , text "next"
             ]
         ]
 
@@ -4693,27 +5553,66 @@ viewConditionSaveSubsection s =
                 ]
                 []
             ]
-        , div [ class "cond-row" ]
-            [ Html.label []
-                [ input
-                    [ type_ "checkbox"
-                    , checked s.autoRoll
-                    , onClick ConditionSaveAutoRollToggle
-                    ]
-                    []
-                , text " Auto-roll at the bearer's begin-of-turn"
-                ]
+        , div [ class "cond-radio-stack" ]
+            [ viewAutoRollRadio s
+                Encounter.AutoRollManual
+                "Manual (no auto-roll — GM clicks 🎲 on the chip)"
+            , viewAutoRollRadio s
+                Encounter.AutoRollAtBegin
+                "Auto-roll at the bearer's beginning-of-turn"
+            , viewAutoRollRadio s
+                Encounter.AutoRollAtEnd
+                "Auto-roll at the bearer's end-of-turn"
             ]
         , div [ class "cond-section__caption" ]
-            [ text
-                (if s.autoRoll then
-                    "The save will fire automatically each turn; success removes the condition."
-
-                 else
-                    "The 🎲 button on the chip rolls manually — a reminder, not auto-applied."
-                )
-            ]
+            [ text (autoRollCaption s.autoRoll) ]
         ]
+
+
+{-| One radio button in the auto-roll mode group. Shares the
+.cond-radio chrome with the other radio groups in the modal.
+-}
+viewAutoRollRadio : SaveToEndUi -> Encounter.AutoRollMode -> String -> Html Msg
+viewAutoRollRadio s mode label =
+    let
+        isSelected =
+            s.autoRoll == mode
+    in
+    Html.label
+        [ class
+            (if isSelected then
+                "cond-radio cond-radio--selected"
+
+             else
+                "cond-radio"
+            )
+        ]
+        [ input
+            [ type_ "radio"
+            , Html.Attributes.name "cond-save-autoroll"
+            , checked isSelected
+            , onClick (ConditionSaveAutoRollSet mode)
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text label ]
+        ]
+
+
+{-| Caption text under the auto-roll radio group describing what
+will actually happen in play. Updates live with the selection so
+the GM can see the consequence without clicking submit.
+-}
+autoRollCaption : Encounter.AutoRollMode -> String
+autoRollCaption mode =
+    case mode of
+        Encounter.AutoRollManual ->
+            "The 🎲 button on the chip rolls manually — a reminder, not auto-applied."
+
+        Encounter.AutoRollAtBegin ->
+            "Save fires at the start of the bearer's turn; success removes the condition."
+
+        Encounter.AutoRollAtEnd ->
+            "Save fires at the end of the bearer's turn; success removes the condition."
 
 
 viewConditionFooter : ConditionUi -> Html Msg
@@ -4767,3 +5666,184 @@ viewConditionFooter ui =
             ]
             [ text "Cancel" ]
         ]
+
+
+
+-- MEMO + TIMER MODALS
+
+
+{-| Card row 3 memo edit modal. Single text input capped at 20
+chars with Save / Cancel buttons. Same chrome as the row 1
+note-edit modal but writes to a different field on Creature
+(`memo` vs `note`) so they can coexist on the same card.
+-}
+viewMemoEditModal : Model -> Html Msg
+viewMemoEditModal model =
+    case model.memoEdit of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            div
+                [ class "modal-backdrop"
+                , onClick MemoCancel
+                ]
+                [ div
+                    [ class "modal modal--note-edit"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" ("Memo for " ++ ui.target)
+                    ]
+                    [ div [ class "modal__header" ]
+                        [ div [ class "modal__title" ]
+                            [ text ("Memo — " ++ ui.target) ]
+                        , button
+                            [ class "modal__close"
+                            , onClick MemoCancel
+                            , title "Cancel"
+                            , attribute "aria-label" "Cancel"
+                            ]
+                            [ text "×" ]
+                        ]
+                    , div [ class "modal__body" ]
+                        [ Html.label [ for "memo-edit-input" ]
+                            [ text ("Short memo (max " ++ String.fromInt maxMemoLength ++ " chars)") ]
+                        , input
+                            [ id "memo-edit-input"
+                            , class "note-edit__input"
+                            , type_ "text"
+                            , value ui.text
+                            , maxlength maxMemoLength
+                            , placeholder "e.g. legendary res used"
+                            , autofocus True
+                            , onInput MemoChange
+                            , Html.Events.on "keydown" (enterKey MemoCommit)
+                            ]
+                            []
+                        , div [ class "note-edit__buttons" ]
+                            [ button
+                                [ class "action-btn action-btn--green"
+                                , onClick MemoCommit
+                                ]
+                                [ text "Save" ]
+                            , button
+                                [ class "action-btn"
+                                , onClick MemoCancel
+                                ]
+                                [ text "Cancel" ]
+                            ]
+                        ]
+                    ]
+                ]
+
+
+{-| Card row 3 timer-setup modal. The GM picks a turn count
+(1..99) and a phase (begin/end of bearer's turn). Apply writes
+the timer; Cancel discards.
+-}
+viewTimerSetupModal : Model -> Html Msg
+viewTimerSetupModal model =
+    case model.timerSetup of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            div
+                [ class "modal-backdrop"
+                , onClick TimerSetupCancel
+                ]
+                [ div
+                    [ class "modal modal--timer"
+                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+                    , attribute "role" "dialog"
+                    , attribute "aria-modal" "true"
+                    , attribute "aria-label" ("Timer for " ++ ui.target)
+                    ]
+                    [ div [ class "modal__header" ]
+                        [ div [ class "modal__title" ]
+                            [ text ("Timer — " ++ ui.target) ]
+                        , button
+                            [ class "modal__close"
+                            , onClick TimerSetupCancel
+                            , title "Cancel"
+                            , attribute "aria-label" "Cancel"
+                            ]
+                            [ text "×" ]
+                        ]
+                    , div [ class "modal__body" ]
+                        [ div [ class "cond-row" ]
+                            [ Html.label [ for "timer-turns-input" ]
+                                [ text "Lasts" ]
+                            , input
+                                [ id "timer-turns-input"
+                                , class "cond-input cond-input--narrow"
+                                , type_ "number"
+                                , Html.Attributes.min "1"
+                                , Html.Attributes.max "99"
+                                , value ui.turnsText
+                                , autofocus True
+                                , onInput TimerSetupTurnsChanged
+                                , Html.Events.on "keydown" (enterKey TimerSetupApply)
+                                ]
+                                []
+                            , Html.label [] [ text "turns, ticking at" ]
+                            , viewPhaseToggle "timer-phase" ui.phase TimerSetupPhaseSet
+                            , Html.label [] [ text "of the bearer's turn" ]
+                            ]
+                        , div [ class "cond-section__caption" ]
+                            [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
+                        , div [ class "note-edit__buttons" ]
+                            [ button
+                                [ class "action-btn action-btn--green"
+                                , onClick TimerSetupApply
+                                ]
+                                [ text "Start Timer" ]
+                            , button
+                                [ class "action-btn"
+                                , onClick TimerSetupCancel
+                                ]
+                                [ text "Cancel" ]
+                            ]
+                        ]
+                    ]
+                ]
+
+
+{-| Page-level audio element that plays the ping sound when any
+creature has a ringing timer. Mounted only when at least one
+timer is ringing — the mount triggers HTML5's `autoplay` so the
+sound fires once. When all rings are dismissed the element
+unmounts; a future ring remounts it and replays the sound.
+
+Browsers without autoplay permission may block the first play
+until the user has interacted with the page; in this app the GM
+has already clicked Next Turn (which is what triggered the ring)
+so the user-gesture requirement is satisfied.
+
+-}
+viewRingerAudio : Model -> Html Msg
+viewRingerAudio model =
+    let
+        anyRinging =
+            List.any
+                (\c ->
+                    case c.timer of
+                        Just t ->
+                            t.ringing
+
+                        Nothing ->
+                            False
+                )
+                model.encounter.creatures
+    in
+    if anyRinging then
+        Html.audio
+            [ src "/ping.wav"
+            , autoplay True
+            , attribute "aria-hidden" "true"
+            ]
+            []
+
+    else
+        text ""
