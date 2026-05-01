@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same PR / branch so the queue
+# doesn't pile up when force-pushing during review.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build + test (Nix dev shell)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The Nix dev shell pins the Rust toolchain, Elm, treefmt, and
+      # the test runners, so the rest of the job just shells into it.
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Cargo + Elm cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            ~/.elm
+            frontend/elm-stuff
+          key: ${{ runner.os }}-cargo-elm-${{ hashFiles('Cargo.lock', 'frontend/elm.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-elm-
+
+      - name: cargo build --workspace
+        run: nix develop --command cargo build --workspace
+
+      - name: cargo test --workspace
+        run: nix develop --command cargo test --workspace
+
+      - name: cargo clippy --workspace
+        run: nix develop --command cargo clippy --workspace -- -D warnings
+
+      - name: elm make
+        run: |
+          nix develop --command bash -c \
+            "cd frontend && elm make src/Main.elm --output /tmp/elm.js"
+
+      - name: elm-test
+        run: nix develop --command bash -c "cd frontend && elm-test"
+
+  format:
+    name: format check (treefmt)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      # `treefmt --check` exits non-zero if any file would be
+      # reformatted, which is exactly what we want from a CI gate.
+      - name: treefmt --check
+        run: nix develop --command treefmt --ci

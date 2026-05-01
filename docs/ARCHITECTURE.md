@@ -3,6 +3,14 @@
 For developers (and AI agents) joining the project. Explains how the
 codebase is organized and the conventions you're expected to follow.
 
+> **Looking at the big picture?** See
+> [docs/diagrams/data-model.svg](diagrams/data-model.svg) for the
+> future-state ER diagram (rendered from
+> [docs/diagrams/data-model.d2](diagrams/data-model.d2)). The
+> 9-phase refactor and feature plan that gets us there is in
+> [OPTIMIZATION_AND_COMPLIANCE_PLAN.org](../OPTIMIZATION_AND_COMPLIANCE_PLAN.org)
+> at the repo root.
+
 ## Stack
 
 - **Backend** — Rust workspace with three crates: a CLI (`ezpz-dndz-cli`),
@@ -459,6 +467,72 @@ each roll as opaque JSON — the schema lives in `Dice.encodeRoll` /
 touching the server. Concurrent writes are serialized through an
 async mutex, and writes go to a sibling tempfile that's renamed over
 the target so a crash mid-write can't truncate the log.
+
+## Compendium
+
+The creature stat-block library lives in three layers:
+
+- **`crates/lib/src/compendium/`** — the canonical `Creature`
+  schema (a flat-ish record covering name, kind, size, AC, HP,
+  abilities, saves, skills, traits, actions, legendary actions,
+  spellcasting, etc.) plus `CreatureDraft` for inserts. All
+  types derive `serde` for the wire format and
+  `schemars::JsonSchema` for OpenAPI generation. UUIDs are
+  stored as `String` so the schema generator doesn't need a
+  uuid feature flag.
+- **`crates/server/src/compendium/`** — file-backed store
+  (`CompendiumStore`, a thin wrapper around the shared
+  `JsonFileStore<Vec<Creature>>` from the lib crate) plus
+  `aide::ApiRouter`-based CRUD handlers and the semantic
+  `CompendiumStoreError` enum. On first launch the store
+  bootstraps from the bundled creatures embedded via
+  `include_str!`.
+- **`frontend/src/Compendium.elm`** — pure domain mirror of
+  the Rust schema, with `search` / `filterByKind` / `sortBy*`
+  helpers, `crToFloat` for sort-key parsing of `"1/4"` etc.,
+  and symmetric encode/decode for the wire format. Imports
+  nothing from `Html`, `Browser`, or `Url` — same layering
+  rule as `Encounter.elm`.
+
+HTTP routes live at `/api/compendium/creatures[/:id]` (CRUD)
+plus `/api/compendium/{export,import,reset}` for bulk
+operations. All eight routes appear in the OpenAPI schema
+served at `/api-docs/openapi.json` and are browsable in
+`/scalar`.
+
+The browser modal, edit modal, paste-stat-block parser, and
+add-to-encounter handoff are tracked in
+[COMPENDIUM_PLAN.org](../COMPENDIUM_PLAN.org)'s sub-phases
+6.3–6.9 and land in follow-up commits.
+
+
+## JsonFileStore: shared persistence pattern
+
+`crates/lib/src/json_file_store.rs` is the generic
+`JsonFileStore<T: Serialize + DeserializeOwned + Default + Clone +
+Send>` that backs both `dice::DiceStore` and
+`compendium::CompendiumStore`, and will back the upcoming
+encounter / users / preferences stores as well. It provides
+`load_or_default` / `read` / `mutate` / `replace` with:
+
+- Atomic-rename writes (sibling tempfile + `sync_data` +
+  `rename`), so a crash mid-write can't leave a half-truncated
+  JSON behind.
+- A single `tokio::sync::Mutex<T>` serializing both reads and
+  writes — JSON files don't support locking finer than the whole
+  document, so we model that explicitly at the type level.
+- Soft-fail on malformed JSON: corrupt files log at WARN and
+  fall back to `T::default()` so a single bad file doesn't
+  brick the server.
+- Five semantic error variants (`ReadError`, `WriteError`,
+  `RenameError`, `EncodeError`, `DecodeError`) per the
+  rust-template's "every error variant must explain WHAT
+  failed and WHY" rule.
+
+Add a new persistence-backed feature by wrapping
+`JsonFileStore<MyType>` in a domain-specific struct, mirroring
+the dice + compendium pattern.
+
 
 ## Production deployment
 

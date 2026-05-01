@@ -36,6 +36,138 @@
   (~GET / POST / DELETE /api/dice/history~) appear in the
   OpenAPI schema served at ~/api-docs/openapi.json~ and are
   browsable in ~/scalar~.
+** Frontend domain split: DeathSaves + SaveNotice submodules (Phase 2)
+
+- ~frontend/src/Encounter/DeathSaves.elm~ — extracted
+  self-contained value object: ~DeathSaves~ + ~empty~ /
+  ~addSuccesses~ / ~addFailures~ / ~isStable~ / ~isDead~.
+- ~frontend/src/Encounter/SaveNotice.elm~ — extracted pure
+  list-on-list operations: ~SaveNotice~ + ~create~ +
+  ~tickList~.  Encounter-wide id allocation stays in the
+  Encounter root (needs cross-creature scan).
+- Conditions / Timer / Roster splits deferred — too entangled
+  with shared ~TurnPhase~ / encounter-level helpers; would
+  require either a shared Phase-types module or duplicate
+  enums.  Documented in OPTIMIZATION_AND_COMPLIANCE_PLAN as
+  follow-up.
+
+** Frontend shared helpers (Phase 3 partial)
+
+- ~frontend/src/View/Modal.elm~ — single ~view~ helper that
+  wraps body content in the shared modal-backdrop / modal /
+  header / close-button shell.  All seven existing modals
+  duplicate this skeleton; new modals consume the helper
+  directly.
+- ~frontend/src/View/Chip.elm~ — single ~view~ helper for the
+  colored capsule shape (condition chips, save-notice chips,
+  memo pills, timer pills).  CSS expects a ~.pill~ base class
+  with per-use modifier classes; the existing per-shape
+  selectors stay until the follow-up migration retires them.
+- ~frontend/src/Util/Keyboard.elm~ — ~enterKey~ / ~escKey~
+  decoder helpers, previously duplicated inline in Main.elm.
+- The full Main.elm split into Model/Msg/Update/View tree is
+  a deferred follow-up; this commit lands the prerequisites
+  the upcoming compendium UI will use directly.
+
+** Tests: elm-test setup + 27 baseline tests (Phase 4)
+
+- ~elm-test~ added to flake.nix devPackages; ~elm.json~
+  test-deps include ~elm-explorations/test 2.2.0~.
+- ~frontend/tests/EncounterTest.elm~ — DeathSaves clamping +
+  derived-state helpers, ~nextTurn~ queue successor + round
+  bump on wrap.
+- ~frontend/tests/DiceTest.elm~ — ~Dice.parse~ across the six
+  notation forms (standard, with-constant, compound,
+  damage-tagged, stat-block-average wrap, garbage rejection).
+- ~frontend/tests/HpChangeTest.elm~ — Damage / Heal / TempHp /
+  setCurrentHp / setMaxHp behavior across 12 cases.
+- ~just test~ now runs ~just test-elm~ then ~just test-rust~.
+- Server-crate integration tests for compendium / dice CRUD
+  round-trips deferred until they need shared
+  JsonFileStore<T> primitives, which Phase 5 just unlocked.
+
+** Shared JsonFileStore<T> + dice migration (Phase 5)
+
+- Lifted the file-backed JSON store pattern out of
+  ~dice.rs~ into ~crates/lib/src/json_file_store.rs~ as a
+  generic ~JsonFileStore<T: Serialize + DeserializeOwned +
+  Default + Clone + Send>~ with ~load_or_default / read /
+  mutate / replace~.  Atomic-rename writes, async-mutex'd,
+  soft-fail on malformed JSON.  Five semantic error variants.
+- ~DiceStore~ migrated to a thin Arc-wrapped wrapper around
+  ~JsonFileStore<Vec<Value>>~; ~80 lines of file-IO code
+  net-deleted from the dice module.
+- Boot-time eager load (~load_or_default~ awaited from
+  AppState init) replaces the lazy on-first-request open;
+  AppStateError grew a ~DiceStoreLoad~ variant.
+- 4 unit tests on the new abstraction (happy path,
+  persist-across-reload, replace, malformed-JSON soft-fail).
+
+** Compendium foundation: backend + Elm domain (Phase 6.1+6.2)
+
+- New shared ~Creature~ schema in ~crates/lib/src/compendium/~ —
+  flat-ish layout (versus the legacy JS project's deeply
+  nested ~creature.statBlock.armorClass.value~), full
+  serde + ~schemars::JsonSchema~ derives so the aide
+  OpenAPI generation picks up request bodies and path
+  params.
+- ~crates/lib/data/bundled-creatures.json~ — 5 starter
+  creatures embedded into the binary via ~include_str!~
+  (Goblin Skirmisher, Brakka the Ogre, Captain Vex, Lyra
+  Vale PC, Stone Sentinel).
+- New ~crates/server/src/compendium/{mod.rs,store.rs,error.rs}~:
+  - ~CompendiumStore~ — thin wrapper over
+    ~JsonFileStore<Vec<Creature>>~ with first-launch
+    bootstrap that writes the bundled set out.
+  - REST routes for list / get / create / update / delete /
+    export / import / reset, each annotated with a
+    TransformOperation description so they appear in
+    ~/api-docs/openapi.json~ and ~/scalar~.
+  - ~CompendiumStoreError~ — five semantic variants with
+    ~impl IntoResponse~ mapping to the right StatusCodes
+    (NOT_FOUND, CONFLICT, BAD_REQUEST, INTERNAL_SERVER_ERROR).
+- New ~--compendium-path~ / ~COMPENDIUM_PATH~ config flag,
+  defaulting to ~<data_dir>/compendium/creatures.json~.
+- New ~frontend/src/Compendium.elm~ — pure domain layer
+  mirroring the Rust schema, with search / filterByKind /
+  sortByName / sortByCr / sortByRecency helpers, ~Db~ opaque
+  wrapper, symmetric encode/decode for the wire format, and
+  an inline ~required~/~optional~ pipeline helper that
+  avoids pulling in ~NoRedInk/elm-json-decode-pipeline~ for
+  what amounts to a dozen lines of decoder glue.
+- Phases 6.3-6.9 (browser modal, edit modal, paste-stat-
+  block parser, add-to-encounter handoff, Quick View on
+  cards, import/export UX, polish) land in follow-up
+  commits.
+
+** Future-feature scaffolding stubs (Phase 7)
+
+- New empty modules with module-level docstrings reserving
+  the surface for the next wave of features:
+  - ~crates/server/src/users/~ — first-login upsert keyed
+    on OIDC subject, role enum, admin-gate middleware.
+  - ~crates/server/src/encounters/~ — saved-encounter CRUD,
+    auto-snapshot policy, encounter templates.
+  - ~crates/server/src/prefs/~ — per-user UI preferences
+    (theme, density, sound, keyboard shortcuts).
+  - ~crates/lib/src/cr_calc/~ — pure 5e DMG encounter-
+    difficulty calculator, shared between CLI and frontend.
+
+** CI: GitHub Actions (Phase 8)
+
+- New ~.github/workflows/ci.yml~ with two jobs:
+  - ~build-and-test~ — cargo build, cargo test, cargo
+    clippy (-D warnings), elm make, elm-test.  All shelled
+    through ~nix develop --command~ so the toolchain
+    matches dev locally.
+  - ~format~ — ~treefmt --ci~ as the format gate.
+- Concurrency group cancels superseded runs on the same
+  PR / branch.
+
+** Server compliance: semantic dice errors + OpenAPI coverage (Phase 1)
+
+- (continued from above)
+
 - Dice handlers refactored to take ~State<AppState>~ and pull
   ~state.dice_store~ inline, so the dice router shares the
   base-router state type and merges cleanly into the

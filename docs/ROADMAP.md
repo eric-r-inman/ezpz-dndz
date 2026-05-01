@@ -8,12 +8,18 @@ deployment context.
 
 ## Near-term (next few sessions)
 
-1. **Compendium read API**
-   - `GET /api/compendium/creatures` returns the shared monster list.
-   - Backed initially by JSON files in `<data_dir>/compendium/`,
-     switching to SQLite when we want write support.
-   - Elm side: load on init; replace `Encounter.seedCreatures` as
-     the source of truth for the "Add Creature" picker.
+1. **Compendium UI** *(backend done, frontend in progress)*
+   - Backend (Phase 6.1) shipped: 8 REST routes under
+     `/api/compendium/*`, `JsonFileStore`-backed persistence at
+     `<data_dir>/compendium/creatures.json`, bundled-creatures
+     bootstrap, OpenAPI coverage.
+   - Frontend domain (Phase 6.2) shipped: `Compendium.elm` with
+     types, search/filter/sort, encode/decode, and `fetchAll`.
+   - Remaining: browser modal + add-to-encounter handoff,
+     edit/create modal, paste-stat-block parser, Quick View on
+     cards, import/export UX, polish.  Tracked in
+     [COMPENDIUM_PLAN.org](../COMPENDIUM_PLAN.org) sub-phases
+     6.3–6.9.
 
 2. **Encounter save / load**
    - `GET / POST / DELETE /api/me/encounters/:id` for per-user
