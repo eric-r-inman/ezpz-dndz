@@ -75,10 +75,11 @@ deployment context.
    - Probably uses `axum::extract::ws` + a broadcast channel keyed
      by encounter id.
 
-9. **Encounter timer / round timer**
-   - The stopwatch icon on card row 3 gets a real implementation.
-   - Per-creature time-on-turn tracking, optional total-encounter
-     stopwatch.
+9. **Total-encounter stopwatch**
+   - Wall-clock stopwatch for total encounter duration (separate
+     from the per-creature row-3 turn-counter timers, which are
+     already implemented). Likely lives in the encounter title
+     bar next to the round counter.
 
 ## Smaller polish (any time)
 
@@ -161,3 +162,36 @@ deployment context.
   button when the log has been updated since the modal was last
   opened; clears on open. All five roll-landing paths funnel
   through one `pushDiceRoll` helper.
+- Encounter title bar: real status icons (cover / concentrating /
+  hiding / flying with height) replace the placeholder set, and
+  active-creature conditions now render as plain purple text
+  separated by " | " rather than chips.
+- Auto-scroll active card into view: every card has a stable
+  `id`, and `NextTurn` / `SetActive` emit a Browser.Dom task that
+  nudges the page when the active card's bottom is below the
+  viewport.
+- Save-to-end auto-roll modes: Manual (chip 🎲 only),
+  AutoRollAtBegin, AutoRollAtEnd. `NextTurn` fires the matching
+  bucket for the outgoing creature's end-of-turn and the new
+  active creature's begin-of-turn separately.
+- "Saved: <Condition>" notice: green chip posted on auto-roll
+  save success; auto-clears on the bearer's next end-of-turn or
+  via the × button.
+- Until-turn target (current vs. next): `DurationUntilTurn` now
+  carries `TurnTarget` so "until end of Lyra's NEXT turn" really
+  takes two end-of-Lyra fires to expire. The "current" radio
+  grays out when the combination is logically invalid (begin +
+  active reference creature).
+- Card row 3 redesign: dice icon removed; 📝 opens a 20-char memo
+  modal and the memo replaces the icon as a white pill with ×;
+  ⏱ opens a timer modal (count + begin/end phase) and the timer
+  replaces the icon as a counting pill that flashes red and
+  plays `/ping.wav` when it reaches 0.
+- Apply-to-selected scope: HP-change and condition modals both
+  gained an "Apply to all selected creatures (N)" checkbox.
+  Hidden when no creatures are selected. Dice-mode HP shares one
+  roll across all targets.
+- Card right rail wired: × removes the creature (advancing the
+  active marker if needed); ⧉ duplicates the creature
+  (uniquified name, conditions / save-notices re-id'd).
+  👿 minion placeholder removed.

@@ -327,3 +327,154 @@
   change, initiative batch, death save, condition save) now
   funnel through the same helper so the indicator stays
   authoritative without per-branch bookkeeping.
+
+** Encounter title bar: real status icons + plain-text conditions
+
+- Replaced the placeholder ✊◕🧠🪽 row of state icons in the
+  encounter title bar with a live render keyed off the active
+  creature's actual flags.  Cover renders ◐ / ◕ / ● for
+  half / three-quarters / full (and skips when there's no
+  cover); concentrating shows 🧠; hiding shows 👤; flying shows
+  ~🪽 N~ with the height inline.  Each icon has a real tooltip
+  + ~aria-label~.
+- The active creature's conditions slot in the title bar
+  switched from clickable chips to plain purple
+  (~#c084fc~) text separated by " | ", matching the user's
+  "glanceable summary" intent.  The interactive chips still
+  live on the card itself.
+
+** Auto-scroll active creature card into view
+
+- Each creature card's outer ~<article>~ now carries
+  ~id="creature-card-<slug>"~ via a new ~cardId~ helper that
+  maps non-alphanumeric chars in the name to underscores.
+- New ~scrollActiveIntoViewCmd~ task composes
+  =Browser.Dom.getViewport= + =Browser.Dom.getElement=; if the
+  active card's bottom is below ~viewport.bottom - 16px~, it
+  fires =setViewport= to nudge the page just enough to show
+  the card.  Otherwise no-op.
+- =NextTurn= and =SetActive= both emit this Cmd so the active
+  card is always in view after a turn change or a manual
+  scrub.  Result lands in a no-op =ActiveCardScrollChecked=
+  Msg.
+
+** Save-to-end auto-roll modes (Manual / Begin / End)
+
+- Replaced the boolean ~autoRoll~ field on
+  =Encounter.SaveToEnd= with an =AutoRollMode= ADT
+  (=AutoRollManual=, =AutoRollAtBegin=, =AutoRollAtEnd=).  The
+  modal's old "Auto-roll at the bearer's begin-of-turn"
+  checkbox became three radio buttons stacked vertically.
+  Manual is the default when "save-to-end" is first enabled
+  (so the GM doesn't get a surprise auto-fire).
+- =NextTurn=' s update branch captures the OUTGOING active
+  creature's name, runs ~Encounter.nextTurn~, then dispatches
+  ~autoRollCmdsFor AutoRollAtEnd outgoingName~ and
+  ~autoRollCmdsFor AutoRollAtBegin newActiveName~ on the
+  post-state.  Two phases, two Cmd batches, both reading the
+  post-tick encounter so already-expired conditions don't
+  generate dead saves.
+
+** "Saved: <Condition>" notice on auto-roll success
+
+- New =Encounter.SaveNotice= record (~id~, ~conditionName~,
+  ~turnsRemaining~) and a ~saveNotices : List SaveNotice~
+  field on =Creature=.  When an AUTO-roll save succeeds, the
+  =ConditionSaveLanded= handler captures the condition's name
+  before removing it and posts a notice via the new
+  ~Encounter.addSaveNotice~ helper.  Manual chip-roll
+  successes still remove silently — the chip was visible at
+  click time, no narration needed.
+- =applyEndOfTurn= ticks each notice down by 1.  Notices start
+  at ~turnsRemaining = 1~, so the next bearer end-of-turn
+  hook fire clears them.  GM can dismiss earlier via the × on
+  the chip (new =SaveNoticeDismiss= Msg).
+- View renders the notice as a green chip alongside condition
+  chips on row 1 of the card.
+
+** Until-turn target: current vs. next
+
+- New =Encounter.TurnTarget= ADT (=OnCurrentTurn= /
+  =OnNextTurn=); ~DurationUntilTurn~ now carries it in
+  addition to phase + reference creature.
+- ~expireUntilTurn~ refactored from filter to filterMap.
+  Matching hook fires drop ~OnCurrentTurn~ conditions
+  (expire) and mutate ~OnNextTurn~ conditions to
+  ~OnCurrentTurn~ (skip first match).  So
+  ~DurationUntilTurn AtEnd OnNextTurn "Lyra"~ is exactly two
+  end-of-Lyra fires: first one flips next→current, second
+  one expires.
+- Modal duration row gained a small
+  ~current ⟷ next~ radio toggle between the creature
+  dropdown and the word "turn".  When phase = Begin and the
+  reference creature is the currently-active creature, the
+  "current" radio is grayed (~cond-phase--disabled~) and the
+  =repairUntilTarget= helper auto-flips
+  ~OnCurrentTurn~ → ~OnNextTurn~ on phase / creature changes
+  that would otherwise leave the form in an invalid state.
+
+** Card row 3: dice removed, memo, alarm-clock timer, ping audio
+
+- Removed the row 3 🎲 placeholder button.  Was inert.
+- New ~memo : String~ field on =Creature= with a 20-char cap.
+  Empty memo renders as the existing 📝 button (clicking opens
+  the new memo modal).  Non-empty memo replaces the icon with
+  a white-text pill plus an × to clear.  Click the text to
+  re-edit; click × to clear (which restores the 📝 icon).
+- New ~timer : Maybe Timer~ field where
+  ~Timer = { remaining : Int, phase : TurnPhase, ringing : Bool }~.
+  No timer → existing ⏱ button (clicking opens the timer
+  setup modal: count 1..99 + begin / end phase toggle).
+  Counting → pill shows the remaining number + ×.
+  Reaches 0 → ringing flag flips on, pill turns red, the count
+  flashes via a CSS keyframe animation, and a page-level
+  ~<audio src="/ping.wav" autoplay>~ mounts to play the ping
+  sound once.
+- =applyEndOfTurn= and =applyBeginOfTurn= each gained a
+  ~tickTimerFor~ step.  Timers in the matching phase
+  decrement by 1 per tick; once ringing, no further ticks
+  (the GM dismisses via ×).
+- New ~public/ping.wav~ — 700 ms 880 Hz sine with 50 ms fade
+  in / out, 22050 Hz mono 16-bit.  Generated locally via
+  Python's stdlib ~wave~ module.
+
+** Apply-to-selected scope on HP and condition modals
+
+- =HpChangeUi= and =ConditionUi= each gained a
+  ~applyToSelected : Bool~ field plus a toggle Msg.  When the
+  GM has at least one creature checked in the queue, both
+  modals render an "Apply to all selected creatures (N)"
+  checkbox.  Hidden when the selection is empty (no useful
+  no-op surface).
+- HP path: ~applyHpChangeAndClose~ folds the engine over the
+  resolved target list (single ~ui.target~ when off, all
+  ~.selected~ creatures when on).  Dice mode rolls ONCE and
+  shares the total across all targets — 5e Fireball
+  semantics, with a caption in the modal explaining so.  The
+  dice-history Source's ~target~ string joins the names so
+  the log entry reads honestly.
+- Condition path: ~commitCondition~ now folds
+  =Encounter.addCondition= over the resolved target list.
+  Each selected creature gets its own fresh ~id~, so
+  durations and pip strips are independent.  Hidden in edit
+  mode — you're modifying one specific row, not splatting.
+
+** Card right rail: remove + duplicate, no minion
+
+- Removed the 👿 placeholder button.  Was inert.
+- × button is now wired: =RemoveCreature name= →
+  ~Encounter.removeCreature~.  If the removed creature was
+  the active one, the marker advances to their successor (or
+  the first creature if they were last); empty queue leaves
+  ~activeName = ""~ and the title bar's ~Maybe~-aware
+  rendering shows "—".
+- ⧉ button is now wired: =DuplicateCreature name= →
+  ~Encounter.duplicateCreature~.  Inserts a clone immediately
+  after the source in the queue.  Name gets a ~(copy)~ /
+  ~(copy 2)~ / ~(copy 3)~ suffix (uniquified against the
+  existing names).  Conditions and save notices are copied
+  but with freshly-allocated encounter-wide ids so edits on
+  the original's chips don't clobber the duplicate's.
+  ~selected~ is forced to ~False~ on the copy so a
+  multi-target action right after duplication doesn't
+  accidentally splatter both copies.

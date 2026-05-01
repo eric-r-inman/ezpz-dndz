@@ -125,12 +125,26 @@ We anticipate four lifecycle phases that future features will hook:
    their turn doesn't actually happen.
 
 The auto-roll save path lives one layer above: when `Main.update`
-processes `NextTurn`, after the encounter mutation it inspects the
-new active creature for any conditions with
-`saveToEnd.autoRoll = True` and batches a `Dice.rollCmd` per
-match. Results land in `ConditionSaveLanded`, which removes the
-condition on `roll.total >= dc`. The pure domain layer doesn't
-fire Cmds; that's the right boundary.
+processes `NextTurn`, the encounter is captured before and after
+`Encounter.nextTurn` so the outgoing creature's name is known.
+The handler then dispatches `autoRollCmdsFor` twice — once for
+`AutoRollAtEnd` against the outgoing creature, once for
+`AutoRollAtBegin` against the new active creature — both reading
+the post-tick encounter so already-expired conditions don't
+generate dead saves. Results land in `ConditionSaveLanded`, which
+removes the condition on `roll.total >= dc` and posts a green
+"Saved: <Condition>" notice when `wasAutoRoll = True`. The pure
+domain layer doesn't fire Cmds; that's the right boundary.
+
+`NextTurn` also emits `scrollActiveIntoViewCmd` so the new
+active card is automatically scrolled into the viewport if its
+bottom would otherwise sit below the browser's bottom edge.
+Each creature card carries an `id="creature-card-<slug>"` for
+this; the Cmd composes `Browser.Dom.getViewport` with
+`Browser.Dom.getElement` and only fires `setViewport` when there
+is real overflow. `SetActive` (manual scrub) emits the same Cmd
+so a click on a different creature's `→` arrow brings their
+card into view.
 
 There is also a "manual scrub" path: clicking the **→** arrow on any
 creature card immediately makes that creature active without
@@ -263,43 +277,155 @@ type alias Condition =
 
 type Duration
     = DurationManual
-    | DurationUntilTurn TurnPhase String     -- "until end of Lyra's turn"
-    | DurationCountdown TurnPhase Int Bool   -- N turns; bool = skipNextTick
+    | DurationUntilTurn TurnPhase TurnTarget String
+        -- phase, current/next, reference creature
+    | DurationCountdown TurnPhase Int Bool
+        -- phase, remaining, skipNextTick
 
-type TurnPhase = AtBegin | AtEnd
+type TurnPhase  = AtBegin | AtEnd
+type TurnTarget = OnCurrentTurn | OnNextTurn
+
+type alias SaveToEnd =
+    { ability  : String
+    , dc       : Int
+    , bonus    : Int
+    , autoRoll : AutoRollMode
+    }
+
+type AutoRollMode = AutoRollManual | AutoRollAtBegin | AutoRollAtEnd
 ```
 
 `id` is allocated as one-past-the-current-max across the whole
-encounter by `Encounter.addCondition` so it's stable across edits
-and renames. The third field of `DurationCountdown` is
-**skipNextTick**: set to `True` when an `AtEnd` countdown is
-created on the currently-active creature, so the bearer's
-imminent end-of-turn doesn't get counted as a full turn (the
-countdown commences "starting in the next round" per the user
-request).
+encounter by `Encounter.addCondition` so it's stable across
+edits, renames, and creature duplication.
 
-The lifecycle hooks fire from `Encounter.nextTurn`:
+**Until-turn target** controls how `DurationUntilTurn` expires.
+`expireUntilTurn` is a `filterMap`: matching hook fires drop
+`OnCurrentTurn` conditions (expire) and mutate `OnNextTurn`
+conditions to `OnCurrentTurn` (skip first match). So
+`DurationUntilTurn AtEnd OnNextTurn "Lyra"` is exactly two
+end-of-Lyra hook fires before it expires.
 
-- `applyEndOfTurn name` ticks `DurationCountdown AtEnd` on
-  `name`'s conditions (clearing skipNextTick instead of
-  decrementing if set), then expires every
-  `DurationUntilTurn AtEnd name` across the whole encounter.
+The modal's "current ⟷ next" radio toggle grays out the
+`OnCurrentTurn` option when the combination is logically invalid
+(`AtBegin` paired with the currently-active reference creature —
+their begin-of-turn already fired). A small
+`repairUntilTarget` helper auto-flips the target away from
+`OnCurrentTurn` when the GM changes phase or creature into that
+invalid state, so the form never has to be manually repaired.
+
+**skipNextTick** on `DurationCountdown` is set to `True` when an
+`AtEnd` countdown is created on the currently-active creature,
+so the bearer's imminent end-of-turn doesn't get counted as a
+full turn (the countdown "commences in the next round" per the
+user request).
+
+### Lifecycle hooks
+
+`Encounter.nextTurn` composes pure functions around the queue
+walk:
+
+- `applyEndOfTurn name` ticks `DurationCountdown AtEnd` and
+  `tickSaveNoticesFor name` and `tickTimerFor name AtEnd` on
+  `name`'s state, then expires every
+  `DurationUntilTurn AtEnd <name>` across the encounter.
 - `applyBeginOfTurn name` does the same for the `AtBegin` phase.
 
-Both are pure `Encounter -> Encounter` functions in
-`Encounter.elm`; they don't fire Cmds. Auto-roll saves
-(`saveToEnd.autoRoll = True`) are dispatched from the `Main.update`
-side after `nextTurn` completes — `autoRollCmds` walks the new
-active creature's conditions and emits a `Dice.rollCmd` per
-match. Results land in `ConditionSaveLanded` which removes the
-condition on `roll.total >= dc`.
+All hooks are pure `Encounter -> Encounter` and don't fire Cmds.
 
-The view side renders each condition as a chip with
-`name (note)  🎲 (when save configured)  ⏱/⏳N  ×` controls.
-Click name → edit modal. Click 🎲 → manual save roll. Click × →
-remove. The same `viewConditionChip` helper is used both on row 1
-of every card and in the encounter title bar (scoped to the
-active creature).
+### Auto-roll saves
+
+`SaveToEnd.autoRoll : AutoRollMode` selects when (or whether) a
+save fires automatically:
+
+- `AutoRollManual` — never automatic. The chip's 🎲 button is
+  the only roll path; the chip itself is the GM's reminder.
+- `AutoRollAtBegin` — fires at the start of the bearer's turn.
+- `AutoRollAtEnd` — fires at the end of the bearer's turn.
+
+The auto-roll dispatch lives in `Main.update`, not the domain
+layer (Cmds aren't pure). On `NextTurn`:
+
+1. Capture the OUTGOING active creature's name *before*
+   calling `Encounter.nextTurn`.
+2. Run the queue walk + lifecycle hooks (pure).
+3. `autoRollCmdsFor AutoRollAtEnd outgoingName postEnc` —
+   one `Dice.rollCmd` per matching condition.
+4. `autoRollCmdsFor AutoRollAtBegin newActiveName postEnc` —
+   same for the incoming creature.
+
+Both batches read the post-`nextTurn` state so any
+`DurationUntilTurn` that the engine just expired doesn't
+generate dead saves.
+
+`ConditionSaveLanded` carries a `wasAutoRoll : Bool` flag.
+On a successful save (`roll.total >= dc`):
+
+- The handler captures the condition's name *before* removal.
+- The condition is removed.
+- If `wasAutoRoll == True`, an `Encounter.SaveNotice` is
+  posted via `addSaveNotice` (a green "Saved: <name>" chip
+  rendered alongside conditions on row 1). Notices start at
+  `turnsRemaining = 1` and decrement on the bearer's
+  end-of-turn hook; the `×` on the chip dismisses earlier.
+
+Manual chip-roll successes remove silently — the GM can
+already see the chip change.
+
+### Per-creature memo and timer (card row 3)
+
+Two small but distinct features on the card's bottom row:
+
+- `memo : String` (default `""`, capped at 20 chars). Empty
+  renders as the existing 📝 button; non-empty replaces the
+  icon with a white-text pill plus an `×` that clears the
+  memo. The dedicated `MemoOpen / MemoChange / MemoCommit /
+  MemoCancel / MemoClear` Msgs handle the small modal.
+
+- `timer : Maybe Timer`, where
+  `Timer = { remaining : Int, phase : TurnPhase, ringing : Bool }`.
+  The `applyEndOfTurn` / `applyBeginOfTurn` hooks tick the
+  timer when its `phase` matches; once `remaining` would drop
+  to 0 we set `ringing = True` and stop ticking. The view
+  renders a counting pill normally and a flashing-0 red pill
+  when ringing. A page-level `<audio src="/ping.wav" autoplay>`
+  element mounts whenever any creature has a ringing timer,
+  triggering the browser's HTML5 autoplay (the user-gesture
+  requirement is satisfied because the GM clicked Next Turn
+  to fire the ring).
+
+### Multi-target apply
+
+Both the HP-change modal and the condition modal carry an
+`applyToSelected : Bool` flag. The Apply path resolves a list
+of target names — `[ui.target]` when off, `creatures with
+.selected = True` when on — and folds the engine over each:
+
+- HP change: `applyHpChangeAndClose` folds
+  `Encounter.mapCreature name (HpChange.apply change)` per
+  target. Dice mode rolls ONCE and the same total is applied
+  to every target (5e Fireball semantics — one roll across
+  the whole AOE).
+- Condition: `commitCondition` folds `Encounter.addCondition`
+  per target, allocating a fresh id for each so the copies
+  tick independently. Hidden in edit mode (you're modifying
+  one specific row, not splatting).
+
+The toggle hides entirely when zero creatures are selected,
+since "apply to nothing" isn't a useful option.
+
+### Chip view
+
+Each condition renders as a yellow chip:
+`name (note)  🎲 (when save configured)  ⏱/⏳N  ×`. Click name
+→ edit modal. Click 🎲 → manual save roll. Click × → remove.
+The same `viewConditionChip` helper is used on row 1 of every
+card.
+
+Active-creature conditions in the title bar render as plain
+purple text separated by `" | "` (no chip chrome, no click
+handlers) — that slot is a glanceable summary; the editable
+chips live on the card.
 
 
 ## Dice roller
@@ -409,6 +535,8 @@ just test     # all Rust tests + Elm compile check
 | A new dice operator or notation form             | `Dice.elm` parser + (if shape changes) `encodeRoll` / `decodeRoll` |
 | A new HTTP route handled by the backend          | `crates/server/src/web_base.rs` (or a sibling module merged in) |
 | A new dev script (build / serve / package)       | `justfile`                               |
+| A multi-target action (apply to all selected)    | `applyToSelected : Bool` on the modal's UI record + a toggle Msg + a target-list helper folded over the engine call |
+| Roster mutation (add / remove / reshuffle)       | a pure helper in `Encounter.elm` (e.g. `removeCreature`, `duplicateCreature`); a `Msg` + one-line update branch in `Main` |
 
 When in doubt: rules in `Encounter` / `Dice` / `HpChange`,
 presentation in `Main` / CSS, ops in `justfile`.
