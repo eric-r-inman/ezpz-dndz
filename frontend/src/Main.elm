@@ -21,6 +21,7 @@ import Random
 import Task
 import Url exposing (Url)
 import Url.Parser exposing (Parser, oneOf, top)
+import Util.Keyboard
 
 
 
@@ -671,20 +672,9 @@ subscriptions model =
         Sub.none
 
 
-{-| Keyboard decoder for the Esc key — yields `msg` on Escape and
-fails on every other key so the runtime ignores them.
--}
 escKey : Msg -> Decode.Decoder Msg
-escKey msg =
-    Decode.field "key" Decode.string
-        |> Decode.andThen
-            (\key ->
-                if key == "Escape" then
-                    Decode.succeed msg
-
-                else
-                    Decode.fail "ignore"
-            )
+escKey =
+    Util.Keyboard.escKey
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -4238,20 +4228,9 @@ viewDiceForm ui =
         ]
 
 
-{-| Decode an Enter keypress into the given Msg; otherwise fail (which
-silences the event handler).
--}
 enterKey : Msg -> Decode.Decoder Msg
-enterKey msg =
-    Decode.field "key" Decode.string
-        |> Decode.andThen
-            (\key ->
-                if key == "Enter" then
-                    Decode.succeed msg
-
-                else
-                    Decode.fail "ignore"
-            )
+enterKey =
+    Util.Keyboard.enterKey
 
 
 viewDiceFaceButtons : Html Msg
