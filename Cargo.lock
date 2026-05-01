@@ -676,8 +676,11 @@ version = "0.1.0"
 dependencies = [
  "cargo-husky",
  "serde",
+ "serde_json",
  "tap",
+ "tempfile",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
 ]
 

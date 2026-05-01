@@ -47,6 +47,9 @@ pub enum AppStateError {
 
   #[error("Invalid OIDC redirect URI: {0}")]
   InvalidRedirectUri(String),
+
+  #[error("Failed to load dice history store: {0}")]
+  DiceStoreLoad(#[source] crate::dice::DiceHistoryError),
 }
 
 impl AppState {
@@ -106,11 +109,16 @@ impl AppState {
       }
     };
 
+    let dice_store =
+      crate::dice::DiceStore::load_or_default(config.dice_history_path.clone())
+        .await
+        .map_err(AppStateError::DiceStoreLoad)?;
+
     Ok(Self {
       registry: Arc::new(registry),
       request_counter,
       frontend_path: config.frontend_path.clone(),
-      dice_store: crate::dice::DiceStore::new(config.dice_history_path.clone()),
+      dice_store,
       oidc_client,
     })
   }

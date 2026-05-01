@@ -24,6 +24,8 @@
 //! cheap because the typical load is a handful of rolls per second
 //! at the table.
 
+use std::sync::Arc;
+
 use aide::{
   axum::{
     routing::delete_with, routing::get_with, routing::post_with, ApiRouter,
@@ -36,14 +38,9 @@ use axum::{
   response::{IntoResponse, Response},
   Json,
 };
+use ezpz_dndz_lib::json_file_store::{JsonFileStore, JsonFileStoreError};
 use serde_json::Value;
-use std::{path::PathBuf, sync::Arc};
 use thiserror::Error;
-use tokio::{
-  fs,
-  io::{AsyncReadExt, AsyncWriteExt},
-  sync::Mutex,
-};
 use tracing::warn;
 
 use crate::web_base::AppState;
@@ -52,35 +49,15 @@ use crate::web_base::AppState;
 /// frontend (`Dice.maxHistoryEntries`) so the two stay in lockstep.
 pub const MAX_ENTRIES: usize = 30;
 
-/// Semantic errors from dice-history persistence.  Each variant
-/// describes both what failed and which file was involved, so a
-/// log line or HTTP error message reads as a complete sentence.
+/// Semantic errors from dice-history persistence.  Wraps the
+/// generic `JsonFileStoreError` from the lib crate so the dice
+/// surface keeps its own typed error vocabulary; future variants
+/// can describe dice-specific failure modes (e.g. malformed roll
+/// payload) without leaking storage internals to callers.
 #[derive(Debug, Error)]
 pub enum DiceHistoryError {
-  #[error("Failed to read dice history file at {path}: {source}")]
-  ReadError {
-    path: PathBuf,
-    source: std::io::Error,
-  },
-
-  #[error("Failed to write dice history file at {path}: {source}")]
-  WriteError {
-    path: PathBuf,
-    source: std::io::Error,
-  },
-
-  #[error("Failed to atomically rename dice history file from {from} to {to}: {source}")]
-  RenameError {
-    from: PathBuf,
-    to: PathBuf,
-    source: std::io::Error,
-  },
-
-  #[error("Failed to remove dice history file at {path}: {source}")]
-  RemoveError {
-    path: PathBuf,
-    source: std::io::Error,
-  },
+  #[error("Dice history persistence failed: {0}")]
+  StoreError(#[from] JsonFileStoreError),
 }
 
 impl IntoResponse for DiceHistoryError {
@@ -94,33 +71,31 @@ impl IntoResponse for DiceHistoryError {
   }
 }
 
-/// File-backed dice history store.
-///
-/// `path` is the on-disk location of the JSON file (created on first
-/// write; missing == empty history).  `mutex` serializes
-/// read-modify-write so concurrent POSTs don't lose updates.
+/// File-backed dice history store.  Thin wrapper around the shared
+/// `JsonFileStore<Vec<Value>>` from the lib crate; encodes only
+/// the dice-specific append + cap behavior.
 #[derive(Clone)]
 pub struct DiceStore {
-  path: PathBuf,
-  mutex: Arc<Mutex<()>>,
+  inner: Arc<JsonFileStore<Vec<Value>>>,
 }
 
 impl DiceStore {
-  /// Construct a store backed by `path`.  No file IO is performed
-  /// here; the path is opened lazily on the first read or write.
-  pub fn new(path: PathBuf) -> Self {
-    Self {
-      path,
-      mutex: Arc::new(Mutex::new(())),
-    }
+  /// Open a store backed by `path`.  Loads the file (or initializes
+  /// to an empty history) eagerly so the first request doesn't pay
+  /// the file-IO cost.
+  pub async fn load_or_default(
+    path: std::path::PathBuf,
+  ) -> Result<Self, DiceHistoryError> {
+    let inner = JsonFileStore::load_or_default(path).await?;
+    Ok(Self {
+      inner: Arc::new(inner),
+    })
   }
 
-  /// Read the current history.  Returns an empty list if the file
-  /// doesn't exist or contains malformed JSON; we'd rather hand the
-  /// user an empty roll log than fail the page load.
+  /// Read the current history.  Cheap clone of the in-memory cache;
+  /// no file IO.
   pub async fn load(&self) -> Vec<Value> {
-    let _guard = self.mutex.lock().await;
-    read_file(&self.path).await.unwrap_or_default()
+    self.inner.read().await
   }
 
   /// Prepend `roll` to the history, truncate to `MAX_ENTRIES`, and
@@ -129,102 +104,22 @@ impl DiceStore {
     &self,
     roll: Value,
   ) -> Result<Vec<Value>, DiceHistoryError> {
-    let _guard = self.mutex.lock().await;
-    let mut entries = read_file(&self.path).await.unwrap_or_default();
-    entries.insert(0, roll);
-    entries.truncate(MAX_ENTRIES);
-    write_file(&self.path, &entries).await?;
-    Ok(entries)
-  }
-
-  /// Delete the history file.  No-op if it doesn't exist.
-  pub async fn clear(&self) -> Result<(), DiceHistoryError> {
-    let _guard = self.mutex.lock().await;
-    match fs::remove_file(&self.path).await {
-      Ok(()) => Ok(()),
-      Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-      Err(source) => Err(DiceHistoryError::RemoveError {
-        path: self.path.clone(),
-        source,
-      }),
-    }
-  }
-}
-
-/// Read + parse the history file, swallowing the not-found case.
-/// Other IO errors propagate as `Err`; serde failures are logged and
-/// downgraded to an empty history so a corrupt file doesn't brick
-/// the page.
-async fn read_file(path: &PathBuf) -> Result<Vec<Value>, DiceHistoryError> {
-  let mut file = match fs::File::open(path).await {
-    Ok(f) => f,
-    Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-    Err(source) => {
-      return Err(DiceHistoryError::ReadError {
-        path: path.clone(),
-        source,
+    self
+      .inner
+      .mutate(|entries| {
+        entries.insert(0, roll);
+        entries.truncate(MAX_ENTRIES);
+        entries.clone()
       })
-    }
-  };
-
-  let mut bytes = Vec::new();
-  file.read_to_end(&mut bytes).await.map_err(|source| {
-    DiceHistoryError::ReadError {
-      path: path.clone(),
-      source,
-    }
-  })?;
-
-  match serde_json::from_slice(&bytes) {
-    Ok(v) => Ok(v),
-    Err(err) => {
-      warn!(?path, %err, "dice history file is malformed; treating as empty");
-      Ok(Vec::new())
-    }
-  }
-}
-
-/// Atomically replace the history file with the new contents.
-///
-/// Writes to a sibling tempfile and renames over the target so a
-/// crash mid-write can't leave a half-truncated JSON behind.
-async fn write_file(
-  path: &PathBuf,
-  entries: &[Value],
-) -> Result<(), DiceHistoryError> {
-  if let Some(parent) = path.parent() {
-    if !parent.as_os_str().is_empty() {
-      // Best-effort directory creation; if this fails we'll surface
-      // the actual write error below with full context.
-      fs::create_dir_all(parent).await.ok();
-    }
+      .await
+      .map_err(DiceHistoryError::from)
   }
 
-  let tmp = path.with_extension("tmp");
-  {
-    let mut file = fs::File::create(&tmp).await.map_err(|source| {
-      DiceHistoryError::WriteError {
-        path: tmp.clone(),
-        source,
-      }
-    })?;
-    let bytes = serde_json::to_vec_pretty(&entries)
-      .expect("serializing Vec<Value> never fails");
-    file.write_all(&bytes).await.map_err(|source| {
-      DiceHistoryError::WriteError {
-        path: tmp.clone(),
-        source,
-      }
-    })?;
-    file.sync_data().await.ok();
+  /// Clear the history (overwrites the file with `[]`).
+  pub async fn clear(&self) -> Result<(), DiceHistoryError> {
+    self.inner.replace(Vec::new()).await?;
+    Ok(())
   }
-  fs::rename(&tmp, path)
-    .await
-    .map_err(|source| DiceHistoryError::RenameError {
-      from: tmp,
-      to: path.clone(),
-      source,
-    })
 }
 
 // ── HTTP handlers ────────────────────────────────────────────────────────────

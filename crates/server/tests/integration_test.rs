@@ -19,7 +19,7 @@ use tower_sessions::{cookie::SameSite, MemoryStore, SessionManagerLayer};
 
 // ── state helpers ────────────────────────────────────────────────────────────
 
-fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
+async fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
   let registry = Registry::new();
   let request_counter =
     IntCounter::new("http_requests_total", "Total HTTP requests")
@@ -32,17 +32,19 @@ fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
     registry: Arc::new(registry),
     request_counter,
     frontend_path,
-    dice_store: ezpz_dndz_server::dice::DiceStore::new(
+    dice_store: ezpz_dndz_server::dice::DiceStore::load_or_default(
       tempfile::NamedTempFile::new()
         .expect("tempfile")
         .into_temp_path()
         .to_path_buf(),
-    ),
+    )
+    .await
+    .expect("test dice store"),
     oidc_client: None,
   }
 }
 
-fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
+async fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
   let registry = Registry::new();
   let request_counter =
     IntCounter::new("http_requests_total", "Total HTTP requests")
@@ -71,18 +73,20 @@ fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
     registry: Arc::new(registry),
     request_counter,
     frontend_path,
-    dice_store: ezpz_dndz_server::dice::DiceStore::new(
+    dice_store: ezpz_dndz_server::dice::DiceStore::load_or_default(
       tempfile::NamedTempFile::new()
         .expect("tempfile")
         .into_temp_path()
         .to_path_buf(),
-    ),
+    )
+    .await
+    .expect("test dice store"),
     oidc_client: Some(Arc::new(oidc_client)),
   }
 }
 
-fn state_without_frontend() -> AppState {
-  stub_state_no_auth(PathBuf::from("/nonexistent"))
+async fn state_without_frontend() -> AppState {
+  stub_state_no_auth(PathBuf::from("/nonexistent")).await
 }
 
 /// Wraps `base_router` with auth routes and a session layer, mirroring
@@ -109,7 +113,7 @@ fn app_with_session(state: AppState) -> Router {
 
 #[tokio::test]
 async fn test_healthz_endpoint() {
-  let app = base_router(state_without_frontend());
+  let app = base_router(state_without_frontend().await);
 
   let response = app
     .oneshot(
@@ -133,7 +137,7 @@ async fn test_healthz_endpoint() {
 
 #[tokio::test]
 async fn test_metrics_endpoint() {
-  let app = base_router(state_without_frontend());
+  let app = base_router(state_without_frontend().await);
 
   let response = app
     .oneshot(
@@ -160,7 +164,7 @@ async fn test_metrics_endpoint() {
 
 #[tokio::test]
 async fn test_openapi_json_endpoint() {
-  let app = base_router(state_without_frontend());
+  let app = base_router(state_without_frontend().await);
 
   let response = app
     .oneshot(
@@ -186,7 +190,7 @@ async fn test_openapi_json_endpoint() {
 
 #[tokio::test]
 async fn test_scalar_ui_endpoint() {
-  let app = base_router(state_without_frontend());
+  let app = base_router(state_without_frontend().await);
 
   let response = app
     .oneshot(
@@ -220,7 +224,8 @@ async fn test_spa_fallback_serves_index_html() {
   )
   .unwrap();
 
-  let app = base_router(stub_state_no_auth(frontend_dir.path().to_path_buf()));
+  let app =
+    base_router(stub_state_no_auth(frontend_dir.path().to_path_buf()).await);
 
   for path in ["/some-page", "/nested/route", "/unknown"] {
     let response = app
@@ -240,7 +245,7 @@ async fn test_spa_fallback_serves_index_html() {
 
 #[tokio::test]
 async fn test_me_no_oidc() {
-  let state = stub_state_no_auth(PathBuf::from("/nonexistent"));
+  let state = stub_state_no_auth(PathBuf::from("/nonexistent")).await;
   let app = app_with_session(state);
 
   let response = app
@@ -261,7 +266,7 @@ async fn test_me_no_oidc() {
 
 #[tokio::test]
 async fn test_me_with_oidc_no_session() {
-  let state = stub_state_with_auth(PathBuf::from("/nonexistent"));
+  let state = stub_state_with_auth(PathBuf::from("/nonexistent")).await;
   let app = app_with_session(state);
 
   let response = app
@@ -284,7 +289,7 @@ async fn test_me_with_oidc_no_session() {
 
 #[tokio::test]
 async fn test_auth_routes_return_404_without_oidc() {
-  let state = stub_state_no_auth(PathBuf::from("/nonexistent"));
+  let state = stub_state_no_auth(PathBuf::from("/nonexistent")).await;
   let app = app_with_session(state);
 
   for path in ["/auth/login", "/auth/logout"] {
@@ -316,7 +321,7 @@ async fn test_auth_routes_return_404_without_oidc() {
 
 #[tokio::test]
 async fn test_auth_login_redirects_with_oidc() {
-  let state = stub_state_with_auth(PathBuf::from("/nonexistent"));
+  let state = stub_state_with_auth(PathBuf::from("/nonexistent")).await;
   let app = app_with_session(state);
 
   let response = app
