@@ -84,6 +84,7 @@
       # Elm toolchain
       pkgs.elmPackages.elm
       pkgs.elmPackages.elm-format
+      pkgs.elmPackages.elm-test
       pkgs.elm2nix
       # Unified formatter
       pkgs.treefmt
