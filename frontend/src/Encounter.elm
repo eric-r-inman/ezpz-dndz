@@ -99,6 +99,13 @@ feature, with the `update` loop composing them around `nextTurn`.
 
 -}
 
+-- IMPORTS
+
+import Encounter.DeathSaves
+import Encounter.SaveNotice
+
+
+
 -- TYPES
 
 
@@ -113,29 +120,12 @@ type Cover
     | FullCover
 
 
-{-| 5e death-save tracker. A creature at 0 HP rolls a d20 at the
-start of each of its turns:
-
-  - 10+ → success
-  - 9 or less → failure
-  - natural 20 → revive at 1 HP (handled outside this type, in the
-    HP-change engine)
-  - natural 1 → counts as two failures
-
-Three successes → stable (still at 0 HP, but no more rolls).
-Three failures → dead.
-
-This record holds just the running counts, clamped 0..3 by the
-[`addDeathSaveSuccesses`](#addDeathSaveSuccesses) and
-[`addDeathSaveFailures`](#addDeathSaveFailures) helpers. Stable /
-dead are derived states — see [`isDeathSaveStable`](#isDeathSaveStable)
-and [`isDeathSaveDead`](#isDeathSaveDead).
-
+{-| 5e death-save tracker. Type re-exported from
+[`Encounter.DeathSaves`](Encounter-DeathSaves#DeathSaves); see
+that module for the full discussion and the per-tracker helpers.
 -}
 type alias DeathSaves =
-    { successes : Int
-    , failures : Int
-    }
+    Encounter.DeathSaves.DeathSaves
 
 
 {-| One condition or effect riding on a creature. The data is shaped
@@ -270,23 +260,14 @@ type AutoRollMode
     | AutoRollAtEnd
 
 
-{-| Transient "Saved: <Condition>" notice shown on a creature card
-after an auto-roll save successfully ends a condition. Manual
-chip 🎲 successes do NOT post these — those just remove silently
-since the GM is already looking at the card.
-
-`turnsRemaining` decrements on the bearer's end-of-turn hook.
-The notice is created with `turnsRemaining = 1`, so it lasts
-through one bearer end-of-turn pass and is then removed
-automatically. The GM can also dismiss it manually via the ×
-on the notice chip.
-
+{-| Save-notice type re-exported from
+[`Encounter.SaveNotice`](Encounter-SaveNotice). See that module
+for the per-notice helpers. The encounter-level wrappers
+(`addSaveNotice`, `removeSaveNotice`) live here because they need
+encounter-wide unique-id allocation.
 -}
 type alias SaveNotice =
-    { id : Int
-    , conditionName : String
-    , turnsRemaining : Int
-    }
+    Encounter.SaveNotice.SaveNotice
 
 
 {-| Card row 3 alarm-clock timer. Ticks down once per matching
@@ -888,21 +869,8 @@ bearer end-of-turn.
 tickSaveNoticesFor : String -> Encounter -> Encounter
 tickSaveNoticesFor name enc =
     mapCreature name
-        (\c -> { c | saveNotices = List.filterMap tickSaveNotice c.saveNotices })
+        (\c -> { c | saveNotices = Encounter.SaveNotice.tickList c.saveNotices })
         enc
-
-
-tickSaveNotice : SaveNotice -> Maybe SaveNotice
-tickSaveNotice notice =
-    let
-        next =
-            notice.turnsRemaining - 1
-    in
-    if next <= 0 then
-        Nothing
-
-    else
-        Just { notice | turnsRemaining = next }
 
 
 {-| Decrement the named creature's `Timer` if its phase matches.
@@ -1316,52 +1284,35 @@ nextCover c =
             NoCover
 
 
-{-| Fresh death-save tracker — zero successes, zero failures. Used
-to reset the tracker on heal-to-positive or on revive (nat 20).
+{-| Death-save helpers re-exported from the dedicated submodule.
+The actual implementations and per-helper docs live in
+[`Encounter.DeathSaves`](Encounter-DeathSaves). These thin
+wrappers exist so existing call sites importing from `Encounter`
+keep compiling while we migrate.
 -}
 emptyDeathSaves : DeathSaves
 emptyDeathSaves =
-    { successes = 0, failures = 0 }
+    Encounter.DeathSaves.empty
 
 
-{-| Add `n` successes (negative `n` removes), clamped to 0..3 so
-the pip group never overflows or goes negative.
--}
 addDeathSaveSuccesses : Int -> DeathSaves -> DeathSaves
-addDeathSaveSuccesses n ds =
-    { ds | successes = clampPip (ds.successes + n) }
+addDeathSaveSuccesses =
+    Encounter.DeathSaves.addSuccesses
 
 
-{-| Add `n` failures (negative `n` removes), clamped to 0..3.
-A natural-1 d20 in 5e adds 2 — pass `n = 2` for that.
--}
 addDeathSaveFailures : Int -> DeathSaves -> DeathSaves
-addDeathSaveFailures n ds =
-    { ds | failures = clampPip (ds.failures + n) }
+addDeathSaveFailures =
+    Encounter.DeathSaves.addFailures
 
 
-{-| 5e: three successes → stabilized. Still unconscious at 0 HP,
-but no more death rolls. The view code uses this to grey out the
-pip group and show a "Stable" badge.
--}
 isDeathSaveStable : DeathSaves -> Bool
-isDeathSaveStable ds =
-    ds.successes >= 3 && ds.failures < 3
+isDeathSaveStable =
+    Encounter.DeathSaves.isStable
 
 
-{-| 5e: three failures → dead. The view shows a skull badge and
-disables further interaction; a heal still revives via the
-HP-change engine (PCs do come back from "dead" if a player has a
-revivify spell scroll, etc., so we don't lock the heal path).
--}
 isDeathSaveDead : DeathSaves -> Bool
-isDeathSaveDead ds =
-    ds.failures >= 3
-
-
-clampPip : Int -> Int
-clampPip n =
-    Basics.max 0 (Basics.min 3 n)
+isDeathSaveDead =
+    Encounter.DeathSaves.isDead
 
 
 
@@ -1518,15 +1469,9 @@ addSaveNotice target conditionName enc =
                 |> List.maximum
                 |> Maybe.withDefault 0
                 |> (+) 1
-
-        newNotice =
-            { id = nextId
-            , conditionName = conditionName
-            , turnsRemaining = 1
-            }
     in
     mapCreature target
-        (\c -> { c | saveNotices = c.saveNotices ++ [ newNotice ] })
+        (\c -> { c | saveNotices = c.saveNotices ++ [ Encounter.SaveNotice.create nextId conditionName ] })
         enc
 
 
