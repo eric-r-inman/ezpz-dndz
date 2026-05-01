@@ -1,0 +1,848 @@
+#+title:     Optimization and Compliance Plan
+#+author:    LLM-drafted, human-vetted
+#+language:  en
+#+date:      2026-05-01
+
+* Executive summary
+
+This document is a combined *compliance gap analysis* against the
+~rust-template~ that ezpz-dndz was scaffolded from, plus an
+*optimization / refactor plan* with a forward-looking *data model*
+covering the features we've built, the ones in flight (compendium),
+and the ones we know are coming (auth, encounter persistence, UI
+preferences, CR calculator, etc.).
+
+The big findings, in priority order:
+
+1. *~Main.elm~ is 5,849 lines.* Single-file frontend; everything from
+   ~Model~ through every modal view lives there.  Splitting along
+   feature boundaries is the highest-leverage refactor.
+2. *~Encounter.elm~ is 1,545 lines* and growing.  Each subsystem
+   (death saves, conditions, save notices, timers, roster mutators,
+   lifecycle hooks) has earned its own module.
+3. *Modal chrome and modal-state plumbing are duplicated 6–7 times.*
+   Extract a single ~viewModal~ helper plus a generic
+   ~withMaybe : (a -> a) -> Maybe a -> Maybe a~ helper to collapse
+   six near-identical ~with*Ui~ functions into one.
+4. *~crates/server/src/dice.rs~ violates the template's "semantic
+   thiserror" rule* — it returns bare ~std::io::Result<_>~ from its
+   public API.  Refactor to a ~DiceHistoryError~ enum.
+5. *Dice routes don't participate in the OpenAPI schema.*  The
+   ~web_base.rs~ ~ApiRouter~ generates a spec for ~/healthz~,
+   ~/me~, etc., but ~dice.rs~ uses the plain axum ~Router~ and is
+   invisible to ~/api-docs/openapi.json~ + ~/scalar~.  Same fix
+   when we land the compendium routes — use ~ApiRouter~ from the
+   start.
+6. *No automated tests anywhere.*  Template contract is "tests must
+   exit with proper error codes."  We need at least: ~elm-test~ on
+   the four pure Elm domain modules and integration tests on the
+   server crate's mutation routes.
+7. *Documented future features have no data model on paper.*  The
+   refactor needs to land with a model that already accommodates
+   users, sessions, preferences, encounter persistence, and CR
+   calculation, even if the schema isn't exercised in v1.
+
+The visual data model (rendered to ~docs/diagrams/data-model.svg~
+via d2) anchors the future-state in one picture.  Everything in
+this plan is shaped to land us there incrementally without
+rewrites.
+
+* Visual data model
+
+** Generation
+
+Diagrams live in ~docs/diagrams/~ as ~.d2~ source.  d2 was added
+to ~flake.nix~ devPackages so any contributor in the dev shell
+can regenerate.  Render command:
+
+#+begin_src sh :results none :exports code
+nix develop --command d2 \
+  docs/diagrams/data-model.d2 \
+  docs/diagrams/data-model.svg
+#+end_src
+
+The committed ~.svg~ is the human-readable artifact; the ~.d2~
+source is the source of truth.
+
+** Why d2 (over Mermaid / PlantUML / Graphviz)
+
+- *Single statically-linked binary*, packaged in nixpkgs.  No
+  Java, no headless Chrome, no node.
+- *Text source*, so diffs are reviewable in PRs.
+- *SVG output* renders crisply at any zoom; embeds cleanly in
+  ~README.org~ and ~docs/ARCHITECTURE.md~.
+- *ELK layout engine* (built in) handles entity-relationship
+  graphs without manual layout tweaking.
+- Project already has ~prettier~ for CSS / Markdown; d2 adds
+  diagram rendering with a comparable "edit a text file, see the
+  output" workflow.
+
+If we later need sequence / flowchart diagrams inline in
+~.org~ files, ~mermaid~ source can be embedded directly in
+~#+begin_src mermaid~ blocks; many org-mode renderers handle
+those natively without a separate tool.  d2 is the durable
+"static artifact" path.
+
+** The model in one picture
+
+[[file:docs/diagrams/data-model.svg]]
+
+Five bounded contexts:
+
+| Context        | Purpose                                                | Status |
+|----------------+--------------------------------------------------------+--------|
+| /Identity/     | Users, sessions, per-user UI preferences               | Planned (OIDC scaffolded; rest TBD) |
+| /Library/      | Compendium creatures + encounter templates             | Compendium in COMPENDIUM_PLAN; templates planned |
+| /Combat/       | Live encounters, instanced combatants, snapshots       | In-memory ~Encounter~ today; persistence planned |
+| /Telemetry/    | Dice rolls (already live) + future combat log entries  | Dice rolls live; combat log planned |
+| /Preferences/  | UI / behavior settings, denormalized into ~user.prefs~ | Planned |
+
+Solid edges = strong references (FK, owned-by).  Dashed edges =
+soft references (snapshot copy, nullable, or
+"instantiated_from" provenance only).
+
+** Key modeling decisions
+
+- *Encounters store full state as ~jsonb~* rather than normalizing
+  combatants into a relational table on day one.  Rationale: the
+  encounter is a *write-mostly* document; combat happens fast and
+  every Next Turn click would touch a dozen joined tables.  We
+  also already have a JSON-encodable Elm record.  The
+  ~combatant~ table exists for queries the snapshot can't
+  answer cheaply (e.g. "show me everyone Lyra has fought").
+- *Snapshots* (~encounter_snapshot~) capture full state for undo
+  + crash recovery.  Cheap because we never re-parse them; we
+  just deserialize the most recent on demand.
+- *Bundled vs. user-owned* compendium creatures share a table;
+  ~owner_id IS NULL~ means bundled.  ~visibility~ further
+  distinguishes private / shared / official among user-owned.
+- *Provenance preserved but decoupled*: a ~combatant~ keeps its
+  ~creature_id~ back-reference for "Quick View" but stores its
+  full stat block in ~instance_data~ so a deleted compendium
+  creature doesn't break a saved encounter.
+- *Roll → encounter linkage* via ~dice_roll.encounter_id~ enables
+  a future "this round's rolls" filter in the dice modal without
+  changing the wire format.
+
+* Compliance gap analysis
+
+The template's distinctive constraints, with our current state
+audited against each:
+
+** Workspace + crate boundaries — *PASS*
+
+Three crates (~cli~, ~server~, ~lib~) match the template's
+shape.  ~main.rs~ in both binaries acts as a pure orchestrator;
+sibling modules handle config, logging, etc.  The naming
+(~ezpz-dndz-cli~, ~ezpz-dndz-server~, ~ezpz-dndz-lib~) follows
+the convention.
+
+** Semantic errors via thiserror — *PARTIAL FAIL*
+
+Compliant: ~web_base.rs~, ~config.rs~, ~auth.rs~ (skimmed),
+~main.rs~ all use thiserror with descriptive variant names.
+
+*Gap*: ~crates/server/src/dice.rs~ exposes ~std::io::Result<_>~
+and ~std::io::Error~ on its public API
+([dice.rs:78](crates/server/src/dice.rs#L78),
+[dice.rs:88](crates/server/src/dice.rs#L88),
+[dice.rs:102](crates/server/src/dice.rs#L102),
+[dice.rs:125](crates/server/src/dice.rs#L125)).  This violates
+the rule from ~CLAUDE.md~ / ~llms.org~: "Do not just wrap or
+propagate a FileMissingError or FileWriteError. … Include
+something either about the error itself … or about the process
+in which the error occurred."
+
+*Fix* (Phase 1, see refactor plan): introduce
+~DiceHistoryError~ with variants ~ReadError { path, source }~,
+~WriteError { path, source }~, ~ParseError { path, source }~,
+~RenameError { from, to, source }~.
+
+** Code structure (orchestrator main.rs, sibling files) — *PASS*
+
+Server's ~main.rs~ is 157 lines and delegates correctly.  CLI
+~main.rs~ is 54 lines, similar pattern.
+
+** OpenAPI / aide instrumentation — *PARTIAL FAIL*
+
+~web_base.rs~ uses ~ApiRouter~ + ~api_route~ + ~scalar::Scalar~
+correctly.  But the ~dice.rs~ ~Router~ is plain axum — it isn't
+in the schema at ~/api-docs/openapi.json~ and isn't browsable
+in ~/scalar~.
+
+*Fix*: convert ~dice::router()~ to return ~ApiRouter<AppState>~
+and use ~api_route(...)~ for all three endpoints.  Same for
+the upcoming compendium routes.
+
+** Type-driven validation, no Option-creep — *PASS WITH RISK*
+
+~CliRaw~ → ~ConfigFileRaw~ → ~Config~ stage is correctly
+modeled in ~config.rs~.
+
+*Risk*: when the compendium and encounter persistence land,
+we'll be tempted to use ~Option<String>~ for fields that are
+required-after-validation.  COMPENDIUM_PLAN already specifies
+separate ~Creature~ + ~CreatureDraft~ types; extend the same
+discipline to ~Encounter~ vs ~EncounterDraft~ when persistence
+lands.
+
+** Async runtime + mutex choice — *PASS*
+
+~tokio~ with ~tokio::sync::Mutex~ in ~dice.rs~.  Atomic-rename
+write pattern (write to temp + rename) is in place.
+
+** Systemd integration + graceful shutdown — *PASS*
+
+~systemd::notify_ready()~ called after bind.
+~serve(...).with_graceful_shutdown(shutdown_signal())~ handles
+SIGTERM/SIGINT.
+
+** Frontend layering: rules vs view — *PARTIAL FAIL*
+
+Compliant in spirit: ~Encounter.elm~, ~Dice.elm~, ~HpChange.elm~
+import nothing from ~Html~ / ~Browser~ / ~Url~.
+
+*Gap*: the rules-engine modules have ballooned.  ~Encounter.elm~
+is 1,545 lines and now contains five distinct subsystems
+(turn lifecycle, death saves, conditions, save notices, timer
+ticks, roster mutation).  Splitting into submodules without
+breaking the layering rule preserves the discipline AND
+restores reviewability.
+
+** No handwritten JS — *PASS*
+
+Only ~public/elm.js~ (compiled output) and a tiny bootstrap
+~index.html~ exist; no hand-rolled glue.  The recent ~ping.wav~
+audio asset is the first non-Elm runtime dependency, and it's
+declarative (~<audio src="/ping.wav" autoplay>~), not imperative.
+
+** CSS discipline (flat selectors, custom properties, dark mode) — *PASS WITH RISK*
+
+CSS uses ~:root~ custom properties + ~@media (prefers-color-scheme:
+dark)~ override, matching the template.
+
+*Risk*: ~style.css~ is now 2,179 lines and growing.  Several
+recent additions (memo pill, timer pill, save notice, condition
+chip) repeat the same chip / pill pattern.  Extract a base
+~.pill~ class with modifier classes; reduce surface area by
+~30%~.
+
+** Tests — *FAIL*
+
+No ~tests/~ directories on either crate.  No ~elm-test~ setup.
+Template contract violated.
+
+*Fix*: Phase 4 introduces ~elm-test~ for the four pure modules
+and integration tests on the server crate's mutation routes.
+
+** Documentation conventions — *PASS WITH GAPS*
+
+~README.org~ exists, ~CHANGELOG.org~ exists,
+~docs/ARCHITECTURE.md~ exists, ~CONTRIBUTING.org~ exists,
+~llms.org~ exists.
+
+*Gaps*:
+- ~docs/ARCHITECTURE.md~ is Markdown; template prefers
+  ~.org~.  Not a blocker, but inconsistent with the rest.
+- ~CHANGELOG.org~ has been growing under one big "Upcoming"
+  heading; ~changelog-roller~ (in our flake inputs!) expects a
+  specific shape to roll a release.  Worth verifying we aren't
+  one bad section away from a broken release roll.
+
+** Pre-commit hook + treefmt — *PASS*
+
+Hook is symlinked at shell entry (visible in ~flake.nix~);
+treefmt formats .rs / .nix / .elm / .css on commit.  Recent
+commits show this working (occasional re-format then re-stage
+during a commit).
+
+* Code optimization opportunities
+
+The biggest opportunities are in the frontend, but the same
+patterns apply server-side as we add features.
+
+** Frontend
+
+*** Split ~Main.elm~ along feature boundaries
+
+Current structure: 5,849 lines, one file.  Proposed split into
+a ~Main~ + ~Model~ + ~Update~ + ~View~ tree:
+
+#+begin_src text :results none :exports code
+frontend/src/
+├── Main.elm                       -- Browser.application shell only
+├── Model.elm                      -- Model alias, init, RemoteData
+├── Msg.elm                        -- top-level Msg union
+├── Update.elm                     -- thin dispatcher delegating per feature
+├── Update/
+│   ├── Encounter.elm              -- NextTurn / SetActive / queue mutators
+│   ├── Dice.elm                   -- modal lifecycle + roll fan-in
+│   ├── HpChange.elm               -- HP modal + apply path
+│   ├── Initiative.elm             -- initiative modal
+│   ├── Note.elm                   -- row 1 note edit
+│   ├── Memo.elm                   -- row 3 memo edit
+│   ├── Timer.elm                  -- row 3 timer setup + tick
+│   ├── Condition.elm              -- condition modal + chips + saves
+│   └── Compendium.elm             -- compendium browse + add-to-queue (later)
+├── View.elm                       -- view : Model -> Document, top-level
+├── View/
+│   ├── AppBar.elm
+│   ├── EncounterBar.elm
+│   ├── Card.elm                   -- viewCreatureCard + row helpers
+│   ├── Card/Row1.elm              -- name, note, AC, conditions
+│   ├── Card/Row2.elm              -- HP, bloodied, death saves, status
+│   ├── Card/Row3.elm              -- damage/heal/temp + memo + timer
+│   ├── Modal.elm                  -- shared modal chrome (viewModal helper)
+│   ├── Modal/Dice.elm
+│   ├── Modal/HpChange.elm
+│   ├── Modal/Initiative.elm
+│   ├── Modal/Note.elm
+│   ├── Modal/Memo.elm
+│   ├── Modal/Timer.elm
+│   ├── Modal/Condition.elm
+│   └── Chip.elm                   -- shared pill / chip helpers
+├── Util/
+│   ├── Keyboard.elm               -- enterKey, escKey
+│   ├── Decode.elm                 -- shared JSON decoders
+│   └── Http.elm                   -- pushDiceRoll, persistRollCmd, etc.
+├── Encounter.elm                  -- (existing, refactored)
+├── Encounter/
+│   ├── DeathSaves.elm
+│   ├── Conditions.elm
+│   ├── SaveNotice.elm
+│   └── Timer.elm
+├── Dice.elm                       -- (existing, unchanged)
+├── HpChange.elm                   -- (existing, unchanged)
+└── Compendium.elm                 -- (planned, COMPENDIUM_PLAN)
+#+end_src
+
+The split is mechanical and incremental — each feature can move
+to its own ~Update/Foo.elm~ + ~View/Modal/Foo.elm~ pair without
+changing semantics.  Compile-driven refactor: move type, fix
+import, repeat.
+
+*** Collapse the ~with*Ui~ helpers
+
+We currently have *six near-identical* helpers: ~withDice~,
+~withHpChange~, ~withInitiative~, ~withNoteEdit~,
+~withConditionUi~, ~withMemoEdit~, ~withTimerSetup~ (plus
+~withEncounter~ which is genuinely different).  All six follow
+the pattern:
+
+#+begin_src elm :results none :exports code
+withFoo : (FooUi -> FooUi) -> Model -> Model
+withFoo fn model =
+    case model.foo of
+        Just ui ->
+            { model | foo = Just (fn ui) }
+        Nothing ->
+            model
+#+end_src
+
+Replace with a single primitive:
+
+#+begin_src elm :results none :exports code
+-- Util/Maybe.elm
+mapMaybe : (a -> a) -> Maybe a -> Maybe a
+mapMaybe = Maybe.map
+#+end_src
+
+…and inline at call sites:
+
+#+begin_src elm :results none :exports code
+{ model | dice = Maybe.map fn model.dice }   -- when DiceUi becomes Maybe-wrapped
+#+end_src
+
+…or, where the modal state is currently *not* Maybe-wrapped
+(~DiceUi~ for the dice modal is always present, with an ~open~
+field), make it Maybe-wrapped for consistency.  Net deletion:
+~50 lines, plus the seven helpers go away.
+
+*** Extract ~viewModal~
+
+All seven modals share this skeleton:
+
+#+begin_src elm :results none :exports code
+div [ class "modal-backdrop", onClick CloseFoo ]
+    [ div
+        [ class "modal modal--foo"
+        , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
+        , attribute "role" "dialog"
+        , attribute "aria-modal" "true"
+        , attribute "aria-label" "..."
+        ]
+        [ div [ class "modal__header" ]
+            [ div [ class "modal__title" ] [ text "..." ]
+            , button
+                [ class "modal__close"
+                , onClick CloseFoo
+                , title "Cancel"
+                , attribute "aria-label" "Cancel"
+                ]
+                [ text "×" ]
+            ]
+        , div [ class "modal__body" ] [ {- per-modal -} ]
+        ]
+    ]
+#+end_src
+
+Extract:
+
+#+begin_src elm :results none :exports code
+-- View/Modal.elm
+view :
+    { close : msg
+    , title : String
+    , extraClass : String
+    , body : List (Html msg)
+    }
+    -> Html msg
+#+end_src
+
+Net deletion: ~150 lines across the seven modals, identical
+behavior.  Bonus: the Esc-key handler also moves into the
+helper, ending the per-modal ad-hoc subscription dance.
+
+*** Extract chip / pill primitive
+
+~viewConditionChip~, ~viewSaveNoticeChip~, ~viewMemoSlot~
+(non-empty path), ~viewTimerSlot~ (non-empty paths) all render
+"colored pill with optional icon, optional dismiss button."
+A shared ~View/Chip.elm~ helper:
+
+#+begin_src elm :results none :exports code
+view :
+    { class : String
+    , label : String
+    , title : Maybe String
+    , extras : List (Html msg)         -- inline trailing buttons (🎲, ⏳N, …)
+    , dismiss : Maybe msg              -- × button
+    }
+    -> Html msg
+#+end_src
+
+CSS gets a base ~.pill~ + modifier classes (~.pill--condition~,
+~.pill--saved~, ~.pill--memo~, ~.pill--timer-counting~,
+~.pill--timer-ringing~).  Net CSS deletion: ~80 lines; net Elm
+deletion: ~60 lines.
+
+*** Split ~Encounter.elm~
+
+Move the subsystems that have grown self-contained:
+
+#+begin_src text :results none :exports code
+frontend/src/Encounter.elm        -- core: types, queue, nextTurn,
+                                  -- setActive, mapCreature, seed
+frontend/src/Encounter/
+├── DeathSaves.elm                -- DeathSaves type, helpers, isStable/Dead
+├── Conditions.elm                -- Condition, Duration, TurnTarget, etc.
+├── SaveNotice.elm                -- SaveNotice + tick
+├── Timer.elm                     -- Timer + tickTimerFor
+└── Roster.elm                    -- removeCreature, duplicateCreature, slugify
+#+end_src
+
+The ~Encounter.elm~ root re-exports the public surface for
+backward compatibility, so ~Main.elm~'s imports don't change in
+the first pass.  Then we narrow the imports in a follow-up
+once each consumer points at the focused submodule.
+
+** Backend
+
+*** Replace ~std::io::Result~ in ~dice.rs~
+
+#+begin_src rust :results none :exports code
+#[derive(Debug, Error)]
+pub enum DiceHistoryError {
+    #[error("Failed to read dice history file at {path}: {source}")]
+    ReadError { path: PathBuf, source: std::io::Error },
+
+    #[error("Failed to write dice history file at {path}: {source}")]
+    WriteError { path: PathBuf, source: std::io::Error },
+
+    #[error("Failed to atomically rename {from} -> {to}: {source}")]
+    RenameError { from: PathBuf, to: PathBuf, source: std::io::Error },
+
+    #[error("Failed to parse dice history JSON in {path}: {source}")]
+    ParseError { path: PathBuf, source: serde_json::Error },
+}
+#+end_src
+
+…and change all internal helpers to ~Result<_, DiceHistoryError>~
+with ~?~ propagation.  The HTTP handler maps to ~StatusCode~ via
+~impl IntoResponse for DiceHistoryError~.
+
+*** Decorate routes with aide
+
+~dice::router()~ should return ~ApiRouter<AppState>~ instead of
+~axum::Router<AppState>~, and each route should use
+~api_route(path, handler.into_api_route())~ so the schema picks
+them up.  Same when compendium routes land — *do not introduce
+a second plain Router*.  Document this in
+~docs/ARCHITECTURE.md~'s "Where to put things" table.
+
+*** Extract a shared ~JsonFileStore<T>~ pattern
+
+The dice-history store and the upcoming compendium store will
+both want: load on demand, atomic-rename writes, async-mutex'd
+read-modify-write, semantic errors.  Lift the common shape into
+~crates/lib/src/json_file_store.rs~:
+
+#+begin_src rust :results none :exports code
+pub struct JsonFileStore<T> {
+    path: PathBuf,
+    cache: tokio::sync::Mutex<T>,
+}
+
+impl<T> JsonFileStore<T>
+where
+    T: Serialize + for<'de> Deserialize<'de> + Default + Clone + Send,
+{
+    pub async fn load_or_default(path: PathBuf) -> Result<Self, JsonFileStoreError>;
+    pub async fn read(&self) -> T;
+    pub async fn mutate<F, R>(&self, f: F) -> Result<R, JsonFileStoreError>
+    where F: FnOnce(&mut T) -> R;
+    pub async fn replace(&self, value: T) -> Result<(), JsonFileStoreError>;
+}
+#+end_src
+
+~DiceHistoryStore~ becomes ~JsonFileStore<Vec<Roll>>~ with
+domain helpers (~append~, ~clear~) on top.
+~CompendiumStore~ becomes ~JsonFileStore<Vec<Creature>>~ with
+its own surface.  Both pick up the ~load_or_bootstrap~ pattern
+when we generalize.
+
+*** Backend module hygiene as features land
+
+Mirror the file-per-concern pattern of ~auth.rs~ / ~dice.rs~
+when adding compendium / encounters / users / sessions /
+preferences.  Avoid the temptation to roll persistence,
+handlers, and types into one module.  Suggested shape:
+
+#+begin_src text :results none :exports code
+crates/server/src/
+├── main.rs                 -- orchestrator only
+├── config.rs
+├── logging.rs
+├── systemd.rs
+├── web_base.rs             -- AppState, base routes (healthz, me, scalar)
+├── auth.rs                 -- OIDC handlers + middleware
+├── dice.rs                 -- dice history (refactored to use JsonFileStore)
+├── compendium/
+│   ├── mod.rs              -- router + AppState wiring
+│   ├── store.rs            -- CompendiumStore (JsonFileStore-backed)
+│   ├── handlers.rs         -- HTTP handlers
+│   └── error.rs            -- CompendiumError enum
+├── encounters/             -- (later) saved encounters
+├── users/                  -- (later) user CRUD + role gate
+└── prefs/                  -- (later) per-user UI preferences
+#+end_src
+
+*** Crate-level move for shared types
+
+When the compendium lands, the ~Creature~ struct is shared by
+the server (HTTP wire format) and the CLI (import/export
+commands).  It belongs in ~crates/lib/src/compendium/~, not
+in the server crate.  COMPENDIUM_PLAN already places it there;
+this just confirms.
+
+* Refactor plan (phased)
+
+Each phase is independently shippable, leaves the app in a
+working state, and is small enough to review.
+
+** Phase 0 — Tooling (DONE in this commit)
+
+- Add ~d2~ to ~flake.nix~ devPackages.
+- Create ~docs/diagrams/~ with the future-state ER diagram
+  (~data-model.d2~ + rendered ~data-model.svg~).
+- Document the d2 workflow here and in
+  ~docs/ARCHITECTURE.md~.
+
+** Phase 1 — Server compliance fixes
+
+1. Convert ~dice.rs~ to use ~DiceHistoryError~ with semantic
+   variants.  No behavior change; HTTP handler maps the new
+   error type to ~StatusCode~ via ~impl IntoResponse~.
+2. Convert ~dice::router()~ to ~ApiRouter<AppState>~ so the
+   three endpoints appear in ~/api-docs/openapi.json~ and
+   ~/scalar~.
+3. Move CHANGELOG entry to a new dedicated section.
+
+Verification: ~cargo test --workspace~ passes; ~/scalar~ shows
+the dice routes; manual test of all three endpoints still
+works.
+
+** Phase 2 — Frontend domain split
+
+1. Carve ~Encounter.elm~ into:
+   - ~Encounter.elm~ (root, types + queue + ~nextTurn~)
+   - ~Encounter/DeathSaves.elm~
+   - ~Encounter/Conditions.elm~
+   - ~Encounter/SaveNotice.elm~
+   - ~Encounter/Timer.elm~
+   - ~Encounter/Roster.elm~ (removeCreature / duplicateCreature
+     + slug helper)
+2. ~Main.elm~ imports stay through ~Encounter~ initially via
+   re-exports, narrowed in a follow-up.
+
+Verification: ~elm make~ green; encounter behavior unchanged
+(manual smoke test of full session: add → damage → conditions →
+death saves → next turn).
+
+** Phase 3 — Frontend view + update split
+
+1. Extract ~Util/Keyboard.elm~ (~enterKey~, ~escKey~).
+2. Extract ~View/Modal.elm~ with ~viewModal~ helper.  Migrate
+   each modal one at a time to use it.
+3. Extract ~View/Chip.elm~ with chip / pill primitive.
+   Migrate the four chip-like renderers.
+4. Wrap modal-state fields in ~Maybe~ (~DiceUi~ → ~Maybe DiceUi~
+   to match the others); delete the six ~with*Ui~ helpers; use
+   ~Maybe.map~ inline.
+5. Carve ~Main.elm~ into ~Main~ / ~Model~ / ~Msg~ / ~Update~ +
+   per-feature ~Update/Foo.elm~ and ~View/Modal/Foo.elm~ files.
+   Compile-driven; one feature per commit.
+
+Verification: ~elm make~ green; per-feature smoke test after
+each commit.  Goal: ~Main.elm~ < 200 lines after the last
+commit.
+
+** Phase 4 — Tests
+
+1. ~elm-test~ added to ~elm.json~ test deps;
+   ~frontend/tests/~ directory with one file per pure module:
+   - ~tests/EncounterTest.elm~ — ~nextTurn~, surprise skip,
+     dead skip, death-save thresholds, condition lifecycle.
+   - ~tests/DiceTest.elm~ — ~parse~ on the existing fixture
+     set; ~scan~ on stat-block prose.
+   - ~tests/HpChangeTest.elm~ — damage / heal / temp HP / temp
+     soak / revive / max-clamp.
+   - ~tests/CompendiumTest.elm~ (when that module lands) —
+     ~parseStatBlock~ against the real-fixture corpus.
+2. Server crate: integration tests in ~crates/server/tests/~
+   for ~/api/dice/history~ (full CRUD round-trip with a
+   tempfile-backed store) and the upcoming compendium routes.
+3. ~justfile~ recipe: ~just test~ runs ~elm-test~ then
+   ~cargo test --workspace~.
+
+Verification: Both suites green; CI workflow (Phase 8) gates
+PRs on this.
+
+** Phase 5 — Shared file-store abstraction
+
+1. Create ~crates/lib/src/json_file_store.rs~ with
+   ~JsonFileStore<T>~ + ~JsonFileStoreError~.
+2. Refactor ~dice::DiceHistoryStore~ to be a thin wrapper
+   around ~JsonFileStore<Vec<Roll>>~.
+3. Verify behavior unchanged via the integration tests from
+   Phase 4.
+
+** Phase 6 — Compendium implementation
+
+Per COMPENDIUM_PLAN.org, with these adjustments:
+- Use ~JsonFileStore<Vec<Creature>>~ from Phase 5 as the
+  storage backend.
+- Use ~ApiRouter~ for all routes.
+- Move ~Creature~ to ~crates/lib/src/compendium/~ so the CLI
+  can also use it for import/export commands.
+- Frontend ~Compendium.elm~ lands as a new pure domain module
+  next to ~Encounter.elm~ / ~Dice.elm~ / ~HpChange.elm~,
+  following the same layering rule.
+- Browser modal goes through ~View/Modal.elm~ from Phase 3.
+- Add-to-queue handoff lives in ~Update/Compendium.elm~.
+
+** Phase 7 — Future-feature scaffolding
+
+These are the data-model boxes from the diagram that *don't* yet
+have HTTP routes.  Each gets a tiny stub so future work has a
+clear home:
+
+1. *Users / sessions / preferences*:
+   - Add ~users~ table (or JSON file under ~<data_dir>/users/~
+     for v1) keyed on OIDC subject.
+   - On first authenticated request, upsert a row with a
+     default preferences blob.
+   - ~/api/me~ already exists; extend to return the user's
+     preferences.
+   - ~/api/me/preferences~ PUT for updating.
+2. *Encounter persistence*:
+   - ~/api/me/encounters~ CRUD against
+     ~JsonFileStore<HashMap<EncounterId, Encounter>>~ scoped
+     by user.
+   - ~/api/me/encounters/:id/snapshot~ POST for explicit
+     manual saves.
+   - Auto-snapshot every Next Turn click (debounced).
+3. *Encounter templates*:
+   - Library-side resource that maps to a list of ~creature_id~
+     + ~count~ + ~suggested_init_mod~ tuples.
+   - "Apply Template" button instantiates all into the live
+     queue using the existing compendium → queue handoff.
+4. *CR difficulty calculator*:
+   - Pure function in ~crates/lib/src/cr_calc.rs~ taking
+     ~&[Creature]~ + party size/levels and returning a
+     ~Difficulty~ enum (~Easy~ / ~Medium~ / ~Hard~ /
+     ~Deadly~).
+   - Frontend module ~CrCalc.elm~ mirrors it for live preview
+     in the compendium browser; numbers must match.
+   - No HTTP route — purely client + library.
+5. *Combat log*:
+   - Server-side append-only ~combat_log~ stream per encounter.
+     Pushed by the existing HP / save / condition update paths
+     once we decide to instrument them.
+   - Replaces the in-memory ~hpChangeLog~ on the client with a
+     server-backed feed when an encounter is loaded.
+
+** Phase 8 — CI workflow
+
+- ~.github/workflows/ci.yml~ running on every push:
+  - ~nix develop --command cargo build --workspace~
+  - ~nix develop --command cargo test --workspace~
+  - ~nix develop --command cargo clippy --workspace~
+  - ~nix develop --command bash -c "cd frontend && elm make src/Main.elm --output /tmp/elm.js"~
+  - ~nix develop --command bash -c "cd frontend && elm-test"~
+- ~.github/workflows/format.yml~ checking ~treefmt --check~.
+- Branch protection on ~main~ requiring both green.
+
+** Phase 9 — Polish
+
+- Migrate ~docs/ARCHITECTURE.md~ to ~docs/ARCHITECTURE.org~
+  for consistency with the rest of ~docs/~ + the root
+  ~README.org~.  Cross-link from there to the data-model
+  diagram.
+- Verify ~CHANGELOG.org~ structure works with ~changelog-roller~
+  (run ~changelog-roller --check~ in CI).
+- Consider lifting the per-feature update branches' inline
+  comments into module-level doc comments so feature authors
+  inheriting the modules don't have to re-derive intent from
+  call sites.
+
+* Future-feature scaffolding considerations
+
+Each of these maps to a box on the diagram and is in scope for
+this plan only as a *shape constraint* — we don't build any of
+them here, but the refactor needs to leave room for them.
+
+** Identity / users / sessions
+
+OIDC scaffolding already exists in ~auth.rs~.  Missing:
+- ~users~ table to materialize a user record on first login
+  with a stable internal ~uuid~.  Until then, ~user_id~ on
+  every other table can't be a real FK.
+- Role enum (~admin~ / ~dm~ / ~player~) + ~require_role(Admin)~
+  middleware.  Compendium write routes will gate on this in
+  v2; today they're open.
+- Session storage: today's ~MemoryStore~ from
+  ~tower-sessions~ is fine for single-instance hosting.  When
+  we want HA / multi-replica, swap to a SQLite-backed store
+  (or sled).  Not blocking.
+
+** Per-user UI preferences
+
+Stored as a denormalized ~jsonb~ blob on the user (column
+~preferences~ on ~user~).  Fields anticipated today:
+
+- ~theme~ (~system / light / dark~)
+- ~card_density~ (~compact / regular / spacious~)
+- ~sound_enabled~
+- ~default_compendium_sort~
+- ~keyboard_shortcuts~ (map of action → key)
+- Per-feature opt-in/out toggles (e.g. "auto-scroll active card",
+  "auto-roll initiative on add")
+
+The ~jsonb~ shape is intentional — adding a new pref doesn't
+require a migration.
+
+** Encounter persistence + snapshots
+
+Today ~Encounter~ is in-memory only.  Persisting it requires:
+- ~encounter~ table keyed on ~uuid~, owned by a user, with
+  ~state~ as a full ~jsonb~ snapshot of the Elm
+  ~Encounter.Encounter~ value.
+- ~encounter_snapshot~ for periodic auto-saves and manual undo
+  points.  Append-only; cleanup policy TBD (LRU / time-based).
+- Frontend gets a "Save Encounter" / "Load Encounter" pair of
+  modals that browse the user's ~/api/me/encounters~ list.
+
+** Encounter templates
+
+Distinct from saved encounters: a *template* is a pre-built
+list of "creature ID × count" that the GM can drop into a fresh
+encounter.  Templates are shareable; saved encounters are
+private state.  Schema reflects the distinction.
+
+** CR difficulty calculator
+
+Pure function with no persistence:
+
+#+begin_src rust :results none :exports code
+pub fn encounter_difficulty(
+    party: &[CharacterLevel],
+    monsters: &[CreatureRef],
+) -> Difficulty
+#+end_src
+
+Frontend mirrors it in Elm for live preview.  No HTTP route —
+the library function is shared between CLI (~ezpz-dndz-cli
+calc-difficulty~) and frontend (when we land the calculator
+in the compendium browser).
+
+** Combat log / observability
+
+Today ~hpChangeLog~ is a 10-entry in-memory FIFO on the
+client.  Promoting it to a server-backed log per encounter
+gives:
+- Persistence across sessions / page reloads.
+- Multi-DM visibility (the eventual co-DM mode).
+- Query surface ("show me Brakka's worst round" / "rolls in
+  the last 5 minutes").
+
+Schema: ~combat_log_entry~ rows scoped to ~encounter_id~,
+append-only, ordered by ~created_at~.
+
+* Cross-references
+
+- COMPENDIUM_PLAN.org — feature spec for the compendium itself.
+  This plan amends it lightly: storage uses
+  ~JsonFileStore<Vec<Creature>>~ (Phase 5) instead of a
+  bespoke ~CompendiumStore~; routes use ~ApiRouter~; the
+  ~Creature~ struct lives in the ~lib~ crate, not the server
+  crate.
+- docs/ARCHITECTURE.md — to be migrated to ~.org~ and
+  cross-linked to ~docs/diagrams/data-model.svg~ during
+  Phase 9.
+- docs/ROADMAP.md — once Phase 6 ships, items 1, 7 ("Compendium
+  read API" and "Compendium write API") are complete and can
+  be moved to "Done in recent sessions."  Items 2, 4, 5, 6 are
+  addressed in Phase 7.
+- llms.org — adopt the d2 workflow as a documented convention
+  alongside the existing org-mode + treefmt rules.
+- CLAUDE.md — same: "When adding a diagram, source goes in
+  ~docs/diagrams/*.d2~; render via ~nix develop --command d2
+  source.d2 source.svg~ and commit both."
+
+* Open questions
+
+These are deliberately left for the human:
+
+1. *Data store choice for Phase 7.*  The plan assumes
+   ~JsonFileStore<HashMap<UserId, Encounter>>~ for early
+   encounter persistence — easy and consistent with dice
+   history.  When do we switch to SQLite?  My suggestion:
+   either when we need transactions across tables (compendium
+   + encounter atomic update) or when single-user encounter
+   counts exceed ~hundreds (file size, mutex contention).
+2. *Encounter snapshot retention policy.*  Default: keep last
+   20, plus all snapshots tagged ~manual~ or ~undo_point~.
+   Open to other defaults.
+3. *Auto-snapshot cadence.*  Every Next Turn click is the
+   safe answer.  We could throttle (one per 30 seconds) if
+   storage becomes a concern.
+4. *Where does the CR calculator live in the UI?*  Suggested:
+   inside the compendium browser, in a small pane that updates
+   live as the GM picks creatures to add to the next encounter.
+   Alternative: standalone tool in the encounter title bar.
+5. *Public-deployment hardening.*  When we go beyond
+   homelab-scale: rate limiting (~tower-governor~), CSRF
+   tokens on mutation routes, secret rotation playbook,
+   backup strategy for ~<data_dir>~.  All worth a separate
+   plan when the moment comes.

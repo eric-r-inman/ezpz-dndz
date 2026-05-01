@@ -1,0 +1,857 @@
+#+title:     Compendium Implementation Plan
+#+author:    LLM-drafted, human-vetted
+#+language:  en
+
+* Related plans
+
+This plan was originally drafted in isolation; it has been
+amended (2026-05-01) to ride the refactor in
+[[file:OPTIMIZATION_AND_COMPLIANCE_PLAN.org][OPTIMIZATION_AND_COMPLIANCE_PLAN.org]]:
+
+- Storage uses the shared ~JsonFileStore<T>~ abstraction
+  (Optimization Phase 5), not a bespoke ~CompendiumStore~ from
+  scratch.
+- HTTP routes use ~aide::ApiRouter~ from day one so they appear
+  in ~/api-docs/openapi.json~ and ~/scalar~.
+- ~Creature~ + parser live in the ~lib~ crate (~crates/lib/src/
+  compendium/~) so the CLI can also import / export.
+- Frontend follows the post-refactor module layout
+  (~Update/Compendium.elm~, ~View/Modal/Compendium*.elm~,
+  ~View/StatBlock.elm~ shared with Quick View).
+
+If you're picking this work up cold, read both documents — the
+*what* lives here, the *how should it fit the codebase* lives in
+the optimization plan.
+
+* Scope
+
+This document plans the next-phase work to add a fully-realized
+*compendium* to ~ezpz-dndz~: a creature/stat-block library with full
+CRUD, free-text stat-block parsing, import/export, and a clean
+hand-off into the encounter queue.
+
+Reference for behavior: ~/dev/dnd-encounter-manager (the legacy
+JS project we're porting features from). Reference for structure:
+existing layering in ~Encounter.elm~ / ~Dice.elm~ / ~HpChange.elm~
+plus the dice-history persistence pattern in
+~crates/server/src/dice.rs~.
+
+** Out of scope (for this plan)
+
+- *CR difficulty calculator.* Explicitly excluded by the user.
+- *Creature images / token portraits.* Adds binary asset
+  handling and storage path complexity. Defer to a follow-up.
+- *Spell-slot / legendary-action usage tracking on instances.*
+  The old project rendered these but never tracked consumption.
+  Defer.
+- *Two-way sync between compendium template and live combatant.*
+  Old project was one-way (template → instance). We keep that.
+- *Encounter persistence.* Already on the existing roadmap as a
+  separate item; out of scope here.
+
+* Decisions and assumptions
+
+The following calls were made up-front so the implementation phases
+that follow have a single shape to target.
+
+** Storage
+
+- *Single shared compendium per deployment.* No per-user
+  compendiums in v1. Per the project's deployment target memory
+  ("homelab-scale SaaS … shared compendium + per-user
+  encounters").
+- *JSON file under ~<data_dir>/compendium/creatures.json~* as the
+  storage backend. One file holds the entire compendium. Even at
+  many thousands of creatures the file fits comfortably in RAM
+  on the server side. SQLite migration is a follow-up; the HTTP
+  API shape doesn't change when we swap the implementation.
+- *Atomic-rename writes + async mutex* mirroring
+  [[file:crates/server/src/dice.rs][crates/server/src/dice.rs]].
+- *Bundled creatures embedded via* ~include_str!~ at build time.
+  On first launch, if the data file is absent, write the bundled
+  set out so the user has something to browse immediately.
+- *No "official vs custom" distinction* in the data layer (mirrors
+  the old project). All creatures live in the same collection;
+  the user can edit / delete bundled ones. A "Reset to Base"
+  endpoint restores the bundled set.
+
+** Identity
+
+- *Stable server-generated UUIDs* (~uuid::Uuid::new_v4~) returned
+  on insert. Old project used name-based ids which collide when
+  two GMs both make a "Custom Goblin"; we avoid that. Names
+  remain free-text and may collide.
+- The frontend never invents a creature id; it always asks the
+  server.
+
+** Auth gating
+
+- All read routes are open (or fall under the existing OIDC
+  optional-auth flow).
+- Write routes (~POST~ / ~PUT~ / ~DELETE~ / ~/import~ / ~/reset~)
+  are open for v1, with a planned ~role=admin~ gate when the
+  ~users~ table lands. Documented as a follow-up; no behavior
+  change today since OIDC is opt-in in dev.
+
+** Compendium → queue transformation
+
+- *Auto-roll initiative on add.* Old project required manual
+  entry; we have the infrastructure (~Dice.batchRollCmd~) so we
+  use it. The bulk-add flow rolls one initiative per instance and
+  inserts each at the correct queue position via
+  ~Encounter.sortByInitiative~.
+- *Auto-numbering on multi-add.* Adding "Goblin" while another
+  "Goblin" is already in queue produces "Goblin 2", "Goblin 3",
+  …. First instance keeps the bare name. Suffix logic mirrors
+  the existing ~uniqueCopyName~ helper.
+- *Instance-time copy*, not reference. The instance carries a
+  ~creatureId : Maybe String~ back-reference to its compendium
+  source so the GM can hit "Quick View" and see the full stat
+  block, but live combat state is fully self-contained on the
+  ~Encounter.Creature~ record. No live sync from template to
+  instance.
+
+** Stat-block parser placement
+
+- *Elm-side parser* (~Compendium.parseStatBlock~) using
+  ~elm/parser~. Two reasons: (1) keeps the HTTP API minimal — no
+  separate parse endpoint; the client posts an already-extracted
+  draft. (2) Lets the user see live parse feedback in the paste
+  modal without a network round-trip.
+
+** Layering
+
+This table reflects the post-refactor layout from
+[[file:OPTIMIZATION_AND_COMPLIANCE_PLAN.org][OPTIMIZATION_AND_COMPLIANCE_PLAN.org]].
+Implementing the compendium against this layout (instead of the
+older "everything in ~Main.elm~" pattern) is non-negotiable for
+the new code.
+
+| Concern                              | Where it lives                                   |
+|--------------------------------------+--------------------------------------------------|
+| Creature struct, JSON serde, parser  | ~crates/lib/src/compendium/~ (shared lib crate)  |
+| Bundled creatures (embedded JSON)    | ~crates/lib/data/bundled-creatures.json~         |
+| HTTP routes (~ApiRouter~) + handlers | ~crates/server/src/compendium/handlers.rs~       |
+| Domain error type                    | ~crates/server/src/compendium/error.rs~          |
+| File-backed store                    | Built on ~crates/lib/src/json_file_store.rs~     |
+|                                      | (~JsonFileStore<Vec<Creature>>~)                 |
+| Pure domain (types, search, parser)  | ~frontend/src/Compendium.elm~ (no Html / Browser)|
+| Update branches                      | ~frontend/src/Update/Compendium.elm~             |
+| Browser / edit / paste modals        | ~frontend/src/View/Modal/Compendium*.elm~        |
+| Stat-block renderer                  | ~frontend/src/View/StatBlock.elm~ (shared with   |
+|                                      | the Quick View on encounter cards)               |
+| Modal chrome                         | Shared ~viewModal~ helper from ~View/Modal.elm~  |
+| Chip / pill display                  | Shared ~viewChip~ helper from ~View/Chip.elm~    |
+
+Compliance constraints baked into this plan:
+
+- *Routes go on ~ApiRouter<AppState>~*, not plain ~axum::Router~,
+  so they appear in ~/api-docs/openapi.json~ and ~/scalar~.
+- *All errors are semantic via ~thiserror~* — ~CompendiumStoreError~
+  with descriptive variants (~CreatureIdNotFoundError~,
+  ~CreatureDuplicateNameError~, ~BundledLoadError~, etc.), never
+  bare ~std::io::Error~ propagation.
+- *Storage rides on the shared ~JsonFileStore<T>~ abstraction* (see
+  Phase 5 of the optimization plan).  No bespoke file IO code; we
+  inherit atomic-rename writes + async mutex + load-or-default
+  bootstrap from the lib crate.
+- *Frontend layering matches ~Encounter~ / ~Dice~ / ~HpChange~* —
+  ~Compendium.elm~ imports nothing from ~Html~, ~Browser~, or
+  ~Url~.  All view code lives in ~View/~ subdirectories.
+- *Stat-block renderer is shared* between the compendium browser
+  and the per-card Quick View — written once, consumed twice.
+
+* Data model
+
+** Creature record
+
+The shape we'll commit to. Fields are intentionally flat-ish — the
+old project nested everything four levels deep
+(~creature.statBlock.armorClass.value~), which is awkward in Elm.
+
+#+begin_src elm :results none :exports code
+type alias Creature =
+    { id : String                          -- server-issued UUIDv4
+    , name : String
+    , kind : CreatureKind                  -- Player / Enemy / Npc
+    , size : Size                          -- Tiny … Gargantuan
+    , race : String                        -- "Dragon", "Humanoid", …
+    , subrace : String                     -- "Chromatic", "Goblinoid", …
+    , alignment : String                   -- free text; common values are an enum-ish list
+    , source : String                      -- "Monster Manual", "Custom", …
+    , description : String                 -- short blurb
+    , armorClass : Int
+    , armorClassNote : String              -- "natural armor", "leather"
+    , maxHp : Int
+    , hpFormula : String                   -- "26d20 + 234"
+    , initiativeBonus : Int                -- pre-computed from DEX + features
+    , speed : Speed                        -- walk / fly / swim / climb / burrow / hover
+    , abilities : Abilities                -- str/dex/con/int/wis/cha (score only; mod is derived)
+    , savingThrows : List AbilitySave      -- only the proficient ones
+    , skills : List SkillBonus
+    , damageVulnerabilities : List String
+    , damageResistances : List String
+    , damageImmunities : List String
+    , conditionImmunities : List String
+    , senses : Senses
+    , languages : List String
+    , challengeRating : String             -- "1/4", "24" — keep as string for fractional CRs
+    , xp : Int
+    , proficiencyBonus : Int
+    , traits : List Feature
+    , actions : List Feature
+    , bonusActions : List Feature
+    , reactions : List Feature
+    , legendaryActions : Maybe LegendaryActions
+    , lairActions : Maybe LairActions
+    , regionalEffects : Maybe RegionalEffects
+    , spellcasting : Maybe Spellcasting
+    , customSections : List CustomSection
+    , createdAt : Int                      -- ms since epoch; for "newest first" sort
+    , updatedAt : Int
+    }
+
+type CreatureKind = Player | Enemy | Npc
+
+type Size = Tiny | Small | Medium | Large | Huge | Gargantuan
+
+type alias Speed =
+    { walk : Int
+    , fly : Int
+    , swim : Int
+    , climb : Int
+    , burrow : Int
+    , hover : Bool                         -- "fly 50 ft. (hover)"
+    }
+
+type alias Abilities =
+    { str : Int, dex : Int, con : Int
+    , int : Int, wis : Int, cha : Int
+    }
+
+type alias AbilitySave = { ability : Ability, bonus : Int }
+type Ability = Str | Dex | Con | Int_ | Wis | Cha
+                                          -- Int_ trailing underscore avoids
+                                          -- collision with Elm's `Int` type
+                                          -- name in qualified usage
+
+type alias SkillBonus = { name : String, bonus : Int }
+
+type alias Senses =
+    { blindsight : Int                     -- 0 = none
+    , darkvision : Int
+    , tremorsense : Int
+    , truesight : Int
+    , passivePerception : Int              -- always set; defaults to 10 + WIS mod
+    }
+
+type alias Feature =
+    { name : String
+    , description : String                 -- raw text; Dice.scan picks out clickable rolls
+    , usage : Maybe Usage                  -- "Recharge 5–6", "3/Day"
+    }
+
+type Usage
+    = Recharge { low : Int, high : Int }   -- "Recharge 5–6"
+    | PerDay Int                           -- "3/Day"
+    | PerShortRest Int
+    | PerLongRest Int
+    | AtWill
+
+type alias LegendaryActions =
+    { description : String                 -- preamble: "The dragon can take 3 legendary actions…"
+    , uses : Int                           -- usually 3
+    , usesInLair : Int                     -- usually 0
+    , options : List LegendaryOption
+    }
+
+type alias LegendaryOption = { name : String, cost : Int, description : String }
+
+type alias LairActions =
+    { initiative : Int                     -- usually 20
+    , description : String
+    , options : List Feature
+    }
+
+type alias RegionalEffects =
+    { description : String, effects : List Feature, fadeAfter : String }
+
+type alias Spellcasting =
+    { description : String                 -- "The dragon is a 17th-level spellcaster…"
+    , ability : Ability
+    , saveDc : Int
+    , attackBonus : Int
+    , atWill : List String                 -- spell names; we don't model the spells themselves
+    , slots : List SpellSlotLevel          -- per-slot list; empty for Innate spellcasting
+    , innatePerDay : List InnatePerDay     -- "3/day each: …"
+    }
+
+type alias SpellSlotLevel = { level : Int, slots : Int, spells : List String }
+type alias InnatePerDay = { uses : Int, spells : List String }
+
+type alias CustomSection = { name : String, body : String }
+#+end_src
+
+** Creature draft
+
+For *create* and *parse* paths, we don't yet have an ~id~ /
+~createdAt~ / ~updatedAt~. Use a sibling type:
+
+#+begin_src elm :results none :exports code
+type alias CreatureDraft =
+    { name : String
+    , kind : CreatureKind
+    , -- … same as Creature minus id/createdAt/updatedAt
+    }
+#+end_src
+
+The server fills in the missing fields on ~POST~ and returns the
+full ~Creature~.
+
+* Backend design
+
+** HTTP routes
+
+#+begin_src text :results none :exports code
+GET    /api/compendium/creatures            → 200 [Creature]
+GET    /api/compendium/creatures/:id        → 200 Creature | 404
+POST   /api/compendium/creatures            → 201 Creature   (body: CreatureDraft)
+PUT    /api/compendium/creatures/:id        → 200 Creature   (body: Creature)
+DELETE /api/compendium/creatures/:id        → 204
+GET    /api/compendium/export               → 200 application/json (entire collection)
+POST   /api/compendium/import               → 200 { imported : Int, replaced : Bool }
+                                                   (body: [Creature]; replaces collection)
+POST   /api/compendium/reset                → 200 [Creature]   (restore bundled)
+#+end_src
+
+All routes ~Content-Type: application/json~. Mutations require
+authentication when OIDC is enabled (existing pattern in
+~auth.rs~); v1 doesn't add a role gate.
+
+** File-backed store
+
+The compendium store is a thin domain-specific wrapper around
+the shared ~JsonFileStore<T>~ abstraction in the ~lib~ crate
+(introduced in Phase 5 of OPTIMIZATION_AND_COMPLIANCE_PLAN).
+This keeps atomic-rename writes, async-mutex serialization, and
+the load-or-default bootstrap in one tested place.
+
+#+begin_src rust :results none :exports code
+// crates/server/src/compendium/store.rs
+use ezpz_dndz_lib::json_file_store::{JsonFileStore, JsonFileStoreError};
+
+pub struct CompendiumStore {
+    inner: JsonFileStore<Vec<Creature>>,
+}
+
+impl CompendiumStore {
+    pub async fn load_or_bootstrap(path: PathBuf) -> Result<Self, CompendiumStoreError> {
+        // Defer to JsonFileStore::load_or_default; if the file is
+        // brand-new (default = empty Vec), seed it with the
+        // bundled creatures via include_str! and persist.
+    }
+
+    pub async fn list(&self) -> Vec<Creature> { … }
+    pub async fn get(&self, id: &str) -> Option<Creature> { … }
+    pub async fn insert(&self, draft: CreatureDraft) -> Result<Creature, CompendiumStoreError>;
+    pub async fn update(&self, id: &str, c: Creature) -> Result<Creature, CompendiumStoreError>;
+    pub async fn remove(&self, id: &str) -> Result<(), CompendiumStoreError>;
+    pub async fn replace_all(&self, cs: Vec<Creature>) -> Result<usize, CompendiumStoreError>;
+    pub async fn reset_to_bundled(&self) -> Result<Vec<Creature>, CompendiumStoreError>;
+}
+#+end_src
+
+Errors are semantic per ~llms.org~ / ~CLAUDE.md~:
+
+#+begin_src rust :results none :exports code
+// crates/server/src/compendium/error.rs
+#[derive(Debug, thiserror::Error)]
+pub enum CompendiumStoreError {
+    #[error("Failed to load compendium from store: {0}")]
+    StoreLoadError(#[from] JsonFileStoreError),
+
+    #[error("Failed to bootstrap bundled compendium creatures: {source}")]
+    BundledBootstrapError { source: serde_json::Error },
+
+    #[error("Compendium creature not found: {id}")]
+    CreatureIdNotFoundError { id: String },
+
+    #[error("A creature with id {id} already exists in the compendium")]
+    CreatureDuplicateIdError { id: String },
+}
+#+end_src
+
+The HTTP handlers (~handlers.rs~) implement
+~impl IntoResponse for CompendiumStoreError~ to map each
+variant to the right ~StatusCode~ (404 for not-found,
+409 for duplicate, 500 for IO).
+
+** Bundled creatures
+
+- One JSON file at ~crates/lib/data/bundled-creatures.json~,
+  embedded via ~include_str!~ at compile time.
+- Initial set: the existing 8 ~Encounter.seedCreatures~ migrated
+  into ~Creature~ records, plus ~10 freshly-authored entries
+  spanning a useful range of CRs (1/8 Goblin → 24 Ancient Red
+  Dragon-ish) and types (PC, monster, NPC).
+- Any text or stat-block content we ship must be original; we
+  don't redistribute SRD prose verbatim. Names like "Goblin"
+  and "Bandit Captain" are fine; the stat lines are ours.
+
+** Config
+
+Add to ~crates/server/src/config.rs~:
+
+#+begin_src rust :results none :exports code
+#[arg(long, env)]
+pub compendium_path: Option<PathBuf>,
+#+end_src
+
+Default: ~<data_dir>/compendium/creatures.json~. Mirrors the
+existing ~--dice-history-path~ override pattern.
+
+** AppState wiring
+
+~crates/server/src/web_base.rs~ gains a ~compendium_store:
+Arc<CompendiumStore>~ field, constructed during server boot,
+wired into the route group via ~.merge()~.
+
+* Frontend domain
+
+** Compendium module
+
+~frontend/src/Compendium.elm~ exposes:
+
+#+begin_src elm :results none :exports code
+module Compendium exposing
+    ( Creature, CreatureDraft, CreatureKind(..), Size(..)
+    , Speed, Abilities, Ability(..), AbilitySave, SkillBonus
+    , Senses, Feature, Usage(..), LegendaryActions, LairActions
+    , RegionalEffects, Spellcasting, CustomSection
+    , Db, emptyDb, fromList, toList
+    , find, findByName
+    , search, filterByKind, filterByCrRange, sortByName, sortByCr, sortByRecency
+    , parseStatBlock, ParseError(..)
+    , draftToInstance                       -- Creature → Encounter.Creature with rolled init
+    , encodeCreature, decodeCreature
+    , encodeDraft, decodeDraft
+    , bundledKinds                          -- ["Player","Enemy","Npc"] for filter UI
+    )
+#+end_src
+
+** Search / filter / sort
+
+Pure functions on ~Db~ (a ~List Creature~ wrapper). Mirrors what
+the old project did client-side; the entire compendium is loaded
+once and filtered locally — no per-keystroke server round-trips.
+
+#+begin_src elm :results none :exports code
+search : String -> Db -> Db
+filterByKind : List CreatureKind -> Db -> Db
+filterByCrRange : Float -> Float -> Db -> Db
+sortByName : Db -> Db
+sortByCr : Db -> Db
+sortByRecency : Db -> Db                   -- newest first
+#+end_src
+
+CR strings like ~"1/8"~ are parsed to ~0.125~ via
+~Compendium.crToFloat : String -> Float~ for sorting.
+
+** Compendium → instance
+
+#+begin_src elm :results none :exports code
+draftToInstance : Creature -> Int -> Encounter.Creature
+draftToInstance c initiativeRoll =
+    { name = c.name
+    , kind = sourceKindToString c.kind ++ ", " ++ c.race
+    , initiative = initiativeRoll
+    , initiativeBonus = c.initiativeBonus
+    , currentHp = c.maxHp
+    , maxHp = c.maxHp
+    , tempHp = 0
+    , armorClass = c.armorClass
+    , speed = c.speed.walk
+    , conditions = []
+    , saveNotices = []
+    , selected = False
+    , surprised = False
+    , cover = Encounter.NoCover
+    , concentrating = False
+    , hiding = False
+    , flying = False
+    , flyHeight = 0
+    , bloodied = False
+    , deathSaves = Encounter.emptyDeathSaves
+    , holding = False
+    , note = ""
+    , memo = ""
+    , timer = Nothing
+    , creatureId = Just c.id              -- back-reference for Quick View
+    }
+#+end_src
+
+This requires a small change to ~Encounter.Creature~: add
+~creatureId : Maybe String~. Existing seed creatures get
+~Nothing~. New compendium-instanced creatures get the source id.
+
+* Stat-block parser
+
+~Compendium.parseStatBlock : String -> Result ParseError CreatureDraft~.
+
+** Input format
+
+Standard 5e Monster Manual stat blocks copied as plain text. The
+parser is permissive — it accepts the common variants the user
+will encounter when copying from D&D Beyond, the SRD, or other
+GM tools.
+
+** Strategy
+
+Section-based, not full grammar:
+
+1. *Header* (lines 1–2):
+   - Line 1 = name.
+   - Line 2 = ~"<Size> <race> (<subrace>), <alignment>"~ with
+     subrace optional.
+2. *Core stats block* (looks for keyword markers in order):
+   - ~Armor Class N (note)~
+   - ~Hit Points N (formula)~
+   - ~Speed walk ft., fly N ft., …~
+3. *Ability score table* — six numbers + parenthesized modifiers,
+   on either two lines (header row + values row) or one
+   semicolon-separated row.
+4. *Detail lines* (any order, all optional):
+   - ~Saving Throws Str +5, Dex +3~
+   - ~Skills Perception +5, Stealth +6~
+   - ~Damage Vulnerabilities …~
+   - ~Damage Resistances …~
+   - ~Damage Immunities …~
+   - ~Condition Immunities …~
+   - ~Senses blindsight 60 ft., …, passive Perception N~
+   - ~Languages Common, Draconic~
+   - ~Challenge N (XP), proficiency bonus +N~
+5. *Feature blocks* — anything before the next section header is
+   a trait. Section headers we recognize: ~Actions~, ~Bonus
+   Actions~, ~Reactions~, ~Legendary Actions~, ~Lair Actions~,
+   ~Regional Effects~, ~Spellcasting~. Each section's content
+   is split into individual features by their ~name.~ pattern
+   (a phrase ending in a period at the start of a line).
+6. *Spellcasting* sub-parses the slot lines (~"Cantrips
+   (at will): …"~, ~"1st level (4 slots): …"~) into structured
+   data.
+
+** Implementation
+
+#+begin_src elm :results none :exports code
+type ParseError
+    = MissingHeader
+    | MalformedAbilityRow String
+    | MalformedDetail { detail : String, raw : String }
+    | UnrecognizedSection String
+
+parseStatBlock : String -> Result ParseError CreatureDraft
+parseStatBlock raw =
+    raw
+        |> String.lines
+        |> List.map String.trim
+        |> List.filter (not << String.isEmpty)
+        |> walkSections
+#+end_src
+
+The walker maintains a small state record (~current section,
+accumulated features~) and dispatches by line type.
+
+** Live preview
+
+The paste modal renders a live preview of the parsed creature as
+the user types. Parse failures display the ~ParseError~ inline
+("couldn't read Saving Throws line: 'Str+5, Dex+3'") so the user
+can fix and re-paste without leaving the modal.
+
+* Compendium → queue handoff
+
+** UX flow
+
+1. GM clicks *➕ Add Creature* in Encounter Controls.
+2. Compendium browser modal opens.
+3. GM searches / filters / picks a creature; the right pane shows
+   the full stat block.
+4. GM enters a count (default 1) and clicks *Add to Encounter*.
+5. Modal closes; the queue gains N instances at their rolled
+   initiative positions; the queue auto-sorts.
+
+** Implementation
+
+New Msg in ~Main.elm~:
+
+#+begin_src elm :results none :exports code
+| CompendiumAddToQueue String Int             -- (creatureId, count)
+| CompendiumInitiativeRolled String Int (List ( String, Dice.Roll ))
+                                              -- (creatureId, count, rolls)
+#+end_src
+
+Update branch dispatches a ~Dice.batchRollCmd~ over N specs (one
+per copy), each with the creature's ~initiativeBonus~. The
+~CompendiumInitiativeRolled~ handler walks the results, builds
+N ~Encounter.Creature~ instances via ~Compendium.draftToInstance~,
+auto-numbers their names against the current queue, appends them,
+and runs ~Encounter.sortByInitiative~.
+
+** Auto-numbering
+
+#+begin_src elm :results none :exports code
+uniqueInstanceName : String -> List String -> String
+uniqueInstanceName base existing =
+    let
+        candidate i =
+            if i == 1 then base else base ++ " " ++ String.fromInt i
+        loop i =
+            if List.member (candidate i) existing then loop (i + 1)
+            else candidate i
+    in
+    loop 1
+#+end_src
+
+So adding three Goblins to a fresh encounter yields
+~Goblin / Goblin 2 / Goblin 3~. Adding three more (with the
+first three still alive) yields ~Goblin 4 / Goblin 5 /
+Goblin 6~ — never collides.
+
+** Quick View
+
+Each card's ~creatureId : Maybe String~ enables a *🔍 Quick
+View* button (already present as a placeholder in the
+Compendium toolbar). When set, click opens the source
+creature's stat block in a read-only modal. When ~Nothing~
+(legacy seeded creatures), the button is disabled with a tooltip
+explaining the card has no compendium link.
+
+* Compendium browser modal
+
+** Layout
+
+Top bar (sticky):
+- Title "📚 Compendium".
+- File indicator "creatures.json (N entries)".
+- Action buttons: *Import*, *Export*, *Reset to Bundled*.
+
+Filter bar (sticky):
+- 🔍 Search input (filters on name + race + alignment + custom
+  sections' titles).
+- Type checkboxes: ~☑ Player ☑ Enemy ☑ NPC~.
+- Sort dropdown: A–Z / By CR / Newest first.
+- Optional CR range fields (visible when sort = By CR).
+
+Two-column body:
+- *Left column* — virtual-scrolled list. Each item shows kind
+  swatch + name + race + AC / HP / CR.
+- *Right column* — full stat block of the selected creature
+  rendered via the shared ~viewStatBlock~ helper. Sticky action
+  bar at top of this column:
+  - *➕ Add to Encounter* with a count input (1..N)
+  - *✏️ Edit*
+  - *📋 Duplicate* (clones in the compendium, not the queue)
+  - *📤 Export* (single-creature JSON download)
+  - *🗑 Delete* (with one-click confirmation)
+
+Footer / FAB row at bottom:
+- *➕ New Creature* (opens edit modal blank)
+- *📋 Paste Stat Block* (opens parser modal)
+
+** State (Main.elm)
+
+#+begin_src elm :results none :exports code
+type alias CompendiumUi =
+    { open : Bool
+    , db : RemoteData Compendium.Db        -- Loading / Loaded / Failed
+    , searchText : String
+    , kindFilter : Set CreatureKind
+    , sort : SortMode
+    , crRange : Maybe ( Float, Float )
+    , selectedId : Maybe String
+    , addCount : Int
+    }
+
+type SortMode = SortName | SortCr | SortRecency
+type RemoteData a = NotAsked | Loading | Loaded a | Failed Http.Error
+#+end_src
+
+** Edit modal (create / update)
+
+Form sections follow the data model:
+- Identity: name, kind (radio), size (dropdown), race, subrace,
+  alignment, source.
+- Combat core: AC + note, max HP + formula, initiative bonus,
+  speed multi-input.
+- Abilities: 6 number inputs in a grid; modifiers auto-derived
+  and shown beneath each.
+- Saves: dynamic add/remove rows.
+- Skills: dynamic add/remove rows.
+- Damage type lists: chip inputs.
+- Senses: 5 number inputs + passive perception (auto-suggested
+  from 10 + WIS).
+- Languages: chip input.
+- CR: text input + auto-suggest XP via standard table.
+- Features: dynamic Trait / Action / Bonus Action / Reaction
+  sections; each row has name + description textarea + optional
+  usage selector.
+- Legendary / Lair / Regional: collapsible advanced sections.
+- Spellcasting: collapsible advanced section.
+- Custom sections: dynamic rows.
+
+Validation: ~name~, ~armorClass~, ~maxHp~ required on create.
+Edit relaxes (mirrors old project).
+
+** Paste modal
+
+Single textarea + live preview pane. Pasting in the textarea runs
+~Compendium.parseStatBlock~ on every change; the preview shows
+either:
+- The parsed stat block (if successful) with an *Apply to Form*
+  button that hands the draft to the edit modal for final review,
+  or
+- A red ParseError detail with the offending line highlighted.
+
+* Phased implementation plan
+
+Each phase ships a buildable, testable slice.
+
+** Phase 1 — Backend foundation
+
+- Add ~uuid = "1"~ to ~crates/lib/Cargo.toml~.
+- Define ~Creature~ + sub-types in
+  ~crates/lib/src/compendium/types.rs~ with full serde derive.
+- Drop bundled creatures JSON at
+  ~crates/lib/data/bundled-creatures.json~ (start with 5
+  hand-authored entries; expand later).
+- Implement ~CompendiumStore~ with
+  ~load_or_bootstrap / list / get / insert / update / remove /
+  replace_all / reset_to_bundled~.
+- HTTP routes in ~crates/server/src/compendium.rs~; merged into
+  ~web_base.rs~.
+- Add ~--compendium-path~ config flag; default
+  ~<data_dir>/compendium/creatures.json~.
+- Tests: round-trip JSON serde, atomic-write isolation,
+  duplicate-id rejection.
+
+** Phase 2 — Frontend domain layer
+
+- Create ~frontend/src/Compendium.elm~ with the type definitions
+  and JSON encoders / decoders matching the backend's serde
+  shape.
+- Add ~Db~ wrapper, ~search / filterByKind / sortBy*~ helpers.
+- Add ~Compendium.draftToInstance~ and require a small
+  ~Encounter.Creature.creatureId : Maybe String~ field
+  addition. Update existing seeds + ~duplicateCreature~ to
+  preserve / propagate the field.
+- Wire HTTP fetch on app boot:
+  ~Http.get { url = "/api/compendium/creatures", … }~ →
+  ~CompendiumLoaded (Result Http.Error (List Creature))~.
+
+** Phase 3 — Browser modal (read-only)
+
+- ~CompendiumUi~ state in ~Model~.
+- ~CompendiumOpen / Close / SearchChanged / KindToggled /
+  SortChanged / CrRangeChanged / Selected~ Msgs.
+- View: two-column layout, left list + right pane, sticky
+  filter bar, action bar in right pane.
+- ~viewStatBlock : Compendium.Creature -> Html Msg~ — the
+  shared renderer used here AND in Quick View on cards.
+- Compendium panel in the left sidebar gets a "Open" button
+  that fires ~CompendiumOpen~.
+- "➕ Add Creature" button in Encounter Controls also opens the
+  modal (same handler).
+
+** Phase 4 — Add-to-encounter handoff
+
+- ~CompendiumAddToQueue id count~ Msg + handler.
+- Auto-roll initiative via ~Dice.batchRollCmd~.
+- ~CompendiumInitiativeRolled~ handler builds N
+  ~Encounter.Creature~ instances, auto-numbers names, appends to
+  queue, runs ~Encounter.sortByInitiative~, closes modal.
+- "Add to Encounter" button in the modal's right action bar
+  with count input (default 1, capped at e.g. 20).
+
+** Phase 5 — Edit / create modal
+
+- New ~CompendiumEditUi~ state (separate from browser ~Ui~).
+- Form sections wired to all fields.
+- Validation logic.
+- ~POST~ on create, ~PUT~ on edit; on success refetch list and
+  re-select the new creature.
+
+** Phase 6 — Stat-block parser
+
+- ~Compendium.parseStatBlock~ + ~ParseError~ type.
+- Test corpus: ship a fixture file with 6+ varied stat-block
+  pastes (Goblin, Bandit Captain, Ancient Dragon, NPC humanoid,
+  spellcaster, lair-action monster) and assert each parses to
+  the expected draft.
+- Paste modal (~CompendiumPasteUi~ state) with live preview +
+  *Apply to Form* button that hands off to the edit modal.
+
+** Phase 7 — Quick View on cards
+
+- ~Encounter.Creature.creatureId~ already added in Phase 2.
+- Card right rail (or a row 3 button) gets a *🔍* button. On
+  click, dispatches ~CompendiumQuickView creatureId~ which
+  renders the stat block in a read-only modal.
+- Disabled with tooltip when ~creatureId == Nothing~.
+
+** Phase 8 — Import / export / reset
+
+- *Export*: one button → ~window.location = "/api/compendium/export"~.
+  Browser handles the JSON download via
+  ~Content-Disposition~ on the response.
+- *Import*: file picker (~<input type="file">~) reads the
+  selected JSON via the file API, ~POST~ s the parsed list to
+  ~/api/compendium/import~. Confirmation prompt warning that
+  the existing collection will be replaced.
+- *Reset to Bundled*: button with confirmation; ~POST~ s to
+  ~/api/compendium/reset~ and refetches.
+- *Single-creature export*: button on the right pane fetches
+  the creature and triggers a single-record JSON download.
+
+** Phase 9 — Polish
+
+- Empty-state UX: "No creatures yet. Try importing or pasting a
+  stat block."
+- Loading skeletons on initial fetch.
+- Toast notifications on success/failure.
+- Keyboard navigation: ~/~ focuses the search box, ~Esc~ closes
+  the modal, arrow keys move list selection, ~Enter~ adds the
+  selected creature to the queue.
+
+* Documentation updates
+
+When the work lands, update:
+
+- =CHANGELOG.org= — one ~** Compendium~ subsection covering the
+  whole feature.
+- =docs/ARCHITECTURE.md= — new ~## Compendium~ section pointing
+  at ~Compendium.elm~ and the persistence pattern, plus a
+  "Where to put things" row for "A new compendium creature
+  field".
+- =docs/ROADMAP.md= — strike items 1 ("Compendium read API"),
+  7 ("Compendium write API"); add per-user / sharing
+  considerations as a follow-up if appropriate.
+
+* Open follow-ups (out of this plan)
+
+- *Creature images / token portraits.* Storage path under
+  ~<data_dir>/compendium/images/~, multipart upload endpoints.
+- *Spell-slot consumption tracking on instances.* Requires
+  per-instance state for spell slots and an action UI on the
+  card.
+- *Per-user / shared visibility.* "Private" vs "Shared" vs
+  "Official" creatures, owner column on the Creature record,
+  filter chips in the browser.
+- *SQLite migration.* Swap ~CompendiumStore~ implementation
+  while keeping the HTTP API stable. Likely lands at the same
+  time as encounter persistence.
+- *Admin role gating* on mutation endpoints, once the ~users~
+  table exists.
+- *Lockdown / read-only mode* for tournament / public-table
+  deployments.
+- *Quick View handler* on the existing 🔍 toolbar button in the
+  Compendium panel — bring it in when Phase 3 lands.

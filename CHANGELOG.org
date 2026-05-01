@@ -3,6 +3,44 @@
 
 * Upcoming
 
+** Optimization and compliance plan
+
+- New planning docs at the repo root:
+  [[file:COMPENDIUM_PLAN.org][COMPENDIUM_PLAN.org]] — full feature spec for the upcoming
+  compendium implementation;
+  [[file:OPTIMIZATION_AND_COMPLIANCE_PLAN.org][OPTIMIZATION_AND_COMPLIANCE_PLAN.org]] — combined
+  rust-template compliance gap analysis, frontend / backend
+  refactor plan, future-feature data model, and 9-phase
+  execution plan.
+- New ~docs/diagrams/~ subdir with a future-state ER diagram
+  (~data-model.d2~ + rendered ~data-model.svg~) covering five
+  bounded contexts (Identity / Library / Combat / Telemetry /
+  Preferences).
+- Added ~d2~ to ~flake.nix~ devPackages so any contributor in
+  the dev shell can regenerate diagrams via
+  ~nix develop --command d2 source.d2 source.svg~.
+
+** Server compliance: semantic dice errors + OpenAPI coverage (Phase 1)
+
+- ~crates/server/src/dice.rs~ refactored from bare
+  ~std::io::Result<_>~ to a semantic ~DiceHistoryError~ enum
+  with four variants (~ReadError~ / ~WriteError~ /
+  ~RenameError~ / ~RemoveError~), each carrying both the path
+  involved and the underlying ~std::io::Error~.  HTTP layer
+  maps via ~impl IntoResponse for DiceHistoryError~.
+  Closes the largest compliance gap against the rust-template's
+  "every error variant must explain WHAT failed and WHY" rule.
+- ~dice::router()~ now returns ~aide::axum::ApiRouter<AppState>~
+  and is merged INTO the base ~ApiRouter~ before
+  ~finish_api_with~, so all three endpoints
+  (~GET / POST / DELETE /api/dice/history~) appear in the
+  OpenAPI schema served at ~/api-docs/openapi.json~ and are
+  browsable in ~/scalar~.
+- Dice handlers refactored to take ~State<AppState>~ and pull
+  ~state.dice_store~ inline, so the dice router shares the
+  base-router state type and merges cleanly into the
+  ~ApiRouter<AppState>~ without per-route state binding.
+
 ** Architecture
 
 - Split the Elm frontend into two modules: ~Encounter.elm~ (domain

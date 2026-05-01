@@ -90,6 +90,9 @@
       pkgs.alejandra
       pkgs.prettier
       pkgs.just
+      # Diagram tooling for architecture / data-model visuals
+      # (used by docs in ./docs/diagrams).
+      pkgs.d2
       changelog-roller.packages.${system}.default
     ];
   in {
