@@ -7,8 +7,9 @@ module Compendium exposing
     , Db, fromList, toList, count
     , find, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
+    , draftToInstance
     , fetchAll
-    , decodeCreature, encodeCreature
+    , decodeCreature, encodeCreature, encodeDraft
     )
 
 {-| Pure domain layer for the compendium.
@@ -44,6 +45,11 @@ lives in `View/` modules and consumes this domain.
 @docs crToFloat
 
 
+# Compendium → Encounter handoff
+
+@docs draftToInstance
+
+
 # HTTP
 
 @docs fetchAll
@@ -51,10 +57,11 @@ lives in `View/` modules and consumes this domain.
 
 # JSON wire format
 
-@docs decodeCreature, encodeCreature
+@docs decodeCreature, encodeCreature, encodeDraft
 
 -}
 
+import Encounter
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -345,6 +352,84 @@ sortByRecency (Db cs) =
 -- ── HELPERS ──────────────────────────────────────────────────────────────────
 
 
+{-| Build a fresh encounter combatant from a compendium template.
+
+The compendium is a static catalog of templates; the encounter
+queue carries live, mutable instances. This is the one-way
+conversion. The caller passes:
+
+  - `displayName` — the auto-numbered name to render. The
+    Compendium → queue handoff in `Main.elm` computes this from
+    the existing roster (e.g. `Goblin / Goblin 2 / Goblin 3`)
+    rather than baking the suffix logic in here.
+  - `initiativeRoll` — already-rolled initiative value.
+    `Dice.batchRollCmd` sequences these so a multi-add doesn't
+    collide on a shared millisecond seed.
+
+The instance's `creatureId` field carries a back-reference to
+the template's id so the future Quick View on cards can resolve
+the source stat block.
+
+-}
+draftToInstance :
+    { displayName : String, initiativeRoll : Int }
+    -> Creature
+    -> Encounter.Creature
+draftToInstance { displayName, initiativeRoll } c =
+    { name = displayName
+    , kind = instanceKindLine c
+    , initiative = initiativeRoll
+    , initiativeBonus = c.initiativeBonus
+    , currentHp = c.maxHp
+    , maxHp = c.maxHp
+    , tempHp = 0
+    , armorClass = c.armorClass
+    , speed = c.speed.walk
+    , conditions = []
+    , saveNotices = []
+    , selected = False
+    , surprised = False
+    , cover = Encounter.NoCover
+    , concentrating = False
+    , hiding = False
+    , flying = False
+    , flyHeight = 0
+    , bloodied = False
+    , deathSaves = Encounter.emptyDeathSaves
+    , holding = False
+    , note = ""
+    , memo = ""
+    , timer = Nothing
+    , creatureId = Just c.id
+    }
+
+
+{-| Build the human-readable "kind" line shown under the name on
+the card. Mirrors the convention of the existing seed creatures
+(e.g. "Half-elf rogue, lvl 5", "Giant"). For compendium-spawned
+instances we synthesize from race + subrace + alignment when
+each is set.
+-}
+instanceKindLine : Creature -> String
+instanceKindLine c =
+    let
+        subraced =
+            if String.isEmpty c.subrace then
+                c.race
+
+            else
+                c.race ++ " (" ++ c.subrace ++ ")"
+
+        withAlignment =
+            if String.isEmpty c.alignment then
+                subraced
+
+            else
+                subraced ++ ", " ++ c.alignment
+    in
+    withAlignment
+
+
 {-| Convert a CR string ("1/4", "12", "—") to a float for sorting.
 Unknown / dash entries land at -1 so they sort to the very end of
 ascending CR sort.
@@ -354,8 +439,8 @@ crToFloat raw =
     case String.split "/" (String.trim raw) of
         [ num, den ] ->
             Maybe.map2 (/)
-                (String.toFloat num |> Maybe.map toFloat)
-                (String.toFloat den |> Maybe.map toFloat)
+                (String.toFloat num)
+                (String.toFloat den)
                 |> Maybe.withDefault -1
 
         [ single ] ->
@@ -677,48 +762,65 @@ decodeCustomSection =
 -- flow; the read-only browser doesn't need encoders.
 
 
+{-| Encode a `Creature` as a `CreatureDraft` payload for POST.
+The server allocates `id` / `created_at` / `updated_at` on
+insert, so we omit those three fields here. The remaining
+shape matches `crates/lib/src/compendium/types.rs::CreatureDraft`.
+-}
+encodeDraft : Creature -> E.Value
+encodeDraft c =
+    E.object (draftFields c)
+
+
 encodeCreature : Creature -> E.Value
 encodeCreature c =
     E.object
-        [ ( "id", E.string c.id )
-        , ( "name", E.string c.name )
-        , ( "kind", encodeKind c.kind )
-        , ( "size", encodeSize c.size )
-        , ( "race", E.string c.race )
-        , ( "subrace", E.string c.subrace )
-        , ( "alignment", E.string c.alignment )
-        , ( "source", E.string c.source )
-        , ( "description", E.string c.description )
-        , ( "armor_class", E.int c.armorClass )
-        , ( "armor_class_note", E.string c.armorClassNote )
-        , ( "max_hp", E.int c.maxHp )
-        , ( "hp_formula", E.string c.hpFormula )
-        , ( "initiative_bonus", E.int c.initiativeBonus )
-        , ( "speed", encodeSpeed c.speed )
-        , ( "abilities", encodeAbilities c.abilities )
-        , ( "saving_throws", E.list encodeAbilitySave c.savingThrows )
-        , ( "skills", E.list encodeSkillBonus c.skills )
-        , ( "damage_vulnerabilities", E.list E.string c.damageVulnerabilities )
-        , ( "damage_resistances", E.list E.string c.damageResistances )
-        , ( "damage_immunities", E.list E.string c.damageImmunities )
-        , ( "condition_immunities", E.list E.string c.conditionImmunities )
-        , ( "senses", encodeSenses c.senses )
-        , ( "languages", E.list E.string c.languages )
-        , ( "challenge_rating", E.string c.challengeRating )
-        , ( "xp", E.int c.xp )
-        , ( "proficiency_bonus", E.int c.proficiencyBonus )
-        , ( "traits", E.list encodeFeature c.traits )
-        , ( "actions", E.list encodeFeature c.actions )
-        , ( "bonus_actions", E.list encodeFeature c.bonusActions )
-        , ( "reactions", E.list encodeFeature c.reactions )
-        , ( "legendary_actions", encodeMaybe encodeLegendaryActions c.legendaryActions )
-        , ( "lair_actions", encodeMaybe encodeLairActions c.lairActions )
-        , ( "regional_effects", encodeMaybe encodeRegionalEffects c.regionalEffects )
-        , ( "spellcasting", encodeMaybe encodeSpellcasting c.spellcasting )
-        , ( "custom_sections", E.list encodeCustomSection c.customSections )
-        , ( "created_at", E.int c.createdAt )
-        , ( "updated_at", E.int c.updatedAt )
-        ]
+        ([ ( "id", E.string c.id ) ]
+            ++ draftFields c
+            ++ [ ( "created_at", E.int c.createdAt )
+               , ( "updated_at", E.int c.updatedAt )
+               ]
+        )
+
+
+draftFields : Creature -> List ( String, E.Value )
+draftFields c =
+    [ ( "name", E.string c.name )
+    , ( "kind", encodeKind c.kind )
+    , ( "size", encodeSize c.size )
+    , ( "race", E.string c.race )
+    , ( "subrace", E.string c.subrace )
+    , ( "alignment", E.string c.alignment )
+    , ( "source", E.string c.source )
+    , ( "description", E.string c.description )
+    , ( "armor_class", E.int c.armorClass )
+    , ( "armor_class_note", E.string c.armorClassNote )
+    , ( "max_hp", E.int c.maxHp )
+    , ( "hp_formula", E.string c.hpFormula )
+    , ( "initiative_bonus", E.int c.initiativeBonus )
+    , ( "speed", encodeSpeed c.speed )
+    , ( "abilities", encodeAbilities c.abilities )
+    , ( "saving_throws", E.list encodeAbilitySave c.savingThrows )
+    , ( "skills", E.list encodeSkillBonus c.skills )
+    , ( "damage_vulnerabilities", E.list E.string c.damageVulnerabilities )
+    , ( "damage_resistances", E.list E.string c.damageResistances )
+    , ( "damage_immunities", E.list E.string c.damageImmunities )
+    , ( "condition_immunities", E.list E.string c.conditionImmunities )
+    , ( "senses", encodeSenses c.senses )
+    , ( "languages", E.list E.string c.languages )
+    , ( "challenge_rating", E.string c.challengeRating )
+    , ( "xp", E.int c.xp )
+    , ( "proficiency_bonus", E.int c.proficiencyBonus )
+    , ( "traits", E.list encodeFeature c.traits )
+    , ( "actions", E.list encodeFeature c.actions )
+    , ( "bonus_actions", E.list encodeFeature c.bonusActions )
+    , ( "reactions", E.list encodeFeature c.reactions )
+    , ( "legendary_actions", encodeMaybe encodeLegendaryActions c.legendaryActions )
+    , ( "lair_actions", encodeMaybe encodeLairActions c.lairActions )
+    , ( "regional_effects", encodeMaybe encodeRegionalEffects c.regionalEffects )
+    , ( "spellcasting", encodeMaybe encodeSpellcasting c.spellcasting )
+    , ( "custom_sections", E.list encodeCustomSection c.customSections )
+    ]
 
 
 encodeKind : CreatureKind -> E.Value
