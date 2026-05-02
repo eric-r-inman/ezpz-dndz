@@ -339,6 +339,19 @@ body {
   border-color: transparent;
 }
 
+.icon-btn--disabled,
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.icon-btn--disabled:hover,
+.icon-btn:disabled:hover {
+  background: transparent;
+  color: var(--color-text-muted);
+  border-color: transparent;
+}
+
 .icon-btn--accent {
   color: var(--color-accent);
 }
@@ -2711,4 +2724,741 @@ body {
   box-shadow:
     0 0 0 2px var(--color-yellow, #f5c842),
     0 0 12px rgba(245, 200, 66, 0.45);
+}
+
+/* Compendium browser modal — the only modal that's wide and
+   tall enough to host a two-column body. Filter bar across the
+   top, list + detail below. */
+.modal--compendium {
+  max-width: 1100px;
+  max-height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.modal--compendium .modal__body {
+  padding: 0;
+  gap: 0;
+}
+
+.compendium__filter-bar {
+  display: flex;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  align-items: center;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.compendium__search {
+  flex: 1 1 240px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.compendium__kind-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.compendium__kind-filter {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.compendium__kind-filter--active {
+  background: var(--color-blue, #3b82f6);
+  border-color: var(--color-blue, #3b82f6);
+  color: white;
+}
+
+.compendium__sort {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.compendium__placeholder {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.compendium__placeholder--error {
+  color: var(--color-red, #ef4444);
+}
+
+.compendium__columns {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) 1fr;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.compendium__list {
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.compendium__list--empty {
+  padding: 24px;
+  color: var(--color-text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+.compendium__row {
+  appearance: none;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: inherit;
+  color: var(--color-text);
+  border-left: 3px solid transparent;
+}
+
+.compendium__row:hover {
+  background: var(--color-surface-2);
+}
+
+.compendium__row--selected {
+  background: var(--color-surface-2);
+  border-left-color: var(--color-blue, #3b82f6);
+}
+
+.compendium__row--player {
+  border-left-color: var(--color-orange, #f97316);
+}
+
+.compendium__row--enemy.compendium__row--selected {
+  border-left-color: var(--color-red, #ef4444);
+}
+
+.compendium__row-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.compendium__row-meta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.compendium__detail {
+  overflow-y: auto;
+  padding: 18px 22px;
+}
+
+.compendium__action-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.compendium__count-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.compendium__count {
+  width: 64px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: right;
+}
+
+.compendium__add-btn {
+  margin-left: auto;
+}
+
+.compendium__edit-btn {
+  font-size: 0.85rem;
+}
+
+.compendium__new-btn {
+  margin-left: auto;
+}
+
+.compendium__bulk-cluster {
+  display: flex;
+  gap: 6px;
+  margin-left: 6px;
+  border-left: 1px solid var(--color-border);
+  padding-left: 12px;
+}
+
+.compendium__bulk-cluster .action-btn {
+  font-size: 0.85rem;
+}
+
+.compendium__bulk-confirm {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid var(--color-red, #ef4444);
+}
+
+.compendium__bulk-confirm-msg {
+  flex: 1 1 auto;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.compendium__bulk-error {
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid var(--color-red, #ef4444);
+  color: var(--color-red, #ef4444);
+  font-size: 0.85rem;
+}
+
+/* Empty state inside the compendium list (genuine empty vs.
+   filter-mismatch). Each variant shows a primary line + a
+   smaller hint. The "creating one / pasting / importing" links
+   inside the genuine-empty variant are click-actionable. */
+.compendium__list--empty {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compendium__list--empty p {
+  margin: 0;
+}
+
+.compendium__empty-hint {
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+.compendium__empty-link {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--color-blue, #3b82f6);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-decoration: underline;
+}
+
+/* Loading skeleton — pulsing grey blocks that occupy the same
+   slots as the eventual list rows + stat block, so the layout
+   doesn't jump on first render. */
+.compendium__row--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.compendium__detail--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-block {
+  height: 12px;
+  background: var(--color-surface-2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-block--title {
+  height: 18px;
+  width: 60%;
+}
+
+.skeleton-block--short {
+  width: 40%;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Toast notifications. Fixed-position top-right stack; each
+   toast slides in from the right, persists for ~3.5s, and
+   dismisses on its own (or on click of ×). The success / error
+   variants only differ in border color + icon. */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md, 6px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  min-width: 240px;
+  max-width: 380px;
+  pointer-events: auto;
+  animation: toast-slide-in 0.18s ease-out;
+}
+
+.toast--success {
+  border-left: 3px solid var(--color-green, #22c55e);
+}
+
+.toast--error {
+  border-left: 3px solid var(--color-red, #ef4444);
+}
+
+.toast__icon {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.toast--success .toast__icon {
+  color: var(--color-green, #22c55e);
+}
+
+.toast--error .toast__icon {
+  color: var(--color-red, #ef4444);
+}
+
+.toast__msg {
+  flex: 1 1 auto;
+  line-height: 1.35;
+}
+
+.toast__dismiss {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.toast__dismiss:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Compendium edit / create modal — tall, narrow, scrollable form
+   with section fieldsets and inline numeric inputs. */
+.modal--compendium-edit {
+  max-width: 800px;
+  max-height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.modal--compendium-edit .modal__body {
+  padding: 16px 20px;
+  gap: 12px;
+}
+
+.edit-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 12px;
+  margin: 0;
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-section legend {
+  padding: 0 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.edit-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.edit-row--list-item {
+  align-items: center;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.edit-field--narrow {
+  width: 80px;
+  flex: 0 0 auto;
+}
+
+.edit-field--ability {
+  flex: 0 0 80px;
+}
+
+.edit-field--number {
+  flex: 0 0 100px;
+}
+
+.edit-field--textarea {
+  flex: 1 1 100%;
+}
+
+.edit-field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+}
+
+.edit-field--radio-group {
+  flex: 1 1 auto;
+}
+
+.edit-radio-row {
+  display: flex;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.edit-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.edit-field__label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.edit-field__input {
+  padding: 6px 8px;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.edit-field__hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  align-self: center;
+}
+
+.edit-add-btn {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+}
+
+.edit-row__remove {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.edit-row__remove:hover {
+  background: var(--color-red, #ef4444);
+  color: white;
+  border-color: var(--color-red, #ef4444);
+}
+
+.edit-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-bottom: 1px dashed var(--color-border);
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.edit-feature:last-of-type {
+  border-bottom: none;
+}
+
+.edit-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--color-red, #ef4444);
+  color: var(--color-red, #ef4444);
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.85rem;
+}
+
+.edit-advanced-notice {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.edit-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+  margin: 0 -20px -16px;
+  padding: 12px 20px;
+}
+
+.edit-footer__spacer {
+  flex: 1 1 auto;
+}
+
+/* Paste-stat-block modal — wide two-column layout: textarea on
+   the left, live-parsed preview on the right. */
+.modal--compendium-paste {
+  max-width: 1200px;
+  max-height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.modal--compendium-paste .modal__body {
+  padding: 0;
+  gap: 0;
+}
+
+.paste-modal__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.paste-modal__input-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+}
+
+.paste-modal__hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.paste-modal__textarea {
+  flex: 1 1 auto;
+  min-height: 360px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.paste-modal__preview-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.paste-modal__preview-heading {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.paste-modal__preview {
+  flex: 1 1 auto;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md, 6px);
+  padding: 8px 12px;
+  background: var(--color-surface-2);
+}
+
+.paste-modal__preview--error {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  min-height: 80px;
+}
+
+.paste-modal__footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.paste-modal__footer-spacer {
+  flex: 1 1 auto;
+}
+
+/* Read-only Quick View popup. Narrower than the full browser
+   so it stays unobtrusive when triggered from a card mid-combat. */
+.modal--quick-view {
+  max-width: 640px;
+  max-height: calc(100vh - 32px);
+}
+
+.modal--quick-view .modal__body {
+  padding: 12px 18px;
+}
+
+.compendium__detail--empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* New stat-block subsections introduced for the full Creature
+   schema: properties (saves/skills/senses/...), per-feature
+   blocks, section headings (Actions / Bonus Actions / etc.),
+   description prose, regional-fade footnote. The legacy
+   .statblock / .statblock__head etc. classes still apply. */
+.statblock__description {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.statblock__prop {
+  font-size: 0.85rem;
+  margin: 2px 0;
+  line-height: 1.45;
+}
+
+.statblock__section-heading {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin: 12px 0 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--color-border);
+  letter-spacing: 0.02em;
+}
+
+.statblock__feature {
+  font-size: 0.85rem;
+  margin: 4px 0;
+  line-height: 1.45;
+}
+
+.statblock__feature strong {
+  font-weight: 600;
+}
+
+.statblock__prose {
+  font-size: 0.85rem;
+  margin: 4px 0;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.statblock__regional-fade {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: 6px;
 }

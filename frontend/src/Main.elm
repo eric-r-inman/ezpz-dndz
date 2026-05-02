@@ -4,6 +4,8 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
+import Compendium
+import Compendium.Parser
 import Dice
 import Encounter
     exposing
@@ -11,17 +13,24 @@ import Encounter
         , Creature
         , Encounter
         )
+import File exposing (File)
+import File.Select
 import HpChange
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Http
 import Json.Decode as Decode
+import Json.Encode as Encode
+import Process
 import Random
+import Set exposing (Set)
 import Task
 import Url exposing (Url)
 import Url.Parser exposing (Parser, oneOf, top)
 import Util.Keyboard
+import View.Modal
+import View.StatBlock
 
 
 
@@ -88,7 +97,637 @@ type alias Model =
     , conditionUi : Maybe ConditionUi
     , memoEdit : Maybe MemoEditUi
     , timerSetup : Maybe TimerSetupUi
+    , compendium : CompendiumUi
+    , compendiumEdit : Maybe CompendiumEditUi
+    , compendiumPaste : Maybe CompendiumPasteUi
+    , compendiumQuickView : Maybe Compendium.Creature
+    , toasts : List Toast
+    , nextToastId : Int
     }
+
+
+{-| Transient success / error notification. Each toast carries
+its own id so we can route a delayed `ToastDismiss` Cmd back at
+the right one even if other toasts have shifted in/out of the
+list while the timer was running.
+-}
+type alias Toast =
+    { id : Int
+    , kind : ToastKind
+    , message : String
+    }
+
+
+type ToastKind
+    = ToastSuccess
+    | ToastError
+
+
+toastDuration : Float
+toastDuration =
+    -- ms
+    3500
+
+
+{-| Paste-stat-block modal. The textarea is `text`; the parsed
+result lives in `parseResult` and is recomputed on every change
+so the live preview stays in sync. The "Apply to Form" handoff
+just plucks the `Ok` creature, populates a fresh `CompendiumEditUi`
+via `editFromCreature`, flips it to `CreateMode` (so the GM can
+review/save), and closes this modal.
+-}
+type alias CompendiumPasteUi =
+    { text : String
+    , parseResult : Result Compendium.Parser.ParseError Compendium.Creature
+    }
+
+
+emptyPaste : CompendiumPasteUi
+emptyPaste =
+    { text = ""
+    , parseResult = Err Compendium.Parser.EmptyInput
+    }
+
+
+{-| Compendium browser state. Always present (we fetch the
+library on app boot regardless of whether the modal is open
+yet); the `open` flag controls visibility.
+
+`db` is `RemoteData` because the boot fetch can fail or still
+be in flight when the user clicks "Open". The browser modal
+shows a loading skeleton in those states rather than rendering
+an empty list.
+
+`searchText`, `kindFilter`, `sort` are the filter-bar inputs;
+they apply to a derived `Db` view at render time, not to the
+canonical list.
+
+`selectedId` tracks which creature's stat block is in the
+right pane. Defaults to the first item in the rendered list
+on open; a click on a row updates it.
+
+-}
+type alias CompendiumUi =
+    { open : Bool
+    , db : CompendiumDb
+    , searchText : String
+    , kindFilter : Set String
+    , sort : CompendiumSort
+    , selectedId : Maybe String
+    , addCount : Int
+    , addCountText : String
+    , pending : Maybe PendingAction
+    , bulkBusy : Bool
+    , bulkError : Maybe String
+    }
+
+
+{-| Two-step confirmation for destructive bulk operations.
+Click once on Reset / Import to set the pending action +
+inline banner; click "Confirm" in the banner to fire the
+actual Cmd. The banner shows what's about to happen and an
+explicit Cancel.
+
+`PendingImport` carries the parsed creature list so the
+confirmation re-uses it without re-reading the file.
+
+-}
+type PendingAction
+    = PendingReset
+    | PendingImport (List Compendium.Creature) Int
+
+
+{-| Hard cap on bulk-add. Anything past this is almost certainly
+a typo — the GM can always run the flow twice.
+-}
+maxAddCount : Int
+maxAddCount =
+    20
+
+
+type CompendiumDb
+    = CompendiumDbLoading
+    | CompendiumDbLoaded Compendium.Db
+    | CompendiumDbFailed Http.Error
+
+
+type CompendiumSort
+    = SortName
+    | SortCr
+    | SortRecency
+
+
+emptyCompendium : CompendiumUi
+emptyCompendium =
+    { open = False
+    , db = CompendiumDbLoading
+    , searchText = ""
+    , kindFilter = Set.empty
+    , sort = SortName
+    , selectedId = Nothing
+    , addCount = 1
+    , addCountText = "1"
+    , pending = Nothing
+    , bulkBusy = False
+    , bulkError = Nothing
+    }
+
+
+{-| Filter / sort pipeline against the loaded `Db`. Empty
+search and empty kind filter are no-ops, so a freshly opened
+modal shows the full library.
+-}
+compendiumVisible : CompendiumUi -> List Compendium.Creature
+compendiumVisible ui =
+    case ui.db of
+        CompendiumDbLoaded db ->
+            db
+                |> Compendium.search ui.searchText
+                |> Compendium.filterByKind (kindFilterAsList ui.kindFilter)
+                |> compendiumSort ui.sort
+                |> Compendium.toList
+
+        _ ->
+            []
+
+
+kindFilterAsList : Set String -> List Compendium.CreatureKind
+kindFilterAsList set =
+    List.filterMap kindFromString (Set.toList set)
+
+
+compendiumSort : CompendiumSort -> Compendium.Db -> Compendium.Db
+compendiumSort sort =
+    case sort of
+        SortName ->
+            Compendium.sortByName
+
+        SortCr ->
+            Compendium.sortByCr
+
+        SortRecency ->
+            Compendium.sortByRecency
+
+
+kindFromString : String -> Maybe Compendium.CreatureKind
+kindFromString s =
+    case s of
+        "player" ->
+            Just Compendium.Player
+
+        "enemy" ->
+            Just Compendium.Enemy
+
+        "npc" ->
+            Just Compendium.Npc
+
+        _ ->
+            Nothing
+
+
+kindToString : Compendium.CreatureKind -> String
+kindToString k =
+    case k of
+        Compendium.Player ->
+            "player"
+
+        Compendium.Enemy ->
+            "enemy"
+
+        Compendium.Npc ->
+            "npc"
+
+
+{-| Edit / create modal state. Lives at the model root rather than
+inside `CompendiumUi` because the form is a self-contained modal
+that can be opened on top of the browser modal (or directly).
+
+`mode` carries the path the modal will follow on submit:
+`CreateMode` POSTs a draft, `EditExisting` PUTs against the
+captured id (and preserves `createdAt` so the server-side
+timestamp doesn't get clobbered).
+
+Most fields are `String` even when the underlying schema is
+`Int`, because numeric `<input>`s round-trip through strings
+anyway and we want transient typing states (empty input, partial
+number) to be preserved across re-renders. Validation runs on
+submit, not per keystroke.
+
+The four advanced sections (`legendaryActions`, `lairActions`,
+`regionalEffects`, `spellcasting`) are pass-through-only in this
+MVP form: opening an existing creature with those populated keeps
+them, the form just doesn't expose editors for them yet.
+
+-}
+type alias CompendiumEditUi =
+    { mode : EditMode
+    , name : String
+    , kind : Compendium.CreatureKind
+    , size : Compendium.Size
+    , race : String
+    , subrace : String
+    , alignment : String
+    , source : String
+    , description : String
+    , armorClass : String
+    , armorClassNote : String
+    , maxHp : String
+    , hpFormula : String
+    , initiativeBonus : String
+    , speedWalk : String
+    , speedFly : String
+    , speedSwim : String
+    , speedClimb : String
+    , speedBurrow : String
+    , speedHover : Bool
+    , abilityStr : String
+    , abilityDex : String
+    , abilityCon : String
+    , abilityInt : String
+    , abilityWis : String
+    , abilityCha : String
+    , savingThrows : List ( Compendium.Ability, String )
+    , skills : List ( String, String )
+    , damageVulnerabilities : String
+    , damageResistances : String
+    , damageImmunities : String
+    , conditionImmunities : String
+    , sensesBlindsight : String
+    , sensesDarkvision : String
+    , sensesTremorsense : String
+    , sensesTruesight : String
+    , sensesPassivePerception : String
+    , languages : String
+    , challengeRating : String
+    , xp : String
+    , proficiencyBonus : String
+    , traits : List FeatureDraft
+    , actions : List FeatureDraft
+    , bonusActions : List FeatureDraft
+    , reactions : List FeatureDraft
+    , customSections : List ( String, String )
+    , legendaryActions : Maybe Compendium.LegendaryActions
+    , lairActions : Maybe Compendium.LairActions
+    , regionalEffects : Maybe Compendium.RegionalEffects
+    , spellcasting : Maybe Compendium.Spellcasting
+    , submitting : Bool
+    , submitError : Maybe String
+    }
+
+
+type EditMode
+    = CreateMode
+    | EditExisting { id : String, createdAt : Int }
+
+
+type alias FeatureDraft =
+    { name : String, description : String }
+
+
+{-| Selector tags for the four feature-list sections so a single
+add/remove/change Msg-set can address any of them without
+quadrupling the Msg count.
+-}
+type FeatureGroup
+    = TraitsGroup
+    | ActionsGroup
+    | BonusActionsGroup
+    | ReactionsGroup
+
+
+{-| Selector tags for the ~30 string fields on the edit form so
+one `CompendiumEditFieldChanged` Msg can handle them all.
+-}
+type CompendiumField
+    = CFName
+    | CFRace
+    | CFSubrace
+    | CFAlignment
+    | CFSource
+    | CFDescription
+    | CFArmorClass
+    | CFArmorClassNote
+    | CFMaxHp
+    | CFHpFormula
+    | CFInitiativeBonus
+    | CFSpeedWalk
+    | CFSpeedFly
+    | CFSpeedSwim
+    | CFSpeedClimb
+    | CFSpeedBurrow
+    | CFAbilityStr
+    | CFAbilityDex
+    | CFAbilityCon
+    | CFAbilityInt
+    | CFAbilityWis
+    | CFAbilityCha
+    | CFSensesBlindsight
+    | CFSensesDarkvision
+    | CFSensesTremorsense
+    | CFSensesTruesight
+    | CFSensesPassivePerception
+    | CFDamageVulnerabilities
+    | CFDamageResistances
+    | CFDamageImmunities
+    | CFConditionImmunities
+    | CFLanguages
+    | CFChallengeRating
+    | CFXp
+    | CFProficiencyBonus
+
+
+blankEdit : CompendiumEditUi
+blankEdit =
+    { mode = CreateMode
+    , name = ""
+    , kind = Compendium.Enemy
+    , size = Compendium.Medium
+    , race = ""
+    , subrace = ""
+    , alignment = ""
+    , source = "Custom"
+    , description = ""
+    , armorClass = "10"
+    , armorClassNote = ""
+    , maxHp = "1"
+    , hpFormula = ""
+    , initiativeBonus = "0"
+    , speedWalk = "30"
+    , speedFly = "0"
+    , speedSwim = "0"
+    , speedClimb = "0"
+    , speedBurrow = "0"
+    , speedHover = False
+    , abilityStr = "10"
+    , abilityDex = "10"
+    , abilityCon = "10"
+    , abilityInt = "10"
+    , abilityWis = "10"
+    , abilityCha = "10"
+    , savingThrows = []
+    , skills = []
+    , damageVulnerabilities = ""
+    , damageResistances = ""
+    , damageImmunities = ""
+    , conditionImmunities = ""
+    , sensesBlindsight = "0"
+    , sensesDarkvision = "0"
+    , sensesTremorsense = "0"
+    , sensesTruesight = "0"
+    , sensesPassivePerception = "10"
+    , languages = ""
+    , challengeRating = ""
+    , xp = "0"
+    , proficiencyBonus = "2"
+    , traits = []
+    , actions = []
+    , bonusActions = []
+    , reactions = []
+    , customSections = []
+    , legendaryActions = Nothing
+    , lairActions = Nothing
+    , regionalEffects = Nothing
+    , spellcasting = Nothing
+    , submitting = False
+    , submitError = Nothing
+    }
+
+
+{-| Pre-fill the form with an existing creature's fields.
+
+Numeric fields stringify; lists become comma-separated strings;
+saves/skills/features stay as structured rows; the four advanced
+sections pass through verbatim.
+
+-}
+editFromCreature : Compendium.Creature -> CompendiumEditUi
+editFromCreature c =
+    { mode = EditExisting { id = c.id, createdAt = c.createdAt }
+    , name = c.name
+    , kind = c.kind
+    , size = c.size
+    , race = c.race
+    , subrace = c.subrace
+    , alignment = c.alignment
+    , source = c.source
+    , description = c.description
+    , armorClass = String.fromInt c.armorClass
+    , armorClassNote = c.armorClassNote
+    , maxHp = String.fromInt c.maxHp
+    , hpFormula = c.hpFormula
+    , initiativeBonus = String.fromInt c.initiativeBonus
+    , speedWalk = String.fromInt c.speed.walk
+    , speedFly = String.fromInt c.speed.fly
+    , speedSwim = String.fromInt c.speed.swim
+    , speedClimb = String.fromInt c.speed.climb
+    , speedBurrow = String.fromInt c.speed.burrow
+    , speedHover = c.speed.hover
+    , abilityStr = String.fromInt c.abilities.str
+    , abilityDex = String.fromInt c.abilities.dex
+    , abilityCon = String.fromInt c.abilities.con
+    , abilityInt = String.fromInt c.abilities.int
+    , abilityWis = String.fromInt c.abilities.wis
+    , abilityCha = String.fromInt c.abilities.cha
+    , savingThrows = List.map (\s -> ( s.ability, String.fromInt s.bonus )) c.savingThrows
+    , skills = List.map (\s -> ( s.name, String.fromInt s.bonus )) c.skills
+    , damageVulnerabilities = String.join ", " c.damageVulnerabilities
+    , damageResistances = String.join ", " c.damageResistances
+    , damageImmunities = String.join ", " c.damageImmunities
+    , conditionImmunities = String.join ", " c.conditionImmunities
+    , sensesBlindsight = String.fromInt c.senses.blindsight
+    , sensesDarkvision = String.fromInt c.senses.darkvision
+    , sensesTremorsense = String.fromInt c.senses.tremorsense
+    , sensesTruesight = String.fromInt c.senses.truesight
+    , sensesPassivePerception = String.fromInt c.senses.passivePerception
+    , languages = String.join ", " c.languages
+    , challengeRating = c.challengeRating
+    , xp = String.fromInt c.xp
+    , proficiencyBonus = String.fromInt c.proficiencyBonus
+    , traits = List.map featureToDraft c.traits
+    , actions = List.map featureToDraft c.actions
+    , bonusActions = List.map featureToDraft c.bonusActions
+    , reactions = List.map featureToDraft c.reactions
+    , customSections = List.map (\s -> ( s.name, s.body )) c.customSections
+    , legendaryActions = c.legendaryActions
+    , lairActions = c.lairActions
+    , regionalEffects = c.regionalEffects
+    , spellcasting = c.spellcasting
+    , submitting = False
+    , submitError = Nothing
+    }
+
+
+featureToDraft : Compendium.Feature -> FeatureDraft
+featureToDraft f =
+    { name = f.name, description = f.description }
+
+
+emptyFeatureDraft : FeatureDraft
+emptyFeatureDraft =
+    { name = "", description = "" }
+
+
+{-| Run validation and produce the final `Compendium.Creature` to
+ship over the wire. Required fields: name, AC, max HP. Numeric
+fields default to a sensible base if empty; list fields split on
+commas with empty entries discarded. The result is a `Creature`
+even for `CreateMode` (with empty id / 0 timestamps) so the same
+encoder covers both POST (`encodeDraft`) and PUT (`encodeCreature`).
+-}
+validateEdit : CompendiumEditUi -> Result String Compendium.Creature
+validateEdit ui =
+    if String.isEmpty (String.trim ui.name) then
+        Err "Name is required."
+
+    else
+        case ( String.toInt ui.armorClass, String.toInt ui.maxHp ) of
+            ( Nothing, _ ) ->
+                Err "Armor Class must be a whole number."
+
+            ( _, Nothing ) ->
+                Err "Max HP must be a whole number."
+
+            ( Just ac, Just maxHp ) ->
+                let
+                    ( id, createdAt ) =
+                        case ui.mode of
+                            CreateMode ->
+                                ( "", 0 )
+
+                            EditExisting e ->
+                                ( e.id, e.createdAt )
+                in
+                Ok
+                    { id = id
+                    , name = String.trim ui.name
+                    , kind = ui.kind
+                    , size = ui.size
+                    , race = String.trim ui.race
+                    , subrace = String.trim ui.subrace
+                    , alignment = String.trim ui.alignment
+                    , source = String.trim ui.source
+                    , description = ui.description
+                    , armorClass = ac
+                    , armorClassNote = String.trim ui.armorClassNote
+                    , maxHp = maxHp
+                    , hpFormula = String.trim ui.hpFormula
+                    , initiativeBonus = parseIntOr 0 ui.initiativeBonus
+                    , speed =
+                        { walk = parseIntOr 0 ui.speedWalk
+                        , fly = parseIntOr 0 ui.speedFly
+                        , swim = parseIntOr 0 ui.speedSwim
+                        , climb = parseIntOr 0 ui.speedClimb
+                        , burrow = parseIntOr 0 ui.speedBurrow
+                        , hover = ui.speedHover
+                        }
+                    , abilities =
+                        { str = parseIntOr 10 ui.abilityStr
+                        , dex = parseIntOr 10 ui.abilityDex
+                        , con = parseIntOr 10 ui.abilityCon
+                        , int = parseIntOr 10 ui.abilityInt
+                        , wis = parseIntOr 10 ui.abilityWis
+                        , cha = parseIntOr 10 ui.abilityCha
+                        }
+                    , savingThrows = List.filterMap saveRowToValue ui.savingThrows
+                    , skills = List.filterMap skillRowToValue ui.skills
+                    , damageVulnerabilities = parseCsv ui.damageVulnerabilities
+                    , damageResistances = parseCsv ui.damageResistances
+                    , damageImmunities = parseCsv ui.damageImmunities
+                    , conditionImmunities = parseCsv ui.conditionImmunities
+                    , senses =
+                        { blindsight = parseIntOr 0 ui.sensesBlindsight
+                        , darkvision = parseIntOr 0 ui.sensesDarkvision
+                        , tremorsense = parseIntOr 0 ui.sensesTremorsense
+                        , truesight = parseIntOr 0 ui.sensesTruesight
+                        , passivePerception = parseIntOr 10 ui.sensesPassivePerception
+                        }
+                    , languages = parseCsv ui.languages
+                    , challengeRating = String.trim ui.challengeRating
+                    , xp = parseIntOr 0 ui.xp
+                    , proficiencyBonus = parseIntOr 2 ui.proficiencyBonus
+                    , traits = List.filterMap draftToFeature ui.traits
+                    , actions = List.filterMap draftToFeature ui.actions
+                    , bonusActions = List.filterMap draftToFeature ui.bonusActions
+                    , reactions = List.filterMap draftToFeature ui.reactions
+                    , legendaryActions = ui.legendaryActions
+                    , lairActions = ui.lairActions
+                    , regionalEffects = ui.regionalEffects
+                    , spellcasting = ui.spellcasting
+                    , customSections = List.filterMap customSectionRowToValue ui.customSections
+                    , createdAt = createdAt
+                    , updatedAt = 0
+                    }
+
+
+parseIntOr : Int -> String -> Int
+parseIntOr default raw =
+    String.toInt (String.trim raw) |> Maybe.withDefault default
+
+
+parseCsv : String -> List String
+parseCsv raw =
+    raw
+        |> String.split ","
+        |> List.map String.trim
+        |> List.filter (not << String.isEmpty)
+
+
+saveRowToValue : ( Compendium.Ability, String ) -> Maybe Compendium.AbilitySave
+saveRowToValue ( ability, bonusText ) =
+    String.toInt (String.trim bonusText)
+        |> Maybe.map (\bonus -> { ability = ability, bonus = bonus })
+
+
+skillRowToValue : ( String, String ) -> Maybe Compendium.SkillBonus
+skillRowToValue ( name, bonusText ) =
+    let
+        trimmed =
+            String.trim name
+    in
+    if String.isEmpty trimmed then
+        Nothing
+
+    else
+        Just { name = trimmed, bonus = parseIntOr 0 bonusText }
+
+
+draftToFeature : FeatureDraft -> Maybe Compendium.Feature
+draftToFeature d =
+    let
+        trimmedName =
+            String.trim d.name
+    in
+    if String.isEmpty trimmedName then
+        Nothing
+
+    else
+        Just { name = trimmedName, description = d.description, usage = Nothing }
+
+
+customSectionRowToValue : ( String, String ) -> Maybe Compendium.CustomSection
+customSectionRowToValue ( name, body ) =
+    let
+        trimmed =
+            String.trim name
+    in
+    if String.isEmpty trimmed then
+        Nothing
+
+    else
+        Just { name = trimmed, body = body }
+
+
+creatureKindLabel : Compendium.CreatureKind -> String
+creatureKindLabel k =
+    case k of
+        Compendium.Player ->
+            "Player"
+
+        Compendium.Enemy ->
+            "Enemy"
+
+        Compendium.Npc ->
+            "NPC"
 
 
 {-| Note-edit modal state. Open when the user clicks the row 1
@@ -642,6 +1281,69 @@ type Msg
     | TimerSetupApply
     | TimerSetupCancel
     | TimerDismiss String
+      -- Compendium browser
+    | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
+    | CompendiumOpen
+    | CompendiumClose
+    | CompendiumSearchChanged String
+    | CompendiumKindToggled Compendium.CreatureKind
+    | CompendiumSortChanged CompendiumSort
+    | CompendiumSelect String
+    | CompendiumAddCountChanged String
+    | CompendiumAddToQueue String
+    | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
+      -- (creatureId, [(displayName, roll)])
+      -- Compendium edit / create modal
+    | CompendiumEditNew
+    | CompendiumEditExisting
+    | CompendiumEditDuplicate
+    | CompendiumEditCancel
+    | CompendiumEditFieldChanged CompendiumField String
+    | CompendiumEditKindSet Compendium.CreatureKind
+    | CompendiumEditSizeSet Compendium.Size
+    | CompendiumEditSpeedHoverToggle
+    | CompendiumEditSavingThrowAdd
+    | CompendiumEditSavingThrowRemove Int
+    | CompendiumEditSavingThrowAbilitySet Int Compendium.Ability
+    | CompendiumEditSavingThrowBonusChanged Int String
+    | CompendiumEditSkillAdd
+    | CompendiumEditSkillRemove Int
+    | CompendiumEditSkillNameChanged Int String
+    | CompendiumEditSkillBonusChanged Int String
+    | CompendiumEditFeatureAdd FeatureGroup
+    | CompendiumEditFeatureRemove FeatureGroup Int
+    | CompendiumEditFeatureNameChanged FeatureGroup Int String
+    | CompendiumEditFeatureDescriptionChanged FeatureGroup Int String
+    | CompendiumEditCustomSectionAdd
+    | CompendiumEditCustomSectionRemove Int
+    | CompendiumEditCustomSectionNameChanged Int String
+    | CompendiumEditCustomSectionBodyChanged Int String
+    | CompendiumEditSubmit
+    | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
+    | CompendiumEditDelete
+    | CompendiumEditDeleteResponse String (Result Http.Error ())
+      -- (id, result)
+      -- Compendium paste / parse modal
+    | CompendiumPasteOpen
+    | CompendiumPasteCancel
+    | CompendiumPasteTextChanged String
+    | CompendiumPasteApply
+      -- Quick View (read-only stat-block popup from a card)
+    | CompendiumQuickViewOpen String
+    | CompendiumQuickViewClose
+      -- Bulk: import / export / reset
+    | CompendiumImportClick
+    | CompendiumImportFileChosen File
+    | CompendiumImportFileRead String
+    | CompendiumResetClick
+    | CompendiumPendingCancel
+    | CompendiumPendingConfirm
+    | CompendiumImportResponse (Result Http.Error Int)
+    | CompendiumResetResponse (Result Http.Error (List Compendium.Creature))
+      -- Toast notifications
+    | ToastDismiss Int
+      -- Keyboard shortcuts
+    | CompendiumFocusSearch
     | NoOp
 
 
@@ -665,11 +1367,63 @@ subscriptions model =
     if model.dice.open then
         Browser.Events.onKeyDown (escKey CloseDice)
 
+    else if model.compendiumQuickView /= Nothing then
+        Browser.Events.onKeyDown (escKey CompendiumQuickViewClose)
+
+    else if model.compendiumPaste /= Nothing then
+        Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
+
+    else if model.compendiumEdit /= Nothing then
+        Browser.Events.onKeyDown (escKey CompendiumEditCancel)
+
+    else if model.compendium.open then
+        Browser.Events.onKeyDown compendiumKeyDecoder
+
     else if model.noteEdit /= Nothing then
         Browser.Events.onKeyDown (escKey NoteEditCancel)
 
     else
         Sub.none
+
+
+{-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
+the search input. Both shortcuts ignore events whose target is
+already an input/textarea so the GM doesn't trip them while
+typing in the search box, the count input, or anywhere else.
+-}
+compendiumKeyDecoder : Decode.Decoder Msg
+compendiumKeyDecoder =
+    Decode.map2 Tuple.pair
+        (Decode.field "key" Decode.string)
+        (Decode.at [ "target", "tagName" ] Decode.string)
+        |> Decode.andThen
+            (\( key, tagName ) ->
+                case ( key, isFormTag tagName ) of
+                    ( "Escape", _ ) ->
+                        Decode.succeed CompendiumClose
+
+                    ( "/", False ) ->
+                        Decode.succeed CompendiumFocusSearch
+
+                    _ ->
+                        Decode.fail "ignored key"
+            )
+
+
+isFormTag : String -> Bool
+isFormTag tagName =
+    case tagName of
+        "INPUT" ->
+            True
+
+        "TEXTAREA" ->
+            True
+
+        "SELECT" ->
+            True
+
+        _ ->
+            False
 
 
 escKey : Msg -> Decode.Decoder Msg
@@ -697,11 +1451,22 @@ init _ url key =
       , conditionUi = Nothing
       , memoEdit = Nothing
       , timerSetup = Nothing
+      , compendium = emptyCompendium
+      , compendiumEdit = Nothing
+      , compendiumPaste = Nothing
+      , compendiumQuickView = Nothing
+      , toasts = []
+      , nextToastId = 0
       }
-      -- Always fetch the persisted dice history alongside whatever
-      -- the current route needs. Failures are silently swallowed so
-      -- a fresh server (no dice-history.json yet) still loads.
-    , Cmd.batch [ cmdForRoute route, fetchDiceHistoryCmd ]
+      -- Always fetch the persisted dice history and the compendium
+      -- library alongside whatever the current route needs. Failures
+      -- are silently swallowed so a fresh server (no
+      -- dice-history.json yet) still loads.
+    , Cmd.batch
+        [ cmdForRoute route
+        , fetchDiceHistoryCmd
+        , Compendium.fetchAll CompendiumLoaded
+        ]
     )
 
 
@@ -1836,8 +2601,1002 @@ update msg model =
             , Cmd.none
             )
 
+        CompendiumLoaded result ->
+            ( withCompendium (compendiumLoadedUpdate result) model, Cmd.none )
+
+        CompendiumOpen ->
+            ( withCompendium openCompendiumUpdate model, Cmd.none )
+
+        CompendiumClose ->
+            ( withCompendium (\ui -> { ui | open = False }) model, Cmd.none )
+
+        CompendiumSearchChanged text ->
+            ( withCompendium
+                (\ui ->
+                    { ui | searchText = text, selectedId = Nothing }
+                )
+                model
+            , Cmd.none
+            )
+
+        CompendiumKindToggled kind ->
+            ( withCompendium (toggleCompendiumKind kind) model, Cmd.none )
+
+        CompendiumSortChanged sort ->
+            ( withCompendium (\ui -> { ui | sort = sort }) model, Cmd.none )
+
+        CompendiumSelect id ->
+            ( withCompendium (\ui -> { ui | selectedId = Just id }) model, Cmd.none )
+
+        CompendiumAddCountChanged raw ->
+            ( withCompendium (compendiumAddCountUpdate raw) model, Cmd.none )
+
+        CompendiumAddToQueue creatureId ->
+            ( model, compendiumAddToQueueCmd model creatureId )
+
+        CompendiumInitiativeRolled creatureId rolls ->
+            handleCompendiumRolls model creatureId rolls
+
+        CompendiumEditNew ->
+            ( { model | compendiumEdit = Just blankEdit }, Cmd.none )
+
+        CompendiumEditExisting ->
+            ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map editFromCreature }
+            , Cmd.none
+            )
+
+        CompendiumEditDuplicate ->
+            ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map editFromDuplicate }
+            , Cmd.none
+            )
+
+        CompendiumEditCancel ->
+            ( { model | compendiumEdit = Nothing }, Cmd.none )
+
+        CompendiumEditFieldChanged field text ->
+            ( withCompendiumEdit (setEditField field text) model, Cmd.none )
+
+        CompendiumEditKindSet kind ->
+            ( withCompendiumEdit (\ui -> { ui | kind = kind }) model, Cmd.none )
+
+        CompendiumEditSizeSet size ->
+            ( withCompendiumEdit (\ui -> { ui | size = size }) model, Cmd.none )
+
+        CompendiumEditSpeedHoverToggle ->
+            ( withCompendiumEdit (\ui -> { ui | speedHover = not ui.speedHover }) model, Cmd.none )
+
+        CompendiumEditSavingThrowAdd ->
+            ( withCompendiumEdit
+                (\ui -> { ui | savingThrows = ui.savingThrows ++ [ ( Compendium.Str, "0" ) ] })
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditSavingThrowRemove idx ->
+            ( withCompendiumEdit (\ui -> { ui | savingThrows = removeAt idx ui.savingThrows }) model
+            , Cmd.none
+            )
+
+        CompendiumEditSavingThrowAbilitySet idx ability ->
+            ( withCompendiumEdit
+                (\ui ->
+                    { ui
+                        | savingThrows =
+                            updateAt idx (\( _, b ) -> ( ability, b )) ui.savingThrows
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditSavingThrowBonusChanged idx text ->
+            ( withCompendiumEdit
+                (\ui ->
+                    { ui
+                        | savingThrows =
+                            updateAt idx (\( a, _ ) -> ( a, text )) ui.savingThrows
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditSkillAdd ->
+            ( withCompendiumEdit (\ui -> { ui | skills = ui.skills ++ [ ( "", "0" ) ] }) model
+            , Cmd.none
+            )
+
+        CompendiumEditSkillRemove idx ->
+            ( withCompendiumEdit (\ui -> { ui | skills = removeAt idx ui.skills }) model
+            , Cmd.none
+            )
+
+        CompendiumEditSkillNameChanged idx text ->
+            ( withCompendiumEdit
+                (\ui -> { ui | skills = updateAt idx (\( _, b ) -> ( text, b )) ui.skills })
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditSkillBonusChanged idx text ->
+            ( withCompendiumEdit
+                (\ui -> { ui | skills = updateAt idx (\( n, _ ) -> ( n, text )) ui.skills })
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditFeatureAdd group ->
+            ( withCompendiumEdit (mapFeatureGroup group (\fs -> fs ++ [ emptyFeatureDraft ])) model
+            , Cmd.none
+            )
+
+        CompendiumEditFeatureRemove group idx ->
+            ( withCompendiumEdit (mapFeatureGroup group (removeAt idx)) model, Cmd.none )
+
+        CompendiumEditFeatureNameChanged group idx text ->
+            ( withCompendiumEdit
+                (mapFeatureGroup group (updateAt idx (\f -> { f | name = text })))
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditFeatureDescriptionChanged group idx text ->
+            ( withCompendiumEdit
+                (mapFeatureGroup group (updateAt idx (\f -> { f | description = text })))
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditCustomSectionAdd ->
+            ( withCompendiumEdit
+                (\ui -> { ui | customSections = ui.customSections ++ [ ( "", "" ) ] })
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditCustomSectionRemove idx ->
+            ( withCompendiumEdit
+                (\ui -> { ui | customSections = removeAt idx ui.customSections })
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditCustomSectionNameChanged idx text ->
+            ( withCompendiumEdit
+                (\ui ->
+                    { ui
+                        | customSections =
+                            updateAt idx (\( _, b ) -> ( text, b )) ui.customSections
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditCustomSectionBodyChanged idx text ->
+            ( withCompendiumEdit
+                (\ui ->
+                    { ui
+                        | customSections =
+                            updateAt idx (\( n, _ ) -> ( n, text )) ui.customSections
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        CompendiumEditSubmit ->
+            handleCompendiumEditSubmit model
+
+        CompendiumEditSubmitResponse result ->
+            handleCompendiumEditSubmitResponse model result
+
+        CompendiumEditDelete ->
+            handleCompendiumEditDelete model
+
+        CompendiumEditDeleteResponse id result ->
+            handleCompendiumEditDeleteResponse model id result
+
+        CompendiumPasteOpen ->
+            ( { model | compendiumPaste = Just emptyPaste }, Cmd.none )
+
+        CompendiumPasteCancel ->
+            ( { model | compendiumPaste = Nothing }, Cmd.none )
+
+        CompendiumPasteTextChanged text ->
+            ( { model
+                | compendiumPaste =
+                    Just
+                        { text = text
+                        , parseResult = Compendium.Parser.parseStatBlock text
+                        }
+              }
+            , Cmd.none
+            )
+
+        CompendiumPasteApply ->
+            handleCompendiumPasteApply model
+
+        CompendiumQuickViewOpen creatureId ->
+            ( { model
+                | compendiumQuickView =
+                    case model.compendium.db of
+                        CompendiumDbLoaded db ->
+                            Compendium.find creatureId db
+
+                        _ ->
+                            Nothing
+              }
+            , Cmd.none
+            )
+
+        CompendiumQuickViewClose ->
+            ( { model | compendiumQuickView = Nothing }, Cmd.none )
+
+        CompendiumImportClick ->
+            ( withCompendium (\ui -> { ui | bulkError = Nothing }) model
+            , File.Select.file [ "application/json", "text/plain" ] CompendiumImportFileChosen
+            )
+
+        CompendiumImportFileChosen file ->
+            ( model, Task.perform CompendiumImportFileRead (File.toString file) )
+
+        CompendiumImportFileRead raw ->
+            ( withCompendium (compendiumImportFileLoaded raw) model, Cmd.none )
+
+        CompendiumResetClick ->
+            ( withCompendium (\ui -> { ui | pending = Just PendingReset, bulkError = Nothing }) model
+            , Cmd.none
+            )
+
+        CompendiumPendingCancel ->
+            ( withCompendium (\ui -> { ui | pending = Nothing, bulkError = Nothing }) model
+            , Cmd.none
+            )
+
+        CompendiumPendingConfirm ->
+            handleCompendiumPendingConfirm model
+
+        CompendiumImportResponse result ->
+            handleCompendiumImportResponse model result
+
+        CompendiumResetResponse result ->
+            handleCompendiumResetResponse model result
+
+        ToastDismiss id ->
+            ( { model | toasts = List.filter (\t -> t.id /= id) model.toasts }, Cmd.none )
+
+        CompendiumFocusSearch ->
+            ( model
+            , Browser.Dom.focus compendiumSearchId
+                |> Task.attempt (\_ -> NoOp)
+            )
+
         NoOp ->
             ( model, Cmd.none )
+
+
+compendiumSearchId : String
+compendiumSearchId =
+    "compendium-search"
+
+
+{-| Push a transient success / error toast. The toast renders
+immediately and a `Process.sleep` Cmd schedules its dismissal so
+the toast list cleans up on its own without per-frame timer work.
+-}
+pushToast : ToastKind -> String -> Model -> ( Model, Cmd Msg )
+pushToast kind message model =
+    let
+        toast =
+            { id = model.nextToastId, kind = kind, message = message }
+    in
+    ( { model
+        | toasts = model.toasts ++ [ toast ]
+        , nextToastId = model.nextToastId + 1
+      }
+    , Process.sleep toastDuration
+        |> Task.perform (\_ -> ToastDismiss toast.id)
+    )
+
+
+{-| Push a toast and continue with another Cmd. Useful when a Msg
+both triggers a refetch / persist and wants to flash a success
+notice — the two Cmds run concurrently.
+-}
+pushToastWith : ToastKind -> String -> Cmd Msg -> Model -> ( Model, Cmd Msg )
+pushToastWith kind message extraCmd model =
+    let
+        ( m1, toastCmd ) =
+            pushToast kind message model
+    in
+    ( m1, Cmd.batch [ toastCmd, extraCmd ] )
+
+
+{-| Decode the file the user picked. On parse success we set the
+pending action and surface an inline confirmation banner so the
+GM gets one final "yes, replace everything" before the wire call
+fires. On parse failure we keep the modal open and show the
+error.
+-}
+compendiumImportFileLoaded : String -> CompendiumUi -> CompendiumUi
+compendiumImportFileLoaded raw ui =
+    case Decode.decodeString (Decode.list Compendium.decodeCreature) raw of
+        Ok creatures ->
+            { ui
+                | pending = Just (PendingImport creatures (List.length creatures))
+                , bulkError = Nothing
+            }
+
+        Err err ->
+            { ui
+                | pending = Nothing
+                , bulkError = Just ("Couldn't parse file: " ++ Decode.errorToString err)
+            }
+
+
+handleCompendiumPendingConfirm : Model -> ( Model, Cmd Msg )
+handleCompendiumPendingConfirm model =
+    case model.compendium.pending of
+        Just PendingReset ->
+            ( withCompendium
+                (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                model
+            , compendiumResetCmd
+            )
+
+        Just (PendingImport creatures _) ->
+            ( withCompendium
+                (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                model
+            , compendiumImportCmd creatures
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+compendiumResetCmd : Cmd Msg
+compendiumResetCmd =
+    Http.post
+        { url = "/api/compendium/reset"
+        , body = Http.emptyBody
+        , expect =
+            Http.expectJson CompendiumResetResponse
+                (Decode.list Compendium.decodeCreature)
+        }
+
+
+compendiumImportCmd : List Compendium.Creature -> Cmd Msg
+compendiumImportCmd creatures =
+    Http.post
+        { url = "/api/compendium/import"
+        , body =
+            Http.jsonBody (Encode.list Compendium.encodeCreature creatures)
+        , expect =
+            Http.expectJson CompendiumImportResponse
+                (Decode.field "imported" Decode.int)
+        }
+
+
+handleCompendiumImportResponse :
+    Model
+    -> Result Http.Error Int
+    -> ( Model, Cmd Msg )
+handleCompendiumImportResponse model result =
+    case result of
+        Err err ->
+            withCompendium
+                (\ui ->
+                    { ui
+                        | bulkBusy = False
+                        , bulkError = Just (httpErrorToString err)
+                    }
+                )
+                model
+                |> pushToast ToastError
+                    ("Import failed: " ++ httpErrorToString err)
+
+        Ok count ->
+            withCompendium
+                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
+                model
+                |> pushToastWith ToastSuccess
+                    ("Imported " ++ String.fromInt count ++ " creatures")
+                    (Compendium.fetchAll CompendiumLoaded)
+
+
+handleCompendiumResetResponse :
+    Model
+    -> Result Http.Error (List Compendium.Creature)
+    -> ( Model, Cmd Msg )
+handleCompendiumResetResponse model result =
+    case result of
+        Err err ->
+            withCompendium
+                (\ui ->
+                    { ui
+                        | bulkBusy = False
+                        , bulkError = Just (httpErrorToString err)
+                    }
+                )
+                model
+                |> pushToast ToastError
+                    ("Reset failed: " ++ httpErrorToString err)
+
+        Ok creatures ->
+            withCompendium
+                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
+                model
+                |> pushToastWith ToastSuccess
+                    ("Library reset to " ++ String.fromInt (List.length creatures) ++ " bundled creatures")
+                    (Compendium.fetchAll CompendiumLoaded)
+
+
+{-| Hand the parsed stat block over to the edit modal so the GM
+can review and save. We pre-fill via `editFromCreature` then flip
+the mode back to `CreateMode` (the parsed creature has no
+server-side id yet) and reset the source to "Pasted" so the
+provenance is preserved through save.
+-}
+handleCompendiumPasteApply : Model -> ( Model, Cmd Msg )
+handleCompendiumPasteApply model =
+    case model.compendiumPaste of
+        Just { parseResult } ->
+            case parseResult of
+                Ok creature ->
+                    let
+                        editUi =
+                            editFromCreature creature
+
+                        recreated =
+                            { editUi | mode = CreateMode }
+                    in
+                    ( { model
+                        | compendiumPaste = Nothing
+                        , compendiumEdit = Just recreated
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Apply `fn` to the open compendium edit modal. No-op when closed.
+-}
+withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
+withCompendiumEdit fn model =
+    case model.compendiumEdit of
+        Just ui ->
+            { model | compendiumEdit = Just (fn ui) }
+
+        Nothing ->
+            model
+
+
+currentlySelectedCreature : Model -> Maybe Compendium.Creature
+currentlySelectedCreature model =
+    case ( model.compendium.db, model.compendium.selectedId ) of
+        ( CompendiumDbLoaded db, Just id ) ->
+            Compendium.find id db
+
+        _ ->
+            Nothing
+
+
+{-| Build an edit form pre-filled from `source` but with the
+mode flipped to `CreateMode` and a "(copy)"-suffixed name. The
+back end will issue a fresh id on submit.
+-}
+editFromDuplicate : Compendium.Creature -> CompendiumEditUi
+editFromDuplicate source =
+    let
+        base =
+            editFromCreature source
+    in
+    { base
+        | mode = CreateMode
+        , name = source.name ++ " (copy)"
+    }
+
+
+setEditField : CompendiumField -> String -> CompendiumEditUi -> CompendiumEditUi
+setEditField field text ui =
+    case field of
+        CFName ->
+            { ui | name = text }
+
+        CFRace ->
+            { ui | race = text }
+
+        CFSubrace ->
+            { ui | subrace = text }
+
+        CFAlignment ->
+            { ui | alignment = text }
+
+        CFSource ->
+            { ui | source = text }
+
+        CFDescription ->
+            { ui | description = text }
+
+        CFArmorClass ->
+            { ui | armorClass = text }
+
+        CFArmorClassNote ->
+            { ui | armorClassNote = text }
+
+        CFMaxHp ->
+            { ui | maxHp = text }
+
+        CFHpFormula ->
+            { ui | hpFormula = text }
+
+        CFInitiativeBonus ->
+            { ui | initiativeBonus = text }
+
+        CFSpeedWalk ->
+            { ui | speedWalk = text }
+
+        CFSpeedFly ->
+            { ui | speedFly = text }
+
+        CFSpeedSwim ->
+            { ui | speedSwim = text }
+
+        CFSpeedClimb ->
+            { ui | speedClimb = text }
+
+        CFSpeedBurrow ->
+            { ui | speedBurrow = text }
+
+        CFAbilityStr ->
+            { ui | abilityStr = text }
+
+        CFAbilityDex ->
+            { ui | abilityDex = text }
+
+        CFAbilityCon ->
+            { ui | abilityCon = text }
+
+        CFAbilityInt ->
+            { ui | abilityInt = text }
+
+        CFAbilityWis ->
+            { ui | abilityWis = text }
+
+        CFAbilityCha ->
+            { ui | abilityCha = text }
+
+        CFSensesBlindsight ->
+            { ui | sensesBlindsight = text }
+
+        CFSensesDarkvision ->
+            { ui | sensesDarkvision = text }
+
+        CFSensesTremorsense ->
+            { ui | sensesTremorsense = text }
+
+        CFSensesTruesight ->
+            { ui | sensesTruesight = text }
+
+        CFSensesPassivePerception ->
+            { ui | sensesPassivePerception = text }
+
+        CFDamageVulnerabilities ->
+            { ui | damageVulnerabilities = text }
+
+        CFDamageResistances ->
+            { ui | damageResistances = text }
+
+        CFDamageImmunities ->
+            { ui | damageImmunities = text }
+
+        CFConditionImmunities ->
+            { ui | conditionImmunities = text }
+
+        CFLanguages ->
+            { ui | languages = text }
+
+        CFChallengeRating ->
+            { ui | challengeRating = text }
+
+        CFXp ->
+            { ui | xp = text }
+
+        CFProficiencyBonus ->
+            { ui | proficiencyBonus = text }
+
+
+mapFeatureGroup :
+    FeatureGroup
+    -> (List FeatureDraft -> List FeatureDraft)
+    -> CompendiumEditUi
+    -> CompendiumEditUi
+mapFeatureGroup group fn ui =
+    case group of
+        TraitsGroup ->
+            { ui | traits = fn ui.traits }
+
+        ActionsGroup ->
+            { ui | actions = fn ui.actions }
+
+        BonusActionsGroup ->
+            { ui | bonusActions = fn ui.bonusActions }
+
+        ReactionsGroup ->
+            { ui | reactions = fn ui.reactions }
+
+
+updateAt : Int -> (a -> a) -> List a -> List a
+updateAt idx fn xs =
+    List.indexedMap
+        (\i x ->
+            if i == idx then
+                fn x
+
+            else
+                x
+        )
+        xs
+
+
+removeAt : Int -> List a -> List a
+removeAt idx xs =
+    List.indexedMap (\i x -> ( i, x )) xs
+        |> List.filter (\( i, _ ) -> i /= idx)
+        |> List.map Tuple.second
+
+
+
+-- COMPENDIUM EDIT: SUBMIT / DELETE FLOW
+
+
+handleCompendiumEditSubmit : Model -> ( Model, Cmd Msg )
+handleCompendiumEditSubmit model =
+    case model.compendiumEdit of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just ui ->
+            case validateEdit ui of
+                Err message ->
+                    ( withCompendiumEdit (\u -> { u | submitError = Just message }) model
+                    , Cmd.none
+                    )
+
+                Ok creature ->
+                    ( withCompendiumEdit
+                        (\u -> { u | submitting = True, submitError = Nothing })
+                        model
+                    , submitCreatureCmd ui.mode creature
+                    )
+
+
+submitCreatureCmd : EditMode -> Compendium.Creature -> Cmd Msg
+submitCreatureCmd mode creature =
+    case mode of
+        CreateMode ->
+            Http.post
+                { url = "/api/compendium/creatures"
+                , body = Http.jsonBody (Compendium.encodeDraft creature)
+                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.decodeCreature
+                }
+
+        EditExisting { id } ->
+            Http.request
+                { method = "PUT"
+                , headers = []
+                , url = "/api/compendium/creatures/" ++ id
+                , body = Http.jsonBody (Compendium.encodeCreature creature)
+                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.decodeCreature
+                , timeout = Nothing
+                , tracker = Nothing
+                }
+
+
+handleCompendiumEditSubmitResponse :
+    Model
+    -> Result Http.Error Compendium.Creature
+    -> ( Model, Cmd Msg )
+handleCompendiumEditSubmitResponse model result =
+    case result of
+        Err err ->
+            ( withCompendiumEdit
+                (\u -> { u | submitting = False, submitError = Just (httpErrorToString err) })
+                model
+            , Cmd.none
+            )
+
+        Ok creature ->
+            -- Close the edit modal, refetch the list (cheap; the
+            -- server holds the canonical list and a single round
+            -- trip is simpler than splicing locally), pre-select
+            -- the just-saved creature so it's visible in the
+            -- right pane after refetch.
+            { model
+                | compendiumEdit = Nothing
+                , compendium =
+                    let
+                        ui =
+                            model.compendium
+                    in
+                    { ui | selectedId = Just creature.id }
+            }
+                |> pushToastWith ToastSuccess
+                    ("Saved " ++ creature.name)
+                    (Compendium.fetchAll CompendiumLoaded)
+
+
+handleCompendiumEditDelete : Model -> ( Model, Cmd Msg )
+handleCompendiumEditDelete model =
+    case model.compendiumEdit of
+        Just { mode } ->
+            case mode of
+                EditExisting { id } ->
+                    ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
+                    , Http.request
+                        { method = "DELETE"
+                        , headers = []
+                        , url = "/api/compendium/creatures/" ++ id
+                        , body = Http.emptyBody
+                        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
+                    )
+
+                CreateMode ->
+                    -- Delete is meaningless on a never-saved draft;
+                    -- treat it as cancel.
+                    ( { model | compendiumEdit = Nothing }, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+handleCompendiumEditDeleteResponse :
+    Model
+    -> String
+    -> Result Http.Error ()
+    -> ( Model, Cmd Msg )
+handleCompendiumEditDeleteResponse model deletedId result =
+    case result of
+        Err err ->
+            ( withCompendiumEdit
+                (\u -> { u | submitting = False, submitError = Just (httpErrorToString err) })
+                model
+            , Cmd.none
+            )
+
+        Ok () ->
+            -- Drop the selection if it was pointing at the just-
+            -- deleted creature; refetch the list to repopulate.
+            let
+                clearedSelection ui =
+                    if ui.selectedId == Just deletedId then
+                        { ui | selectedId = Nothing }
+
+                    else
+                        ui
+            in
+            { model
+                | compendiumEdit = Nothing
+                , compendium = clearedSelection model.compendium
+            }
+                |> pushToastWith ToastSuccess
+                    "Creature deleted"
+                    (Compendium.fetchAll CompendiumLoaded)
+
+
+httpErrorToString : Http.Error -> String
+httpErrorToString err =
+    case err of
+        Http.BadUrl u ->
+            "Bad URL: " ++ u
+
+        Http.Timeout ->
+            "Request timed out."
+
+        Http.NetworkError ->
+            "Network error — check the server."
+
+        Http.BadStatus code ->
+            "Server returned " ++ String.fromInt code ++ "."
+
+        Http.BadBody body ->
+            "Couldn't parse response: " ++ body
+
+
+compendiumAddCountUpdate : String -> CompendiumUi -> CompendiumUi
+compendiumAddCountUpdate raw ui =
+    let
+        parsed =
+            String.toInt raw
+                |> Maybe.withDefault ui.addCount
+                |> clamp 1 maxAddCount
+    in
+    { ui | addCountText = raw, addCount = parsed }
+
+
+{-| Resolve the selected compendium creature, build N
+auto-numbered initiative roll specs, and dispatch a single
+batched Cmd. The handler closes over `creatureId` so when the
+rolls land we can look the source back up to spawn instances
+against the freshly-rolled values.
+-}
+compendiumAddToQueueCmd : Model -> String -> Cmd Msg
+compendiumAddToQueueCmd model creatureId =
+    case model.compendium.db of
+        CompendiumDbLoaded db ->
+            case Compendium.find creatureId db of
+                Just source ->
+                    let
+                        existing =
+                            List.map .name model.encounter.creatures
+
+                        names =
+                            pickInstanceNames source.name model.compendium.addCount existing
+
+                        specs =
+                            List.map (instanceSpec source) names
+                    in
+                    Dice.batchRollCmd
+                        (CompendiumInitiativeRolled creatureId)
+                        specs
+
+                Nothing ->
+                    Cmd.none
+
+        _ ->
+            Cmd.none
+
+
+{-| Generate `count` unique display names for new instances of
+`base`, threading the running set of reserved names through so
+each new pick honors prior picks within the same batch. So
+adding three Goblins to a fresh queue yields
+`Goblin / Goblin 2 / Goblin 3`.
+-}
+pickInstanceNames : String -> Int -> List String -> List String
+pickInstanceNames base count existing =
+    let
+        loop n acc reserved =
+            if n <= 0 then
+                List.reverse acc
+
+            else
+                let
+                    next =
+                        Encounter.uniqueInstanceName base reserved
+                in
+                loop (n - 1) (next :: acc) (next :: reserved)
+    in
+    loop count [] existing
+
+
+instanceSpec :
+    Compendium.Creature
+    -> String
+    -> ( String, Dice.Source, Random.Generator Dice.Roll )
+instanceSpec source displayName =
+    ( displayName
+    , initiativeSource displayName
+    , Dice.generator (compendiumInitiativeExpression source)
+    )
+
+
+compendiumInitiativeExpression : Compendium.Creature -> Dice.Expression
+compendiumInitiativeExpression c =
+    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = c.initiativeBonus
+    , damageType = Nothing
+    }
+
+
+handleCompendiumRolls : Model -> String -> List ( String, Dice.Roll ) -> ( Model, Cmd Msg )
+handleCompendiumRolls model creatureId rolls =
+    case model.compendium.db of
+        CompendiumDbLoaded db ->
+            case Compendium.find creatureId db of
+                Just source ->
+                    let
+                        instances =
+                            List.map
+                                (\( displayName, roll ) ->
+                                    Compendium.draftToInstance
+                                        { displayName = displayName
+                                        , initiativeRoll = roll.total
+                                        }
+                                        source
+                                )
+                                rolls
+
+                        m1 =
+                            List.foldl (\( _, r ) m -> pushDiceRoll r m) model rolls
+
+                        addedCount =
+                            List.length instances
+
+                        toastMessage =
+                            if addedCount == 1 then
+                                "Added " ++ source.name ++ " to encounter"
+
+                            else
+                                "Added " ++ String.fromInt addedCount ++ " × " ++ source.name
+                    in
+                    { m1
+                        | encounter = Encounter.appendCreatures instances m1.encounter
+                        , compendium =
+                            let
+                                ui =
+                                    m1.compendium
+                            in
+                            { ui | open = False }
+                    }
+                        |> pushToastWith ToastSuccess
+                            toastMessage
+                            (Cmd.batch (List.map (\( _, r ) -> persistRollCmd r) rolls))
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+compendiumLoadedUpdate : Result Http.Error (List Compendium.Creature) -> CompendiumUi -> CompendiumUi
+compendiumLoadedUpdate result ui =
+    case result of
+        Ok creatures ->
+            { ui | db = CompendiumDbLoaded (Compendium.fromList creatures) }
+
+        Err err ->
+            { ui | db = CompendiumDbFailed err }
+
+
+{-| Open the modal and pick a sensible default selection so the right
+pane isn't blank on first open. We pick the first item of the
+currently-rendered (filter+sort applied) list.
+-}
+openCompendiumUpdate : CompendiumUi -> CompendiumUi
+openCompendiumUpdate ui =
+    let
+        opened =
+            { ui | open = True }
+    in
+    case ui.selectedId of
+        Just _ ->
+            opened
+
+        Nothing ->
+            { opened
+                | selectedId =
+                    compendiumVisible opened
+                        |> List.head
+                        |> Maybe.map .id
+            }
+
+
+toggleCompendiumKind : Compendium.CreatureKind -> CompendiumUi -> CompendiumUi
+toggleCompendiumKind kind ui =
+    let
+        key =
+            kindToString kind
+
+        next =
+            if Set.member key ui.kindFilter then
+                Set.remove key ui.kindFilter
+
+            else
+                Set.insert key ui.kindFilter
+    in
+    { ui | kindFilter = next, selectedId = Nothing }
 
 
 {-| Lift an `Encounter -> Encounter` transformation into a
@@ -1941,6 +3700,14 @@ withInitiative fn model =
 
         Nothing ->
             model
+
+
+{-| Apply `fn` to the compendium browser substate. Always present
+(unlike most modals), so no `Maybe` unwrap.
+-}
+withCompendium : (CompendiumUi -> CompendiumUi) -> Model -> Model
+withCompendium fn model =
+    { model | compendium = fn model.compendium }
 
 
 {-| Apply `fn` to the open note-edit modal. No-op when closed.
@@ -2680,6 +4447,11 @@ view model =
             , viewConditionModal model
             , viewMemoEditModal model
             , viewTimerSetupModal model
+            , viewCompendiumModal model.compendium
+            , viewCompendiumEditModal model.compendiumEdit
+            , viewCompendiumPasteModal model.compendiumPaste
+            , viewCompendiumQuickViewModal model.compendiumQuickView
+            , viewToasts model.toasts
             , viewRingerAudio model
             ]
         ]
@@ -2763,7 +4535,7 @@ viewWorkspace model =
     main_ [ class "workspace" ]
         [ viewPanelMain model.encounter model.hpEdit
         , viewPanelControls model.dice
-        , viewPanelDetail
+        , viewPanelDetail model
         ]
 
 
@@ -2939,7 +4711,12 @@ viewPanelControls dice =
             ]
         , div [ class "panel__body" ]
             [ div [ class "btn-grid btn-grid--two-rows" ]
-                [ button [ class "action-btn action-btn--blue" ] [ text "➕ Add Creature" ]
+                [ button
+                    [ class "action-btn action-btn--blue"
+                    , onClick CompendiumOpen
+                    , title "Browse the creature library"
+                    ]
+                    [ text "➕ Add Creature" ]
                 , button [ class "action-btn action-btn--blue" ] [ text "💾 Save" ]
                 , button [ class "action-btn action-btn--blue" ] [ text "📁 Load" ]
                 , button
@@ -2958,15 +4735,20 @@ viewPanelControls dice =
         ]
 
 
-viewPanelDetail : Html Msg
-viewPanelDetail =
+viewPanelDetail : Model -> Html Msg
+viewPanelDetail model =
     section [ class "panel panel--detail" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Compendium" ] ]
         , div [ class "panel__body" ]
             [ div [ class "btn-grid compendium-toolbar" ]
-                [ button [ class "action-btn action-btn--blue" ] [ text "🔍 Quick View" ]
-                , button [ class "action-btn action-btn--blue" ] [ text "📖 Open" ]
+                [ viewPanelQuickViewButton model
+                , button
+                    [ class "action-btn action-btn--blue"
+                    , onClick CompendiumOpen
+                    , title "Open the creature library"
+                    ]
+                    [ text "📖 Open" ]
                 , button
                     [ class "action-btn action-btn--blue"
                     , disabled True
@@ -3123,6 +4905,8 @@ viewCreatureCard activeName hpEdit creature =
                     [ text "×" ]
                 ]
             , div [ class "creature-card__rail-group" ]
+                [ viewQuickViewButton creature ]
+            , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
                     , onClick (DuplicateCreature creature.name)
@@ -3133,6 +4917,64 @@ viewCreatureCard activeName hpEdit creature =
                 ]
             ]
         ]
+
+
+{-| Compendium-panel toolbar button: opens Quick View for the
+encounter's currently-active creature. Disabled when the active
+creature has no compendium link.
+-}
+viewPanelQuickViewButton : Model -> Html Msg
+viewPanelQuickViewButton model =
+    let
+        activeId =
+            Encounter.activeCreature model.encounter
+                |> Maybe.andThen .creatureId
+    in
+    case activeId of
+        Just id ->
+            button
+                [ class "action-btn action-btn--blue"
+                , onClick (CompendiumQuickViewOpen id)
+                , title "Quick view of the active creature's stat block"
+                ]
+                [ text "🔍 Quick View" ]
+
+        Nothing ->
+            button
+                [ class "action-btn action-btn--blue"
+                , disabled True
+                , attribute "aria-disabled" "true"
+                , title "No compendium link on the active creature"
+                ]
+                [ text "🔍 Quick View" ]
+
+
+{-| Per-card 🔍 button that opens the source compendium creature
+in a read-only Quick View modal. Disabled with an explanatory
+tooltip on creatures that have no `creatureId` back-reference
+(e.g. legacy seeded creatures, or anything spawned before the
+compendium was wired up).
+-}
+viewQuickViewButton : Creature -> Html Msg
+viewQuickViewButton creature =
+    case creature.creatureId of
+        Just id ->
+            button
+                [ class "icon-btn"
+                , onClick (CompendiumQuickViewOpen id)
+                , title "Quick view of source stat block"
+                , attribute "aria-label" "Quick view"
+                ]
+                [ text "🔍" ]
+
+        Nothing ->
+            button
+                [ class "icon-btn icon-btn--disabled"
+                , disabled True
+                , title "No compendium link — add this creature from the compendium for Quick View"
+                , attribute "aria-label" "Quick view (unavailable)"
+                ]
+                [ text "🔍" ]
 
 
 viewCardRowTop : Creature -> Html Msg
@@ -5826,3 +7668,1280 @@ viewRingerAudio model =
 
     else
         text ""
+
+
+
+-- COMPENDIUM BROWSER MODAL
+
+
+{-| Read-only browser for the creature library. Two-column layout:
+filterable + sortable list on the left, full stat block on the
+right. Phase 4 will add the "Add to Encounter" handoff in the
+right pane's action bar; for now this is browse-only.
+-}
+viewCompendiumModal : CompendiumUi -> Html Msg
+viewCompendiumModal ui =
+    if not ui.open then
+        text ""
+
+    else
+        View.Modal.view
+            { close = CompendiumClose
+            , noOp = NoOp
+            , title = "📚 Compendium"
+            , extraClass = "modal--compendium"
+            , body =
+                [ viewCompendiumFilterBar ui
+                , viewCompendiumBulkBanner ui
+                , viewCompendiumBody ui
+                ]
+            }
+
+
+viewCompendiumBulkBanner : CompendiumUi -> Html Msg
+viewCompendiumBulkBanner ui =
+    case ( ui.pending, ui.bulkError ) of
+        ( Just PendingReset, _ ) ->
+            viewConfirmBanner
+                { message =
+                    "Reset to bundled? Every custom creature will be discarded "
+                        ++ "and the library returned to the original 5 creatures."
+                , confirmLabel = "Reset"
+                , danger = True
+                , busy = ui.bulkBusy
+                }
+
+        ( Just (PendingImport _ count), _ ) ->
+            viewConfirmBanner
+                { message =
+                    "Import "
+                        ++ String.fromInt count
+                        ++ " creatures? This REPLACES the entire current library."
+                , confirmLabel = "Replace library"
+                , danger = True
+                , busy = ui.bulkBusy
+                }
+
+        ( Nothing, Just err ) ->
+            div [ class "compendium__bulk-error" ] [ text err ]
+
+        ( Nothing, Nothing ) ->
+            text ""
+
+
+viewConfirmBanner :
+    { message : String, confirmLabel : String, danger : Bool, busy : Bool }
+    -> Html Msg
+viewConfirmBanner cfg =
+    div [ class "compendium__bulk-confirm" ]
+        [ span [ class "compendium__bulk-confirm-msg" ] [ text cfg.message ]
+        , button
+            [ class "action-btn action-btn--blue"
+            , onClick CompendiumPendingCancel
+            , disabled cfg.busy
+            ]
+            [ text "Cancel" ]
+        , button
+            [ class
+                (if cfg.danger then
+                    "action-btn action-btn--red"
+
+                 else
+                    "action-btn action-btn--green"
+                )
+            , onClick CompendiumPendingConfirm
+            , disabled cfg.busy
+            ]
+            [ text
+                (if cfg.busy then
+                    "Working…"
+
+                 else
+                    cfg.confirmLabel
+                )
+            ]
+        ]
+
+
+viewCompendiumFilterBar : CompendiumUi -> Html Msg
+viewCompendiumFilterBar ui =
+    div [ class "compendium__filter-bar" ]
+        [ input
+            [ class "compendium__search"
+            , id compendiumSearchId
+            , type_ "search"
+            , placeholder "🔍 Search by name, race, source, CR… (press / to focus)"
+            , value ui.searchText
+            , onInput CompendiumSearchChanged
+            , attribute "aria-label" "Search compendium"
+            ]
+            []
+        , div [ class "compendium__kind-filters" ]
+            (List.map (viewKindFilter ui.kindFilter)
+                [ Compendium.Player, Compendium.Enemy, Compendium.Npc ]
+            )
+        , viewCompendiumSortPicker ui.sort
+        , viewCompendiumNewButton
+        , viewCompendiumPasteButton
+        , viewCompendiumBulkButtons
+        ]
+
+
+viewKindFilter : Set String -> Compendium.CreatureKind -> Html Msg
+viewKindFilter active kind =
+    let
+        key =
+            kindToString kind
+
+        isActive =
+            -- An empty filter set means "show all kinds"; the chip
+            -- appears active in that case so the GM sees the default
+            -- isn't filtering anything out.
+            Set.isEmpty active || Set.member key active
+    in
+    button
+        [ class
+            ("compendium__kind-filter"
+                ++ (if isActive then
+                        " compendium__kind-filter--active"
+
+                    else
+                        ""
+                   )
+            )
+        , onClick (CompendiumKindToggled kind)
+        , attribute "aria-pressed"
+            (if isActive then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text (creatureKindLabel kind) ]
+
+
+viewCompendiumSortPicker : CompendiumSort -> Html Msg
+viewCompendiumSortPicker current =
+    let
+        opt sort label =
+            option
+                [ value (sortToString sort)
+                , selected (sort == current)
+                ]
+                [ text label ]
+    in
+    Html.select
+        [ class "compendium__sort"
+        , onInput sortFromInput
+        , attribute "aria-label" "Sort compendium"
+        ]
+        [ opt SortName "A–Z"
+        , opt SortCr "By CR"
+        , opt SortRecency "Newest first"
+        ]
+
+
+sortToString : CompendiumSort -> String
+sortToString s =
+    case s of
+        SortName ->
+            "name"
+
+        SortCr ->
+            "cr"
+
+        SortRecency ->
+            "recency"
+
+
+sortFromInput : String -> Msg
+sortFromInput raw =
+    case raw of
+        "cr" ->
+            CompendiumSortChanged SortCr
+
+        "recency" ->
+            CompendiumSortChanged SortRecency
+
+        _ ->
+            CompendiumSortChanged SortName
+
+
+viewCompendiumBody : CompendiumUi -> Html Msg
+viewCompendiumBody ui =
+    case ui.db of
+        CompendiumDbLoading ->
+            viewCompendiumSkeleton
+
+        CompendiumDbFailed _ ->
+            div [ class "compendium__placeholder compendium__placeholder--error" ]
+                [ text "Couldn't load the compendium. Check the server logs." ]
+
+        CompendiumDbLoaded _ ->
+            viewCompendiumTwoColumn ui
+
+
+viewCompendiumSkeleton : Html Msg
+viewCompendiumSkeleton =
+    div [ class "compendium__columns" ]
+        [ div [ class "compendium__list" ]
+            (List.repeat 8 viewSkeletonRow)
+        , div [ class "compendium__detail compendium__detail--skeleton" ]
+            [ div [ class "skeleton-block skeleton-block--title" ] []
+            , div [ class "skeleton-block" ] []
+            , div [ class "skeleton-block" ] []
+            , div [ class "skeleton-block skeleton-block--short" ] []
+            ]
+        ]
+
+
+viewSkeletonRow : Html Msg
+viewSkeletonRow =
+    div [ class "compendium__row compendium__row--skeleton" ]
+        [ div [ class "skeleton-block skeleton-block--title" ] []
+        , div [ class "skeleton-block skeleton-block--short" ] []
+        ]
+
+
+viewCompendiumTwoColumn : CompendiumUi -> Html Msg
+viewCompendiumTwoColumn ui =
+    let
+        visible =
+            compendiumVisible ui
+
+        totalCount =
+            case ui.db of
+                CompendiumDbLoaded db ->
+                    Compendium.count db
+
+                _ ->
+                    0
+    in
+    div [ class "compendium__columns" ]
+        [ viewCompendiumList ui totalCount visible
+        , viewCompendiumDetail ui visible
+        ]
+
+
+viewCompendiumList : CompendiumUi -> Int -> List Compendium.Creature -> Html Msg
+viewCompendiumList ui totalCount visible =
+    if List.isEmpty visible then
+        if totalCount == 0 then
+            div [ class "compendium__list compendium__list--empty" ]
+                [ p [] [ text "Your compendium is empty." ]
+                , p [ class "compendium__empty-hint" ]
+                    [ text "Try "
+                    , button
+                        [ class "compendium__empty-link"
+                        , onClick CompendiumEditNew
+                        ]
+                        [ text "creating one" ]
+                    , text ", "
+                    , button
+                        [ class "compendium__empty-link"
+                        , onClick CompendiumPasteOpen
+                        ]
+                        [ text "pasting a stat block" ]
+                    , text ", or "
+                    , button
+                        [ class "compendium__empty-link"
+                        , onClick CompendiumImportClick
+                        ]
+                        [ text "importing a JSON file" ]
+                    , text "."
+                    ]
+                ]
+
+        else
+            div [ class "compendium__list compendium__list--empty" ]
+                [ p [] [ text "No creatures match the current filters." ]
+                , p [ class "compendium__empty-hint" ]
+                    [ text (String.fromInt totalCount ++ " creatures hidden — try clearing the search or kind filters.") ]
+                ]
+
+    else
+        div [ class "compendium__list" ]
+            (List.map (viewCompendiumListItem ui.selectedId) visible)
+
+
+viewCompendiumListItem : Maybe String -> Compendium.Creature -> Html Msg
+viewCompendiumListItem selectedId c =
+    let
+        isSelected =
+            selectedId == Just c.id
+
+        rowClass =
+            "compendium__row"
+                ++ (if isSelected then
+                        " compendium__row--selected"
+
+                    else
+                        ""
+                   )
+                ++ (" compendium__row--" ++ kindToString c.kind)
+    in
+    button
+        [ class rowClass
+        , onClick (CompendiumSelect c.id)
+        , attribute "aria-pressed"
+            (if isSelected then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ span [ class "compendium__row-name" ] [ text c.name ]
+        , span [ class "compendium__row-meta" ]
+            [ text (rowMetaLine c) ]
+        ]
+
+
+rowMetaLine : Compendium.Creature -> String
+rowMetaLine c =
+    let
+        bits =
+            List.filter (not << String.isEmpty)
+                [ creatureKindLabel c.kind
+                , c.race
+                , "AC " ++ String.fromInt c.armorClass
+                , "HP " ++ String.fromInt c.maxHp
+                , crLabel c.challengeRating
+                ]
+    in
+    String.join " · " bits
+
+
+crLabel : String -> String
+crLabel cr =
+    if String.isEmpty cr then
+        ""
+
+    else
+        "CR " ++ cr
+
+
+viewCompendiumDetail : CompendiumUi -> List Compendium.Creature -> Html Msg
+viewCompendiumDetail ui visible =
+    let
+        chosen =
+            ui.selectedId
+                |> Maybe.andThen (\id -> List.filter (\c -> c.id == id) visible |> List.head)
+    in
+    case chosen of
+        Just creature ->
+            div [ class "compendium__detail" ]
+                [ viewCompendiumActionBar ui creature
+                , View.StatBlock.view RollFromStatBlock creature
+                ]
+
+        Nothing ->
+            div [ class "compendium__detail compendium__detail--empty" ]
+                [ text "Select a creature on the left to see its stat block." ]
+
+
+viewCompendiumActionBar : CompendiumUi -> Compendium.Creature -> Html Msg
+viewCompendiumActionBar ui creature =
+    div [ class "compendium__action-bar" ]
+        [ label [ class "compendium__count-label" ]
+            [ text "Count "
+            , input
+                [ class "compendium__count"
+                , type_ "number"
+                , Html.Attributes.min "1"
+                , Html.Attributes.max (String.fromInt maxAddCount)
+                , value ui.addCountText
+                , onInput CompendiumAddCountChanged
+                , attribute "aria-label" "Number of copies to add"
+                ]
+                []
+            ]
+        , button
+            [ class "action-btn action-btn--green compendium__add-btn"
+            , onClick (CompendiumAddToQueue creature.id)
+            , title "Roll initiative and add to the encounter queue"
+            ]
+            [ text ("➕ Add to Encounter (" ++ String.fromInt ui.addCount ++ ")") ]
+        , button
+            [ class "action-btn action-btn--blue compendium__edit-btn"
+            , onClick CompendiumEditExisting
+            , title "Edit this creature"
+            ]
+            [ text "✏️ Edit" ]
+        , button
+            [ class "action-btn action-btn--blue compendium__edit-btn"
+            , onClick CompendiumEditDuplicate
+            , title "Duplicate this creature in the compendium"
+            ]
+            [ text "📋 Duplicate" ]
+        ]
+
+
+viewCompendiumNewButton : Html Msg
+viewCompendiumNewButton =
+    button
+        [ class "action-btn action-btn--green compendium__new-btn"
+        , onClick CompendiumEditNew
+        , title "Create a new creature from scratch"
+        ]
+        [ text "➕ New Creature" ]
+
+
+viewCompendiumPasteButton : Html Msg
+viewCompendiumPasteButton =
+    button
+        [ class "action-btn action-btn--blue"
+        , onClick CompendiumPasteOpen
+        , title "Paste a 5e stat block to import"
+        ]
+        [ text "📋 Paste Stat Block" ]
+
+
+{-| Cluster of bulk operations on the right edge of the filter
+bar: Import / Export / Reset to Bundled. Export is a plain anchor
+with `download` so the browser handles it natively (no Cmd needed).
+Import + Reset both go through the destructive-confirm banner
+before firing.
+-}
+viewCompendiumBulkButtons : Html Msg
+viewCompendiumBulkButtons =
+    div [ class "compendium__bulk-cluster" ]
+        [ button
+            [ class "action-btn action-btn--blue"
+            , onClick CompendiumImportClick
+            , title "Import a creature library JSON file (replaces the current library)"
+            ]
+            [ text "📥 Import" ]
+        , a
+            [ class "action-btn action-btn--blue"
+            , href "/api/compendium/export"
+            , attribute "download" "compendium.json"
+            , title "Download the entire library as JSON"
+            ]
+            [ text "📤 Export" ]
+        , button
+            [ class "action-btn action-btn--red"
+            , onClick CompendiumResetClick
+            , title "Reset the library to the bundled creature set"
+            ]
+            [ text "↺ Reset" ]
+        ]
+
+
+
+-- COMPENDIUM EDIT / CREATE MODAL
+
+
+viewCompendiumEditModal : Maybe CompendiumEditUi -> Html Msg
+viewCompendiumEditModal maybeUi =
+    case maybeUi of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            View.Modal.view
+                { close = CompendiumEditCancel
+                , noOp = NoOp
+                , title = editModalTitle ui
+                , extraClass = "modal--compendium-edit"
+                , body =
+                    [ viewEditError ui
+                    , viewEditSection "Identity"
+                        [ inlineRow
+                            [ textField "Name" CFName ui.name [ attribute "required" "true" ]
+                            , kindRadio ui.kind
+                            ]
+                        , inlineRow
+                            [ sizeDropdown ui.size
+                            , textField "Race" CFRace ui.race []
+                            , textField "Subrace" CFSubrace ui.subrace []
+                            ]
+                        , inlineRow
+                            [ textField "Alignment" CFAlignment ui.alignment []
+                            , textField "Source" CFSource ui.source []
+                            ]
+                        , textareaField "Description (short blurb)" CFDescription ui.description 2
+                        ]
+                    , viewEditSection "Combat Core"
+                        [ inlineRow
+                            [ numberField "AC" CFArmorClass ui.armorClass [ attribute "required" "true" ]
+                            , textField "AC Note" CFArmorClassNote ui.armorClassNote []
+                            , numberField "Max HP" CFMaxHp ui.maxHp [ attribute "required" "true" ]
+                            , textField "HP Formula" CFHpFormula ui.hpFormula []
+                            , numberField "Init Bonus" CFInitiativeBonus ui.initiativeBonus []
+                            ]
+                        , inlineRow
+                            [ numberField "Walk" CFSpeedWalk ui.speedWalk []
+                            , numberField "Fly" CFSpeedFly ui.speedFly []
+                            , numberField "Swim" CFSpeedSwim ui.speedSwim []
+                            , numberField "Climb" CFSpeedClimb ui.speedClimb []
+                            , numberField "Burrow" CFSpeedBurrow ui.speedBurrow []
+                            , hoverToggle ui.speedHover
+                            ]
+                        ]
+                    , viewEditSection "Abilities"
+                        [ inlineRow
+                            [ abilityField "STR" CFAbilityStr ui.abilityStr
+                            , abilityField "DEX" CFAbilityDex ui.abilityDex
+                            , abilityField "CON" CFAbilityCon ui.abilityCon
+                            , abilityField "INT" CFAbilityInt ui.abilityInt
+                            , abilityField "WIS" CFAbilityWis ui.abilityWis
+                            , abilityField "CHA" CFAbilityCha ui.abilityCha
+                            ]
+                        ]
+                    , viewEditSection "Saving Throws"
+                        (viewSavingThrowsEditor ui.savingThrows)
+                    , viewEditSection "Skills"
+                        (viewSkillsEditor ui.skills)
+                    , viewEditSection "Properties"
+                        [ textField "Damage Vulnerabilities (comma-separated)" CFDamageVulnerabilities ui.damageVulnerabilities []
+                        , textField "Damage Resistances" CFDamageResistances ui.damageResistances []
+                        , textField "Damage Immunities" CFDamageImmunities ui.damageImmunities []
+                        , textField "Condition Immunities" CFConditionImmunities ui.conditionImmunities []
+                        , textField "Languages" CFLanguages ui.languages []
+                        , inlineRow
+                            [ textField "Challenge Rating" CFChallengeRating ui.challengeRating []
+                            , numberField "XP" CFXp ui.xp []
+                            , numberField "Proficiency Bonus" CFProficiencyBonus ui.proficiencyBonus []
+                            ]
+                        ]
+                    , viewEditSection "Senses"
+                        [ inlineRow
+                            [ numberField "Blindsight" CFSensesBlindsight ui.sensesBlindsight []
+                            , numberField "Darkvision" CFSensesDarkvision ui.sensesDarkvision []
+                            , numberField "Tremorsense" CFSensesTremorsense ui.sensesTremorsense []
+                            , numberField "Truesight" CFSensesTruesight ui.sensesTruesight []
+                            , numberField "Passive Perception" CFSensesPassivePerception ui.sensesPassivePerception []
+                            ]
+                        ]
+                    , viewEditSection "Traits"
+                        (viewFeaturesEditor TraitsGroup ui.traits)
+                    , viewEditSection "Actions"
+                        (viewFeaturesEditor ActionsGroup ui.actions)
+                    , viewEditSection "Bonus Actions"
+                        (viewFeaturesEditor BonusActionsGroup ui.bonusActions)
+                    , viewEditSection "Reactions"
+                        (viewFeaturesEditor ReactionsGroup ui.reactions)
+                    , viewEditSection "Custom Sections"
+                        (viewCustomSectionsEditor ui.customSections)
+                    , viewAdvancedSectionsNotice ui
+                    , viewEditFooter ui
+                    ]
+                }
+
+
+editModalTitle : CompendiumEditUi -> String
+editModalTitle ui =
+    case ui.mode of
+        CreateMode ->
+            "📚 New Creature"
+
+        EditExisting _ ->
+            "📚 Edit Creature"
+
+
+viewEditError : CompendiumEditUi -> Html Msg
+viewEditError ui =
+    case ui.submitError of
+        Nothing ->
+            text ""
+
+        Just msg ->
+            div [ class "edit-error" ] [ text msg ]
+
+
+viewEditSection : String -> List (Html Msg) -> Html Msg
+viewEditSection heading children =
+    Html.fieldset [ class "edit-section" ]
+        (Html.legend [] [ text heading ] :: children)
+
+
+inlineRow : List (Html Msg) -> Html Msg
+inlineRow children =
+    div [ class "edit-row" ] children
+
+
+textField : String -> CompendiumField -> String -> List (Html.Attribute Msg) -> Html Msg
+textField labelText field current extras =
+    label [ class "edit-field" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            ([ type_ "text"
+             , value current
+             , onInput (CompendiumEditFieldChanged field)
+             , class "edit-field__input"
+             ]
+                ++ extras
+            )
+            []
+        ]
+
+
+numberField : String -> CompendiumField -> String -> List (Html.Attribute Msg) -> Html Msg
+numberField labelText field current extras =
+    label [ class "edit-field edit-field--number" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            ([ type_ "number"
+             , value current
+             , onInput (CompendiumEditFieldChanged field)
+             , class "edit-field__input"
+             ]
+                ++ extras
+            )
+            []
+        ]
+
+
+textareaField : String -> CompendiumField -> String -> Int -> Html Msg
+textareaField labelText field current rows =
+    label [ class "edit-field edit-field--textarea" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , Html.textarea
+            [ value current
+            , onInput (CompendiumEditFieldChanged field)
+            , class "edit-field__input"
+            , attribute "rows" (String.fromInt rows)
+            ]
+            []
+        ]
+
+
+abilityField : String -> CompendiumField -> String -> Html Msg
+abilityField labelText field current =
+    let
+        score =
+            String.toInt current |> Maybe.withDefault 10
+
+        modValue =
+            (score - 10) // 2
+    in
+    label [ class "edit-field edit-field--ability" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            [ type_ "number"
+            , value current
+            , onInput (CompendiumEditFieldChanged field)
+            , class "edit-field__input"
+            ]
+            []
+        , span [ class "edit-field__hint" ] [ text ("(" ++ signedInt modValue ++ ")") ]
+        ]
+
+
+signedInt : Int -> String
+signedInt n =
+    if n >= 0 then
+        "+" ++ String.fromInt n
+
+    else
+        String.fromInt n
+
+
+kindRadio : Compendium.CreatureKind -> Html Msg
+kindRadio current =
+    let
+        opt kind label_ =
+            label [ class "edit-radio" ]
+                [ input
+                    [ type_ "radio"
+                    , name "edit-kind"
+                    , checked (kind == current)
+                    , onClick (CompendiumEditKindSet kind)
+                    ]
+                    []
+                , text label_
+                ]
+    in
+    div [ class "edit-field edit-field--radio-group" ]
+        [ span [ class "edit-field__label" ] [ text "Kind" ]
+        , div [ class "edit-radio-row" ]
+            [ opt Compendium.Player "Player"
+            , opt Compendium.Enemy "Enemy"
+            , opt Compendium.Npc "NPC"
+            ]
+        ]
+
+
+sizeDropdown : Compendium.Size -> Html Msg
+sizeDropdown current =
+    let
+        sizes =
+            [ ( Compendium.Tiny, "Tiny" )
+            , ( Compendium.Small, "Small" )
+            , ( Compendium.Medium, "Medium" )
+            , ( Compendium.Large, "Large" )
+            , ( Compendium.Huge, "Huge" )
+            , ( Compendium.Gargantuan, "Gargantuan" )
+            ]
+    in
+    label [ class "edit-field" ]
+        [ span [ class "edit-field__label" ] [ text "Size" ]
+        , Html.select
+            [ class "edit-field__input"
+            , onInput sizeFromString
+            ]
+            (List.map
+                (\( size, label_ ) ->
+                    option
+                        [ value (sizeKey size)
+                        , selected (size == current)
+                        ]
+                        [ text label_ ]
+                )
+                sizes
+            )
+        ]
+
+
+sizeKey : Compendium.Size -> String
+sizeKey s =
+    case s of
+        Compendium.Tiny ->
+            "tiny"
+
+        Compendium.Small ->
+            "small"
+
+        Compendium.Medium ->
+            "medium"
+
+        Compendium.Large ->
+            "large"
+
+        Compendium.Huge ->
+            "huge"
+
+        Compendium.Gargantuan ->
+            "gargantuan"
+
+
+sizeFromString : String -> Msg
+sizeFromString raw =
+    let
+        size =
+            case raw of
+                "tiny" ->
+                    Compendium.Tiny
+
+                "small" ->
+                    Compendium.Small
+
+                "large" ->
+                    Compendium.Large
+
+                "huge" ->
+                    Compendium.Huge
+
+                "gargantuan" ->
+                    Compendium.Gargantuan
+
+                _ ->
+                    Compendium.Medium
+    in
+    CompendiumEditSizeSet size
+
+
+hoverToggle : Bool -> Html Msg
+hoverToggle current =
+    label [ class "edit-field edit-field--checkbox" ]
+        [ input
+            [ type_ "checkbox"
+            , checked current
+            , onClick CompendiumEditSpeedHoverToggle
+            ]
+            []
+        , text "hover"
+        ]
+
+
+viewSavingThrowsEditor : List ( Compendium.Ability, String ) -> List (Html Msg)
+viewSavingThrowsEditor rows =
+    List.indexedMap viewSavingThrowRow rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditSavingThrowAdd
+                ]
+                [ text "+ Add Save" ]
+           ]
+
+
+viewSavingThrowRow : Int -> ( Compendium.Ability, String ) -> Html Msg
+viewSavingThrowRow idx ( ability, bonus ) =
+    div [ class "edit-row edit-row--list-item" ]
+        [ Html.select
+            [ class "edit-field__input edit-field--narrow"
+            , onInput (abilityFromString >> CompendiumEditSavingThrowAbilitySet idx)
+            ]
+            (List.map
+                (\a ->
+                    option
+                        [ value (abilityKey a)
+                        , selected (a == ability)
+                        ]
+                        [ text (abilityShort a) ]
+                )
+                [ Compendium.Str
+                , Compendium.Dex
+                , Compendium.Con
+                , Compendium.Int_
+                , Compendium.Wis
+                , Compendium.Cha
+                ]
+            )
+        , input
+            [ type_ "number"
+            , value bonus
+            , onInput (CompendiumEditSavingThrowBonusChanged idx)
+            , class "edit-field__input edit-field--narrow"
+            , attribute "aria-label" "Bonus"
+            ]
+            []
+        , button
+            [ class "edit-row__remove"
+            , onClick (CompendiumEditSavingThrowRemove idx)
+            , title "Remove this save"
+            ]
+            [ text "×" ]
+        ]
+
+
+abilityKey : Compendium.Ability -> String
+abilityKey a =
+    case a of
+        Compendium.Str ->
+            "str"
+
+        Compendium.Dex ->
+            "dex"
+
+        Compendium.Con ->
+            "con"
+
+        Compendium.Int_ ->
+            "int"
+
+        Compendium.Wis ->
+            "wis"
+
+        Compendium.Cha ->
+            "cha"
+
+
+abilityFromString : String -> Compendium.Ability
+abilityFromString raw =
+    case raw of
+        "dex" ->
+            Compendium.Dex
+
+        "con" ->
+            Compendium.Con
+
+        "int" ->
+            Compendium.Int_
+
+        "wis" ->
+            Compendium.Wis
+
+        "cha" ->
+            Compendium.Cha
+
+        _ ->
+            Compendium.Str
+
+
+abilityShort : Compendium.Ability -> String
+abilityShort a =
+    case a of
+        Compendium.Str ->
+            "STR"
+
+        Compendium.Dex ->
+            "DEX"
+
+        Compendium.Con ->
+            "CON"
+
+        Compendium.Int_ ->
+            "INT"
+
+        Compendium.Wis ->
+            "WIS"
+
+        Compendium.Cha ->
+            "CHA"
+
+
+viewSkillsEditor : List ( String, String ) -> List (Html Msg)
+viewSkillsEditor rows =
+    List.indexedMap viewSkillRow rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditSkillAdd
+                ]
+                [ text "+ Add Skill" ]
+           ]
+
+
+viewSkillRow : Int -> ( String, String ) -> Html Msg
+viewSkillRow idx ( name, bonus ) =
+    div [ class "edit-row edit-row--list-item" ]
+        [ input
+            [ type_ "text"
+            , value name
+            , placeholder "Skill name (e.g. Perception)"
+            , onInput (CompendiumEditSkillNameChanged idx)
+            , class "edit-field__input"
+            ]
+            []
+        , input
+            [ type_ "number"
+            , value bonus
+            , onInput (CompendiumEditSkillBonusChanged idx)
+            , class "edit-field__input edit-field--narrow"
+            , attribute "aria-label" "Bonus"
+            ]
+            []
+        , button
+            [ class "edit-row__remove"
+            , onClick (CompendiumEditSkillRemove idx)
+            , title "Remove this skill"
+            ]
+            [ text "×" ]
+        ]
+
+
+viewFeaturesEditor : FeatureGroup -> List FeatureDraft -> List (Html Msg)
+viewFeaturesEditor group rows =
+    List.indexedMap (viewFeatureRow group) rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick (CompendiumEditFeatureAdd group)
+                ]
+                [ text "+ Add Entry" ]
+           ]
+
+
+viewFeatureRow : FeatureGroup -> Int -> FeatureDraft -> Html Msg
+viewFeatureRow group idx draft =
+    div [ class "edit-feature" ]
+        [ div [ class "edit-row edit-row--list-item" ]
+            [ input
+                [ type_ "text"
+                , value draft.name
+                , placeholder "Name (e.g. Multiattack)"
+                , onInput (CompendiumEditFeatureNameChanged group idx)
+                , class "edit-field__input"
+                ]
+                []
+            , button
+                [ class "edit-row__remove"
+                , onClick (CompendiumEditFeatureRemove group idx)
+                , title "Remove this entry"
+                ]
+                [ text "×" ]
+            ]
+        , Html.textarea
+            [ value draft.description
+            , onInput (CompendiumEditFeatureDescriptionChanged group idx)
+            , class "edit-field__input"
+            , attribute "rows" "3"
+            , placeholder "Description (free text; inline dice notation like 1d8+3 becomes clickable)"
+            ]
+            []
+        ]
+
+
+viewCustomSectionsEditor : List ( String, String ) -> List (Html Msg)
+viewCustomSectionsEditor rows =
+    List.indexedMap viewCustomSectionRow rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditCustomSectionAdd
+                ]
+                [ text "+ Add Section" ]
+           ]
+
+
+viewCustomSectionRow : Int -> ( String, String ) -> Html Msg
+viewCustomSectionRow idx ( name, body ) =
+    div [ class "edit-feature" ]
+        [ div [ class "edit-row edit-row--list-item" ]
+            [ input
+                [ type_ "text"
+                , value name
+                , placeholder "Section heading"
+                , onInput (CompendiumEditCustomSectionNameChanged idx)
+                , class "edit-field__input"
+                ]
+                []
+            , button
+                [ class "edit-row__remove"
+                , onClick (CompendiumEditCustomSectionRemove idx)
+                , title "Remove this section"
+                ]
+                [ text "×" ]
+            ]
+        , Html.textarea
+            [ value body
+            , onInput (CompendiumEditCustomSectionBodyChanged idx)
+            , class "edit-field__input"
+            , attribute "rows" "3"
+            ]
+            []
+        ]
+
+
+{-| Heads-up: the four advanced sections (legendary / lair /
+regional / spellcasting) aren't editable in this MVP form yet.
+If the source creature had any populated, they're preserved
+verbatim through submit; if you're starting from scratch they
+just stay empty.
+-}
+viewAdvancedSectionsNotice : CompendiumEditUi -> Html Msg
+viewAdvancedSectionsNotice ui =
+    let
+        hasAny =
+            ui.legendaryActions
+                /= Nothing
+                || ui.lairActions
+                /= Nothing
+                || ui.regionalEffects
+                /= Nothing
+                || ui.spellcasting
+                /= Nothing
+    in
+    if hasAny then
+        div [ class "edit-advanced-notice" ]
+            [ text "Note: this creature has Legendary / Lair / Regional / Spellcasting data that this form doesn't yet edit. Those sections will be preserved on save." ]
+
+    else
+        text ""
+
+
+viewEditFooter : CompendiumEditUi -> Html Msg
+viewEditFooter ui =
+    div [ class "edit-footer" ]
+        [ if isEditingExisting ui then
+            button
+                [ class "action-btn action-btn--red"
+                , onClick CompendiumEditDelete
+                , disabled ui.submitting
+                , title "Delete this creature from the compendium"
+                ]
+                [ text "🗑 Delete" ]
+
+          else
+            text ""
+        , div [ class "edit-footer__spacer" ] []
+        , button
+            [ class "action-btn action-btn--blue"
+            , onClick CompendiumEditCancel
+            , disabled ui.submitting
+            ]
+            [ text "Cancel" ]
+        , button
+            [ class "action-btn action-btn--green"
+            , onClick CompendiumEditSubmit
+            , disabled ui.submitting
+            ]
+            [ text
+                (if ui.submitting then
+                    "Saving…"
+
+                 else
+                    submitLabel ui.mode
+                )
+            ]
+        ]
+
+
+submitLabel : EditMode -> String
+submitLabel mode =
+    case mode of
+        CreateMode ->
+            "Create"
+
+        EditExisting _ ->
+            "Save"
+
+
+isEditingExisting : CompendiumEditUi -> Bool
+isEditingExisting ui =
+    case ui.mode of
+        CreateMode ->
+            False
+
+        EditExisting _ ->
+            True
+
+
+
+-- COMPENDIUM PASTE / PARSE MODAL
+
+
+viewCompendiumPasteModal : Maybe CompendiumPasteUi -> Html Msg
+viewCompendiumPasteModal maybeUi =
+    case maybeUi of
+        Nothing ->
+            text ""
+
+        Just ui ->
+            View.Modal.view
+                { close = CompendiumPasteCancel
+                , noOp = NoOp
+                , title = "📋 Paste Stat Block"
+                , extraClass = "modal--compendium-paste"
+                , body =
+                    [ div [ class "paste-modal__columns" ]
+                        [ viewPasteInput ui
+                        , viewPastePreview ui
+                        ]
+                    , viewPasteFooter ui
+                    ]
+                }
+
+
+viewPasteInput : CompendiumPasteUi -> Html Msg
+viewPasteInput ui =
+    div [ class "paste-modal__input-col" ]
+        [ div [ class "paste-modal__hint" ]
+            [ text "Paste a 5e stat block here. Lines like \"Armor Class 15 (leather armor, shield)\" and \"STR 8 (-1) DEX 14 (+2) …\" parse automatically." ]
+        , Html.textarea
+            [ class "paste-modal__textarea"
+            , value ui.text
+            , onInput CompendiumPasteTextChanged
+            , placeholder "Goblin\nSmall humanoid (goblinoid), neutral evil\nArmor Class 15 (leather armor, shield)\nHit Points 7 (2d6)\nSpeed 30 ft.\nSTR 8 (-1) DEX 14 (+2) CON 10 (+0) INT 10 (+0) WIS 8 (-1) CHA 8 (-1)\n…"
+            , attribute "rows" "20"
+            , attribute "spellcheck" "false"
+            ]
+            []
+        ]
+
+
+viewPastePreview : CompendiumPasteUi -> Html Msg
+viewPastePreview ui =
+    div [ class "paste-modal__preview-col" ]
+        [ div [ class "paste-modal__preview-heading" ] [ text "Live preview" ]
+        , case ui.parseResult of
+            Ok creature ->
+                div [ class "paste-modal__preview" ]
+                    [ View.StatBlock.view RollFromStatBlock creature ]
+
+            Err err ->
+                div [ class "paste-modal__preview paste-modal__preview--error" ]
+                    [ text (parseErrorLabel err) ]
+        ]
+
+
+parseErrorLabel : Compendium.Parser.ParseError -> String
+parseErrorLabel err =
+    case err of
+        Compendium.Parser.EmptyInput ->
+            "Paste a stat block to see the live preview."
+
+        Compendium.Parser.MissingHeader ->
+            "Need at least two lines: a name and a type line (e.g. \"Small humanoid, neutral evil\")."
+
+
+{-| Top-of-screen toast stack. Each toast auto-dismisses after
+`toastDuration` ms via a `Process.sleep` Cmd; the GM can also
+click × to dismiss early. Renders nothing when the list is
+empty.
+-}
+viewToasts : List Toast -> Html Msg
+viewToasts toasts =
+    if List.isEmpty toasts then
+        text ""
+
+    else
+        div [ class "toast-stack" ] (List.map viewToast toasts)
+
+
+viewToast : Toast -> Html Msg
+viewToast toast =
+    let
+        toastClass =
+            case toast.kind of
+                ToastSuccess ->
+                    "toast toast--success"
+
+                ToastError ->
+                    "toast toast--error"
+
+        icon =
+            case toast.kind of
+                ToastSuccess ->
+                    "✓"
+
+                ToastError ->
+                    "⚠"
+    in
+    div [ class toastClass, attribute "role" "status" ]
+        [ span [ class "toast__icon" ] [ text icon ]
+        , span [ class "toast__msg" ] [ text toast.message ]
+        , button
+            [ class "toast__dismiss"
+            , onClick (ToastDismiss toast.id)
+            , title "Dismiss"
+            , attribute "aria-label" "Dismiss notification"
+            ]
+            [ text "×" ]
+        ]
+
+
+{-| Read-only Quick View popup: opens against a compendium
+creature id (looked up at open time) and renders just the stat
+block plus a Close button. Re-uses `View.StatBlock.view` so the
+display is identical to the browser modal's right pane.
+-}
+viewCompendiumQuickViewModal : Maybe Compendium.Creature -> Html Msg
+viewCompendiumQuickViewModal maybeCreature =
+    case maybeCreature of
+        Nothing ->
+            text ""
+
+        Just creature ->
+            View.Modal.view
+                { close = CompendiumQuickViewClose
+                , noOp = NoOp
+                , title = "🔍 " ++ creature.name
+                , extraClass = "modal--quick-view"
+                , body =
+                    [ View.StatBlock.view RollFromStatBlock creature ]
+                }
+
+
+viewPasteFooter : CompendiumPasteUi -> Html Msg
+viewPasteFooter ui =
+    let
+        isOk =
+            case ui.parseResult of
+                Ok _ ->
+                    True
+
+                Err _ ->
+                    False
+    in
+    div [ class "paste-modal__footer" ]
+        [ div [ class "paste-modal__footer-spacer" ] []
+        , button
+            [ class "action-btn action-btn--blue"
+            , onClick CompendiumPasteCancel
+            ]
+            [ text "Cancel" ]
+        , button
+            [ class "action-btn action-btn--green"
+            , onClick CompendiumPasteApply
+            , disabled (not isOk)
+            , title
+                (if isOk then
+                    "Open the edit modal pre-filled with the parsed data"
+
+                 else
+                    "Fix the parse errors first"
+                )
+            ]
+            [ text "Apply to Form" ]
+        ]

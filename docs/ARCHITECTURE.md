@@ -14,8 +14,9 @@ codebase is organized and the conventions you're expected to follow.
 ## Stack
 
 - **Backend** — Rust workspace with three crates: a CLI (`ezpz-dndz-cli`),
-  a server (`ezpz-dndz-server`, [axum](https://docs.rs/axum)), and a
-  shared lib (`ezpz-dndz-lib`).
+  a server (`ezpz-dndz-server`, [axum](https://docs.rs/axum) + `aide`
+  for OpenAPI), and a shared lib (`ezpz-dndz-lib`) holding the
+  `Creature` schema, `JsonFileStore<T>`, and logging primitives.
 - **Frontend** — Elm 0.19 SPA, served as static files by the Rust
   server. The server falls back to `index.html` for any unknown path
   so client-side routing keeps working.
@@ -29,32 +30,62 @@ codebase is organized and the conventions you're expected to follow.
 .
 ├── crates/
 │   ├── cli/      ezpz-dndz-cli (binary)
-│   ├── server/   ezpz-dndz-server (axum, hosts /api/dice/* + frontend)
-│   └── lib/      ezpz-dndz-lib (shared types, logging)
+│   ├── server/   ezpz-dndz-server
+│   │   └── src/
+│   │       ├── main.rs / lib.rs / web_base.rs   wiring + AppState
+│   │       ├── auth.rs                           OIDC scaffolding
+│   │       ├── config.rs                         CLI flags + env
+│   │       ├── dice.rs                           /api/dice/*
+│   │       ├── compendium/                       /api/compendium/*
+│   │       │   ├── mod.rs                        ApiRouter + handlers
+│   │       │   ├── store.rs                      CompendiumStore
+│   │       │   └── error.rs                      semantic errors
+│   │       ├── users/ encounters/ prefs/         Phase 7 stubs
+│   │       └── logging.rs / systemd.rs
+│   └── lib/      ezpz-dndz-lib
+│       └── src/
+│           ├── compendium/    Creature schema + CreatureDraft
+│           ├── json_file_store.rs   shared persistence pattern
+│           ├── cr_calc/       reserved (future encounter-difficulty)
+│           └── logging.rs
 ├── frontend/
 │   ├── src/
-│   │   ├── Main.elm        application shell + view code
-│   │   ├── Encounter.elm   encounter domain (types, rules, turn logic,
-│   │   │                   queue reorder, sort)
-│   │   ├── Dice.elm        dice-roller domain (parser, rolls, batch
-│   │   │                   rolls, history, stat-block scanner, JSON)
-│   │   └── HpChange.elm    HP-change engine (damage / heal / temp HP
-│   │                       arithmetic, manual setCurrentHp / setMaxHp)
+│   │   ├── Main.elm                  application shell + view code
+│   │   ├── Encounter.elm             encounter domain (types, rules,
+│   │   │                             turn logic, queue reorder, sort)
+│   │   ├── Encounter/
+│   │   │   ├── DeathSaves.elm        5e death-save tracker
+│   │   │   └── SaveNotice.elm        "Saved: <Condition>" notices
+│   │   ├── Dice.elm                  dice domain (parser, rolls, batch
+│   │   │                             rolls, history, stat-block scanner)
+│   │   ├── HpChange.elm              HP-change engine (damage / heal /
+│   │   │                             temp HP, setCurrentHp / setMaxHp)
+│   │   ├── Compendium.elm            creature library domain mirror
+│   │   ├── View/
+│   │   │   ├── Modal.elm             generic modal frame helper
+│   │   │   └── Chip.elm              pill / chip primitive
+│   │   └── Util/
+│   │       └── Keyboard.elm          enterKey / escKey decoders
+│   ├── tests/                        elm-test suites (DeathSaves, Dice,
+│   │                                 HpChange, …)
 │   └── public/
-│       ├── index.html      mounts Elm into #app
-│       ├── style.css       all styles, dual light/dark via vars
-│       └── elm.js          (gitignored, built by `elm make`)
+│       ├── index.html                mounts Elm into #app
+│       ├── style.css                 all styles, dual light/dark
+│       └── elm.js                    (gitignored, built by `elm make`)
 └── docs/
-    ├── ARCHITECTURE.md     this file
-    └── systemd.org         deployment notes
+    ├── ARCHITECTURE.md               this file
+    ├── ROADMAP.md                    upcoming work
+    ├── diagrams/data-model.{d2,svg}  bounded-context ER diagram
+    └── systemd.org                   deployment notes
 ```
 
 ## Layering: domain vs view
 
 > **The rule:** D&D rules logic lives in domain modules
-> (`Encounter.elm`, `Dice.elm`, `HpChange.elm`, …). UI code
-> (`Main.elm`, any future View modules) imports them and uses their
-> types and functions. Logic code never imports view code.
+> (`Encounter.elm`, `Dice.elm`, `HpChange.elm`, `Compendium.elm`,
+> and the `Encounter/` submodules). UI code (`Main.elm`, the
+> `View/` helpers, any future View modules) imports them and uses
+> their types and functions. Logic code never imports view code.
 
 The reason this matters now: we're going to ship multiple UI layouts
 (a "simple view" stripped of advanced controls, possibly a tablet
@@ -64,9 +95,10 @@ swapping layouts means rewriting rules — not acceptable.
 
 In practice this means:
 
-- `Encounter.elm`, `Dice.elm`, and `HpChange.elm` do not
-  `import Html`, `Browser`, `Url`, or any rendering primitive. The
-  compiler will tell you if you accidentally reach for one.
+- `Encounter.elm`, `Dice.elm`, `HpChange.elm`, `Compendium.elm`,
+  and the `Encounter/` submodules do not `import Html`, `Browser`,
+  `Url`, or any rendering primitive. The compiler will tell you
+  if you accidentally reach for one.
 - A `Msg` branch in `Main.elm`'s `update` should be a one-liner that
   delegates the rules-y work into `Encounter`. If the branch starts
   doing list walks, comparisons against initiative, or HP arithmetic
@@ -551,10 +583,14 @@ client. With OIDC unconfigured, the server runs unauthenticated and
 `/me` returns a stubbed `admin` user; that's the local-dev mode.
 
 **Persistence root.** Everything the server writes at runtime lives
-under `--data-dir` (default: cwd). Today that's only the dice
-history JSON (`<data_dir>/dice-history.json`); the planned SQLite
-database, saved encounters, and per-user uploads will all default
-to `<data_dir>/...` so a deployment only has to bind-mount one
+under `--data-dir` (default: cwd). Today that's the dice history
+JSON (`<data_dir>/dice-history.json`) and the compendium creature
+library (`<data_dir>/compendium/creatures.json`, bootstrapped on
+first launch from the bundled creatures embedded in the binary).
+Both paths are individually overridable (`--dice-history-path`,
+`--compendium-path`). The planned SQLite database, saved
+encounters, and per-user uploads will all default to
+`<data_dir>/...` so a deployment only has to bind-mount one
 directory. See [ROADMAP.md](ROADMAP.md) for the planned data model.
 
 **Service unit.** The systemd service expectations live in
@@ -569,18 +605,23 @@ the proxy publishes — that's what shows up in OIDC redirect URIs.
 ## Planned data model
 
 Sketch of the storage we expect to land as features ship; subject
-to change. Current implementation persists dice history only.
+to change. See [docs/diagrams/data-model.svg](diagrams/data-model.svg)
+for the bounded-context ER diagram.
 
-| Concern              | Today                        | Target                     |
-|----------------------|------------------------------|----------------------------|
-| User identity        | OIDC subject in session      | `users` table, OIDC subject as natural key |
-| Compendium creatures | hardcoded `Encounter.seedCreatures` (Elm) | `creatures` table with shared/private visibility |
-| Encounter saves      | none (in-memory only)        | `encounters` table, owner-scoped |
-| Dice history         | per-deployment JSON file     | `dice_rolls` table, optionally per-user |
+| Concern              | Today                                                      | Target                                                |
+|----------------------|------------------------------------------------------------|-------------------------------------------------------|
+| User identity        | OIDC subject in session                                    | `users` table, OIDC subject as natural key            |
+| Compendium creatures | `JsonFileStore<Vec<Creature>>`, bundled-bootstrap, REST CRUD | `creatures` table with shared/private visibility      |
+| Encounter saves      | none (in-memory only)                                      | `encounters` table, owner-scoped                      |
+| Dice history         | `JsonFileStore<History>`, single-slot                      | `dice_rolls` table, optionally per-user               |
+| User preferences     | none                                                       | `prefs` table or per-user JSON blob                   |
 
-The first feature that needs persistence beyond dice will likely
-introduce SQLite (rusqlite or sqlx). Until then, rolls live in JSON
-and the rest is in-Elm seed data.
+Compendium and dice history both ride the shared
+`JsonFileStore<T>` pattern (see above) so they share atomic-rename
+writes and corrupt-file recovery. The first feature whose access
+patterns outgrow whole-document JSON locking — most likely saved
+encounters or per-user dice scoping — will introduce SQLite
+(rusqlite or sqlx) and the JSON stores migrate one at a time.
 
 ## Run / build / test
 
@@ -608,6 +649,9 @@ just test     # all Rust tests + Elm compile check
 | A new creature for the seed encounter            | `Encounter.seedCreatures`                |
 | A new dice operator or notation form             | `Dice.elm` parser + (if shape changes) `encodeRoll` / `decodeRoll` |
 | A new HTTP route handled by the backend          | `crates/server/src/web_base.rs` (or a sibling module merged in) |
+| A new persistence-backed feature                 | wrap `JsonFileStore<MyType>` in a domain struct (mirror `dice::DiceStore` / `compendium::CompendiumStore`); thread the store through `AppState` |
+| A new field on the canonical `Creature` schema   | `crates/lib/src/compendium/types.rs` first; mirror in `frontend/src/Compendium.elm` encode/decode |
+| A new compendium route                           | `crates/server/src/compendium/mod.rs` `ApiRouter`; semantic error in `compendium/error.rs` if needed |
 | A new dev script (build / serve / package)       | `justfile`                               |
 | A multi-target action (apply to all selected)    | `applyToSelected : Bool` on the modal's UI record + a toggle Msg + a target-list helper folded over the engine call |
 | Roster mutation (add / remove / reshuffle)       | a pure helper in `Encounter.elm` (e.g. `removeCreature`, `duplicateCreature`); a `Msg` + one-line update branch in `Main` |
