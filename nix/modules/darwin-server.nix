@@ -197,19 +197,20 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    assertions = [{
-      assertion =
-        let
-          oidcFields = [ cfg.oidcIssuer cfg.oidcClientId cfg.oidcClientSecretFile ];
+    assertions = [
+      {
+        assertion = let
+          oidcFields = [cfg.oidcIssuer cfg.oidcClientId cfg.oidcClientSecretFile];
           setCount = lib.count (x: x != null) oidcFields;
         in
           setCount == 0 || setCount == 3;
-      message = ''
-        services.ezpz-dndz-server: OIDC configuration is partial.
-        Set all three of oidcIssuer, oidcClientId, and oidcClientSecretFile,
-        or leave all three null for unauthenticated admin mode.
-      '';
-    }];
+        message = ''
+          services.ezpz-dndz-server: OIDC configuration is partial.
+          Set all three of oidcIssuer, oidcClientId, and oidcClientSecretFile,
+          or leave all three null for unauthenticated admin mode.
+        '';
+      }
+    ];
 
     users.users.${cfg.user} = {
       uid = cfg.uid;
@@ -264,15 +265,17 @@ in {
         };
         ThrottleInterval = 30;
         ProcessType = "Background";
-        EnvironmentVariables = {
-          LOG_LEVEL = cfg.logLevel;
-          LOG_FORMAT = cfg.logFormat;
-          BASE_URL = cfg.baseUrl;
-        } // lib.optionalAttrs (cfg.oidcIssuer != null) {
-          OIDC_ISSUER = cfg.oidcIssuer;
-          OIDC_CLIENT_ID = cfg.oidcClientId;
-          OIDC_CLIENT_SECRET_FILE = cfg.oidcClientSecretFile;
-        };
+        EnvironmentVariables =
+          {
+            LOG_LEVEL = cfg.logLevel;
+            LOG_FORMAT = cfg.logFormat;
+            BASE_URL = cfg.baseUrl;
+          }
+          // lib.optionalAttrs (cfg.oidcIssuer != null) {
+            OIDC_ISSUER = cfg.oidcIssuer;
+            OIDC_CLIENT_ID = cfg.oidcClientId;
+            OIDC_CLIENT_SECRET_FILE = cfg.oidcClientSecretFile;
+          };
         StandardOutPath = "/var/log/ezpz-dndz-server/stdout.log";
         StandardErrorPath = "/var/log/ezpz-dndz-server/stderr.log";
       };
