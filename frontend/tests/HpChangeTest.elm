@@ -43,6 +43,7 @@ fixture =
     , note = ""
     , memo = ""
     , timer = Nothing
+    , creatureId = Nothing
     }
 
 

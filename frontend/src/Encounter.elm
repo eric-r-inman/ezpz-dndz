@@ -10,6 +10,7 @@ module Encounter exposing
     , moveUp, moveDown
     , mapCreature, nextCover
     , removeCreature, duplicateCreature
+    , appendCreatures, uniqueInstanceName
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, updateCondition, removeCondition, findCondition
@@ -79,6 +80,7 @@ feature, with the `update` loop composing them around `nextTurn`.
 # Roster mutation
 
 @docs removeCreature, duplicateCreature
+@docs appendCreatures, uniqueInstanceName
 
 
 # Death saves
@@ -370,6 +372,7 @@ type alias Creature =
     , note : String
     , memo : String
     , timer : Maybe Timer
+    , creatureId : Maybe String
     }
 
 
@@ -435,6 +438,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -467,6 +471,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -492,6 +497,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -517,6 +523,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -542,6 +549,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -567,6 +575,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -592,6 +601,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -617,6 +627,7 @@ seedCreatures =
       , note = ""
       , memo = ""
       , timer = Nothing
+      , creatureId = Nothing
       }
     ]
 
@@ -1248,6 +1259,48 @@ insertAfter anchorName newCreature creatures =
 
             else
                 c :: insertAfter anchorName newCreature rest
+
+
+{-| Compute the unique display name for a fresh instance of `base`.
+
+The pattern: first instance keeps the bare name, second is
+`base ++ " 2"`, third is `base ++ " 3"`, and so on. So adding
+three Goblins to a fresh encounter yields
+`Goblin / Goblin 2 / Goblin 3`. Adding three more (with the
+first three still alive) yields `Goblin 4 / Goblin 5 / Goblin 6`.
+This is distinct from `uniqueCopyName`, which uses `(copy)`
+suffixes for the right-rail duplicate button.
+
+-}
+uniqueInstanceName : String -> List String -> String
+uniqueInstanceName base existingNames =
+    let
+        candidate i =
+            if i == 1 then
+                base
+
+            else
+                base ++ " " ++ String.fromInt i
+
+        loop i =
+            if List.member (candidate i) existingNames then
+                loop (i + 1)
+
+            else
+                candidate i
+    in
+    loop 1
+
+
+{-| Append a batch of creatures to the queue, then re-sort by
+initiative. Used by the Compendium → queue handoff after the
+batch initiative rolls land. `activeName` is preserved so adding
+creatures mid-combat doesn't reset whose turn it is.
+-}
+appendCreatures : List Creature -> Encounter -> Encounter
+appendCreatures newcomers enc =
+    { enc | creatures = enc.creatures ++ newcomers }
+        |> sortByInitiative
 
 
 {-| Look a creature up by name. Returns `Nothing` if absent.
