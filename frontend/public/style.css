@@ -2847,8 +2847,13 @@ body {
 }
 
 .compendium__row--selected {
-  background: var(--color-surface-2);
+  background: rgba(59, 130, 246, 0.1);
   border-left-color: var(--color-blue, #3b82f6);
+  /* Inset box-shadow as the "outline" so we don't reflow neighbors
+     (a real `outline` would push the row visually). The slight
+     light-blue background tint reinforces the selection without
+     fighting the surface-2 hover state. */
+  box-shadow: inset 0 0 0 2px var(--color-blue, #3b82f6);
 }
 
 .compendium__row--player {

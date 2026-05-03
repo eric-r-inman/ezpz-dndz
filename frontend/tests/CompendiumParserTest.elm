@@ -443,6 +443,11 @@ blueDragonSuite =
                 , "Adult blue dragons command small empires, which might be territories of subjugated followers, shadowy criminal networks, or cultic enclaves. Endlessly suspicious and wary of rivals, these dragons enact elaborate schemes to ruin their foes, test the loyalty of their servants, and ensure their dominance for centuries."
                 , "Blue Dragons"
                 , "Arrogant and imperious, blue dragons are chromatic dragons that crave control and collect followers like other dragons hoard treasure. They seek to transform their territories into empires, domains to be feared by nations."
+                , "Blue Dragon Lairs"
+                , "Blue dragons dwell in arid lands. Their lairs might be death traps meant to entomb invaders or ostentatious fortresses where they plot domination."
+                , "The region containing an adult or ancient blue dragon's lair is changed by its presence, creating the following effects:"
+                , "Sinkholes. Sinkholes form more frequently in the area within 1 mile of the lair. Whenever a creature in that area other than the dragon and its allies finishes a Long Rest, roll 1d20. On a 1, a sinkhole opens beneath the creature, and the creature must succeed on a DC 15 Dexterity saving throw or fall 2d4 × 10 feet into the sinkhole."
+                , "Spiteful Storms. Dust devils and thunderstorms rage within 1 mile of the lair. The area is Lightly Obscured."
                 ]
     in
     describe "Adult Blue Dragon (D&D Beyond 2024 export — short prefixes, tab abilities, lore)"
@@ -584,6 +589,49 @@ blueDragonSuite =
                             |> List.filter (\s -> s.name == "Description")
                             |> List.length
                             |> Expect.atLeast 1
+                    )
+        , test "\"Blue Dragon Lairs\" heading triggers a lair section even from lore mode" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        case c.lairActions of
+                            Just _ ->
+                                Expect.pass
+
+                            Nothing ->
+                                Expect.fail "expected lairActions to be populated"
+                    )
+        , test "lair description captures the preamble paragraphs (not parked as a custom section)" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.lairActions
+                            |> Maybe.map .description
+                            |> Maybe.map (String.contains "Blue dragons dwell in arid lands")
+                            |> Expect.equal (Just True)
+                    )
+        , test "lair options: Sinkholes + Spiteful Storms as named effects" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.lairActions
+                            |> Maybe.map (\la -> List.map .name la.options)
+                            |> Expect.equal (Just [ "Sinkholes", "Spiteful Storms" ])
+                    )
+        , test "Sinkholes body retains the dice notation '1d20' for the clickable roll" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.lairActions
+                            |> Maybe.andThen
+                                (\la ->
+                                    la.options
+                                        |> List.filter (\o -> o.name == "Sinkholes")
+                                        |> List.head
+                                )
+                            |> Maybe.map .description
+                            |> Maybe.map (String.contains "1d20")
+                            |> Expect.equal (Just True)
                     )
         ]
 

@@ -226,7 +226,23 @@ walk lines state =
 handleLine : String -> State -> State
 handleLine line state =
     if state.loreMode then
-        appendLore line state
+        -- Even in lore mode, watch for late-arriving section
+        -- headers like "Blue Dragon Lairs" — D&D Beyond emits
+        -- these AFTER the monster description prose, so by the
+        -- time they show up we're already past the legendary
+        -- actions and dumping into Description. When detected,
+        -- exit lore mode and resume structured parsing in the
+        -- new section.
+        case classifySection line (String.toLower line) of
+            Just (LineSectionHeader section) ->
+                { state
+                    | section = section
+                    , passedHeader = True
+                    , loreMode = False
+                }
+
+            _ ->
+                appendLore line state
 
     else
         dispatchClassifiedLine line state
@@ -496,11 +512,74 @@ applyAbilityRow ability score maybeSave c =
 
 parkPreamble : Section -> String -> Compendium.Creature -> Compendium.Creature
 parkPreamble section body c =
-    let
-        heading =
-            sectionLabel section ++ " (preamble)"
-    in
-    { c | customSections = c.customSections ++ [ { name = heading, body = body } ] }
+    case section of
+        LairSection ->
+            { c
+                | lairActions =
+                    Just
+                        (case c.lairActions of
+                            Just la ->
+                                { la | description = appendDescription la.description body }
+
+                            Nothing ->
+                                { initiative = 20
+                                , description = body
+                                , options = []
+                                }
+                        )
+            }
+
+        RegionalSection ->
+            { c
+                | regionalEffects =
+                    Just
+                        (case c.regionalEffects of
+                            Just re ->
+                                { re | description = appendDescription re.description body }
+
+                            Nothing ->
+                                { description = body
+                                , effects = []
+                                , fadeAfter = ""
+                                }
+                        )
+            }
+
+        LegendarySection ->
+            { c
+                | legendaryActions =
+                    Just
+                        (case c.legendaryActions of
+                            Just la ->
+                                { la | description = appendDescription la.description body }
+
+                            Nothing ->
+                                { description = body
+                                , uses = 3
+                                , usesInLair = 0
+                                , options = []
+                                }
+                        )
+            }
+
+        _ ->
+            -- Traits / Actions / Bonus Actions / Reactions /
+            -- Spellcasting / OtherSection: park into customSections
+            -- so nothing's silently dropped.
+            let
+                heading =
+                    sectionLabel section ++ " (preamble)"
+            in
+            { c | customSections = c.customSections ++ [ { name = heading, body = body } ] }
+
+
+appendDescription : String -> String -> String
+appendDescription existing new =
+    if String.isEmpty existing then
+        new
+
+    else
+        existing ++ "\n\n" ++ new
 
 
 commitFeature : State -> State
@@ -716,7 +795,7 @@ Non-heading lines return Nothing so the caller can fall through.
 
 -}
 classifySection : String -> String -> Maybe Line
-classifySection _ lower =
+classifySection line lower =
     case lower of
         "traits" ->
             Just (LineSectionHeader TraitsSection)
@@ -743,7 +822,83 @@ classifySection _ lower =
             Just (LineSectionHeader SpellcastingSection)
 
         _ ->
-            Nothing
+            -- Fuzzy match for D&D Beyond-style headings: "Blue
+            -- Dragon Lairs", "Lich Lair", "Adult Red Dragon
+            -- Regional Effects", etc.  These appear in the trailing
+            -- lore section of pasted blocks and should fold into
+            -- the matching structured field.
+            if isLairHeading line lower then
+                Just (LineSectionHeader LairSection)
+
+            else if isRegionalHeading line lower then
+                Just (LineSectionHeader RegionalSection)
+
+            else
+                Nothing
+
+
+{-| A heading-style line ending in "Lair" or "Lairs". To avoid
+matching sentence fragments ("...the dragon's lair", "It enters
+the lair"), we additionally require the line to be short and to
+be in title-case (each word starts with an uppercase letter, with
+common short-words like "of"/"the"/"a" exempted).
+-}
+isLairHeading : String -> String -> Bool
+isLairHeading line lower =
+    String.length line
+        < 40
+        && (lower
+                == "lair"
+                || lower
+                == "lairs"
+                || String.endsWith " lair" lower
+                || String.endsWith " lairs" lower
+           )
+        && isTitleCase line
+
+
+isRegionalHeading : String -> String -> Bool
+isRegionalHeading line lower =
+    String.length line
+        < 60
+        && (lower
+                == "regional effects"
+                || String.endsWith " regional effects" lower
+           )
+        && isTitleCase line
+
+
+{-| Each word's first letter is uppercase, except the small
+joining words that conventionally stay lowercase in titles ("of",
+"the", "a", "an", "and", "or", "in"). Punctuation-only "words"
+(like "5-6)") are skipped. The first word still has to be
+uppercase, even if it'd otherwise be a small word.
+-}
+isTitleCase : String -> Bool
+isTitleCase line =
+    let
+        words =
+            String.words line
+
+        smallWords =
+            [ "of", "the", "a", "an", "and", "or", "in", "on", "to", "for" ]
+
+        firstLetter word =
+            String.toList word
+                |> List.filter Char.isAlpha
+                |> List.head
+
+        wordIsTitleCased index word =
+            case firstLetter word of
+                Nothing ->
+                    True
+
+                Just c ->
+                    Char.isUpper c
+                        || (index > 0 && List.member (String.toLower word) smallWords)
+    in
+    List.indexedMap wordIsTitleCased words
+        |> List.all identity
 
 
 {-| Prefix-driven dispatch for the upper detail block. Each rule
@@ -1475,11 +1630,15 @@ capitalize s =
 splitFeatureStart : String -> Maybe ( String, String )
 splitFeatureStart line =
     -- A feature starts with a phrase ending in a period, then a space,
-    -- then the body. We require the leading phrase to start with an
-    -- uppercase letter and to be no longer than ~60 characters so we
-    -- don't accidentally cut a sentence in half. The cap is 60 (not
-    -- 40) so usage tags like "Legendary Resistance (3/Day, or 4/Day
-    -- in Lair)" — common on D&D Beyond — fit inside.
+    -- then the body. The leading phrase must:
+    --
+    --   - be no longer than ~60 chars (so usage tags like "Legendary
+    --     Resistance (3/Day, or 4/Day in Lair)" still fit)
+    --   - start with an uppercase letter
+    --   - read like Title Case (every alpha-leading word is uppercase
+    --     or a small joining word like "of"/"in"). This filters out
+    --     prose sentences like "Blue dragons dwell in arid lands."
+    --     where the period happens to land within 60 chars.
     case String.indexes ". " line of
         first :: _ ->
             if first > 0 && first <= 60 then
@@ -1490,7 +1649,7 @@ splitFeatureStart line =
                     body =
                         String.dropLeft (first + 2) line |> String.trim
                 in
-                if startsUppercase name then
+                if startsUppercase name && isTitleCase name then
                     Just ( name, body )
 
                 else
