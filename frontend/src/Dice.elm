@@ -676,21 +676,49 @@ diceMatchParser =
 
 diceInline : Parser ()
 diceInline =
+    -- We use bare digit-chomping (`digits1`) instead of `Parser.int`
+    -- here because `Parser.int` treats a trailing "." as a malformed
+    -- float and fails with a COMMITTED error.  That's catastrophic
+    -- inside `Dice.scan`, since the outer `Parser.backtrackable` then
+    -- rolls back without progress and falls through to a one-char-at-
+    -- a-time literal accumulator — meaning "roll 1d20." (any sentence
+    -- ending right after the formula) would never match.  Plain
+    -- digits1 stops cleanly at the first non-digit.
+    --
+    -- The optional modifier branch is wrapped in `Parser.backtrackable`
+    -- so that consuming the intervening space (via `Parser.spaces`)
+    -- doesn't commit the position when there's no following sign.
+    -- Without this, "1d20 " (trailing space) would fail the entire
+    -- match for the same reason as the period above.
     Parser.succeed ()
         |. Parser.oneOf
-            [ Parser.int |> Parser.map (always ())
+            [ digits1
             , Parser.succeed ()
             ]
         |. Parser.symbol "d"
-        |. Parser.int
+        |. digits1
         |. Parser.oneOf
-            [ Parser.succeed ()
-                |. Parser.spaces
-                |. Parser.oneOf [ Parser.symbol "+", Parser.symbol "-" ]
-                |. Parser.spaces
-                |. Parser.int
+            [ Parser.backtrackable
+                (Parser.succeed ()
+                    |. Parser.spaces
+                    |. Parser.oneOf [ Parser.symbol "+", Parser.symbol "-" ]
+                    |. Parser.spaces
+                    |. digits1
+                )
             , Parser.succeed ()
             ]
+
+
+{-| Chomp one or more digits, ignoring whatever follows. Unlike
+`Parser.int`, this never inspects the next char — so "20." reads
+the "20" and stops cleanly rather than triggering a malformed-float
+committed error.
+-}
+digits1 : Parser ()
+digits1 =
+    Parser.succeed ()
+        |. Parser.chompIf Char.isDigit
+        |. Parser.chompWhile Char.isDigit
 
 
 {-| Wraps `parse` so that a non-parseable match becomes a Parser

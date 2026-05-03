@@ -2,6 +2,7 @@ module CompendiumParserTest exposing (suite)
 
 import Compendium
 import Compendium.Parser
+import Dice
 import Expect
 import Test exposing (Test, describe, test)
 
@@ -20,6 +21,7 @@ suite =
         , conditionImmunitiesSuite
         , minimalSuite
         , blueDragonSuite
+        , scanLairDice
         , empties
         ]
 
@@ -672,3 +674,86 @@ expectFields input check =
 
         Err err ->
             Expect.fail ("parser returned an error: " ++ Debug.toString err)
+
+
+{-| Regression tests for Dice.scan recognizing inline dice
+notation in prose. Two parser bugs we previously hit:
+
+1.  `Parser.int` treats trailing "." as a malformed float and
+    fails with a committed error, so "roll 1d20. On a 1…" never
+    matched a DiceLink.
+2.  The optional modifier branch's `Parser.spaces` greedily
+    consumed a trailing space, then the missing sign caused a
+    committed failure that the surrounding backtrackable
+    couldn't fully unwind, so "1d20 " (trailing space) failed
+    to match too.
+
+These tests lock both fixes in.
+
+-}
+scanLairDice : Test
+scanLairDice =
+    let
+        countLinks input =
+            Dice.scan input
+                |> List.filter
+                    (\seg ->
+                        case seg of
+                            Dice.DiceLink _ _ ->
+                                True
+
+                            _ ->
+                                False
+                    )
+                |> List.length
+
+        firstLink input =
+            Dice.scan input
+                |> List.filterMap
+                    (\seg ->
+                        case seg of
+                            Dice.DiceLink shown _ ->
+                                Just shown
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.head
+    in
+    describe "Dice.scan recognizes inline dice in lair-effect prose"
+        [ test "trailing period: 'roll 1d20. On a 1...'" <|
+            \_ ->
+                firstLink "Long Rest, roll 1d20. On a 1, a sinkhole opens."
+                    |> Expect.equal (Just "1d20")
+        , test "trailing space: '1d20 '" <|
+            \_ -> firstLink "1d20 " |> Expect.equal (Just "1d20")
+        , test "bare dice with each common trailing punctuation" <|
+            \_ ->
+                List.map countLinks
+                    [ "1d20"
+                    , "1d20."
+                    , "1d20,"
+                    , "1d20!"
+                    , "1d20)"
+                    , "1d20 "
+                    , "1d20a"
+                    ]
+                    |> Expect.equal [ 1, 1, 1, 1, 1, 1, 1 ]
+        , test "Sinkholes body picks up both 1d20 and 2d4" <|
+            \_ ->
+                let
+                    body =
+                        "Sinkholes form more frequently. Whenever a creature finishes a Long Rest, roll 1d20. On a 1, fall 2d4 × 10 feet."
+                in
+                Dice.scan body
+                    |> List.filterMap
+                        (\seg ->
+                            case seg of
+                                Dice.DiceLink shown _ ->
+                                    Just shown
+
+                                _ ->
+                                    Nothing
+                        )
+                    |> Expect.equal [ "1d20", "2d4" ]
+        ]
