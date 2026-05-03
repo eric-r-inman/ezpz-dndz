@@ -40,6 +40,27 @@ pub enum CompendiumStoreError {
     "Path id {path_id} does not match body id {body_id} on compendium update"
   )]
   CreatureIdMismatchError { path_id: String, body_id: String },
+
+  /// Failed to write the bundle-seed sidecar file that records
+  /// "the highest BUNDLED_VERSION we've ever applied to this
+  /// store".  Non-fatal at the data level (the creatures
+  /// themselves are unaffected) but we log + surface anyway —
+  /// without the seed file, the next boot will redundantly re-
+  /// run the bundle merge.
+  #[error("Failed to write the compendium bundle-seed file: {source}")]
+  BundleSeedWriteError {
+    #[from]
+    source: std::io::Error,
+  },
+
+  /// The bundle-seed sidecar file was malformed.  Treated as
+  /// "unknown seed version" upstream (i.e., the boot code
+  /// proceeds as if no merge had ever happened); we still
+  /// surface the error variant so a misconfigured deploy gets
+  /// a clean log line instead of silently re-merging on every
+  /// startup.
+  #[error("Failed to parse the compendium bundle-seed file: {source}")]
+  BundleSeedParseError { source: serde_json::Error },
 }
 
 impl IntoResponse for CompendiumStoreError {
@@ -48,9 +69,10 @@ impl IntoResponse for CompendiumStoreError {
       Self::CreatureIdNotFoundError { .. } => StatusCode::NOT_FOUND,
       Self::CreatureDuplicateIdError { .. } => StatusCode::CONFLICT,
       Self::CreatureIdMismatchError { .. } => StatusCode::BAD_REQUEST,
-      Self::StoreError(_) | Self::BundledParseError { .. } => {
-        StatusCode::INTERNAL_SERVER_ERROR
-      }
+      Self::StoreError(_)
+      | Self::BundledParseError { .. }
+      | Self::BundleSeedWriteError { .. }
+      | Self::BundleSeedParseError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
     };
     if status == StatusCode::INTERNAL_SERVER_ERROR {
       warn!(error = %self, "compendium operation failed");

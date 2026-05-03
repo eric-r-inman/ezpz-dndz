@@ -1,49 +1,24 @@
 [
   {
-    "id": "3d8a9424-b6a3-4a9b-becf-2845a993624a",
-    "name": "Goblin Skirmisher",
+    "id": "01914741-0001-4001-a001-000000000001",
+    "name": "Goblin",
     "kind": "enemy",
     "size": "small",
-    "race": "Humanoid (goblinoid)",
-    "subrace": "",
-    "alignment": "Neutral evil",
-    "source": "Bundled (ezpz-dndz)",
-    "description": "",
+    "race": "Humanoid",
+    "subrace": "goblinoid",
+    "alignment": "neutral evil",
+    "source": "Bundled",
+    "description": "A small, black-hearted humanoid that lairs in dismal places and ambushes travelers in numbers.",
     "armor_class": 15,
-    "armor_class_note": "",
+    "armor_class_note": "leather armor, shield",
     "max_hp": 7,
-    "hp_formula": "",
+    "hp_formula": "2d6",
     "initiative_bonus": 2,
-    "speed": {
-      "walk": 30,
-      "fly": 0,
-      "swim": 0,
-      "climb": 0,
-      "burrow": 0,
-      "hover": false
-    },
-    "abilities": {
-      "str": 8,
-      "dex": 14,
-      "con": 10,
-      "int": 10,
-      "wis": 8,
-      "cha": 8
-    },
-    "saving_throws": [],
-    "skills": [],
-    "damage_vulnerabilities": [],
-    "damage_resistances": [],
-    "damage_immunities": [],
-    "condition_immunities": [],
-    "senses": {
-      "blindsight": 0,
-      "darkvision": 60,
-      "tremorsense": 0,
-      "truesight": 0,
-      "passive_perception": 9
-    },
-    "languages": [],
+    "speed": {"walk": 30, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8},
+    "skills": [{"name": "Stealth", "bonus": 6}],
+    "senses": {"blindsight": 0, "darkvision": 60, "tremorsense": 0, "truesight": 0, "passive_perception": 9},
+    "languages": ["Common", "Goblin"],
     "challenge_rating": "1/4",
     "xp": 50,
     "proficiency_bonus": 2,
@@ -59,296 +34,362 @@
         "name": "Scimitar",
         "description": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
         "usage": null
+      },
+      {
+        "name": "Shortbow",
+        "description": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+        "usage": null
       }
     ],
-    "bonus_actions": [],
-    "reactions": [],
-    "legendary_actions": null,
-    "lair_actions": null,
-    "regional_effects": null,
-    "spellcasting": null,
-    "custom_sections": [],
     "created_at": 0,
     "updated_at": 0
   },
   {
-    "id": "8ba148b3-683d-4840-903b-35756f247fee",
-    "name": "Brakka, Ogre Brute",
+    "id": "01914741-0001-4001-a001-000000000002",
+    "name": "Skeleton",
+    "kind": "enemy",
+    "size": "medium",
+    "race": "Undead",
+    "subrace": "",
+    "alignment": "lawful evil",
+    "source": "Bundled",
+    "description": "A reanimated humanoid skeleton bound to obey its creator without rest, fear, or fatigue.",
+    "armor_class": 13,
+    "armor_class_note": "armor scraps",
+    "max_hp": 13,
+    "hp_formula": "2d8 + 4",
+    "initiative_bonus": 2,
+    "speed": {"walk": 30, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 10, "dex": 14, "con": 15, "int": 6, "wis": 8, "cha": 5},
+    "damage_vulnerabilities": ["bludgeoning"],
+    "damage_immunities": ["poison"],
+    "condition_immunities": ["exhaustion", "poisoned"],
+    "senses": {"blindsight": 0, "darkvision": 60, "tremorsense": 0, "truesight": 0, "passive_perception": 9},
+    "languages": ["understands the languages it knew in life but can't speak"],
+    "challenge_rating": "1/4",
+    "xp": 50,
+    "proficiency_bonus": 2,
+    "actions": [
+      {
+        "name": "Shortsword",
+        "description": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+        "usage": null
+      },
+      {
+        "name": "Shortbow",
+        "description": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+        "usage": null
+      }
+    ],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "01914741-0001-4001-a001-000000000003",
+    "name": "Hobgoblin",
+    "kind": "enemy",
+    "size": "medium",
+    "race": "Humanoid",
+    "subrace": "goblinoid",
+    "alignment": "lawful evil",
+    "source": "Bundled",
+    "description": "A disciplined warrior of the goblinoid race, found in formal regiments and led by warlords.",
+    "armor_class": 18,
+    "armor_class_note": "chain mail, shield",
+    "max_hp": 11,
+    "hp_formula": "2d8 + 2",
+    "initiative_bonus": 1,
+    "speed": {"walk": 30, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 13, "dex": 12, "con": 12, "int": 10, "wis": 10, "cha": 9},
+    "senses": {"blindsight": 0, "darkvision": 60, "tremorsense": 0, "truesight": 0, "passive_perception": 10},
+    "languages": ["Common", "Goblin"],
+    "challenge_rating": "1/2",
+    "xp": 100,
+    "proficiency_bonus": 2,
+    "traits": [
+      {
+        "name": "Martial Advantage",
+        "description": "Once per turn, the hobgoblin can deal an extra 7 (2d6) damage to a creature it hits with a weapon attack if that creature is within 5 feet of an ally of the hobgoblin that isn't incapacitated.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Longsword",
+        "description": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 5 (1d8 + 1) slashing damage, or 6 (1d10 + 1) slashing damage if used with two hands.",
+        "usage": null
+      },
+      {
+        "name": "Longbow",
+        "description": "Ranged Weapon Attack: +3 to hit, range 150/600 ft., one target. Hit: 5 (1d8 + 1) piercing damage.",
+        "usage": null
+      }
+    ],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "01914741-0001-4001-a001-000000000004",
+    "name": "Dire Wolf",
+    "kind": "enemy",
+    "size": "large",
+    "race": "Beast",
+    "subrace": "",
+    "alignment": "unaligned",
+    "source": "Bundled",
+    "description": "A monstrously oversized wolf, ferocious and clever, often kept by goblinoids and giants as a mount.",
+    "armor_class": 14,
+    "armor_class_note": "natural armor",
+    "max_hp": 37,
+    "hp_formula": "5d10 + 10",
+    "initiative_bonus": 2,
+    "speed": {"walk": 50, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 17, "dex": 15, "con": 15, "int": 3, "wis": 12, "cha": 7},
+    "skills": [
+      {"name": "Perception", "bonus": 3},
+      {"name": "Stealth", "bonus": 4}
+    ],
+    "senses": {"blindsight": 0, "darkvision": 0, "tremorsense": 0, "truesight": 0, "passive_perception": 13},
+    "languages": [],
+    "challenge_rating": "1",
+    "xp": 200,
+    "proficiency_bonus": 2,
+    "traits": [
+      {
+        "name": "Keen Hearing and Smell",
+        "description": "The wolf has advantage on Wisdom (Perception) checks that rely on hearing or smell.",
+        "usage": null
+      },
+      {
+        "name": "Pack Tactics",
+        "description": "The wolf has advantage on an attack roll against a creature if at least one of the wolf's allies is within 5 feet of the creature and the ally isn't incapacitated.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Bite",
+        "description": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) piercing damage. If the target is a creature, it must succeed on a DC 13 Strength saving throw or be knocked prone.",
+        "usage": null
+      }
+    ],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "01914741-0001-4001-a001-000000000005",
+    "name": "Ogre",
     "kind": "enemy",
     "size": "large",
     "race": "Giant",
     "subrace": "",
-    "alignment": "Chaotic evil",
-    "source": "Bundled (ezpz-dndz)",
-    "description": "",
+    "alignment": "chaotic evil",
+    "source": "Bundled",
+    "description": "A hulking, dimwitted giant that delights in cruelty and prefers to settle disputes with a swing of its greatclub.",
     "armor_class": 11,
-    "armor_class_note": "",
+    "armor_class_note": "hide armor",
     "max_hp": 59,
-    "hp_formula": "",
+    "hp_formula": "7d10 + 21",
     "initiative_bonus": -1,
-    "speed": {
-      "walk": 40,
-      "fly": 0,
-      "swim": 0,
-      "climb": 0,
-      "burrow": 0,
-      "hover": false
-    },
-    "abilities": {
-      "str": 19,
-      "dex": 8,
-      "con": 16,
-      "int": 5,
-      "wis": 7,
-      "cha": 7
-    },
-    "saving_throws": [],
-    "skills": [],
-    "damage_vulnerabilities": [],
-    "damage_resistances": [],
-    "damage_immunities": [],
-    "condition_immunities": [],
-    "senses": {
-      "blindsight": 0,
-      "darkvision": 60,
-      "tremorsense": 0,
-      "truesight": 0,
-      "passive_perception": 8
-    },
-    "languages": [],
+    "speed": {"walk": 40, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 19, "dex": 8, "con": 16, "int": 5, "wis": 7, "cha": 7},
+    "senses": {"blindsight": 0, "darkvision": 60, "tremorsense": 0, "truesight": 0, "passive_perception": 8},
+    "languages": ["Common", "Giant"],
     "challenge_rating": "2",
     "xp": 450,
     "proficiency_bonus": 2,
-    "traits": [],
     "actions": [
       {
         "name": "Greatclub",
         "description": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage.",
         "usage": null
+      },
+      {
+        "name": "Javelin",
+        "description": "Melee or Ranged Weapon Attack: +6 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 11 (2d6 + 4) piercing damage.",
+        "usage": null
       }
     ],
-    "bonus_actions": [],
-    "reactions": [],
-    "legendary_actions": null,
-    "lair_actions": null,
-    "regional_effects": null,
-    "spellcasting": null,
-    "custom_sections": [],
     "created_at": 0,
     "updated_at": 0
   },
   {
-    "id": "101b89e1-a7e1-4e83-beb3-1d253babb5bb",
-    "name": "Captain Vex",
+    "id": "01914741-0001-4001-a001-000000000006",
+    "name": "Knight",
     "kind": "npc",
     "size": "medium",
-    "race": "Humanoid (human), bandit captain",
-    "subrace": "",
-    "alignment": "Lawful evil",
-    "source": "Bundled (ezpz-dndz)",
-    "description": "",
-    "armor_class": 15,
-    "armor_class_note": "",
-    "max_hp": 65,
-    "hp_formula": "",
-    "initiative_bonus": 2,
-    "speed": {
-      "walk": 30,
-      "fly": 0,
-      "swim": 0,
-      "climb": 0,
-      "burrow": 0,
-      "hover": false
-    },
-    "abilities": {
-      "str": 15,
-      "dex": 16,
-      "con": 14,
-      "int": 14,
-      "wis": 11,
-      "cha": 14
-    },
-    "saving_throws": [],
-    "skills": [],
-    "damage_vulnerabilities": [],
-    "damage_resistances": [],
-    "damage_immunities": [],
-    "condition_immunities": [],
-    "senses": {
-      "blindsight": 0,
-      "darkvision": 60,
-      "tremorsense": 0,
-      "truesight": 0,
-      "passive_perception": 10
-    },
-    "languages": [],
-    "challenge_rating": "2",
-    "xp": 450,
+    "race": "Humanoid",
+    "subrace": "any race",
+    "alignment": "any alignment",
+    "source": "Bundled",
+    "description": "An armored champion sworn to a sovereign or cause, equally at home leading a charge or parlaying with rivals.",
+    "armor_class": 18,
+    "armor_class_note": "plate",
+    "max_hp": 52,
+    "hp_formula": "8d8 + 16",
+    "initiative_bonus": 0,
+    "speed": {"walk": 30, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 16, "dex": 11, "con": 14, "int": 11, "wis": 11, "cha": 15},
+    "saving_throws": [
+      {"ability": "con", "bonus": 4},
+      {"ability": "wis", "bonus": 2}
+    ],
+    "senses": {"blindsight": 0, "darkvision": 0, "tremorsense": 0, "truesight": 0, "passive_perception": 10},
+    "languages": ["any one language (usually Common)"],
+    "challenge_rating": "3",
+    "xp": 700,
     "proficiency_bonus": 2,
-    "traits": [],
+    "traits": [
+      {
+        "name": "Brave",
+        "description": "The knight has advantage on saving throws against being frightened.",
+        "usage": null
+      }
+    ],
     "actions": [
       {
         "name": "Multiattack",
-        "description": "The captain makes three melee attacks: two with its scimitar and one with its dagger.",
+        "description": "The knight makes two melee attacks.",
         "usage": null
       },
       {
-        "name": "Scimitar",
-        "description": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) slashing damage.",
+        "name": "Greatsword",
+        "description": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage.",
+        "usage": null
+      },
+      {
+        "name": "Heavy Crossbow",
+        "description": "Ranged Weapon Attack: +2 to hit, range 100/400 ft., one target. Hit: 5 (1d10) piercing damage.",
+        "usage": null
+      },
+      {
+        "name": "Leadership",
+        "description": "For 1 minute, the knight can utter a special command or warning whenever a nonhostile creature that it can see within 30 feet of it makes an attack roll or a saving throw. The creature can add a d4 to its roll provided it can hear and understand the knight. A creature can benefit from only one Leadership die at a time. This effect ends if the knight is incapacitated.",
+        "usage": {"kind": "recharge", "low": 6, "high": 6}
+      }
+    ],
+    "reactions": [
+      {
+        "name": "Parry",
+        "description": "The knight adds 2 to its AC against one melee attack that would hit it. To do so, the knight must see the attacker and be wielding a melee weapon.",
         "usage": null
       }
     ],
-    "bonus_actions": [],
-    "reactions": [],
-    "legendary_actions": null,
-    "lair_actions": null,
-    "regional_effects": null,
-    "spellcasting": null,
-    "custom_sections": [],
     "created_at": 0,
     "updated_at": 0
   },
   {
-    "id": "f6268da2-ec58-469d-a765-beec18341469",
-    "name": "Lyra Vale (PC)",
-    "kind": "player",
-    "size": "medium",
-    "race": "Half-elf rogue, level 5",
-    "subrace": "",
-    "alignment": "Chaotic good",
-    "source": "Bundled (ezpz-dndz)",
-    "description": "",
-    "armor_class": 16,
-    "armor_class_note": "",
-    "max_hp": 42,
-    "hp_formula": "",
-    "initiative_bonus": 5,
-    "speed": {
-      "walk": 30,
-      "fly": 0,
-      "swim": 0,
-      "climb": 0,
-      "burrow": 0,
-      "hover": false
-    },
-    "abilities": {
-      "str": 10,
-      "dex": 18,
-      "con": 14,
-      "int": 12,
-      "wis": 14,
-      "cha": 14
-    },
-    "saving_throws": [],
-    "skills": [],
-    "damage_vulnerabilities": [],
-    "damage_resistances": [],
-    "damage_immunities": [],
-    "condition_immunities": [],
-    "senses": {
-      "blindsight": 0,
-      "darkvision": 60,
-      "tremorsense": 0,
-      "truesight": 0,
-      "passive_perception": 12
-    },
-    "languages": [],
-    "challenge_rating": "\u2014",
-    "xp": 0,
-    "proficiency_bonus": 3,
-    "traits": [
-      {
-        "name": "Sneak Attack (1/turn)",
-        "description": "Once per turn, the rogue deals an extra 3d6 damage to one creature it hits with an attack with advantage.",
-        "usage": null
-      }
-    ],
-    "actions": [
-      {
-        "name": "Rapier",
-        "description": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 8 (1d8 + 4) piercing damage.",
-        "usage": null
-      }
-    ],
-    "bonus_actions": [],
-    "reactions": [],
-    "legendary_actions": null,
-    "lair_actions": null,
-    "regional_effects": null,
-    "spellcasting": null,
-    "custom_sections": [],
-    "created_at": 0,
-    "updated_at": 0
-  },
-  {
-    "id": "c75dafce-a4ae-423b-ad39-2e231c565169",
-    "name": "Stone Sentinel",
+    "id": "01914741-0001-4001-a001-000000000007",
+    "name": "Owlbear",
     "kind": "enemy",
     "size": "large",
-    "race": "Construct, unaligned",
+    "race": "Monstrosity",
     "subrace": "",
-    "alignment": "Unaligned",
-    "source": "Bundled (ezpz-dndz)",
-    "description": "",
-    "armor_class": 18,
-    "armor_class_note": "",
-    "max_hp": 78,
-    "hp_formula": "",
-    "initiative_bonus": -1,
-    "speed": {
-      "walk": 25,
-      "fly": 0,
-      "swim": 0,
-      "climb": 0,
-      "burrow": 0,
-      "hover": false
-    },
-    "abilities": {
-      "str": 20,
-      "dex": 9,
-      "con": 18,
-      "int": 3,
-      "wis": 10,
-      "cha": 1
-    },
-    "saving_throws": [],
-    "skills": [],
-    "damage_vulnerabilities": [],
-    "damage_resistances": [],
-    "damage_immunities": [],
-    "condition_immunities": [],
-    "senses": {
-      "blindsight": 0,
-      "darkvision": 60,
-      "tremorsense": 0,
-      "truesight": 0,
-      "passive_perception": 10
-    },
+    "alignment": "unaligned",
+    "source": "Bundled",
+    "description": "A hybrid horror with the body of a bear and the head of an owl, fiercely territorial and prone to bone-crushing rage.",
+    "armor_class": 13,
+    "armor_class_note": "natural armor",
+    "max_hp": 59,
+    "hp_formula": "7d10 + 21",
+    "initiative_bonus": 1,
+    "speed": {"walk": 40, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false},
+    "abilities": {"str": 20, "dex": 12, "con": 17, "int": 3, "wis": 12, "cha": 7},
+    "skills": [{"name": "Perception", "bonus": 3}],
+    "senses": {"blindsight": 0, "darkvision": 60, "tremorsense": 0, "truesight": 0, "passive_perception": 13},
     "languages": [],
-    "challenge_rating": "5",
-    "xp": 1800,
-    "proficiency_bonus": 3,
+    "challenge_rating": "3",
+    "xp": 700,
+    "proficiency_bonus": 2,
     "traits": [
       {
-        "name": "Magic Resistance",
-        "description": "Has advantage on saving throws against spells and magical effects.",
+        "name": "Keen Sight and Smell",
+        "description": "The owlbear has advantage on Wisdom (Perception) checks that rely on sight or smell.",
         "usage": null
       }
     ],
     "actions": [
       {
-        "name": "Slam",
-        "description": "Melee Weapon Attack: +8 to hit, reach 5 ft., one target. Hit: 14 (3d6 + 5) bludgeoning damage.",
+        "name": "Multiattack",
+        "description": "The owlbear makes two attacks: one with its beak and one with its claws.",
+        "usage": null
+      },
+      {
+        "name": "Beak",
+        "description": "Melee Weapon Attack: +7 to hit, reach 5 ft., one creature. Hit: 10 (1d10 + 5) piercing damage.",
+        "usage": null
+      },
+      {
+        "name": "Claws",
+        "description": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) slashing damage.",
         "usage": null
       }
     ],
-    "bonus_actions": [],
-    "reactions": [],
-    "legendary_actions": null,
-    "lair_actions": null,
-    "regional_effects": null,
-    "spellcasting": null,
-    "custom_sections": [],
+    "created_at": 0,
+    "updated_at": 0
+  },
+  {
+    "id": "01914741-0001-4001-a001-000000000008",
+    "name": "Young White Dragon",
+    "kind": "enemy",
+    "size": "large",
+    "race": "Dragon",
+    "subrace": "chromatic",
+    "alignment": "chaotic evil",
+    "source": "Bundled",
+    "description": "A juvenile chromatic dragon of frozen wastes, vicious but stupid, hunting from glacier lairs and frozen caves.",
+    "armor_class": 17,
+    "armor_class_note": "natural armor",
+    "max_hp": 133,
+    "hp_formula": "14d10 + 56",
+    "initiative_bonus": 0,
+    "speed": {"walk": 40, "fly": 80, "swim": 40, "climb": 0, "burrow": 20, "hover": false},
+    "abilities": {"str": 18, "dex": 10, "con": 18, "int": 6, "wis": 11, "cha": 12},
+    "saving_throws": [
+      {"ability": "dex", "bonus": 3},
+      {"ability": "con", "bonus": 7},
+      {"ability": "wis", "bonus": 3},
+      {"ability": "cha", "bonus": 4}
+    ],
+    "skills": [
+      {"name": "Perception", "bonus": 6},
+      {"name": "Stealth", "bonus": 3}
+    ],
+    "damage_immunities": ["cold"],
+    "senses": {"blindsight": 30, "darkvision": 120, "tremorsense": 0, "truesight": 0, "passive_perception": 16},
+    "languages": ["Common", "Draconic"],
+    "challenge_rating": "6",
+    "xp": 2300,
+    "proficiency_bonus": 3,
+    "traits": [
+      {
+        "name": "Ice Walk",
+        "description": "The dragon can move across and climb icy surfaces without needing to make an ability check. Difficult terrain composed of ice or snow doesn't cost it extra movement.",
+        "usage": null
+      }
+    ],
+    "actions": [
+      {
+        "name": "Multiattack",
+        "description": "The dragon makes three attacks: one with its bite and two with its claws.",
+        "usage": null
+      },
+      {
+        "name": "Bite",
+        "description": "Melee Weapon Attack: +7 to hit, reach 10 ft., one target. Hit: 15 (2d10 + 4) piercing damage plus 4 (1d8) cold damage.",
+        "usage": null
+      },
+      {
+        "name": "Claw",
+        "description": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage.",
+        "usage": null
+      },
+      {
+        "name": "Cold Breath",
+        "description": "The dragon exhales an icy blast in a 30-foot cone. Each creature in that area must make a DC 15 Constitution saving throw, taking 45 (10d8) cold damage on a failed save, or half as much damage on a successful one.",
+        "usage": {"kind": "recharge", "low": 5, "high": 6}
+      }
+    ],
     "created_at": 0,
     "updated_at": 0
   }
