@@ -3417,15 +3417,56 @@ body {
   flex: 1 1 auto;
 }
 
-/* Read-only Quick View popup. Narrower than the full browser
-   so it stays unobtrusive when triggered from a card mid-combat. */
-.modal--quick-view {
-  max-width: 640px;
-  max-height: calc(100vh - 32px);
+/* Side-panel stat block wrapper: holds the rendered stat block
+   plus an absolutely-positioned ↗ link in the top-right that
+   opens the same creature in a new tab via the SPA's
+   /compendium/creatures/:id route. */
+.panel-statblock {
+  position: relative;
 }
 
-.modal--quick-view .modal__body {
-  padding: 12px 18px;
+.panel-statblock__open {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.panel-statblock__open:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+/* Standalone single-creature route at /compendium/creatures/:id —
+   centered max-width column, restful background, no encounter
+   panels. Used as the deep link for the side panel's ↗ button
+   so the GM can keep a creature's stat block open in another
+   window for easy reference. */
+.workspace--standalone {
+  display: grid;
+  place-items: start center;
+  padding: 24px 16px;
+}
+
+.panel--standalone {
+  max-width: 720px;
+  width: 100%;
 }
 
 .compendium__detail--empty {

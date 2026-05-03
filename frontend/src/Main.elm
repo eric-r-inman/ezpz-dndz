@@ -27,7 +27,7 @@ import Random
 import Set exposing (Set)
 import Task
 import Url exposing (Url)
-import Url.Parser exposing (Parser, oneOf, top)
+import Url.Parser exposing ((</>), Parser, oneOf, top)
 import Util.Keyboard
 import View.Modal
 import View.StatBlock
@@ -40,6 +40,7 @@ import View.StatBlock
 type Route
     = Home
     | Me
+    | CompendiumCreaturePage String
     | NotFound
 
 
@@ -48,6 +49,8 @@ routeParser =
     oneOf
         [ Url.Parser.map Home top
         , Url.Parser.map Me (Url.Parser.s "me")
+        , Url.Parser.map CompendiumCreaturePage
+            (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         ]
 
 
@@ -100,7 +103,6 @@ type alias Model =
     , compendium : CompendiumUi
     , compendiumEdit : Maybe CompendiumEditUi
     , compendiumPaste : Maybe CompendiumPasteUi
-    , compendiumQuickView : Maybe Compendium.Creature
     , panelCreatureId : Maybe String
     , toasts : List Toast
     , nextToastId : Int
@@ -1334,9 +1336,6 @@ type Msg
     | CompendiumPasteCancel
     | CompendiumPasteTextChanged String
     | CompendiumPasteApply
-      -- Quick View (read-only stat-block popup from a card)
-    | CompendiumQuickViewOpen String
-    | CompendiumQuickViewClose
       -- Pin a compendium creature's stat block in the side panel
     | PanelShowCreature String
       -- Bulk: import / export / reset / delete-from-browser
@@ -1376,9 +1375,6 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     if model.dice.open then
         Browser.Events.onKeyDown (escKey CloseDice)
-
-    else if model.compendiumQuickView /= Nothing then
-        Browser.Events.onKeyDown (escKey CompendiumQuickViewClose)
 
     else if model.compendiumPaste /= Nothing then
         Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
@@ -1464,7 +1460,6 @@ init _ url key =
       , compendium = emptyCompendium
       , compendiumEdit = Nothing
       , compendiumPaste = Nothing
-      , compendiumQuickView = Nothing
       , panelCreatureId = Nothing
       , toasts = []
       , nextToastId = 0
@@ -2827,22 +2822,6 @@ update msg model =
 
         CompendiumPasteApply ->
             handleCompendiumPasteApply model
-
-        CompendiumQuickViewOpen creatureId ->
-            ( { model
-                | compendiumQuickView =
-                    case model.compendium.db of
-                        CompendiumDbLoaded db ->
-                            Compendium.find creatureId db
-
-                        _ ->
-                            Nothing
-              }
-            , Cmd.none
-            )
-
-        CompendiumQuickViewClose ->
-            ( { model | compendiumQuickView = Nothing }, Cmd.none )
 
         PanelShowCreature creatureId ->
             ( { model | panelCreatureId = Just creatureId }, Cmd.none )
@@ -4505,7 +4484,6 @@ view model =
             , viewCompendiumModal model.compendium
             , viewCompendiumEditModal model.compendiumEdit
             , viewCompendiumPasteModal model.compendiumPaste
-            , viewCompendiumQuickViewModal model.compendiumQuickView
             , viewToasts model.toasts
             , viewRingerAudio model
             ]
@@ -4542,6 +4520,9 @@ viewPage model =
                     ]
                 ]
 
+        CompendiumCreaturePage id ->
+            viewCompendiumStandalone model id
+
         NotFound ->
             div [ class "workspace" ]
                 [ section [ class "panel panel--main" ]
@@ -4553,6 +4534,43 @@ viewPage model =
                         ]
                     ]
                 ]
+
+
+{-| Standalone single-creature stat-block view at
+`/compendium/creatures/:id`. Used as the deep link for the side
+panel's ↗️ "open in new window" button — gives the GM a clean
+reference page they can keep open in another window or print.
+
+While the compendium fetch is in flight, render a loading
+placeholder. If the fetch completes and the id isn't found,
+render a 404-style message.
+
+-}
+viewCompendiumStandalone : Model -> String -> Html Msg
+viewCompendiumStandalone model id =
+    let
+        body =
+            case model.compendium.db of
+                CompendiumDbLoading ->
+                    p [ class "empty" ] [ text "Loading…" ]
+
+                CompendiumDbFailed _ ->
+                    p [ class "empty" ]
+                        [ text "Couldn't load the compendium." ]
+
+                CompendiumDbLoaded db ->
+                    case Compendium.find id db of
+                        Just creature ->
+                            View.StatBlock.view RollFromStatBlock creature
+
+                        Nothing ->
+                            p [ class "empty" ]
+                                [ text "Creature not found in the compendium." ]
+    in
+    div [ class "workspace workspace--standalone" ]
+        [ section [ class "panel panel--standalone" ]
+            [ div [ class "panel__body" ] [ body ] ]
+        ]
 
 
 viewMe : MeStatus -> Html Msg
@@ -4797,8 +4815,7 @@ viewPanelDetail model =
             [ div [ class "panel__title" ] [ text "Compendium" ] ]
         , div [ class "panel__body" ]
             [ div [ class "btn-grid compendium-toolbar" ]
-                [ viewPanelQuickViewButton model
-                , button
+                [ button
                     [ class "action-btn action-btn--blue"
                     , onClick CompendiumOpen
                     , title "Open the creature library"
@@ -4843,7 +4860,18 @@ viewPanelStatBlock model =
     in
     case pinned of
         Just creature ->
-            View.StatBlock.view RollFromStatBlock creature
+            div [ class "panel-statblock" ]
+                [ a
+                    [ class "panel-statblock__open"
+                    , href ("/compendium/creatures/" ++ creature.id)
+                    , target "_blank"
+                    , attribute "rel" "noopener"
+                    , title "Open this creature's stat block in a new window"
+                    , attribute "aria-label" "Open in new window"
+                    ]
+                    [ text "↗" ]
+                , View.StatBlock.view RollFromStatBlock creature
+                ]
 
         Nothing ->
             viewStatBlock mockStatBlock
@@ -4992,8 +5020,6 @@ viewCreatureCard activeName hpEdit creature =
                     [ text "×" ]
                 ]
             , div [ class "creature-card__rail-group" ]
-                [ viewQuickViewButton creature ]
-            , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
                     , onClick (DuplicateCreature creature.name)
@@ -5004,64 +5030,6 @@ viewCreatureCard activeName hpEdit creature =
                 ]
             ]
         ]
-
-
-{-| Compendium-panel toolbar button: opens Quick View for the
-encounter's currently-active creature. Disabled when the active
-creature has no compendium link.
--}
-viewPanelQuickViewButton : Model -> Html Msg
-viewPanelQuickViewButton model =
-    let
-        activeId =
-            Encounter.activeCreature model.encounter
-                |> Maybe.andThen .creatureId
-    in
-    case activeId of
-        Just id ->
-            button
-                [ class "action-btn action-btn--blue"
-                , onClick (CompendiumQuickViewOpen id)
-                , title "Quick view of the active creature's stat block"
-                ]
-                [ text "🔍 Quick View" ]
-
-        Nothing ->
-            button
-                [ class "action-btn action-btn--blue"
-                , disabled True
-                , attribute "aria-disabled" "true"
-                , title "No compendium link on the active creature"
-                ]
-                [ text "🔍 Quick View" ]
-
-
-{-| Per-card 🔍 button that opens the source compendium creature
-in a read-only Quick View modal. Disabled with an explanatory
-tooltip on creatures that have no `creatureId` back-reference
-(e.g. legacy seeded creatures, or anything spawned before the
-compendium was wired up).
--}
-viewQuickViewButton : Creature -> Html Msg
-viewQuickViewButton creature =
-    case creature.creatureId of
-        Just id ->
-            button
-                [ class "icon-btn"
-                , onClick (CompendiumQuickViewOpen id)
-                , title "Quick view of source stat block"
-                , attribute "aria-label" "Quick view"
-                ]
-                [ text "🔍" ]
-
-        Nothing ->
-            button
-                [ class "icon-btn icon-btn--disabled"
-                , disabled True
-                , title "No compendium link — add this creature from the compendium for Quick View"
-                , attribute "aria-label" "Quick view (unavailable)"
-                ]
-                [ text "🔍" ]
 
 
 viewCardRowTop : Creature -> Html Msg
@@ -9016,28 +8984,6 @@ viewToast toast =
             ]
             [ text "×" ]
         ]
-
-
-{-| Read-only Quick View popup: opens against a compendium
-creature id (looked up at open time) and renders just the stat
-block plus a Close button. Re-uses `View.StatBlock.view` so the
-display is identical to the browser modal's right pane.
--}
-viewCompendiumQuickViewModal : Maybe Compendium.Creature -> Html Msg
-viewCompendiumQuickViewModal maybeCreature =
-    case maybeCreature of
-        Nothing ->
-            text ""
-
-        Just creature ->
-            View.Modal.view
-                { close = CompendiumQuickViewClose
-                , noOp = NoOp
-                , title = "🔍 " ++ creature.name
-                , extraClass = "modal--quick-view"
-                , body =
-                    [ View.StatBlock.view RollFromStatBlock creature ]
-                }
 
 
 viewPasteFooter : CompendiumPasteUi -> Html Msg
