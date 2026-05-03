@@ -91,6 +91,8 @@ type alias State =
     { creature : Compendium.Creature
     , section : Section
     , pending : Maybe PendingFeature
+    , passedHeader : Bool
+    , loreMode : Bool
     }
 
 
@@ -161,6 +163,8 @@ initialState name typeLine =
         }
     , section = TraitsSection
     , pending = Nothing
+    , passedHeader = False
+    , loreMode = False
     }
 
 
@@ -221,7 +225,19 @@ walk lines state =
 
 handleLine : String -> State -> State
 handleLine line state =
+    if state.loreMode then
+        appendLore line state
+
+    else
+        dispatchClassifiedLine line state
+
+
+dispatchClassifiedLine : String -> State -> State
+dispatchClassifiedLine line state =
     case classifyLine line of
+        LineIgnore ->
+            state
+
         LineArmorClass ac note ->
             withCreature
                 (\c -> { c | armorClass = ac, armorClassNote = note })
@@ -237,6 +253,9 @@ handleLine line state =
 
         LineAbilities abs_ ->
             withCreature (\c -> { c | abilities = abs_ }) (commitFeature state)
+
+        LineAbilityRow ability score maybeSave ->
+            withCreature (applyAbilityRow ability score maybeSave) (commitFeature state)
 
         LineSaves saves ->
             withCreature (\c -> { c | savingThrows = saves }) (commitFeature state)
@@ -262,9 +281,19 @@ handleLine line state =
         LineLanguages langs ->
             withCreature (\c -> { c | languages = langs }) (commitFeature state)
 
-        LineChallenge cr xp ->
+        LineChallenge cr xp pb ->
             withCreature
-                (\c -> { c | challengeRating = cr, xp = xp })
+                (\c ->
+                    let
+                        next =
+                            { c | challengeRating = cr, xp = xp }
+                    in
+                    if pb > 0 then
+                        { next | proficiencyBonus = pb }
+
+                    else
+                        next
+                )
                 (commitFeature state)
 
         LineProficiencyBonus pb ->
@@ -272,19 +301,26 @@ handleLine line state =
 
         LineSectionHeader section ->
             -- Commit FIRST so the pending feature lands in the
-            -- previous section, then switch.
+            -- previous section, then switch. Mark `passedHeader`
+            -- so the lore detector knows we're past the meta phase.
             let
                 committed =
                     commitFeature state
             in
-            { committed | section = section }
+            { committed | section = section, passedHeader = True }
 
         LineFeatureStart name body ->
             commitFeature state
                 |> startFeature name body
 
         LineContinuation body ->
-            extendFeature body state
+            if shouldEnterLoreMode state body then
+                state
+                    |> commitFeature
+                    |> enterLoreMode body
+
+            else
+                extendFeature body state
 
 
 withCreature : (Compendium.Creature -> Compendium.Creature) -> State -> State
@@ -321,6 +357,141 @@ extendFeature body state =
 
         Just p ->
             { state | pending = Just { p | body = p.body ++ [ body ] } }
+
+
+{-| Lore mode kicks in when the previous feature has finished
+cleanly (its last body line ends in sentence punctuation) AND the
+incoming line looks like a paragraph rather than a continuation.
+
+We deliberately require `pending = Just complete` instead of
+allowing `Nothing` — otherwise, a long opening trait body
+arriving right after a section header would trip the heuristic
+before we've parsed even one feature in the new section.
+
+The lookahead protects against, e.g., the lore tail of a D&D
+Beyond export ("Adult blue dragons command small empires…")
+silently extending the body of the last legendary action.
+
+-}
+shouldEnterLoreMode : State -> String -> Bool
+shouldEnterLoreMode state body =
+    case state.pending of
+        Just p ->
+            state.passedHeader
+                && pendingComplete p
+                && looksLikeLore body
+
+        Nothing ->
+            False
+
+
+pendingComplete : PendingFeature -> Bool
+pendingComplete p =
+    case List.reverse p.body of
+        last :: _ ->
+            String.endsWith "." last
+                || String.endsWith "?" last
+                || String.endsWith "!" last
+
+        [] ->
+            False
+
+
+looksLikeLore : String -> Bool
+looksLikeLore body =
+    let
+        firstFeatureBoundary =
+            case String.indexes ". " body of
+                first :: _ ->
+                    first
+
+                [] ->
+                    String.length body
+    in
+    String.length body > 60 && firstFeatureBoundary > 40
+
+
+enterLoreMode : String -> State -> State
+enterLoreMode line state =
+    { state | loreMode = True }
+        |> appendLore line
+
+
+{-| Append a single paragraph into the running "Description"
+custom section. If "Description" is already the last section,
+append with a paragraph break; otherwise create a new entry.
+-}
+appendLore : String -> State -> State
+appendLore line state =
+    withCreature (\c -> { c | customSections = mergeIntoDescription line c.customSections })
+        state
+
+
+mergeIntoDescription : String -> List Compendium.CustomSection -> List Compendium.CustomSection
+mergeIntoDescription line sections =
+    case List.reverse sections of
+        last :: rest ->
+            if last.name == "Description" then
+                List.reverse rest
+                    ++ [ { last | body = last.body ++ "\n\n" ++ line } ]
+
+            else
+                sections ++ [ { name = "Description", body = line } ]
+
+        [] ->
+            [ { name = "Description", body = line } ]
+
+
+applyAbilityRow :
+    Compendium.Ability
+    -> Int
+    -> Maybe Int
+    -> Compendium.Creature
+    -> Compendium.Creature
+applyAbilityRow ability score maybeSave c =
+    let
+        abilities =
+            c.abilities
+
+        nextAbilities =
+            case ability of
+                Compendium.Str ->
+                    { abilities | str = score }
+
+                Compendium.Dex ->
+                    { abilities | dex = score }
+
+                Compendium.Con ->
+                    { abilities | con = score }
+
+                Compendium.Int_ ->
+                    { abilities | int = score }
+
+                Compendium.Wis ->
+                    { abilities | wis = score }
+
+                Compendium.Cha ->
+                    { abilities | cha = score }
+
+        modifier =
+            (score - 10) // 2
+
+        savesAdditions =
+            case maybeSave of
+                Just save ->
+                    if save /= modifier then
+                        [ { ability = ability, bonus = save } ]
+
+                    else
+                        []
+
+                Nothing ->
+                    []
+    in
+    { c
+        | abilities = nextAbilities
+        , savingThrows = c.savingThrows ++ savesAdditions
+    }
 
 
 parkPreamble : Section -> String -> Compendium.Creature -> Compendium.Creature
@@ -484,6 +655,7 @@ type Line
     | LineHitPoints Int String
     | LineSpeed Compendium.Speed
     | LineAbilities Compendium.Abilities
+    | LineAbilityRow Compendium.Ability Int (Maybe Int)
     | LineSaves (List Compendium.AbilitySave)
     | LineSkills (List Compendium.SkillBonus)
     | LineDamageVulnerabilities (List String)
@@ -492,11 +664,13 @@ type Line
     | LineConditionImmunities (List String)
     | LineSenses Compendium.Senses
     | LineLanguages (List String)
-    | LineChallenge String Int
+    | LineChallenge String Int Int
+      -- ^ CR text, XP, optional PB (defaults to 0 if not in line)
     | LineProficiencyBonus Int
     | LineSectionHeader Section
     | LineFeatureStart String String
     | LineContinuation String
+    | LineIgnore
 
 
 classifyLine : String -> Line
@@ -505,127 +679,227 @@ classifyLine line =
         lower =
             String.toLower line
     in
-    case stripPrefix "armor class " lower of
-        Just rest ->
-            parseArmorClass (sliceRest line "armor class " rest)
+    case classifySection line lower of
+        Just headerLine ->
+            headerLine
 
         Nothing ->
-            case stripPrefix "hit points " lower of
-                Just _ ->
-                    parseHitPoints (sliceRest line "hit points " "")
+            case classifyAbilityRow line of
+                Just abilityRowLine ->
+                    abilityRowLine
 
                 Nothing ->
-                    case stripPrefix "speed " lower of
-                        Just _ ->
-                            LineSpeed (parseSpeed (sliceRest line "speed " ""))
+                    case classifyByPrefix line lower of
+                        Just prefixLine ->
+                            prefixLine
 
                         Nothing ->
-                            classifyAfterCore line lower
-
-
-classifyAfterCore : String -> String -> Line
-classifyAfterCore line lower =
-    case stripPrefix "saving throws " lower of
-        Just _ ->
-            LineSaves (parseSaves (sliceRest line "saving throws " ""))
-
-        Nothing ->
-            case stripPrefix "skills " lower of
-                Just _ ->
-                    LineSkills (parseSkills (sliceRest line "skills " ""))
-
-                Nothing ->
-                    case stripPrefix "damage vulnerabilities " lower of
-                        Just _ ->
-                            LineDamageVulnerabilities (parseCsv (sliceRest line "damage vulnerabilities " ""))
-
-                        Nothing ->
-                            case stripPrefix "damage resistances " lower of
-                                Just _ ->
-                                    LineDamageResistances (parseCsv (sliceRest line "damage resistances " ""))
+                            case parseAbilityLine line of
+                                Just abs_ ->
+                                    LineAbilities abs_
 
                                 Nothing ->
-                                    classifyAfterDamage line lower
+                                    case splitFeatureStart line of
+                                        Just ( name, body ) ->
+                                            LineFeatureStart name body
+
+                                        Nothing ->
+                                            LineContinuation line
 
 
-classifyAfterDamage : String -> String -> Line
-classifyAfterDamage line lower =
-    case stripPrefix "damage immunities " lower of
-        Just _ ->
-            LineDamageImmunities (parseCsv (sliceRest line "damage immunities " ""))
+{-| Map known section-heading lines to the matching Section.
+Section headings on D&D Beyond appear on a line by themselves
+with no body — "Traits", "Actions", "Bonus Actions", etc. — so
+exact-match against the lowercased line is enough.
 
-        Nothing ->
-            case stripPrefix "condition immunities " lower of
-                Just _ ->
-                    LineConditionImmunities (parseCsv (sliceRest line "condition immunities " ""))
+Non-heading lines return Nothing so the caller can fall through.
 
-                Nothing ->
-                    case stripPrefix "senses " lower of
-                        Just _ ->
-                            LineSenses (parseSenses (sliceRest line "senses " ""))
-
-                        Nothing ->
-                            case stripPrefix "languages " lower of
-                                Just _ ->
-                                    LineLanguages (parseCsv (sliceRest line "languages " ""))
-
-                                Nothing ->
-                                    classifyAfterMeta line lower
-
-
-classifyAfterMeta : String -> String -> Line
-classifyAfterMeta line lower =
-    case stripPrefix "challenge " lower of
-        Just _ ->
-            parseChallenge (sliceRest line "challenge " "")
-
-        Nothing ->
-            case stripPrefix "proficiency bonus " lower of
-                Just _ ->
-                    LineProficiencyBonus (parseSignedInt (sliceRest line "proficiency bonus " ""))
-
-                Nothing ->
-                    case parseAbilityLine line of
-                        Just abs_ ->
-                            LineAbilities abs_
-
-                        Nothing ->
-                            classifySection line lower
-
-
-classifySection : String -> String -> Line
-classifySection line lower =
+-}
+classifySection : String -> String -> Maybe Line
+classifySection _ lower =
     case lower of
+        "traits" ->
+            Just (LineSectionHeader TraitsSection)
+
         "actions" ->
-            LineSectionHeader ActionsSection
+            Just (LineSectionHeader ActionsSection)
 
         "bonus actions" ->
-            LineSectionHeader BonusActionsSection
+            Just (LineSectionHeader BonusActionsSection)
 
         "reactions" ->
-            LineSectionHeader ReactionsSection
+            Just (LineSectionHeader ReactionsSection)
 
         "legendary actions" ->
-            LineSectionHeader LegendarySection
+            Just (LineSectionHeader LegendarySection)
 
         "lair actions" ->
-            LineSectionHeader LairSection
+            Just (LineSectionHeader LairSection)
 
         "regional effects" ->
-            LineSectionHeader RegionalSection
+            Just (LineSectionHeader RegionalSection)
 
         "spellcasting" ->
-            LineSectionHeader SpellcastingSection
+            Just (LineSectionHeader SpellcastingSection)
 
         _ ->
-            -- Try to parse as "Name. Body" feature-start; fall
-            -- back to a continuation of the current feature.
-            case splitFeatureStart line of
-                Just ( name, body ) ->
-                    LineFeatureStart name body
+            Nothing
 
-                Nothing ->
-                    LineContinuation line
+
+{-| Prefix-driven dispatch for the upper detail block. Each rule
+matches a case-insensitive prefix and is handed the trailing
+text. Both old-style ("Armor Class …", "Hit Points …",
+"Damage Immunities …") and modern compact forms ("AC …", "HP …",
+"Immunities …") map to the same Lines so downstream logic
+doesn't care.
+
+The "Initiative" lookup is intentional: D&D Beyond 2024 sometimes
+emits a standalone "Initiative +10 (20)" line that we parse here
+just to capture the bonus. Anything with the bonus already
+extracted from the AC line still works because the AC parser
+strips that suffix before reading parens.
+
+-}
+classifyByPrefix : String -> String -> Maybe Line
+classifyByPrefix line lower =
+    let
+        rules =
+            [ ( "armor class ", \rest -> parseArmorClass (cleanAcLine rest) )
+            , ( "ac ", \rest -> parseArmorClass (cleanAcLine rest) )
+            , ( "hit points ", parseHitPoints )
+            , ( "hp ", parseHitPoints )
+            , ( "speed ", \rest -> LineSpeed (parseSpeed rest) )
+            , ( "initiative ", \_ -> LineIgnore )
+
+            -- Save / skill rows.
+            , ( "saving throws ", \rest -> LineSaves (parseSaves rest) )
+            , ( "skills ", \rest -> LineSkills (parseSkills rest) )
+
+            -- Damage / condition lists. Long forms first so they
+            -- shadow the short forms when both could match.
+            , ( "damage vulnerabilities ", \rest -> LineDamageVulnerabilities (parseCsv rest) )
+            , ( "damage resistances ", \rest -> LineDamageResistances (parseCsv rest) )
+            , ( "damage immunities ", \rest -> LineDamageImmunities (parseCsv rest) )
+            , ( "condition immunities ", \rest -> LineConditionImmunities (parseCsv rest) )
+            , ( "vulnerabilities ", \rest -> LineDamageVulnerabilities (parseCsv rest) )
+            , ( "resistances ", \rest -> LineDamageResistances (parseCsv rest) )
+            , ( "immunities ", \rest -> LineDamageImmunities (parseCsv rest) )
+
+            -- Senses / languages.
+            , ( "senses ", \rest -> LineSenses (parseSenses rest) )
+            , ( "languages ", \rest -> LineLanguages (parseCsv rest) )
+
+            -- CR + the legacy standalone PB line.
+            , ( "challenge ", parseChallenge )
+            , ( "cr ", parseChallenge )
+            , ( "proficiency bonus ", \rest -> LineProficiencyBonus (parseSignedInt rest) )
+            ]
+    in
+    matchPrefix line lower rules
+
+
+{-| Apply prefix rules in order. The first one whose lowercased
+prefix matches the lowercased line wins; the matching rule
+receives the original (case-preserving) line minus the prefix.
+This way "Armor Class 15" and "AC 15" both flow into
+`parseArmorClass "15"` regardless of which prefix matched.
+-}
+matchPrefix : String -> String -> List ( String, String -> Line ) -> Maybe Line
+matchPrefix line lower rules =
+    case rules of
+        [] ->
+            Nothing
+
+        ( prefix, fn ) :: rest ->
+            if String.startsWith prefix lower then
+                Just (fn (String.dropLeft (String.length prefix) line))
+
+            else
+                matchPrefix line lower rest
+
+
+{-| Strip "Initiative +N (M)" suffixes from an AC line so the
+parens-extractor for the AC note doesn't grab the initiative
+roll-result by accident. Pre-2024 stat blocks just have
+"AC 15 (leather armor)" so this is a no-op for them.
+-}
+cleanAcLine : String -> String
+cleanAcLine raw =
+    case String.indexes "Initiative" raw of
+        i :: _ ->
+            String.left i raw |> String.trim
+
+        [] ->
+            -- Try lower-case in case the source preserved it.
+            case String.indexes "initiative" (String.toLower raw) of
+                i :: _ ->
+                    String.left i raw |> String.trim
+
+                [] ->
+                    raw
+
+
+{-| `STR\t25\t+7\t+7`-style ability rows. These show up in
+D&D Beyond's tabular layout, one per line. The columns are
+ability label, score, mod, save bonus. We carry the save
+bonus through so `applyAbilityRow` can register a
+`savingThrows` entry only when it differs from the modifier
+(i.e. the creature is proficient in that save).
+
+Lines with just `Mod\tSave` (the table header) or extra
+whitespace get ignored cleanly via `LineIgnore`.
+
+-}
+classifyAbilityRow : String -> Maybe Line
+classifyAbilityRow line =
+    let
+        cols =
+            String.split "\t" line
+                |> List.map String.trim
+                |> List.filter (not << String.isEmpty)
+    in
+    case cols of
+        [ "Mod", "Save" ] ->
+            Just LineIgnore
+
+        firstCol :: rest ->
+            case ( abilityFromAbbrev firstCol, rest ) of
+                ( Just ability, scoreText :: more ) ->
+                    case String.toInt scoreText of
+                        Just score ->
+                            Just (LineAbilityRow ability score (extractSaveColumn more))
+
+                        Nothing ->
+                            Nothing
+
+                _ ->
+                    Nothing
+
+        [] ->
+            Nothing
+
+
+{-| Pull the save bonus out of the trailing columns. The mod
+column comes first ("+7"), then the save column ("+7"). If only
+one signed column is present we treat it as the save bonus.
+-}
+extractSaveColumn : List String -> Maybe Int
+extractSaveColumn rest =
+    let
+        signed =
+            List.filter looksSigned rest
+    in
+    case List.reverse signed of
+        last :: _ ->
+            Just (parseSignedInt last)
+
+        [] ->
+            Nothing
+
+
+looksSigned : String -> Bool
+looksSigned raw =
+    String.startsWith "+" raw || String.startsWith "-" raw
 
 
 
@@ -967,13 +1241,13 @@ parseSignedInt raw =
     in
     case String.uncons trimmed of
         Just ( '+', rest ) ->
-            String.toInt rest |> Maybe.withDefault 0
+            firstInt rest
 
         Just ( '-', rest ) ->
-            String.toInt rest |> Maybe.map negate |> Maybe.withDefault 0
+            negate (firstInt rest)
 
         _ ->
-            String.toInt trimmed |> Maybe.withDefault 0
+            firstInt trimmed
 
 
 parseCsv : String -> List String
@@ -991,8 +1265,15 @@ parseCsv raw =
 parseSenses : String -> Compendium.Senses
 parseSenses raw =
     let
+        -- D&D Beyond 2024 uses "Senses Blindsight 60 ft.,
+        -- Darkvision 120 ft.; Passive Perception 22" — comma
+        -- between sense modes, semicolon before passive
+        -- Perception. We treat both as segment boundaries.
         segments =
-            String.split "," raw |> List.map String.trim
+            raw
+                |> String.replace ";" ","
+                |> String.split ","
+                |> List.map String.trim
     in
     List.foldl applySensesSegment defaultSenses segments
 
@@ -1041,8 +1322,31 @@ parseChallenge raw =
 
         xp =
             extractXp raw
+
+        pb =
+            extractPbFromChallenge raw
     in
-    LineChallenge crText xp
+    LineChallenge crText xp pb
+
+
+{-| Pull `+N` after `PB` out of strings like
+"16 (XP 15,000, or 18,000 in lair; PB +5)" — D&D Beyond 2024
+combines CR / XP / lair-XP / PB on a single line. Returns 0
+if no PB found (caller treats 0 as "leave default alone").
+-}
+extractPbFromChallenge : String -> Int
+extractPbFromChallenge raw =
+    let
+        lower =
+            String.toLower raw
+    in
+    case String.indexes "pb " lower of
+        i :: _ ->
+            String.dropLeft (i + 3) raw
+                |> parseSignedInt
+
+        [] ->
+            0
 
 
 extractXp : String -> Int
@@ -1172,11 +1476,13 @@ splitFeatureStart : String -> Maybe ( String, String )
 splitFeatureStart line =
     -- A feature starts with a phrase ending in a period, then a space,
     -- then the body. We require the leading phrase to start with an
-    -- uppercase letter and to be no longer than ~40 characters so we
-    -- don't accidentally cut a sentence in half.
+    -- uppercase letter and to be no longer than ~60 characters so we
+    -- don't accidentally cut a sentence in half. The cap is 60 (not
+    -- 40) so usage tags like "Legendary Resistance (3/Day, or 4/Day
+    -- in Lair)" — common on D&D Beyond — fit inside.
     case String.indexes ". " line of
         first :: _ ->
-            if first > 0 && first <= 40 then
+            if first > 0 && first <= 60 then
                 let
                     name =
                         String.left first line |> String.trim

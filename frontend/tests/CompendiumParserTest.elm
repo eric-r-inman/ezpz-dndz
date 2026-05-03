@@ -19,6 +19,7 @@ suite =
         , spellcasterSuite
         , conditionImmunitiesSuite
         , minimalSuite
+        , blueDragonSuite
         , empties
         ]
 
@@ -400,6 +401,190 @@ minimalSuite =
                     )
         , test "size = Tiny" <|
             \_ -> expectFields input (\c -> c.size |> Expect.equal Compendium.Tiny)
+        ]
+
+
+blueDragonSuite : Test
+blueDragonSuite =
+    let
+        input =
+            String.join "\n"
+                [ "Adult Blue Dragon"
+                , "Huge Dragon (Chromatic), Lawful Evil"
+                , "AC 19    Initiative +10 (20)"
+                , "HP 212 (17d12 + 102)"
+                , "Speed 40 ft., Burrow 30 ft., Fly 80 ft."
+                , "Mod\tSave"
+                , "STR\t25\t+7\t+7"
+                , "DEX\t10\t+0\t+5"
+                , "CON\t23\t+6\t+6"
+                , "Mod\tSave"
+                , "INT\t16\t+3\t+3"
+                , "WIS\t15\t+2\t+7"
+                , "CHA\t20\t+5\t+5"
+                , "Skills Perception +12, Stealth +5"
+                , "Immunities Lightning"
+                , "Senses Blindsight 60 ft., Darkvision 120 ft.; Passive Perception 22"
+                , "Languages Common, Draconic"
+                , "CR 16 (XP 15,000, or 18,000 in lair; PB +5)"
+                , "Traits"
+                , "Legendary Resistance (3/Day, or 4/Day in Lair). If the dragon fails a saving throw, it can choose to succeed instead."
+                , "Actions"
+                , "Multiattack. The dragon makes three Rend attacks. It can replace one attack with a use of Spellcasting to cast Shatter."
+                , "Rend. Melee Attack Roll: +12, reach 10 ft. Hit: 16 (2d8 + 7) Slashing damage plus 5 (1d10) Lightning damage."
+                , "Lightning Breath (Recharge 5-6). Dexterity Saving Throw: DC 19, each creature in a 90-foot-long, 5-foot-wide Line. Failure: 60 (11d10) Lightning damage. Success: Half damage."
+                , "Spellcasting. The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 18):"
+                , "At Will: Detect Magic, Invisibility, Mage Hand, Shatter"
+                , "1/Day Each: Scrying, Sending"
+                , "Legendary Actions"
+                , "Cloaked Flight. The dragon uses Spellcasting to cast Invisibility on itself, and it can fly up to half its Fly Speed. The dragon can't take this action again until the start of its next turn."
+                , "Sonic Boom. The dragon uses Spellcasting to cast Shatter. The dragon can't take this action again until the start of its next turn."
+                , "Tail Swipe. The dragon makes one Rend attack."
+                , "Adult blue dragons command small empires, which might be territories of subjugated followers, shadowy criminal networks, or cultic enclaves. Endlessly suspicious and wary of rivals, these dragons enact elaborate schemes to ruin their foes, test the loyalty of their servants, and ensure their dominance for centuries."
+                , "Blue Dragons"
+                , "Arrogant and imperious, blue dragons are chromatic dragons that crave control and collect followers like other dragons hoard treasure. They seek to transform their territories into empires, domains to be feared by nations."
+                ]
+    in
+    describe "Adult Blue Dragon (D&D Beyond 2024 export — short prefixes, tab abilities, lore)"
+        [ test "parses without error" <|
+            \_ -> expectOk input
+        , test "size = Huge, race = Dragon, subrace = Chromatic, alignment = Lawful Evil" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        { size = c.size, race = c.race, subrace = c.subrace, alignment = c.alignment }
+                            |> Expect.equal
+                                { size = Compendium.Huge
+                                , race = "Dragon"
+                                , subrace = "Chromatic"
+                                , alignment = "Lawful Evil"
+                                }
+                    )
+        , test "AC 19 (no spurious note from Initiative parens)" <|
+            \_ ->
+                expectFields input
+                    (\c -> ( c.armorClass, c.armorClassNote ) |> Expect.equal ( 19, "" ))
+        , test "HP 212 with 17d12 + 102 formula" <|
+            \_ ->
+                expectFields input
+                    (\c -> ( c.maxHp, c.hpFormula ) |> Expect.equal ( 212, "17d12 + 102" ))
+        , test "speed: walk 40, burrow 30, fly 80" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        { walk = c.speed.walk, burrow = c.speed.burrow, fly = c.speed.fly }
+                            |> Expect.equal { walk = 40, burrow = 30, fly = 80 }
+                    )
+        , test "abilities parsed from tab-separated rows (real scores, not 10s)" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        { str = c.abilities.str
+                        , dex = c.abilities.dex
+                        , con = c.abilities.con
+                        , int = c.abilities.int
+                        }
+                            |> Expect.equal
+                                { str = 25, dex = 10, con = 23, int = 16 }
+                    )
+        , test "saving throws picked up from save column (only proficient ones)" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.savingThrows
+                            |> List.map (\s -> ( s.ability, s.bonus ))
+                            |> Expect.equal
+                                [ ( Compendium.Dex, 5 ), ( Compendium.Wis, 7 ) ]
+                    )
+        , test "skills" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.skills
+                            |> Expect.equal
+                                [ { name = "Perception", bonus = 12 }
+                                , { name = "Stealth", bonus = 5 }
+                                ]
+                    )
+        , test "Immunities short-form maps to damage immunities" <|
+            \_ ->
+                expectFields input
+                    (\c -> c.damageImmunities |> Expect.equal [ "Lightning" ])
+        , test "Senses splits on both ',' and ';'" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        ( c.senses.blindsight, c.senses.darkvision, c.senses.passivePerception )
+                            |> Expect.equal ( 60, 120, 22 )
+                    )
+        , test "Languages" <|
+            \_ ->
+                expectFields input
+                    (\c -> c.languages |> Expect.equal [ "Common", "Draconic" ])
+        , test "CR 16 + XP 15,000 + PB +5 from one combined line" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        { cr = c.challengeRating
+                        , xp = c.xp
+                        , pb = c.proficiencyBonus
+                        }
+                            |> Expect.equal
+                                { cr = "16", xp = 15000, pb = 5 }
+                    )
+        , test "'Traits' section header used (no Traits-preamble custom section)" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.customSections
+                            |> List.map .name
+                            |> List.filter (String.startsWith "Traits")
+                            |> Expect.equal []
+                    )
+        , test "Legendary Resistance lands as a trait" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.traits
+                            |> List.map .name
+                            |> Expect.equal [ "Legendary Resistance (3/Day, or 4/Day in Lair)" ]
+                    )
+        , test "actions: Multiattack, Rend, Lightning Breath, Spellcasting" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.actions
+                            |> List.map .name
+                            |> Expect.equal
+                                [ "Multiattack"
+                                , "Rend"
+                                , "Lightning Breath (Recharge 5-6)"
+                                , "Spellcasting"
+                                ]
+                    )
+        , test "Tail Swipe body does NOT contain the trailing lore prose" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.legendaryActions
+                            |> Maybe.andThen
+                                (\la ->
+                                    la.options
+                                        |> List.filter (\o -> o.name == "Tail Swipe")
+                                        |> List.head
+                                )
+                            |> Maybe.map .description
+                            |> Expect.equal (Just "The dragon makes one Rend attack.")
+                    )
+        , test "lore prose ends up in a Description custom section, not bleeding into the last action" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.customSections
+                            |> List.filter (\s -> s.name == "Description")
+                            |> List.length
+                            |> Expect.atLeast 1
+                    )
         ]
 
 
