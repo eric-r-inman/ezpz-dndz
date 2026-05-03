@@ -195,6 +195,11 @@ confirmation re-uses it without re-reading the file.
 type PendingAction
     = PendingReset
     | PendingImport (List Compendium.Creature) Int
+    | PendingDelete String String
+
+
+
+-- (creatureId, displayName for the confirmation message)
 
 
 {-| Hard cap on bulk-add. Anything past this is almost certainly
@@ -1331,11 +1336,13 @@ type Msg
       -- Quick View (read-only stat-block popup from a card)
     | CompendiumQuickViewOpen String
     | CompendiumQuickViewClose
-      -- Bulk: import / export / reset
+      -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File
     | CompendiumImportFileRead String
     | CompendiumResetClick
+    | CompendiumDeleteFromBrowser String String
+      -- (creatureId, displayName)
     | CompendiumPendingCancel
     | CompendiumPendingConfirm
     | CompendiumImportResponse (Result Http.Error Int)
@@ -2849,6 +2856,18 @@ update msg model =
             , Cmd.none
             )
 
+        CompendiumDeleteFromBrowser id displayName ->
+            ( withCompendium
+                (\ui ->
+                    { ui
+                        | pending = Just (PendingDelete id displayName)
+                        , bulkError = Nothing
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
         CompendiumPendingCancel ->
             ( withCompendium (\ui -> { ui | pending = Nothing, bulkError = Nothing }) model
             , Cmd.none
@@ -2952,8 +2971,28 @@ handleCompendiumPendingConfirm model =
             , compendiumImportCmd creatures
             )
 
+        Just (PendingDelete id _) ->
+            ( withCompendium
+                (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                model
+            , compendiumDeleteCmd id
+            )
+
         Nothing ->
             ( model, Cmd.none )
+
+
+compendiumDeleteCmd : String -> Cmd Msg
+compendiumDeleteCmd id =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/compendium/creatures/" ++ id
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
 
 
 compendiumResetCmd : Cmd Msg
@@ -3368,22 +3407,31 @@ handleCompendiumEditDeleteResponse :
 handleCompendiumEditDeleteResponse model deletedId result =
     case result of
         Err err ->
-            ( withCompendiumEdit
+            -- Clear busy/error in BOTH the edit-modal substate
+            -- (when the delete was initiated from the edit form)
+            -- and the browser substate (when initiated from the
+            -- browser's trash button).  withCompendiumEdit no-ops
+            -- if compendiumEdit is Nothing, and likewise for the
+            -- toast — we always surface the error.
+            withCompendiumEdit
                 (\u -> { u | submitting = False, submitError = Just (httpErrorToString err) })
                 model
-            , Cmd.none
-            )
+                |> withCompendium
+                    (\ui -> { ui | bulkBusy = False, bulkError = Just (httpErrorToString err) })
+                |> pushToast ToastError
+                    ("Delete failed: " ++ httpErrorToString err)
 
         Ok () ->
             -- Drop the selection if it was pointing at the just-
-            -- deleted creature; refetch the list to repopulate.
+            -- deleted creature; reset bulkBusy in case the trash-
+            -- icon path got us here; refetch the list to repopulate.
             let
                 clearedSelection ui =
                     if ui.selectedId == Just deletedId then
-                        { ui | selectedId = Nothing }
+                        { ui | selectedId = Nothing, bulkBusy = False }
 
                     else
-                        ui
+                        { ui | bulkBusy = False }
             in
             { model
                 | compendiumEdit = Nothing
@@ -7722,6 +7770,17 @@ viewCompendiumBulkBanner ui =
                 , busy = ui.bulkBusy
                 }
 
+        ( Just (PendingDelete _ displayName), _ ) ->
+            viewConfirmBanner
+                { message =
+                    "Delete \""
+                        ++ displayName
+                        ++ "\" from the compendium? This cannot be undone."
+                , confirmLabel = "Delete"
+                , danger = True
+                , busy = ui.bulkBusy
+                }
+
         ( Nothing, Just err ) ->
             div [ class "compendium__bulk-error" ] [ text err ]
 
@@ -8075,6 +8134,13 @@ viewCompendiumActionBar ui creature =
             , title "Duplicate this creature in the compendium"
             ]
             [ text "📋 Duplicate" ]
+        , button
+            [ class "action-btn action-btn--red compendium__delete-btn"
+            , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
+            , title "Delete this creature from the compendium"
+            , attribute "aria-label" "Delete creature"
+            ]
+            [ text "🗑" ]
         ]
 
 

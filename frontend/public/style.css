@@ -2915,6 +2915,11 @@ body {
   font-size: 0.85rem;
 }
 
+.compendium__delete-btn {
+  font-size: 1rem;
+  padding: 4px 10px;
+}
+
 .compendium__new-btn {
   margin-left: auto;
 }
