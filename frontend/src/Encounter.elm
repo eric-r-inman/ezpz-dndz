@@ -5,7 +5,7 @@ module Encounter exposing
     , SaveNotice
     , Timer
     , standardConditions
-    , initialEncounter
+    , empty, initialEncounter
     , nextTurn, setActive, activeCreature, sortByInitiative
     , moveUp, moveDown
     , mapCreature, nextCover
@@ -42,7 +42,7 @@ damage), it belongs here.
 
 # Initial state
 
-@docs initialEncounter
+@docs empty, initialEncounter
 
 
 # Turn lifecycle
@@ -396,11 +396,24 @@ type alias Encounter =
 -- INITIAL STATE
 
 
-{-| The encounter the page boots into. Will eventually be replaced
-by user-loaded encounters from the monster database / saved files.
-For now it's a fixed cast that exercises the various card states
-(bloodied, hiding, flying with height, surprised, concentrating,
-death saves, holding).
+{-| The empty encounter the running app boots into. The previous
+"`initialEncounter` is a fixed cast" pattern lives on as a TEST
+fixture (see `seedCreatures` below) — but the running app starts
+empty and either loads a persisted encounter from the server or
+waits for the user to add creatures from the compendium.
+-}
+empty : Encounter
+empty =
+    { creatures = []
+    , activeName = ""
+    , round = 1
+    }
+
+
+{-| Test-only encounter fixture used by the elm-test suite to
+exercise nextTurn / setActive / sort behavior against a populated
+queue. The running app no longer boots into this — it boots into
+`empty` — but the unit tests still need a populated cast.
 -}
 initialEncounter : Encounter
 initialEncounter =

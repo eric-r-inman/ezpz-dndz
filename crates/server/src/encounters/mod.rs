@@ -1,33 +1,81 @@
-//! Saved-encounter CRUD + auto-snapshots.  *Stub.*
+//! Live-encounter persistence + HTTP routes.
 //!
-//! Per OPTIMIZATION_AND_COMPLIANCE_PLAN Phase 7, this module
-//! reserves the future-feature surface area:
+//! v1 scope: a single persistent live encounter per deployment.
+//! Auto-saved by the frontend on every mutation, auto-loaded on
+//! app boot so a page reload doesn't lose combat state.  The
+//! schema is whatever the frontend's `Encounter.elm` serializes;
+//! the server stores the JSON opaquely (`serde_json::Value`).
 //!
-//! - HTTP routes (planned):
-//!   - `GET    /api/me/encounters`           → Vec<EncounterSummary>
-//!   - `POST   /api/me/encounters`           → Encounter
-//!   - `GET    /api/me/encounters/:id`       → Encounter (full state)
-//!   - `PUT    /api/me/encounters/:id`       → Encounter
-//!   - `DELETE /api/me/encounters/:id`       → 204
-//!   - `POST   /api/me/encounters/:id/snapshot`   → EncounterSnapshot
-//!     (manual save point for undo)
-//!   - `GET    /api/me/encounters/:id/snapshots`  → Vec<EncounterSnapshot>
+//! HTTP routes:
 //!
-//! - Auto-snapshot policy: every Next Turn click debounced to one
-//!   write per ~5 seconds, retained as a rolling window of the last
-//!   20 plus all snapshots tagged `manual` or `undo_point`.
+//!   - `GET /api/encounter` — 200 JSON, or `null` when no
+//!     encounter has been persisted yet.
+//!   - `PUT /api/encounter` — 200 JSON, replaces the persisted
+//!     encounter with the supplied body.
 //!
-//! - Wire format mirrors the existing `Encounter.elm` JSON shape:
-//!   the saved state is whatever the frontend serializes for the
-//!   live combat queue.  No re-modeling on the backend; the
-//!   server is a thin storage layer until SQLite arrives.
-//!
-//! - Templates are a sibling concern (see `templates.rs` when it
-//!   lands): a template is a list of `(creature_id, count,
-//!   suggested_init_mod)` tuples, distinct from a saved
-//!   encounter's full state.  Templates are shareable; saved
-//!   encounters are private.
-//!
-//! Storage shape (until SQLite): `JsonFileStore<HashMap<EncounterId,
-//! Encounter>>` per user under `<data_dir>/users/<user_id>/
-//! encounters.json`, plus a sibling `snapshots/` directory.
+//! Per [`OPTIMIZATION_AND_COMPLIANCE_PLAN`] Phase 7, the per-user
+//! multi-encounter API (`GET / POST / PUT / DELETE
+//! /api/me/encounters[/:id]`) is a follow-up that waits on the
+//! `users` table and the OIDC session plumbing.  The route shape
+//! in this file deliberately stays at the unauth, single-encounter
+//! tier so it works in dev / homelab modes.
+
+pub mod error;
+pub mod store;
+
+pub use error::EncounterStoreError;
+pub use store::EncounterStore;
+
+use aide::{
+  axum::{
+    routing::{get_with, put_with},
+    ApiRouter,
+  },
+  transform::TransformOperation,
+};
+use axum::{
+  extract::State,
+  response::{IntoResponse, Response},
+  Json,
+};
+use serde_json::Value;
+
+use crate::web_base::AppState;
+
+async fn get_encounter(State(state): State<AppState>) -> Response {
+  Json(state.encounter_store.read().await).into_response()
+}
+
+async fn put_encounter(
+  State(state): State<AppState>,
+  Json(body): Json<Value>,
+) -> Response {
+  match state.encounter_store.replace(body.clone()).await {
+    Ok(()) => Json(body).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+/// Build the live-encounter subrouter.
+pub fn router() -> ApiRouter<AppState> {
+  ApiRouter::new()
+    .api_route(
+      "/api/encounter",
+      get_with(get_encounter, |op: TransformOperation| {
+        op.description(
+          "Read the persisted live encounter as opaque JSON. \
+           Returns `null` when no encounter has been saved.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/encounter",
+      put_with(put_encounter, |op: TransformOperation| {
+        op.description(
+          "Replace the persisted live encounter with the supplied \
+           JSON.  The shape is whatever the frontend serializes; \
+           the server doesn't validate it.",
+        )
+      }),
+    )
+}

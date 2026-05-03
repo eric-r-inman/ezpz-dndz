@@ -35,6 +35,7 @@ pub struct AppState {
   pub frontend_path: PathBuf,
   pub dice_store: crate::dice::DiceStore,
   pub compendium_store: crate::compendium::CompendiumStore,
+  pub encounter_store: crate::encounters::EncounterStore,
   pub oidc_client: Option<Arc<CoreClient>>,
 }
 
@@ -54,6 +55,9 @@ pub enum AppStateError {
 
   #[error("Failed to load compendium store: {0}")]
   CompendiumStoreLoad(#[source] crate::compendium::CompendiumStoreError),
+
+  #[error("Failed to load live-encounter store: {0}")]
+  EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
 }
 
 impl AppState {
@@ -125,12 +129,19 @@ impl AppState {
       .await
       .map_err(AppStateError::CompendiumStoreLoad)?;
 
+    let encounter_store = crate::encounters::EncounterStore::load_or_default(
+      config.encounter_path.clone(),
+    )
+    .await
+    .map_err(AppStateError::EncounterStoreLoad)?;
+
     Ok(Self {
       registry: Arc::new(registry),
       request_counter,
       frontend_path: config.frontend_path.clone(),
       dice_store,
       compendium_store,
+      encounter_store,
       oidc_client,
     })
   }
@@ -202,6 +213,7 @@ pub fn base_router(state: AppState) -> Router {
     )
     .merge(crate::dice::router())
     .merge(crate::compendium::router())
+    .merge(crate::encounters::router())
     .with_state(state)
     .finish_api_with(&mut api, |a| a.title("ezpz-dndz"));
 

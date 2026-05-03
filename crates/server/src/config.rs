@@ -74,6 +74,12 @@ pub struct CliRaw {
   #[arg(long, env = "COMPENDIUM_PATH")]
   pub compendium_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing the persisted live encounter
+  /// (auto-saved by the frontend on every mutation, auto-loaded
+  /// on app boot). Defaults to `<data_dir>/encounter.json`.
+  #[arg(long, env = "ENCOUNTER_PATH")]
+  pub encounter_path: Option<PathBuf>,
+
   /// Base URL of the service (e.g. https://example.com), used to construct
   /// the OIDC redirect URI
   #[arg(long, env = "BASE_URL")]
@@ -101,6 +107,7 @@ pub struct ConfigFileRaw {
   pub data_dir: Option<PathBuf>,
   pub dice_history_path: Option<PathBuf>,
   pub compendium_path: Option<PathBuf>,
+  pub encounter_path: Option<PathBuf>,
   pub base_url: Option<String>,
   pub oidc_issuer: Option<String>,
   pub oidc_client_id: Option<String>,
@@ -142,6 +149,7 @@ pub struct Config {
   pub data_dir: PathBuf,
   pub dice_history_path: PathBuf,
   pub compendium_path: PathBuf,
+  pub encounter_path: PathBuf,
   pub base_url: String,
   pub oidc: Option<OidcConfig>,
 }
@@ -216,6 +224,13 @@ impl Config {
       .or(config_file.compendium_path)
       .unwrap_or_else(|| data_dir.join("compendium").join("creatures.json"));
 
+    // Live encounter: explicit override wins, otherwise default
+    // into <data_dir>/encounter.json.
+    let encounter_path = cli
+      .encounter_path
+      .or(config_file.encounter_path)
+      .unwrap_or_else(|| data_dir.join("encounter.json"));
+
     let base_url = cli.base_url.or(config_file.base_url).ok_or_else(|| {
       ConfigError::Validation("base_url is required".to_string())
     })?;
@@ -287,6 +302,7 @@ impl Config {
       data_dir,
       dice_history_path,
       compendium_path,
+      encounter_path,
       base_url,
       oidc,
     })

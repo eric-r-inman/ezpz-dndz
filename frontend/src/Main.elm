@@ -13,6 +13,7 @@ import Encounter
         , Creature
         , Encounter
         )
+import Encounter.Wire
 import File exposing (File)
 import File.Select
 import HpChange
@@ -1338,6 +1339,9 @@ type Msg
     | CompendiumPasteApply
       -- Pin a compendium creature's stat block in the side panel
     | PanelShowCreature String
+      -- Live-encounter persistence
+    | EncounterLoaded (Result Http.Error (Maybe Encounter))
+    | EncounterPersisted (Result Http.Error ())
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File
@@ -1447,7 +1451,7 @@ init _ url key =
       , url = url
       , route = route
       , me = Loading
-      , encounter = Encounter.initialEncounter
+      , encounter = Encounter.empty
       , dice = emptyDice
       , hpChange = Nothing
       , hpChangeLog = []
@@ -1472,6 +1476,7 @@ init _ url key =
         [ cmdForRoute route
         , fetchDiceHistoryCmd
         , Compendium.fetchAll CompendiumLoaded
+        , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
 
@@ -1501,8 +1506,52 @@ meDecoder =
         (Decode.field "auth_enabled" Decode.bool)
 
 
+{-| Top-level update wrapper: dispatches to `updateInner` and then,
+if the encounter mutated as a result, batches a persist Cmd so the
+save survives a page reload.
+
+The diff-and-persist trick keeps the per-Msg branches focused on
+their own work — they don't have to remember to call a save
+helper. Only equality matters: trivial UI-state changes (modal
+opens, toast pushes, etc.) leave the encounter untouched, so no
+save fires for them.
+
+The two save-flow Msgs themselves (`EncounterLoaded`,
+`EncounterPersisted`) skip the diff to avoid an obvious infinite
+loop where loading a saved encounter would re-trigger a save.
+
+-}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        ( next, innerCmd ) =
+            updateInner msg model
+
+        saveCmd =
+            if shouldPersistAfter msg && next.encounter /= model.encounter then
+                Encounter.Wire.persistEncounterCmd EncounterPersisted next.encounter
+
+            else
+                Cmd.none
+    in
+    ( next, Cmd.batch [ innerCmd, saveCmd ] )
+
+
+shouldPersistAfter : Msg -> Bool
+shouldPersistAfter msg =
+    case msg of
+        EncounterLoaded _ ->
+            False
+
+        EncounterPersisted _ ->
+            False
+
+        _ ->
+            True
+
+
+updateInner : Msg -> Model -> ( Model, Cmd Msg )
+updateInner msg model =
     case msg of
         UrlRequested (Browser.Internal url) ->
             ( model, Nav.pushUrl model.key (Url.toString url) )
@@ -2825,6 +2874,32 @@ update msg model =
 
         PanelShowCreature creatureId ->
             ( { model | panelCreatureId = Just creatureId }, Cmd.none )
+
+        EncounterLoaded result ->
+            case result of
+                Ok (Just encounter) ->
+                    ( { model | encounter = encounter }, Cmd.none )
+
+                Ok Nothing ->
+                    -- Server has no persisted encounter — keep the
+                    -- empty default we initialized into.
+                    ( model, Cmd.none )
+
+                Err _ ->
+                    -- Network / decode failure on initial load is
+                    -- silent (matches the dice-history pattern).
+                    -- The user just sees the empty default.
+                    ( model, Cmd.none )
+
+        EncounterPersisted result ->
+            case result of
+                Ok () ->
+                    ( model, Cmd.none )
+
+                Err err ->
+                    pushToast ToastError
+                        ("Save failed: " ++ httpErrorToString err)
+                        model
 
         CompendiumImportClick ->
             ( withCompendium (\ui -> { ui | bulkError = Nothing }) model
