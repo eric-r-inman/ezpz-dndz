@@ -101,6 +101,7 @@ type alias Model =
     , compendiumEdit : Maybe CompendiumEditUi
     , compendiumPaste : Maybe CompendiumPasteUi
     , compendiumQuickView : Maybe Compendium.Creature
+    , panelCreatureId : Maybe String
     , toasts : List Toast
     , nextToastId : Int
     }
@@ -1336,6 +1337,8 @@ type Msg
       -- Quick View (read-only stat-block popup from a card)
     | CompendiumQuickViewOpen String
     | CompendiumQuickViewClose
+      -- Pin a compendium creature's stat block in the side panel
+    | PanelShowCreature String
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File
@@ -1462,6 +1465,7 @@ init _ url key =
       , compendiumEdit = Nothing
       , compendiumPaste = Nothing
       , compendiumQuickView = Nothing
+      , panelCreatureId = Nothing
       , toasts = []
       , nextToastId = 0
       }
@@ -2839,6 +2843,9 @@ update msg model =
 
         CompendiumQuickViewClose ->
             ( { model | compendiumQuickView = Nothing }, Cmd.none )
+
+        PanelShowCreature creatureId ->
+            ( { model | panelCreatureId = Just creatureId }, Cmd.none )
 
         CompendiumImportClick ->
             ( withCompendium (\ui -> { ui | bulkError = Nothing }) model
@@ -4805,9 +4812,41 @@ viewPanelDetail model =
                     ]
                     [ text "⚔️ CR Calculator" ]
                 ]
-            , viewStatBlock mockStatBlock
+            , viewPanelStatBlock model
             ]
         ]
+
+
+{-| The stat-block area in the side panel. Three states:
+
+  - User has clicked a creature name with a compendium link AND
+    the compendium's loaded → render the matched entry via
+    `View.StatBlock.view` (clickable inline dice and all).
+  - Compendium isn't loaded yet (rare race: the user clicks a
+    name before the boot fetch lands) → fall through to the
+    bundled mock so the panel isn't empty.
+  - Nothing pinned → fall back to the bundled mock as a
+    placeholder. This preserves the pre-Phase-3 default and
+    gives users SOMETHING to look at on first load.
+
+-}
+viewPanelStatBlock : Model -> Html Msg
+viewPanelStatBlock model =
+    let
+        pinned =
+            case ( model.panelCreatureId, model.compendium.db ) of
+                ( Just id, CompendiumDbLoaded db ) ->
+                    Compendium.find id db
+
+                _ ->
+                    Nothing
+    in
+    case pinned of
+        Just creature ->
+            View.StatBlock.view RollFromStatBlock creature
+
+        Nothing ->
+            viewStatBlock mockStatBlock
 
 
 
@@ -5037,13 +5076,35 @@ viewCardRowTop creature =
             ]
             [ text (String.fromInt creature.initiative) ]
         , viewSurprisedToggle creature
-        , span [ class "creature-name creature-name--default" ]
-            [ text creature.name ]
+        , viewCardCreatureName creature
         , viewNoteOrPencil creature
         , span [ class "ac-readout" ]
             [ text ("AC: " ++ String.fromInt creature.armorClass) ]
         , viewConditionChips creature
         ]
+
+
+{-| The creature name on row 1 of each card. When the creature has
+a `creatureId` back-reference to a compendium entry, the name is
+rendered as a clickable element that pins that entry's stat block
+in the side panel — and an underline-on-hover style hints at the
+affordance. Legacy seed creatures (no compendium link) render as
+a plain span.
+-}
+viewCardCreatureName : Creature -> Html Msg
+viewCardCreatureName creature =
+    case creature.creatureId of
+        Just id ->
+            span
+                [ class "creature-name creature-name--default creature-name--linked"
+                , onClick (PanelShowCreature id)
+                , title "Show this creature's stat block in the side panel"
+                ]
+                [ text creature.name ]
+
+        Nothing ->
+            span [ class "creature-name creature-name--default" ]
+                [ text creature.name ]
 
 
 {-| Note-or-pencil sliver of row 1.

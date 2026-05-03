@@ -444,6 +444,17 @@ body {
   color: var(--color-orange-dark);
 }
 
+/* Compendium-linked creature name: hover-underline cues that
+   clicking will pin the source stat block in the side panel. */
+.creature-name--linked {
+  cursor: pointer;
+}
+
+.creature-name--linked:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .ac-readout {
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
