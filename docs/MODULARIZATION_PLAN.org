@@ -57,9 +57,8 @@ pattern; the remaining carves followed feature boundaries.
 
 ** Fourth autonomous run (2026-05-04 evening)
 
-Phase 7 modal-view carve.  All eleven modal-view trees (and the
-shared chrome / audio / toast helpers) move into per-feature
-View modules.  Five commits.
+Phase 7 view carve — complete end-to-end.  All twenty view
+modules in seven commits.
 
 | Phase | Commit    | Theme                                              |
 |-------+-----------+----------------------------------------------------|
@@ -69,34 +68,31 @@ View modules.  Five commits.
 |  7c   | 108f700   | extract View/Modal/Dice                            |
 |  7d   | 59cd6aa   | extract View/Modal/Condition                       |
 |  7e   | 4fba8a2   | extract View/Modal/Compendium{,Edit,Paste}         |
+|  7f   | e7a731a   | extract View/Card.elm (~1090 lines)                |
+|  7g   | 777142c   | extract View/{Workspace,EncounterBar,PanelControls,|
+|       |           | PanelDetail,StatBlockEmbed}                        |
 
-After Phase 7a..7e the `Main.view` function reads as a flat list
-of imported view-module calls — every modal moved out, plus the
-small chrome elements (app bar, audio ringer, toast stack).
-
-The remaining view code in Main.elm is the creature card region
-(card rows 1..3, legendary pips, condition chips) plus the
-workspace / panel infrastructure (encounter bar, panel controls,
-panel detail / stat block).  Phases 7f + 7g would carve those
-out next.
+After Phase 7g, Main.elm consists of: imports / =main= /
+=subscriptions= / keyboard helpers / =init= / =update= +
+=updateInner= dispatch table / =view= (which is just the modal-
+stack composition) / =viewPage= (route dispatcher) /
+=viewCompendiumStandalone= for the deep-link route.  No view
+trees of any depth remain in Main.
 
 ** Cumulative file-size impact
 
 | File                                    | Original | After  | Δ              |
 |-----------------------------------------+----------+--------+----------------|
-| =frontend/src/Main.elm=                 |    9268  |  2467* | -6801 (-73%)   |
+| =frontend/src/Main.elm=                 |    9268  |   870* | -8398 (-91%)   |
 | =frontend/src/Encounter.elm=            |    1607  |   699  | -908  (-56%)   |
 | =frontend/src/Compendium.elm=           |    1068  |   439  | -629  (-59%)   |
 | =frontend/public/style.css=             |    3628  |  3583  | -45            |
 
-*Main.elm now consists of: =main= / =subscriptions= / =init= /
-=update= + =updateInner= dispatch table / app shell (=viewAppBar=
-moved to View.AppBar but =viewPage= and =viewWorkspace=
-infrastructure still here) / the creature card view region
-(rows 1..3 + legendary pips + condition chips) / a few stranded
-helpers (=withEncounter=, =selectionClickHandler=, =isFormTag=,
-=escKey=, =compendiumKeyDecoder=).  All eleven modals + toast
-+ audio + app-bar live in =View/= modules.
+*Main.elm is now purely the application shell: imports, =main=,
+=subscriptions= + the small keyboard-decoder helpers,
+=init=, =update= + the =updateInner= dispatch table, =view= (a
+flat list of imported view-module calls), and the =viewPage=
+route dispatcher.  No view trees of any depth remain.
 
 New View/* modules introduced in run 4:
 
@@ -114,8 +110,14 @@ New View/* modules introduced in run 4:
   - =View/Audio.elm= (~45 lines) — page-level ringer audio element
   - =View/Toast.elm= (~55 lines) — toast stack
   - =View/PhaseToggle.elm= (~60 lines) — shared begin/end toggle
+  - =View/Card.elm= (~1090 lines) — full creature card view tree
+  - =View/Workspace.elm= (~45 lines) — three-pane Home layout
+  - =View/EncounterBar.elm= (~230 lines) — title bar above the grid
+  - =View/PanelControls.elm= (~110 lines) — middle pane controls
+  - =View/PanelDetail.elm= (~85 lines) — right-pane stat block
+  - =View/StatBlockEmbed.elm= (~160 lines) — placeholder stat block
 
-Total run-4 surface: ~2,995 lines.
+Total run-4 surface: ~4,615 lines.
 
 New Update/* modules introduced in run 3:
 
@@ -173,31 +175,30 @@ Server-side additions:
 
 | Phase | Goal                                       | Status                                         |
 |-------+--------------------------------------------+------------------------------------------------|
-|  7    | Carve view region into View/Foo modules    | PARTIALLY DONE — all modals carved; cards + workspace remain |
 | 10    | Data-model refinements + tests             | NOT STARTED — modal-state ADT is the big move  |
 | 11    | More server polish (users / prefs / docs)  | PARTIALLY STARTED                              |
 
 ** Notes for the next autonomous run
 
-  - Phase 7 modal carve is complete.  The remaining ~2,400
-    lines of view in Main.elm are the creature card region and
-    the workspace / panel infrastructure.  Recommended carve
-    plan:
-    - 7f: extract =View/Card/Row1.elm= + =Row2.elm= + =Row3.elm=
-      + =Legendary.elm= + =Chip.elm= (extending the existing
-      =View/Chip.elm=) for the per-creature card region.
-      `viewCreatureCard` itself becomes the entry point that
-      composes the rows.
-    - 7g: extract =View/Workspace.elm= + =View/EncounterBar.elm=
-      + =View/PanelControls.elm= + =View/PanelDetail.elm= for
-      the workspace shell.  =viewPage= and =viewWorkspace=
-      probably stay in Main.elm since they're the route
-      dispatcher; everything underneath moves out.
-    - The stranded helpers (=withEncounter=,
-      =selectionClickHandler=, =isFormTag=, =escKey=,
-      =compendiumKeyDecoder=) get absorbed by whichever view
-      module ends up needing them, or moved into a tiny
-      =View/Helpers.elm= if no clear owner emerges.
+  - Phase 7 view extraction is complete end-to-end.  Main.elm
+    is purely the application shell now (870 lines).  The
+    natural next phases are 10 (data-model refinements; the
+    modal-state ADT is the big move) and 11 (server polish).
+  - The =View/Card.elm= module landed as one large file
+    (~1,090 lines).  The original Phase 7 spec called for
+    splitting it further (Row1 / Row2 / Row3 / Legendary +
+    extending =View/Chip.elm=), but the row-helpers reference
+    enough shared private functions (chip helpers, hp helpers)
+    that splitting them now would force more re-exports than
+    the readability win is worth.  Defer until either the file
+    crosses ~1,500 lines or the chip helpers get a real
+    callsite outside the card.
+  - Phase 10's modal-state ADT change is now strictly easier
+    than before: every modal's open/close logic + view sit in
+    self-contained Update/* + View/Modal/* pairs, so the
+    "collapse 10 separate Maybe XxxUi fields into one Maybe
+    Modal ADT" change is a coordinated record-shape swap
+    instead of a sprawling rewrite.
   - Phase 10 (modal-state ADT) is now strictly easier than before:
     the "only one modal open at a time" invariant currently
     relies on convention, but with each modal's open/close logic
