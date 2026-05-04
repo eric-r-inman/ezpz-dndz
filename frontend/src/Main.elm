@@ -45,6 +45,10 @@ import Process
 import Random
 import Set exposing (Set)
 import Task
+import Ui.Memo as MemoUi exposing (MemoEditUi)
+import Ui.Note as NoteUi exposing (NoteEditUi)
+import Ui.Timer as TimerUi exposing (TimerSetupUi)
+import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
 import Url exposing (Url)
 import Url.Parser exposing ((</>), Parser, oneOf, top)
 import Util.Keyboard
@@ -114,29 +118,6 @@ type alias Model =
     , toasts : List Toast
     , nextToastId : Int
     }
-
-
-{-| Transient success / error notification. Each toast carries
-its own id so we can route a delayed `ToastDismiss` Cmd back at
-the right one even if other toasts have shifted in/out of the
-list while the timer was running.
--}
-type alias Toast =
-    { id : Int
-    , kind : ToastKind
-    , message : String
-    }
-
-
-type ToastKind
-    = ToastSuccess
-    | ToastError
-
-
-toastDuration : Float
-toastDuration =
-    -- ms
-    3500
 
 
 {-| Paste-stat-block modal. The textarea is `text`; the parsed
@@ -689,78 +670,6 @@ creatureKindLabel k =
 
         Compendium.Npc ->
             "NPC"
-
-
-{-| Note-edit modal state. Open when the user clicks the row 1
-pencil button on a creature card. `target` identifies the creature;
-`text` mirrors the `<input>` value so re-renders don't clobber
-transient typing. The text is hard-capped at `maxNoteLength`
-characters at input time so we never have to truncate on commit.
--}
-type alias NoteEditUi =
-    { target : String
-    , text : String
-    }
-
-
-{-| Hard cap on creature notes. Twenty characters keeps the inline
-display next to the name from blowing out the card width — anything
-longer belongs in a real journal entry, not a card sticky.
--}
-maxNoteLength : Int
-maxNoteLength =
-    20
-
-
-freshNoteEditUi : String -> String -> NoteEditUi
-freshNoteEditUi target current =
-    { target = target
-    , text = current
-    }
-
-
-{-| Card row 3 memo edit modal state. Same general shape as
-`NoteEditUi` (the row 1 short label) but writes to a different
-field on `Creature` — `memo` instead of `note` — so the two can
-coexist on a card.
--}
-type alias MemoEditUi =
-    { target : String
-    , text : String
-    }
-
-
-maxMemoLength : Int
-maxMemoLength =
-    20
-
-
-freshMemoEditUi : String -> String -> MemoEditUi
-freshMemoEditUi target current =
-    { target = target
-    , text = current
-    }
-
-
-{-| Card row 3 timer setup modal state. The GM picks a count
-(1..99) and a phase (begin/end of the bearer's turn). Apply
-writes the timer onto the creature; cancel discards.
--}
-type alias TimerSetupUi =
-    { target : String
-    , turnsText : String
-    , turns : Int
-    , phase : Encounter.TurnPhase
-    }
-
-
-freshTimerSetupUi : String -> TimerSetupUi
-freshTimerSetupUi target =
-    { target = target
-    , turnsText = "3"
-    , turns = 3
-    , phase = Encounter.AtEnd
-    }
 
 
 {-| Condition / effect modal state.
@@ -1946,15 +1855,15 @@ updateInner msg model =
 
         -- Note-edit modal
         NoteEditOpen name current ->
-            ( { model | noteEdit = Just (freshNoteEditUi name current) }
+            ( { model | noteEdit = Just (NoteUi.fresh name current) }
             , Cmd.none
             )
 
         NoteEditChange text ->
-            -- Cap the text at maxNoteLength here so the model never
+            -- Cap the text at NoteUi.maxNoteLength here so the model never
             -- holds an over-long note even if a paste sneaks past
             -- the input's `maxlength` attribute.
-            ( withNoteEdit (\u -> { u | text = String.left maxNoteLength text }) model
+            ( withNoteEdit (\u -> { u | text = String.left NoteUi.maxNoteLength text }) model
             , Cmd.none
             )
 
@@ -2276,12 +2185,12 @@ updateInner msg model =
                         |> Maybe.map .memo
                         |> Maybe.withDefault ""
             in
-            ( { model | memoEdit = Just (freshMemoEditUi name current) }
+            ( { model | memoEdit = Just (MemoUi.fresh name current) }
             , Cmd.none
             )
 
         MemoChange text ->
-            ( withMemoEdit (\u -> { u | text = String.left maxMemoLength text }) model
+            ( withMemoEdit (\u -> { u | text = String.left MemoUi.maxMemoLength text }) model
             , Cmd.none
             )
 
@@ -2318,7 +2227,7 @@ updateInner msg model =
 
         -- Timer modal (card row 3 ⏱)
         TimerOpen name ->
-            ( { model | timerSetup = Just (freshTimerSetupUi name) }
+            ( { model | timerSetup = Just (TimerUi.fresh name) }
             , Cmd.none
             )
 
@@ -2710,7 +2619,7 @@ pushToast kind message model =
         | toasts = model.toasts ++ [ toast ]
         , nextToastId = model.nextToastId + 1
       }
-    , Process.sleep toastDuration
+    , Process.sleep ToastUi.duration
         |> Task.perform (\_ -> ToastDismiss toast.id)
     )
 
@@ -6793,7 +6702,7 @@ viewInitiativeFooter =
 
 {-| Renders the per-creature note editor when the row 1 pencil
 button has been clicked. Single text input capped at
-`maxNoteLength`, with Save / Cancel buttons. Enter commits, Esc /
+`NoteUi.maxNoteLength`, with Save / Cancel buttons. Enter commits, Esc /
 backdrop / ✕ / Cancel all close without changes. Saving an empty
 string is the canonical way to clear a note.
 -}
@@ -6811,13 +6720,13 @@ viewNoteEditModal model =
                 , extraClass = "modal--note-edit"
                 , body =
                     [ Html.label [ for "note-edit-input" ]
-                        [ text ("Short label (max " ++ String.fromInt maxNoteLength ++ " chars)") ]
+                        [ text ("Short label (max " ++ String.fromInt NoteUi.maxNoteLength ++ " chars)") ]
                     , input
                         [ id "note-edit-input"
                         , class "note-edit__input"
                         , type_ "text"
                         , value ui.text
-                        , maxlength maxNoteLength
+                        , maxlength NoteUi.maxNoteLength
                         , placeholder "e.g. boss, summoned, ally"
                         , autofocus True
                         , onInput NoteEditChange
@@ -7417,13 +7326,13 @@ viewMemoEditModal model =
                 , extraClass = "modal--note-edit"
                 , body =
                     [ Html.label [ for "memo-edit-input" ]
-                        [ text ("Short memo (max " ++ String.fromInt maxMemoLength ++ " chars)") ]
+                        [ text ("Short memo (max " ++ String.fromInt MemoUi.maxMemoLength ++ " chars)") ]
                     , input
                         [ id "memo-edit-input"
                         , class "note-edit__input"
                         , type_ "text"
                         , value ui.text
-                        , maxlength maxMemoLength
+                        , maxlength MemoUi.maxMemoLength
                         , placeholder "e.g. legendary res used"
                         , autofocus True
                         , onInput MemoChange
@@ -8733,7 +8642,7 @@ parseErrorLabel err =
 
 
 {-| Top-of-screen toast stack. Each toast auto-dismisses after
-`toastDuration` ms via a `Process.sleep` Cmd; the GM can also
+`ToastUi.duration` ms via a `Process.sleep` Cmd; the GM can also
 click × to dismiss early. Renders nothing when the list is
 empty.
 -}
