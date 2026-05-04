@@ -81,8 +81,15 @@ import Update.Toast
 import Url exposing (Url)
 import Util.Http
 import Util.Keyboard
+import View.AppBar
+import View.Audio
 import View.Modal
+import View.Modal.Memo
+import View.Modal.Note
+import View.Modal.Timer
+import View.PhaseToggle
 import View.StatBlock
+import View.Toast
 
 
 
@@ -803,37 +810,23 @@ view model =
     { title = "eZpZ-dndZ"
     , body =
         [ div [ class "app-shell" ]
-            [ viewAppBar
+            [ View.AppBar.view
             , viewPage model
             , viewDiceModal model.dice
             , viewHpChangeModal model
             , viewInitiativeModal model
-            , viewNoteEditModal model
+            , View.Modal.Note.view model
             , viewConditionModal model
-            , viewMemoEditModal model
-            , viewTimerSetupModal model
+            , View.Modal.Memo.view model
+            , View.Modal.Timer.view model
             , viewCompendiumModal model.compendium
             , viewCompendiumEditModal model.compendiumEdit
             , viewCompendiumPasteModal model.compendiumPaste
-            , viewToasts model.toasts
-            , viewRingerAudio model
+            , View.Toast.list model.toasts
+            , View.Audio.ringer model
             ]
         ]
     }
-
-
-viewAppBar : Html Msg
-viewAppBar =
-    header [ class "app-bar" ]
-        [ div [ class "app-bar__brand" ]
-            [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
-            ]
-        , nav [ class "app-bar__nav" ]
-            [ a [ href "/" ] [ text "Encounter" ]
-            , a [ href "/me" ] [ text "Me" ]
-            , a [ href "/scalar" ] [ text "API" ]
-            ]
-        ]
 
 
 viewPage : Model -> Html Msg
@@ -847,7 +840,7 @@ viewPage model =
                 [ section [ class "panel panel--main" ]
                     [ div [ class "panel__header" ]
                         [ div [ class "panel__title" ] [ text "Account" ] ]
-                    , div [ class "panel__body" ] [ viewMe model.me ]
+                    , div [ class "panel__body" ] [ View.AppBar.me model.me ]
                     ]
                 ]
 
@@ -902,32 +895,6 @@ viewCompendiumStandalone model id =
         [ section [ class "panel panel--standalone" ]
             [ div [ class "panel__body" ] [ body ] ]
         ]
-
-
-viewMe : MeStatus -> Html Msg
-viewMe status =
-    case status of
-        Loading ->
-            p [ class "empty" ] [ text "Loading…" ]
-
-        Failed ->
-            p [ class "empty" ] [ text "Failed to load user information." ]
-
-        Loaded info ->
-            div []
-                [ h2 [] [ text info.name ]
-                , p []
-                    [ text
-                        ("Authentication: "
-                            ++ (if info.authEnabled then
-                                    "enabled"
-
-                                else
-                                    "disabled"
-                               )
-                        )
-                    ]
-                ]
 
 
 
@@ -3314,59 +3281,6 @@ viewInitiativeFooter =
 
 
 
--- NOTE-EDIT MODAL
-
-
-{-| Renders the per-creature note editor when the row 1 pencil
-button has been clicked. Single text input capped at
-`NoteUi.maxNoteLength`, with Save / Cancel buttons. Enter commits, Esc /
-backdrop / ✕ / Cancel all close without changes. Saving an empty
-string is the canonical way to clear a note.
--}
-viewNoteEditModal : Model -> Html Msg
-viewNoteEditModal model =
-    case model.noteEdit of
-        Nothing ->
-            text ""
-
-        Just ui ->
-            View.Modal.view
-                { close = NoteEditCancel
-                , noOp = NoOp
-                , title = "Note — " ++ ui.target
-                , extraClass = "modal--note-edit"
-                , body =
-                    [ Html.label [ for "note-edit-input" ]
-                        [ text ("Short label (max " ++ String.fromInt NoteUi.maxNoteLength ++ " chars)") ]
-                    , input
-                        [ id "note-edit-input"
-                        , class "note-edit__input"
-                        , type_ "text"
-                        , value ui.text
-                        , maxlength NoteUi.maxNoteLength
-                        , placeholder "e.g. boss, summoned, ally"
-                        , autofocus True
-                        , onInput NoteEditChange
-                        , Html.Events.on "keydown" (enterKey NoteEditCommit)
-                        ]
-                        []
-                    , div [ class "note-edit__buttons" ]
-                        [ button
-                            [ class "action-btn action-btn--green"
-                            , onClick NoteEditCommit
-                            ]
-                            [ text "Save" ]
-                        , button
-                            [ class "action-btn"
-                            , onClick NoteEditCancel
-                            ]
-                            [ text "Cancel" ]
-                        ]
-                    ]
-                }
-
-
-
 -- CONDITION / EFFECT MODAL
 
 
@@ -3570,7 +3484,7 @@ viewDurationUntilSubsection ui model =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
             [ Html.label [] [ text "At" ]
-            , viewPhaseToggle "until-phase" ui.untilPhase ConditionUntilPhaseSet
+            , View.PhaseToggle.view "until-phase" ui.untilPhase ConditionUntilPhaseSet
             , Html.label [] [ text "of" ]
             , Html.select
                 [ class "cond-select"
@@ -3683,7 +3597,7 @@ viewDurationCountdownSubsection ui =
                 ]
                 []
             , Html.label [] [ text "turns, ticking at" ]
-            , viewPhaseToggle "countdown-phase" ui.countdownPhase ConditionCountdownPhaseSet
+            , View.PhaseToggle.view "countdown-phase" ui.countdownPhase ConditionCountdownPhaseSet
             , Html.label [] [ text "of the bearer's turn" ]
             ]
         , div [ class "cond-section__caption" ]
@@ -3692,48 +3606,6 @@ viewDurationCountdownSubsection ui =
                     ++ "the countdown skips this end-of-turn so they get a "
                     ++ "full first turn under the effect."
                 )
-            ]
-        ]
-
-
-viewPhaseToggle : String -> Encounter.TurnPhase -> (Encounter.TurnPhase -> Msg) -> Html Msg
-viewPhaseToggle groupName current toMsg =
-    span [ class "cond-phase-toggle" ]
-        [ Html.label
-            [ class
-                (if current == Encounter.AtBegin then
-                    "cond-phase cond-phase--on"
-
-                 else
-                    "cond-phase"
-                )
-            ]
-            [ input
-                [ type_ "radio"
-                , Html.Attributes.name groupName
-                , checked (current == Encounter.AtBegin)
-                , onClick (toMsg Encounter.AtBegin)
-                ]
-                []
-            , text "beginning"
-            ]
-        , Html.label
-            [ class
-                (if current == Encounter.AtEnd then
-                    "cond-phase cond-phase--on"
-
-                 else
-                    "cond-phase"
-                )
-            ]
-            [ input
-                [ type_ "radio"
-                , Html.Attributes.name groupName
-                , checked (current == Encounter.AtEnd)
-                , onClick (toMsg Encounter.AtEnd)
-                ]
-                []
-            , text "end"
             ]
         ]
 
@@ -3918,151 +3790,6 @@ viewConditionFooter ui =
             ]
             [ text "Cancel" ]
         ]
-
-
-
--- MEMO + TIMER MODALS
-
-
-{-| Card row 3 memo edit modal. Single text input capped at 20
-chars with Save / Cancel buttons. Same chrome as the row 1
-note-edit modal but writes to a different field on Creature
-(`memo` vs `note`) so they can coexist on the same card.
--}
-viewMemoEditModal : Model -> Html Msg
-viewMemoEditModal model =
-    case model.memoEdit of
-        Nothing ->
-            text ""
-
-        Just ui ->
-            View.Modal.view
-                { close = MemoCancel
-                , noOp = NoOp
-                , title = "Memo — " ++ ui.target
-                , extraClass = "modal--note-edit"
-                , body =
-                    [ Html.label [ for "memo-edit-input" ]
-                        [ text ("Short memo (max " ++ String.fromInt MemoUi.maxMemoLength ++ " chars)") ]
-                    , input
-                        [ id "memo-edit-input"
-                        , class "note-edit__input"
-                        , type_ "text"
-                        , value ui.text
-                        , maxlength MemoUi.maxMemoLength
-                        , placeholder "e.g. legendary res used"
-                        , autofocus True
-                        , onInput MemoChange
-                        , Html.Events.on "keydown" (enterKey MemoCommit)
-                        ]
-                        []
-                    , div [ class "note-edit__buttons" ]
-                        [ button
-                            [ class "action-btn action-btn--green"
-                            , onClick MemoCommit
-                            ]
-                            [ text "Save" ]
-                        , button
-                            [ class "action-btn"
-                            , onClick MemoCancel
-                            ]
-                            [ text "Cancel" ]
-                        ]
-                    ]
-                }
-
-
-{-| Card row 3 timer-setup modal. The GM picks a turn count
-(1..99) and a phase (begin/end of bearer's turn). Apply writes
-the timer; Cancel discards.
--}
-viewTimerSetupModal : Model -> Html Msg
-viewTimerSetupModal model =
-    case model.timerSetup of
-        Nothing ->
-            text ""
-
-        Just ui ->
-            View.Modal.view
-                { close = TimerSetupCancel
-                , noOp = NoOp
-                , title = "Timer — " ++ ui.target
-                , extraClass = "modal--timer"
-                , body =
-                    [ div [ class "cond-row" ]
-                        [ Html.label [ for "timer-turns-input" ]
-                            [ text "Lasts" ]
-                        , input
-                            [ id "timer-turns-input"
-                            , class "cond-input cond-input--narrow"
-                            , type_ "number"
-                            , Html.Attributes.min "1"
-                            , Html.Attributes.max "99"
-                            , value ui.turnsText
-                            , autofocus True
-                            , onInput TimerSetupTurnsChanged
-                            , Html.Events.on "keydown" (enterKey TimerSetupApply)
-                            ]
-                            []
-                        , Html.label [] [ text "turns, ticking at" ]
-                        , viewPhaseToggle "timer-phase" ui.phase TimerSetupPhaseSet
-                        , Html.label [] [ text "of the bearer's turn" ]
-                        ]
-                    , div [ class "cond-section__caption" ]
-                        [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
-                    , div [ class "note-edit__buttons" ]
-                        [ button
-                            [ class "action-btn action-btn--green"
-                            , onClick TimerSetupApply
-                            ]
-                            [ text "Start Timer" ]
-                        , button
-                            [ class "action-btn"
-                            , onClick TimerSetupCancel
-                            ]
-                            [ text "Cancel" ]
-                        ]
-                    ]
-                }
-
-
-{-| Page-level audio element that plays the ping sound when any
-creature has a ringing timer. Mounted only when at least one
-timer is ringing — the mount triggers HTML5's `autoplay` so the
-sound fires once. When all rings are dismissed the element
-unmounts; a future ring remounts it and replays the sound.
-
-Browsers without autoplay permission may block the first play
-until the user has interacted with the page; in this app the GM
-has already clicked Next Turn (which is what triggered the ring)
-so the user-gesture requirement is satisfied.
-
--}
-viewRingerAudio : Model -> Html Msg
-viewRingerAudio model =
-    let
-        anyRinging =
-            List.any
-                (\c ->
-                    case c.timer of
-                        Just t ->
-                            t.ringing
-
-                        Nothing ->
-                            False
-                )
-                model.encounter.creatures
-    in
-    if anyRinging then
-        Html.audio
-            [ src "/ping.wav"
-            , autoplay True
-            , attribute "aria-hidden" "true"
-            ]
-            []
-
-    else
-        text ""
 
 
 
@@ -5256,52 +4983,6 @@ parseErrorLabel err =
 
         Compendium.Parser.MissingHeader ->
             "Need at least two lines: a name and a type line (e.g. \"Small humanoid, neutral evil\")."
-
-
-{-| Top-of-screen toast stack. Each toast auto-dismisses after
-`ToastUi.duration` ms via a `Process.sleep` Cmd; the GM can also
-click × to dismiss early. Renders nothing when the list is
-empty.
--}
-viewToasts : List Toast -> Html Msg
-viewToasts toasts =
-    if List.isEmpty toasts then
-        text ""
-
-    else
-        div [ class "toast-stack" ] (List.map viewToast toasts)
-
-
-viewToast : Toast -> Html Msg
-viewToast toast =
-    let
-        toastClass =
-            case toast.kind of
-                ToastSuccess ->
-                    "toast toast--success"
-
-                ToastError ->
-                    "toast toast--error"
-
-        icon =
-            case toast.kind of
-                ToastSuccess ->
-                    "✓"
-
-                ToastError ->
-                    "⚠"
-    in
-    div [ class toastClass, attribute "role" "status" ]
-        [ span [ class "toast__icon" ] [ text icon ]
-        , span [ class "toast__msg" ] [ text toast.message ]
-        , button
-            [ class "toast__dismiss"
-            , onClick (ToastDismiss toast.id)
-            , title "Dismiss"
-            , attribute "aria-label" "Dismiss notification"
-            ]
-            [ text "×" ]
-        ]
 
 
 viewPasteFooter : CompendiumPasteUi -> Html Msg
