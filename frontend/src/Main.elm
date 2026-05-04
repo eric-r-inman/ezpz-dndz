@@ -26,6 +26,21 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Msg
+    exposing
+        ( CompendiumField(..)
+        , CompendiumSort(..)
+        , DurationKind(..)
+        , FeatureGroup(..)
+        , HpField(..)
+        , HpInputMode(..)
+        , HpKind(..)
+        , MeInfo
+        , MeStatus(..)
+        , Msg(..)
+        , RollMode(..)
+        , RollScope(..)
+        )
 import Process
 import Random
 import Set exposing (Set)
@@ -66,18 +81,6 @@ routeFromUrl url =
 
 
 -- MODEL
-
-
-type alias MeInfo =
-    { name : String
-    , authEnabled : Bool
-    }
-
-
-type MeStatus
-    = Loading
-    | Loaded MeInfo
-    | Failed
 
 
 {-| The single source of truth for the running app.
@@ -221,12 +224,6 @@ type CompendiumDb
     = CompendiumDbLoading
     | CompendiumDbLoaded Compendium.Db
     | CompendiumDbFailed Http.Error
-
-
-type CompendiumSort
-    = SortName
-    | SortCr
-    | SortRecency
 
 
 emptyCompendium : CompendiumUi
@@ -400,54 +397,6 @@ type alias FeatureDraft =
 add/remove/change Msg-set can address any of them without
 quadrupling the Msg count.
 -}
-type FeatureGroup
-    = TraitsGroup
-    | ActionsGroup
-    | BonusActionsGroup
-    | ReactionsGroup
-
-
-{-| Selector tags for the ~30 string fields on the edit form so
-one `CompendiumEditFieldChanged` Msg can handle them all.
--}
-type CompendiumField
-    = CFName
-    | CFRace
-    | CFSubrace
-    | CFAlignment
-    | CFSource
-    | CFDescription
-    | CFArmorClass
-    | CFArmorClassNote
-    | CFMaxHp
-    | CFHpFormula
-    | CFInitiativeBonus
-    | CFSpeedWalk
-    | CFSpeedFly
-    | CFSpeedSwim
-    | CFSpeedClimb
-    | CFSpeedBurrow
-    | CFAbilityStr
-    | CFAbilityDex
-    | CFAbilityCon
-    | CFAbilityInt
-    | CFAbilityWis
-    | CFAbilityCha
-    | CFSensesBlindsight
-    | CFSensesDarkvision
-    | CFSensesTremorsense
-    | CFSensesTruesight
-    | CFSensesPassivePerception
-    | CFDamageVulnerabilities
-    | CFDamageResistances
-    | CFDamageImmunities
-    | CFConditionImmunities
-    | CFLanguages
-    | CFChallengeRating
-    | CFXp
-    | CFProficiencyBonus
-
-
 blankEdit : CompendiumEditUi
 blankEdit =
     { mode = CreateMode
@@ -854,12 +803,6 @@ type alias ConditionUi =
     }
 
 
-type DurationKind
-    = DurKindManual
-    | DurKindUntilTurn
-    | DurKindCountdown
-
-
 type alias SaveToEndUi =
     { ability : String
     , dcText : String
@@ -1006,31 +949,6 @@ freshInitiativeUi target =
     }
 
 
-{-| Which set of creatures an auto-roll applies to.
-
-  - `ScopeTarget` — the creature whose init-circle was clicked
-    (the modal's `target`).
-  - `ScopeAll` — every creature in the queue.
-  - `ScopeSelected` — only creatures with `selected = True`. The
-    button is disabled (and emits no Cmd) when nothing is selected.
-
--}
-type RollScope
-    = ScopeTarget
-    | ScopeAll
-    | ScopeSelected
-
-
-{-| Standard 1d20 vs. 5e advantage (roll twice, keep highest). The
-spec only asked for advantage, but the type is left open so a
-future "Disadvantage" sister button drops in as a third constructor
-without churning the Msg shape again.
--}
-type RollMode
-    = ModeStandard
-    | ModeAdvantage
-
-
 {-| One row in the recent-HP-changes log shown at the bottom of the
 Damage / Heal / Temp HP modals. Captures who, what kind, the input
 amount, and the before/after HP+temp snapshots so the row can render
@@ -1061,11 +979,6 @@ type alias HpEdit =
     , field : HpField
     , text : String
     }
-
-
-type HpField
-    = CurrentHpField
-    | MaxHpField
 
 
 {-| Cap on the HP-change log size. Matches the user's request for
@@ -1100,17 +1013,6 @@ type alias HpChangeUi =
     , ignoreTemp : Bool
     , applyToSelected : Bool
     }
-
-
-type HpKind
-    = DamageKind
-    | HealKind
-    | TempHpKind
-
-
-type HpInputMode
-    = ManualMode
-    | DiceMode
 
 
 {-| Initial state for opening the HP-change modal targeted at a
@@ -1179,193 +1081,6 @@ turn logic in the app and the place where future per-phase hooks
 (begin / end / off / on) will land as separate pure functions.
 
 -}
-type Msg
-    = UrlRequested Browser.UrlRequest
-    | UrlChanged Url
-    | GotMe (Result Http.Error MeInfo)
-    | NextTurn
-    | SetActive String
-    | ToggleSurprised String
-    | CycleCover String
-    | ToggleConcentration String
-    | ToggleHiding String
-    | ToggleFlying String
-    | AdjustFlyHeight String Int
-    | DeathSaveToggleSuccess String Int
-    | DeathSaveToggleFailure String Int
-    | DeathSaveRoll String
-    | DeathSaveRollLanded String Dice.Roll
-    | ToggleHolding String
-      -- Dice modal
-    | OpenDice
-    | CloseDice
-    | DiceInputChanged String
-    | DiceCountChanged String
-    | DiceModifierChanged String
-    | DiceResetSliders
-    | DiceRollFromInput
-    | DiceRollFaces Int
-    | DiceRollAdvantage
-    | DiceRollDisadvantage
-    | DiceFlipCoin
-    | DiceRerun Dice.Roll
-    | DiceClearHistory
-    | DiceRollLanded Dice.Roll
-    | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
-    | DicePersistResponse (Result Http.Error (List Dice.Roll))
-    | DiceClearResponse (Result Http.Error ())
-    | RollFromStatBlock String Dice.Expression
-      -- HP change modal
-    | HpChangeOpen String HpKind
-    | HpChangeClose
-    | HpChangeModeSet HpInputMode
-    | HpChangeAmountChanged String
-    | HpChangeExpressionChanged String
-    | HpChangeIgnoreTempToggle
-    | HpChangeApplyToSelectedToggle
-    | HpChangeApply
-    | HpChangeRollLanded Dice.Roll
-      -- Inline HP edit on the creature card
-    | HpEditStart String HpField Int
-    | HpEditChange String
-    | HpEditCommit
-    | HpEditCancel
-      -- Selection
-    | ToggleSelected String
-    | ShiftToggleSelected
-      -- Manual queue reordering
-    | MoveCreatureUp String
-    | MoveCreatureDown String
-      -- Roster mutation (right rail × / ⧉ buttons)
-    | RemoveCreature String
-    | DuplicateCreature String
-      -- Initiative manager modal
-    | InitiativeOpen String
-    | InitiativeClose
-    | InitiativeCustomChanged String
-    | InitiativeQuickSort
-    | InitiativeAutoRoll RollScope RollMode
-    | InitiativeApplyTarget
-    | InitiativeApplySelected
-    | InitiativeRollsLanded (List ( String, Dice.Roll ))
-    | ActiveCardScrollChecked (Result Browser.Dom.Error ())
-      -- Note-edit modal (the row 1 pencil button)
-    | NoteEditOpen String String
-    | NoteEditChange String
-    | NoteEditCommit
-    | NoteEditCancel
-      -- Condition / effect modal
-    | ConditionOpenNew String
-    | ConditionOpenEdit String Int
-    | ConditionClose
-    | ConditionPickStandard String
-    | ConditionCustomNameChanged String
-    | ConditionNoteChanged String
-    | ConditionDurationKindSet DurationKind
-    | ConditionUntilCreatureChanged String
-    | ConditionUntilPhaseSet Encounter.TurnPhase
-    | ConditionUntilTargetSet Encounter.TurnTarget
-    | ConditionCountdownTurnsChanged String
-    | ConditionCountdownPhaseSet Encounter.TurnPhase
-    | ConditionSaveToggle
-    | ConditionSaveAbilityChanged String
-    | ConditionSaveDcChanged String
-    | ConditionSaveBonusChanged String
-    | ConditionSaveAutoRollSet Encounter.AutoRollMode
-    | ConditionApplyToSelectedToggle
-    | ConditionSubmit
-    | ConditionDelete
-    | ConditionRemoveChip String Int
-    | ConditionRollSave String Int
-    | ConditionSaveLanded String Int Int Bool Dice.Roll
-      -- (creature, condition id, dc, wasAutoRoll, roll)
-    | SaveNoticeDismiss String Int
-      -- Card row 3 memo
-    | MemoOpen String
-    | MemoChange String
-    | MemoCommit
-    | MemoCancel
-    | MemoClear String
-      -- Card row 3 timer
-    | TimerOpen String
-    | TimerSetupTurnsChanged String
-    | TimerSetupPhaseSet Encounter.TurnPhase
-    | TimerSetupApply
-    | TimerSetupCancel
-    | TimerDismiss String
-      -- Compendium browser
-    | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
-    | CompendiumOpen
-    | CompendiumClose
-    | CompendiumSearchChanged String
-    | CompendiumKindToggled Compendium.CreatureKind
-    | CompendiumSortChanged CompendiumSort
-    | CompendiumSelect String
-    | CompendiumAddCountChanged String
-    | CompendiumAddToQueue String
-    | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
-      -- (creatureId, [(displayName, roll)])
-      -- Compendium edit / create modal
-    | CompendiumEditNew
-    | CompendiumEditExisting
-    | CompendiumEditDuplicate
-    | CompendiumEditCancel
-    | CompendiumEditFieldChanged CompendiumField String
-    | CompendiumEditKindSet Compendium.CreatureKind
-    | CompendiumEditSizeSet Compendium.Size
-    | CompendiumEditSpeedHoverToggle
-    | CompendiumEditSavingThrowAdd
-    | CompendiumEditSavingThrowRemove Int
-    | CompendiumEditSavingThrowAbilitySet Int Compendium.Ability
-    | CompendiumEditSavingThrowBonusChanged Int String
-    | CompendiumEditSkillAdd
-    | CompendiumEditSkillRemove Int
-    | CompendiumEditSkillNameChanged Int String
-    | CompendiumEditSkillBonusChanged Int String
-    | CompendiumEditFeatureAdd FeatureGroup
-    | CompendiumEditFeatureRemove FeatureGroup Int
-    | CompendiumEditFeatureNameChanged FeatureGroup Int String
-    | CompendiumEditFeatureDescriptionChanged FeatureGroup Int String
-    | CompendiumEditCustomSectionAdd
-    | CompendiumEditCustomSectionRemove Int
-    | CompendiumEditCustomSectionNameChanged Int String
-    | CompendiumEditCustomSectionBodyChanged Int String
-    | CompendiumEditSubmit
-    | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
-    | CompendiumEditDelete
-    | CompendiumEditDeleteResponse String (Result Http.Error ())
-      -- (id, result)
-      -- Compendium paste / parse modal
-    | CompendiumPasteOpen
-    | CompendiumPasteCancel
-    | CompendiumPasteTextChanged String
-    | CompendiumPasteApply
-      -- Pin a compendium creature's stat block in the side panel
-    | PanelShowCreature String
-      -- Legendary action / legendary resistance pip toggles
-    | ToggleLegendaryActionPip String Int
-    | ToggleLegendaryResistancePip String Int
-      -- Live-encounter persistence
-    | EncounterLoaded (Result Http.Error (Maybe Encounter))
-    | EncounterPersisted (Result Http.Error ())
-      -- Bulk: import / export / reset / delete-from-browser
-    | CompendiumImportClick
-    | CompendiumImportFileChosen File
-    | CompendiumImportFileRead String
-    | CompendiumResetClick
-    | CompendiumDeleteFromBrowser String String
-      -- (creatureId, displayName)
-    | CompendiumPendingCancel
-    | CompendiumPendingConfirm
-    | CompendiumImportResponse (Result Http.Error Int)
-    | CompendiumResetResponse (Result Http.Error (List Compendium.Creature))
-      -- Toast notifications
-    | ToastDismiss Int
-      -- Keyboard shortcuts
-    | CompendiumFocusSearch
-    | NoOp
-
-
 main : Program () Model Msg
 main =
     Browser.application
