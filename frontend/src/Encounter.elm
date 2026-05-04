@@ -6,11 +6,8 @@ module Encounter exposing
     , Timer
     , standardConditions
     , empty
-    , setActive, activeCreature, sortByInitiative
-    , moveUp, moveDown
+    , setActive, activeCreature
     , mapCreature, nextCover
-    , removeCreature, duplicateCreature
-    , appendCreatures, uniqueInstanceName
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, updateCondition, removeCondition, findCondition
@@ -45,42 +42,21 @@ damage), it belongs here.
 @docs empty
 
 
-# Turn lifecycle
+# Turn marker
 
-The lifecycle has four phases that downstream features may hook:
+`setActive` is the manual scrub: move the marker to a specific
+creature without counting as turn progression. The full
+turn-progression walk (`nextTurn` + begin/end-of-turn hooks)
+lives in [`Encounter.Lifecycle`](Encounter-Lifecycle). Queue
+mutation (move, sort, remove, duplicate, append) lives in
+[`Encounter.Roster`](Encounter-Roster).
 
-  - **beginning of turn** — a creature has just become the active
-    creature. Per-turn ability charges reset; conditions tagged
-    "start of turn" tick or expire.
-  - **on turn** — the creature is currently active. Player-driven
-    actions (attacks, casts, moves) happen here.
-  - **end of turn** — fired against the OUTGOING creature before
-    its successor takes over. Saves against ongoing conditions,
-    "end of turn" durations expire.
-  - **off turn** — applies to every creature that is _not_ active.
-    Reaction triggers (opportunity attacks), passive observation.
-
-`nextTurn` advances the active marker by one slot. It does NOT yet
-run any phase hooks; those are pure functions to be added per
-feature, with the `update` loop composing them around `nextTurn`.
-
-@docs setActive, activeCreature, sortByInitiative
-
-
-# Manual queue reordering
-
-@docs moveUp, moveDown
+@docs setActive, activeCreature
 
 
 # State helpers
 
 @docs mapCreature, nextCover
-
-
-# Roster mutation
-
-@docs removeCreature, duplicateCreature
-@docs appendCreatures, uniqueInstanceName
 
 
 # Death saves
@@ -428,80 +404,6 @@ activeCreature enc =
     findByName enc.activeName enc.creatures
 
 
-{-| Swap a creature with its predecessor in the queue. No-op when
-the named creature is already at the top, or isn't in the queue at
-all.
-
-This is purely a queue-position move — initiative isn't touched.
-A subsequent `sortByInitiative` will re-order the queue back to
-initiative order, which is the documented contract: manual moves
-are temporary, and the next sort wipes them.
-
--}
-moveUp : String -> Encounter -> Encounter
-moveUp name enc =
-    { enc | creatures = swapWithPrev name enc.creatures }
-
-
-swapWithPrev : String -> List Creature -> List Creature
-swapWithPrev name creatures =
-    case creatures of
-        a :: b :: rest ->
-            if b.name == name then
-                b :: a :: rest
-
-            else
-                a :: swapWithPrev name (b :: rest)
-
-        _ ->
-            creatures
-
-
-{-| Swap a creature with its successor in the queue. No-op when the
-named creature is already at the bottom, or isn't in the queue.
-Same caveat as [`moveUp`](#moveUp): pure position move, no
-initiative change.
--}
-moveDown : String -> Encounter -> Encounter
-moveDown name enc =
-    { enc | creatures = swapWithNext name enc.creatures }
-
-
-swapWithNext : String -> List Creature -> List Creature
-swapWithNext name creatures =
-    case creatures of
-        a :: b :: rest ->
-            if a.name == name then
-                b :: a :: rest
-
-            else
-                a :: swapWithNext name (b :: rest)
-
-        _ ->
-            creatures
-
-
-{-| Re-order the encounter queue by descending initiative.
-
-5e ties are normally broken by Dexterity score; we use the recorded
-`initiativeBonus` as a stand-in (it's effectively the modifier the
-roll added). If both are equal we fall back to creature name for a
-stable, alphabetic tiebreaker — better than letting `List.sortBy`
-pick an arbitrary ordering on a re-render.
-
-`activeName` is preserved across the sort, so a re-sort mid-combat
-doesn't reset whose turn it is.
-
--}
-sortByInitiative : Encounter -> Encounter
-sortByInitiative enc =
-    let
-        sortKey c =
-            ( negate c.initiative, negate c.initiativeBonus, c.name )
-    in
-    { enc | creatures = List.sortBy sortKey enc.creatures }
-
-
 {-| Move the active marker to a specific creature WITHOUT counting it
 as turn progression.
 
@@ -557,208 +459,6 @@ mapCreature name fn enc =
     { enc | creatures = List.map apply enc.creatures }
 
 
-{-| Remove the named creature from the queue.
-
-If the named creature was the active one, advance the marker to
-their successor (the next creature in queue order, or the first
-if they were last). When the queue empties as a result,
-`activeName` becomes the empty string; the title bar's `Maybe`-
-aware rendering already handles that case.
-
-No-op when the named creature isn't in the queue.
-
--}
-removeCreature : String -> Encounter -> Encounter
-removeCreature name enc =
-    if List.any (\c -> c.name == name) enc.creatures then
-        let
-            successorName =
-                findNext name enc.creatures
-                    |> Maybe.withDefault
-                        (case enc.creatures of
-                            first :: _ ->
-                                first.name
-
-                            [] ->
-                                ""
-                        )
-
-            newCreatures =
-                List.filter (\c -> c.name /= name) enc.creatures
-
-            newActive =
-                if enc.activeName == name then
-                    if List.any (\c -> c.name == successorName) newCreatures then
-                        successorName
-
-                    else
-                        case newCreatures of
-                            first :: _ ->
-                                first.name
-
-                            [] ->
-                                ""
-
-                else
-                    enc.activeName
-        in
-        { enc | creatures = newCreatures, activeName = newActive }
-
-    else
-        enc
-
-
-{-| Duplicate the named creature, inserting the copy immediately
-after the source in the queue order.
-
-The copy is a literal clone — same HP, same stats, same
-conditions / save notices / timer state — except:
-
-  - `name` gets a `(copy)` / `(copy 2)` / `(copy 3)` suffix so
-    the encounter's name-based identity stays unique.
-  - `selected` is forced to `False` so a multi-target action
-    after duplication doesn't accidentally splatter both copies.
-  - Any `conditions` and `saveNotices` carried over get fresh
-    encounter-wide unique ids — otherwise edits / removes on the
-    source's chips would clobber the duplicate's chips and vice
-    versa.
-
-No-op when the named creature isn't in the queue.
-
--}
-duplicateCreature : String -> Encounter -> Encounter
-duplicateCreature name enc =
-    case findByName name enc.creatures of
-        Nothing ->
-            enc
-
-        Just src ->
-            let
-                existingNames =
-                    List.map .name enc.creatures
-
-                newName =
-                    uniqueCopyName src.name existingNames
-
-                conditionIdStart =
-                    (allConditionIds enc
-                        |> List.maximum
-                        |> Maybe.withDefault 0
-                    )
-                        + 1
-
-                noticeIdStart =
-                    (allSaveNoticeIds enc
-                        |> List.maximum
-                        |> Maybe.withDefault 0
-                    )
-                        + 1
-
-                reIdConditions =
-                    List.indexedMap
-                        (\i cond -> { cond | id = conditionIdStart + i })
-                        src.conditions
-
-                reIdNotices =
-                    List.indexedMap
-                        (\i n -> { n | id = noticeIdStart + i })
-                        src.saveNotices
-
-                copy =
-                    { src
-                        | name = newName
-                        , selected = False
-                        , conditions = reIdConditions
-                        , saveNotices = reIdNotices
-                    }
-            in
-            { enc | creatures = insertAfter name copy enc.creatures }
-
-
-{-| Generate a unique "<name> (copy)" / "<name> (copy 2)" /
-"<name> (copy 3)" form by walking N upward until the candidate
-isn't already in `existingNames`.
--}
-uniqueCopyName : String -> List String -> String
-uniqueCopyName base existingNames =
-    let
-        candidate i =
-            if i == 1 then
-                base ++ " (copy)"
-
-            else
-                base ++ " (copy " ++ String.fromInt i ++ ")"
-
-        loop i =
-            if List.member (candidate i) existingNames then
-                loop (i + 1)
-
-            else
-                candidate i
-    in
-    loop 1
-
-
-{-| Insert `newCreature` immediately after the creature with the
-given name. If the anchor name isn't found, the new creature is
-appended at the end so the duplicate still ends up in the queue.
--}
-insertAfter : String -> Creature -> List Creature -> List Creature
-insertAfter anchorName newCreature creatures =
-    case creatures of
-        [] ->
-            [ newCreature ]
-
-        c :: rest ->
-            if c.name == anchorName then
-                c :: newCreature :: rest
-
-            else
-                c :: insertAfter anchorName newCreature rest
-
-
-{-| Compute the unique display name for a fresh instance of `base`.
-
-The pattern: first instance keeps the bare name, second is
-`base ++ " 2"`, third is `base ++ " 3"`, and so on. So adding
-three Goblins to a fresh encounter yields
-`Goblin / Goblin 2 / Goblin 3`. Adding three more (with the
-first three still alive) yields `Goblin 4 / Goblin 5 / Goblin 6`.
-This is distinct from `uniqueCopyName`, which uses `(copy)`
-suffixes for the right-rail duplicate button.
-
--}
-uniqueInstanceName : String -> List String -> String
-uniqueInstanceName base existingNames =
-    let
-        candidate i =
-            if i == 1 then
-                base
-
-            else
-                base ++ " " ++ String.fromInt i
-
-        loop i =
-            if List.member (candidate i) existingNames then
-                loop (i + 1)
-
-            else
-                candidate i
-    in
-    loop 1
-
-
-{-| Append a batch of creatures to the queue, then re-sort by
-initiative. Used by the Compendium → queue handoff after the
-batch initiative rolls land. `activeName` is preserved so adding
-creatures mid-combat doesn't reset whose turn it is.
--}
-appendCreatures : List Creature -> Encounter -> Encounter
-appendCreatures newcomers enc =
-    { enc | creatures = enc.creatures ++ newcomers }
-        |> sortByInitiative
-
-
 {-| Look a creature up by name. Returns `Nothing` if absent.
 -}
 findByName : String -> List Creature -> Maybe Creature
@@ -773,26 +473,6 @@ findByName name creatures =
 
             else
                 findByName name rest
-
-
-{-| Walk the list looking for `currentName`; return the name of the
-creature immediately after it, or `Nothing` if `currentName` is the
-last (or absent). Used by `removeCreature` to find the marker
-successor; `Encounter.Lifecycle` carries its own copy for the
-turn-progression walk.
--}
-findNext : String -> List Creature -> Maybe String
-findNext currentName creatures =
-    case creatures of
-        [] ->
-            Nothing
-
-        c :: rest ->
-            if c.name == currentName then
-                List.head rest |> Maybe.map .name
-
-            else
-                findNext currentName rest
 
 
 {-| Cycle cover state. Used by the row 2 cover-cycle button.

@@ -14,6 +14,7 @@ import Encounter
         , Encounter
         )
 import Encounter.Lifecycle
+import Encounter.Roster
 import Encounter.Wire
 import File exposing (File)
 import File.Select
@@ -2106,17 +2107,17 @@ updateInner msg model =
         -- sortByInitiative wipes the manual order, which matches
         -- the documented contract.
         MoveCreatureUp name ->
-            ( withEncounter (Encounter.moveUp name) model, Cmd.none )
+            ( withEncounter (Encounter.Roster.moveUp name) model, Cmd.none )
 
         MoveCreatureDown name ->
-            ( withEncounter (Encounter.moveDown name) model, Cmd.none )
+            ( withEncounter (Encounter.Roster.moveDown name) model, Cmd.none )
 
         -- Roster mutation
         RemoveCreature name ->
-            ( withEncounter (Encounter.removeCreature name) model, Cmd.none )
+            ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
 
         DuplicateCreature name ->
-            ( withEncounter (Encounter.duplicateCreature name) model, Cmd.none )
+            ( withEncounter (Encounter.Roster.duplicateCreature name) model, Cmd.none )
 
         -- Initiative manager
         InitiativeOpen target ->
@@ -2134,7 +2135,7 @@ updateInner msg model =
 
         InitiativeQuickSort ->
             ( { model
-                | encounter = Encounter.sortByInitiative model.encounter
+                | encounter = Encounter.Roster.sortByInitiative model.encounter
                 , initiative = Nothing
               }
             , Cmd.none
@@ -2221,7 +2222,7 @@ updateInner msg model =
                     List.map Tuple.second results
             in
             ( { m1
-                | encounter = Encounter.sortByInitiative m1.encounter
+                | encounter = Encounter.Roster.sortByInitiative m1.encounter
                 , initiative = Nothing
               }
             , Cmd.batch (List.map persistRollCmd rolls)
@@ -3595,7 +3596,7 @@ pickInstanceNames base count existing =
             else
                 let
                     next =
-                        Encounter.uniqueInstanceName base reserved
+                        Encounter.Roster.uniqueInstanceName base reserved
                 in
                 loop (n - 1) (next :: acc) (next :: reserved)
     in
@@ -3653,7 +3654,7 @@ handleCompendiumRolls model creatureId rolls =
                                 "Added " ++ String.fromInt addedCount ++ " × " ++ source.name
                     in
                     { m1
-                        | encounter = Encounter.appendCreatures instances m1.encounter
+                        | encounter = Encounter.Roster.appendCreatures instances m1.encounter
                         , compendium =
                             let
                                 ui =
@@ -4317,7 +4318,7 @@ applyCustomInitiative names ui model =
                     List.foldl applyOne model names
             in
             { m1
-                | encounter = Encounter.sortByInitiative m1.encounter
+                | encounter = Encounter.Roster.sortByInitiative m1.encounter
                 , initiative = Nothing
             }
 
