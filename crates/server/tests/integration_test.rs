@@ -467,3 +467,83 @@ async fn test_config_partial_oidc_errors() {
     "error should describe partial OIDC config, got: {msg}"
   );
 }
+
+// ── encounter persistence ────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_encounter_get_returns_null_when_unset() {
+  let app = base_router(state_without_frontend().await);
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(response.status(), StatusCode::OK);
+
+  let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+    .await
+    .unwrap();
+  let body_str = String::from_utf8(body.to_vec()).unwrap();
+
+  // Default is `serde_json::Value::Null`, which serializes as the
+  // literal "null" — the frontend reads that as "use the empty
+  // default" rather than failing the boot.
+  assert_eq!(body_str.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_encounter_put_then_get_roundtrip() {
+  let state = state_without_frontend().await;
+  let app = base_router(state);
+
+  let payload = r#"{"creatures":[],"activeName":"Brakka","round":3}"#;
+
+  let put_response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/encounter")
+        .header("content-type", "application/json")
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(put_response.status(), StatusCode::OK);
+
+  let get_response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  assert_eq!(get_response.status(), StatusCode::OK);
+
+  let body = axum::body::to_bytes(get_response.into_body(), usize::MAX)
+    .await
+    .unwrap();
+  let body_str = String::from_utf8(body.to_vec()).unwrap();
+
+  // The server stores opaque JSON, so after a PUT the GET should
+  // return the same payload back (as a normalized JSON string).
+  assert!(
+    body_str.contains("\"activeName\":\"Brakka\""),
+    "expected PUT body to round-trip, got: {body_str}"
+  );
+  assert!(
+    body_str.contains("\"round\":3"),
+    "expected PUT body to round-trip, got: {body_str}"
+  );
+}
