@@ -207,8 +207,8 @@ body {
 }
 
 .creature-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
+  align-items: stretch;
   gap: var(--space-3);
   padding: var(--space-3);
   background: var(--color-surface-2);
@@ -282,17 +282,17 @@ body {
 }
 
 .creature-card__center {
+  flex: 1;
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 6px;
   min-width: 0;
 }
 
-/* Legendary columns wrapper: a flex strip between the center
-   and right-rail grid cells.  Renders nothing when the creature
-   has neither Legendary Actions nor Legendary Resistance, so the
-   3-column card grid grows an implicit 4th `auto` column only
-   when needed. */
+/* Legendary columns wrapper: a flex strip sitting between the
+   center column and the right rail.  Renders nothing when the
+   creature has neither Legendary Actions nor Legendary
+   Resistance. */
 .creature-card__legendary {
   display: flex;
   align-items: stretch;
@@ -354,6 +354,24 @@ body {
   transition:
     background 0.1s ease,
     transform 0.05s ease;
+}
+
+/* The 4th pip in each column is the "lair" pip: only used when
+   the creature is in its lair (5e gives a bonus legendary action
+   and an extra legendary-resistance use in-lair).  Render with a
+   thinner border, and precede it with a faint horizontal divider
+   so the lair pip reads as visually separate from the regular
+   per-turn pips. */
+.legendary-col__pip--lair {
+  border-width: 1px;
+}
+
+.legendary-col__sep {
+  width: 14px;
+  height: 1px;
+  background: var(--color-border);
+  opacity: 0.6;
+  margin: 1px 0;
 }
 
 .legendary-col__pip:hover {

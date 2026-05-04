@@ -5238,9 +5238,11 @@ viewNoteOrPencil creature =
 
 
 {-| Two narrow vertical columns of pips on the creature card,
-between the center and the right rail. Each column has a bold
-header letter ("LA" / "LR") followed by 4 toggleable circular
-pips.
+between the center column and the right rail. Each column has a
+bold header letter ("LA" / "LR") followed by 4 toggleable
+circular pips. The 4th pip is the in-lair bonus and renders
+with a thinner border (and a faint divider above it) to mark
+it as optional.
 
 Conditional rendering — both columns spawn only when the
 creature's compendium source has the matching feature, and the
@@ -5260,8 +5262,7 @@ LR pips do NOT auto-reset (legendary resistance is per long
 rest in 5e, not per turn).
 
 When the creature has neither feature, `viewLegendaryColumns`
-returns `text ""` so the grid doesn't allocate a slot for an
-empty wrapper.
+returns `text ""` so the card flex row stays compact.
 
 -}
 viewLegendaryColumns : Creature -> Html Msg
@@ -5320,6 +5321,12 @@ viewLegendaryColumn cfg =
                             else
                                 ""
                            )
+                        ++ (if idx == 3 then
+                                " legendary-col__pip--lair"
+
+                            else
+                                ""
+                           )
                     )
                 , onClick (cfg.onToggle idx)
                 , title
@@ -5350,6 +5357,7 @@ viewLegendaryColumn cfg =
         , pip 0
         , pip 1
         , pip 2
+        , div [ class "legendary-col__sep" ] []
         , pip 3
         ]
 
