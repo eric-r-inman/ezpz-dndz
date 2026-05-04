@@ -103,28 +103,30 @@ fn test_basic_execution() {
 }
 
 #[test]
-fn test_with_name_argument() {
-  let output = Command::new(get_binary_path())
-    .arg("--name")
-    .arg("Rust")
-    .output();
+fn test_compendium_count_against_tempfile() {
+  // Write a small fixture compendium so the command has
+  // something to count.  The tempfile shape matches the JSON
+  // the server writes to `<data_dir>/compendium/creatures.json`.
+  let dir = std::env::temp_dir().join("ezpz-dndz-cli-test");
+  std::fs::create_dir_all(&dir).expect("create temp dir");
+  let path = dir.join("creatures.json");
+  std::fs::write(&path, "[]").expect("write empty fixture");
 
-  match output {
-    Ok(output) => {
-      assert!(
-        output.status.success(),
-        "Expected success exit code, got: {:?}\nstderr: {}",
-        output.status.code(),
-        String::from_utf8_lossy(&output.stderr)
-      );
-    }
-    Err(e) => {
-      if e.kind() == std::io::ErrorKind::NotFound {
-        eprintln!(
-                    "Binary not found. Please build the project first with: cargo build -p ezpz-dndz-cli"
-                );
-      }
-      panic!("Failed to execute binary: {}", e);
-    }
-  }
+  let output = Command::new(get_binary_path())
+    .args([
+      "compendium",
+      "count",
+      "--path",
+      path.to_str().expect("path utf8"),
+    ])
+    .output()
+    .expect("run cli");
+
+  assert!(
+    output.status.success(),
+    "compendium count failed: stderr={}",
+    String::from_utf8_lossy(&output.stderr)
+  );
+  let stdout = String::from_utf8_lossy(&output.stdout);
+  assert!(stdout.contains("0"), "expected count 0 in stdout, got: {stdout}");
 }

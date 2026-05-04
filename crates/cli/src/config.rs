@@ -1,4 +1,5 @@
-use clap::Parser;
+use crate::compendium::CompendiumCommand;
+use clap::{Parser, Subcommand};
 use ezpz_dndz_lib::{LogFormat, LogLevel};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -30,27 +31,34 @@ pub enum ConfigError {
 #[command(author, version, about, long_about = None)]
 pub struct CliRaw {
   /// Log level (trace, debug, info, warn, error)
-  #[arg(long, env = "LOG_LEVEL")]
+  #[arg(long, env = "LOG_LEVEL", global = true)]
   pub log_level: Option<String>,
 
   /// Log format (text, json)
-  #[arg(long, env = "LOG_FORMAT")]
+  #[arg(long, env = "LOG_FORMAT", global = true)]
   pub log_format: Option<String>,
 
   /// Path to configuration file
-  #[arg(short, long, env = "CONFIG_FILE")]
+  #[arg(short, long, env = "CONFIG_FILE", global = true)]
   pub config: Option<PathBuf>,
 
-  /// Example: Name to greet
-  #[arg(short, long)]
-  pub name: Option<String>,
+  #[command(subcommand)]
+  pub command: Option<Command>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+  /// Inspect or maintain a compendium JSON file.
+  Compendium {
+    #[command(subcommand)]
+    command: CompendiumCommand,
+  },
 }
 
 #[derive(Debug, Deserialize, Default)]
 pub struct ConfigFileRaw {
   pub log_level: Option<String>,
   pub log_format: Option<String>,
-  pub name: Option<String>,
 }
 
 impl ConfigFileRaw {
@@ -76,7 +84,7 @@ impl ConfigFileRaw {
 pub struct Config {
   pub log_level: LogLevel,
   pub log_format: LogFormat,
-  pub name: String,
+  pub command: Option<Command>,
 }
 
 impl Config {
@@ -110,15 +118,10 @@ impl Config {
       .parse::<LogFormat>()
       .map_err(|e| ConfigError::Validation(e.to_string()))?;
 
-    let name = cli
-      .name
-      .or(config_file.name)
-      .unwrap_or_else(|| "World".to_string());
-
     Ok(Config {
       log_level,
       log_format,
-      name,
+      command: cli.command,
     })
   }
 }
