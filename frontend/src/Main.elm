@@ -67,6 +67,7 @@ import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
 import Update.Dice
 import Update.Encounter
+import Update.HpChange
 import Update.Shell
 import Update.Toast
 import Url exposing (Url)
@@ -422,164 +423,43 @@ updateInner msg model =
 
         -- HP change modal lifecycle
         HpChangeOpen target kind ->
-            ( { model | hpChange = Just (HpChangeUi.fresh target kind) }
-            , Cmd.none
-            )
+            Update.HpChange.open target kind model
 
         HpChangeClose ->
-            ( { model | hpChange = Nothing }, Cmd.none )
+            Update.HpChange.close model
 
         HpChangeModeSet mode ->
-            ( withHpChange (\u -> { u | mode = mode, parseError = Nothing }) model
-            , Cmd.none
-            )
+            Update.HpChange.modeSet mode model
 
         HpChangeAmountChanged text ->
-            -- Mirror the dice-modifier pattern: track raw text for
-            -- the controlled input, only update the parsed integer
-            -- when the input actually parses. Unsigned here — heal
-            -- and temp-HP can't be negative, and damage flips the
-            -- sign internally via the engine.
-            ( withHpChange
-                (\u ->
-                    { u
-                        | amountText = text
-                        , amount =
-                            String.toInt (String.trim text)
-                                |> Maybe.map (Basics.max 0)
-                                |> Maybe.withDefault u.amount
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.HpChange.amountChanged text model
 
         HpChangeExpressionChanged text ->
-            ( withHpChange (\u -> { u | expression = text, parseError = Nothing }) model
-            , Cmd.none
-            )
+            Update.HpChange.expressionChanged text model
 
         HpChangeIgnoreTempToggle ->
-            ( withHpChange (\u -> { u | ignoreTemp = not u.ignoreTemp }) model
-            , Cmd.none
-            )
+            Update.HpChange.ignoreTempToggle model
 
         HpChangeApplyToSelectedToggle ->
-            ( withHpChange (\u -> { u | applyToSelected = not u.applyToSelected }) model
-            , Cmd.none
-            )
+            Update.HpChange.applyToSelectedToggle model
 
         HpChangeApply ->
-            -- Manual mode commits ui.amount via the engine straight
-            -- away. Dice mode parses the expression and fires
-            -- Dice.rollCmd; the resulting roll comes back via
-            -- HpChangeRollLanded which then commits with the rolled
-            -- total AND logs the roll to the dice history. So both
-            -- paths converge on a single applyHpChange step.
-            case model.hpChange of
-                Nothing ->
-                    ( model, Cmd.none )
-
-                Just ui ->
-                    case ui.mode of
-                        ManualMode ->
-                            ( applyHpChangeAndClose ui ui.amount model
-                            , Cmd.none
-                            )
-
-                        DiceMode ->
-                            case Dice.parse ui.expression of
-                                Ok expr ->
-                                    ( model
-                                    , Dice.rollCmd HpChangeRollLanded
-                                        (hpChangeSource ui model.encounter)
-                                        expr
-                                    )
-
-                                Err err ->
-                                    ( withHpChange (\u -> { u | parseError = Just err }) model
-                                    , Cmd.none
-                                    )
+            Update.HpChange.apply model
 
         HpChangeRollLanded roll ->
-            -- The dice-mode path lands here. We commit the change
-            -- with roll.total, log the roll to the dice history (so
-            -- the user has a record), and persist it server-side
-            -- through the same /api/dice/history pipe the dice modal
-            -- uses. If the modal got closed mid-flight (defensive),
-            -- still log/persist so we don't drop rolls on the floor.
-            let
-                logged =
-                    Effects.pushDiceRoll roll model
+            Update.HpChange.rollLanded roll model
 
-                committed =
-                    case logged.hpChange of
-                        Just ui ->
-                            applyHpChangeAndClose ui roll.total logged
-
-                        Nothing ->
-                            logged
-            in
-            ( committed, Effects.persistDiceRoll roll )
-
-        -- Inline HP edit on a creature card
         HpEditStart name field current ->
-            ( { model
-                | hpEdit =
-                    Just
-                        { target = name
-                        , field = field
-                        , text = String.fromInt current
-                        }
-              }
-            , Cmd.none
-            )
+            Update.HpChange.editStart name field current model
 
         HpEditChange text ->
-            ( case model.hpEdit of
-                Just edit ->
-                    { model | hpEdit = Just { edit | text = text } }
-
-                Nothing ->
-                    model
-            , Cmd.none
-            )
+            Update.HpChange.editChange text model
 
         HpEditCommit ->
-            -- Parse the text. On success, write through HpChange's
-            -- manual-edit helpers (which clamp + recompute bloodied).
-            -- On parse failure, just close the editor without
-            -- changing anything — easier than surfacing a transient
-            -- error inline.
-            case model.hpEdit of
-                Nothing ->
-                    ( model, Cmd.none )
-
-                Just edit ->
-                    case String.toInt (String.trim edit.text) of
-                        Just n ->
-                            let
-                                transform =
-                                    case edit.field of
-                                        CurrentHpField ->
-                                            HpChange.setCurrentHp n
-
-                                        MaxHpField ->
-                                            HpChange.setMaxHp n
-                            in
-                            ( { model
-                                | encounter =
-                                    Encounter.mapCreature edit.target transform model.encounter
-                                , hpEdit = Nothing
-                              }
-                            , Cmd.none
-                            )
-
-                        Nothing ->
-                            ( { model | hpEdit = Nothing }, Cmd.none )
+            Update.HpChange.editCommit model
 
         HpEditCancel ->
-            ( { model | hpEdit = Nothing }, Cmd.none )
+            Update.HpChange.editCancel model
 
         -- Selection
         ToggleSelected name ->
@@ -2173,14 +2053,6 @@ withEncounter fn model =
     { model | encounter = fn model.encounter }
 
 
-{-| Apply `fn` to the open HP-change modal. No-op when the modal is
-closed (the field is `Nothing`).
--}
-withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
-withHpChange fn model =
-    { model | hpChange = Maybe.map fn model.hpChange }
-
-
 {-| Click handler for the row 1 selection checkbox.
 
 We intercept the raw `click` event so we can read the Shift modifier:
@@ -2561,160 +2433,6 @@ applyCustomInitiative names ui model =
 
         Nothing ->
             { model | initiative = Nothing }
-
-
-{-| Build the dice-roller `Source` label for an HP-change roll, so
-the dice history reads e.g. "Damage → Brakka, Ogre Brute" rather
-than just the formula.
--}
-hpChangeSource : HpChangeUi -> Encounter -> Dice.Source
-hpChangeSource ui enc =
-    let
-        feature =
-            case ui.kind of
-                DamageKind ->
-                    "Damage"
-
-                HealKind ->
-                    "Heal"
-
-                TempHpKind ->
-                    "Temp HP"
-
-        targetLabel =
-            if ui.applyToSelected then
-                let
-                    names =
-                        hpChangeTargets ui enc
-                in
-                if List.isEmpty names then
-                    ui.target
-
-                else
-                    String.join ", " names
-
-            else
-                ui.target
-    in
-    { feature = feature, target = Just targetLabel }
-
-
-{-| Resolve the modal's kind + flags into an `HpChange.Change`,
-hand it to the engine, write the updated creature back through
-`Encounter.mapCreature`, push a log entry capturing the before/after
-snapshot, and close the modal. The caller decides the amount — it
-comes from the manual input on the manual path or from the rolled
-total on the dice path.
-
-When `ui.applyToSelected` is True, the change is applied to every
-selected creature (`Creature.selected = True`). Same amount
-across all targets — for dice mode this means the GM rolled once
-and N creatures soak the same total, which matches 5e's
-single-roll-per-AOE convention (a Fireball rolls 8d6 once and
-each target takes that much, not 8d6 per target).
-
-When `applyToSelected` is False, only `ui.target` is affected
-(the original single-card flow).
-
-If no creatures match (no selection), the modal still closes
-without applying to anyone — better than silently falling back
-to `ui.target`, which would surprise the GM who explicitly
-checked the multi-target toggle.
-
--}
-applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
-applyHpChangeAndClose ui amount model =
-    let
-        change =
-            case ui.kind of
-                DamageKind ->
-                    HpChange.Damage
-                        { amount = amount
-                        , ignoreTemp = ui.ignoreTemp
-                        }
-
-                HealKind ->
-                    HpChange.Heal amount
-
-                TempHpKind ->
-                    HpChange.TempHp amount
-
-        targets =
-            hpChangeTargets ui model.encounter
-
-        applyOne name acc =
-            let
-                before =
-                    findCreature name acc.encounter
-
-                newEnc =
-                    Encounter.mapCreature name (HpChange.apply change) acc.encounter
-
-                after =
-                    findCreature name newEnc
-
-                entry =
-                    Maybe.map2
-                        (\b a ->
-                            { kind = ui.kind
-                            , target = name
-                            , amount = amount
-                            , beforeHp = b.currentHp
-                            , beforeTemp = b.tempHp
-                            , afterHp = a.currentHp
-                            , afterTemp = a.tempHp
-                            }
-                        )
-                        before
-                        after
-            in
-            { encounter = newEnc
-            , log =
-                case entry of
-                    Just e ->
-                        e :: acc.log
-
-                    Nothing ->
-                        acc.log
-            }
-
-        result =
-            List.foldl applyOne { encounter = model.encounter, log = [] } targets
-    in
-    { model
-        | encounter = result.encounter
-        , hpChange = Nothing
-        , hpChangeLog =
-            -- Newly-applied entries are accumulated newest-last in
-            -- the foldl above; reverse so the first target appears
-            -- first when prepended to the existing log.
-            List.reverse result.log
-                ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog
-    }
-
-
-{-| Resolve which creatures the HP-change applies to, based on
-`ui.applyToSelected`. Returns the modal's single target
-otherwise.
--}
-hpChangeTargets : HpChangeUi -> Encounter -> List String
-hpChangeTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
-
-    else
-        [ ui.target ]
-
-
-{-| Look up a creature by name in an encounter. Used by the HP-change
-log to grab before/after snapshots.
--}
-findCreature : String -> Encounter -> Maybe Creature
-findCreature name enc =
-    List.filter (\c -> c.name == name) enc.creatures
-        |> List.head
 
 
 
