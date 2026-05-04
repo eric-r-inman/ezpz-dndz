@@ -29,7 +29,7 @@ codebase is organized and the conventions you're expected to follow.
 ```
 .
 ├── crates/
-│   ├── cli/      ezpz-dndz-cli (binary)
+│   ├── cli/      ezpz-dndz-cli (binary, currently a stub)
 │   ├── server/   ezpz-dndz-server
 │   │   └── src/
 │   │       ├── main.rs / lib.rs / web_base.rs   wiring + AppState
@@ -38,13 +38,23 @@ codebase is organized and the conventions you're expected to follow.
 │   │       ├── dice.rs                           /api/dice/*
 │   │       ├── compendium/                       /api/compendium/*
 │   │       │   ├── mod.rs                        ApiRouter + handlers
-│   │       │   ├── store.rs                      CompendiumStore
+│   │       │   ├── store.rs                      CompendiumStore +
+│   │       │   │                                 BUNDLED_VERSION + ADD-ONLY
+│   │       │   │                                 merge on bundle bumps
 │   │       │   └── error.rs                      semantic errors
-│   │       ├── users/ encounters/ prefs/         Phase 7 stubs
+│   │       ├── encounters/                       /api/encounter (live)
+│   │       │   ├── mod.rs                        ApiRouter + handlers
+│   │       │   ├── store.rs                      EncounterStore
+│   │       │   │                                 (opaque JSON)
+│   │       │   └── error.rs                      semantic errors
+│   │       ├── users/ prefs/                     Phase 7 stubs
 │   │       └── logging.rs / systemd.rs
 │   └── lib/      ezpz-dndz-lib
 │       └── src/
 │           ├── compendium/    Creature schema + CreatureDraft
+│           ├── data/          bundled-creatures.json (embedded
+│           │                  via include_str!, 8 SRD-derived
+│           │                  creatures with stable UUIDs)
 │           ├── json_file_store.rs   shared persistence pattern
 │           ├── cr_calc/       reserved (future encounter-difficulty)
 │           └── logging.rs
@@ -55,23 +65,34 @@ codebase is organized and the conventions you're expected to follow.
 │   │   │                             turn logic, queue reorder, sort)
 │   │   ├── Encounter/
 │   │   │   ├── DeathSaves.elm        5e death-save tracker
-│   │   │   └── SaveNotice.elm        "Saved: <Condition>" notices
+│   │   │   ├── SaveNotice.elm        "Saved: <Condition>" notices
+│   │   │   └── Wire.elm              encode / decode + auto-save
+│   │   │                             Cmds for /api/encounter
 │   │   ├── Dice.elm                  dice domain (parser, rolls, batch
 │   │   │                             rolls, history, stat-block scanner)
 │   │   ├── HpChange.elm              HP-change engine (damage / heal /
 │   │   │                             temp HP, setCurrentHp / setMaxHp)
 │   │   ├── Compendium.elm            creature library domain mirror
+│   │   ├── Compendium/
+│   │   │   └── Parser.elm            permissive 5e stat-block parser
 │   │   ├── View/
 │   │   │   ├── Modal.elm             generic modal frame helper
-│   │   │   └── Chip.elm              pill / chip primitive
+│   │   │   ├── Chip.elm              pill / chip primitive
+│   │   │   └── StatBlock.elm         shared Compendium.Creature renderer
 │   │   └── Util/
 │   │       └── Keyboard.elm          enterKey / escKey decoders
 │   ├── tests/                        elm-test suites (DeathSaves, Dice,
-│   │                                 HpChange, …)
+│   │                                 HpChange, CompendiumParser, …)
 │   └── public/
 │       ├── index.html                mounts Elm into #app
 │       ├── style.css                 all styles, dual light/dark
 │       └── elm.js                    (gitignored, built by `elm make`)
+├── scripts/
+│   └── promote-to-bundle.py          fetch a custom creature from
+│                                     the running dev server, rewrite
+│                                     it with a stable bundle UUID,
+│                                     append to bundled-creatures.json,
+│                                     bump BUNDLED_VERSION
 └── docs/
     ├── ARCHITECTURE.md               this file
     ├── ROADMAP.md                    upcoming work
@@ -103,9 +124,13 @@ In practice this means:
   delegates the rules-y work into `Encounter`. If the branch starts
   doing list walks, comparisons against initiative, or HP arithmetic
   inline, the work belongs in `Encounter`.
-- The seed encounter (`Encounter.initialEncounter`) is the
-  authoritative starting state. `Main.init` just wires it into the
-  Model; it doesn't pick its own creatures.
+- The boot encounter is `Encounter.empty` (no creatures, no active,
+  round 1). `Main.init` wires that in and dispatches a fetch to
+  `/api/encounter` — if a previous session persisted state, the
+  fetch lands and replaces `model.encounter`. Otherwise the user
+  populates from the compendium. `Encounter.initialEncounter`
+  (the older 7-mock-creature fixture) still exists but only as a
+  test fixture; the running app no longer boots into it.
 
 There are a few small seams in `Main.elm` that lift domain-shaped
 transformations into `Model -> Model` updates so individual `update`
@@ -516,15 +541,24 @@ The creature stat-block library lives in three layers:
   (`CompendiumStore`, a thin wrapper around the shared
   `JsonFileStore<Vec<Creature>>` from the lib crate) plus
   `aide::ApiRouter`-based CRUD handlers and the semantic
-  `CompendiumStoreError` enum. On first launch the store
-  bootstraps from the bundled creatures embedded via
-  `include_str!`.
+  `CompendiumStoreError` enum. Owns the `BUNDLED_VERSION`
+  constant + the version-aware ADD-ONLY merge described below.
 - **`frontend/src/Compendium.elm`** — pure domain mirror of
   the Rust schema, with `search` / `filterByKind` / `sortBy*`
   helpers, `crToFloat` for sort-key parsing of `"1/4"` etc.,
-  and symmetric encode/decode for the wire format. Imports
-  nothing from `Html`, `Browser`, or `Url` — same layering
-  rule as `Encounter.elm`.
+  symmetric encode/decode for the wire format, and
+  `draftToInstance` for the compendium → encounter handoff.
+  Imports nothing from `Html`, `Browser`, or `Url` — same
+  layering rule as `Encounter.elm`.
+- **`frontend/src/Compendium/Parser.elm`** — permissive
+  line-based parser for plain-text 5e stat blocks (canonical
+  SRD form, D&D Beyond 2024 short prefixes, tab-separated
+  ability tables, fuzzy `<X> Lairs` headings, lore-tail
+  detection). Drives the paste-modal's live preview.
+- **`frontend/src/View/StatBlock.elm`** — read-only renderer
+  for `Compendium.Creature` shared between the browser
+  modal's right pane, the side-panel pin slot, and the
+  standalone `/compendium/creatures/:id` route.
 
 HTTP routes live at `/api/compendium/creatures[/:id]` (CRUD)
 plus `/api/compendium/{export,import,reset}` for bulk
@@ -532,10 +566,191 @@ operations. All eight routes appear in the OpenAPI schema
 served at `/api-docs/openapi.json` and are browsable in
 `/scalar`.
 
-The browser modal, edit modal, paste-stat-block parser, and
-add-to-encounter handoff are tracked in
-[COMPENDIUM_PLAN.org](../COMPENDIUM_PLAN.org)'s sub-phases
-6.3–6.9 and land in follow-up commits.
+### Browser modal
+
+Wide modal opened by **➕ Add Creature** in encounter controls
+or **📖 Open** in the side panel. Two-column layout:
+
+- **Filter bar** (sticky top): search input (debounced; `/`
+  keyboard shortcut focuses it), Player / Enemy / NPC kind
+  chips, sort dropdown (A–Z / By CR / Newest first), and a
+  bulk-action cluster on the right (📥 Import / 📤 Export /
+  ↺ Reset to Bundled).
+- **List column** (left): scrollable rows showing name + kind
+  + race + AC / HP / CR. Selected row gets a 2px inset blue
+  outline + 10% blue background tint.
+- **Detail column** (right): renders the selected creature
+  via `View.StatBlock.view` with a sticky action bar (count
+  input + ➕ Add to Encounter, ✏️ Edit, 📋 Duplicate, 🗑 Delete
+  red trash icon).
+- **Footer FAB row**: ➕ New Creature opens a blank edit
+  modal; 📋 Paste Stat Block opens the parser modal with
+  live preview.
+
+Esc closes the modal. The first toast on each save / import
+/ reset / delete success is a brief top-right notification;
+errors get a red toast.
+
+### Edit / create / duplicate / delete
+
+`CompendiumEditUi` holds a flat record covering ~30 string
+fields (numerics stored as `String` so transient typing isn't
+clamped) plus dynamic save / skill / feature / custom-section
+rows. Submit POSTs (`encodeDraft`) for Create or PUTs
+(`encodeCreature`) for Edit. Delete from the edit footer or
+the browser-modal trash icon both go through the same
+DELETE flow with an inline red confirmation banner. Advanced
+sections (legendary / lair / regional / spellcasting) are
+pass-through-only in the form: editing an existing creature
+preserves them through submit, but the form doesn't yet
+expose editors for them.
+
+### Paste stat-block parser
+
+`Compendium.Parser.parseStatBlock : String -> Result ParseError Creature`
+parses pasted plain-text stat blocks. Handles canonical SRD
+form (`Armor Class 15`), short-form D&D Beyond 2024 prefixes
+(`AC 15`, `HP 7`, `CR 1/4`, bare `Immunities`/`Resistances`),
+single-line ability tables (`STR 8 (-1) DEX 14 (+2) …`), tab-
+separated ability tables (`STR\t25\t+7\t+7`), `Mod\tSave`
+header rows (skipped), title-cased section headers (`Traits`,
+`Actions`, `Legendary Actions`), fuzzy lair-section headings
+(`Blue Dragon Lairs`), CR with combined XP + lair-XP + PB
+parens, semicolon-as-`,` in senses, multi-line feature
+continuations, and lore-paragraph detection at the tail
+(parks remaining text into a `Description` custom section
+instead of bleeding into the last action).
+
+The paste modal renders a live preview via `View.StatBlock.view`
+on every keystroke. **Apply to Form** hands the parsed result
+to the edit modal so the GM reviews and saves through the
+existing Create flow.
+
+### Bundled creatures + version-aware merge
+
+`crates/lib/data/bundled-creatures.json` is embedded into
+the server binary via `include_str!`. Currently 8 SRD-derived
+creatures spanning CR 1/4 → 6, with stable hand-picked UUIDs
+(`01914741-0001-4001-a001-XXXXXXXXXXXX`).
+
+`BUNDLED_VERSION: i32` in
+[crates/server/src/compendium/store.rs](../crates/server/src/compendium/store.rs)
+is the source-of-truth version for the bundled set. Every
+boot, `CompendiumStore::load_or_bootstrap` reads a sidecar
+file (`<creatures.json>.bundle-seed.json`) holding the
+highest version this store has ever merged; if the embedded
+constant is greater, an **ADD-ONLY** merge runs. For each
+bundled creature whose stable id isn't already present, it's
+added; existing creatures (whether earlier-bundled-and-edited
+or user-created customs) are never touched. This means a
+release that bumps the bundle ships new content without
+overwriting customizations.
+
+Three user-facing entry points:
+
+- **First launch** (no `creatures.json`, no seed file) → all
+  bundled creatures appear. Seed file written.
+- **Subsequent launches** at the same version → no-op.
+- **Reset to Bundled** in the browser modal's bulk-action
+  cluster → wipes everything and seeds fresh from the
+  current bundle. Also bumps the seed file so the next boot
+  doesn't redundantly re-merge.
+
+To add a creature to the bundle, see the **Promote to bundle**
+workflow below.
+
+### Side panel + standalone window
+
+The right-side panel ("Compendium") shows whichever creature
+is currently pinned. Defaults to the bundled mock until the
+user clicks a creature name on a card; clicking pins that
+creature's compendium stat block (creature names are
+underlined on hover when they have a `creatureId` back-
+reference). The panel renders an absolutely-positioned ↗ link
+in the top-right that opens `/compendium/creatures/:id` —
+a standalone SPA route with a centered max-720px stat-block
+column, useful for keeping a reference open in another tab.
+
+
+## Live encounter persistence
+
+The running combat queue is auto-saved to the server on every
+mutation and auto-loaded on app boot, so a page reload doesn't
+lose state. v1 scope: a single persistent live encounter per
+deployment. The per-user multi-named-encounter system
+described in
+[OPTIMIZATION_AND_COMPLIANCE_PLAN.org](../OPTIMIZATION_AND_COMPLIANCE_PLAN.org)
+Phase 7 is a follow-up that waits on the `users` table.
+
+Three layers, mirroring the compendium pattern but with
+opaque-JSON storage on the server side (the schema lives on
+the Elm side; the server is a thin store):
+
+- **`crates/server/src/encounters/`** — `EncounterStore`
+  wrapping `JsonFileStore<serde_json::Value>` plus two REST
+  handlers. Routes: `GET /api/encounter` (returns the
+  persisted JSON or `null`), `PUT /api/encounter` (replaces).
+  Both registered through `aide::ApiRouter`.
+- **`frontend/src/Encounter/Wire.elm`** — full
+  `encodeEncounter` / `decodeEncounter` covering the entire
+  Encounter → Creature → Condition / Duration / TurnPhase /
+  TurnTarget / SaveToEnd / AutoRollMode / SaveNotice / Cover /
+  DeathSaves / Timer tree. Decoder tolerates missing fields
+  with sensible defaults so a future schema bump that adds a
+  field doesn't break the legacy load path. Two Cmd helpers:
+  `fetchEncounterCmd` (returns `Maybe Encounter` so a server
+  `null` reads as "use the empty default") and
+  `persistEncounterCmd`.
+- **`Main.elm`'s `update` wrapper** — `update` is now a thin
+  wrapper over `updateInner` that diffs `model.encounter`
+  before/after and batches a `persistEncounterCmd` whenever
+  the encounter actually mutated. Per-Msg branches don't
+  have to remember to call any save helper. The two save-flow
+  Msgs themselves (`EncounterLoaded` / `EncounterPersisted`)
+  skip the diff via `shouldPersistAfter` — otherwise a
+  successful initial load would re-fire a save and trigger
+  another load, etc.
+
+Failure handling: save failures surface as a red toast
+("Save failed: …"); load failures fall through silently to
+the empty default (matches the dice-history pattern).
+
+The on-disk file location is configurable via
+`--encounter-path` (default `<data_dir>/encounter.json`).
+
+
+## Promote to bundle
+
+When you've authored a creature in the running app and want
+to add it to the embedded bundle, the
+[scripts/promote-to-bundle.py](../scripts/promote-to-bundle.py)
+script automates the end-to-end flow:
+
+```sh
+just promote-to-bundle <creature-uuid>
+```
+
+What it does:
+
+1. `GET /api/compendium/creatures/<id>` from the running dev
+   server (default `http://127.0.0.1:4040`).
+2. Scans existing entries in
+   `crates/lib/data/bundled-creatures.json`, picks the next
+   sequential bundle UUID
+   (`01914741-0001-4001-a001-XXXXXXXXXXXX`).
+3. Rewrites the fetched creature's `id` (stable bundle id),
+   `source` (`"Bundled"`), and `created_at` / `updated_at`
+   (`0`).
+4. Appends to `bundled-creatures.json` with stable
+   indentation.
+5. Bumps `BUNDLED_VERSION` in
+   `crates/server/src/compendium/store.rs` so existing
+   deployments pick up the new entry on next boot via the
+   ADD-ONLY merge.
+
+After the script runs: rebuild + restart, click ↺ Reset to
+Bundled to get a clean view of just the new bundle, verify,
+and commit `bundled-creatures.json` + `store.rs`.
 
 
 ## JsonFileStore: shared persistence pattern
@@ -583,15 +798,22 @@ client. With OIDC unconfigured, the server runs unauthenticated and
 `/me` returns a stubbed `admin` user; that's the local-dev mode.
 
 **Persistence root.** Everything the server writes at runtime lives
-under `--data-dir` (default: cwd). Today that's the dice history
-JSON (`<data_dir>/dice-history.json`) and the compendium creature
-library (`<data_dir>/compendium/creatures.json`, bootstrapped on
-first launch from the bundled creatures embedded in the binary).
-Both paths are individually overridable (`--dice-history-path`,
-`--compendium-path`). The planned SQLite database, saved
-encounters, and per-user uploads will all default to
-`<data_dir>/...` so a deployment only has to bind-mount one
-directory. See [ROADMAP.md](ROADMAP.md) for the planned data model.
+under `--data-dir` (default: cwd). Today that's:
+
+- `<data_dir>/dice-history.json` — bounded dice-roll log (override:
+  `--dice-history-path`).
+- `<data_dir>/compendium/creatures.json` + a sibling
+  `creatures.json.bundle-seed.json` recording the highest
+  `BUNDLED_VERSION` ever merged into the store. Bootstrapped on
+  first launch from the bundled creatures embedded in the binary
+  (override: `--compendium-path`).
+- `<data_dir>/encounter.json` — the auto-saved live combat queue
+  (override: `--encounter-path`).
+
+The planned SQLite database, named encounter saves, and per-user
+uploads will all default to `<data_dir>/...` so a deployment only
+has to bind-mount one directory. See [ROADMAP.md](ROADMAP.md) for
+the planned data model.
 
 **Service unit.** The systemd service expectations live in
 [systemd.org](systemd.org). `sd-notify` is wired up and the server
@@ -608,28 +830,32 @@ Sketch of the storage we expect to land as features ship; subject
 to change. See [docs/diagrams/data-model.svg](diagrams/data-model.svg)
 for the bounded-context ER diagram.
 
-| Concern              | Today                                                      | Target                                                |
-|----------------------|------------------------------------------------------------|-------------------------------------------------------|
-| User identity        | OIDC subject in session                                    | `users` table, OIDC subject as natural key            |
-| Compendium creatures | `JsonFileStore<Vec<Creature>>`, bundled-bootstrap, REST CRUD | `creatures` table with shared/private visibility      |
-| Encounter saves      | none (in-memory only)                                      | `encounters` table, owner-scoped                      |
-| Dice history         | `JsonFileStore<History>`, single-slot                      | `dice_rolls` table, optionally per-user               |
-| User preferences     | none                                                       | `prefs` table or per-user JSON blob                   |
+| Concern              | Today                                                                            | Target                                                                |
+|----------------------|----------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| User identity        | OIDC subject in session                                                          | `users` table, OIDC subject as natural key                            |
+| Compendium creatures | `JsonFileStore<Vec<Creature>>` + version-aware bundle merge, REST CRUD           | `creatures` table with shared/private visibility                      |
+| Live encounter       | `JsonFileStore<serde_json::Value>` (single-slot, opaque JSON), auto-save / load  | `encounters` table, owner-scoped, plus named saves + auto-snapshots   |
+| Dice history         | `JsonFileStore<History>`, single-slot                                            | `dice_rolls` table, optionally per-user                               |
+| User preferences     | none                                                                             | `prefs` table or per-user JSON blob                                   |
 
-Compendium and dice history both ride the shared
-`JsonFileStore<T>` pattern (see above) so they share atomic-rename
+Compendium, live encounter, and dice history all ride the shared
+`JsonFileStore<T>` pattern (see below) so they share atomic-rename
 writes and corrupt-file recovery. The first feature whose access
-patterns outgrow whole-document JSON locking — most likely saved
-encounters or per-user dice scoping — will introduce SQLite
-(rusqlite or sqlx) and the JSON stores migrate one at a time.
+patterns outgrow whole-document JSON locking — most likely the
+per-user named-encounter system or per-user dice scoping — will
+introduce SQLite (rusqlite or sqlx) and the JSON stores migrate
+one at a time.
 
 ## Run / build / test
 
 ```sh
-just dev      # build Elm, start server, open browser at 127.0.0.1:4040
-just serve    # same minus opening the browser
-just build    # full build (cargo + elm)
-just test     # all Rust tests + Elm compile check
+just dev                          # build Elm, start server, open browser
+just serve                        # same minus opening the browser
+just build                        # full build (cargo + elm)
+just test                         # all Rust tests + Elm test suite
+just promote-to-bundle <uuid>     # promote a custom creature into the
+                                  # embedded bundle (see Promote to
+                                  # bundle section above)
 ```
 
 `just dev` and `just serve` self-bootstrap into the Nix dev shell if
@@ -646,7 +872,8 @@ just test     # all Rust tests + Elm compile check
 | A new visual element on a card / panel           | a view function in `Main.elm` (or a future View module) |
 | A new modal                                      | `Maybe SomeUi` field on `Model`, `with*` helper next to `withEncounter`, view function returning `text ""` when closed |
 | A new color / spacing token                      | a CSS custom property in `:root` (and its dark-mode override) in `style.css` |
-| A new creature for the seed encounter            | `Encounter.seedCreatures`                |
+| A new creature for the bundled set               | author it in the running app, then `just promote-to-bundle <uuid>` (writes to `bundled-creatures.json` + bumps `BUNDLED_VERSION`) |
+| A new field on the live encounter                | `Encounter.Creature` + `Encounter/Wire.elm` encoder/decoder pair (decoder gets a sensible default so legacy on-disk JSON still loads) |
 | A new dice operator or notation form             | `Dice.elm` parser + (if shape changes) `encodeRoll` / `decodeRoll` |
 | A new HTTP route handled by the backend          | `crates/server/src/web_base.rs` (or a sibling module merged in) |
 | A new persistence-backed feature                 | wrap `JsonFileStore<MyType>` in a domain struct (mirror `dice::DiceStore` / `compendium::CompendiumStore`); thread the store through `AppState` |

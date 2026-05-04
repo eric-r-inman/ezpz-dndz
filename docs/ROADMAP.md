@@ -8,32 +8,32 @@ deployment context.
 
 ## Near-term (next few sessions)
 
-1. **Compendium UI** *(backend done, frontend in progress)*
-   - Backend (Phase 6.1) shipped: 8 REST routes under
-     `/api/compendium/*`, `JsonFileStore`-backed persistence at
-     `<data_dir>/compendium/creatures.json`, bundled-creatures
-     bootstrap, OpenAPI coverage.
-   - Frontend domain (Phase 6.2) shipped: `Compendium.elm` with
-     types, search/filter/sort, encode/decode, and `fetchAll`.
-   - Remaining: browser modal + add-to-encounter handoff,
-     edit/create modal, paste-stat-block parser, Quick View on
-     cards, import/export UX, polish.  Tracked in
-     [COMPENDIUM_PLAN.org](../COMPENDIUM_PLAN.org) sub-phases
-     6.3–6.9.
+1. **Per-user named encounter saves**
+   - Live-encounter auto-save / auto-load is shipped at
+     `/api/encounter` (single slot, opaque JSON, gates on
+     `model.encounter` mutation).
+   - Remaining: the named-snapshot system —
+     `GET / POST / DELETE /api/me/encounters[/:id]` for
+     per-user save slots, wire the existing 💾 Save / 📁 Load
+     buttons in the encounter controls panel, list-of-saves
+     picker, and an auto-snapshot policy (one rolling
+     auto-save per Next Turn debounced to ~5s + retain
+     N=20 most recent + retain all manual / undo-point
+     snapshots forever).
 
-2. **Encounter save / load**
-   - `GET / POST / DELETE /api/me/encounters/:id` for per-user
-     encounter state.
-   - Wire the existing 💾 Save / 📁 Load buttons in the encounter
-     controls panel.
-   - Saved encounter = `Encounter` snapshot serialized as JSON, plus
-     a name and timestamp.
-
-3. **Dice history per-user when authed**
+2. **Dice history per-user when authed**
    - Move `/api/dice/history` → `/api/me/dice/history`, scoped by
      session.
    - With OIDC enabled, each authenticated user gets their own slot.
    - Anonymous (OIDC-disabled) deployments stay single-slot.
+
+3. **Compendium write-API auth gating**
+   - All compendium write routes (`POST` / `PUT` / `DELETE` /
+     `import` / `reset`) currently open in dev / homelab mode.
+   - Once the `users` table exists, gate them on `role = admin`
+     so only authorized users can mutate the shared library.
+   - Add `visibility = private | shared | official` on each
+     creature so non-admins can author private customs.
 
 ## Production deployment milestones
 
@@ -69,23 +69,27 @@ deployment context.
 
 ## Larger features
 
-7. **Compendium write API**
-   - `POST / PUT / DELETE /api/compendium/creatures/:id` with author
-     tracking.
-   - Visibility flag: `private` / `shared` / `official`.
-   - Optional admin moderation queue for community-shared submissions.
-
-8. **Real-time co-DM mode**
+7. **Real-time co-DM mode**
    - WebSocket channel for live encounter state sharing.
    - One DM, several spectator players, optional collaborator role.
    - Probably uses `axum::extract::ws` + a broadcast channel keyed
      by encounter id.
 
-9. **Total-encounter stopwatch**
+8. **Total-encounter stopwatch**
    - Wall-clock stopwatch for total encounter duration (separate
      from the per-creature row-3 turn-counter timers, which are
      already implemented). Likely lives in the encounter title
      bar next to the round counter.
+
+9. **Compendium polish**
+   - Edit-form support for the four advanced sections currently
+     pass-through-only (legendary actions, lair actions,
+     regional effects, spellcasting).
+   - Creature images / token portraits — storage path under
+     `<data_dir>/compendium/images/`, multipart upload
+     endpoints.
+   - Spell-slot / legendary-action consumption tracking on live
+     instances.
 
 ## Smaller polish (any time)
 
@@ -105,8 +109,86 @@ deployment context.
 
 ## Done in recent sessions
 
-- Encounter title bar with live round / active-creature / HP /
-  conditions placeholders.
+- **Empty default + auto-persist live encounter.** Boot encounter
+  is `Encounter.empty` (no creatures); a previous session's state
+  loads from `/api/encounter` on app boot. `update` is a thin
+  wrapper that diffs `model.encounter` before/after each Msg and
+  batches a `persistEncounterCmd` whenever it changed, so saves
+  fire automatically without per-branch wiring. Save failures
+  surface as a red toast; success is silent.
+- **Bundled creatures + version-aware ADD-ONLY merge.** Eight
+  SRD-derived creatures (Goblin / Skeleton / Hobgoblin / Dire
+  Wolf / Ogre / Knight / Owlbear / Young White Dragon) replace
+  the previous 5 placeholders. Stable hand-picked UUIDs let a
+  `BUNDLED_VERSION` constant drive an ADD-ONLY merge on every
+  boot: new content lands automatically, existing customs and
+  edits are never overwritten.
+- **`just promote-to-bundle <uuid>`** — Python helper that fetches
+  a custom creature from the running dev server, rewrites it
+  with a stable bundle UUID, appends to `bundled-creatures.json`,
+  and bumps `BUNDLED_VERSION`. Removes the manual JSON-editing
+  step from the bundle authoring workflow.
+- **Compendium UI Phases 3–9 shipped end-to-end.** Browser modal
+  with two-column layout, sticky filter bar, search /
+  kind-chip / sort-dropdown filters, count input + ➕ Add to
+  Encounter handoff (auto-numbered names, batch initiative
+  rolls), ✏️ Edit / 📋 Duplicate / 🗑 Delete (red trash icon
+  with red inline confirmation banner), 📋 Paste Stat Block with
+  live preview, ↺ Reset to Bundled / 📥 Import / 📤 Export bulk
+  ops, top-right toast notifications on save / delete / import /
+  reset success and error, empty-state messaging that
+  distinguishes "library is empty" from "filtered to nothing",
+  loading skeleton on first fetch, `/` keyboard shortcut to
+  focus the search input.
+- **Stat-block parser.** `Compendium.Parser.parseStatBlock`
+  handles canonical SRD form, D&D Beyond 2024 short-form
+  prefixes (`AC`, `HP`, `CR`, bare `Immunities` etc.),
+  tab-separated ability tables, `Mod\tSave` headers (skipped),
+  fuzzy `<X> Lairs` / `<X> Regional Effects` headings even when
+  arriving mid-lore, lore-paragraph detection at the tail (parks
+  remaining text into a `Description` custom section instead of
+  bleeding into the last action), and lair-effect descriptions
+  with clickable inline dice (`1d20`, `2d4`, etc.). Locked in
+  by 26+ assertions across 7 fixture stat blocks.
+- **Dice scan picks up trailing punctuation.** `Dice.scan` now
+  recognizes inline dice followed by any common punctuation
+  (`1d20.`, `1d20,`, `1d20 `, etc.), not just standalone dice
+  formulas. Two parser bugs fixed: `Parser.int` was treating
+  trailing `.` as a malformed-float committed error (replaced
+  with bare-digit chomping inside `diceInline`), and the
+  optional `+N` modifier branch's `Parser.spaces` was greedily
+  committing on a trailing space (now wrapped in
+  `Parser.backtrackable`).
+- **Click creature name to pin in side panel.** Names with a
+  `creatureId` back-reference render as clickable spans with
+  hover-underline; clicking pins the source compendium creature
+  in the right-side Compendium panel. Legacy seed creatures
+  with no compendium link render as plain non-clickable spans.
+- **↗ open-in-new-window.** New SPA route
+  `/compendium/creatures/:id` renders a centered max-720px
+  standalone stat-block page. The side panel grows a small ↗
+  link in the top-right of the rendered stat block that links
+  to that route with `target="_blank"`, opening a real new
+  browser tab for keep-as-reference / printing use cases.
+- **Selection outline in the compendium browser.** Selected
+  creature in the list now reads as a clear panel — 10% blue
+  background tint + 2px inset blue box-shadow + the existing
+  3px blue left border. Box-shadow chosen over real `outline`
+  so the row doesn't visually shift its neighbors.
+- **Quick View modal removed.** The 🔍 Quick View modal was
+  redundant once the side-panel pin behavior shipped. Removed
+  the per-card 🔍 button, the panel-toolbar 🔍 button, the
+  modal helper, and the related Model state / Msgs.
+- **Encounter creature back-reference + compendium → queue
+  handoff.** New `creatureId : Maybe String` field on
+  `Encounter.Creature` carrying a back-ref to the compendium
+  template. Drives the "open in new window" / "pin in panel"
+  features. Add-to-encounter flow auto-numbers names
+  (`Goblin / Goblin 2 / Goblin 3`), rolls initiative for each
+  copy in one batched Cmd, sorts the queue, and closes the
+  modal.
+- **Encounter title bar with live round / active-creature / HP /
+  conditions placeholders.**
 - Three-column creature card with selection / queue arrows /
   set-active arrow on the left rail; ✕ / 👿 / ⧉ on the right rail.
 - Card center column rows 1–3 (init pip + face toggle + name +

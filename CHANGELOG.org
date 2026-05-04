@@ -3,6 +3,170 @@
 
 * Upcoming
 
+** Empty default + auto-persist live encounter
+
+- ~Encounter.empty~ replaces ~Encounter.initialEncounter~ as
+  the running app's boot state.  The 7 mock seed creatures
+  (Lyra Vale, Brakka, etc.) stop appearing.  ~initialEncounter~
+  is kept as a test fixture only.
+- New backend route group at ~/api/encounter~ (GET / PUT,
+  opaque ~serde_json::Value~ storage), backed by
+  ~EncounterStore~ wrapping ~JsonFileStore~ in
+  ~crates/server/src/encounters/~.  New ~--encounter-path~ /
+  ~ENCOUNTER_PATH~ flag; defaults to ~<data_dir>/encounter.json~.
+- New ~Encounter.Wire~ Elm module with full encode / decode
+  for the Encounter → Creature → Condition / Duration /
+  TurnPhase / TurnTarget / SaveToEnd / AutoRollMode /
+  SaveNotice / Cover / DeathSaves / Timer tree.  Decoder
+  tolerates missing fields with sensible defaults so a future
+  schema bump that adds a field doesn't break the legacy
+  load path.
+- ~Main.elm~'s top-level ~update~ is now a thin wrapper over
+  ~updateInner~ that diffs ~model.encounter~ before/after
+  each Msg and batches a ~persistEncounterCmd~ when it
+  mutated.  Save failures surface as a red toast; success
+  is silent.
+- Boot path: ~init~ dispatches ~fetchEncounterCmd~ alongside
+  the existing dice-history + compendium fetches.  A server
+  ~null~ response reads as "use the empty default"; otherwise
+  the persisted encounter replaces the empty default.
+
+** Bundled creatures: 8 SRD-derived, version-aware ADD-ONLY merge
+
+- Replaced the 5 placeholder creatures in
+  ~crates/lib/data/bundled-creatures.json~ with 8 fully-detailed
+  SRD-derived stat blocks: Goblin (CR 1/4), Skeleton (CR 1/4),
+  Hobgoblin (CR 1/2), Dire Wolf (CR 1), Ogre (CR 2), Knight
+  (CR 3 NPC), Owlbear (CR 3), Young White Dragon (CR 6).
+  Stable hand-picked UUIDs
+  (~01914741-0001-4001-a001-XXXXXXXXXXXX~) so the merge logic
+  can match by id reliably.
+- New ~BUNDLED_VERSION: i32~ constant in
+  ~crates/server/src/compendium/store.rs~ and a sidecar
+  ~creatures.json.bundle-seed.json~ recording the highest
+  version ever merged into a given store.  Every boot,
+  ~CompendiumStore::load_or_bootstrap~ runs an ADD-ONLY merge
+  when the embedded constant is greater than the recorded
+  value: each bundled creature whose stable id isn't already
+  present gets added; existing creatures (whether bundled-and-
+  edited or user-created customs) are never touched.
+- ~reset_to_bundled~ now also bumps the seed file so the next
+  boot doesn't redundantly re-merge.
+- Two new semantic errors: ~BundleSeedWriteError~ and
+  ~BundleSeedParseError~.
+- New ~scripts/promote-to-bundle.py~ + ~just promote-to-bundle
+  <uuid>~ recipe: fetches a custom creature from the running
+  dev server, computes the next sequential bundle UUID,
+  rewrites the creature's id / source / timestamps, appends
+  to ~bundled-creatures.json~, and bumps ~BUNDLED_VERSION~.
+- 5 new integration tests in ~crates/server/tests/
+  compendium_bundle_test.rs~ covering fresh install,
+  no-op re-launch, migration from a legacy bundle (preserves
+  customs while adding new bundled creatures),
+  ~reset_to_bundled~ writes the seed, and stable-UUID
+  invariants.
+
+** Compendium UI: full browser, edit, paste, bulk ops, polish
+
+Lands the entire Compendium UI layer end-to-end.
+
+- *Browser modal*: two-column layout with sticky filter bar
+  (search + Player/Enemy/NPC kind chips + sort dropdown),
+  Db-aware list + ~View.StatBlock~-rendered detail pane,
+  loading skeleton + empty-state messaging that distinguishes
+  "library is empty" from "filtered to nothing".  ~/~ keyboard
+  shortcut focuses the search input.
+- *Add-to-encounter handoff*: count input (1–20) + ➕ Add to
+  Encounter button.  Click resolves the source via
+  ~Compendium.find~, pre-uniquifies N display names against
+  the current queue (~Goblin / Goblin 2 / Goblin 3~), dispatches
+  one ~Dice.batchRollCmd~ over N initiative specs, builds N
+  instances via ~Compendium.draftToInstance~, and folds them
+  into the encounter.  New ~Encounter.creatureId : Maybe
+  String~ back-reference field drives later "open in new
+  window" / "pin in panel" features.
+- *Edit / Create / Duplicate / Delete*: ~CompendiumEditUi~
+  flat-record form covering ~30 string fields plus dynamic
+  save / skill / feature / custom-section row editors.
+  Submit POSTs ~encodeDraft~ for Create, PUTs
+  ~encodeCreature~ for Edit.  Two delete entry points: red
+  trash icon in the browser action bar + ~🗑 Delete~ in the
+  edit footer; both go through the same DELETE flow with an
+  inline red confirmation banner.
+- *Paste stat-block parser*: new ~Compendium.Parser~ module
+  with permissive line-based parsing of the canonical SRD
+  form, D&D Beyond 2024 short prefixes (~AC~, ~HP~, ~CR~,
+  ~Immunities~ etc.), tab-separated ability tables,
+  ~Mod\tSave~ headers (skipped), title-cased section
+  detection, fuzzy ~<X> Lairs~ / ~<X> Regional Effects~
+  headings, multi-line feature continuations, lore-paragraph
+  detection (parks remaining text into a ~Description~ custom
+  section instead of bleeding into the last action).  Paste
+  modal renders a live preview via ~View.StatBlock.view~ on
+  every keystroke.
+- *Quick View*: replaced the now-removed Quick View modal
+  with two click-targets — clicking a creature name on a
+  card pins the source compendium creature in the right-side
+  Compendium panel (with hover-underline as the affordance);
+  the panel grows a small ↗ link in the top-right that opens
+  a new SPA route ~/compendium/creatures/:id~ rendering a
+  centered max-720px standalone stat-block page (target=
+  ~_blank~ on the anchor causes a real new tab rather than
+  client-side navigation).
+- *Bulk ops*: 📥 Import (file picker → parse → confirm →
+  PUT), 📤 Export (anchor with ~download~ attribute), ↺
+  Reset to Bundled.  Both destructive ops route through the
+  same red inline confirmation banner with explicit Cancel +
+  danger-confirm.
+- *Toasts*: top-right auto-dismissing notifications wired to
+  every save / delete / import / reset / add-to-encounter
+  success and error path.
+
+** Compendium parser: D&D Beyond export format + dice-scan trailing punctuation
+
+- Real-world Adult Blue Dragon paste from D&D Beyond exposed
+  seven format gaps the canonical-SRD parser missed.  All
+  fixed and locked in by 17+ assertions in the new Blue
+  Dragon fixture test:
+  - Short-form prefixes (~AC~, ~HP~, ~CR~, bare ~Immunities~
+    etc.) accepted alongside the long forms.
+  - Tab-separated ability rows (~STR\t25\t+7\t+7~) parsed via
+    a new ~LineAbilityRow~ variant; ~Mod\tSave~ header rows
+    skipped via ~LineIgnore~.
+  - ~Traits~ as a section header.
+  - ~AC 19    Initiative +10 (20)~: stripped the Initiative
+    suffix before parens-extraction so the AC note doesn't
+    grab the initiative roll-result.
+  - CR ~16 (XP 15,000, or 18,000 in lair; PB +5)~: parses
+    out CR + XP + PB from a single combined line.
+  - ~Senses Blindsight 60 ft., Darkvision 120 ft.; Passive
+    Perception 22~: ~;~ now treated as an alias for ~,~.
+  - Trailing lore detection: when a feature ends with a
+    period and the next line looks like prose, commit the
+    feature, switch to lore mode, and dump the rest into a
+    single ~Description~ custom section instead of greedily
+    extending the last action.  Tightened to require ~pending
+    = Just complete~ specifically, so a long opening trait
+    body right after a section header doesn't trip it.
+- Lair-section parsing: fuzzy ~<X> Lair~ / ~<X> Lairs~ /
+  ~<X> Regional Effects~ heading detection (title-case +
+  short-line gates against false positives), works even
+  mid-lore-mode.  ~parkPreamble~ rewritten so ~LairSection~ /
+  ~RegionalSection~ / ~LegendarySection~ populate the
+  matching ~description~ field instead of always going into
+  ~customSections~.
+- Two latent ~Dice.scan~ bugs fixed.  Both blocked clickable
+  inline dice in any prose context (~roll 1d20.~ /
+  ~2d4 × 10 feet~):
+  - ~Parser.int~ treats trailing ~.~ as a malformed-float
+    committed error.  Replaced with bare-digit chomping
+    (~chompIf isDigit |. chompWhile isDigit~) inside
+    ~diceInline~.
+  - The optional ~+N~ modifier branch's ~Parser.spaces~
+    greedily committed on a trailing space, then the missing
+    sign caused a committed failure the surrounding ~oneOf~
+    couldn't unwind.  Wrapped in ~Parser.backtrackable~.
+
 ** Optimization and compliance plan
 
 - New planning docs at the repo root:
