@@ -55,22 +55,67 @@ Phase 6b landed first because the Encounter branches were the
 smallest and gave the cleanest demonstration of the dispatch
 pattern; the remaining carves followed feature boundaries.
 
+** Fourth autonomous run (2026-05-04 evening)
+
+Phase 7 modal-view carve.  All eleven modal-view trees (and the
+shared chrome / audio / toast helpers) move into per-feature
+View modules.  Five commits.
+
+| Phase | Commit    | Theme                                              |
+|-------+-----------+----------------------------------------------------|
+|  7a   | 7e9ff04   | extract View/{AppBar,Audio,Toast,PhaseToggle} +    |
+|       |           | View/Modal/{Note,Memo,Timer}                       |
+|  7b   | ae06de4   | extract View/Modal/{HpChange,Initiative}           |
+|  7c   | 108f700   | extract View/Modal/Dice                            |
+|  7d   | 59cd6aa   | extract View/Modal/Condition                       |
+|  7e   | 4fba8a2   | extract View/Modal/Compendium{,Edit,Paste}         |
+
+After Phase 7a..7e the `Main.view` function reads as a flat list
+of imported view-module calls — every modal moved out, plus the
+small chrome elements (app bar, audio ringer, toast stack).
+
+The remaining view code in Main.elm is the creature card region
+(card rows 1..3, legendary pips, condition chips) plus the
+workspace / panel infrastructure (encounter bar, panel controls,
+panel detail / stat block).  Phases 7f + 7g would carve those
+out next.
+
 ** Cumulative file-size impact
 
 | File                                    | Original | After  | Δ              |
 |-----------------------------------------+----------+--------+----------------|
-| =frontend/src/Main.elm=                 |    9268  |  5341* | -3927 (-42%)   |
+| =frontend/src/Main.elm=                 |    9268  |  2467* | -6801 (-73%)   |
 | =frontend/src/Encounter.elm=            |    1607  |   699  | -908  (-56%)   |
 | =frontend/src/Compendium.elm=           |    1068  |   439  | -629  (-59%)   |
 | =frontend/public/style.css=             |    3628  |  3583  | -45            |
 
 *Main.elm now consists of: =main= / =subscriptions= / =init= /
-the dispatch =update= + =updateInner= / =view= region (~4,500
-lines of pure rendering code) / a couple of stranded helpers
-(=withEncounter=, =selectionClickHandler=, =isFormTag=,
-=escKey=, =compendiumKeyDecoder=).  The =updateInner= itself is
-now a flat ~250-line dispatch table where every branch is a
-one-liner that delegates to =Update.Foo.bar=.
+=update= + =updateInner= dispatch table / app shell (=viewAppBar=
+moved to View.AppBar but =viewPage= and =viewWorkspace=
+infrastructure still here) / the creature card view region
+(rows 1..3 + legendary pips + condition chips) / a few stranded
+helpers (=withEncounter=, =selectionClickHandler=, =isFormTag=,
+=escKey=, =compendiumKeyDecoder=).  All eleven modals + toast
++ audio + app-bar live in =View/= modules.
+
+New View/* modules introduced in run 4:
+
+  - =View/Modal/Compendium.elm= (~500 lines) — the browser
+  - =View/Modal/CompendiumEdit.elm= (~600 lines) — ~50-field form
+  - =View/Modal/CompendiumPaste.elm= (~120 lines) — paste modal
+  - =View/Modal/Condition.elm= (~520 lines) — condition modal
+  - =View/Modal/Dice.elm= (~260 lines) — dice roller modal
+  - =View/Modal/HpChange.elm= (~380 lines) — damage/heal/temp HP
+  - =View/Modal/Initiative.elm= (~210 lines) — initiative manager
+  - =View/Modal/Note.elm= (~60 lines)
+  - =View/Modal/Memo.elm= (~60 lines)
+  - =View/Modal/Timer.elm= (~70 lines)
+  - =View/AppBar.elm= (~55 lines) — app bar + /me account view
+  - =View/Audio.elm= (~45 lines) — page-level ringer audio element
+  - =View/Toast.elm= (~55 lines) — toast stack
+  - =View/PhaseToggle.elm= (~60 lines) — shared begin/end toggle
+
+Total run-4 surface: ~2,995 lines.
 
 New Update/* modules introduced in run 3:
 
@@ -128,19 +173,31 @@ Server-side additions:
 
 | Phase | Goal                                       | Status                                         |
 |-------+--------------------------------------------+------------------------------------------------|
-|  7    | Carve view region into View/Foo modules    | NOT STARTED — Main.elm view is now ~4,500 lines |
+|  7    | Carve view region into View/Foo modules    | PARTIALLY DONE — all modals carved; cards + workspace remain |
 | 10    | Data-model refinements + tests             | NOT STARTED — modal-state ADT is the big move  |
 | 11    | More server polish (users / prefs / docs)  | PARTIALLY STARTED                              |
 
 ** Notes for the next autonomous run
 
-  - Phase 7 (view extraction) is the natural next step.  The view
-    region in Main.elm is now ~4,500 lines (lines 808..end).  Most
-    of the per-feature view functions correspond 1-1 to the
-    Update/* modules already extracted, so the carve plan from the
-    original Phase 7 specification is directly applicable.  Start
-    with the easiest pairings: =View/Modal/Note.elm= +
-    =View/Modal/Memo.elm= + =View/Modal/Timer.elm= are tiny.
+  - Phase 7 modal carve is complete.  The remaining ~2,400
+    lines of view in Main.elm are the creature card region and
+    the workspace / panel infrastructure.  Recommended carve
+    plan:
+    - 7f: extract =View/Card/Row1.elm= + =Row2.elm= + =Row3.elm=
+      + =Legendary.elm= + =Chip.elm= (extending the existing
+      =View/Chip.elm=) for the per-creature card region.
+      `viewCreatureCard` itself becomes the entry point that
+      composes the rows.
+    - 7g: extract =View/Workspace.elm= + =View/EncounterBar.elm=
+      + =View/PanelControls.elm= + =View/PanelDetail.elm= for
+      the workspace shell.  =viewPage= and =viewWorkspace=
+      probably stay in Main.elm since they're the route
+      dispatcher; everything underneath moves out.
+    - The stranded helpers (=withEncounter=,
+      =selectionClickHandler=, =isFormTag=, =escKey=,
+      =compendiumKeyDecoder=) get absorbed by whichever view
+      module ends up needing them, or moved into a tiny
+      =View/Helpers.elm= if no clear owner emerges.
   - Phase 10 (modal-state ADT) is now strictly easier than before:
     the "only one modal open at a time" invariant currently
     relies on convention, but with each modal's open/close logic
