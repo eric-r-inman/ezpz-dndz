@@ -3187,12 +3187,7 @@ handleCompendiumPasteApply model =
 -}
 withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
 withCompendiumEdit fn model =
-    case model.compendiumEdit of
-        Just ui ->
-            { model | compendiumEdit = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | compendiumEdit = Maybe.map fn model.compendiumEdit }
 
 
 currentlySelectedCreature : Model -> Maybe Compendium.Creature
@@ -3810,12 +3805,7 @@ closed (the field is `Nothing`).
 -}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
 withHpChange fn model =
-    case model.hpChange of
-        Just ui ->
-            { model | hpChange = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | hpChange = Maybe.map fn model.hpChange }
 
 
 {-| Click handler for the row 1 selection checkbox.
@@ -3850,12 +3840,7 @@ modal is closed.
 -}
 withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
 withInitiative fn model =
-    case model.initiative of
-        Just ui ->
-            { model | initiative = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | initiative = Maybe.map fn model.initiative }
 
 
 {-| Apply `fn` to the compendium browser substate. Always present
@@ -3870,48 +3855,28 @@ withCompendium fn model =
 -}
 withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
 withNoteEdit fn model =
-    case model.noteEdit of
-        Just ui ->
-            { model | noteEdit = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | noteEdit = Maybe.map fn model.noteEdit }
 
 
 {-| Apply `fn` to the open condition modal. No-op when closed.
 -}
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
 withConditionUi fn model =
-    case model.conditionUi of
-        Just ui ->
-            { model | conditionUi = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | conditionUi = Maybe.map fn model.conditionUi }
 
 
 {-| Apply `fn` to the open memo-edit modal. No-op when closed.
 -}
 withMemoEdit : (MemoEditUi -> MemoEditUi) -> Model -> Model
 withMemoEdit fn model =
-    case model.memoEdit of
-        Just ui ->
-            { model | memoEdit = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | memoEdit = Maybe.map fn model.memoEdit }
 
 
 {-| Apply `fn` to the open timer-setup modal. No-op when closed.
 -}
 withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
 withTimerSetup fn model =
-    case model.timerSetup of
-        Just ui ->
-            { model | timerSetup = Just (fn ui) }
-
-        Nothing ->
-            model
+    { model | timerSetup = Maybe.map fn model.timerSetup }
 
 
 {-| Auto-correct the `untilTarget` field if the current
