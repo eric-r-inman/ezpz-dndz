@@ -6,6 +6,7 @@ import Browser.Events
 import Browser.Navigation as Nav
 import Compendium
 import Compendium.Parser
+import Compendium.Wire
 import Dice
 import Encounter
     exposing
@@ -1480,7 +1481,7 @@ init _ url key =
     , Cmd.batch
         [ cmdForRoute route
         , fetchDiceHistoryCmd
-        , Compendium.fetchAll CompendiumLoaded
+        , Compendium.Wire.fetchAll CompendiumLoaded
         , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
@@ -3020,7 +3021,7 @@ error.
 -}
 compendiumImportFileLoaded : String -> CompendiumUi -> CompendiumUi
 compendiumImportFileLoaded raw ui =
-    case Decode.decodeString (Decode.list Compendium.decodeCreature) raw of
+    case Decode.decodeString (Decode.list Compendium.Wire.decodeCreature) raw of
         Ok creatures ->
             { ui
                 | pending = Just (PendingImport creatures (List.length creatures))
@@ -3082,7 +3083,7 @@ compendiumResetCmd =
         , body = Http.emptyBody
         , expect =
             Http.expectJson CompendiumResetResponse
-                (Decode.list Compendium.decodeCreature)
+                (Decode.list Compendium.Wire.decodeCreature)
         }
 
 
@@ -3091,7 +3092,7 @@ compendiumImportCmd creatures =
     Http.post
         { url = "/api/compendium/import"
         , body =
-            Http.jsonBody (Encode.list Compendium.encodeCreature creatures)
+            Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
         , expect =
             Http.expectJson CompendiumImportResponse
                 (Decode.field "imported" Decode.int)
@@ -3122,7 +3123,7 @@ handleCompendiumImportResponse model result =
                 model
                 |> pushToastWith ToastSuccess
                     ("Imported " ++ String.fromInt count ++ " creatures")
-                    (Compendium.fetchAll CompendiumLoaded)
+                    (Compendium.Wire.fetchAll CompendiumLoaded)
 
 
 handleCompendiumResetResponse :
@@ -3149,7 +3150,7 @@ handleCompendiumResetResponse model result =
                 model
                 |> pushToastWith ToastSuccess
                     ("Library reset to " ++ String.fromInt (List.length creatures) ++ " bundled creatures")
-                    (Compendium.fetchAll CompendiumLoaded)
+                    (Compendium.Wire.fetchAll CompendiumLoaded)
 
 
 {-| Hand the parsed stat block over to the edit modal so the GM
@@ -3398,8 +3399,8 @@ submitCreatureCmd mode creature =
         CreateMode ->
             Http.post
                 { url = "/api/compendium/creatures"
-                , body = Http.jsonBody (Compendium.encodeDraft creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.decodeCreature
+                , body = Http.jsonBody (Compendium.Wire.encodeDraft creature)
+                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
                 }
 
         EditExisting { id } ->
@@ -3407,8 +3408,8 @@ submitCreatureCmd mode creature =
                 { method = "PUT"
                 , headers = []
                 , url = "/api/compendium/creatures/" ++ id
-                , body = Http.jsonBody (Compendium.encodeCreature creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.decodeCreature
+                , body = Http.jsonBody (Compendium.Wire.encodeCreature creature)
+                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
                 , timeout = Nothing
                 , tracker = Nothing
                 }
@@ -3444,7 +3445,7 @@ handleCompendiumEditSubmitResponse model result =
             }
                 |> pushToastWith ToastSuccess
                     ("Saved " ++ creature.name)
-                    (Compendium.fetchAll CompendiumLoaded)
+                    (Compendium.Wire.fetchAll CompendiumLoaded)
 
 
 handleCompendiumEditDelete : Model -> ( Model, Cmd Msg )
@@ -3514,7 +3515,7 @@ handleCompendiumEditDeleteResponse model deletedId result =
             }
                 |> pushToastWith ToastSuccess
                     "Creature deleted"
-                    (Compendium.fetchAll CompendiumLoaded)
+                    (Compendium.Wire.fetchAll CompendiumLoaded)
 
 
 httpErrorToString : Http.Error -> String
