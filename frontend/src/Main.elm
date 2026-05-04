@@ -6252,50 +6252,28 @@ viewSegment creatureName segment =
 -- DICE MODAL
 
 
-{-| Renders nothing while closed, the full overlay while open. The
-backdrop click closes the modal; clicks inside stop propagation so
-they don't bubble out.
+{-| Renders nothing while closed, the full overlay while open.
+Modal chrome (backdrop, header, × button, click-out / Esc to
+close) is delegated to `View.Modal.view`.
 -}
 viewDiceModal : DiceUi -> Html Msg
 viewDiceModal ui =
     if ui.open then
-        div
-            [ class "modal-backdrop"
-            , onClick CloseDice
-            ]
-            [ div
-                [ class "modal modal--dice"
-                , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                , attribute "role" "dialog"
-                , attribute "aria-modal" "true"
-                , attribute "aria-label" "Dice roller"
+        View.Modal.view
+            { close = CloseDice
+            , noOp = NoOp
+            , title = "🎲 Dice Roller"
+            , extraClass = "modal--dice"
+            , body =
+                [ viewDiceForm ui
+                , viewDiceFaceButtons
+                , viewDiceSpecialButtons
+                , viewDiceHistory ui.history
                 ]
-                [ viewDiceModalHeader
-                , div [ class "modal__body" ]
-                    [ viewDiceForm ui
-                    , viewDiceFaceButtons
-                    , viewDiceSpecialButtons
-                    , viewDiceHistory ui.history
-                    ]
-                ]
-            ]
+            }
 
     else
         text ""
-
-
-viewDiceModalHeader : Html Msg
-viewDiceModalHeader =
-    div [ class "modal__header" ]
-        [ div [ class "modal__title" ] [ text "🎲 Dice Roller" ]
-        , button
-            [ class "modal__close"
-            , onClick CloseDice
-            , title "Close (Esc)"
-            , attribute "aria-label" "Close dice roller"
-            ]
-            [ text "×" ]
-        ]
 
 
 viewDiceForm : DiceUi -> Html Msg
@@ -6544,61 +6522,38 @@ viewHpChangeModal model =
                 target =
                     List.filter (\c -> c.name == ui.target) model.encounter.creatures
                         |> List.head
+
+                verb =
+                    case ui.kind of
+                        DamageKind ->
+                            "Damage"
+
+                        HealKind ->
+                            "Heal"
+
+                        TempHpKind ->
+                            "Temp HP"
             in
-            div
-                [ class "modal-backdrop"
-                , onClick HpChangeClose
-                ]
-                [ div
-                    [ class "modal modal--hp-change"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
+            View.Modal.view
+                { close = HpChangeClose
+                , noOp = NoOp
+                , title = verb ++ " — " ++ ui.target
+                , extraClass = "modal--hp-change"
+                , body =
+                    [ viewHpChangeModeToggle ui
+                    , viewHpChangeAmount ui
+                    , viewHpChangeOptions ui
+                    , viewHpChangeApplyScope ui model.encounter
+                    , case target of
+                        Just c ->
+                            viewHpChangePreview ui c
+
+                        Nothing ->
+                            text ""
+                    , viewHpChangeFooter
+                    , viewHpChangeLog model.hpChangeLog
                     ]
-                    [ viewHpChangeHeader ui
-                    , div [ class "modal__body" ]
-                        [ viewHpChangeModeToggle ui
-                        , viewHpChangeAmount ui
-                        , viewHpChangeOptions ui
-                        , viewHpChangeApplyScope ui model.encounter
-                        , case target of
-                            Just c ->
-                                viewHpChangePreview ui c
-
-                            Nothing ->
-                                text ""
-                        , viewHpChangeFooter
-                        , viewHpChangeLog model.hpChangeLog
-                        ]
-                    ]
-                ]
-
-
-viewHpChangeHeader : HpChangeUi -> Html Msg
-viewHpChangeHeader ui =
-    let
-        verb =
-            case ui.kind of
-                DamageKind ->
-                    "Damage"
-
-                HealKind ->
-                    "Heal"
-
-                TempHpKind ->
-                    "Temp HP"
-    in
-    div [ class "modal__header" ]
-        [ div [ class "modal__title" ]
-            [ text (verb ++ " — " ++ ui.target) ]
-        , button
-            [ class "modal__close"
-            , onClick HpChangeClose
-            , title "Cancel"
-            , attribute "aria-label" "Cancel"
-            ]
-            [ text "×" ]
-        ]
+                }
 
 
 viewHpChangeModeToggle : HpChangeUi -> Html Msg
@@ -6933,41 +6888,18 @@ viewInitiativeModal model =
                 selectedCount =
                     List.length (List.filter .selected model.encounter.creatures)
             in
-            div
-                [ class "modal-backdrop"
-                , onClick InitiativeClose
-                ]
-                [ div
-                    [ class "modal modal--initiative"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" "Initiative manager"
+            View.Modal.view
+                { close = InitiativeClose
+                , noOp = NoOp
+                , title = "Initiative — " ++ ui.target
+                , extraClass = "modal--initiative"
+                , body =
+                    [ viewInitiativeQuickSort
+                    , viewInitiativeAutoRoll ui selectedCount
+                    , viewInitiativeCustom ui selectedCount
+                    , viewInitiativeFooter
                     ]
-                    [ viewInitiativeHeader ui
-                    , div [ class "modal__body" ]
-                        [ viewInitiativeQuickSort
-                        , viewInitiativeAutoRoll ui selectedCount
-                        , viewInitiativeCustom ui selectedCount
-                        , viewInitiativeFooter
-                        ]
-                    ]
-                ]
-
-
-viewInitiativeHeader : InitiativeUi -> Html Msg
-viewInitiativeHeader ui =
-    div [ class "modal__header" ]
-        [ div [ class "modal__title" ]
-            [ text ("Initiative — " ++ ui.target) ]
-        , button
-            [ class "modal__close"
-            , onClick InitiativeClose
-            , title "Cancel"
-            , attribute "aria-label" "Cancel"
-            ]
-            [ text "×" ]
-        ]
+                }
 
 
 viewInitiativeQuickSort : Html Msg
@@ -7154,58 +7086,40 @@ viewNoteEditModal model =
             text ""
 
         Just ui ->
-            div
-                [ class "modal-backdrop"
-                , onClick NoteEditCancel
-                ]
-                [ div
-                    [ class "modal modal--note-edit"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" ("Note for " ++ ui.target)
-                    ]
-                    [ div [ class "modal__header" ]
-                        [ div [ class "modal__title" ]
-                            [ text ("Note — " ++ ui.target) ]
+            View.Modal.view
+                { close = NoteEditCancel
+                , noOp = NoOp
+                , title = "Note — " ++ ui.target
+                , extraClass = "modal--note-edit"
+                , body =
+                    [ Html.label [ for "note-edit-input" ]
+                        [ text ("Short label (max " ++ String.fromInt maxNoteLength ++ " chars)") ]
+                    , input
+                        [ id "note-edit-input"
+                        , class "note-edit__input"
+                        , type_ "text"
+                        , value ui.text
+                        , maxlength maxNoteLength
+                        , placeholder "e.g. boss, summoned, ally"
+                        , autofocus True
+                        , onInput NoteEditChange
+                        , Html.Events.on "keydown" (enterKey NoteEditCommit)
+                        ]
+                        []
+                    , div [ class "note-edit__buttons" ]
+                        [ button
+                            [ class "action-btn action-btn--green"
+                            , onClick NoteEditCommit
+                            ]
+                            [ text "Save" ]
                         , button
-                            [ class "modal__close"
+                            [ class "action-btn"
                             , onClick NoteEditCancel
-                            , title "Cancel"
-                            , attribute "aria-label" "Cancel"
                             ]
-                            [ text "×" ]
-                        ]
-                    , div [ class "modal__body" ]
-                        [ Html.label [ for "note-edit-input" ]
-                            [ text ("Short label (max " ++ String.fromInt maxNoteLength ++ " chars)") ]
-                        , input
-                            [ id "note-edit-input"
-                            , class "note-edit__input"
-                            , type_ "text"
-                            , value ui.text
-                            , maxlength maxNoteLength
-                            , placeholder "e.g. boss, summoned, ally"
-                            , autofocus True
-                            , onInput NoteEditChange
-                            , Html.Events.on "keydown" (enterKey NoteEditCommit)
-                            ]
-                            []
-                        , div [ class "note-edit__buttons" ]
-                            [ button
-                                [ class "action-btn action-btn--green"
-                                , onClick NoteEditCommit
-                                ]
-                                [ text "Save" ]
-                            , button
-                                [ class "action-btn"
-                                , onClick NoteEditCancel
-                                ]
-                                [ text "Cancel" ]
-                            ]
+                            [ text "Cancel" ]
                         ]
                     ]
-                ]
+                }
 
 
 
@@ -7225,48 +7139,31 @@ viewConditionModal model =
             text ""
 
         Just ui ->
-            div
-                [ class "modal-backdrop"
-                , onClick ConditionClose
-                ]
-                [ div
-                    [ class "modal modal--condition"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" ("Condition for " ++ ui.target)
-                    ]
-                    [ div [ class "modal__header" ]
-                        [ div [ class "modal__title" ]
-                            [ text
-                                ((if ui.editingId == Nothing then
-                                    "Add Condition — "
+            let
+                modalTitle =
+                    (if ui.editingId == Nothing then
+                        "Add Condition — "
 
-                                  else
-                                    "Edit Condition — "
-                                 )
-                                    ++ ui.target
-                                )
-                            ]
-                        , button
-                            [ class "modal__close"
-                            , onClick ConditionClose
-                            , title "Cancel"
-                            , attribute "aria-label" "Cancel"
-                            ]
-                            [ text "×" ]
-                        ]
-                    , div [ class "modal__body" ]
-                        [ viewConditionStandardSection ui
-                        , viewConditionCustomSection ui
-                        , viewConditionNoteSection ui
-                        , viewConditionDurationSection ui model
-                        , viewConditionSaveSection ui
-                        , viewConditionApplyScope ui model.encounter
-                        , viewConditionFooter ui
-                        ]
+                     else
+                        "Edit Condition — "
+                    )
+                        ++ ui.target
+            in
+            View.Modal.view
+                { close = ConditionClose
+                , noOp = NoOp
+                , title = modalTitle
+                , extraClass = "modal--condition"
+                , body =
+                    [ viewConditionStandardSection ui
+                    , viewConditionCustomSection ui
+                    , viewConditionNoteSection ui
+                    , viewConditionDurationSection ui model
+                    , viewConditionSaveSection ui
+                    , viewConditionApplyScope ui model.encounter
+                    , viewConditionFooter ui
                     ]
-                ]
+                }
 
 
 {-| Multi-target scope checkbox for the condition modal. Same
@@ -7795,58 +7692,40 @@ viewMemoEditModal model =
             text ""
 
         Just ui ->
-            div
-                [ class "modal-backdrop"
-                , onClick MemoCancel
-                ]
-                [ div
-                    [ class "modal modal--note-edit"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" ("Memo for " ++ ui.target)
-                    ]
-                    [ div [ class "modal__header" ]
-                        [ div [ class "modal__title" ]
-                            [ text ("Memo — " ++ ui.target) ]
+            View.Modal.view
+                { close = MemoCancel
+                , noOp = NoOp
+                , title = "Memo — " ++ ui.target
+                , extraClass = "modal--note-edit"
+                , body =
+                    [ Html.label [ for "memo-edit-input" ]
+                        [ text ("Short memo (max " ++ String.fromInt maxMemoLength ++ " chars)") ]
+                    , input
+                        [ id "memo-edit-input"
+                        , class "note-edit__input"
+                        , type_ "text"
+                        , value ui.text
+                        , maxlength maxMemoLength
+                        , placeholder "e.g. legendary res used"
+                        , autofocus True
+                        , onInput MemoChange
+                        , Html.Events.on "keydown" (enterKey MemoCommit)
+                        ]
+                        []
+                    , div [ class "note-edit__buttons" ]
+                        [ button
+                            [ class "action-btn action-btn--green"
+                            , onClick MemoCommit
+                            ]
+                            [ text "Save" ]
                         , button
-                            [ class "modal__close"
+                            [ class "action-btn"
                             , onClick MemoCancel
-                            , title "Cancel"
-                            , attribute "aria-label" "Cancel"
                             ]
-                            [ text "×" ]
-                        ]
-                    , div [ class "modal__body" ]
-                        [ Html.label [ for "memo-edit-input" ]
-                            [ text ("Short memo (max " ++ String.fromInt maxMemoLength ++ " chars)") ]
-                        , input
-                            [ id "memo-edit-input"
-                            , class "note-edit__input"
-                            , type_ "text"
-                            , value ui.text
-                            , maxlength maxMemoLength
-                            , placeholder "e.g. legendary res used"
-                            , autofocus True
-                            , onInput MemoChange
-                            , Html.Events.on "keydown" (enterKey MemoCommit)
-                            ]
-                            []
-                        , div [ class "note-edit__buttons" ]
-                            [ button
-                                [ class "action-btn action-btn--green"
-                                , onClick MemoCommit
-                                ]
-                                [ text "Save" ]
-                            , button
-                                [ class "action-btn"
-                                , onClick MemoCancel
-                                ]
-                                [ text "Cancel" ]
-                            ]
+                            [ text "Cancel" ]
                         ]
                     ]
-                ]
+                }
 
 
 {-| Card row 3 timer-setup modal. The GM picks a turn count
@@ -7860,65 +7739,47 @@ viewTimerSetupModal model =
             text ""
 
         Just ui ->
-            div
-                [ class "modal-backdrop"
-                , onClick TimerSetupCancel
-                ]
-                [ div
-                    [ class "modal modal--timer"
-                    , stopPropagationOn "click" (Decode.succeed ( NoOp, True ))
-                    , attribute "role" "dialog"
-                    , attribute "aria-modal" "true"
-                    , attribute "aria-label" ("Timer for " ++ ui.target)
-                    ]
-                    [ div [ class "modal__header" ]
-                        [ div [ class "modal__title" ]
-                            [ text ("Timer — " ++ ui.target) ]
+            View.Modal.view
+                { close = TimerSetupCancel
+                , noOp = NoOp
+                , title = "Timer — " ++ ui.target
+                , extraClass = "modal--timer"
+                , body =
+                    [ div [ class "cond-row" ]
+                        [ Html.label [ for "timer-turns-input" ]
+                            [ text "Lasts" ]
+                        , input
+                            [ id "timer-turns-input"
+                            , class "cond-input cond-input--narrow"
+                            , type_ "number"
+                            , Html.Attributes.min "1"
+                            , Html.Attributes.max "99"
+                            , value ui.turnsText
+                            , autofocus True
+                            , onInput TimerSetupTurnsChanged
+                            , Html.Events.on "keydown" (enterKey TimerSetupApply)
+                            ]
+                            []
+                        , Html.label [] [ text "turns, ticking at" ]
+                        , viewPhaseToggle "timer-phase" ui.phase TimerSetupPhaseSet
+                        , Html.label [] [ text "of the bearer's turn" ]
+                        ]
+                    , div [ class "cond-section__caption" ]
+                        [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
+                    , div [ class "note-edit__buttons" ]
+                        [ button
+                            [ class "action-btn action-btn--green"
+                            , onClick TimerSetupApply
+                            ]
+                            [ text "Start Timer" ]
                         , button
-                            [ class "modal__close"
+                            [ class "action-btn"
                             , onClick TimerSetupCancel
-                            , title "Cancel"
-                            , attribute "aria-label" "Cancel"
                             ]
-                            [ text "×" ]
-                        ]
-                    , div [ class "modal__body" ]
-                        [ div [ class "cond-row" ]
-                            [ Html.label [ for "timer-turns-input" ]
-                                [ text "Lasts" ]
-                            , input
-                                [ id "timer-turns-input"
-                                , class "cond-input cond-input--narrow"
-                                , type_ "number"
-                                , Html.Attributes.min "1"
-                                , Html.Attributes.max "99"
-                                , value ui.turnsText
-                                , autofocus True
-                                , onInput TimerSetupTurnsChanged
-                                , Html.Events.on "keydown" (enterKey TimerSetupApply)
-                                ]
-                                []
-                            , Html.label [] [ text "turns, ticking at" ]
-                            , viewPhaseToggle "timer-phase" ui.phase TimerSetupPhaseSet
-                            , Html.label [] [ text "of the bearer's turn" ]
-                            ]
-                        , div [ class "cond-section__caption" ]
-                            [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
-                        , div [ class "note-edit__buttons" ]
-                            [ button
-                                [ class "action-btn action-btn--green"
-                                , onClick TimerSetupApply
-                                ]
-                                [ text "Start Timer" ]
-                            , button
-                                [ class "action-btn"
-                                , onClick TimerSetupCancel
-                                ]
-                                [ text "Cancel" ]
-                            ]
+                            [ text "Cancel" ]
                         ]
                     ]
-                ]
+                }
 
 
 {-| Page-level audio element that plays the ping sound when any
