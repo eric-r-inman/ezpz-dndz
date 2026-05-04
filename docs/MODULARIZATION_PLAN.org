@@ -1,0 +1,1166 @@
+#+title:     Modularization & Optimization Plan
+#+author:    LLM-drafted (autonomous-execution target)
+#+language:  en
+#+date:      2026-05-04
+
+* Human summary
+
+The frontend has outgrown its single-file-per-domain layout.
+=Main.elm= is now ~9,300 lines with 159 ~Msg~ constructors, one
+3,000-line ~updateInner~, and 250+ view functions; the prior
+[[file:OPTIMIZATION_AND_COMPLIANCE_PLAN.org][May plan]]
+called for splitting it but only the seed beachhead landed
+(=View/Modal.elm=, =View/Chip.elm=, =View/StatBlock.elm=, plus
+=Encounter/DeathSaves.elm= / =SaveNotice.elm= / =Wire.elm=).  In
+the meantime ~Main.elm~ has *grown* by ~60% as the compendium and
+encounter persistence shipped.  This plan finishes the split,
+extracts the persistent grime (modal frame duplication, =with*Ui=
+helper sprawl, scattered ~Cmd~ wiring), reshapes a few data
+models that have outgrown their first form (creature identity,
+modal UI state, the ad-hoc ~Cmd~ dispatch), and lays the
+scaffolding for the next round of features (per-user encounters,
+preferences, role-gated mutations, co-DM WebSockets) so each
+lands in its own module instead of as another screenful of
+~Main.elm~.
+
+The plan is *eleven phases*, each independently shippable
+(compile + tests + smoke pass) and small enough to commit-and-move-on.
+The ordering is: cheap mechanical wins first (Phases 1–2), then
+domain submodule splits where boundaries already exist (3–4),
+then the big ~Main.elm~ carve-up (5–7), then CSS/data/effects
+hygiene (8–10), and ending with a server-side compliance pass
+(11).  Total estimated diff: ~+2000 / −9000 lines spread across
+~50 commits, with the entire app behavior unchanged from the
+user's perspective.
+
+The plan assumes I will execute it autonomously: every phase
+ends with =cargo test --workspace= + =elm-test= + a manual
+smoke check via =just dev=, and commits but does NOT push (push
+is denied per [[file:../.claude/settings.json][.claude/settings.json]]).
+On every phase boundary I'll commit progress so the user can
+review the chain at the end.
+
+* Constraints (do not violate)
+
+These are durable from CLAUDE.md, the rust-template, and the
+existing ARCHITECTURE.md layering rule.  Treat as hard limits.
+
+** Frontend
+- *No ~Html~ / ~Browser~ / ~Url~ imports in domain modules.*
+  Domain = =Encounter*=, =Dice*=, =HpChange=, =Compendium*=
+  (everything but =Main=, =View/*=, =Update/*=).  Compiler
+  enforces.
+- *Pure update branches as one-liners.*  Rules-y work
+  (queue walks, HP arithmetic, condition lifecycle) belongs
+  in domain modules.  ~update~ delegates.
+- *No handwritten JS.*  Everything reaches DOM via Elm.  The
+  one allowed escape hatch is declarative (~<audio
+  src=...>~).  Don't introduce ports unless the feature
+  absolutely requires it; document the necessity if so.
+- *Type-driven validation.*  Modal UI state with raw strings
+  is fine ("transient typing isn't clamped"); but stages need
+  distinct types (Draft → Form → Validated).  Don't reach
+  for ~Maybe~ on fields that are required-after-validation —
+  introduce an intermediate type instead.
+- *Pascal Initialisms in new identifiers* (=Url=, not =URL=;
+  =Db=, not =DB=).
+- *No ~loop~/early ~return~* preferred where Elm provides
+  combinators; small extracted helpers > deep nesting.
+
+** Backend (Rust)
+- *Semantic ~thiserror~ variants.*  Don't expose
+  ~std::io::Result~ from a public API; wrap into a
+  ~XReadError { path, source }~ / ~XWriteError~ / etc. that
+  identifies the *operation*, not just the kind.
+- *~main.rs~ is an orchestrator.*  Sibling files own concerns
+  (config, logging, etc.).  No business logic in =main.rs=.
+- *~aide::ApiRouter~ for every HTTP route* so OpenAPI stays
+  complete.  No second plain ~axum::Router~.
+- *Use ~JsonFileStore<T>~ for persistence-backed features.*
+  Don't roll a one-off file store.
+- *Errors propagate; do not swallow.*  Internal helpers use
+  ~?~; HTTP handlers map to ~StatusCode~ at the boundary via
+  ~impl IntoResponse~.
+
+** Repo / docs
+- *New docs go in =docs/= as =.org= files.*
+- *No file lists in documentation prose.*  Tables and
+  pointers are fine.
+- *Comments must be complete sentences, wrapped at 80 cols.*
+
+** Tests
+- *Tests must exit with proper error codes.*  =elm-test= and
+  =cargo test --workspace= both honor this.
+- *Integration tests preferred over unit tests on contrived
+  scenarios.*  Real backends, real HTTP, real file system
+  (=tempfile= crate for paths).
+
+* Diagnosis (what I found, 2026-05-04)
+
+** Frontend file sizes (bigger than the May plan recorded)
+
+| File                            | Lines | Status                                           |
+|---------------------------------+-------+--------------------------------------------------|
+| =frontend/src/Main.elm=         |  9268 | God-module; needs aggressive carve-up            |
+| =frontend/src/Compendium/Parser.elm= |  1672 | Cohesive; leave alone                       |
+| =frontend/src/Encounter.elm=    |  1607 | Submodule split half-shipped; finish it          |
+| =frontend/src/Dice.elm=         |  1259 | Cohesive; leave alone                            |
+| =frontend/src/Compendium.elm=   |  1068 | Mix of domain + Wire; split                      |
+| =frontend/src/View/StatBlock.elm= |  691 | OK                                                |
+| =frontend/src/Encounter/Wire.elm= |   541 | OK                                                |
+| =frontend/src/HpChange.elm=     |   309 | OK                                                |
+| =frontend/src/Encounter/DeathSaves.elm= |  105 | OK                                          |
+| =frontend/src/Encounter/SaveNotice.elm= |   81 | OK                                          |
+| =frontend/src/Util/Keyboard.elm= |    19 | OK                                                |
+| =frontend/public/style.css=     |  3628 | Pill/chip dedup possible                         |
+
+** Main.elm anatomy
+
+#+begin_src text :results none :exports code
+LINE RANGE   CONTENTS                                  COUNT
+1 .. 1178    types + aliases + constants               41 type decls
+1179 ..1365  type Msg                                  159 constructors
+1366 ..1525  main / subscriptions / init / fetchMe     ~7 fns
+1527 ..1555  update wrapper + shouldPersistAfter       2 fns
+1556 ..4591  updateInner (single 3,000-line case)      1 fn
+4592 ..9268  view + viewXxx fns                        254 fns
+#+end_src
+
+The ~updateInner~ contains every per-feature handler inline.
+The ~view~ region is ~4,700 lines of ~Html Msg~ helpers — most
+of which only reference 1–3 model fields.
+
+** Existing seams that already work (don't disturb)
+
+- =View/Modal.elm= — modal frame helper, used by some modals.
+- =View/Chip.elm= — chip primitive, used by some chip renderers.
+- =View/StatBlock.elm= — read-only Compendium.Creature renderer.
+- =Util/Keyboard.elm= — =enterKey= / =escKey= decoders.
+- =Encounter/DeathSaves.elm= / =Encounter/SaveNotice.elm= /
+  =Encounter/Wire.elm= — partial domain split.
+- ~with*Ui~ helpers in Main.elm — 10 of them, all
+  boilerplate-identical (~Maybe.map~).  Earlier plan
+  flagged this; never collapsed.
+
+** ~with*~ helper sprawl (Phase 1 candidate)
+
+10 helpers, all of the same shape:
+
+#+begin_src elm :results none :exports code
+withFoo : (FooUi -> FooUi) -> Model -> Model
+withFoo fn model =
+    case model.foo of
+        Just ui ->
+            { model | foo = Just (fn ui) }
+        Nothing ->
+            model
+#+end_src
+
+Found at: ~withCompendiumEdit~, ~withDice~, ~withHpChange~,
+~withInitiative~, ~withCompendium~, ~withNoteEdit~,
+~withConditionUi~, ~withMemoEdit~, ~withTimerSetup~ (plus
+~withEncounter~ which is genuinely different — not Maybe-wrapped).
+Net deletion target: ~80 lines.
+
+** Modal frame duplication
+
+7 modals use the same skeleton (backdrop + header + body +
+×-close).  =View/Modal.elm= exists and is used by some, but
+several modals (HpChange, Initiative, Condition, NoteEdit,
+MemoEdit, TimerSetup, Compendium-paste) hand-roll the chrome.
+Net deletion target: ~150 lines.
+
+** Cmd dispatch is scattered
+
+- =pushDiceRoll= / =persistRollCmd= live in Main.elm at lines
+  3788 / 4563.
+- =Encounter.Wire.fetchEncounterCmd= / =persistEncounterCmd=
+  are imported.
+- =Compendium.fetchAll= is in Compendium.elm.
+- HTTP-error handling is per-Msg, no shared decoder helpers.
+
+A single =Util/Http.elm= + =Update/Effects.elm= would house
+the boilerplate (decoding, error→toast translation, retry
+policy if any).
+
+** Encounter.elm subsystem fan-out
+
+=Encounter.elm= still contains, in one file:
+
+- core types (Creature, Encounter, Cover) — lines ~119..433
+- seed creatures — lines 433..692
+- queue mutators (moveUp, moveDown, sortByInitiative, setActive,
+  nextTurn, mapCreature, removeCreature, duplicateCreature,
+  appendCreatures) — lines 693..1390
+- DeathSaves helpers (= already in =DeathSaves.elm= but
+  re-exported from here?  let me check) — 1410..1430
+- Conditions (addCondition, updateCondition, removeCondition,
+  describeDuration, expireUntilTurn) — 1447..1605
+- SaveNotice helpers — 1581..1605
+
+The May plan called for splitting into
+=Encounter/{Conditions,Timer,Roster,Lifecycle}.elm=.
+=DeathSaves= and =SaveNotice= got their submodules; the rest
+stayed in the root.
+
+** Compendium.elm Wire vs domain
+
+=Compendium.elm= has 1068 lines split roughly 60/40 between
+*domain helpers* (Db wrapper, search, filter, sort, draftToInstance,
+crToFloat) and *wire format* (decoders for every type, encoders).
+Splitting into =Compendium.elm= (domain) +
+=Compendium/Wire.elm= (codec) parallels the
+=Encounter/Wire.elm= pattern that already shipped.
+
+** CSS chip/pill duplication
+
+Found 4 chip-like patterns (~.condition-chip~, ~.save-notice~,
+~.memo-pill~, ~.timer-pill~) plus ~.legendary-col__pip~ for the
+LA/LR pips.  Each repeats border-radius / padding / font-size /
+hover transitions.  A base ~.pill~ + modifier classes would
+collapse ~80 lines of CSS.
+
+** Server compliance (post-May)
+
+Most of the May plan landed.  Remaining gaps:
+
+| Gap                                                          | Severity   |
+|--------------------------------------------------------------+------------|
+| =cli= crate is a stub; no compendium import/export commands  | Low; not blocking |
+| =users/= / =prefs/= are docstring-only stubs                 | Expected; Phase 9 expands |
+| Encounter / dice tests don't cover concurrent writers        | Low        |
+| ARCHITECTURE.md still in Markdown not org                    | Cosmetic   |
+| =CHANGELOG.org= shape vs ~changelog-roller~                  | Unverified |
+
+** Data-model rough edges (worth touching now)
+
+- *Creature identity is ~name : String~.*  Already requires
+  ~uniqueInstanceName~ ("Goblin / Goblin 2 / …") to keep keys
+  distinct in the queue.  This collides with the May plan's
+  call-out: "intentionally deferred until the feature actually
+  demands it."  It demands it now — multiple instances of one
+  bundled creature is the common case.
+- *~Encounter.Creature~ has 25+ fields* including position
+  (~surprised~, ~hiding~, ~flying~, ~flyHeight~), HP /
+  bloodied / death saves / temp HP, conditions, save notices,
+  timer, memo, cover, hold, legendary action sets, initiative,
+  back-reference to compendium.  Could be partially decomposed
+  (Identity / Position / Health / Conditions / Notes), but
+  Elm record syntax handles flat well per the existing
+  comment in =crates/lib/=.  Verdict: leave flat for now;
+  introduce =Encounter.Creature.Position= alias *only* if a
+  feature requires position-specific rules code.
+- *~Model~ has ~17 fields including all modal UI state and
+  toasts.*  Splitting modal state into a single ~modal :
+  Maybe ModalState~ ADT would centralize the "only one modal
+  open at a time" invariant the codebase already enforces by
+  convention.  Worth doing as part of Phase 6.
+- *Per-user persistence is anticipated but not modelled.*  All
+  storage paths today are global (single-slot dice history,
+  single live encounter, shared compendium).  Plan opens a
+  =/api/me/...= prefix in Phase 11 + leaves the routing
+  scaffolding for the eventual swap.
+
+* Goals (what we're optimizing for)
+
+In priority order:
+
+1. *Reviewability.*  Any single file should fit in a screenful or
+   two of any reasonable IDE.  Target cap: 600 lines / module
+   (excluding cohesive parsers and codecs which can be larger).
+2. *Functional purity.*  Domain modules stay pure (no ~Cmd~,
+   no ~Html~).  Update logic stays a thin dispatcher; Cmd-emitting
+   work goes through dedicated helpers in =Update/Effects.elm=.
+3. *Modularity by feature.*  Each feature (Dice, HpChange,
+   Initiative, Condition, Note, Memo, Timer, Compendium, Toast,
+   Lifecycle, Auth) gets its own =Update/Foo.elm= +
+   =View/Foo.elm= + (where applicable) =Model/Foo.elm= record.
+4. *Predictability for future features.*  Each new modal /
+   feature should have a clear "go-here" file path before
+   anyone writes a Msg.
+5. *Migration safety.*  Each phase compiles green at HEAD,
+   passes elm-test + cargo test, and is independently
+   revertable.  No phase mixes "split feature X" with
+   "rewrite feature X" — semantic changes go in their own
+   commits.
+
+Functional principles applied throughout:
+
+- *ADTs over Bool flags.*  Where two booleans encode three
+  states, replace with an enum.  E.g. modal-open state
+  (~modal : Maybe ModalState~) replaces N independent
+  ~Maybe SomeUi~ fields.
+- *~Maybe a~ at the boundary, real types inside.*  Decoders
+  may emit ~Maybe~ for tolerance; domain functions take and
+  return concrete records.
+- *No partial functions.*  ~Encounter.activeCreature~ today
+  returns ~Maybe Creature~ — keep that pattern.  Don't write
+  ~Encounter.activeCreatureUnsafe~.
+- *Composition over inheritance.*  Multi-target apply is
+  ~List.foldl (mapCreature name fn)~, not a generic
+  "apply-to-many" trait.  Keep this idiom.
+- *Cmd as data, batched.*  ~Update/Effects.elm~ exposes
+  ~Cmd Msg~-returning helpers that callers compose with
+  ~Cmd.batch~; no inline Http.post calls in update branches.
+
+Modern codebase design touches:
+
+- *Narrow exposes.*  Each module's =module Foo exposing (..)=
+  becomes an explicit list.  Forces deliberate API surface.
+- *No re-exports.*  When something moves to a submodule,
+  callers update their imports.  Re-exports are tolerated as
+  a transition step (one phase) but cleaned up in the next.
+- *One-screen rule for ~update~ branches.*  If the branch
+  body is more than ~10 lines, it should be calling a helper
+  in =Update/Foo.elm=.
+
+* Future-feature constraint set (shape, not content)
+
+These features are anticipated.  The refactor must leave room
+for them.
+
+| Feature                            | Where it lands                                                                        |
+|------------------------------------+---------------------------------------------------------------------------------------|
+| Per-user named encounter saves     | =Update/EncounterSave.elm= + =View/Modal/EncounterSave.elm= + =/api/me/encounters[/:id]= |
+| Dice history per-user when authed  | Move dice store under user namespace; =Update/Effects.elm= unaffected                 |
+| Compendium write-API auth gating   | =require_role(Admin)= middleware in server's =auth.rs=; visibility on =Creature=      |
+| SQLite migration                   | ~JsonFileStore<T>~ wrapped by a new ~Repository<T>~ trait or just swap behind same API |
+| OIDC user provisioning             | =users/= module materializes; ~/me~ returns full User record with prefs              |
+| Frontend auth flow                 | =Update/Auth.elm= + =View/AppBar.elm= sign-in link                                    |
+| Real-time co-DM mode               | New =Update/CoDm.elm= + =/api/encounters/:id/ws=; broadcast channel in server         |
+| Total-encounter stopwatch          | New =Encounter/Stopwatch.elm= + view in =View/EncounterBar.elm=                       |
+| Compendium edit polish (legendary, etc.) | =Update/CompendiumEdit.elm= grows fields; =View/Modal/CompendiumEdit.elm= grows sections |
+| Creature images / token portraits  | New =image= store under data dir; multipart upload route                              |
+| Damage scaling (resist/vuln/imm)   | New ~HpChange.DamageSpec.multiplier~ enum + modal select                              |
+| Save-against-half on Damage        | New ~SaveAgainstHalf~ ADT in =HpChange.elm= + Damage modal                            |
+| CR difficulty calculator           | =crates/lib/src/cr_calc.rs= reserves the namespace; Elm =CrCalc.elm= mirrors it      |
+| Combat log / observability         | New =Encounter/CombatLog.elm= (in-memory replacement) + future server stream          |
+
+The plan does not build any of these.  But each phase below is
+shaped so the eventual feature drops in next to its existing
+sibling without hunting for a home.
+
+* Plan structure
+
+11 phases.  Each is independently shippable + revertable.  All
+verifications below assume the dev shell is active (~nix develop~)
+unless noted.
+
+| #  | Theme                                | Net diff (rough)  | Time   | Risk |
+|----+--------------------------------------+-------------------+--------+------|
+|  1 | Util / helper consolidation          | +60 / −180        | 0.5 d  | Low  |
+|  2 | Modal frame migration                | +40 / −300        | 0.5 d  | Low  |
+|  3 | Encounter.elm submodule split        | +400 / −400       | 0.5 d  | Low  |
+|  4 | Compendium.elm wire/domain split     | +400 / −400       | 0.5 d  | Low  |
+|  5 | Main.elm: extract Model + Msg + types | +1500 / −1500    | 1.0 d  | Med  |
+|  6 | Main.elm: extract Update/*           | +2500 / −2500     | 1.5 d  | Med  |
+|  7 | Main.elm: extract View/*             | +3500 / −3500     | 1.5 d  | Med  |
+|  8 | CSS pill primitive consolidation     | +80 / −300        | 0.5 d  | Low  |
+|  9 | Effects centralization (Util/Http)   | +200 / −400       | 0.5 d  | Low  |
+| 10 | Data-model refinements + tests       | +600 / −200       | 1.0 d  | Low  |
+| 11 | Server polish (cli + tests)          | +400 / −100       | 0.5 d  | Low  |
+
+* Phase 1 — Util / helper consolidation
+
+** Goal
+Eliminate ~with*Ui~ helper sprawl.  Move shared bookkeeping
+into =Util/=.  No semantic changes.
+
+** Steps
+
+1. Create =frontend/src/Util/Maybe.elm=:
+   #+begin_src elm
+   module Util.Maybe exposing (mapField)
+
+   {-| Update a record field that holds a `Maybe a`, leaving the
+   model unchanged when the field is `Nothing`.  Used to collapse
+   the ~10 `with*Ui` helpers in Main.elm.
+   -}
+   mapField : (a -> a) -> Maybe a -> Maybe a
+   mapField =
+       Maybe.map
+   #+end_src
+
+2. Inline-replace each ~with*Ui~ call site with
+   ~{ model | foo = Maybe.map fn model.foo }~.  Delete the
+   helper.  Helpers to remove:
+   - withCompendiumEdit (line 3188)
+   - withDice (3774)
+   - withHpChange (3811)
+   - withInitiative (3851)
+   - withCompendium (3864)
+   - withNoteEdit (3871)
+   - withConditionUi (3883)
+   - withMemoEdit (3895)
+   - withTimerSetup (3907)
+   Keep =withEncounter= (3764) — it's not Maybe-wrapped and is
+   genuinely a different shape.
+
+3. Verify =withDice= deletion is safe: =DiceUi= is currently
+   *not* wrapped in =Maybe= (it's always present with an =open :
+   Bool= field).  If true, leave =withDice= alone for this
+   phase; address in Phase 6 when modal state ADT lands.  Audit
+   all 9 helpers individually.
+
+4. Check =Util/Keyboard.elm= for any place still using inline
+   key decoders in Main.elm; consolidate.
+
+** Verification
+- =elm make src/Main.elm --output /dev/null= passes
+- =elm-test= passes (98 tests today, no new tests this phase)
+- =treefmt= clean
+- Manual smoke: open each modal once, type, close.  No regression.
+
+** Commit
+~refactor(util): collapse with*Ui helpers via Maybe.map~
+
+* Phase 2 — Modal frame migration
+
+** Goal
+Every modal goes through =View/Modal.view=.  Delete hand-rolled
+chrome.
+
+** Steps
+
+1. Audit modal call sites currently NOT using =View/Modal=:
+   - =viewHpChangeModal= (line 6571)
+   - =viewInitiativeModal= (6960)
+   - =viewNoteEditModal= (7185)
+   - =viewConditionModal= (7256)
+   - =viewMemoEditModal= (7826)
+   - =viewTimerSetupModal= (7891)
+   - =viewCompendiumPasteModal= (9127)
+
+2. For each, replace the hand-rolled
+   =div [ class "modal-backdrop" ] [ div [ class "modal" ] [ ... ] ]=
+   tree with:
+   #+begin_src elm
+   View.Modal.view
+       { close = ... -- the modal's close Msg
+       , title = "..."
+       , extraClass = "modal--<feature>"
+       , body = [ ... ]  -- existing body content
+       }
+   #+end_src
+
+3. Verify =View/Modal.elm= already accepts these inputs; if not,
+   extend it (the helper currently exists per
+   ~frontend/src/View/Modal.elm=, ~57 lines).
+
+4. While migrating, also fold the per-modal Esc-key handling
+   into the helper (one =on "keydown" escKey close= attribute
+   added to the backdrop or the modal root).  Removes 7
+   subscription branches from =subscriptions=.
+
+5. The =viewCompendiumModal= (8007) and =viewCompendiumEditModal=
+   (8479) are large; verify they go through =View.Modal=
+   already.  Migrate if not.
+
+** Verification
+- =elm make= clean
+- =elm-test= passes
+- Manual smoke: each modal opens, Esc closes, × closes,
+  outside-click closes, content scrolls if tall.
+
+** Commit
+~refactor(view): route every modal through View.Modal helper~
+
+* Phase 3 — Encounter.elm submodule split
+
+** Goal
+Reduce =Encounter.elm= to <500 lines: types + queue + nextTurn
++ setActive + mapCreature + seed.  Push subsystems out.
+
+** Steps
+
+1. Create =frontend/src/Encounter/Conditions.elm= with:
+   - The =Condition=, =ConditionDraft=, =Duration=, =TurnPhase=,
+     =TurnTarget=, =SaveToEnd=, =AutoRollMode= types (move,
+     re-export from =Encounter.elm= for one phase to avoid
+     touching every importer).
+   - =addCondition=, =updateCondition=, =removeCondition=,
+     =findCondition=, =describeDuration=, =pluralizeTurns=,
+     =allConditionIds=.
+   - =tickCondition=, =expireUntilTurn=, =advanceUntilTurn=
+     (lifecycle helpers — these get called by =nextTurn= which
+     stays in =Encounter.elm=).
+
+2. Create =frontend/src/Encounter/Timer.elm= with:
+   - =Timer= type alias.
+   - =tickTimerFor= (move from =Encounter.elm=).
+
+3. Create =frontend/src/Encounter/Roster.elm= with:
+   - =moveUp=, =moveDown=, =swapWithPrev=, =swapWithNext=,
+     =removeCreature=, =duplicateCreature=, =uniqueCopyName=,
+     =insertAfter=, =uniqueInstanceName=, =appendCreatures=,
+     =findByName=.
+
+4. Create =frontend/src/Encounter/Lifecycle.elm= with:
+   - =applyBeginOfTurn=, =applyEndOfTurn=,
+     =resetLegendaryActionsFor=, =tickCountdownFor=,
+     =skipUnplayable=, =advanceOne=, =findNext=,
+     =isLastInQueue=.
+   - =Encounter.nextTurn= imports from this and chains the hooks.
+
+5. =Encounter.elm= retains: types (=Cover=, =Creature=,
+   =Encounter=), constructors (=empty=, =initialEncounter=,
+   =seedCreatures=), the =mapCreature=, =setActive=,
+   =sortByInitiative=, =nextTurn= top-level, =activeCreature=,
+   =nextCover=, ID allocators (=allConditionIds=,
+   =allSaveNoticeIds= — move these to =Encounter/Roster.elm=
+   actually since they iterate the queue).
+
+6. =Encounter.elm= initially re-exposes the moved types via
+   =module Encounter exposing (Condition, Duration, ..., addCondition, ...)=
+   so =Main.elm= compiles unchanged.
+
+7. Follow-up commit: narrow the imports.
+   =Main.elm= imports =Encounter.Conditions= directly for
+   =addCondition= etc.  Remove re-exports.
+
+** Verification
+- =elm-test= still passes (HpChangeTest.elm, EncounterTest.elm
+  imports may need adjustment)
+- Encounter behavior unchanged: full smoke (add → damage →
+  conditions → death saves → next turn → save → import-export-encounter).
+
+** Commit
+- 3a: ~refactor(encounter): extract Conditions submodule~
+- 3b: ~refactor(encounter): extract Timer submodule~
+- 3c: ~refactor(encounter): extract Roster submodule~
+- 3d: ~refactor(encounter): extract Lifecycle submodule~
+- 3e: ~refactor(encounter): narrow imports, drop re-exports~
+
+* Phase 4 — Compendium.elm wire/domain split
+
+** Goal
+Mirror the =Encounter/Wire.elm= pattern for Compendium.
+
+** Steps
+
+1. Create =frontend/src/Compendium/Wire.elm= with everything
+   between lines 480..1068:
+   - =fetchAll=, all =decodeXxx= helpers, =encodeDraft=,
+     =encodeCreature=, the =required= / =optional= pipeline
+     helpers.
+
+2. =Compendium.elm= retains: type aliases (=Creature=,
+   =CreatureKind=, =Size=, =Speed=, =Abilities=, =Ability=,
+   =AbilitySave=, =SkillBonus=, =Senses=, =Feature=, =Usage=,
+   =LegendaryActions=, =LegendaryOption=, =LairActions=,
+   =RegionalEffects=, =Spellcasting=, =SpellSlotLevel=,
+   =InnatePerDay=, =CustomSection=), =Db= newtype + helpers
+   (=fromList=, =toList=, =count=, =find=, =search=,
+   =filterByKind=, =sortByName=, =sortByCr=, =sortByRecency=),
+   =draftToInstance=, =sourceHasLegendaryResistance=,
+   =instanceKindLine=, =crToFloat=.
+
+3. Update Main.elm imports:
+   ~import Compendium.Wire as CompendiumWire~ for HTTP work;
+   ~import Compendium~ for domain.
+
+** Verification
+- =elm-test= passes (CompendiumParserTest.elm doesn't touch
+  Wire so should be unaffected; verify)
+- Compendium browse / edit / paste / import / export all
+  smoke-pass.
+
+** Commit
+~refactor(compendium): extract Compendium/Wire.elm~
+
+* Phase 5 — Main.elm: extract Model + Msg + types
+
+** Goal
+Move type definitions out of Main.elm into focused files so
+Phase 6 (update split) can import them cleanly.  No behavior
+change.
+
+** Steps
+
+1. Create =frontend/src/Model.elm= with the =Model= type alias
+   (lines 89..117 today) and helpers it owns:
+   - =Toast=, =ToastKind= types (118..130)
+   - =MeInfo=, =MeStatus= (68..88)
+   - =Route= type (41..58, but =routeFromUrl= and =routeParser=
+     stay in =Main.elm= since they do URL parsing tied to the
+     application shell)
+   - =MeInfo decoder= → move to =Util/Http.elm= in Phase 9; for
+     now leave in Main.
+
+2. Create one Model-fragment module per modal feature:
+   =frontend/src/Compendium/Ui.elm= for =CompendiumUi=,
+   =CompendiumPasteUi=, =CompendiumEditUi=, =FeatureDraft=,
+   =FeatureGroup=, =CompendiumField=, =EditMode=, =PendingAction=,
+   =CompendiumDb=, =CompendiumSort=, plus their constructors
+   (=emptyCompendium=, =emptyPaste=, =blankEdit=, =editFromCreature=,
+   =featureToDraft=, =emptyFeatureDraft=, =validateEdit=,
+   =parseIntOr=, =parseCsv=, =saveRowToValue=, =skillRowToValue=,
+   =draftToFeature=, =customSectionRowToValue=, =creatureKindLabel=,
+   =compendiumVisible=, =kindFilterAsList=, =compendiumSort=,
+   =kindFromString=, =kindToString=, =maxAddCount=).
+
+3. Create =frontend/src/Note/Ui.elm= for =NoteEditUi=
+   (748..773).  Same for =MemoEditUi= (775..795),
+   =TimerSetupUi= (797..833), =ConditionUi= (836..991),
+   =InitiativeUi= (993..1013), =HpChangeUi= (1089..1135),
+   =DiceUi= (1137..1177).  Naming: =Update/<Feature>/Ui.elm=.
+
+4. Create =frontend/src/Msg.elm= with the entire =type Msg=
+   (lines 1179..1365, 159 constructors).  Re-export from
+   =Main.elm= isn't needed — the Update modules import it
+   directly.
+
+5. =Main.elm= imports the new modules and shrinks to ~3,000
+   lines (just =update=, =view=, =subscriptions=, =init=,
+   =main=, plus the URL routing).
+
+** Verification
+- =elm-test= passes
+- =elm make= clean
+- All view code still compiles (it imports types it now sees
+  via module imports)
+
+** Commit
+- 5a: ~refactor(model): extract Model.elm~
+- 5b: ~refactor(compendium): extract Compendium/Ui.elm~
+- 5c: ~refactor(ui): extract per-feature Ui.elm files~
+- 5d: ~refactor(msg): extract Msg.elm~
+
+* Phase 6 — Main.elm: extract Update/*
+
+** Goal
+Carve =updateInner= (lines 1556..4591, ~3,000 lines) into
+per-feature Update modules.  Each feature owns its own
+Msg-→update branch handler.
+
+** Steps
+
+1. =Main.update= becomes:
+   #+begin_src elm
+   update : Msg -> Model -> ( Model, Cmd Msg )
+   update msg model =
+       let
+           ( next, innerCmd ) =
+               dispatch msg model
+           saveCmd = ...  -- existing diff-and-persist
+       in
+       ( next, Cmd.batch [ innerCmd, saveCmd ] )
+
+   dispatch : Msg -> Model -> ( Model, Cmd Msg )
+   dispatch msg model =
+       case msg of
+           UrlRequested req -> Update.Shell.urlRequested req model
+           UrlChanged url -> Update.Shell.urlChanged url model
+           GotMe r -> Update.Shell.gotMe r model
+           NextTurn -> Update.Encounter.nextTurn model
+           SetActive name -> Update.Encounter.setActive name model
+           ...
+           DiceOpen -> Update.Dice.open model
+           ...
+   #+end_src
+   Each branch a one-liner.
+
+2. Create =Update/= submodules:
+
+   | Module                   | Owns these Msg branches                                                                                  |
+   |--------------------------+----------------------------------------------------------------------------------------------------------|
+   | =Update/Shell.elm=       | UrlRequested, UrlChanged, GotMe, ScrollToActive, EncounterLoaded, EncounterPersisted, ToastDismiss, ToastTimeout |
+   | =Update/Encounter.elm=   | NextTurn, SetActive, ToggleSurprised, MoveCreatureUp/Down, RemoveCreature, DuplicateCreature, ToggleHolding, CycleCover, ToggleConcentration, ToggleHiding, ToggleFlying, AdjustFlyHeight, ToggleSelected, ShiftToggleSelected |
+   | =Update/Initiative.elm=  | InitiativeOpen, InitiativeClose, InitiativeCustomChanged, InitiativeQuickSort, InitiativeAutoRoll, InitiativeApplyTarget, InitiativeApplySelected, InitiativeRollsLanded |
+   | =Update/Dice.elm=        | OpenDice, CloseDice, DiceInputChanged, DiceCountChanged, DiceModifierChanged, DiceResetSliders, DiceRollFromInput, DiceRollFaces, DiceRollAdvantage, DiceRollDisadvantage, DiceFlipCoin, DiceRerun, DiceClearHistory, DiceRollLanded, DiceHistoryLoaded, DicePersistResponse, DiceClearResponse, RollFromStatBlock |
+   | =Update/HpChange.elm=    | HpChangeOpen, HpChangeClose, HpChangeModeSet, HpChangeAmountChanged, HpChangeExpressionChanged, HpChangeIgnoreTempToggle, HpChangeApplyToSelectedToggle, HpChangeApply, HpChangeRollLanded, HpEditStart, HpEditChange, HpEditCommit, HpEditCancel |
+   | =Update/Note.elm=        | NoteEditOpen, NoteEditChange, NoteEditCommit, NoteEditCancel                                             |
+   | =Update/Memo.elm=        | MemoOpen, MemoClose, MemoChange, MemoCommit, MemoClear                                                   |
+   | =Update/Timer.elm=       | TimerSetupOpen, TimerSetupClose, TimerSetupChange, TimerSetupCommit, TimerClear                          |
+   | =Update/Condition.elm=   | ConditionOpenNew, ConditionOpenEdit, ConditionClose, ConditionSelectStandard, ConditionCustomNameChange, ConditionNoteChange, ConditionDurationKind, ConditionDurationCountdownNumber, ConditionDurationUntil, ConditionUntilTurn, ConditionTurnTarget, ConditionPhaseToggle, ConditionSaveToggle, ConditionSaveAuto, ConditionSaveAbility, ConditionSaveDc, ConditionSaveBonus, ConditionSaveRoll, ConditionSaveLanded, ConditionApply, ConditionApplyToSelectedToggle |
+   | =Update/DeathSave.elm=   | DeathSaveToggleSuccess, DeathSaveToggleFailure, DeathSaveRoll, DeathSaveRollLanded                       |
+   | =Update/LegendaryPip.elm= | ToggleLegendaryActionPip, ToggleLegendaryResistancePip                                                   |
+   | =Update/Compendium.elm=  | CompendiumOpen, CompendiumClose, CompendiumSearch, CompendiumKindFilterToggle, CompendiumSortChange, CompendiumSelect, CompendiumAddCount, CompendiumAddToEncounter, InitiativeRolledForAdds, GotCompendium, CompendiumLoaded |
+   | =Update/CompendiumEdit.elm= | EditOpen, EditNew, EditChange, EditAddSave, EditChangeSave, EditRemoveSave, EditAddSkill, EditChangeSkill, EditRemoveSkill, EditAddFeature, EditChangeFeature, EditRemoveFeature, EditAddCustomSection, EditChangeCustomSection, EditRemoveCustomSection, EditClose, EditSubmit, EditDelete, EditConfirmDelete, EditCancelDelete, EditDuplicate, GotCompendiumSubmit, GotCompendiumDelete |
+   | =Update/CompendiumPaste.elm= | PasteOpen, PasteClose, PasteChange, PasteApply                                                       |
+   | =Update/CompendiumBulk.elm= | ImportInit, ImportPick, ImportFile, ImportRead, ImportApply, ExportInit, ResetToBundled, ResetConfirm, GotCompendiumExport, GotCompendiumImport, GotCompendiumReset |
+
+3. Each =Update/Foo.elm= exports a small set of pure-ish
+   functions taking =Model= and returning =( Model, Cmd Msg )=
+   (or just =Model -> Model= where Cmd-free).  Pattern:
+   #+begin_src elm
+   module Update.Encounter exposing (nextTurn, setActive, ...)
+
+   import Encounter
+   import Encounter.Lifecycle
+   import Model exposing (Model)
+   import Msg exposing (Msg(..))
+
+   nextTurn : Model -> ( Model, Cmd Msg )
+   nextTurn model =
+       let
+           outgoing = model.encounter.activeName
+           postEnc = Encounter.nextTurn model.encounter
+           ...
+       in
+       ( { model | encounter = postEnc }, Cmd.batch [ ... ] )
+   #+end_src
+
+4. Carving order (commit-by-commit):
+   - 6a: =Update/Shell.elm= (lowest-risk; URL + lifecycle)
+   - 6b: =Update/Dice.elm= (~17 branches; biggest single
+     win)
+   - 6c: =Update/Encounter.elm= (queue + position toggles)
+   - 6d: =Update/HpChange.elm=
+   - 6e: =Update/Initiative.elm=
+   - 6f: =Update/Note.elm= + =Update/Memo.elm= + =Update/Timer.elm=
+   - 6g: =Update/Condition.elm= + =Update/DeathSave.elm=
+     + =Update/LegendaryPip.elm=
+   - 6h: =Update/Compendium*.elm= (4 modules, biggest carve;
+     do this last when patterns are settled)
+
+5. After 6h, =updateInner= becomes a flat dispatch table.
+   Move it into =Update.elm= top-level.  Rename the file's
+   =Main.dispatch= to =Update.run=.
+
+** Verification (after each sub-commit)
+- =elm-test= passes (98 tests today)
+- =elm make src/Main.elm= clean
+- Smoke specific to the feature carved: e.g. after 6b
+  (Update.Dice), open dice modal, roll all six face buttons,
+  enter a formula, hit advantage/disadvantage, clear
+  history, scan a stat-block.
+
+** Commit
+- 6a..6h as listed above
+
+* Phase 7 — Main.elm: extract View/*
+
+** Goal
+Carve view region (lines 4592..9268, ~4,700 lines) into per-feature
+View modules.  Same shape as Phase 6 but for ~Html Msg~.
+
+** Steps
+
+1. =Main.view= becomes:
+   #+begin_src elm
+   view : Model -> Browser.Document Msg
+   view model =
+       { title = "ezpz-dndz"
+       , body =
+           [ View.AppBar.view model
+           , View.Workspace.view model
+           , View.Modal.dispatch model    -- branches over which modal is open
+           , View.Toast.list model.toasts
+           , View.Audio.ringer model
+           ]
+       }
+   #+end_src
+
+2. Modules to create:
+
+   | Module                            | Owns                                                                                                |
+   |-----------------------------------+-----------------------------------------------------------------------------------------------------|
+   | =View/AppBar.elm=                 | viewAppBar, viewMe                                                                                  |
+   | =View/Workspace.elm=              | viewWorkspace, viewPanelMain, viewPage, viewCompendiumStandalone                                    |
+   | =View/EncounterBar.elm=           | viewEncounterBar, viewEncounterBarHp, viewActiveStateIcons, viewActiveConditionsText                |
+   | =View/Card.elm=                   | viewCreatureCard (entry point that composes Row1/Row2/Row3 + rails)                                 |
+   | =View/Card/Row1.elm=              | viewCardRowTop, viewCardCreatureName, viewNoteOrPencil, viewSurprisedToggle, viewConditionChips     |
+   | =View/Card/Row2.elm=              | viewCardRowMid, viewHpDisplay, viewHpEditable, viewBloodied, viewDeathSaves, viewDeathSavePip, viewBoolToggle, viewCoverToggle, viewFlyHeight |
+   | =View/Card/Row3.elm=              | viewCardRowBot, viewMemoSlot, viewTimerSlot, viewHoldToggle                                         |
+   | =View/Card/Legendary.elm=         | viewLegendaryColumns, viewLegendaryColumn (the pip strip)                                           |
+   | =View/Chip.elm=                   | EXTEND with: viewSaveNoticeChip, viewConditionChip, viewChipSaveButton, viewChipDurationGlyph (already exists) |
+   | =View/PanelControls.elm=          | viewPanelControls, viewXpFilter, viewDiceLastTotal, viewDiceArrow                                   |
+   | =View/PanelDetail.elm=            | viewPanelDetail, viewPanelStatBlock                                                                 |
+   | =View/Modal/Dice.elm=             | viewDiceModal, viewDiceModalHeader, viewDiceForm, viewDiceFaceButtons, viewDiceSpecialButtons, viewDiceHistory, viewHistoryEntry, viewRollSource |
+   | =View/Modal/HpChange.elm=         | viewHpChangeModal, viewHpChangeHeader, viewHpChangeModeToggle, viewHpChangeAmount, viewHpChangeOptions, viewHpChangeApplyScope, viewHpChangePreview, viewHpChangeFooter, viewHpChangeLog, viewHpChangeLogEntry |
+   | =View/Modal/Initiative.elm=       | viewInitiativeModal, viewInitiativeHeader, viewInitiativeQuickSort, viewInitiativeAutoRoll, viewAutoRollPair, viewInitiativeCustom, viewInitiativeFooter |
+   | =View/Modal/Note.elm=             | viewNoteEditModal                                                                                    |
+   | =View/Modal/Memo.elm=             | viewMemoEditModal                                                                                    |
+   | =View/Modal/Timer.elm=            | viewTimerSetupModal                                                                                  |
+   | =View/Modal/Condition.elm=        | viewConditionModal + all viewConditionXxx + viewDurationXxx + viewPhaseToggle + viewAutoRollRadio + viewTurnTargetToggle |
+   | =View/Modal/Compendium.elm=       | viewCompendiumModal + filter bar + body + skeleton + list + detail + action bar + new/paste/bulk buttons + confirm banner |
+   | =View/Modal/CompendiumEdit.elm=   | viewCompendiumEditModal + viewEditError + viewEditSection + all editor sub-views + viewSavingThrowsEditor + viewSkillsEditor + viewFeaturesEditor + viewCustomSectionsEditor + viewAdvancedSectionsNotice + viewEditFooter |
+   | =View/Modal/CompendiumPaste.elm=  | viewCompendiumPasteModal + viewPasteInput + viewPastePreview + viewPasteFooter                       |
+   | =View/Modal/Dispatch.elm=         | dispatch helper that pattern-matches model.modal and routes to the right modal view (and renders nothing when no modal is open) |
+   | =View/Toast.elm=                  | viewToasts, viewToast                                                                                |
+   | =View/Audio.elm=                  | viewRingerAudio                                                                                      |
+   | =View/StatBlockEmbed.elm=         | viewStat, viewStatBlock, viewAbility, viewTrait, viewSegment (the in-card stat block, distinct from the full Compendium one)  |
+
+3. Do view extraction in feature-aligned commits matching the
+   Phase 6 update commits, so each commit is feature-coherent
+   (Update + View landing together when reasonable).
+
+4. After all view modules are extracted, =Main.elm= shrinks
+   to ~200 lines: =main=, =subscriptions=, =init=, =update=
+   wrapper, URL routing, =fetchMe= (or move to =Util/Http=).
+
+** Verification
+- =elm-test= passes
+- Manual smoke per feature
+- =Main.elm= line count < 250
+
+** Commit
+- 7a..7N: one commit per major view module.
+
+* Phase 8 — CSS pill primitive consolidation
+
+** Goal
+Single =.pill= base class + modifier classes; delete duplicated
+border-radius / padding / hover transitions.
+
+** Steps
+
+1. Add base class to =frontend/public/style.css=:
+   #+begin_src css
+   .pill {
+     display: inline-flex;
+     align-items: center;
+     gap: 4px;
+     padding: 2px 8px;
+     border-radius: 999px;
+     font-size: 0.78rem;
+     line-height: 1.4;
+     border: 1px solid currentColor;
+     transition: background 0.1s ease, transform 0.05s ease;
+   }
+   .pill__dismiss {
+     appearance: none;
+     border: none;
+     background: transparent;
+     cursor: pointer;
+     padding: 0 2px;
+     opacity: 0.7;
+   }
+   .pill__dismiss:hover { opacity: 1; }
+   #+end_src
+
+2. Replace per-pattern rules:
+   - =.condition-chip= → =.pill .pill--condition= (color
+     overrides only)
+   - =.save-notice= → =.pill .pill--saved=
+   - =.memo-pill= → =.pill .pill--memo=
+   - =.timer-pill= → =.pill .pill--timer=
+   (=.legendary-col__pip= is structurally different — it's a
+   circle, not a pill — leave alone)
+
+3. Update Elm class strings in the corresponding view
+   modules.  Where a view in =View/Chip.elm= already exists,
+   parameterize via a record:
+   #+begin_src elm
+   View.Chip.view
+       { class = "pill--condition"
+       , label = ...
+       , title = ...
+       , extras = [ ... ]
+       , dismiss = Just msg
+       }
+   #+end_src
+
+4. Verify hover / focus / dark-mode parity in a manual smoke
+   pass.
+
+** Verification
+- Visual smoke in light + dark mode (toggle via OS pref or
+  the dev tools media-query emulator)
+- No CSS regression on the encounter title bar, condition
+  chips, memo pills, timer pills
+
+** Commit
+~refactor(css): consolidate pill/chip patterns onto a single base class~
+
+* Phase 9 — Effects centralization (Util/Http)
+
+** Goal
+All HTTP machinery in =frontend/src/Util/Http.elm=.  Update
+modules emit Cmds via that module instead of inline
+=Http.post= calls.
+
+** Steps
+
+1. Create =frontend/src/Util/Http.elm=:
+   #+begin_src elm
+   module Util.Http exposing
+       ( get
+       , post
+       , put
+       , delete
+       , Error
+       , errorToString
+       , toastFromError
+       )
+   #+end_src
+
+   API: typed wrappers over =Http.task= or =Http.request= that
+   take a path, an optional body, and a Result-shaped Msg
+   constructor.  Returns a =Cmd msg=.
+
+2. Move existing helpers in:
+   - =pushDiceRoll= / =persistRollCmd= → =Update/Effects/Dice.elm=
+   - =Encounter.Wire.fetchEncounterCmd= /
+     =persistEncounterCmd= stay in =Encounter/Wire.elm= but
+     internally use =Util.Http=.
+   - =Compendium.Wire.fetchAll= same.
+
+3. Add =Update/Effects.elm= as a single import-everything-Cmd
+   facade so Update modules read clean:
+   #+begin_src elm
+   module Update.Effects exposing (..)
+
+   import Update.Effects.Dice as Dice
+   import Update.Effects.Compendium as Compendium
+   import Update.Effects.Encounter as Encounter
+   ...
+   #+end_src
+
+4. Delete =pushDiceRoll= and =persistRollCmd= from =Main.elm=
+   (move done; references updated in Phase 6).
+
+** Verification
+- =elm-test= passes
+- All 5 dice-roll-landing paths still log + persist the roll
+- Encounter auto-save still fires on every encounter mutation
+
+** Commit
+~refactor(http): centralize Cmd dispatch in Util.Http + Update.Effects~
+
+* Phase 10 — Data-model refinements + tests
+
+** Goal
+Address the rough edges in the data model now that the module
+graph supports it.  Lock invariants with new tests.
+
+** Steps
+
+1. *Creature identity by ID, not name.*
+   - Add =instanceId : String= to =Encounter.Creature= (UUID
+     allocated on add-to-queue).
+   - Add =Encounter.Roster.allocateInstanceId : Encounter -> String=
+     using max+1 over existing instanceIds (or
+     =Random.generate= a UUID — pick one and document).
+   - Switch all per-creature =Msg= payloads to =instanceId=:
+     ~ToggleSurprised String~ stays a String (it's the id now).
+     Same for =mapCreature : String -> ...= — but the meaning
+     changes.  Rename =mapCreature= to =mapInstance= for
+     clarity.
+   - Keep =name= as a display-only String that may collide.
+   - Migration: =Encounter/Wire.elm= decoder fills =instanceId=
+     from =name= when missing (legacy on-disk encounters), so
+     a freshly-loaded legacy encounter still works.
+
+2. *Modal state ADT.*
+   - Replace ~10 separate =Maybe XxxUi= fields on =Model= with:
+     #+begin_src elm
+     type Modal
+         = ModalDice DiceUi
+         | ModalHpChange HpChangeUi
+         | ModalInitiative InitiativeUi
+         | ModalNote NoteEditUi
+         | ModalMemo MemoEditUi
+         | ModalTimer TimerSetupUi
+         | ModalCondition ConditionUi
+         | ModalCompendium CompendiumUi
+         | ModalCompendiumEdit CompendiumEditUi
+         | ModalCompendiumPaste CompendiumPasteUi
+     #+end_src
+     and =modal : Maybe Modal= on =Model=.
+   - Esc-close becomes one branch.
+   - "Only one modal open at a time" is now type-enforced
+     (was a convention before).
+
+3. *Preferences blob in Model.*
+   - Add =Model.preferences : Preferences= where
+     #+begin_src elm
+     type alias Preferences =
+         { theme : Theme
+         , cardDensity : CardDensity
+         , soundEnabled : Bool
+         , autoScrollActiveCard : Bool
+         , autoRollInitiativeOnAdd : Bool
+         , defaultCompendiumSort : CompendiumSort
+         , keyboardShortcuts : Dict String String
+         }
+     #+end_src
+   - Default to a sane init in =Model.defaultPreferences=.
+   - No =/api/me/preferences= hookup yet — hardcoded
+     defaults until users-module lands.  But the Model
+     field exists, every feature reads it where applicable
+     (e.g. =Update/Encounter.nextTurn= reads
+     =preferences.autoScrollActiveCard= to decide whether
+     to fire =scrollActiveIntoViewCmd=).
+
+4. *Tests to add, per module:*
+   - =frontend/tests/Encounter/RosterTest.elm= — moveUp/
+     moveDown, removeCreature ID-stable, duplicateCreature ID
+     uniqueness, instanceId allocator monotonic.
+   - =frontend/tests/Encounter/ConditionsTest.elm= —
+     addCondition / removeCondition / tickCondition /
+     expireUntilTurn / TurnTarget skip behavior.
+   - =frontend/tests/Encounter/LifecycleTest.elm= —
+     applyBeginOfTurn / applyEndOfTurn full pipeline; the
+     surprised-skip rule; the dead-skip rule; iteration cap
+     covers all-dead TPK.
+   - =frontend/tests/CompendiumTest.elm= — Db search /
+     filterByKind / sortByCr / draftToInstance ID uniquification.
+   - =frontend/tests/UpdateModalTest.elm= — open / close
+     state transitions for the new Modal ADT; "only one open
+     at a time" invariant.
+
+5. =Encounter/Wire.elm= round-trip test
+   (=frontend/tests/Encounter/WireTest.elm=) — encode then
+   decode every seed creature, assert deep equality.
+
+** Verification
+- New test count: ~40 new tests, total ~140
+- =elm-test= passes
+- Smoke: legacy encounter.json on disk loads cleanly (the
+  decoder defaults =instanceId = name= for missing field)
+
+** Commit
+- 10a: =refactor(creature): instanceId stable across renames=
+- 10b: =refactor(model): collapse modal state into ADT=
+- 10c: =feat(prefs): preferences blob with sane defaults=
+- 10d: =test: backfill encounter / compendium / wire tests=
+
+* Phase 11 — Server polish (cli + tests)
+
+** Goal
+Close compliance gaps; advance =cli= and =users/prefs= stubs
+just enough that the next feature has clear surface area.
+
+** Steps
+
+1. =crates/cli/src/= grows commands:
+   - =ezpz-dndz-cli compendium export <path>= — POSTs to a
+     running server (or reads the on-disk file directly via
+     =--data-dir=) and writes JSON.
+   - =ezpz-dndz-cli compendium import <path>= — PUTs the file.
+   - =ezpz-dndz-cli compendium list= — prints names + CRs in a
+     table.
+   - Subcommand structure via =clap= (already a workspace dep).
+
+2. =crates/server/tests/= grows:
+   - =encounter_persistence_test.rs= — full CRUD round-trip
+     against =/api/encounter= using a tempfile-backed store.
+   - =dice_history_concurrent_test.rs= — N concurrent POSTs;
+     verify exactly N entries land in order.
+   - =compendium_route_test.rs= — POST a creature, GET it,
+     PUT a name change, DELETE it; verify each step.
+
+3. =crates/server/src/users/= and =prefs/= grow from
+   docstring stubs to:
+   - =UserStore=: =JsonFileStore<HashMap<UserId, User>>=
+   - =Preferences= type with =serde_json::Value= for the
+     opaque blob.
+   - =/api/me/profile= GET that returns the user's record
+     (or stubbed admin in OIDC-disabled mode).
+   - =/api/me/preferences= GET / PUT.
+   - All routes registered via =ApiRouter= in =web_base.rs=.
+   - Auth gating: the existing =auth::require_session= layer
+     wraps these routes.
+   - First-login upsert on the auth callback.
+
+4. =docs/ARCHITECTURE.md= → =docs/ARCHITECTURE.org= migration.
+   Cross-link to =docs/diagrams/data-model.svg=.
+
+5. =CHANGELOG.org= shape audit: run =changelog-roller --check=
+   if the binary is in =flake.nix= devPackages.
+
+** Verification
+- =cargo test --workspace= green
+- =cargo clippy --workspace= no new warnings
+- =/scalar= lists the new =/api/me/profile= and
+  =/api/me/preferences= routes
+- Manual: trigger a 401, see the OIDC redirect; sign in, see
+  =/me= populate.
+
+** Commit
+- 11a: ~feat(cli): compendium import/export/list subcommands~
+- 11b: ~test(server): persistence + concurrency + compendium routes~
+- 11c: ~feat(users): UserStore + first-login upsert~
+- 11d: ~feat(prefs): /api/me/preferences with opaque-JSON blob~
+- 11e: ~docs(architecture): migrate to org-mode, cross-link diagram~
+
+* Risks & rollback strategy
+
+- *Phases 5–7 have the largest commit churn.*  Mitigation:
+  break into many small commits (one file move + reference
+  fixes per commit).  =git revert= a single commit if a
+  regression appears.
+- *Module re-export transitions:* between Phase 3 commits
+  3a..3d the encounter root re-exposes moved types.  3e
+  removes those re-exports and narrows imports.  If 3e
+  introduces a regression, leave 3e reverted; the
+  re-exports keep the app working until a re-attempt.
+- *Modal ADT (Phase 10b)* is the highest-risk change in the
+  whole plan because it touches every modal handler.  Land
+  it after Phase 6+7 are done so each modal lives in its
+  own module — the mass rewrite is a coordinated swap of
+  =model.foo : Maybe FooUi= calls into
+  =model.modal == Just (ModalFoo ui)= patterns, scoped to
+  per-feature Update/View modules.
+- *instanceId rename (Phase 10a)* may need a transition
+  commit where =Creature.instanceId == name= for all rows
+  before a follow-up commit decouples them; on-disk legacy
+  encounters need decoder defaults forever (or a one-time
+  migration task documented here).
+
+* Open questions (resolve before / during execution)
+
+1. *Modal ADT timing.*  Phase 10 is late but the ADT change
+   is invasive.  Consider front-loading to between Phase 6
+   and Phase 7 so view modules can pattern-match on the new
+   shape from the start (avoids a rewrite-then-rewrite).
+2. *Test backfill scope.*  Phase 10 lists ~40 new tests.
+   Rough; trim to highest-value cases if total time budget
+   tightens.  Minimum: round-trip Wire tests + Lifecycle
+   nextTurn tests.
+3. *=cli= compendium commands.*  Will it talk HTTP (server
+   must be running) or read the file directly via
+   =JsonFileStore::load_or_default=?  File-direct is
+   simpler; HTTP gives a single point of authoritative
+   server behavior.  Recommendation: file-direct for v1
+   (no server dep), wrap behind a trait so HTTP becomes a
+   one-line swap when needed.
+4. *Per-user persistence rollout.*  Phase 11 lays the
+   =/api/me/...= scaffolding but doesn't migrate
+   =/api/encounter= or =/api/dice/history= to the namespace.
+   Migration is its own follow-up plan once OIDC is wired
+   to a real user table.
+5. *Domain → View boundary inside =View/Chip.elm=.*  The
+   chip helper renders =Encounter.Condition=.  Should it
+   import from the domain module or take a flat record?  If
+   the latter, every caller adds a mapping step — likely
+   not worth the indirection.  Vote: domain import is OK
+   because =View/Chip.elm= is itself a view module.
+
+* Execution checklist (autonomous-mode summary)
+
+For each phase:
+
+1. Read the phase section above.
+2. Use TodoWrite to break it into commits.
+3. For each commit:
+   a. Make the change.
+   b. =elm make src/Main.elm --output /dev/null= (frontend)
+      and/or =cargo build --workspace= (backend).
+   c. =elm-test= and/or =cargo test --workspace=.
+   d. =treefmt=.
+   e. =git add= specific files (no =git add -A=).
+   f. =nix develop --command git commit -F /tmp/commit-msg.txt=
+      (so prettier is on PATH).
+   g. =git status= verify the commit landed.
+4. Manual smoke test if the phase summary calls for one.
+5. Mark phase complete in TodoWrite, move to next.
+
+If a phase blocks (compile error I can't resolve, behavior
+regression I can't isolate, ambiguity I can't decide):
+- =git status= + =git stash= the in-flight work.
+- Document the blocker in this file under a new
+  =* Blocked at Phase N=  section with: the symptom, what I
+  tried, the relevant file paths, and a question for the
+  user.
+- Move to the *next* phase if it's independent of the
+  blocked one (most are independent).
+- Resume the blocked phase when the user provides
+  guidance.
+
+Push policy: I do NOT push; that's the user's privilege
+([[file:../.claude/settings.json][.claude/settings.json]]
+denies =git push=).  Commits accumulate locally; user
+reviews and pushes from their terminal.
