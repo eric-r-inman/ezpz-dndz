@@ -35,19 +35,68 @@ Phase 5b complete + Phase 9 + slice of Phase 11 — seven commits.
 | 11a   | 7e2cad2   | feat(cli): compendium {list, count, show}          |
 | 11b   | 03c37d6   | test(server): /api/encounter CRUD round-trip       |
 
+** Third autonomous run (2026-05-04 late afternoon)
+
+Phase 6 — full carve of =updateInner= into per-feature modules.
+Eight commits; one Update/* module per feature area.
+
+| Phase | Commit    | Theme                                              |
+|-------+-----------+----------------------------------------------------|
+|  6b   | 3c266a7   | extract Update/Encounter.elm                       |
+|  6a   | 96acaf3   | extract Update/Shell + Toast + Util/Http           |
+|  6c   | d5a890d   | extract Update/Dice.elm                            |
+|  6d   | 9e6420f   | extract Update/HpChange.elm                        |
+|  6e   | 803dc5d   | extract Update/Initiative.elm                      |
+|  6f   | fe6c584   | extract Update/{Note,Memo,Timer}.elm               |
+|  6g   | 4db8df3   | extract Update/{Condition,DeathSave,LegendaryPip}  |
+|  6h   | 87b5496   | extract Update/Compendium.elm                      |
+
+Phase 6b landed first because the Encounter branches were the
+smallest and gave the cleanest demonstration of the dispatch
+pattern; the remaining carves followed feature boundaries.
+
 ** Cumulative file-size impact
 
 | File                                    | Original | After  | Δ              |
 |-----------------------------------------+----------+--------+----------------|
-| =frontend/src/Main.elm=                 |    9268  |  7599* | -1669 (-18%)   |
+| =frontend/src/Main.elm=                 |    9268  |  5341* | -3927 (-42%)   |
 | =frontend/src/Encounter.elm=            |    1607  |   699  | -908  (-56%)   |
 | =frontend/src/Compendium.elm=           |    1068  |   439  | -629  (-59%)   |
 | =frontend/public/style.css=             |    3628  |  3583  | -45            |
 
-*Main.elm size reflects Phase 5b + Phase 9 extractions; treefmt
-rounds slightly per-commit.
+*Main.elm now consists of: =main= / =subscriptions= / =init= /
+the dispatch =update= + =updateInner= / =view= region (~4,500
+lines of pure rendering code) / a couple of stranded helpers
+(=withEncounter=, =selectionClickHandler=, =isFormTag=,
+=escKey=, =compendiumKeyDecoder=).  The =updateInner= itself is
+now a flat ~250-line dispatch table where every branch is a
+one-liner that delegates to =Update.Foo.bar=.
 
-New modules introduced across both runs:
+New Update/* modules introduced in run 3:
+
+  - =Update/Compendium.elm= (1111 lines) — the big one (~47
+    branches)
+  - =Update/Condition.elm= (520 lines)
+  - =Update/HpChange.elm= (382 lines)
+  - =Update/Dice.elm= (287 lines)
+  - =Update/Initiative.elm= (258 lines)
+  - =Update/Encounter.elm= (202 lines)
+  - =Update/DeathSave.elm= (182 lines)
+  - =Update/Shell.elm= (112 lines)
+  - =Update/Timer.elm= (97 lines)
+  - =Update/Memo.elm= (78 lines)
+  - =Update/Note.elm= (66 lines)
+  - =Update/Toast.elm= (61 lines)
+  - =Update/LegendaryPip.elm= (57 lines)
+  - =Util/Http.elm= (~37 lines) — shared error-formatter
+
+Total Update/* surface: ~3,400 lines.  Everything that used to
+live inline in =updateInner= now lives in one of these modules,
+plus the helpers (with*Ui lenses, source/expression builders,
+condition/HP staging logic) that were previously orphans in
+Main.elm.
+
+New modules introduced across all three runs:
 
   - =Msg.elm= (397 lines) — 159-constructor Msg + aux types
   - =Model.elm= (67 lines) — single Model record alias
@@ -66,6 +115,7 @@ New modules introduced across both runs:
   - =Ui/Note.elm= (~40 lines)
   - =Ui/Memo.elm= (~30 lines)
   - =Ui/Toast.elm= (~25 lines)
+  - =Update/*.elm= — see run 3 table above
 
 Server-side additions:
 
@@ -78,27 +128,33 @@ Server-side additions:
 
 | Phase | Goal                                       | Status                                         |
 |-------+--------------------------------------------+------------------------------------------------|
-|  6    | Carve updateInner into Update/Foo modules  | NOT STARTED — needs a dedicated run            |
-|  7    | Carve view region into View/Foo modules    | NOT STARTED — likely after 6                   |
+|  7    | Carve view region into View/Foo modules    | NOT STARTED — Main.elm view is now ~4,500 lines |
 | 10    | Data-model refinements + tests             | NOT STARTED — modal-state ADT is the big move  |
 | 11    | More server polish (users / prefs / docs)  | PARTIALLY STARTED                              |
 
 ** Notes for the next autonomous run
 
-  - Phase 6 is now unblocked.  All Ui types live in their own
-    modules; ~Model.elm~ + ~Msg.elm~ + ~Effects.elm~ provide the
-    stable type-level surface that ~Update/*.elm~ modules need.
-    Recommended carve order: ~Update.Encounter~ first (smallest,
-    mostly one-liners through ~Encounter.mapCreature~ and the
-    Roster module), then ~Update.Dice~, then ~Update.HpChange~,
-    then the bigger ones.
-  - Phase 7 view extraction can run in parallel with Phase 6 once
-    a few feature pairs settle.
-  - The remaining ~with*Ui~ helpers (~withHpChange~,
-    ~withInitiative~, ~withConditionUi~, ~withMemoEdit~,
-    ~withTimerSetup~, ~withCompendiumEdit~, ~withNoteEdit~) still
-    live in Main.elm.  Move them into Effects.elm or a new
-    ~Update/Helpers.elm~ when Phase 6 starts.
+  - Phase 7 (view extraction) is the natural next step.  The view
+    region in Main.elm is now ~4,500 lines (lines 808..end).  Most
+    of the per-feature view functions correspond 1-1 to the
+    Update/* modules already extracted, so the carve plan from the
+    original Phase 7 specification is directly applicable.  Start
+    with the easiest pairings: =View/Modal/Note.elm= +
+    =View/Modal/Memo.elm= + =View/Modal/Timer.elm= are tiny.
+  - Phase 10 (modal-state ADT) is now strictly easier than before:
+    the "only one modal open at a time" invariant currently
+    relies on convention, but with each modal's open/close logic
+    living in its own Update/* module the ADT switch is mechanical
+    rather than scattered.
+  - The =MeStatus / MeInfo= types live in =Msg.elm= today.  Phase
+    11 should consider moving them to a new =Auth.elm= when the
+    user-record materialization (users / prefs) happens.
+  - The remaining stranded helpers in Main.elm (=withEncounter=,
+    =selectionClickHandler=, =isFormTag=, =escKey=,
+    =compendiumKeyDecoder=) are wired into the application shell
+    or used by views; they don't fit cleanly into any per-feature
+    Update module and can stay where they are until Phase 7
+    naturally absorbs them.
   - The ~MeStatus / MeInfo~ types live in ~Msg.elm~ today.
     Phase 11 should consider moving them to a new ~Auth.elm~
     when the user-record materialization (users / prefs)
