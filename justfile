@@ -61,6 +61,19 @@ serve:
         --base-url {{dev_url}} \
         --frontend-path frontend/public
 
+# Promote a custom creature from the running dev server into the
+# embedded bundle.  Fetches the creature via the server's REST
+# API, rewrites it with a stable bundle UUID, appends to
+# bundled-creatures.json, and bumps BUNDLED_VERSION.  Run while
+# the dev server is up (`just dev` in another shell) and pass the
+# creature's UUID — easiest way to find that is the side panel's ↗
+# button (URL ends with the UUID), or click into the creature in
+# the browser modal and inspect the network tab.
+#
+#   just promote-to-bundle <uuid>
+promote-to-bundle id:
+    @python3 scripts/promote-to-bundle.py {{id}} --server {{dev_url}}
+
 # Allow direnv for this project so the Nix dev shell auto-activates on cd.
 # Requires direnv to be installed (`brew install direnv`) and hooked into your shell.
 setup-direnv:
