@@ -45,6 +45,9 @@ import Process
 import Random
 import Set exposing (Set)
 import Task
+import Ui.Dice as DiceUi exposing (DiceUi)
+import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
+import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
@@ -835,152 +838,6 @@ conditionToUi target cond =
     }
 
 
-{-| Initiative-manager modal state. `target` is the creature whose
-init circle was clicked (the modal's per-creature buttons read
-"Roll Initiative & Sort: <target>" / "Apply & Sort: <target>").
-
-`customValueText` is the raw text in the "Initiative Value:" input.
-Same trick as the dice modifier and HP edit fields: tracking the
-characters lets the user type a transient `-` while typing a
-negative initiative without the controlled input clobbering it.
-
--}
-type alias InitiativeUi =
-    { target : String
-    , customValueText : String
-    }
-
-
-freshInitiativeUi : String -> InitiativeUi
-freshInitiativeUi target =
-    { target = target
-    , customValueText = ""
-    }
-
-
-{-| One row in the recent-HP-changes log shown at the bottom of the
-Damage / Heal / Temp HP modals. Captures who, what kind, the input
-amount, and the before/after HP+temp snapshots so the row can render
-"27/59 (+0) → 14/59 (+0)" without re-querying the encounter state.
--}
-type alias HpChangeEntry =
-    { kind : HpKind
-    , target : String
-    , amount : Int
-    , beforeHp : Int
-    , beforeTemp : Int
-    , afterHp : Int
-    , afterTemp : Int
-    }
-
-
-{-| Active inline-HP edit. When set, the corresponding `<span>` on
-the matching creature card renders as an `<input>` instead. Only one
-edit at a time so we don't have to disambiguate keyboard focus.
-
-`text` mirrors the `<input>` value (same trick as the dice modifier
-field — keeps transient typing states like the empty string from
-being clobbered on every re-render).
-
--}
-type alias HpEdit =
-    { target : String
-    , field : HpField
-    , text : String
-    }
-
-
-{-| Cap on the HP-change log size. Matches the user's request for
-"last 10 applications".
--}
-maxHpLogEntries : Int
-maxHpLogEntries =
-    10
-
-
-{-| Per-instance state for the HP-change modal.
-
-Open ↔ closed lives at the `Model.hpChange` field (Just / Nothing)
-rather than as a flag here, so an `Encounter.mapCreature` that
-deletes the targeted creature can't leave a stale modal pointing at
-something that no longer exists.
-
-`amountText` mirrors the `<input>` characters for the same reason
-`DiceUi.modifierText` does — to allow transient states like a bare
-"-" while the user is mid-typing without the controlled input
-overwriting their text.
-
--}
-type alias HpChangeUi =
-    { target : String
-    , kind : HpKind
-    , mode : HpInputMode
-    , amount : Int
-    , amountText : String
-    , expression : String
-    , parseError : Maybe Dice.Error
-    , ignoreTemp : Bool
-    , applyToSelected : Bool
-    }
-
-
-{-| Initial state for opening the HP-change modal targeted at a
-creature. The kind picks Damage / Heal / Temp HP; the rest defaults
-to a 0-amount manual entry.
--}
-freshHpChangeUi : String -> HpKind -> HpChangeUi
-freshHpChangeUi target kind =
-    { target = target
-    , kind = kind
-    , mode = ManualMode
-    , amount = 0
-    , amountText = "0"
-    , expression = ""
-    , parseError = Nothing
-    , ignoreTemp = False
-    , applyToSelected = False
-    }
-
-
-{-| UI state for the dice-roller modal. Holds presentation-only
-fields (open/closed, current text input, count/modifier sliders)
-plus the persisted-this-session roll history. The actual rules and
-random-roll logic live in `Dice`; this record exists in `Main` so
-it stays adjacent to the view code that consumes it.
--}
-type alias DiceUi =
-    { open : Bool
-    , input : String
-    , inputError : Maybe Dice.Error
-    , count : Int
-    , modifier : Int
-    , modifierText : String
-    , history : Dice.History
-    , unread : Bool
-    }
-
-
-{-| The parsed `modifier` is what generators consume; `modifierText`
-mirrors the literal characters in the `<input>`. The two diverge
-during transient typing — e.g. while the user is typing "-5", the
-field briefly contains just "-", which doesn't parse as an Int. We
-keep the raw text in the model so re-renders don't overwrite the
-"-" with a stringified previous value, which used to make negative
-input feel impossible.
--}
-emptyDice : DiceUi
-emptyDice =
-    { open = False
-    , input = ""
-    , inputError = Nothing
-    , count = 1
-    , modifier = 0
-    , modifierText = "0"
-    , history = Dice.emptyHistory
-    , unread = False
-    }
-
-
 {-| Every message the runtime can send the update loop. Per-creature
 messages carry the target creature's `name` as their identity; that's
 how we look up which row of `encounter.creatures` to operate on.
@@ -1082,7 +939,7 @@ init _ url key =
       , route = route
       , me = Loading
       , encounter = Encounter.empty
-      , dice = emptyDice
+      , dice = DiceUi.empty
       , hpChange = Nothing
       , hpChangeLog = []
       , hpEdit = Nothing
@@ -1536,7 +1393,7 @@ updateInner msg model =
 
         -- HP change modal lifecycle
         HpChangeOpen target kind ->
-            ( { model | hpChange = Just (freshHpChangeUi target kind) }
+            ( { model | hpChange = Just (HpChangeUi.fresh target kind) }
             , Cmd.none
             )
 
@@ -1746,7 +1603,7 @@ updateInner msg model =
 
         -- Initiative manager
         InitiativeOpen target ->
-            ( { model | initiative = Just (freshInitiativeUi target) }
+            ( { model | initiative = Just (InitiativeUi.fresh target) }
             , Cmd.none
             )
 
@@ -4077,7 +3934,7 @@ applyHpChangeAndClose ui amount model =
             -- the foldl above; reverse so the first target appears
             -- first when prepended to the existing log.
             List.reverse result.log
-                ++ List.take (Basics.max 0 (maxHpLogEntries - List.length result.log)) model.hpChangeLog
+                ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog
     }
 
 
