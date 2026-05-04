@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions",
     "allow": [
       "Read",
       "Edit",
@@ -10,7 +9,6 @@
       "TodoWrite",
       "WebFetch",
       "WebSearch",
-
       "Bash(ls *)",
       "Bash(ls)",
       "Bash(cat *)",
@@ -39,14 +37,15 @@
       "Bash(awk *)",
       "Bash(sed *)",
       "Bash(diff *)",
-
+      "Bash(source *)",
+      "Bash(chmod *)",
+      "Bash(export *)",
       "Bash(mkdir *)",
       "Bash(touch *)",
       "Bash(cp *)",
       "Bash(mv *)",
       "Bash(ln *)",
       "Bash(rm *)",
-
       "Bash(cargo *)",
       "Bash(rustc *)",
       "Bash(rustfmt *)",
@@ -63,29 +62,28 @@
       "Bash(just)",
       "Bash(jq *)",
       "Bash(d2 *)",
-
       "Bash(nix *)",
-
       "Bash(git *)",
       "Bash(gh *)",
-
       "Bash(curl *)",
-
       "Bash(lsof *)",
       "Bash(lsof)",
       "Bash(ps *)",
       "Bash(ps)",
       "Bash(kill *)",
       "Bash(pkill *)",
-
       "Bash(./target/debug/ezpz-dndz-*)",
       "Bash(target/debug/ezpz-dndz-*)",
       "Bash(/Users/ericrinman/dev/ezpz-dndz/target/debug/*)",
       "Bash(./target/release/ezpz-dndz-*)",
       "Bash(target/release/ezpz-dndz-*)",
-
+      "Bash(./target/debug/*)",
+      "Bash(./target/release/*)",
+      "Bash(target/debug/*)",
+      "Bash(target/release/*)",
       "Bash(open *)",
-      "Bash(open)"
+      "Bash(open)",
+      "Bash(xargs -I{} cat {})"
     ],
     "deny": [
       "Bash(sudo *)",
@@ -101,6 +99,7 @@
       "Bash(npm publish)",
       "Bash(cargo publish *)",
       "Bash(cargo publish)"
-    ]
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }
