@@ -69,7 +69,10 @@ import Update.Dice
 import Update.Encounter
 import Update.HpChange
 import Update.Initiative
+import Update.Memo
+import Update.Note
 import Update.Shell
+import Update.Timer
 import Update.Toast
 import Url exposing (Url)
 import Util.Http
@@ -506,45 +509,17 @@ updateInner msg model =
         InitiativeRollsLanded results ->
             Update.Initiative.rollsLanded results model
 
-        -- Note-edit modal
         NoteEditOpen name current ->
-            ( { model | noteEdit = Just (NoteUi.fresh name current) }
-            , Cmd.none
-            )
+            Update.Note.open name current model
 
         NoteEditChange text ->
-            -- Cap the text at NoteUi.maxNoteLength here so the model never
-            -- holds an over-long note even if a paste sneaks past
-            -- the input's `maxlength` attribute.
-            ( withNoteEdit (\u -> { u | text = String.left NoteUi.maxNoteLength text }) model
-            , Cmd.none
-            )
+            Update.Note.change text model
 
         NoteEditCommit ->
-            -- Trim trailing whitespace before stamping. Empty strings
-            -- are valid (clears the note) — that's how the user
-            -- removes a note without a separate "delete" action.
-            case model.noteEdit of
-                Just ui ->
-                    let
-                        trimmed =
-                            String.trim ui.text
-                    in
-                    ( { model
-                        | encounter =
-                            Encounter.mapCreature ui.target
-                                (\c -> { c | note = trimmed })
-                                model.encounter
-                        , noteEdit = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Note.commit model
 
         NoteEditCancel ->
-            ( { model | noteEdit = Nothing }, Cmd.none )
+            Update.Note.cancel model
 
         -- Condition / effect modal lifecycle
         ConditionOpenNew name ->
@@ -828,116 +803,38 @@ updateInner msg model =
             -- way, nothing further to do.
             ( model, Cmd.none )
 
-        -- Memo modal (card row 3 📝)
         MemoOpen name ->
-            let
-                current =
-                    model.encounter.creatures
-                        |> List.filter (\c -> c.name == name)
-                        |> List.head
-                        |> Maybe.map .memo
-                        |> Maybe.withDefault ""
-            in
-            ( { model | memoEdit = Just (MemoUi.fresh name current) }
-            , Cmd.none
-            )
+            Update.Memo.open name model
 
         MemoChange text ->
-            ( withMemoEdit (\u -> { u | text = String.left MemoUi.maxMemoLength text }) model
-            , Cmd.none
-            )
+            Update.Memo.change text model
 
         MemoCommit ->
-            case model.memoEdit of
-                Just ui ->
-                    let
-                        trimmed =
-                            String.trim ui.text
-                    in
-                    ( { model
-                        | encounter =
-                            Encounter.mapCreature ui.target
-                                (\c -> { c | memo = trimmed })
-                                model.encounter
-                        , memoEdit = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Memo.commit model
 
         MemoCancel ->
-            ( { model | memoEdit = Nothing }, Cmd.none )
+            Update.Memo.cancel model
 
         MemoClear name ->
-            ( { model
-                | encounter =
-                    Encounter.mapCreature name (\c -> { c | memo = "" }) model.encounter
-              }
-            , Cmd.none
-            )
+            Update.Memo.clear name model
 
-        -- Timer modal (card row 3 ⏱)
         TimerOpen name ->
-            ( { model | timerSetup = Just (TimerUi.fresh name) }
-            , Cmd.none
-            )
+            Update.Timer.open name model
 
         TimerSetupTurnsChanged text ->
-            ( withTimerSetup
-                (\u ->
-                    { u
-                        | turnsText = text
-                        , turns =
-                            String.toInt (String.trim text)
-                                |> Maybe.map (Basics.max 1 >> Basics.min 99)
-                                |> Maybe.withDefault u.turns
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Timer.turnsChanged text model
 
         TimerSetupPhaseSet phase ->
-            ( withTimerSetup (\u -> { u | phase = phase }) model, Cmd.none )
+            Update.Timer.phaseSet phase model
 
         TimerSetupApply ->
-            case model.timerSetup of
-                Just ui ->
-                    let
-                        newTimer =
-                            { remaining = ui.turns
-                            , phase = ui.phase
-                            , ringing = False
-                            }
-                    in
-                    ( { model
-                        | encounter =
-                            Encounter.mapCreature ui.target
-                                (\c -> { c | timer = Just newTimer })
-                                model.encounter
-                        , timerSetup = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Timer.apply model
 
         TimerSetupCancel ->
-            ( { model | timerSetup = Nothing }, Cmd.none )
+            Update.Timer.cancel model
 
         TimerDismiss name ->
-            -- Dismiss whether ringing or still counting; the GM
-            -- gets to cancel a timer mid-flight if combat ends
-            -- early or they set the wrong creature.
-            ( { model
-                | encounter =
-                    Encounter.mapCreature name (\c -> { c | timer = Nothing }) model.encounter
-              }
-            , Cmd.none
-            )
+            Update.Timer.dismiss name model
 
         CompendiumLoaded result ->
             ( withCompendium (compendiumLoadedUpdate result) model, Cmd.none )
@@ -2005,32 +1902,11 @@ withCompendium fn model =
     { model | compendium = fn model.compendium }
 
 
-{-| Apply `fn` to the open note-edit modal. No-op when closed.
--}
-withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
-withNoteEdit fn model =
-    { model | noteEdit = Maybe.map fn model.noteEdit }
-
-
 {-| Apply `fn` to the open condition modal. No-op when closed.
 -}
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
 withConditionUi fn model =
     { model | conditionUi = Maybe.map fn model.conditionUi }
-
-
-{-| Apply `fn` to the open memo-edit modal. No-op when closed.
--}
-withMemoEdit : (MemoEditUi -> MemoEditUi) -> Model -> Model
-withMemoEdit fn model =
-    { model | memoEdit = Maybe.map fn model.memoEdit }
-
-
-{-| Apply `fn` to the open timer-setup modal. No-op when closed.
--}
-withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
-withTimerSetup fn model =
-    { model | timerSetup = Maybe.map fn model.timerSetup }
 
 
 {-| Auto-correct the `untilTarget` field if the current
