@@ -5,7 +5,7 @@ module Encounter exposing
     , SaveNotice
     , Timer
     , standardConditions
-    , empty, initialEncounter
+    , empty
     , nextTurn, setActive, activeCreature, sortByInitiative
     , moveUp, moveDown
     , mapCreature, nextCover
@@ -42,7 +42,7 @@ damage), it belongs here.
 
 # Initial state
 
-@docs empty, initialEncounter
+@docs empty
 
 
 # Turn lifecycle
@@ -403,9 +403,9 @@ type alias Encounter =
 
 {-| The empty encounter the running app boots into. The previous
 "`initialEncounter` is a fixed cast" pattern lives on as a TEST
-fixture (see `seedCreatures` below) — but the running app starts
-empty and either loads a persisted encounter from the server or
-waits for the user to add creatures from the compendium.
+fixture (see `Encounter.Seed.initialEncounter`) — but the running
+app starts empty and either loads a persisted encounter from the
+server or waits for the user to add creatures from the compendium.
 -}
 empty : Encounter
 empty =
@@ -413,273 +413,6 @@ empty =
     , activeName = ""
     , round = 1
     }
-
-
-{-| Test-only encounter fixture used by the elm-test suite to
-exercise nextTurn / setActive / sort behavior against a populated
-queue. The running app no longer boots into this — it boots into
-`empty` — but the unit tests still need a populated cast.
--}
-initialEncounter : Encounter
-initialEncounter =
-    { creatures = seedCreatures
-    , activeName = "Brakka, Ogre Brute"
-    , round = 1
-    }
-
-
-{-| Hard-coded mock cast. Order is descending initiative.
--}
-seedCreatures : List Creature
-seedCreatures =
-    [ { name = "Lyra Vale (PC)"
-      , kind = "Half-elf rogue, lvl 5"
-      , initiative = 22
-      , initiativeBonus = 5
-      , currentHp = 0
-      , maxHp = 42
-      , tempHp = 0
-      , armorClass = 16
-      , speed = 30
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = HalfCover
-      , concentrating = False
-      , hiding = True
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 1 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Brakka, Ogre Brute"
-      , kind = "Large giant, chaotic evil"
-      , initiative = 18
-      , initiativeBonus = -1
-      , currentHp = 27
-      , maxHp = 59
-      , tempHp = 0
-      , armorClass = 11
-      , speed = 40
-      , conditions =
-            [ { id = 1
-              , name = "Frightened"
-              , note = "of Lyra"
-              , duration = DurationCountdown AtEnd 3 False
-              , saveToEnd = Just { ability = "WIS", dc = 13, bonus = 1, autoRoll = AutoRollManual }
-              }
-            ]
-      , saveNotices = []
-      , selected = True
-      , surprised = True
-      , cover = NoCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = True
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Captain Vex"
-      , kind = "Medium humanoid (human), bandit captain"
-      , initiative = 17
-      , initiativeBonus = 2
-      , currentHp = 34
-      , maxHp = 65
-      , tempHp = 0
-      , armorClass = 15
-      , speed = 30
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = NoCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = True
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = True
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Goblin Skirmisher"
-      , kind = "Small humanoid, neutral evil"
-      , initiative = 15
-      , initiativeBonus = 2
-      , currentHp = 7
-      , maxHp = 7
-      , tempHp = 0
-      , armorClass = 15
-      , speed = 30
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = ThreeQuartersCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Goblin Boss"
-      , kind = "Small humanoid, neutral evil"
-      , initiative = 12
-      , initiativeBonus = 2
-      , currentHp = 21
-      , maxHp = 21
-      , tempHp = 0
-      , armorClass = 17
-      , speed = 30
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = FullCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Thornwhip Shaman"
-      , kind = "Small humanoid, druid"
-      , initiative = 9
-      , initiativeBonus = 1
-      , currentHp = 4
-      , maxHp = 27
-      , tempHp = 0
-      , armorClass = 13
-      , speed = 30
-      , conditions = []
-      , saveNotices = []
-      , selected = True
-      , surprised = False
-      , cover = NoCover
-      , concentrating = True
-      , hiding = False
-      , flying = True
-      , flyHeight = 30
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Stone Sentinel"
-      , kind = "Large construct, unaligned"
-      , initiative = 8
-      , initiativeBonus = -1
-      , currentHp = 78
-      , maxHp = 78
-      , tempHp = 0
-      , armorClass = 18
-      , speed = 25
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = HalfCover
-      , concentrating = False
-      , hiding = False
-      , flying = False
-      , flyHeight = 0
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    , { name = "Shadow Wisp"
-      , kind = "Tiny undead, neutral evil"
-      , initiative = 6
-      , initiativeBonus = 3
-      , currentHp = 12
-      , maxHp = 18
-      , tempHp = 0
-      , armorClass = 12
-      , speed = 0
-      , conditions = []
-      , saveNotices = []
-      , selected = False
-      , surprised = False
-      , cover = NoCover
-      , concentrating = False
-      , hiding = True
-      , flying = True
-      , flyHeight = 15
-      , bloodied = False
-      , deathSaves = { successes = 0, failures = 0 }
-      , holding = False
-      , note = ""
-      , memo = ""
-      , timer = Nothing
-      , creatureId = Nothing
-      , hasLegendaryActions = False
-      , legendaryActionsUsed = Set.empty
-      , hasLegendaryResistance = False
-      , legendaryResistanceUsed = Set.empty
-      }
-    ]
 
 
 

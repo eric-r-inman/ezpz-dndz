@@ -11,6 +11,7 @@ If the surface changes, this file should be the first to fail.
 
 import Encounter
 import Encounter.DeathSaves as DeathSaves
+import Encounter.Seed as Seed
 import Expect
 import Test exposing (Test, describe, test)
 
@@ -84,7 +85,7 @@ turnLifecycleSuite =
             \_ ->
                 let
                     enc =
-                        Encounter.initialEncounter
+                        Seed.initialEncounter
 
                     expectedNext =
                         successorName enc.activeName enc.creatures
@@ -97,7 +98,7 @@ turnLifecycleSuite =
             \_ ->
                 let
                     enc0 =
-                        Encounter.initialEncounter
+                        Seed.initialEncounter
 
                     last =
                         List.head (List.reverse enc0.creatures)
