@@ -37,7 +37,28 @@ run *args: build-elm
 dev:
     #!/usr/bin/env bash
     set -euo pipefail
+    # The user's interactive shell typically gets nix on PATH via a
+    # profile script (.zshrc / .bash_profile sources it).  Bash
+    # subshells spawned by `just` don't auto-load that, so source
+    # the standard nix-init scripts directly if they exist.
+    for nix_init in \
+        /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh \
+        "$HOME/.nix-profile/etc/profile.d/nix.sh" \
+        /etc/profile.d/nix.sh; do
+        if [ -f "$nix_init" ]; then
+            . "$nix_init"
+            break
+        fi
+    done
     if ! command -v cargo >/dev/null 2>&1 || ! command -v elm >/dev/null 2>&1; then
+        if ! command -v nix >/dev/null 2>&1; then
+            echo "error: nix not found on PATH and the nix profile init scripts" >&2
+            echo "       weren't located either.  Install Nix, or run inside an" >&2
+            echo "       active nix shell:" >&2
+            echo "         nix develop" >&2
+            echo "         just dev" >&2
+            exit 1
+        fi
         exec nix develop --command just dev
     fi
     ( cd frontend && elm make src/Main.elm --output public/elm.js )
@@ -52,7 +73,24 @@ dev:
 serve:
     #!/usr/bin/env bash
     set -euo pipefail
+    for nix_init in \
+        /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh \
+        "$HOME/.nix-profile/etc/profile.d/nix.sh" \
+        /etc/profile.d/nix.sh; do
+        if [ -f "$nix_init" ]; then
+            . "$nix_init"
+            break
+        fi
+    done
     if ! command -v cargo >/dev/null 2>&1 || ! command -v elm >/dev/null 2>&1; then
+        if ! command -v nix >/dev/null 2>&1; then
+            echo "error: nix not found on PATH and the nix profile init scripts" >&2
+            echo "       weren't located either.  Install Nix, or run inside an" >&2
+            echo "       active nix shell:" >&2
+            echo "         nix develop" >&2
+            echo "         just serve" >&2
+            exit 1
+        fi
         exec nix develop --command just serve
     fi
     ( cd frontend && elm make src/Main.elm --output public/elm.js )
