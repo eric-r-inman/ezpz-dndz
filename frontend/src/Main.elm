@@ -1339,6 +1339,9 @@ type Msg
     | CompendiumPasteApply
       -- Pin a compendium creature's stat block in the side panel
     | PanelShowCreature String
+      -- Legendary action / legendary resistance pip toggles
+    | ToggleLegendaryActionPip String Int
+    | ToggleLegendaryResistancePip String Int
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
@@ -2875,6 +2878,20 @@ updateInner msg model =
         PanelShowCreature creatureId ->
             ( { model | panelCreatureId = Just creatureId }, Cmd.none )
 
+        ToggleLegendaryActionPip name idx ->
+            ( withEncounter
+                (Encounter.mapCreature name (toggleLegendaryActionPip idx))
+                model
+            , Cmd.none
+            )
+
+        ToggleLegendaryResistancePip name idx ->
+            ( withEncounter
+                (Encounter.mapCreature name (toggleLegendaryResistancePip idx))
+                model
+            , Cmd.none
+            )
+
         EncounterLoaded result ->
             case result of
                 Ok (Just encounter) ->
@@ -3706,6 +3723,36 @@ toggleCompendiumKind kind ui =
                 Set.insert key ui.kindFilter
     in
     { ui | kindFilter = next, selectedId = Nothing }
+
+
+{-| Toggle membership of `idx` in the creature's
+`legendaryActionsUsed` set — drives the orange LA pip column
+on the card. The 5e rule that LA refresh at the start of the
+creature's turn is enforced separately by
+`Encounter.applyBeginOfTurn`, which clears the set when the
+creature becomes active.
+-}
+toggleLegendaryActionPip : Int -> Creature -> Creature
+toggleLegendaryActionPip idx c =
+    { c | legendaryActionsUsed = toggleSetMember idx c.legendaryActionsUsed }
+
+
+{-| Same as `toggleLegendaryActionPip` but for the LR column,
+which deliberately doesn't auto-reset (LR is per long rest in
+the rules, not per turn — the GM clears these manually).
+-}
+toggleLegendaryResistancePip : Int -> Creature -> Creature
+toggleLegendaryResistancePip idx c =
+    { c | legendaryResistanceUsed = toggleSetMember idx c.legendaryResistanceUsed }
+
+
+toggleSetMember : Int -> Set Int -> Set Int
+toggleSetMember idx set =
+    if Set.member idx set then
+        Set.remove idx set
+
+    else
+        Set.insert idx set
 
 
 {-| Lift an `Encounter -> Encounter` transformation into a
@@ -5084,6 +5131,7 @@ viewCreatureCard activeName hpEdit creature =
             , viewCardRowMid creature hpEdit
             , viewCardRowBot creature
             ]
+        , viewLegendaryColumns creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -5187,6 +5235,123 @@ viewNoteOrPencil creature =
                 [ text creature.note ]
             , span [ class "creature-note__sep" ] [ text "|" ]
             ]
+
+
+{-| Two narrow vertical columns of pips on the creature card,
+between the center and the right rail. Each column has a bold
+header letter ("LA" / "LR") followed by 4 toggleable circular
+pips.
+
+Conditional rendering — both columns spawn only when the
+creature's compendium source has the matching feature, and the
+flag was baked into the encounter creature at spawn time
+(`Compendium.draftToInstance`):
+
+  - `hasLegendaryActions = True` (compendium source had
+    `legendary_actions /= Nothing`) → orange LA column.
+  - `hasLegendaryResistance = True` (compendium source had a
+    trait whose name contains "Legendary Resistance") → yellow
+    LR column.
+
+The LA pips reset to "all available" at the start of the
+creature's turn — `Encounter.applyBeginOfTurn` clears the
+`legendaryActionsUsed` set as part of the begin-of-turn hook.
+LR pips do NOT auto-reset (legendary resistance is per long
+rest in 5e, not per turn).
+
+When the creature has neither feature, `viewLegendaryColumns`
+returns `text ""` so the grid doesn't allocate a slot for an
+empty wrapper.
+
+-}
+viewLegendaryColumns : Creature -> Html Msg
+viewLegendaryColumns creature =
+    if not creature.hasLegendaryActions && not creature.hasLegendaryResistance then
+        text ""
+
+    else
+        div [ class "creature-card__legendary" ]
+            [ if creature.hasLegendaryActions then
+                viewLegendaryColumn
+                    { creatureName = creature.name
+                    , kind = "la"
+                    , label = "LA"
+                    , used = creature.legendaryActionsUsed
+                    , onToggle = ToggleLegendaryActionPip creature.name
+                    }
+
+              else
+                text ""
+            , if creature.hasLegendaryResistance then
+                viewLegendaryColumn
+                    { creatureName = creature.name
+                    , kind = "lr"
+                    , label = "LR"
+                    , used = creature.legendaryResistanceUsed
+                    , onToggle = ToggleLegendaryResistancePip creature.name
+                    }
+
+              else
+                text ""
+            ]
+
+
+viewLegendaryColumn :
+    { creatureName : String
+    , kind : String
+    , label : String
+    , used : Set Int
+    , onToggle : Int -> Msg
+    }
+    -> Html Msg
+viewLegendaryColumn cfg =
+    let
+        pip idx =
+            let
+                filled =
+                    Set.member idx cfg.used
+            in
+            button
+                [ class
+                    ("legendary-col__pip"
+                        ++ (if filled then
+                                " legendary-col__pip--filled"
+
+                            else
+                                ""
+                           )
+                    )
+                , onClick (cfg.onToggle idx)
+                , title
+                    (cfg.label
+                        ++ " pip "
+                        ++ String.fromInt (idx + 1)
+                        ++ (if filled then
+                                ": used"
+
+                            else
+                                ": available"
+                           )
+                    )
+                , attribute "aria-label"
+                    (cfg.label ++ " pip " ++ String.fromInt (idx + 1))
+                , attribute "aria-pressed"
+                    (if filled then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                []
+    in
+    div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
+        [ div [ class "legendary-col__header" ] [ text cfg.label ]
+        , pip 0
+        , pip 1
+        , pip 2
+        , pip 3
+        ]
 
 
 viewSurprisedToggle : Creature -> Html Msg

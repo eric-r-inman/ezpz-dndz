@@ -65,6 +65,7 @@ import Encounter
 import Http
 import Json.Decode as D
 import Json.Encode as E
+import Set
 
 
 
@@ -401,7 +402,26 @@ draftToInstance { displayName, initiativeRoll } c =
     , memo = ""
     , timer = Nothing
     , creatureId = Just c.id
+    , hasLegendaryActions = c.legendaryActions /= Nothing
+    , legendaryActionsUsed = Set.empty
+    , hasLegendaryResistance = sourceHasLegendaryResistance c
+    , legendaryResistanceUsed = Set.empty
     }
+
+
+{-| Detect whether a compendium creature has the standard
+"Legendary Resistance" trait. We don't have a structured field
+for this — Legendary Resistance is one of the several recurring
+traits authored as free text — so we check for the trait name
+case-insensitively. The substring check matches both the bare
+"Legendary Resistance" and the more usual "Legendary Resistance
+(3/Day, or 4/Day in Lair)" forms.
+-}
+sourceHasLegendaryResistance : Creature -> Bool
+sourceHasLegendaryResistance c =
+    List.any
+        (\t -> String.contains "legendary resistance" (String.toLower t.name))
+        c.traits
 
 
 {-| Build the human-readable "kind" line shown under the name on

@@ -39,6 +39,7 @@ import Encounter
 import Http
 import Json.Decode as D
 import Json.Encode as E
+import Set exposing (Set)
 
 
 
@@ -133,7 +134,16 @@ encodeCreature c =
         , ( "memo", E.string c.memo )
         , ( "timer", encodeMaybe encodeTimer c.timer )
         , ( "creatureId", encodeMaybe E.string c.creatureId )
+        , ( "hasLegendaryActions", E.bool c.hasLegendaryActions )
+        , ( "legendaryActionsUsed", encodeIntSet c.legendaryActionsUsed )
+        , ( "hasLegendaryResistance", E.bool c.hasLegendaryResistance )
+        , ( "legendaryResistanceUsed", encodeIntSet c.legendaryResistanceUsed )
         ]
+
+
+encodeIntSet : Set Int -> E.Value
+encodeIntSet s =
+    E.list E.int (Set.toList s)
 
 
 encodeCondition : Condition -> E.Value
@@ -305,7 +315,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected surprised cover concentrating hiding flying flyHeight bloodied deathSaves holding note memo timer creatureId ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected surprised cover concentrating hiding flying flyHeight bloodied deathSaves holding note memo timer creatureId hasLA laUsed hasLR lrUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -331,6 +341,10 @@ decodeCreature =
             , memo = memo
             , timer = timer
             , creatureId = creatureId
+            , hasLegendaryActions = hasLA
+            , legendaryActionsUsed = laUsed
+            , hasLegendaryResistance = hasLR
+            , legendaryResistanceUsed = lrUsed
             }
         )
         |> required "name" D.string
@@ -358,6 +372,15 @@ decodeCreature =
         |> optional "memo" D.string ""
         |> optional "timer" (D.nullable decodeTimer) Nothing
         |> optional "creatureId" (D.nullable D.string) Nothing
+        |> optional "hasLegendaryActions" D.bool False
+        |> optional "legendaryActionsUsed" decodeIntSet Set.empty
+        |> optional "hasLegendaryResistance" D.bool False
+        |> optional "legendaryResistanceUsed" decodeIntSet Set.empty
+
+
+decodeIntSet : D.Decoder (Set Int)
+decodeIntSet =
+    D.list D.int |> D.map Set.fromList
 
 
 decodeCondition : D.Decoder Condition

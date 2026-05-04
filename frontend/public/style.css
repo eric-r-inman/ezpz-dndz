@@ -288,6 +288,83 @@ body {
   min-width: 0;
 }
 
+/* Legendary columns wrapper: a flex strip between the center
+   and right-rail grid cells.  Renders nothing when the creature
+   has neither Legendary Actions nor Legendary Resistance, so the
+   3-column card grid grows an implicit 4th `auto` column only
+   when needed. */
+.creature-card__legendary {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.legendary-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 28px;
+  padding: 4px 2px;
+}
+
+.legendary-col__header {
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+/* Orange for legendary-action pips ("LA"); auto-reset at the
+   start of the creature's turn. */
+.legendary-col--la .legendary-col__header {
+  color: var(--color-orange, #f97316);
+}
+
+.legendary-col--la .legendary-col__pip {
+  border-color: var(--color-orange, #f97316);
+}
+
+.legendary-col--la .legendary-col__pip--filled {
+  background: var(--color-orange, #f97316);
+}
+
+/* Yellow for legendary-resistance pips ("LR"); GM clears
+   manually (rules: per long rest, not per turn). */
+.legendary-col--lr .legendary-col__header {
+  color: var(--color-yellow, #f5c842);
+}
+
+.legendary-col--lr .legendary-col__pip {
+  border-color: var(--color-yellow, #f5c842);
+}
+
+.legendary-col--lr .legendary-col__pip--filled {
+  background: var(--color-yellow, #f5c842);
+}
+
+.legendary-col__pip {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    transform 0.05s ease;
+}
+
+.legendary-col__pip:hover {
+  transform: scale(1.15);
+}
+
+.legendary-col__pip:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .creature-card__row {
   display: flex;
   align-items: center;
@@ -2739,10 +2816,17 @@ body {
 
 /* Compendium browser modal — the only modal that's wide and
    tall enough to host a two-column body. Filter bar across the
-   top, list + detail below. */
+   top, list + detail below.
+
+   `height` (not `max-height`) is fixed so the modal doesn't
+   shrink down around a small creature's stat block — that
+   height-jump made the UI feel jumpy when switching between
+   creatures with very different stat-block lengths. The detail
+   pane internally has `overflow-y: auto`, so taller stat blocks
+   scroll within the fixed-size frame. */
 .modal--compendium {
   max-width: 1100px;
-  max-height: calc(100vh - 32px);
+  height: calc(100vh - 32px);
   width: calc(100% - 32px);
 }
 

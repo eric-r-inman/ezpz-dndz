@@ -14,6 +14,7 @@ import Encounter
 import Encounter.DeathSaves as DeathSaves
 import Expect
 import HpChange
+import Set
 import Test exposing (Test, describe, test)
 
 
@@ -44,6 +45,10 @@ fixture =
     , memo = ""
     , timer = Nothing
     , creatureId = Nothing
+    , hasLegendaryActions = False
+    , legendaryActionsUsed = Set.empty
+    , hasLegendaryResistance = False
+    , legendaryResistanceUsed = Set.empty
     }
 
 

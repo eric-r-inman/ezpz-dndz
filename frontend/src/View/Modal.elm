@@ -62,8 +62,8 @@ view config =
                 , button
                     [ class "modal__close"
                     , onClick config.close
-                    , title "Cancel"
-                    , attribute "aria-label" "Cancel"
+                    , title "Close"
+                    , attribute "aria-label" "Close"
                     ]
                     [ text "×" ]
                 ]

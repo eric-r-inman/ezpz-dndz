@@ -105,6 +105,7 @@ feature, with the `update` loop composing them around `nextTurn`.
 
 import Encounter.DeathSaves
 import Encounter.SaveNotice
+import Set exposing (Set)
 
 
 
@@ -373,6 +374,10 @@ type alias Creature =
     , memo : String
     , timer : Maybe Timer
     , creatureId : Maybe String
+    , hasLegendaryActions : Bool
+    , legendaryActionsUsed : Set Int
+    , hasLegendaryResistance : Bool
+    , legendaryResistanceUsed : Set Int
     }
 
 
@@ -452,6 +457,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -485,6 +494,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -511,6 +524,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -537,6 +554,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -563,6 +584,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -589,6 +614,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -615,6 +644,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -641,6 +674,10 @@ seedCreatures =
       , memo = ""
       , timer = Nothing
       , creatureId = Nothing
+      , hasLegendaryActions = False
+      , legendaryActionsUsed = Set.empty
+      , hasLegendaryResistance = False
+      , legendaryResistanceUsed = Set.empty
       }
     ]
 
@@ -930,6 +967,12 @@ tickTimerFor name phase enc =
 
 {-| Begin-of-turn hook for the named creature: symmetric to
 [`applyEndOfTurn`](#applyEndOfTurn) but for `AtBegin` durations.
+Also resets the creature's `legendaryActionsUsed` set so the
+LA pip column on the card returns to "all available" — that
+mirrors the 5e rule that a legendary creature regains its
+expended legendary actions at the start of its turn.
+Legendary resistances do NOT reset (they're per long rest), so
+`legendaryResistanceUsed` stays untouched.
 -}
 applyBeginOfTurn : String -> Encounter -> Encounter
 applyBeginOfTurn name enc =
@@ -937,6 +980,14 @@ applyBeginOfTurn name enc =
         |> tickCountdownFor name AtBegin
         |> tickTimerFor name AtBegin
         |> expireUntilTurn AtBegin name
+        |> resetLegendaryActionsFor name
+
+
+resetLegendaryActionsFor : String -> Encounter -> Encounter
+resetLegendaryActionsFor name enc =
+    mapCreature name
+        (\c -> { c | legendaryActionsUsed = Set.empty })
+        enc
 
 
 {-| Tick down the named creature's `DurationCountdown` conditions
