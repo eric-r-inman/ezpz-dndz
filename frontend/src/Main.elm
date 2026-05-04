@@ -13,6 +13,7 @@ import Encounter
         , Creature
         , Encounter
         )
+import Encounter.Lifecycle
 import Encounter.Wire
 import File exposing (File)
 import File.Select
@@ -1599,7 +1600,7 @@ updateInner msg model =
                     model.encounter.activeName
 
                 newEnc =
-                    Encounter.nextTurn model.encounter
+                    Encounter.Lifecycle.nextTurn model.encounter
 
                 endRolls =
                     autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc

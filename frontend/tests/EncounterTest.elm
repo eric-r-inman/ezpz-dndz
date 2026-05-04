@@ -11,6 +11,7 @@ If the surface changes, this file should be the first to fail.
 
 import Encounter
 import Encounter.DeathSaves as DeathSaves
+import Encounter.Lifecycle
 import Encounter.Seed as Seed
 import Expect
 import Test exposing (Test, describe, test)
@@ -80,7 +81,7 @@ deathSavesSuite =
 
 turnLifecycleSuite : Test
 turnLifecycleSuite =
-    describe "Encounter.nextTurn"
+    describe "Encounter.Lifecycle.nextTurn"
         [ test "advances to the queue successor of the active creature" <|
             \_ ->
                 let
@@ -91,7 +92,7 @@ turnLifecycleSuite =
                         successorName enc.activeName enc.creatures
 
                     after =
-                        Encounter.nextTurn enc
+                        Encounter.Lifecycle.nextTurn enc
                 in
                 Expect.equal after.activeName expectedNext
         , test "round increments when wrapping past the last creature" <|
@@ -110,7 +111,7 @@ turnLifecycleSuite =
                         Encounter.setActive last enc0
 
                     after =
-                        Encounter.nextTurn primed
+                        Encounter.Lifecycle.nextTurn primed
                 in
                 Expect.equal after.round (enc0.round + 1)
         ]
