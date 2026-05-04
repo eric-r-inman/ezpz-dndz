@@ -1,0 +1,112 @@
+module Update.Shell exposing
+    ( encounterLoaded
+    , encounterPersisted
+    , gotMe
+    , noOp
+    , urlChanged
+    , urlRequested
+    )
+
+{-| Application-shell Msg handlers: URL routing, identity (`/me`),
+encounter load + persist response, and the `NoOp` fallback.
+
+These branches sit at the boundary between the Elm runtime and the
+domain modules — they receive Cmds the runtime fired off (HTTP
+responses, navigation events) and either fold them back into model
+state or re-dispatch.
+
+-}
+
+import Browser
+import Browser.Navigation as Nav
+import Effects
+import Encounter exposing (Encounter)
+import Http
+import Model exposing (Model)
+import Msg exposing (MeInfo, MeStatus(..), Msg)
+import Route
+import Ui.Toast exposing (ToastKind(..))
+import Update.Toast
+import Url exposing (Url)
+import Util.Http
+
+
+{-| Internal navigation goes through `pushUrl` (the runtime then
+fires `UrlChanged`); external navigation uses `Nav.load` which
+unloads the SPA.
+-}
+urlRequested : Nav.Key -> Browser.UrlRequest -> Model -> ( Model, Cmd Msg )
+urlRequested key req model =
+    case req of
+        Browser.Internal url ->
+            ( model, Nav.pushUrl key (Url.toString url) )
+
+        Browser.External url ->
+            ( model, Nav.load url )
+
+
+{-| URL changed — re-derive the route, reset the identity badge to
+loading (the new page may need to refetch), and ask `Effects` what
+Cmd to fire for the route.
+-}
+urlChanged : Url -> Model -> ( Model, Cmd Msg )
+urlChanged url model =
+    let
+        route =
+            Route.fromUrl url
+    in
+    ( { model | url = url, route = route, me = Loading }
+    , Effects.cmdForRoute route
+    )
+
+
+{-| `/me` response landed. Success populates the badge; failure
+flips to `Failed` so the view can show "Sign in" or similar.
+-}
+gotMe : Result Http.Error MeInfo -> Model -> ( Model, Cmd Msg )
+gotMe result model =
+    case result of
+        Ok info ->
+            ( { model | me = Loaded info }, Cmd.none )
+
+        Err _ ->
+            ( { model | me = Failed }, Cmd.none )
+
+
+{-| Initial encounter fetch landed. `Just` adopts the persisted
+encounter; `Nothing` keeps whatever the empty default we initialized
+into. Errors are silent — fresh server / no JSON yet should still
+let the user start fresh.
+-}
+encounterLoaded : Result Http.Error (Maybe Encounter) -> Model -> ( Model, Cmd Msg )
+encounterLoaded result model =
+    case result of
+        Ok (Just encounter) ->
+            ( { model | encounter = encounter }, Cmd.none )
+
+        Ok Nothing ->
+            ( model, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+{-| Persist response. Success is silent (the user's edit just
+flowed through); failure raises a toast so they know the change
+won't survive a reload.
+-}
+encounterPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
+encounterPersisted result model =
+    case result of
+        Ok () ->
+            ( model, Cmd.none )
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Save failed: " ++ Util.Http.errorToString err)
+                model
+
+
+noOp : Model -> ( Model, Cmd Msg )
+noOp model =
+    ( model, Cmd.none )

@@ -66,7 +66,10 @@ import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
 import Update.Encounter
+import Update.Shell
+import Update.Toast
 import Url exposing (Url)
+import Util.Http
 import Util.Keyboard
 import View.Modal
 import View.StatBlock
@@ -254,28 +257,14 @@ shouldPersistAfter msg =
 updateInner : Msg -> Model -> ( Model, Cmd Msg )
 updateInner msg model =
     case msg of
-        UrlRequested (Browser.Internal url) ->
-            ( model, Nav.pushUrl model.key (Url.toString url) )
-
-        UrlRequested (Browser.External url) ->
-            ( model, Nav.load url )
+        UrlRequested req ->
+            Update.Shell.urlRequested model.key req model
 
         UrlChanged url ->
-            let
-                route =
-                    Route.fromUrl url
-            in
-            ( { model | url = url, route = route, me = Loading }
-            , Effects.cmdForRoute route
-            )
+            Update.Shell.urlChanged url model
 
         GotMe result ->
-            case result of
-                Ok info ->
-                    ( { model | me = Loaded info }, Cmd.none )
-
-                Err _ ->
-                    ( { model | me = Failed }, Cmd.none )
+            Update.Shell.gotMe result model
 
         NextTurn ->
             Update.Encounter.nextTurn model
@@ -1507,30 +1496,10 @@ updateInner msg model =
             )
 
         EncounterLoaded result ->
-            case result of
-                Ok (Just encounter) ->
-                    ( { model | encounter = encounter }, Cmd.none )
-
-                Ok Nothing ->
-                    -- Server has no persisted encounter — keep the
-                    -- empty default we initialized into.
-                    ( model, Cmd.none )
-
-                Err _ ->
-                    -- Network / decode failure on initial load is
-                    -- silent (matches the dice-history pattern).
-                    -- The user just sees the empty default.
-                    ( model, Cmd.none )
+            Update.Shell.encounterLoaded result model
 
         EncounterPersisted result ->
-            case result of
-                Ok () ->
-                    ( model, Cmd.none )
-
-                Err err ->
-                    pushToast ToastError
-                        ("Save failed: " ++ httpErrorToString err)
-                        model
+            Update.Shell.encounterPersisted result model
 
         CompendiumImportClick ->
             ( withCompendium (\ui -> { ui | bulkError = Nothing }) model
@@ -1575,7 +1544,7 @@ updateInner msg model =
             handleCompendiumResetResponse model result
 
         ToastDismiss id ->
-            ( { model | toasts = List.filter (\t -> t.id /= id) model.toasts }, Cmd.none )
+            Update.Toast.dismiss id model
 
         CompendiumFocusSearch ->
             ( model
@@ -1584,44 +1553,12 @@ updateInner msg model =
             )
 
         NoOp ->
-            ( model, Cmd.none )
+            Update.Shell.noOp model
 
 
 compendiumSearchId : String
 compendiumSearchId =
     "compendium-search"
-
-
-{-| Push a transient success / error toast. The toast renders
-immediately and a `Process.sleep` Cmd schedules its dismissal so
-the toast list cleans up on its own without per-frame timer work.
--}
-pushToast : ToastKind -> String -> Model -> ( Model, Cmd Msg )
-pushToast kind message model =
-    let
-        toast =
-            { id = model.nextToastId, kind = kind, message = message }
-    in
-    ( { model
-        | toasts = model.toasts ++ [ toast ]
-        , nextToastId = model.nextToastId + 1
-      }
-    , Process.sleep ToastUi.duration
-        |> Task.perform (\_ -> ToastDismiss toast.id)
-    )
-
-
-{-| Push a toast and continue with another Cmd. Useful when a Msg
-both triggers a refetch / persist and wants to flash a success
-notice — the two Cmds run concurrently.
--}
-pushToastWith : ToastKind -> String -> Cmd Msg -> Model -> ( Model, Cmd Msg )
-pushToastWith kind message extraCmd model =
-    let
-        ( m1, toastCmd ) =
-            pushToast kind message model
-    in
-    ( m1, Cmd.batch [ toastCmd, extraCmd ] )
 
 
 {-| Decode the file the user picked. On parse success we set the
@@ -1721,18 +1658,18 @@ handleCompendiumImportResponse model result =
                 (\ui ->
                     { ui
                         | bulkBusy = False
-                        , bulkError = Just (httpErrorToString err)
+                        , bulkError = Just (Util.Http.errorToString err)
                     }
                 )
                 model
-                |> pushToast ToastError
-                    ("Import failed: " ++ httpErrorToString err)
+                |> Update.Toast.push ToastError
+                    ("Import failed: " ++ Util.Http.errorToString err)
 
         Ok count ->
             withCompendium
                 (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
                 model
-                |> pushToastWith ToastSuccess
+                |> Update.Toast.pushWith ToastSuccess
                     ("Imported " ++ String.fromInt count ++ " creatures")
                     (Compendium.Wire.fetchAll CompendiumLoaded)
 
@@ -1748,18 +1685,18 @@ handleCompendiumResetResponse model result =
                 (\ui ->
                     { ui
                         | bulkBusy = False
-                        , bulkError = Just (httpErrorToString err)
+                        , bulkError = Just (Util.Http.errorToString err)
                     }
                 )
                 model
-                |> pushToast ToastError
-                    ("Reset failed: " ++ httpErrorToString err)
+                |> Update.Toast.push ToastError
+                    ("Reset failed: " ++ Util.Http.errorToString err)
 
         Ok creatures ->
             withCompendium
                 (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
                 model
-                |> pushToastWith ToastSuccess
+                |> Update.Toast.pushWith ToastSuccess
                     ("Library reset to " ++ String.fromInt (List.length creatures) ++ " bundled creatures")
                     (Compendium.Wire.fetchAll CompendiumLoaded)
 
@@ -2034,7 +1971,7 @@ handleCompendiumEditSubmitResponse model result =
     case result of
         Err err ->
             ( withCompendiumEdit
-                (\u -> { u | submitting = False, submitError = Just (httpErrorToString err) })
+                (\u -> { u | submitting = False, submitError = Just (Util.Http.errorToString err) })
                 model
             , Cmd.none
             )
@@ -2054,7 +1991,7 @@ handleCompendiumEditSubmitResponse model result =
                     in
                     { ui | selectedId = Just creature.id }
             }
-                |> pushToastWith ToastSuccess
+                |> Update.Toast.pushWith ToastSuccess
                     ("Saved " ++ creature.name)
                     (Compendium.Wire.fetchAll CompendiumLoaded)
 
@@ -2101,12 +2038,12 @@ handleCompendiumEditDeleteResponse model deletedId result =
             -- if compendiumEdit is Nothing, and likewise for the
             -- toast — we always surface the error.
             withCompendiumEdit
-                (\u -> { u | submitting = False, submitError = Just (httpErrorToString err) })
+                (\u -> { u | submitting = False, submitError = Just (Util.Http.errorToString err) })
                 model
                 |> withCompendium
-                    (\ui -> { ui | bulkBusy = False, bulkError = Just (httpErrorToString err) })
-                |> pushToast ToastError
-                    ("Delete failed: " ++ httpErrorToString err)
+                    (\ui -> { ui | bulkBusy = False, bulkError = Just (Util.Http.errorToString err) })
+                |> Update.Toast.push ToastError
+                    ("Delete failed: " ++ Util.Http.errorToString err)
 
         Ok () ->
             -- Drop the selection if it was pointing at the just-
@@ -2124,28 +2061,9 @@ handleCompendiumEditDeleteResponse model deletedId result =
                 | compendiumEdit = Nothing
                 , compendium = clearedSelection model.compendium
             }
-                |> pushToastWith ToastSuccess
+                |> Update.Toast.pushWith ToastSuccess
                     "Creature deleted"
                     (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-httpErrorToString : Http.Error -> String
-httpErrorToString err =
-    case err of
-        Http.BadUrl u ->
-            "Bad URL: " ++ u
-
-        Http.Timeout ->
-            "Request timed out."
-
-        Http.NetworkError ->
-            "Network error — check the server."
-
-        Http.BadStatus code ->
-            "Server returned " ++ String.fromInt code ++ "."
-
-        Http.BadBody body ->
-            "Couldn't parse response: " ++ body
 
 
 compendiumAddCountUpdate : String -> CompendiumUi -> CompendiumUi
@@ -2274,7 +2192,7 @@ handleCompendiumRolls model creatureId rolls =
                             in
                             { ui | open = False }
                     }
-                        |> pushToastWith ToastSuccess
+                        |> Update.Toast.pushWith ToastSuccess
                             toastMessage
                             (Cmd.batch (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls))
 
