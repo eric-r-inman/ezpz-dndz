@@ -15,7 +15,6 @@ import Encounter
         , Creature
         , Encounter
         )
-import Encounter.Lifecycle
 import Encounter.Roster
 import Encounter.Wire
 import File exposing (File)
@@ -66,6 +65,7 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
+import Update.Encounter
 import Url exposing (Url)
 import Util.Keyboard
 import View.Modal
@@ -278,80 +278,28 @@ updateInner msg model =
                     ( { model | me = Failed }, Cmd.none )
 
         NextTurn ->
-            -- Domain layer owns the queue walk, round bookkeeping,
-            -- and condition lifecycle hooks (begin / end of turn).
-            -- The update layer fires the side effects:
-            --   - auto-roll saves at the OUTGOING creature's
-            --     end-of-turn (AutoRollAtEnd),
-            --   - auto-roll saves at the INCOMING creature's
-            --     begin-of-turn (AutoRollAtBegin),
-            --   - and a viewport check so the active card scrolls
-            --     into view.
-            -- Both auto-roll batches read the post-`nextTurn`
-            -- encounter so they see the outgoing creature's
-            -- conditions AFTER end-of-turn ticks (any UntilTurn
-            -- AtEnd <self> already expired, so we don't roll for
-            -- a condition the engine just removed).
-            let
-                outgoingName =
-                    model.encounter.activeName
-
-                newEnc =
-                    Encounter.Lifecycle.nextTurn model.encounter
-
-                endRolls =
-                    Effects.autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
-
-                beginRolls =
-                    Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
-            in
-            ( { model | encounter = newEnc }
-            , Cmd.batch
-                (Effects.scrollActiveIntoView newEnc.activeName
-                    :: endRolls
-                    ++ beginRolls
-                )
-            )
+            Update.Encounter.nextTurn model
 
         SetActive name ->
-            -- Manual jump (the right-arrow button on a card). Distinct
-            -- from NextTurn: no round bump, no turn-progression hooks
-            -- when those land. See Encounter.setActive for rationale.
-            -- Scroll-into-view still runs so the GM sees the card
-            -- they just promoted.
-            ( withEncounter (Encounter.setActive name) model
-            , Effects.scrollActiveIntoView name
-            )
+            Update.Encounter.setActive name model
 
         ToggleSurprised name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | surprised = not c.surprised })) model
-            , Cmd.none
-            )
+            Update.Encounter.toggleSurprised name model
 
         CycleCover name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.nextCover c.cover })) model
-            , Cmd.none
-            )
+            Update.Encounter.cycleCover name model
 
         ToggleConcentration name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | concentrating = not c.concentrating })) model
-            , Cmd.none
-            )
+            Update.Encounter.toggleConcentration name model
 
         ToggleHiding name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | hiding = not c.hiding })) model
-            , Cmd.none
-            )
+            Update.Encounter.toggleHiding name model
 
         ToggleFlying name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | flying = not c.flying })) model
-            , Cmd.none
-            )
+            Update.Encounter.toggleFlying name model
 
         AdjustFlyHeight name delta ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | flyHeight = Basics.max 0 (c.flyHeight + delta) })) model
-            , Cmd.none
-            )
+            Update.Encounter.adjustFlyHeight name delta model
 
         DeathSaveToggleSuccess name idx ->
             -- Click on success pip `idx` (0..2). Star-rating
@@ -425,9 +373,7 @@ updateInner msg model =
             )
 
         ToggleHolding name ->
-            ( withEncounter (Encounter.mapCreature name (\c -> { c | holding = not c.holding })) model
-            , Cmd.none
-            )
+            Update.Encounter.toggleHolding name model
 
         -- Dice modal lifecycle
         OpenDice ->
@@ -768,52 +714,22 @@ updateInner msg model =
 
         -- Selection
         ToggleSelected name ->
-            ( withEncounter
-                (Encounter.mapCreature name (\c -> { c | selected = not c.selected }))
-                model
-            , Cmd.none
-            )
+            Update.Encounter.toggleSelected name model
 
         ShiftToggleSelected ->
-            -- Bulk: if every creature is already selected, deselect
-            -- all; otherwise select all. The clicked creature ends up
-            -- in the resulting bulk state regardless of where it
-            -- started.
-            let
-                allSelected =
-                    List.all .selected model.encounter.creatures
+            Update.Encounter.shiftToggleSelected model
 
-                newValue =
-                    not allSelected
-            in
-            ( withEncounter
-                (\enc ->
-                    { enc
-                        | creatures =
-                            List.map (\c -> { c | selected = newValue })
-                                enc.creatures
-                    }
-                )
-                model
-            , Cmd.none
-            )
-
-        -- Manual queue reordering (the up/down arrows on each card).
-        -- Pure position swaps; initiative isn't touched. A later
-        -- sortByInitiative wipes the manual order, which matches
-        -- the documented contract.
         MoveCreatureUp name ->
-            ( withEncounter (Encounter.Roster.moveUp name) model, Cmd.none )
+            Update.Encounter.moveCreatureUp name model
 
         MoveCreatureDown name ->
-            ( withEncounter (Encounter.Roster.moveDown name) model, Cmd.none )
+            Update.Encounter.moveCreatureDown name model
 
-        -- Roster mutation
         RemoveCreature name ->
-            ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
+            Update.Encounter.removeCreature name model
 
         DuplicateCreature name ->
-            ( withEncounter (Encounter.Roster.duplicateCreature name) model, Cmd.none )
+            Update.Encounter.duplicateCreature name model
 
         -- Initiative manager
         InitiativeOpen target ->
