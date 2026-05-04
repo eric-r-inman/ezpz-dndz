@@ -68,6 +68,7 @@ import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
 import Update.Dice
 import Update.Encounter
 import Update.HpChange
+import Update.Initiative
 import Update.Shell
 import Update.Toast
 import Url exposing (Url)
@@ -482,112 +483,28 @@ updateInner msg model =
 
         -- Initiative manager
         InitiativeOpen target ->
-            ( { model | initiative = Just (InitiativeUi.fresh target) }
-            , Cmd.none
-            )
+            Update.Initiative.open target model
 
         InitiativeClose ->
-            ( { model | initiative = Nothing }, Cmd.none )
+            Update.Initiative.close model
 
         InitiativeCustomChanged text ->
-            ( withInitiative (\u -> { u | customValueText = text }) model
-            , Cmd.none
-            )
+            Update.Initiative.customChanged text model
 
         InitiativeQuickSort ->
-            ( { model
-                | encounter = Encounter.Roster.sortByInitiative model.encounter
-                , initiative = Nothing
-              }
-            , Cmd.none
-            )
+            Update.Initiative.quickSort model
 
         InitiativeAutoRoll scope mode ->
-            -- Resolve which creatures the scope picks out and fire
-            -- one batched roll Cmd. Mode picks the per-creature
-            -- generator (standard 1d20+bonus vs. 2d20-keep-high+
-            -- bonus). The handler (InitiativeRollsLanded) is
-            -- shape-agnostic — it works for 1-element or N-element
-            -- batches and for either roll mode.
-            let
-                creatures =
-                    case scope of
-                        ScopeTarget ->
-                            case model.initiative of
-                                Just ui ->
-                                    List.filter
-                                        (\c -> c.name == ui.target)
-                                        model.encounter.creatures
-
-                                Nothing ->
-                                    []
-
-                        ScopeAll ->
-                            model.encounter.creatures
-
-                        ScopeSelected ->
-                            List.filter .selected model.encounter.creatures
-            in
-            ( model, initiativeRollCmd mode creatures )
+            Update.Initiative.autoRoll scope mode model
 
         InitiativeApplyTarget ->
-            -- Manual override for one creature. Closes the modal
-            -- whether or not the value parsed; an unparsable input
-            -- gets silently discarded (same UX as the HP edit).
-            case model.initiative of
-                Just ui ->
-                    ( applyCustomInitiative [ ui.target ] ui model
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Initiative.applyTarget model
 
         InitiativeApplySelected ->
-            case model.initiative of
-                Just ui ->
-                    let
-                        targets =
-                            List.filter .selected model.encounter.creatures
-                                |> List.map .name
-                    in
-                    ( applyCustomInitiative targets ui model
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Initiative.applySelected model
 
         InitiativeRollsLanded results ->
-            -- Fold each (creature name, roll) pair into a fresh
-            -- Model: stamp the rolled total onto the creature's
-            -- initiative, push the roll into the dice history.
-            -- Then sort the queue, close the modal, and persist all
-            -- the rolls server-side. mapCreature silently no-ops on
-            -- unknown names so a stale roll (defensive) won't blow
-            -- up.
-            let
-                applyOne ( name, roll ) m =
-                    { m
-                        | encounter =
-                            Encounter.mapCreature name
-                                (\c -> { c | initiative = roll.total })
-                                m.encounter
-                    }
-                        |> Effects.pushDiceRoll roll
-
-                m1 =
-                    List.foldl applyOne model results
-
-                rolls =
-                    List.map Tuple.second results
-            in
-            ( { m1
-                | encounter = Encounter.Roster.sortByInitiative m1.encounter
-                , initiative = Nothing
-              }
-            , Cmd.batch (List.map Effects.persistDiceRoll rolls)
-            )
+            Update.Initiative.rollsLanded results model
 
         -- Note-edit modal
         NoteEditOpen name current ->
@@ -1899,7 +1816,7 @@ instanceSpec :
     -> ( String, Dice.Source, Random.Generator Dice.Roll )
 instanceSpec source displayName =
     ( displayName
-    , initiativeSource displayName
+    , Update.Initiative.source displayName
     , Dice.generator (compendiumInitiativeExpression source)
     )
 
@@ -2078,14 +1995,6 @@ selectionClickHandler creatureName =
                         ( ToggleSelected creatureName, True )
                 )
         )
-
-
-{-| Apply `fn` to the open initiative-manager modal. No-op when the
-modal is closed.
--}
-withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
-withInitiative fn model =
-    { model | initiative = Maybe.map fn model.initiative }
 
 
 {-| Apply `fn` to the compendium browser substate. Always present
@@ -2267,73 +2176,6 @@ buildDuration ui model =
             Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
 
 
-{-| Build the `Cmd` for an initiative roll batch.
-
-`mode` chooses the per-creature generator: `ModeStandard` rolls
-plain `1d20 + initiativeBonus`; `ModeAdvantage` rolls `2d20`,
-keeps the higher, and adds the bonus (5e advantage). Each roll is
-tagged with a `Source` so the dice history reads "Initiative →
-Brakka, Ogre Brute" — the formula in the entry already encodes
-the mode (advantage rolls render as "Adv: 1d20+5" via
-`Dice.advantageGenerator`'s formula prefix).
-
-Empty input → `Cmd.none` (handles the "Selected" buttons being
-clicked when no creatures are selected).
-
--}
-initiativeRollCmd : RollMode -> List Creature -> Cmd Msg
-initiativeRollCmd mode creatures =
-    if List.isEmpty creatures then
-        Cmd.none
-
-    else
-        Dice.batchRollCmd InitiativeRollsLanded
-            (List.map
-                (\c ->
-                    ( c.name
-                    , initiativeSource c.name
-                    , initiativeGenerator mode c
-                    )
-                )
-                creatures
-            )
-
-
-{-| Pick the per-creature roll generator for the given mode.
-Standard uses [`Dice.generator`](Dice#generator) over a 1d20+bonus
-expression; advantage uses [`Dice.advantageGenerator`](Dice#advantageGenerator)
-which natively handles the 2d20-keep-highest mechanic and tags the
-kept die in the resulting `Roll.groups`.
--}
-initiativeGenerator : RollMode -> Creature -> Random.Generator Dice.Roll
-initiativeGenerator mode c =
-    case mode of
-        ModeStandard ->
-            Dice.generator (initiativeExpression c)
-
-        ModeAdvantage ->
-            Dice.advantageGenerator c.initiativeBonus
-
-
-{-| `1d20 + creature.initiativeBonus`, the standard 5e initiative roll.
--}
-initiativeExpression : Creature -> Dice.Expression
-initiativeExpression c =
-    { dice =
-        [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = c.initiativeBonus
-    , damageType = Nothing
-    }
-
-
-{-| Source label for initiative rolls so the dice history shows
-"Initiative → <creature>".
--}
-initiativeSource : String -> Dice.Source
-initiativeSource name =
-    { feature = "Initiative", target = Just name }
-
-
 {-| Source label for death-save rolls — "Death save → <creature>"
 in the dice history.
 -}
@@ -2403,36 +2245,6 @@ applyDeathSaveResult d20 c =
 
     else
         { c | deathSaves = Encounter.addDeathSaveFailures 1 c.deathSaves }
-
-
-{-| Custom-initiative apply path: parse the modal's text input, set
-each named creature's initiative to that value, sort the queue,
-close the modal. An unparseable text just closes the modal without
-mutating anything.
--}
-applyCustomInitiative : List String -> InitiativeUi -> Model -> Model
-applyCustomInitiative names ui model =
-    case String.toInt (String.trim ui.customValueText) of
-        Just n ->
-            let
-                applyOne name m =
-                    { m
-                        | encounter =
-                            Encounter.mapCreature name
-                                (\c -> { c | initiative = n })
-                                m.encounter
-                    }
-
-                m1 =
-                    List.foldl applyOne model names
-            in
-            { m1
-                | encounter = Encounter.Roster.sortByInitiative m1.encounter
-                , initiative = Nothing
-            }
-
-        Nothing ->
-            { model | initiative = Nothing }
 
 
 
