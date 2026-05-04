@@ -3,6 +3,77 @@
 #+language:  en
 #+date:      2026-05-04
 
+* Status (2026-05-04 autonomous run)
+
+Phases shipped this session (eight commits, all pushed to
+~main~):
+
+| Phase | Commit    | Theme                                              | Tests |
+|-------+-----------+----------------------------------------------------+-------|
+|  1    | b2f46be   | refactor(main): collapse with*Ui helpers via Maybe.map | 98/98 |
+|  2    | 70d4971   | refactor(view): route every modal through View.Modal helper | 98/98 |
+|  3a   | fd6a472   | refactor(encounter): extract Seed submodule for the test cast | 98/98 |
+|  3b   | 263105e   | refactor(encounter): extract Lifecycle submodule   | 98/98 |
+|  3c   | 80089e6   | refactor(encounter): extract Roster submodule for queue mutation | 98/98 |
+|  4    | 0769944   | refactor(compendium): extract Wire submodule for codecs + HTTP | 98/98 |
+|  5a   | 74d9cd4   | refactor(msg): extract Msg.elm with Msg + auxiliary types | 98/98 |
+|  8    | c2bfc0f   | refactor(css): consolidate pill / chip patterns    | 98/98 |
+
+File-size impact (snapshot 2026-05-04):
+
+| File                                    | Before | After | Δ            |
+|-----------------------------------------+--------+-------+--------------|
+| =frontend/src/Main.elm=                 |  9268  |  8812 | -456 (-5%)   |
+| =frontend/src/Encounter.elm=            |  1607  |   699 | -908 (-56%)  |
+| =frontend/src/Compendium.elm=           |  1068  |   439 | -629 (-59%)  |
+| =frontend/public/style.css=             |  3628  |  3583 | -45          |
+| =frontend/src/Msg.elm= (new)            |    -   |   397 | new          |
+| =frontend/src/Encounter/Seed.elm= (new) |    -   |   285 | new          |
+| =frontend/src/Encounter/Lifecycle.elm= (new) | -   |   291 | new          |
+| =frontend/src/Encounter/Roster.elm= (new) |  -   |   324 | new          |
+| =frontend/src/Compendium/Wire.elm= (new) |   -   |   663 | new          |
+
+The big wins landed where Phase 3 + Phase 4 + Phase 5a hit:
+the rules-engine roots (Encounter.elm, Compendium.elm) shrunk
+by more than half, and the 159-constructor ~Msg~ moved out of
+~Main.elm~ into its own file so per-feature ~Update/*~ modules
+have a stable surface to import.
+
+** What's NOT done (deferred)
+
+The remaining phases are interlinked and need a fresh run with
+more context budget than this session had.  The order of the
+remaining work is *5b → 6 → 7 → 9 → 10 → 11*; each block
+depends on the prior.
+
+| Phase | Goal                                       | Blocked on                            |
+|-------+--------------------------------------------+---------------------------------------|
+|  5b   | Extract Model.elm + per-feature Ui modules | (independent — start here)            |
+|  6    | Carve updateInner into Update/Foo modules  | 5b (need stable Model + Ui surfaces)  |
+|  7    | Carve view region into View/Foo modules    | 5b + (preferably) 6                   |
+|  9    | Effects centralization (Util.Http)         | 6 (Update.Effects lives next to Update modules) |
+| 10    | Data-model refinements + tests             | 6 + 7 (modal-state ADT touches every modal handler) |
+| 11    | Server polish (cli + tests + users/prefs)  | independent                           |
+
+** Notes for the next autonomous run
+
+  - The full plan body below remains the source of truth for
+    *what* each phase does and *which files* it touches.
+    Phases marked complete above can be skipped.
+  - Phase 5b is the unblocker.  It's invasive (lots of types
+    moved from Main.elm into Model.elm and per-feature Ui
+    modules) but each move is mechanical.  Recommend doing it
+    in chunks: first =Model.elm= with the =Model= record alias
+    + Toast + Route, then per-feature =Ui.elm= files
+    (=HpChange/Ui.elm=, =Initiative/Ui.elm=, =Condition/Ui.elm=,
+    etc.).  Each chunk should compile + ship before moving on.
+  - Phase 11 (server polish + cli) is independent of the
+    frontend chain and could run in parallel with 5b–7.
+  - The =MeStatus / MeInfo= types live in =Msg.elm= for now
+    (they were moved with Msg since Msg.GotMe transports
+    MeInfo).  When Phase 5b extracts =Model.elm=, consider
+    whether they belong in =Auth.elm= or stay where they are.
+
 * Human summary
 
 The frontend has outgrown its single-file-per-domain layout.
