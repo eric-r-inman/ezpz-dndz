@@ -65,6 +65,7 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
+import Update.Dice
 import Update.Encounter
 import Update.Shell
 import Update.Toast
@@ -366,179 +367,58 @@ updateInner msg model =
 
         -- Dice modal lifecycle
         OpenDice ->
-            -- Clear the "unread rolls landed" flag whenever the
-            -- modal opens; whatever the user is about to see, they
-            -- are now caught up.
-            ( withDice (\d -> { d | open = True, inputError = Nothing, unread = False }) model
-            , Cmd.none
-            )
+            Update.Dice.open model
 
         CloseDice ->
-            ( withDice (\d -> { d | open = False, inputError = Nothing }) model
-            , Cmd.none
-            )
+            Update.Dice.close model
 
         DiceInputChanged text ->
-            ( withDice (\d -> { d | input = text, inputError = Nothing }) model
-            , Cmd.none
-            )
+            Update.Dice.inputChanged text model
 
         DiceCountChanged text ->
-            ( withDice (\d -> { d | count = parseClamp 1 99 1 text }) model
-            , Cmd.none
-            )
+            Update.Dice.countChanged text model
 
         DiceModifierChanged text ->
-            -- Track the raw characters in `modifierText`; only update
-            -- the parsed `modifier` when the input is actually a
-            -- number. Lets the user type "-" before "-5" without
-            -- losing the minus on re-render.
-            ( withDice
-                (\d ->
-                    { d
-                        | modifierText = text
-                        , modifier =
-                            String.toInt (String.trim text)
-                                |> Maybe.map (Basics.max -999 >> Basics.min 999)
-                                |> Maybe.withDefault d.modifier
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Dice.modifierChanged text model
 
         DiceResetSliders ->
-            ( withDice (\d -> { d | count = 1, modifier = 0, modifierText = "0" }) model
-            , Cmd.none
-            )
+            Update.Dice.resetSliders model
 
         DiceRollFromInput ->
-            -- Parse the free-text expression. On failure, stash the
-            -- error in the modal so the input can show "couldn't read
-            -- 'xyz'"; on success, fire the roll Cmd.
-            case Dice.parse model.dice.input of
-                Ok expr ->
-                    ( withDice (\d -> { d | inputError = Nothing }) model
-                    , Dice.rollCmd DiceRollLanded Dice.manualSource expr
-                    )
-
-                Err err ->
-                    ( withDice (\d -> { d | inputError = Just err }) model
-                    , Cmd.none
-                    )
+            Update.Dice.rollFromInput model
 
         DiceRollFaces faces ->
-            -- Each rainbow face button rolls (count)d(faces) + modifier
-            -- using the current sliders. No parse needed.
-            ( model
-            , Dice.rollCmd DiceRollLanded Dice.manualSource (faceExpression model.dice faces)
-            )
+            Update.Dice.rollFaces faces model
 
         DiceRollAdvantage ->
-            ( model, Dice.advantageCmd DiceRollLanded Dice.manualSource model.dice.modifier )
+            Update.Dice.rollAdvantage model
 
         DiceRollDisadvantage ->
-            ( model, Dice.disadvantageCmd DiceRollLanded Dice.manualSource model.dice.modifier )
+            Update.Dice.rollDisadvantage model
 
         DiceFlipCoin ->
-            ( model, Dice.coinCmd DiceRollLanded Dice.manualSource )
+            Update.Dice.flipCoin model
 
         DiceRerun roll ->
-            -- Re-execute a historical roll using the same kind AND the
-            -- original source label, so a re-rolled "Damage → Brakka"
-            -- still reads as such in the history (rather than silently
-            -- demoting to "Manual").
-            case roll.kind of
-                Dice.Standard ->
-                    ( model, Dice.rollCmd DiceRollLanded roll.source roll.expression )
-
-                Dice.Advantage ->
-                    ( model, Dice.advantageCmd DiceRollLanded roll.source roll.expression.constant )
-
-                Dice.Disadvantage ->
-                    ( model, Dice.disadvantageCmd DiceRollLanded roll.source roll.expression.constant )
-
-                Dice.Coin ->
-                    ( model, Dice.coinCmd DiceRollLanded roll.source )
+            Update.Dice.rerun roll model
 
         DiceClearHistory ->
-            ( withDice (\d -> { d | history = Dice.emptyHistory }) model
-            , Effects.clearDiceHistory
-            )
+            Update.Dice.clearHistory model
 
         DiceRollLanded roll ->
-            -- Update the local history immediately for snappy UI; fire
-            -- the persistence POST in parallel. The server response
-            -- replaces the local view in DicePersistResponse so the two
-            -- stay in sync (and any older entries surfacing from disk
-            -- after init come through that same path).
-            ( Effects.pushDiceRoll roll model
-            , Effects.persistDiceRoll roll
-            )
+            Update.Dice.rollLanded roll model
 
         DiceHistoryLoaded result ->
-            case result of
-                Ok rolls ->
-                    ( withDice
-                        (\d ->
-                            { d
-                                | history =
-                                    { entries = rolls
-                                    , max = Dice.maxHistoryEntries
-                                    }
-                            }
-                        )
-                        model
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    -- No persisted history yet, or the server is
-                    -- unreachable. Either way, fall back to the
-                    -- already-empty in-memory history.
-                    ( model, Cmd.none )
+            Update.Dice.historyLoaded result model
 
         DicePersistResponse result ->
-            case result of
-                Ok rolls ->
-                    -- Server is now the source of truth for what's
-                    -- persisted; reflect its truncation/ordering back
-                    -- into the local UI so reroll buttons match disk.
-                    ( withDice
-                        (\d ->
-                            { d
-                                | history =
-                                    { entries = rolls
-                                    , max = Dice.maxHistoryEntries
-                                    }
-                            }
-                        )
-                        model
-                    , Cmd.none
-                    )
+            Update.Dice.persistResponse result model
 
-                Err _ ->
-                    -- Persistence failure is non-fatal; the local copy
-                    -- of the history already has the new roll.
-                    ( model, Cmd.none )
-
-        DiceClearResponse _ ->
-            -- Server-side clear succeeded or didn't; either way the
-            -- local history has already been emptied in DiceClearHistory.
-            ( model, Cmd.none )
+        DiceClearResponse result ->
+            Update.Dice.clearResponse result model
 
         RollFromStatBlock creatureName expr ->
-            -- Click on inline dice notation in a stat-block trait.
-            -- Open the modal so the user sees the result land, and
-            -- fire the roll through the same code path as the modal's
-            -- own buttons. The source is tagged "Stat block" with the
-            -- creature name so it shows up in the history as
-            -- "Stat block → Brakka, Ogre Brute".
-            ( withDice (\d -> { d | open = True, inputError = Nothing }) model
-            , Dice.rollCmd DiceRollLanded
-                { feature = "Stat block", target = Just creatureName }
-                expr
-            )
+            Update.Dice.rollFromStatBlock creatureName expr model
 
         -- HP change modal lifecycle
         HpChangeOpen target kind ->
@@ -2293,16 +2173,6 @@ withEncounter fn model =
     { model | encounter = fn model.encounter }
 
 
-{-| Same trick as `withEncounter`, but for the dice-roller UI state.
-Threading the field-level update through a helper keeps the dice
-update branches as one-liners and avoids destructuring `model.dice`
-inline at every call site.
--}
-withDice : (DiceUi -> DiceUi) -> Model -> Model
-withDice fn model =
-    { model | dice = fn model.dice }
-
-
 {-| Apply `fn` to the open HP-change modal. No-op when the modal is
 closed (the field is `Nothing`).
 -}
@@ -2845,37 +2715,6 @@ findCreature : String -> Encounter -> Maybe Creature
 findCreature name enc =
     List.filter (\c -> c.name == name) enc.creatures
         |> List.head
-
-
-{-| Parse a numeric `<input>`'s string value into an Int, clamping
-to `lo..hi`. Falls back to `def` when the input is empty or
-unparseable so the form never crashes on transient bad states like
-the user mid-typing "-".
--}
-parseClamp : Int -> Int -> Int -> String -> Int
-parseClamp lo hi def text =
-    case String.toInt (String.trim text) of
-        Just n ->
-            Basics.max lo (Basics.min hi n)
-
-        Nothing ->
-            def
-
-
-{-| Build the `Dice.Expression` that one rainbow face-button rolls.
-Uses the modal's current count/modifier sliders.
--}
-faceExpression : DiceUi -> Int -> Dice.Expression
-faceExpression ui faces =
-    { dice =
-        [ { count = ui.count
-          , faces = faces
-          , sign = Dice.Positive
-          }
-        ]
-    , constant = ui.modifier
-    , damageType = Nothing
-    }
 
 
 
