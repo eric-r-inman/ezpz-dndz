@@ -65,6 +65,7 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
+import Update.Compendium
 import Update.Condition
 import Update.DeathSave
 import Update.Dice
@@ -578,223 +579,133 @@ updateInner msg model =
             Update.Timer.dismiss name model
 
         CompendiumLoaded result ->
-            ( withCompendium (compendiumLoadedUpdate result) model, Cmd.none )
+            Update.Compendium.loaded result model
 
         CompendiumOpen ->
-            ( withCompendium openCompendiumUpdate model, Cmd.none )
+            Update.Compendium.open model
 
         CompendiumClose ->
-            ( withCompendium (\ui -> { ui | open = False }) model, Cmd.none )
+            Update.Compendium.close model
 
         CompendiumSearchChanged text ->
-            ( withCompendium
-                (\ui ->
-                    { ui | searchText = text, selectedId = Nothing }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.searchChanged text model
 
         CompendiumKindToggled kind ->
-            ( withCompendium (toggleCompendiumKind kind) model, Cmd.none )
+            Update.Compendium.kindToggled kind model
 
         CompendiumSortChanged sort ->
-            ( withCompendium (\ui -> { ui | sort = sort }) model, Cmd.none )
+            Update.Compendium.sortChanged sort model
 
         CompendiumSelect id ->
-            ( withCompendium (\ui -> { ui | selectedId = Just id }) model, Cmd.none )
+            Update.Compendium.select id model
 
         CompendiumAddCountChanged raw ->
-            ( withCompendium (compendiumAddCountUpdate raw) model, Cmd.none )
+            Update.Compendium.addCountChanged raw model
 
         CompendiumAddToQueue creatureId ->
-            ( model, compendiumAddToQueueCmd model creatureId )
+            Update.Compendium.addToQueue creatureId model
 
         CompendiumInitiativeRolled creatureId rolls ->
-            handleCompendiumRolls model creatureId rolls
+            Update.Compendium.initiativeRolled creatureId rolls model
 
         CompendiumEditNew ->
-            ( { model | compendiumEdit = Just CompendiumUi.blankEdit }, Cmd.none )
+            Update.Compendium.editNew model
 
         CompendiumEditExisting ->
-            ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map CompendiumUi.editFromCreature }
-            , Cmd.none
-            )
+            Update.Compendium.editExisting model
 
         CompendiumEditDuplicate ->
-            ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map editFromDuplicate }
-            , Cmd.none
-            )
+            Update.Compendium.editDuplicate model
 
         CompendiumEditCancel ->
-            ( { model | compendiumEdit = Nothing }, Cmd.none )
+            Update.Compendium.editCancel model
 
         CompendiumEditFieldChanged field text ->
-            ( withCompendiumEdit (setEditField field text) model, Cmd.none )
+            Update.Compendium.editFieldChanged field text model
 
         CompendiumEditKindSet kind ->
-            ( withCompendiumEdit (\ui -> { ui | kind = kind }) model, Cmd.none )
+            Update.Compendium.editKindSet kind model
 
         CompendiumEditSizeSet size ->
-            ( withCompendiumEdit (\ui -> { ui | size = size }) model, Cmd.none )
+            Update.Compendium.editSizeSet size model
 
         CompendiumEditSpeedHoverToggle ->
-            ( withCompendiumEdit (\ui -> { ui | speedHover = not ui.speedHover }) model, Cmd.none )
+            Update.Compendium.editSpeedHoverToggle model
 
         CompendiumEditSavingThrowAdd ->
-            ( withCompendiumEdit
-                (\ui -> { ui | savingThrows = ui.savingThrows ++ [ ( Compendium.Str, "0" ) ] })
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editSavingThrowAdd model
 
         CompendiumEditSavingThrowRemove idx ->
-            ( withCompendiumEdit (\ui -> { ui | savingThrows = removeAt idx ui.savingThrows }) model
-            , Cmd.none
-            )
+            Update.Compendium.editSavingThrowRemove idx model
 
         CompendiumEditSavingThrowAbilitySet idx ability ->
-            ( withCompendiumEdit
-                (\ui ->
-                    { ui
-                        | savingThrows =
-                            updateAt idx (\( _, b ) -> ( ability, b )) ui.savingThrows
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editSavingThrowAbilitySet idx ability model
 
         CompendiumEditSavingThrowBonusChanged idx text ->
-            ( withCompendiumEdit
-                (\ui ->
-                    { ui
-                        | savingThrows =
-                            updateAt idx (\( a, _ ) -> ( a, text )) ui.savingThrows
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editSavingThrowBonusChanged idx text model
 
         CompendiumEditSkillAdd ->
-            ( withCompendiumEdit (\ui -> { ui | skills = ui.skills ++ [ ( "", "0" ) ] }) model
-            , Cmd.none
-            )
+            Update.Compendium.editSkillAdd model
 
         CompendiumEditSkillRemove idx ->
-            ( withCompendiumEdit (\ui -> { ui | skills = removeAt idx ui.skills }) model
-            , Cmd.none
-            )
+            Update.Compendium.editSkillRemove idx model
 
         CompendiumEditSkillNameChanged idx text ->
-            ( withCompendiumEdit
-                (\ui -> { ui | skills = updateAt idx (\( _, b ) -> ( text, b )) ui.skills })
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editSkillNameChanged idx text model
 
         CompendiumEditSkillBonusChanged idx text ->
-            ( withCompendiumEdit
-                (\ui -> { ui | skills = updateAt idx (\( n, _ ) -> ( n, text )) ui.skills })
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editSkillBonusChanged idx text model
 
         CompendiumEditFeatureAdd group ->
-            ( withCompendiumEdit (mapFeatureGroup group (\fs -> fs ++ [ CompendiumUi.emptyFeatureDraft ])) model
-            , Cmd.none
-            )
+            Update.Compendium.editFeatureAdd group model
 
         CompendiumEditFeatureRemove group idx ->
-            ( withCompendiumEdit (mapFeatureGroup group (removeAt idx)) model, Cmd.none )
+            Update.Compendium.editFeatureRemove group idx model
 
         CompendiumEditFeatureNameChanged group idx text ->
-            ( withCompendiumEdit
-                (mapFeatureGroup group (updateAt idx (\f -> { f | name = text })))
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editFeatureNameChanged group idx text model
 
         CompendiumEditFeatureDescriptionChanged group idx text ->
-            ( withCompendiumEdit
-                (mapFeatureGroup group (updateAt idx (\f -> { f | description = text })))
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editFeatureDescriptionChanged group idx text model
 
         CompendiumEditCustomSectionAdd ->
-            ( withCompendiumEdit
-                (\ui -> { ui | customSections = ui.customSections ++ [ ( "", "" ) ] })
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editCustomSectionAdd model
 
         CompendiumEditCustomSectionRemove idx ->
-            ( withCompendiumEdit
-                (\ui -> { ui | customSections = removeAt idx ui.customSections })
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editCustomSectionRemove idx model
 
         CompendiumEditCustomSectionNameChanged idx text ->
-            ( withCompendiumEdit
-                (\ui ->
-                    { ui
-                        | customSections =
-                            updateAt idx (\( _, b ) -> ( text, b )) ui.customSections
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editCustomSectionNameChanged idx text model
 
         CompendiumEditCustomSectionBodyChanged idx text ->
-            ( withCompendiumEdit
-                (\ui ->
-                    { ui
-                        | customSections =
-                            updateAt idx (\( n, _ ) -> ( n, text )) ui.customSections
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.editCustomSectionBodyChanged idx text model
 
         CompendiumEditSubmit ->
-            handleCompendiumEditSubmit model
+            Update.Compendium.editSubmit model
 
         CompendiumEditSubmitResponse result ->
-            handleCompendiumEditSubmitResponse model result
+            Update.Compendium.editSubmitResponse result model
 
         CompendiumEditDelete ->
-            handleCompendiumEditDelete model
+            Update.Compendium.editDelete model
 
         CompendiumEditDeleteResponse id result ->
-            handleCompendiumEditDeleteResponse model id result
+            Update.Compendium.editDeleteResponse id result model
 
         CompendiumPasteOpen ->
-            ( { model | compendiumPaste = Just CompendiumUi.emptyPaste }, Cmd.none )
+            Update.Compendium.pasteOpen model
 
         CompendiumPasteCancel ->
-            ( { model | compendiumPaste = Nothing }, Cmd.none )
+            Update.Compendium.pasteCancel model
 
         CompendiumPasteTextChanged text ->
-            ( { model
-                | compendiumPaste =
-                    Just
-                        { text = text
-                        , parseResult = Compendium.Parser.parseStatBlock text
-                        }
-              }
-            , Cmd.none
-            )
+            Update.Compendium.pasteTextChanged text model
 
         CompendiumPasteApply ->
-            handleCompendiumPasteApply model
+            Update.Compendium.pasteApply model
 
         PanelShowCreature creatureId ->
-            ( { model | panelCreatureId = Just creatureId }, Cmd.none )
+            Update.Compendium.panelShowCreature creatureId model
 
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model
@@ -809,754 +720,40 @@ updateInner msg model =
             Update.Shell.encounterPersisted result model
 
         CompendiumImportClick ->
-            ( withCompendium (\ui -> { ui | bulkError = Nothing }) model
-            , File.Select.file [ "application/json", "text/plain" ] CompendiumImportFileChosen
-            )
+            Update.Compendium.importClick model
 
         CompendiumImportFileChosen file ->
-            ( model, Task.perform CompendiumImportFileRead (File.toString file) )
+            Update.Compendium.importFileChosen file model
 
         CompendiumImportFileRead raw ->
-            ( withCompendium (compendiumImportFileLoaded raw) model, Cmd.none )
+            Update.Compendium.importFileRead raw model
 
         CompendiumResetClick ->
-            ( withCompendium (\ui -> { ui | pending = Just PendingReset, bulkError = Nothing }) model
-            , Cmd.none
-            )
+            Update.Compendium.resetClick model
 
         CompendiumDeleteFromBrowser id displayName ->
-            ( withCompendium
-                (\ui ->
-                    { ui
-                        | pending = Just (PendingDelete id displayName)
-                        , bulkError = Nothing
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Compendium.deleteFromBrowser id displayName model
 
         CompendiumPendingCancel ->
-            ( withCompendium (\ui -> { ui | pending = Nothing, bulkError = Nothing }) model
-            , Cmd.none
-            )
+            Update.Compendium.pendingCancel model
 
         CompendiumPendingConfirm ->
-            handleCompendiumPendingConfirm model
+            Update.Compendium.pendingConfirm model
 
         CompendiumImportResponse result ->
-            handleCompendiumImportResponse model result
+            Update.Compendium.importResponse result model
 
         CompendiumResetResponse result ->
-            handleCompendiumResetResponse model result
+            Update.Compendium.resetResponse result model
 
         ToastDismiss id ->
             Update.Toast.dismiss id model
 
         CompendiumFocusSearch ->
-            ( model
-            , Browser.Dom.focus compendiumSearchId
-                |> Task.attempt (\_ -> NoOp)
-            )
+            Update.Compendium.focusSearch model
 
         NoOp ->
             Update.Shell.noOp model
-
-
-compendiumSearchId : String
-compendiumSearchId =
-    "compendium-search"
-
-
-{-| Decode the file the user picked. On parse success we set the
-pending action and surface an inline confirmation banner so the
-GM gets one final "yes, replace everything" before the wire call
-fires. On parse failure we keep the modal open and show the
-error.
--}
-compendiumImportFileLoaded : String -> CompendiumUi -> CompendiumUi
-compendiumImportFileLoaded raw ui =
-    case Decode.decodeString (Decode.list Compendium.Wire.decodeCreature) raw of
-        Ok creatures ->
-            { ui
-                | pending = Just (PendingImport creatures (List.length creatures))
-                , bulkError = Nothing
-            }
-
-        Err err ->
-            { ui
-                | pending = Nothing
-                , bulkError = Just ("Couldn't parse file: " ++ Decode.errorToString err)
-            }
-
-
-handleCompendiumPendingConfirm : Model -> ( Model, Cmd Msg )
-handleCompendiumPendingConfirm model =
-    case model.compendium.pending of
-        Just PendingReset ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , compendiumResetCmd
-            )
-
-        Just (PendingImport creatures _) ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , compendiumImportCmd creatures
-            )
-
-        Just (PendingDelete id _) ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , compendiumDeleteCmd id
-            )
-
-        Nothing ->
-            ( model, Cmd.none )
-
-
-compendiumDeleteCmd : String -> Cmd Msg
-compendiumDeleteCmd id =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/api/compendium/creatures/" ++ id
-        , body = Http.emptyBody
-        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
-compendiumResetCmd : Cmd Msg
-compendiumResetCmd =
-    Http.post
-        { url = "/api/compendium/reset"
-        , body = Http.emptyBody
-        , expect =
-            Http.expectJson CompendiumResetResponse
-                (Decode.list Compendium.Wire.decodeCreature)
-        }
-
-
-compendiumImportCmd : List Compendium.Creature -> Cmd Msg
-compendiumImportCmd creatures =
-    Http.post
-        { url = "/api/compendium/import"
-        , body =
-            Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
-        , expect =
-            Http.expectJson CompendiumImportResponse
-                (Decode.field "imported" Decode.int)
-        }
-
-
-handleCompendiumImportResponse :
-    Model
-    -> Result Http.Error Int
-    -> ( Model, Cmd Msg )
-handleCompendiumImportResponse model result =
-    case result of
-        Err err ->
-            withCompendium
-                (\ui ->
-                    { ui
-                        | bulkBusy = False
-                        , bulkError = Just (Util.Http.errorToString err)
-                    }
-                )
-                model
-                |> Update.Toast.push ToastError
-                    ("Import failed: " ++ Util.Http.errorToString err)
-
-        Ok count ->
-            withCompendium
-                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
-                model
-                |> Update.Toast.pushWith ToastSuccess
-                    ("Imported " ++ String.fromInt count ++ " creatures")
-                    (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-handleCompendiumResetResponse :
-    Model
-    -> Result Http.Error (List Compendium.Creature)
-    -> ( Model, Cmd Msg )
-handleCompendiumResetResponse model result =
-    case result of
-        Err err ->
-            withCompendium
-                (\ui ->
-                    { ui
-                        | bulkBusy = False
-                        , bulkError = Just (Util.Http.errorToString err)
-                    }
-                )
-                model
-                |> Update.Toast.push ToastError
-                    ("Reset failed: " ++ Util.Http.errorToString err)
-
-        Ok creatures ->
-            withCompendium
-                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
-                model
-                |> Update.Toast.pushWith ToastSuccess
-                    ("Library reset to " ++ String.fromInt (List.length creatures) ++ " bundled creatures")
-                    (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-{-| Hand the parsed stat block over to the edit modal so the GM
-can review and save. We pre-fill via `CompendiumUi.editFromCreature` then flip
-the mode back to `CreateMode` (the parsed creature has no
-server-side id yet) and reset the source to "Pasted" so the
-provenance is preserved through save.
--}
-handleCompendiumPasteApply : Model -> ( Model, Cmd Msg )
-handleCompendiumPasteApply model =
-    case model.compendiumPaste of
-        Just { parseResult } ->
-            case parseResult of
-                Ok creature ->
-                    let
-                        editUi =
-                            CompendiumUi.editFromCreature creature
-
-                        recreated =
-                            { editUi | mode = CreateMode }
-                    in
-                    ( { model
-                        | compendiumPaste = Nothing
-                        , compendiumEdit = Just recreated
-                      }
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    ( model, Cmd.none )
-
-        Nothing ->
-            ( model, Cmd.none )
-
-
-{-| Apply `fn` to the open compendium edit modal. No-op when closed.
--}
-withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
-withCompendiumEdit fn model =
-    { model | compendiumEdit = Maybe.map fn model.compendiumEdit }
-
-
-currentlySelectedCreature : Model -> Maybe Compendium.Creature
-currentlySelectedCreature model =
-    case ( model.compendium.db, model.compendium.selectedId ) of
-        ( CompendiumDbLoaded db, Just id ) ->
-            Compendium.find id db
-
-        _ ->
-            Nothing
-
-
-{-| Build an edit form pre-filled from `source` but with the
-mode flipped to `CreateMode` and a "(copy)"-suffixed name. The
-back end will issue a fresh id on submit.
--}
-editFromDuplicate : Compendium.Creature -> CompendiumEditUi
-editFromDuplicate source =
-    let
-        base =
-            CompendiumUi.editFromCreature source
-    in
-    { base
-        | mode = CreateMode
-        , name = source.name ++ " (copy)"
-    }
-
-
-setEditField : CompendiumField -> String -> CompendiumEditUi -> CompendiumEditUi
-setEditField field text ui =
-    case field of
-        CFName ->
-            { ui | name = text }
-
-        CFRace ->
-            { ui | race = text }
-
-        CFSubrace ->
-            { ui | subrace = text }
-
-        CFAlignment ->
-            { ui | alignment = text }
-
-        CFSource ->
-            { ui | source = text }
-
-        CFDescription ->
-            { ui | description = text }
-
-        CFArmorClass ->
-            { ui | armorClass = text }
-
-        CFArmorClassNote ->
-            { ui | armorClassNote = text }
-
-        CFMaxHp ->
-            { ui | maxHp = text }
-
-        CFHpFormula ->
-            { ui | hpFormula = text }
-
-        CFInitiativeBonus ->
-            { ui | initiativeBonus = text }
-
-        CFSpeedWalk ->
-            { ui | speedWalk = text }
-
-        CFSpeedFly ->
-            { ui | speedFly = text }
-
-        CFSpeedSwim ->
-            { ui | speedSwim = text }
-
-        CFSpeedClimb ->
-            { ui | speedClimb = text }
-
-        CFSpeedBurrow ->
-            { ui | speedBurrow = text }
-
-        CFAbilityStr ->
-            { ui | abilityStr = text }
-
-        CFAbilityDex ->
-            { ui | abilityDex = text }
-
-        CFAbilityCon ->
-            { ui | abilityCon = text }
-
-        CFAbilityInt ->
-            { ui | abilityInt = text }
-
-        CFAbilityWis ->
-            { ui | abilityWis = text }
-
-        CFAbilityCha ->
-            { ui | abilityCha = text }
-
-        CFSensesBlindsight ->
-            { ui | sensesBlindsight = text }
-
-        CFSensesDarkvision ->
-            { ui | sensesDarkvision = text }
-
-        CFSensesTremorsense ->
-            { ui | sensesTremorsense = text }
-
-        CFSensesTruesight ->
-            { ui | sensesTruesight = text }
-
-        CFSensesPassivePerception ->
-            { ui | sensesPassivePerception = text }
-
-        CFDamageVulnerabilities ->
-            { ui | damageVulnerabilities = text }
-
-        CFDamageResistances ->
-            { ui | damageResistances = text }
-
-        CFDamageImmunities ->
-            { ui | damageImmunities = text }
-
-        CFConditionImmunities ->
-            { ui | conditionImmunities = text }
-
-        CFLanguages ->
-            { ui | languages = text }
-
-        CFChallengeRating ->
-            { ui | challengeRating = text }
-
-        CFXp ->
-            { ui | xp = text }
-
-        CFProficiencyBonus ->
-            { ui | proficiencyBonus = text }
-
-
-mapFeatureGroup :
-    FeatureGroup
-    -> (List FeatureDraft -> List FeatureDraft)
-    -> CompendiumEditUi
-    -> CompendiumEditUi
-mapFeatureGroup group fn ui =
-    case group of
-        TraitsGroup ->
-            { ui | traits = fn ui.traits }
-
-        ActionsGroup ->
-            { ui | actions = fn ui.actions }
-
-        BonusActionsGroup ->
-            { ui | bonusActions = fn ui.bonusActions }
-
-        ReactionsGroup ->
-            { ui | reactions = fn ui.reactions }
-
-
-updateAt : Int -> (a -> a) -> List a -> List a
-updateAt idx fn xs =
-    List.indexedMap
-        (\i x ->
-            if i == idx then
-                fn x
-
-            else
-                x
-        )
-        xs
-
-
-removeAt : Int -> List a -> List a
-removeAt idx xs =
-    List.indexedMap (\i x -> ( i, x )) xs
-        |> List.filter (\( i, _ ) -> i /= idx)
-        |> List.map Tuple.second
-
-
-
--- COMPENDIUM EDIT: SUBMIT / DELETE FLOW
-
-
-handleCompendiumEditSubmit : Model -> ( Model, Cmd Msg )
-handleCompendiumEditSubmit model =
-    case model.compendiumEdit of
-        Nothing ->
-            ( model, Cmd.none )
-
-        Just ui ->
-            case CompendiumUi.validateEdit ui of
-                Err message ->
-                    ( withCompendiumEdit (\u -> { u | submitError = Just message }) model
-                    , Cmd.none
-                    )
-
-                Ok creature ->
-                    ( withCompendiumEdit
-                        (\u -> { u | submitting = True, submitError = Nothing })
-                        model
-                    , submitCreatureCmd ui.mode creature
-                    )
-
-
-submitCreatureCmd : EditMode -> Compendium.Creature -> Cmd Msg
-submitCreatureCmd mode creature =
-    case mode of
-        CreateMode ->
-            Http.post
-                { url = "/api/compendium/creatures"
-                , body = Http.jsonBody (Compendium.Wire.encodeDraft creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
-                }
-
-        EditExisting { id } ->
-            Http.request
-                { method = "PUT"
-                , headers = []
-                , url = "/api/compendium/creatures/" ++ id
-                , body = Http.jsonBody (Compendium.Wire.encodeCreature creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
-                , timeout = Nothing
-                , tracker = Nothing
-                }
-
-
-handleCompendiumEditSubmitResponse :
-    Model
-    -> Result Http.Error Compendium.Creature
-    -> ( Model, Cmd Msg )
-handleCompendiumEditSubmitResponse model result =
-    case result of
-        Err err ->
-            ( withCompendiumEdit
-                (\u -> { u | submitting = False, submitError = Just (Util.Http.errorToString err) })
-                model
-            , Cmd.none
-            )
-
-        Ok creature ->
-            -- Close the edit modal, refetch the list (cheap; the
-            -- server holds the canonical list and a single round
-            -- trip is simpler than splicing locally), pre-select
-            -- the just-saved creature so it's visible in the
-            -- right pane after refetch.
-            { model
-                | compendiumEdit = Nothing
-                , compendium =
-                    let
-                        ui =
-                            model.compendium
-                    in
-                    { ui | selectedId = Just creature.id }
-            }
-                |> Update.Toast.pushWith ToastSuccess
-                    ("Saved " ++ creature.name)
-                    (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-handleCompendiumEditDelete : Model -> ( Model, Cmd Msg )
-handleCompendiumEditDelete model =
-    case model.compendiumEdit of
-        Just { mode } ->
-            case mode of
-                EditExisting { id } ->
-                    ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
-                    , Http.request
-                        { method = "DELETE"
-                        , headers = []
-                        , url = "/api/compendium/creatures/" ++ id
-                        , body = Http.emptyBody
-                        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-                        , timeout = Nothing
-                        , tracker = Nothing
-                        }
-                    )
-
-                CreateMode ->
-                    -- Delete is meaningless on a never-saved draft;
-                    -- treat it as cancel.
-                    ( { model | compendiumEdit = Nothing }, Cmd.none )
-
-        Nothing ->
-            ( model, Cmd.none )
-
-
-handleCompendiumEditDeleteResponse :
-    Model
-    -> String
-    -> Result Http.Error ()
-    -> ( Model, Cmd Msg )
-handleCompendiumEditDeleteResponse model deletedId result =
-    case result of
-        Err err ->
-            -- Clear busy/error in BOTH the edit-modal substate
-            -- (when the delete was initiated from the edit form)
-            -- and the browser substate (when initiated from the
-            -- browser's trash button).  withCompendiumEdit no-ops
-            -- if compendiumEdit is Nothing, and likewise for the
-            -- toast — we always surface the error.
-            withCompendiumEdit
-                (\u -> { u | submitting = False, submitError = Just (Util.Http.errorToString err) })
-                model
-                |> withCompendium
-                    (\ui -> { ui | bulkBusy = False, bulkError = Just (Util.Http.errorToString err) })
-                |> Update.Toast.push ToastError
-                    ("Delete failed: " ++ Util.Http.errorToString err)
-
-        Ok () ->
-            -- Drop the selection if it was pointing at the just-
-            -- deleted creature; reset bulkBusy in case the trash-
-            -- icon path got us here; refetch the list to repopulate.
-            let
-                clearedSelection ui =
-                    if ui.selectedId == Just deletedId then
-                        { ui | selectedId = Nothing, bulkBusy = False }
-
-                    else
-                        { ui | bulkBusy = False }
-            in
-            { model
-                | compendiumEdit = Nothing
-                , compendium = clearedSelection model.compendium
-            }
-                |> Update.Toast.pushWith ToastSuccess
-                    "Creature deleted"
-                    (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-compendiumAddCountUpdate : String -> CompendiumUi -> CompendiumUi
-compendiumAddCountUpdate raw ui =
-    let
-        parsed =
-            String.toInt raw
-                |> Maybe.withDefault ui.addCount
-                |> clamp 1 CompendiumUi.maxAddCount
-    in
-    { ui | addCountText = raw, addCount = parsed }
-
-
-{-| Resolve the selected compendium creature, build N
-auto-numbered initiative roll specs, and dispatch a single
-batched Cmd. The handler closes over `creatureId` so when the
-rolls land we can look the source back up to spawn instances
-against the freshly-rolled values.
--}
-compendiumAddToQueueCmd : Model -> String -> Cmd Msg
-compendiumAddToQueueCmd model creatureId =
-    case model.compendium.db of
-        CompendiumDbLoaded db ->
-            case Compendium.find creatureId db of
-                Just source ->
-                    let
-                        existing =
-                            List.map .name model.encounter.creatures
-
-                        names =
-                            pickInstanceNames source.name model.compendium.addCount existing
-
-                        specs =
-                            List.map (instanceSpec source) names
-                    in
-                    Dice.batchRollCmd
-                        (CompendiumInitiativeRolled creatureId)
-                        specs
-
-                Nothing ->
-                    Cmd.none
-
-        _ ->
-            Cmd.none
-
-
-{-| Generate `count` unique display names for new instances of
-`base`, threading the running set of reserved names through so
-each new pick honors prior picks within the same batch. So
-adding three Goblins to a fresh queue yields
-`Goblin / Goblin 2 / Goblin 3`.
--}
-pickInstanceNames : String -> Int -> List String -> List String
-pickInstanceNames base count existing =
-    let
-        loop n acc reserved =
-            if n <= 0 then
-                List.reverse acc
-
-            else
-                let
-                    next =
-                        Encounter.Roster.uniqueInstanceName base reserved
-                in
-                loop (n - 1) (next :: acc) (next :: reserved)
-    in
-    loop count [] existing
-
-
-instanceSpec :
-    Compendium.Creature
-    -> String
-    -> ( String, Dice.Source, Random.Generator Dice.Roll )
-instanceSpec source displayName =
-    ( displayName
-    , Update.Initiative.source displayName
-    , Dice.generator (compendiumInitiativeExpression source)
-    )
-
-
-compendiumInitiativeExpression : Compendium.Creature -> Dice.Expression
-compendiumInitiativeExpression c =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = c.initiativeBonus
-    , damageType = Nothing
-    }
-
-
-handleCompendiumRolls : Model -> String -> List ( String, Dice.Roll ) -> ( Model, Cmd Msg )
-handleCompendiumRolls model creatureId rolls =
-    case model.compendium.db of
-        CompendiumDbLoaded db ->
-            case Compendium.find creatureId db of
-                Just source ->
-                    let
-                        instances =
-                            List.map
-                                (\( displayName, roll ) ->
-                                    Compendium.draftToInstance
-                                        { displayName = displayName
-                                        , initiativeRoll = roll.total
-                                        }
-                                        source
-                                )
-                                rolls
-
-                        m1 =
-                            List.foldl (\( _, r ) m -> Effects.pushDiceRoll r m) model rolls
-
-                        addedCount =
-                            List.length instances
-
-                        toastMessage =
-                            if addedCount == 1 then
-                                "Added " ++ source.name ++ " to encounter"
-
-                            else
-                                "Added " ++ String.fromInt addedCount ++ " × " ++ source.name
-                    in
-                    { m1
-                        | encounter = Encounter.Roster.appendCreatures instances m1.encounter
-                        , compendium =
-                            let
-                                ui =
-                                    m1.compendium
-                            in
-                            { ui | open = False }
-                    }
-                        |> Update.Toast.pushWith ToastSuccess
-                            toastMessage
-                            (Cmd.batch (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls))
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-compendiumLoadedUpdate : Result Http.Error (List Compendium.Creature) -> CompendiumUi -> CompendiumUi
-compendiumLoadedUpdate result ui =
-    case result of
-        Ok creatures ->
-            { ui | db = CompendiumDbLoaded (Compendium.fromList creatures) }
-
-        Err err ->
-            { ui | db = CompendiumDbFailed err }
-
-
-{-| Open the modal and pick a sensible default selection so the right
-pane isn't blank on first open. We pick the first item of the
-currently-rendered (filter+sort applied) list.
--}
-openCompendiumUpdate : CompendiumUi -> CompendiumUi
-openCompendiumUpdate ui =
-    let
-        opened =
-            { ui | open = True }
-    in
-    case ui.selectedId of
-        Just _ ->
-            opened
-
-        Nothing ->
-            { opened
-                | selectedId =
-                    CompendiumUi.compendiumVisible opened
-                        |> List.head
-                        |> Maybe.map .id
-            }
-
-
-toggleCompendiumKind : Compendium.CreatureKind -> CompendiumUi -> CompendiumUi
-toggleCompendiumKind kind ui =
-    let
-        key =
-            CompendiumUi.kindToString kind
-
-        next =
-            if Set.member key ui.kindFilter then
-                Set.remove key ui.kindFilter
-
-            else
-                Set.insert key ui.kindFilter
-    in
-    { ui | kindFilter = next, selectedId = Nothing }
 
 
 {-| Lift an `Encounter -> Encounter` transformation into a
@@ -1595,14 +792,6 @@ selectionClickHandler creatureName =
                         ( ToggleSelected creatureName, True )
                 )
         )
-
-
-{-| Apply `fn` to the compendium browser substate. Always present
-(unlike most modals), so no `Maybe` unwrap.
--}
-withCompendium : (CompendiumUi -> CompendiumUi) -> Model -> Model
-withCompendium fn model =
-    { model | compendium = fn model.compendium }
 
 
 
@@ -4985,7 +4174,7 @@ viewCompendiumFilterBar ui =
     div [ class "compendium__filter-bar" ]
         [ input
             [ class "compendium__search"
-            , id compendiumSearchId
+            , id Update.Compendium.searchId
             , type_ "search"
             , placeholder "🔍 Search by name, race, source, CR… (press / to focus)"
             , value ui.searchText
