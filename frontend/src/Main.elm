@@ -65,10 +65,13 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
+import Update.Condition
+import Update.DeathSave
 import Update.Dice
 import Update.Encounter
 import Update.HpChange
 import Update.Initiative
+import Update.LegendaryPip
 import Update.Memo
 import Update.Note
 import Update.Shell
@@ -297,75 +300,16 @@ updateInner msg model =
             Update.Encounter.adjustFlyHeight name delta model
 
         DeathSaveToggleSuccess name idx ->
-            -- Click on success pip `idx` (0..2). Star-rating
-            -- semantics: clicking a filled pip clears it and every
-            -- later one (so unchecking pip 0 wipes pips 1 and 2);
-            -- clicking an empty pip fills up to and including it.
-            -- Pure visual toggle — no roll fired here.
-            ( withEncounter
-                (Encounter.mapCreature name
-                    (\c ->
-                        { c
-                            | deathSaves =
-                                let
-                                    ds =
-                                        c.deathSaves
-                                in
-                                { ds | successes = pipStripTarget idx ds.successes }
-                        }
-                    )
-                )
-                model
-            , Cmd.none
-            )
+            Update.DeathSave.toggleSuccess name idx model
 
         DeathSaveToggleFailure name idx ->
-            ( withEncounter
-                (Encounter.mapCreature name
-                    (\c ->
-                        { c
-                            | deathSaves =
-                                let
-                                    ds =
-                                        c.deathSaves
-                                in
-                                { ds | failures = pipStripTarget idx ds.failures }
-                        }
-                    )
-                )
-                model
-            , Cmd.none
-            )
+            Update.DeathSave.toggleFailure name idx model
 
         DeathSaveRoll name ->
-            -- Fire a 1d20 roll tagged so the dice history reads
-            -- "Death save → <name>". The result lands in
-            -- DeathSaveRollLanded which interprets it per 5e.
-            ( model
-            , Dice.rollCmd (DeathSaveRollLanded name)
-                (deathSaveSource name)
-                deathSaveExpression
-            )
+            Update.DeathSave.roll name model
 
         DeathSaveRollLanded name roll ->
-            -- 5e death-save rules:
-            --   nat 1  → +2 failures
-            --   2..9   → +1 failure
-            --   10..19 → +1 success
-            --   nat 20 → revive at 1 HP, clear tracker, conscious
-            -- The roll itself is a plain 1d20 with no modifier so
-            -- `roll.total` is the d20 face. Apply the rule, push
-            -- the roll into the dice history, and persist.
-            let
-                applyRule c =
-                    applyDeathSaveResult roll.total c
-            in
-            ( { model
-                | encounter = Encounter.mapCreature name applyRule model.encounter
-              }
-                |> Effects.pushDiceRoll roll
-            , Effects.persistDiceRoll roll
-            )
+            Update.DeathSave.rollLanded name roll model
 
         ToggleHolding name ->
             Update.Encounter.toggleHolding name model
@@ -523,279 +467,76 @@ updateInner msg model =
 
         -- Condition / effect modal lifecycle
         ConditionOpenNew name ->
-            ( { model | conditionUi = Just (ConditionUi.fresh name) }, Cmd.none )
+            Update.Condition.openNew name model
 
         ConditionOpenEdit name id ->
-            ( case Encounter.findCondition name id model.encounter of
-                Just ( _, cond ) ->
-                    { model | conditionUi = Just (ConditionUi.fromCondition name cond) }
-
-                Nothing ->
-                    model
-            , Cmd.none
-            )
+            Update.Condition.openEdit name id model
 
         ConditionClose ->
-            ( { model | conditionUi = Nothing }, Cmd.none )
+            Update.Condition.close model
 
         ConditionPickStandard label ->
-            ( withConditionUi
-                (\u -> { u | name = label, customName = "" })
-                model
-            , Cmd.none
-            )
+            Update.Condition.pickStandard label model
 
         ConditionCustomNameChanged text ->
-            -- Typing in the custom field both populates the name
-            -- and clears the standard radio selection (logically:
-            -- "name" is whatever the user last touched).
-            ( withConditionUi
-                (\u -> { u | name = text, customName = text })
-                model
-            , Cmd.none
-            )
+            Update.Condition.customNameChanged text model
 
         ConditionNoteChanged text ->
-            ( withConditionUi
-                (\u -> { u | note = String.left maxConditionNoteLength text })
-                model
-            , Cmd.none
-            )
+            Update.Condition.noteChanged text model
 
         ConditionDurationKindSet kind ->
-            ( withConditionUi (\u -> { u | durationKind = kind }) model, Cmd.none )
+            Update.Condition.durationKindSet kind model
 
         ConditionUntilCreatureChanged name ->
-            -- Switching the reference creature can make
-            -- "begin + current" newly invalid (or no longer
-            -- invalid). Repair the target field if so — the GM
-            -- doesn't want to babysit the radio after a dropdown
-            -- change.
-            ( withConditionUi
-                (\u -> repairUntilTarget model { u | untilCreature = name })
-                model
-            , Cmd.none
-            )
+            Update.Condition.untilCreatureChanged name model
 
         ConditionUntilPhaseSet phase ->
-            ( withConditionUi
-                (\u -> repairUntilTarget model { u | untilPhase = phase })
-                model
-            , Cmd.none
-            )
+            Update.Condition.untilPhaseSet phase model
 
         ConditionUntilTargetSet target ->
-            ( withConditionUi (\u -> { u | untilTarget = target }) model, Cmd.none )
+            Update.Condition.untilTargetSet target model
 
         ConditionCountdownTurnsChanged text ->
-            ( withConditionUi
-                (\u ->
-                    { u
-                        | countdownTurnsText = text
-                        , countdownTurns =
-                            String.toInt (String.trim text)
-                                |> Maybe.map (Basics.max 1 >> Basics.min 99)
-                                |> Maybe.withDefault u.countdownTurns
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Condition.countdownTurnsChanged text model
 
         ConditionCountdownPhaseSet phase ->
-            ( withConditionUi (\u -> { u | countdownPhase = phase }) model, Cmd.none )
+            Update.Condition.countdownPhaseSet phase model
 
         ConditionSaveToggle ->
-            ( withConditionUi
-                (\u ->
-                    { u
-                        | saveToEnd =
-                            case u.saveToEnd of
-                                Just _ ->
-                                    Nothing
-
-                                Nothing ->
-                                    Just ConditionUi.freshSaveToEnd
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Condition.saveToggle model
 
         ConditionSaveAbilityChanged ability ->
-            ( withConditionUi
-                (\u -> { u | saveToEnd = Maybe.map (\s -> { s | ability = ability }) u.saveToEnd })
-                model
-            , Cmd.none
-            )
+            Update.Condition.saveAbilityChanged ability model
 
         ConditionSaveDcChanged text ->
-            ( withConditionUi
-                (\u ->
-                    { u
-                        | saveToEnd =
-                            Maybe.map
-                                (\s ->
-                                    { s
-                                        | dcText = text
-                                        , dc =
-                                            String.toInt (String.trim text)
-                                                |> Maybe.withDefault s.dc
-                                    }
-                                )
-                                u.saveToEnd
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Condition.saveDcChanged text model
 
         ConditionSaveBonusChanged text ->
-            ( withConditionUi
-                (\u ->
-                    { u
-                        | saveToEnd =
-                            Maybe.map
-                                (\s ->
-                                    { s
-                                        | bonusText = text
-                                        , bonus =
-                                            String.toInt (String.trim text)
-                                                |> Maybe.withDefault s.bonus
-                                    }
-                                )
-                                u.saveToEnd
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Condition.saveBonusChanged text model
 
         ConditionSaveAutoRollSet mode ->
-            ( withConditionUi
-                (\u ->
-                    { u
-                        | saveToEnd =
-                            Maybe.map (\s -> { s | autoRoll = mode })
-                                u.saveToEnd
-                    }
-                )
-                model
-            , Cmd.none
-            )
+            Update.Condition.saveAutoRollSet mode model
 
         ConditionApplyToSelectedToggle ->
-            ( withConditionUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
-            , Cmd.none
-            )
+            Update.Condition.applyToSelectedToggle model
 
         ConditionSubmit ->
-            -- Validate that there's a name; empty-name conditions
-            -- are silently dropped (close the modal). Build a draft,
-            -- then either insert (creating) or update (editing).
-            case model.conditionUi of
-                Just ui ->
-                    let
-                        name =
-                            String.trim ui.name
-                    in
-                    if String.isEmpty name then
-                        ( { model | conditionUi = Nothing }, Cmd.none )
-
-                    else
-                        ( commitCondition ui name model, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Condition.submit model
 
         ConditionDelete ->
-            -- Delete from the modal's footer (only visible when editing).
-            case model.conditionUi of
-                Just ui ->
-                    case ui.editingId of
-                        Just id ->
-                            ( { model
-                                | encounter = Encounter.removeCondition ui.target id model.encounter
-                                , conditionUi = Nothing
-                              }
-                            , Cmd.none
-                            )
-
-                        Nothing ->
-                            ( { model | conditionUi = Nothing }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Condition.delete model
 
         ConditionRemoveChip name id ->
-            ( { model | encounter = Encounter.removeCondition name id model.encounter }
-            , Cmd.none
-            )
+            Update.Condition.removeChip name id model
 
         ConditionRollSave name id ->
-            -- Manual click on the save chip's d20 button. Same Cmd
-            -- shape as the auto-roll path, but flagged
-            -- `wasAutoRoll = False` so a successful save removes
-            -- the condition silently rather than posting a
-            -- "Saved: <name>" notice on the card.
-            case Encounter.findCondition name id model.encounter of
-                Just ( _, cond ) ->
-                    case cond.saveToEnd of
-                        Just spec ->
-                            ( model
-                            , Dice.rollCmd (ConditionSaveLanded name id spec.dc False)
-                                (Effects.saveSource cond name spec)
-                                (Effects.saveExpression spec.bonus)
-                            )
-
-                        Nothing ->
-                            ( model, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Update.Condition.rollSave name id model
 
         ConditionSaveLanded name id dc wasAutoRoll roll ->
-            -- Save resolves: roll.total >= dc means the condition
-            -- ends. Look up the condition name BEFORE we remove it
-            -- so the auto-roll success path can post a notice with
-            -- the right label. Manual rolls remove silently.
-            let
-                conditionName =
-                    Encounter.findCondition name id model.encounter
-                        |> Maybe.map (\( _, cond ) -> cond.name)
-
-                succeeded =
-                    roll.total >= dc
-
-                m1 =
-                    if succeeded then
-                        let
-                            removed =
-                                { model
-                                    | encounter = Encounter.removeCondition name id model.encounter
-                                }
-                        in
-                        case ( wasAutoRoll, conditionName ) of
-                            ( True, Just label ) ->
-                                { removed
-                                    | encounter =
-                                        Encounter.addSaveNotice name label removed.encounter
-                                }
-
-                            _ ->
-                                removed
-
-                    else
-                        model
-            in
-            ( m1 |> Effects.pushDiceRoll roll
-            , Effects.persistDiceRoll roll
-            )
+            Update.Condition.saveLanded name id dc wasAutoRoll roll model
 
         SaveNoticeDismiss name id ->
-            ( { model | encounter = Encounter.removeSaveNotice name id model.encounter }
-            , Cmd.none
-            )
+            Update.Condition.saveNoticeDismiss name id model
 
         ActiveCardScrollChecked _ ->
             -- Result of the scroll-into-view Task. Either the scroll
@@ -1056,18 +797,10 @@ updateInner msg model =
             ( { model | panelCreatureId = Just creatureId }, Cmd.none )
 
         ToggleLegendaryActionPip name idx ->
-            ( withEncounter
-                (Encounter.mapCreature name (toggleLegendaryActionPip idx))
-                model
-            , Cmd.none
-            )
+            Update.LegendaryPip.toggleAction name idx model
 
         ToggleLegendaryResistancePip name idx ->
-            ( withEncounter
-                (Encounter.mapCreature name (toggleLegendaryResistancePip idx))
-                model
-            , Cmd.none
-            )
+            Update.LegendaryPip.toggleResistance name idx model
 
         EncounterLoaded result ->
             Update.Shell.encounterLoaded result model
@@ -1826,36 +1559,6 @@ toggleCompendiumKind kind ui =
     { ui | kindFilter = next, selectedId = Nothing }
 
 
-{-| Toggle membership of `idx` in the creature's
-`legendaryActionsUsed` set — drives the orange LA pip column
-on the card. The 5e rule that LA refresh at the start of the
-creature's turn is enforced separately by
-`Encounter.applyBeginOfTurn`, which clears the set when the
-creature becomes active.
--}
-toggleLegendaryActionPip : Int -> Creature -> Creature
-toggleLegendaryActionPip idx c =
-    { c | legendaryActionsUsed = toggleSetMember idx c.legendaryActionsUsed }
-
-
-{-| Same as `toggleLegendaryActionPip` but for the LR column,
-which deliberately doesn't auto-reset (LR is per long rest in
-the rules, not per turn — the GM clears these manually).
--}
-toggleLegendaryResistancePip : Int -> Creature -> Creature
-toggleLegendaryResistancePip idx c =
-    { c | legendaryResistanceUsed = toggleSetMember idx c.legendaryResistanceUsed }
-
-
-toggleSetMember : Int -> Set Int -> Set Int
-toggleSetMember idx set =
-    if Set.member idx set then
-        Set.remove idx set
-
-    else
-        Set.insert idx set
-
-
 {-| Lift an `Encounter -> Encounter` transformation into a
 `Model -> Model` transformation by threading it through the encounter
 field. Keeps every per-creature update branch a one-liner and makes
@@ -1900,227 +1603,6 @@ selectionClickHandler creatureName =
 withCompendium : (CompendiumUi -> CompendiumUi) -> Model -> Model
 withCompendium fn model =
     { model | compendium = fn model.compendium }
-
-
-{-| Apply `fn` to the open condition modal. No-op when closed.
--}
-withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
-withConditionUi fn model =
-    { model | conditionUi = Maybe.map fn model.conditionUi }
-
-
-{-| Auto-correct the `untilTarget` field if the current
-phase / creature combo has made `OnCurrentTurn` nonsensical.
-
-A "Begin + Current turn" pairing is logically invalid when the
-reference creature is currently active: the begin of their
-current turn already fired when they became active, so there's
-no future hook to expire on. Flip to `OnNextTurn` so the
-condition has a real expiration point.
-
--}
-repairUntilTarget : Model -> ConditionUi -> ConditionUi
-repairUntilTarget model ui =
-    if currentTurnInvalid model ui && ui.untilTarget == Encounter.OnCurrentTurn then
-        { ui | untilTarget = Encounter.OnNextTurn }
-
-    else
-        ui
-
-
-{-| True when `OnCurrentTurn` would be a no-op — only the
-"Begin + active reference creature" case for now.
--}
-currentTurnInvalid : Model -> ConditionUi -> Bool
-currentTurnInvalid model ui =
-    ui.untilPhase == Encounter.AtBegin && ui.untilCreature == model.encounter.activeName
-
-
-{-| Hard cap on the chip-note text. Ten characters keeps the chip
-small and prevents wrap-overflow on the card row 1.
--}
-maxConditionNoteLength : Int
-maxConditionNoteLength =
-    10
-
-
-{-| Translate the modal's UI state into a domain-level
-`ConditionDraft`, then either insert it (when creating) or replace
-the existing condition's fields (when editing). The "skip first
-end-of-turn tick" rule is applied here for AtEnd countdowns
-created on the currently-active creature.
--}
-commitCondition : ConditionUi -> String -> Model -> Model
-commitCondition ui name model =
-    let
-        duration =
-            buildDuration ui model
-
-        saveToEnd =
-            Maybe.map
-                (\s ->
-                    { ability = s.ability
-                    , dc = s.dc
-                    , bonus = s.bonus
-                    , autoRoll = s.autoRoll
-                    }
-                )
-                ui.saveToEnd
-
-        draft =
-            { name = name
-            , note = String.trim ui.note
-            , duration = duration
-            , saveToEnd = saveToEnd
-            }
-    in
-    case ui.editingId of
-        Just id ->
-            -- Editing an existing condition is always single-target —
-            -- you're modifying one specific row, not splatting it.
-            { model
-                | encounter =
-                    Encounter.updateCondition ui.target
-                        id
-                        (\c ->
-                            { c
-                                | name = draft.name
-                                , note = draft.note
-                                , duration = draft.duration
-                                , saveToEnd = draft.saveToEnd
-                            }
-                        )
-                        model.encounter
-                , conditionUi = Nothing
-            }
-
-        Nothing ->
-            let
-                targets =
-                    conditionTargets ui model.encounter
-
-                addOne tgt enc =
-                    Encounter.addCondition tgt draft enc
-            in
-            { model
-                | encounter = List.foldl addOne model.encounter targets
-                , conditionUi = Nothing
-            }
-
-
-{-| Resolve which creatures a new condition applies to. When
-`applyToSelected` is True, every creature with `selected = True`
-gets a fresh copy (each gets its own id via `addCondition`).
-Otherwise just the modal's `target`.
--}
-conditionTargets : ConditionUi -> Encounter -> List String
-conditionTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
-
-    else
-        [ ui.target ]
-
-
-{-| Build the domain `Duration` from the UI's three sub-states.
-
-For `DurKindCountdown` with `AtEnd` placed on the currently-active
-creature, set `skipNextTick = True` so the bearer's imminent
-end-of-turn (which is right around the corner) doesn't get counted
-as a full turn.
-
--}
-buildDuration : ConditionUi -> Model -> Encounter.Duration
-buildDuration ui model =
-    case ui.durationKind of
-        DurKindManual ->
-            Encounter.DurationManual
-
-        DurKindUntilTurn ->
-            Encounter.DurationUntilTurn ui.untilPhase ui.untilTarget ui.untilCreature
-
-        DurKindCountdown ->
-            let
-                isCurrentlyActive =
-                    ui.target == model.encounter.activeName
-
-                skipNextTick =
-                    ui.countdownPhase == Encounter.AtEnd && isCurrentlyActive
-            in
-            Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
-
-
-{-| Source label for death-save rolls — "Death save → <creature>"
-in the dice history.
--}
-deathSaveSource : String -> Dice.Source
-deathSaveSource name =
-    { feature = "Death save", target = Just name }
-
-
-{-| Plain 1d20, no modifier. Built once and re-used so every
-death-save roll has the same expression shape (and the dice
-history's "1d20" label stays stable for searching/filtering).
--}
-deathSaveExpression : Dice.Expression
-deathSaveExpression =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = 0
-    , damageType = Nothing
-    }
-
-
-{-| Compute the new pip-strip count when pip `idx` (0..2) is
-clicked given the current count. Star-rating semantics — clicking
-a filled pip clears it and every later pip; clicking an empty pip
-fills up to and including it.
--}
-pipStripTarget : Int -> Int -> Int
-pipStripTarget idx current =
-    if idx < current then
-        idx
-
-    else
-        idx + 1
-
-
-{-| Resolve a 5e death-save d20 face against the creature.
-
-  - 20 → revive at 1 HP, conscious, tracker cleared.
-  - 1 → +2 failures.
-  - 10..19 → +1 success.
-  - 2..9 → +1 failure.
-
-The helper checks for the pre-existing dead/stable state and is a
-no-op there so a stray click on the Roll button after death
-doesn't change anything.
-
--}
-applyDeathSaveResult : Int -> Creature -> Creature
-applyDeathSaveResult d20 c =
-    if Encounter.isDeathSaveDead c.deathSaves || Encounter.isDeathSaveStable c.deathSaves then
-        c
-
-    else if d20 == 20 then
-        -- Nat 20 revives at 1 HP. Bumping currentHp above 0 also
-        -- hides the tracker (view gates on currentHp == 0) and
-        -- the cleared counts mean the next time they go down
-        -- they start fresh.
-        { c
-            | currentHp = Basics.max 1 c.currentHp
-            , deathSaves = Encounter.emptyDeathSaves
-        }
-
-    else if d20 == 1 then
-        { c | deathSaves = Encounter.addDeathSaveFailures 2 c.deathSaves }
-
-    else if d20 >= 10 then
-        { c | deathSaves = Encounter.addDeathSaveSuccesses 1 c.deathSaves }
-
-    else
-        { c | deathSaves = Encounter.addDeathSaveFailures 1 c.deathSaves }
 
 
 
@@ -4836,12 +4318,12 @@ viewConditionNoteSection : ConditionUi -> Html Msg
 viewConditionNoteSection ui =
     div [ class "cond-section" ]
         [ h3 [ class "cond-section__heading" ]
-            [ text ("Note (max " ++ String.fromInt maxConditionNoteLength ++ " chars)") ]
+            [ text ("Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)") ]
         , input
             [ class "cond-input"
             , type_ "text"
             , value ui.note
-            , maxlength maxConditionNoteLength
+            , maxlength Update.Condition.maxConditionNoteLength
             , placeholder "e.g. from Lyra"
             , onInput ConditionNoteChanged
             ]
@@ -4934,7 +4416,7 @@ viewTurnTargetToggle : ConditionUi -> Model -> Html Msg
 viewTurnTargetToggle ui model =
     let
         currentDisabled =
-            currentTurnInvalid model ui
+            Update.Condition.currentTurnInvalid model ui
     in
     span [ class "cond-phase-toggle" ]
         [ Html.label
