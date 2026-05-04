@@ -26,6 +26,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Model exposing (Model)
 import Msg
     exposing
         ( CompendiumField(..)
@@ -43,6 +44,7 @@ import Msg
         )
 import Process
 import Random
+import Route exposing (Route(..))
 import Set exposing (Set)
 import Task
 import Ui.Compendium as CompendiumUi
@@ -64,74 +66,14 @@ import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
 import Url exposing (Url)
-import Url.Parser exposing ((</>), Parser, oneOf, top)
 import Util.Keyboard
 import View.Modal
 import View.StatBlock
 
 
 
--- ROUTING
-
-
-type Route
-    = Home
-    | Me
-    | CompendiumCreaturePage String
-    | NotFound
-
-
-routeParser : Parser (Route -> a) a
-routeParser =
-    oneOf
-        [ Url.Parser.map Home top
-        , Url.Parser.map Me (Url.Parser.s "me")
-        , Url.Parser.map CompendiumCreaturePage
-            (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
-        ]
-
-
-routeFromUrl : Url -> Route
-routeFromUrl url =
-    Url.Parser.parse routeParser url
-        |> Maybe.withDefault NotFound
-
-
-
--- MODEL
-
-
-{-| The single source of truth for the running app.
-
-`encounter` holds all D&D-specific state (queue, active creature,
-round). `route` / `url` / `key` / `me` are presentation/auth concerns
-that have nothing to do with the rules. The split mirrors the larger
-discipline: domain state goes through `Encounter`, everything else
-stays here.
-
--}
-type alias Model =
-    { key : Nav.Key
-    , url : Url
-    , route : Route
-    , me : MeStatus
-    , encounter : Encounter
-    , dice : DiceUi
-    , hpChange : Maybe HpChangeUi
-    , hpChangeLog : List HpChangeEntry
-    , hpEdit : Maybe HpEdit
-    , initiative : Maybe InitiativeUi
-    , noteEdit : Maybe NoteEditUi
-    , conditionUi : Maybe ConditionUi
-    , memoEdit : Maybe MemoEditUi
-    , timerSetup : Maybe TimerSetupUi
-    , compendium : CompendiumUi
-    , compendiumEdit : Maybe CompendiumEditUi
-    , compendiumPaste : Maybe CompendiumPasteUi
-    , panelCreatureId : Maybe String
-    , toasts : List Toast
-    , nextToastId : Int
-    }
+-- The Model record alias lives in `Model.elm`; the route ADT
+-- + URL parser live in `Route.elm`.  Both are imported below.
 
 
 {-| Every message the runtime can send the update loop. Per-creature
@@ -228,7 +170,7 @@ init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     let
         route =
-            routeFromUrl url
+            Route.fromUrl url
     in
     ( { key = key
       , url = url
@@ -345,7 +287,7 @@ updateInner msg model =
         UrlChanged url ->
             let
                 route =
-                    routeFromUrl url
+                    Route.fromUrl url
             in
             ( { model | url = url, route = route, me = Loading }
             , cmdForRoute route
