@@ -574,10 +574,61 @@ body {
   overflow: hidden;
 }
 
-.condition-chip {
+/* ── PILL PATTERN ────────────────────────────────────────────
+   Shared inline-flex chrome used by .condition-chip,
+   .save-notice, .memo-pill, and .timer-pill.  Each variant
+   adds its own color + radius modifiers below.  Dismiss
+   buttons (× / 🗑) all share `.pill__dismiss` shape; the
+   condition-chip's variant uses its own selectors for
+   backwards compatibility with the Elm view code.
+   ────────────────────────────────────────────────────────── */
+
+.condition-chip,
+.save-notice,
+.memo-pill,
+.timer-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+}
+
+.condition-chip__remove,
+.condition-chip__save,
+.save-notice__dismiss,
+.memo-pill__dismiss,
+.timer-pill__dismiss {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 3px;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.condition-chip__remove,
+.save-notice__dismiss,
+.memo-pill__dismiss,
+.timer-pill__dismiss {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.condition-chip__remove:hover,
+.save-notice__dismiss:hover,
+.memo-pill__dismiss:hover,
+.timer-pill__dismiss:hover {
+  color: var(--color-danger);
+  background: rgba(214, 59, 59, 0.15);
+}
+
+/* Variant-specific tweaks: color, padding, border. */
+
+.condition-chip {
   padding: 1px 6px;
   font-size: 0.78rem;
   font-weight: 500;
@@ -585,7 +636,6 @@ body {
   color: var(--color-yellow);
   border: 1px solid rgba(245, 200, 66, 0.35);
   border-radius: 999px;
-  white-space: nowrap;
   max-width: 220px;
   overflow: hidden;
 }
@@ -614,19 +664,6 @@ body {
   font-weight: 400;
 }
 
-.condition-chip__save,
-.condition-chip__remove {
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0 3px;
-  margin: 0;
-  font: inherit;
-  cursor: pointer;
-  line-height: 1;
-  border-radius: 3px;
-}
-
 .condition-chip__save {
   color: var(--color-text);
   font-size: 0.85rem;
@@ -634,17 +671,6 @@ body {
 
 .condition-chip__save:hover {
   background: rgba(245, 200, 66, 0.2);
-}
-
-.condition-chip__remove {
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.condition-chip__remove:hover {
-  color: var(--color-danger);
-  background: rgba(214, 59, 59, 0.15);
 }
 
 .condition-chip__duration {
@@ -658,9 +684,6 @@ body {
    roll save. Green to signal a positive outcome; auto-clears on
    the bearer's next end-of-turn, but the × dismisses earlier. */
 .save-notice {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   padding: 1px 6px;
   font-size: 0.78rem;
   font-weight: 500;
@@ -668,27 +691,6 @@ body {
   color: #3cb455;
   border: 1px solid rgba(60, 180, 85, 0.4);
   border-radius: 999px;
-  white-space: nowrap;
-}
-
-.save-notice__dismiss {
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0 3px;
-  margin: 0;
-  font: inherit;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1;
-  border-radius: 3px;
-}
-
-.save-notice__dismiss:hover {
-  color: var(--color-danger);
-  background: rgba(214, 59, 59, 0.15);
 }
 
 .creature-card__row--mid {
@@ -2679,14 +2681,10 @@ body {
    memo is set. White text per spec; the × dismisses the memo
    and restores the icon. */
 .memo-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   padding: 2px 8px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-sm);
-  white-space: nowrap;
   max-width: 200px;
 }
 
@@ -2711,32 +2709,9 @@ body {
   text-decoration: underline;
 }
 
-.memo-pill__dismiss {
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0 3px;
-  margin: 0;
-  font: inherit;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1;
-  border-radius: 3px;
-}
-
-.memo-pill__dismiss:hover {
-  color: var(--color-danger);
-  background: rgba(214, 59, 59, 0.15);
-}
-
 /* Card row 3 timer pill: shown in place of the ⏱ button when a
    timer is set. The ringing variant flashes a 0 to draw the eye. */
 .timer-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   padding: 2px 8px;
   background: rgba(120, 170, 255, 0.1);
   border: 1px solid rgba(120, 170, 255, 0.3);
@@ -2750,26 +2725,6 @@ body {
 .timer-pill__count {
   min-width: 1.2em;
   text-align: center;
-}
-
-.timer-pill__dismiss {
-  appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0 3px;
-  margin: 0;
-  font: inherit;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1;
-  border-radius: 3px;
-}
-
-.timer-pill__dismiss:hover {
-  color: var(--color-danger);
-  background: rgba(214, 59, 59, 0.15);
 }
 
 .timer-pill--ringing {
