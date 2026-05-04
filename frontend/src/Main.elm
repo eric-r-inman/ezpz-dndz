@@ -8,6 +8,7 @@ import Compendium
 import Compendium.Parser
 import Compendium.Wire
 import Dice
+import Effects
 import Encounter
     exposing
         ( Cover(..)
@@ -198,37 +199,12 @@ init _ url key =
       -- are silently swallowed so a fresh server (no
       -- dice-history.json yet) still loads.
     , Cmd.batch
-        [ cmdForRoute route
-        , fetchDiceHistoryCmd
+        [ Effects.cmdForRoute route
+        , Effects.fetchDiceHistory
         , Compendium.Wire.fetchAll CompendiumLoaded
         , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
-
-
-cmdForRoute : Route -> Cmd Msg
-cmdForRoute route =
-    case route of
-        Me ->
-            fetchMe
-
-        _ ->
-            Cmd.none
-
-
-fetchMe : Cmd Msg
-fetchMe =
-    Http.get
-        { url = "/me"
-        , expect = Http.expectJson GotMe meDecoder
-        }
-
-
-meDecoder : Decode.Decoder MeInfo
-meDecoder =
-    Decode.map2 MeInfo
-        (Decode.field "name" Decode.string)
-        (Decode.field "auth_enabled" Decode.bool)
 
 
 {-| Top-level update wrapper: dispatches to `updateInner` and then,
@@ -290,7 +266,7 @@ updateInner msg model =
                     Route.fromUrl url
             in
             ( { model | url = url, route = route, me = Loading }
-            , cmdForRoute route
+            , Effects.cmdForRoute route
             )
 
         GotMe result ->
@@ -324,14 +300,14 @@ updateInner msg model =
                     Encounter.Lifecycle.nextTurn model.encounter
 
                 endRolls =
-                    autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
+                    Effects.autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
 
                 beginRolls =
-                    autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
+                    Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
             in
             ( { model | encounter = newEnc }
             , Cmd.batch
-                (scrollActiveIntoViewCmd newEnc.activeName
+                (Effects.scrollActiveIntoView newEnc.activeName
                     :: endRolls
                     ++ beginRolls
                 )
@@ -344,7 +320,7 @@ updateInner msg model =
             -- Scroll-into-view still runs so the GM sees the card
             -- they just promoted.
             ( withEncounter (Encounter.setActive name) model
-            , scrollActiveIntoViewCmd name
+            , Effects.scrollActiveIntoView name
             )
 
         ToggleSurprised name ->
@@ -444,8 +420,8 @@ updateInner msg model =
             ( { model
                 | encounter = Encounter.mapCreature name applyRule model.encounter
               }
-                |> pushDiceRoll roll
-            , persistRollCmd roll
+                |> Effects.pushDiceRoll roll
+            , Effects.persistDiceRoll roll
             )
 
         ToggleHolding name ->
@@ -552,7 +528,7 @@ updateInner msg model =
 
         DiceClearHistory ->
             ( withDice (\d -> { d | history = Dice.emptyHistory }) model
-            , clearDiceHistoryCmd
+            , Effects.clearDiceHistory
             )
 
         DiceRollLanded roll ->
@@ -561,8 +537,8 @@ updateInner msg model =
             -- replaces the local view in DicePersistResponse so the two
             -- stay in sync (and any older entries surfacing from disk
             -- after init come through that same path).
-            ( pushDiceRoll roll model
-            , persistRollCmd roll
+            ( Effects.pushDiceRoll roll model
+            , Effects.persistDiceRoll roll
             )
 
         DiceHistoryLoaded result ->
@@ -719,7 +695,7 @@ updateInner msg model =
             -- still log/persist so we don't drop rolls on the floor.
             let
                 logged =
-                    pushDiceRoll roll model
+                    Effects.pushDiceRoll roll model
 
                 committed =
                     case logged.hpChange of
@@ -729,7 +705,7 @@ updateInner msg model =
                         Nothing ->
                             logged
             in
-            ( committed, persistRollCmd roll )
+            ( committed, Effects.persistDiceRoll roll )
 
         -- Inline HP edit on a creature card
         HpEditStart name field current ->
@@ -933,7 +909,7 @@ updateInner msg model =
                                 (\c -> { c | initiative = roll.total })
                                 m.encounter
                     }
-                        |> pushDiceRoll roll
+                        |> Effects.pushDiceRoll roll
 
                 m1 =
                     List.foldl applyOne model results
@@ -945,7 +921,7 @@ updateInner msg model =
                 | encounter = Encounter.Roster.sortByInitiative m1.encounter
                 , initiative = Nothing
               }
-            , Cmd.batch (List.map persistRollCmd rolls)
+            , Cmd.batch (List.map Effects.persistDiceRoll rolls)
             )
 
         -- Note-edit modal
@@ -1211,8 +1187,8 @@ updateInner msg model =
                         Just spec ->
                             ( model
                             , Dice.rollCmd (ConditionSaveLanded name id spec.dc False)
-                                (saveSource cond name spec)
-                                (saveExpression spec.bonus)
+                                (Effects.saveSource cond name spec)
+                                (Effects.saveExpression spec.bonus)
                             )
 
                         Nothing ->
@@ -1255,8 +1231,8 @@ updateInner msg model =
                     else
                         model
             in
-            ( m1 |> pushDiceRoll roll
-            , persistRollCmd roll
+            ( m1 |> Effects.pushDiceRoll roll
+            , Effects.persistDiceRoll roll
             )
 
         SaveNoticeDismiss name id ->
@@ -2361,7 +2337,7 @@ handleCompendiumRolls model creatureId rolls =
                                 rolls
 
                         m1 =
-                            List.foldl (\( _, r ) m -> pushDiceRoll r m) model rolls
+                            List.foldl (\( _, r ) m -> Effects.pushDiceRoll r m) model rolls
 
                         addedCount =
                             List.length instances
@@ -2384,7 +2360,7 @@ handleCompendiumRolls model creatureId rolls =
                     }
                         |> pushToastWith ToastSuccess
                             toastMessage
-                            (Cmd.batch (List.map (\( _, r ) -> persistRollCmd r) rolls))
+                            (Cmd.batch (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls))
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -2491,35 +2467,6 @@ inline at every call site.
 withDice : (DiceUi -> DiceUi) -> Model -> Model
 withDice fn model =
     { model | dice = fn model.dice }
-
-
-{-| Land one roll into the dice history. Single chokepoint so the
-"unread" indicator on the encounter-controls Roll button stays in
-sync — every Cmd that returns a Roll funnels through here.
-
-`unread = True` only when the modal is closed at land time. When
-the modal is already open, the user can already see the roll, so
-no indicator is needed.
-
--}
-pushDiceRoll : Dice.Roll -> Model -> Model
-pushDiceRoll roll model =
-    let
-        d =
-            model.dice
-    in
-    { model
-        | dice =
-            { d
-                | history = Dice.push roll d.history
-                , unread =
-                    if d.open then
-                        d.unread
-
-                    else
-                        True
-            }
-    }
 
 
 {-| Apply `fn` to the open HP-change modal. No-op when the modal is
@@ -2742,140 +2689,6 @@ buildDuration ui model =
                     ui.countdownPhase == Encounter.AtEnd && isCurrentlyActive
             in
             Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
-
-
-{-| DOM id stamped on each creature card's outer `<article>`.
-Used by [`scrollActiveIntoViewCmd`](#scrollActiveIntoViewCmd) to
-locate the active card via `Browser.Dom.getElement`. Spaces and
-punctuation in creature names are mapped to underscores so the
-resulting id meets HTML5's "no ASCII whitespace" rule.
--}
-cardId : String -> String
-cardId name =
-    "creature-card-" ++ slugifyName name
-
-
-slugifyName : String -> String
-slugifyName name =
-    name
-        |> String.toList
-        |> List.map
-            (\c ->
-                if Char.isAlphaNum c then
-                    c
-
-                else
-                    '_'
-            )
-        |> String.fromList
-
-
-{-| If the active creature's card is partially below the browser
-viewport's bottom edge, scroll the document so it's fully
-visible (with a small bottom margin). Otherwise no-op.
-
-Composed from `Browser.Dom.getViewport` and
-`Browser.Dom.getElement` — both are read-only Tasks, so we only
-issue a `setViewport` when the math says we have to. The result
-lands in [`ActiveCardScrollChecked`](#ActiveCardScrollChecked)
-which is a no-op handler.
-
--}
-scrollActiveIntoViewCmd : String -> Cmd Msg
-scrollActiveIntoViewCmd name =
-    Task.map2
-        (\viewport element ->
-            let
-                cardBottom =
-                    element.element.y + element.element.height
-
-                viewportBottom =
-                    viewport.viewport.y + viewport.viewport.height
-
-                bottomMargin =
-                    16
-
-                overflow =
-                    cardBottom - (viewportBottom - bottomMargin)
-            in
-            if overflow > 0 then
-                Browser.Dom.setViewport
-                    viewport.viewport.x
-                    (viewport.viewport.y + overflow)
-
-            else
-                Task.succeed ()
-        )
-        Browser.Dom.getViewport
-        (Browser.Dom.getElement (cardId name))
-        |> Task.andThen identity
-        |> Task.attempt ActiveCardScrollChecked
-
-
-{-| Build a list of Cmds that fire auto-roll saves for one
-creature in one turn-phase. Each result lands in
-`ConditionSaveLanded`, which applies the success / failure logic
-and updates the dice history.
-
-`mode` filters: only conditions whose `saveToEnd.autoRoll`
-matches `mode` produce a Cmd. The two phases (`AutoRollAtBegin`
-and `AutoRollAtEnd`) are fired separately — see the `NextTurn`
-update branch.
-
-Returns `[]` when the named creature isn't in the queue or has
-no matching auto-roll saves, which is the common case.
-
--}
-autoRollCmdsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List (Cmd Msg)
-autoRollCmdsFor mode name enc =
-    enc.creatures
-        |> List.filter (\c -> c.name == name)
-        |> List.concatMap
-            (\c ->
-                List.filterMap (autoRollCmdForCondition mode c.name) c.conditions
-            )
-
-
-autoRollCmdForCondition : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe (Cmd Msg)
-autoRollCmdForCondition mode bearer cond =
-    case cond.saveToEnd of
-        Just spec ->
-            if spec.autoRoll == mode then
-                Just
-                    (Dice.rollCmd
-                        (ConditionSaveLanded bearer cond.id spec.dc True)
-                        (saveSource cond bearer spec)
-                        (saveExpression spec.bonus)
-                    )
-
-            else
-                Nothing
-
-        Nothing ->
-            Nothing
-
-
-{-| Source label for save-to-end rolls: "Save: WIS DC 13 → Brakka".
-The history reads informatively without the GM having to remember
-which condition the save was for.
--}
-saveSource : Encounter.Condition -> String -> Encounter.SaveToEnd -> Dice.Source
-saveSource cond target spec =
-    { feature =
-        "Save: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc ++ " (" ++ cond.name ++ ")"
-    , target = Just target
-    }
-
-
-{-| Build a `1d20 + bonus` expression for a save roll. Bonus may
-be 0; in that case `expressionToString` will render just "1d20".
--}
-saveExpression : Int -> Dice.Expression
-saveExpression bonus =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = bonus
-    , damageType = Nothing
-    }
 
 
 {-| Build the `Cmd` for an initiative roll batch.
@@ -3229,47 +3042,6 @@ faceExpression ui faces =
     , constant = ui.modifier
     , damageType = Nothing
     }
-
-
-{-| GET the persisted dice history from the server. Failures (no
-server, no file yet, malformed JSON) are not surfaced — the modal
-just shows whatever is in the local in-memory copy.
--}
-fetchDiceHistoryCmd : Cmd Msg
-fetchDiceHistoryCmd =
-    Http.get
-        { url = "/api/dice/history"
-        , expect = Http.expectJson DiceHistoryLoaded (Decode.list Dice.decodeRoll)
-        }
-
-
-{-| POST a fresh roll to the server's history endpoint. The response
-body is the new (truncated) list, which we use to overwrite the local
-view in `DicePersistResponse`.
--}
-persistRollCmd : Dice.Roll -> Cmd Msg
-persistRollCmd roll =
-    Http.post
-        { url = "/api/dice/history"
-        , body = Http.jsonBody (Dice.encodeRoll roll)
-        , expect = Http.expectJson DicePersistResponse (Decode.list Dice.decodeRoll)
-        }
-
-
-{-| DELETE the persisted history. Wraps `Http.request` because
-elm/http doesn't ship an `Http.delete` shorthand.
--}
-clearDiceHistoryCmd : Cmd Msg
-clearDiceHistoryCmd =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/api/dice/history"
-        , body = Http.emptyBody
-        , expect = Http.expectWhatever DiceClearResponse
-        , timeout = Nothing
-        , tracker = Nothing
-        }
 
 
 
@@ -3776,7 +3548,7 @@ viewCreatureCard activeName hpEdit creature =
                     ]
                 )
     in
-    article [ id (cardId creature.name), class cardClass ]
+    article [ id (Effects.cardId creature.name), class cardClass ]
         [ div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
                 [ input
