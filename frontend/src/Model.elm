@@ -1,4 +1,4 @@
-module Model exposing (Model)
+module Model exposing (Modal(..), Model)
 
 {-| The single source of truth for the running app.
 
@@ -8,21 +8,20 @@ modal-state plumbing. The discipline mirrors the larger
 layering rule: domain state goes through `Encounter`,
 everything else stays here.
 
-Each modal-shaped field is `Maybe` (open ↔ closed lives in the
-record itself, not as a flag inside the Ui state) so an
-`Encounter.mapCreature` that deletes the targeted creature
-can't leave a stale modal pointing at something that no
-longer exists. The exceptions — `dice` and `compendium` — are
-always present because they wrap state that survives modal
-close (dice history, compendium browser cache).
+The `modal` field is a `Maybe Modal` ADT — the constructor
+identifies which modal is open and carries its UI state.
+`Nothing` means no modal is open. This shape replaces the
+older "one `Maybe XxxUi` field per modal" scheme and bakes
+the "only one modal open at a time" invariant into the type
+system rather than leaving it as a convention.
 
-This module exposes only the `Model` type. Forthcoming
-`Update/*` modules import it as a type-level surface; they
-shouldn't need anything else from here, since modal state
-constructors live in their respective `Ui/*` modules and the
-`Model` itself is only ever assembled by `Main.init`.
+The exceptions — `dice` and `compendium` — sit outside the
+ADT because their substate has to survive a modal close
+(dice history, compendium browser cache + filter selection).
+Their `open : Bool` field on the substate signals whether the
+modal is showing.
 
-@docs Model
+@docs Modal, Model
 
 -}
 
@@ -42,6 +41,24 @@ import Ui.Toast exposing (Toast)
 import Url exposing (Url)
 
 
+{-| One constructor per modal kind, each carrying its UI state.
+
+The "only one modal open at a time" invariant is type-enforced:
+opening modal X assigns `Just (ModalX uiX)` to `model.modal`,
+which by construction wipes out whatever was open before.
+
+-}
+type Modal
+    = ModalHpChange HpChangeUi
+    | ModalInitiative InitiativeUi
+    | ModalNoteEdit NoteEditUi
+    | ModalCondition ConditionUi
+    | ModalMemoEdit MemoEditUi
+    | ModalTimerSetup TimerSetupUi
+    | ModalCompendiumEdit CompendiumEditUi
+    | ModalCompendiumPaste CompendiumPasteUi
+
+
 type alias Model =
     { key : Nav.Key
     , url : Url
@@ -49,17 +66,10 @@ type alias Model =
     , me : MeStatus
     , encounter : Encounter
     , dice : DiceUi
-    , hpChange : Maybe HpChangeUi
     , hpChangeLog : List HpChangeEntry
     , hpEdit : Maybe HpEdit
-    , initiative : Maybe InitiativeUi
-    , noteEdit : Maybe NoteEditUi
-    , conditionUi : Maybe ConditionUi
-    , memoEdit : Maybe MemoEditUi
-    , timerSetup : Maybe TimerSetupUi
     , compendium : CompendiumUi
-    , compendiumEdit : Maybe CompendiumEditUi
-    , compendiumPaste : Maybe CompendiumPasteUi
+    , modal : Maybe Modal
     , panelCreatureId : Maybe String
     , toasts : List Toast
     , nextToastId : Int

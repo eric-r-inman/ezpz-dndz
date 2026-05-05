@@ -8,7 +8,7 @@ when the modal is closed.
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes exposing (autofocus, class, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.Note as NoteUi
 import Util.Keyboard
@@ -17,11 +17,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.noteEdit of
-        Nothing ->
-            text ""
-
-        Just ui ->
+    case model.modal of
+        Just (ModalNoteEdit ui) ->
             View.Modal.view
                 { close = NoteEditCancel
                 , noOp = NoOp
@@ -56,3 +53,6 @@ view model =
                         ]
                     ]
                 }
+
+        _ ->
+            text ""

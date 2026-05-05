@@ -11,7 +11,7 @@ import HpChange
 import Html exposing (Html, button, div, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( HpInputMode(..)
@@ -25,11 +25,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.hpChange of
-        Nothing ->
-            text ""
-
-        Just ui ->
+    case model.modal of
+        Just (ModalHpChange ui) ->
             let
                 target =
                     List.filter (\c -> c.name == ui.target) model.encounter.creatures
@@ -66,6 +63,9 @@ view model =
                     , log model.hpChangeLog
                     ]
                 }
+
+        _ ->
+            text ""
 
 
 modeToggle : HpChangeUi -> Html Msg

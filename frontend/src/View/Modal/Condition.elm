@@ -11,7 +11,7 @@ import Encounter exposing (Encounter)
 import Html exposing (Html, button, div, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, for, id, maxlength, placeholder, title, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( DurationKind(..)
@@ -25,11 +25,8 @@ import View.PhaseToggle
 
 view : Model -> Html Msg
 view model =
-    case model.conditionUi of
-        Nothing ->
-            text ""
-
-        Just ui ->
+    case model.modal of
+        Just (ModalCondition ui) ->
             let
                 modalTitle =
                     (if ui.editingId == Nothing then
@@ -55,6 +52,9 @@ view model =
                     , footer ui
                     ]
                 }
+
+        _ ->
+            text ""
 
 
 {-| Multi-target scope checkbox for the condition modal. Same

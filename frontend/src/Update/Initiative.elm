@@ -21,7 +21,7 @@ import Dice
 import Effects
 import Encounter exposing (Creature)
 import Encounter.Roster
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( Msg(..)
@@ -32,24 +32,29 @@ import Random
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 
 
-{-| Apply `fn` to the open initiative-manager modal. No-op when the
-modal is closed.
+{-| Apply `fn` to the open initiative-manager modal. No-op when
+the modal is closed (or a different modal is open).
 -}
 withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
 withInitiative fn model =
-    { model | initiative = Maybe.map fn model.initiative }
+    case model.modal of
+        Just (ModalInitiative ui) ->
+            { model | modal = Just (ModalInitiative (fn ui)) }
+
+        _ ->
+            model
 
 
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | initiative = Just (InitiativeUi.fresh target) }
+    ( { model | modal = Just (ModalInitiative (InitiativeUi.fresh target)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | initiative = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )
@@ -63,15 +68,15 @@ quickSort : Model -> ( Model, Cmd Msg )
 quickSort model =
     ( { model
         | encounter = Encounter.Roster.sortByInitiative model.encounter
-        , initiative = Nothing
+        , modal = Nothing
       }
     , Cmd.none
     )
 
 
-{-| Resolve which creatures the scope picks out and fire one batched
-roll Cmd. Mode picks the per-creature generator (standard
-1d20+bonus vs. 2d20-keep-high+bonus). The handler
+{-| Resolve which creatures the scope picks out and fire one
+batched roll Cmd. Mode picks the per-creature generator
+(standard 1d20+bonus vs. 2d20-keep-high+bonus). The handler
 (`InitiativeRollsLanded`) is shape-agnostic — it works for
 1-element or N-element batches and for either roll mode.
 -}
@@ -81,13 +86,13 @@ autoRoll scope mode model =
         creatures =
             case scope of
                 ScopeTarget ->
-                    case model.initiative of
-                        Just ui ->
+                    case model.modal of
+                        Just (ModalInitiative ui) ->
                             List.filter
                                 (\c -> c.name == ui.target)
                                 model.encounter.creatures
 
-                        Nothing ->
+                        _ ->
                             []
 
                 ScopeAll ->
@@ -105,20 +110,20 @@ not the value parsed; an unparsable input gets silently discarded
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
 applyTarget model =
-    case model.initiative of
-        Just ui ->
+    case model.modal of
+        Just (ModalInitiative ui) ->
             ( applyCustomInitiative [ ui.target ] ui model
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
 applySelected : Model -> ( Model, Cmd Msg )
 applySelected model =
-    case model.initiative of
-        Just ui ->
+    case model.modal of
+        Just (ModalInitiative ui) ->
             let
                 targets =
                     List.filter .selected model.encounter.creatures
@@ -128,15 +133,15 @@ applySelected model =
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
-{-| Fold each (creature name, roll) pair into a fresh `Model`: stamp
-the rolled total onto the creature's initiative, push the roll into
-the dice history. Then sort the queue, close the modal, and
-persist all the rolls server-side. `mapCreature` silently no-ops
-on unknown names so a stale roll (defensive) won't blow up.
+{-| Fold each (creature name, roll) pair into a fresh `Model`:
+stamp the rolled total onto the creature's initiative, push the
+roll into the dice history. Then sort the queue, close the modal,
+and persist all the rolls server-side. `mapCreature` silently
+no-ops on unknown names so a stale roll (defensive) won't blow up.
 -}
 rollsLanded : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 rollsLanded results model =
@@ -158,7 +163,7 @@ rollsLanded results model =
     in
     ( { m1
         | encounter = Encounter.Roster.sortByInitiative m1.encounter
-        , initiative = Nothing
+        , modal = Nothing
       }
     , Cmd.batch (List.map Effects.persistDiceRoll rolls)
     )
@@ -251,8 +256,8 @@ applyCustomInitiative names ui model =
             in
             { m1
                 | encounter = Encounter.Roster.sortByInitiative m1.encounter
-                , initiative = Nothing
+                , modal = Nothing
             }
 
         Nothing ->
-            { model | initiative = Nothing }
+            { model | modal = Nothing }

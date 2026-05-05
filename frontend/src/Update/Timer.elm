@@ -14,19 +14,24 @@ dismiss it.
 -}
 
 import Encounter exposing (TurnPhase)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 
 
 withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
 withTimerSetup fn model =
-    { model | timerSetup = Maybe.map fn model.timerSetup }
+    case model.modal of
+        Just (ModalTimerSetup ui) ->
+            { model | modal = Just (ModalTimerSetup (fn ui)) }
+
+        _ ->
+            model
 
 
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
-    ( { model | timerSetup = Just (TimerUi.fresh name) }
+    ( { model | modal = Just (ModalTimerSetup (TimerUi.fresh name)) }
     , Cmd.none
     )
 
@@ -55,8 +60,8 @@ phaseSet phase model =
 
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.timerSetup of
-        Just ui ->
+    case model.modal of
+        Just (ModalTimerSetup ui) ->
             let
                 newTimer =
                     { remaining = ui.turns
@@ -69,18 +74,18 @@ apply model =
                     Encounter.mapCreature ui.target
                         (\c -> { c | timer = Just newTimer })
                         model.encounter
-                , timerSetup = Nothing
+                , modal = Nothing
               }
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | timerSetup = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 {-| Dismiss whether ringing or still counting; the GM gets to cancel

@@ -78,7 +78,7 @@ import File.Select
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( CompendiumField(..)
@@ -120,7 +120,12 @@ withCompendium fn model =
 
 withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
 withCompendiumEdit fn model =
-    { model | compendiumEdit = Maybe.map fn model.compendiumEdit }
+    case model.modal of
+        Just (ModalCompendiumEdit ui) ->
+            { model | modal = Just (ModalCompendiumEdit (fn ui)) }
+
+        _ ->
+            model
 
 
 
@@ -384,19 +389,29 @@ initiativeRolled creatureId rolls model =
 
 editNew : Model -> ( Model, Cmd Msg )
 editNew model =
-    ( { model | compendiumEdit = Just CompendiumUi.blankEdit }, Cmd.none )
+    ( { model | modal = Just (ModalCompendiumEdit CompendiumUi.blankEdit) }
+    , Cmd.none
+    )
 
 
 editExisting : Model -> ( Model, Cmd Msg )
 editExisting model =
-    ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map CompendiumUi.editFromCreature }
+    ( { model
+        | modal =
+            currentlySelectedCreature model
+                |> Maybe.map (CompendiumUi.editFromCreature >> ModalCompendiumEdit)
+      }
     , Cmd.none
     )
 
 
 editDuplicate : Model -> ( Model, Cmd Msg )
 editDuplicate model =
-    ( { model | compendiumEdit = currentlySelectedCreature model |> Maybe.map editFromDuplicate }
+    ( { model
+        | modal =
+            currentlySelectedCreature model
+                |> Maybe.map (editFromDuplicate >> ModalCompendiumEdit)
+      }
     , Cmd.none
     )
 
@@ -429,7 +444,7 @@ editFromDuplicate source =
 
 editCancel : Model -> ( Model, Cmd Msg )
 editCancel model =
-    ( { model | compendiumEdit = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 editFieldChanged : CompendiumField -> String -> Model -> ( Model, Cmd Msg )
@@ -747,11 +762,8 @@ removeAt idx xs =
 
 editSubmit : Model -> ( Model, Cmd Msg )
 editSubmit model =
-    case model.compendiumEdit of
-        Nothing ->
-            ( model, Cmd.none )
-
-        Just ui ->
+    case model.modal of
+        Just (ModalCompendiumEdit ui) ->
             case CompendiumUi.validateEdit ui of
                 Err message ->
                     ( withCompendiumEdit (\u -> { u | submitError = Just message }) model
@@ -764,6 +776,9 @@ editSubmit model =
                         model
                     , submitCreatureCmd ui.mode creature
                     )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 submitCreatureCmd : EditMode -> Compendium.Creature -> Cmd Msg
@@ -800,7 +815,7 @@ editSubmitResponse result model =
 
         Ok creature ->
             { model
-                | compendiumEdit = Nothing
+                | modal = Nothing
                 , compendium =
                     let
                         ui =
@@ -815,8 +830,8 @@ editSubmitResponse result model =
 
 editDelete : Model -> ( Model, Cmd Msg )
 editDelete model =
-    case model.compendiumEdit of
-        Just { mode } ->
+    case model.modal of
+        Just (ModalCompendiumEdit { mode }) ->
             case mode of
                 EditExisting { id } ->
                     ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
@@ -832,9 +847,9 @@ editDelete model =
                     )
 
                 CreateMode ->
-                    ( { model | compendiumEdit = Nothing }, Cmd.none )
+                    ( { model | modal = Nothing }, Cmd.none )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
@@ -860,7 +875,7 @@ editDeleteResponse deletedId result model =
                         { ui | bulkBusy = False }
             in
             { model
-                | compendiumEdit = Nothing
+                | modal = Nothing
                 , compendium = clearedSelection model.compendium
             }
                 |> Update.Toast.pushWith ToastSuccess
@@ -874,22 +889,26 @@ editDeleteResponse deletedId result model =
 
 pasteOpen : Model -> ( Model, Cmd Msg )
 pasteOpen model =
-    ( { model | compendiumPaste = Just CompendiumUi.emptyPaste }, Cmd.none )
+    ( { model | modal = Just (ModalCompendiumPaste CompendiumUi.emptyPaste) }
+    , Cmd.none
+    )
 
 
 pasteCancel : Model -> ( Model, Cmd Msg )
 pasteCancel model =
-    ( { model | compendiumPaste = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 pasteTextChanged : String -> Model -> ( Model, Cmd Msg )
 pasteTextChanged text model =
     ( { model
-        | compendiumPaste =
+        | modal =
             Just
-                { text = text
-                , parseResult = Compendium.Parser.parseStatBlock text
-                }
+                (ModalCompendiumPaste
+                    { text = text
+                    , parseResult = Compendium.Parser.parseStatBlock text
+                    }
+                )
       }
     , Cmd.none
     )
@@ -897,14 +916,14 @@ pasteTextChanged text model =
 
 {-| Hand the parsed stat block over to the edit modal so the GM can
 review and save. We pre-fill via `CompendiumUi.editFromCreature`
-then flip the mode back to `CreateMode` (the parsed creature has no
-server-side id yet) and reset the source to "Pasted" so the
+then flip the mode back to `CreateMode` (the parsed creature has
+no server-side id yet) and reset the source to "Pasted" so the
 provenance is preserved through save.
 -}
 pasteApply : Model -> ( Model, Cmd Msg )
 pasteApply model =
-    case model.compendiumPaste of
-        Just { parseResult } ->
+    case model.modal of
+        Just (ModalCompendiumPaste { parseResult }) ->
             case parseResult of
                 Ok creature ->
                     let
@@ -914,17 +933,14 @@ pasteApply model =
                         recreated =
                             { editUi | mode = CreateMode }
                     in
-                    ( { model
-                        | compendiumPaste = Nothing
-                        , compendiumEdit = Just recreated
-                      }
+                    ( { model | modal = Just (ModalCompendiumEdit recreated) }
                     , Cmd.none
                     )
 
                 Err _ ->
                     ( model, Cmd.none )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 

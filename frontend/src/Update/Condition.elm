@@ -38,7 +38,7 @@ saving-throw result handler.
 import Dice
 import Effects
 import Encounter
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( DurationKind(..)
@@ -57,19 +57,26 @@ maxConditionNoteLength =
 
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
 withConditionUi fn model =
-    { model | conditionUi = Maybe.map fn model.conditionUi }
+    case model.modal of
+        Just (ModalCondition ui) ->
+            { model | modal = Just (ModalCondition (fn ui)) }
+
+        _ ->
+            model
 
 
 openNew : String -> Model -> ( Model, Cmd Msg )
 openNew name model =
-    ( { model | conditionUi = Just (ConditionUi.fresh name) }, Cmd.none )
+    ( { model | modal = Just (ModalCondition (ConditionUi.fresh name)) }
+    , Cmd.none
+    )
 
 
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
     ( case Encounter.findCondition name id model.encounter of
         Just ( _, cond ) ->
-            { model | conditionUi = Just (ConditionUi.fromCondition name cond) }
+            { model | modal = Just (ModalCondition (ConditionUi.fromCondition name cond)) }
 
         Nothing ->
             model
@@ -79,7 +86,7 @@ openEdit name id model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | conditionUi = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -266,19 +273,19 @@ insert (creating) or update (editing).
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.conditionUi of
-        Just ui ->
+    case model.modal of
+        Just (ModalCondition ui) ->
             let
                 name =
                     String.trim ui.name
             in
             if String.isEmpty name then
-                ( { model | conditionUi = Nothing }, Cmd.none )
+                ( { model | modal = Nothing }, Cmd.none )
 
             else
                 ( commitCondition ui name model, Cmd.none )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
@@ -286,21 +293,21 @@ submit model =
 -}
 delete : Model -> ( Model, Cmd Msg )
 delete model =
-    case model.conditionUi of
-        Just ui ->
+    case model.modal of
+        Just (ModalCondition ui) ->
             case ui.editingId of
                 Just id ->
                     ( { model
                         | encounter = Encounter.removeCondition ui.target id model.encounter
-                        , conditionUi = Nothing
+                        , modal = Nothing
                       }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    ( { model | conditionUi = Nothing }, Cmd.none )
+                    ( { model | modal = Nothing }, Cmd.none )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
@@ -459,7 +466,7 @@ commitCondition ui name model =
                             }
                         )
                         model.encounter
-                , conditionUi = Nothing
+                , modal = Nothing
             }
 
         Nothing ->
@@ -472,7 +479,7 @@ commitCondition ui name model =
             in
             { model
                 | encounter = List.foldl addOne model.encounter targets
-                , conditionUi = Nothing
+                , modal = Nothing
             }
 
 

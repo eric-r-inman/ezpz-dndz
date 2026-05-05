@@ -9,7 +9,7 @@ Closes on backdrop click or Cancel.
 import Html exposing (Html, button, div, h3, input, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, title, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( Msg(..)
@@ -23,11 +23,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.initiative of
-        Nothing ->
-            text ""
-
-        Just ui ->
+    case model.modal of
+        Just (ModalInitiative ui) ->
             let
                 selectedCount =
                     List.length (List.filter .selected model.encounter.creatures)
@@ -44,6 +41,9 @@ view model =
                     , footer
                     ]
                 }
+
+        _ ->
+            text ""
 
 
 quickSort : Html Msg

@@ -9,19 +9,17 @@ import Compendium.Parser
 import Html exposing (Html, button, div, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, placeholder, title, value)
 import Html.Events exposing (onClick, onInput)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumPasteUi)
 import View.Modal
 import View.StatBlock
 
 
-view : Maybe CompendiumPasteUi -> Html Msg
-view maybeUi =
-    case maybeUi of
-        Nothing ->
-            text ""
-
-        Just ui ->
+view : Model -> Html Msg
+view model =
+    case model.modal of
+        Just (ModalCompendiumPaste ui) ->
             View.Modal.view
                 { close = CompendiumPasteCancel
                 , noOp = NoOp
@@ -35,6 +33,9 @@ view maybeUi =
                     , footer ui
                     ]
                 }
+
+        _ ->
+            text ""
 
 
 pasteInput : CompendiumPasteUi -> Html Msg

@@ -16,6 +16,7 @@ import Compendium
 import Html exposing (Html, button, div, input, label, option, span, text)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( CompendiumField(..)
@@ -31,13 +32,10 @@ import Ui.Compendium as CompendiumUi
 import View.Modal
 
 
-view : Maybe CompendiumEditUi -> Html Msg
-view maybeUi =
-    case maybeUi of
-        Nothing ->
-            text ""
-
-        Just ui ->
+view : Model -> Html Msg
+view model =
+    case model.modal of
+        Just (ModalCompendiumEdit ui) ->
             View.Modal.view
                 { close = CompendiumEditCancel
                 , noOp = NoOp
@@ -127,6 +125,9 @@ view maybeUi =
                     , footer ui
                     ]
                 }
+
+        _ ->
+            text ""
 
 
 modalTitle : CompendiumEditUi -> String

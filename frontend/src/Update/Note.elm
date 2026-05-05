@@ -7,19 +7,24 @@ a separate "delete" action.
 -}
 
 import Encounter
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 
 
 withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
 withNoteEdit fn model =
-    { model | noteEdit = Maybe.map fn model.noteEdit }
+    case model.modal of
+        Just (ModalNoteEdit ui) ->
+            { model | modal = Just (ModalNoteEdit (fn ui)) }
+
+        _ ->
+            model
 
 
 open : String -> String -> Model -> ( Model, Cmd Msg )
 open name current model =
-    ( { model | noteEdit = Just (NoteUi.fresh name current) }
+    ( { model | modal = Just (ModalNoteEdit (NoteUi.fresh name current)) }
     , Cmd.none
     )
 
@@ -41,8 +46,8 @@ without a separate "delete" action.
 -}
 commit : Model -> ( Model, Cmd Msg )
 commit model =
-    case model.noteEdit of
-        Just ui ->
+    case model.modal of
+        Just (ModalNoteEdit ui) ->
             let
                 trimmed =
                     String.trim ui.text
@@ -52,15 +57,15 @@ commit model =
                     Encounter.mapCreature ui.target
                         (\c -> { c | note = trimmed })
                         model.encounter
-                , noteEdit = Nothing
+                , modal = Nothing
               }
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | noteEdit = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )

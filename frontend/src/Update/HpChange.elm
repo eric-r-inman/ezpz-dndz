@@ -29,7 +29,7 @@ import Dice
 import Effects
 import Encounter exposing (Creature, Encounter)
 import HpChange
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( HpField(..)
@@ -40,24 +40,29 @@ import Msg
 import Ui.HpChange as HpChangeUi exposing (HpChangeUi)
 
 
-{-| Apply `fn` to the open HP-change modal. No-op when the modal is
-closed (the field is `Nothing`).
+{-| Apply `fn` to the open HP-change modal. No-op when the modal
+is closed (or a different modal is open).
 -}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
 withHpChange fn model =
-    { model | hpChange = Maybe.map fn model.hpChange }
+    case model.modal of
+        Just (ModalHpChange ui) ->
+            { model | modal = Just (ModalHpChange (fn ui)) }
+
+        _ ->
+            model
 
 
 open : String -> HpKind -> Model -> ( Model, Cmd Msg )
 open target kind model =
-    ( { model | hpChange = Just (HpChangeUi.fresh target kind) }
+    ( { model | modal = Just (ModalHpChange (HpChangeUi.fresh target kind)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | hpChange = Nothing }, Cmd.none )
+    ( { model | modal = Nothing }, Cmd.none )
 
 
 modeSet : HpInputMode -> Model -> ( Model, Cmd Msg )
@@ -119,11 +124,8 @@ history. So both paths converge on a single
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.hpChange of
-        Nothing ->
-            ( model, Cmd.none )
-
-        Just ui ->
+    case model.modal of
+        Just (ModalHpChange ui) ->
             case ui.mode of
                 ManualMode ->
                     ( applyHpChangeAndClose ui ui.amount model
@@ -144,6 +146,9 @@ apply model =
                             , Cmd.none
                             )
 
+        _ ->
+            ( model, Cmd.none )
+
 
 {-| The dice-mode path lands here. We commit the change with
 `roll.total`, log the roll to the dice history (so the user has a
@@ -159,11 +164,11 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
 
         committed =
-            case logged.hpChange of
-                Just ui ->
+            case logged.modal of
+                Just (ModalHpChange ui) ->
                     applyHpChangeAndClose ui roll.total logged
 
-                Nothing ->
+                _ ->
                     logged
     in
     ( committed, Effects.persistDiceRoll roll )
@@ -358,7 +363,7 @@ applyHpChangeAndClose ui amount model =
     in
     { model
         | encounter = result.encounter
-        , hpChange = Nothing
+        , modal = Nothing
         , hpChangeLog =
             List.reverse result.log
                 ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog

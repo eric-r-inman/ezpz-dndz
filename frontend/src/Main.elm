@@ -26,7 +26,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( CompendiumField(..)
@@ -136,20 +136,23 @@ subscriptions model =
     if model.dice.open then
         Browser.Events.onKeyDown (escKey CloseDice)
 
-    else if model.compendiumPaste /= Nothing then
-        Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
-
-    else if model.compendiumEdit /= Nothing then
-        Browser.Events.onKeyDown (escKey CompendiumEditCancel)
-
-    else if model.compendium.open then
-        Browser.Events.onKeyDown compendiumKeyDecoder
-
-    else if model.noteEdit /= Nothing then
-        Browser.Events.onKeyDown (escKey NoteEditCancel)
-
     else
-        Sub.none
+        case model.modal of
+            Just (ModalCompendiumPaste _) ->
+                Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
+
+            Just (ModalCompendiumEdit _) ->
+                Browser.Events.onKeyDown (escKey CompendiumEditCancel)
+
+            Just (ModalNoteEdit _) ->
+                Browser.Events.onKeyDown (escKey NoteEditCancel)
+
+            _ ->
+                if model.compendium.open then
+                    Browser.Events.onKeyDown compendiumKeyDecoder
+
+                else
+                    Sub.none
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -209,17 +212,10 @@ init _ url key =
       , me = Loading
       , encounter = Encounter.empty
       , dice = DiceUi.empty
-      , hpChange = Nothing
       , hpChangeLog = []
       , hpEdit = Nothing
-      , initiative = Nothing
-      , noteEdit = Nothing
-      , conditionUi = Nothing
-      , memoEdit = Nothing
-      , timerSetup = Nothing
       , compendium = CompendiumUi.emptyCompendium
-      , compendiumEdit = Nothing
-      , compendiumPaste = Nothing
+      , modal = Nothing
       , panelCreatureId = Nothing
       , toasts = []
       , nextToastId = 0
@@ -792,8 +788,8 @@ view model =
             , View.Modal.Memo.view model
             , View.Modal.Timer.view model
             , View.Modal.Compendium.view model.compendium
-            , View.Modal.CompendiumEdit.view model.compendiumEdit
-            , View.Modal.CompendiumPaste.view model.compendiumPaste
+            , View.Modal.CompendiumEdit.view model
+            , View.Modal.CompendiumPaste.view model
             , View.Toast.list model.toasts
             , View.Audio.ringer model
             ]

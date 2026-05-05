@@ -8,7 +8,7 @@ the timer; Cancel discards.
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes as Attr exposing (autofocus, class, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Util.Keyboard
 import View.Modal
@@ -17,11 +17,8 @@ import View.PhaseToggle
 
 view : Model -> Html Msg
 view model =
-    case model.timerSetup of
-        Nothing ->
-            text ""
-
-        Just ui ->
+    case model.modal of
+        Just (ModalTimerSetup ui) ->
             View.Modal.view
                 { close = TimerSetupCancel
                 , noOp = NoOp
@@ -63,3 +60,6 @@ view model =
                         ]
                     ]
                 }
+
+        _ ->
+            text ""
