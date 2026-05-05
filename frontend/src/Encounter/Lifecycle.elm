@@ -38,17 +38,10 @@ active. When the marker would step off the end of the queue it
 wraps back to the first creature, which marks the start of a new
 combat round, so `round` increments.
 
-**Surprised skipping** (5e surprise rules): when the queue would
-make a creature with `surprised = True` active, that creature is
-skipped — their `surprised` flag is cleared (so their next turn
-happens normally) and the marker advances past them in the same
-step.
-
 **Dead skipping**: creatures with three failed death saves are
-also skipped — but unlike surprised, the dead state isn't
-cleared. The marker keeps walking past them on every subsequent
-Next Turn. An iteration cap of `length creatures` protects the
-all-dead TPK edge case.
+skipped — the dead state isn't cleared, so the marker keeps
+walking past them on every subsequent Next Turn. An iteration
+cap of `length creatures` protects the all-dead TPK edge case.
 
 In addition to the queue walk, this fires two condition hooks
 once per Next Turn click: end-of-turn for the OUTGOING active
@@ -78,11 +71,6 @@ skipUnplayable budget enc =
             Just c ->
                 if Encounter.DeathSaves.isDead c.deathSaves then
                     skipUnplayable (budget - 1) advanced
-
-                else if c.surprised then
-                    advanced
-                        |> Encounter.mapCreature c.name (\cr -> { cr | surprised = False })
-                        |> skipUnplayable (budget - 1)
 
                 else
                     advanced

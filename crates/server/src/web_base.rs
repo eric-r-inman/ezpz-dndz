@@ -36,6 +36,7 @@ pub struct AppState {
   pub dice_store: crate::dice::DiceStore,
   pub compendium_store: crate::compendium::CompendiumStore,
   pub encounter_store: crate::encounters::EncounterStore,
+  pub encounter_saves: crate::encounters::SavedEncounterStore,
   pub oidc_client: Option<Arc<CoreClient>>,
 }
 
@@ -135,6 +136,13 @@ impl AppState {
     .await
     .map_err(AppStateError::EncounterStoreLoad)?;
 
+    let encounter_saves =
+      crate::encounters::SavedEncounterStore::load_or_default(
+        config.encounter_saves_path.clone(),
+      )
+      .await
+      .map_err(AppStateError::EncounterStoreLoad)?;
+
     Ok(Self {
       registry: Arc::new(registry),
       request_counter,
@@ -142,6 +150,7 @@ impl AppState {
       dice_store,
       compendium_store,
       encounter_store,
+      encounter_saves,
       oidc_client,
     })
   }

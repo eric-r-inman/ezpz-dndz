@@ -198,9 +198,10 @@ initiativeRollCmd mode creatures =
 
 {-| Pick the per-creature roll generator for the given mode.
 Standard uses `Dice.generator` over a 1d20+bonus expression;
-advantage uses `Dice.advantageGenerator` which natively handles the
-2d20-keep-highest mechanic and tags the kept die in the resulting
-`Roll.groups`.
+advantage / disadvantage delegate to `Dice.advantageGenerator` /
+`Dice.disadvantageGenerator`, which natively handle the
+2d20-keep-highest / 2d20-keep-lowest mechanic and tag the kept
+die in the resulting `Roll.groups`.
 -}
 initiativeGenerator : RollMode -> Creature -> Random.Generator Dice.Roll
 initiativeGenerator mode c =
@@ -210,6 +211,9 @@ initiativeGenerator mode c =
 
         ModeAdvantage ->
             Dice.advantageGenerator c.initiativeBonus
+
+        ModeDisadvantage ->
+            Dice.disadvantageGenerator c.initiativeBonus
 
 
 {-| `1d20 + creature.initiativeBonus`, the standard 5e initiative

@@ -62,7 +62,7 @@ preview ui =
         , case ui.parseResult of
             Ok creature ->
                 div [ class "paste-modal__preview" ]
-                    [ View.StatBlock.view RollFromStatBlock creature ]
+                    [ View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature ]
 
             Err err ->
                 div [ class "paste-modal__preview paste-modal__preview--error" ]

@@ -21,6 +21,7 @@ suite =
         , conditionImmunitiesSuite
         , minimalSuite
         , blueDragonSuite
+        , standaloneInitiativeSuite
         , scanLairDice
         , empties
         ]
@@ -406,6 +407,45 @@ minimalSuite =
         ]
 
 
+standaloneInitiativeSuite : Test
+standaloneInitiativeSuite =
+    let
+        positiveBonus =
+            String.join "\n"
+                [ "Sample"
+                , "Medium humanoid, neutral"
+                , "AC 14"
+                , "HP 30"
+                , "Speed 30 ft."
+                , "Initiative +7 (17)"
+                , "STR 10 (+0) DEX 14 (+2) CON 12 (+1) INT 10 (+0) WIS 10 (+0) CHA 10 (+0)"
+                , "Challenge 1 (200 XP)"
+                ]
+
+        negativeBonus =
+            String.join "\n"
+                [ "Sluggish"
+                , "Tiny beast, unaligned"
+                , "AC 10"
+                , "HP 5"
+                , "Speed 10 ft."
+                , "Initiative -3 (7)"
+                , "STR 5 (-3) DEX 5 (-3) CON 8 (-1) INT 2 (-4) WIS 8 (-1) CHA 3 (-4)"
+                , "Challenge 0 (10 XP)"
+                ]
+    in
+    describe "Standalone Initiative line (D&D Beyond 2024 separate row)"
+        [ test "captures positive bonus" <|
+            \_ ->
+                expectFields positiveBonus
+                    (\c -> c.initiativeBonus |> Expect.equal 7)
+        , test "captures negative bonus" <|
+            \_ ->
+                expectFields negativeBonus
+                    (\c -> c.initiativeBonus |> Expect.equal -3)
+        ]
+
+
 blueDragonSuite : Test
 blueDragonSuite =
     let
@@ -471,6 +511,10 @@ blueDragonSuite =
             \_ ->
                 expectFields input
                     (\c -> ( c.armorClass, c.armorClassNote ) |> Expect.equal ( 19, "" ))
+        , test "initiative bonus +10 captured from the AC-line annotation" <|
+            \_ ->
+                expectFields input
+                    (\c -> c.initiativeBonus |> Expect.equal 10)
         , test "HP 212 with 17d12 + 102 formula" <|
             \_ ->
                 expectFields input
@@ -756,4 +800,43 @@ scanLairDice =
                                     Nothing
                         )
                     |> Expect.equal [ "1d20", "2d4" ]
+        , test "average-wrap with trailing damage type captures the type" <|
+            \_ ->
+                Dice.scan "Hit: 16 (2d8 + 7) Slashing damage."
+                    |> List.filterMap
+                        (\seg ->
+                            case seg of
+                                Dice.DiceLink _ expr ->
+                                    Maybe.map String.toLower expr.damageType
+
+                                _ ->
+                                    Nothing
+                        )
+                    |> Expect.equal [ "slashing" ]
+        , test "bare formula with trailing damage type captures the type" <|
+            \_ ->
+                Dice.scan "plus 5 (1d10) Lightning damage"
+                    |> List.filterMap
+                        (\seg ->
+                            case seg of
+                                Dice.DiceLink _ expr ->
+                                    Maybe.map String.toLower expr.damageType
+
+                                _ ->
+                                    Nothing
+                        )
+                    |> Expect.equal [ "lightning" ]
+        , test "non-damage trailing word doesn't get captured as a type" <|
+            \_ ->
+                Dice.scan "1d6 from the spell"
+                    |> List.filterMap
+                        (\seg ->
+                            case seg of
+                                Dice.DiceLink _ expr ->
+                                    Just expr.damageType
+
+                                _ ->
+                                    Nothing
+                        )
+                    |> Expect.equal [ Nothing ]
         ]

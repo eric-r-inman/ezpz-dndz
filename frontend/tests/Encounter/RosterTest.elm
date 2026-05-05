@@ -61,10 +61,10 @@ mkCreature name initiative =
     , conditions = []
     , saveNotices = []
     , selected = False
-    , surprised = False
     , cover = NoCover
     , concentrating = False
     , hiding = False
+    , dodging = False
     , flying = False
     , flyHeight = 0
     , bloodied = False
@@ -290,8 +290,8 @@ duplicateCreatureSuite =
             \_ ->
                 Roster.duplicateCreature "B" threeCreatures
                     |> names
-                    |> Expect.equal [ "A", "B", "B (copy)", "C" ]
-        , test "names sequential copies (copy) / (copy 2) / (copy 3)" <|
+                    |> Expect.equal [ "A", "B", "B 2", "C" ]
+        , test "names sequential duplicates ' 2' / ' 3' / ' 4'" <|
             \_ ->
                 threeCreatures
                     |> Roster.duplicateCreature "B"
@@ -299,7 +299,14 @@ duplicateCreatureSuite =
                     |> Roster.duplicateCreature "B"
                     |> names
                     |> Expect.equal
-                        [ "A", "B", "B (copy 3)", "B (copy 2)", "B (copy)", "C" ]
+                        [ "A", "B", "B 4", "B 3", "B 2", "C" ]
+        , test "duplicating an already-suffixed source continues the series" <|
+            \_ ->
+                threeCreatures
+                    |> Roster.duplicateCreature "B"
+                    |> Roster.duplicateCreature "B 2"
+                    |> names
+                    |> Expect.equal [ "A", "B", "B 2", "B 3", "C" ]
         , test "is a no-op on a name that isn't in the queue" <|
             \_ ->
                 Roster.duplicateCreature "X" threeCreatures
@@ -317,7 +324,7 @@ duplicateCreatureSuite =
                 in
                 Roster.duplicateCreature "A" enc
                     |> .creatures
-                    |> List.filter (\c -> c.name == "A (copy)")
+                    |> List.filter (\c -> c.name == "A 2")
                     |> List.head
                     |> Maybe.map .selected
                     |> Expect.equal (Just False)
@@ -342,7 +349,7 @@ duplicateCreatureSuite =
                 in
                 Roster.duplicateCreature "A" enc
                     |> .creatures
-                    |> List.filter (\c -> c.name == "A (copy)")
+                    |> List.filter (\c -> c.name == "A 2")
                     |> List.head
                     |> Maybe.andThen (\c -> List.head c.conditions)
                     |> Maybe.map .id

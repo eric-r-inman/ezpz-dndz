@@ -38,7 +38,9 @@ Under =crates/=:
   - ~config.rs~ — CLI flags + env.
   - ~dice.rs~ — ~/api/dice/*~.
   - ~compendium/~ — ~/api/compendium/*~ (mod, store, error).
-  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store).
+  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store)
+    + ~/api/encounter/saves/*~ (named saves, with conflict / not-
+    found / name-validation semantic errors).
   - ~users/~ + ~prefs/~ — Phase 11 stubs.
 - =lib/src/= — shared types, ~JsonFileStore<T>~, bundled
   creatures (=data/bundled-creatures.json= via ~include_str!~).
@@ -57,7 +59,7 @@ own module.
 | Domain        | =Compendium.elm= + =Compendium/{Wire,Parser}=                                          |
 | Domain        | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                          |
 | Routing       | =Route.elm=, =Msg.elm=, =Effects.elm=                                                  |
-| UI substate   | =Ui/{Compendium,Condition,Dice,HpChange,Initiative,Memo,Note,Timer,Toast}.elm=         |
+| UI substate   | =Ui/{AbilitySave,Compendium,Condition,Dice,HpChange,Initiative,Load,Memo,Note,Save,Timer,Toast}.elm= |
 | Update        | =Update/{Compendium,Condition,DeathSave,Dice,Encounter,HpChange,Initiative,...}=       |
 | View / modals | =View/Modal/{Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,HpChange,...}=    |
 | View / shell  | =View/{AppBar,Audio,Card,EncounterBar,PanelControls,PanelDetail,Workspace,Toast,...}=  |
@@ -107,11 +109,33 @@ type Modal
     | ModalTimerSetup TimerSetupUi
     | ModalCompendiumEdit CompendiumEditUi
     | ModalCompendiumPaste CompendiumPasteUi
+    | ModalSave SaveUi
+    | ModalLoad LoadUi
+    | ModalAbilitySave AbilitySaveUi
 #+end_src
 
-~Model.modal : Maybe Modal~ replaces eight separate ~Maybe XxxUi~
+~Model.modal : Maybe Modal~ replaces a stack of ~Maybe XxxUi~
 fields.  The "only one modal open at a time" invariant is now
 type-enforced rather than convention.
+
+In addition, the model carries small non-modal pieces of UI
+state that are scoped to the workspace shell rather than to a
+single feature:
+
+- ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ —
+  the most recent persisted state of the encounter and the name
+  it was saved under.  Set by Save / Load success and consumed by
+  Reset (which restores from the snapshot and forces ~round = 0~).
+- ~pendingControl : Maybe PendingControl~ — two-step confirmation
+  state for the destructive Encounter Controls actions
+  (~PendingReset~ / ~PendingClear~).  When ~Just~, the controls
+  panel renders an inline confirmation banner in place of the
+  button grid so a misclick can't drop combat state.
+- ~panelCreaturePin : Maybe { id, name }~ — the side-panel pinned
+  creature.  Carries both the compendium id (canonical UUID
+  lookup) and the encounter creature's display name (so a name
+  fallback covers older saved encounters whose ~creatureId~ no
+  longer matches anything in the bundled compendium).
 
 Two modals — the dice roller and the compendium browser — sit
 *outside* the ADT because their substate has to survive a modal
@@ -144,21 +168,34 @@ three fields on =Encounter=:
 - ~activeName : String~ — whose turn it currently is.
 - ~round : Int~ — 1-indexed round counter.
 
+~round = 0~ is the pre-combat sentinel: the queue is set up but
+no one has acted yet.  Reset / Clear / Load all force the live
+encounter to round 0.  In this state the green action button on
+the controls panel reads "Run Encounter" and dispatches
+~EncounterRun~, which calls ~Encounter.run~ — bumps round to 1
+and sets the active creature to the queue head (highest
+initiative).  Once round >= 1 the same button reverts to "Next
+Turn".
+
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
 ~Update.Encounter.nextTurn~ when the user clicks ⏭ Next Turn.
 The lifecycle module owns:
 
-1. *Surprised-skip rule* — a creature with ~surprised = True~ is
-   skipped, and the flag is cleared in the same step.
-2. *Dead-skip rule* — creatures with three failed death saves
+1. *Dead-skip rule* — creatures with three failed death saves
    (~Encounter.isDeathSaveDead~) are skipped permanently.  The
    iteration cap (queue length) covers all-dead TPK.
-3. *Condition lifecycle hooks* — bracketing the queue walk:
+2. *Condition lifecycle hooks* — bracketing the queue walk:
    ~applyEndOfTurn outgoing → skipUnplayable → applyBeginOfTurn
    incoming~.  The end-of-turn pass ticks the outgoing creature's
    ~DurationCountdown AtEnd~ conditions and expires every
    ~DurationUntilTurn AtEnd <name>~ across the encounter; the
    begin-of-turn pass does the same for the ~AtBegin~ phase.
+
+The 5e surprise mechanic was removed in 2026-05; the
+domain layer no longer tracks a per-creature ~surprised~ flag and
+~Encounter.run~ does not filter the queue by it.  GMs handle
+surprise narratively or by toggling each surprised creature out
+of the queue manually.
 
 The auto-roll save path lives in =Update/Encounter.elm=: when
 ~nextTurn~ fires, the outgoing name is captured before the
@@ -224,15 +261,103 @@ in the app routes through it.
 
 * Persistence
 
-| Path                    | Endpoint                    | Notes                                                           |
-|-------------------------+-----------------------------+-----------------------------------------------------------------|
-| =encounter.json=        | ~/api/encounter~ GET / PUT  | Live encounter state; auto-saved on every mutation              |
-| =compendium/creatures.json= | ~/api/compendium/*~     | Library of creature templates; bundled-creatures merge on boot  |
-| =dice-history.json=     | ~/api/dice/history~         | Bounded persistent dice-roll log                                |
+| Path                          | Endpoint                          | Notes                                                                                  |
+|-------------------------------+-----------------------------------+----------------------------------------------------------------------------------------|
+| =encounter.json=              | ~/api/encounter~ GET / PUT        | Live encounter state; auto-saved on every mutation                                     |
+| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | User-named save files (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| =compendium/creatures.json=   | ~/api/compendium/*~               | Library of creature templates; bundled-creatures merge on boot                         |
+| =dice-history.json=           | ~/api/dice/history~               | Bounded persistent dice-roll log                                                       |
 
 The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
 persistence helper.  Every server-side feature with a JSON
 backing file should use it rather than rolling its own.
+
+* Encounter Controls panel
+
+The middle pane's button grid runs a small set of named flows
+that the rest of the app routes through:
+
+- *Save* — opens a modal with destination toggle (Server /
+  Download), filename input, list of existing server-side saves,
+  and inline rename / overwrite / delete affordances.  Server
+  uploads PUT to ~/api/encounter/saves/:name~ (server returns 409
+  on a name collision, surfaced as an inline overwrite-confirm
+  banner; ~?overwrite=true~ upserts on confirm).  Device downloads
+  go through ~File.Download.string~.
+- *Load* — symmetric modal: pick a server save (always confirmed
+  before adopting since loading is destructive), or pick a local
+  JSON file via the browser file picker.  Either path replaces
+  the live encounter and forces ~round = 0~ + ~activeName = ""~,
+  so the GM lands in pre-combat mode.  Successful loads also
+  populate ~savedSnapshot~ + ~savedAs~.
+- *Reset* / *Clear* — staged through ~pendingControl~ so a
+  misclick can't drop combat state.  First click swaps the button
+  grid for an inline confirmation banner (Cancel / coloured
+  Confirm); second click applies.  Reset returns to
+  ~savedSnapshot~ (or empty) with ~round = 0~; Clear empties the
+  queue.
+
+The shared behaviour: any branch that mutates ~model.encounter~
+flows through ~Main.update~'s diff-and-persist wrapper, which
+fires a ~/api/encounter~ PUT iff the encounter actually changed.
+The Save / Load Msgs themselves are exempt to avoid an obvious
+infinite loop.
+
+* Compendium side panel
+
+The right-hand panel pins one compendium creature's stat block,
+chosen by clicking a creature card's name in the encounter pane.
+Lookup is *id-then-name*: =View.PanelDetail.resolvePin= first
+calls ~Compendium.find pin.id~ and on miss falls back to
+~Compendium.findByName~ on the encounter creature's display name
+(stripped of the numeric instance suffix via
+~Encounter.Roster.instanceBaseName~).
+
+The fallback exists because old saved encounters can carry
+~creatureId~ values that no longer match the bundled compendium
+UUIDs (e.g. a creature was originally pasted under a provisional
+id).  Without it, the panel previously fell through to a
+hardcoded "Brakka, Ogre Brute" placeholder, which read as if the
+panel were stuck on the wrong creature.
+
+When neither lookup matches, the panel shows an explicit
+empty-state message (loading / failed / "isn't in your
+compendium yet") rather than any placeholder.  The legacy
+=View.StatBlockEmbed= module that defined the Brakka mock has
+been deleted.
+
+* Saving-throw modal
+
+Clicking an ability cell (STR / DEX / CON / INT / WIS / CHA) on
+a stat block opens =View.Modal.AbilitySave= — three roll
+buttons (Roll / Advantage / Disadvantage) wrapped around a
+captured save bonus (proficient if the creature has a
+~savingThrows~ entry for that ability, otherwise the flat
+ability modifier).  Every button fires an ~AbilitySaveRoll
+RollMode~ that builds the matching dice Cmd
+(~rollCmd~ / ~advantageCmd~ / ~disadvantageCmd~), tags the
+history entry as ~"<ABILITY> Save → <Creature>"~, and lands the
+result through the shared ~Effects.pushDiceRoll~ +
+~persistDiceRoll~ pipeline so the dice modal sees it on next
+open.  No HP mutation; the GM applies effects manually based on
+the result.
+
+* Inline dice in stat blocks
+
+Every clickable inline-dice link in a stat block routes through
+~Update.Dice.rollFromStatBlock~, which fires the roll into the
+shared dice history *without* opening the dice modal.  The
+panel's Roll button picks up its "unread rolls" indicator so the
+user can open the log when they want to see the breakdown.
+
+The =Dice.scan= parser also captures a trailing 5e damage type
+(~"5 (1d6 + 2) Slashing damage"~ → ~damageType = Just "Slashing"~)
+as long as the alpha word matches the closed set of 13 damage
+types — ~acid~, ~bludgeoning~, ~cold~, ~fire~, ~force~,
+~lightning~, ~necrotic~, ~piercing~, ~poison~, ~psychic~,
+~radiant~, ~slashing~, ~thunder~.  Anything else backtracks
+cleanly so prose like ~"1d6 from the spell"~ still captures just
+~1d6~ with no spurious damage type.
 
 * HP change engine
 
@@ -254,9 +379,22 @@ arithmetic doesn't drift between code paths.
 vs. max HP, so the row 2 🩸 chip stays honest without anyone
 touching it manually.
 
-The engine also exposes ~setCurrentHp~ / ~setMaxHp~ that skip the
-rule-flavored side effects.  The inline click-to-edit on the
-card row 2 HP values uses these.
+The engine also exposes ~setCurrentHp~ / ~setMaxHp~ /
+~setArmorClass~ that skip the rule-flavored side effects.  The
+inline click-to-edit on row 1 (AC) and row 2 (current / max HP)
+of each card all flow through these via the shared
+~HpEdit~ / ~HpField~ / ~HpEditStart~ machinery — same Msg
+constructors, different field discriminator.
+
+The recent-HP-changes log on the Damage / Heal / Temp HP modal
+keeps a snapshot per entry (target, kind, amount, before-/after-
+HP, before-/after-tempHP) so the latest entry can be undone.
+~HpChangeUndoLatest~ runs ~HpChange.restoreHp~ against the head
+of ~hpChangeLog~ — restoring ~currentHp~ + ~tempHp~ via
+~setCurrentHp~ (which re-clamps and recomputes bloodied) — then
+drops the entry, so successive clicks chain backward through the
+log.  Older rows render no undo button so a misclick can't
+silently rewrite the middle of the history.
 
 * Preferences
 

@@ -2,7 +2,7 @@ module Encounter.Roster exposing
     ( moveUp, moveDown
     , sortByInitiative
     , removeCreature, duplicateCreature
-    , appendCreatures, uniqueInstanceName
+    , appendCreatures, uniqueInstanceName, instanceBaseName
     )
 
 {-| Queue-mutation helpers for the encounter manager.
@@ -20,7 +20,7 @@ mutations through these and lifecycle ticks through
 @docs moveUp, moveDown
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature
-@docs appendCreatures, uniqueInstanceName
+@docs appendCreatures, uniqueInstanceName, instanceBaseName
 
 -}
 
@@ -152,9 +152,15 @@ removeCreature name enc =
 
 {-| Duplicate the named creature, inserting the copy immediately
 after the source in the queue order. The copy is a literal clone
-except for: a `(copy)` / `(copy 2)` / `(copy 3)` suffix on the
+except for: an incremented `" 2"` / `" 3"` / `" 4"` suffix on the
 name, `selected = False`, and fresh encounter-wide unique ids on
 its conditions / save notices.
+
+The base for numbering is derived by stripping any trailing
+`" <integer>"` from the source's display name, so duplicating
+`"Skeleton"` and `"Skeleton 2"` both produce the next free slot
+in the `Skeleton, Skeleton 2, Skeleton 3, …` series. This matches
+the compendium-add naming via `uniqueInstanceName`.
 
 No-op when the named creature isn't in the queue.
 
@@ -171,7 +177,7 @@ duplicateCreature name enc =
                     List.map .name enc.creatures
 
                 newName =
-                    uniqueCopyName src.name existingNames
+                    uniqueInstanceName (instanceBaseName src.name) existingNames
 
                 conditionIdStart =
                     (allConditionIds enc
@@ -208,24 +214,25 @@ duplicateCreature name enc =
             { enc | creatures = insertAfter name copy enc.creatures }
 
 
-uniqueCopyName : String -> List String -> String
-uniqueCopyName base existingNames =
-    let
-        candidate i =
-            if i == 1 then
-                base ++ " (copy)"
+{-| Strip a trailing `" <integer>"` from a creature's display name
+to get the base used for numbering further duplicates. `"Skeleton"`
+and `"Skeleton 2"` both yield `"Skeleton"`. Names whose final
+whitespace-separated word isn't a parseable integer pass through
+unchanged (so `"Goblin Boss"` stays `"Goblin Boss"`).
+-}
+instanceBaseName : String -> String
+instanceBaseName name =
+    case List.reverse (String.words name) of
+        last :: rest ->
+            case String.toInt last of
+                Just _ ->
+                    String.join " " (List.reverse rest)
 
-            else
-                base ++ " (copy " ++ String.fromInt i ++ ")"
+                Nothing ->
+                    name
 
-        loop i =
-            if List.member (candidate i) existingNames then
-                loop (i + 1)
-
-            else
-                candidate i
-    in
-    loop 1
+        [] ->
+            name
 
 
 insertAfter : String -> Creature -> List Creature -> List Creature
@@ -244,11 +251,8 @@ insertAfter anchorName newCreature creatures =
 
 {-| Compute the unique display name for a fresh instance of
 `base`. First instance keeps the bare name, second is
-`base ++ " 2"`, etc.
-
-Distinct from `uniqueCopyName`, which uses `(copy)` suffixes for
+`base ++ " 2"`, etc. Used both by the compendium-add path and by
 the right-rail duplicate button.
-
 -}
 uniqueInstanceName : String -> List String -> String
 uniqueInstanceName base existingNames =

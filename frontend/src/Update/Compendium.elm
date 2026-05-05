@@ -244,9 +244,14 @@ focusSearch model =
     )
 
 
-panelShowCreature : String -> Model -> ( Model, Cmd Msg )
-panelShowCreature creatureId model =
-    ( { model | panelCreatureId = Just creatureId }, Cmd.none )
+panelShowCreature : String -> String -> Model -> ( Model, Cmd Msg )
+panelShowCreature creatureId creatureName model =
+    ( { model
+        | panelCreaturePin =
+            Just { id = creatureId, name = creatureName }
+      }
+    , Cmd.none
+    )
 
 
 

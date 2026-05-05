@@ -5,7 +5,7 @@ module Compendium exposing
     , LegendaryActions, LegendaryOption, LairActions, RegionalEffects
     , Spellcasting, SpellSlotLevel, InnatePerDay, CustomSection
     , Db, fromList, toList, count
-    , find, search, filterByKind, sortByName, sortByCr, sortByRecency
+    , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
     , draftToInstance
     , instanceKindLine, sourceHasLegendaryResistance
@@ -36,7 +36,7 @@ lives in `View/` modules and consumes this domain.
 
 # Lookup / filter / sort
 
-@docs find, search, filterByKind, sortByName, sortByCr, sortByRecency
+@docs find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
 
 
 # Helpers
@@ -256,6 +256,24 @@ find id (Db cs) =
     List.filter (\c -> c.id == id) cs |> List.head
 
 
+{-| Case-insensitive name lookup. Used as a fallback when an
+encounter's saved `creatureId` no longer matches anything in the
+compendium (e.g. the creature was originally pasted under a
+provisional id that has since drifted from the bundled UUIDs).
+The first match wins — duplicate-name compendium entries aren't
+disambiguated here, so the caller should treat the result as
+"best effort".
+-}
+findByName : String -> Db -> Maybe Creature
+findByName name (Db cs) =
+    let
+        target =
+            String.toLower (String.trim name)
+    in
+    List.filter (\c -> String.toLower c.name == target) cs
+        |> List.head
+
+
 
 -- ── SEARCH / FILTER / SORT ───────────────────────────────────────────────────
 
@@ -358,10 +376,10 @@ draftToInstance { displayName, initiativeRoll } c =
     , conditions = []
     , saveNotices = []
     , selected = False
-    , surprised = False
     , cover = Encounter.NoCover
     , concentrating = False
     , hiding = False
+    , dodging = False
     , flying = False
     , flyHeight = 0
     , bloodied = False

@@ -383,6 +383,129 @@ body {
   outline-offset: 2px;
 }
 
+/* Death-save tracker — two side-by-side vertical columns (✓ / ✗)
+   mirroring the legendary "LA"/"LR" pair, but only present when
+   the creature is at 0 HP. Each column has its own header and 3
+   pips; below the pair sits a shared 🎲 roll button (or a 🛡 / 💀
+   stable / dead badge once the run resolves). */
+.death-save-cols {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+}
+
+.death-save-cols__row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.death-save-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 22px;
+}
+
+.death-save-col__header {
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.death-save-col--success .death-save-col__header {
+  color: #3cb455;
+}
+
+.death-save-col--failure .death-save-col__header {
+  color: #d63b3b;
+}
+
+.death-save-col__pip {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    transform 0.05s ease;
+}
+
+.death-save-col__pip--success {
+  color: #3cb455;
+}
+
+.death-save-col__pip--failure {
+  color: #d63b3b;
+}
+
+.death-save-col__pip--filled {
+  background: currentColor;
+}
+
+.death-save-col__pip:hover {
+  transform: scale(1.15);
+}
+
+.death-save-col__pip:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.death-save-cols__roll {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  width: 28px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  font-family: inherit;
+  padding: 0;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.death-save-cols__roll:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-accent);
+}
+
+.death-save-cols__badge {
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  width: 28px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+
+.death-save-cols__badge--stable {
+  color: #3cb455;
+  background: rgba(60, 180, 85, 0.12);
+  border: 1px solid rgba(60, 180, 85, 0.4);
+}
+
+.death-save-cols__badge--dead {
+  color: #d63b3b;
+  background: rgba(214, 59, 59, 0.12);
+  border: 1px solid rgba(214, 59, 59, 0.4);
+}
+
 .creature-card__row {
   display: flex;
   align-items: center;
@@ -493,36 +616,6 @@ body {
   font-size: 0.78rem;
   flex: 0 0 auto;
   line-height: 1;
-}
-
-.surprise-btn {
-  appearance: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  width: 28px;
-  height: 24px;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0;
-  font-family: inherit;
-  flex: 0 0 auto;
-  transition:
-    background 0.1s ease,
-    border-color 0.1s ease;
-}
-
-.surprise-btn:hover {
-  background: var(--color-surface-2);
-  border-color: var(--color-text-muted);
-}
-
-.surprise-btn[aria-pressed="true"] {
-  border-color: var(--color-yellow);
-  background: rgba(255, 217, 90, 0.15);
 }
 
 .creature-name {
@@ -736,124 +829,6 @@ body {
   filter: saturate(1.2);
 }
 
-/* 5e death-save tracker. Layout:
-     [ ✓ ✓ ○ ]   [ ✗ ○ ○ ]   🎲   (Stable / Dead badge)
-   Two strips of three pips (success green, failure red), a roll
-   button that fires a 1d20, and a status badge once the run ends. */
-.death-saves {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: var(--space-2);
-}
-
-.death-saves__strip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 4px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-
-/* Non-interactive icon prefix at the head of each strip — a visual
-   hint that this strip is the 🌟 successes / 💀 failures group.
-   Slightly larger than the pips themselves so the label reads as
-   "this is what fills these circles" rather than as a fourth pip. */
-.death-saves__label {
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.95rem;
-  line-height: 1;
-  padding: 0 2px;
-  user-select: none;
-  pointer-events: none;
-}
-
-.death-save-pip {
-  appearance: none;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  width: 18px;
-  height: 18px;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.85rem;
-  line-height: 1;
-  color: var(--color-text-muted);
-  font-family: inherit;
-  padding: 0;
-  border-radius: 3px;
-  transition:
-    color 0.1s ease,
-    background 0.1s ease;
-}
-
-.death-save-pip:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.death-save-pip:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.death-saves__strip--success .death-save-pip--filled {
-  color: #3cb455;
-  font-weight: 700;
-}
-
-.death-saves__strip--failure .death-save-pip--filled {
-  color: #d63b3b;
-  font-weight: 700;
-}
-
-.death-saves__roll {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  width: 24px;
-  height: 22px;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0.9rem;
-  line-height: 1;
-  font-family: inherit;
-  padding: 0;
-  transition:
-    background 0.1s ease,
-    border-color 0.1s ease;
-}
-
-.death-saves__roll:hover {
-  background: var(--color-surface-2);
-  border-color: var(--color-accent);
-}
-
-.death-saves__badge {
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  letter-spacing: 0.02em;
-}
-
-.death-saves__badge--stable {
-  color: #3cb455;
-  background: rgba(60, 180, 85, 0.12);
-  border: 1px solid rgba(60, 180, 85, 0.4);
-}
-
-.death-saves__badge--dead {
-  color: #d63b3b;
-  background: rgba(214, 59, 59, 0.12);
-  border: 1px solid rgba(214, 59, 59, 0.4);
-}
-
 .status-toggle {
   appearance: none;
   background: transparent;
@@ -898,6 +873,16 @@ body {
   color: var(--color-text-muted);
   user-select: none;
   margin: 0 2px;
+}
+
+/* Wrapper around the "flying" toggle + fly-height selector so the
+   pair wraps to the next line as a unit when row 2 runs out of
+   horizontal space. Without this, the height widget breaks first
+   and the toggle is left orphaned on the prior line. */
+.flying-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 
 .fly-height {
@@ -1260,9 +1245,9 @@ body {
 }
 
 .statblock__meta {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .ability-row {
@@ -1280,6 +1265,29 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Ability cell rendered as a button so clicking it opens the
+   saving-throw modal.  Match the surrounding stat block's text
+   styling — the default <button> resets fight the inherited look. */
+.ability--clickable {
+  appearance: none;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.ability--clickable:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-accent);
+}
+
+.ability--clickable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .ability__label {
@@ -1405,6 +1413,30 @@ body {
   text-transform: uppercase;
   opacity: 0.7;
   margin-left: -2px;
+}
+
+/* AC readout in the title bar — small uppercase label + tabular
+   value, sits to the right of HP and to the left of the state
+   icons.  Mirrors the .encounter-bar__hp* styling so the two
+   readouts read as a pair. */
+.encounter-bar__ac {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.encounter-bar__ac-label {
+  color: var(--color-text);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.encounter-bar__ac-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .encounter-bar__states {
@@ -2158,7 +2190,7 @@ body {
 
 .hp-change__log-entry {
   display: grid;
-  grid-template-columns: 64px 1fr auto auto;
+  grid-template-columns: 64px 1fr auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -2166,6 +2198,27 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-size: 0.78rem;
+}
+
+/* Undo button on the freshest log entry; older rows skip
+   rendering it so misclicks can't silently rewrite history.
+   Overrides the default `.icon-btn--sm` opacity dim so the
+   single actionable control on the row reads as obviously
+   clickable rather than disabled.  Accent-tinted at rest, with
+   a fully saturated accent fill on hover. */
+.hp-change__log-undo {
+  opacity: 1;
+  color: var(--color-accent);
+  border-color: var(--color-accent-soft);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.hp-change__log-undo:hover {
+  background: var(--color-accent);
+  color: #ffffff;
+  border-color: var(--color-accent);
+  opacity: 1;
 }
 
 .hp-change__log-kind {
@@ -2297,6 +2350,21 @@ body {
 
 .init-btn-row .init-btn-block {
   flex: 1 1 auto;
+  width: auto;
+}
+
+/* Three-row grid for the Auto-roll section: main button | Advantage |
+   Disadvantage.  Column 1 sizes to fit the widest main label so all
+   three "Roll initiative & Sort: …" buttons align flush, with the
+   Advantage / Disadvantage columns at their natural widths. */
+.init-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.init-btn-grid .init-btn-block {
   width: auto;
 }
 
@@ -3580,4 +3648,243 @@ body {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   margin-top: 6px;
+}
+
+/* Save / Load modals — reuse the standard .modal chrome.  Both
+   modals share the same row / list / confirm presentation; the
+   .save-modal__* classes are the canonical names and the load
+   modal piggybacks on them so we don't duplicate styling. */
+.modal--save,
+.modal--load {
+  max-width: 560px;
+  width: 100%;
+}
+
+.save-modal__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.save-modal__row--destination .save-modal__radio-group {
+  display: flex;
+  gap: 14px;
+}
+
+.save-modal__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.save-modal__label {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.save-modal__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.save-modal__input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
+}
+
+.save-modal__confirm {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.save-modal__confirm-msg {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.save-modal__confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.save-modal__error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #d97a7a;
+}
+
+.save-modal__list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.save-modal__list-title {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.save-modal__list-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.save-modal__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.save-modal__row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.save-modal__row-item:last-child {
+  border-bottom: none;
+}
+
+.save-modal__row-name {
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-modal__row-name--clickable {
+  appearance: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  color: var(--color-accent);
+}
+
+.save-modal__row-name--clickable:hover {
+  text-decoration: underline;
+}
+
+.save-modal__row-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.save-modal__rename-input {
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-accent);
+  border-radius: 4px;
+  padding: 4px 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.save-modal__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.load-modal__device {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  border-radius: 6px;
+}
+
+.load-modal__device-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+/* Saving-throw modal: a one-line summary above three side-by-side
+   roll buttons (Roll / Advantage / Disadvantage). */
+.modal--ability-save {
+  max-width: 480px;
+}
+
+.ability-save__summary {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.ability-save__buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: stretch;
+}
+
+.ability-save__buttons .action-btn {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+/* Inline confirmation strip rendered in the Encounter Controls
+   panel when Reset or Clear is pending.  Replaces the button
+   grid, so the user has to pick Confirm or Cancel before any
+   other panel action becomes available. */
+.control-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  border-radius: 6px;
+}
+
+.control-confirm__msg {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.control-confirm__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }

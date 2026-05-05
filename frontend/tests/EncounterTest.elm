@@ -1,7 +1,7 @@
 module EncounterTest exposing (suite)
 
 {-| Behavior tests for the pure Encounter rules engine: queue
-walk, surprise skip, dead skip, and condition lifecycle.
+walk, dead skip, and condition lifecycle.
 
 These deliberately exercise the public surface of `Encounter`
 (plus the carved-out submodules) and don't reach into internals.

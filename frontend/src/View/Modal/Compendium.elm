@@ -392,7 +392,7 @@ detail ui visible =
         Just creature ->
             div [ class "compendium__detail" ]
                 [ actionBar ui creature
-                , View.StatBlock.view RollFromStatBlock creature
+                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
                 ]
 
         Nothing ->

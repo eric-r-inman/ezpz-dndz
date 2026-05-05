@@ -3,29 +3,35 @@ module View.PanelDetail exposing (view)
 {-| Right pane: compendium toolbar + the pinned-creature stat
 block.
 
-The stat-block area has three states (in priority order):
+The stat-block area has four states (in priority order):
 
-  - User clicked a creature with a compendium link AND the
-    library's loaded → render the matched entry via
+  - Pinned creature found by id → render the matched entry via
     `View.StatBlock.view` (clickable inline dice and all).
-  - Compendium isn't loaded yet (rare race: the user clicks a
-    name before the boot fetch lands) → fall through to the
-    bundled mock so the panel isn't empty.
-  - Nothing pinned → fall back to the bundled mock as a
-    placeholder. Preserves the pre-Phase-3 default and gives
-    users SOMETHING to look at on first load.
+  - Pinned creature found by name fallback → same renderer.
+    This catches the case where an old saved encounter's
+    `creatureId` is no longer in the bundled compendium — we
+    still find the right stat block by display name so the
+    panel doesn't silently revert to a placeholder.
+  - Pinned creature exists but the compendium can't resolve it
+    (still loading, or no match by id or name) → render an
+    empty-state message naming the creature. The previous
+    behaviour fell through to a hardcoded "Brakka, Ogre Brute"
+    mock which read as if the panel were stuck on the wrong
+    creature.
+  - Nothing pinned → render a friendly "click a creature name"
+    hint. No more bundled mock.
 
 -}
 
 import Compendium
-import Html exposing (Html, a, button, div, section, text)
+import Encounter.Roster
+import Html exposing (Html, a, button, div, p, section, text)
 import Html.Attributes as Attr exposing (attribute, class, href, target, title)
 import Html.Events exposing (onClick)
-import Model exposing (Model)
+import Model exposing (Model, PanelPin)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.StatBlock
-import View.StatBlockEmbed
 
 
 view : Model -> Html Msg
@@ -56,29 +62,76 @@ view model =
 
 statBlock : Model -> Html Msg
 statBlock model =
-    let
-        pinned =
-            case ( model.panelCreatureId, model.compendium.db ) of
-                ( Just id, CompendiumDbLoaded db ) ->
-                    Compendium.find id db
+    case model.panelCreaturePin of
+        Just pin ->
+            case resolvePin pin model.compendium.db of
+                Just creature ->
+                    pinnedStatBlock creature
 
-                _ ->
-                    Nothing
-    in
-    case pinned of
-        Just creature ->
-            div [ class "panel-statblock" ]
-                [ a
-                    [ class "panel-statblock__open"
-                    , href ("/compendium/creatures/" ++ creature.id)
-                    , target "_blank"
-                    , attribute "rel" "noopener"
-                    , title "Open this creature's stat block in a new window"
-                    , attribute "aria-label" "Open in new window"
-                    ]
-                    [ text "↗" ]
-                , View.StatBlock.view RollFromStatBlock creature
-                ]
+                Nothing ->
+                    notFound pin model.compendium.db
 
         Nothing ->
-            View.StatBlockEmbed.view View.StatBlockEmbed.mockStatBlock
+            emptyState
+
+
+resolvePin : PanelPin -> CompendiumDb -> Maybe Compendium.Creature
+resolvePin pin db =
+    case db of
+        CompendiumDbLoaded loaded ->
+            case Compendium.find pin.id loaded of
+                Just c ->
+                    Just c
+
+                Nothing ->
+                    -- Encounter creatures named like "Adult Blue
+                    -- Dragon 2" come from `uniqueInstanceName`,
+                    -- which suffixes a numeric instance index.
+                    -- Strip it before the name lookup so duplicates
+                    -- still match the canonical compendium entry.
+                    Compendium.findByName (Encounter.Roster.instanceBaseName pin.name) loaded
+
+        _ ->
+            Nothing
+
+
+pinnedStatBlock : Compendium.Creature -> Html Msg
+pinnedStatBlock creature =
+    div [ class "panel-statblock" ]
+        [ a
+            [ class "panel-statblock__open"
+            , href ("/compendium/creatures/" ++ creature.id)
+            , target "_blank"
+            , attribute "rel" "noopener"
+            , title "Open this creature's stat block in a new window"
+            , attribute "aria-label" "Open in new window"
+            ]
+            [ text "↗" ]
+        , View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
+        ]
+
+
+notFound : PanelPin -> CompendiumDb -> Html Msg
+notFound pin db =
+    let
+        message =
+            case db of
+                CompendiumDbLoading ->
+                    "Loading the compendium…"
+
+                CompendiumDbFailed _ ->
+                    "Couldn't load the compendium."
+
+                CompendiumDbLoaded _ ->
+                    "\"" ++ pin.name ++ "\" isn't in your compendium yet."
+    in
+    div [ class "panel-statblock panel-statblock--empty" ]
+        [ p [ class "empty" ] [ text message ] ]
+
+
+emptyState : Html Msg
+emptyState =
+    div [ class "panel-statblock panel-statblock--empty" ]
+        [ p [ class "empty" ]
+            [ text "Click a creature's name on a card to pin its stat block here." ]
+        ]

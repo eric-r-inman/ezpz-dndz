@@ -1,11 +1,14 @@
 module Encounter.Wire exposing
-    ( decodeEncounter, encodeEncounter
+    ( SavedEncounterMeta
+    , decodeEncounter, encodeEncounter
     , fetchEncounterCmd, persistEncounterCmd
+    , listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
     )
 
 {-| JSON encoders / decoders for `Encounter` and its referenced
-types, plus the two HTTP commands that talk to
-`/api/encounter`.
+types, plus the HTTP commands that talk to `/api/encounter` (the
+single auto-saved live encounter) and `/api/encounter/saves` (the
+user-named save files behind the Save / Load modal).
 
 The wire format is whatever round-trips through these encoders —
 the server stores the body opaquely (`serde_json::Value`), so
@@ -16,8 +19,10 @@ The field names mirror the Elm record fields (camelCase) rather
 than the Rust-side compendium convention (snake\_case) because
 the server doesn't re-model this schema.
 
+@docs SavedEncounterMeta
 @docs decodeEncounter, encodeEncounter
 @docs fetchEncounterCmd, persistEncounterCmd
+@docs listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
 
 -}
 
@@ -40,6 +45,7 @@ import Http
 import Json.Decode as D
 import Json.Encode as E
 import Set exposing (Set)
+import Url
 
 
 
@@ -94,6 +100,117 @@ persistEncounterCmd toMsg encounter =
 
 
 
+-- ── NAMED SAVES ──────────────────────────────────────────────────────────────
+
+
+{-| Server-side metadata for one named save: name + timestamps
+(no body). Used by the Save / Load modal listings.
+-}
+type alias SavedEncounterMeta =
+    { name : String
+    , createdAt : Int
+    , updatedAt : Int
+    }
+
+
+decodeSavedEncounterMeta : D.Decoder SavedEncounterMeta
+decodeSavedEncounterMeta =
+    D.map3 SavedEncounterMeta
+        (D.field "name" D.string)
+        (D.field "created_at" D.int)
+        (D.field "updated_at" D.int)
+
+
+{-| `GET /api/encounter/saves` — list named saves (metadata only).
+-}
+listSavesCmd : (Result Http.Error (List SavedEncounterMeta) -> msg) -> Cmd msg
+listSavesCmd toMsg =
+    Http.get
+        { url = "/api/encounter/saves"
+        , expect = Http.expectJson toMsg (D.list decodeSavedEncounterMeta)
+        }
+
+
+{-| `GET /api/encounter/saves/:name` — fetch one save's body.
+The server response wraps the encounter in
+`{ name, encounter, created_at, updated_at }`; we project down
+to just the encounter here so callers don't have to.
+-}
+getSaveCmd :
+    (Result Http.Error Encounter -> msg)
+    -> String
+    -> Cmd msg
+getSaveCmd toMsg name =
+    Http.get
+        { url = "/api/encounter/saves/" ++ Url.percentEncode name
+        , expect =
+            Http.expectJson toMsg
+                (D.field "encounter" decodeEncounter)
+        }
+
+
+{-| `PUT /api/encounter/saves/:name(?overwrite=true)` — create or
+replace a named save. When `overwrite` is False the server
+returns 409 if the name already exists; when True it upserts.
+-}
+putSaveCmd :
+    (Result Http.Error () -> msg)
+    -> { name : String, overwrite : Bool }
+    -> Encounter
+    -> Cmd msg
+putSaveCmd toMsg opts encounter =
+    let
+        suffix =
+            if opts.overwrite then
+                "?overwrite=true"
+
+            else
+                ""
+    in
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/encounter/saves/" ++ Url.percentEncode opts.name ++ suffix
+        , body = Http.jsonBody (encodeEncounter encounter)
+        , expect = Http.expectWhatever toMsg
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| `DELETE /api/encounter/saves/:name`.
+-}
+deleteSaveCmd : (Result Http.Error () -> msg) -> String -> Cmd msg
+deleteSaveCmd toMsg name =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/encounter/saves/" ++ Url.percentEncode name
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever toMsg
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| `POST /api/encounter/saves/:name/rename` — body
+`{ "new_name": "<new>" }`.
+-}
+renameSaveCmd :
+    (Result Http.Error () -> msg)
+    -> { from : String, to : String }
+    -> Cmd msg
+renameSaveCmd toMsg opts =
+    Http.post
+        { url = "/api/encounter/saves/" ++ Url.percentEncode opts.from ++ "/rename"
+        , body =
+            Http.jsonBody
+                (E.object [ ( "new_name", E.string opts.to ) ])
+        , expect = Http.expectWhatever toMsg
+        }
+
+
+
 -- ── ENCODE ───────────────────────────────────────────────────────────────────
 
 
@@ -121,10 +238,10 @@ encodeCreature c =
         , ( "conditions", E.list encodeCondition c.conditions )
         , ( "saveNotices", E.list encodeSaveNotice c.saveNotices )
         , ( "selected", E.bool c.selected )
-        , ( "surprised", E.bool c.surprised )
         , ( "cover", encodeCover c.cover )
         , ( "concentrating", E.bool c.concentrating )
         , ( "hiding", E.bool c.hiding )
+        , ( "dodging", E.bool c.dodging )
         , ( "flying", E.bool c.flying )
         , ( "flyHeight", E.int c.flyHeight )
         , ( "bloodied", E.bool c.bloodied )
@@ -315,7 +432,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected surprised cover concentrating hiding flying flyHeight bloodied deathSaves holding note memo timer creatureId hasLA laUsed hasLR lrUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves holding note memo timer creatureId hasLA laUsed hasLR lrUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -328,10 +445,10 @@ decodeCreature =
             , conditions = conditions
             , saveNotices = saveNotices
             , selected = selected
-            , surprised = surprised
             , cover = cover
             , concentrating = concentrating
             , hiding = hiding
+            , dodging = dodging
             , flying = flying
             , flyHeight = flyHeight
             , bloodied = bloodied
@@ -359,10 +476,10 @@ decodeCreature =
         |> optional "conditions" (D.list decodeCondition) []
         |> optional "saveNotices" (D.list decodeSaveNotice) []
         |> optional "selected" D.bool False
-        |> optional "surprised" D.bool False
         |> optional "cover" decodeCover NoCover
         |> optional "concentrating" D.bool False
         |> optional "hiding" D.bool False
+        |> optional "dodging" D.bool False
         |> optional "flying" D.bool False
         |> optional "flyHeight" D.int 0
         |> optional "bloodied" D.bool False

@@ -249,9 +249,19 @@ layouts and for the modal-state invariants the type system enforces.
 
 =docs/archive/= holds historical planning documents
 (=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=).  They are no longer maintained and should
-not be read or updated.  Instructions inside that say "update X"
-are stale.
+=COMPENDIUM_PLAN.org=, =CHANGELOG.org=).  They are no longer
+maintained and should not be read or updated.  Instructions
+inside that say "update X" are stale.
 
 The active plan, and the only one to consult for project status, is
 [[file:docs/MODULARIZATION_PLAN.org][docs/MODULARIZATION_PLAN.org]] (Phases 1–11, substantially complete).
+
+* Changelog: don't.
+
+The project does not maintain a =CHANGELOG.org= /
+=CHANGELOG.md=.  Don't create one, don't update one if you find
+one (the legacy file lives in =docs/archive/CHANGELOG.org= for
+historical reference only).  Commit messages and the git log are
+the canonical record of what changed; ARCHITECTURE.org captures
+the load-bearing decisions.  If you want to summarize a change
+for the user, do it in the chat reply — not in a tracked doc.

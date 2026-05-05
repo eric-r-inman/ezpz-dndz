@@ -58,6 +58,15 @@ async fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
       )
       .await
       .expect("test encounter store"),
+    encounter_saves:
+      ezpz_dndz_server::encounters::SavedEncounterStore::load_or_default(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test encounter saves store"),
     oidc_client: None,
   }
 }
@@ -117,6 +126,15 @@ async fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
       )
       .await
       .expect("test encounter store"),
+    encounter_saves:
+      ezpz_dndz_server::encounters::SavedEncounterStore::load_or_default(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test encounter saves store"),
     oidc_client: Some(Arc::new(oidc_client)),
   }
 }
@@ -400,6 +418,7 @@ async fn test_config_no_oidc() {
     dice_history_path: None,
     compendium_path: None,
     encounter_path: None,
+    encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: None,
     oidc_client_id: None,
@@ -427,6 +446,7 @@ async fn test_config_full_oidc() {
     dice_history_path: None,
     compendium_path: None,
     encounter_path: None,
+    encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: Some("my-client".to_string()),
@@ -454,6 +474,7 @@ async fn test_config_partial_oidc_errors() {
     dice_history_path: None,
     compendium_path: None,
     encounter_path: None,
+    encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
     oidc_issuer: Some("https://sso.example.com".to_string()),
     oidc_client_id: None,

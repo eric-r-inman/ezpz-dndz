@@ -4,12 +4,12 @@ module View.Card exposing (view)
 
 Three rows + two side rails + an optional legendary-pip column:
 
-  - Row 1 (top): initiative circle, surprised toggle, name (with
-    optional compendium link), note pencil / inline note, AC
-    readout, condition / save-notice chips.
+  - Row 1 (top): initiative circle, name (with optional
+    compendium link), note pencil / inline note, AC readout,
+    condition / save-notice chips.
   - Row 2 (mid): HP display (click-to-edit), bloodied marker,
-    death-save tracker (shown only when currentHp == 0), cover
-    toggle, concentration / hiding / flying toggles, fly-height.
+    cover toggle, concentration / hiding / dodging / flying
+    toggles, fly-height.
   - Row 3 (bot): Damage / Heal / Temp HP / Condition action
     buttons, hold toggle, memo slot, timer slot.
 
@@ -20,7 +20,8 @@ the "make active" arrow.
 The legendary-pip column lives between the center column and
 the right rail, and is only present when the creature's
 compendium source declared `legendary_actions` or has a
-"Legendary Resistance" trait.
+"Legendary Resistance" trait. To its left, a death-save
+column appears whenever the creature is at 0 HP.
 
 -}
 
@@ -104,10 +105,11 @@ view activeName hpEdit creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop creature
+            [ rowTop creature hpEdit
             , rowMid creature hpEdit
             , rowBot creature
             ]
+        , deathSaveColumn creature
         , legendaryColumns creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
@@ -163,8 +165,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Creature -> Html Msg
-rowTop creature =
+rowTop : Creature -> Maybe HpEdit -> Html Msg
+rowTop creature hpEdit =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -174,11 +176,9 @@ rowTop creature =
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
             [ text (String.fromInt creature.initiative) ]
-        , surprisedToggle creature
         , creatureName creature
         , noteOrPencil creature
-        , span [ class "ac-readout" ]
-            [ text ("AC: " ++ String.fromInt creature.armorClass) ]
+        , acReadout creature hpEdit
         , conditionChips creature
         ]
 
@@ -196,7 +196,7 @@ creatureName creature =
         Just id_ ->
             span
                 [ class "creature-name creature-name--default creature-name--linked"
-                , onClick (PanelShowCreature id_)
+                , onClick (PanelShowCreature id_ creature.name)
                 , title "Show this creature's stat block in the side panel"
                 ]
                 [ text creature.name ]
@@ -239,32 +239,6 @@ noteOrPencil creature =
                 [ text creature.note ]
             , span [ class "creature-note__sep" ] [ text "|" ]
             ]
-
-
-surprisedToggle : Creature -> Html Msg
-surprisedToggle creature =
-    let
-        ( emoji, label ) =
-            if creature.surprised then
-                ( "😲", "Surprised — click for normal" )
-
-            else
-                ( "😠", "Normal — click for surprised" )
-    in
-    button
-        [ class "surprise-btn"
-        , onClick (ToggleSurprised creature.name)
-        , title label
-        , attribute "aria-label" label
-        , attribute "aria-pressed"
-            (if creature.surprised then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ text emoji ]
 
 
 
@@ -571,11 +545,10 @@ rowMid creature hpEdit =
     div [ class "creature-card__row creature-card__row--mid" ]
         [ hpDisplay creature hpEdit
         , bloodied creature
-        , deathSaves creature
         , coverToggle creature
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , boolToggle "🧠"
-            "concentrating"
+            "concen."
             creature.concentrating
             (ToggleConcentration creature.name)
         , span [ class "status-toggles__sep" ] [ text "|" ]
@@ -584,11 +557,32 @@ rowMid creature hpEdit =
             creature.hiding
             (ToggleHiding creature.name)
         , span [ class "status-toggles__sep" ] [ text "|" ]
-        , boolToggle "🪽"
-            "flying"
-            creature.flying
-            (ToggleFlying creature.name)
-        , flyHeight creature
+        , boolToggle "🤸"
+            "dodging"
+            creature.dodging
+            (ToggleDodging creature.name)
+        , span [ class "status-toggles__sep" ] [ text "|" ]
+        , span [ class "flying-group" ]
+            [ boolToggle "🪽"
+                "flying"
+                creature.flying
+                (ToggleFlying creature.name)
+            , flyHeight creature
+            ]
+        ]
+
+
+{-| Click-to-edit AC readout on row 1. Same inline-edit machinery
+as the HP fields — clicking the number swaps it for an `<input>`
+that commits on blur / Enter and cancels on Esc. Lets the GM
+patch a single creature's AC (e.g. for a temporary Shield-spell
+bonus) without touching the compendium template.
+-}
+acReadout : Creature -> Maybe HpEdit -> Html Msg
+acReadout creature hpEdit =
+    span [ class "ac-readout" ]
+        [ Html.text "AC: "
+        , hpEditable creature hpEdit ArmorClassField creature.armorClass "ac-readout__value"
         ]
 
 
@@ -692,24 +686,29 @@ bloodied creature =
         text ""
 
 
-{-| The 5e death-save tracker as it appears in row 2 (right after
-the bloodied indicator). Visibility is keyed off `currentHp == 0`
+{-| The 5e death-save tracker, rendered as a side-by-side pair of
+vertical columns (✓ successes, ✗ failures) to the left of the
+legendary-pip rail. Visibility is keyed off `currentHp == 0`
 exclusively — the moment the creature is back above 0 HP they're
 conscious, and the tracker shouldn't be on screen at all. The
 HP-change engine already resets the counts on heal-to-positive,
-so when the tracker re-appears (next time they hit 0) it starts
+so when the columns re-appear (next time they hit 0) they start
 fresh.
 
-Layout: three success pips (🌟), three failure pips (💀), and a
-small 🎲 button that fires a 1d20 death save and resolves it per
-5e. Once stable (3 successes) or dead (3 failures), the Roll
-button disappears — the GM can still un-set pips manually if they
-need to reset, but the automated flow stops.
+Layout mirrors the legendary "LA"/"LR" columns but doubled: each
+column has its own header + 3 pips, and below the pair sits the
+shared 🎲 roll button. Once stable (3 successes) or dead (3
+failures), the Roll button is replaced by a 🛡 / 💀 badge — the
+GM can still un-set pips manually if they need to reset, but the
+automated flow stops.
 
 -}
-deathSaves : Creature -> Html Msg
-deathSaves creature =
-    if creature.currentHp == 0 then
+deathSaveColumn : Creature -> Html Msg
+deathSaveColumn creature =
+    if creature.currentHp /= 0 then
+        text ""
+
+    else
         let
             ds =
                 creature.deathSaves
@@ -720,104 +719,84 @@ deathSaves creature =
             dead =
                 Encounter.isDeathSaveDead ds
 
-            statusBadge =
+            footer =
                 if dead then
-                    span [ class "death-saves__badge death-saves__badge--dead" ]
-                        [ text "💀 Dead" ]
+                    span
+                        [ class "death-save-cols__badge death-save-cols__badge--dead"
+                        , title "Dead — 3 failed death saves"
+                        ]
+                        [ text "💀" ]
 
                 else if stable then
-                    span [ class "death-saves__badge death-saves__badge--stable" ]
-                        [ text "🛡 Stable" ]
-
-                else
-                    text ""
-
-            rollButton =
-                if dead || stable then
-                    text ""
+                    span
+                        [ class "death-save-cols__badge death-save-cols__badge--stable"
+                        , title "Stable — 3 successful death saves"
+                        ]
+                        [ text "🛡" ]
 
                 else
                     button
-                        [ class "death-saves__roll"
+                        [ class "death-save-cols__roll"
                         , onClick (DeathSaveRoll creature.name)
                         , title "Roll a 1d20 death save (5e: 10+ success, ≤9 failure, nat 20 revives, nat 1 = 2 failures)"
                         , attribute "aria-label" "Roll death save"
                         ]
                         [ text "🎲" ]
+
+            successColumn =
+                div [ class "death-save-col death-save-col--success" ]
+                    [ div [ class "death-save-col__header" ] [ text "✓" ]
+                    , deathSavePip "success" (0 < ds.successes) (DeathSaveToggleSuccess creature.name 0) "Success" 1
+                    , deathSavePip "success" (1 < ds.successes) (DeathSaveToggleSuccess creature.name 1) "Success" 2
+                    , deathSavePip "success" (2 < ds.successes) (DeathSaveToggleSuccess creature.name 2) "Success" 3
+                    ]
+
+            failureColumn =
+                div [ class "death-save-col death-save-col--failure" ]
+                    [ div [ class "death-save-col__header" ] [ text "✗" ]
+                    , deathSavePip "failure" (0 < ds.failures) (DeathSaveToggleFailure creature.name 0) "Failure" 1
+                    , deathSavePip "failure" (1 < ds.failures) (DeathSaveToggleFailure creature.name 1) "Failure" 2
+                    , deathSavePip "failure" (2 < ds.failures) (DeathSaveToggleFailure creature.name 2) "Failure" 3
+                    ]
         in
-        span
-            [ class "death-saves"
+        div
+            [ class "death-save-cols"
             , attribute "role" "group"
             , attribute "aria-label" "Death saving throws"
             ]
-            [ span [ class "death-saves__strip death-saves__strip--success" ]
-                (span
-                    [ class "death-saves__label"
-                    , title "Successful death saves"
-                    , attribute "aria-hidden" "true"
-                    ]
-                    [ text "🌟" ]
-                    :: List.map (deathSavePip creature.name DeathSaveToggleSuccess "🌟" "Success" ds.successes) [ 0, 1, 2 ]
-                )
-            , span [ class "death-saves__strip death-saves__strip--failure" ]
-                (span
-                    [ class "death-saves__label"
-                    , title "Failed death saves"
-                    , attribute "aria-hidden" "true"
-                    ]
-                    [ text "💀" ]
-                    :: List.map (deathSavePip creature.name DeathSaveToggleFailure "💀" "Failure" ds.failures) [ 0, 1, 2 ]
-                )
-            , rollButton
-            , statusBadge
+            [ div [ class "death-save-cols__row" ]
+                [ successColumn, failureColumn ]
+            , footer
             ]
 
-    else
-        text ""
 
-
-{-| Render one pip of a death-save strip.
-
-`msgFor name idx` is the toggle Msg constructor (success or
-failure variant); `filledGlyph` and `kindLabel` differ between
-strips. `currentCount` is the strip's current filled-pip count,
-used to decide whether THIS pip (`idx`) is filled.
-
--}
-deathSavePip : String -> (String -> Int -> Msg) -> String -> String -> Int -> Int -> Html Msg
-deathSavePip name msgFor filledGlyph kindLabel currentCount idx =
-    let
-        filled =
-            idx < currentCount
-
-        glyph =
-            if filled then
-                filledGlyph
-
-            else
-                "○"
-
-        stateLabel =
-            if filled then
-                "filled"
-
-            else
-                "empty"
-    in
+deathSavePip : String -> Bool -> Msg -> String -> Int -> Html Msg
+deathSavePip kind filled onToggle kindLabel ordinal =
     button
         [ class
-            (String.join " "
-                [ "death-save-pip"
-                , if filled then
-                    "death-save-pip--filled"
+            ("death-save-col__pip death-save-col__pip--"
+                ++ kind
+                ++ (if filled then
+                        " death-save-col__pip--filled"
 
-                  else
-                    "death-save-pip--empty"
-                ]
+                    else
+                        ""
+                   )
             )
-        , onClick (msgFor name idx)
-        , title (kindLabel ++ " " ++ String.fromInt (idx + 1) ++ ": " ++ stateLabel)
-        , attribute "aria-label" (kindLabel ++ " pip " ++ String.fromInt (idx + 1))
+        , onClick onToggle
+        , title
+            (kindLabel
+                ++ " "
+                ++ String.fromInt ordinal
+                ++ (if filled then
+                        ": filled — click to clear"
+
+                    else
+                        ": empty — click to set"
+                   )
+            )
+        , attribute "aria-label"
+            (kindLabel ++ " pip " ++ String.fromInt ordinal)
         , attribute "aria-pressed"
             (if filled then
                 "true"
@@ -826,21 +805,28 @@ deathSavePip name msgFor filledGlyph kindLabel currentCount idx =
                 "false"
             )
         ]
-        [ text glyph ]
+        []
 
 
+{-| The `icon` argument is intentionally unused in the card row:
+the GM already sees the toggle's text label and the title-row icon
+(rendered separately in EncounterBar). Hiding the per-toggle icon
+in the card buys horizontal space in row 2. The 🚫 prefix in the
+off state replaces the older "not " / "no " wording so the off
+state stays visually distinct without needing an icon glyph.
+-}
 boolToggle : String -> String -> Bool -> Msg -> Html Msg
-boolToggle icon label isOn msg =
+boolToggle _ label isOn msg =
     let
         ( bodyText, cls, tip ) =
             if isOn then
-                ( icon ++ " " ++ label
+                ( label
                 , "status-toggle status-toggle--on"
                 , label ++ " — click to clear"
                 )
 
             else
-                ( "not " ++ label
+                ( "🚫 " ++ label
                 , "status-toggle"
                 , "not " ++ label ++ " — click to set"
                 )
@@ -867,16 +853,16 @@ coverToggle creature =
         ( bodyText, label, modifier ) =
             case creature.cover of
                 NoCover ->
-                    ( "○ no cover", "No cover", "status-toggle--off" )
+                    ( "🚫 cover", "No cover", "status-toggle--off" )
 
                 HalfCover ->
-                    ( "◐ ½ cover", "Half cover", "status-toggle--on" )
+                    ( "½ cover", "Half cover", "status-toggle--on" )
 
                 ThreeQuartersCover ->
-                    ( "◕ ¾ cover", "Three-quarters cover", "status-toggle--on" )
+                    ( "¾ cover", "Three-quarters cover", "status-toggle--on" )
 
                 FullCover ->
-                    ( "● full cover", "Full cover", "status-toggle--on" )
+                    ( "full cover", "Full cover", "status-toggle--on" )
     in
     button
         [ class ("status-toggle " ++ modifier)
@@ -910,8 +896,9 @@ flyHeight creature =
             , span [ class "fly-height__unit" ] [ text "ft" ]
             , button
                 [ class "icon-btn icon-btn--sm fly-height__fall"
-                , title "Calculate falling damage (placeholder)"
-                , attribute "aria-label" "Calculate falling damage"
+                , onClick (RollFallDamage creature.name)
+                , title "Roll falling damage (1d6 per 10 ft, max 20d6) and ground the creature"
+                , attribute "aria-label" "Roll falling damage"
                 ]
                 [ text "↯" ]
             ]
@@ -1064,15 +1051,15 @@ holdToggle creature =
     let
         ( bodyText, cls, label ) =
             if creature.holding then
-                ( "✊ Holding"
+                ( "✊ Readied"
                 , "action-btn action-btn--holding"
-                , "Holding action — click to release"
+                , "Action readied — click to release"
                 )
 
             else
-                ( "✋ Hold"
+                ( "✋ Ready"
                 , "action-btn action-btn--hold"
-                , "Hold action — click to set"
+                , "Ready an action — click to set"
                 )
     in
     button

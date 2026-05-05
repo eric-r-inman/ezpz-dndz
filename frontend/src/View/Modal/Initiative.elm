@@ -64,28 +64,35 @@ autoRoll ui selectedCount =
     div [ class "init-section" ]
         [ h3 [ class "init-section__heading" ]
             [ text "Auto-roll Initiative" ]
-        , autoRollPair ScopeTarget
-            ("🎲 Roll Initiative & Sort: " ++ ui.target)
-            True
-            ""
-        , autoRollPair ScopeAll
-            "🎲 Roll Initiative & Sort: All"
-            True
-            ""
-        , autoRollPair ScopeSelected
-            ("🎲 Roll Initiative & Sort: Selected" ++ selectedCountSuffix selectedCount)
-            (selectedCount > 0)
-            (selectedTitle selectedCount)
+        , div [ class "init-btn-grid" ]
+            (List.concat
+                [ autoRollPair ScopeTarget
+                    "Roll initiative & Sort: This"
+                    True
+                    ("Roll for " ++ ui.target)
+                , autoRollPair ScopeAll
+                    "Roll initiative & Sort: All"
+                    True
+                    ""
+                , autoRollPair ScopeSelected
+                    "Roll initiative & Sort: Selected"
+                    (selectedCount > 0)
+                    (selectedTitle selectedCount)
+                ]
+            )
         , div [ class "init-section__caption" ]
             [ text "Rolls 1d20 + creature's initiative bonus from stat block" ]
         ]
 
 
-{-| One row in the Auto-roll section: the main "& Sort" button on
-the left, the Advantage sister button on the right. Both fire
-`InitiativeAutoRoll` with the same scope; only the mode differs.
+{-| Three buttons of one auto-roll row: the main "& Sort" button on
+the left, the Advantage sister in the middle, and the Disadvantage
+sister on the right. Returned as a flat `List (Html Msg)` so the
+caller can drop them straight into a grid container — this is what
+lines up the main-button widths across all three rows so they all
+match the longest label ("Roll initiative & Sort: Selected").
 -}
-autoRollPair : RollScope -> String -> Bool -> String -> Html Msg
+autoRollPair : RollScope -> String -> Bool -> String -> List (Html Msg)
 autoRollPair scope label enabled tipOverride =
     let
         mainTitle =
@@ -101,37 +108,48 @@ autoRollPair scope label enabled tipOverride =
 
             else
                 tipOverride
+
+        disTitle =
+            if enabled then
+                "Roll 2d20, keep lowest, + initiative bonus (5e disadvantage)"
+
+            else
+                tipOverride
+
+        ariaDisabled =
+            attribute "aria-disabled"
+                (if enabled then
+                    "false"
+
+                 else
+                    "true"
+                )
     in
-    div [ class "init-btn-row" ]
-        [ button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick (InitiativeAutoRoll scope ModeStandard)
-            , disabled (not enabled)
-            , attribute "aria-disabled"
-                (if enabled then
-                    "false"
-
-                 else
-                    "true"
-                )
-            , title mainTitle
-            ]
-            [ text label ]
-        , button
-            [ class "action-btn action-btn--green init-btn-adv"
-            , onClick (InitiativeAutoRoll scope ModeAdvantage)
-            , disabled (not enabled)
-            , attribute "aria-disabled"
-                (if enabled then
-                    "false"
-
-                 else
-                    "true"
-                )
-            , title advTitle
-            ]
-            [ text "Advantage" ]
+    [ button
+        [ class "action-btn action-btn--green init-btn-block"
+        , onClick (InitiativeAutoRoll scope ModeStandard)
+        , disabled (not enabled)
+        , ariaDisabled
+        , title mainTitle
         ]
+        [ text label ]
+    , button
+        [ class "action-btn action-btn--green init-btn-adv"
+        , onClick (InitiativeAutoRoll scope ModeAdvantage)
+        , disabled (not enabled)
+        , ariaDisabled
+        , title advTitle
+        ]
+        [ text "Advantage" ]
+    , button
+        [ class "action-btn action-btn--orange init-btn-adv"
+        , onClick (InitiativeAutoRoll scope ModeDisadvantage)
+        , disabled (not enabled)
+        , ariaDisabled
+        , title disTitle
+        ]
+        [ text "Disadvantage" ]
+    ]
 
 
 custom : InitiativeUi -> Int -> Html Msg

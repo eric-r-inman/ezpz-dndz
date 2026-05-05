@@ -19,6 +19,21 @@ frontend/public/elm.js
 # location is configurable via --dice-history-path).
 dice-history.json
 
+# Live-encounter persistence file (created at runtime by the server;
+# location is configurable via --encounter-path).  Anchored to the
+# repo root so it doesn't shadow any same-named file inside the tree.
+/encounter.json
+
+# Named encounter-saves persistence file (created at runtime by the
+# server; location is configurable via --encounter-saves-path).
+/encounter-saves.json
+
+# Runtime compendium directory (created at runtime by the server when
+# bootstrapping; location is configurable via --compendium-path).
+# Leading slash anchors the rule to repo root so it doesn't shadow
+# the source-side `frontend/src/Compendium/` module directory.
+/compendium/
+
 # Per-user Claude Code overrides (the shared .claude/settings.json IS checked in).
 .claude/settings.local.json
 

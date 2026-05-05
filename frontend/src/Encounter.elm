@@ -6,6 +6,7 @@ module Encounter exposing
     , Timer
     , standardConditions
     , empty
+    , run
     , setActive, activeCreature
     , mapCreature, nextCover
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
@@ -40,6 +41,15 @@ damage), it belongs here.
 # Initial state
 
 @docs empty
+
+
+# Combat startup
+
+`round = 0` is the pre-combat sentinel: the queue is set up
+but no one has taken a turn. [`run`](#run) flips the encounter
+into round 1 and picks the first creature as active.
+
+@docs run
 
 
 # Turn marker
@@ -306,8 +316,8 @@ real save/load with name collisions we'll switch to a stable id
 The boolean toggle fields each correspond to a button in the card
 center column rows 1–3:
 
-  - `surprised` — row 1 face toggle.
-  - `cover`, `concentrating`, `hiding`, `flying`, `flyHeight` — row 2.
+  - `cover`, `concentrating`, `hiding`, `dodging`, `flying`,
+    `flyHeight` — row 2.
   - `bloodied`, `deathSaves` — row 2 HP indicators. The death-save
     tracker (see [`DeathSaves`](#DeathSaves)) is rendered exactly
     when `currentHp == 0`; there's no separate visibility flag.
@@ -337,10 +347,10 @@ type alias Creature =
     , conditions : List Condition
     , saveNotices : List SaveNotice
     , selected : Bool
-    , surprised : Bool
     , cover : Cover
     , concentrating : Bool
     , hiding : Bool
+    , dodging : Bool
     , flying : Bool
     , flyHeight : Int
     , bloodied : Bool
@@ -382,13 +392,39 @@ type alias Encounter =
 fixture (see `Encounter.Seed.initialEncounter`) — but the running
 app starts empty and either loads a persisted encounter from the
 server or waits for the user to add creatures from the compendium.
+
+`round = 0` is the pre-combat sentinel — see [`run`](#run).
+
 -}
 empty : Encounter
 empty =
     { creatures = []
     , activeName = ""
-    , round = 1
+    , round = 0
     }
+
+
+{-| Begin combat: bump round from 0 to 1 and pick the first
+creature in the queue as active. The queue is in initiative
+order, so "first" is the highest-initiative combatant.
+
+This is the "Run Encounter" half of the round-0 sentinel: the
+GM lays out the encounter pre-combat (round 0, no one active),
+then clicks Run to begin and the queue starts ticking.
+
+-}
+run : Encounter -> Encounter
+run enc =
+    let
+        firstActiveName =
+            case List.head enc.creatures of
+                Just c ->
+                    c.name
+
+                Nothing ->
+                    ""
+    in
+    { enc | round = 1, activeName = firstActiveName }
 
 
 
@@ -438,8 +474,8 @@ setActive name enc =
 
 {-| Apply `fn` to whichever creature in the encounter has `name`; pass
 through all other creatures (and the rest of the encounter) unchanged.
-Used by every per-creature toggle (surprised, cover, concentrating,
-hiding, flying, fly-height, death-save slots, holding action).
+Used by every per-creature toggle (cover, concentrating, hiding,
+dodging, flying, fly-height, death-save slots, holding action).
 
 O(n) over the queue. For typical encounter sizes (5–15 combatants)
 this is fine and avoids the complexity of indexing or a Dict keyed by

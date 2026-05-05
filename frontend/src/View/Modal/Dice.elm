@@ -226,7 +226,7 @@ rollSource source =
 
 {-| Format the individual face values for a Roll, with kept faces
 inline and dropped (advantage/disadvantage loser) ones bracketed.
-"rolled 14, +3" or "rolled 17 (8 dropped)" etc.
+"rolled: 14, +3" or "rolled: 17 [8]" etc.
 -}
 rolledString : Dice.Roll -> String
 rolledString roll =
@@ -254,4 +254,4 @@ rolledString roll =
             else
                 ""
     in
-    "rolled " ++ faces ++ modifierText
+    "rolled: " ++ faces ++ modifierText

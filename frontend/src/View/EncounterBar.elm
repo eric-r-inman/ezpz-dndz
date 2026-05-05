@@ -3,8 +3,9 @@ module View.EncounterBar exposing (view)
 {-| Encounter title bar — the single line above the creature grid.
 
 Left cluster: encounter info ⓘ + round counter + active creature
-name + active HP readout + active state icons (cover, concentrating,
-hiding, flying) + active conditions text.
+name + active HP readout + active AC readout + active state
+icons (cover, concentrating, hiding, flying) + active conditions
+text.
 
 Right cluster: total XP + lair XP variant + the XP scope filter
 dropdown.
@@ -20,8 +21,8 @@ import Html.Attributes exposing (attribute, class, tabindex, title)
 import Msg exposing (Msg)
 
 
-view : Encounter -> Html Msg
-view enc =
+view : Encounter -> Maybe String -> Html Msg
+view enc savedAs =
     let
         active =
             Encounter.activeCreature enc
@@ -29,13 +30,21 @@ view enc =
         activeName =
             Maybe.map .name active
                 |> Maybe.withDefault "—"
+
+        sourceTooltip =
+            case savedAs of
+                Just name ->
+                    "from: " ++ name
+
+                Nothing ->
+                    "from: (unsaved)"
     in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
             [ span
                 [ class "encounter-bar__info"
-                , title "from file: "
-                , attribute "aria-label" "Encounter file"
+                , title sourceTooltip
+                , attribute "aria-label" sourceTooltip
                 , tabindex 0
                 ]
                 [ text "ⓘ" ]
@@ -45,6 +54,7 @@ view enc =
             , span [ class "encounter-bar__active" ] [ text activeName ]
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
+            , ac active
             , stateIcons active
             , conditionsText active
             ]
@@ -87,6 +97,28 @@ hp active =
                 [ span [ class "hp-display__max" ] [ text "—" ] ]
 
 
+{-| Active-creature AC readout for the title bar. Mirrors the HP
+cluster's "27/59 HP" shape — value on the left, "AC" label on
+the right — so the two readouts scan as a pair. Hidden when no
+creature is active.
+-}
+ac : Maybe Creature -> Html Msg
+ac active =
+    case active of
+        Just c ->
+            span
+                [ class "encounter-bar__ac"
+                , title ("Armor Class " ++ String.fromInt c.armorClass)
+                ]
+                [ span [ class "encounter-bar__ac-value" ]
+                    [ text (String.fromInt c.armorClass) ]
+                , span [ class "encounter-bar__ac-label" ] [ text "AC" ]
+                ]
+
+        Nothing ->
+            text ""
+
+
 xpFilter : Html Msg
 xpFilter =
     details [ class "xp-filter" ]
@@ -111,8 +143,8 @@ xpFilter =
 
 {-| Active-creature state icons in the encounter title bar.
 Renders one icon per actual non-default state (cover, concentrating,
-hiding, flying) — purely indicative, no click handlers. Hidden
-when nothing is active.
+hiding, dodging, flying) — purely indicative, no click handlers.
+Hidden when nothing is active.
 
 Cover uses the same ◐ / ◕ / ● glyph vocabulary as the card row 2
 toggle so the title bar reads consistently with the card.
@@ -127,6 +159,7 @@ stateIcons active =
                     [ coverIcon c
                     , stateIconIf c.concentrating "🧠" "Concentrating"
                     , stateIconIf c.hiding "👤" "Hiding"
+                    , stateIconIf c.dodging "🤸" "Dodging"
                     , flyingIcon c
                     ]
                 )

@@ -4,6 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
+    , SaveDestination(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -33,6 +34,7 @@ import Browser.Dom
 import Compendium
 import Dice
 import Encounter exposing (Encounter)
+import Encounter.Wire
 import File exposing (File)
 import Http
 import Url exposing (Url)
@@ -83,11 +85,14 @@ type HpInputMode
     | DiceMode
 
 
-{-| Which inline-HP value on the card is being edited.
+{-| Which inline numeric value on the card is being edited.
+Originally this only covered HP fields (hence the name); when AC
+became click-to-edit the same machinery extended here too.
 -}
 type HpField
     = CurrentHpField
     | MaxHpField
+    | ArmorClassField
 
 
 
@@ -103,13 +108,14 @@ type RollScope
     | ScopeSelected
 
 
-{-| Roll-mode for initiative auto-roll: standard 1d20 vs. 5e
-advantage (2d20-keep-highest). Open for a future Disadvantage
-sister button without churning the `Msg` shape.
+{-| Roll-mode for initiative auto-roll: standard 1d20, 5e
+advantage (2d20-keep-highest), or 5e disadvantage
+(2d20-keep-lowest).
 -}
 type RollMode
     = ModeStandard
     | ModeAdvantage
+    | ModeDisadvantage
 
 
 
@@ -203,6 +209,26 @@ type FeatureGroup
 
 
 
+-- ── SAVE / LOAD AUX ──────────────────────────────────────────────────────────
+
+
+{-| Where the Save button writes when submitted.
+
+  - `SaveDestinationServer` — POST/PUT to the server's named-save
+    store under the user's account.
+  - `SaveDestinationDevice` — trigger a `File.Download` of the
+    encoded encounter so the GM can keep it on their own machine.
+
+This is a pure UI enum; the server side doesn't care which mode
+was used because it only sees the half of the flow that uses it.
+
+-}
+type SaveDestination
+    = SaveDestinationServer
+    | SaveDestinationDevice
+
+
+
 -- ── MSG ──────────────────────────────────────────────────────────────────────
 
 
@@ -216,12 +242,14 @@ type Msg
     | GotMe (Result Http.Error MeInfo)
     | NextTurn
     | SetActive String
-    | ToggleSurprised String
     | CycleCover String
     | ToggleConcentration String
     | ToggleHiding String
+    | ToggleDodging String
     | ToggleFlying String
     | AdjustFlyHeight String Int
+    | RollFallDamage String
+    | FallDamageLanded String Dice.Roll
     | DeathSaveToggleSuccess String Int
     | DeathSaveToggleFailure String Int
     | DeathSaveRoll String
@@ -256,6 +284,7 @@ type Msg
     | HpChangeApplyToSelectedToggle
     | HpChangeApply
     | HpChangeRollLanded Dice.Roll
+    | HpChangeUndoLatest
       -- Inline HP edit on the creature card
     | HpEditStart String HpField Int
     | HpEditChange String
@@ -372,13 +401,60 @@ type Msg
     | CompendiumPasteTextChanged String
     | CompendiumPasteApply
       -- Pin a compendium creature's stat block in the side panel
-    | PanelShowCreature String
+    | PanelShowCreature String String
+      -- (compendium id, encounter creature display name)
       -- Legendary action / legendary resistance pip toggles
     | ToggleLegendaryActionPip String Int
     | ToggleLegendaryResistancePip String Int
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
+      -- Encounter Controls: Save / Load / Reset / Clear
+    | SaveOpen
+    | SaveClose
+    | SaveDestinationSet SaveDestination
+    | SaveFilenameChanged String
+    | SaveSubmit
+    | SaveListLoaded (Result Http.Error (List Encounter.Wire.SavedEncounterMeta))
+    | SavePersistResponse String (Result Http.Error ())
+    | SaveOverwriteRequested String
+    | SaveDeleteRequested String
+    | SaveConfirmCancel
+    | SaveConfirmConfirm
+    | SaveDeleteResponse String (Result Http.Error ())
+    | SaveRenameStart String
+    | SaveRenameChange String
+    | SaveRenameSubmit
+    | SaveRenameCancel
+    | SaveRenameResponse { from : String, to : String } (Result Http.Error ())
+    | LoadOpen
+    | LoadClose
+    | LoadFromServerRequested String
+    | LoadConfirmCancel
+    | LoadConfirmConfirm
+    | LoadServerResponse String (Result Http.Error Encounter)
+    | LoadDeleteRequested String
+    | LoadDeleteResponse String (Result Http.Error ())
+    | LoadRenameStart String
+    | LoadRenameChange String
+    | LoadRenameSubmit
+    | LoadRenameCancel
+    | LoadRenameResponse { from : String, to : String } (Result Http.Error ())
+    | LoadListLoaded (Result Http.Error (List Encounter.Wire.SavedEncounterMeta))
+    | LoadFromDeviceClick
+    | LoadFromDeviceFileChosen File
+    | LoadFromDeviceFileRead String
+    | EncounterReset
+    | EncounterClear
+      -- Saving-throw modal triggered from compendium ability cells
+    | AbilitySaveOpen String String Int
+      -- (creatureName, abilityLabel, saveBonus)
+    | AbilitySaveClose
+    | AbilitySaveRoll RollMode
+    | AbilitySaveLanded Dice.Roll
+    | EncounterControlConfirm
+    | EncounterControlCancel
+    | EncounterRun
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File

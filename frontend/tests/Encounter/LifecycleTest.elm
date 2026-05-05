@@ -2,7 +2,7 @@ module Encounter.LifecycleTest exposing (suite)
 
 {-| Behavior tests for `Encounter.Lifecycle` — turn-progression
 hooks (`nextTurn`, `applyBeginOfTurn`, `applyEndOfTurn`) plus
-the surprise-skip and dead-skip behavior of `nextTurn`.
+the dead-skip behavior of `nextTurn`.
 -}
 
 import Encounter exposing (AutoRollMode(..), Cover(..), Creature, Duration(..), Encounter, TurnPhase(..), TurnTarget(..))
@@ -16,7 +16,6 @@ suite : Test
 suite =
     describe "Encounter.Lifecycle"
         [ nextTurnSuite
-        , surpriseSkipSuite
         , deadSkipSuite
         , countdownTickSuite
         , untilTurnExpireSuite
@@ -41,10 +40,10 @@ mkCreature name initiative =
     , conditions = []
     , saveNotices = []
     , selected = False
-    , surprised = False
     , cover = NoCover
     , concentrating = False
     , hiding = False
+    , dodging = False
     , flying = False
     , flyHeight = 0
     , bloodied = False
@@ -119,56 +118,6 @@ nextTurnSuite =
                     |> .round
                     |> Expect.equal 1
         ]
-
-
-
--- ── surprise skip ────────────────────────────────────────────────────────
-
-
-surpriseSkipSuite : Test
-surpriseSkipSuite =
-    describe "nextTurn surprise rule"
-        [ test "skips a surprised creature on first encounter, clearing the flag" <|
-            \_ ->
-                let
-                    enc =
-                        { threeCreatures
-                            | creatures =
-                                [ mkCreature "A" 20
-                                , { mkCreatureB | surprised = True }
-                                , mkCreature "C" 10
-                                ]
-                        }
-                in
-                Lifecycle.nextTurn enc
-                    |> .activeName
-                    |> Expect.equal "C"
-        , test "clears the surprised flag on the skipped creature" <|
-            \_ ->
-                let
-                    enc =
-                        { threeCreatures
-                            | creatures =
-                                [ mkCreature "A" 20
-                                , { mkCreatureB | surprised = True }
-                                , mkCreature "C" 10
-                                ]
-                        }
-
-                    findByName name e =
-                        List.filter (\c -> c.name == name) e.creatures
-                            |> List.head
-                in
-                Lifecycle.nextTurn enc
-                    |> findByName "B"
-                    |> Maybe.map .surprised
-                    |> Expect.equal (Just False)
-        ]
-
-
-mkCreatureB : Creature
-mkCreatureB =
-    mkCreature "B" 15
 
 
 

@@ -258,6 +258,7 @@ dispatchClassifiedLine line state =
             withCreature
                 (\c -> { c | armorClass = ac, armorClassNote = note })
                 (commitFeature state)
+                |> applyEmbeddedInitiative line
 
         LineHitPoints hp formula ->
             withCreature
@@ -266,6 +267,9 @@ dispatchClassifiedLine line state =
 
         LineSpeed speed ->
             withCreature (\c -> { c | speed = speed }) (commitFeature state)
+
+        LineInitiative bonus ->
+            withCreature (\c -> { c | initiativeBonus = bonus }) (commitFeature state)
 
         LineAbilities abs_ ->
             withCreature (\c -> { c | abilities = abs_ }) (commitFeature state)
@@ -342,6 +346,74 @@ dispatchClassifiedLine line state =
 withCreature : (Compendium.Creature -> Compendium.Creature) -> State -> State
 withCreature fn state =
     { state | creature = fn state.creature }
+
+
+{-| When the AC line carries a trailing "Initiative +N (M)" annotation
+(D&D Beyond 2024 sometimes packs both onto one row), capture the
+`+N` as the creature's initiative bonus so we don't lose the data
+to `cleanAcLine`'s stripping. The `(M)` is the passive total; we
+recompute it on render, so we discard it here.
+-}
+applyEmbeddedInitiative : String -> State -> State
+applyEmbeddedInitiative line state =
+    case extractInitiativeFromLine line of
+        Just bonus ->
+            withCreature (\c -> { c | initiativeBonus = bonus }) state
+
+        Nothing ->
+            state
+
+
+extractInitiativeFromLine : String -> Maybe Int
+extractInitiativeFromLine line =
+    let
+        lower =
+            String.toLower line
+    in
+    case String.indexes "initiative" lower of
+        i :: _ ->
+            String.dropLeft (i + String.length "initiative") line
+                |> String.trim
+                |> readSignedIntPrefix
+
+        [] ->
+            Nothing
+
+
+{-| Read a leading signed integer from a string (e.g. `"+10 (20)"`
+returns `Just 10`). Unlike `parseSignedInt`, this returns `Nothing`
+when the string doesn't actually start with a sign-and-digit run,
+so the caller can distinguish "no initiative annotation" from
+"initiative +0".
+-}
+readSignedIntPrefix : String -> Maybe Int
+readSignedIntPrefix raw =
+    case String.uncons raw of
+        Just ( '+', rest ) ->
+            firstIntMaybe rest
+
+        Just ( '-', rest ) ->
+            Maybe.map negate (firstIntMaybe rest)
+
+        _ ->
+            Nothing
+
+
+firstIntMaybe : String -> Maybe Int
+firstIntMaybe raw =
+    let
+        digits =
+            raw
+                |> String.toList
+                |> dropUntil Char.isDigit
+                |> takeWhileChars Char.isDigit
+                |> String.fromList
+    in
+    if String.isEmpty digits then
+        Nothing
+
+    else
+        String.toInt digits
 
 
 startFeature : String -> String -> State -> State
@@ -733,6 +805,7 @@ type Line
     = LineArmorClass Int String
     | LineHitPoints Int String
     | LineSpeed Compendium.Speed
+    | LineInitiative Int
     | LineAbilities Compendium.Abilities
     | LineAbilityRow Compendium.Ability Int (Maybe Int)
     | LineSaves (List Compendium.AbilitySave)
@@ -924,7 +997,7 @@ classifyByPrefix line lower =
             , ( "hit points ", parseHitPoints )
             , ( "hp ", parseHitPoints )
             , ( "speed ", \rest -> LineSpeed (parseSpeed rest) )
-            , ( "initiative ", \_ -> LineIgnore )
+            , ( "initiative ", \rest -> LineInitiative (parseSignedInt rest) )
 
             -- Save / skill rows.
             , ( "saving throws ", \rest -> LineSaves (parseSaves rest) )

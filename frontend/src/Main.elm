@@ -66,6 +66,7 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 import Ui.Toast as ToastUi exposing (Toast, ToastKind(..))
+import Update.AbilitySave
 import Update.Compendium
 import Update.Condition
 import Update.DeathSave
@@ -74,8 +75,10 @@ import Update.Encounter
 import Update.HpChange
 import Update.Initiative
 import Update.LegendaryPip
+import Update.Load
 import Update.Memo
 import Update.Note
+import Update.Save
 import Update.Shell
 import Update.Timer
 import Update.Toast
@@ -86,6 +89,7 @@ import View.AppBar
 import View.Audio
 import View.Card
 import View.Modal
+import View.Modal.AbilitySave
 import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
@@ -93,12 +97,13 @@ import View.Modal.Condition
 import View.Modal.Dice
 import View.Modal.HpChange
 import View.Modal.Initiative
+import View.Modal.Load
 import View.Modal.Memo
 import View.Modal.Note
+import View.Modal.Save
 import View.Modal.Timer
 import View.PhaseToggle
 import View.StatBlock
-import View.StatBlockEmbed
 import View.Toast
 import View.Workspace
 
@@ -147,6 +152,15 @@ subscriptions model =
 
             Just (ModalNoteEdit _) ->
                 Browser.Events.onKeyDown (escKey NoteEditCancel)
+
+            Just (ModalSave _) ->
+                Browser.Events.onKeyDown (escKey SaveClose)
+
+            Just (ModalLoad _) ->
+                Browser.Events.onKeyDown (escKey LoadClose)
+
+            Just (ModalAbilitySave _) ->
+                Browser.Events.onKeyDown (escKey AbilitySaveClose)
 
             _ ->
                 if model.compendium.open then
@@ -212,12 +226,15 @@ init _ url key =
       , route = route
       , me = Loading
       , encounter = Encounter.empty
+      , savedSnapshot = Nothing
+      , savedAs = Nothing
       , dice = DiceUi.empty
       , hpChangeLog = []
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
       , modal = Nothing
-      , panelCreatureId = Nothing
+      , panelCreaturePin = Nothing
+      , pendingControl = Nothing
       , toasts = []
       , nextToastId = 0
       , preferences = Preferences.default
@@ -297,9 +314,6 @@ updateInner msg model =
         SetActive name ->
             Update.Encounter.setActive name model
 
-        ToggleSurprised name ->
-            Update.Encounter.toggleSurprised name model
-
         CycleCover name ->
             Update.Encounter.cycleCover name model
 
@@ -309,11 +323,20 @@ updateInner msg model =
         ToggleHiding name ->
             Update.Encounter.toggleHiding name model
 
+        ToggleDodging name ->
+            Update.Encounter.toggleDodging name model
+
         ToggleFlying name ->
             Update.Encounter.toggleFlying name model
 
         AdjustFlyHeight name delta ->
             Update.Encounter.adjustFlyHeight name delta model
+
+        RollFallDamage name ->
+            Update.Encounter.rollFallDamage name model
+
+        FallDamageLanded name roll ->
+            Update.Encounter.fallDamageLanded name roll model
 
         DeathSaveToggleSuccess name idx ->
             Update.DeathSave.toggleSuccess name idx model
@@ -412,6 +435,9 @@ updateInner msg model =
 
         HpChangeRollLanded roll ->
             Update.HpChange.rollLanded roll model
+
+        HpChangeUndoLatest ->
+            Update.HpChange.undoLatest model
 
         HpEditStart name field current ->
             Update.HpChange.editStart name field current model
@@ -719,8 +745,8 @@ updateInner msg model =
         CompendiumPasteApply ->
             Update.Compendium.pasteApply model
 
-        PanelShowCreature creatureId ->
-            Update.Compendium.panelShowCreature creatureId model
+        PanelShowCreature creatureId creatureName ->
+            Update.Compendium.panelShowCreature creatureId creatureName model
 
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model
@@ -733,6 +759,135 @@ updateInner msg model =
 
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
+
+        SaveOpen ->
+            Update.Save.open model
+
+        SaveClose ->
+            Update.Save.close model
+
+        SaveDestinationSet dest ->
+            Update.Save.destinationSet dest model
+
+        SaveFilenameChanged text ->
+            Update.Save.filenameChanged text model
+
+        SaveSubmit ->
+            Update.Save.submit model
+
+        SaveListLoaded result ->
+            Update.Save.listLoaded result model
+
+        SavePersistResponse name result ->
+            Update.Save.persistResponse name result model
+
+        SaveOverwriteRequested name ->
+            Update.Save.overwriteRequested name model
+
+        SaveDeleteRequested name ->
+            Update.Save.deleteRequested name model
+
+        SaveConfirmCancel ->
+            Update.Save.confirmCancel model
+
+        SaveConfirmConfirm ->
+            Update.Save.confirmConfirm model
+
+        SaveDeleteResponse name result ->
+            Update.Save.deleteResponse name result model
+
+        SaveRenameStart name ->
+            Update.Save.renameStart name model
+
+        SaveRenameChange text ->
+            Update.Save.renameChange text model
+
+        SaveRenameSubmit ->
+            Update.Save.renameSubmit model
+
+        SaveRenameCancel ->
+            Update.Save.renameCancel model
+
+        SaveRenameResponse names result ->
+            Update.Save.renameResponse names result model
+
+        LoadOpen ->
+            Update.Load.open model
+
+        LoadClose ->
+            Update.Load.close model
+
+        LoadFromServerRequested name ->
+            Update.Load.fromServerRequested name model
+
+        LoadConfirmCancel ->
+            Update.Load.confirmCancel model
+
+        LoadConfirmConfirm ->
+            Update.Load.confirmConfirm model
+
+        LoadServerResponse name result ->
+            Update.Load.serverResponse name result model
+
+        LoadDeleteRequested name ->
+            Update.Load.deleteRequested name model
+
+        LoadDeleteResponse name result ->
+            Update.Load.deleteResponse name result model
+
+        LoadRenameStart name ->
+            Update.Load.renameStart name model
+
+        LoadRenameChange text ->
+            Update.Load.renameChange text model
+
+        LoadRenameSubmit ->
+            Update.Load.renameSubmit model
+
+        LoadRenameCancel ->
+            Update.Load.renameCancel model
+
+        LoadRenameResponse names result ->
+            Update.Load.renameResponse names result model
+
+        LoadListLoaded result ->
+            Update.Load.listLoaded result model
+
+        LoadFromDeviceClick ->
+            Update.Load.fromDeviceClick model
+
+        LoadFromDeviceFileChosen file ->
+            Update.Load.fromDeviceFileChosen file model
+
+        LoadFromDeviceFileRead raw ->
+            Update.Load.fromDeviceFileRead raw model
+
+        EncounterReset ->
+            Update.Encounter.requestReset model
+
+        EncounterClear ->
+            Update.Encounter.requestClear model
+
+        EncounterControlConfirm ->
+            Update.Encounter.controlConfirm model
+
+        EncounterControlCancel ->
+            Update.Encounter.controlCancel model
+
+        EncounterRun ->
+            Update.Encounter.run model
+
+        AbilitySaveOpen creatureName ability bonus ->
+            Update.AbilitySave.open creatureName ability bonus model
+
+        AbilitySaveClose ->
+            Update.AbilitySave.close model
+
+        AbilitySaveRoll mode ->
+            Update.AbilitySave.roll mode model
+
+        AbilitySaveLanded roll ->
+            Update.AbilitySave.landed roll model
 
         CompendiumImportClick ->
             Update.Compendium.importClick model
@@ -792,6 +947,9 @@ view model =
             , View.Modal.Compendium.view model.compendium
             , View.Modal.CompendiumEdit.view model
             , View.Modal.CompendiumPaste.view model
+            , View.Modal.Save.view model
+            , View.Modal.Load.view model
+            , View.Modal.AbilitySave.view model
             , View.Toast.list model.toasts
             , View.Audio.ringer model
             ]
@@ -855,7 +1013,7 @@ viewCompendiumStandalone model id =
                 CompendiumDbLoaded db ->
                     case Compendium.find id db of
                         Just creature ->
-                            View.StatBlock.view RollFromStatBlock creature
+                            View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
 
                         Nothing ->
                             p [ class "empty" ]

@@ -299,14 +299,19 @@ unwrapAverage s =
 
 averageWrapParser : Parser String
 averageWrapParser =
-    Parser.succeed identity
+    -- The trailing chomp lets a damage-type tail like " Slashing damage"
+    -- ride along with the inner formula, so when the scanner captured
+    -- "5 (1d6 + 2) Slashing damage" as one match, the cleaned form
+    -- ("1d6 + 2 Slashing damage") still parses cleanly through
+    -- `expressionParser` and surfaces the damage type.
+    Parser.succeed (\inner tail -> inner ++ tail)
         |. Parser.spaces
         |. Parser.int
         |. Parser.spaces
         |. Parser.symbol "("
         |= Parser.getChompedString (Parser.chompUntil ")")
         |. Parser.symbol ")"
-        |. Parser.spaces
+        |= Parser.getChompedString (Parser.chompWhile (always True))
         |. Parser.end
 
 
@@ -664,6 +669,7 @@ averageWrapInline =
         |. Parser.symbol "("
         |. Parser.chompUntil ")"
         |. Parser.symbol ")"
+        |. optionalDamageTypeTail
 
 
 {-| Match a bare "1d6" / "2d8 + 3" / "3d10-2" formula.
@@ -707,6 +713,124 @@ diceInline =
                 )
             , Parser.succeed ()
             ]
+        |. optionalDamageTypeTail
+
+
+{-| Optional trailing `<5e-damage-type> [damage]` annotation,
+appended to both `diceInline` and `averageWrapInline` so the
+captured substring carries the damage type into `parse`.
+
+Backtrackable so non-damage-type prose ("1d6 from the spell")
+falls cleanly through to `Parser.succeed ()` without consuming
+the chomped alpha word.
+
+-}
+optionalDamageTypeTail : Parser ()
+optionalDamageTypeTail =
+    Parser.oneOf
+        [ Parser.backtrackable
+            (Parser.succeed ()
+                |. Parser.spaces
+                |. damageTypeWordIfKnown
+                |. Parser.oneOf
+                    [ Parser.backtrackable
+                        (Parser.succeed ()
+                            |. Parser.spaces
+                            |. damageWordChomp
+                        )
+                    , Parser.succeed ()
+                    ]
+            )
+        , Parser.succeed ()
+        ]
+
+
+{-| Chomp an alpha word and validate it against the closed set of
+5e damage types (case-insensitive). Fails if the word is anything
+else, which lets `optionalDamageTypeTail` backtrack cleanly.
+-}
+damageTypeWordIfKnown : Parser ()
+damageTypeWordIfKnown =
+    Parser.getChompedString
+        (Parser.succeed ()
+            |. Parser.chompIf Char.isAlpha
+            |. Parser.chompWhile Char.isAlpha
+        )
+        |> Parser.andThen
+            (\word ->
+                if isKnownDamageType word then
+                    Parser.succeed ()
+
+                else
+                    Parser.problem "not a known damage type"
+            )
+
+
+damageWordChomp : Parser ()
+damageWordChomp =
+    Parser.getChompedString
+        (Parser.succeed ()
+            |. Parser.chompIf Char.isAlpha
+            |. Parser.chompWhile Char.isAlpha
+        )
+        |> Parser.andThen
+            (\word ->
+                if String.toLower word == "damage" then
+                    Parser.succeed ()
+
+                else
+                    Parser.problem "not the literal 'damage'"
+            )
+
+
+{-| The thirteen 5e damage types. Pure-comparison whitelist used
+by the scanner so prose words like "from" or "creature" can't
+accidentally be promoted to a damage-type tail.
+-}
+isKnownDamageType : String -> Bool
+isKnownDamageType raw =
+    case String.toLower raw of
+        "acid" ->
+            True
+
+        "bludgeoning" ->
+            True
+
+        "cold" ->
+            True
+
+        "fire" ->
+            True
+
+        "force" ->
+            True
+
+        "lightning" ->
+            True
+
+        "necrotic" ->
+            True
+
+        "piercing" ->
+            True
+
+        "poison" ->
+            True
+
+        "psychic" ->
+            True
+
+        "radiant" ->
+            True
+
+        "slashing" ->
+            True
+
+        "thunder" ->
+            True
+
+        _ ->
+            False
 
 
 {-| Chomp one or more digits, ignoring whatever follows. Unlike

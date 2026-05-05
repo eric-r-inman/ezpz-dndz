@@ -50,16 +50,27 @@ import Html.Events exposing (onClick)
     argument is the creature's display name; the second is the
     parsed `Dice.Expression`. Pass `RollFromStatBlock` from
     `Main` to get the same roll-and-log behavior used elsewhere.
+  - `onAbilityClick` — handler for clicking one of the six
+    ability cells (STR / DEX / CON / INT / WIS / CHA). Receives
+    the creature's display name, the ability label (e.g. `"STR"`),
+    and the saving-throw bonus (proficient if the creature has a
+    `savingThrows` entry for this ability, otherwise the flat
+    ability modifier). Pass `AbilitySaveOpen` from `Main` to
+    get the saving-throw modal.
 
 -}
-view : (String -> Dice.Expression -> msg) -> Creature -> Html msg
-view onRoll c =
+view :
+    (String -> Dice.Expression -> msg)
+    -> (String -> String -> Int -> msg)
+    -> Creature
+    -> Html msg
+view onRoll onAbilityClick c =
     div [ class "statblock" ]
         ([ viewHead c
          , hr [ class "statblock__divider" ] []
          , viewCoreLine c
          , hr [ class "statblock__divider" ] []
-         , viewAbilities c.abilities
+         , viewAbilities onAbilityClick c
          , hr [ class "statblock__divider" ] []
          ]
             ++ viewProperties c
@@ -125,16 +136,32 @@ typeLine c =
 
 
 
--- ── CORE LINE (AC / HP / SPEED) ──────────────────────────────────────────────
+-- ── CORE LINE (AC / HP / Initiative / Speed) ────────────────────────────────
 
 
+{-| Stacked vertically (one row per property) so each value lands
+on its own line — much easier to scan than the older single-row
+grid, especially for 2024-format stat blocks where Initiative
+joins AC, HP, and Speed. Colons match the prevailing visual
+style for "label: value" lookups.
+-}
 viewCoreLine : Creature -> Html msg
 viewCoreLine c =
     div [ class "statblock__meta" ]
-        [ viewProperty "Armor Class" (acDisplay c)
-        , viewProperty "Hit Points" (hpDisplay c)
-        , viewProperty "Speed" (speedDisplay c.speed)
+        [ viewProperty "Armor Class:" (acDisplay c)
+        , viewProperty "Hit Points:" (hpDisplay c)
+        , viewProperty "Initiative:" (initiativeDisplay c.initiativeBonus)
+        , viewProperty "Speed:" (speedDisplay c.speed)
         ]
+
+
+{-| `+10 (20)` style: signed bonus, then the parenthesized
+"passive" initiative result (10 + bonus) the GM uses when they
+choose not to roll. Mirrors the D&D 2024 stat-block format.
+-}
+initiativeDisplay : Int -> String
+initiativeDisplay bonus =
+    signed bonus ++ " (" ++ String.fromInt (10 + bonus) ++ ")"
 
 
 acDisplay : Creature -> String
@@ -190,21 +217,51 @@ whenPositive n fmt =
 -- ── ABILITIES ────────────────────────────────────────────────────────────────
 
 
-viewAbilities : Abilities -> Html msg
-viewAbilities a =
+viewAbilities : (String -> String -> Int -> msg) -> Creature -> Html msg
+viewAbilities onAbilityClick c =
+    let
+        cell label ability score =
+            viewAbilityCell onAbilityClick c.name label (saveBonus c.savingThrows ability score) score
+    in
     div [ class "ability-row" ]
-        [ viewAbilityCell "STR" a.str
-        , viewAbilityCell "DEX" a.dex
-        , viewAbilityCell "CON" a.con
-        , viewAbilityCell "INT" a.int
-        , viewAbilityCell "WIS" a.wis
-        , viewAbilityCell "CHA" a.cha
+        [ cell "STR" Str c.abilities.str
+        , cell "DEX" Dex c.abilities.dex
+        , cell "CON" Con c.abilities.con
+        , cell "INT" Int_ c.abilities.int
+        , cell "WIS" Wis c.abilities.wis
+        , cell "CHA" Cha c.abilities.cha
         ]
 
 
-viewAbilityCell : String -> Int -> Html msg
-viewAbilityCell label score =
-    div [ class "ability" ]
+{-| Pull the proficient save bonus from `savingThrows` if the
+creature is proficient in this ability; otherwise fall back to
+the flat ability modifier. This is the bonus the saving-throw
+modal applies to its `1d20`.
+-}
+saveBonus : List AbilitySave -> Ability -> Int -> Int
+saveBonus saves ability score =
+    case List.filter (\s -> s.ability == ability) saves of
+        save :: _ ->
+            save.bonus
+
+        [] ->
+            modifier score
+
+
+viewAbilityCell :
+    (String -> String -> Int -> msg)
+    -> String
+    -> String
+    -> Int
+    -> Int
+    -> Html msg
+viewAbilityCell onAbilityClick creatureName label bonus score =
+    Html.button
+        [ class "ability ability--clickable"
+        , Html.Attributes.type_ "button"
+        , onClick (onAbilityClick creatureName label bonus)
+        , title (label ++ " saving throw — click to roll")
+        ]
         [ div [ class "ability__label" ] [ text label ]
         , div [ class "ability__value" ] [ text (String.fromInt score) ]
         , div [ class "ability__mod" ] [ text ("(" ++ signed (modifier score) ++ ")") ]

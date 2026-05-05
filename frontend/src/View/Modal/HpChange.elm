@@ -322,12 +322,17 @@ log entries =
 
           else
             ul [ class "hp-change__log-list" ]
-                (List.map logEntry entries)
+                (List.indexedMap logEntry entries)
         ]
 
 
-logEntry : HpChangeEntry -> Html Msg
-logEntry entry =
+{-| Render one log row. The newest entry (`index == 0`) carries
+an inline undo button so the GM can revert the latest change in
+one click; older rows render without it so a misclick can't
+silently rewrite the middle of the history.
+-}
+logEntry : Int -> HpChangeEntry -> Html Msg
+logEntry index entry =
     let
         kindLabel =
             case entry.kind of
@@ -364,6 +369,19 @@ logEntry entry =
             [ text (String.fromInt entry.amount) ]
         , span [ class "hp-change__log-trans" ]
             [ text (beforeStr ++ " → " ++ afterStr) ]
+        , if index == 0 then
+            button
+                [ class "icon-btn icon-btn--sm hp-change__log-undo"
+                , onClick HpChangeUndoLatest
+                , Attr.title
+                    ("Undo: revert " ++ entry.target ++ " to " ++ beforeStr)
+                , attribute "aria-label"
+                    ("Undo " ++ kindLabel ++ " on " ++ entry.target)
+                ]
+                [ text "↶" ]
+
+          else
+            text ""
         ]
 
 

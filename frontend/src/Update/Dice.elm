@@ -243,15 +243,17 @@ clearResponse _ model =
     ( model, Cmd.none )
 
 
-{-| Click on inline dice notation in a stat-block trait. Open the
-modal so the user sees the result land, and fire the roll through
-the same code path as the modal's own buttons. The source is tagged
-"Stat block" with the creature name so it shows up in the history
-as "Stat block → Brakka, Ogre Brute".
+{-| Click on inline dice notation in a stat-block trait. Fire the
+roll through the same code path as the modal's own buttons, but
+do NOT open the modal — the result lands silently in the dice
+history and the panel's Roll button picks up its "unread"
+indicator so the user can open the log when they want to see it.
+The source is tagged "Stat block" with the creature name so it
+shows up in the history as "Stat block → Brakka, Ogre Brute".
 -}
 rollFromStatBlock : String -> Dice.Expression -> Model -> ( Model, Cmd Msg )
 rollFromStatBlock creatureName expr model =
-    ( withDice (\d -> { d | open = True, inputError = Nothing }) model
+    ( model
     , Dice.rollCmd DiceRollLanded
         { feature = "Stat block", target = Just creatureName }
         expr

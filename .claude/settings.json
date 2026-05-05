@@ -87,7 +87,17 @@
       "Read(//nix/**)",
       "Read(//Users/ericrinman/.nix-profile/etc/**)",
       "Read(//etc/static/**)",
-      "Read(//etc/**)"
+      "Read(//etc/**)",
+      "Read(//Users/ericrinman/.nix-profile/**)",
+      "Bash(/nix/var/nix/profiles/default/bin/nix develop *)",
+      "Bash(which elm-test *)",
+      "Read(//opt/**)",
+      "Read(//Users/ericrinman/.local/**)",
+      "Bash(find /Users/ericrinman -maxdepth 4 -name \"elm\" -type f 2>/dev/null | head -5; brew list 2>&1 | grep -i elm | head -5; which brew)",
+      "Read(//Users/ericrinman/**)",
+      "Bash(brew search *)",
+      "Bash(/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin/elm make *)",
+      "Bash(/nix/store/1kyg3qgpskvhf5q4c36ymp02zfrdzhp6-elm-test-0.19.1-revision17/bin/elm-test)"
     ],
     "deny": [
       "Bash(sudo *)",

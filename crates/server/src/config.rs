@@ -80,6 +80,12 @@ pub struct CliRaw {
   #[arg(long, env = "ENCOUNTER_PATH")]
   pub encounter_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing user-named saved encounters
+  /// (the Save / Load modal in the Encounter Controls panel).
+  /// Defaults to `<data_dir>/encounter-saves.json`.
+  #[arg(long, env = "ENCOUNTER_SAVES_PATH")]
+  pub encounter_saves_path: Option<PathBuf>,
+
   /// Base URL of the service (e.g. https://example.com), used to construct
   /// the OIDC redirect URI
   #[arg(long, env = "BASE_URL")]
@@ -108,6 +114,7 @@ pub struct ConfigFileRaw {
   pub dice_history_path: Option<PathBuf>,
   pub compendium_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
+  pub encounter_saves_path: Option<PathBuf>,
   pub base_url: Option<String>,
   pub oidc_issuer: Option<String>,
   pub oidc_client_id: Option<String>,
@@ -150,6 +157,7 @@ pub struct Config {
   pub dice_history_path: PathBuf,
   pub compendium_path: PathBuf,
   pub encounter_path: PathBuf,
+  pub encounter_saves_path: PathBuf,
   pub base_url: String,
   pub oidc: Option<OidcConfig>,
 }
@@ -231,6 +239,14 @@ impl Config {
       .or(config_file.encounter_path)
       .unwrap_or_else(|| data_dir.join("encounter.json"));
 
+    // User-named save files for the Save / Load modal.  Default
+    // sits next to the live encounter file so a `--data-dir`
+    // bind-mount carries it along automatically.
+    let encounter_saves_path = cli
+      .encounter_saves_path
+      .or(config_file.encounter_saves_path)
+      .unwrap_or_else(|| data_dir.join("encounter-saves.json"));
+
     let base_url = cli.base_url.or(config_file.base_url).ok_or_else(|| {
       ConfigError::Validation("base_url is required".to_string())
     })?;
@@ -303,6 +319,7 @@ impl Config {
       dice_history_path,
       compendium_path,
       encounter_path,
+      encounter_saves_path,
       base_url,
       oidc,
     })

@@ -189,3 +189,13 @@ nix develop --command git commit -m "your message"
 
 Run ~cargo test --workspace~ after making any change to verify nothing is
 broken.
+
+* Changelog: don't.
+
+The project does not maintain a =CHANGELOG.org= /
+=CHANGELOG.md=.  Don't create one, don't update one if you find
+one (the legacy file lives in =docs/archive/CHANGELOG.org= for
+historical reference only).  Commit messages and the git log are
+the canonical record of what changed; =docs/ARCHITECTURE.org=
+captures load-bearing decisions.  Summarize a change in the chat
+reply rather than in a tracked doc.

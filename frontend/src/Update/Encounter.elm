@@ -1,19 +1,26 @@
 module Update.Encounter exposing
     ( adjustFlyHeight
+    , controlCancel
+    , controlConfirm
     , cycleCover
     , duplicateCreature
+    , fallDamageLanded
     , moveCreatureDown
     , moveCreatureUp
     , nextTurn
     , removeCreature
+    , requestClear
+    , requestReset
+    , rollFallDamage
+    , run
     , setActive
     , shiftToggleSelected
     , toggleConcentration
+    , toggleDodging
     , toggleFlying
     , toggleHiding
     , toggleHolding
     , toggleSelected
-    , toggleSurprised
     )
 
 {-| Update branches that mutate the encounter queue or per-creature
@@ -28,12 +35,13 @@ already moved into `Encounter.Lifecycle.nextTurn`, leaving only the
 
 -}
 
+import Dice
 import Effects
 import Encounter exposing (Encounter)
 import Encounter.Lifecycle
 import Encounter.Roster
-import Model exposing (Model)
-import Msg exposing (Msg)
+import Model exposing (Model, PendingControl(..))
+import Msg exposing (Msg(..))
 
 
 {-| Local lens for `model.encounter`. Kept private to this module —
@@ -101,13 +109,6 @@ setActive name model =
     )
 
 
-toggleSurprised : String -> Model -> ( Model, Cmd Msg )
-toggleSurprised name model =
-    ( withEncounter (Encounter.mapCreature name (\c -> { c | surprised = not c.surprised })) model
-    , Cmd.none
-    )
-
-
 cycleCover : String -> Model -> ( Model, Cmd Msg )
 cycleCover name model =
     ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.nextCover c.cover })) model
@@ -125,6 +126,13 @@ toggleConcentration name model =
 toggleHiding : String -> Model -> ( Model, Cmd Msg )
 toggleHiding name model =
     ( withEncounter (Encounter.mapCreature name (\c -> { c | hiding = not c.hiding })) model
+    , Cmd.none
+    )
+
+
+toggleDodging : String -> Model -> ( Model, Cmd Msg )
+toggleDodging name model =
+    ( withEncounter (Encounter.mapCreature name (\c -> { c | dodging = not c.dodging })) model
     , Cmd.none
     )
 
@@ -205,3 +213,164 @@ removeCreature name model =
 duplicateCreature : String -> Model -> ( Model, Cmd Msg )
 duplicateCreature name model =
     ( withEncounter (Encounter.Roster.duplicateCreature name) model, Cmd.none )
+
+
+{-| First click of Reset: stage the pending state so the panel
+renders the confirmation banner. The actual revert happens in
+[`controlConfirm`](#controlConfirm); this branch is purely
+about asking "are you sure?" before touching the encounter.
+-}
+requestReset : Model -> ( Model, Cmd Msg )
+requestReset model =
+    ( { model | pendingControl = Just PendingReset }, Cmd.none )
+
+
+{-| First click of Clear — see [`requestReset`](#requestReset);
+the only difference is the pending tag.
+-}
+requestClear : Model -> ( Model, Cmd Msg )
+requestClear model =
+    ( { model | pendingControl = Just PendingClear }, Cmd.none )
+
+
+{-| Apply whichever destructive action is currently staged.
+
+  - `PendingReset` — restore the encounter to its last-saved
+    snapshot (or the empty default if no snapshot exists yet)
+    and force `round = 0` with no active creature, so the GM
+    is back in pre-combat mode.
+  - `PendingClear` — drop every creature; force `round = 0`.
+
+In both cases the pending state is cleared so the panel returns
+to its normal button grid.
+
+-}
+controlConfirm : Model -> ( Model, Cmd Msg )
+controlConfirm model =
+    case model.pendingControl of
+        Just PendingReset ->
+            let
+                target =
+                    case model.savedSnapshot of
+                        Just snap ->
+                            { snap | round = 0, activeName = "" }
+
+                        Nothing ->
+                            Encounter.empty
+            in
+            ( { model | encounter = target, pendingControl = Nothing }
+            , Cmd.none
+            )
+
+        Just PendingClear ->
+            ( { model
+                | encounter = Encounter.empty
+                , pendingControl = Nothing
+              }
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Calculate falling damage for the named creature and fire it
+through the dice history.
+
+5e fall damage: 1d6 per 10 feet fallen, capped at 20d6. Heights
+are rounded DOWN to the nearest 10-foot segment, so 26 ft → 2d6.
+A creature at 0–9 ft of altitude takes no damage.
+
+The damage isn't auto-applied to the creature's HP — the GM gets
+to decide (saving throw / feather fall / etc.). The roll lands
+in the shared dice history so the title bar's "latest total"
+readout updates and the dice modal can be opened later for the
+full breakdown.
+
+The creature's `flying` flag is cleared (and `flyHeight` reset to
+
+1.  regardless of whether any dice were actually rolled — the
+    button click means "they hit the ground."
+
+-}
+rollFallDamage : String -> Model -> ( Model, Cmd Msg )
+rollFallDamage name model =
+    let
+        flyHeight =
+            findFlyHeight name model.encounter
+
+        diceCount =
+            Basics.min 20 (flyHeight // 10)
+
+        landedCmd =
+            if diceCount > 0 then
+                Dice.rollCmd
+                    (FallDamageLanded name)
+                    { feature = "Fall damage", target = Just name }
+                    (fallExpression diceCount)
+
+            else
+                Cmd.none
+
+        groundedEnc =
+            Encounter.mapCreature name
+                (\c -> { c | flying = False, flyHeight = 0 })
+                model.encounter
+    in
+    ( { model | encounter = groundedEnc }, landedCmd )
+
+
+{-| Push the fall-damage roll into the shared dice history so the
+title-bar readout updates and the dice modal sees it on next
+open. No HP mutation — see `rollFallDamage`.
+-}
+fallDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+fallDamageLanded _ roll model =
+    ( Effects.pushDiceRoll roll model
+    , Effects.persistDiceRoll roll
+    )
+
+
+findFlyHeight : String -> Encounter -> Int
+findFlyHeight name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.head
+        |> Maybe.map .flyHeight
+        |> Maybe.withDefault 0
+
+
+fallExpression : Int -> Dice.Expression
+fallExpression count =
+    { dice = [ { count = count, faces = 6, sign = Dice.Positive } ]
+    , constant = 0
+    , damageType = Just "bludgeoning"
+    }
+
+
+{-| "Run Encounter": flip the round-0 sentinel to round 1 and
+pick the highest-initiative creature as active. Domain rules
+live in [`Encounter.run`](Encounter#run); this branch handles
+the scroll-into-view side-effect so the new active card is
+visible.
+-}
+run : Model -> ( Model, Cmd Msg )
+run model =
+    let
+        nextEnc =
+            Encounter.run model.encounter
+    in
+    ( { model | encounter = nextEnc }
+    , if String.isEmpty nextEnc.activeName then
+        Cmd.none
+
+      else
+        Effects.scrollActiveIntoView nextEnc.activeName
+    )
+
+
+{-| Drop the staged action without touching the encounter.
+-}
+controlCancel : Model -> ( Model, Cmd Msg )
+controlCancel model =
+    ( { model | pendingControl = Nothing }, Cmd.none )

@@ -1,7 +1,8 @@
 module HpChange exposing
     ( Change(..), DamageSpec
     , apply, describe
-    , setCurrentHp, setMaxHp
+    , setCurrentHp, setMaxHp, setArmorClass
+    , restoreHp
     )
 
 {-| HP-change engine.
@@ -31,7 +32,12 @@ prompts upstream and hand the engine a final integer amount.
 
 # Manual edit helpers
 
-@docs setCurrentHp, setMaxHp
+@docs setCurrentHp, setMaxHp, setArmorClass
+
+
+# Undo
+
+@docs restoreHp
 
 -}
 
@@ -210,6 +216,27 @@ setMaxHp n c =
             | maxHp = newMax
             , currentHp = Basics.min c.currentHp newMax
         }
+
+
+{-| Manual GM override: write `armorClass` directly, clamped to
+non-negative. Doesn't recompute anything else — AC is purely
+descriptive on the card; it doesn't drive bloodied or HP rules.
+-}
+setArmorClass : Int -> Creature -> Creature
+setArmorClass n c =
+    { c | armorClass = Basics.max 0 n }
+
+
+{-| Restore a creature's HP and temp-HP pools from a snapshot.
+Used by the HP-change log's undo button — given the
+`beforeHp` / `beforeTemp` captured at change-application time,
+write them back through `setCurrentHp` (which re-clamps and
+recomputes bloodied) so the creature returns to a known-valid
+pre-change state.
+-}
+restoreHp : { hp : Int, tempHp : Int } -> Creature -> Creature
+restoreHp before c =
+    setCurrentHp before.hp { c | tempHp = Basics.max 0 before.tempHp }
 
 
 {-| Recompute the bloodied flag from current vs. max HP.

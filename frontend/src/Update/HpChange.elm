@@ -12,6 +12,7 @@ module Update.HpChange exposing
     , modeSet
     , open
     , rollLanded
+    , undoLatest
     )
 
 {-| Update branches for the HP-change modal (damage / heal / temp HP)
@@ -222,6 +223,9 @@ editCommit model =
 
                                 MaxHpField ->
                                     HpChange.setMaxHp n
+
+                                ArmorClassField ->
+                                    HpChange.setArmorClass n
                     in
                     ( { model
                         | encounter =
@@ -238,6 +242,38 @@ editCommit model =
 editCancel : Model -> ( Model, Cmd Msg )
 editCancel model =
     ( { model | hpEdit = Nothing }, Cmd.none )
+
+
+{-| Undo the most-recent HP-change log entry: restore the
+target creature's currentHp and tempHp from the entry's
+`before*` snapshot, then drop that entry from the log so the
+next undo click chains backwards.
+
+If the targeted creature was deleted from the queue between the
+change and the undo, the restore is a silent no-op (handled by
+`Encounter.mapCreature`'s missing-name passthrough); the entry
+is still dropped so the GM doesn't get stuck on an unactionable
+row.
+
+-}
+undoLatest : Model -> ( Model, Cmd Msg )
+undoLatest model =
+    case model.hpChangeLog of
+        entry :: rest ->
+            ( { model
+                | encounter =
+                    Encounter.mapCreature entry.target
+                        (HpChange.restoreHp
+                            { hp = entry.beforeHp, tempHp = entry.beforeTemp }
+                        )
+                        model.encounter
+                , hpChangeLog = rest
+              }
+            , Cmd.none
+            )
+
+        [] ->
+            ( model, Cmd.none )
 
 
 
