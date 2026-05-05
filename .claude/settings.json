@@ -83,7 +83,11 @@
       "Bash(target/release/*)",
       "Bash(open *)",
       "Bash(open)",
-      "Bash(xargs -I{} cat {})"
+      "Bash(xargs -I{} cat {})",
+      "Read(//nix/**)",
+      "Read(//Users/ericrinman/.nix-profile/etc/**)",
+      "Read(//etc/static/**)",
+      "Read(//etc/**)"
     ],
     "deny": [
       "Bash(sudo *)",
