@@ -200,11 +200,58 @@ code; see [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full dis
   and =mapCreature=.  It must not import =Html=, =Browser=, =Url=, or
   any rendering primitive.
 - ~frontend/src/Main.elm~ is the application shell: =Browser.application=,
-  =Model=, =Msg=, =update=, and all view code.  It imports =Encounter=
-  and dispatches to its functions; it never reimplements rules logic.
-- A =Msg= branch in =update= should be a one-liner that calls into
-  =Encounter=.  If the branch starts walking the queue, comparing
-  initiative, or doing HP arithmetic, the work belongs in =Encounter=.
+  =main= / =subscriptions= / =init= / =update= dispatch table / =view=
+  composition / =viewPage= route dispatcher.  It must NOT grow inline
+  view trees, helper functions, or update logic — those live in
+  =View/*= and =Update/*= modules.
+- A =Msg= branch in =updateInner= must be a one-liner that delegates
+  to ~Update.Foo.bar~.  If the branch starts walking the queue,
+  comparing initiative, or doing HP arithmetic, the work belongs in
+  =Encounter= or =HpChange=.
 
 This split is what lets us add alternate UI layouts (e.g. an upcoming
 "simple view") without rewriting rules.
+
+* When adding new features
+
+When adding a new feature to the project, the new code and structure
+*follow the architectural structure* — or, if a clean fit doesn't
+exist yet, embrace the *ideals* of the structure.  The shape is
+already there; extend it, don't recreate it.
+
+For a new modal feature, the canonical layout is:
+
+  - Domain rules → =Foo.elm= or =Encounter/Foo.elm= (pure; no =Html=).
+  - UI substate → =Ui/Foo.elm= (record alias + ~fresh~ constructor).
+  - Update branches → =Update/Foo.elm= (one function per Msg branch,
+    pattern-matching on the ~Modal~ ADT).
+  - Modal ADT → add ~ModalFoo FooUi~ to ~Modal~ in =Model.elm=; do
+    NOT add a separate ~Maybe FooUi~ field on ~Model~.
+  - View → =View/Modal/Foo.elm= (entry point pattern-matches on
+    ~model.modal~).
+  - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules
+    don't ~import Http~ directly.
+  - Wire the dispatch as one-liners in =Main=' s =view= and
+    =updateInner=.
+
+For a new backend feature: =JsonFileStore<T>= for persistence,
+=aide::ApiRouter= for routes, semantic ~thiserror~ variants naming
+the operation.  CLI subcommands each go in =crates/cli/src/foo.rs=.
+
+See [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full pattern with examples.
+
+The honest version: if you're tempted to write a one-off helper
+inline in =Main.elm=, stop — find the right home first.  The
+structure isn't decoration; it's load-bearing for swappable UI
+layouts and for the modal-state invariants the type system enforces.
+
+* Frozen / archived planning docs
+
+=docs/archive/= holds historical planning documents
+(=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
+=COMPENDIUM_PLAN.org=).  They are no longer maintained and should
+not be read or updated.  Instructions inside that say "update X"
+are stale.
+
+The active plan, and the only one to consult for project status, is
+[[file:docs/MODULARIZATION_PLAN.org][docs/MODULARIZATION_PLAN.org]] (Phases 1–11, substantially complete).

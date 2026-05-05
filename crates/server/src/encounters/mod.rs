@@ -13,12 +13,11 @@
 //!   - `PUT /api/encounter` — 200 JSON, replaces the persisted
 //!     encounter with the supplied body.
 //!
-//! Per [`OPTIMIZATION_AND_COMPLIANCE_PLAN`] Phase 7, the per-user
-//! multi-encounter API (`GET / POST / PUT / DELETE
-//! /api/me/encounters[/:id]`) is a follow-up that waits on the
-//! `users` table and the OIDC session plumbing.  The route shape
-//! in this file deliberately stays at the unauth, single-encounter
-//! tier so it works in dev / homelab modes.
+//! The per-user multi-encounter API (`GET / POST / PUT / DELETE
+//! /api/me/encounters[/:id]`) is a planned follow-up that waits
+//! on the `users` table and the OIDC session plumbing.  The route
+//! shape in this file deliberately stays at the unauth,
+//! single-encounter tier so it works in dev / homelab modes.
 
 pub mod error;
 pub mod store;

@@ -29,3 +29,9 @@ dice-history.json
 # Personal scratchpads — design prompts and ad-hoc notes; not part of the project.
 docs/PROMPTS.md
 docs/SCRATCH.md
+
+# Archived planning docs.  These are frozen historical references — the
+# files inside are still tracked at their archived paths (so links survive),
+# but no NEW files should be added or modified there.  Tooling treats this
+# folder as read-only history.
+docs/archive/*

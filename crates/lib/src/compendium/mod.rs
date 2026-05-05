@@ -8,9 +8,6 @@
 //! in `crates/server/src/compendium.rs` on top of the shared
 //! `JsonFileStore<Vec<Creature>>` from this crate's
 //! `json_file_store` module.
-//!
-//! See [`COMPENDIUM_PLAN.org`](../../../COMPENDIUM_PLAN.org) for
-//! the full design discussion.
 
 pub mod types;
 

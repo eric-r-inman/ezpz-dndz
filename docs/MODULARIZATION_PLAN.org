@@ -289,7 +289,7 @@ preemptive scaffolding pass.
 The frontend has outgrown its single-file-per-domain layout.
 =Main.elm= is now ~9,300 lines with 159 ~Msg~ constructors, one
 3,000-line ~updateInner~, and 250+ view functions; the prior
-[[file:OPTIMIZATION_AND_COMPLIANCE_PLAN.org][May plan]]
+[[file:archive/OPTIMIZATION_AND_COMPLIANCE_PLAN.org][prior May plan, archived]]
 called for splitting it but only the seed beachhead landed
 (=View/Modal.elm=, =View/Chip.elm=, =View/StatBlock.elm=, plus
 =Encounter/DeathSaves.elm= / =SaveNotice.elm= / =Wire.elm=).  In

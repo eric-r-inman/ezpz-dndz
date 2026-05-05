@@ -5,12 +5,12 @@
 //! Elm side; the server doesn't re-model the schema because the
 //! frontend is the source of truth for combat semantics.
 //!
-//! Per [`OPTIMIZATION_AND_COMPLIANCE_PLAN`] this is the v1 of the
-//! "save / load encounter" feature: one persistent live encounter
-//! per deployment, auto-saved on every mutation by the frontend,
-//! auto-loaded on app boot.  The per-user multi-encounter system
-//! described in the parent module's docstring is a follow-up that
-//! waits on the `users` table.
+//! This is the v1 of the "save / load encounter" feature: one
+//! persistent live encounter per deployment, auto-saved on every
+//! mutation by the frontend, auto-loaded on app boot.  The
+//! per-user multi-encounter system described in the parent
+//! module's docstring is a follow-up that waits on the `users`
+//! table.
 
 use std::{path::PathBuf, sync::Arc};
 

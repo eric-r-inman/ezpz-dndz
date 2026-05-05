@@ -1,8 +1,10 @@
 //! Per-user UI preferences.  *Stub.*
 //!
-//! Per OPTIMIZATION_AND_COMPLIANCE_PLAN Phase 7, this module
-//! reserves the future-feature surface area for storing the
-//! free-form `preferences` blob attached to each `User`:
+//! This module reserves the future-feature surface area for
+//! storing the free-form `preferences` blob attached to each
+//! `User`.  The frontend already has `Preferences.elm` shape; the
+//! server-side endpoint just round-trips an opaque
+//! `serde_json::Value`:
 //!
 //! ```jsonc
 //! {

@@ -271,6 +271,127 @@ The plan is for ~/api/me/preferences~ to load and persist this
 struct per-user once the users-module materializes.  Until then
 every session uses ~Preferences.default~.
 
+* When adding new features
+
+When you're adding a new feature, the new code and structure
+*follow the architectural structure* — or, if a clean fit doesn't
+exist yet, embrace the *ideals* of the structure.  The shape is
+already there; extend it, don't recreate it.
+
+The five-run modularization (Phases 1–11 of the
+[[file:MODULARIZATION_PLAN.org][modularization plan]]) drove
+=Main.elm= from 9,268 lines to ~870.  The whole point of that
+work was to make new-feature additions follow a templatable
+pattern — every modal, every domain feature, every CLI
+subcommand has a canonical home now.  Don't grow =Main.elm= or
+inline new helpers there; that work has already been undone
+once.
+
+** Frontend: a new modal feature
+
+Most new features in the GM-side UI are modal-shaped.  The
+canonical layout, in dependency order:
+
+1. *Domain rules* — pure functions in =Foo.elm= or
+   =Encounter/Foo.elm=.  No ~import Html~, ~Browser~, or ~Url~.
+   If the feature has rules-y logic (queue walks, HP arithmetic,
+   condition lifecycle), this is where it lives.
+2. *UI substate* — =Ui/Foo.elm= defines the modal's record alias
+   and a ~fresh : ... -> FooUi~ constructor.  Only fields the
+   modal cares about; transient typing state is fine here.
+3. *Modal ADT* — add ~ModalFoo FooUi~ to the ~Modal~ ADT in
+   =Model.elm=.  *Do not* add a separate ~Maybe FooUi~ field on
+   ~Model~.  The ADT is what type-enforces "only one modal open
+   at a time."
+4. *Msg constructors* — add to =Msg.elm=.  Aux types (Kind enums,
+   RollMode, etc.) live here too.
+5. *Update branches* — =Update/Foo.elm= exposes one function per
+   Msg branch.  Each function takes ~Model -> ( Model, Cmd Msg
+   )~.  Open/close write to ~model.modal~; the ~withFooUi~ lens
+   pattern-matches on ~Just (ModalFoo ui)~ and is private to the
+   module.
+6. *Cmd-emitting helpers* — go in =Effects.elm= (or
+   =Util/Http.elm= for HTTP boilerplate).  Update modules don't
+   ~import Http~ directly.
+7. *View* — =View/Modal/Foo.elm=.  Entry point is
+   ~view : Model -> Html Msg~ that pattern-matches on
+   ~model.modal~ for ~Just (ModalFoo ui)~ and falls through to
+   ~text ""~.  Use =View.Modal.view= for the chrome (backdrop,
+   header, ✕ close, click-out, Esc-close).
+8. *Dispatch wiring* — add one line each to =Main.view= (call
+   the new view) and =Main.updateInner= (each Msg branch is a
+   one-liner: ~FooMsg arg -> Update.Foo.bar arg model~).
+9. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain
+   helpers; the Update + View modules are integration-tested
+   through the existing patterns.
+
+** Frontend: a non-modal feature (e.g. a card row, a panel piece)
+
+Same idea, narrower:
+
+- Domain rules in =Foo.elm= / =Encounter/Foo.elm=.
+- View in =View/Foo.elm= (or =View/Card/Foo.elm= if it's part
+  of the creature card region).
+- If it has its own state, decide between an "always-present"
+  field on ~Model~ (like ~dice~ / ~compendium~) or a Modal ADT
+  variant.  Always-present fields are for state that survives
+  modal close; the ADT is for state tied to a transient UI.
+
+** Backend: a new feature
+
+1. *Persistence* — use =JsonFileStore<T>= from =crates/lib/=.
+   Don't roll a one-off file store.  The dice store, encounter
+   store, and compendium store all use it; new features should
+   match.
+2. *HTTP routes* — register through ~aide::ApiRouter~ in the
+   relevant module's ~router()~ function (or =web_base.rs= for
+   cross-cutting routes).  Hand-rolling an =axum::Router= is a
+   miss; OpenAPI stays complete only when every route flows
+   through ~ApiRouter~.
+3. *Errors* — semantic ~thiserror~ variants that name the
+   *operation*, not just the kind: ~ConfigFileReadError~, not
+   ~FileReadError~.  Internal helpers use ~?~; HTTP handlers
+   map to ~StatusCode~ at the boundary via ~impl IntoResponse~.
+4. *AppState* — if the feature needs state, add a field to
+   ~AppState~ in =web_base.rs=.  Construct it in =main.rs='s
+   ~load_or_default~ chain.
+
+** Backend: a new CLI subcommand
+
+Each subcommand goes in its own =crates/cli/src/foo.rs=:
+
+- A ~FooCommand~ enum with ~clap::Subcommand~.
+- A ~FooCliError~ enum with ~thiserror::Error~.
+- A ~FooCommand::run(&self) -> Result<(), FooCliError>~ method.
+- Register the variant in =config.rs='s ~Command~ enum and
+  =main.rs='s ~run~ dispatch.
+
+Subcommands operate file-direct (read and write JSON
+synchronously) so the CLI keeps working when the server isn't
+running.  The =compendium= / =encounter= / =dice= modules are
+the templates.
+
+** Cross-cutting
+
+- Pascal Initialisms in new identifiers: ~Url~, not ~URL~;
+  ~Db~, not ~DB~.  Apply when authoring new identifiers in
+  camel case.
+- Comments are complete sentences, wrapped at 80 columns.  Only
+  comment non-obvious intent, invariants, or historical
+  constraints — never restate control flow.
+- New docs go in =docs/= as =.org= files, not =.md=.  No file
+  lists in documentation prose — use tables and pointers.
+- New tests live alongside the source: =frontend/tests/Foo/=
+  for Elm, =crates/<crate>/tests/= for Rust.
+
+** The honest version
+
+If you're tempted to write a one-off helper inline in =Main.elm=,
+stop — find the right home first.  The structure isn't
+decoration; it's load-bearing for swappable UI layouts (the
+"simple view" still on the roadmap) and for the modal-state
+invariants the type system now enforces.
+
 * Conventions
 
 - Pascal Initialisms in new identifiers: ~Url~, not ~URL~; ~Db~,
@@ -284,3 +405,15 @@ every session uses ~Preferences.default~.
   ~ConfigFileReadError~, not ~FileReadError~.
 - New HTTP routes go through ~aide::ApiRouter~ so OpenAPI stays
   complete.
+
+* Frozen / archived planning docs
+
+=docs/archive/= holds historical planning documents
+(=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
+=COMPENDIUM_PLAN.org=).  They are no longer maintained and
+should not be read or updated.  Instructions inside that say
+"update X" are stale and superseded by this document.
+
+The active plan, and the only one to consult for status, is
+[[file:MODULARIZATION_PLAN.org]] — Phases 1–11, substantially
+complete.

@@ -1,7 +1,6 @@
 //! User identity + role management.  *Stub.*
 //!
-//! Per OPTIMIZATION_AND_COMPLIANCE_PLAN Phase 7, this module
-//! reserves the future-feature surface area:
+//! This module reserves the future-feature surface area:
 //!
 //! - First-login upsert keyed on the OIDC subject claim, materializing
 //!   a `User` row with a stable internal UUID.

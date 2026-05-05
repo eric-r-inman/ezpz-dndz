@@ -1,7 +1,5 @@
 //! Compendium HTTP routes + file-backed store.
 //!
-//! Per [`COMPENDIUM_PLAN.org`](../../../../COMPENDIUM_PLAN.org):
-//!
 //! - Storage: a single JSON file at
 //!   `<data_dir>/compendium/creatures.json` via the shared
 //!   `JsonFileStore<Vec<Creature>>` from the lib crate.
@@ -11,7 +9,7 @@
 //!   (embedded via `include_str!`) are written to disk so the
 //!   user has something to browse immediately.
 //! - Errors: semantic `CompendiumStoreError` with descriptive
-//!   variants per the project's `llms.org` conventions.
+//!   variants per the project's CLAUDE.md conventions.
 
 pub mod error;
 pub mod store;
