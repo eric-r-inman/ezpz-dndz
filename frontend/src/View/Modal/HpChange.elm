@@ -378,7 +378,7 @@ logEntry index entry =
                 , attribute "aria-label"
                     ("Undo " ++ kindLabel ++ " on " ++ entry.target)
                 ]
-                [ text "↶" ]
+                [ text "↩" ]
 
           else
             text ""

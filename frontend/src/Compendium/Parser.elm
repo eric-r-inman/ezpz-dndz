@@ -148,6 +148,7 @@ initialState name typeLine =
         , languages = []
         , challengeRating = ""
         , xp = 0
+        , xpInLair = 0
         , proficiencyBonus = 2
         , traits = []
         , actions = []
@@ -301,12 +302,16 @@ dispatchClassifiedLine line state =
         LineLanguages langs ->
             withCreature (\c -> { c | languages = langs }) (commitFeature state)
 
-        LineChallenge cr xp pb ->
+        LineChallenge cr xp lairXp pb ->
             withCreature
                 (\c ->
                     let
                         next =
-                            { c | challengeRating = cr, xp = xp }
+                            { c
+                                | challengeRating = cr
+                                , xp = xp
+                                , xpInLair = lairXp
+                            }
                     in
                     if pb > 0 then
                         { next | proficiencyBonus = pb }
@@ -816,8 +821,9 @@ type Line
     | LineConditionImmunities (List String)
     | LineSenses Compendium.Senses
     | LineLanguages (List String)
-    | LineChallenge String Int Int
-      -- ^ CR text, XP, optional PB (defaults to 0 if not in line)
+    | LineChallenge String Int Int Int
+      -- ^ CR text, XP, lair XP (0 if not present), optional PB
+      -- (defaults to 0 if not in line)
     | LineProficiencyBonus Int
     | LineSectionHeader Section
     | LineFeatureStart String String
@@ -1551,10 +1557,13 @@ parseChallenge raw =
         xp =
             extractXp raw
 
+        lairXp =
+            extractLairXpFromChallenge raw
+
         pb =
             extractPbFromChallenge raw
     in
-    LineChallenge crText xp pb
+    LineChallenge crText xp lairXp pb
 
 
 {-| Pull `+N` after `PB` out of strings like
@@ -1575,6 +1584,60 @@ extractPbFromChallenge raw =
 
         [] ->
             0
+
+
+{-| Pull the in-lair XP out of strings like
+"16 (XP 15,000, or 18,000 in lair; PB +5)". D&D 2024 stat
+blocks publish the lair variant inline, immediately after an
+"or" keyword and immediately before "in lair" (case-insensitive).
+
+Returns 0 when the line doesn't carry a lair XP — the creature
+either has no lair or the source didn't print one, and the
+caller treats 0 as "no separate lair XP".
+
+-}
+extractLairXpFromChallenge : String -> Int
+extractLairXpFromChallenge raw =
+    let
+        lower =
+            String.toLower raw
+    in
+    case String.indexes "in lair" lower of
+        i :: _ ->
+            -- Walk backwards from "in lair" through any digits and
+            -- thousand-separator commas to find the start of the
+            -- lair XP number.  Whitespace between digits and the
+            -- "in lair" keyword is consumed by the back-walk.
+            takeTrailingNumber (String.left i raw)
+
+        [] ->
+            0
+
+
+{-| Walk a string from the right, skipping trailing whitespace,
+then collecting a contiguous run of digits and commas. Strip the
+commas and parse what's left. Returns 0 when no digits precede
+the trimmed tail, so callers don't have to special-case the
+"the line had `in lair` somewhere unrelated" failure mode.
+-}
+takeTrailingNumber : String -> Int
+takeTrailingNumber raw =
+    let
+        chars =
+            raw
+                |> String.trimRight
+                |> String.toList
+                |> List.reverse
+
+        ( digitsRev, _ ) =
+            splitWhile (\c -> Char.isDigit c || c == ',') chars
+    in
+    digitsRev
+        |> List.reverse
+        |> String.fromList
+        |> String.replace "," ""
+        |> String.toInt
+        |> Maybe.withDefault 0
 
 
 extractXp : String -> Int

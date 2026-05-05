@@ -96,6 +96,7 @@ type alias Creature =
     , languages : List String
     , challengeRating : String
     , xp : Int
+    , xpInLair : Int
     , proficiencyBonus : Int
     , traits : List Feature
     , actions : List Feature

@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , SaveDestination(..)
+    , SaveDestination(..), XpScope(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -192,6 +192,7 @@ type CompendiumField
     | CFLanguages
     | CFChallengeRating
     | CFXp
+    | CFXpInLair
     | CFProficiencyBonus
 
 
@@ -226,6 +227,31 @@ was used because it only sees the half of the flow that uses it.
 type SaveDestination
     = SaveDestinationServer
     | SaveDestinationDevice
+
+
+
+-- ── ENCOUNTER XP AUX ─────────────────────────────────────────────────────────
+
+
+{-| Which slice of the encounter contributes to the title-bar XP
+total. Controls the dropdown to the right of the XP readout.
+
+  - `ScopeXpEnemiesAndNpcs` — every non-Player creature. Default.
+  - `ScopeXpEnemiesOnly` — Enemy-tagged creatures only.
+  - `ScopeXpNpcsOnly` — NPC-tagged creatures only.
+  - `ScopeXpSelectedOnly` — whichever creatures the GM has ticked
+    via the row 1 multi-select checkboxes (Player kind still
+    excluded).
+
+Player-kind creatures never grant XP regardless of scope; they're
+the party, not the budget.
+
+-}
+type XpScope
+    = ScopeXpEnemiesAndNpcs
+    | ScopeXpEnemiesOnly
+    | ScopeXpNpcsOnly
+    | ScopeXpSelectedOnly
 
 
 
@@ -446,6 +472,12 @@ type Msg
     | LoadFromDeviceFileRead String
     | EncounterReset
     | EncounterClear
+      -- Quick Add modal — one-click "drop a creature into the
+      -- encounter" picker (alphabetical / CR sort, click-a-row).
+    | QuickAddOpen
+    | QuickAddClose
+    | QuickAddSortToggle
+    | QuickAddPick String
       -- Saving-throw modal triggered from compendium ability cells
     | AbilitySaveOpen String String Int
       -- (creatureName, abilityLabel, saveBonus)
@@ -455,6 +487,9 @@ type Msg
     | EncounterControlConfirm
     | EncounterControlCancel
     | EncounterRun
+    | XpScopeSet XpScope
+    | XpFilterToggle
+    | XpFilterClose
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File

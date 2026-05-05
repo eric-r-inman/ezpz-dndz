@@ -209,6 +209,7 @@ impl CompendiumStore {
       languages: draft.languages,
       challenge_rating: draft.challenge_rating,
       xp: draft.xp,
+      xp_in_lair: draft.xp_in_lair,
       proficiency_bonus: draft.proficiency_bonus,
       traits: draft.traits,
       actions: draft.actions,

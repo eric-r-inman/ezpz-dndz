@@ -99,6 +99,7 @@ view model =
                         , inlineRow
                             [ textField "Challenge Rating" CFChallengeRating ui.challengeRating []
                             , numberField "XP" CFXp ui.xp []
+                            , numberField "XP in Lair" CFXpInLair ui.xpInLair []
                             , numberField "Proficiency Bonus" CFProficiencyBonus ui.proficiencyBonus []
                             ]
                         ]

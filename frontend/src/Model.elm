@@ -38,7 +38,7 @@ user retype the filename.
 
 import Browser.Navigation as Nav
 import Encounter exposing (Encounter)
-import Msg exposing (MeStatus)
+import Msg exposing (MeStatus, XpScope)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
@@ -50,6 +50,7 @@ import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
 import Ui.Memo exposing (MemoEditUi)
 import Ui.Note exposing (NoteEditUi)
+import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.Save exposing (SaveUi)
 import Ui.Timer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
@@ -100,6 +101,7 @@ type Modal
     | ModalSave SaveUi
     | ModalLoad LoadUi
     | ModalAbilitySave AbilitySaveUi
+    | ModalQuickAdd QuickAddUi
 
 
 type alias Model =
@@ -117,6 +119,8 @@ type alias Model =
     , modal : Maybe Modal
     , panelCreaturePin : Maybe PanelPin
     , pendingControl : Maybe PendingControl
+    , xpScope : XpScope
+    , xpFilterOpen : Bool
     , toasts : List Toast
     , nextToastId : Int
     , preferences : Preferences

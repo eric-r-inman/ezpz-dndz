@@ -113,6 +113,7 @@ decodeCreature =
         |> optional "languages" (D.list D.string) []
         |> optional "challenge_rating" D.string ""
         |> optional "xp" D.int 0
+        |> optional "xp_in_lair" D.int 0
         |> optional "proficiency_bonus" D.int 2
         |> optional "traits" (D.list decodeFeature) []
         |> optional "actions" (D.list decodeFeature) []
@@ -425,6 +426,7 @@ draftFields c =
     , ( "languages", E.list E.string c.languages )
     , ( "challenge_rating", E.string c.challengeRating )
     , ( "xp", E.int c.xp )
+    , ( "xp_in_lair", E.int c.xpInLair )
     , ( "proficiency_bonus", E.int c.proficiencyBonus )
     , ( "traits", E.list encodeFeature c.traits )
     , ( "actions", E.list encodeFeature c.actions )

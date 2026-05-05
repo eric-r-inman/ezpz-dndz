@@ -55,6 +55,13 @@ pub struct Creature {
   pub languages: Vec<String>,
   pub challenge_rating: String,
   pub xp: i64,
+  /// XP awarded when the creature is fought *in its lair*.  D&D
+  /// 2024 stat blocks publish this as a parenthetical alternative
+  /// on the CR line: "CR 16 (XP 15,000, or 18,000 in lair; PB +5)".
+  /// Zero means "no separate lair XP" — either the creature has
+  /// no lair, or the source didn't print one.
+  #[serde(default)]
+  pub xp_in_lair: i64,
   pub proficiency_bonus: i32,
   #[serde(default)]
   pub traits: Vec<Feature>,
@@ -128,6 +135,8 @@ pub struct CreatureDraft {
   pub challenge_rating: String,
   #[serde(default)]
   pub xp: i64,
+  #[serde(default)]
+  pub xp_in_lair: i64,
   #[serde(default)]
   pub proficiency_bonus: i32,
   #[serde(default)]

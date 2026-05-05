@@ -13,7 +13,8 @@ import Encounter exposing (Encounter)
 import Html exposing (Html, div, main_, section)
 import Html.Attributes exposing (class)
 import Model exposing (Model)
-import Msg exposing (Msg)
+import Msg exposing (Msg, XpScope)
+import Ui.Compendium exposing (CompendiumDb)
 import Ui.HpChange exposing (HpEdit)
 import View.Card
 import View.EncounterBar
@@ -24,7 +25,13 @@ import View.PanelDetail
 view : Model -> Html Msg
 view model =
     main_ [ class "workspace" ]
-        [ panelMain model.encounter model.hpEdit model.savedAs
+        [ panelMain
+            model.encounter
+            model.hpEdit
+            model.savedAs
+            model.compendium.db
+            model.xpScope
+            model.xpFilterOpen
         , View.PanelControls.view model.dice model.pendingControl model.encounter.round
         , View.PanelDetail.view model
         ]
@@ -34,12 +41,24 @@ view model =
 inline-edit input (current/max HP) renders on the right card.
 `savedAs` lights up the title-bar info icon with the source
 filename when the encounter was loaded from / saved to a name.
+The compendium DB + XP scope let the title bar's right cluster
+compute the real XP total; `xpFilterOpen` controls the
+hand-rolled XP-scope dropdown's visibility so the global
+Esc / click-outside handlers in `Main.subscriptions` can close
+it without touching DOM state.
 -}
-panelMain : Encounter -> Maybe HpEdit -> Maybe String -> Html Msg
-panelMain enc hpEdit savedAs =
+panelMain :
+    Encounter
+    -> Maybe HpEdit
+    -> Maybe String
+    -> CompendiumDb
+    -> XpScope
+    -> Bool
+    -> Html Msg
+panelMain enc hpEdit savedAs db xpScope xpFilterOpen =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view enc savedAs ]
+            [ View.EncounterBar.view enc savedAs db xpScope xpFilterOpen ]
         , div [ class "panel__body" ]
             [ div [ class "creature-grid" ]
                 (List.map (View.Card.view enc.activeName hpEdit) enc.creatures)

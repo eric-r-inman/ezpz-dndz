@@ -572,16 +572,21 @@ blueDragonSuite =
             \_ ->
                 expectFields input
                     (\c -> c.languages |> Expect.equal [ "Common", "Draconic" ])
-        , test "CR 16 + XP 15,000 + PB +5 from one combined line" <|
+        , test "CR 16 + XP 15,000 + lair XP 18,000 + PB +5 from one combined line" <|
             \_ ->
                 expectFields input
                     (\c ->
                         { cr = c.challengeRating
                         , xp = c.xp
+                        , xpInLair = c.xpInLair
                         , pb = c.proficiencyBonus
                         }
                             |> Expect.equal
-                                { cr = "16", xp = 15000, pb = 5 }
+                                { cr = "16"
+                                , xp = 15000
+                                , xpInLair = 18000
+                                , pb = 5
+                                }
                     )
         , test "'Traits' section header used (no Traits-preamble custom section)" <|
             \_ ->

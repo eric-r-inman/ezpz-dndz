@@ -562,6 +562,9 @@ setEditField field text ui =
         CFXp ->
             { ui | xp = text }
 
+        CFXpInLair ->
+            { ui | xpInLair = text }
+
         CFProficiencyBonus ->
             { ui | proficiencyBonus = text }
 

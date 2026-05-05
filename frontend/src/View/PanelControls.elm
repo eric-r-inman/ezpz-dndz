@@ -67,10 +67,10 @@ buttonGrid round =
     div [ class "btn-grid btn-grid--two-rows" ]
         [ button
             [ class "action-btn action-btn--blue"
-            , onClick CompendiumOpen
-            , title "Browse the creature library"
+            , onClick QuickAddOpen
+            , title "Quick-add a creature from the compendium (alpha or CR sort)"
             ]
-            [ text "➕ Add Creature" ]
+            [ text "➕ Quick Add" ]
         , button
             [ class "action-btn action-btn--blue"
             , onClick SaveOpen

@@ -1078,8 +1078,32 @@ body {
   vertical-align: middle;
 }
 
-.compendium-toolbar {
-  margin-bottom: var(--space-3);
+/* The Open / CR Calculator strip pins to the top of the
+   compendium panel's scroll area so a long stat block doesn't
+   carry the buttons off-screen.
+
+   The detail panel zeroes its panel-body's padding-top (override
+   below) so the toolbar can pin flush directly under the
+   "Compendium" header row.  Negative left/right margins extend
+   the bar edge-to-edge inside the panel; padding restores the
+   button breathing room.  An opaque background + high z-index
+   prevent the stat block scrolling beneath it from peeking
+   through.  The grid is overridden to two columns since the
+   default `.btn-grid` defines three (the third column was
+   transparent and let stat-block text show through). */
+.panel--detail .panel__body {
+  padding-top: 0;
+}
+
+.compendium-toolbar.btn-grid {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-surface);
+  margin: 0 calc(var(--space-4) * -1) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  grid-template-columns: 1fr 1fr;
 }
 
 .stat {
@@ -1498,26 +1522,38 @@ body {
   padding: 0 10px;
 }
 
+.encounter-bar__xp-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .encounter-bar__xp {
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;
+  cursor: help;
 }
 
+/* Optional secondary "(N w/Lair)" chip rendered to the right of
+   the base XP total when any in-scope creature has a non-zero
+   `xpInLair`.  Smaller / muted so the base total still leads. */
 .encounter-bar__xp-lair {
   color: var(--color-text-muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: help;
 }
 
 .xp-filter {
   position: relative;
 }
 
-.xp-filter > summary {
-  list-style: none;
+.xp-filter__summary {
+  appearance: none;
+  font-family: inherit;
   cursor: pointer;
   padding: 2px 8px;
   border-radius: var(--radius-sm);
@@ -1531,20 +1567,12 @@ body {
   line-height: 1;
 }
 
-.xp-filter > summary::-webkit-details-marker {
-  display: none;
-}
-
-.xp-filter > summary::marker {
-  content: "";
-}
-
-.xp-filter > summary:hover {
+.xp-filter__summary:hover {
   background: var(--color-surface-2);
   color: var(--color-text);
 }
 
-.xp-filter[open] > summary {
+.xp-filter--open > .xp-filter__summary {
   border-color: var(--color-accent);
   color: var(--color-text);
 }
@@ -2202,22 +2230,22 @@ body {
 
 /* Undo button on the freshest log entry; older rows skip
    rendering it so misclicks can't silently rewrite history.
-   Overrides the default `.icon-btn--sm` opacity dim so the
-   single actionable control on the row reads as obviously
-   clickable rather than disabled.  Accent-tinted at rest, with
-   a fully saturated accent fill on hover. */
+   Overrides the default `.icon-btn--sm` opacity dim and uses
+   a saturated yellow so the single actionable control on the
+   row pops against the muted log chrome.  Hover inverts to a
+   yellow fill with dark text. */
 .hp-change__log-undo {
   opacity: 1;
-  color: var(--color-accent);
-  border-color: var(--color-accent-soft);
-  font-size: 1rem;
+  color: var(--color-yellow);
+  border-color: var(--color-yellow);
+  font-size: 1.1rem;
   line-height: 1;
 }
 
 .hp-change__log-undo:hover {
-  background: var(--color-accent);
-  color: #ffffff;
-  border-color: var(--color-accent);
+  background: var(--color-yellow);
+  color: #1a1a1a;
+  border-color: var(--color-yellow);
   opacity: 1;
 }
 
@@ -3861,6 +3889,85 @@ body {
 .ability-save__buttons .action-btn {
   flex: 1 1 0;
   justify-content: center;
+}
+
+/* Quick Add modal: a single sort toggle on top of a scrollable
+   list of all compendium creatures (name on the left, CR on the
+   right).  Clicking a row adds one instance and closes the modal.
+   Shorter / narrower than the full Compendium browser since it
+   has no search / filter / count chrome. */
+.modal--quick-add {
+  max-width: 520px;
+}
+
+.quick-add__sort-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quick-add__sort-toggle {
+  flex: 0 0 auto;
+}
+
+.quick-add__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.quick-add__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+
+.quick-add__row:last-child {
+  border-bottom: none;
+}
+
+.quick-add__row:hover,
+.quick-add__row:focus-visible {
+  background: var(--color-accent-soft);
+  outline: none;
+}
+
+.quick-add__name {
+  flex: 1 1 auto;
+  color: var(--color-text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-add__cr {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.quick-add__empty {
+  margin: 0;
+  font-style: italic;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 16px 0;
 }
 
 /* Inline confirmation strip rendered in the Encounter Controls

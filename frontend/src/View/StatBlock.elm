@@ -367,10 +367,23 @@ languagesLine langs =
         String.join ", " langs
 
 
+{-| "16 (XP 15,000, or 18,000 in lair)" — mirrors the D&D 2024
+stat-block convention. When the creature carries no lair-XP,
+render the simpler "16 (15,000 XP)" form; when it has no XP at
+all, just the bare CR.
+-}
 challengeLine : Creature -> String
 challengeLine c =
     if String.isEmpty c.challengeRating then
         ""
+
+    else if c.xp > 0 && c.xpInLair > 0 then
+        c.challengeRating
+            ++ " (XP "
+            ++ formatXp c.xp
+            ++ ", or "
+            ++ formatXp c.xpInLair
+            ++ " in lair)"
 
     else if c.xp > 0 then
         c.challengeRating ++ " (" ++ formatXp c.xp ++ " XP)"

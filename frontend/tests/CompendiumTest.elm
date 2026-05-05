@@ -68,6 +68,7 @@ mkCreature args =
     , languages = []
     , challengeRating = args.cr
     , xp = 0
+    , xpInLair = 0
     , proficiencyBonus = 2
     , traits = []
     , actions = []

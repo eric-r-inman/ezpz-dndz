@@ -41,6 +41,7 @@ import Msg
         , Msg(..)
         , RollMode(..)
         , RollScope(..)
+        , XpScope(..)
         )
 import Preferences
 import Process
@@ -78,6 +79,7 @@ import Update.LegendaryPip
 import Update.Load
 import Update.Memo
 import Update.Note
+import Update.QuickAdd
 import Update.Save
 import Update.Shell
 import Update.Timer
@@ -100,6 +102,7 @@ import View.Modal.Initiative
 import View.Modal.Load
 import View.Modal.Memo
 import View.Modal.Note
+import View.Modal.QuickAdd
 import View.Modal.Save
 import View.Modal.Timer
 import View.PhaseToggle
@@ -136,38 +139,60 @@ main =
 
 {-| Subscribe to keyboard events while the dice modal is open so Esc
 can close it. Other routes don't need any subscriptions yet.
+
+The XP-filter dropdown overlays whatever else is on the page;
+when it's open we layer in two extra subscriptions on top of the
+modal-stack handlers — Esc closes it, and any document-level click
+that isn't stopped by the dropdown internals also closes it.
+
 -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.dice.open then
-        Browser.Events.onKeyDown (escKey CloseDice)
+    let
+        xpFilterSubs =
+            if model.xpFilterOpen then
+                [ Browser.Events.onKeyDown (escKey XpFilterClose)
+                , Browser.Events.onMouseDown (Decode.succeed XpFilterClose)
+                ]
 
-    else
-        case model.modal of
-            Just (ModalCompendiumPaste _) ->
-                Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
+            else
+                []
 
-            Just (ModalCompendiumEdit _) ->
-                Browser.Events.onKeyDown (escKey CompendiumEditCancel)
+        primary =
+            if model.dice.open then
+                Browser.Events.onKeyDown (escKey CloseDice)
 
-            Just (ModalNoteEdit _) ->
-                Browser.Events.onKeyDown (escKey NoteEditCancel)
+            else
+                case model.modal of
+                    Just (ModalCompendiumPaste _) ->
+                        Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
 
-            Just (ModalSave _) ->
-                Browser.Events.onKeyDown (escKey SaveClose)
+                    Just (ModalCompendiumEdit _) ->
+                        Browser.Events.onKeyDown (escKey CompendiumEditCancel)
 
-            Just (ModalLoad _) ->
-                Browser.Events.onKeyDown (escKey LoadClose)
+                    Just (ModalNoteEdit _) ->
+                        Browser.Events.onKeyDown (escKey NoteEditCancel)
 
-            Just (ModalAbilitySave _) ->
-                Browser.Events.onKeyDown (escKey AbilitySaveClose)
+                    Just (ModalSave _) ->
+                        Browser.Events.onKeyDown (escKey SaveClose)
 
-            _ ->
-                if model.compendium.open then
-                    Browser.Events.onKeyDown compendiumKeyDecoder
+                    Just (ModalLoad _) ->
+                        Browser.Events.onKeyDown (escKey LoadClose)
 
-                else
-                    Sub.none
+                    Just (ModalAbilitySave _) ->
+                        Browser.Events.onKeyDown (escKey AbilitySaveClose)
+
+                    Just (ModalQuickAdd _) ->
+                        Browser.Events.onKeyDown (escKey QuickAddClose)
+
+                    _ ->
+                        if model.compendium.open then
+                            Browser.Events.onKeyDown compendiumKeyDecoder
+
+                        else
+                            Sub.none
+    in
+    Sub.batch (primary :: xpFilterSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -235,6 +260,8 @@ init _ url key =
       , modal = Nothing
       , panelCreaturePin = Nothing
       , pendingControl = Nothing
+      , xpScope = ScopeXpEnemiesAndNpcs
+      , xpFilterOpen = False
       , toasts = []
       , nextToastId = 0
       , preferences = Preferences.default
@@ -877,6 +904,27 @@ updateInner msg model =
         EncounterRun ->
             Update.Encounter.run model
 
+        XpScopeSet scope ->
+            ( { model | xpScope = scope, xpFilterOpen = False }, Cmd.none )
+
+        XpFilterToggle ->
+            ( { model | xpFilterOpen = not model.xpFilterOpen }, Cmd.none )
+
+        XpFilterClose ->
+            ( { model | xpFilterOpen = False }, Cmd.none )
+
+        QuickAddOpen ->
+            Update.QuickAdd.open model
+
+        QuickAddClose ->
+            Update.QuickAdd.close model
+
+        QuickAddSortToggle ->
+            Update.QuickAdd.sortToggle model
+
+        QuickAddPick id ->
+            Update.QuickAdd.pick id model
+
         AbilitySaveOpen creatureName ability bonus ->
             Update.AbilitySave.open creatureName ability bonus model
 
@@ -950,6 +998,7 @@ view model =
             , View.Modal.Save.view model
             , View.Modal.Load.view model
             , View.Modal.AbilitySave.view model
+            , View.Modal.QuickAdd.view model
             , View.Toast.list model.toasts
             , View.Audio.ringer model
             ]

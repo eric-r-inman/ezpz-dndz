@@ -279,6 +279,7 @@ type alias CompendiumEditUi =
     , languages : String
     , challengeRating : String
     , xp : String
+    , xpInLair : String
     , proficiencyBonus : String
     , traits : List FeatureDraft
     , actions : List FeatureDraft
@@ -345,6 +346,7 @@ blankEdit =
     , languages = ""
     , challengeRating = ""
     , xp = "0"
+    , xpInLair = "0"
     , proficiencyBonus = "2"
     , traits = []
     , actions = []
@@ -409,6 +411,7 @@ editFromCreature c =
     , languages = String.join ", " c.languages
     , challengeRating = c.challengeRating
     , xp = String.fromInt c.xp
+    , xpInLair = String.fromInt c.xpInLair
     , proficiencyBonus = String.fromInt c.proficiencyBonus
     , traits = List.map featureToDraft c.traits
     , actions = List.map featureToDraft c.actions
@@ -512,6 +515,7 @@ validateEdit ui =
                     , languages = parseCsv ui.languages
                     , challengeRating = String.trim ui.challengeRating
                     , xp = parseIntOr 0 ui.xp
+                    , xpInLair = parseIntOr 0 ui.xpInLair
                     , proficiencyBonus = parseIntOr 2 ui.proficiencyBonus
                     , traits = List.filterMap draftToFeature ui.traits
                     , actions = List.filterMap draftToFeature ui.actions
