@@ -1,0 +1,286 @@
+#+title:     Architecture
+#+author:    ezpz-dndz
+#+language:  en
+
+For developers (and AI agents) joining the project.  Explains how
+the codebase is organized and the conventions you're expected to
+follow.
+
+For the big picture diagram see [[file:diagrams/data-model.svg]] (rendered
+from [[file:diagrams/data-model.d2]]).  Active modularization status:
+[[file:MODULARIZATION_PLAN.org]].
+
+* Stack
+
+- *Backend* — Rust workspace with three crates: a CLI
+  (~ezpz-dndz-cli~), a server (~ezpz-dndz-server~,
+  [[https://docs.rs/axum][axum]] + ~aide~ for OpenAPI), and a
+  shared lib (~ezpz-dndz-lib~) holding the ~Creature~ schema,
+  ~JsonFileStore<T>~, and logging primitives.
+- *Frontend* — Elm 0.19 SPA, served as static files by the Rust
+  server.  The server falls back to ~index.html~ for any unknown
+  path so client-side routing keeps working.
+- *Build* — ~cargo~ for Rust, ~elm make~ for Elm.  Both run inside
+  a Nix dev shell defined by ~flake.nix~.  ~just dev~ and ~just
+  serve~ auto-enter the dev shell if needed.
+
+* Source layout
+
+** Backend
+
+Under =crates/=:
+
+- =cli/= — ~ezpz-dndz-cli~ binary.  ~clap~ subcommand structure;
+  currently exposes ~compendium {list,count,show}~.
+- =server/src/=
+  - ~main.rs~ / ~lib.rs~ / ~web_base.rs~ — wiring + ~AppState~.
+  - ~auth.rs~ — OIDC scaffolding.
+  - ~config.rs~ — CLI flags + env.
+  - ~dice.rs~ — ~/api/dice/*~.
+  - ~compendium/~ — ~/api/compendium/*~ (mod, store, error).
+  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store).
+  - ~users/~ + ~prefs/~ — Phase 11 stubs.
+- =lib/src/= — shared types, ~JsonFileStore<T>~, bundled
+  creatures (=data/bundled-creatures.json= via ~include_str!~).
+
+** Frontend
+
+Under =frontend/src/=, organized by responsibility.  The single-
+file ~Main.elm~ is now the application shell only — every modal,
+view, update branch, and per-feature UI substate lives in its
+own module.
+
+| Region        | Modules                                                                                |
+|---------------+----------------------------------------------------------------------------------------|
+| Application   | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT)                    |
+| Domain        | =Encounter.elm= + =Encounter/{Lifecycle,Roster,Seed,Wire,DeathSaves,SaveNotice}=        |
+| Domain        | =Compendium.elm= + =Compendium/{Wire,Parser}=                                          |
+| Domain        | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                          |
+| Routing       | =Route.elm=, =Msg.elm=, =Effects.elm=                                                  |
+| UI substate   | =Ui/{Compendium,Condition,Dice,HpChange,Initiative,Memo,Note,Timer,Toast}.elm=         |
+| Update        | =Update/{Compendium,Condition,DeathSave,Dice,Encounter,HpChange,Initiative,...}=       |
+| View / modals | =View/Modal/{Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,HpChange,...}=    |
+| View / shell  | =View/{AppBar,Audio,Card,EncounterBar,PanelControls,PanelDetail,Workspace,Toast,...}=  |
+| Util          | =Util/{Http,Keyboard}.elm=                                                             |
+
+Tests live under =frontend/tests/= as a flat ~Test~ suite per
+domain module: =DiceTest=, =EncounterTest=, =HpChangeTest=,
+=CompendiumParserTest=, =CompendiumTest=, plus
+=Encounter/{RosterTest,LifecycleTest}=.
+
+* Layering: domain vs view
+
+*The rule:* D&D rules logic lives in domain modules
+(=Encounter/*=, =Dice=, =HpChange=, =Compendium/*=).  UI code
+(=View/*=, =Update/*=) imports them and uses their types and
+functions.  Logic code never imports view code.
+
+The reason it matters: we ship multiple UI layouts (a "simple
+view" stripped of advanced controls, possibly a tablet layout).
+Each layout still operates on the same encounter state and the
+same turn rules.  If rules code starts importing ~Html~, swapping
+layouts means rewriting rules — not acceptable.
+
+In practice:
+
+- Domain modules don't ~import Html~, ~Browser~, ~Url~, or any
+  rendering primitive.  The compiler enforces.
+- A ~Msg~ branch in =Main=' s =updateInner= should be a one-liner
+  that delegates to ~Update.Foo.bar~.  If the branch starts walking
+  the queue, comparing initiative, or doing HP arithmetic, the
+  work belongs in =Encounter= or =HpChange=.
+- Cmd-emitting work goes through =Effects.elm= rather than being
+  built inline in update branches.
+
+* Model and modal state
+
+=Model.elm= defines the single source of truth.  The interesting
+piece is the ~Modal~ ADT:
+
+#+begin_src elm
+type Modal
+    = ModalHpChange HpChangeUi
+    | ModalInitiative InitiativeUi
+    | ModalNoteEdit NoteEditUi
+    | ModalCondition ConditionUi
+    | ModalMemoEdit MemoEditUi
+    | ModalTimerSetup TimerSetupUi
+    | ModalCompendiumEdit CompendiumEditUi
+    | ModalCompendiumPaste CompendiumPasteUi
+#+end_src
+
+~Model.modal : Maybe Modal~ replaces eight separate ~Maybe XxxUi~
+fields.  The "only one modal open at a time" invariant is now
+type-enforced rather than convention.
+
+Two modals — the dice roller and the compendium browser — sit
+*outside* the ADT because their substate has to survive a modal
+close (dice history, compendium browser cache + filter).  They
+expose ~open : Bool~ on their own substate and live as
+=Model.dice : DiceUi= / =Model.compendium : CompendiumUi=.
+
+Per-feature update modules use a small ~with*~ lens that
+pattern-matches on ~model.modal~:
+
+#+begin_src elm
+withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
+withHpChange fn model =
+    case model.modal of
+        Just (ModalHpChange ui) ->
+            { model | modal = Just (ModalHpChange (fn ui)) }
+
+        _ ->
+            model
+#+end_src
+
+* Turn lifecycle
+
+5e initiative is a single linear queue: each creature acts in
+turn, and after the lowest-initiative creature acts the round
+ends and we loop back to the highest.  The app models this with
+three fields on =Encounter=:
+
+- ~creatures : List Creature~ — the queue, in initiative order.
+- ~activeName : String~ — whose turn it currently is.
+- ~round : Int~ — 1-indexed round counter.
+
+Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
+~Update.Encounter.nextTurn~ when the user clicks ⏭ Next Turn.
+The lifecycle module owns:
+
+1. *Surprised-skip rule* — a creature with ~surprised = True~ is
+   skipped, and the flag is cleared in the same step.
+2. *Dead-skip rule* — creatures with three failed death saves
+   (~Encounter.isDeathSaveDead~) are skipped permanently.  The
+   iteration cap (queue length) covers all-dead TPK.
+3. *Condition lifecycle hooks* — bracketing the queue walk:
+   ~applyEndOfTurn outgoing → skipUnplayable → applyBeginOfTurn
+   incoming~.  The end-of-turn pass ticks the outgoing creature's
+   ~DurationCountdown AtEnd~ conditions and expires every
+   ~DurationUntilTurn AtEnd <name>~ across the encounter; the
+   begin-of-turn pass does the same for the ~AtBegin~ phase.
+
+The auto-roll save path lives in =Update/Encounter.elm=: when
+~nextTurn~ fires, the outgoing name is captured before the
+lifecycle hooks run, then ~Effects.autoRollCmdsFor AutoRollAtEnd
+outgoing newEnc~ + ~AutoRollAtBegin newName newEnc~ are batched.
+Results land in ~ConditionSaveLanded~, which removes the
+condition on ~roll.total >= dc~ and posts a green "Saved:
+<Condition>" notice when ~wasAutoRoll = True~.
+
+The pure domain layer doesn't fire Cmds; that's the right
+boundary.
+
+A separate "manual scrub" path: clicking the → arrow on any
+creature card immediately makes that creature active without
+advancing the turn (~Update.Encounter.setActive~).  By design,
+~setActive~ does *not* increment ~round~ or fire turn-progression
+hooks — neither would-be end-of-turn for the previous active
+creature nor would-be beginning-of-turn for the new one.
+
+* Update dispatch
+
+~Main.updateInner~ is a flat dispatch table where every Msg
+branch is a one-liner that calls into a per-feature
+=Update/Foo.elm= module.  Each Update module owns:
+
+- ~with*~ lens(es) into the relevant Model fragment (private).
+- The ~open~, ~close~, ~apply~, etc. functions that handle the
+  feature's Msg branches.
+- Any feature-specific helpers that don't belong in the domain
+  layer (e.g. dice-source labels, HP-change preview math).
+
+Cmd-emitting helpers shared across features (dice roll
+persistence, /me fetch, scroll-into-view, condition auto-roll
+batching) live in =Effects.elm=.
+
+* View dispatch
+
+~Main.view~ is a flat list of imported view-module calls:
+
+#+begin_src elm
+view : Model -> Browser.Document Msg
+view model =
+    { title = "eZpZ-dndZ"
+    , body =
+        [ div [ class "app-shell" ]
+            [ View.AppBar.view
+            , viewPage model
+            , View.Modal.Dice.view model.dice
+            , View.Modal.HpChange.view model
+            , ...
+            , View.Toast.list model.toasts
+            , View.Audio.ringer model
+            ]
+        ]
+    }
+#+end_src
+
+Modal views pattern-match on ~model.modal~ for the matching
+constructor and render ~text ""~ otherwise.  The
+=View.Modal.view= helper provides shared chrome (backdrop,
+header, ✕ close, click-out-to-close, Esc-to-close) — every modal
+in the app routes through it.
+
+* Persistence
+
+| Path                    | Endpoint                    | Notes                                                           |
+|-------------------------+-----------------------------+-----------------------------------------------------------------|
+| =encounter.json=        | ~/api/encounter~ GET / PUT  | Live encounter state; auto-saved on every mutation              |
+| =compendium/creatures.json= | ~/api/compendium/*~     | Library of creature templates; bundled-creatures merge on boot  |
+| =dice-history.json=     | ~/api/dice/history~         | Bounded persistent dice-roll log                                |
+
+The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
+persistence helper.  Every server-side feature with a JSON
+backing file should use it rather than rolling its own.
+
+* HP change engine
+
+The Damage / Heal / Temp HP buttons on card row 3 and the future
+ongoing-effect ticks all funnel through =HpChange.elm='s single
+~apply : Change -> Creature -> Creature~ entry point so the
+arithmetic doesn't drift between code paths.
+
+~Change~ is an ADT:
+
+- ~Damage { amount, ignoreTemp }~ — temp HP soaks first (skippable
+  via ~ignoreTemp~); current HP clamps at 0.  The death-save
+  tracker auto-appears once ~currentHp == 0~ (view-side gate).
+- ~Heal Int~ — caps at maxHp; clears the death-save counters via
+  ~Encounter.emptyDeathSaves~ when reviving from 0.
+- ~TempHp Int~ — replace-if-higher (5e never-stacks rule).
+
+~bloodied~ is auto-recomputed after every ~apply~ from current
+vs. max HP, so the row 2 🩸 chip stays honest without anyone
+touching it manually.
+
+The engine also exposes ~setCurrentHp~ / ~setMaxHp~ that skip the
+rule-flavored side effects.  The inline click-to-edit on the
+card row 2 HP values uses these.
+
+* Preferences
+
+=Preferences.elm= holds the user-tunable settings struct.  Every
+feature with a configurable behavior reads from
+~Model.preferences~ where applicable — currently
+~Update.Encounter.nextTurn~ reads ~autoScrollActiveCard~.  Other
+fields (theme, density, sound, etc.) are wire-only until each
+feature wires them.
+
+The plan is for ~/api/me/preferences~ to load and persist this
+struct per-user once the users-module materializes.  Until then
+every session uses ~Preferences.default~.
+
+* Conventions
+
+- Pascal Initialisms in new identifiers: ~Url~, not ~URL~; ~Db~,
+  not ~DB~.  Apply when authoring new identifiers in camel case.
+- Comments are complete sentences, wrapped at 80 columns.  Only
+  comment non-obvious intent, invariants, or historical
+  constraints — never restate control flow.
+- Org-mode for new docs.  No file lists in documentation prose
+  (use tables and pointers).
+- ~thiserror~ variants name the *operation*, not just the kind:
+  ~ConfigFileReadError~, not ~FileReadError~.
+- New HTTP routes go through ~aide::ApiRouter~ so OpenAPI stays
+  complete.

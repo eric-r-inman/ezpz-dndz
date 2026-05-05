@@ -193,7 +193,7 @@ broken.
 * Frontend layering
 
 The Elm frontend has a strict separation between domain logic and view
-code; see [[file:docs/ARCHITECTURE.md][docs/ARCHITECTURE.md]] for the full discussion.
+code; see [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full discussion.
 
 - ~frontend/src/Encounter.elm~ owns all D&D rules: types (=Creature=,
   =Cover=, =Encounter=), seed data, and pure functions like =nextTurn=
