@@ -28,6 +28,7 @@ modal is showing.
 import Browser.Navigation as Nav
 import Encounter exposing (Encounter)
 import Msg exposing (MeStatus)
+import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition exposing (ConditionUi)
@@ -73,4 +74,5 @@ type alias Model =
     , panelCreatureId : Maybe String
     , toasts : List Toast
     , nextToastId : Int
+    , preferences : Preferences
     }

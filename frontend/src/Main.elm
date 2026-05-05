@@ -42,6 +42,7 @@ import Msg
         , RollMode(..)
         , RollScope(..)
         )
+import Preferences
 import Process
 import Random
 import Route exposing (Route(..))
@@ -219,6 +220,7 @@ init _ url key =
       , panelCreatureId = Nothing
       , toasts = []
       , nextToastId = 0
+      , preferences = Preferences.default
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures

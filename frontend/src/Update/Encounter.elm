@@ -75,19 +75,24 @@ nextTurn model =
 
         beginRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
+
+        scrollCmds =
+            if model.preferences.autoScrollActiveCard then
+                [ Effects.scrollActiveIntoView newEnc.activeName ]
+
+            else
+                []
     in
     ( { model | encounter = newEnc }
-    , Cmd.batch
-        (Effects.scrollActiveIntoView newEnc.activeName
-            :: endRolls
-            ++ beginRolls
-        )
+    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls)
     )
 
 
 {-| Manual jump (the right-arrow button on a card). Distinct from
 `nextTurn`: no round bump, no turn-progression hooks. Scroll-into-view
-still runs so the GM sees the card they just promoted.
+still runs (and ignores the preference) so the GM sees the card
+they just promoted — the preference only governs the automatic
+end-of-turn scroll, not explicit user-initiated focus changes.
 -}
 setActive : String -> Model -> ( Model, Cmd Msg )
 setActive name model =
