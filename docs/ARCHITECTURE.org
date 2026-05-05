@@ -59,7 +59,7 @@ own module.
 | Domain        | =Compendium.elm= + =Compendium/{Wire,Parser}=                                          |
 | Domain        | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                          |
 | Routing       | =Route.elm=, =Msg.elm=, =Effects.elm=                                                  |
-| UI substate   | =Ui/{AbilitySave,Compendium,Condition,Dice,HpChange,Initiative,Load,Memo,Note,Save,Timer,Toast}.elm= |
+| UI substate   | =Ui/{AbilitySave,Compendium,Condition,Dice,HpChange,Initiative,Load,Memo,Note,QuickAdd,Save,Timer,Toast}.elm= |
 | Update        | =Update/{Compendium,Condition,DeathSave,Dice,Encounter,HpChange,Initiative,...}=       |
 | View / modals | =View/Modal/{Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,HpChange,...}=    |
 | View / shell  | =View/{AppBar,Audio,Card,EncounterBar,PanelControls,PanelDetail,Workspace,Toast,...}=  |
@@ -112,6 +112,7 @@ type Modal
     | ModalSave SaveUi
     | ModalLoad LoadUi
     | ModalAbilitySave AbilitySaveUi
+    | ModalQuickAdd QuickAddUi
 #+end_src
 
 ~Model.modal : Maybe Modal~ replaces a stack of ~Maybe XxxUi~
@@ -136,6 +137,12 @@ single feature:
   lookup) and the encounter creature's display name (so a name
   fallback covers older saved encounters whose ~creatureId~ no
   longer matches anything in the bundled compendium).
+- ~xpScope : XpScope~ + ~xpFilterOpen : Bool~ — encounter-bar XP
+  scope filter (Enemies & NPCs / Enemies Only / NPCs Only /
+  Selected Only) and the controlled open state of its dropdown.
+  The dropdown was migrated off native ~<details>/<summary>~ to a
+  controlled ~<div>~ so global Esc + click-outside subscriptions
+  in =Main.subscriptions= can close it.
 
 Two modals — the dice roller and the compendium browser — sit
 *outside* the ADT because their substate has to survive a modal
@@ -358,6 +365,71 @@ types — ~acid~, ~bludgeoning~, ~cold~, ~fire~, ~force~,
 ~radiant~, ~slashing~, ~thunder~.  Anything else backtracks
 cleanly so prose like ~"1d6 from the spell"~ still captures just
 ~1d6~ with no spurious damage type.
+
+* Encounter title-bar XP totals
+
+The right cluster of the encounter title bar runs a real XP
+total, not a placeholder.  =View.EncounterBar.totalXp= walks the
+encounter, resolves each creature through ~Compendium.find
+creatureId~, and sums two parallel running totals: ~total~
+(every in-scope creature's base ~xp~) and ~lairTotal~
+(~xpInLair~ when present, falling back to ~xp~).  Players are
+always excluded; missing-from-compendium entries are silently
+skipped.  When ~lairTotal > total~ the view renders a muted
+secondary chip "(N w/Lair)" alongside the base figure.
+
+The four scope options drive the dropdown filter via the
+~Msg.XpScope~ enum (~Enemies & NPCs~ / ~Enemies Only~ / ~NPCs
+Only~ / ~Selected Only~).  ~Selected Only~ uses the row 1
+multi-select checkboxes; the other three resolve via the
+compendium creature's ~kind~ tag.
+
+The dropdown itself was migrated from native
+~<details>/<summary>~ to a controlled ~<div>~ because the native
+element couldn't be closed by Esc or by clicking outside.
+~Model.xpFilterOpen~ holds the open state; new
+~XpFilterToggle~ / ~XpFilterClose~ Msgs flip / clear it; the
+existing ~XpScopeSet~ also closes on selection.  When open,
+=Main.subscriptions= layers two extra subs in via ~Sub.batch~:
+~Browser.Events.onKeyDown (escKey XpFilterClose)~ and
+~Browser.Events.onMouseDown (Decode.succeed XpFilterClose)~.  An
+internal ~stopPropagationOn "mousedown"~ on the dropdown wrapper
+keeps the toggle click from auto-closing.
+
+Lair XP is plumbed end-to-end:
+
+- =crates/lib/src/compendium/types.rs= — new ~xp_in_lair: i64~
+  field on ~Creature~ + ~CreatureDraft~, ~serde(default)~ for
+  backward compatibility.
+- =Compendium.elm= — ~xpInLair : Int~ on the Elm record;
+  ~Compendium.Wire= encodes / decodes ~xp_in_lair~ defaulting to
+  0.
+- =Compendium.Parser= — ~extractLairXpFromChallenge~ scans for
+  the case-insensitive substring "in lair" and walks backwards
+  through digits + thousand-separator commas, so "CR 16 (XP
+  15,000, or 18,000 in lair; PB +5)" yields ~xpInLair = 18000~.
+- =View.StatBlock= — challenge line renders the 2024-source
+  format "16 (XP 15,000, or 18,000 in lair)" when both values
+  are present.
+- =View.Modal.CompendiumEdit= — adds an "XP in Lair" numeric
+  input alongside "XP" / "Proficiency Bonus".
+
+* Quick Add modal
+
+Lightweight one-click sister to the full Compendium browser.
+Replaces the panel's "Add Creature" button with "Quick Add",
+opens =Ui.QuickAdd= via the ~ModalQuickAdd~ Modal case, and
+shows a single sort toggle (alpha ↔ CR) over a scrollable list
+of every compendium creature with its name + CR.
+
+Click a row → ~Update.QuickAdd.pick~ allocates a unique display
+name, builds a single-instance roll spec, and fires
+~Dice.batchRollCmd (CompendiumInitiativeRolled creatureId)~.
+The roll lands through the existing
+~Update.Compendium.initiativeRolled~ handler — same
+~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~
+→ toast pipeline as the full browser, just with a count of one
+and a different opener UI.  Esc closes.
 
 * HP change engine
 
