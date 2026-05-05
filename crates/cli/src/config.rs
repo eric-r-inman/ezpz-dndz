@@ -1,4 +1,6 @@
 use crate::compendium::CompendiumCommand;
+use crate::dice::DiceCommand;
+use crate::encounter::EncounterCommand;
 use clap::{Parser, Subcommand};
 use ezpz_dndz_lib::{LogFormat, LogLevel};
 use serde::Deserialize;
@@ -52,6 +54,18 @@ pub enum Command {
   Compendium {
     #[command(subcommand)]
     command: CompendiumCommand,
+  },
+
+  /// Inspect the live encounter JSON.
+  Encounter {
+    #[command(subcommand)]
+    command: EncounterCommand,
+  },
+
+  /// Inspect or clear the dice-history JSON file.
+  Dice {
+    #[command(subcommand)]
+    command: DiceCommand,
   },
 }
 

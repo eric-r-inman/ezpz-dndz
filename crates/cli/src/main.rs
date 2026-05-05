@@ -2,22 +2,26 @@
 //! the project's data files (compendium, encounters, dice
 //! history) outside the running server.
 //!
-//! Subcommands are dispatched via clap.  Currently shipping:
+//! Subcommands are dispatched via clap.  All operate file-direct:
+//! they read and write the on-disk JSON directly without going
+//! through the server's HTTP API.  That keeps the CLI useful when
+//! the server isn't running (e.g. inspecting a backup).
 //!
-//! - `compendium list` / `count` / `show` — inspect a
-//!   `creatures.json` file.
-//!
-//! Future commands (per MODULARIZATION_PLAN Phase 11):
-//! `compendium import` / `export`, `encounter list` /
-//! `restore`, `dice clear`.
+//! - `compendium {list, count, show}` — inspect creatures.json.
+//! - `encounter {show, count}` — inspect the live encounter file.
+//! - `dice {count, tail, clear}` — inspect / wipe the roll log.
 
 mod compendium;
 mod config;
+mod dice;
+mod encounter;
 mod logging;
 
 use clap::Parser;
 use compendium::CompendiumCliError;
 use config::{CliRaw, Command, Config, ConfigError};
+use dice::DiceCliError;
+use encounter::EncounterCliError;
 use logging::init_logging;
 use thiserror::Error;
 use tracing::info;
@@ -29,6 +33,12 @@ enum ApplicationError {
 
   #[error("Compendium subcommand failed: {0}")]
   Compendium(#[from] CompendiumCliError),
+
+  #[error("Encounter subcommand failed: {0}")]
+  Encounter(#[from] EncounterCliError),
+
+  #[error("Dice subcommand failed: {0}")]
+  Dice(#[from] DiceCliError),
 }
 
 fn main() -> Result<(), ApplicationError> {
@@ -52,6 +62,12 @@ fn run(config: Config) -> Result<(), ApplicationError> {
   match config.command {
     Some(Command::Compendium { command }) => {
       command.run().map_err(ApplicationError::Compendium)
+    }
+    Some(Command::Encounter { command }) => {
+      command.run().map_err(ApplicationError::Encounter)
+    }
+    Some(Command::Dice { command }) => {
+      command.run().map_err(ApplicationError::Dice)
     }
     None => {
       println!(

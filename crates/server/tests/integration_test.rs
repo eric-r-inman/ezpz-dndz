@@ -547,3 +547,63 @@ async fn test_encounter_put_then_get_roundtrip() {
     "expected PUT body to round-trip, got: {body_str}"
   );
 }
+
+#[tokio::test]
+async fn test_dice_history_concurrent_appends_lose_nothing() {
+  // 20 concurrent POSTs each with a unique roll id; every one
+  // should land in the file (under the 30-entry MAX cap), and
+  // every id should appear exactly once.
+  let state = state_without_frontend().await;
+  let app = base_router(state.clone());
+  let n_rolls = 20usize;
+
+  let mut tasks = tokio::task::JoinSet::new();
+  for i in 0..n_rolls {
+    let app = app.clone();
+    tasks.spawn(async move {
+      let payload = format!(
+        r#"{{"id":{i},"feature":"Test","total":{i},"expression":{{"dice":[],"constant":0,"damageType":null}},"groups":[],"formula":"1d20","kind":"standard","source":{{"feature":"Test","target":null}}}}"#
+      );
+      let response = app
+        .oneshot(
+          Request::builder()
+            .method("POST")
+            .uri("/api/dice/history")
+            .header("content-type", "application/json")
+            .body(Body::from(payload))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+      assert_eq!(
+        response.status(),
+        StatusCode::OK,
+        "expected POST to succeed for roll {i}"
+      );
+    });
+  }
+  while let Some(res) = tasks.join_next().await {
+    res.expect("spawned task panicked");
+  }
+
+  // Read the persisted history back through the in-memory store
+  // (the file is auto-flushed on every mutate).
+  let entries = state.dice_store.load().await;
+  assert_eq!(
+    entries.len(),
+    n_rolls,
+    "expected exactly {n_rolls} entries after concurrent POSTs, got {}",
+    entries.len()
+  );
+
+  let mut ids: Vec<i64> = entries
+    .iter()
+    .filter_map(|v| v.get("id").and_then(|x| x.as_i64()))
+    .collect();
+  ids.sort();
+  let expected: Vec<i64> = (0..n_rolls as i64).collect();
+  assert_eq!(
+    ids, expected,
+    "expected every roll id 0..{n_rolls} to appear exactly once, got {ids:?}"
+  );
+}
