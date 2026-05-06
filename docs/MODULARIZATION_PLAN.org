@@ -225,6 +225,14 @@ Server-side additions:
 |-------+--------------------------------------------+------------------------------------------------|
 | 10a   | Creature instanceId rename (per the plan)  | DEFERRED — needs a wire-format compat shim     |
 | 11    | users/prefs server scaffolding (full)      | DEFERRED — scoped to OIDC user-record landing  |
+| 12    | De-dupe dice-expression helpers            | NEW — round-2 finding F1+F2                    |
+| 13    | Extract XP totals into Encounter/Xp domain | NEW — round-2 finding F3                       |
+| 14    | Move Url.percentEncode to Util.Http        | NEW — round-2 finding F4                       |
+| 15    | Generic Model.mapModal lens                | NEW — round-2 finding F5                       |
+| 16    | LineChallenge → record fields              | NEW — round-2 finding F6                       |
+| 17    | Split Update/Compendium per-section        | NEW — round-2 finding F7                       |
+| 18    | Drop unused imports in Main.elm            | NEW — round-2 finding F8                       |
+| 19    | View/Card watch (no-op until ≥1500 LOC)    | NEW — round-2 finding F9                       |
 
 The original Phase 10 + 11 specs called for a creature
 identity-by-id rename (10a) and a full users/prefs server
@@ -234,6 +242,8 @@ default for legacy `name`-keyed encounters, and the users/prefs
 modules can't materialize until OIDC drives a real user table.
 Each lands when the feature pulling on it is ready, not as a
 preemptive scaffolding pass.
+
+Phases 12–19 are the round-2 audit follow-up — see [[*Round 2 audit (2026-05-06)][* Round 2 audit (2026-05-06)]] for findings + per-phase plans.
 
 ** Notes for the next autonomous run
 
@@ -1357,7 +1367,310 @@ just enough that the next feature has clear surface area.
 - 11d: ~feat(prefs): /api/me/preferences with opaque-JSON blob~
 - 11e: ~docs(architecture): migrate to org-mode, cross-link diagram~
 
-* Risks & rollback strategy
+* Round 2 audit (2026-05-06)
+
+After ~two weeks of feature work (Save/Load, Reset/Clear with
+two-step confirm, Run-Encounter / round-0 sentinel, AbilitySave
+modal, HP-undo, fall-damage roll, AC click-to-edit + title-bar
+readout, Quick Add modal, real XP totals + lair XP, controlled
+XP-scope dropdown, damage-type capture in Dice.scan, panel-pin
+id-then-name fallback, surprise-mechanic removal), the codebase
+was audited against the round-1 modularity rules.
+
+Headline: *each new modal followed the canonical pattern* (Ui/* +
+Update/* + View/Modal/* + Modal-ADT case), schema migrations
+included serde-default backward compat, no new god-files
+appeared, and Main.elm grew only ~200 lines — almost entirely
+one-liner Msg dispatch + new view mounts.  169 Elm tests + 21
+Rust tests pass.  The structure held.
+
+The audit surfaced nine small drifts that warrant a follow-up
+pass before the next feature wave.
+
+** Findings
+
+| #  | Issue                                                          | Severity | Phase |
+|----+----------------------------------------------------------------+----------+-------|
+| F1 | =initiativeExpression= duplicated 3× across Update modules    | M        | 12    |
+| F2 | =saveExpression= duplicated 2× (Effects + Update.AbilitySave) | L        | 12    |
+| F3 | XP totals computation lives in =View.EncounterBar=             | M        | 13    |
+| F4 | =Encounter.Wire= imports =Url= for =percentEncode=             | L        | 14    |
+| F5 | =with*Ui= lens helpers regrowing across 11 Update modules      | M        | 15    |
+| F6 | =LineChallenge= parser variant has 4 positional ints           | L        | 16    |
+| F7 | =Update/Compendium.elm= at 1135 LOC, 5 clearly-bounded sections | M        | 17    |
+| F8 | Unused imports in Main.elm (=Compendium.Parser=, =Random=)    | L        | 18    |
+| F9 | =View/Card.elm= at 1078 LOC, drifting toward the 1500 threshold | L        | 19    |
+
+Severity guide: L = mechanical / cosmetic; M = real maintainability
+risk if left to compound.
+
+** Round-2 phases
+
+Each phase below is independently shippable (compile + test +
+optional smoke), small enough to commit-and-move-on.  Order is
+*cheapest mechanical wins first* (12, 14, 18) → *semantic
+cleanups* (15, 16) → *bigger structural splits* (13, 17), with
+19 a watch-only entry that only triggers when the size threshold
+crosses.
+
+* Phase 12 — De-duplicate dice-expression helpers
+
+** Goal
+Single source of truth for the small dice-expression helpers
+shared across Update modules.  Currently
+=initiativeExpression= is defined in three places (Update.QuickAdd,
+Update.Compendium, Update.Initiative) and =saveExpression= in two
+(Effects + Update.AbilitySave).  Each is a simple
+=1d20 + bonus= shape that's easy to drift out of sync.
+
+** Steps
+1. Pick *Update/Initiative* as the canonical owner of
+   =initiativeExpression= (it's the most natural domain home).
+2. Pick *Effects.elm* as the canonical owner of
+   =saveExpression= (already exposes one).
+3. Re-export both, then delete the duplicate copies in the other
+   modules and import.
+4. Audit =Update/Encounter.fallExpression= as well — leave it
+   private to the module (one callsite, no duplication) but add a
+   note that it follows the same pattern.
+
+** Verification
+=elm make=, =elm-test=, manual smoke: Quick Add + initiative
+auto-roll + ability save + condition save-to-end all still roll.
+
+** Commit
+~refactor(update): centralize dice-expression helpers~
+
+* Phase 13 — Extract XP totals into Encounter/Xp domain
+
+** Goal
+Move =totalXp=, =xpForCreature=, =matchesScope=, and
+=formatThousands= out of =View.EncounterBar= and into a new
+=Encounter/Xp.elm= domain module so the view becomes a one-liner
+that calls into rules code.
+
+This restores the layering rule (view doesn't compute rules) and
+sets the module up for reuse from a future CR-calculator panel
+(see =crates/lib/src/cr_calc/= which is currently a stub).
+
+** Steps
+1. Create =Encounter/Xp.elm= exposing:
+   - =type alias Totals = { total : Int, lairTotal : Int }=
+   - =totalsFor : XpScope -> Encounter -> Compendium.Db -> Totals=
+   - =formatThousands : Int -> String=
+2. Move =matchesScope= as a private helper.
+3. Update =View.EncounterBar= to call into the new module; drop
+   the local helpers.
+4. Add =frontend/tests/Encounter/XpTest.elm= covering:
+   - Empty encounter → ={ total = 0, lairTotal = 0 }=
+   - Mixed enemies + NPCs + players → players excluded
+   - Lair-XP fallback (=xpInLair > 0= preferred over =xp=)
+   - =SelectedOnly= scope only counts =selected= creatures
+   - =EnemiesOnly= excludes NPCs and vice versa
+
+** Verification
+elm-test passes; the title-bar XP total renders identically to
+before.
+
+** Commit
+~refactor(encounter): extract Xp totals into domain module + tests~
+
+* Phase 14 — Move Url.percentEncode out of Encounter.Wire
+
+** Goal
+=Encounter.Wire= imports =Url= for =Url.percentEncode= on save-name
+URL fragments.  The round-1 layering rule reads "domain modules
+don't import =Url=" — wire layers count as domain.
+
+** Steps
+1. Add =Util.Http.urlPathSegment : String -> String= that calls
+   =Url.percentEncode= internally.
+2. Replace the four call sites in =Encounter.Wire= with the new
+   helper; drop =import Url=.
+
+** Verification
+elm-test passes; save name with a space ("Goblin Ambush") still
+produces the right URL.
+
+** Commit
+~refactor(wire): centralize percent-encoding in Util.Http~
+
+* Phase 15 — Generic Model.mapModal lens
+
+** Goal
+The =with*Ui= helper sprawl flagged in round-1 Phase 1 has
+regrown.  11 Update modules each define a near-identical
+boilerplate lens against =model.modal=:
+
+#+begin_src elm
+withFooUi : (FooUi -> FooUi) -> Model -> Model
+withFooUi fn model =
+    case model.modal of
+        Just (ModalFoo ui) ->
+            { model | modal = Just (ModalFoo (fn ui)) }
+        _ ->
+            model
+#+end_src
+
+Round 1 rejected a generic lens because Elm lacks typeclasses.
+That's still true, but with the Modal ADT now stable and 11
+copies of the boilerplate, a tiny =Model.mapModal= helper
+(higher-order, takes the matcher / wrapper as args) is now
+cheaper than the duplication.
+
+** Steps
+1. Add to =Model.elm=:
+   #+begin_src elm
+   mapModal :
+       (Modal -> Maybe a)
+       -> (a -> Modal)
+       -> (a -> a)
+       -> Model
+       -> Model
+   mapModal extract wrap fn model =
+       case Maybe.andThen extract model.modal of
+           Just ui ->
+               { model | modal = Just (wrap (fn ui)) }
+           Nothing ->
+               model
+   #+end_src
+2. In each Update module, replace =withFooUi= with:
+   #+begin_src elm
+   Model.mapModal
+       (\m -> case m of ModalFoo ui -> Just ui; _ -> Nothing)
+       ModalFoo
+   #+end_src
+3. Optionally extract the constructor/extractor pair as a small
+   reusable record per modal kind in =Model.elm= so the per-Update
+   call sites stay terse.
+
+** Verification
+Each of the 11 Update modules compiles + passes its existing
+tests.  Smoke: each modal still opens / mutates / closes.
+
+** Commit
+~refactor(update): collapse with*Ui lenses into Model.mapModal~
+
+* Phase 16 — LineChallenge parser variant → record
+
+** Goal
+=LineChallenge String Int Int Int= (CR text, XP, lair XP, PB) is
+fragile — every new field shifts positional arguments.  Refactor
+to a record so future fields don't propagate as silent
+position-shift bugs.
+
+** Steps
+1. In =Compendium.Parser=, change the variant to:
+   #+begin_src elm
+   LineChallenge { cr : String, xp : Int, xpInLair : Int, pb : Int }
+   #+end_src
+2. Update the producer (=parseChallenge=) to construct the record.
+3. Update the consumer (=dispatchClassifiedLine=) to pattern-match
+   on the record.
+4. Confirm the existing parser tests still pass — no behavior change.
+
+** Verification
+elm-test passes; Adult Blue Dragon test fixture still parses
+=cr=16 / xp=15000 / xpInLair=18000 / pb=5=.
+
+** Commit
+~refactor(parser): LineChallenge record fields~
+
+* Phase 17 — Split Update/Compendium.elm into per-section modules
+
+** Goal
+=Update/Compendium.elm= sits at 1135 LOC with five clearly-bounded
+sections separated by ASCII rule comments and ~62 functions.  Each
+section is cohesive and rarely cross-references the others; the
+file is a candidate split.
+
+| Section                       | Lines (approx) | Funcs | Target module                  |
+|-------------------------------+----------------+-------+--------------------------------|
+| BROWSER LIFECYCLE             |  1 → 257       |    17 | =Update/Compendium/Browser.elm= |
+| ADD-TO-QUEUE FLOW             |  258 → 391     |     6 | =Update/Compendium/Add.elm=     |
+| EDIT MODAL (form fields)      |  392 → 767     |    30 | =Update/Compendium/Edit.elm=    |
+| EDIT SUBMIT / DELETE          |  768 → 894     |     5 | =Update/Compendium/Edit.elm=    |
+| PASTE MODAL                   |  895 → 955     |     4 | =Update/Compendium/Paste.elm=   |
+| BULK IMPORT / RESET / DELETE  |  956 → end     |    ~9 | =Update/Compendium/Bulk.elm=    |
+
+Edit + EditSubmit fold into one =Update/Compendium/Edit.elm= since
+they share the form's UI substate and the submit/delete operate on
+the same draft.
+
+After the split, =Update/Compendium.elm= itself either becomes a
+thin re-export aggregator (one =module Update.Compendium exposing
+(..)= line per section) or goes away entirely with =Main.elm=
+importing the per-section modules directly.  Pick whichever
+results in fewer dispatch-line edits in =Main.elm=.
+
+** Steps
+1. Move BROWSER LIFECYCLE first (smallest disturbance, no shared
+   helpers between Browser and Add-to-Queue).
+2. Move ADD-TO-QUEUE FLOW.  Pick up =initiativeExpression=
+   already centralized via Phase 12 if Phase 12 has shipped.
+3. Move PASTE MODAL.  Independent.
+4. Move BULK IMPORT / RESET / DELETE.  Independent.
+5. Move EDIT MODAL + EDIT SUBMIT together.  These share
+   =CompendiumEditUi= state and validate together.
+6. After each move, verify =elm-test= passes + Main.elm dispatch
+   table is updated to import from the new module.
+
+** Verification
+elm-test passes after each sub-commit.  Smoke: each Compendium
+flow still works (browse, add to queue, paste, edit, bulk
+import / reset).
+
+** Commit
+Split into ~5 sub-commits, one per section move:
+- ~refactor(update/compendium): extract Browser~
+- ~refactor(update/compendium): extract Add~
+- ~refactor(update/compendium): extract Paste~
+- ~refactor(update/compendium): extract Bulk~
+- ~refactor(update/compendium): extract Edit + EditSubmit~
+
+* Phase 18 — Drop unused imports in Main.elm
+
+** Goal
+=Compendium.Parser= and =Random= are imported in =Main.elm= but
+never referenced.  Pure dead-code cleanup.
+
+** Steps
+1. Remove =import Compendium.Parser= line.
+2. Remove =import Random= line.
+3. =elm make= confirms no breakage.
+
+** Verification
+elm-test passes; smoke not required.
+
+** Commit
+~chore(main): drop unused imports~
+
+* Phase 19 — View/Card watch (no-op until ≥1500 LOC)
+
+** Goal
+=View/Card.elm= is at 1078 LOC.  Round-1 plan deferred a row1 /
+row2 / row3 / legendary split until the file crosses ~1500 LOC.
+Still under the threshold; record the watch and the planned
+split shape so a future agent has a recipe ready.
+
+** Planned split (when triggered)
+Five files plus a private internal helper module:
+
+| Module                              | Region                                            |
+|-------------------------------------+---------------------------------------------------|
+| =View/Card.elm=                     | Public ~view~ entry; row composition only         |
+| =View/Card/Row1.elm=                | Initiative circle, name, note, AC, condition chips |
+| =View/Card/Row2.elm=                | HP display, bloodied marker, cover, posture toggles |
+| =View/Card/Row3.elm=                | Damage / Heal / Temp HP / Hold / Memo / Timer     |
+| =View/Card/LegendaryColumn.elm=     | Legendary action / resistance pip column          |
+| =View/Card/Internal.elm=            | Shared private helpers (selectionClickHandler etc.) |
+
+** Trigger
+=wc -l frontend/src/View/Card.elm= ≥ 1500.  Until then this is a
+documentation entry only.
+
+** Commit
+N/A.
 
 - *Phases 5–7 have the largest commit churn.*  Mitigation:
   break into many small commits (one file move + reference
