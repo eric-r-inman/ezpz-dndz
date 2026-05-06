@@ -1753,17 +1753,44 @@ body {
   gap: 10px;
 }
 
-.dice-form__row {
+/* Shared form-row pattern: a wrapping flex row with a leading
+   label.  Used by the dice / HP-change / initiative modals (with
+   slightly different gap + label widths) and the condition modal
+   (no label child, smaller gap).  Per-feature class blocks below
+   only set the gap + label-width overrides. */
+.dice-form__row,
+.hp-change__row,
+.init-section__row,
+.cond-row {
   display: flex;
-  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dice-form__row {
+  gap: 8px;
+}
+
+.cond-row {
+  gap: 6px;
+}
+
+.dice-form__row label,
+.hp-change__row label,
+.init-section__row label {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  min-width: 100px;
 }
 
 .dice-form__row label {
   min-width: 72px;
-  color: var(--color-text-muted);
   font-size: 0.82rem;
+}
+
+.init-section__row label {
+  min-width: 130px;
 }
 
 .dice-form__row-spacer {
@@ -2091,19 +2118,6 @@ body {
   max-width: 480px;
 }
 
-.hp-change__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.hp-change__row label {
-  min-width: 100px;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-}
-
 .hp-change__caption {
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -2357,19 +2371,6 @@ body {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-.init-section__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.init-section__row label {
-  min-width: 130px;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
 }
 
 .init-section__input {
@@ -2735,13 +2736,6 @@ body {
   padding: 6px 10px;
   background: var(--color-surface);
   border-radius: var(--radius-sm);
-}
-
-.cond-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
 }
 
 .cond-select {
