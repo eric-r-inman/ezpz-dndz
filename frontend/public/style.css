@@ -30,6 +30,8 @@
   --color-init-blue: #3b82f6;
   --color-orange-dark: #b8521c;
   --color-temp-blue: #2589e0;
+  --color-orange: #f97316;
+  --color-blue: #3b82f6;
 
   /* Card row 3 + control-button color tokens.  Each
      `.action-btn--*` variant just sets `--btn-bg` (and optionally
@@ -68,6 +70,8 @@
     --color-init-blue: #4d9bff;
     --color-orange-dark: #ff9a3c;
     --color-temp-blue: #4d9bff;
+    --color-orange: #ff9a3c;
+    --color-blue: #4d9bff;
   }
 }
 
@@ -329,29 +333,29 @@ body {
 /* Orange for legendary-action pips ("LA"); auto-reset at the
    start of the creature's turn. */
 .legendary-col--la .legendary-col__header {
-  color: var(--color-orange, #f97316);
+  color: var(--color-orange);
 }
 
 .legendary-col--la .legendary-col__pip {
-  border-color: var(--color-orange, #f97316);
+  border-color: var(--color-orange);
 }
 
 .legendary-col--la .legendary-col__pip--filled {
-  background: var(--color-orange, #f97316);
+  background: var(--color-orange);
 }
 
 /* Yellow for legendary-resistance pips ("LR"); GM clears
    manually (rules: per long rest, not per turn). */
 .legendary-col--lr .legendary-col__header {
-  color: var(--color-yellow, #f5c842);
+  color: var(--color-yellow);
 }
 
 .legendary-col--lr .legendary-col__pip {
-  border-color: var(--color-yellow, #f5c842);
+  border-color: var(--color-yellow);
 }
 
 .legendary-col--lr .legendary-col__pip--filled {
-  background: var(--color-yellow, #f5c842);
+  background: var(--color-yellow);
 }
 
 .legendary-col__pip {
@@ -2216,14 +2220,19 @@ body {
   font-weight: 600;
 }
 
-.hp-change__checkbox {
+/* Checkbox label inside an .hp-change__row.  The row-label
+   selector (`.hp-change__row label`) sets `min-width: 100px` on
+   plain text labels; this rule's higher specificity overrides
+   that for the checkbox label specifically — no !important
+   needed. */
+.hp-change__row label.hp-change__checkbox {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
   color: var(--color-text);
   cursor: pointer;
-  min-width: 0 !important;
+  min-width: 0;
 }
 
 .hp-change__checkbox input[type="checkbox"] {
@@ -2929,7 +2938,7 @@ body {
    doesn't reflow when the indicator toggles. */
 .dice-roll-btn--unread {
   box-shadow:
-    0 0 0 2px var(--color-yellow, #f5c842),
+    0 0 0 2px var(--color-yellow),
     0 0 12px rgba(245, 200, 66, 0.45);
 }
 
@@ -2964,7 +2973,7 @@ body {
 .compendium__search {
   flex: 1 1 240px;
   padding: 8px 12px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -2988,15 +2997,15 @@ body {
 }
 
 .compendium__kind-filter--active {
-  background: var(--color-blue, #3b82f6);
-  border-color: var(--color-blue, #3b82f6);
+  background: var(--color-blue);
+  border-color: var(--color-blue);
   color: white;
 }
 
 .compendium__sort {
   padding: 6px 10px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -3056,16 +3065,16 @@ body {
 
 .compendium__row--selected {
   background: rgba(59, 130, 246, 0.1);
-  border-left-color: var(--color-blue, #3b82f6);
+  border-left-color: var(--color-blue);
   /* Inset box-shadow as the "outline" so we don't reflow neighbors
      (a real `outline` would push the row visually). The slight
      light-blue background tint reinforces the selection without
      fighting the surface-2 hover state. */
-  box-shadow: inset 0 0 0 2px var(--color-blue, #3b82f6);
+  box-shadow: inset 0 0 0 2px var(--color-blue);
 }
 
 .compendium__row--player {
-  border-left-color: var(--color-orange, #f97316);
+  border-left-color: var(--color-orange);
 }
 
 .compendium__row--enemy.compendium__row--selected {
@@ -3094,7 +3103,7 @@ body {
   padding: 8px 12px;
   margin-bottom: 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--color-surface-2);
   position: sticky;
   top: 0;
@@ -3112,7 +3121,7 @@ body {
 .compendium__count {
   width: 64px;
   padding: 4px 8px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -3198,7 +3207,7 @@ body {
   appearance: none;
   background: none;
   border: none;
-  color: var(--color-blue, #3b82f6);
+  color: var(--color-blue);
   cursor: pointer;
   padding: 0;
   font: inherit;
@@ -3267,7 +3276,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
@@ -3338,7 +3347,7 @@ body {
 
 .edit-section {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   padding: 12px;
   margin: 0;
   background: var(--color-surface-2);
@@ -3423,7 +3432,7 @@ body {
 
 .edit-field__input {
   padding: 6px 8px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -3448,7 +3457,7 @@ body {
   border: 1px solid var(--color-border);
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-text-muted);
   font-size: 1rem;
@@ -3479,7 +3488,7 @@ body {
   border: 1px solid var(--color-danger);
   color: var(--color-danger);
   padding: 8px 12px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   font-size: 0.85rem;
 }
 
@@ -3487,7 +3496,7 @@ body {
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   padding: 8px 12px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   color: var(--color-text-muted);
   font-style: italic;
@@ -3543,7 +3552,7 @@ body {
   flex: 1 1 auto;
   min-height: 360px;
   padding: 8px 10px;
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
@@ -3571,7 +3580,7 @@ body {
 .paste-modal__preview {
   flex: 1 1 auto;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-md, 6px);
+  border-radius: var(--radius-md);
   padding: 8px 12px;
   background: var(--color-surface-2);
 }
@@ -3616,7 +3625,7 @@ body {
   width: 28px;
   height: 28px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text-muted);
   font-size: 0.95rem;
