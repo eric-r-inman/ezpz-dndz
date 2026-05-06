@@ -1,42 +1,45 @@
-module Update.Compendium exposing
-    ( currentlySelectedCreature
-    , editCancel
-    , editCustomSectionAdd
-    , editCustomSectionBodyChanged
-    , editCustomSectionNameChanged
-    , editCustomSectionRemove
-    , editDelete
-    , editDeleteResponse
-    , editDuplicate
-    , editExisting
-    , editFeatureAdd
-    , editFeatureDescriptionChanged
-    , editFeatureNameChanged
-    , editFeatureRemove
-    , editFieldChanged
-    , editKindSet
-    , editNew
-    , editSavingThrowAbilitySet
-    , editSavingThrowAdd
-    , editSavingThrowBonusChanged
-    , editSavingThrowRemove
-    , editSizeSet
-    , editSkillAdd
-    , editSkillBonusChanged
-    , editSkillNameChanged
-    , editSkillRemove
-    , editSpeedHoverToggle
-    , editSubmit
-    , editSubmitResponse
+module Update.Compendium.Edit exposing
+    ( cancel
+    , currentlySelectedCreature
+    , customSectionAdd
+    , customSectionBodyChanged
+    , customSectionNameChanged
+    , customSectionRemove
+    , delete
+    , deleteResponse
+    , duplicate
+    , existing
+    , featureAdd
+    , featureDescriptionChanged
+    , featureNameChanged
+    , featureRemove
+    , fieldChanged
+    , kindSet
+    , new
+    , savingThrowAbilitySet
+    , savingThrowAdd
+    , savingThrowBonusChanged
+    , savingThrowRemove
+    , sizeSet
+    , skillAdd
+    , skillBonusChanged
+    , skillNameChanged
+    , skillRemove
+    , speedHoverToggle
+    , submit
+    , submitResponse
     )
 
-{-| Update branches for the compendium browser, the compendium-edit
-modal, the paste-stat-block modal, and the bulk import/reset/delete
-flow. This is the largest of the per-feature Update modules because
-the compendium has the largest surface area: ~50 UI fields on the
-edit form, four feature groups (traits / actions / bonus actions
-/ reactions), the optional paste path, and a confirm-banner-driven
-bulk flow.
+{-| Compendium-edit modal: the form for creating, editing, and
+duplicating compendium creatures, plus the submit / delete /
+response handlers that round-trip through `/api/compendium`.
+
+This is the largest section by line count because the form has
+~50 input fields plus four feature groups (traits, actions,
+bonus actions, reactions) plus saving throws, skills, and custom
+sections — each gets its own Add / Remove / FieldChanged
+handler.
+
 -}
 
 import Compendium
@@ -73,15 +76,15 @@ withCompendiumEdit =
 -- ── EDIT MODAL ──────────────────────────────────────────────────────────
 
 
-editNew : Model -> ( Model, Cmd Msg )
-editNew model =
+new : Model -> ( Model, Cmd Msg )
+new model =
     ( { model | modal = Just (ModalCompendiumEdit CompendiumUi.blankEdit) }
     , Cmd.none
     )
 
 
-editExisting : Model -> ( Model, Cmd Msg )
-editExisting model =
+existing : Model -> ( Model, Cmd Msg )
+existing model =
     ( { model
         | modal =
             currentlySelectedCreature model
@@ -91,8 +94,8 @@ editExisting model =
     )
 
 
-editDuplicate : Model -> ( Model, Cmd Msg )
-editDuplicate model =
+duplicate : Model -> ( Model, Cmd Msg )
+duplicate model =
     ( { model
         | modal =
             currentlySelectedCreature model
@@ -128,13 +131,13 @@ editFromDuplicate source =
     }
 
 
-editCancel : Model -> ( Model, Cmd Msg )
-editCancel model =
+cancel : Model -> ( Model, Cmd Msg )
+cancel model =
     ( { model | modal = Nothing }, Cmd.none )
 
 
-editFieldChanged : CompendiumField -> String -> Model -> ( Model, Cmd Msg )
-editFieldChanged field text model =
+fieldChanged : CompendiumField -> String -> Model -> ( Model, Cmd Msg )
+fieldChanged field text model =
     ( withCompendiumEdit (setEditField field text) model, Cmd.none )
 
 
@@ -250,23 +253,23 @@ setEditField field text ui =
             { ui | proficiencyBonus = text }
 
 
-editKindSet : Compendium.CreatureKind -> Model -> ( Model, Cmd Msg )
-editKindSet kind model =
+kindSet : Compendium.CreatureKind -> Model -> ( Model, Cmd Msg )
+kindSet kind model =
     ( withCompendiumEdit (\ui -> { ui | kind = kind }) model, Cmd.none )
 
 
-editSizeSet : Compendium.Size -> Model -> ( Model, Cmd Msg )
-editSizeSet size model =
+sizeSet : Compendium.Size -> Model -> ( Model, Cmd Msg )
+sizeSet size model =
     ( withCompendiumEdit (\ui -> { ui | size = size }) model, Cmd.none )
 
 
-editSpeedHoverToggle : Model -> ( Model, Cmd Msg )
-editSpeedHoverToggle model =
+speedHoverToggle : Model -> ( Model, Cmd Msg )
+speedHoverToggle model =
     ( withCompendiumEdit (\ui -> { ui | speedHover = not ui.speedHover }) model, Cmd.none )
 
 
-editSavingThrowAdd : Model -> ( Model, Cmd Msg )
-editSavingThrowAdd model =
+savingThrowAdd : Model -> ( Model, Cmd Msg )
+savingThrowAdd model =
     ( withCompendiumEdit
         (\ui -> { ui | savingThrows = ui.savingThrows ++ [ ( Compendium.Str, "0" ) ] })
         model
@@ -274,15 +277,15 @@ editSavingThrowAdd model =
     )
 
 
-editSavingThrowRemove : Int -> Model -> ( Model, Cmd Msg )
-editSavingThrowRemove idx model =
+savingThrowRemove : Int -> Model -> ( Model, Cmd Msg )
+savingThrowRemove idx model =
     ( withCompendiumEdit (\ui -> { ui | savingThrows = removeAt idx ui.savingThrows }) model
     , Cmd.none
     )
 
 
-editSavingThrowAbilitySet : Int -> Compendium.Ability -> Model -> ( Model, Cmd Msg )
-editSavingThrowAbilitySet idx ability model =
+savingThrowAbilitySet : Int -> Compendium.Ability -> Model -> ( Model, Cmd Msg )
+savingThrowAbilitySet idx ability model =
     ( withCompendiumEdit
         (\ui ->
             { ui | savingThrows = updateAt idx (\( _, b ) -> ( ability, b )) ui.savingThrows }
@@ -292,8 +295,8 @@ editSavingThrowAbilitySet idx ability model =
     )
 
 
-editSavingThrowBonusChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-editSavingThrowBonusChanged idx text model =
+savingThrowBonusChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+savingThrowBonusChanged idx text model =
     ( withCompendiumEdit
         (\ui ->
             { ui | savingThrows = updateAt idx (\( a, _ ) -> ( a, text )) ui.savingThrows }
@@ -303,22 +306,22 @@ editSavingThrowBonusChanged idx text model =
     )
 
 
-editSkillAdd : Model -> ( Model, Cmd Msg )
-editSkillAdd model =
+skillAdd : Model -> ( Model, Cmd Msg )
+skillAdd model =
     ( withCompendiumEdit (\ui -> { ui | skills = ui.skills ++ [ ( "", "0" ) ] }) model
     , Cmd.none
     )
 
 
-editSkillRemove : Int -> Model -> ( Model, Cmd Msg )
-editSkillRemove idx model =
+skillRemove : Int -> Model -> ( Model, Cmd Msg )
+skillRemove idx model =
     ( withCompendiumEdit (\ui -> { ui | skills = removeAt idx ui.skills }) model
     , Cmd.none
     )
 
 
-editSkillNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-editSkillNameChanged idx text model =
+skillNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+skillNameChanged idx text model =
     ( withCompendiumEdit
         (\ui -> { ui | skills = updateAt idx (\( _, b ) -> ( text, b )) ui.skills })
         model
@@ -326,8 +329,8 @@ editSkillNameChanged idx text model =
     )
 
 
-editSkillBonusChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-editSkillBonusChanged idx text model =
+skillBonusChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+skillBonusChanged idx text model =
     ( withCompendiumEdit
         (\ui -> { ui | skills = updateAt idx (\( n, _ ) -> ( n, text )) ui.skills })
         model
@@ -335,20 +338,20 @@ editSkillBonusChanged idx text model =
     )
 
 
-editFeatureAdd : FeatureGroup -> Model -> ( Model, Cmd Msg )
-editFeatureAdd group model =
+featureAdd : FeatureGroup -> Model -> ( Model, Cmd Msg )
+featureAdd group model =
     ( withCompendiumEdit (mapFeatureGroup group (\fs -> fs ++ [ CompendiumUi.emptyFeatureDraft ])) model
     , Cmd.none
     )
 
 
-editFeatureRemove : FeatureGroup -> Int -> Model -> ( Model, Cmd Msg )
-editFeatureRemove group idx model =
+featureRemove : FeatureGroup -> Int -> Model -> ( Model, Cmd Msg )
+featureRemove group idx model =
     ( withCompendiumEdit (mapFeatureGroup group (removeAt idx)) model, Cmd.none )
 
 
-editFeatureNameChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
-editFeatureNameChanged group idx text model =
+featureNameChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
+featureNameChanged group idx text model =
     ( withCompendiumEdit
         (mapFeatureGroup group (updateAt idx (\f -> { f | name = text })))
         model
@@ -356,8 +359,8 @@ editFeatureNameChanged group idx text model =
     )
 
 
-editFeatureDescriptionChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
-editFeatureDescriptionChanged group idx text model =
+featureDescriptionChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
+featureDescriptionChanged group idx text model =
     ( withCompendiumEdit
         (mapFeatureGroup group (updateAt idx (\f -> { f | description = text })))
         model
@@ -365,8 +368,8 @@ editFeatureDescriptionChanged group idx text model =
     )
 
 
-editCustomSectionAdd : Model -> ( Model, Cmd Msg )
-editCustomSectionAdd model =
+customSectionAdd : Model -> ( Model, Cmd Msg )
+customSectionAdd model =
     ( withCompendiumEdit
         (\ui -> { ui | customSections = ui.customSections ++ [ ( "", "" ) ] })
         model
@@ -374,8 +377,8 @@ editCustomSectionAdd model =
     )
 
 
-editCustomSectionRemove : Int -> Model -> ( Model, Cmd Msg )
-editCustomSectionRemove idx model =
+customSectionRemove : Int -> Model -> ( Model, Cmd Msg )
+customSectionRemove idx model =
     ( withCompendiumEdit
         (\ui -> { ui | customSections = removeAt idx ui.customSections })
         model
@@ -383,8 +386,8 @@ editCustomSectionRemove idx model =
     )
 
 
-editCustomSectionNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-editCustomSectionNameChanged idx text model =
+customSectionNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+customSectionNameChanged idx text model =
     ( withCompendiumEdit
         (\ui ->
             { ui | customSections = updateAt idx (\( _, b ) -> ( text, b )) ui.customSections }
@@ -394,8 +397,8 @@ editCustomSectionNameChanged idx text model =
     )
 
 
-editCustomSectionBodyChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-editCustomSectionBodyChanged idx text model =
+customSectionBodyChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+customSectionBodyChanged idx text model =
     ( withCompendiumEdit
         (\ui ->
             { ui | customSections = updateAt idx (\( n, _ ) -> ( n, text )) ui.customSections }
@@ -449,8 +452,8 @@ removeAt idx xs =
 -- ── EDIT SUBMIT / DELETE ────────────────────────────────────────────────
 
 
-editSubmit : Model -> ( Model, Cmd Msg )
-editSubmit model =
+submit : Model -> ( Model, Cmd Msg )
+submit model =
     case model.modal of
         Just (ModalCompendiumEdit ui) ->
             case CompendiumUi.validateEdit ui of
@@ -492,8 +495,8 @@ submitCreatureCmd mode creature =
                 }
 
 
-editSubmitResponse : Result Http.Error Compendium.Creature -> Model -> ( Model, Cmd Msg )
-editSubmitResponse result model =
+submitResponse : Result Http.Error Compendium.Creature -> Model -> ( Model, Cmd Msg )
+submitResponse result model =
     case result of
         Err err ->
             ( withCompendiumEdit
@@ -517,8 +520,8 @@ editSubmitResponse result model =
                     (Compendium.Wire.fetchAll CompendiumLoaded)
 
 
-editDelete : Model -> ( Model, Cmd Msg )
-editDelete model =
+delete : Model -> ( Model, Cmd Msg )
+delete model =
     case model.modal of
         Just (ModalCompendiumEdit { mode }) ->
             case mode of
@@ -542,8 +545,8 @@ editDelete model =
             ( model, Cmd.none )
 
 
-editDeleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
-editDeleteResponse deletedId result model =
+deleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
+deleteResponse deletedId result model =
     case result of
         Err err ->
             withCompendiumEdit

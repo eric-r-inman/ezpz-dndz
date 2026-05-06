@@ -60,10 +60,10 @@ import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Update.AbilitySave
-import Update.Compendium
 import Update.Compendium.Add
 import Update.Compendium.Browser
 import Update.Compendium.Bulk
+import Update.Compendium.Edit
 import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
@@ -668,88 +668,88 @@ updateInner msg model =
             Update.Compendium.Add.initiativeRolled creatureId rolls model
 
         CompendiumEditNew ->
-            Update.Compendium.editNew model
+            Update.Compendium.Edit.new model
 
         CompendiumEditExisting ->
-            Update.Compendium.editExisting model
+            Update.Compendium.Edit.existing model
 
         CompendiumEditDuplicate ->
-            Update.Compendium.editDuplicate model
+            Update.Compendium.Edit.duplicate model
 
         CompendiumEditCancel ->
-            Update.Compendium.editCancel model
+            Update.Compendium.Edit.cancel model
 
         CompendiumEditFieldChanged field text ->
-            Update.Compendium.editFieldChanged field text model
+            Update.Compendium.Edit.fieldChanged field text model
 
         CompendiumEditKindSet kind ->
-            Update.Compendium.editKindSet kind model
+            Update.Compendium.Edit.kindSet kind model
 
         CompendiumEditSizeSet size ->
-            Update.Compendium.editSizeSet size model
+            Update.Compendium.Edit.sizeSet size model
 
         CompendiumEditSpeedHoverToggle ->
-            Update.Compendium.editSpeedHoverToggle model
+            Update.Compendium.Edit.speedHoverToggle model
 
         CompendiumEditSavingThrowAdd ->
-            Update.Compendium.editSavingThrowAdd model
+            Update.Compendium.Edit.savingThrowAdd model
 
         CompendiumEditSavingThrowRemove idx ->
-            Update.Compendium.editSavingThrowRemove idx model
+            Update.Compendium.Edit.savingThrowRemove idx model
 
         CompendiumEditSavingThrowAbilitySet idx ability ->
-            Update.Compendium.editSavingThrowAbilitySet idx ability model
+            Update.Compendium.Edit.savingThrowAbilitySet idx ability model
 
         CompendiumEditSavingThrowBonusChanged idx text ->
-            Update.Compendium.editSavingThrowBonusChanged idx text model
+            Update.Compendium.Edit.savingThrowBonusChanged idx text model
 
         CompendiumEditSkillAdd ->
-            Update.Compendium.editSkillAdd model
+            Update.Compendium.Edit.skillAdd model
 
         CompendiumEditSkillRemove idx ->
-            Update.Compendium.editSkillRemove idx model
+            Update.Compendium.Edit.skillRemove idx model
 
         CompendiumEditSkillNameChanged idx text ->
-            Update.Compendium.editSkillNameChanged idx text model
+            Update.Compendium.Edit.skillNameChanged idx text model
 
         CompendiumEditSkillBonusChanged idx text ->
-            Update.Compendium.editSkillBonusChanged idx text model
+            Update.Compendium.Edit.skillBonusChanged idx text model
 
         CompendiumEditFeatureAdd group ->
-            Update.Compendium.editFeatureAdd group model
+            Update.Compendium.Edit.featureAdd group model
 
         CompendiumEditFeatureRemove group idx ->
-            Update.Compendium.editFeatureRemove group idx model
+            Update.Compendium.Edit.featureRemove group idx model
 
         CompendiumEditFeatureNameChanged group idx text ->
-            Update.Compendium.editFeatureNameChanged group idx text model
+            Update.Compendium.Edit.featureNameChanged group idx text model
 
         CompendiumEditFeatureDescriptionChanged group idx text ->
-            Update.Compendium.editFeatureDescriptionChanged group idx text model
+            Update.Compendium.Edit.featureDescriptionChanged group idx text model
 
         CompendiumEditCustomSectionAdd ->
-            Update.Compendium.editCustomSectionAdd model
+            Update.Compendium.Edit.customSectionAdd model
 
         CompendiumEditCustomSectionRemove idx ->
-            Update.Compendium.editCustomSectionRemove idx model
+            Update.Compendium.Edit.customSectionRemove idx model
 
         CompendiumEditCustomSectionNameChanged idx text ->
-            Update.Compendium.editCustomSectionNameChanged idx text model
+            Update.Compendium.Edit.customSectionNameChanged idx text model
 
         CompendiumEditCustomSectionBodyChanged idx text ->
-            Update.Compendium.editCustomSectionBodyChanged idx text model
+            Update.Compendium.Edit.customSectionBodyChanged idx text model
 
         CompendiumEditSubmit ->
-            Update.Compendium.editSubmit model
+            Update.Compendium.Edit.submit model
 
         CompendiumEditSubmitResponse result ->
-            Update.Compendium.editSubmitResponse result model
+            Update.Compendium.Edit.submitResponse result model
 
         CompendiumEditDelete ->
-            Update.Compendium.editDelete model
+            Update.Compendium.Edit.delete model
 
         CompendiumEditDeleteResponse id result ->
-            Update.Compendium.editDeleteResponse id result model
+            Update.Compendium.Edit.deleteResponse id result model
 
         CompendiumPasteOpen ->
             Update.Compendium.Paste.open model
