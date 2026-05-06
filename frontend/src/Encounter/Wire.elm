@@ -45,7 +45,7 @@ import Http
 import Json.Decode as D
 import Json.Encode as E
 import Set exposing (Set)
-import Url
+import Util.Http
 
 
 
@@ -142,7 +142,7 @@ getSaveCmd :
     -> Cmd msg
 getSaveCmd toMsg name =
     Http.get
-        { url = "/api/encounter/saves/" ++ Url.percentEncode name
+        { url = "/api/encounter/saves/" ++ Util.Http.urlPathSegment name
         , expect =
             Http.expectJson toMsg
                 (D.field "encounter" decodeEncounter)
@@ -170,7 +170,7 @@ putSaveCmd toMsg opts encounter =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "/api/encounter/saves/" ++ Url.percentEncode opts.name ++ suffix
+        , url = "/api/encounter/saves/" ++ Util.Http.urlPathSegment opts.name ++ suffix
         , body = Http.jsonBody (encodeEncounter encounter)
         , expect = Http.expectWhatever toMsg
         , timeout = Nothing
@@ -185,7 +185,7 @@ deleteSaveCmd toMsg name =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = "/api/encounter/saves/" ++ Url.percentEncode name
+        , url = "/api/encounter/saves/" ++ Util.Http.urlPathSegment name
         , body = Http.emptyBody
         , expect = Http.expectWhatever toMsg
         , timeout = Nothing
@@ -202,7 +202,7 @@ renameSaveCmd :
     -> Cmd msg
 renameSaveCmd toMsg opts =
     Http.post
-        { url = "/api/encounter/saves/" ++ Url.percentEncode opts.from ++ "/rename"
+        { url = "/api/encounter/saves/" ++ Util.Http.urlPathSegment opts.from ++ "/rename"
         , body =
             Http.jsonBody
                 (E.object [ ( "new_name", E.string opts.to ) ])

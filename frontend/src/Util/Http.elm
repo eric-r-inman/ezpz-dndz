@@ -1,17 +1,19 @@
-module Util.Http exposing (errorToString)
+module Util.Http exposing (errorToString, urlPathSegment)
 
-{-| Common HTTP error → human-readable string.
+{-| Common HTTP helpers shared across the app.
 
-Used by every Update branch that surfaces an HTTP failure to the
-user (toasts, modal-error fields, etc.). Keeps the message bodies
-consistent across the app instead of letting each call site format
-its own.
+`errorToString` is used by every Update branch that surfaces an HTTP
+failure to the user (toasts, modal-error fields, etc.) so message
+bodies stay consistent. `urlPathSegment` is the single percent-
+encoder used by Wire modules; centralizing it keeps domain-adjacent
+modules (`Encounter.Wire` etc.) from importing `Url` directly.
 
-@docs errorToString
+@docs errorToString, urlPathSegment
 
 -}
 
 import Http
+import Url
 
 
 {-| Convert an `Http.Error` into a short human-readable message
@@ -34,3 +36,12 @@ errorToString err =
 
         Http.BadBody body ->
             "Couldn't parse response: " ++ body
+
+
+{-| Percent-encode a single URL path segment. Wraps
+`Url.percentEncode` so domain-adjacent modules don't depend on `Url`
+themselves.
+-}
+urlPathSegment : String -> String
+urlPathSegment =
+    Url.percentEncode
