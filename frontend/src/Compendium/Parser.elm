@@ -302,19 +302,19 @@ dispatchClassifiedLine line state =
         LineLanguages langs ->
             withCreature (\c -> { c | languages = langs }) (commitFeature state)
 
-        LineChallenge cr xp lairXp pb ->
+        LineChallenge fields ->
             withCreature
                 (\c ->
                     let
                         next =
                             { c
-                                | challengeRating = cr
-                                , xp = xp
-                                , xpInLair = lairXp
+                                | challengeRating = fields.cr
+                                , xp = fields.xp
+                                , xpInLair = fields.xpInLair
                             }
                     in
-                    if pb > 0 then
-                        { next | proficiencyBonus = pb }
+                    if fields.pb > 0 then
+                        { next | proficiencyBonus = fields.pb }
 
                     else
                         next
@@ -821,9 +821,10 @@ type Line
     | LineConditionImmunities (List String)
     | LineSenses Compendium.Senses
     | LineLanguages (List String)
-    | LineChallenge String Int Int Int
-      -- ^ CR text, XP, lair XP (0 if not present), optional PB
-      -- (defaults to 0 if not in line)
+    | LineChallenge { cr : String, xp : Int, xpInLair : Int, pb : Int }
+      -- ^ `xpInLair` is 0 when the source omits the lair-XP clause.
+      -- `pb` is 0 when no `PB +N` is on the line; the consumer
+      -- treats 0 as "don't override the default proficiency bonus".
     | LineProficiencyBonus Int
     | LineSectionHeader Section
     | LineFeatureStart String String
@@ -1546,24 +1547,17 @@ applySensesSegment segment senses =
 
 parseChallenge : String -> Line
 parseChallenge raw =
-    let
-        crText =
+    LineChallenge
+        { cr =
             raw
                 |> String.split "("
                 |> List.head
                 |> Maybe.withDefault raw
                 |> String.trim
-
-        xp =
-            extractXp raw
-
-        lairXp =
-            extractLairXpFromChallenge raw
-
-        pb =
-            extractPbFromChallenge raw
-    in
-    LineChallenge crText xp lairXp pb
+        , xp = extractXp raw
+        , xpInLair = extractLairXpFromChallenge raw
+        , pb = extractPbFromChallenge raw
+        }
 
 
 {-| Pull `+N` after `PB` out of strings like
