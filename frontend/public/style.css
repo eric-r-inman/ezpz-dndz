@@ -1707,12 +1707,59 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
-  max-width: 640px;
+  max-width: var(--modal-max-w, 640px);
   width: calc(100% - 32px);
   max-height: calc(100vh - 64px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Per-modal width tokens.  Each `.modal--*` modifier sets only
+   `--modal-max-w`; the structural rule above consumes it.  Modals
+   that need extra height / width handling (compendium / paste
+   /condition) layer those overrides in their own block below. */
+.modal--note-edit {
+  --modal-max-w: 420px;
+}
+
+.modal--hp-change,
+.modal--initiative,
+.modal--ability-save {
+  --modal-max-w: 480px;
+}
+
+.modal--duplicate,
+.modal--quick-add {
+  --modal-max-w: 520px;
+}
+
+.modal--save,
+.modal--load {
+  --modal-max-w: 560px;
+}
+
+.modal--condition {
+  --modal-max-w: 620px;
+  width: 100%;
+}
+
+.modal--compendium-edit {
+  --modal-max-w: 800px;
+  max-height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.modal--compendium {
+  --modal-max-w: 1100px;
+  height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.modal--compendium-paste {
+  --modal-max-w: 1200px;
+  max-height: calc(100vh - 32px);
+  width: calc(100% - 32px);
 }
 
 .modal__header {
@@ -2121,10 +2168,6 @@ body {
    .modal / .modal__header / .modal__body) for layout, with its own
    form / preview / footer styles. */
 
-.modal--hp-change {
-  max-width: 480px;
-}
-
 .hp-change__caption {
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -2341,10 +2384,6 @@ body {
 /* Initiative manager modal — same .modal chrome as the others, with
    per-section blocks separated by orange section headings, and
    block-level button rows (each row a full-width action-btn). */
-
-.modal--initiative {
-  max-width: 480px;
-}
 
 .init-section {
   display: flex;
@@ -2564,10 +2603,6 @@ body {
 /* Note-edit modal — reuses .modal-backdrop / .modal / .modal__header
    chrome from the dice modal. The modal itself is narrow since it
    only holds a single short text input. */
-.modal--note-edit {
-  max-width: 420px;
-}
-
 .note-edit__input {
   width: 100%;
   font-family: inherit;
@@ -2598,11 +2633,6 @@ body {
    .modal__header chrome as the others. The body holds five
    sections (standard radios, custom name, note, duration,
    save-to-end) with a flex footer pinned at the bottom. */
-.modal--condition {
-  max-width: 620px;
-  width: 100%;
-}
-
 .cond-section {
   display: flex;
   flex-direction: column;
@@ -2913,12 +2943,6 @@ body {
    creatures with very different stat-block lengths. The detail
    pane internally has `overflow-y: auto`, so taller stat blocks
    scroll within the fixed-size frame. */
-.modal--compendium {
-  max-width: 1100px;
-  height: calc(100vh - 32px);
-  width: calc(100% - 32px);
-}
-
 .modal--compendium .modal__body {
   padding: 0;
   gap: 0;
@@ -3307,12 +3331,6 @@ body {
 
 /* Compendium edit / create modal — tall, narrow, scrollable form
    with section fieldsets and inline numeric inputs. */
-.modal--compendium-edit {
-  max-width: 800px;
-  max-height: calc(100vh - 32px);
-  width: calc(100% - 32px);
-}
-
 .modal--compendium-edit .modal__body {
   padding: 16px 20px;
   gap: 12px;
@@ -3494,12 +3512,6 @@ body {
 
 /* Paste-stat-block modal — wide two-column layout: textarea on
    the left, live-parsed preview on the right. */
-.modal--compendium-paste {
-  max-width: 1200px;
-  max-height: calc(100vh - 32px);
-  width: calc(100% - 32px);
-}
-
 .modal--compendium-paste .modal__body {
   padding: 0;
   gap: 0;
@@ -3698,12 +3710,6 @@ body {
    modals share the same row / list / confirm presentation; the
    .save-modal__* classes are the canonical names and the load
    modal piggybacks on them so we don't duplicate styling. */
-.modal--save,
-.modal--load {
-  max-width: 560px;
-  width: 100%;
-}
-
 .save-modal__row {
   display: flex;
   flex-direction: column;
@@ -3864,10 +3870,6 @@ body {
 
 /* Saving-throw modal: a one-line summary above three side-by-side
    roll buttons (Roll / Advantage / Disadvantage). */
-.modal--ability-save {
-  max-width: 480px;
-}
-
 .ability-save__summary {
   margin: 0;
   font-size: 1rem;
@@ -3892,11 +3894,6 @@ body {
    their __row variants) plug into the same chrome rules below;
    feature-specific tweaks (sort toggle, max-height, label/hint
    columns) are layered on top. */
-.modal--duplicate,
-.modal--quick-add {
-  max-width: 520px;
-}
-
 .duplicate__list,
 .quick-add__list {
   list-style: none;
