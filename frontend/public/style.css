@@ -565,6 +565,25 @@ body {
   outline-offset: 2px;
 }
 
+/* Shared bare-button reset.  Strips user-agent button styling
+   so feature classes only declare what's actually unique to them
+   (size, color, hover state).  Used by modal close × buttons,
+   toast dismisses, mode toggles, and inline link-buttons.  Each
+   class block below relies on the trio (appearance / background /
+   border) being set here and only adds its own padding / size /
+   color overrides. */
+.modal__close,
+.toast__dismiss,
+.fly-height__btn,
+.hp-change__mode-btn,
+.save-modal__row-name--clickable {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .icon-btn--danger:hover {
   color: var(--color-danger);
   background: var(--color-danger-soft);
@@ -913,15 +932,10 @@ body {
 }
 
 .fly-height__btn {
-  appearance: none;
-  background: transparent;
-  border: none;
-  cursor: pointer;
   padding: 0 2px;
   font-size: 0.7rem;
   color: var(--color-text-muted);
   line-height: 1;
-  font-family: inherit;
 }
 
 .fly-height__btn:hover {
@@ -1709,10 +1723,6 @@ body {
 }
 
 .modal__close {
-  appearance: none;
-  border: none;
-  background: transparent;
-  cursor: pointer;
   font-size: 1.4rem;
   color: var(--color-text-muted);
   width: 28px;
@@ -1720,7 +1730,6 @@ body {
   border-radius: var(--radius-sm);
   display: inline-grid;
   place-items: center;
-  font-family: inherit;
   line-height: 1;
 }
 
@@ -2125,13 +2134,8 @@ body {
 }
 
 .hp-change__mode-btn {
-  appearance: none;
-  background: transparent;
-  border: none;
-  cursor: pointer;
   padding: 6px 14px;
   font-size: 0.82rem;
-  font-family: inherit;
   color: var(--color-text-muted);
   transition:
     background 0.1s ease,
@@ -3288,15 +3292,11 @@ body {
 }
 
 .toast__dismiss {
-  appearance: none;
-  background: transparent;
-  border: none;
   color: var(--color-text-muted);
-  cursor: pointer;
   font-size: 1rem;
   line-height: 1;
   padding: 2px 6px;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
 }
 
 .toast__dismiss:hover {
@@ -3838,12 +3838,7 @@ body {
 }
 
 .save-modal__row-name--clickable {
-  appearance: none;
-  background: transparent;
-  border: none;
   text-align: left;
-  cursor: pointer;
-  font-family: inherit;
   padding: 0;
   color: var(--color-accent);
 }
