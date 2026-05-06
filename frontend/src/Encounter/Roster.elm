@@ -1,7 +1,7 @@
 module Encounter.Roster exposing
     ( moveUp, moveDown
     , sortByInitiative
-    , removeCreature, duplicateCreature
+    , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, instanceBaseName
     )
 
@@ -19,7 +19,7 @@ mutations through these and lifecycle ticks through
 
 @docs moveUp, moveDown
 @docs sortByInitiative
-@docs removeCreature, duplicateCreature
+@docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, instanceBaseName
 
 -}
@@ -212,6 +212,24 @@ duplicateCreature name enc =
                     }
             in
             { enc | creatures = insertAfter name copy enc.creatures }
+
+
+{-| Insert a fully-built `Creature` immediately after the named
+source in the queue. No-op when the source isn't present.
+
+The caller is responsible for picking a unique display name
+(use [`uniqueInstanceName`](#uniqueInstanceName) +
+[`instanceBaseName`](#instanceBaseName)) and for setting any
+encounter-unique ids on the copy's conditions / save notices.
+This is the building block used by the Duplicate modal's
+Fresh / Minion variants where the copy's state diverges from
+the source enough that [`duplicateCreature`](#duplicateCreature)
+isn't appropriate.
+
+-}
+insertCopyAfter : String -> Creature -> Encounter -> Encounter
+insertCopyAfter anchorName copy enc =
+    { enc | creatures = insertAfter anchorName copy enc.creatures }
 
 
 {-| Strip a trailing `" <integer>"` from a creature's display name

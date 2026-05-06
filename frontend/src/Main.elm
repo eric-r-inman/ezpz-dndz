@@ -68,6 +68,7 @@ import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
 import Update.Dice
+import Update.Duplicate
 import Update.Encounter
 import Update.HpChange
 import Update.Initiative
@@ -92,6 +93,7 @@ import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
 import View.Modal.Condition
 import View.Modal.Dice
+import View.Modal.Duplicate
 import View.Modal.HpChange
 import View.Modal.Initiative
 import View.Modal.Load
@@ -178,6 +180,9 @@ subscriptions model =
 
                     Just (ModalQuickAdd _) ->
                         Browser.Events.onKeyDown (escKey QuickAddClose)
+
+                    Just (ModalDuplicate _) ->
+                        Browser.Events.onKeyDown (escKey DuplicateClose)
 
                     _ ->
                         if model.compendium.open then
@@ -488,8 +493,26 @@ updateInner msg model =
         RemoveCreature name ->
             Update.Encounter.removeCreature name model
 
-        DuplicateCreature name ->
-            Update.Encounter.duplicateCreature name model
+        DuplicateOpen name ->
+            Update.Duplicate.open name model
+
+        DuplicateClose ->
+            Update.Duplicate.close model
+
+        DuplicateExact ->
+            Update.Duplicate.exact model
+
+        DuplicateFresh ->
+            Update.Duplicate.fresh model
+
+        DuplicateMinionHalf ->
+            Update.Duplicate.minionHalf model
+
+        DuplicateMinionOne ->
+            Update.Duplicate.minionOne model
+
+        DuplicatePudding ->
+            Update.Duplicate.pudding model
 
         -- Initiative manager
         InitiativeOpen target ->
@@ -990,6 +1013,7 @@ view model =
             , View.Modal.Load.view model
             , View.Modal.AbilitySave.view model
             , View.Modal.QuickAdd.view model
+            , View.Modal.Duplicate.view model
             , View.Toast.list model.toasts
             , View.Audio.ringer model
             ]

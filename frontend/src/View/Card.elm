@@ -124,8 +124,8 @@ view activeName hpEdit creature =
             , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
-                    , onClick (DuplicateCreature creature.name)
-                    , title "Duplicate creature (insert below)"
+                    , onClick (DuplicateOpen creature.name)
+                    , title "Duplicate creature — pick Exact / Fresh / Minion"
                     , attribute "aria-label" "Duplicate"
                     ]
                     [ text "⧉" ]

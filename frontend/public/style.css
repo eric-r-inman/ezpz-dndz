@@ -3901,6 +3901,74 @@ body {
   justify-content: center;
 }
 
+/* Duplicate-picker modal: a Quick-Add-style scrollable list of
+   five duplication modes (Exact / Fresh / Minion ½ / Minion 1
+   / Pudding).  Each row carries a label on the left and an
+   inline help hint on the right, with a hover highlight that
+   makes the click target obvious. */
+.modal--duplicate {
+  max-width: 520px;
+}
+
+.duplicate__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.duplicate__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition:
+    background 0.1s ease,
+    color 0.1s ease;
+}
+
+.duplicate__row:last-child {
+  border-bottom: none;
+}
+
+.duplicate__row:hover,
+.duplicate__row:focus-visible {
+  background: var(--color-accent-soft);
+  outline: none;
+}
+
+.duplicate__row--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.duplicate__row--disabled:hover {
+  background: transparent;
+}
+
+.duplicate__label {
+  flex: 0 0 auto;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.duplicate__hint {
+  flex: 1 1 auto;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Quick Add modal: a single sort toggle on top of a scrollable
    list of all compendium creatures (name on the left, CR on the
    right).  Clicking a row adds one instance and closes the modal.

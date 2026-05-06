@@ -300,7 +300,15 @@ type Msg
     | MoveCreatureDown String
       -- Roster mutation (right rail × / ⧉ buttons)
     | RemoveCreature String
-    | DuplicateCreature String
+      -- Duplicate picker modal: open from the card's ⧉ button,
+      -- pick one of four flavors (exact / fresh / two minion variants).
+    | DuplicateOpen String
+    | DuplicateClose
+    | DuplicateExact
+    | DuplicateFresh
+    | DuplicateMinionHalf
+    | DuplicateMinionOne
+    | DuplicatePudding
       -- Initiative manager modal
     | InitiativeOpen String
     | InitiativeClose

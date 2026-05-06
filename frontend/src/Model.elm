@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, hpChangeLens, initiativeLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -46,6 +46,7 @@ import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition exposing (ConditionUi)
 import Ui.Dice exposing (DiceUi)
+import Ui.Duplicate exposing (DuplicateUi)
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
@@ -103,6 +104,7 @@ type Modal
     | ModalLoad LoadUi
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
+    | ModalDuplicate DuplicateUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -144,6 +146,20 @@ compendiumEditLens =
                 _ ->
                     Nothing
     , wrap = ModalCompendiumEdit
+    }
+
+
+duplicateLens : ModalLens DuplicateUi
+duplicateLens =
+    { extract =
+        \m ->
+            case m of
+                ModalDuplicate ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalDuplicate
     }
 
 

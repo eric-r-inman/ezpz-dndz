@@ -3,7 +3,6 @@ module Update.Encounter exposing
     , controlCancel
     , controlConfirm
     , cycleCover
-    , duplicateCreature
     , fallDamageLanded
     , moveCreatureDown
     , moveCreatureUp
@@ -208,11 +207,6 @@ moveCreatureDown name model =
 removeCreature : String -> Model -> ( Model, Cmd Msg )
 removeCreature name model =
     ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
-
-
-duplicateCreature : String -> Model -> ( Model, Cmd Msg )
-duplicateCreature name model =
-    ( withEncounter (Encounter.Roster.duplicateCreature name) model, Cmd.none )
 
 
 {-| First click of Reset: stage the pending state so the panel
