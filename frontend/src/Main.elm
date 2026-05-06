@@ -61,6 +61,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Update.AbilitySave
 import Update.Compendium
+import Update.Compendium.Add
 import Update.Compendium.Browser
 import Update.Compendium.Paste
 import Update.Condition
@@ -660,10 +661,10 @@ updateInner msg model =
             Update.Compendium.Browser.addCountChanged raw model
 
         CompendiumAddToQueue creatureId ->
-            Update.Compendium.addToQueue creatureId model
+            Update.Compendium.Add.addToQueue creatureId model
 
         CompendiumInitiativeRolled creatureId rolls ->
-            Update.Compendium.initiativeRolled creatureId rolls model
+            Update.Compendium.Add.initiativeRolled creatureId rolls model
 
         CompendiumEditNew ->
             Update.Compendium.editNew model
