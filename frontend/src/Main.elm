@@ -61,6 +61,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Update.AbilitySave
 import Update.Compendium
+import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
 import Update.Dice
@@ -748,16 +749,16 @@ updateInner msg model =
             Update.Compendium.editDeleteResponse id result model
 
         CompendiumPasteOpen ->
-            Update.Compendium.pasteOpen model
+            Update.Compendium.Paste.open model
 
         CompendiumPasteCancel ->
-            Update.Compendium.pasteCancel model
+            Update.Compendium.Paste.cancel model
 
         CompendiumPasteTextChanged text ->
-            Update.Compendium.pasteTextChanged text model
+            Update.Compendium.Paste.textChanged text model
 
         CompendiumPasteApply ->
-            Update.Compendium.pasteApply model
+            Update.Compendium.Paste.apply model
 
         PanelShowCreature creatureId creatureName ->
             Update.Compendium.panelShowCreature creatureId creatureName model

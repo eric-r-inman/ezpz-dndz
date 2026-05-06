@@ -42,10 +42,6 @@ module Update.Compendium exposing
     , loaded
     , open
     , panelShowCreature
-    , pasteApply
-    , pasteCancel
-    , pasteOpen
-    , pasteTextChanged
     , pendingCancel
     , pendingConfirm
     , resetClick
@@ -67,7 +63,6 @@ bulk flow.
 
 import Browser.Dom
 import Compendium
-import Compendium.Parser
 import Compendium.Wire
 import Dice
 import Effects
@@ -876,67 +871,6 @@ editDeleteResponse deletedId result model =
                 |> Update.Toast.pushWith ToastSuccess
                     "Creature deleted"
                     (Compendium.Wire.fetchAll CompendiumLoaded)
-
-
-
--- ── PASTE MODAL ─────────────────────────────────────────────────────────
-
-
-pasteOpen : Model -> ( Model, Cmd Msg )
-pasteOpen model =
-    ( { model | modal = Just (ModalCompendiumPaste CompendiumUi.emptyPaste) }
-    , Cmd.none
-    )
-
-
-pasteCancel : Model -> ( Model, Cmd Msg )
-pasteCancel model =
-    ( { model | modal = Nothing }, Cmd.none )
-
-
-pasteTextChanged : String -> Model -> ( Model, Cmd Msg )
-pasteTextChanged text model =
-    ( { model
-        | modal =
-            Just
-                (ModalCompendiumPaste
-                    { text = text
-                    , parseResult = Compendium.Parser.parseStatBlock text
-                    }
-                )
-      }
-    , Cmd.none
-    )
-
-
-{-| Hand the parsed stat block over to the edit modal so the GM can
-review and save. We pre-fill via `CompendiumUi.editFromCreature`
-then flip the mode back to `CreateMode` (the parsed creature has
-no server-side id yet) and reset the source to "Pasted" so the
-provenance is preserved through save.
--}
-pasteApply : Model -> ( Model, Cmd Msg )
-pasteApply model =
-    case model.modal of
-        Just (ModalCompendiumPaste { parseResult }) ->
-            case parseResult of
-                Ok creature ->
-                    let
-                        editUi =
-                            CompendiumUi.editFromCreature creature
-
-                        recreated =
-                            { editUi | mode = CreateMode }
-                    in
-                    ( { model | modal = Just (ModalCompendiumEdit recreated) }
-                    , Cmd.none
-                    )
-
-                Err _ ->
-                    ( model, Cmd.none )
-
-        _ ->
-            ( model, Cmd.none )
 
 
 
