@@ -15,13 +15,13 @@ else is a glanceable summary.
 
 -}
 
-import Compendium
 import Encounter exposing (Cover(..), Creature, Encounter)
+import Encounter.Xp as Xp exposing (XpScope(..))
 import Html exposing (Html, button, div, li, span, text, ul)
 import Html.Attributes exposing (attribute, class, tabindex, title, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
-import Msg exposing (Msg(..), XpScope(..))
+import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 
 
@@ -69,105 +69,26 @@ view enc savedAs db xpScope xpFilterOpen =
         ]
 
 
-{-| Pair of XP totals across the encounter, filtered by `scope`.
-
-  - `total` — sum of every in-scope creature's base `xp`.
-  - `lairTotal` — sum of `xpInLair` if non-zero, otherwise `xp`,
-    so a mixed party (some with lair XP, some without) sums
-    correctly. Equal to `total` when nothing in scope has a
-    lair-XP variant; the view uses that equality to decide
-    whether to render the secondary `(N w/Lair)` chip.
-
-Resolved through each creature's `creatureId` against the
-compendium so the source-of-truth XP comes from the compendium
-entry, not duplicated onto the live-encounter creature.
-
--}
-type alias XpTotals =
-    { total : Int
-    , lairTotal : Int
-    }
-
-
-totalXp : XpScope -> Encounter -> CompendiumDb -> XpTotals
-totalXp scope enc db =
-    case db of
-        CompendiumDbLoaded loaded ->
-            enc.creatures
-                |> List.filterMap (xpForCreature scope loaded)
-                |> List.foldl
-                    (\( base, lair ) acc ->
-                        { total = acc.total + base
-                        , lairTotal = acc.lairTotal + lair
-                        }
-                    )
-                    { total = 0, lairTotal = 0 }
-
-        _ ->
-            { total = 0, lairTotal = 0 }
-
-
-xpForCreature : XpScope -> Compendium.Db -> Creature -> Maybe ( Int, Int )
-xpForCreature scope db ec =
-    ec.creatureId
-        |> Maybe.andThen (\id -> Compendium.find id db)
-        |> Maybe.andThen
-            (\source ->
-                if source.kind == Compendium.Player then
-                    Nothing
-
-                else if matchesScope scope source.kind ec then
-                    let
-                        lair =
-                            if source.xpInLair > 0 then
-                                source.xpInLair
-
-                            else
-                                source.xp
-                    in
-                    Just ( source.xp, lair )
-
-                else
-                    Nothing
-            )
-
-
-matchesScope : XpScope -> Compendium.CreatureKind -> Creature -> Bool
-matchesScope scope kind ec =
-    case scope of
-        ScopeXpEnemiesAndNpcs ->
-            kind == Compendium.Enemy || kind == Compendium.Npc
-
-        ScopeXpEnemiesOnly ->
-            kind == Compendium.Enemy
-
-        ScopeXpNpcsOnly ->
-            kind == Compendium.Npc
-
-        ScopeXpSelectedOnly ->
-            ec.selected
-
-
 xpReadout : Encounter -> CompendiumDb -> XpScope -> Html Msg
 xpReadout enc db scope =
     case db of
-        CompendiumDbLoaded _ ->
+        CompendiumDbLoaded loaded ->
             let
                 totals =
-                    totalXp scope enc db
+                    Xp.totalsFor scope enc loaded
             in
             span [ class "encounter-bar__xp-group" ]
                 [ span
                     [ class "encounter-bar__xp"
                     , title (xpScopeTooltip scope)
                     ]
-                    [ text (formatThousands totals.total ++ " XP") ]
+                    [ text (Xp.formatThousands totals.total ++ " XP") ]
                 , if totals.lairTotal > totals.total then
                     span
                         [ class "encounter-bar__xp-lair"
                         , title "Total XP if these creatures are fought in their lair"
                         ]
-                        [ text ("(" ++ formatThousands totals.lairTotal ++ " w/Lair)") ]
+                        [ text ("(" ++ Xp.formatThousands totals.lairTotal ++ " w/Lair)") ]
 
                   else
                     text ""
@@ -195,54 +116,6 @@ xpScopeTooltip scope =
 
         ScopeXpSelectedOnly ->
             "Total XP for selected creatures only"
-
-
-{-| Pretty-print an integer with thousand separators, matching
-the source-side D&D Beyond convention (e.g. `15,000 XP`).
-Negative values keep their sign on the left.
--}
-formatThousands : Int -> String
-formatThousands n =
-    let
-        digits =
-            String.fromInt (Basics.abs n)
-
-        head =
-            modBy 3 (String.length digits)
-
-        firstChunk =
-            String.left head digits
-
-        rest =
-            String.dropLeft head digits
-
-        chunks =
-            chunk3 rest
-
-        joined =
-            if String.isEmpty firstChunk then
-                String.join "," chunks
-
-            else
-                String.join "," (firstChunk :: chunks)
-    in
-    if n < 0 then
-        "-" ++ joined
-
-    else
-        joined
-
-
-chunk3 : String -> List String
-chunk3 s =
-    if String.isEmpty s then
-        []
-
-    else if String.length s <= 3 then
-        [ s ]
-
-    else
-        String.left 3 s :: chunk3 (String.dropLeft 3 s)
 
 
 {-| HP readout for the encounter title bar. Reuses the same

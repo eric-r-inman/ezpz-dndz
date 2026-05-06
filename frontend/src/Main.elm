@@ -16,6 +16,7 @@ import Encounter
         )
 import Encounter.Roster
 import Encounter.Wire
+import Encounter.Xp exposing (XpScope(..))
 import File exposing (File)
 import File.Select
 import HpChange
@@ -40,7 +41,6 @@ import Msg
         , Msg(..)
         , RollMode(..)
         , RollScope(..)
-        , XpScope(..)
         )
 import Preferences
 import Route exposing (Route(..))

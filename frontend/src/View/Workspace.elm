@@ -10,10 +10,11 @@ them together with the model fragments each one needs.
 -}
 
 import Encounter exposing (Encounter)
+import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, div, main_, section)
 import Html.Attributes exposing (class)
 import Model exposing (Model)
-import Msg exposing (Msg, XpScope)
+import Msg exposing (Msg)
 import Ui.Compendium exposing (CompendiumDb)
 import Ui.HpChange exposing (HpEdit)
 import View.Card

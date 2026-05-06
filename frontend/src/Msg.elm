@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , SaveDestination(..), XpScope(..)
+    , SaveDestination(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -35,6 +35,7 @@ import Compendium
 import Dice
 import Encounter exposing (Encounter)
 import Encounter.Wire
+import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
 import Url exposing (Url)
@@ -227,31 +228,6 @@ was used because it only sees the half of the flow that uses it.
 type SaveDestination
     = SaveDestinationServer
     | SaveDestinationDevice
-
-
-
--- ── ENCOUNTER XP AUX ─────────────────────────────────────────────────────────
-
-
-{-| Which slice of the encounter contributes to the title-bar XP
-total. Controls the dropdown to the right of the XP readout.
-
-  - `ScopeXpEnemiesAndNpcs` — every non-Player creature. Default.
-  - `ScopeXpEnemiesOnly` — Enemy-tagged creatures only.
-  - `ScopeXpNpcsOnly` — NPC-tagged creatures only.
-  - `ScopeXpSelectedOnly` — whichever creatures the GM has ticked
-    via the row 1 multi-select checkboxes (Player kind still
-    excluded).
-
-Player-kind creatures never grant XP regardless of scope; they're
-the party, not the budget.
-
--}
-type XpScope
-    = ScopeXpEnemiesAndNpcs
-    | ScopeXpEnemiesOnly
-    | ScopeXpNpcsOnly
-    | ScopeXpSelectedOnly
 
 
 
