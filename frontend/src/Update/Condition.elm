@@ -3,7 +3,6 @@ module Update.Condition exposing
     , close
     , countdownPhaseSet
     , countdownTurnsChanged
-    , currentTurnInvalid
     , customNameChanged
     , delete
     , durationKindSet
@@ -24,7 +23,6 @@ module Update.Condition exposing
     , submit
     , untilCreatureChanged
     , untilPhaseSet
-    , untilTargetSet
     )
 
 {-| Update branches for the condition / effect modal: the radio
@@ -121,32 +119,18 @@ durationKindSet kind model =
     ( withConditionUi (\u -> { u | durationKind = kind }) model, Cmd.none )
 
 
-{-| Switching the reference creature can make "begin + current"
-newly invalid (or no longer invalid). Repair the target field if
-so — the GM doesn't want to babysit the radio after a dropdown
-change.
--}
 untilCreatureChanged : String -> Model -> ( Model, Cmd Msg )
 untilCreatureChanged name model =
-    ( withConditionUi
-        (\u -> repairUntilTarget model { u | untilCreature = name })
-        model
+    ( withConditionUi (\u -> { u | untilCreature = name }) model
     , Cmd.none
     )
 
 
 untilPhaseSet : Encounter.TurnPhase -> Model -> ( Model, Cmd Msg )
 untilPhaseSet phase model =
-    ( withConditionUi
-        (\u -> repairUntilTarget model { u | untilPhase = phase })
-        model
+    ( withConditionUi (\u -> { u | untilPhase = phase }) model
     , Cmd.none
     )
-
-
-untilTargetSet : Encounter.TurnTarget -> Model -> ( Model, Cmd Msg )
-untilTargetSet target model =
-    ( withConditionUi (\u -> { u | untilTarget = target }) model, Cmd.none )
 
 
 countdownTurnsChanged : String -> Model -> ( Model, Cmd Msg )
@@ -394,31 +378,36 @@ saveNoticeDismiss name id model =
 -- ── HELPERS ────────────────────────────────────────────────────────────
 
 
-{-| Auto-correct the `untilTarget` field if the current
-phase / creature combo has made `OnCurrentTurn` nonsensical.
+{-| Compute the `TurnTarget` discriminator for an "until-turn"
+condition. The modal no longer asks the user — every condition
+is "until the target's _next_ turn" — so we recover the existing
+domain encoding from current encounter state at submit time.
 
-A "Begin + Current turn" pairing is logically invalid when the
-reference creature is currently active: the begin of their current
-turn already fired when they became active, so there's no future
-hook to expire on. Flip to `OnNextTurn` so the condition has a
-real expiration point.
+The semantic: "the condition expires at the begin/end of the
+target creature's turn, when that target's turn next comes up."
+
+  - Target is currently active AND phase = AtEnd: the next AtEnd
+    fire will be this current turn ending, but the GM means the
+    _next_ one — so we encode `OnNextTurn` (skip first match).
+  - All other cases: the first matching hook fire is already the
+    target's next turn (AtBegin while target is active means the
+    begin already happened; AtBegin/AtEnd while target is inactive
+    means the first match is on their next turn). Encode as
+    `OnCurrentTurn` (expire on first match).
 
 -}
-repairUntilTarget : Model -> ConditionUi -> ConditionUi
-repairUntilTarget model ui =
-    if currentTurnInvalid model ui && ui.untilTarget == Encounter.OnCurrentTurn then
-        { ui | untilTarget = Encounter.OnNextTurn }
+nextTurnTarget : ConditionUi -> Model -> Encounter.TurnTarget
+nextTurnTarget ui model =
+    if
+        ui.untilCreature
+            == model.encounter.activeName
+            && ui.untilPhase
+            == Encounter.AtEnd
+    then
+        Encounter.OnNextTurn
 
     else
-        ui
-
-
-{-| True when `OnCurrentTurn` would be a no-op — only the
-"Begin + active reference creature" case for now.
--}
-currentTurnInvalid : Model -> ConditionUi -> Bool
-currentTurnInvalid model ui =
-    ui.untilPhase == Encounter.AtBegin && ui.untilCreature == model.encounter.activeName
+        Encounter.OnCurrentTurn
 
 
 {-| Translate the modal's UI state into a domain-level
@@ -514,7 +503,10 @@ buildDuration ui model =
             Encounter.DurationManual
 
         DurKindUntilTurn ->
-            Encounter.DurationUntilTurn ui.untilPhase ui.untilTarget ui.untilCreature
+            Encounter.DurationUntilTurn
+                ui.untilPhase
+                (nextTurnTarget ui model)
+                ui.untilCreature
 
         DurKindCountdown ->
             let

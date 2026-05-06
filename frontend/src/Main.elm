@@ -562,9 +562,6 @@ updateInner msg model =
         ConditionUntilPhaseSet phase ->
             Update.Condition.untilPhaseSet phase model
 
-        ConditionUntilTargetSet target ->
-            Update.Condition.untilTargetSet target model
-
         ConditionCountdownTurnsChanged text ->
             Update.Condition.countdownTurnsChanged text model
 

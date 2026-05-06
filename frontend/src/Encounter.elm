@@ -652,7 +652,13 @@ describeDuration duration =
         DurationManual ->
             "Manual"
 
-        DurationUntilTurn phase target name ->
+        DurationUntilTurn phase _ name ->
+            -- The TurnTarget discriminator is no longer surfaced to
+            -- the GM; from their perspective, every "until-turn"
+            -- condition expires when the named creature's turn
+            -- next comes up.  The Current/Next bit is now a purely
+            -- internal "skip first fire?" detail computed at submit
+            -- time.
             let
                 phaseWord =
                     case phase of
@@ -661,16 +667,8 @@ describeDuration duration =
 
                         AtEnd ->
                             "end"
-
-                targetWord =
-                    case target of
-                        OnCurrentTurn ->
-                            "current"
-
-                        OnNextTurn ->
-                            "next"
             in
-            "Until " ++ phaseWord ++ " of " ++ name ++ "'s " ++ targetWord ++ " turn"
+            "Until " ++ phaseWord ++ " of " ++ name ++ "'s next turn"
 
         DurationCountdown AtBegin n _ ->
             String.fromInt n ++ " " ++ pluralizeTurns n ++ " (start)"

@@ -350,7 +350,6 @@ type Msg
     | ConditionDurationKindSet DurationKind
     | ConditionUntilCreatureChanged String
     | ConditionUntilPhaseSet Encounter.TurnPhase
-    | ConditionUntilTargetSet Encounter.TurnTarget
     | ConditionCountdownTurnsChanged String
     | ConditionCountdownPhaseSet Encounter.TurnPhase
     | ConditionSaveToggle

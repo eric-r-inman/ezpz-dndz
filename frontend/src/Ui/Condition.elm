@@ -30,6 +30,18 @@ import Encounter
 import Msg exposing (DurationKind(..))
 
 
+{-| Modal state for the Add / Edit Condition dialog.
+
+The "until turn" duration shape no longer carries an explicit
+"current vs next" choice — every condition expires when the
+target creature's turn next comes up, with the begin/end phase
+controlling whether that's the start or end. The resolution
+between `OnCurrentTurn` (expire on first match) and `OnNextTurn`
+(skip the first match) is computed at submit time based on
+whether the target is currently active and the chosen phase;
+see `Update.Condition.buildDuration`.
+
+-}
 type alias ConditionUi =
     { target : String
     , editingId : Maybe Int
@@ -39,7 +51,6 @@ type alias ConditionUi =
     , durationKind : DurationKind
     , untilCreature : String
     , untilPhase : Encounter.TurnPhase
-    , untilTarget : Encounter.TurnTarget
     , countdownTurnsText : String
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
@@ -90,7 +101,6 @@ fresh target =
     , durationKind = DurKindManual
     , untilCreature = target
     , untilPhase = Encounter.AtEnd
-    , untilTarget = Encounter.OnNextTurn
     , countdownTurnsText = "1"
     , countdownTurns = 1
     , countdownPhase = Encounter.AtEnd
@@ -113,16 +123,17 @@ fromCondition target cond =
                     { kind = DurKindManual
                     , untilCreature = target
                     , untilPhase = Encounter.AtEnd
-                    , untilTarget = Encounter.OnNextTurn
                     , countdownTurns = 1
                     , countdownPhase = Encounter.AtEnd
                     }
 
-                Encounter.DurationUntilTurn phase tgt ref ->
+                Encounter.DurationUntilTurn phase _ ref ->
+                    -- Discard the saved TurnTarget; the modal no longer
+                    -- exposes the current/next choice and `buildDuration`
+                    -- recomputes it from current encounter state on submit.
                     { kind = DurKindUntilTurn
                     , untilCreature = ref
                     , untilPhase = phase
-                    , untilTarget = tgt
                     , countdownTurns = 1
                     , countdownPhase = Encounter.AtEnd
                     }
@@ -131,7 +142,6 @@ fromCondition target cond =
                     { kind = DurKindCountdown
                     , untilCreature = target
                     , untilPhase = Encounter.AtEnd
-                    , untilTarget = Encounter.OnNextTurn
                     , countdownTurns = n
                     , countdownPhase = phase
                     }
@@ -162,7 +172,6 @@ fromCondition target cond =
     , durationKind = durFields.kind
     , untilCreature = durFields.untilCreature
     , untilPhase = durFields.untilPhase
-    , untilTarget = durFields.untilTarget
     , countdownTurnsText = String.fromInt durFields.countdownTurns
     , countdownTurns = durFields.countdownTurns
     , countdownPhase = durFields.countdownPhase

@@ -211,6 +211,12 @@ durationKindRadio ui kind label =
         ]
 
 
+{-| The "until ..." duration row. Reads as a sentence:
+"At [begin|end] of [Creature]'s next turn". Always "next turn"
+— the previous current/next selector was removed in favor of
+context-aware resolution at submit time
+(=Update.Condition.nextTurnTarget=).
+-}
 durationUntilSubsection : ConditionUi -> Model -> Html Msg
 durationUntilSubsection ui model =
     div [ class "cond-subsection" ]
@@ -232,82 +238,7 @@ durationUntilSubsection ui model =
                     )
                     model.encounter.creatures
                 )
-            , Html.label [] [ text "'s" ]
-            , turnTargetToggle ui model
-            , Html.label [] [ text "turn" ]
-            ]
-        ]
-
-
-{-| Two-button current / next radio toggle inserted between the
-reference creature and the word "turn" in the duration row.
-
-The "current" button is disabled when `Update.Condition.currentTurnInvalid`
-is true — i.e. begin-of-turn paired with the currently-active
-creature, since their current begin-of-turn already fired.
-
--}
-turnTargetToggle : ConditionUi -> Model -> Html Msg
-turnTargetToggle ui model =
-    let
-        currentDisabled =
-            Update.Condition.currentTurnInvalid model ui
-    in
-    span [ class "cond-phase-toggle" ]
-        [ Html.label
-            [ class
-                (String.join " "
-                    (List.filterMap identity
-                        [ Just "cond-phase"
-                        , if ui.untilTarget == Encounter.OnCurrentTurn then
-                            Just "cond-phase--on"
-
-                          else
-                            Nothing
-                        , if currentDisabled then
-                            Just "cond-phase--disabled"
-
-                          else
-                            Nothing
-                        ]
-                    )
-                )
-            , title
-                (if currentDisabled then
-                    "The current begin-of-turn already fired for the active creature — pick 'next' instead"
-
-                 else
-                    "Expire on the first matching hook fire"
-                )
-            ]
-            [ input
-                [ type_ "radio"
-                , Attr.name "until-target"
-                , checked (ui.untilTarget == Encounter.OnCurrentTurn)
-                , disabled currentDisabled
-                , onClick (ConditionUntilTargetSet Encounter.OnCurrentTurn)
-                ]
-                []
-            , text "current"
-            ]
-        , Html.label
-            [ class
-                (if ui.untilTarget == Encounter.OnNextTurn then
-                    "cond-phase cond-phase--on"
-
-                 else
-                    "cond-phase"
-                )
-            , title "Skip the first matching hook fire and expire on the second"
-            ]
-            [ input
-                [ type_ "radio"
-                , Attr.name "until-target"
-                , checked (ui.untilTarget == Encounter.OnNextTurn)
-                , onClick (ConditionUntilTargetSet Encounter.OnNextTurn)
-                ]
-                []
-            , text "next"
+            , Html.label [] [ text "'s next turn" ]
             ]
         ]
 
