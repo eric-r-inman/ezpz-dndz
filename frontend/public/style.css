@@ -2991,7 +2991,7 @@ body {
 }
 
 .compendium__placeholder--error {
-  color: var(--color-red, #ef4444);
+  color: var(--color-danger);
 }
 
 .compendium__columns {
@@ -3051,7 +3051,7 @@ body {
 }
 
 .compendium__row--enemy.compendium__row--selected {
-  border-left-color: var(--color-red, #ef4444);
+  border-left-color: var(--color-danger);
 }
 
 .compendium__row-name {
@@ -3137,7 +3137,7 @@ body {
   align-items: center;
   padding: 10px 16px;
   background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid var(--color-red, #ef4444);
+  border-bottom: 1px solid var(--color-danger);
 }
 
 .compendium__bulk-confirm-msg {
@@ -3149,8 +3149,8 @@ body {
 .compendium__bulk-error {
   padding: 8px 16px;
   background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid var(--color-red, #ef4444);
-  color: var(--color-red, #ef4444);
+  border-bottom: 1px solid var(--color-danger);
+  color: var(--color-danger);
   font-size: 0.85rem;
 }
 
@@ -3262,11 +3262,11 @@ body {
 }
 
 .toast--success {
-  border-left: 3px solid var(--color-green, #22c55e);
+  border-left: 3px solid var(--color-success);
 }
 
 .toast--error {
-  border-left: 3px solid var(--color-red, #ef4444);
+  border-left: 3px solid var(--color-danger);
 }
 
 .toast__icon {
@@ -3275,11 +3275,11 @@ body {
 }
 
 .toast--success .toast__icon {
-  color: var(--color-green, #22c55e);
+  color: var(--color-success);
 }
 
 .toast--error .toast__icon {
-  color: var(--color-red, #ef4444);
+  color: var(--color-danger);
 }
 
 .toast__msg {
@@ -3448,9 +3448,9 @@ body {
 }
 
 .edit-row__remove:hover {
-  background: var(--color-red, #ef4444);
+  background: var(--color-danger);
   color: white;
-  border-color: var(--color-red, #ef4444);
+  border-color: var(--color-danger);
 }
 
 .edit-feature {
@@ -3467,9 +3467,9 @@ body {
 }
 
 .edit-error {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid var(--color-red, #ef4444);
-  color: var(--color-red, #ef4444);
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
   padding: 8px 12px;
   border-radius: var(--radius-md, 6px);
   font-size: 0.85rem;
