@@ -150,19 +150,23 @@ close (dice history, compendium browser cache + filter).  They
 expose ~open : Bool~ on their own substate and live as
 =Model.dice : DiceUi= / =Model.compendium : CompendiumUi=.
 
-Per-feature update modules use a small ~with*~ lens that
-pattern-matches on ~model.modal~:
+Per-feature update modules use a small ~with*~ lens that goes
+through the generic ~Model.mapModal~ helper plus a per-variant
+~Model.fooLens~ value.  Each lens definition is a one-liner; the
+five-line pattern-match boilerplate lives in =Model.elm= once.
 
 #+begin_src elm
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
-withHpChange fn model =
-    case model.modal of
-        Just (ModalHpChange ui) ->
-            { model | modal = Just (ModalHpChange (fn ui)) }
-
-        _ ->
-            model
+withHpChange =
+    Model.mapModal Model.hpChangeLens
 #+end_src
+
+~Model.mapModal~ takes a ~ModalLens a~ record (the
+~extract~ / ~wrap~ pair for one Modal variant), an update
+function ~a -> a~, and the Model.  It is a no-op if ~model.modal~
+is ~Nothing~ or holds a different variant — the same semantics
+the per-module ~with*~ helpers had before, with one shared
+implementation.
 
 * Turn lifecycle
 
@@ -228,7 +232,9 @@ creature nor would-be beginning-of-turn for the new one.
 branch is a one-liner that calls into a per-feature
 =Update/Foo.elm= module.  Each Update module owns:
 
-- ~with*~ lens(es) into the relevant Model fragment (private).
+- ~with*~ lens(es) into the relevant Model fragment (private,
+  defined as a one-liner over ~Model.mapModal~ + the matching
+  ~Model.fooLens~ value).
 - The ~open~, ~close~, ~apply~, etc. functions that handle the
   feature's Msg branches.
 - Any feature-specific helpers that don't belong in the domain
@@ -237,6 +243,15 @@ branch is a one-liner that calls into a per-feature
 Cmd-emitting helpers shared across features (dice roll
 persistence, /me fetch, scroll-into-view, condition auto-roll
 batching) live in =Effects.elm=.
+
+When a feature's Update module crosses ~600 LOC the next pass
+splits it into per-section sub-modules under
+=Update/<Feature>/=, each owning one cohesive area of the
+feature's Msg surface.  =Update/Compendium/= is the canonical
+example: =Browser.elm= (modal lifecycle), =Add.elm= (queue
+materialization), =Edit.elm= (form fields + submit / delete),
+=Paste.elm= (parsed-block hand-off), =Bulk.elm= (import / reset
+/ confirm-banner flow).
 
 * View dispatch
 
@@ -379,10 +394,20 @@ skipped.  When ~lairTotal > total~ the view renders a muted
 secondary chip "(N w/Lair)" alongside the base figure.
 
 The four scope options drive the dropdown filter via the
-~Msg.XpScope~ enum (~Enemies & NPCs~ / ~Enemies Only~ / ~NPCs
-Only~ / ~Selected Only~).  ~Selected Only~ uses the row 1
+~Encounter.Xp.XpScope~ enum (~Enemies & NPCs~ / ~Enemies Only~ /
+~NPCs Only~ / ~Selected Only~).  ~Selected Only~ uses the row 1
 multi-select checkboxes; the other three resolve via the
 compendium creature's ~kind~ tag.
+
+The XP totals computation itself lives in =Encounter/Xp.elm=
+(domain module — pure rules, no ~Html~, no ~Cmd~) exposing
+~totalsFor : XpScope -> Encounter -> Compendium.Db -> Totals~ +
+~formatThousands~.  =View.EncounterBar= unwraps the
+~CompendiumDb~ loading wrapper at the boundary then calls into
+the domain helper.  Behavior is locked by the dedicated
+~Encounter/XpTest~ suite (14 cases covering empty queues, scope
+filters, lair-XP fallback / preference, and the thousand-
+separator math).
 
 The dropdown itself was migrated from native
 ~<details>/<summary>~ to a controlled ~<div>~ because the native
@@ -426,7 +451,7 @@ Click a row → ~Update.QuickAdd.pick~ allocates a unique display
 name, builds a single-instance roll spec, and fires
 ~Dice.batchRollCmd (CompendiumInitiativeRolled creatureId)~.
 The roll lands through the existing
-~Update.Compendium.initiativeRolled~ handler — same
+~Update.Compendium.Add.initiativeRolled~ handler — same
 ~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~
 → toast pipeline as the full browser, just with a count of one
 and a different opener UI.  Esc closes.

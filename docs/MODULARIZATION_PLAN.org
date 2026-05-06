@@ -219,20 +219,43 @@ Server-side additions:
   - 2 new server integration tests for =/api/encounter=
     (round-trip + null-on-empty)
 
+** Sixth autonomous run (2026-05-06)
+
+Phases 12, 13, 14, 15, 16, 17, 18 — the round-2 audit follow-up.
+Eleven commits.
+
+| Phase  | Commit    | Theme                                                |
+|--------+-----------+------------------------------------------------------|
+| 12     | 57dac46   | centralize dice-expression helpers                   |
+| 13     | ff9c970   | extract Encounter/Xp domain module + 14 tests        |
+| 14     | 2e5288c   | centralize percent-encoding in Util.Http             |
+| 15     | 9834643   | collapse with*Ui lenses into Model.mapModal          |
+| 16     | b918638   | LineChallenge parser variant → record fields         |
+| 17a    | 43b0e67   | extract Update/Compendium/Paste                      |
+| 17b    | d154ded   | extract Update/Compendium/Browser                    |
+| 17c    | bf637da   | extract Update/Compendium/Add                        |
+| 17d    | deb29a0   | extract Update/Compendium/Bulk                       |
+| 17e    | 7a15dc3   | extract Update/Compendium/Edit (rename remainder)    |
+| 18     | 7e5d3aa   | drop unused imports in Main.elm                      |
+
+Test count: 169 → 183 (Phase 13 added the XpTest suite).
+
+After Phase 17 the 1,122-line =Update/Compendium.elm= is gone;
+five sub-modules (Add, Browser, Bulk, Edit, Paste) each live
+under 600 LOC and own a clearly-bounded section of the
+compendium update surface.
+
+Phase 19 (View/Card split) is still a watch entry — the file
+remained at 1,078 LOC through this run, comfortably under the
+1,500-LOC trigger.
+
 ** What's left
 
 | Phase | Goal                                       | Status                                         |
 |-------+--------------------------------------------+------------------------------------------------|
 | 10a   | Creature instanceId rename (per the plan)  | DEFERRED — needs a wire-format compat shim     |
 | 11    | users/prefs server scaffolding (full)      | DEFERRED — scoped to OIDC user-record landing  |
-| 12    | De-dupe dice-expression helpers            | NEW — round-2 finding F1+F2                    |
-| 13    | Extract XP totals into Encounter/Xp domain | NEW — round-2 finding F3                       |
-| 14    | Move Url.percentEncode to Util.Http        | NEW — round-2 finding F4                       |
-| 15    | Generic Model.mapModal lens                | NEW — round-2 finding F5                       |
-| 16    | LineChallenge → record fields              | NEW — round-2 finding F6                       |
-| 17    | Split Update/Compendium per-section        | NEW — round-2 finding F7                       |
-| 18    | Drop unused imports in Main.elm            | NEW — round-2 finding F8                       |
-| 19    | View/Card watch (no-op until ≥1500 LOC)    | NEW — round-2 finding F9                       |
+| 19    | View/Card split                            | WATCH — no-op until ≥1500 LOC                  |
 
 The original Phase 10 + 11 specs called for a creature
 identity-by-id rename (10a) and a full users/prefs server
@@ -242,8 +265,6 @@ default for legacy `name`-keyed encounters, and the users/prefs
 modules can't materialize until OIDC drives a real user table.
 Each lands when the feature pulling on it is ready, not as a
 preemptive scaffolding pass.
-
-Phases 12–19 are the round-2 audit follow-up — see [[*Round 2 audit (2026-05-06)][* Round 2 audit (2026-05-06)]] for findings + per-phase plans.
 
 ** Notes for the next autonomous run
 
