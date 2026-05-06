@@ -30,6 +30,20 @@
   --color-init-blue: #3b82f6;
   --color-orange-dark: #b8521c;
   --color-temp-blue: #2589e0;
+
+  /* Card row 3 + control-button color tokens.  Each
+     `.action-btn--*` variant just sets `--btn-bg` (and optionally
+     `--btn-fg` / `--btn-bd`) so swapping a variant's hue is a
+     one-line change here rather than a per-variant override. */
+  --color-damage: #d63b3b;
+  --color-heal: #3cb455;
+  --color-temp: #2589e0;
+  --color-condition: #9355e0;
+  --color-btn-blue: #1976d2;
+  --color-btn-green: #2f9e44;
+  --color-btn-red: #c62828;
+  --color-btn-orange: #d97706;
+  --color-dirty-outline: #fff59d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -945,8 +959,11 @@ body {
 }
 
 .action-btn {
+  --btn-bg: #111111;
+  --btn-fg: var(--color-text);
+  --btn-bd: rgba(255, 255, 255, 0.18);
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--btn-bd);
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0 10px;
@@ -954,8 +971,8 @@ body {
   font-weight: 600;
   line-height: 1;
   font-family: inherit;
-  background: #111111;
-  color: var(--color-text);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
   transition:
     filter 0.1s ease,
     transform 0.05s ease,
@@ -984,67 +1001,72 @@ body {
   outline-offset: 2px;
 }
 
-/* Card row 3 colored buttons: slightly lightened from their original
-   saturated tones so the row reads as a softer toolbar; all label
-   text in white for legibility on the new lighter fills. The
-   --temp variant shares its hex with --color-temp-blue so the temp
-   HP card chip matches the button it came from. */
+/* Card row 3 + control-button color variants.  Each variant
+   only sets the per-instance custom properties consumed by
+   `.action-btn`; the structural rule above stays unchanged.
+   Variant fills come from the `--color-*` tokens in `:root`
+   (themed for dark mode automatically). */
 
 .action-btn--damage {
-  background: #d63b3b;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-damage);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--heal {
-  background: #3cb455;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-heal);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--temp {
-  background: var(--color-temp-blue);
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-temp);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--condition {
-  background: #9355e0;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-condition);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--hold {
-  background: #111111;
-  color: var(--color-text-muted);
+  --btn-fg: var(--color-text-muted);
 }
 
 .action-btn--hold:hover {
-  color: var(--color-text);
+  --btn-fg: var(--color-text);
 }
 
 .action-btn--blue {
-  background: #1976d2;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-btn-blue);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--green {
-  background: #2f9e44;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-btn-green);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--red {
-  background: #c62828;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-btn-red);
+  --btn-fg: #000;
+  --btn-bd: transparent;
 }
 
 .action-btn--orange {
-  background: #d97706;
-  color: #000000;
-  border-color: transparent;
+  --btn-bg: var(--color-btn-orange);
+  --btn-fg: #000;
+  --btn-bd: transparent;
+}
+
+.action-btn--holding {
+  --btn-bg: var(--color-btn-orange);
+  --btn-fg: #fff;
+  --btn-bd: transparent;
 }
 
 /* Save button when the encounter has unsaved roster changes
@@ -1052,14 +1074,8 @@ body {
    light-yellow outline cues the GM that combat state will be
    lost on Reset / Clear without overpowering the button face. */
 .action-btn--dirty {
-  outline: 1px solid #fff59d;
+  outline: 1px solid var(--color-dirty-outline);
   outline-offset: 1px;
-}
-
-.action-btn--holding {
-  background: #d97706;
-  color: #ffffff;
-  border-color: transparent;
 }
 
 .action-btn--icon {
