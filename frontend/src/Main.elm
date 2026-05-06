@@ -63,6 +63,7 @@ import Update.AbilitySave
 import Update.Compendium
 import Update.Compendium.Add
 import Update.Compendium.Browser
+import Update.Compendium.Bulk
 import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
@@ -928,31 +929,31 @@ updateInner msg model =
             Update.AbilitySave.landed roll model
 
         CompendiumImportClick ->
-            Update.Compendium.importClick model
+            Update.Compendium.Bulk.importClick model
 
         CompendiumImportFileChosen file ->
-            Update.Compendium.importFileChosen file model
+            Update.Compendium.Bulk.importFileChosen file model
 
         CompendiumImportFileRead raw ->
-            Update.Compendium.importFileRead raw model
+            Update.Compendium.Bulk.importFileRead raw model
 
         CompendiumResetClick ->
-            Update.Compendium.resetClick model
+            Update.Compendium.Bulk.resetClick model
 
         CompendiumDeleteFromBrowser id displayName ->
-            Update.Compendium.deleteFromBrowser id displayName model
+            Update.Compendium.Bulk.deleteFromBrowser id displayName model
 
         CompendiumPendingCancel ->
-            Update.Compendium.pendingCancel model
+            Update.Compendium.Bulk.pendingCancel model
 
         CompendiumPendingConfirm ->
-            Update.Compendium.pendingConfirm model
+            Update.Compendium.Bulk.pendingConfirm model
 
         CompendiumImportResponse result ->
-            Update.Compendium.importResponse result model
+            Update.Compendium.Bulk.importResponse result model
 
         CompendiumResetResponse result ->
-            Update.Compendium.resetResponse result model
+            Update.Compendium.Bulk.resetResponse result model
 
         ToastDismiss id ->
             Update.Toast.dismiss id model
