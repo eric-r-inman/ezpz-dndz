@@ -548,7 +548,7 @@ rowMid creature hpEdit =
         , coverToggle creature
         , span [ class "status-toggles__sep" ] [ text "|" ]
         , boolToggle "🧠"
-            "concen."
+            "concentrating"
             creature.concentrating
             (ToggleConcentration creature.name)
         , span [ class "status-toggles__sep" ] [ text "|" ]
