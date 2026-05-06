@@ -1770,7 +1770,14 @@ body {
   margin-left: 12px;
 }
 
-.dice-form__input {
+/* Shared form-input chrome used by .dice-form__input,
+   .hp-change__input, .init-section__input.  These three are
+   structurally identical (the sole behavior diff is font-size /
+   tabular-nums for the numeric variants).  Each individual class
+   below adds only its size / numeric-formatting overrides. */
+.dice-form__input,
+.hp-change__input,
+.init-section__input {
   flex: 1 1 auto;
   padding: 6px 10px;
   border: 1px solid var(--color-border);
@@ -1778,13 +1785,18 @@ body {
   background: var(--color-surface-2);
   color: var(--color-text);
   font-family: inherit;
-  font-size: 0.9rem;
   min-width: 0;
 }
 
-.dice-form__input:focus {
+.dice-form__input:focus,
+.hp-change__input:focus,
+.init-section__input:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+.dice-form__input {
+  font-size: 0.9rem;
 }
 
 .dice-form__numeric {
@@ -2100,21 +2112,8 @@ body {
 }
 
 .hp-change__input {
-  flex: 1 1 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  font-family: inherit;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  min-width: 0;
-}
-
-.hp-change__input:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 .hp-change__error {
@@ -2374,21 +2373,8 @@ body {
 }
 
 .init-section__input {
-  flex: 1 1 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  font-family: inherit;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
-  min-width: 0;
-}
-
-.init-section__input:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 /* Stretch action-btns inside the modal to fill the row width. */
@@ -2702,17 +2688,33 @@ body {
   white-space: nowrap;
 }
 
-.cond-input {
+/* Inset-focus form input variant used by the condition modal's
+   freeform fields and the save / rename modals.  Shares the same
+   flat surface + accent-glow focus shell; per-class blocks below
+   just add size + background overrides. */
+.cond-input,
+.save-modal__input,
+.save-modal__rename-input {
   width: 100%;
   font-family: inherit;
-  font-size: 0.95rem;
   color: var(--color-text);
-  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 5px 8px;
+  border-radius: var(--radius-sm);
   outline: none;
   box-sizing: border-box;
+}
+
+.cond-input:focus,
+.save-modal__input:focus,
+.save-modal__rename-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
+}
+
+.cond-input {
+  font-size: 0.95rem;
+  background: var(--color-surface);
+  padding: 5px 8px;
 }
 
 .cond-input--narrow {
@@ -2724,11 +2726,6 @@ body {
 .cond-input--narrow::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
-}
-
-.cond-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
 }
 
 .cond-subsection {
@@ -3739,21 +3736,9 @@ body {
 }
 
 .save-modal__input {
-  width: 100%;
-  font-family: inherit;
   font-size: 1rem;
-  color: var(--color-text);
   background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
   padding: 6px 8px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.save-modal__input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
 }
 
 .save-modal__confirm {
@@ -3854,15 +3839,10 @@ body {
 
 .save-modal__rename-input {
   flex: 1 1 auto;
-  font-family: inherit;
   font-size: 0.9rem;
-  color: var(--color-text);
   background: var(--color-surface-2);
-  border: 1px solid var(--color-accent);
-  border-radius: 4px;
+  border-color: var(--color-accent);
   padding: 4px 6px;
-  outline: none;
-  box-sizing: border-box;
 }
 
 .save-modal__buttons {
