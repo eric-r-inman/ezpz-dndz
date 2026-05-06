@@ -194,8 +194,6 @@ body {
 .panel__title {
   font-size: 0.78rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -582,6 +580,25 @@ body {
   border: none;
   cursor: pointer;
   font-family: inherit;
+}
+
+/* Shared "eyebrow" labels — small uppercase tracking-out text
+   used as section headings, field labels, and summary captions.
+   Centralizes `text-transform: uppercase + letter-spacing: 0.08em`
+   so every individual class only declares its size / weight /
+   color. */
+.panel__title,
+.stat__label,
+.ability__label,
+.dice-history__title,
+.hp-change__preview-label,
+.hp-change__log-title,
+.hp-change__log-kind,
+.init-section__heading,
+.encounter-bar__hp-label,
+.encounter-bar__ac-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .icon-btn--danger:hover {
@@ -1154,8 +1171,6 @@ body {
 
 .stat__label {
   font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--color-text-muted);
 }
 
@@ -1356,8 +1371,6 @@ body {
 
 .ability__label {
   font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--color-text-muted);
 }
 
@@ -1473,8 +1486,6 @@ body {
 .encounter-bar__hp-label {
   color: var(--color-text);
   font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   opacity: 0.7;
   margin-left: -2px;
 }
@@ -1493,8 +1504,6 @@ body {
 .encounter-bar__ac-label {
   color: var(--color-text);
   font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   opacity: 0.7;
 }
 
@@ -1949,8 +1958,6 @@ body {
 .dice-history__title {
   font-size: 0.78rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -2193,8 +2200,6 @@ body {
 
 .hp-change__preview-label {
   font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--color-text-muted);
 }
 
@@ -2235,8 +2240,6 @@ body {
 .hp-change__log-title {
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -2295,8 +2298,6 @@ body {
 .hp-change__log-kind {
   font-size: 0.65rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   text-align: center;
   padding: 2px 6px;
   border-radius: 999px;
@@ -2362,8 +2363,6 @@ body {
   margin: 4px 0 0;
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-orange-dark);
 }
 
