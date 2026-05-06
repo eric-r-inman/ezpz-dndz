@@ -3892,16 +3892,20 @@ body {
   justify-content: center;
 }
 
-/* Duplicate-picker modal: a Quick-Add-style scrollable list of
-   five duplication modes (Exact / Fresh / Minion ½ / Minion 1
-   / Pudding).  Each row carries a label on the left and an
-   inline help hint on the right, with a hover highlight that
-   makes the click target obvious. */
-.modal--duplicate {
+/* Picker-list pattern shared by the Quick Add and Duplicate
+   modals: a vertical scrollable list of clickable rows with a
+   bordered shell, hover highlight, and bottom-divider per row.
+   Both feature classes (.quick-add__list / .duplicate__list and
+   their __row variants) plug into the same chrome rules below;
+   feature-specific tweaks (sort toggle, max-height, label/hint
+   columns) are layered on top. */
+.modal--duplicate,
+.modal--quick-add {
   max-width: 520px;
 }
 
-.duplicate__list {
+.duplicate__list,
+.quick-add__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -3909,10 +3913,19 @@ body {
   flex-direction: column;
   gap: 2px;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
-.duplicate__row {
+.quick-add__list {
+  /* The compendium list can grow long; cap height so the modal
+     scrolls inside its body rather than off-screen.  The picker
+     list (Duplicate) is fixed-size so it doesn't need this. */
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.duplicate__row,
+.quick-add__row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -3925,12 +3938,15 @@ body {
     color 0.1s ease;
 }
 
-.duplicate__row:last-child {
+.duplicate__row:last-child,
+.quick-add__row:last-child {
   border-bottom: none;
 }
 
 .duplicate__row:hover,
-.duplicate__row:focus-visible {
+.duplicate__row:focus-visible,
+.quick-add__row:hover,
+.quick-add__row:focus-visible {
   background: var(--color-accent-soft);
   outline: none;
 }
@@ -3944,6 +3960,8 @@ body {
   background: transparent;
 }
 
+/* Duplicate row: label (left, fixed width) + hint (right,
+   muted, may ellipsize on narrow screens). */
 .duplicate__label {
   flex: 0 0 auto;
   color: var(--color-text);
@@ -3960,15 +3978,7 @@ body {
   white-space: nowrap;
 }
 
-/* Quick Add modal: a single sort toggle on top of a scrollable
-   list of all compendium creatures (name on the left, CR on the
-   right).  Clicking a row adds one instance and closes the modal.
-   Shorter / narrower than the full Compendium browser since it
-   has no search / filter / count chrome. */
-.modal--quick-add {
-  max-width: 520px;
-}
-
+/* Quick Add header + meta. */
 .quick-add__sort-row {
   display: flex;
   justify-content: flex-end;
@@ -3978,42 +3988,7 @@ body {
   flex: 0 0 auto;
 }
 
-.quick-add__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 60vh;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-}
-
-.quick-add__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--color-border);
-  transition:
-    background 0.1s ease,
-    color 0.1s ease;
-}
-
-.quick-add__row:last-child {
-  border-bottom: none;
-}
-
-.quick-add__row:hover,
-.quick-add__row:focus-visible {
-  background: var(--color-accent-soft);
-  outline: none;
-}
-
+/* Quick Add row: name (left, may ellipsize) + CR (right). */
 .quick-add__name {
   flex: 1 1 auto;
   color: var(--color-text);
