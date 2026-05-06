@@ -39,13 +39,8 @@ sortToggle model =
 
 
 withQuickAddUi : (QuickAddUi -> QuickAddUi) -> Model -> Model
-withQuickAddUi fn model =
-    case model.modal of
-        Just (ModalQuickAdd ui) ->
-            { model | modal = Just (ModalQuickAdd (fn ui)) }
-
-        _ ->
-            model
+withQuickAddUi =
+    Model.mapModal Model.quickAddLens
 
 
 {-| Add one instance of the chosen creature to the encounter:

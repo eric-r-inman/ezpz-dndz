@@ -49,13 +49,8 @@ import Util.Http
 
 
 withLoadUi : (LoadUi -> LoadUi) -> Model -> Model
-withLoadUi fn model =
-    case model.modal of
-        Just (ModalLoad ui) ->
-            { model | modal = Just (ModalLoad (fn ui)) }
-
-        _ ->
-            model
+withLoadUi =
+    Model.mapModal Model.loadLens
 
 
 open : Model -> ( Model, Cmd Msg )

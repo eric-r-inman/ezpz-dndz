@@ -13,13 +13,8 @@ import Ui.Note as NoteUi exposing (NoteEditUi)
 
 
 withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
-withNoteEdit fn model =
-    case model.modal of
-        Just (ModalNoteEdit ui) ->
-            { model | modal = Just (ModalNoteEdit (fn ui)) }
-
-        _ ->
-            model
+withNoteEdit =
+    Model.mapModal Model.noteLens
 
 
 open : String -> String -> Model -> ( Model, Cmd Msg )

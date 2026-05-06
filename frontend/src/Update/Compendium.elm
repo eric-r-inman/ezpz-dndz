@@ -119,13 +119,8 @@ withCompendium fn model =
 
 
 withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
-withCompendiumEdit fn model =
-    case model.modal of
-        Just (ModalCompendiumEdit ui) ->
-            { model | modal = Just (ModalCompendiumEdit (fn ui)) }
-
-        _ ->
-            model
+withCompendiumEdit =
+    Model.mapModal Model.compendiumEditLens
 
 
 

@@ -45,13 +45,8 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeUi)
 is closed (or a different modal is open).
 -}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
-withHpChange fn model =
-    case model.modal of
-        Just (ModalHpChange ui) ->
-            { model | modal = Just (ModalHpChange (fn ui)) }
-
-        _ ->
-            model
+withHpChange =
+    Model.mapModal Model.hpChangeLens
 
 
 open : String -> HpKind -> Model -> ( Model, Cmd Msg )

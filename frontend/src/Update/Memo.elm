@@ -12,13 +12,8 @@ import Ui.Memo as MemoUi exposing (MemoEditUi)
 
 
 withMemoEdit : (MemoEditUi -> MemoEditUi) -> Model -> Model
-withMemoEdit fn model =
-    case model.modal of
-        Just (ModalMemoEdit ui) ->
-            { model | modal = Just (ModalMemoEdit (fn ui)) }
-
-        _ ->
-            model
+withMemoEdit =
+    Model.mapModal Model.memoLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )

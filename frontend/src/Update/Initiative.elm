@@ -37,13 +37,8 @@ import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 the modal is closed (or a different modal is open).
 -}
 withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
-withInitiative fn model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
-            { model | modal = Just (ModalInitiative (fn ui)) }
-
-        _ ->
-            model
+withInitiative =
+    Model.mapModal Model.initiativeLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )

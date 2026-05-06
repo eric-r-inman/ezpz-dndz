@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , PanelPin, PendingControl(..)
+    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, hpChangeLens, initiativeLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -102,6 +102,174 @@ type Modal
     | ModalLoad LoadUi
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
+
+
+{-| Pair of `extract` / `wrap` functions identifying one variant
+of the `Modal` ADT. Lets `mapModal` be a single generic helper
+shared by every Update module instead of each rolling its own
+`withFooUi`. See `mapModal` and the per-variant `*Lens` values.
+-}
+type alias ModalLens a =
+    { extract : Modal -> Maybe a
+    , wrap : a -> Modal
+    }
+
+
+{-| Apply `fn` to the modal's UI substate, but only if the modal
+matching `lens` is currently open. No-op when `model.modal` is
+`Nothing` or holds a different variant.
+
+Replaces the per-Update-module `with*Ui` helpers.
+
+-}
+mapModal : ModalLens a -> (a -> a) -> Model -> Model
+mapModal lens fn model =
+    case Maybe.andThen lens.extract model.modal of
+        Just ui ->
+            { model | modal = Just (lens.wrap (fn ui)) }
+
+        Nothing ->
+            model
+
+
+compendiumEditLens : ModalLens CompendiumEditUi
+compendiumEditLens =
+    { extract =
+        \m ->
+            case m of
+                ModalCompendiumEdit ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalCompendiumEdit
+    }
+
+
+conditionLens : ModalLens ConditionUi
+conditionLens =
+    { extract =
+        \m ->
+            case m of
+                ModalCondition ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalCondition
+    }
+
+
+hpChangeLens : ModalLens HpChangeUi
+hpChangeLens =
+    { extract =
+        \m ->
+            case m of
+                ModalHpChange ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalHpChange
+    }
+
+
+initiativeLens : ModalLens InitiativeUi
+initiativeLens =
+    { extract =
+        \m ->
+            case m of
+                ModalInitiative ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalInitiative
+    }
+
+
+loadLens : ModalLens LoadUi
+loadLens =
+    { extract =
+        \m ->
+            case m of
+                ModalLoad ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalLoad
+    }
+
+
+memoLens : ModalLens MemoEditUi
+memoLens =
+    { extract =
+        \m ->
+            case m of
+                ModalMemoEdit ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalMemoEdit
+    }
+
+
+noteLens : ModalLens NoteEditUi
+noteLens =
+    { extract =
+        \m ->
+            case m of
+                ModalNoteEdit ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalNoteEdit
+    }
+
+
+quickAddLens : ModalLens QuickAddUi
+quickAddLens =
+    { extract =
+        \m ->
+            case m of
+                ModalQuickAdd ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalQuickAdd
+    }
+
+
+saveLens : ModalLens SaveUi
+saveLens =
+    { extract =
+        \m ->
+            case m of
+                ModalSave ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalSave
+    }
+
+
+timerLens : ModalLens TimerSetupUi
+timerLens =
+    { extract =
+        \m ->
+            case m of
+                ModalTimerSetup ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalTimerSetup
+    }
 
 
 type alias Model =

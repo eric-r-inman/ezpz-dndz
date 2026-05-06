@@ -54,13 +54,8 @@ maxConditionNoteLength =
 
 
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
-withConditionUi fn model =
-    case model.modal of
-        Just (ModalCondition ui) ->
-            { model | modal = Just (ModalCondition (fn ui)) }
-
-        _ ->
-            model
+withConditionUi =
+    Model.mapModal Model.conditionLens
 
 
 openNew : String -> Model -> ( Model, Cmd Msg )

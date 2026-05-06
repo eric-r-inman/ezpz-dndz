@@ -20,13 +20,8 @@ import Ui.Timer as TimerUi exposing (TimerSetupUi)
 
 
 withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
-withTimerSetup fn model =
-    case model.modal of
-        Just (ModalTimerSetup ui) ->
-            { model | modal = Just (ModalTimerSetup (fn ui)) }
-
-        _ ->
-            model
+withTimerSetup =
+    Model.mapModal Model.timerLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )

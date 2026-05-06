@@ -52,13 +52,8 @@ import Util.Http
 modules don't touch save modal state.
 -}
 withSaveUi : (SaveUi -> SaveUi) -> Model -> Model
-withSaveUi fn model =
-    case model.modal of
-        Just (ModalSave ui) ->
-            { model | modal = Just (ModalSave (fn ui)) }
-
-        _ ->
-            model
+withSaveUi =
+    Model.mapModal Model.saveLens
 
 
 open : Model -> ( Model, Cmd Msg )
