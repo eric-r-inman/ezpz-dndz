@@ -14,6 +14,7 @@ module Encounter exposing
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
+    , rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -425,6 +426,38 @@ run enc =
                     ""
     in
     { enc | round = 1, activeName = firstActiveName }
+
+
+{-| `True` when the current encounter's roster differs from the
+last-saved snapshot — i.e. a creature has been added or removed
+since the last Save (or Load). Compared by the _set_ of creature
+names (sorted before comparison), so reordering the initiative
+queue does NOT count as dirty, and neither does HP / condition /
+position drift inside an unchanged roster.
+
+A `Nothing` snapshot (the app has never been saved nor loaded) is
+treated as an empty roster, so a fresh queue with creatures shows
+dirty until the first save.
+
+The Save button uses this to surface a yellow outline cue when
+the encounter has unsaved roster changes.
+
+-}
+rosterDirty : Encounter -> Maybe Encounter -> Bool
+rosterDirty current snapshot =
+    let
+        currentNames =
+            List.sort (List.map .name current.creatures)
+
+        snapshotNames =
+            case snapshot of
+                Just snap ->
+                    List.sort (List.map .name snap.creatures)
+
+                Nothing ->
+                    []
+    in
+    currentNames /= snapshotNames
 
 
 

@@ -619,7 +619,8 @@ body {
 }
 
 .creature-name {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: calc(1em + 1pt);
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -629,7 +630,7 @@ body {
 }
 
 .creature-name--default {
-  color: var(--color-orange-dark);
+  color: #ffffff;
 }
 
 /* Compendium-linked creature name: hover-underline cues that
@@ -991,25 +992,25 @@ body {
 
 .action-btn--damage {
   background: #d63b3b;
-  color: #ffffff;
+  color: #000000;
   border-color: transparent;
 }
 
 .action-btn--heal {
   background: #3cb455;
-  color: #ffffff;
+  color: #000000;
   border-color: transparent;
 }
 
 .action-btn--temp {
   background: var(--color-temp-blue);
-  color: #ffffff;
+  color: #000000;
   border-color: transparent;
 }
 
 .action-btn--condition {
   background: #9355e0;
-  color: #ffffff;
+  color: #000000;
   border-color: transparent;
 }
 
@@ -1044,6 +1045,15 @@ body {
   background: #d97706;
   color: #000000;
   border-color: transparent;
+}
+
+/* Save button when the encounter has unsaved roster changes
+   (creatures added or removed since the last save / load).  The
+   light-yellow outline cues the GM that combat state will be
+   lost on Reset / Clear without overpowering the button face. */
+.action-btn--dirty {
+  outline: 1px solid #fff59d;
+  outline-offset: 1px;
 }
 
 .action-btn--holding {

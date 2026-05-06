@@ -22,8 +22,8 @@ import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
 
 
-view : DiceUi -> Maybe PendingControl -> Int -> Html Msg
-view dice pendingControl round =
+view : DiceUi -> Maybe PendingControl -> Int -> Bool -> Html Msg
+view dice pendingControl round rosterDirty =
     section [ class "panel panel--controls" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
@@ -57,13 +57,28 @@ view dice pendingControl round =
                     confirmBanner pending
 
                 Nothing ->
-                    buttonGrid round
+                    buttonGrid round rosterDirty
             ]
         ]
 
 
-buttonGrid : Int -> Html Msg
-buttonGrid round =
+buttonGrid : Int -> Bool -> Html Msg
+buttonGrid round rosterDirty =
+    let
+        saveClass =
+            if rosterDirty then
+                "action-btn action-btn--blue action-btn--dirty"
+
+            else
+                "action-btn action-btn--blue"
+
+        saveTitle =
+            if rosterDirty then
+                "Save the encounter (unsaved roster changes)"
+
+            else
+                "Save the encounter to the server or download to your device"
+    in
     div [ class "btn-grid btn-grid--two-rows" ]
         [ button
             [ class "action-btn action-btn--blue"
@@ -72,9 +87,9 @@ buttonGrid round =
             ]
             [ text "➕ Quick Add" ]
         , button
-            [ class "action-btn action-btn--blue"
+            [ class saveClass
             , onClick SaveOpen
-            , title "Save the encounter to the server or download to your device"
+            , title saveTitle
             ]
             [ text "💾 Save" ]
         , button

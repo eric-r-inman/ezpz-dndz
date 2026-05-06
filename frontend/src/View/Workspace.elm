@@ -33,7 +33,11 @@ view model =
             model.compendium.db
             model.xpScope
             model.xpFilterOpen
-        , View.PanelControls.view model.dice model.pendingControl model.encounter.round
+        , View.PanelControls.view
+            model.dice
+            model.pendingControl
+            model.encounter.round
+            (Encounter.rosterDirty model.encounter model.savedSnapshot)
         , View.PanelDetail.view model
         ]
 
