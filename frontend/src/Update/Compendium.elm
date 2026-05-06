@@ -325,16 +325,8 @@ instanceSpec :
 instanceSpec source displayName =
     ( displayName
     , Update.Initiative.source displayName
-    , Dice.generator (initiativeExpression source)
+    , Dice.generator (Update.Initiative.initiativeExpression source.initiativeBonus)
     )
-
-
-initiativeExpression : Compendium.Creature -> Dice.Expression
-initiativeExpression c =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = c.initiativeBonus
-    , damageType = Nothing
-    }
 
 
 initiativeRolled : String -> List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )

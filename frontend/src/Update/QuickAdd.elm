@@ -70,7 +70,7 @@ pick creatureId model =
                         spec =
                             ( name
                             , Update.Initiative.source name
-                            , Dice.generator (initiativeExpression source)
+                            , Dice.generator (Update.Initiative.initiativeExpression source.initiativeBonus)
                             )
                     in
                     ( { model | modal = Nothing }
@@ -84,15 +84,3 @@ pick creatureId model =
 
         _ ->
             ( { model | modal = Nothing }, Cmd.none )
-
-
-{-| `1d20 + initiativeBonus` — same shape as the Compendium
-browser's add-to-queue path. Centralised here so the two flows
-stay in lockstep on the spec.
--}
-initiativeExpression : Compendium.Creature -> Dice.Expression
-initiativeExpression c =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = c.initiativeBonus
-    , damageType = Nothing
-    }

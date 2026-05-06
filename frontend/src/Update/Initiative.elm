@@ -4,6 +4,7 @@ module Update.Initiative exposing
     , autoRoll
     , close
     , customChanged
+    , initiativeExpression
     , open
     , quickSort
     , rollsLanded
@@ -207,7 +208,7 @@ initiativeGenerator : RollMode -> Creature -> Random.Generator Dice.Roll
 initiativeGenerator mode c =
     case mode of
         ModeStandard ->
-            Dice.generator (initiativeExpression c)
+            Dice.generator (initiativeExpression c.initiativeBonus)
 
         ModeAdvantage ->
             Dice.advantageGenerator c.initiativeBonus
@@ -216,14 +217,16 @@ initiativeGenerator mode c =
             Dice.disadvantageGenerator c.initiativeBonus
 
 
-{-| `1d20 + creature.initiativeBonus`, the standard 5e initiative
-roll.
+{-| `1d20 + bonus`, the standard 5e initiative roll. Takes the
+bonus directly so it serves both Encounter.Creature and
+Compendium.Creature flows (which share the field name but not the
+record type). Canonical owner per the modularization plan.
 -}
-initiativeExpression : Creature -> Dice.Expression
-initiativeExpression c =
+initiativeExpression : Int -> Dice.Expression
+initiativeExpression bonus =
     { dice =
         [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = c.initiativeBonus
+    , constant = bonus
     , damageType = Nothing
     }
 

@@ -63,21 +63,13 @@ rollCmd mode ui =
     in
     case mode of
         ModeStandard ->
-            Dice.rollCmd AbilitySaveLanded src (saveExpression ui.bonus)
+            Dice.rollCmd AbilitySaveLanded src (Effects.saveExpression ui.bonus)
 
         ModeAdvantage ->
             Dice.advantageCmd AbilitySaveLanded src ui.bonus
 
         ModeDisadvantage ->
             Dice.disadvantageCmd AbilitySaveLanded src ui.bonus
-
-
-saveExpression : Int -> Dice.Expression
-saveExpression bonus =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = bonus
-    , damageType = Nothing
-    }
 
 
 {-| Roll landed. Reuse the shared dice-history pipeline so the
