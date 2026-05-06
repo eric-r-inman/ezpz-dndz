@@ -22,7 +22,7 @@ import Ui.Compendium as CompendiumUi
         , CompendiumUi
         , PendingAction(..)
         )
-import Update.Compendium
+import Update.Compendium.Browser
 import View.Modal
 import View.StatBlock
 
@@ -127,7 +127,7 @@ filterBar ui =
     div [ class "compendium__filter-bar" ]
         [ input
             [ class "compendium__search"
-            , id Update.Compendium.searchId
+            , id Update.Compendium.Browser.searchId
             , type_ "search"
             , placeholder "🔍 Search by name, race, source, CR… (press / to focus)"
             , value ui.searchText

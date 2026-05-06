@@ -61,6 +61,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Update.AbilitySave
 import Update.Compendium
+import Update.Compendium.Browser
 import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
@@ -635,28 +636,28 @@ updateInner msg model =
             Update.Timer.dismiss name model
 
         CompendiumLoaded result ->
-            Update.Compendium.loaded result model
+            Update.Compendium.Browser.loaded result model
 
         CompendiumOpen ->
-            Update.Compendium.open model
+            Update.Compendium.Browser.open model
 
         CompendiumClose ->
-            Update.Compendium.close model
+            Update.Compendium.Browser.close model
 
         CompendiumSearchChanged text ->
-            Update.Compendium.searchChanged text model
+            Update.Compendium.Browser.searchChanged text model
 
         CompendiumKindToggled kind ->
-            Update.Compendium.kindToggled kind model
+            Update.Compendium.Browser.kindToggled kind model
 
         CompendiumSortChanged sort ->
-            Update.Compendium.sortChanged sort model
+            Update.Compendium.Browser.sortChanged sort model
 
         CompendiumSelect id ->
-            Update.Compendium.select id model
+            Update.Compendium.Browser.select id model
 
         CompendiumAddCountChanged raw ->
-            Update.Compendium.addCountChanged raw model
+            Update.Compendium.Browser.addCountChanged raw model
 
         CompendiumAddToQueue creatureId ->
             Update.Compendium.addToQueue creatureId model
@@ -761,7 +762,7 @@ updateInner msg model =
             Update.Compendium.Paste.apply model
 
         PanelShowCreature creatureId creatureName ->
-            Update.Compendium.panelShowCreature creatureId creatureName model
+            Update.Compendium.Browser.panelShowCreature creatureId creatureName model
 
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model
@@ -956,7 +957,7 @@ updateInner msg model =
             Update.Toast.dismiss id model
 
         CompendiumFocusSearch ->
-            Update.Compendium.focusSearch model
+            Update.Compendium.Browser.focusSearch model
 
         NoOp ->
             Update.Shell.noOp model
