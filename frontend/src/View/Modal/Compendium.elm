@@ -27,8 +27,8 @@ import View.Modal
 import View.StatBlock
 
 
-view : CompendiumUi -> Html Msg
-view ui =
+view : CompendiumUi -> List String -> Html Msg
+view ui encounterIds =
     if not ui.open then
         text ""
 
@@ -41,9 +41,27 @@ view ui =
             , body =
                 [ filterBar ui
                 , bulkBanner ui
-                , body ui
+                , body ui encounterIds
                 ]
             }
+
+
+{-| Count how many encounter creatures point at the given
+compendium id. Used both by the "Added" filter and the
+right-pane "[N] in Encounter" readout.
+-}
+encounterInstancesOf : String -> List String -> Int
+encounterInstancesOf compendiumId encounterIds =
+    List.foldl
+        (\id acc ->
+            if id == compendiumId then
+                acc + 1
+
+            else
+                acc
+        )
+        0
+        encounterIds
 
 
 bulkBanner : CompendiumUi -> Html Msg
@@ -136,14 +154,52 @@ filterBar ui =
             ]
             []
         , div [ class "compendium__kind-filters" ]
-            (List.map (kindFilter ui.kindFilter)
-                [ Compendium.Player, Compendium.Enemy, Compendium.Npc ]
+            (addedFilter ui.showOnlyAdded
+                :: List.map (kindFilter ui.kindFilter)
+                    [ Compendium.Player, Compendium.Enemy, Compendium.Npc ]
             )
         , sortPicker ui.sort
         , newButton
         , pasteButton
         , bulkButtons
         ]
+
+
+{-| Toggle button that narrows the visible list to creatures
+already in the encounter. Visually styled like the kind-filter
+chips so the row reads as one filter cluster — but distinct
+because it filters on encounter membership rather than creature
+kind.
+-}
+addedFilter : Bool -> Html Msg
+addedFilter active =
+    button
+        [ class
+            ("compendium__kind-filter compendium__kind-filter--added"
+                ++ (if active then
+                        " compendium__kind-filter--active"
+
+                    else
+                        ""
+                   )
+            )
+        , onClick CompendiumAddedToggle
+        , title
+            (if active then
+                "Showing only creatures with instances in the encounter — click to clear"
+
+             else
+                "Show only creatures that have instances in the current encounter"
+            )
+        , attribute "aria-pressed"
+            (if active then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text "Added" ]
 
 
 kindFilter : Set String -> Compendium.CreatureKind -> Html Msg
@@ -227,8 +283,8 @@ sortFromInput raw =
             CompendiumSortChanged SortName
 
 
-body : CompendiumUi -> Html Msg
-body ui =
+body : CompendiumUi -> List String -> Html Msg
+body ui encounterIds =
     case ui.db of
         CompendiumDbLoading ->
             skeleton
@@ -238,7 +294,7 @@ body ui =
                 [ text "Couldn't load the compendium. Check the server logs." ]
 
         CompendiumDbLoaded _ ->
-            twoColumn ui
+            twoColumn ui encounterIds
 
 
 skeleton : Html Msg
@@ -263,11 +319,23 @@ skeletonRow =
         ]
 
 
-twoColumn : CompendiumUi -> Html Msg
-twoColumn ui =
+twoColumn : CompendiumUi -> List String -> Html Msg
+twoColumn ui encounterIds =
     let
-        visible =
+        baseVisible =
             CompendiumUi.compendiumVisible ui
+
+        -- "Added" filter narrows the visible list to only
+        -- creatures that already have at least one instance in
+        -- the encounter.  When off, no further filtering.
+        visible =
+            if ui.showOnlyAdded then
+                List.filter
+                    (\c -> List.member c.id encounterIds)
+                    baseVisible
+
+            else
+                baseVisible
 
         totalCount =
             case ui.db of
@@ -278,13 +346,18 @@ twoColumn ui =
                     0
     in
     div [ class "compendium__columns" ]
-        [ list ui totalCount visible
-        , detail ui visible
+        [ list ui totalCount visible encounterIds
+        , detail ui visible encounterIds
         ]
 
 
-list : CompendiumUi -> Int -> List Compendium.Creature -> Html Msg
-list ui totalCount visible =
+list :
+    CompendiumUi
+    -> Int
+    -> List Compendium.Creature
+    -> List String
+    -> Html Msg
+list ui totalCount visible encounterIds =
     if List.isEmpty visible then
         if totalCount == 0 then
             div [ class "compendium__list compendium__list--empty" ]
@@ -321,14 +394,17 @@ list ui totalCount visible =
 
     else
         div [ class "compendium__list" ]
-            (List.map (listItem ui.selectedId) visible)
+            (List.map (listItem ui.selectedId encounterIds) visible)
 
 
-listItem : Maybe String -> Compendium.Creature -> Html Msg
-listItem selectedId c =
+listItem : Maybe String -> List String -> Compendium.Creature -> Html Msg
+listItem selectedId encounterIds c =
     let
         isSelected =
             selectedId == Just c.id
+
+        inEncounter =
+            List.member c.id encounterIds
 
         rowClass =
             "compendium__row"
@@ -351,7 +427,19 @@ listItem selectedId c =
                 "false"
             )
         ]
-        [ span [ class "compendium__row-name" ] [ text c.name ]
+        [ span [ class "compendium__row-name" ]
+            [ text c.name
+            , if inEncounter then
+                span
+                    [ class "compendium__row-in-enc"
+                    , title "This creature has at least one instance in the encounter"
+                    , attribute "aria-label" "in encounter"
+                    ]
+                    []
+
+              else
+                text ""
+            ]
         , span [ class "compendium__row-meta" ]
             [ text (rowMetaLine c) ]
         ]
@@ -381,8 +469,8 @@ crLabel cr =
         "CR " ++ cr
 
 
-detail : CompendiumUi -> List Compendium.Creature -> Html Msg
-detail ui visible =
+detail : CompendiumUi -> List Compendium.Creature -> List String -> Html Msg
+detail ui visible encounterIds =
     let
         chosen =
             ui.selectedId
@@ -391,7 +479,8 @@ detail ui visible =
     case chosen of
         Just creature ->
             div [ class "compendium__detail" ]
-                [ actionBar ui creature
+                [ actionBar creature
+                    (encounterInstancesOf creature.id encounterIds)
                 , View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
                 ]
 
@@ -400,28 +489,34 @@ detail ui visible =
                 [ text "Select a creature on the left to see its stat block." ]
 
 
-actionBar : CompendiumUi -> Compendium.Creature -> Html Msg
-actionBar ui creature =
+{-| Right-pane action bar for the selected creature. Replaces
+the old Count input with a read-only "[N] in Encounter" badge so
+the GM can see at a glance how many instances of this creature
+are already in the queue. Each click of "Add to Encounter"
+spawns one fresh instance; the modal stays open across adds.
+-}
+actionBar : Compendium.Creature -> Int -> Html Msg
+actionBar creature inEncounter =
+    let
+        badgeClass =
+            if inEncounter > 0 then
+                "compendium__in-encounter compendium__in-encounter--present"
+
+            else
+                "compendium__in-encounter"
+    in
     div [ class "compendium__action-bar" ]
-        [ label [ class "compendium__count-label" ]
-            [ text "Count "
-            , input
-                [ class "compendium__count"
-                , type_ "number"
-                , Attr.min "1"
-                , Attr.max (String.fromInt CompendiumUi.maxAddCount)
-                , value ui.addCountText
-                , onInput CompendiumAddCountChanged
-                , attribute "aria-label" "Number of copies to add"
-                ]
-                []
+        [ span
+            [ class badgeClass
+            , title "Instances of this creature already in the encounter"
             ]
+            [ text (String.fromInt inEncounter ++ " in Encounter") ]
         , button
             [ class "action-btn action-btn--green compendium__add-btn"
             , onClick (CompendiumAddToQueue creature.id)
             , title "Roll initiative and add to the encounter queue"
             ]
-            [ text ("➕ Add to Encounter (" ++ String.fromInt ui.addCount ++ ")") ]
+            [ text "➕ Add to Encounter" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditExisting

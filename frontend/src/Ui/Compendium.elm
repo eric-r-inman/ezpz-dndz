@@ -1,5 +1,5 @@
 module Ui.Compendium exposing
-    ( CompendiumDb(..), CompendiumUi, PendingAction(..), maxAddCount
+    ( CompendiumDb(..), CompendiumUi, PendingAction(..)
     , CompendiumPasteUi, emptyPaste
     , CompendiumEditUi, EditMode(..), FeatureDraft, blankEdit
     , editFromCreature, featureToDraft, emptyFeatureDraft
@@ -19,7 +19,7 @@ This is the largest of the per-feature `Ui/*` modules — it owns
 the browser, paste, and edit modals, plus the bulk-action
 pending state.
 
-@docs CompendiumDb, CompendiumUi, PendingAction, maxAddCount
+@docs CompendiumDb, CompendiumUi, PendingAction
 @docs CompendiumPasteUi, emptyPaste
 @docs CompendiumEditUi, EditMode, FeatureDraft, blankEdit
 @docs editFromCreature, featureToDraft, emptyFeatureDraft
@@ -92,8 +92,7 @@ type alias CompendiumUi =
     , kindFilter : Set String
     , sort : CompendiumSort
     , selectedId : Maybe String
-    , addCount : Int
-    , addCountText : String
+    , showOnlyAdded : Bool
     , pending : Maybe PendingAction
     , bulkBusy : Bool
     , bulkError : Maybe String
@@ -117,14 +116,6 @@ type PendingAction
     | PendingDelete String String
 
 
-{-| Hard cap on bulk-add. Anything past this is almost
-certainly a typo — the GM can always run the flow twice.
--}
-maxAddCount : Int
-maxAddCount =
-    20
-
-
 type CompendiumDb
     = CompendiumDbLoading
     | CompendiumDbLoaded Compendium.Db
@@ -139,8 +130,7 @@ emptyCompendium =
     , kindFilter = Set.empty
     , sort = SortName
     , selectedId = Nothing
-    , addCount = 1
-    , addCountText = "1"
+    , showOnlyAdded = False
     , pending = Nothing
     , bulkBusy = False
     , bulkError = Nothing

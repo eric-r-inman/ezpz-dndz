@@ -3110,23 +3110,51 @@ body {
   z-index: 1;
 }
 
-.compendium__count-label {
+/* Read-only "[N] in Encounter" badge that replaced the old
+   Count input.  Tabular-nums keeps the digit column from
+   shifting as the count changes; muted color signals it's not
+   interactive.  When at least one instance is in the encounter,
+   `--present` swaps to the success palette so the badge reads
+   as a positive cue at a glance. */
+.compendium__in-encounter {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-}
-
-.compendium__count {
-  width: 64px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  text-align: right;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.compendium__in-encounter--present {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* Small green dot rendered to the right of a creature's name in
+   the browser list when at least one instance of that creature
+   sits in the current encounter.  Uses the same success token as
+   the action-bar badge so the two cues read as one signal. */
+.compendium__row-in-enc {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+  vertical-align: middle;
+}
+
+/* "Added" filter chip uses the same visual shell as the kind
+   filters but with a different inactive-state hue so the GM
+   reads it as a separate filter dimension (membership, not
+   creature kind). */
+.compendium__kind-filter--added:not(.compendium__kind-filter--active) {
+  border-style: dashed;
 }
 
 .compendium__add-btn {

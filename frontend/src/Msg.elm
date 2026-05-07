@@ -370,7 +370,7 @@ type Msg
     | CompendiumKindToggled Compendium.CreatureKind
     | CompendiumSortChanged CompendiumSort
     | CompendiumSelect String
-    | CompendiumAddCountChanged String
+    | CompendiumAddedToggle
     | CompendiumAddToQueue String
     | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
       -- (creatureId, [(displayName, roll)])

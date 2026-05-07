@@ -1,5 +1,5 @@
 module Update.Compendium.Browser exposing
-    ( addCountChanged, close, focusSearch, kindToggled, loaded
+    ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
     )
@@ -15,7 +15,7 @@ selection survive a close so the next open returns the GM
 to where they were). `withCompendium` is therefore a flat
 field lens, not a modal lens.
 
-@docs addCountChanged, close, focusSearch, kindToggled, loaded
+@docs addedToggle, close, focusSearch, kindToggled, loaded
 @docs open, panelShowCreature, searchChanged, searchId, select
 @docs sortChanged, withCompendium
 
@@ -145,20 +145,18 @@ select id model =
     ( withCompendium (\ui -> { ui | selectedId = Just id }) model, Cmd.none )
 
 
-addCountChanged : String -> Model -> ( Model, Cmd Msg )
-addCountChanged raw model =
-    ( withCompendium (addCountUpdate raw) model, Cmd.none )
-
-
-addCountUpdate : String -> CompendiumUi -> CompendiumUi
-addCountUpdate raw ui =
-    let
-        parsed =
-            String.toInt raw
-                |> Maybe.withDefault ui.addCount
-                |> clamp 1 CompendiumUi.maxAddCount
-    in
-    { ui | addCountText = raw, addCount = parsed }
+{-| Flip the "Added" filter — when on, the visible compendium
+list narrows to only creatures that have at least one instance
+in the current encounter. Filter resolution lives in the view
+since it needs `model.encounter`; this branch just toggles the
+flag.
+-}
+addedToggle : Model -> ( Model, Cmd Msg )
+addedToggle model =
+    ( withCompendium (\ui -> { ui | showOnlyAdded = not ui.showOnlyAdded })
+        model
+    , Cmd.none
+    )
 
 
 focusSearch : Model -> ( Model, Cmd Msg )

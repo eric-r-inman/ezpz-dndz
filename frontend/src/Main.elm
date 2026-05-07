@@ -681,8 +681,8 @@ updateInner msg model =
         CompendiumSelect id ->
             Update.Compendium.Browser.select id model
 
-        CompendiumAddCountChanged raw ->
-            Update.Compendium.Browser.addCountChanged raw model
+        CompendiumAddedToggle ->
+            Update.Compendium.Browser.addedToggle model
 
         CompendiumAddToQueue creatureId ->
             Update.Compendium.Add.addToQueue creatureId model
@@ -1007,6 +1007,7 @@ view model =
             , View.Modal.Memo.view model
             , View.Modal.Timer.view model
             , View.Modal.Compendium.view model.compendium
+                (List.filterMap .creatureId model.encounter.creatures)
             , View.Modal.CompendiumEdit.view model
             , View.Modal.CompendiumPaste.view model
             , View.Modal.Save.view model
