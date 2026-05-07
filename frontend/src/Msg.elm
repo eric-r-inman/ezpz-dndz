@@ -496,6 +496,16 @@ type Msg
     | CompendiumImportFileRead String
     | CompendiumResetClick
     | CompendiumDeleteFromBrowser String String
+      -- Bulk-selection + Clear dropdown.  CompendiumRowToggle's
+      -- second argument is the shift-key state at click time:
+      -- shift+click on an unselected creature selects every
+      -- visible row; shift+click on a selected one clears.
+    | CompendiumRowToggle String Bool
+    | CompendiumClearMenuToggle
+    | CompendiumClearMenuClose
+    | CompendiumClearAll
+    | CompendiumClearSelected
+    | CompendiumExportClick
       -- (creatureId, displayName)
     | CompendiumPendingCancel
     | CompendiumPendingConfirm

@@ -165,6 +165,15 @@ subscriptions model =
             else
                 []
 
+        clearMenuSubs =
+            if model.compendium.clearMenuOpen then
+                [ Browser.Events.onKeyDown (escKey CompendiumClearMenuClose)
+                , Browser.Events.onMouseDown (Decode.succeed CompendiumClearMenuClose)
+                ]
+
+            else
+                []
+
         primary =
             if model.dice.open then
                 Browser.Events.onKeyDown (escKey CloseDice)
@@ -202,7 +211,7 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs)
+    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -1037,6 +1046,24 @@ updateInner msg model =
 
         CompendiumResetResponse result ->
             Update.Compendium.Bulk.resetResponse result model
+
+        CompendiumRowToggle id shift ->
+            Update.Compendium.Browser.rowToggle id shift model
+
+        CompendiumClearMenuToggle ->
+            Update.Compendium.Browser.clearMenuToggle model
+
+        CompendiumClearMenuClose ->
+            Update.Compendium.Browser.clearMenuClose model
+
+        CompendiumClearAll ->
+            Update.Compendium.Bulk.clearAll model
+
+        CompendiumClearSelected ->
+            Update.Compendium.Bulk.clearSelected model
+
+        CompendiumExportClick ->
+            Update.Compendium.Browser.exportClick model
 
         ToastDismiss id ->
             Update.Toast.dismiss id model

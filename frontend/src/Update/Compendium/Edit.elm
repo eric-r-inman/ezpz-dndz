@@ -52,6 +52,7 @@ import Msg
         , FeatureGroup(..)
         , Msg(..)
         )
+import Set
 import Ui.Compendium as CompendiumUi
     exposing
         ( CompendiumDb(..)
@@ -513,7 +514,13 @@ submitResponse result model =
                         ui =
                             model.compendium
                     in
-                    { ui | selectedId = Just creature.id }
+                    -- Mark the library altered so Export gets the
+                    -- yellow-border cue.  Cleared by reset, import,
+                    -- or an explicit export click.
+                    { ui
+                        | selectedId = Just creature.id
+                        , compendiumDirty = True
+                    }
             }
                 |> Update.Toast.pushWith ToastSuccess
                     ("Saved " ++ creature.name)
@@ -560,11 +567,22 @@ deleteResponse deletedId result model =
         Ok () ->
             let
                 clearedSelection ui =
-                    if ui.selectedId == Just deletedId then
-                        { ui | selectedId = Nothing, bulkBusy = False }
+                    let
+                        baseSelectedId =
+                            if ui.selectedId == Just deletedId then
+                                Nothing
 
-                    else
-                        { ui | bulkBusy = False }
+                            else
+                                ui.selectedId
+                    in
+                    -- Drop the deleted id from the bulk-selection
+                    -- set too, and mark the library altered.
+                    { ui
+                        | selectedId = baseSelectedId
+                        , selectedIds = Set.remove deletedId ui.selectedIds
+                        , bulkBusy = False
+                        , compendiumDirty = True
+                    }
             in
             { model
                 | modal = Nothing

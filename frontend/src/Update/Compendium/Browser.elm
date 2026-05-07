@@ -2,6 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
+    , clearMenuClose, clearMenuToggle, exportClick, rowToggle
     )
 
 {-| Update branches for the compendium browser modal: load, open /
@@ -155,6 +156,80 @@ addedToggle : Model -> ( Model, Cmd Msg )
 addedToggle model =
     ( withCompendium (\ui -> { ui | showOnlyAdded = not ui.showOnlyAdded })
         model
+    , Cmd.none
+    )
+
+
+{-| Toggle the bulk-selection checkbox on one creature row.
+
+  - **Plain click** — flip just that creature's membership in
+    `selectedIds`.
+  - **Shift+click on an unselected row** — select every visible
+    creature. "Visible" means after the search / kind /
+    --added / --only filters apply.
+  - **Shift+click on a selected row** — clear the entire
+    selection.
+
+The `shift` flag arrives from a custom event decoder that
+reads `event.shiftKey`.
+
+-}
+rowToggle : String -> Bool -> Model -> ( Model, Cmd Msg )
+rowToggle id shift model =
+    let
+        ui =
+            model.compendium
+
+        nextSelected =
+            if shift then
+                if Set.member id ui.selectedIds then
+                    Set.empty
+
+                else
+                    CompendiumUi.compendiumVisible ui
+                        |> List.map .id
+                        |> Set.fromList
+
+            else if Set.member id ui.selectedIds then
+                Set.remove id ui.selectedIds
+
+            else
+                Set.insert id ui.selectedIds
+    in
+    ( withCompendium (\u -> { u | selectedIds = nextSelected }) model
+    , Cmd.none
+    )
+
+
+{-| Open / close the Clear dropdown at the top of the browser.
+The dropdown carries the [Clear All / Clear Selected] options
+that fire the actual destructive Cmds. Esc + click-outside
+close subscriptions live in `Main.subscriptions`.
+-}
+clearMenuToggle : Model -> ( Model, Cmd Msg )
+clearMenuToggle model =
+    ( withCompendium
+        (\ui -> { ui | clearMenuOpen = not ui.clearMenuOpen })
+        model
+    , Cmd.none
+    )
+
+
+clearMenuClose : Model -> ( Model, Cmd Msg )
+clearMenuClose model =
+    ( withCompendium (\ui -> { ui | clearMenuOpen = False }) model
+    , Cmd.none
+    )
+
+
+{-| Mark the in-memory dirty flag clean. Fired by the Export
+anchor's onClick (which still triggers the native download via
+its `href` + `download` attributes). The yellow border on
+Export comes off the moment the GM commits to a download.
+-}
+exportClick : Model -> ( Model, Cmd Msg )
+exportClick model =
+    ( withCompendium (\ui -> { ui | compendiumDirty = False }) model
     , Cmd.none
     )
 

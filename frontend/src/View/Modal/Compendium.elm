@@ -10,6 +10,7 @@ import Compendium
 import Html exposing (Html, a, button, div, input, label, option, p, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, href, id, placeholder, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
+import Json.Decode as Decode
 import Msg
     exposing
         ( CompendiumSort(..)
@@ -161,7 +162,7 @@ filterBar ui =
         , sortPicker ui.sort
         , newButton
         , pasteButton
-        , bulkButtons
+        , bulkButtons ui
         ]
 
 
@@ -346,7 +347,7 @@ twoColumn ui encounterIds =
                     0
     in
     div [ class "compendium__columns" ]
-        [ list ui totalCount visible encounterIds
+        [ list ui totalCount visible encounterIds ui.selectedIds
         , detail ui visible encounterIds
         ]
 
@@ -356,8 +357,9 @@ list :
     -> Int
     -> List Compendium.Creature
     -> List String
+    -> Set String
     -> Html Msg
-list ui totalCount visible encounterIds =
+list ui totalCount visible encounterIds selectedIds =
     if List.isEmpty visible then
         if totalCount == 0 then
             div [ class "compendium__list compendium__list--empty" ]
@@ -394,14 +396,17 @@ list ui totalCount visible encounterIds =
 
     else
         div [ class "compendium__list" ]
-            (List.map (listItem ui.selectedId encounterIds) visible)
+            (List.map (listItem ui.selectedId selectedIds encounterIds) visible)
 
 
-listItem : Maybe String -> List String -> Compendium.Creature -> Html Msg
-listItem selectedId encounterIds c =
+listItem : Maybe String -> Set String -> List String -> Compendium.Creature -> Html Msg
+listItem selectedId selectedIds encounterIds c =
     let
         isSelected =
             selectedId == Just c.id
+
+        isChecked =
+            Set.member c.id selectedIds
 
         inEncounter =
             List.member c.id encounterIds
@@ -414,11 +419,19 @@ listItem selectedId encounterIds c =
                     else
                         ""
                    )
+                ++ (if isChecked then
+                        " compendium__row--checked"
+
+                    else
+                        ""
+                   )
                 ++ (" compendium__row--" ++ CompendiumUi.kindToString c.kind)
     in
-    button
+    div
         [ class rowClass
         , onClick (CompendiumSelect c.id)
+        , attribute "role" "button"
+        , attribute "tabindex" "0"
         , attribute "aria-pressed"
             (if isSelected then
                 "true"
@@ -427,22 +440,55 @@ listItem selectedId encounterIds c =
                 "false"
             )
         ]
-        [ span [ class "compendium__row-name" ]
-            [ text c.name
-            , if inEncounter then
-                span
-                    [ class "compendium__row-in-enc"
-                    , title "This creature has at least one instance in the encounter"
-                    , attribute "aria-label" "in encounter"
-                    ]
-                    []
+        [ rowCheckbox c.id isChecked
+        , div [ class "compendium__row-text" ]
+            [ span [ class "compendium__row-name" ]
+                [ text c.name
+                , if inEncounter then
+                    span
+                        [ class "compendium__row-in-enc"
+                        , title "This creature has at least one instance in the encounter"
+                        , attribute "aria-label" "in encounter"
+                        ]
+                        []
 
-              else
-                text ""
+                  else
+                    text ""
+                ]
+            , span [ class "compendium__row-meta" ]
+                [ text (rowMetaLine c) ]
             ]
-        , span [ class "compendium__row-meta" ]
-            [ text (rowMetaLine c) ]
         ]
+
+
+{-| Bulk-selection checkbox at the leading edge of each row.
+Clicks here are stopped from bubbling so the surrounding row
+button doesn't also fire `CompendiumSelect` (which would shift
+the right-pane stat block) — the GM expects checkbox clicks to
+ONLY toggle bulk selection.
+
+The custom event decoder reads `event.shiftKey` so we can
+implement the shift+click select-all / clear-all semantics in
+`Update.Compendium.Browser.rowToggle`.
+
+-}
+rowCheckbox : String -> Bool -> Html Msg
+rowCheckbox creatureId isChecked =
+    Html.input
+        [ type_ "checkbox"
+        , class "compendium__row-check"
+        , Attr.checked isChecked
+        , attribute "aria-label" "Select for bulk action"
+        , title "Click to select; shift+click to select all (or clear) visible creatures"
+        , Html.Events.stopPropagationOn "click"
+            (Decode.field "shiftKey" Decode.bool
+                |> Decode.map
+                    (\shift ->
+                        ( CompendiumRowToggle creatureId shift, True )
+                    )
+            )
+        ]
+        []
 
 
 rowMetaLine : Compendium.Creature -> String
@@ -560,13 +606,38 @@ pasteButton =
 
 
 {-| Cluster of bulk operations on the right edge of the filter
-bar: Import / Export / Reset to Bundled. Export is a plain anchor
-with `download` so the browser handles it natively (no Cmd needed).
-Import + Reset both go through the destructive-confirm banner
-before firing.
+bar: Import / Export / Reset / Clear.
+
+  - **Import / Reset** — go through the destructive-confirm
+    banner before firing.
+  - **Export** — a plain anchor with `download` so the browser
+    handles the save natively. An `onClick` Msg fires
+    alongside the native download to clear `compendiumDirty`,
+    which removes the yellow border that signals "you have
+    unsaved changes."
+  - **Clear** — opens a dropdown with Clear All / Clear
+    Selected. Both options replace the library wholesale via
+    the import endpoint (Clear All sends `[]`; Clear Selected
+    sends the kept set). Esc + click-outside cancel.
+
 -}
-bulkButtons : Html Msg
-bulkButtons =
+bulkButtons : CompendiumUi -> Html Msg
+bulkButtons ui =
+    let
+        exportClass =
+            if ui.compendiumDirty then
+                "action-btn action-btn--blue compendium__export--dirty"
+
+            else
+                "action-btn action-btn--blue"
+
+        exportTitle =
+            if ui.compendiumDirty then
+                "Download the entire library as JSON (unsaved changes)"
+
+            else
+                "Download the entire library as JSON"
+    in
     div [ class "compendium__bulk-cluster" ]
         [ button
             [ class "action-btn action-btn--blue"
@@ -575,16 +646,87 @@ bulkButtons =
             ]
             [ text "📥 Import" ]
         , a
-            [ class "action-btn action-btn--blue"
+            [ class exportClass
             , href "/api/compendium/export"
             , attribute "download" "compendium.json"
-            , title "Download the entire library as JSON"
+            , title exportTitle
+            , onClick CompendiumExportClick
             ]
             [ text "📤 Export" ]
         , button
-            [ class "action-btn action-btn--red"
+            [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
             , title "Reset the library to the bundled creature set"
             ]
             [ text "↺ Reset" ]
+        , clearMenu ui
+        ]
+
+
+{-| Clear button + popover dropdown. Wraps the popover in a
+`<div>` with `stopPropagationOn "mousedown"` so a click inside
+the dropdown doesn't bubble up to the document-level
+"click-outside closes" handler in `Main.subscriptions`.
+-}
+clearMenu : CompendiumUi -> Html Msg
+clearMenu ui =
+    let
+        wrapperClass =
+            if ui.clearMenuOpen then
+                "compendium__clear-menu compendium__clear-menu--open"
+
+            else
+                "compendium__clear-menu"
+
+        nothingSelected =
+            Set.isEmpty ui.selectedIds
+    in
+    div
+        [ class wrapperClass
+        , Html.Events.stopPropagationOn "mousedown"
+            (Decode.succeed ( NoOp, True ))
+        ]
+        [ button
+            [ class "action-btn action-btn--red"
+            , onClick CompendiumClearMenuToggle
+            , title "Clear all creatures, or just the selected ones"
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if ui.clearMenuOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text "🗑 Clear" ]
+        , if ui.clearMenuOpen then
+            div
+                [ class "compendium__clear-menu__list"
+                , attribute "role" "menu"
+                ]
+                [ button
+                    [ class "compendium__clear-menu__item"
+                    , onClick CompendiumClearAll
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "Clear All" ]
+                , button
+                    [ class "compendium__clear-menu__item"
+                    , onClick CompendiumClearSelected
+                    , disabled nothingSelected
+                    , title
+                        (if nothingSelected then
+                            "No creatures are checked"
+
+                         else
+                            "Remove the checked creatures"
+                        )
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "Clear Selected" ]
+                ]
+
+          else
+            text ""
         ]

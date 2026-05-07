@@ -94,6 +94,20 @@ type alias CompendiumUi =
     , selectedId : Maybe String
     , showOnlyAdded : Bool
     , pending : Maybe PendingAction
+
+    -- Bulk-selection state for the row checkboxes that drive
+    -- the Clear-Selected action.  Independent of `selectedId`
+    -- (which picks the right-pane stat block).
+    , selectedIds : Set String
+
+    -- Clear dropdown (Clear All / Clear Selected) visibility.
+    , clearMenuOpen : Bool
+
+    -- Library-altered flag.  Goes True on any add / edit /
+    -- delete, clears on reset / import / export so the GM sees
+    -- a yellow border on Export when there's something worth
+    -- saving.  Session-only — resets on page reload.
+    , compendiumDirty : Bool
     , bulkBusy : Bool
     , bulkError : Maybe String
     }
@@ -132,6 +146,9 @@ emptyCompendium =
     , selectedId = Nothing
     , showOnlyAdded = False
     , pending = Nothing
+    , selectedIds = Set.empty
+    , clearMenuOpen = False
+    , compendiumDirty = False
     , bulkBusy = False
     , bulkError = Nothing
     }

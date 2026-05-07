@@ -2,6 +2,7 @@ module Update.Compendium.Bulk exposing
     ( deleteFromBrowser, importClick, importFileChosen
     , importFileRead, importResponse, pendingCancel, pendingConfirm
     , resetClick, resetResponse
+    , clearAll, clearSelected
     )
 
 {-| Bulk import / reset / per-row delete flow for the compendium
@@ -28,10 +29,12 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (Msg(..))
+import Set
 import Task
 import Ui.Compendium
     exposing
-        ( CompendiumUi
+        ( CompendiumDb(..)
+        , CompendiumUi
         , PendingAction(..)
         )
 import Ui.Toast exposing (ToastKind(..))
@@ -171,6 +174,51 @@ importCmd creatures =
         }
 
 
+{-| Wholesale-replace the compendium with an empty list.
+Routes through the existing import endpoint (the server treats
+an empty array as a valid wipe), so `importResponse` cleans up
+the local cache + selection + clearMenu state on success.
+
+Closes the Clear dropdown synchronously; the user shouldn't see
+the dropdown still hovering after the destructive op fires.
+
+-}
+clearAll : Model -> ( Model, Cmd Msg )
+clearAll model =
+    ( withCompendium
+        (\ui -> { ui | clearMenuOpen = False, bulkBusy = True })
+        model
+    , importCmd []
+    )
+
+
+{-| Replace the compendium with the kept set — every creature
+NOT in `selectedIds`. Same wire path as `clearAll` so success
+runs through `importResponse`. No-op when nothing is selected
+or the library hasn't loaded.
+-}
+clearSelected : Model -> ( Model, Cmd Msg )
+clearSelected model =
+    case model.compendium.db of
+        CompendiumDbLoaded db ->
+            let
+                kept =
+                    Compendium.toList db
+                        |> List.filter
+                            (\c -> not (Set.member c.id model.compendium.selectedIds))
+            in
+            ( withCompendium
+                (\ui -> { ui | clearMenuOpen = False, bulkBusy = True })
+                model
+            , importCmd kept
+            )
+
+        _ ->
+            ( withCompendium (\ui -> { ui | clearMenuOpen = False }) model
+            , Cmd.none
+            )
+
+
 importResponse : Result Http.Error Int -> Model -> ( Model, Cmd Msg )
 importResponse result model =
     case result of
@@ -187,8 +235,22 @@ importResponse result model =
                     ("Import failed: " ++ Util.Http.errorToString err)
 
         Ok count ->
+            -- Wholesale replace from a file leaves the library in
+            -- a "saved" state matching what's on disk, so the
+            -- dirty flag clears.  The same path runs after Clear
+            -- All / Clear Selected (those re-import a curated set)
+            -- so we also wipe `selectedIds` and close any stale
+            -- Clear dropdown.
             withCompendium
-                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
+                (\ui ->
+                    { ui
+                        | bulkBusy = False
+                        , selectedId = Nothing
+                        , selectedIds = Set.empty
+                        , clearMenuOpen = False
+                        , compendiumDirty = False
+                    }
+                )
                 model
                 |> Update.Toast.pushWith ToastSuccess
                     ("Imported " ++ String.fromInt count ++ " creatures")
@@ -211,8 +273,18 @@ resetResponse result model =
                     ("Reset failed: " ++ Util.Http.errorToString err)
 
         Ok creatures ->
+            -- Reset restores the bundled set; the library is
+            -- back to its baseline so dirty clears, and any
+            -- bulk-selection from before the reset is now stale.
             withCompendium
-                (\ui -> { ui | bulkBusy = False, selectedId = Nothing })
+                (\ui ->
+                    { ui
+                        | bulkBusy = False
+                        , selectedId = Nothing
+                        , selectedIds = Set.empty
+                        , compendiumDirty = False
+                    }
+                )
                 model
                 |> Update.Toast.pushWith ToastSuccess
                     ("Library reset to " ++ String.fromInt (List.length creatures) ++ " bundled creatures")
