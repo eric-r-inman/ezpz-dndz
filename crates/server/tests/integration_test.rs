@@ -49,6 +49,15 @@ async fn stub_state_no_auth(frontend_path: PathBuf) -> AppState {
       )
       .await
       .expect("test compendium store"),
+    compendium_saves:
+      ezpz_dndz_server::compendium::SavedCompendiumStore::load_or_default(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test compendium saves store"),
     encounter_store:
       ezpz_dndz_server::encounters::EncounterStore::load_or_default(
         tempfile::NamedTempFile::new()
@@ -117,6 +126,15 @@ async fn stub_state_with_auth(frontend_path: PathBuf) -> AppState {
       )
       .await
       .expect("test compendium store"),
+    compendium_saves:
+      ezpz_dndz_server::compendium::SavedCompendiumStore::load_or_default(
+        tempfile::NamedTempFile::new()
+          .expect("tempfile")
+          .into_temp_path()
+          .to_path_buf(),
+      )
+      .await
+      .expect("test compendium saves store"),
     encounter_store:
       ezpz_dndz_server::encounters::EncounterStore::load_or_default(
         tempfile::NamedTempFile::new()
@@ -417,6 +435,7 @@ async fn test_config_no_oidc() {
     data_dir: None,
     dice_history_path: None,
     compendium_path: None,
+    compendium_saves_path: None,
     encounter_path: None,
     encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
@@ -445,6 +464,7 @@ async fn test_config_full_oidc() {
     data_dir: None,
     dice_history_path: None,
     compendium_path: None,
+    compendium_saves_path: None,
     encounter_path: None,
     encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
@@ -473,6 +493,7 @@ async fn test_config_partial_oidc_errors() {
     data_dir: None,
     dice_history_path: None,
     compendium_path: None,
+    compendium_saves_path: None,
     encounter_path: None,
     encounter_saves_path: None,
     base_url: Some("https://example.com".to_string()),
@@ -567,6 +588,118 @@ async fn test_encounter_put_then_get_roundtrip() {
     body_str.contains("\"round\":3"),
     "expected PUT body to round-trip, got: {body_str}"
   );
+}
+
+#[tokio::test]
+async fn test_compendium_save_create_list_get_roundtrip() {
+  let state = state_without_frontend().await;
+  let app = base_router(state);
+
+  let payload = r#"[{"id":"abc","name":"Goblin","cr":"1/4"}]"#;
+
+  let put_response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/compendium/saves/My%20Bestiary")
+        .header("content-type", "application/json")
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put_response.status(), StatusCode::OK);
+
+  let list_response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/compendium/saves")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(list_response.status(), StatusCode::OK);
+  let list_body = axum::body::to_bytes(list_response.into_body(), usize::MAX)
+    .await
+    .unwrap();
+  let list_str = String::from_utf8(list_body.to_vec()).unwrap();
+  assert!(
+    list_str.contains("\"name\":\"My Bestiary\""),
+    "expected listing to include the new save, got: {list_str}"
+  );
+
+  let get_response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/compendium/saves/My%20Bestiary")
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(get_response.status(), StatusCode::OK);
+  let get_body = axum::body::to_bytes(get_response.into_body(), usize::MAX)
+    .await
+    .unwrap();
+  let get_str = String::from_utf8(get_body.to_vec()).unwrap();
+  assert!(
+    get_str.contains("\"name\":\"Goblin\""),
+    "expected creature payload to round-trip, got: {get_str}"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_save_overwrite_conflicts_without_flag() {
+  let state = state_without_frontend().await;
+  let app = base_router(state);
+
+  // First create — succeeds.
+  let first = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/compendium/saves/dup")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"[]"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(first.status(), StatusCode::OK);
+
+  // Second create under the same name — 409 without
+  // `?overwrite=true` so the modal can prompt.
+  let second = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/compendium/saves/dup")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"[]"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(second.status(), StatusCode::CONFLICT);
+
+  // Same call with `?overwrite=true` succeeds.
+  let third = app
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/compendium/saves/dup?overwrite=true")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"[]"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(third.status(), StatusCode::OK);
 }
 
 #[tokio::test]

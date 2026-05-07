@@ -74,6 +74,12 @@ pub struct CliRaw {
   #[arg(long, env = "COMPENDIUM_PATH")]
   pub compendium_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing user-named compendium snapshots
+  /// (the Save / Load actions inside the Compendium modal).
+  /// Defaults to `<data_dir>/compendium-saves.json`.
+  #[arg(long, env = "COMPENDIUM_SAVES_PATH")]
+  pub compendium_saves_path: Option<PathBuf>,
+
   /// Path to the JSON file backing the persisted live encounter
   /// (auto-saved by the frontend on every mutation, auto-loaded
   /// on app boot). Defaults to `<data_dir>/encounter.json`.
@@ -113,6 +119,7 @@ pub struct ConfigFileRaw {
   pub data_dir: Option<PathBuf>,
   pub dice_history_path: Option<PathBuf>,
   pub compendium_path: Option<PathBuf>,
+  pub compendium_saves_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
   pub base_url: Option<String>,
@@ -156,6 +163,7 @@ pub struct Config {
   pub data_dir: PathBuf,
   pub dice_history_path: PathBuf,
   pub compendium_path: PathBuf,
+  pub compendium_saves_path: PathBuf,
   pub encounter_path: PathBuf,
   pub encounter_saves_path: PathBuf,
   pub base_url: String,
@@ -231,6 +239,15 @@ impl Config {
       .compendium_path
       .or(config_file.compendium_path)
       .unwrap_or_else(|| data_dir.join("compendium").join("creatures.json"));
+
+    // Named compendium snapshots: a single flat JSON file
+    // (`<data_dir>/compendium-saves.json`) sitting next to the live
+    // compendium directory.  Mirrors `encounter_saves_path` so a
+    // single `--data-dir` bind-mount carries everything.
+    let compendium_saves_path = cli
+      .compendium_saves_path
+      .or(config_file.compendium_saves_path)
+      .unwrap_or_else(|| data_dir.join("compendium-saves.json"));
 
     // Live encounter: explicit override wins, otherwise default
     // into <data_dir>/encounter.json.
@@ -318,6 +335,7 @@ impl Config {
       data_dir,
       dice_history_path,
       compendium_path,
+      compendium_saves_path,
       encounter_path,
       encounter_saves_path,
       base_url,

@@ -35,6 +35,7 @@ pub struct AppState {
   pub frontend_path: PathBuf,
   pub dice_store: crate::dice::DiceStore,
   pub compendium_store: crate::compendium::CompendiumStore,
+  pub compendium_saves: crate::compendium::SavedCompendiumStore,
   pub encounter_store: crate::encounters::EncounterStore,
   pub encounter_saves: crate::encounters::SavedEncounterStore,
   pub oidc_client: Option<Arc<CoreClient>>,
@@ -130,6 +131,13 @@ impl AppState {
       .await
       .map_err(AppStateError::CompendiumStoreLoad)?;
 
+    let compendium_saves =
+      crate::compendium::SavedCompendiumStore::load_or_default(
+        config.compendium_saves_path.clone(),
+      )
+      .await
+      .map_err(AppStateError::CompendiumStoreLoad)?;
+
     let encounter_store = crate::encounters::EncounterStore::load_or_default(
       config.encounter_path.clone(),
     )
@@ -149,6 +157,7 @@ impl AppState {
       frontend_path: config.frontend_path.clone(),
       dice_store,
       compendium_store,
+      compendium_saves,
       encounter_store,
       encounter_saves,
       oidc_client,

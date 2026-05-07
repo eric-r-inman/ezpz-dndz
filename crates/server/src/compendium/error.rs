@@ -61,14 +61,35 @@ pub enum CompendiumStoreError {
   /// startup.
   #[error("Failed to parse the compendium bundle-seed file: {source}")]
   BundleSeedParseError { source: serde_json::Error },
+
+  /// A `create` or `rename` collided with an existing
+  /// compendium-save name.
+  #[error("A saved compendium with that name already exists")]
+  SaveAlreadyExists,
+
+  /// `get` / `replace` / `delete` / `rename` referenced a
+  /// compendium-save name that doesn't exist.
+  #[error("No saved compendium with that name was found")]
+  SaveNotFound,
+
+  /// Compendium-save name validation failed.  `reason` is a
+  /// static slice describing the rule that fired.
+  #[error("Saved compendium name is invalid: {reason}")]
+  SaveNameInvalid { reason: &'static str },
 }
 
 impl IntoResponse for CompendiumStoreError {
   fn into_response(self) -> Response {
     let status = match &self {
-      Self::CreatureIdNotFoundError { .. } => StatusCode::NOT_FOUND,
-      Self::CreatureDuplicateIdError { .. } => StatusCode::CONFLICT,
-      Self::CreatureIdMismatchError { .. } => StatusCode::BAD_REQUEST,
+      Self::CreatureIdNotFoundError { .. } | Self::SaveNotFound => {
+        StatusCode::NOT_FOUND
+      }
+      Self::CreatureDuplicateIdError { .. } | Self::SaveAlreadyExists => {
+        StatusCode::CONFLICT
+      }
+      Self::CreatureIdMismatchError { .. } | Self::SaveNameInvalid { .. } => {
+        StatusCode::BAD_REQUEST
+      }
       Self::StoreError(_)
       | Self::BundledParseError { .. }
       | Self::BundleSeedWriteError { .. }

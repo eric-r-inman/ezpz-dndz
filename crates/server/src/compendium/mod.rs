@@ -12,9 +12,11 @@
 //!   variants per the project's CLAUDE.md conventions.
 
 pub mod error;
+pub mod saves;
 pub mod store;
 
 pub use error::CompendiumStoreError;
+pub use saves::{SavedCompendium, SavedCompendiumMeta, SavedCompendiumStore};
 pub use store::CompendiumStore;
 
 use aide::{
@@ -25,12 +27,14 @@ use aide::{
   transform::TransformOperation,
 };
 use axum::{
-  extract::{Path, State},
+  extract::{Path, Query, State},
   http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
 use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
+use serde::Deserialize;
+use serde_json::Value;
 
 use crate::web_base::AppState;
 
@@ -116,6 +120,95 @@ async fn reset_compendium(State(state): State<AppState>) -> Response {
   }
 }
 
+// ── named-save handlers ──────────────────────────────────────────────────────
+//
+// Mirrors the encounter-saves endpoints under `/api/encounter/saves`.
+// The save body is the full creature list, stored opaquely as
+// `serde_json::Value` so frontend-only schema changes don't need a
+// server migration.
+
+async fn list_compendium_saves(State(state): State<AppState>) -> Response {
+  Json(state.compendium_saves.list().await).into_response()
+}
+
+async fn get_compendium_save(
+  State(state): State<AppState>,
+  Path(name): Path<String>,
+) -> Response {
+  match state.compendium_saves.get(&name).await {
+    Some(record) => Json(record).into_response(),
+    None => CompendiumStoreError::SaveNotFound.into_response(),
+  }
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct PutCompendiumSaveQuery {
+  /// When `true`, replace the existing save with this name.  When
+  /// `false` (the default), creating against an existing name
+  /// returns `409 Conflict` so the frontend can prompt the user
+  /// to confirm the overwrite.
+  #[serde(default)]
+  overwrite: bool,
+}
+
+async fn put_compendium_save(
+  State(state): State<AppState>,
+  Path(raw_name): Path<String>,
+  Query(query): Query<PutCompendiumSaveQuery>,
+  Json(body): Json<Value>,
+) -> Response {
+  let name = match saves::validate_save_name(&raw_name) {
+    Ok(n) => n,
+    Err(e) => return e.into_response(),
+  };
+  let result = if query.overwrite {
+    // Try replace; if missing, fall back to create so a single
+    // PUT?overwrite=true call upserts.
+    match state
+      .compendium_saves
+      .replace(name.clone(), body.clone())
+      .await
+    {
+      Ok(record) => Ok(record),
+      Err(CompendiumStoreError::SaveNotFound) => {
+        state.compendium_saves.create(name, body).await
+      }
+      Err(other) => Err(other),
+    }
+  } else {
+    state.compendium_saves.create(name, body).await
+  };
+  match result {
+    Ok(record) => (StatusCode::OK, Json(record)).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+async fn delete_compendium_save(
+  State(state): State<AppState>,
+  Path(name): Path<String>,
+) -> Response {
+  match state.compendium_saves.delete(&name).await {
+    Ok(()) => StatusCode::NO_CONTENT.into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+async fn rename_compendium_save(
+  State(state): State<AppState>,
+  Path(name): Path<String>,
+  Json(body): Json<saves::RenameBody>,
+) -> Response {
+  let new_name = match saves::validate_save_name(&body.new_name) {
+    Ok(n) => n,
+    Err(e) => return e.into_response(),
+  };
+  match state.compendium_saves.rename(&name, new_name).await {
+    Ok(record) => Json(record).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
 // ── router ───────────────────────────────────────────────────────────────────
 
 /// Build the compendium subrouter.  Returned as `ApiRouter<AppState>`
@@ -178,6 +271,49 @@ pub fn router() -> ApiRouter<AppState> {
       post_with(reset_compendium, |op: TransformOperation| {
         op.description(
           "Restore the bundled creature set, discarding user changes.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/saves",
+      get_with(list_compendium_saves, |op: TransformOperation| {
+        op.description(
+          "List named compendium snapshots (metadata only — no bodies). \
+           Sorted by most-recently-updated first.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/saves/{name}",
+      get_with(get_compendium_save, |op: TransformOperation| {
+        op.description(
+          "Fetch one named compendium snapshot, including its full \
+           creature list.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/saves/{name}",
+      put_with(put_compendium_save, |op: TransformOperation| {
+        op.description(
+          "Create or overwrite a named compendium snapshot. \
+           Without `?overwrite=true`, attempting to save under an \
+           existing name returns 409 so the frontend can prompt.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/saves/{name}",
+      delete_with(delete_compendium_save, |op: TransformOperation| {
+        op.description("Delete a named compendium snapshot.")
+      }),
+    )
+    .api_route(
+      "/api/compendium/saves/{name}/rename",
+      post_with(rename_compendium_save, |op: TransformOperation| {
+        op.description(
+          "Rename a compendium snapshot.  Body: `{ \"new_name\": \"...\" }`. \
+           Errors if the destination name already exists.",
         )
       }),
     )
