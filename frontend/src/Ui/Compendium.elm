@@ -9,6 +9,7 @@ module Ui.Compendium exposing
     , creatureKindLabel
     , parseIntOr, parseCsv, saveRowToValue, skillRowToValue
     , draftToFeature, customSectionRowToValue
+    , closeMenus, currentCreatures, markSaved
     )
 
 {-| Compendium browser + paste + edit modal state, plus helpers
@@ -110,6 +111,12 @@ type alias CompendiumUi =
     , compendiumDirty : Bool
     , bulkBusy : Bool
     , bulkError : Maybe String
+
+    -- Last server-side compendium snapshot name the user saved
+    -- to / loaded from.  Pre-fills the Save modal's filename
+    -- input and lets the toast / banner identify the snapshot.
+    -- Session-only.
+    , savedAs : Maybe String
     }
 
 
@@ -151,7 +158,47 @@ emptyCompendium =
     , compendiumDirty = False
     , bulkBusy = False
     , bulkError = Nothing
+    , savedAs = Nothing
     }
+
+
+{-| Pull the canonical creature list out of the loading-state
+`Db` wrapper. Returns `[]` while the initial `GET
+/api/compendium/creatures` is in flight or has errored — the
+Save modal disables submit in that case via its `busy` flag,
+so the empty result is never persisted.
+-}
+currentCreatures : CompendiumUi -> List Compendium.Creature
+currentCreatures ui =
+    case ui.db of
+        CompendiumDbLoaded db ->
+            Compendium.toList db
+
+        _ ->
+            []
+
+
+{-| Apply the post-save bookkeeping: clear the dirty flag (the
+on-disk snapshot is now in sync) and remember the snapshot name
+so the next open of the Save modal pre-fills it. Mirrors the
+encounter modal's `savedAs` / `savedSnapshot` discipline.
+-}
+markSaved : String -> CompendiumUi -> CompendiumUi
+markSaved name ui =
+    { ui
+        | compendiumDirty = False
+        , savedAs = Just name
+    }
+
+
+{-| Close any compendium-modal popovers (Clear dropdown today;
+Import / Export dropdowns when Phase D lands). Called when a
+modal-on-top-of-the-modal opens so the popover doesn't linger
+behind it.
+-}
+closeMenus : CompendiumUi -> CompendiumUi
+closeMenus ui =
+    { ui | clearMenuOpen = False }
 
 
 {-| Filter / sort pipeline against the loaded `Db`. Empty

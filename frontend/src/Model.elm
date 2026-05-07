@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -50,10 +50,12 @@ import Ui.Duplicate exposing (DuplicateUi)
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
+import Ui.LoadCompendium exposing (LoadCompendiumUi)
 import Ui.Memo exposing (MemoEditUi)
 import Ui.Note exposing (NoteEditUi)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.Save exposing (SaveUi)
+import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
 import Url exposing (Url)
@@ -102,6 +104,8 @@ type Modal
     | ModalCompendiumPaste CompendiumPasteUi
     | ModalSave SaveUi
     | ModalLoad LoadUi
+    | ModalSaveCompendium SaveCompendiumUi
+    | ModalLoadCompendium LoadCompendiumUi
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
@@ -286,6 +290,34 @@ timerLens =
                 _ ->
                     Nothing
     , wrap = ModalTimerSetup
+    }
+
+
+saveCompendiumLens : ModalLens SaveCompendiumUi
+saveCompendiumLens =
+    { extract =
+        \m ->
+            case m of
+                ModalSaveCompendium ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalSaveCompendium
+    }
+
+
+loadCompendiumLens : ModalLens LoadCompendiumUi
+loadCompendiumLens =
+    { extract =
+        \m ->
+            case m of
+                ModalLoadCompendium ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalLoadCompendium
     }
 
 

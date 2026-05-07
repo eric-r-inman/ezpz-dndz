@@ -76,11 +76,13 @@ import Update.HpChange
 import Update.Initiative
 import Update.LegendaryPip
 import Update.Load
+import Update.LoadCompendium
 import Update.Memo
 import Update.Note
 import Update.Preferences
 import Update.QuickAdd
 import Update.Save
+import Update.SaveCompendium
 import Update.Shell
 import Update.Timer
 import Update.Toast
@@ -100,10 +102,12 @@ import View.Modal.Duplicate
 import View.Modal.HpChange
 import View.Modal.Initiative
 import View.Modal.Load
+import View.Modal.LoadCompendium
 import View.Modal.Memo
 import View.Modal.Note
 import View.Modal.QuickAdd
 import View.Modal.Save
+import View.Modal.SaveCompendium
 import View.Modal.Timer
 import View.StatBlock
 import View.Toast
@@ -205,6 +209,12 @@ subscriptions model =
 
                     Just (ModalLoad _) ->
                         Browser.Events.onKeyDown (escKey LoadClose)
+
+                    Just (ModalSaveCompendium _) ->
+                        Browser.Events.onKeyDown (escKey SaveCompendiumClose)
+
+                    Just (ModalLoadCompendium _) ->
+                        Browser.Events.onKeyDown (escKey LoadCompendiumClose)
 
                     Just (ModalAbilitySave _) ->
                         Browser.Events.onKeyDown (escKey AbilitySaveClose)
@@ -984,6 +994,57 @@ updateInner msg model =
         LoadFromDeviceFileRead raw ->
             Update.Load.fromDeviceFileRead raw model
 
+        SaveCompendiumOpen destination ->
+            Update.SaveCompendium.open destination model
+
+        SaveCompendiumClose ->
+            Update.SaveCompendium.close model
+
+        SaveCompendiumDestinationSet dest ->
+            Update.SaveCompendium.destinationSet dest model
+
+        SaveCompendiumFilenameChanged text ->
+            Update.SaveCompendium.filenameChanged text model
+
+        SaveCompendiumSubmit ->
+            Update.SaveCompendium.submit model
+
+        SaveCompendiumListLoaded result ->
+            Update.SaveCompendium.listLoaded result model
+
+        SaveCompendiumPersistResponse name result ->
+            Update.SaveCompendium.persistResponse name result model
+
+        SaveCompendiumOverwriteRequested name ->
+            Update.SaveCompendium.overwriteRequested name model
+
+        SaveCompendiumConfirmCancel ->
+            Update.SaveCompendium.confirmCancel model
+
+        SaveCompendiumConfirmConfirm ->
+            Update.SaveCompendium.confirmConfirm model
+
+        LoadCompendiumOpen ->
+            Update.LoadCompendium.open model
+
+        LoadCompendiumClose ->
+            Update.LoadCompendium.close model
+
+        LoadCompendiumListLoaded result ->
+            Update.LoadCompendium.listLoaded result model
+
+        LoadCompendiumFromServerRequested name ->
+            Update.LoadCompendium.fromServerRequested name model
+
+        LoadCompendiumConfirmCancel ->
+            Update.LoadCompendium.confirmCancel model
+
+        LoadCompendiumConfirmConfirm ->
+            Update.LoadCompendium.confirmConfirm model
+
+        LoadCompendiumServerResponse name result ->
+            Update.LoadCompendium.serverResponse name result model
+
         EncounterReset ->
             Update.Encounter.requestReset model
 
@@ -1132,6 +1193,8 @@ view model =
             , View.Modal.CompendiumPaste.view model
             , View.Modal.Save.view model
             , View.Modal.Load.view model
+            , View.Modal.SaveCompendium.view model
+            , View.Modal.LoadCompendium.view model
             , View.Modal.AbilitySave.view model
             , View.Modal.QuickAdd.view model
             , View.Modal.Duplicate.view model

@@ -32,6 +32,7 @@ stay in `Main.elm` for now and are scheduled for per-feature
 import Browser
 import Browser.Dom
 import Compendium
+import Compendium.Wire
 import Dice
 import Encounter exposing (Encounter)
 import Encounter.Wire
@@ -481,6 +482,28 @@ type Msg
     | LoadFromDeviceClick
     | LoadFromDeviceFileChosen File
     | LoadFromDeviceFileRead String
+      -- Compendium snapshot Save / Load (server-side named
+      -- snapshots, distinct from the live working compendium).
+      -- Mirrors the encounter Save / Load modal's wire pattern;
+      -- device-save / device-load reuse the existing
+      -- CompendiumExportClick / CompendiumImportClick paths.
+    | SaveCompendiumOpen SaveDestination
+    | SaveCompendiumClose
+    | SaveCompendiumDestinationSet SaveDestination
+    | SaveCompendiumFilenameChanged String
+    | SaveCompendiumSubmit
+    | SaveCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
+    | SaveCompendiumPersistResponse String (Result Http.Error ())
+    | SaveCompendiumOverwriteRequested String
+    | SaveCompendiumConfirmCancel
+    | SaveCompendiumConfirmConfirm
+    | LoadCompendiumOpen
+    | LoadCompendiumClose
+    | LoadCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
+    | LoadCompendiumFromServerRequested String
+    | LoadCompendiumConfirmCancel
+    | LoadCompendiumConfirmConfirm
+    | LoadCompendiumServerResponse String (Result Http.Error (List Compendium.Creature))
       -- Encounter Controls panel: which (if any) of the
       -- Save / Load split-button dropdowns is currently open.
     | ControlMenuToggle ControlMenu

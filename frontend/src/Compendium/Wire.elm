@@ -2,6 +2,7 @@ module Compendium.Wire exposing
     ( fetchAll
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
+    , SavedCompendiumMeta, deleteCompendiumSaveCmd, getCompendiumSaveCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
     )
 
 {-| Wire format + HTTP client for the compendium domain.
@@ -43,6 +44,7 @@ import Compendium
 import Http
 import Json.Decode as D
 import Json.Encode as E
+import Util.Http
 
 
 
@@ -78,6 +80,136 @@ fetchAll toMsg =
         { url = "/api/compendium/creatures"
         , expect = Http.expectJson toMsg (D.list decodeCreature)
         }
+
+
+
+-- ── NAMED SAVES (compendium snapshots) ───────────────────────────────────────
+--
+-- Mirrors `Encounter.Wire`'s named-save helpers but keyed against
+-- the `/api/compendium/saves` family of endpoints.  The body each
+-- snapshot wraps is a full `List Creature`; everything else
+-- (metadata shape, list-then-pick semantics, ?overwrite=true upsert)
+-- matches the encounter pattern.
+
+
+{-| Server-side metadata for one named compendium snapshot. Used
+by the Save / Load modal listings.
+-}
+type alias SavedCompendiumMeta =
+    { name : String
+    , createdAt : Int
+    , updatedAt : Int
+    }
+
+
+decodeSavedCompendiumMeta : D.Decoder SavedCompendiumMeta
+decodeSavedCompendiumMeta =
+    D.map3 SavedCompendiumMeta
+        (D.field "name" D.string)
+        (D.field "created_at" D.int)
+        (D.field "updated_at" D.int)
+
+
+{-| `GET /api/compendium/saves` — list named snapshots.
+-}
+listCompendiumSavesCmd :
+    (Result Http.Error (List SavedCompendiumMeta) -> msg)
+    -> Cmd msg
+listCompendiumSavesCmd toMsg =
+    Http.get
+        { url = "/api/compendium/saves"
+        , expect = Http.expectJson toMsg (D.list decodeSavedCompendiumMeta)
+        }
+
+
+{-| `GET /api/compendium/saves/:name` — fetch one snapshot's full
+creature list. The server response wraps the list in
+`{ name, creatures, created_at, updated_at }`; we project down to
+just the creatures here so callers don't have to.
+-}
+getCompendiumSaveCmd :
+    (Result Http.Error (List Creature) -> msg)
+    -> String
+    -> Cmd msg
+getCompendiumSaveCmd toMsg name =
+    Http.get
+        { url = "/api/compendium/saves/" ++ urlPathSegment name
+        , expect =
+            Http.expectJson toMsg
+                (D.field "creatures" (D.list decodeCreature))
+        }
+
+
+{-| `PUT /api/compendium/saves/:name(?overwrite=true)`.
+-}
+putCompendiumSaveCmd :
+    (Result Http.Error () -> msg)
+    -> { name : String, overwrite : Bool }
+    -> List Creature
+    -> Cmd msg
+putCompendiumSaveCmd toMsg opts creatures =
+    let
+        suffix =
+            if opts.overwrite then
+                "?overwrite=true"
+
+            else
+                ""
+    in
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url =
+            "/api/compendium/saves/"
+                ++ urlPathSegment opts.name
+                ++ suffix
+        , body = Http.jsonBody (E.list encodeCreature creatures)
+        , expect = Http.expectWhatever toMsg
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| `DELETE /api/compendium/saves/:name`.
+-}
+deleteCompendiumSaveCmd :
+    (Result Http.Error () -> msg)
+    -> String
+    -> Cmd msg
+deleteCompendiumSaveCmd toMsg name =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/compendium/saves/" ++ urlPathSegment name
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever toMsg
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| `POST /api/compendium/saves/:name/rename`.
+-}
+renameCompendiumSaveCmd :
+    (Result Http.Error () -> msg)
+    -> { from : String, to : String }
+    -> Cmd msg
+renameCompendiumSaveCmd toMsg opts =
+    Http.post
+        { url =
+            "/api/compendium/saves/"
+                ++ urlPathSegment opts.from
+                ++ "/rename"
+        , body =
+            Http.jsonBody
+                (E.object [ ( "new_name", E.string opts.to ) ])
+        , expect = Http.expectWhatever toMsg
+        }
+
+
+urlPathSegment : String -> String
+urlPathSegment =
+    Util.Http.urlPathSegment
 
 
 
