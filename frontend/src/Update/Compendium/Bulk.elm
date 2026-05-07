@@ -209,7 +209,7 @@ fires.
 clearAll : Model -> ( Model, Cmd Msg )
 clearAll model =
     ( withCompendium
-        (\ui -> { ui | clearMenuOpen = False, bulkBusy = True })
+        (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
         model
     , clearCmd []
     )
@@ -231,13 +231,13 @@ clearSelected model =
                             (\c -> not (Set.member c.id model.compendium.selectedIds))
             in
             ( withCompendium
-                (\ui -> { ui | clearMenuOpen = False, bulkBusy = True })
+                (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
                 model
             , clearCmd kept
             )
 
         _ ->
-            ( withCompendium (\ui -> { ui | clearMenuOpen = False }) model
+            ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
             , Cmd.none
             )
 
@@ -269,7 +269,7 @@ importResponse result model =
                         | bulkBusy = False
                         , selectedId = Nothing
                         , selectedIds = Set.empty
-                        , clearMenuOpen = False
+                        , bulkMenu = Nothing
                         , compendiumDirty = False
                     }
                 )
@@ -306,7 +306,7 @@ clearResponse result model =
                         | bulkBusy = False
                         , selectedId = Nothing
                         , selectedIds = Set.empty
-                        , clearMenuOpen = False
+                        , bulkMenu = Nothing
                         , compendiumDirty = True
                     }
                 )

@@ -2,7 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , clearMenuClose, clearMenuToggle, exportClick, rowToggle
+    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle
     )
 
 {-| Update branches for the compendium browser modal: load, open /
@@ -201,23 +201,31 @@ rowToggle id shift model =
     )
 
 
-{-| Open / close the Clear dropdown at the top of the browser.
-The dropdown carries the [Clear All / Clear Selected] options
-that fire the actual destructive Cmds. Esc + click-outside
-close subscriptions live in `Main.subscriptions`.
+{-| Open / close one of the Compendium-modal split-button
+dropdowns (Clear / Import / Export). Toggling the same menu
+that's already open closes it; toggling a different menu swaps
+to it (the "only one open at a time" invariant is enforced
+here so callers don't have to thread two messages). Esc +
+click-outside close subscriptions live in `Main.subscriptions`.
 -}
-clearMenuToggle : Model -> ( Model, Cmd Msg )
-clearMenuToggle model =
-    ( withCompendium
-        (\ui -> { ui | clearMenuOpen = not ui.clearMenuOpen })
-        model
+bulkMenuToggle : Msg.CompendiumBulkMenu -> Model -> ( Model, Cmd Msg )
+bulkMenuToggle which model =
+    let
+        next =
+            if model.compendium.bulkMenu == Just which then
+                Nothing
+
+            else
+                Just which
+    in
+    ( withCompendium (\ui -> { ui | bulkMenu = next }) model
     , Cmd.none
     )
 
 
-clearMenuClose : Model -> ( Model, Cmd Msg )
-clearMenuClose model =
-    ( withCompendium (\ui -> { ui | clearMenuOpen = False }) model
+bulkMenuClose : Model -> ( Model, Cmd Msg )
+bulkMenuClose model =
+    ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
     , Cmd.none
     )
 

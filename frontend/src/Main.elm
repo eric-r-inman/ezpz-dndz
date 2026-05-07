@@ -171,9 +171,9 @@ subscriptions model =
                 []
 
         clearMenuSubs =
-            if model.compendium.clearMenuOpen then
-                [ Browser.Events.onKeyDown (escKey CompendiumClearMenuClose)
-                , Browser.Events.onMouseDown (Decode.succeed CompendiumClearMenuClose)
+            if model.compendium.bulkMenu /= Nothing then
+                [ Browser.Events.onKeyDown (escKey CompendiumBulkMenuClose)
+                , Browser.Events.onMouseDown (Decode.succeed CompendiumBulkMenuClose)
                 ]
 
             else
@@ -1126,11 +1126,11 @@ updateInner msg model =
         CompendiumRowToggle id shift ->
             Update.Compendium.Browser.rowToggle id shift model
 
-        CompendiumClearMenuToggle ->
-            Update.Compendium.Browser.clearMenuToggle model
+        CompendiumBulkMenuToggle which ->
+            Update.Compendium.Browser.bulkMenuToggle which model
 
-        CompendiumClearMenuClose ->
-            Update.Compendium.Browser.clearMenuClose model
+        CompendiumBulkMenuClose ->
+            Update.Compendium.Browser.bulkMenuClose model
 
         CompendiumClearAll ->
             Update.Compendium.Bulk.clearAll model

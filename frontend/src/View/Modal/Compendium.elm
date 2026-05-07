@@ -7,14 +7,16 @@ Encounter" handoff plus per-creature edit / duplicate / delete.
 -}
 
 import Compendium
-import Html exposing (Html, a, button, div, input, label, option, p, span, text)
-import Html.Attributes as Attr exposing (attribute, class, disabled, href, id, placeholder, selected, title, type_, value)
+import Html exposing (Html, button, div, input, label, option, p, span, text)
+import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
 import Msg
     exposing
-        ( CompendiumSort(..)
+        ( CompendiumBulkMenu(..)
+        , CompendiumSort(..)
         , Msg(..)
+        , SaveDestination(..)
         )
 import Set exposing (Set)
 import Ui.Compendium as CompendiumUi
@@ -608,51 +610,16 @@ pasteButton =
 {-| Cluster of bulk operations on the right edge of the filter
 bar: Import / Export / Reset / Clear.
 
-  - **Import / Reset** — go through the destructive-confirm
-    banner before firing.
-  - **Export** — a plain anchor with `download` so the browser
-    handles the save natively. An `onClick` Msg fires
-    alongside the native download to clear `compendiumDirty`,
-    which removes the yellow border that signals "you have
-    unsaved changes."
-  - **Clear** — opens a dropdown with Clear All / Clear
-    Selected. Both options replace the library wholesale via
-    the import endpoint (Clear All sends `[]`; Clear Selected
-    sends the kept set). Esc + click-outside cancel.
+Import and Export are split-button dropdowns offering Server /
+Device routes; Reset goes through the destructive-confirm
+banner; Clear opens a dropdown with Clear All / Clear Selected.
 
 -}
 bulkButtons : CompendiumUi -> Html Msg
 bulkButtons ui =
-    let
-        exportClass =
-            if ui.compendiumDirty then
-                "action-btn action-btn--blue compendium__export--dirty"
-
-            else
-                "action-btn action-btn--blue"
-
-        exportTitle =
-            if ui.compendiumDirty then
-                "Download the entire library as JSON (unsaved changes)"
-
-            else
-                "Download the entire library as JSON"
-    in
     div [ class "compendium__bulk-cluster" ]
-        [ button
-            [ class "action-btn action-btn--blue"
-            , onClick CompendiumImportClick
-            , title "Import a creature library JSON file (replaces the current library)"
-            ]
-            [ text "📥 Import" ]
-        , a
-            [ class exportClass
-            , href "/api/compendium/export"
-            , attribute "download" "compendium.json"
-            , title exportTitle
-            , onClick CompendiumExportClick
-            ]
-            [ text "📤 Export" ]
+        [ importMenu ui
+        , exportMenu ui
         , button
             [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
@@ -663,23 +630,30 @@ bulkButtons ui =
         ]
 
 
-{-| Clear button + popover dropdown. Wraps the popover in a
-`<div>` with `stopPropagationOn "mousedown"` so a click inside
-the dropdown doesn't bubble up to the document-level
-"click-outside closes" handler in `Main.subscriptions`.
+{-| Wrapper around one of the compendium-bulk split-button
+dropdowns. The trigger flips the named menu open / closed via
+`CompendiumBulkMenuToggle`; the wrapper stops mousedown
+propagation so a click inside the popover doesn't bubble to the
+document-level "click-outside closes" handler in
+`Main.subscriptions`.
 -}
-clearMenu : CompendiumUi -> Html Msg
-clearMenu ui =
+splitMenu :
+    { menu : CompendiumBulkMenu
+    , isOpen : Bool
+    , triggerClass : String
+    , triggerLabel : String
+    , triggerTitle : String
+    , items : List (Html Msg)
+    }
+    -> Html Msg
+splitMenu cfg =
     let
         wrapperClass =
-            if ui.clearMenuOpen then
-                "compendium__clear-menu compendium__clear-menu--open"
+            if cfg.isOpen then
+                "compendium__bulk-menu compendium__bulk-menu--open"
 
             else
-                "compendium__clear-menu"
-
-        nothingSelected =
-            Set.isEmpty ui.selectedIds
+                "compendium__bulk-menu"
     in
     div
         [ class wrapperClass
@@ -687,46 +661,129 @@ clearMenu ui =
             (Decode.succeed ( NoOp, True ))
         ]
         [ button
-            [ class "action-btn action-btn--red"
-            , onClick CompendiumClearMenuToggle
-            , title "Clear all creatures, or just the selected ones"
+            [ class cfg.triggerClass
+            , onClick (CompendiumBulkMenuToggle cfg.menu)
+            , title cfg.triggerTitle
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
-                (if ui.clearMenuOpen then
+                (if cfg.isOpen then
                     "true"
 
                  else
                     "false"
                 )
             ]
-            [ text "🗑 Clear" ]
-        , if ui.clearMenuOpen then
+            [ text cfg.triggerLabel ]
+        , if cfg.isOpen then
             div
-                [ class "compendium__clear-menu__list"
+                [ class "compendium__bulk-menu__list"
                 , attribute "role" "menu"
                 ]
-                [ button
-                    [ class "compendium__clear-menu__item"
-                    , onClick CompendiumClearAll
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text "Clear All" ]
-                , button
-                    [ class "compendium__clear-menu__item"
-                    , onClick CompendiumClearSelected
-                    , disabled nothingSelected
-                    , title
-                        (if nothingSelected then
-                            "No creatures are checked"
-
-                         else
-                            "Remove the checked creatures"
-                        )
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text "Clear Selected" ]
-                ]
+                cfg.items
 
           else
             text ""
         ]
+
+
+{-| Render one menu item inside a `splitMenu`. Routes through
+the same disabled-tooltip pattern the Clear menu uses so a
+disabled item still surfaces a hint via `title`.
+-}
+menuItem : Msg -> String -> Html Msg
+menuItem msg label_ =
+    button
+        [ class "compendium__bulk-menu__item"
+        , onClick msg
+        , attribute "role" "menuitem"
+        ]
+        [ text label_ ]
+
+
+importMenu : CompendiumUi -> Html Msg
+importMenu ui =
+    splitMenu
+        { menu = ImportMenu
+        , isOpen = ui.bulkMenu == Just ImportMenu
+        , triggerClass = "action-btn action-btn--blue"
+        , triggerLabel = "📥 Import ▾"
+        , triggerTitle =
+            "Replace the current library from a server snapshot or a local file"
+        , items =
+            [ menuItem LoadCompendiumOpen "From Server"
+            , menuItem CompendiumImportClick "From Device"
+            ]
+        }
+
+
+exportMenu : CompendiumUi -> Html Msg
+exportMenu ui =
+    let
+        triggerClass =
+            if ui.compendiumDirty then
+                "action-btn action-btn--blue compendium__export--dirty"
+
+            else
+                "action-btn action-btn--blue"
+
+        triggerTitle =
+            if ui.compendiumDirty then
+                "Save the library to the server or download to your device (unsaved changes)"
+
+            else
+                "Save the library to the server or download to your device"
+    in
+    splitMenu
+        { menu = ExportMenu
+        , isOpen = ui.bulkMenu == Just ExportMenu
+        , triggerClass = triggerClass
+        , triggerLabel = "📤 Export ▾"
+        , triggerTitle = triggerTitle
+        , items =
+            [ menuItem
+                (SaveCompendiumOpen SaveDestinationServer)
+                "To Server"
+            , menuItem
+                (SaveCompendiumOpen SaveDestinationDevice)
+                "To Device"
+            ]
+        }
+
+
+{-| Clear button + popover dropdown. Same wrapper / behavior
+as the Import / Export menus; the menu items dispatch the Clear
+All / Clear Selected actions.
+-}
+clearMenu : CompendiumUi -> Html Msg
+clearMenu ui =
+    let
+        nothingSelected =
+            Set.isEmpty ui.selectedIds
+
+        clearSelectedItem =
+            button
+                [ class "compendium__bulk-menu__item"
+                , onClick CompendiumClearSelected
+                , disabled nothingSelected
+                , title
+                    (if nothingSelected then
+                        "No creatures are checked"
+
+                     else
+                        "Remove the checked creatures"
+                    )
+                , attribute "role" "menuitem"
+                ]
+                [ text "Clear Selected" ]
+    in
+    splitMenu
+        { menu = ClearMenu
+        , isOpen = ui.bulkMenu == Just ClearMenu
+        , triggerClass = "action-btn action-btn--red"
+        , triggerLabel = "🗑 Clear"
+        , triggerTitle = "Clear all creatures, or just the selected ones"
+        , items =
+            [ menuItem CompendiumClearAll "Clear All"
+            , clearSelectedItem
+            ]
+        }

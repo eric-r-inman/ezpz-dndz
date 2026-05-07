@@ -3363,17 +3363,18 @@ body {
   outline-offset: 1px;
 }
 
-/* Clear button + dropdown.  The wrapper is `position: relative`
-   so the popover anchors directly under the trigger.  Click +
-   Esc handlers in `Main.subscriptions` close it; clicks inside
-   are caught by `stopPropagationOn` in the Elm view. */
-.compendium__clear-menu {
+/* Compendium-modal split-button dropdowns: Clear / Import /
+   Export.  The wrapper is `position: relative` so the popover
+   anchors directly under the trigger.  Click + Esc handlers in
+   `Main.subscriptions` close it; clicks inside are caught by
+   `stopPropagationOn` in the Elm view. */
+.compendium__bulk-menu {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
-.compendium__clear-menu__list {
+.compendium__bulk-menu__list {
   position: absolute;
   top: 100%;
   right: 0;
@@ -3390,7 +3391,7 @@ body {
   gap: 2px;
 }
 
-.compendium__clear-menu__item {
+.compendium__bulk-menu__item {
   appearance: none;
   border: none;
   background: transparent;
@@ -3402,12 +3403,12 @@ body {
   border-radius: var(--radius-sm);
 }
 
-.compendium__clear-menu__item:hover:not(:disabled) {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+.compendium__bulk-menu__item:hover:not(:disabled) {
+  background: var(--color-accent-soft, rgba(59, 130, 246, 0.12));
+  color: var(--color-accent, #3b82f6);
 }
 
-.compendium__clear-menu__item:disabled {
+.compendium__bulk-menu__item:disabled {
   cursor: not-allowed;
   color: var(--color-text-muted);
   opacity: 0.6;

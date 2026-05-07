@@ -36,7 +36,7 @@ pending state.
 import Compendium
 import Compendium.Parser
 import Http
-import Msg exposing (CompendiumSort(..))
+import Msg exposing (CompendiumBulkMenu, CompendiumSort(..))
 import Set exposing (Set)
 
 
@@ -101,8 +101,12 @@ type alias CompendiumUi =
     -- (which picks the right-pane stat block).
     , selectedIds : Set String
 
-    -- Clear dropdown (Clear All / Clear Selected) visibility.
-    , clearMenuOpen : Bool
+    -- Bulk-action split-button popover state.  At most one of
+    -- the Clear / Import / Export dropdowns is open at a time;
+    -- `Nothing` collapses all three.  Replaces the older
+    -- per-menu `clearMenuOpen : Bool` so the "only one open"
+    -- invariant lives in the type system.
+    , bulkMenu : Maybe CompendiumBulkMenu
 
     -- Library-altered flag.  Goes True on any add / edit /
     -- delete, clears on reset / import / export so the GM sees
@@ -154,7 +158,7 @@ emptyCompendium =
     , showOnlyAdded = False
     , pending = Nothing
     , selectedIds = Set.empty
-    , clearMenuOpen = False
+    , bulkMenu = Nothing
     , compendiumDirty = False
     , bulkBusy = False
     , bulkError = Nothing
@@ -198,7 +202,7 @@ behind it.
 -}
 closeMenus : CompendiumUi -> CompendiumUi
 closeMenus ui =
-    { ui | clearMenuOpen = False }
+    { ui | bulkMenu = Nothing }
 
 
 {-| Filter / sort pipeline against the loaded `Db`. Empty

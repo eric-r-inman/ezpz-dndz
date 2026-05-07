@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , ControlMenu(..), SaveDestination(..), Theme(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), SaveDestination(..), Theme(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -257,6 +257,19 @@ time.
 type ControlMenu
     = SaveControlMenu
     | LoadControlMenu
+
+
+{-| Which compendium-modal split-button dropdown is currently
+showing its menu. Mediated by a `Maybe CompendiumBulkMenu` field
+on the compendium UI substate so only one is open at a time.
+Lives in `Msg` rather than `Ui.Compendium` because the
+constructor parameterizes the `CompendiumBulkMenuToggle` Msg and
+`Ui.Compendium` already imports `Msg` (cycle avoidance).
+-}
+type CompendiumBulkMenu
+    = ClearMenu
+    | ImportMenu
+    | ExportMenu
 
 
 
@@ -539,8 +552,12 @@ type Msg
       -- shift+click on an unselected creature selects every
       -- visible row; shift+click on a selected one clears.
     | CompendiumRowToggle String Bool
-    | CompendiumClearMenuToggle
-    | CompendiumClearMenuClose
+      -- Compendium-modal split-button dropdowns: Clear / Import /
+      -- Export.  `Toggle` flips the named menu open / closed (and
+      -- closes whichever other one was open); `Close` collapses
+      -- everything (used by Esc + click-outside).
+    | CompendiumBulkMenuToggle CompendiumBulkMenu
+    | CompendiumBulkMenuClose
     | CompendiumClearAll
     | CompendiumClearSelected
     | CompendiumExportClick
