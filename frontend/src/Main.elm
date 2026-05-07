@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (Flags, main)
 
 import Browser
 import Browser.Dom
@@ -41,6 +41,7 @@ import Msg
         , Msg(..)
         , RollMode(..)
         , RollScope(..)
+        , Theme(..)
         )
 import Preferences
 import Route exposing (Route(..))
@@ -76,6 +77,7 @@ import Update.LegendaryPip
 import Update.Load
 import Update.Memo
 import Update.Note
+import Update.Preferences
 import Update.QuickAdd
 import Update.Save
 import Update.Shell
@@ -121,7 +123,7 @@ turn logic in the app and the place where future per-phase hooks
 (begin / end / off / on) will land as separate pure functions.
 
 -}
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.application
         { init = init
@@ -149,6 +151,15 @@ subscriptions model =
             if model.xpFilterOpen then
                 [ Browser.Events.onKeyDown (escKey XpFilterClose)
                 , Browser.Events.onMouseDown (Decode.succeed XpFilterClose)
+                ]
+
+            else
+                []
+
+        settingsSubs =
+            if model.settingsOpen then
+                [ Browser.Events.onKeyDown (escKey SettingsClose)
+                , Browser.Events.onMouseDown (Decode.succeed SettingsClose)
                 ]
 
             else
@@ -191,7 +202,7 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs)
+    Sub.batch (primary :: xpFilterSubs ++ settingsSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -239,11 +250,59 @@ escKey =
     Util.Keyboard.escKey
 
 
-init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
+{-| Render the user's theme choice as the `data-theme` attribute
+value on the `.app-shell` div. CSS picks it up via attribute
+selectors in `style.css`; `auto` defers to the OS pref via the
+embedded `@media (prefers-color-scheme: dark)` block.
+
+Delegates to `Update.Preferences.themeKey` so the wire format
+(localStorage value, HTML attribute, port payload) all share a
+single source of truth.
+
+-}
+themeAttr : Theme -> String
+themeAttr =
+    Update.Preferences.themeKey
+
+
+{-| Parse a theme flag string from the JS host. Any
+unrecognized value falls back to `Auto`, matching the JS-side
+default in `index.html`.
+-}
+themeFromFlag : String -> Theme
+themeFromFlag raw =
+    case raw of
+        "light" ->
+            Light
+
+        "dark" ->
+            Dark
+
+        _ ->
+            Auto
+
+
+{-| Init flags handed in by `index.html`. Carries the user's
+previously-saved theme (read from `localStorage` before Elm
+boots) so the first render matches the FOUC pre-set on
+`<html data-theme>`. Unknown / missing strings fall back to
+`Auto`, matching the JS-side default.
+-}
+type alias Flags =
+    { theme : String }
+
+
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
     let
         route =
             Route.fromUrl url
+
+        defaultPrefs =
+            Preferences.default
+
+        prefs =
+            { defaultPrefs | theme = themeFromFlag flags.theme }
     in
     ( { key = key
       , url = url
@@ -261,9 +320,10 @@ init _ url key =
       , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
+      , settingsOpen = False
       , toasts = []
       , nextToastId = 0
-      , preferences = Preferences.default
+      , preferences = prefs
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
@@ -981,6 +1041,15 @@ updateInner msg model =
         ToastDismiss id ->
             Update.Toast.dismiss id model
 
+        PreferencesThemeSet theme ->
+            Update.Preferences.themeSet theme model
+
+        SettingsToggle ->
+            Update.Shell.settingsToggle model
+
+        SettingsClose ->
+            Update.Shell.settingsClose model
+
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model
 
@@ -996,8 +1065,11 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "eZpZ-dndZ"
     , body =
-        [ div [ class "app-shell" ]
-            [ View.AppBar.view
+        [ div
+            [ class "app-shell"
+            , attribute "data-theme" (themeAttr model.preferences.theme)
+            ]
+            [ View.AppBar.view model.settingsOpen model.preferences.theme
             , viewPage model
             , View.Modal.Dice.view model.dice
             , View.Modal.HpChange.view model

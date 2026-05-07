@@ -306,6 +306,7 @@ type alias Model =
     , pendingControl : Maybe PendingControl
     , xpScope : XpScope
     , xpFilterOpen : Bool
+    , settingsOpen : Bool
     , toasts : List Toast
     , nextToastId : Int
     , preferences : Preferences

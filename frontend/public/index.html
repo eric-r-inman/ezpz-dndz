@@ -4,13 +4,65 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ezpz-dndz</title>
+    <script>
+      // FOUC prevention: read the user's previously-chosen theme
+      // from localStorage and set <html data-theme=...> BEFORE the
+      // stylesheet loads.  CSS in style.css uses [data-theme="dark"]
+      // selectors, so this avoids a flash of light theme between
+      // page load and Elm boot.  Falls back to "auto" (= OS pref
+      // via @media) when nothing is saved or the value is invalid.
+      (function () {
+        try {
+          var raw = localStorage.getItem("theme");
+          var theme =
+            raw === "light" || raw === "dark" || raw === "auto"
+              ? raw
+              : "auto";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {
+          // localStorage unavailable (private mode, file://) — let
+          // CSS fall back to the OS pref.
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <div id="app"></div>
     <script src="/elm.js"></script>
     <script>
-      Elm.Main.init({ node: document.getElementById("app") });
+      // Init flags: hand the saved theme to Elm so the app's
+      // first render matches the FOUC pre-set above.
+      var savedTheme = "auto";
+      try {
+        var raw = localStorage.getItem("theme");
+        if (raw === "light" || raw === "dark" || raw === "auto") {
+          savedTheme = raw;
+        }
+      } catch (_) {}
+
+      var app = Elm.Main.init({
+        node: document.getElementById("app"),
+        flags: { theme: savedTheme },
+      });
+
+      // Outbound port: persist theme changes back to localStorage
+      // and mirror to <html data-theme> so the next reload's
+      // pre-Elm script reads the latest value (and any CSS that
+      // happens to scope to <html> stays in sync).
+      if (app.ports && app.ports.savePreferences) {
+        app.ports.savePreferences.subscribe(function (prefs) {
+          try {
+            if (prefs && typeof prefs.theme === "string") {
+              localStorage.setItem("theme", prefs.theme);
+              document.documentElement.setAttribute(
+                "data-theme",
+                prefs.theme,
+              );
+            }
+          } catch (_) {}
+        });
+      }
     </script>
   </body>
 </html>

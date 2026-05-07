@@ -3,6 +3,8 @@ module Update.Shell exposing
     , encounterPersisted
     , gotMe
     , noOp
+    , settingsClose
+    , settingsToggle
     , urlChanged
     , urlRequested
     )
@@ -110,3 +112,21 @@ encounterPersisted result model =
 noOp : Model -> ( Model, Cmd Msg )
 noOp model =
     ( model, Cmd.none )
+
+
+{-| Flip the AppBar settings popover open / closed. Pure UI
+state — no persistence — so it lives here in the application
+shell rather than in `Update.Preferences`.
+-}
+settingsToggle : Model -> ( Model, Cmd Msg )
+settingsToggle model =
+    ( { model | settingsOpen = not model.settingsOpen }, Cmd.none )
+
+
+{-| Close the AppBar settings popover. Fired by the global
+Esc-key + click-outside subscriptions in `Main.subscriptions`
+when the popover is open.
+-}
+settingsClose : Model -> ( Model, Cmd Msg )
+settingsClose model =
+    ( { model | settingsOpen = False }, Cmd.none )

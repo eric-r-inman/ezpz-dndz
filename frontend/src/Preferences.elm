@@ -1,34 +1,33 @@
-module Preferences exposing (Preferences, Theme(..), CardDensity(..), default)
+module Preferences exposing (Preferences, CardDensity(..), default)
 
 {-| User-tunable preferences blob.
 
 The struct lives on `Model.preferences` and is read by every
 feature that has a configurable behavior — currently
 `Update.Encounter.nextTurn` reads `autoScrollActiveCard` to
-decide whether to scroll the freshly-active card into view.
+decide whether to scroll the freshly-active card into view, and
+the AppBar settings popover writes `theme` via
+`Update.Preferences.themeSet`.
 
 The plan is for `/api/me/preferences` (Phase 11) to load and
 persist this struct per-user. Until that endpoint lands, every
 session uses [`default`](#default) and any in-session changes
 live only in memory.
 
-@docs Preferences, Theme, CardDensity, default
+@docs Preferences, CardDensity, default
 
 -}
 
 import Dict exposing (Dict)
-import Msg exposing (CompendiumSort(..))
+import Msg exposing (CompendiumSort(..), Theme(..))
 
 
-{-| Color scheme. `Auto` follows the OS / browser preference
-(`prefers-color-scheme`); `Light` and `Dark` pin a specific
-mode. The current UI is dark-only — the hook exists for the
-eventual theme flip.
--}
-type Theme
-    = Light
-    | Dark
-    | Auto
+
+-- `Theme` is re-exported from `Msg` (where the type is defined
+-- to avoid an import cycle with the `PreferencesThemeSet Theme`
+-- Msg constructor).  `Auto` follows the OS / browser preference
+-- (`prefers-color-scheme`); `Light` and `Dark` pin a specific
+-- mode.
 
 
 {-| Layout density on the creature cards. `Compact` shrinks the

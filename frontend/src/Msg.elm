@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , SaveDestination(..)
+    , SaveDestination(..), Theme(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -138,6 +138,23 @@ type DurationKind
     = DurKindManual
     | DurKindUntilTurn
     | DurKindCountdown
+
+
+
+-- ── PREFERENCES AUX ──────────────────────────────────────────────────────────
+
+
+{-| Color-scheme preference. `Auto` defers to the OS pref via
+the `prefers-color-scheme` media query baked into `style.css`.
+Defined in `Msg` (rather than `Preferences`) so the
+`PreferencesThemeSet Theme` Msg constructor can carry it
+without an import cycle, mirroring the `CompendiumSort` pattern
+below. `Preferences.elm` re-exports it.
+-}
+type Theme
+    = Light
+    | Dark
+    | Auto
 
 
 
@@ -486,6 +503,11 @@ type Msg
     | CompendiumResetResponse (Result Http.Error (List Compendium.Creature))
       -- Toast notifications
     | ToastDismiss Int
+      -- User preferences (theme, density, etc.)
+    | PreferencesThemeSet Theme
+      -- AppBar settings popover
+    | SettingsToggle
+    | SettingsClose
       -- Keyboard shortcuts
     | CompendiumFocusSearch
     | NoOp

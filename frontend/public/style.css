@@ -48,8 +48,56 @@
   --color-dirty-outline: #fff59d;
 }
 
+/* Dark theme overrides.  Applied two ways:
+ *   1. Explicit user choice — `data-theme="dark"` is set on
+ *      `.app-shell` by the AppBar settings popover (and
+ *      mirrored to `<html>` by an inline script in
+ *      `index.html` before Elm boots, to avoid FOUC).
+ *   2. OS preference fallback — when the user has chosen
+ *      `Auto` (or hasn't picked anything yet), the `@media`
+ *      block below mirrors the same overrides.
+ * The default `:root` block above is the Light theme.
+ *
+ * The `[data-theme="dark"]` selector matches any element with
+ * the attribute, so the inline FOUC script can set it on
+ * `<html>` and Elm can set it on `.app-shell` — the deeper
+ * (`.app-shell`) override wins for everything inside the app,
+ * which is the whole viewport.
+ */
+[data-theme="dark"] {
+  --color-bg: #0e1015;
+  --color-surface: #181b23;
+  --color-surface-2: #20242e;
+  --color-text: #e8eaf2;
+  --color-text-muted: #8e95a8;
+  --color-link: #8aa9ff;
+  --color-border: #2a2f3a;
+  --color-accent: #8a6cff;
+  --color-accent-hover: #9c81ff;
+  --color-accent-soft: rgba(138, 108, 255, 0.18);
+  --color-danger: #ff6a6a;
+  --color-danger-soft: rgba(255, 106, 106, 0.16);
+  --color-success: #51cf66;
+  --color-success-soft: rgba(81, 207, 102, 0.18);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --color-yellow: #ffd95a;
+  --color-init-blue: #4d9bff;
+  --color-orange-dark: #ff9a3c;
+  --color-temp-blue: #4d9bff;
+  --color-orange: #ff9a3c;
+  --color-blue: #4d9bff;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* Auto mode: the user picked `Auto` (or has no setting yet)
+   * and the OS is in dark mode.  Mirrors the explicit
+   * data-theme="dark" rule above.  An explicit
+   * data-theme="light" wins over this because attribute
+   * selectors with a value have higher specificity than
+   * :not([data-theme]). */
+  [data-theme="auto"],
+  :root:not([data-theme]) {
     --color-bg: #0e1015;
     --color-surface: #181b23;
     --color-surface-2: #20242e;
@@ -147,6 +195,89 @@ body {
 .app-bar__nav a:hover {
   color: var(--color-text);
   background: var(--color-surface-2);
+}
+
+/* AppBar settings popover.  ⚙ trigger sits in the nav row; the
+   menu floats below it as a small panel.  Esc + click-outside
+   handlers in `Main.subscriptions` close it; clicks inside the
+   panel are stopped from bubbling so the user can interact with
+   the radios without dismissing the menu. */
+.app-settings {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-settings__trigger {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.app-settings__trigger:hover,
+.app-settings--open .app-settings__trigger {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.app-settings__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  min-width: 220px;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.app-settings__row {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-settings__row-label {
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.app-settings__radio-group {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.app-settings__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 .workspace {

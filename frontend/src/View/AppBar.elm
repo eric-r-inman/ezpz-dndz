@@ -1,21 +1,45 @@
 module View.AppBar exposing (me, view)
 
-{-| Top-of-page application bar (brand + nav links) and the `/me`
-account view shown by `Route.Me`.
+{-| Top-of-page application bar (brand + nav links + ⚙ settings
+popover) and the `/me` account view shown by `Route.Me`.
 
 `me` is here rather than in a separate `View.Me` because it's the
 only thing rendered for the `Me` route and shares the auth/identity
 domain with the app-bar nav.
 
+The settings popover is a controlled `<div>` (not native
+`<details>`) because the global Esc + click-outside
+subscriptions in `Main.subscriptions` need to close it
+declaratively when open. Styling lives under `.app-settings`
+in `style.css`; the row pattern (label + radio cluster) is
+extensible — Density, Sound, etc. will plug in alongside the
+Theme row when those preferences land.
+
 -}
 
-import Html exposing (Html, a, div, h2, header, nav, p, text)
-import Html.Attributes exposing (class, href)
-import Msg exposing (MeStatus(..), Msg)
+import Html
+    exposing
+        ( Html
+        , a
+        , button
+        , div
+        , fieldset
+        , h2
+        , header
+        , label
+        , legend
+        , nav
+        , p
+        , text
+        )
+import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
+import Html.Events exposing (onClick, stopPropagationOn)
+import Json.Decode as Decode
+import Msg exposing (MeStatus(..), Msg(..), Theme(..))
 
 
-view : Html Msg
-view =
+view : Bool -> Theme -> Html Msg
+view settingsOpen theme =
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -24,7 +48,83 @@ view =
             [ a [ href "/" ] [ text "Encounter" ]
             , a [ href "/me" ] [ text "Me" ]
             , a [ href "/scalar" ] [ text "API" ]
+            , settings settingsOpen theme
             ]
+        ]
+
+
+{-| ⚙ button + popover. Wraps the popover in a `<div>` with
+`stopPropagationOn "mousedown"` so a click _inside_ the popover
+doesn't bubble up to the document-level "click-outside closes"
+handler in `Main.subscriptions`. The trigger button itself
+reports its open state via `aria-expanded` for screen readers.
+-}
+settings : Bool -> Theme -> Html Msg
+settings isOpen theme =
+    let
+        wrapperClass =
+            if isOpen then
+                "app-settings app-settings--open"
+
+            else
+                "app-settings"
+    in
+    div
+        [ class wrapperClass
+        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
+        ]
+        [ button
+            [ class "app-settings__trigger"
+            , type_ "button"
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if isOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , attribute "aria-label" "Open settings"
+            , Attr.title "Settings"
+            , onClick SettingsToggle
+            ]
+            [ text "⚙" ]
+        , if isOpen then
+            div
+                [ class "app-settings__menu"
+                , attribute "role" "menu"
+                ]
+                [ themeRow theme
+                ]
+
+          else
+            text ""
+        ]
+
+
+themeRow : Theme -> Html Msg
+themeRow current =
+    fieldset [ class "app-settings__row" ]
+        [ legend [ class "app-settings__row-label" ] [ text "Theme" ]
+        , div [ class "app-settings__radio-group" ]
+            [ themeRadio current Light "Light"
+            , themeRadio current Dark "Dark"
+            , themeRadio current Auto "Auto"
+            ]
+        ]
+
+
+themeRadio : Theme -> Theme -> String -> Html Msg
+themeRadio current value labelText =
+    label [ class "app-settings__radio" ]
+        [ Html.input
+            [ type_ "radio"
+            , name "theme"
+            , Attr.checked (current == value)
+            , onClick (PreferencesThemeSet value)
+            ]
+            []
+        , text labelText
         ]
 
 
