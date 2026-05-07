@@ -37,11 +37,17 @@ Under =crates/=:
   - ~auth.rs~ — OIDC scaffolding.
   - ~config.rs~ — CLI flags + env.
   - ~dice.rs~ — ~/api/dice/*~.
-  - ~compendium/~ — ~/api/compendium/*~ (mod, store, error).
-  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store)
-    + ~/api/encounter/saves/*~ (named saves, with conflict / not-
-    found / name-validation semantic errors).
-  - ~users/~ + ~prefs/~ — Phase 11 stubs.
+  - ~compendium/~ — ~/api/compendium/*~ (mod / store / error)
+    + ~/api/compendium/saves/*~ (~saves.rs~) for user-named
+    compendium snapshots, mirroring the encounter-saves wire
+    shape.
+  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store
+    in ~store.rs~) + ~/api/encounter/saves/*~ (~saves.rs~) for
+    user-named encounter saves, with conflict / not-found /
+    name-validation semantic errors.
+  - ~users/~ + ~prefs/~ — Phase 11 stubs (mounted in =lib.rs=
+    but not yet wired through =web_base= or producing any
+    routes).
 - =lib/src/= — shared types, ~JsonFileStore<T>~, bundled
   creatures (=data/bundled-creatures.json= via ~include_str!~).
 
@@ -52,23 +58,25 @@ file ~Main.elm~ is now the application shell only — every modal,
 view, update branch, and per-feature UI substate lives in its
 own module.
 
-| Region        | Modules                                                                                |
-|---------------+----------------------------------------------------------------------------------------|
-| Application   | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT)                    |
-| Domain        | =Encounter.elm= + =Encounter/{Lifecycle,Roster,Seed,Wire,DeathSaves,SaveNotice}=        |
-| Domain        | =Compendium.elm= + =Compendium/{Wire,Parser}=                                          |
-| Domain        | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                          |
-| Routing       | =Route.elm=, =Msg.elm=, =Effects.elm=                                                  |
-| UI substate   | =Ui/{AbilitySave,Compendium,Condition,Dice,HpChange,Initiative,Load,Memo,Note,QuickAdd,Save,Timer,Toast}.elm= |
-| Update        | =Update/{Compendium,Condition,DeathSave,Dice,Encounter,HpChange,Initiative,...}=       |
-| View / modals | =View/Modal/{Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,HpChange,...}=    |
-| View / shell  | =View/{AppBar,Audio,Card,EncounterBar,PanelControls,PanelDetail,Workspace,Toast,...}=  |
-| Util          | =Util/{Http,Keyboard}.elm=                                                             |
+| Region          | Modules                                                                                                                                 |
+|-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
+| Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=                                                          |
+| Domain          | =Encounter.elm= + =Encounter/{Lifecycle,Roster,Seed,Wire,DeathSaves,SaveNotice,Xp}=                                                      |
+| Domain          | =Compendium.elm= + =Compendium/{Wire,Parser}=                                                                                            |
+| Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
+| Routing / Cmd   | =Route.elm=, =Effects.elm=, =Ports.elm= (outbound JS for ~savePreferences~)                                                              |
+| UI substate     | =Ui/{AbilitySave,Compendium,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
+| Update / domain | =Update/{AbilitySave,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Update / split  | =Update/Compendium/{Add,Browser,Bulk,Edit,Paste}.elm=                                                                                   |
+| View / modals   | =View/Modal/{AbilitySave,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
+| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Modal,PanelControls,PanelDetail,PhaseToggle,StatBlock,Toast,Tooltips,Workspace}.elm=         |
+| Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
 domain module: =DiceTest=, =EncounterTest=, =HpChangeTest=,
 =CompendiumParserTest=, =CompendiumTest=, plus
-=Encounter/{RosterTest,LifecycleTest}=.
+=Encounter/{RosterTest,LifecycleTest,XpTest}=.
 
 * Layering: domain vs view
 
@@ -111,8 +119,11 @@ type Modal
     | ModalCompendiumPaste CompendiumPasteUi
     | ModalSave SaveUi
     | ModalLoad LoadUi
+    | ModalSaveCompendium SaveCompendiumUi
+    | ModalLoadCompendium LoadCompendiumUi
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
+    | ModalDuplicate DuplicateUi
 #+end_src
 
 ~Model.modal : Maybe Modal~ replaces a stack of ~Maybe XxxUi~
@@ -143,12 +154,31 @@ single feature:
   The dropdown was migrated off native ~<details>/<summary>~ to a
   controlled ~<div>~ so global Esc + click-outside subscriptions
   in =Main.subscriptions= can close it.
+- ~settingsOpen : Bool~ — AppBar settings popover (theme picker
+  today; density / sound when those land).  Same controlled-
+  ~<div>~ + Esc + click-outside pattern as the XP filter.
+- ~controlMenu : Maybe ControlMenu~ — which Encounter Controls
+  split-button dropdown (Save / Load) is currently showing its
+  Server / Device picker.  ~Maybe~-of-ADT enforces the "only one
+  open at a time" invariant in the type system; ~Nothing~
+  collapses both.  Compendium-modal popovers (Clear / Import /
+  Export) follow the same shape but live on the compendium UI
+  substate as ~bulkMenu : Maybe CompendiumBulkMenu~.
+- ~preferences : Preferences~ — see [[*Preferences][Preferences]] below.
 
 Two modals — the dice roller and the compendium browser — sit
 *outside* the ADT because their substate has to survive a modal
 close (dice history, compendium browser cache + filter).  They
 expose ~open : Bool~ on their own substate and live as
 =Model.dice : DiceUi= / =Model.compendium : CompendiumUi=.
+
+The compendium UI substate also carries ~savedAs : Maybe String~
++ ~compendiumDirty : Bool~ — last saved-snapshot name, and
+"library has unsaved changes" flag that lights the Export
+trigger yellow.  Both clear on a successful Save / Load /
+Import; Clear All / Clear Selected keep dirty=True since the GM
+just discarded creatures and probably wants to commit a fresh
+snapshot.
 
 Per-feature update modules use a small ~with*~ lens that goes
 through the generic ~Model.mapModal~ helper plus a per-variant
@@ -253,6 +283,17 @@ materialization), =Edit.elm= (form fields + submit / delete),
 =Paste.elm= (parsed-block hand-off), =Bulk.elm= (import / reset
 / confirm-banner flow).
 
+=Update/Shell.elm= is the home for application-shell branches
+that don't fit a domain feature — URL routing
+(~urlRequested~ / ~urlChanged~), the ~/me~ identity badge
+(~gotMe~), encounter persist response (~encounterLoaded~ /
+~encounterPersisted~), the AppBar settings popover
+(~settingsToggle~ / ~settingsClose~), the Encounter-Controls
+split-button popovers (~controlMenuToggle~ / ~controlMenuClose~),
+and ~NoOp~.  Anything that's pure UI plumbing at the boundary
+between the Elm runtime and the workspace shell goes here
+rather than inflating =Main.elm=.
+
 * View dispatch
 
 ~Main.view~ is a flat list of imported view-module calls:
@@ -283,12 +324,13 @@ in the app routes through it.
 
 * Persistence
 
-| Path                          | Endpoint                          | Notes                                                                                  |
-|-------------------------------+-----------------------------------+----------------------------------------------------------------------------------------|
-| =encounter.json=              | ~/api/encounter~ GET / PUT        | Live encounter state; auto-saved on every mutation                                     |
-| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | User-named save files (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
-| =compendium/creatures.json=   | ~/api/compendium/*~               | Library of creature templates; bundled-creatures merge on boot                         |
-| =dice-history.json=           | ~/api/dice/history~               | Bounded persistent dice-roll log                                                       |
+| Path                          | Endpoint                          | Notes                                                                                                                                              |
+|-------------------------------+-----------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------|
+| =encounter.json=              | ~/api/encounter~ GET / PUT        | Live encounter state; auto-saved on every mutation                                                                                                 |
+| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | User-named encounter saves (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| =compendium/creatures.json=   | ~/api/compendium/*~               | Library of creature templates; bundled-creatures merge on boot                                                                                     |
+| =compendium-saves.json=       | ~/api/compendium/saves(/:name)*~  | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
+| =dice-history.json=           | ~/api/dice/history~               | Bounded persistent dice-roll log                                                                                                                   |
 
 The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
 persistence helper.  Every server-side feature with a JSON
@@ -299,19 +341,28 @@ backing file should use it rather than rolling its own.
 The middle pane's button grid runs a small set of named flows
 that the rest of the app routes through:
 
-- *Save* — opens a modal with destination toggle (Server /
-  Download), filename input, list of existing server-side saves,
-  and inline rename / overwrite / delete affordances.  Server
-  uploads PUT to ~/api/encounter/saves/:name~ (server returns 409
-  on a name collision, surfaced as an inline overwrite-confirm
-  banner; ~?overwrite=true~ upserts on confirm).  Device downloads
-  go through ~File.Download.string~.
-- *Load* — symmetric modal: pick a server save (always confirmed
-  before adopting since loading is destructive), or pick a local
-  JSON file via the browser file picker.  Either path replaces
-  the live encounter and forces ~round = 0~ + ~activeName = ""~,
-  so the GM lands in pre-combat mode.  Successful loads also
-  populate ~savedSnapshot~ + ~savedAs~.
+- *Save / Load* are split-button dropdowns ("💾 Save ▾" / "📁
+  Load ▾"); the trigger toggles a popover whose menu items
+  pick destination (Server / Device).  ~Maybe ControlMenu~ on
+  ~Model~ tracks which popover is open; subscriptions in
+  =Main.subscriptions= close on Esc / click-outside.  Picks
+  dispatch into the destination-aware modal:
+
+  - *Save → Server / Device* — opens =View.Modal.Save= pre-set
+    to the chosen radio.  Filename input, list of existing
+    server saves with inline rename / overwrite / delete.
+    Server uploads PUT to ~/api/encounter/saves/:name~ (server
+    returns 409 on a name collision, surfaced as an inline
+    overwrite-confirm banner; ~?overwrite=true~ upserts on
+    confirm).  Device downloads go through
+    ~File.Download.string~.
+  - *Load → Server / Device* — Server opens =View.Modal.Load=
+    (list of saves, click-to-load with confirm); Device fires
+    ~File.Select.file~ directly without the modal.  Either
+    path replaces the live encounter and forces ~round = 0~ +
+    ~activeName = ""~ so the GM lands in pre-combat mode.
+    Successful loads also populate ~savedSnapshot~ + ~savedAs~.
+
 - *Reset* / *Clear* — staged through ~pendingControl~ so a
   misclick can't drop combat state.  First click swaps the button
   grid for an inline confirmation banner (Cancel / coloured
@@ -347,6 +398,44 @@ empty-state message (loading / failed / "isn't in your
 compendium yet") rather than any placeholder.  The legacy
 =View.StatBlockEmbed= module that defined the Brakka mock has
 been deleted.
+
+* Compendium browser bulk actions
+
+The Compendium modal's filter-bar right cluster runs Import /
+Export / Reset / Clear.  Three of the four are split-button
+dropdowns following the same pattern as the Encounter Controls
+Save / Load triggers.  Mediating state lives on the compendium
+UI substate as ~bulkMenu : Maybe CompendiumBulkMenu~
+(~ClearMenu | ImportMenu | ExportMenu~), so only one popover is
+open at a time and the global Esc / click-outside subscriptions
+have a single handler to close them all.
+
+- *Import* — From Server (opens =View.Modal.LoadCompendium=) /
+  From Device (~CompendiumImportClick~ → file picker → parse →
+  pending-confirm banner → wholesale replace via
+  ~/api/compendium/import~).
+- *Export* — To Server (opens =View.Modal.SaveCompendium= with
+  destination=Server) / To Device (same modal, destination=
+  Device, fires ~File.Download.string~ on submit).  The trigger
+  lights yellow when ~compendiumDirty~ is True so the GM sees
+  there's something worth saving.
+- *Clear* — Clear All / Clear Selected.  Both replace the
+  library wholesale via ~/api/compendium/import~ but route the
+  response through =Update.Compendium.Bulk.clearResponse=
+  (which keeps ~compendiumDirty = True~) rather than
+  =importResponse= (which clears it).
+- *Reset* — single button (no popover); restores the bundled
+  creature set via ~/api/compendium/reset~.
+
+The Save / Load Compendium modals themselves mirror the
+encounter Save / Load modals: filename input, list of existing
+snapshots, inline overwrite-confirm banner.  The MVP omits
+per-row rename / delete affordances — re-saving under an
+existing name fires the overwrite-confirm prompt, which covers
+the common case.  Successful save / load clears
+~compendiumDirty~ and stamps the snapshot's name into
+~CompendiumUi.savedAs~ so the next Save modal opens
+pre-populated.
 
 * Saving-throw modal
 
@@ -495,16 +584,67 @@ silently rewrite the middle of the history.
 
 * Preferences
 
-=Preferences.elm= holds the user-tunable settings struct.  Every
-feature with a configurable behavior reads from
-~Model.preferences~ where applicable — currently
-~Update.Encounter.nextTurn~ reads ~autoScrollActiveCard~.  Other
-fields (theme, density, sound, etc.) are wire-only until each
-feature wires them.
+=Preferences.elm= holds the user-tunable settings struct:
 
-The plan is for ~/api/me/preferences~ to load and persist this
-struct per-user once the users-module materializes.  Until then
-every session uses ~Preferences.default~.
+#+begin_src elm
+type alias Preferences =
+    { theme : Theme                       -- Light / Dark / Auto
+    , cardDensity : CardDensity           -- Compact / Normal / Spacious
+    , soundEnabled : Bool
+    , autoScrollActiveCard : Bool
+    , autoRollInitiativeOnAdd : Bool
+    , defaultCompendiumSort : CompendiumSort
+    , keyboardShortcuts : Dict String String
+    }
+#+end_src
+
+Wire status today:
+
+- *Theme* is the only field with a UI surface — the AppBar
+  settings popover (the ⚙ button at top-right; ~settingsOpen :
+  Bool~ on the Model holds its open state).  Picks dispatch
+  ~PreferencesThemeSet Theme~ → =Update.Preferences.themeSet=,
+  which writes the new value to ~model.preferences~ and fires
+  ~Ports.savePreferences~ so the JS host persists it to
+  ~localStorage~ + mirrors it onto ~<html data-theme>~ for the
+  pre-Elm FOUC script on next reload.
+- ~autoScrollActiveCard~ is consulted by
+  =Update.Encounter.nextTurn= when the turn advances.
+- The remaining fields (density, sound, auto-roll initiative,
+  default compendium sort, shortcut overrides) are
+  wire-defined but not yet read by any feature; they round-trip
+  through ~Preferences.default~.
+
+When ~/api/me/preferences~ lands (Phase 11 of the modularization
+plan, =crates/server/src/prefs/= today is a stub), ~Ports.save-
+Preferences~ becomes a fallback for unauthenticated sessions
+and the canonical persistence path is HTTP.  =Theme= itself
+lives in =Msg.elm= rather than =Preferences.elm= to avoid an
+import cycle with the ~PreferencesThemeSet Theme~ Msg
+constructor; =Preferences= re-exports it.
+
+* User-facing copy (tooltips)
+
+Every ~title~ HTML attribute string in the view layer is a
+top-level constant in =View/Tooltips.elm=.  View modules import
+the module and reference constants by name; the Elm compiler
+guarantees every reference resolves, so a tooltip can't drift
+out of the codebase silently.  Static tooltips are plain
+~String~ values grouped by feature with section comments;
+dynamic tooltips (XP scope, condition chip, timer pill, stat-
+block dice links, etc.) are small helper functions taking
+primitive params at the bottom of the module.
+
+The companion [[file:TOOLTIPS.org][docs/TOOLTIPS.org]] walks every tooltip with the UI
+affordance it attaches to plus the current copy, organised
+identically to the .elm sections.  To reword: read the org doc
+top-to-bottom for context, edit the named constant in
+=View.Tooltips=, run ~elm make~.
+
+When adding a new view, *do not inline* a ~title "..."~ literal
+— add a constant to =View/Tooltips.elm= and a matching entry to
+=docs/TOOLTIPS.org=, then reference the constant.  The grep
+~grep -rn ', title "' frontend/src/View/= must return zero hits.
 
 * When adding new features
 
@@ -515,12 +655,15 @@ already there; extend it, don't recreate it.
 
 The five-run modularization (Phases 1–11 of the
 [[file:MODULARIZATION_PLAN.org][modularization plan]]) drove
-=Main.elm= from 9,268 lines to ~870.  The whole point of that
-work was to make new-feature additions follow a templatable
-pattern — every modal, every domain feature, every CLI
-subcommand has a canonical home now.  Don't grow =Main.elm= or
-inline new helpers there; that work has already been undone
-once.
+=Main.elm= from 9,268 lines down past 1k — it sits around 1.3k
+today, almost entirely dispatch-table boilerplate (one
+~MyMsg arg -> Update.Foo.bar arg model~ line per Msg branch
+plus the modal-view + subscriptions composition).  The whole
+point of that work was to make new-feature additions follow a
+templatable pattern — every modal, every domain feature, every
+CLI subcommand has a canonical home now.  Don't grow =Main.elm=
+beyond the dispatch table or inline new helpers there; that
+work has already been undone once.
 
 ** Frontend: a new modal feature
 
@@ -553,12 +696,17 @@ canonical layout, in dependency order:
    ~model.modal~ for ~Just (ModalFoo ui)~ and falls through to
    ~text ""~.  Use =View.Modal.view= for the chrome (backdrop,
    header, ✕ close, click-out, Esc-close).
-8. *Dispatch wiring* — add one line each to =Main.view= (call
-   the new view) and =Main.updateInner= (each Msg branch is a
+8. *Tooltips* — every ~title~ attribute the view sets goes
+   through a constant in =View/Tooltips.elm= (with a matching
+   entry in =docs/TOOLTIPS.org=).  No inline ~title "..."~
+   literals.
+9. *Dispatch wiring* — add one line each to =Main.view= (call
+   the new view), =Main.subscriptions= (the modal's Esc-key
+   case), and =Main.updateInner= (each Msg branch is a
    one-liner: ~FooMsg arg -> Update.Foo.bar arg model~).
-9. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain
-   helpers; the Update + View modules are integration-tested
-   through the existing patterns.
+10. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain
+    helpers; the Update + View modules are integration-tested
+    through the existing patterns.
 
 ** Frontend: a non-modal feature (e.g. a card row, a panel piece)
 
@@ -645,10 +793,14 @@ invariants the type system now enforces.
 
 =docs/archive/= holds historical planning documents
 (=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=).  They are no longer maintained and
-should not be read or updated.  Instructions inside that say
-"update X" are stale and superseded by this document.
+=COMPENDIUM_PLAN.org=, =CHANGELOG.org=).  They are no longer
+maintained and should not be read or updated.  Instructions
+inside that say "update X" are stale and superseded by this
+document.  The project does not maintain a changelog — commit
+messages and the git log are the canonical record of what
+changed; this document captures the load-bearing decisions.
 
 The active plan, and the only one to consult for status, is
 [[file:MODULARIZATION_PLAN.org]] — Phases 1–11, substantially
-complete.
+complete.  See also [[file:TOOLTIPS.org][docs/TOOLTIPS.org]] (tooltip review companion to
+=View/Tooltips.elm=).
