@@ -507,7 +507,12 @@ fn partition_features(
   let mut legendary_options: Vec<LegendaryOption> = Vec::new();
 
   for a in actions_in {
-    match a.action_type.as_str() {
+    // Open5e v2 emits action_type as `ACTION` / `BONUS_ACTION`
+    // / `REACTION` / `LEGENDARY_ACTION` (uppercase).  Normalize
+    // to lowercase before matching so a future shape change to
+    // either case keeps working.
+    let key = a.action_type.to_lowercase();
+    match key.as_str() {
       "bonus" | "bonus_action" => bonus_actions.push(Feature {
         name: a.name,
         description: a.desc,
@@ -518,11 +523,13 @@ fn partition_features(
         description: a.desc,
         usage: None,
       }),
-      "legendary" => legendary_options.push(LegendaryOption {
-        name: a.name,
-        cost: a.legendary_action_cost.unwrap_or(1),
-        description: a.desc,
-      }),
+      "legendary" | "legendary_action" => {
+        legendary_options.push(LegendaryOption {
+          name: a.name,
+          cost: a.legendary_action_cost.unwrap_or(1),
+          description: a.desc,
+        })
+      }
       _ => actions.push(Feature {
         name: a.name,
         description: a.desc,
@@ -595,30 +602,40 @@ mod tests {
 
   #[test]
   fn partition_features_buckets_action_types() {
+    // Mix uppercase (what Open5e v2 actually emits) and lowercase
+    // (defensive — protects against either case appearing in
+    // future API revisions).
     let actions = vec![
       Action {
         name: "Slam".to_string(),
         desc: "Melee attack".to_string(),
-        action_type: "action".to_string(),
+        action_type: "ACTION".to_string(),
         legendary_action_cost: None,
       },
       Action {
         name: "Quick Step".to_string(),
         desc: "Move 10 ft.".to_string(),
-        action_type: "bonus".to_string(),
+        action_type: "BONUS_ACTION".to_string(),
         legendary_action_cost: None,
       },
       Action {
         name: "Parry".to_string(),
         desc: "Add 3 to AC".to_string(),
-        action_type: "reaction".to_string(),
+        action_type: "REACTION".to_string(),
         legendary_action_cost: None,
       },
       Action {
         name: "Tail Swipe".to_string(),
         desc: "Costs 2 actions".to_string(),
-        action_type: "legendary".to_string(),
+        action_type: "LEGENDARY_ACTION".to_string(),
         legendary_action_cost: Some(2),
+      },
+      // Lowercase fallback — same buckets.
+      Action {
+        name: "Wing".to_string(),
+        desc: "Wing attack".to_string(),
+        action_type: "legendary".to_string(),
+        legendary_action_cost: Some(1),
       },
     ];
 
@@ -626,12 +643,17 @@ mod tests {
       partition_features(Vec::new(), actions);
 
     assert!(traits.is_empty());
-    assert_eq!(actions.len(), 1);
-    assert_eq!(bonus.len(), 1);
-    assert_eq!(reactions.len(), 1);
+    assert_eq!(actions.len(), 1, "ACTION should bucket as actions");
+    assert_eq!(bonus.len(), 1, "BONUS_ACTION should bucket as bonus");
+    assert_eq!(reactions.len(), 1, "REACTION should bucket as reactions");
 
     let legendary = legendary.expect("expected legendary block");
-    assert_eq!(legendary.options.len(), 1);
+    assert_eq!(
+      legendary.options.len(),
+      2,
+      "LEGENDARY_ACTION + lowercase legendary should both bucket as legendary"
+    );
     assert_eq!(legendary.options[0].cost, 2);
+    assert_eq!(legendary.options[1].cost, 1);
   }
 }
