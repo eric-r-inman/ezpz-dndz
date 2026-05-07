@@ -84,13 +84,15 @@ type alias SaveUi =
     }
 
 
-{-| Build the initial modal state. The caller passes the
+{-| Build the initial modal state. Caller passes the
 encounter's last-known save name (if any) so the filename input
-opens pre-filled.
+opens pre-filled, and the initial destination so the
+PanelControls split-button dropdown can route Server vs.
+Device picks straight to the right radio.
 -}
-fresh : Maybe String -> SaveUi
-fresh suggestedName =
-    { destination = SaveDestinationServer
+fresh : SaveDestination -> Maybe String -> SaveUi
+fresh destination suggestedName =
+    { destination = destination
     , filename = Maybe.withDefault "" suggestedName
     , saves = SavesLoading
     , busy = False

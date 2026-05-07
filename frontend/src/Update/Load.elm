@@ -55,7 +55,7 @@ withLoadUi =
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalLoad LoadUi.fresh) }
+    ( { model | modal = Just (ModalLoad LoadUi.fresh), controlMenu = Nothing }
     , Encounter.Wire.listSavesCmd LoadListLoaded
     )
 
@@ -320,7 +320,8 @@ renameResponse { from, to } result model =
 
 fromDeviceClick : Model -> ( Model, Cmd Msg )
 fromDeviceClick model =
-    ( withLoadUi (\ui -> { ui | error = Nothing }) model
+    ( withLoadUi (\ui -> { ui | error = Nothing })
+        { model | controlMenu = Nothing }
     , File.Select.file [ "application/json", "text/plain" ] LoadFromDeviceFileChosen
     )
 

@@ -3413,6 +3413,60 @@ body {
   opacity: 0.6;
 }
 
+/* Encounter-controls split-button dropdown for Save / Load (server
+   vs. device).  Same anchoring + popover pattern as the compendium
+   clear-menu, but the trigger fills its grid cell so the menu sits
+   in the existing two-row controls grid. */
+.control-menu {
+  position: relative;
+  display: flex;
+}
+
+.control-menu__trigger {
+  width: 100%;
+}
+
+.control-menu__list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.control-menu__item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.control-menu__item:hover:not(:disabled) {
+  background: var(--color-accent-soft, rgba(59, 130, 246, 0.12));
+  color: var(--color-accent, #3b82f6);
+}
+
+.control-menu__item:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
 .compendium__bulk-confirm {
   display: flex;
   gap: 12px;

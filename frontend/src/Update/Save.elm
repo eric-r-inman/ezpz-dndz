@@ -56,9 +56,13 @@ withSaveUi =
     Model.mapModal Model.saveLens
 
 
-open : Model -> ( Model, Cmd Msg )
-open model =
-    ( { model | modal = Just (ModalSave (SaveUi.fresh model.savedAs)) }
+open : SaveDestination -> Model -> ( Model, Cmd Msg )
+open destination model =
+    ( { model
+        | modal =
+            Just (ModalSave (SaveUi.fresh destination model.savedAs))
+        , controlMenu = Nothing
+      }
     , Encounter.Wire.listSavesCmd SaveListLoaded
     )
 

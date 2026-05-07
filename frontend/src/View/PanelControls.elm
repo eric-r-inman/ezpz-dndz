@@ -17,13 +17,14 @@ of a Reset / Clear before any state is touched.
 import Html exposing (Html, button, div, p, section, span, text)
 import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
+import Json.Decode as Decode
 import Model exposing (PendingControl(..))
-import Msg exposing (Msg(..))
+import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
 
 
-view : DiceUi -> Maybe PendingControl -> Int -> Bool -> Html Msg
-view dice pendingControl round rosterDirty =
+view : DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
+view dice pendingControl round rosterDirty controlMenu =
     section [ class "panel panel--controls" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
@@ -57,28 +58,13 @@ view dice pendingControl round rosterDirty =
                     confirmBanner pending
 
                 Nothing ->
-                    buttonGrid round rosterDirty
+                    buttonGrid round rosterDirty controlMenu
             ]
         ]
 
 
-buttonGrid : Int -> Bool -> Html Msg
-buttonGrid round rosterDirty =
-    let
-        saveClass =
-            if rosterDirty then
-                "action-btn action-btn--blue action-btn--dirty"
-
-            else
-                "action-btn action-btn--blue"
-
-        saveTitle =
-            if rosterDirty then
-                "Save the encounter (unsaved roster changes)"
-
-            else
-                "Save the encounter to the server or download to your device"
-    in
+buttonGrid : Int -> Bool -> Maybe ControlMenu -> Html Msg
+buttonGrid round rosterDirty controlMenu =
     div [ class "btn-grid btn-grid--two-rows" ]
         [ button
             [ class "action-btn action-btn--blue"
@@ -86,18 +72,8 @@ buttonGrid round rosterDirty =
             , title "Quick-add a creature from the compendium (alpha or CR sort)"
             ]
             [ text "➕ Quick Add" ]
-        , button
-            [ class saveClass
-            , onClick SaveOpen
-            , title saveTitle
-            ]
-            [ text "💾 Save" ]
-        , button
-            [ class "action-btn action-btn--blue"
-            , onClick LoadOpen
-            , title "Load a saved encounter from the server or your device"
-            ]
-            [ text "📁 Load" ]
+        , saveMenu rosterDirty (controlMenu == Just SaveControlMenu)
+        , loadMenu (controlMenu == Just LoadControlMenu)
         , turnOrRunButton round
         , button
             [ class "action-btn action-btn--orange"
@@ -113,6 +89,141 @@ buttonGrid round rosterDirty =
             , title "Remove every creature and reset round counter to 1"
             ]
             [ text "🗑 Clear" ]
+        ]
+
+
+{-| Save split-button + popover dropdown. The trigger toggles the
+popover; menu items dispatch `SaveOpen` with the chosen
+destination. The wrapper stops `mousedown` propagation so a click
+inside the menu doesn't bubble to the document-level
+"click-outside closes" handler in `Main.subscriptions`.
+
+`rosterDirty` lights the trigger yellow when the encounter has
+unsaved changes — same dirty-highlight behavior as the old plain
+Save button.
+
+-}
+saveMenu : Bool -> Bool -> Html Msg
+saveMenu rosterDirty isOpen =
+    let
+        triggerClass =
+            if rosterDirty then
+                "action-btn action-btn--blue action-btn--dirty control-menu__trigger"
+
+            else
+                "action-btn action-btn--blue control-menu__trigger"
+
+        wrapperClass =
+            if isOpen then
+                "control-menu control-menu--open"
+
+            else
+                "control-menu"
+
+        triggerTitle =
+            if rosterDirty then
+                "Save the encounter (unsaved roster changes)"
+
+            else
+                "Save the encounter to the server or download to your device"
+    in
+    div
+        [ class wrapperClass
+        , Html.Events.stopPropagationOn "mousedown"
+            (Decode.succeed ( NoOp, True ))
+        ]
+        [ button
+            [ class triggerClass
+            , onClick (ControlMenuToggle SaveControlMenu)
+            , title triggerTitle
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if isOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text "💾 Save ▾" ]
+        , if isOpen then
+            div
+                [ class "control-menu__list"
+                , attribute "role" "menu"
+                ]
+                [ button
+                    [ class "control-menu__item"
+                    , onClick (SaveOpen SaveDestinationServer)
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "To Server" ]
+                , button
+                    [ class "control-menu__item"
+                    , onClick (SaveOpen SaveDestinationDevice)
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "To Device" ]
+                ]
+
+          else
+            text ""
+        ]
+
+
+{-| Load split-button + popover dropdown. Mirrors `saveMenu`.
+"From Server" opens the existing Load modal; "From Device"
+fires the file-picker (`LoadFromDeviceClick`).
+-}
+loadMenu : Bool -> Html Msg
+loadMenu isOpen =
+    let
+        wrapperClass =
+            if isOpen then
+                "control-menu control-menu--open"
+
+            else
+                "control-menu"
+    in
+    div
+        [ class wrapperClass
+        , Html.Events.stopPropagationOn "mousedown"
+            (Decode.succeed ( NoOp, True ))
+        ]
+        [ button
+            [ class "action-btn action-btn--blue control-menu__trigger"
+            , onClick (ControlMenuToggle LoadControlMenu)
+            , title "Load a saved encounter from the server or your device"
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if isOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text "📁 Load ▾" ]
+        , if isOpen then
+            div
+                [ class "control-menu__list"
+                , attribute "role" "menu"
+                ]
+                [ button
+                    [ class "control-menu__item"
+                    , onClick LoadOpen
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "From Server" ]
+                , button
+                    [ class "control-menu__item"
+                    , onClick LoadFromDeviceClick
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "From Device" ]
+                ]
+
+          else
+            text ""
         ]
 
 

@@ -39,7 +39,7 @@ user retype the filename.
 import Browser.Navigation as Nav
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
-import Msg exposing (MeStatus)
+import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
@@ -307,6 +307,7 @@ type alias Model =
     , xpScope : XpScope
     , xpFilterOpen : Bool
     , settingsOpen : Bool
+    , controlMenu : Maybe ControlMenu
     , toasts : List Toast
     , nextToastId : Int
     , preferences : Preferences

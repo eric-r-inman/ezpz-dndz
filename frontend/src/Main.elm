@@ -31,6 +31,7 @@ import Msg
     exposing
         ( CompendiumField(..)
         , CompendiumSort(..)
+        , ControlMenu(..)
         , DurationKind(..)
         , FeatureGroup(..)
         , HpField(..)
@@ -174,6 +175,16 @@ subscriptions model =
             else
                 []
 
+        controlMenuSubs =
+            case model.controlMenu of
+                Just _ ->
+                    [ Browser.Events.onKeyDown (escKey ControlMenuClose)
+                    , Browser.Events.onMouseDown (Decode.succeed ControlMenuClose)
+                    ]
+
+                Nothing ->
+                    []
+
         primary =
             if model.dice.open then
                 Browser.Events.onKeyDown (escKey CloseDice)
@@ -211,7 +222,7 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs)
+    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -330,6 +341,7 @@ init flags url key =
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
       , settingsOpen = False
+      , controlMenu = Nothing
       , toasts = []
       , nextToastId = 0
       , preferences = prefs
@@ -870,8 +882,8 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
-        SaveOpen ->
-            Update.Save.open model
+        SaveOpen destination ->
+            Update.Save.open destination model
 
         SaveClose ->
             Update.Save.close model
@@ -1079,6 +1091,12 @@ updateInner msg model =
 
         SettingsClose ->
             Update.Shell.settingsClose model
+
+        ControlMenuToggle which ->
+            Update.Shell.controlMenuToggle which model
+
+        ControlMenuClose ->
+            Update.Shell.controlMenuClose model
 
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model

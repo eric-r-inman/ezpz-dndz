@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , SaveDestination(..), Theme(..)
+    , ControlMenu(..), SaveDestination(..), Theme(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -247,6 +247,17 @@ type SaveDestination
     | SaveDestinationDevice
 
 
+{-| Which Encounter-Controls split-button dropdown is open.
+The SaveMenu / LoadMenu options pick destination (Server vs.
+Device) before the Save / Load Msg fires. Mediated by a
+`Maybe ControlMenu` on `Model` so only one can be open at a
+time.
+-}
+type ControlMenu
+    = SaveControlMenu
+    | LoadControlMenu
+
+
 
 -- ── MSG ──────────────────────────────────────────────────────────────────────
 
@@ -436,7 +447,7 @@ type Msg
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
       -- Encounter Controls: Save / Load / Reset / Clear
-    | SaveOpen
+    | SaveOpen SaveDestination
     | SaveClose
     | SaveDestinationSet SaveDestination
     | SaveFilenameChanged String
@@ -470,6 +481,10 @@ type Msg
     | LoadFromDeviceClick
     | LoadFromDeviceFileChosen File
     | LoadFromDeviceFileRead String
+      -- Encounter Controls panel: which (if any) of the
+      -- Save / Load split-button dropdowns is currently open.
+    | ControlMenuToggle ControlMenu
+    | ControlMenuClose
     | EncounterReset
     | EncounterClear
       -- Quick Add modal — one-click "drop a creature into the

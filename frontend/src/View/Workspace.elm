@@ -38,6 +38,7 @@ view model =
             model.pendingControl
             model.encounter.round
             (Encounter.rosterDirty model.encounter model.savedSnapshot)
+            model.controlMenu
         , View.PanelDetail.view model
         ]
 

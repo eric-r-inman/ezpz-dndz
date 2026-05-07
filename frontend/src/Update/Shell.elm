@@ -1,5 +1,7 @@
 module Update.Shell exposing
-    ( encounterLoaded
+    ( controlMenuClose
+    , controlMenuToggle
+    , encounterLoaded
     , encounterPersisted
     , gotMe
     , noOp
@@ -130,3 +132,30 @@ when the popover is open.
 settingsClose : Model -> ( Model, Cmd Msg )
 settingsClose model =
     ( { model | settingsOpen = False }, Cmd.none )
+
+
+{-| Open or toggle one of the Encounter-Controls split-button
+dropdowns (Save / Load). Clicking the same button again
+closes; clicking the other swaps to it.
+-}
+controlMenuToggle : Msg.ControlMenu -> Model -> ( Model, Cmd Msg )
+controlMenuToggle which model =
+    let
+        next =
+            if model.controlMenu == Just which then
+                Nothing
+
+            else
+                Just which
+    in
+    ( { model | controlMenu = next }, Cmd.none )
+
+
+{-| Close whichever control-menu dropdown is open. Fired by
+Esc + click-outside subs in `Main.subscriptions`, and by any
+dropdown-item handler so the menu doesn't linger after the user
+commits.
+-}
+controlMenuClose : Model -> ( Model, Cmd Msg )
+controlMenuClose model =
+    ( { model | controlMenu = Nothing }, Cmd.none )
