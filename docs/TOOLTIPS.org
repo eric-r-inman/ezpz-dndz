@@ -1,0 +1,459 @@
+#+title:     Tooltip Review
+#+language:  en
+#+startup:   showall
+
+Every UI tooltip (~title~ HTML attribute) the project surfaces, grouped
+by where it appears.  Each entry lists:
+
+- *id* — the constant name in [[file:../frontend/src/View/Tooltips.elm][~View.Tooltips~]] you edit to change it.
+- *attached to* — the UI affordance that shows the tooltip on hover.
+- *current text* — the string the user sees today.
+- *call site* — the view module + line that imports the constant
+  (clickable from VS Code).
+
+To reword a tooltip:
+
+1. Find the entry below.
+2. Edit the matching constant in
+   [[file:../frontend/src/View/Tooltips.elm][~frontend/src/View/Tooltips.elm~]].
+3. Run ~elm make~ — every reference is checked at compile time, so
+   you can't drop a tooltip by accident.
+
+Dynamic tooltips (XP scope, condition chip, timer, etc.) live at the
+bottom of the module as small helpers; their entries here include
+the format template plus the values that get interpolated.
+
+* App bar
+
+** ~appBarSettings~ — Settings cog (top-right)
+:PROPERTIES:
+:CALL-SITE: file:../frontend/src/View/AppBar.elm
+:END:
+- attached to: ⚙ button that opens the theme / settings popover
+- current text: "Settings"
+
+* Encounter Controls panel
+
+The middle pane on the home page; six buttons in a 2×3 grid plus
+the dice-roll cluster in the panel header.
+
+** ~quickAddButton~ — ➕ Quick Add
+- attached to: top-left button in the controls grid
+- current text: "Quick-add a creature from the compendium (alpha or
+  CR sort)"
+
+** ~saveButton~ / ~saveButtonDirty~ — 💾 Save ▾ split-button
+- attached to: Save split-button trigger.  ~saveButtonDirty~ wins
+  whenever there are unsaved roster changes (the trigger also gets
+  a yellow outline).
+- current text (clean): "Save the encounter to the server or
+  download to your device"
+- current text (dirty): "Save the encounter (unsaved roster
+  changes)"
+
+** ~loadButton~ — 📁 Load ▾ split-button
+- attached to: Load split-button trigger
+- current text: "Load a saved encounter from the server or your
+  device"
+
+** ~runEncounter~ / ~nextTurn~ — green primary button
+- attached to: middle button on the bottom row.  Reads "▶ Run
+  Encounter" before round 1; "⏭ Next Turn" once combat is live.
+- current text (round 0): "Begin combat — round 1, highest-
+  initiative creature acts"
+- current text (running): "Advance to the next creature in
+  initiative order"
+
+** ~reset~ — ⟲ Reset
+- attached to: orange button on the bottom row
+- current text: "Revert the encounter to its last-saved state and
+  reset round counter to 1"
+
+** ~clear~ — 🗑 Clear
+- attached to: red button on the bottom row
+- current text: "Remove every creature and reset round counter to 1"
+
+** ~rollDice~ / ~rollDiceUnread~ — 🎲 Roll
+- attached to: green Roll button in the panel header
+- current text (default): "Roll dice"
+- current text (after a roll the user hasn't seen yet):
+  "Roll dice (new entries since last open)"
+
+** ~lastRollTotal~
+- attached to: bold integer to the left of the Roll button
+  (rendered when at least one roll has landed)
+- current text: "Last roll total"
+
+* Encounter title bar
+
+The bar above the creature grid — round, active creature, HP / AC
+readouts, condition list, XP total.
+
+** ~sourceFromSaved~ / ~sourceUnsaved~ — ⓘ source-of-truth icon
+- attached to: small ⓘ at the start of the bar
+- current text (loaded encounter): "from: <name>"
+- current text (no save attached): "from: (unsaved)"
+
+** ~xpScopeEnemiesAndNpcs~ / ~xpScopeEnemiesOnly~ /
+   ~xpScopeNpcsOnly~ / ~xpScopeSelectedOnly~
+- attached to: XP total readout on the right.  Wording matches the
+  filter dropdown's currently-active option.
+- current text: "Total XP for enemies and NPCs" /
+  "Total XP for enemies only" / "Total XP for NPCs only" /
+  "Total XP for selected creatures only"
+
+** ~xpLairTotal~
+- attached to: "(N w/Lair)" badge that appears next to the XP total
+  when at least one creature has a lair-XP value.
+- current text: "Total XP if these creatures are fought in their
+  lair"
+
+** ~xpFilter~
+- attached to: ▾ chevron next to the XP total that opens the scope
+  picker.  Same string used as the ARIA label.
+- current text: "Filter XP total"
+
+** ~halfCover~ / ~threeQuartersCover~ / ~fullCover~
+- attached to: ◐ / ◕ / ● glyph rendered when the active creature
+  has cover.
+- current text: "Half cover" / "Three-quarters cover" / "Full cover"
+
+** ~concentrating~ / ~hiding~ / ~dodging~
+- attached to: 🧠 / 👤 / 🤸 state icons rendered when the active
+  creature is in that state.  Same string used as the ARIA label.
+- current text: "Concentrating" / "Hiding" / "Dodging"
+
+** ~tempHp~
+- attached to: blue "+N" temp-hp badge.  Used in two places: the
+  encounter title bar HP cluster, and each card's HP display.
+- current text: "Temporary hit points"
+
+** ~armorClass~ /helper/
+- attached to: AC readout
+- format: ="Armor Class " ++ <int>=
+
+** ~flying~ /helper/
+- attached to: 🪽 Flying readout (encounter bar) and the
+  card's fly-height controls
+- format: ="Flying — " ++ <int> ++ " ft"=
+
+* Creature card — row 1 (queue actions)
+
+The left and right rails on each card — the queue-mutation buttons.
+
+** ~queueSelectShiftClick~
+- attached to: row checkbox (top-left)
+- current text: "Shift-click to select / deselect all"
+
+** ~queueMoveUp~ / ~queueMoveDown~
+- attached to: ↑ / ↓ buttons on the left rail
+- current text: "Move up in queue (manual; ignores initiative)" /
+  "Move down in queue (manual; ignores initiative)"
+
+** ~queueMakeActive~
+- attached to: → "make active" button on the left rail
+- current text: "Make active creature (does not advance the turn)"
+
+** ~queueRemove~
+- attached to: × button on the right rail
+- current text: "Remove from queue"
+
+** ~queueDuplicate~
+- attached to: ⧉ button on the right rail
+- current text: "Duplicate creature — pick Exact / Fresh / Minion"
+
+* Creature card — row 1 (initiative + name + note)
+
+** ~initiativeManager~
+- attached to: initiative circle on the left of each card
+- current text: "Click to open the initiative manager"
+
+** ~showStatBlock~
+- attached to: creature name (only when the creature has a
+  compendium back-reference)
+- current text: "Show this creature's stat block in the side panel"
+
+** ~noteAdd~ / ~noteEdit~
+- attached to: pencil icon next to the name (Add) and the note
+  pill itself (Edit/clear).
+- current text: "Add note" / "Edit or clear note"
+
+* Creature card — row 2 (HP cluster)
+
+** ~clickToEdit~
+- attached to: HP value, Max HP value, AC value (any inline-
+  editable numeric).  Also used inside the chip primitive
+  (~chipClickToEdit~ exposes the same string).
+- current text: "Click to edit"
+
+** ~bloodied~
+- attached to: bloodied marker (small drop icon) when current HP <
+  half max
+- current text: "Bloodied — below half hit points"
+
+** ~statusOnTip~ / ~statusOffTip~ /helpers/
+- attached to: row 2 status toggles (concentrate / hide / dodge,
+  rendered via ~boolToggle~).  Format depends on whether the toggle
+  is currently on or off.
+- format (on):  ="<label> — click to clear"=
+- format (off): ="not <label> — click to set"=
+- example: hovering Concentrate when off gives "not Concentrating
+  — click to set".
+
+** ~coverCycleTip~ /helper/
+- attached to: cover toggle on row 2 (single button cycling
+  no-cover / half / three-quarters / full).  ~label~ is the human
+  name of the current cover state.
+- format: ="<label> — click to cycle"=
+
+** ~flyHeightUp~ / ~flyHeightDown~ / ~fallDamage~
+- attached to: ▲ / ▼ adjusters around the fly-height readout, and
+  the small "drop" icon that triggers a falling-damage roll.
+- current text: "Increase by 5 ft" / "Decrease by 5 ft" /
+  "Roll falling damage (1d6 per 10 ft, max 20d6) and ground the
+  creature"
+
+* Creature card — row 3 (HP-change actions + memo + timer)
+
+** ~damage~ / ~heal~ / ~addTempHp~ / ~applyCondition~
+- attached to: the four primary-action buttons on row 3
+- current text: "Apply damage" / "Heal hit points" /
+  "Add temporary hit points" / "Apply condition or effect"
+
+** ~holdReady~ / ~holdReadied~
+- attached to: ✋ Ready / ✊ Readied toggle
+- current text: "Ready an action — click to set" /
+  "Action readied — click to release"
+
+** ~memoAdd~ / ~memoEdit~ / ~memoClear~
+- attached to: ✎ pencil + memo pill cluster
+- current text: "Add memo" / "Edit memo" / "Clear memo"
+
+** ~timerSet~ / ~timerCancel~
+- attached to: ⏱ Set timer button, and the × on the active timer
+  pill
+- current text: "Set timer" / "Cancel timer"
+
+** ~timerRunning~ / ~timerRinging~ /helpers/
+- attached to: the timer pill itself
+- format (running): ="Timer: <N> left, ticks at <begin|end>-of-turn"=
+- format (ringing): ="Timer rang at <begin|end>-of-turn — click ×
+  to dismiss"=
+
+* Creature card — death saves
+
+Only renders when the creature is at 0 HP.
+
+** ~deathDead~ / ~deathStable~ / ~deathRoll~
+- attached to: 💀 / 🛡 / 🎲 column footer
+- current text: "Dead — 3 failed death saves" / "Stable — 3
+  successful death saves" / "Roll a 1d20 death save (5e: 10+
+  success, ≤9 failure, nat 20 revives, nat 1 = 2 failures)"
+
+* Creature card — conditions
+
+** ~chipFullTitle~ /helper/
+- attached to: the whole condition chip
+- format: ="<name> — <duration>"= plus, when a save-to-end is
+  configured, ~ · <ABILITY> save DC <DC>~
+
+** ~chipRollSave~ /helper/
+- attached to: the inline 🎲 button rendered next to a chip when
+  the condition has a save-to-end
+- format: ="Roll <ABILITY> save (DC <DC>, bonus <BONUS>)"=
+
+** ~chipClickToEdit~ / ~chipDismiss~ / ~chipRemoveModalRow~
+- attached to: chip-primitive label / chip dismiss × / per-row
+  remove button inside the Condition modal
+- current text: "Click to edit" / "Dismiss" / "Remove this
+  condition"
+
+** ~savedAgainstNotice~ /helper/
+- attached to: green "Saved: X" notice chip that appears after a
+  successful auto-save roll
+- format: ="Saved against <name> — auto-clears on next end-of-turn"=
+
+** ~saveNoticeDismiss~
+- attached to: × on the save-notice chip
+- current text: "Dismiss"
+
+* Side detail panel (right pane)
+
+** ~panelOpenCompendium~
+- attached to: 📖 Open button on the panel toolbar
+- current text: "Open the creature library"
+
+** ~panelCrCalculator~
+- attached to: ⚔️ CR Calculator (currently disabled)
+- current text: "CR Calculator (not yet available)"
+
+** ~panelStatBlockNewWindow~
+- attached to: ↗ icon on the pinned stat block
+- current text: "Open this creature's stat block in a new window"
+
+* Stat block (right pane + popout)
+
+** ~statBlockSavingThrow~ /helper/
+- attached to: each ability cell (STR / DEX / CON / …) — clickable
+  to roll a save
+- format: ="<label> saving throw — click to roll"=
+
+** ~statBlockRoll~ /helper/
+- attached to: every inline dice-link inside an action / spell
+  description
+- format: ="Roll <expression>"=
+
+* Compendium browser modal
+
+** ~compendiumInEncounter~
+- attached to: small badge on a creature row that's already in the
+  current encounter
+- current text: "This creature has at least one instance in the
+  encounter"
+
+** ~compendiumAddedFilterOff~ / ~compendiumAddedFilterOn~
+- attached to: "Added" toggle in the filter bar
+- current text (off): "Show only creatures that have instances in
+  the current encounter"
+- current text (on): "Showing only creatures with instances in the
+  encounter — click to clear"
+
+** ~compendiumRowSelect~
+- attached to: row checkbox in the left list
+- current text: "Click to select; shift+click to select all (or
+  clear) visible creatures"
+
+** ~compendiumInstanceCount~
+- attached to: "[N] in Encounter" readout on the right pane
+- current text: "Instances of this creature already in the
+  encounter"
+
+** ~compendiumAddToEncounter~ / ~compendiumEdit~ /
+   ~compendiumDuplicate~ / ~compendiumDelete~
+- attached to: action toolbar above the right-pane stat block
+- current text: "Roll initiative and add to the encounter queue" /
+  "Edit this creature" / "Duplicate this creature in the
+  compendium" / "Delete this creature from the compendium"
+
+** ~compendiumNewCreature~ / ~compendiumPasteStatBlock~
+- attached to: + New / 📋 Paste Stat Block buttons in the filter
+  bar
+- current text: "Create a new creature from scratch" / "Paste a 5e
+  stat block to import"
+
+** ~compendiumImport~ — 📥 Import ▾ trigger
+- current text: "Replace the current library from a server snapshot
+  or a local file"
+
+** ~compendiumExport~ / ~compendiumExportDirty~ — 📤 Export ▾
+- ~compendiumExportDirty~ wins when the library has unsaved
+  changes (the trigger also gets a yellow outline).
+- current text (clean): "Save the library to the server or
+  download to your device"
+- current text (dirty): "Save the library to the server or
+  download to your device (unsaved changes)"
+
+** ~compendiumReset~ — ↺ Reset
+- current text: "Reset the library to the bundled creature set"
+
+** ~compendiumClear~ — 🗑 Clear ▾
+- current text: "Clear all creatures, or just the selected ones"
+
+** ~compendiumClearSelectedNone~ / ~compendiumClearSelectedReady~
+- attached to: "Clear Selected" item inside the Clear dropdown.
+  Off when nothing's checked; on when at least one row is.
+- current text: "No creatures are checked" / "Remove the checked
+  creatures"
+
+* Compendium edit modal
+
+** ~compendiumEditRemoveSave~ / ~compendiumEditRemoveSkill~ /
+   ~compendiumEditRemoveEntry~ / ~compendiumEditRemoveSection~
+- attached to: tiny × buttons on inline-editable list rows
+  (saves / skills / features / custom sections)
+- current text: "Remove this save" / "Remove this skill" /
+  "Remove this entry" / "Remove this section"
+
+** ~compendiumEditDeleteCreature~
+- attached to: red "Delete" button at the bottom of the form
+  (only when editing an existing creature)
+- current text: "Delete this creature from the compendium"
+
+* Save / Load modal — per-row icons
+
+** ~saveRowOverwrite~ / ~saveRowRename~ / ~saveRowDelete~
+- attached to: 💾 / ✎ / 🗑 buttons on each row of the Save modal's
+  saves list (and the Rename / Delete pair on the Load modal too)
+- current text: "Overwrite this save with the current encounter" /
+  "Rename" / "Delete"
+
+** ~loadRowEncounter~ / ~loadRowCompendium~
+- attached to: the clickable save name in the Load Encounter and
+  Load Compendium modals respectively
+- current text: "Load this encounter" / "Load this compendium"
+
+* Dice modal
+
+** ~diceReset~ — ⟲ next to count + modifier
+- current text: "Reset count to 1 and modifier to 0"
+
+** ~diceFaceRoll~ /helper/
+- attached to: each die face button (d4 / d6 / d8 / …)
+- format: ="Roll d<faces>"=
+
+** ~diceAdvantage~ / ~diceDisadvantage~
+- attached to: A / D buttons next to the d20 face
+- current text: "Roll 2d20, keep highest" / "Roll 2d20, keep
+  lowest"
+
+** ~diceCoinFlip~
+- attached to: 🪙 button
+- current text: "50/50 coin flip"
+
+** ~diceClearHistory~
+- attached to: small × above the history list
+- current text: "Clear roll history"
+
+** ~diceRollAgain~
+- attached to: ↻ on each history row
+- current text: "Roll this again"
+
+* Initiative modal
+
+** ~initRollStandard~ / ~initRollAdvantage~ / ~initRollDisadvantage~
+- attached to: the three buttons in each "auto-roll" row.  When
+  the row's `enabled` flag is false (e.g. zero selected creatures),
+  the per-row `tipOverride` wins instead.
+- current text: "Roll 1d20 + initiative bonus" / "Roll 2d20, keep
+  highest, + initiative bonus (5e advantage)" / "Roll 2d20, keep
+  lowest, + initiative bonus (5e disadvantage)"
+
+** ~initSelectedNone~ / ~initSelectedOne~ / ~initSelectedMany~
+- attached to: "Apply & Sort: Selected" custom-initiative button.
+  Tooltip varies by selection count.
+- current text (0): "No creatures are selected — tick the row 1
+  checkbox on the cards you want first"
+- current text (1): "1 creature selected"
+- format (>1): ="<N> creatures selected"=
+
+* Quick Add modal
+
+** ~quickAddSortToAlpha~ / ~quickAddSortToCr~
+- attached to: sort-toggle pill at the top.  The /next/ sort order
+  is shown — switching to alphabetical when currently on CR, etc.
+- current text: "Switch to alphabetical order" / "Switch to
+  challenge-rating order"
+
+** ~quickAddCreatureRow~ /helper/
+- attached to: each creature row in the list
+- format: ="Add <name> to the encounter"=
+
+* Modal chrome / toast
+
+** ~modalClose~
+- attached to: × in every modal's top-right corner
+- current text: "Close"
+
+** ~toastDismiss~
+- attached to: × on each toast
+- current text: "Dismiss"

@@ -38,6 +38,7 @@ import Ui.Load as LoadUi
         )
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -167,7 +168,7 @@ displayRow : SavedEncounterMeta -> Bool -> List (Html Msg)
 displayRow meta isBusy =
     [ button
         [ class "save-modal__row-name save-modal__row-name--clickable"
-        , title "Load this encounter"
+        , title Tooltips.loadRowEncounter
         , disabled isBusy
         , onClick (LoadFromServerRequested meta.name)
         ]
@@ -175,14 +176,14 @@ displayRow meta isBusy =
     , div [ class "save-modal__row-actions" ]
         [ button
             [ class "icon-btn"
-            , title "Rename"
+            , title Tooltips.saveRowRename
             , attribute "aria-label" "Rename"
             , onClick (LoadRenameStart meta.name)
             ]
             [ text "✎" ]
         , button
             [ class "icon-btn icon-btn--danger"
-            , title "Delete"
+            , title Tooltips.saveRowDelete
             , attribute "aria-label" "Delete"
             , onClick (LoadDeleteRequested meta.name)
             ]

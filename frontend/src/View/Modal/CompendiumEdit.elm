@@ -30,6 +30,7 @@ import Ui.Compendium as CompendiumUi
         , FeatureDraft
         )
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -401,7 +402,7 @@ savingThrowRow idx ( ability, bonus ) =
         , button
             [ class "edit-row__remove"
             , onClick (CompendiumEditSavingThrowRemove idx)
-            , title "Remove this save"
+            , title Tooltips.compendiumEditRemoveSave
             ]
             [ text "×" ]
         ]
@@ -506,7 +507,7 @@ skillRow idx ( name_, bonus ) =
         , button
             [ class "edit-row__remove"
             , onClick (CompendiumEditSkillRemove idx)
-            , title "Remove this skill"
+            , title Tooltips.compendiumEditRemoveSkill
             ]
             [ text "×" ]
         ]
@@ -538,7 +539,7 @@ featureRow group idx draft =
             , button
                 [ class "edit-row__remove"
                 , onClick (CompendiumEditFeatureRemove group idx)
-                , title "Remove this entry"
+                , title Tooltips.compendiumEditRemoveEntry
                 ]
                 [ text "×" ]
             ]
@@ -579,7 +580,7 @@ customSectionRow idx ( name_, body_ ) =
             , button
                 [ class "edit-row__remove"
                 , onClick (CompendiumEditCustomSectionRemove idx)
-                , title "Remove this section"
+                , title Tooltips.compendiumEditRemoveSection
                 ]
                 [ text "×" ]
             ]
@@ -628,7 +629,7 @@ footer ui =
                 [ class "action-btn action-btn--red"
                 , onClick CompendiumEditDelete
                 , disabled ui.submitting
-                , title "Delete this creature from the compendium"
+                , title Tooltips.compendiumEditDeleteCreature
                 ]
                 [ text "🗑 Delete" ]
 

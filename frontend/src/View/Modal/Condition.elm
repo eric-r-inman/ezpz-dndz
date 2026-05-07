@@ -21,6 +21,7 @@ import Ui.Condition exposing (ConditionUi, SaveToEndUi)
 import Update.Condition
 import View.Modal
 import View.PhaseToggle
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -441,7 +442,7 @@ footer ui =
                 button
                     [ class "action-btn action-btn--damage"
                     , onClick ConditionDelete
-                    , title "Remove this condition"
+                    , title Tooltips.chipRemoveModalRow
                     ]
                     [ text "Delete" ]
 

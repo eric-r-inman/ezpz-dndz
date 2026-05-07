@@ -40,6 +40,7 @@ import Ui.SaveCompendium as SaveCompendiumUi
         )
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg

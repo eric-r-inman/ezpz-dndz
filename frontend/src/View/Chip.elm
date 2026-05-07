@@ -17,6 +17,7 @@ class with modifier classes per use case.
 import Html exposing (Html, button, span, text)
 import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
+import View.Tooltips as Tooltips
 
 
 {-| Render a chip / pill.
@@ -64,7 +65,7 @@ view config =
                     button
                         [ class "pill__label pill__label--clickable"
                         , onClick msg
-                        , title "Click to edit"
+                        , title Tooltips.chipClickToEdit
                         ]
                         [ text config.label ]
 
@@ -77,7 +78,7 @@ view config =
                     button
                         [ class "pill__dismiss"
                         , onClick msg
-                        , title "Dismiss"
+                        , title Tooltips.chipDismiss
                         , attribute "aria-label" "Dismiss"
                         ]
                         [ text "×" ]

@@ -25,6 +25,7 @@ import Ui.LoadCompendium as LoadCompendiumUi
         , LoadListState(..)
         )
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -142,7 +143,7 @@ saveRow isBusy meta =
     li [ class "save-modal__row-item" ]
         [ button
             [ class "save-modal__row-name save-modal__row-name--clickable"
-            , title "Load this compendium"
+            , title Tooltips.loadRowCompendium
             , disabled isBusy
             , onClick (LoadCompendiumFromServerRequested meta.name)
             ]

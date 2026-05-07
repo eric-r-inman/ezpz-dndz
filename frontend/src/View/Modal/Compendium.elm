@@ -28,6 +28,7 @@ import Ui.Compendium as CompendiumUi
 import Update.Compendium.Browser
 import View.Modal
 import View.StatBlock
+import View.Tooltips as Tooltips
 
 
 view : CompendiumUi -> List String -> Html Msg
@@ -189,10 +190,10 @@ addedFilter active =
         , onClick CompendiumAddedToggle
         , title
             (if active then
-                "Showing only creatures with instances in the encounter — click to clear"
+                Tooltips.compendiumAddedFilterOn
 
              else
-                "Show only creatures that have instances in the current encounter"
+                Tooltips.compendiumAddedFilterOff
             )
         , attribute "aria-pressed"
             (if active then
@@ -449,7 +450,7 @@ listItem selectedId selectedIds encounterIds c =
                 , if inEncounter then
                     span
                         [ class "compendium__row-in-enc"
-                        , title "This creature has at least one instance in the encounter"
+                        , title Tooltips.compendiumInEncounter
                         , attribute "aria-label" "in encounter"
                         ]
                         []
@@ -481,7 +482,7 @@ rowCheckbox creatureId isChecked =
         , class "compendium__row-check"
         , Attr.checked isChecked
         , attribute "aria-label" "Select for bulk action"
-        , title "Click to select; shift+click to select all (or clear) visible creatures"
+        , title Tooltips.compendiumRowSelect
         , Html.Events.stopPropagationOn "click"
             (Decode.field "shiftKey" Decode.bool
                 |> Decode.map
@@ -556,31 +557,31 @@ actionBar creature inEncounter =
     div [ class "compendium__action-bar" ]
         [ span
             [ class badgeClass
-            , title "Instances of this creature already in the encounter"
+            , title Tooltips.compendiumInstanceCount
             ]
             [ text (String.fromInt inEncounter ++ " in Encounter") ]
         , button
             [ class "action-btn action-btn--green compendium__add-btn"
             , onClick (CompendiumAddToQueue creature.id)
-            , title "Roll initiative and add to the encounter queue"
+            , title Tooltips.compendiumAddToEncounter
             ]
             [ text "➕ Add to Encounter" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditExisting
-            , title "Edit this creature"
+            , title Tooltips.compendiumEdit
             ]
             [ text "✏️ Edit" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditDuplicate
-            , title "Duplicate this creature in the compendium"
+            , title Tooltips.compendiumDuplicate
             ]
             [ text "📋 Duplicate" ]
         , button
             [ class "action-btn action-btn--red compendium__delete-btn"
             , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
-            , title "Delete this creature from the compendium"
+            , title Tooltips.compendiumDelete
             , attribute "aria-label" "Delete creature"
             ]
             [ text "🗑" ]
@@ -592,7 +593,7 @@ newButton =
     button
         [ class "action-btn action-btn--green compendium__new-btn"
         , onClick CompendiumEditNew
-        , title "Create a new creature from scratch"
+        , title Tooltips.compendiumNewCreature
         ]
         [ text "➕ New Creature" ]
 
@@ -602,7 +603,7 @@ pasteButton =
     button
         [ class "action-btn action-btn--blue"
         , onClick CompendiumPasteOpen
-        , title "Paste a 5e stat block to import"
+        , title Tooltips.compendiumPasteStatBlock
         ]
         [ text "📋 Paste Stat Block" ]
 
@@ -623,7 +624,7 @@ bulkButtons ui =
         , button
             [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
-            , title "Reset the library to the bundled creature set"
+            , title Tooltips.compendiumReset
             ]
             [ text "↺ Reset" ]
         , clearMenu ui
@@ -715,8 +716,7 @@ importMenu ui =
         , isOpen = ui.bulkMenu == Just ImportMenu
         , triggerClass = "action-btn action-btn--blue"
         , triggerLabel = "📥 Import ▾"
-        , triggerTitle =
-            "Replace the current library from a server snapshot or a local file"
+        , triggerTitle = Tooltips.compendiumImport
         , alignLeft = True
         , items =
             [ menuItem LoadCompendiumOpen "From Server"
@@ -737,10 +737,10 @@ exportMenu ui =
 
         triggerTitle =
             if ui.compendiumDirty then
-                "Save the library to the server or download to your device (unsaved changes)"
+                Tooltips.compendiumExportDirty
 
             else
-                "Save the library to the server or download to your device"
+                Tooltips.compendiumExport
     in
     splitMenu
         { menu = ExportMenu
@@ -777,10 +777,10 @@ clearMenu ui =
                 , disabled nothingSelected
                 , title
                     (if nothingSelected then
-                        "No creatures are checked"
+                        Tooltips.compendiumClearSelectedNone
 
                      else
-                        "Remove the checked creatures"
+                        Tooltips.compendiumClearSelectedReady
                     )
                 , attribute "role" "menuitem"
                 ]
@@ -791,7 +791,7 @@ clearMenu ui =
         , isOpen = ui.bulkMenu == Just ClearMenu
         , triggerClass = "action-btn action-btn--red"
         , triggerLabel = "🗑 Clear"
-        , triggerTitle = "Clear all creatures, or just the selected ones"
+        , triggerTitle = Tooltips.compendiumClear
         , alignLeft = False
         , items =
             [ menuItem CompendiumClearAll "Clear All"

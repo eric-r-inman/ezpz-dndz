@@ -36,6 +36,7 @@ import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (MeStatus(..), Msg(..), Theme(..))
+import View.Tooltips as Tooltips
 
 
 view : Bool -> Theme -> Html Msg
@@ -85,7 +86,7 @@ settings isOpen theme =
                     "false"
                 )
             , attribute "aria-label" "Open settings"
-            , Attr.title "Settings"
+            , Attr.title Tooltips.appBarSettings
             , onClick SettingsToggle
             ]
             [ text "⚙" ]

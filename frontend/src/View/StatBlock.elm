@@ -37,6 +37,7 @@ import Dice
 import Html exposing (Html, button, div, em, hr, p, span, strong, text)
 import Html.Attributes exposing (class, title)
 import Html.Events exposing (onClick)
+import View.Tooltips as Tooltips
 
 
 
@@ -260,7 +261,7 @@ viewAbilityCell onAbilityClick creatureName label bonus score =
         [ class "ability ability--clickable"
         , Html.Attributes.type_ "button"
         , onClick (onAbilityClick creatureName label bonus)
-        , title (label ++ " saving throw — click to roll")
+        , title (Tooltips.statBlockSavingThrow label)
         ]
         [ div [ class "ability__label" ] [ text label ]
         , div [ class "ability__value" ] [ text (String.fromInt score) ]
@@ -703,7 +704,7 @@ viewSegment onRoll creatureName segment =
             button
                 [ class "dice-link"
                 , onClick (onRoll creatureName expr)
-                , title ("Roll " ++ shown)
+                , title (Tooltips.statBlockRoll shown)
                 ]
                 [ text shown ]
 

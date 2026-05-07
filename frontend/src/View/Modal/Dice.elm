@@ -13,6 +13,7 @@ import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : DiceUi -> Html Msg
@@ -89,7 +90,7 @@ form ui =
             , button
                 [ class "dice-form__reset"
                 , onClick DiceResetSliders
-                , title "Reset count to 1 and modifier to 0"
+                , title Tooltips.diceReset
                 , attribute "aria-label" "Reset count and modifier"
                 ]
                 [ text "❌" ]
@@ -115,7 +116,7 @@ faceButton faces colorClass =
     button
         [ class ("die-btn " ++ colorClass)
         , onClick (DiceRollFaces faces)
-        , title ("Roll d" ++ String.fromInt faces)
+        , title (Tooltips.diceFaceRoll faces)
         ]
         [ text ("d" ++ String.fromInt faces) ]
 
@@ -126,19 +127,19 @@ specialButtons =
         [ button
             [ class "action-btn action-btn--green"
             , onClick DiceRollAdvantage
-            , title "Roll 2d20, keep highest"
+            , title Tooltips.diceAdvantage
             ]
             [ text "Advantage" ]
         , button
             [ class "action-btn action-btn--orange"
             , onClick DiceRollDisadvantage
-            , title "Roll 2d20, keep lowest"
+            , title Tooltips.diceDisadvantage
             ]
             [ text "Disadvantage" ]
         , button
             [ class "action-btn"
             , onClick DiceFlipCoin
-            , title "50/50 coin flip"
+            , title Tooltips.diceCoinFlip
             ]
             [ text "🪙 Coin Flip" ]
         ]
@@ -161,7 +162,7 @@ history h =
                 button
                     [ class "dice-history__rerun"
                     , onClick DiceClearHistory
-                    , title "Clear roll history"
+                    , title Tooltips.diceClearHistory
                     ]
                     [ text "Clear" ]
             ]
@@ -194,7 +195,7 @@ historyEntry roll =
         , button
             [ class "dice-history__rerun"
             , onClick (DiceRerun roll)
-            , title "Roll this again"
+            , title Tooltips.diceRollAgain
             ]
             [ text "↻" ]
         ]

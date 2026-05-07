@@ -12,6 +12,7 @@ import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
 import Ui.Toast exposing (Toast, ToastKind(..))
+import View.Tooltips as Tooltips
 
 
 list : List Toast -> Html Msg
@@ -48,7 +49,7 @@ one toast =
         , button
             [ class "toast__dismiss"
             , onClick (ToastDismiss toast.id)
-            , title "Dismiss"
+            , title Tooltips.toastDismiss
             , attribute "aria-label" "Dismiss notification"
             ]
             [ text "×" ]

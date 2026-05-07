@@ -25,6 +25,7 @@ import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddSort(..), QuickAddUi)
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -52,10 +53,10 @@ sortRow ui =
         ( label, tooltip ) =
             case ui.sort of
                 SortAlpha ->
-                    ( "Sort: A → Z", "Switch to challenge-rating order" )
+                    ( "Sort: A → Z", Tooltips.quickAddSortToCr )
 
                 SortByCr ->
-                    ( "Sort: CR ↑", "Switch to alphabetical order" )
+                    ( "Sort: CR ↑", Tooltips.quickAddSortToAlpha )
     in
     div [ class "quick-add__sort-row" ]
         [ button
@@ -102,7 +103,7 @@ row c =
     li
         [ class "quick-add__row"
         , onClick (QuickAddPick c.id)
-        , title ("Add " ++ c.name ++ " to the encounter")
+        , title (Tooltips.quickAddCreatureRow c.name)
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

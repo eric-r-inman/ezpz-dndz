@@ -32,6 +32,7 @@ import Model exposing (Model, PanelPin)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.StatBlock
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -44,14 +45,14 @@ view model =
                 [ button
                     [ class "action-btn action-btn--blue"
                     , onClick CompendiumOpen
-                    , title "Open the creature library"
+                    , title Tooltips.panelOpenCompendium
                     ]
                     [ text "📖 Open" ]
                 , button
                     [ class "action-btn action-btn--blue"
                     , Attr.disabled True
                     , attribute "aria-disabled" "true"
-                    , title "CR Calculator (not yet available)"
+                    , title Tooltips.panelCrCalculator
                     ]
                     [ text "⚔️ CR Calculator" ]
                 ]
@@ -103,7 +104,7 @@ pinnedStatBlock creature =
             , href ("/compendium/creatures/" ++ creature.id)
             , target "_blank"
             , attribute "rel" "noopener"
-            , title "Open this creature's stat block in a new window"
+            , title Tooltips.panelStatBlockNewWindow
             , attribute "aria-label" "Open in new window"
             ]
             [ text "↗" ]

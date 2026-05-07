@@ -19,6 +19,7 @@ import Msg
 import Ui.Initiative exposing (InitiativeUi)
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -97,21 +98,21 @@ autoRollPair scope label enabled tipOverride =
     let
         mainTitle =
             if String.isEmpty tipOverride then
-                "Roll 1d20 + initiative bonus"
+                Tooltips.initRollStandard
 
             else
                 tipOverride
 
         advTitle =
             if enabled then
-                "Roll 2d20, keep highest, + initiative bonus (5e advantage)"
+                Tooltips.initRollAdvantage
 
             else
                 tipOverride
 
         disTitle =
             if enabled then
-                "Roll 2d20, keep lowest, + initiative bonus (5e disadvantage)"
+                Tooltips.initRollDisadvantage
 
             else
                 tipOverride
@@ -202,13 +203,13 @@ selectedTitle : Int -> String
 selectedTitle n =
     case n of
         0 ->
-            "No creatures are selected — tick the row 1 checkbox on the cards you want first"
+            Tooltips.initSelectedNone
 
         1 ->
-            "1 creature selected"
+            Tooltips.initSelectedOne
 
         _ ->
-            String.fromInt n ++ " creatures selected"
+            Tooltips.initSelectedMany n
 
 
 selectedCountSuffix : Int -> String

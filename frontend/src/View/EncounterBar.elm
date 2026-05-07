@@ -23,6 +23,7 @@ import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
+import View.Tooltips as Tooltips
 
 
 view : Encounter -> Maybe String -> CompendiumDb -> XpScope -> Bool -> Html Msg
@@ -38,10 +39,10 @@ view enc savedAs db xpScope xpFilterOpen =
         sourceTooltip =
             case savedAs of
                 Just name ->
-                    "from: " ++ name
+                    Tooltips.sourceFromSaved name
 
                 Nothing ->
-                    "from: (unsaved)"
+                    Tooltips.sourceUnsaved
     in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
@@ -86,7 +87,7 @@ xpReadout enc db scope =
                 , if totals.lairTotal > totals.total then
                     span
                         [ class "encounter-bar__xp-lair"
-                        , title "Total XP if these creatures are fought in their lair"
+                        , title Tooltips.xpLairTotal
                         ]
                         [ text ("(" ++ Xp.formatThousands totals.lairTotal ++ " w/Lair)") ]
 
@@ -106,16 +107,16 @@ xpScopeTooltip : XpScope -> String
 xpScopeTooltip scope =
     case scope of
         ScopeXpEnemiesAndNpcs ->
-            "Total XP for enemies and NPCs"
+            Tooltips.xpScopeEnemiesAndNpcs
 
         ScopeXpEnemiesOnly ->
-            "Total XP for enemies only"
+            Tooltips.xpScopeEnemiesOnly
 
         ScopeXpNpcsOnly ->
-            "Total XP for NPCs only"
+            Tooltips.xpScopeNpcsOnly
 
         ScopeXpSelectedOnly ->
-            "Total XP for selected creatures only"
+            Tooltips.xpScopeSelectedOnly
 
 
 {-| HP readout for the encounter title bar. Reuses the same
@@ -136,7 +137,7 @@ hp active =
                 , if c.tempHp > 0 then
                     span
                         [ class "hp-display__temp"
-                        , title "Temporary hit points"
+                        , title Tooltips.tempHp
                         ]
                         [ text ("+" ++ String.fromInt c.tempHp) ]
 
@@ -160,7 +161,7 @@ ac active =
         Just c ->
             span
                 [ class "encounter-bar__ac"
-                , title ("Armor Class " ++ String.fromInt c.armorClass)
+                , title (Tooltips.armorClass c.armorClass)
                 ]
                 [ span [ class "encounter-bar__ac-value" ]
                     [ text (String.fromInt c.armorClass) ]
@@ -207,8 +208,8 @@ xpFilter current isOpen =
                  else
                     "false"
                 )
-            , attribute "aria-label" "Filter XP total"
-            , title "Filter XP total"
+            , attribute "aria-label" Tooltips.xpFilter
+            , title Tooltips.xpFilter
             , onClick XpFilterToggle
             ]
             [ text "▾" ]
@@ -261,9 +262,9 @@ stateIcons active =
             div [ class "encounter-bar__states" ]
                 (List.filterMap identity
                     [ coverIcon c
-                    , stateIconIf c.concentrating "🧠" "Concentrating"
-                    , stateIconIf c.hiding "👤" "Hiding"
-                    , stateIconIf c.dodging "🤸" "Dodging"
+                    , stateIconIf c.concentrating "🧠" Tooltips.concentrating
+                    , stateIconIf c.hiding "👤" Tooltips.hiding
+                    , stateIconIf c.dodging "🤸" Tooltips.dodging
                     , flyingIcon c
                     ]
                 )
@@ -299,13 +300,13 @@ coverIcon c =
             Nothing
 
         HalfCover ->
-            Just (stateIcon "◐" "Half cover")
+            Just (stateIcon "◐" Tooltips.halfCover)
 
         ThreeQuartersCover ->
-            Just (stateIcon "◕" "Three-quarters cover")
+            Just (stateIcon "◕" Tooltips.threeQuartersCover)
 
         FullCover ->
-            Just (stateIcon "●" "Full cover")
+            Just (stateIcon "●" Tooltips.fullCover)
 
 
 {-| Flying icon includes the height inline so the GM can read
@@ -317,7 +318,7 @@ flyingIcon c =
         Just
             (span
                 [ class "encounter-bar__state"
-                , title ("Flying — " ++ String.fromInt c.flyHeight ++ " ft")
+                , title (Tooltips.flying c.flyHeight)
                 , attribute "aria-label" "Flying"
                 ]
                 [ text ("🪽 " ++ String.fromInt c.flyHeight) ]

@@ -42,6 +42,7 @@ import Ui.Save as SaveUi
         )
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -216,21 +217,21 @@ displayRow meta =
     , div [ class "save-modal__row-actions" ]
         [ button
             [ class "icon-btn"
-            , title "Overwrite this save with the current encounter"
+            , title Tooltips.saveRowOverwrite
             , attribute "aria-label" "Overwrite"
             , onClick (SaveOverwriteRequested meta.name)
             ]
             [ text "💾" ]
         , button
             [ class "icon-btn"
-            , title "Rename"
+            , title Tooltips.saveRowRename
             , attribute "aria-label" "Rename"
             , onClick (SaveRenameStart meta.name)
             ]
             [ text "✎" ]
         , button
             [ class "icon-btn icon-btn--danger"
-            , title "Delete"
+            , title Tooltips.saveRowDelete
             , attribute "aria-label" "Delete"
             , onClick (SaveDeleteRequested meta.name)
             ]

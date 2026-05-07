@@ -20,6 +20,7 @@ import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
+import View.Tooltips as Tooltips
 
 
 {-| Render a modal with the given title, body content, and
@@ -62,7 +63,7 @@ view config =
                 , button
                     [ class "modal__close"
                     , onClick config.close
-                    , title "Close"
+                    , title Tooltips.modalClose
                     , attribute "aria-label" "Close"
                     ]
                     [ text "×" ]

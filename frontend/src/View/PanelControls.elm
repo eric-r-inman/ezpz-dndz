@@ -21,6 +21,7 @@ import Json.Decode as Decode
 import Model exposing (PendingControl(..))
 import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
+import View.Tooltips as Tooltips
 
 
 view : DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
@@ -42,10 +43,10 @@ view dice pendingControl round rosterDirty controlMenu =
                     , onClick OpenDice
                     , title
                         (if dice.unread then
-                            "Roll dice (new entries since last open)"
+                            Tooltips.rollDiceUnread
 
                          else
-                            "Roll dice"
+                            Tooltips.rollDice
                         )
                     , attribute "aria-label" "Roll dice"
                     ]
@@ -69,7 +70,7 @@ buttonGrid round rosterDirty controlMenu =
         [ button
             [ class "action-btn action-btn--blue"
             , onClick QuickAddOpen
-            , title "Quick-add a creature from the compendium (alpha or CR sort)"
+            , title Tooltips.quickAddButton
             ]
             [ text "➕ Quick Add" ]
         , saveMenu rosterDirty (controlMenu == Just SaveControlMenu)
@@ -78,7 +79,7 @@ buttonGrid round rosterDirty controlMenu =
         , button
             [ class "action-btn action-btn--orange"
             , onClick EncounterReset
-            , title "Revert the encounter to its last-saved state and reset round counter to 1"
+            , title Tooltips.reset
             ]
             [ span [ class "btn-glyph" ] [ text "⟲" ]
             , text " Reset"
@@ -86,7 +87,7 @@ buttonGrid round rosterDirty controlMenu =
         , button
             [ class "action-btn action-btn--red"
             , onClick EncounterClear
-            , title "Remove every creature and reset round counter to 1"
+            , title Tooltips.clear
             ]
             [ text "🗑 Clear" ]
         ]
@@ -122,10 +123,10 @@ saveMenu rosterDirty isOpen =
 
         triggerTitle =
             if rosterDirty then
-                "Save the encounter (unsaved roster changes)"
+                Tooltips.saveButtonDirty
 
             else
-                "Save the encounter to the server or download to your device"
+                Tooltips.saveButton
     in
     div
         [ class wrapperClass
@@ -192,7 +193,7 @@ loadMenu isOpen =
         [ button
             [ class "action-btn action-btn--blue control-menu__trigger"
             , onClick (ControlMenuToggle LoadControlMenu)
-            , title "Load a saved encounter from the server or your device"
+            , title Tooltips.loadButton
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if isOpen then
@@ -240,7 +241,7 @@ turnOrRunButton round =
         button
             [ class "action-btn action-btn--green"
             , onClick EncounterRun
-            , title "Begin combat — round 1, highest-initiative creature acts"
+            , title Tooltips.runEncounter
             ]
             [ text "▶ Run Encounter" ]
 
@@ -248,7 +249,7 @@ turnOrRunButton round =
         button
             [ class "action-btn action-btn--green"
             , onClick NextTurn
-            , title "Advance to the next creature in initiative order"
+            , title Tooltips.nextTurn
             ]
             [ text "⏭ Next Turn" ]
 
@@ -304,7 +305,7 @@ diceLastTotal dice =
         Just roll ->
             span
                 [ class "dice-last-total"
-                , title "Last roll total"
+                , title Tooltips.lastRollTotal
                 ]
                 [ text (String.fromInt roll.total) ]
 
