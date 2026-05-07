@@ -9,6 +9,7 @@
 //! `JsonFileStore<Vec<Creature>>` from this crate's
 //! `json_file_store` module.
 
+pub mod open5e;
 pub mod types;
 
 pub use types::*;

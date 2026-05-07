@@ -13,11 +13,27 @@ use serde_json::json;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-/// Stable id of the first bundled creature ("Goblin").  Hard-coded
-/// to verify the version-merge is matching by id, not by name —
-/// renaming a bundled entry should NOT cause the merge to add a
-/// duplicate.
-const BUNDLED_GOBLIN_ID: &str = "01914741-0001-4001-a001-000000000001";
+/// Stable id of one bundled creature ("Goblin Warrior").
+/// Hard-coded to verify the version-merge is matching by id,
+/// not by name — renaming a bundled entry should NOT cause the
+/// merge to add a duplicate.
+///
+/// Bundled UUIDs are derived deterministically via UUIDv5 from
+/// the source slug (`stable_uuid_from_key("goblin-warrior")`),
+/// so re-harvesting from Open5e produces the same id and this
+/// constant stays valid.
+const BUNDLED_GOBLIN_ID: &str = "77616fb2-b1c8-5d2f-9f07-f8956b40743a";
+
+/// Stable id of one larger bundled creature ("Young White
+/// Dragon"), used for the second-creature checks.
+const BUNDLED_YOUNG_WHITE_DRAGON_ID: &str =
+  "86800bb0-c035-50ff-a4d0-9d783fecbf71";
+
+/// Lower bound on the bundled-creature count.  The full SRD-2024
+/// harvest carries ~330; we assert a floor rather than an exact
+/// number so re-harvests that pick up a creature or two don't
+/// break the test.
+const MIN_BUNDLED_COUNT: usize = 300;
 
 fn temp_creatures_path() -> (TempDir, PathBuf) {
   let dir = TempDir::new().expect("tempdir");
@@ -32,17 +48,20 @@ async fn fresh_install_bootstraps_full_bundle() {
     .await
     .expect("bootstrap");
   let creatures = store.list().await;
-  assert_eq!(
+  assert!(
+    creatures.len() >= MIN_BUNDLED_COUNT,
+    "expected at least {MIN_BUNDLED_COUNT} bundled creatures on fresh \
+     install, got {}",
     creatures.len(),
-    8,
-    "expected 8 bundled creatures on fresh install"
   );
   assert!(
     creatures.iter().any(|c| c.id == BUNDLED_GOBLIN_ID),
-    "bundled Goblin should appear by stable id"
+    "bundled Goblin Warrior should appear by stable id"
   );
   assert!(
-    creatures.iter().any(|c| c.name == "Young White Dragon"),
+    creatures
+      .iter()
+      .any(|c| c.id == BUNDLED_YOUNG_WHITE_DRAGON_ID),
     "expected the high-CR dragon to land too"
   );
   // Seed file gets written sibling to the creatures file.
@@ -53,18 +72,19 @@ async fn fresh_install_bootstraps_full_bundle() {
 #[tokio::test]
 async fn relaunch_at_same_version_is_noop() {
   let (_dir, path) = temp_creatures_path();
-  // First launch: seeds 8 creatures.
+  // First launch: seeds the full bundle.
   let _ = CompendiumStore::load_or_bootstrap(path.clone())
     .await
     .expect("bootstrap-1");
+  let after_first = std::fs::read_to_string(&path).expect("read after 1st");
   // Second launch: same version on disk and in source → nothing
   // added.
-  let store = CompendiumStore::load_or_bootstrap(path.clone())
+  let _ = CompendiumStore::load_or_bootstrap(path.clone())
     .await
     .expect("bootstrap-2");
+  let after_second = std::fs::read_to_string(&path).expect("read after 2nd");
   assert_eq!(
-    store.list().await.len(),
-    8,
+    after_first, after_second,
     "second launch should NOT re-merge or duplicate creatures"
   );
 }
@@ -138,10 +158,12 @@ async fn migration_from_legacy_bundle_preserves_customs() {
     .await
     .expect("bootstrap-after-legacy");
   let after = store.list().await;
-  assert_eq!(
+  assert!(
+    after.len() >= 2 + MIN_BUNDLED_COUNT,
+    "expected the 2 legacy creatures to stay AND the full bundle to be \
+     added; got {} (need >= {})",
     after.len(),
-    2 + 8,
-    "expected the 2 legacy creatures to stay AND the 8 bundled to be added"
+    2 + MIN_BUNDLED_COUNT,
   );
   // Legacy creatures preserved by id.
   assert!(
@@ -176,10 +198,12 @@ async fn reset_to_bundled_writes_seed() {
 
 #[tokio::test]
 async fn bundle_creatures_use_stable_uuids() {
-  // Belt-and-braces sanity check: both Goblin and Young White
-  // Dragon should appear by their hand-picked ids, so a future
-  // bundle change that accidentally regenerates the ids would
-  // break the migration logic and this test would catch it.
+  // Belt-and-braces sanity check: bundled creatures get UUIDv5
+  // ids derived from their Open5e source slugs, so re-harvesting
+  // produces identical ids and the version-merge logic stays
+  // consistent.  A future bundle change that accidentally
+  // regenerated random UUIDs would break the migration logic;
+  // this test would catch it.
   let (_dir, path) = temp_creatures_path();
   let store = CompendiumStore::load_or_bootstrap(path)
     .await
@@ -189,12 +213,10 @@ async fn bundle_creatures_use_stable_uuids() {
   ids.sort();
   assert!(
     ids.iter().any(|id| id == BUNDLED_GOBLIN_ID),
-    "stable Goblin id missing"
+    "stable Goblin Warrior id missing — re-harvest produced different UUIDs"
   );
   assert!(
-    ids
-      .iter()
-      .any(|id| id == "01914741-0001-4001-a001-000000000008"),
+    ids.iter().any(|id| id == BUNDLED_YOUNG_WHITE_DRAGON_ID),
     "stable Young White Dragon id missing"
   );
   // No collisions in the bundled set.
