@@ -511,6 +511,10 @@ type Msg
     | CompendiumPendingConfirm
     | CompendiumImportResponse (Result Http.Error Int)
     | CompendiumResetResponse (Result Http.Error (List Compendium.Creature))
+      -- Same wire path as Import, but the response should leave
+      -- the library in a "dirty" state since the user chose to
+      -- discard creatures rather than restore from a file.
+    | CompendiumClearResponse (Result Http.Error Int)
       -- Toast notifications
     | ToastDismiss Int
       -- User preferences (theme, density, etc.)

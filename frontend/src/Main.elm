@@ -1047,6 +1047,9 @@ updateInner msg model =
         CompendiumResetResponse result ->
             Update.Compendium.Bulk.resetResponse result model
 
+        CompendiumClearResponse result ->
+            Update.Compendium.Bulk.clearResponse result model
+
         CompendiumRowToggle id shift ->
             Update.Compendium.Browser.rowToggle id shift model
 
