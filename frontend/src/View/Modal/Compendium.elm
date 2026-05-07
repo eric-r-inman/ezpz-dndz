@@ -643,6 +643,7 @@ splitMenu :
     , triggerClass : String
     , triggerLabel : String
     , triggerTitle : String
+    , alignLeft : Bool
     , items : List (Html Msg)
     }
     -> Html Msg
@@ -654,6 +655,13 @@ splitMenu cfg =
 
             else
                 "compendium__bulk-menu"
+
+        listClass =
+            if cfg.alignLeft then
+                "compendium__bulk-menu__list compendium__bulk-menu__list--left"
+
+            else
+                "compendium__bulk-menu__list"
     in
     div
         [ class wrapperClass
@@ -676,7 +684,7 @@ splitMenu cfg =
             [ text cfg.triggerLabel ]
         , if cfg.isOpen then
             div
-                [ class "compendium__bulk-menu__list"
+                [ class listClass
                 , attribute "role" "menu"
                 ]
                 cfg.items
@@ -709,6 +717,7 @@ importMenu ui =
         , triggerLabel = "📥 Import ▾"
         , triggerTitle =
             "Replace the current library from a server snapshot or a local file"
+        , alignLeft = True
         , items =
             [ menuItem LoadCompendiumOpen "From Server"
             , menuItem CompendiumImportClick "From Device"
@@ -739,6 +748,7 @@ exportMenu ui =
         , triggerClass = triggerClass
         , triggerLabel = "📤 Export ▾"
         , triggerTitle = triggerTitle
+        , alignLeft = False
         , items =
             [ menuItem
                 (SaveCompendiumOpen SaveDestinationServer)
@@ -782,6 +792,7 @@ clearMenu ui =
         , triggerClass = "action-btn action-btn--red"
         , triggerLabel = "🗑 Clear"
         , triggerTitle = "Clear all creatures, or just the selected ones"
+        , alignLeft = False
         , items =
             [ menuItem CompendiumClearAll "Clear All"
             , clearSelectedItem

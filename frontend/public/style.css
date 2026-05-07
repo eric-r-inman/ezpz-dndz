@@ -309,6 +309,16 @@ body {
 .panel--controls {
   grid-column: 2;
   grid-row: 1;
+  /* The controls panel's body holds a fixed-size button grid;
+     it has no content that scrolls.  Letting absolute children
+     escape both clipping ancestors lets the Save / Load
+     split-button popovers extend past the panel boundary
+     instead of getting cropped to "first item only". */
+  overflow: visible;
+}
+
+.panel--controls .panel__body {
+  overflow: visible;
 }
 
 .panel--detail {
@@ -3389,6 +3399,14 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Anchor the popover to the trigger's left edge instead of its
+   right.  Used by the leftmost menu (Import) so the popover
+   doesn't overflow the modal's left border. */
+.compendium__bulk-menu__list--left {
+  right: auto;
+  left: 0;
 }
 
 .compendium__bulk-menu__item {
