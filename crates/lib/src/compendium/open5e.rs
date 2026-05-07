@@ -275,8 +275,7 @@ impl From<Monster> for CreatureDraft {
       },
     };
 
-    let (traits, actions, bonus_actions, reactions, legendary_actions) =
-      partition_features(m.traits, m.actions);
+    let partitioned = partition_features(m.traits, m.actions);
 
     CreatureDraft {
       name: m.name,
@@ -314,11 +313,11 @@ impl From<Monster> for CreatureDraft {
       xp: m.experience_points,
       xp_in_lair: 0,
       proficiency_bonus: m.proficiency_bonus.unwrap_or(0),
-      traits,
-      actions,
-      bonus_actions,
-      reactions,
-      legendary_actions,
+      traits: partitioned.traits,
+      actions: partitioned.actions,
+      bonus_actions: partitioned.bonus_actions,
+      reactions: partitioned.reactions,
+      legendary_actions: partitioned.legendary_actions,
       lair_actions: None,
       regional_effects: None,
       spellcasting: None,
@@ -479,19 +478,26 @@ fn titlecase_skill(snake: &str) -> String {
     .join(" ")
 }
 
+/// Output of [`partition_features`] — the four flat buckets we
+/// store on `Creature` plus the optional `LegendaryActions`
+/// block.  Named struct so the call site can use field-access
+/// rather than tuple-position destructuring (and so clippy
+/// stops complaining about the very-complex tuple type).
+struct PartitionedFeatures {
+  traits: Vec<Feature>,
+  actions: Vec<Feature>,
+  bonus_actions: Vec<Feature>,
+  reactions: Vec<Feature>,
+  legendary_actions: Option<LegendaryActions>,
+}
+
 /// Split Open5e's flat `actions` list by `action_type` into our
 /// four buckets, plus convert the legendary slice into a single
 /// `LegendaryActions` block.  Traits go straight through.
 fn partition_features(
   traits_in: Vec<Trait>,
   actions_in: Vec<Action>,
-) -> (
-  Vec<Feature>,
-  Vec<Feature>,
-  Vec<Feature>,
-  Vec<Feature>,
-  Option<LegendaryActions>,
-) {
+) -> PartitionedFeatures {
   let traits: Vec<Feature> = traits_in
     .into_iter()
     .map(|t| Feature {
@@ -553,7 +559,13 @@ fn partition_features(
     })
   };
 
-  (traits, actions, bonus_actions, reactions, legendary_actions)
+  PartitionedFeatures {
+    traits,
+    actions,
+    bonus_actions,
+    reactions,
+    legendary_actions,
+  }
 }
 
 #[cfg(test)]
@@ -639,15 +651,14 @@ mod tests {
       },
     ];
 
-    let (traits, actions, bonus, reactions, legendary) =
-      partition_features(Vec::new(), actions);
+    let p = partition_features(Vec::new(), actions);
 
-    assert!(traits.is_empty());
-    assert_eq!(actions.len(), 1, "ACTION should bucket as actions");
-    assert_eq!(bonus.len(), 1, "BONUS_ACTION should bucket as bonus");
-    assert_eq!(reactions.len(), 1, "REACTION should bucket as reactions");
+    assert!(p.traits.is_empty());
+    assert_eq!(p.actions.len(), 1, "ACTION should bucket as actions");
+    assert_eq!(p.bonus_actions.len(), 1, "BONUS_ACTION should bucket as bonus");
+    assert_eq!(p.reactions.len(), 1, "REACTION should bucket as reactions");
 
-    let legendary = legendary.expect("expected legendary block");
+    let legendary = p.legendary_actions.expect("expected legendary block");
     assert_eq!(
       legendary.options.len(),
       2,
