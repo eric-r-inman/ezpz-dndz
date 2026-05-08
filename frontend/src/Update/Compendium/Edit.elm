@@ -28,7 +28,6 @@ module Update.Compendium.Edit exposing
     , legendaryAdd
     , legendaryDescriptionChanged
     , legendaryOptionAdd
-    , legendaryOptionCostChanged
     , legendaryOptionDescriptionChanged
     , legendaryOptionNameChanged
     , legendaryOptionRemove
@@ -619,24 +618,6 @@ legendaryOptionNameChanged idx text model =
     ( withCompendiumEdit
         (withLegendary
             (\la -> { la | options = updateAt idx (\o -> { o | name = text }) la.options })
-        )
-        model
-    , Cmd.none
-    )
-
-
-legendaryOptionCostChanged : Int -> String -> Model -> ( Model, Cmd Msg )
-legendaryOptionCostChanged idx text model =
-    ( withCompendiumEdit
-        (withLegendary
-            (\la ->
-                { la
-                    | options =
-                        updateAt idx
-                            (\o -> { o | cost = CompendiumUi.parseIntOr o.cost text })
-                            la.options
-                }
-            )
         )
         model
     , Cmd.none

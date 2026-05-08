@@ -468,7 +468,6 @@ type Msg
     | CompendiumEditLegendaryOptionAdd
     | CompendiumEditLegendaryOptionRemove Int
     | CompendiumEditLegendaryOptionNameChanged Int String
-    | CompendiumEditLegendaryOptionCostChanged Int String
     | CompendiumEditLegendaryOptionDescriptionChanged Int String
     | CompendiumEditLairAdd
     | CompendiumEditLairRemove

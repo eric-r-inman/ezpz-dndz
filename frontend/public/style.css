@@ -3845,6 +3845,27 @@ body {
   gap: 6px;
 }
 
+/* Two-row legendary-option editor: Name + remove button on the
+   top row, indented Description textarea below.  The body
+   indent reads the description as a child of the name above it
+   so the form scans like an outline rather than two equal-rank
+   fields. */
+.edit-legendary-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--color-border);
+}
+
+.edit-legendary-option:last-child {
+  border-bottom: none;
+}
+
+.edit-legendary-option__body {
+  padding-left: 18px;
+}
+
 .edit-row__remove {
   appearance: none;
   background: transparent;

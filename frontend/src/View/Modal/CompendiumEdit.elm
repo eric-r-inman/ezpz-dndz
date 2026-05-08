@@ -763,19 +763,29 @@ legendaryEditor maybeLa =
             ]
 
 
+{-| Two-row layout per legendary option: the name + remove
+button on the top row, and a wider, indented description
+textarea below it. The 2024 PHB dropped the per-option "cost"
+system in favour of a flat per-round uses count, so the editor
+no longer surfaces Cost; existing imported creatures retain
+whatever cost was on the data and it's preserved through
+submit untouched.
+-}
 legendaryOptionRow : Int -> Compendium.LegendaryOption -> Html Msg
 legendaryOptionRow idx opt =
-    div [ class "edit-row edit-row--list-item" ]
-        [ rawTextField "Name"
-            (CompendiumEditLegendaryOptionNameChanged idx)
-            opt.name
-        , rawNumberField "Cost"
-            (CompendiumEditLegendaryOptionCostChanged idx)
-            (String.fromInt opt.cost)
-        , rawTextField "Description"
-            (CompendiumEditLegendaryOptionDescriptionChanged idx)
-            opt.description
-        , removeButton (CompendiumEditLegendaryOptionRemove idx)
+    div [ class "edit-legendary-option" ]
+        [ div [ class "edit-row edit-row--list-item" ]
+            [ rawTextField "Name"
+                (CompendiumEditLegendaryOptionNameChanged idx)
+                opt.name
+            , removeButton (CompendiumEditLegendaryOptionRemove idx)
+            ]
+        , div [ class "edit-legendary-option__body" ]
+            [ rawTextarea "Description"
+                (CompendiumEditLegendaryOptionDescriptionChanged idx)
+                opt.description
+                3
+            ]
         ]
 
 

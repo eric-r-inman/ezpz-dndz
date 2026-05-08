@@ -883,9 +883,6 @@ updateInner msg model =
         CompendiumEditLegendaryOptionNameChanged idx text ->
             Update.Compendium.Edit.legendaryOptionNameChanged idx text model
 
-        CompendiumEditLegendaryOptionCostChanged idx text ->
-            Update.Compendium.Edit.legendaryOptionCostChanged idx text model
-
         CompendiumEditLegendaryOptionDescriptionChanged idx text ->
             Update.Compendium.Edit.legendaryOptionDescriptionChanged idx text model
 
