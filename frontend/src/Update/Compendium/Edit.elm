@@ -1,10 +1,12 @@
 module Update.Compendium.Edit exposing
     ( cancel
+    , conditionToggle
     , currentlySelectedCreature
     , customSectionAdd
     , customSectionBodyChanged
     , customSectionNameChanged
     , customSectionRemove
+    , damageToggle
     , delete
     , deleteResponse
     , duplicate
@@ -15,7 +17,33 @@ module Update.Compendium.Edit exposing
     , featureRemove
     , fieldChanged
     , kindSet
+    , lairAdd
+    , lairDescriptionChanged
+    , lairInitiativeChanged
+    , lairOptionAdd
+    , lairOptionDescriptionChanged
+    , lairOptionNameChanged
+    , lairOptionRemove
+    , lairRemove
+    , legendaryAdd
+    , legendaryDescriptionChanged
+    , legendaryOptionAdd
+    , legendaryOptionCostChanged
+    , legendaryOptionDescriptionChanged
+    , legendaryOptionNameChanged
+    , legendaryOptionRemove
+    , legendaryRemove
+    , legendaryUsesChanged
+    , legendaryUsesInLairChanged
     , new
+    , regionalAdd
+    , regionalDescriptionChanged
+    , regionalEffectAdd
+    , regionalEffectDescriptionChanged
+    , regionalEffectNameChanged
+    , regionalEffectRemove
+    , regionalFadeAfterChanged
+    , regionalRemove
     , savingThrowAbilitySet
     , savingThrowAdd
     , savingThrowBonusChanged
@@ -26,6 +54,22 @@ module Update.Compendium.Edit exposing
     , skillNameChanged
     , skillRemove
     , speedHoverToggle
+    , spellcastingAbilitySet
+    , spellcastingAdd
+    , spellcastingAtWillChanged
+    , spellcastingAttackBonusChanged
+    , spellcastingDescriptionChanged
+    , spellcastingInnateAdd
+    , spellcastingInnateRemove
+    , spellcastingInnateSpellsChanged
+    , spellcastingInnateUsesChanged
+    , spellcastingRemove
+    , spellcastingSaveDcChanged
+    , spellcastingSlotAdd
+    , spellcastingSlotCountChanged
+    , spellcastingSlotLevelChanged
+    , spellcastingSlotRemove
+    , spellcastingSlotSpellsChanged
     , submit
     , submitResponse
     )
@@ -49,6 +93,7 @@ import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( CompendiumField(..)
+        , DamagePicker(..)
         , FeatureGroup(..)
         , Msg(..)
         )
@@ -225,18 +270,6 @@ setEditField field text ui =
 
         CFSensesPassivePerception ->
             { ui | sensesPassivePerception = text }
-
-        CFDamageVulnerabilities ->
-            { ui | damageVulnerabilities = text }
-
-        CFDamageResistances ->
-            { ui | damageResistances = text }
-
-        CFDamageImmunities ->
-            { ui | damageImmunities = text }
-
-        CFConditionImmunities ->
-            { ui | conditionImmunities = text }
 
         CFLanguages ->
             { ui | languages = text }
@@ -447,6 +480,585 @@ removeAt idx xs =
     List.indexedMap (\i x -> ( i, x )) xs
         |> List.filter (\( i, _ ) -> i /= idx)
         |> List.map Tuple.second
+
+
+
+-- ── DAMAGE / CONDITION MULTI-SELECT TOGGLES ────────────────────────────
+
+
+{-| Flip the named damage type in or out of one of the three
+damage-list pickers (vulnerabilities / resistances / immunities).
+The picker enum identifies which list; the string is the canonical
+damage-type name from `Compendium.Reference.damageTypes`.
+-}
+damageToggle : DamagePicker -> String -> Model -> ( Model, Cmd Msg )
+damageToggle picker name model =
+    ( withCompendiumEdit (toggleDamage picker name) model, Cmd.none )
+
+
+toggleDamage : DamagePicker -> String -> CompendiumEditUi -> CompendiumEditUi
+toggleDamage picker name ui =
+    case picker of
+        DamageVulnerabilitiesPicker ->
+            { ui | damageVulnerabilities = toggleListMember name ui.damageVulnerabilities }
+
+        DamageResistancesPicker ->
+            { ui | damageResistances = toggleListMember name ui.damageResistances }
+
+        DamageImmunitiesPicker ->
+            { ui | damageImmunities = toggleListMember name ui.damageImmunities }
+
+
+conditionToggle : String -> Model -> ( Model, Cmd Msg )
+conditionToggle name model =
+    ( withCompendiumEdit
+        (\ui -> { ui | conditionImmunities = toggleListMember name ui.conditionImmunities })
+        model
+    , Cmd.none
+    )
+
+
+toggleListMember : String -> List String -> List String
+toggleListMember name xs =
+    if List.member name xs then
+        List.filter ((/=) name) xs
+
+    else
+        xs ++ [ name ]
+
+
+
+-- ── ADVANCED SECTION EDITORS: LEGENDARY ─────────────────────────────────
+
+
+emptyLegendary : Compendium.LegendaryActions
+emptyLegendary =
+    { description = ""
+    , uses = 3
+    , usesInLair = 3
+    , options = []
+    }
+
+
+emptyLegendaryOption : Compendium.LegendaryOption
+emptyLegendaryOption =
+    { name = "", cost = 1, description = "" }
+
+
+withLegendary :
+    (Compendium.LegendaryActions -> Compendium.LegendaryActions)
+    -> CompendiumEditUi
+    -> CompendiumEditUi
+withLegendary fn ui =
+    { ui | legendaryActions = Maybe.map fn ui.legendaryActions }
+
+
+legendaryAdd : Model -> ( Model, Cmd Msg )
+legendaryAdd model =
+    ( withCompendiumEdit
+        (\ui -> { ui | legendaryActions = Just emptyLegendary })
+        model
+    , Cmd.none
+    )
+
+
+legendaryRemove : Model -> ( Model, Cmd Msg )
+legendaryRemove model =
+    ( withCompendiumEdit (\ui -> { ui | legendaryActions = Nothing }) model
+    , Cmd.none
+    )
+
+
+legendaryDescriptionChanged : String -> Model -> ( Model, Cmd Msg )
+legendaryDescriptionChanged text model =
+    ( withCompendiumEdit
+        (withLegendary (\la -> { la | description = text }))
+        model
+    , Cmd.none
+    )
+
+
+legendaryUsesChanged : String -> Model -> ( Model, Cmd Msg )
+legendaryUsesChanged text model =
+    ( withCompendiumEdit
+        (withLegendary (\la -> { la | uses = CompendiumUi.parseIntOr la.uses text }))
+        model
+    , Cmd.none
+    )
+
+
+legendaryUsesInLairChanged : String -> Model -> ( Model, Cmd Msg )
+legendaryUsesInLairChanged text model =
+    ( withCompendiumEdit
+        (withLegendary (\la -> { la | usesInLair = CompendiumUi.parseIntOr la.usesInLair text }))
+        model
+    , Cmd.none
+    )
+
+
+legendaryOptionAdd : Model -> ( Model, Cmd Msg )
+legendaryOptionAdd model =
+    ( withCompendiumEdit
+        (withLegendary (\la -> { la | options = la.options ++ [ emptyLegendaryOption ] }))
+        model
+    , Cmd.none
+    )
+
+
+legendaryOptionRemove : Int -> Model -> ( Model, Cmd Msg )
+legendaryOptionRemove idx model =
+    ( withCompendiumEdit
+        (withLegendary (\la -> { la | options = removeAt idx la.options }))
+        model
+    , Cmd.none
+    )
+
+
+legendaryOptionNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+legendaryOptionNameChanged idx text model =
+    ( withCompendiumEdit
+        (withLegendary
+            (\la -> { la | options = updateAt idx (\o -> { o | name = text }) la.options })
+        )
+        model
+    , Cmd.none
+    )
+
+
+legendaryOptionCostChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+legendaryOptionCostChanged idx text model =
+    ( withCompendiumEdit
+        (withLegendary
+            (\la ->
+                { la
+                    | options =
+                        updateAt idx
+                            (\o -> { o | cost = CompendiumUi.parseIntOr o.cost text })
+                            la.options
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+legendaryOptionDescriptionChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+legendaryOptionDescriptionChanged idx text model =
+    ( withCompendiumEdit
+        (withLegendary
+            (\la -> { la | options = updateAt idx (\o -> { o | description = text }) la.options })
+        )
+        model
+    , Cmd.none
+    )
+
+
+
+-- ── ADVANCED SECTION EDITORS: LAIR ─────────────────────────────────────
+
+
+emptyLair : Compendium.LairActions
+emptyLair =
+    { initiative = 20
+    , description = ""
+    , options = []
+    }
+
+
+withLair : (Compendium.LairActions -> Compendium.LairActions) -> CompendiumEditUi -> CompendiumEditUi
+withLair fn ui =
+    { ui | lairActions = Maybe.map fn ui.lairActions }
+
+
+lairAdd : Model -> ( Model, Cmd Msg )
+lairAdd model =
+    ( withCompendiumEdit (\ui -> { ui | lairActions = Just emptyLair }) model
+    , Cmd.none
+    )
+
+
+lairRemove : Model -> ( Model, Cmd Msg )
+lairRemove model =
+    ( withCompendiumEdit (\ui -> { ui | lairActions = Nothing }) model
+    , Cmd.none
+    )
+
+
+lairInitiativeChanged : String -> Model -> ( Model, Cmd Msg )
+lairInitiativeChanged text model =
+    ( withCompendiumEdit
+        (withLair (\la -> { la | initiative = CompendiumUi.parseIntOr la.initiative text }))
+        model
+    , Cmd.none
+    )
+
+
+lairDescriptionChanged : String -> Model -> ( Model, Cmd Msg )
+lairDescriptionChanged text model =
+    ( withCompendiumEdit
+        (withLair (\la -> { la | description = text }))
+        model
+    , Cmd.none
+    )
+
+
+lairOptionAdd : Model -> ( Model, Cmd Msg )
+lairOptionAdd model =
+    ( withCompendiumEdit
+        (withLair (\la -> { la | options = la.options ++ [ emptyLairFeature ] }))
+        model
+    , Cmd.none
+    )
+
+
+lairOptionRemove : Int -> Model -> ( Model, Cmd Msg )
+lairOptionRemove idx model =
+    ( withCompendiumEdit
+        (withLair (\la -> { la | options = removeAt idx la.options }))
+        model
+    , Cmd.none
+    )
+
+
+lairOptionNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+lairOptionNameChanged idx text model =
+    ( withCompendiumEdit
+        (withLair
+            (\la -> { la | options = updateAt idx (\o -> { o | name = text }) la.options })
+        )
+        model
+    , Cmd.none
+    )
+
+
+lairOptionDescriptionChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+lairOptionDescriptionChanged idx text model =
+    ( withCompendiumEdit
+        (withLair
+            (\la -> { la | options = updateAt idx (\o -> { o | description = text }) la.options })
+        )
+        model
+    , Cmd.none
+    )
+
+
+emptyLairFeature : Compendium.Feature
+emptyLairFeature =
+    { name = "", description = "", usage = Nothing }
+
+
+
+-- ── ADVANCED SECTION EDITORS: REGIONAL ─────────────────────────────────
+
+
+emptyRegional : Compendium.RegionalEffects
+emptyRegional =
+    { description = ""
+    , effects = []
+    , fadeAfter = ""
+    }
+
+
+withRegional :
+    (Compendium.RegionalEffects -> Compendium.RegionalEffects)
+    -> CompendiumEditUi
+    -> CompendiumEditUi
+withRegional fn ui =
+    { ui | regionalEffects = Maybe.map fn ui.regionalEffects }
+
+
+regionalAdd : Model -> ( Model, Cmd Msg )
+regionalAdd model =
+    ( withCompendiumEdit (\ui -> { ui | regionalEffects = Just emptyRegional }) model
+    , Cmd.none
+    )
+
+
+regionalRemove : Model -> ( Model, Cmd Msg )
+regionalRemove model =
+    ( withCompendiumEdit (\ui -> { ui | regionalEffects = Nothing }) model
+    , Cmd.none
+    )
+
+
+regionalDescriptionChanged : String -> Model -> ( Model, Cmd Msg )
+regionalDescriptionChanged text model =
+    ( withCompendiumEdit
+        (withRegional (\re -> { re | description = text }))
+        model
+    , Cmd.none
+    )
+
+
+regionalFadeAfterChanged : String -> Model -> ( Model, Cmd Msg )
+regionalFadeAfterChanged text model =
+    ( withCompendiumEdit
+        (withRegional (\re -> { re | fadeAfter = text }))
+        model
+    , Cmd.none
+    )
+
+
+regionalEffectAdd : Model -> ( Model, Cmd Msg )
+regionalEffectAdd model =
+    ( withCompendiumEdit
+        (withRegional (\re -> { re | effects = re.effects ++ [ emptyLairFeature ] }))
+        model
+    , Cmd.none
+    )
+
+
+regionalEffectRemove : Int -> Model -> ( Model, Cmd Msg )
+regionalEffectRemove idx model =
+    ( withCompendiumEdit
+        (withRegional (\re -> { re | effects = removeAt idx re.effects }))
+        model
+    , Cmd.none
+    )
+
+
+regionalEffectNameChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+regionalEffectNameChanged idx text model =
+    ( withCompendiumEdit
+        (withRegional
+            (\re -> { re | effects = updateAt idx (\f -> { f | name = text }) re.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+regionalEffectDescriptionChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+regionalEffectDescriptionChanged idx text model =
+    ( withCompendiumEdit
+        (withRegional
+            (\re -> { re | effects = updateAt idx (\f -> { f | description = text }) re.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+
+-- ── ADVANCED SECTION EDITORS: SPELLCASTING ─────────────────────────────
+
+
+emptySpellcasting : Compendium.Spellcasting
+emptySpellcasting =
+    { description = ""
+    , ability = Compendium.Cha
+    , saveDc = 0
+    , attackBonus = 0
+    , atWill = []
+    , slots = []
+    , innatePerDay = []
+    }
+
+
+emptySlotLevel : Compendium.SpellSlotLevel
+emptySlotLevel =
+    { level = 1, slots = 1, spells = [] }
+
+
+emptyInnate : Compendium.InnatePerDay
+emptyInnate =
+    { uses = 1, spells = [] }
+
+
+withSpellcasting :
+    (Compendium.Spellcasting -> Compendium.Spellcasting)
+    -> CompendiumEditUi
+    -> CompendiumEditUi
+withSpellcasting fn ui =
+    { ui | spellcasting = Maybe.map fn ui.spellcasting }
+
+
+spellcastingAdd : Model -> ( Model, Cmd Msg )
+spellcastingAdd model =
+    ( withCompendiumEdit (\ui -> { ui | spellcasting = Just emptySpellcasting }) model
+    , Cmd.none
+    )
+
+
+spellcastingRemove : Model -> ( Model, Cmd Msg )
+spellcastingRemove model =
+    ( withCompendiumEdit (\ui -> { ui | spellcasting = Nothing }) model
+    , Cmd.none
+    )
+
+
+spellcastingDescriptionChanged : String -> Model -> ( Model, Cmd Msg )
+spellcastingDescriptionChanged text model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | description = text }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingAbilitySet : Compendium.Ability -> Model -> ( Model, Cmd Msg )
+spellcastingAbilitySet ability model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | ability = ability }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSaveDcChanged : String -> Model -> ( Model, Cmd Msg )
+spellcastingSaveDcChanged text model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | saveDc = CompendiumUi.parseIntOr sc.saveDc text }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingAttackBonusChanged : String -> Model -> ( Model, Cmd Msg )
+spellcastingAttackBonusChanged text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc -> { sc | attackBonus = CompendiumUi.parseIntOr sc.attackBonus text })
+        )
+        model
+    , Cmd.none
+    )
+
+
+spellcastingAtWillChanged : String -> Model -> ( Model, Cmd Msg )
+spellcastingAtWillChanged text model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | atWill = CompendiumUi.parseCsv text }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSlotAdd : Model -> ( Model, Cmd Msg )
+spellcastingSlotAdd model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | slots = sc.slots ++ [ emptySlotLevel ] }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSlotRemove : Int -> Model -> ( Model, Cmd Msg )
+spellcastingSlotRemove idx model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | slots = removeAt idx sc.slots }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSlotLevelChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+spellcastingSlotLevelChanged idx text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc ->
+                { sc
+                    | slots =
+                        updateAt idx
+                            (\s -> { s | level = CompendiumUi.parseIntOr s.level text })
+                            sc.slots
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSlotCountChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+spellcastingSlotCountChanged idx text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc ->
+                { sc
+                    | slots =
+                        updateAt idx
+                            (\s -> { s | slots = CompendiumUi.parseIntOr s.slots text })
+                            sc.slots
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+spellcastingSlotSpellsChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+spellcastingSlotSpellsChanged idx text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc ->
+                { sc
+                    | slots =
+                        updateAt idx
+                            (\s -> { s | spells = CompendiumUi.parseCsv text })
+                            sc.slots
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+spellcastingInnateAdd : Model -> ( Model, Cmd Msg )
+spellcastingInnateAdd model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | innatePerDay = sc.innatePerDay ++ [ emptyInnate ] }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingInnateRemove : Int -> Model -> ( Model, Cmd Msg )
+spellcastingInnateRemove idx model =
+    ( withCompendiumEdit
+        (withSpellcasting (\sc -> { sc | innatePerDay = removeAt idx sc.innatePerDay }))
+        model
+    , Cmd.none
+    )
+
+
+spellcastingInnateUsesChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+spellcastingInnateUsesChanged idx text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc ->
+                { sc
+                    | innatePerDay =
+                        updateAt idx
+                            (\i -> { i | uses = CompendiumUi.parseIntOr i.uses text })
+                            sc.innatePerDay
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+spellcastingInnateSpellsChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+spellcastingInnateSpellsChanged idx text model =
+    ( withCompendiumEdit
+        (withSpellcasting
+            (\sc ->
+                { sc
+                    | innatePerDay =
+                        updateAt idx
+                            (\i -> { i | spells = CompendiumUi.parseCsv text })
+                            sc.innatePerDay
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
 
 
 

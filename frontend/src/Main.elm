@@ -853,6 +853,138 @@ updateInner msg model =
         CompendiumEditCustomSectionBodyChanged idx text ->
             Update.Compendium.Edit.customSectionBodyChanged idx text model
 
+        CompendiumEditDamageToggle picker name ->
+            Update.Compendium.Edit.damageToggle picker name model
+
+        CompendiumEditConditionToggle name ->
+            Update.Compendium.Edit.conditionToggle name model
+
+        CompendiumEditLegendaryAdd ->
+            Update.Compendium.Edit.legendaryAdd model
+
+        CompendiumEditLegendaryRemove ->
+            Update.Compendium.Edit.legendaryRemove model
+
+        CompendiumEditLegendaryDescriptionChanged text ->
+            Update.Compendium.Edit.legendaryDescriptionChanged text model
+
+        CompendiumEditLegendaryUsesChanged text ->
+            Update.Compendium.Edit.legendaryUsesChanged text model
+
+        CompendiumEditLegendaryUsesInLairChanged text ->
+            Update.Compendium.Edit.legendaryUsesInLairChanged text model
+
+        CompendiumEditLegendaryOptionAdd ->
+            Update.Compendium.Edit.legendaryOptionAdd model
+
+        CompendiumEditLegendaryOptionRemove idx ->
+            Update.Compendium.Edit.legendaryOptionRemove idx model
+
+        CompendiumEditLegendaryOptionNameChanged idx text ->
+            Update.Compendium.Edit.legendaryOptionNameChanged idx text model
+
+        CompendiumEditLegendaryOptionCostChanged idx text ->
+            Update.Compendium.Edit.legendaryOptionCostChanged idx text model
+
+        CompendiumEditLegendaryOptionDescriptionChanged idx text ->
+            Update.Compendium.Edit.legendaryOptionDescriptionChanged idx text model
+
+        CompendiumEditLairAdd ->
+            Update.Compendium.Edit.lairAdd model
+
+        CompendiumEditLairRemove ->
+            Update.Compendium.Edit.lairRemove model
+
+        CompendiumEditLairInitiativeChanged text ->
+            Update.Compendium.Edit.lairInitiativeChanged text model
+
+        CompendiumEditLairDescriptionChanged text ->
+            Update.Compendium.Edit.lairDescriptionChanged text model
+
+        CompendiumEditLairOptionAdd ->
+            Update.Compendium.Edit.lairOptionAdd model
+
+        CompendiumEditLairOptionRemove idx ->
+            Update.Compendium.Edit.lairOptionRemove idx model
+
+        CompendiumEditLairOptionNameChanged idx text ->
+            Update.Compendium.Edit.lairOptionNameChanged idx text model
+
+        CompendiumEditLairOptionDescriptionChanged idx text ->
+            Update.Compendium.Edit.lairOptionDescriptionChanged idx text model
+
+        CompendiumEditRegionalAdd ->
+            Update.Compendium.Edit.regionalAdd model
+
+        CompendiumEditRegionalRemove ->
+            Update.Compendium.Edit.regionalRemove model
+
+        CompendiumEditRegionalDescriptionChanged text ->
+            Update.Compendium.Edit.regionalDescriptionChanged text model
+
+        CompendiumEditRegionalFadeAfterChanged text ->
+            Update.Compendium.Edit.regionalFadeAfterChanged text model
+
+        CompendiumEditRegionalEffectAdd ->
+            Update.Compendium.Edit.regionalEffectAdd model
+
+        CompendiumEditRegionalEffectRemove idx ->
+            Update.Compendium.Edit.regionalEffectRemove idx model
+
+        CompendiumEditRegionalEffectNameChanged idx text ->
+            Update.Compendium.Edit.regionalEffectNameChanged idx text model
+
+        CompendiumEditRegionalEffectDescriptionChanged idx text ->
+            Update.Compendium.Edit.regionalEffectDescriptionChanged idx text model
+
+        CompendiumEditSpellcastingAdd ->
+            Update.Compendium.Edit.spellcastingAdd model
+
+        CompendiumEditSpellcastingRemove ->
+            Update.Compendium.Edit.spellcastingRemove model
+
+        CompendiumEditSpellcastingDescriptionChanged text ->
+            Update.Compendium.Edit.spellcastingDescriptionChanged text model
+
+        CompendiumEditSpellcastingAbilitySet ability ->
+            Update.Compendium.Edit.spellcastingAbilitySet ability model
+
+        CompendiumEditSpellcastingSaveDcChanged text ->
+            Update.Compendium.Edit.spellcastingSaveDcChanged text model
+
+        CompendiumEditSpellcastingAttackBonusChanged text ->
+            Update.Compendium.Edit.spellcastingAttackBonusChanged text model
+
+        CompendiumEditSpellcastingAtWillChanged text ->
+            Update.Compendium.Edit.spellcastingAtWillChanged text model
+
+        CompendiumEditSpellcastingSlotAdd ->
+            Update.Compendium.Edit.spellcastingSlotAdd model
+
+        CompendiumEditSpellcastingSlotRemove idx ->
+            Update.Compendium.Edit.spellcastingSlotRemove idx model
+
+        CompendiumEditSpellcastingSlotLevelChanged idx text ->
+            Update.Compendium.Edit.spellcastingSlotLevelChanged idx text model
+
+        CompendiumEditSpellcastingSlotCountChanged idx text ->
+            Update.Compendium.Edit.spellcastingSlotCountChanged idx text model
+
+        CompendiumEditSpellcastingSlotSpellsChanged idx text ->
+            Update.Compendium.Edit.spellcastingSlotSpellsChanged idx text model
+
+        CompendiumEditSpellcastingInnateAdd ->
+            Update.Compendium.Edit.spellcastingInnateAdd model
+
+        CompendiumEditSpellcastingInnateRemove idx ->
+            Update.Compendium.Edit.spellcastingInnateRemove idx model
+
+        CompendiumEditSpellcastingInnateUsesChanged idx text ->
+            Update.Compendium.Edit.spellcastingInnateUsesChanged idx text model
+
+        CompendiumEditSpellcastingInnateSpellsChanged idx text ->
+            Update.Compendium.Edit.spellcastingInnateSpellsChanged idx text model
+
         CompendiumEditSubmit ->
             Update.Compendium.Edit.submit model
 

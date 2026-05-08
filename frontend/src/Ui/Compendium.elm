@@ -325,10 +325,10 @@ type alias CompendiumEditUi =
     , abilityCha : String
     , savingThrows : List ( Compendium.Ability, String )
     , skills : List ( String, String )
-    , damageVulnerabilities : String
-    , damageResistances : String
-    , damageImmunities : String
-    , conditionImmunities : String
+    , damageVulnerabilities : List String
+    , damageResistances : List String
+    , damageImmunities : List String
+    , conditionImmunities : List String
     , sensesBlindsight : String
     , sensesDarkvision : String
     , sensesTremorsense : String
@@ -392,10 +392,10 @@ blankEdit =
     , abilityCha = "10"
     , savingThrows = []
     , skills = []
-    , damageVulnerabilities = ""
-    , damageResistances = ""
-    , damageImmunities = ""
-    , conditionImmunities = ""
+    , damageVulnerabilities = []
+    , damageResistances = []
+    , damageImmunities = []
+    , conditionImmunities = []
     , sensesBlindsight = "0"
     , sensesDarkvision = "0"
     , sensesTremorsense = "0"
@@ -457,10 +457,10 @@ editFromCreature c =
     , abilityCha = String.fromInt c.abilities.cha
     , savingThrows = List.map (\s -> ( s.ability, String.fromInt s.bonus )) c.savingThrows
     , skills = List.map (\s -> ( s.name, String.fromInt s.bonus )) c.skills
-    , damageVulnerabilities = String.join ", " c.damageVulnerabilities
-    , damageResistances = String.join ", " c.damageResistances
-    , damageImmunities = String.join ", " c.damageImmunities
-    , conditionImmunities = String.join ", " c.conditionImmunities
+    , damageVulnerabilities = c.damageVulnerabilities
+    , damageResistances = c.damageResistances
+    , damageImmunities = c.damageImmunities
+    , conditionImmunities = c.conditionImmunities
     , sensesBlindsight = String.fromInt c.senses.blindsight
     , sensesDarkvision = String.fromInt c.senses.darkvision
     , sensesTremorsense = String.fromInt c.senses.tremorsense
@@ -559,10 +559,10 @@ validateEdit ui =
                         }
                     , savingThrows = List.filterMap saveRowToValue ui.savingThrows
                     , skills = List.filterMap skillRowToValue ui.skills
-                    , damageVulnerabilities = parseCsv ui.damageVulnerabilities
-                    , damageResistances = parseCsv ui.damageResistances
-                    , damageImmunities = parseCsv ui.damageImmunities
-                    , conditionImmunities = parseCsv ui.conditionImmunities
+                    , damageVulnerabilities = ui.damageVulnerabilities
+                    , damageResistances = ui.damageResistances
+                    , damageImmunities = ui.damageImmunities
+                    , conditionImmunities = ui.conditionImmunities
                     , senses =
                         { blindsight = parseIntOr 0 ui.sensesBlindsight
                         , darkvision = parseIntOr 0 ui.sensesDarkvision

@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), SaveDestination(..), Theme(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), SaveDestination(..), Theme(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -204,10 +204,6 @@ type CompendiumField
     | CFSensesTremorsense
     | CFSensesTruesight
     | CFSensesPassivePerception
-    | CFDamageVulnerabilities
-    | CFDamageResistances
-    | CFDamageImmunities
-    | CFConditionImmunities
     | CFLanguages
     | CFChallengeRating
     | CFXp
@@ -226,6 +222,17 @@ type FeatureGroup
     | ActionsGroup
     | BonusActionsGroup
     | ReactionsGroup
+
+
+{-| Discriminator for the three damage-list multi-select pickers
+on the New / Edit Creature modal: vulnerabilities, resistances,
+immunities. Condition immunities have their own picker (different
+canonical list), so they don't share this enum.
+-}
+type DamagePicker
+    = DamageVulnerabilitiesPicker
+    | DamageResistancesPicker
+    | DamageImmunitiesPicker
 
 
 
@@ -441,6 +448,60 @@ type Msg
     | CompendiumEditCustomSectionRemove Int
     | CompendiumEditCustomSectionNameChanged Int String
     | CompendiumEditCustomSectionBodyChanged Int String
+      -- Multi-select pickers for damage / condition lists.  Each
+      -- toggle flips the named entry in or out of the picker's
+      -- list.  See `DamagePicker` for the three damage variants;
+      -- conditions get their own toggle since they pull from a
+      -- different canonical list.
+    | CompendiumEditDamageToggle DamagePicker String
+    | CompendiumEditConditionToggle String
+      -- Advanced section editors: legendary actions, lair actions,
+      -- regional effects, spellcasting.  Each section can be
+      -- entirely absent (`Nothing`); the Add / Remove Msgs flip
+      -- between absent and present.  When present, per-field Msgs
+      -- mutate the substructure.
+    | CompendiumEditLegendaryAdd
+    | CompendiumEditLegendaryRemove
+    | CompendiumEditLegendaryDescriptionChanged String
+    | CompendiumEditLegendaryUsesChanged String
+    | CompendiumEditLegendaryUsesInLairChanged String
+    | CompendiumEditLegendaryOptionAdd
+    | CompendiumEditLegendaryOptionRemove Int
+    | CompendiumEditLegendaryOptionNameChanged Int String
+    | CompendiumEditLegendaryOptionCostChanged Int String
+    | CompendiumEditLegendaryOptionDescriptionChanged Int String
+    | CompendiumEditLairAdd
+    | CompendiumEditLairRemove
+    | CompendiumEditLairInitiativeChanged String
+    | CompendiumEditLairDescriptionChanged String
+    | CompendiumEditLairOptionAdd
+    | CompendiumEditLairOptionRemove Int
+    | CompendiumEditLairOptionNameChanged Int String
+    | CompendiumEditLairOptionDescriptionChanged Int String
+    | CompendiumEditRegionalAdd
+    | CompendiumEditRegionalRemove
+    | CompendiumEditRegionalDescriptionChanged String
+    | CompendiumEditRegionalFadeAfterChanged String
+    | CompendiumEditRegionalEffectAdd
+    | CompendiumEditRegionalEffectRemove Int
+    | CompendiumEditRegionalEffectNameChanged Int String
+    | CompendiumEditRegionalEffectDescriptionChanged Int String
+    | CompendiumEditSpellcastingAdd
+    | CompendiumEditSpellcastingRemove
+    | CompendiumEditSpellcastingDescriptionChanged String
+    | CompendiumEditSpellcastingAbilitySet Compendium.Ability
+    | CompendiumEditSpellcastingSaveDcChanged String
+    | CompendiumEditSpellcastingAttackBonusChanged String
+    | CompendiumEditSpellcastingAtWillChanged String
+    | CompendiumEditSpellcastingSlotAdd
+    | CompendiumEditSpellcastingSlotRemove Int
+    | CompendiumEditSpellcastingSlotLevelChanged Int String
+    | CompendiumEditSpellcastingSlotCountChanged Int String
+    | CompendiumEditSpellcastingSlotSpellsChanged Int String
+    | CompendiumEditSpellcastingInnateAdd
+    | CompendiumEditSpellcastingInnateRemove Int
+    | CompendiumEditSpellcastingInnateUsesChanged Int String
+    | CompendiumEditSpellcastingInnateSpellsChanged Int String
     | CompendiumEditSubmit
     | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
     | CompendiumEditDelete

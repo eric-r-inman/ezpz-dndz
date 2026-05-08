@@ -13,13 +13,15 @@ flags that to the GM when the source creature has any populated.
 -}
 
 import Compendium
-import Html exposing (Html, button, div, input, label, option, span, text)
-import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, selected, title, type_, value)
+import Compendium.Reference
+import Html exposing (Html, button, div, input, label, option, span, text, textarea)
+import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( CompendiumField(..)
+        , DamagePicker(..)
         , FeatureGroup(..)
         , Msg(..)
         )
@@ -92,13 +94,29 @@ view model =
                     , editSection "Skills"
                         (skillsEditor ui.skills)
                     , editSection "Properties"
-                        [ textField "Damage Vulnerabilities (comma-separated)" CFDamageVulnerabilities ui.damageVulnerabilities []
-                        , textField "Damage Resistances" CFDamageResistances ui.damageResistances []
-                        , textField "Damage Immunities" CFDamageImmunities ui.damageImmunities []
-                        , textField "Condition Immunities" CFConditionImmunities ui.conditionImmunities []
-                        , textField "Languages" CFLanguages ui.languages []
+                        [ inlineRow
+                            [ damageTypePicker
+                                { label = "Damage Vulnerabilities"
+                                , kind = DamageVulnerabilitiesPicker
+                                , selected = ui.damageVulnerabilities
+                                }
+                            , damageTypePicker
+                                { label = "Damage Resistances"
+                                , kind = DamageResistancesPicker
+                                , selected = ui.damageResistances
+                                }
+                            ]
                         , inlineRow
-                            [ textField "Challenge Rating" CFChallengeRating ui.challengeRating []
+                            [ damageTypePicker
+                                { label = "Damage Immunities"
+                                , kind = DamageImmunitiesPicker
+                                , selected = ui.damageImmunities
+                                }
+                            , conditionPicker ui.conditionImmunities
+                            ]
+                        , inlineRow
+                            [ textField "Languages" CFLanguages ui.languages []
+                            , textField "Challenge Rating" CFChallengeRating ui.challengeRating []
                             , numberField "XP" CFXp ui.xp []
                             , numberField "XP in Lair" CFXpInLair ui.xpInLair []
                             , numberField "Proficiency Bonus" CFProficiencyBonus ui.proficiencyBonus []
@@ -123,7 +141,14 @@ view model =
                         (featuresEditor ReactionsGroup ui.reactions)
                     , editSection "Custom Sections"
                         (customSectionsEditor ui.customSections)
-                    , advancedSectionsNotice ui
+                    , editSection "Legendary Actions"
+                        (legendaryEditor ui.legendaryActions)
+                    , editSection "Lair Actions"
+                        (lairEditor ui.lairActions)
+                    , editSection "Regional Effects"
+                        (regionalEditor ui.regionalEffects)
+                    , editSection "Spellcasting"
+                        (spellcastingEditor ui.spellcasting)
                     , footer ui
                     ]
                 }
@@ -594,31 +619,417 @@ customSectionRow idx ( name_, body_ ) =
         ]
 
 
-{-| Heads-up: the four advanced sections (legendary / lair /
-regional / spellcasting) aren't editable in this MVP form yet. If
-the source creature had any populated, they're preserved verbatim
-through submit; if you're starting from scratch they just stay
-empty.
--}
-advancedSectionsNotice : CompendiumEditUi -> Html Msg
-advancedSectionsNotice ui =
-    let
-        hasAny =
-            ui.legendaryActions
-                /= Nothing
-                || ui.lairActions
-                /= Nothing
-                || ui.regionalEffects
-                /= Nothing
-                || ui.spellcasting
-                /= Nothing
-    in
-    if hasAny then
-        div [ class "edit-advanced-notice" ]
-            [ text "Note: this creature has Legendary / Lair / Regional / Spellcasting data that this form doesn't yet edit. Those sections will be preserved on save." ]
 
-    else
-        text ""
+-- ── DAMAGE / CONDITION MULTI-SELECT PICKERS ────────────────────────────
+
+
+{-| Multi-select chip picker for damage types — one cluster per
+canonical 2024 damage list. `kind` selects which Ui field to
+toggle (vulnerabilities / resistances / immunities); `selected`
+is the current contents.
+-}
+damageTypePicker :
+    { label : String, kind : DamagePicker, selected : List String }
+    -> Html Msg
+damageTypePicker cfg =
+    chipPicker
+        { label = cfg.label
+        , options = Compendium.Reference.damageTypes
+        , selected = cfg.selected
+        , onToggle = CompendiumEditDamageToggle cfg.kind
+        }
+
+
+conditionPicker : List String -> Html Msg
+conditionPicker selected =
+    chipPicker
+        { label = "Condition Immunities"
+        , options = Compendium.Reference.conditions
+        , selected = selected
+        , onToggle = CompendiumEditConditionToggle
+        }
+
+
+{-| Generic multi-select chip picker. Renders the label, then a
+flexbox of every option as a button with an "active" modifier
+class when the option is currently in `selected`. Clicking
+fires `onToggle` with the option's name.
+-}
+chipPicker :
+    { label : String
+    , options : List String
+    , selected : List String
+    , onToggle : String -> Msg
+    }
+    -> Html Msg
+chipPicker cfg =
+    let
+        chip option =
+            let
+                active =
+                    List.member option cfg.selected
+
+                cls =
+                    if active then
+                        "edit-chip-picker__chip edit-chip-picker__chip--active"
+
+                    else
+                        "edit-chip-picker__chip"
+            in
+            button
+                [ type_ "button"
+                , class cls
+                , onClick (cfg.onToggle option)
+                , attribute "aria-pressed"
+                    (if active then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ text option ]
+    in
+    div [ class "edit-field edit-field--picker" ]
+        [ span [ class "edit-field__label" ] [ text cfg.label ]
+        , div [ class "edit-chip-picker" ]
+            (List.map chip cfg.options)
+        ]
+
+
+
+-- ── ADVANCED SECTION EDITORS ────────────────────────────────────────────
+--
+-- Each advanced section follows the same shape: when `Nothing`,
+-- render an "Add" button; when `Just`, render the editor body
+-- with a Remove button at the top.  The editor bodies are
+-- straightforward CRUD over the substructure.
+
+
+sectionToggle :
+    { label : String, addMsg : Msg }
+    -> Html Msg
+sectionToggle cfg =
+    button
+        [ class "action-btn action-btn--blue edit-add-btn"
+        , onClick cfg.addMsg
+        ]
+        [ text cfg.label ]
+
+
+sectionRemoveButton : Msg -> Html Msg
+sectionRemoveButton msg =
+    button
+        [ class "action-btn action-btn--red edit-add-btn"
+        , onClick msg
+        ]
+        [ text "Remove section" ]
+
+
+legendaryEditor : Maybe Compendium.LegendaryActions -> List (Html Msg)
+legendaryEditor maybeLa =
+    case maybeLa of
+        Nothing ->
+            [ sectionToggle
+                { label = "+ Add Legendary Actions"
+                , addMsg = CompendiumEditLegendaryAdd
+                }
+            ]
+
+        Just la ->
+            [ inlineRow
+                [ rawNumberField "Uses"
+                    (CompendiumEditLegendaryUsesChanged << identity)
+                    (String.fromInt la.uses)
+                , rawNumberField "Uses (in lair)"
+                    (CompendiumEditLegendaryUsesInLairChanged << identity)
+                    (String.fromInt la.usesInLair)
+                ]
+            , rawTextarea "Description"
+                CompendiumEditLegendaryDescriptionChanged
+                la.description
+                3
+            , Html.h4 [ class "edit-subheading" ] [ text "Options" ]
+            , div [ class "edit-section__list" ]
+                (List.indexedMap legendaryOptionRow la.options)
+            , inlineRow
+                [ button
+                    [ class "action-btn action-btn--blue edit-add-btn"
+                    , onClick CompendiumEditLegendaryOptionAdd
+                    ]
+                    [ text "+ Add Option" ]
+                , sectionRemoveButton CompendiumEditLegendaryRemove
+                ]
+            ]
+
+
+legendaryOptionRow : Int -> Compendium.LegendaryOption -> Html Msg
+legendaryOptionRow idx opt =
+    div [ class "edit-row edit-row--list-item" ]
+        [ rawTextField "Name"
+            (CompendiumEditLegendaryOptionNameChanged idx)
+            opt.name
+        , rawNumberField "Cost"
+            (CompendiumEditLegendaryOptionCostChanged idx)
+            (String.fromInt opt.cost)
+        , rawTextField "Description"
+            (CompendiumEditLegendaryOptionDescriptionChanged idx)
+            opt.description
+        , removeButton (CompendiumEditLegendaryOptionRemove idx)
+        ]
+
+
+lairEditor : Maybe Compendium.LairActions -> List (Html Msg)
+lairEditor maybeLa =
+    case maybeLa of
+        Nothing ->
+            [ sectionToggle
+                { label = "+ Add Lair Actions"
+                , addMsg = CompendiumEditLairAdd
+                }
+            ]
+
+        Just la ->
+            [ inlineRow
+                [ rawNumberField "Initiative"
+                    CompendiumEditLairInitiativeChanged
+                    (String.fromInt la.initiative)
+                ]
+            , rawTextarea "Description"
+                CompendiumEditLairDescriptionChanged
+                la.description
+                3
+            , Html.h4 [ class "edit-subheading" ] [ text "Options" ]
+            , div [ class "edit-section__list" ]
+                (List.indexedMap lairOptionRow la.options)
+            , inlineRow
+                [ button
+                    [ class "action-btn action-btn--blue edit-add-btn"
+                    , onClick CompendiumEditLairOptionAdd
+                    ]
+                    [ text "+ Add Option" ]
+                , sectionRemoveButton CompendiumEditLairRemove
+                ]
+            ]
+
+
+lairOptionRow : Int -> Compendium.Feature -> Html Msg
+lairOptionRow idx feat =
+    div [ class "edit-row edit-row--list-item" ]
+        [ rawTextField "Name"
+            (CompendiumEditLairOptionNameChanged idx)
+            feat.name
+        , rawTextField "Description"
+            (CompendiumEditLairOptionDescriptionChanged idx)
+            feat.description
+        , removeButton (CompendiumEditLairOptionRemove idx)
+        ]
+
+
+regionalEditor : Maybe Compendium.RegionalEffects -> List (Html Msg)
+regionalEditor maybeRe =
+    case maybeRe of
+        Nothing ->
+            [ sectionToggle
+                { label = "+ Add Regional Effects"
+                , addMsg = CompendiumEditRegionalAdd
+                }
+            ]
+
+        Just re ->
+            [ rawTextarea "Description"
+                CompendiumEditRegionalDescriptionChanged
+                re.description
+                2
+            , rawTextField "Fade After"
+                CompendiumEditRegionalFadeAfterChanged
+                re.fadeAfter
+            , Html.h4 [ class "edit-subheading" ] [ text "Effects" ]
+            , div [ class "edit-section__list" ]
+                (List.indexedMap regionalEffectRow re.effects)
+            , inlineRow
+                [ button
+                    [ class "action-btn action-btn--blue edit-add-btn"
+                    , onClick CompendiumEditRegionalEffectAdd
+                    ]
+                    [ text "+ Add Effect" ]
+                , sectionRemoveButton CompendiumEditRegionalRemove
+                ]
+            ]
+
+
+regionalEffectRow : Int -> Compendium.Feature -> Html Msg
+regionalEffectRow idx feat =
+    div [ class "edit-row edit-row--list-item" ]
+        [ rawTextField "Name"
+            (CompendiumEditRegionalEffectNameChanged idx)
+            feat.name
+        , rawTextField "Description"
+            (CompendiumEditRegionalEffectDescriptionChanged idx)
+            feat.description
+        , removeButton (CompendiumEditRegionalEffectRemove idx)
+        ]
+
+
+spellcastingEditor : Maybe Compendium.Spellcasting -> List (Html Msg)
+spellcastingEditor maybeSc =
+    case maybeSc of
+        Nothing ->
+            [ sectionToggle
+                { label = "+ Add Spellcasting"
+                , addMsg = CompendiumEditSpellcastingAdd
+                }
+            ]
+
+        Just sc ->
+            [ rawTextarea "Description"
+                CompendiumEditSpellcastingDescriptionChanged
+                sc.description
+                2
+            , inlineRow
+                [ spellcastingAbilityRadio sc.ability
+                , rawNumberField "Save DC"
+                    CompendiumEditSpellcastingSaveDcChanged
+                    (String.fromInt sc.saveDc)
+                , rawNumberField "Attack Bonus"
+                    CompendiumEditSpellcastingAttackBonusChanged
+                    (String.fromInt sc.attackBonus)
+                ]
+            , rawTextField "At-Will (comma-separated spells)"
+                CompendiumEditSpellcastingAtWillChanged
+                (String.join ", " sc.atWill)
+            , Html.h4 [ class "edit-subheading" ] [ text "Slot Levels" ]
+            , div [ class "edit-section__list" ]
+                (List.indexedMap spellcastingSlotRow sc.slots)
+            , button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditSpellcastingSlotAdd
+                ]
+                [ text "+ Add Slot Level" ]
+            , Html.h4 [ class "edit-subheading" ] [ text "Innate Per Day" ]
+            , div [ class "edit-section__list" ]
+                (List.indexedMap spellcastingInnateRow sc.innatePerDay)
+            , inlineRow
+                [ button
+                    [ class "action-btn action-btn--blue edit-add-btn"
+                    , onClick CompendiumEditSpellcastingInnateAdd
+                    ]
+                    [ text "+ Add Innate Group" ]
+                , sectionRemoveButton CompendiumEditSpellcastingRemove
+                ]
+            ]
+
+
+spellcastingSlotRow : Int -> Compendium.SpellSlotLevel -> Html Msg
+spellcastingSlotRow idx slot =
+    div [ class "edit-row edit-row--list-item" ]
+        [ rawNumberField "Level"
+            (CompendiumEditSpellcastingSlotLevelChanged idx)
+            (String.fromInt slot.level)
+        , rawNumberField "Slots"
+            (CompendiumEditSpellcastingSlotCountChanged idx)
+            (String.fromInt slot.slots)
+        , rawTextField "Spells (comma-separated)"
+            (CompendiumEditSpellcastingSlotSpellsChanged idx)
+            (String.join ", " slot.spells)
+        , removeButton (CompendiumEditSpellcastingSlotRemove idx)
+        ]
+
+
+spellcastingInnateRow : Int -> Compendium.InnatePerDay -> Html Msg
+spellcastingInnateRow idx i =
+    div [ class "edit-row edit-row--list-item" ]
+        [ rawNumberField "Uses"
+            (CompendiumEditSpellcastingInnateUsesChanged idx)
+            (String.fromInt i.uses)
+        , rawTextField "Spells (comma-separated)"
+            (CompendiumEditSpellcastingInnateSpellsChanged idx)
+            (String.join ", " i.spells)
+        , removeButton (CompendiumEditSpellcastingInnateRemove idx)
+        ]
+
+
+spellcastingAbilityRadio : Compendium.Ability -> Html Msg
+spellcastingAbilityRadio current =
+    let
+        radio ability label_ =
+            Html.label [ class "edit-radio" ]
+                [ input
+                    [ type_ "radio"
+                    , Attr.name "spellcasting-ability"
+                    , checked (ability == current)
+                    , onClick (CompendiumEditSpellcastingAbilitySet ability)
+                    ]
+                    []
+                , text label_
+                ]
+    in
+    div [ class "edit-field edit-field--radio-group" ]
+        [ span [ class "edit-field__label" ] [ text "Ability" ]
+        , div [ class "edit-radio-row" ]
+            [ radio Compendium.Int_ "INT"
+            , radio Compendium.Wis "WIS"
+            , radio Compendium.Cha "CHA"
+            ]
+        ]
+
+
+
+-- ── RAW INPUT HELPERS (any-Msg, not gated by CompendiumField) ──────────
+
+
+rawTextField : String -> (String -> Msg) -> String -> Html Msg
+rawTextField labelText toMsg current =
+    label [ class "edit-field" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            [ type_ "text"
+            , value current
+            , onInput toMsg
+            , class "edit-field__input"
+            ]
+            []
+        ]
+
+
+rawNumberField : String -> (String -> Msg) -> String -> Html Msg
+rawNumberField labelText toMsg current =
+    label [ class "edit-field edit-field--number" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            [ type_ "number"
+            , value current
+            , onInput toMsg
+            , class "edit-field__input"
+            ]
+            []
+        ]
+
+
+rawTextarea : String -> (String -> Msg) -> String -> Int -> Html Msg
+rawTextarea labelText toMsg current rows =
+    label [ class "edit-field edit-field--textarea" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , textarea
+            [ value current
+            , onInput toMsg
+            , class "edit-field__input"
+            , Attr.rows rows
+            ]
+            []
+        ]
+
+
+removeButton : Msg -> Html Msg
+removeButton msg =
+    button
+        [ class "edit-row__remove"
+        , type_ "button"
+        , onClick msg
+        , attribute "aria-label" "Remove"
+        , title "Remove"
+        ]
+        [ text "×" ]
 
 
 footer : CompendiumEditUi -> Html Msg
