@@ -3182,26 +3182,29 @@ body {
   text-align: right;
 }
 
-/* Brief yellow flash on the panel-header "last roll total"
+/* Yellow strobe-flash on the panel-header "last roll total"
    readout whenever a stat-block roll lands a floating popup.
-   Duration matches `Update.Dice.flashDurationMs` so the CSS
-   resting state arrives just as Elm clears the flag. */
+   Three quick on/off pulses over 700ms read as a "flashing"
+   tint rather than a smooth fade.  Duration matches
+   `Update.Dice.flashDurationMs` so the CSS resting state
+   arrives just as Elm clears the flag. */
 .dice-last-total--flash {
   animation: dice-last-total-flash 0.7s ease-out;
 }
 
 @keyframes dice-last-total-flash {
-  0% {
-    color: var(--color-text);
-    text-shadow: none;
-  }
-  20% {
-    color: #facc15;
-    text-shadow: 0 0 6px rgba(250, 204, 21, 0.55);
-  }
+  0%,
+  25%,
+  55%,
   100% {
     color: var(--color-text);
     text-shadow: none;
+  }
+  12%,
+  40%,
+  70% {
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
   }
 }
 
