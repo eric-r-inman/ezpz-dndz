@@ -30,6 +30,10 @@ infrastructure, not the defining purpose.
 * General code guidelines
 
 These are instructions for LLMs to write code more to my liking.
+The companion file =llms.org= mirrors the template's own LLM
+guidance — most notably the no-=unwrap=/=expect= rule for shipping
+Rust code, enforced in CI via clippy =-D warnings= and the
+workspace-level =deny= block.  Read it alongside this file.
 
 ** Documents
 

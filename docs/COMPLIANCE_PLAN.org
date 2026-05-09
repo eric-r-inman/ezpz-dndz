@@ -212,27 +212,45 @@ named error variant.
 
 * Open questions
 
-These need a human decision before Phase 6 (or earlier where flagged):
+Resolutions captured here as the compliance run completed.
 
-1. *CI workflow.*  The reusable =reusable-ci.yml@main= is Rust-only.
-   ezpz needs Elm =elm make= and =elm-test= steps.  Options:
-   - (a) Keep our hand-rolled =ci.yml= and accept this single
-     non-compliance.
-   - (b) Call =reusable-ci.yml= and add a follow-up Elm job in the
-     same workflow.
-   - (c) Contribute Elm support upstream into the reusable.
+1. *CI workflow.*  Chose option (a): keep our hand-rolled =ci.yml=
+   and accept this single non-compliance.  The upstream
+   =reusable-ci.yml= is Rust-only; ezpz also needs =elm make=,
+   =elm-test=, and =treefmt --ci= to cover all four formatters.  Job
+   names realigned to =Test= / =Formatting= so the standard
+   =branch-protection.json= contexts (=ci / Test=, =ci / Formatting=)
+   apply unchanged.
 
-2. *Env var rename.*  Adopting =ezpz-dndz_log_level= etc. breaks any
-   systemd unit / justfile that sets the old =LOG_LEVEL= names.
-   Options: cut over cleanly, or keep aliases via =extra_cli= for one
-   release.
+2. *Env var rename.*  Cut over cleanly to the new lowercase
+   per-app-prefixed names (=ezpz_dndz_log_level= etc.) — no aliases.
+   Any systemd unit, justfile, or shell script that sets the old
+   uppercase names (=LOG_LEVEL=, =LISTEN=, =CONFIG_FILE=, …) needs
+   updating.
 
-3. *=lib= crate logging file.*  Slim to a re-export, or delete the
-   file outright and update call sites?  Either is compliant; the
-   second is cleaner.
+3. *=lib= crate logging file.*  Slimmed to a re-export of
+   =rust_template_foundation::logging=.  Existing
+   =use ezpz_dndz_lib::{LogLevel, LogFormat};= import sites still
+   resolve.  Cleaner alternative (delete and import directly) was
+   not chosen — keeping the stable import path lets the rest of the
+   workspace continue with no churn.
 
-4. *=.unwrap()= cleanup ordering.*  Phase 2 does it before the
-   CLI/server rewrites so the rewrites land on lint-clean ground.
-   Alternative: do it after the rewrites since some sites disappear
-   in the migration anyway.  Phase-2-first reduces churn risk; Phase-2-after
-   avoids touching code about to be deleted.
+4. *=.unwrap()= cleanup ordering.*  Phase-2-first.  The rewrites
+   landed on lint-clean ground.  Two of the six original violations
+   (=server/web_base.rs:76,78=) belonged to code about to be
+   replaced anyway, but fixing them in phase 2 cost two lines and
+   kept clippy reports useful throughout.
+
+* Status
+
+Run completed against template HEAD =9924140= on 2026-05-09.  All
+seven phases land green: =cargo build --workspace=,
+=cargo test --workspace= (40 tests pass), =cargo clippy --workspace
+--all-targets -- -D warnings=, =nix flake check --no-build=.
+
+Sync record advanced: =rust-template.json= now records both the
+prior =51239f8= hash and the new =9924140= hash.  Next compliance
+run is diff-based against =9924140..HEAD=.
+
+---
+
