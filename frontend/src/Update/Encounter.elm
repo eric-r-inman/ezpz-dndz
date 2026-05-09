@@ -320,8 +320,12 @@ open. No HP mutation — see `rollFallDamage`.
 -}
 fallDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 fallDamageLanded _ roll model =
-    ( Effects.pushDiceRoll roll model
-    , Effects.persistDiceRoll roll
+    let
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
     )
 
 

@@ -356,9 +356,12 @@ saveLanded name id dc wasAutoRoll roll model =
 
             else
                 model
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll m1
     in
-    ( m1 |> Effects.pushDiceRoll roll
-    , Effects.persistDiceRoll roll
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
     )
 
 

@@ -102,12 +102,15 @@ rollLanded name d20Roll model =
     let
         applyRule c =
             applyResult d20Roll.total c
+
+        afterRule =
+            { model | encounter = Encounter.mapCreature name applyRule model.encounter }
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll d20Roll afterRule
     in
-    ( { model
-        | encounter = Encounter.mapCreature name applyRule model.encounter
-      }
-        |> Effects.pushDiceRoll d20Roll
-    , Effects.persistDiceRoll d20Roll
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll d20Roll, flashCmd ]
     )
 
 

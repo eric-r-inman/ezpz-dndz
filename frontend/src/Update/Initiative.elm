@@ -142,17 +142,23 @@ no-ops on unknown names so a stale roll (defensive) won't blow up.
 rollsLanded : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 rollsLanded results model =
     let
-        applyOne ( name, roll ) m =
-            { m
-                | encounter =
-                    Encounter.mapCreature name
-                        (\c -> { c | initiative = roll.total })
-                        m.encounter
-            }
-                |> Effects.pushDiceRoll roll
+        applyOne ( name, roll ) ( m, cs ) =
+            let
+                stamped =
+                    { m
+                        | encounter =
+                            Encounter.mapCreature name
+                                (\c -> { c | initiative = roll.total })
+                                m.encounter
+                    }
 
-        m1 =
-            List.foldl applyOne model results
+                ( pushed, flashCmd ) =
+                    Effects.pushDiceRoll roll stamped
+            in
+            ( pushed, flashCmd :: cs )
+
+        ( m1, flashCmds ) =
+            List.foldl applyOne ( model, [] ) results
 
         rolls =
             List.map Tuple.second results
@@ -161,7 +167,8 @@ rollsLanded results model =
         | encounter = Encounter.Roster.sortByInitiative m1.encounter
         , modal = Nothing
       }
-    , Cmd.batch (List.map Effects.persistDiceRoll rolls)
+    , Cmd.batch
+        (List.map Effects.persistDiceRoll rolls ++ flashCmds)
     )
 
 

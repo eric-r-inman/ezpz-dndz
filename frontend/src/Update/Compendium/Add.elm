@@ -94,8 +94,17 @@ initiativeRolled creatureId rolls model =
                                 )
                                 rolls
 
-                        m1 =
-                            List.foldl (\( _, r ) m -> Effects.pushDiceRoll r m) model rolls
+                        ( m1, flashCmds ) =
+                            List.foldl
+                                (\( _, r ) ( m, cs ) ->
+                                    let
+                                        ( pushed, flashCmd ) =
+                                            Effects.pushDiceRoll r m
+                                    in
+                                    ( pushed, flashCmd :: cs )
+                                )
+                                ( model, [] )
+                                rolls
 
                         addedCount =
                             List.length instances
@@ -113,7 +122,11 @@ initiativeRolled creatureId rolls model =
                     { m1 | encounter = Encounter.Roster.appendCreatures instances m1.encounter }
                         |> Update.Toast.pushWith ToastSuccess
                             toastMessage
-                            (Cmd.batch (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls))
+                            (Cmd.batch
+                                (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls
+                                    ++ flashCmds
+                                )
+                            )
 
                 Nothing ->
                     ( model, Cmd.none )

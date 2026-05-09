@@ -156,7 +156,7 @@ rolls on the floor.
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
     let
-        logged =
+        ( logged, flashCmd ) =
             Effects.pushDiceRoll roll model
 
         committed =
@@ -167,7 +167,9 @@ rollLanded roll model =
                 _ ->
                     logged
     in
-    ( committed, Effects.persistDiceRoll roll )
+    ( committed
+    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    )
 
 
 editStart : String -> HpField -> Int -> Model -> ( Model, Cmd Msg )

@@ -99,7 +99,10 @@ landed x y roll_ model =
             Update.Dice.spawnRollPopup
                 { x = x, y = y, total = roll_.total }
                 model
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll_ withPopup
     in
-    ( Effects.pushDiceRoll roll_ withPopup
-    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd ]
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd, flashCmd ]
     )

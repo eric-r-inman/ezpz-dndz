@@ -190,8 +190,12 @@ surfacing from disk after init come through that same path).
 -}
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
-    ( Effects.pushDiceRoll roll model
-    , Effects.persistDiceRoll roll
+    let
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
     )
 
 
@@ -282,9 +286,12 @@ statBlockRollLanded x y roll model =
     let
         ( withPopup, popupCmd ) =
             spawnRollPopup { x = x, y = y, total = roll.total } model
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll withPopup
     in
-    ( Effects.pushDiceRoll roll withPopup
-    , Cmd.batch [ Effects.persistDiceRoll roll, popupCmd ]
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, popupCmd, flashCmd ]
     )
 
 
@@ -296,12 +303,10 @@ caller is responsible for any other roll-landed bookkeeping
 (push to dice history, persist, etc.) and for batching
 `popupCmd` with whatever else the source needs to fire.
 
-Also flips `dice.flashLatest` so the panel-header "last roll
-total" readout briefly tints yellow. Successive rolls within
-the flash duration share one flash because the flag is already
-set; the next sleep-clear still arrives, and the resting state
-is briefly absent before any subsequent set — which is what the
-user wants visually (no rapid strobing).
+The panel-header "last roll total" yellow blink lives in
+`Effects.pushDiceRoll` (which every roll source already calls)
+rather than here — that way every roll flashes the readout
+regardless of whether it spawns a floating popup or not.
 
 -}
 spawnRollPopup : { x : Int, y : Int, total : Int } -> Model -> ( Model, Cmd Msg )
@@ -314,21 +319,13 @@ spawnRollPopup { x, y, total } model =
             , y = y
             , total = total
             }
-
-        flashClearCmd =
-            Process.sleep flashDurationMs
-                |> Task.perform (\_ -> DiceLastTotalFlashCleared)
-
-        expireCmd =
-            Process.sleep popupLifetimeMs
-                |> Task.perform (\_ -> RollPopupExpired popup.id)
     in
-    ( withDice (\d -> { d | flashLatest = True })
-        { model
-            | rollPopups = popup :: model.rollPopups
-            , nextRollPopupId = model.nextRollPopupId + 1
-        }
-    , Cmd.batch [ expireCmd, flashClearCmd ]
+    ( { model
+        | rollPopups = popup :: model.rollPopups
+        , nextRollPopupId = model.nextRollPopupId + 1
+      }
+    , Process.sleep popupLifetimeMs
+        |> Task.perform (\_ -> RollPopupExpired popup.id)
     )
 
 
@@ -357,15 +354,6 @@ alive through the full float-and-fade animation.
 popupLifetimeMs : Float
 popupLifetimeMs =
     1200
-
-
-{-| Duration in milliseconds for the panel-header
-"last-roll-total" yellow flash. Should match the CSS
-`animation-duration` on `.dice-last-total--flash`.
--}
-flashDurationMs : Float
-flashDurationMs =
-    700
 
 
 {-| Parse a string into an int, clamping to `lo..hi` and falling

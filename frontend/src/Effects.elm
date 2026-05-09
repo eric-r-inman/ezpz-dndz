@@ -35,6 +35,7 @@ import Http
 import Json.Decode as Decode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
+import Process
 import Route exposing (Route(..))
 import Task
 
@@ -190,13 +191,13 @@ When the modal is already open, the user can already see the
 roll, so no indicator is needed.
 
 -}
-pushDiceRoll : Dice.Roll -> Model -> Model
+pushDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
 pushDiceRoll roll model =
     let
         d =
             model.dice
     in
-    { model
+    ( { model
         | dice =
             { d
                 | history = Dice.push roll d.history
@@ -206,8 +207,26 @@ pushDiceRoll roll model =
 
                     else
                         True
+                , flashLatest = True
             }
-    }
+      }
+    , Process.sleep flashDurationMs
+        |> Task.perform (\_ -> DiceLastTotalFlashCleared)
+    )
+
+
+{-| Duration in milliseconds for the panel-header
+"last-roll-total" yellow blink. Should match the CSS
+`animation-duration` on `.dice-last-total--flash`. Lives here
+(rather than in `Update.Dice`) because `pushDiceRoll` is the
+universal "a roll just landed" entry point, and putting the
+flash trigger right alongside it means every roll source gets
+the flash automatically without each handler remembering to
+fire it.
+-}
+flashDurationMs : Float
+flashDurationMs =
+    700
 
 
 {-| GET the persisted dice history. Result lands in
