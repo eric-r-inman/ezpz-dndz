@@ -65,10 +65,13 @@ fn test_version_flag() {
         "Expected success exit code, got: {:?}",
         output.status.code()
       );
+      // `MergeConfig`'s `app_name = "ezpz-dndz"` becomes the clap
+      // command name, so `--version` prints `ezpz-dndz <ver>` rather
+      // than the binary basename `ezpz-dndz-cli`.
       let stdout = String::from_utf8_lossy(&output.stdout);
       assert!(
-        stdout.contains("ezpz-dndz-cli"),
-        "Expected version text to contain 'ezpz-dndz-cli', got: {}",
+        stdout.contains("ezpz-dndz"),
+        "Expected version text to contain 'ezpz-dndz', got: {}",
         stdout
       );
     }

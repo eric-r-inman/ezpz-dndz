@@ -53,7 +53,7 @@ pub enum CompendiumCliError {
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli compendium <...>`.
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum CompendiumCommand {
   /// Print a table of creatures (name / kind / CR) from the
   /// given JSON file.

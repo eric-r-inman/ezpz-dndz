@@ -10,27 +10,27 @@
 //! - `compendium {list, count, show}` — inspect creatures.json.
 //! - `encounter {show, count}` — inspect the live encounter file.
 //! - `dice {count, tail, clear}` — inspect / wipe the roll log.
+//!
+//! `#[foundation_main]` handles CLI parsing, config-file resolution
+//! (XDG-aware), and logging init; this file only owns the
+//! subcommand dispatch table.
 
 mod compendium;
 mod config;
 mod dice;
 mod encounter;
-mod logging;
 
-use clap::Parser;
 use compendium::CompendiumCliError;
-use config::{CliRaw, Command, Config, ConfigError};
+use config::{Command, Config};
 use dice::DiceCliError;
 use encounter::EncounterCliError;
-use logging::init_logging;
+use rust_template_foundation::main as foundation_main;
+use std::process::ExitCode;
 use thiserror::Error;
 use tracing::info;
 
 #[derive(Debug, Error)]
 enum ApplicationError {
-  #[error("Failed to load configuration during startup: {0}")]
-  ConfigurationLoad(#[from] ConfigError),
-
   #[error("Compendium subcommand failed: {0}")]
   Compendium(#[from] CompendiumCliError),
 
@@ -41,40 +41,21 @@ enum ApplicationError {
   Dice(#[from] DiceCliError),
 }
 
-fn main() -> Result<(), ApplicationError> {
-  let cli = CliRaw::parse();
-
-  let config = Config::from_cli_and_file(cli).map_err(|e| {
-    eprintln!("Configuration error: {e}");
-    ApplicationError::ConfigurationLoad(e)
-  })?;
-
-  init_logging(config.log_level, config.log_format);
-
+#[foundation_main]
+pub fn main(config: Config) -> Result<ExitCode, ApplicationError> {
   info!("Starting ezpz-dndz-cli");
 
-  run(config)?;
-
-  Ok(())
-}
-
-fn run(config: Config) -> Result<(), ApplicationError> {
   match config.command {
-    Some(Command::Compendium { command }) => {
-      command.run().map_err(ApplicationError::Compendium)
-    }
-    Some(Command::Encounter { command }) => {
-      command.run().map_err(ApplicationError::Encounter)
-    }
-    Some(Command::Dice { command }) => {
-      command.run().map_err(ApplicationError::Dice)
-    }
+    Some(Command::Compendium { command }) => command.run()?,
+    Some(Command::Encounter { command }) => command.run()?,
+    Some(Command::Dice { command }) => command.run()?,
     None => {
       println!(
         "ezpz-dndz-cli: no subcommand provided.  Run with --help \
          for usage."
       );
-      Ok(())
     }
   }
+
+  Ok(ExitCode::SUCCESS)
 }

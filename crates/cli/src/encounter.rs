@@ -32,7 +32,7 @@ pub enum EncounterCliError {
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli encounter <...>`.
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum EncounterCommand {
   /// Pretty-print the live encounter JSON.
   Show {

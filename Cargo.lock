@@ -662,13 +662,12 @@ dependencies = [
  "clap",
  "ezpz-dndz-lib",
  "reqwest 0.12.28",
+ "rust-template-foundation",
  "serde",
  "serde_json",
  "tap",
  "thiserror 2.0.18",
- "toml",
  "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -677,6 +676,7 @@ name = "ezpz-dndz-lib"
 version = "0.1.0"
 dependencies = [
  "cargo-husky",
+ "rust-template-foundation",
  "schemars 0.9.0",
  "serde",
  "serde_json",
@@ -985,6 +985,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest",
+]
+
+[[package]]
+name = "home"
+version = "0.5.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
+dependencies = [
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2121,6 +2130,31 @@ dependencies = [
  "spki",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "rust-template-foundation"
+version = "0.1.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#992414005ea1ce92fa18f826e2e2c2407745ddd8"
+dependencies = [
+ "clap",
+ "home",
+ "rust-template-foundation-derive",
+ "serde",
+ "thiserror 2.0.18",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "rust-template-foundation-derive"
+version = "0.1.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#992414005ea1ce92fa18f826e2e2c2407745ddd8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

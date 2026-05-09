@@ -1,54 +1,19 @@
+//! CLI configuration.
+//!
+//! The single `MergeConfig` derive generates `CliRaw`, `ConfigFileRaw`,
+//! `Config::from_cli_and_file`, and the `CliApp` impl that
+//! `#[foundation_main]` wires up.  Subcommands flow in via the
+//! `subcommand` field kind and stay structured as the existing
+//! `Command` ADT.
+
 use crate::compendium::CompendiumCommand;
 use crate::dice::DiceCommand;
 use crate::encounter::EncounterCommand;
-use clap::{Parser, Subcommand};
+use clap::Subcommand;
 use ezpz_dndz_lib::{LogFormat, LogLevel};
-use serde::Deserialize;
-use std::path::PathBuf;
-use thiserror::Error;
+use rust_template_foundation::MergeConfig;
 
-#[derive(Debug, Error)]
-pub enum ConfigError {
-  #[error(
-    "Failed to read configuration file at {path:?} during startup: {source}"
-  )]
-  FileRead {
-    path: PathBuf,
-    #[source]
-    source: std::io::Error,
-  },
-
-  #[error("Failed to parse configuration file at {path:?}: {source}")]
-  Parse {
-    path: PathBuf,
-    #[source]
-    source: toml::de::Error,
-  },
-
-  #[error("Configuration validation failed: {0}")]
-  Validation(String),
-}
-
-#[derive(Debug, Parser)]
-#[command(author, version, about, long_about = None)]
-pub struct CliRaw {
-  /// Log level (trace, debug, info, warn, error)
-  #[arg(long, env = "LOG_LEVEL", global = true)]
-  pub log_level: Option<String>,
-
-  /// Log format (text, json)
-  #[arg(long, env = "LOG_FORMAT", global = true)]
-  pub log_format: Option<String>,
-
-  /// Path to configuration file
-  #[arg(short, long, env = "CONFIG_FILE", global = true)]
-  pub config: Option<PathBuf>,
-
-  #[command(subcommand)]
-  pub command: Option<Command>,
-}
-
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum Command {
   /// Inspect or maintain a compendium JSON file.
   Compendium {
@@ -69,73 +34,13 @@ pub enum Command {
   },
 }
 
-#[derive(Debug, Deserialize, Default)]
-pub struct ConfigFileRaw {
-  pub log_level: Option<String>,
-  pub log_format: Option<String>,
-}
-
-impl ConfigFileRaw {
-  pub fn from_file(path: &PathBuf) -> Result<Self, ConfigError> {
-    let contents = std::fs::read_to_string(path).map_err(|source| {
-      ConfigError::FileRead {
-        path: path.clone(),
-        source,
-      }
-    })?;
-
-    let config: ConfigFileRaw =
-      toml::from_str(&contents).map_err(|source| ConfigError::Parse {
-        path: path.clone(),
-        source,
-      })?;
-
-    Ok(config)
-  }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, MergeConfig)]
+#[merge_config(app_name = "ezpz-dndz")]
 pub struct Config {
+  #[merge_config(common)]
   pub log_level: LogLevel,
+  #[merge_config(common)]
   pub log_format: LogFormat,
+  #[merge_config(subcommand)]
   pub command: Option<Command>,
-}
-
-impl Config {
-  pub fn from_cli_and_file(cli: CliRaw) -> Result<Self, ConfigError> {
-    let config_file = if let Some(config_path) = &cli.config {
-      ConfigFileRaw::from_file(config_path)?
-    } else {
-      let default_config_path = PathBuf::from("config.toml");
-      if default_config_path.exists() {
-        ConfigFileRaw::from_file(&default_config_path)?
-      } else {
-        ConfigFileRaw::default()
-      }
-    };
-
-    let log_level_str = cli
-      .log_level
-      .or(config_file.log_level)
-      .unwrap_or_else(|| "info".to_string());
-
-    let log_level = log_level_str
-      .parse::<LogLevel>()
-      .map_err(|e| ConfigError::Validation(e.to_string()))?;
-
-    let log_format_str = cli
-      .log_format
-      .or(config_file.log_format)
-      .unwrap_or_else(|| "text".to_string());
-
-    let log_format = log_format_str
-      .parse::<LogFormat>()
-      .map_err(|e| ConfigError::Validation(e.to_string()))?;
-
-    Ok(Config {
-      log_level,
-      log_format,
-      command: cli.command,
-    })
-  }
 }

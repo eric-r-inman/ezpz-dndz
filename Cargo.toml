@@ -18,7 +18,7 @@ repository = "https://github.com/eric-r-inman/ezpz-dndz"
 # auth) shared with rust-template-spawned siblings.  The git pin keeps
 # us synchronised with the template's HEAD; advance it together with
 # rust-template.json's template_sync_hashes during compliance work.
-rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git", features = ["auth"] }
+rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git" }
 
 # Logging and tracing
 tracing = "0.1"

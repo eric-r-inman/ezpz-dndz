@@ -39,7 +39,7 @@ pub enum DiceCliError {
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli dice <...>`.
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Clone, Subcommand)]
 pub enum DiceCommand {
   /// Count the number of recorded rolls.
   Count {
