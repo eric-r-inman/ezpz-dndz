@@ -50,31 +50,31 @@ list freshOk =
             { msg = DuplicateExact
             , available = True
             , label = "Exact"
-            , description = "Clone with current HP, conditions, and notes intact"
+            , description = "Same HP, conditions, notes."
             }
         , row
             { msg = DuplicateFresh
             , available = freshOk
             , label = "Fresh"
-            , description = "Re-instance from the compendium with full HP and no conditions"
+            , description = "Full HP, no conditions."
             }
         , row
             { msg = DuplicateMinionHalf
             , available = freshOk
             , label = "Minion (½ max hp)"
-            , description = "Fresh state, max HP halved (rounded down)"
+            , description = "Fresh, max HP halved."
             }
         , row
             { msg = DuplicateMinionOne
             , available = freshOk
             , label = "Minion (1 hp)"
-            , description = "Fresh state, max HP locked to 1"
+            , description = "Fresh, max HP = 1."
             }
         , row
             { msg = DuplicatePudding
             , available = True
             , label = "Pudding"
-            , description = "Split into two — each gets ½ HP rounded down, no conditions; original removed"
+            , description = "Split in two; original removed."
             }
         ]
 
