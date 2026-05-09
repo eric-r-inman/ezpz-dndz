@@ -13,8 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: build + test (Nix dev shell)
+  # Job key + display name match the rust-template branch-protection
+  # convention (`ci / Test`, `ci / Formatting`), so the standard
+  # branch-protection.json applies as-is.  This workflow stays
+  # hand-rolled (rather than using foundation's reusable-ci.yml)
+  # because the foundation version is Rust-only and ezpz also needs
+  # Elm `elm make` / `elm-test` and a treefmt-based formatter check.
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,8 +65,8 @@ jobs:
       - name: elm-test
         run: nix develop --command bash -c "cd frontend && elm-test"
 
-  format:
-    name: format check (treefmt)
+  formatting:
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
