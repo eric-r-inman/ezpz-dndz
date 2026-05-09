@@ -97,7 +97,35 @@
       "Read(//Users/ericrinman/**)",
       "Bash(brew search *)",
       "Bash(/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin/elm make *)",
-      "Bash(/nix/store/1kyg3qgpskvhf5q4c36ymp02zfrdzhp6-elm-test-0.19.1-revision17/bin/elm-test)"
+      "Bash(/nix/store/1kyg3qgpskvhf5q4c36ymp02zfrdzhp6-elm-test-0.19.1-revision17/bin/elm-test)",
+      "Bash(perl -i -pe ' *)",
+      "Bash(PATH=/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/1kyg3qgpskvhf5q4c36ymp02zfrdzhp6-elm-test-0.19.1-revision17/bin:__TRACKED_VAR__ elm-test)",
+      "Bash(PATH=/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/cxm4m2yffc5hls88vhf10ir8macxvsw4-rustfmt-preview-1.93.0-aarch64-apple-darwin/bin:__TRACKED_VAR__ git -C /Users/ericrinman/dev/ezpz-dndz commit -m ' *)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:__TRACKED_VAR__ cargo build -p ezpz-dndz-server)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:__TRACKED_VAR__ cargo test -p ezpz-dndz-server --test integration_test)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:__TRACKED_VAR__ cargo test --workspace)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:__TRACKED_VAR__ cargo clippy --workspace -- -D warnings)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/cxm4m2yffc5hls88vhf10ir8macxvsw4-rustfmt-preview-1.93.0-aarch64-apple-darwin/bin:__TRACKED_VAR__ git -C /Users/ericrinman/dev/ezpz-dndz commit -m ' *)",
+      "Bash(PATH=/nix/store/ysmm4642k2q61gc0lv4mawd25g0rmgm0-rust-default-1.93.0/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/cxm4m2yffc5hls88vhf10ir8macxvsw4-rustfmt-preview-1.93.0-aarch64-apple-darwin/bin:__TRACKED_VAR__ git commit -m ' *)",
+      "Bash(perl -i -pe 's/clearMenuOpen = False/bulkMenu = Nothing/g' src/Update/Compendium/Bulk.elm)",
+      "Bash(perl -i -pe 's/title \"Remove this condition\"/title Tooltips.chipRemoveModalRow/' src/View/Modal/Condition.elm)",
+      "Bash(perl -i -pe 's/\\\\\\(String -> Dice\\\\.Expression -> msg\\\\\\)/\\(String -> Dice.Expression -> Int -> Int -> msg\\)/g' src/View/StatBlock.elm)",
+      "Bash(perl -i -pe 's/\\\\\\(String -> String -> Int -> msg\\\\\\)/\\(String -> String -> Int -> Int -> Int -> msg\\)/g' src/View/StatBlock.elm)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:__TRACKED_VAR__ jq -r '.[] | \"\\\\\\(.name\\) — CR \\\\\\(.challenge_rating // \"?\"\\) — legendary:\\\\\\(.legendary_actions != null\\) lair:\\\\\\(.lair_actions != null\\) regional:\\\\\\(.regional_effects != null\\) spells:\\\\\\(.spellcasting != null\\) traits:\\\\\\(.traits | length // 0\\)\"' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(python3 -c \"import json; data = json.load\\(open\\('/Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json'\\)\\); print\\(len\\(data\\), 'creatures'\\); [print\\(c['name'], c.get\\('challenge_rating', '?'\\), 'leg:'+str\\(c.get\\('legendary_actions'\\) is not None\\), 'lair:'+str\\(c.get\\('lair_actions'\\) is not None\\), 'spells:'+str\\(c.get\\('spellcasting'\\) is not None\\)\\) for c in data[:30]]\")",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq '.[] | select\\(.name == \"Aboleth\"\\) | {name, kind, size, race, subrace, alignment, source, description: \\(.description // \"\" | length\\), armor_class, armor_class_note, max_hp, hp_formula, initiative_bonus, speed, abilities, saving_throws, skills, damage_vulnerabilities, damage_resistances, damage_immunities, condition_immunities, senses, languages, challenge_rating, xp, xp_in_lair, proficiency_bonus, traits_count: \\(.traits | length\\), actions_count: \\(.actions | length\\), bonus_actions_count: \\(.bonus_actions // [] | length\\), reactions_count: \\(.reactions // [] | length\\), legendary_actions, lair_actions, regional_effects, spellcasting, custom_sections}' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq '.[] | select\\(.name == \"Aboleth\"\\) | .traits[0], .actions[0]' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq -r '.[] | \"\\\\\\(.name\\)|spell:\\\\\\(.spellcasting != null\\)|regional:\\\\\\(.regional_effects != null\\)|usage_kinds:\\\\\\([\\(.actions // []\\)[], \\(.traits // []\\)[], \\(.bonus_actions // []\\)[], \\(.reactions // []\\)[]] | map\\(.usage.kind // \"\"\\) | unique | join\\(\",\"\\)\\)\"' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq -r '.[] | select\\(\\(.actions // []\\) | map\\(.usage.kind // \"\"\\) | any\\(. == \"recharge\" or . == \"per_day\" or . == \"per_long_rest\"\\)\\) | .name' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq -r '[.[].actions // [] | .[] | .usage // null] | map\\(select\\(. != null\\)\\) | length, .[0:3]' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq '.[] | select\\(.name == \"Adult Red Dragon\"\\) | {name, actions, legendary_actions}' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
+      "Bash(ls -la rust-template.json)",
+      "Bash(ls -la rust-template*)",
+      "Bash(ls .github/workflows/)",
+      "Bash(ls -la .github/)",
+      "Bash(ls .cargo-husky/hooks/)",
+      "Bash(/nix/var/nix/profiles/default/bin/nix flake *)",
+      "Bash(cp /Users/ericrinman/dev/rust-template/template/llms.org /Users/ericrinman/dev/ezpz-dndz/llms.org && wc -l /Users/ericrinman/dev/ezpz-dndz/llms.org)"
     ],
     "deny": [
       "Bash(sudo *)",
@@ -114,6 +142,9 @@
       "Bash(cargo publish *)",
       "Bash(cargo publish)"
     ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "bypassPermissions",
+    "additionalDirectories": [
+      "/Users/ericrinman/dev/rust-template/template"
+    ]
   }
 }
