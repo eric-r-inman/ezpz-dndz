@@ -303,8 +303,16 @@ diceLastTotal : DiceUi -> Html Msg
 diceLastTotal dice =
     case List.head dice.history.entries of
         Just roll ->
+            let
+                cls =
+                    if dice.flashLatest then
+                        "dice-last-total dice-last-total--flash"
+
+                    else
+                        "dice-last-total"
+            in
             span
-                [ class "dice-last-total"
+                [ class cls
                 , title Tooltips.lastRollTotal
                 ]
                 [ text (String.fromInt roll.total) ]

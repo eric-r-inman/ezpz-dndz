@@ -534,6 +534,9 @@ updateInner msg model =
         RollPopupExpired id ->
             Update.Dice.rollPopupExpired id model
 
+        DiceLastTotalFlashCleared ->
+            Update.Dice.lastTotalFlashCleared model
+
         -- HP change modal lifecycle
         HpChangeOpen target kind ->
             Update.HpChange.open target kind model

@@ -329,6 +329,7 @@ type Msg
     | StatBlockRollLanded Int Int Dice.Roll
       -- (clientX, clientY captured at click, the resolved roll)
     | RollPopupExpired Int
+    | DiceLastTotalFlashCleared
       -- HP change modal
     | HpChangeOpen String HpKind
     | HpChangeClose

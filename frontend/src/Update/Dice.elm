@@ -6,6 +6,7 @@ module Update.Dice exposing
     , flipCoin
     , historyLoaded
     , inputChanged
+    , lastTotalFlashCleared
     , modifierChanged
     , open
     , persistResponse
@@ -294,6 +295,14 @@ feedback (stat-block dice links, ability-save modal lands). The
 caller is responsible for any other roll-landed bookkeeping
 (push to dice history, persist, etc.) and for batching
 `popupCmd` with whatever else the source needs to fire.
+
+Also flips `dice.flashLatest` so the panel-header "last roll
+total" readout briefly tints yellow. Successive rolls within
+the flash duration share one flash because the flag is already
+set; the next sleep-clear still arrives, and the resting state
+is briefly absent before any subsequent set — which is what the
+user wants visually (no rapid strobing).
+
 -}
 spawnRollPopup : { x : Int, y : Int, total : Int } -> Model -> ( Model, Cmd Msg )
 spawnRollPopup { x, y, total } model =
@@ -305,13 +314,28 @@ spawnRollPopup { x, y, total } model =
             , y = y
             , total = total
             }
+
+        flashClearCmd =
+            Process.sleep flashDurationMs
+                |> Task.perform (\_ -> DiceLastTotalFlashCleared)
+
+        expireCmd =
+            Process.sleep popupLifetimeMs
+                |> Task.perform (\_ -> RollPopupExpired popup.id)
     in
-    ( { model
-        | rollPopups = popup :: model.rollPopups
-        , nextRollPopupId = model.nextRollPopupId + 1
-      }
-    , Process.sleep popupLifetimeMs
-        |> Task.perform (\_ -> RollPopupExpired popup.id)
+    ( withDice (\d -> { d | flashLatest = True })
+        { model
+            | rollPopups = popup :: model.rollPopups
+            , nextRollPopupId = model.nextRollPopupId + 1
+        }
+    , Cmd.batch [ expireCmd, flashClearCmd ]
+    )
+
+
+lastTotalFlashCleared : Model -> ( Model, Cmd Msg )
+lastTotalFlashCleared model =
+    ( withDice (\d -> { d | flashLatest = False }) model
+    , Cmd.none
     )
 
 
@@ -333,6 +357,15 @@ alive through the full float-and-fade animation.
 popupLifetimeMs : Float
 popupLifetimeMs =
     1200
+
+
+{-| Duration in milliseconds for the panel-header
+"last-roll-total" yellow flash. Should match the CSS
+`animation-duration` on `.dice-last-total--flash`.
+-}
+flashDurationMs : Float
+flashDurationMs =
+    700
 
 
 {-| Parse a string into an int, clamping to `lo..hi` and falling

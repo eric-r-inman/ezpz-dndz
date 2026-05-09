@@ -30,6 +30,12 @@ type alias DiceUi =
     , modifierText : String
     , history : Dice.History
     , unread : Bool
+
+    -- Brief yellow flash on the panel-header "last roll total"
+    -- readout when a new floating-popup roll lands.  Set true
+    -- by `Update.Dice.spawnRollPopup` and cleared after the
+    -- flash duration via `Process.sleep`.
+    , flashLatest : Bool
     }
 
 
@@ -43,4 +49,5 @@ empty =
     , modifierText = "0"
     , history = Dice.emptyHistory
     , unread = False
+    , flashLatest = False
     }
