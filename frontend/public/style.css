@@ -37,37 +37,42 @@
      `.action-btn--*` variant just sets `--btn-bg` (and optionally
      `--btn-fg` / `--btn-bd`) so swapping a variant's hue is a
      one-line change here rather than a per-variant override. */
-  --color-damage: #d63b3b;
-  --color-heal: #3cb455;
-  --color-temp: #2589e0;
-  --color-condition: #9355e0;
-  --color-btn-blue: #1976d2;
-  --color-btn-green: #2f9e44;
-  --color-btn-red: #c62828;
+  --color-damage: #dc2626;
+  --color-heal: #16a34a;
+  --color-temp: #0284c7;
+  --color-condition: #7c3aed;
+  --color-btn-blue: #2563eb;
+  --color-btn-green: #16a34a;
+  --color-btn-red: #dc2626;
   --color-btn-orange: #d97706;
   --color-dirty-outline: #fff59d;
 
-  /* Soft-tint button variant tokens for the Light theme.  The
-     blue / red / orange variants render as colored text on a
-     12% tinted background with a 24% tinted border — a calmer,
-     more modern look than the heavy filled blocks the dark
-     theme uses.  Hover bumps the bg tint to ~20%.
-     `[data-theme="dark"]` redefines these to the legacy filled
-     pattern below, so the dark theme is unchanged.  Green stays
-     filled in both modes — it's the affirmative-CTA variant
-     and earns the visual weight. */
-  --btn-blue-bg: rgba(25, 118, 210, 0.1);
-  --btn-blue-fg: #1864ab;
-  --btn-blue-bd: rgba(25, 118, 210, 0.32);
-  --btn-blue-bg-hover: rgba(25, 118, 210, 0.18);
-  --btn-red-bg: rgba(198, 40, 40, 0.09);
-  --btn-red-fg: #b02323;
-  --btn-red-bd: rgba(198, 40, 40, 0.3);
-  --btn-red-bg-hover: rgba(198, 40, 40, 0.16);
-  --btn-orange-bg: rgba(217, 119, 6, 0.1);
-  --btn-orange-fg: #b65a06;
-  --btn-orange-bd: rgba(217, 119, 6, 0.3);
-  --btn-orange-bg-hover: rgba(217, 119, 6, 0.18);
+  /* Foreground (text) color for any solid-filled coloured action
+     button — damage / heal / temp / condition / green / and the
+     Light-theme blue / red / orange.  Light-mode pairs the
+     mid-saturated fills with white text for the modern polished-
+     CTA look; the dark-theme block below overrides this back to
+     near-black, which is the established dark-mode appearance. */
+  --card-btn-fg: #ffffff;
+
+  /* Light-theme colored-button tokens.  Solid mid-saturated fills
+     paired with white text — the modern "polished CTA" look on a
+     white surface.  Hover darkens the fill rather than relying on
+     `filter: brightness`, which has limited visible effect on
+     mid-tone surfaces.  Dark theme overrides these below to keep
+     its existing palette + black-on-color text. */
+  --btn-blue-bg: var(--color-btn-blue);
+  --btn-blue-fg: #ffffff;
+  --btn-blue-bd: transparent;
+  --btn-blue-bg-hover: #1d4ed8;
+  --btn-red-bg: var(--color-btn-red);
+  --btn-red-fg: #ffffff;
+  --btn-red-bd: transparent;
+  --btn-red-bg-hover: #b91c1c;
+  --btn-orange-bg: var(--color-btn-orange);
+  --btn-orange-fg: #ffffff;
+  --btn-orange-bd: transparent;
+  --btn-orange-bg-hover: #b45309;
 }
 
 /* Dark theme overrides.  Applied two ways:
@@ -110,20 +115,34 @@
   --color-orange: #ff9a3c;
   --color-blue: #4d9bff;
 
-  /* Dark theme keeps the legacy filled-block button look — solid
-     bg, near-black text.  The `:hover` brightness filter on
-     `.action-btn` does the highlight; hover tokens collapse to
-     the same value so light-only hover overrides don't leak. */
+  /* Restore dark-mode legacy colour values for the row-3 + green
+     buttons — slightly less saturated than the new light-mode
+     values so they don't burn on dark surfaces.  Combined with
+     `--card-btn-fg: #000` below this is the same look the dark
+     theme had before the light-theme overhaul. */
+  --color-damage: #d63b3b;
+  --color-heal: #3cb455;
+  --color-temp: #2589e0;
+  --color-condition: #9355e0;
+  --color-btn-blue: #1976d2;
+  --color-btn-green: #2f9e44;
+  --color-btn-red: #c62828;
+  --color-btn-orange: #d97706;
+  --card-btn-fg: #000;
+
+  /* Hover bg tokens collapse to the same value as the bg so the
+     base `:hover { filter: brightness(1.15) }` does the
+     highlight rather than the light-mode darken-on-hover. */
   --btn-blue-bg: var(--color-btn-blue);
-  --btn-blue-fg: #000;
+  --btn-blue-fg: var(--card-btn-fg);
   --btn-blue-bd: transparent;
   --btn-blue-bg-hover: var(--color-btn-blue);
   --btn-red-bg: var(--color-btn-red);
-  --btn-red-fg: #000;
+  --btn-red-fg: var(--card-btn-fg);
   --btn-red-bd: transparent;
   --btn-red-bg-hover: var(--color-btn-red);
   --btn-orange-bg: var(--color-btn-orange);
-  --btn-orange-fg: #000;
+  --btn-orange-fg: var(--card-btn-fg);
   --btn-orange-bd: transparent;
   --btn-orange-bg-hover: var(--color-btn-orange);
 }
@@ -160,18 +179,27 @@
     --color-orange: #ff9a3c;
     --color-blue: #4d9bff;
 
-    /* Match the explicit dark-theme overrides — solid filled
-       buttons with brightness-on-hover. */
+    /* Match the explicit dark-theme overrides — restore legacy
+       palette + black-on-color text + brightness-on-hover. */
+    --color-damage: #d63b3b;
+    --color-heal: #3cb455;
+    --color-temp: #2589e0;
+    --color-condition: #9355e0;
+    --color-btn-blue: #1976d2;
+    --color-btn-green: #2f9e44;
+    --color-btn-red: #c62828;
+    --color-btn-orange: #d97706;
+    --card-btn-fg: #000;
     --btn-blue-bg: var(--color-btn-blue);
-    --btn-blue-fg: #000;
+    --btn-blue-fg: var(--card-btn-fg);
     --btn-blue-bd: transparent;
     --btn-blue-bg-hover: var(--color-btn-blue);
     --btn-red-bg: var(--color-btn-red);
-    --btn-red-fg: #000;
+    --btn-red-fg: var(--card-btn-fg);
     --btn-red-bd: transparent;
     --btn-red-bg-hover: var(--color-btn-red);
     --btn-orange-bg: var(--color-btn-orange);
-    --btn-orange-fg: #000;
+    --btn-orange-fg: var(--card-btn-fg);
     --btn-orange-bd: transparent;
     --btn-orange-bg-hover: var(--color-btn-orange);
   }
@@ -1255,25 +1283,25 @@ body {
 
 .action-btn--damage {
   --btn-bg: var(--color-damage);
-  --btn-fg: #000;
+  --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
 
 .action-btn--heal {
   --btn-bg: var(--color-heal);
-  --btn-fg: #000;
+  --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
 
 .action-btn--temp {
   --btn-bg: var(--color-temp);
-  --btn-fg: #000;
+  --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
 
 .action-btn--condition {
   --btn-bg: var(--color-condition);
-  --btn-fg: #000;
+  --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
 
@@ -1297,7 +1325,7 @@ body {
 
 .action-btn--green {
   --btn-bg: var(--color-btn-green);
-  --btn-fg: #000;
+  --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
 
