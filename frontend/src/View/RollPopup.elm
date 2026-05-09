@@ -43,4 +43,4 @@ one popup =
         , style "left" (String.fromInt popup.x ++ "px")
         , style "top" (String.fromInt popup.y ++ "px")
         ]
-        [ text ("+" ++ String.fromInt popup.total) ]
+        [ text (String.fromInt popup.total) ]
