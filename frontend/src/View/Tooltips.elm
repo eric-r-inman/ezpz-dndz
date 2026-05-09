@@ -162,7 +162,7 @@ appBarSettings =
 
 quickAddButton : String
 quickAddButton =
-    "Quick-add a creature from the compendium (alpha or CR sort)"
+    "Quick-add a creature from the Compendium"
 
 
 {-| Save split-button trigger when there are no unsaved roster
@@ -170,7 +170,7 @@ changes. See `saveButtonDirty` for the dirty variant.
 -}
 saveButton : String
 saveButton =
-    "Save the encounter to the server or download to your device"
+    "Save the encounter"
 
 
 saveButtonDirty : String
@@ -180,17 +180,17 @@ saveButtonDirty =
 
 loadButton : String
 loadButton =
-    "Load a saved encounter from the server or your device"
+    "Load a saved encounter"
 
 
 reset : String
 reset =
-    "Revert the encounter to its last-saved state and reset round counter to 1"
+    "Revert encounter to its last-saved state and reset round to 1"
 
 
 clear : String
 clear =
-    "Remove every creature and reset round counter to 1"
+    "Remove every creature and reset round to 1"
 
 
 runEncounter : String
@@ -200,7 +200,7 @@ runEncounter =
 
 nextTurn : String
 nextTurn =
-    "Advance to the next creature in initiative order"
+    "Advance to next creature in initiative order"
 
 
 rollDice : String
@@ -224,7 +224,7 @@ lastRollTotal =
 
 sourceUnsaved : String
 sourceUnsaved =
-    "from: (unsaved)"
+    "from file: (unsaved)"
 
 
 xpScopeEnemiesAndNpcs : String
@@ -249,7 +249,7 @@ xpScopeSelectedOnly =
 
 xpLairTotal : String
 xpLairTotal =
-    "Total XP if these creatures are fought in their lair"
+    "Total XP if creature(s) fought in lair"
 
 
 xpFilter : String
@@ -318,27 +318,27 @@ queueSelectShiftClick =
 
 queueMoveUp : String
 queueMoveUp =
-    "Move up in queue (manual; ignores initiative)"
+    "Move up in queue (ignores initiative)"
 
 
 queueMoveDown : String
 queueMoveDown =
-    "Move down in queue (manual; ignores initiative)"
+    "Move down in queue (ignores initiative)"
 
 
 queueMakeActive : String
 queueMakeActive =
-    "Make active creature (does not advance the turn)"
+    "Set as active creature active"
 
 
 queueRemove : String
 queueRemove =
-    "Remove from queue"
+    "Remove from encounter"
 
 
 queueDuplicate : String
 queueDuplicate =
-    "Duplicate creature — pick Exact / Fresh / Minion"
+    "Duplicate creature"
 
 
 
@@ -347,12 +347,12 @@ queueDuplicate =
 
 initiativeManager : String
 initiativeManager =
-    "Click to open the initiative manager"
+    "Initiative manager"
 
 
 showStatBlock : String
 showStatBlock =
-    "Show this creature's stat block in the side panel"
+    "Show stat block"
 
 
 noteAdd : String
@@ -421,7 +421,7 @@ applyCondition =
 
 bloodied : String
 bloodied =
-    "Bloodied — below half hit points"
+    "Bloodied — <50% hp"
 
 
 
@@ -502,7 +502,7 @@ timerCancel =
 
 panelOpenCompendium : String
 panelOpenCompendium =
-    "Open the creature library"
+    "Open Creature Compendium"
 
 
 panelCrCalculator : String
@@ -512,7 +512,7 @@ panelCrCalculator =
 
 panelStatBlockNewWindow : String
 panelStatBlockNewWindow =
-    "Open this creature's stat block in a new window"
+    "Open stat block in new tab"
 
 
 
@@ -530,7 +530,7 @@ compendiumInEncounter =
 
 compendiumAddedFilterOff : String
 compendiumAddedFilterOff =
-    "Show only creatures that have instances in the current encounter"
+    "Show only creatures that have instances in the encounter"
 
 
 compendiumAddedFilterOn : String
@@ -540,17 +540,17 @@ compendiumAddedFilterOn =
 
 compendiumRowSelect : String
 compendiumRowSelect =
-    "Click to select; shift+click to select all (or clear) visible creatures"
+    "Click to select; shift+click to select all (or clear selected) creatures"
 
 
 compendiumInstanceCount : String
 compendiumInstanceCount =
-    "Instances of this creature already in the encounter"
+    "Instances of this creature in the encounter"
 
 
 compendiumAddToEncounter : String
 compendiumAddToEncounter =
-    "Roll initiative and add to the encounter queue"
+    "Roll initiative and add to the encounter"
 
 
 compendiumEdit : String
@@ -570,37 +570,37 @@ compendiumDelete =
 
 compendiumNewCreature : String
 compendiumNewCreature =
-    "Create a new creature from scratch"
+    "Create a new creature"
 
 
 compendiumPasteStatBlock : String
 compendiumPasteStatBlock =
-    "Paste a 5e stat block to import"
+    "Paste a 5e stat block to import into Compendium"
 
 
 compendiumReset : String
 compendiumReset =
-    "Reset the library to the bundled creature set"
+    "Reset Compendium to the bundled creature set (warning: clears custom & imported creatures)"
 
 
 compendiumImport : String
 compendiumImport =
-    "Replace the current library from a server snapshot or a local file"
+    "Replace the current Compenidum with a saved Compendium file"
 
 
 compendiumExport : String
 compendiumExport =
-    "Save the library to the server or download to your device"
+    "Save the current Compendium"
 
 
 compendiumExportDirty : String
 compendiumExportDirty =
-    "Save the library to the server or download to your device (unsaved changes)"
+    "Save the current Compendium (unsaved changes)"
 
 
 compendiumClear : String
 compendiumClear =
-    "Clear all creatures, or just the selected ones"
+    "Clear all creatures, or just the checked ones"
 
 
 compendiumClearSelectedNone : String
@@ -610,7 +610,7 @@ compendiumClearSelectedNone =
 
 compendiumClearSelectedReady : String
 compendiumClearSelectedReady =
-    "Remove the checked creatures"
+    "Remove checked creatures"
 
 
 
@@ -639,7 +639,7 @@ compendiumEditRemoveSection =
 
 compendiumEditDeleteCreature : String
 compendiumEditDeleteCreature =
-    "Delete this creature from the compendium"
+    "Delete this creature from Compendium"
 
 
 
@@ -648,7 +648,7 @@ compendiumEditDeleteCreature =
 
 saveRowOverwrite : String
 saveRowOverwrite =
-    "Overwrite this save with the current encounter"
+    "Overwrite this save with current encounter"
 
 
 saveRowRename : String
@@ -668,7 +668,7 @@ loadRowEncounter =
 
 loadRowCompendium : String
 loadRowCompendium =
-    "Load this compendium"
+    "Load this Compendium"
 
 
 
@@ -716,17 +716,17 @@ initRollStandard =
 
 initRollAdvantage : String
 initRollAdvantage =
-    "Roll 2d20, keep highest, + initiative bonus (5e advantage)"
+    "Roll 2d20, keep highest, + initiative bonus"
 
 
 initRollDisadvantage : String
 initRollDisadvantage =
-    "Roll 2d20, keep lowest, + initiative bonus (5e disadvantage)"
+    "Roll 2d20, keep lowest, + initiative bonus"
 
 
 initSelectedNone : String
 initSelectedNone =
-    "No creatures are selected — tick the row 1 checkbox on the cards you want first"
+    "No creatures are selected — tick the checkbox for the creatures you want first"
 
 
 initSelectedOne : String
@@ -745,7 +745,7 @@ quickAddSortToAlpha =
 
 quickAddSortToCr : String
 quickAddSortToCr =
-    "Switch to challenge-rating order"
+    "Switch to challenge rating order"
 
 
 
@@ -771,7 +771,7 @@ toastDismiss =
 
 sourceFromSaved : String -> String
 sourceFromSaved name =
-    "from: " ++ name
+    "from file: " ++ name
 
 
 {-| Card row 2 status toggle (concentrate / hide / dodge etc.) —
@@ -884,7 +884,7 @@ statBlockRoll shown =
 -}
 quickAddCreatureRow : String -> String
 quickAddCreatureRow creatureName =
-    "Add " ++ creatureName ++ " to the encounter"
+    "Add " ++ creatureName ++ " to encounter"
 
 
 {-| Initiative modal "Apply & Sort: Selected" button — title

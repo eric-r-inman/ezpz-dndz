@@ -39,39 +39,36 @@ the dice-roll cluster in the panel header.
 
 ** ~quickAddButton~ — ➕ Quick Add
 - attached to: top-left button in the controls grid
-- current text: "Quick-add a creature from the compendium (alpha or
-  CR sort)"
+- current text: "Quick-add a creature from the Compendium"
 
 ** ~saveButton~ / ~saveButtonDirty~ — 💾 Save ▾ split-button
 - attached to: Save split-button trigger.  ~saveButtonDirty~ wins
   whenever there are unsaved roster changes (the trigger also gets
   a yellow outline).
-- current text (clean): "Save the encounter to the server or
-  download to your device"
+- current text (clean): "Save the encounter"
 - current text (dirty): "Save the encounter (unsaved roster
   changes)"
 
 ** ~loadButton~ — 📁 Load ▾ split-button
 - attached to: Load split-button trigger
-- current text: "Load a saved encounter from the server or your
-  device"
+- current text: "Load a saved encounter"
 
 ** ~runEncounter~ / ~nextTurn~ — green primary button
 - attached to: middle button on the bottom row.  Reads "▶ Run
   Encounter" before round 1; "⏭ Next Turn" once combat is live.
 - current text (round 0): "Begin combat — round 1, highest-
   initiative creature acts"
-- current text (running): "Advance to the next creature in
+- current text (running): "Advance to next creature in
   initiative order"
 
 ** ~reset~ — ⟲ Reset
 - attached to: orange button on the bottom row
-- current text: "Revert the encounter to its last-saved state and
-  reset round counter to 1"
+- current text: "Revert encounter to its last-saved state and
+  reset round to 1"
 
 ** ~clear~ — 🗑 Clear
 - attached to: red button on the bottom row
-- current text: "Remove every creature and reset round counter to 1"
+- current text: "Remove every creature and reset round to 1"
 
 ** ~rollDice~ / ~rollDiceUnread~ — 🎲 Roll
 - attached to: green Roll button in the panel header
@@ -91,8 +88,8 @@ readouts, condition list, XP total.
 
 ** ~sourceFromSaved~ / ~sourceUnsaved~ — ⓘ source-of-truth icon
 - attached to: small ⓘ at the start of the bar
-- current text (loaded encounter): "from: <name>"
-- current text (no save attached): "from: (unsaved)"
+- current text (loaded encounter): "from file: <name>"
+- current text (no save attached): "from file: (unsaved)"
 
 ** ~xpScopeEnemiesAndNpcs~ / ~xpScopeEnemiesOnly~ /
    ~xpScopeNpcsOnly~ / ~xpScopeSelectedOnly~
@@ -105,7 +102,7 @@ readouts, condition list, XP total.
 ** ~xpLairTotal~
 - attached to: "(N w/Lair)" badge that appears next to the XP total
   when at least one creature has a lair-XP value.
-- current text: "Total XP if these creatures are fought in their
+- current text: "Total XP if creature(s) fought in
   lair"
 
 ** ~xpFilter~
@@ -147,31 +144,31 @@ The left and right rails on each card — the queue-mutation buttons.
 
 ** ~queueMoveUp~ / ~queueMoveDown~
 - attached to: ↑ / ↓ buttons on the left rail
-- current text: "Move up in queue (manual; ignores initiative)" /
+- current text: "Move up in queue (ignores initiative)" /
   "Move down in queue (manual; ignores initiative)"
 
 ** ~queueMakeActive~
 - attached to: → "make active" button on the left rail
-- current text: "Make active creature (does not advance the turn)"
+- current text: "Set as active creature"
 
 ** ~queueRemove~
 - attached to: × button on the right rail
-- current text: "Remove from queue"
+- current text: "Remove from encounter"
 
 ** ~queueDuplicate~
 - attached to: ⧉ button on the right rail
-- current text: "Duplicate creature — pick Exact / Fresh / Minion"
+- current text: "Duplicate creature"
 
 * Creature card — row 1 (initiative + name + note)
 
 ** ~initiativeManager~
 - attached to: initiative circle on the left of each card
-- current text: "Click to open the initiative manager"
+- current text: "Initiative manager"
 
 ** ~showStatBlock~
 - attached to: creature name (only when the creature has a
   compendium back-reference)
-- current text: "Show this creature's stat block in the side panel"
+- current text: "Show stat block"
 
 ** ~noteAdd~ / ~noteEdit~
 - attached to: pencil icon next to the name (Add) and the note
@@ -189,7 +186,7 @@ The left and right rails on each card — the queue-mutation buttons.
 ** ~bloodied~
 - attached to: bloodied marker (small drop icon) when current HP <
   half max
-- current text: "Bloodied — below half hit points"
+- current text: "Bloodied (<50% hp)"
 
 ** ~statusOnTip~ / ~statusOffTip~ /helpers/
 - attached to: row 2 status toggles (concentrate / hide / dodge,
@@ -264,7 +261,6 @@ Only renders when the creature is at 0 HP.
 
 ** ~chipClickToEdit~ / ~chipDismiss~ / ~chipRemoveModalRow~
 - attached to: chip-primitive label / chip dismiss × / per-row
-  remove button inside the Condition modal
 - current text: "Click to edit" / "Dismiss" / "Remove this
   condition"
 
@@ -281,7 +277,7 @@ Only renders when the creature is at 0 HP.
 
 ** ~panelOpenCompendium~
 - attached to: 📖 Open button on the panel toolbar
-- current text: "Open the creature library"
+- current text: "Open Creature Compendium"
 
 ** ~panelCrCalculator~
 - attached to: ⚔️ CR Calculator (currently disabled)
@@ -289,7 +285,7 @@ Only renders when the creature is at 0 HP.
 
 ** ~panelStatBlockNewWindow~
 - attached to: ↗ icon on the pinned stat block
-- current text: "Open this creature's stat block in a new window"
+- current text: "Open stat block in new tab"
 
 * Stat block (right pane + popout)
 
@@ -314,32 +310,32 @@ Only renders when the creature is at 0 HP.
 ** ~compendiumAddedFilterOff~ / ~compendiumAddedFilterOn~
 - attached to: "Added" toggle in the filter bar
 - current text (off): "Show only creatures that have instances in
-  the current encounter"
+  the encounter"
 - current text (on): "Showing only creatures with instances in the
   encounter — click to clear"
 
 ** ~compendiumRowSelect~
 - attached to: row checkbox in the left list
 - current text: "Click to select; shift+click to select all (or
-  clear) visible creatures"
+  clear selected) creatures"
 
 ** ~compendiumInstanceCount~
 - attached to: "[N] in Encounter" readout on the right pane
-- current text: "Instances of this creature already in the
+- current text: "Instances of this creature in the
   encounter"
 
 ** ~compendiumAddToEncounter~ / ~compendiumEdit~ /
    ~compendiumDuplicate~ / ~compendiumDelete~
 - attached to: action toolbar above the right-pane stat block
-- current text: "Roll initiative and add to the encounter queue" /
+- current text: "Roll initiative and add to the encounter" /
   "Edit this creature" / "Duplicate this creature in the
   compendium" / "Delete this creature from the compendium"
 
 ** ~compendiumNewCreature~ / ~compendiumPasteStatBlock~
 - attached to: + New / 📋 Paste Stat Block buttons in the filter
   bar
-- current text: "Create a new creature from scratch" / "Paste a 5e
-  stat block to import"
+- current text: "Create a new creature" / "Paste a 5e
+  stat block to import into Compendium"
 
 ** ~compendiumImport~ — 📥 Import ▾ trigger
 - current text: "Replace the current library from a server snapshot
