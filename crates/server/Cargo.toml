@@ -16,39 +16,33 @@ name = "ezpz-dndz-server"
 path = "src/main.rs"
 
 [dependencies]
+rust-template-foundation = { workspace = true, features = ["auth"] }
 ezpz-dndz-lib = { workspace = true }
 clap = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-toml = { workspace = true }
 thiserror = { workspace = true }
 tap = { workspace = true }  # For method chaining, reduces superfluous locals
 axum = { workspace = true }
 tokio = { workspace = true }
 tokio-listener = { workspace = true }
-tower = { workspace = true }
-tower-http = { workspace = true }
-prometheus = { workspace = true }
 aide = { workspace = true }
 schemars = { workspace = true }
-sd-notify = { workspace = true }
-openidconnect = { workspace = true }
-reqwest = { workspace = true }
-tower-sessions = { workspace = true }
 uuid = { workspace = true }
 
-# tracing-journald connects to the systemd journal socket; unix-only.
-[target.'cfg(unix)'.dependencies]
-tracing-journald = { workspace = true }
+# Required by foundation's `impl_server_state!` — the macro emits
+# `FromRef` impls that name `::prometheus::Registry` and
+# `::openidconnect::core::CoreClient` directly, so they have to be
+# resolvable from this crate's namespace.
+prometheus = { workspace = true }
+openidconnect = { workspace = true }
 
 [dev-dependencies]
-openidconnect = { workspace = true }
 prometheus = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
-tower-sessions = { workspace = true }
+tower = { workspace = true }
 
 [lints]
 workspace = true
