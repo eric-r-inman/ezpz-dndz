@@ -1,5 +1,10 @@
 use std::{path::PathBuf, process::Command};
 
+// `allow-expect-in-tests` only covers items inside `#[test]` /
+// `#[cfg(test)]` modules; this helper is at crate scope, hence the
+// localized override.  Any failure here means the test harness is
+// fundamentally broken — panicking is the correct response.
+#[allow(clippy::expect_used)]
 fn get_binary_path() -> PathBuf {
   let mut path =
     std::env::current_exe().expect("Failed to get current executable path");

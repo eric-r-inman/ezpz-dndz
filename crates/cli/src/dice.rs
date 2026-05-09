@@ -33,6 +33,9 @@ pub enum DiceCliError {
 
   #[error("Dice-history file at {path} is not a JSON array")]
   NotAnArray { path: PathBuf },
+
+  #[error("Failed to serialize dice-history slice to JSON: {0}")]
+  SerializeError(#[source] serde_json::Error),
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli dice <...>`.
@@ -118,7 +121,7 @@ fn tail(path: &Path, n: usize) -> Result<(), DiceCliError> {
   let take = n.min(total);
   let slice: Vec<&Value> = rolls.iter().take(take).collect();
   let pretty = serde_json::to_string_pretty(&slice)
-    .expect("serde_json::Value array is always serializable");
+    .map_err(DiceCliError::SerializeError)?;
   println!("{pretty}");
   Ok(())
 }

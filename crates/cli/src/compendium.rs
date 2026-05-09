@@ -194,10 +194,8 @@ fn show(path: &Path, id: &str) -> Result<(), CompendiumCliError> {
 
   match found {
     Some(creature) => {
-      // Pretty-print JSON; unwrap is safe since the type is
-      // serializable and we just round-tripped it from disk.
       let pretty = serde_json::to_string_pretty(creature)
-        .expect("Compendium Creature is serializable");
+        .map_err(CompendiumCliError::SerializeError)?;
       println!("{pretty}");
       Ok(())
     }

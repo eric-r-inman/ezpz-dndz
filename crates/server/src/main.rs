@@ -128,6 +128,12 @@ fn create_app(state: AppState) -> Router {
     .layer(TraceLayer::new_for_http())
 }
 
+// Slated for deletion in the Phase-4 foundation migration, where
+// `rust_template_foundation::server::shutdown::shutdown_signal`
+// replaces this hand-rolled handler.  The localized `expect` allow is
+// scoped here so the rest of the crate can still enforce the
+// workspace-wide ban.
+#[allow(clippy::expect_used)]
 async fn shutdown_signal() {
   let ctrl_c = async {
     signal::ctrl_c()

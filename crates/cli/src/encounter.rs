@@ -16,16 +16,19 @@ use tracing::info;
 #[derive(Debug, Error)]
 pub enum EncounterCliError {
   #[error("Failed to read encounter file at {path}: {source}")]
-  ReadError {
+  Read {
     path: PathBuf,
     source: std::io::Error,
   },
 
   #[error("Failed to parse encounter JSON at {path}: {source}")]
-  ParseError {
+  Parse {
     path: PathBuf,
     source: serde_json::Error,
   },
+
+  #[error("Failed to serialize encounter to JSON: {0}")]
+  Serialize(#[source] serde_json::Error),
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli encounter <...>`.
@@ -58,13 +61,13 @@ impl EncounterCommand {
 
 fn read_value(path: &Path) -> Result<Value, EncounterCliError> {
   let raw = std::fs::read_to_string(path).map_err(|source| {
-    EncounterCliError::ReadError {
+    EncounterCliError::Read {
       path: path.to_path_buf(),
       source,
     }
   })?;
 
-  serde_json::from_str(&raw).map_err(|source| EncounterCliError::ParseError {
+  serde_json::from_str(&raw).map_err(|source| EncounterCliError::Parse {
     path: path.to_path_buf(),
     source,
   })
@@ -73,7 +76,7 @@ fn read_value(path: &Path) -> Result<Value, EncounterCliError> {
 fn show(path: &Path) -> Result<(), EncounterCliError> {
   let value = read_value(path)?;
   let pretty = serde_json::to_string_pretty(&value)
-    .expect("serde_json::Value is always serializable");
+    .map_err(EncounterCliError::Serialize)?;
   println!("{pretty}");
   Ok(())
 }

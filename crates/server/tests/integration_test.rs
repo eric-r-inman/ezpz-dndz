@@ -1,3 +1,10 @@
+// Integration tests use `expect`/`unwrap` liberally in setup helpers
+// (`stub_state_*`).  `allow-expect-in-tests` only covers items inside
+// `#[test]` / `#[cfg(test)]`; this file's helpers are at crate scope,
+// hence the file-level overrides.  Test failure via panic is the
+// desired signal here.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use axum::{
   body::Body,
   http::{Request, StatusCode},

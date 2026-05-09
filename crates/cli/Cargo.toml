@@ -26,3 +26,6 @@ uuid = { workspace = true }
 # pulls open-licensed monster JSON from Open5e in a one-shot
 # fashion.  No tokio runtime needed; blocking is fine for CLI use.
 reqwest = { workspace = true, features = ["blocking", "json"] }
+
+[lints]
+workspace = true

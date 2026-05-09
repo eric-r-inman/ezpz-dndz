@@ -60,6 +60,9 @@ pub enum AppStateError {
 
   #[error("Failed to load live-encounter store: {0}")]
   EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
+
+  #[error("Failed to set up Prometheus request-counter metrics: {0}")]
+  MetricsInit(#[from] prometheus::Error),
 }
 
 impl AppState {
@@ -73,11 +76,8 @@ impl AppState {
   pub async fn init(config: &Config) -> Result<Self, AppStateError> {
     let registry = Registry::new();
     let request_counter =
-      IntCounter::new("http_requests_total", "Total HTTP requests")
-        .expect("Failed to create counter");
-    registry
-      .register(Box::new(request_counter.clone()))
-      .expect("Failed to register counter");
+      IntCounter::new("http_requests_total", "Total HTTP requests")?;
+    registry.register(Box::new(request_counter.clone()))?;
 
     let oidc_client = match &config.oidc {
       Some(oidc) => {

@@ -8,6 +8,11 @@
 //!    ADD-ONLY merge adds the full bundle alongside customs.
 //! 4. `reset_to_bundled` → bumps the seed file to current.
 
+// File-level override: `allow-expect-in-tests` only covers items
+// inside `#[test]` / `#[cfg(test)]`; helpers at crate scope here use
+// `expect` for setup that should panic on failure.
+#![allow(clippy::expect_used, clippy::unwrap_used)]
+
 use ezpz_dndz_server::compendium::CompendiumStore;
 use serde_json::json;
 use std::path::PathBuf;
