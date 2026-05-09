@@ -879,7 +879,7 @@ body {
 }
 
 .creature-name--default {
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 /* Compendium-linked creature name: hover-underline cues that
@@ -1189,9 +1189,17 @@ body {
 }
 
 .action-btn {
-  --btn-bg: #111111;
+  /* Defaults for the unvariant `.action-btn` (used by Cancel /
+     Close buttons throughout): a transparent fill bordered by
+     the theme's hairline border colour and rendered with the
+     theme's text colour.  Reads as a calm "neutral" affordance
+     in both light and dark.  The colour variants (`--blue`,
+     `--green`, etc.) override `--btn-bg` / `--btn-fg` /
+     `--btn-bd` themselves, so this default is a safety net for
+     buttons that opt out of a variant. */
+  --btn-bg: transparent;
   --btn-fg: var(--color-text);
-  --btn-bd: rgba(255, 255, 255, 0.18);
+  --btn-bd: var(--color-border);
   appearance: none;
   border: 1px solid var(--btn-bd);
   border-radius: var(--radius-sm);
@@ -1220,6 +1228,14 @@ body {
 
 .action-btn:hover {
   filter: brightness(1.15);
+}
+
+/* Unvariant `.action-btn` (Cancel / Close): brightness has no
+   effect on its transparent base, so give it an explicit hover
+   bg.  The `:not()` selector means "any action-btn that doesn't
+   also have an `action-btn--*` modifier class". */
+.action-btn:not([class*="action-btn--"]):hover {
+  background: var(--color-surface-2);
 }
 
 .action-btn:active {
@@ -2141,7 +2157,11 @@ body {
 
 .die-btn {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  /* Die-buttons sit on solid colored backgrounds (set per-variant
+     below) — the inner hairline border is just a soft "lift" cue.
+     `currentColor` at low alpha works on whichever the variant's
+     text colour is, in both light and dark themes. */
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 12px 6px;
@@ -2692,7 +2712,7 @@ body {
 }
 
 .init-circle--clickable:hover {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .init-circle--clickable:active {
@@ -2767,7 +2787,7 @@ body {
    note IS the edit affordance. */
 .creature-note {
   font-style: italic;
-  color: #ffffff;
+  color: var(--color-text);
   font-weight: 500;
   font-size: 0.9rem;
   white-space: nowrap;
@@ -2789,8 +2809,8 @@ body {
 }
 
 .creature-note--clickable:hover {
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  background: var(--color-accent-soft);
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .creature-note--clickable:focus-visible {
@@ -3040,12 +3060,14 @@ body {
 }
 
 /* Card row 3 memo pill: shown in place of the 📝 button when a
-   memo is set. White text per spec; the × dismisses the memo
-   and restores the icon. */
+   memo is set.  Pill bg + border come from theme tokens so the
+   pill reads as a soft-bordered surface in both light and dark
+   themes (was hardcoded white-on-white, invisible on the light
+   theme's white card surface). */
 .memo-pill {
   padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   max-width: 200px;
 }
@@ -3057,7 +3079,7 @@ body {
   padding: 0;
   margin: 0;
   font: inherit;
-  color: #ffffff;
+  color: var(--color-text);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -3124,7 +3146,7 @@ body {
 
 .dice-last-total {
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-text);
   font-size: 1.05rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
