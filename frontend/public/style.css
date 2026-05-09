@@ -3182,29 +3182,53 @@ body {
   text-align: right;
 }
 
-/* Yellow strobe-flash on the panel-header "last roll total"
+/* Hard on/off blink on the panel-header "last roll total"
    readout whenever a stat-block roll lands a floating popup.
-   Three quick on/off pulses over 700ms read as a "flashing"
-   tint rather than a smooth fade.  Duration matches
+   Three visible/invisible cycles over 700ms — sharp opacity
+   transitions (adjacent keyframes 1% apart, `linear` timing)
+   so the text reads as actually disappearing and reappearing
+   rather than smoothly tinting.  Duration matches
    `Update.Dice.flashDurationMs` so the CSS resting state
    arrives just as Elm clears the flag. */
 .dice-last-total--flash {
-  animation: dice-last-total-flash 0.7s ease-out;
+  animation: dice-last-total-blink 0.7s linear;
 }
 
-@keyframes dice-last-total-flash {
+@keyframes dice-last-total-blink {
   0%,
-  25%,
-  55%,
-  100% {
-    color: var(--color-text);
-    text-shadow: none;
-  }
-  12%,
-  40%,
-  70% {
+  14% {
+    opacity: 1;
     color: #facc15;
     text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+  }
+  15%,
+  28% {
+    opacity: 0;
+  }
+  29%,
+  42% {
+    opacity: 1;
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+  }
+  43%,
+  56% {
+    opacity: 0;
+  }
+  57%,
+  70% {
+    opacity: 1;
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
+  }
+  71%,
+  84% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+    color: var(--color-text);
+    text-shadow: none;
   }
 }
 
