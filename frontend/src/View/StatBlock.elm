@@ -37,6 +37,7 @@ import Dice
 import Html exposing (Html, button, div, em, hr, p, span, strong, text)
 import Html.Attributes exposing (class, title)
 import Html.Events exposing (onClick)
+import Json.Decode as Decode
 import View.Tooltips as Tooltips
 
 
@@ -47,10 +48,12 @@ import View.Tooltips as Tooltips
 {-| Render a creature stat block.
 
   - `onRoll` — handler for clickable inline dice notation found
-    in feature descriptions (e.g. `"7 (1d8 + 3)"`). The first
-    argument is the creature's display name; the second is the
-    parsed `Dice.Expression`. Pass `RollFromStatBlock` from
-    `Main` to get the same roll-and-log behavior used elsewhere.
+    in feature descriptions (e.g. `"7 (1d8 + 3)"`). Arguments:
+    creature display name, parsed `Dice.Expression`, and the
+    `clientX` / `clientY` of the mouse at click time (so the
+    spawned floating popup anchors to where the user clicked).
+    Pass `RollFromStatBlock` from `Main` to get the same
+    roll-and-log behavior used elsewhere.
   - `onAbilityClick` — handler for clicking one of the six
     ability cells (STR / DEX / CON / INT / WIS / CHA). Receives
     the creature's display name, the ability label (e.g. `"STR"`),
@@ -61,7 +64,7 @@ import View.Tooltips as Tooltips
 
 -}
 view :
-    (String -> Dice.Expression -> msg)
+    (String -> Dice.Expression -> Int -> Int -> msg)
     -> (String -> String -> Int -> msg)
     -> Creature
     -> Html msg
@@ -436,7 +439,7 @@ proficiencyLine n =
 -- ── TRAITS ───────────────────────────────────────────────────────────────────
 
 
-viewTraits : (String -> Dice.Expression -> msg) -> Creature -> List (Html msg)
+viewTraits : (String -> Dice.Expression -> Int -> Int -> msg) -> Creature -> List (Html msg)
 viewTraits onRoll c =
     if List.isEmpty c.traits then
         []
@@ -449,7 +452,7 @@ viewTraits onRoll c =
 -- ── ACTION-LIKE GROUPS (Actions / Bonus Actions / Reactions) ─────────────────
 
 
-viewActionGroup : (String -> Dice.Expression -> msg) -> String -> String -> List Feature -> List (Html msg)
+viewActionGroup : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> String -> List Feature -> List (Html msg)
 viewActionGroup onRoll creatureName heading features =
     if List.isEmpty features then
         []
@@ -468,7 +471,7 @@ sectionHeading t =
 -- ── LEGENDARY / LAIR / REGIONAL ──────────────────────────────────────────────
 
 
-viewLegendaryActions : (String -> Dice.Expression -> msg) -> String -> Maybe LegendaryActions -> List (Html msg)
+viewLegendaryActions : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe LegendaryActions -> List (Html msg)
 viewLegendaryActions onRoll creatureName maybeLa =
     case maybeLa of
         Nothing ->
@@ -480,7 +483,7 @@ viewLegendaryActions onRoll creatureName maybeLa =
                 :: List.map (viewLegendaryOption onRoll creatureName) la.options
 
 
-viewLegendaryOption : (String -> Dice.Expression -> msg) -> String -> LegendaryOption -> Html msg
+viewLegendaryOption : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> LegendaryOption -> Html msg
 viewLegendaryOption onRoll creatureName opt =
     p [ class "statblock__feature" ]
         (strong []
@@ -498,7 +501,7 @@ viewLegendaryOption onRoll creatureName opt =
         )
 
 
-viewLairActions : (String -> Dice.Expression -> msg) -> String -> Maybe LairActions -> List (Html msg)
+viewLairActions : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe LairActions -> List (Html msg)
 viewLairActions onRoll creatureName maybeLa =
     case maybeLa of
         Nothing ->
@@ -510,7 +513,7 @@ viewLairActions onRoll creatureName maybeLa =
                 :: List.map (viewFeature onRoll creatureName) la.options
 
 
-viewRegionalEffects : (String -> Dice.Expression -> msg) -> String -> Maybe RegionalEffects -> List (Html msg)
+viewRegionalEffects : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe RegionalEffects -> List (Html msg)
 viewRegionalEffects onRoll creatureName maybeRe =
     case maybeRe of
         Nothing ->
@@ -659,7 +662,7 @@ viewCustomSection cs =
 -- ── FEATURE / SEGMENT ────────────────────────────────────────────────────────
 
 
-viewFeature : (String -> Dice.Expression -> msg) -> String -> Feature -> Html msg
+viewFeature : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Feature -> Html msg
 viewFeature onRoll creatureName f =
     p [ class "statblock__feature" ]
         (strong []
@@ -694,7 +697,7 @@ usageSuffix maybeUsage =
             " (" ++ String.fromInt n ++ "/Long Rest)"
 
 
-viewSegment : (String -> Dice.Expression -> msg) -> String -> Dice.Segment -> Html msg
+viewSegment : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Dice.Segment -> Html msg
 viewSegment onRoll creatureName segment =
     case segment of
         Dice.Literal s ->
@@ -703,7 +706,11 @@ viewSegment onRoll creatureName segment =
         Dice.DiceLink shown expr ->
             button
                 [ class "dice-link"
-                , onClick (onRoll creatureName expr)
+                , Html.Events.on "click"
+                    (Decode.map2 (onRoll creatureName expr)
+                        (Decode.field "clientX" Decode.int)
+                        (Decode.field "clientY" Decode.int)
+                    )
                 , title (Tooltips.statBlockRoll shown)
                 ]
                 [ text shown ]

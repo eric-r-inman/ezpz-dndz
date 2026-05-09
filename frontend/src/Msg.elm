@@ -324,7 +324,11 @@ type Msg
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
-    | RollFromStatBlock String Dice.Expression
+    | RollFromStatBlock String Dice.Expression Int Int
+      -- (creatureName, expression, clientX, clientY at click time)
+    | StatBlockRollLanded Int Int Dice.Roll
+      -- (clientX, clientY captured at click, the resolved roll)
+    | RollPopupExpired Int
       -- HP change modal
     | HpChangeOpen String HpKind
     | HpChangeClose

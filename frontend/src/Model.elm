@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -342,5 +342,24 @@ type alias Model =
     , controlMenu : Maybe ControlMenu
     , toasts : List Toast
     , nextToastId : Int
+    , rollPopups : List RollPopup
+    , nextRollPopupId : Int
     , preferences : Preferences
+    }
+
+
+{-| Floating "+N" popup spawned at the cursor when an inline
+dice-link in a creature stat block is clicked. Animated up + out
+via CSS; expired by a `Process.sleep` Msg matched on `id`.
+
+`x` / `y` are captured at click time from the DOM event's
+`clientX` / `clientY`, so the popup anchors to where the user
+clicked even if they've moved the mouse since.
+
+-}
+type alias RollPopup =
+    { id : Int
+    , x : Int
+    , y : Int
+    , total : Int
     }

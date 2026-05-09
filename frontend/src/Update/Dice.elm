@@ -17,6 +17,8 @@ module Update.Dice exposing
     , rollFromInput
     , rollFromStatBlock
     , rollLanded
+    , rollPopupExpired
+    , statBlockRollLanded
     )
 
 {-| Update branches for the dice roller modal: opening / closing,
@@ -34,8 +36,10 @@ The dice modal is always present in the model (no `Maybe`), so
 import Dice
 import Effects
 import Http
-import Model exposing (Model)
+import Model exposing (Model, RollPopup)
 import Msg exposing (Msg(..))
+import Process
+import Task
 import Ui.Dice exposing (DiceUi)
 
 
@@ -250,14 +254,74 @@ history and the panel's Roll button picks up its "unread"
 indicator so the user can open the log when they want to see it.
 The source is tagged "Stat block" with the creature name so it
 shows up in the history as "Stat block → Brakka, Ogre Brute".
+
+`x` / `y` are the click position captured from the DOM event so
+the spawned floating popup can anchor to where the user clicked.
+The result lands in `StatBlockRollLanded` (rather than the shared
+`DiceRollLanded`) so we know to spawn a popup; manual rolls in
+the dice modal route through `DiceRollLanded` as before.
+
 -}
-rollFromStatBlock : String -> Dice.Expression -> Model -> ( Model, Cmd Msg )
-rollFromStatBlock creatureName expr model =
+rollFromStatBlock : String -> Dice.Expression -> Int -> Int -> Model -> ( Model, Cmd Msg )
+rollFromStatBlock creatureName expr x y model =
     ( model
-    , Dice.rollCmd DiceRollLanded
+    , Dice.rollCmd (StatBlockRollLanded x y)
         { feature = "Stat block", target = Just creatureName }
         expr
     )
+
+
+{-| Result handler for stat-block dice-link clicks. Pushes the
+roll to history (same as `rollLanded` for manual rolls) AND
+spawns a floating "+N" popup at the captured cursor position.
+The popup is auto-cleaned via a `Process.sleep` Msg; the duration
+matches the CSS animation length so the DOM node stays alive
+through the full fade-out.
+-}
+statBlockRollLanded : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+statBlockRollLanded x y roll model =
+    let
+        popup : RollPopup
+        popup =
+            { id = model.nextRollPopupId
+            , x = x
+            , y = y
+            , total = roll.total
+            }
+
+        spawned =
+            { model
+                | rollPopups = popup :: model.rollPopups
+                , nextRollPopupId = model.nextRollPopupId + 1
+            }
+
+        expireCmd =
+            Process.sleep popupLifetimeMs
+                |> Task.perform (\_ -> RollPopupExpired popup.id)
+    in
+    ( Effects.pushDiceRoll roll spawned
+    , Cmd.batch [ Effects.persistDiceRoll roll, expireCmd ]
+    )
+
+
+{-| Drop the named popup from the model. Fired by the
+`Process.sleep` chain `popupLifetimeMs` after the popup spawns,
+so the model doesn't accumulate stale popups indefinitely.
+-}
+rollPopupExpired : Int -> Model -> ( Model, Cmd Msg )
+rollPopupExpired id model =
+    ( { model | rollPopups = List.filter (\p -> p.id /= id) model.rollPopups }
+    , Cmd.none
+    )
+
+
+{-| Roll-popup lifetime in milliseconds. Must match the CSS
+`animation-duration` on `.roll-popup` so the DOM node stays
+alive through the full float-and-fade animation.
+-}
+popupLifetimeMs : Float
+popupLifetimeMs =
+    1200
 
 
 {-| Parse a string into an int, clamping to `lo..hi` and falling

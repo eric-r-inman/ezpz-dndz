@@ -109,6 +109,7 @@ import View.Modal.QuickAdd
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
+import View.RollPopup
 import View.StatBlock
 import View.Toast
 import View.Workspace
@@ -354,6 +355,8 @@ init flags url key =
       , controlMenu = Nothing
       , toasts = []
       , nextToastId = 0
+      , rollPopups = []
+      , nextRollPopupId = 0
       , preferences = prefs
       }
       -- Always fetch the persisted dice history and the compendium
@@ -522,8 +525,14 @@ updateInner msg model =
         DiceClearResponse result ->
             Update.Dice.clearResponse result model
 
-        RollFromStatBlock creatureName expr ->
-            Update.Dice.rollFromStatBlock creatureName expr model
+        RollFromStatBlock creatureName expr x y ->
+            Update.Dice.rollFromStatBlock creatureName expr x y model
+
+        StatBlockRollLanded x y roll ->
+            Update.Dice.statBlockRollLanded x y roll model
+
+        RollPopupExpired id ->
+            Update.Dice.rollPopupExpired id model
 
         -- HP change modal lifecycle
         HpChangeOpen target kind ->
@@ -1328,6 +1337,7 @@ view model =
             , View.Modal.QuickAdd.view model
             , View.Modal.Duplicate.view model
             , View.Toast.list model.toasts
+            , View.RollPopup.list model.rollPopups
             , View.Audio.ringer model
             ]
         ]

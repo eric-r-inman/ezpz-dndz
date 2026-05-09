@@ -4569,3 +4569,50 @@ body {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* Floating roll-result popup spawned at the cursor when an
+   inline dice-link in a stat block is clicked.  Bright yellow
+   "+N" floats up while fading out — the classic damage-popup
+   pattern.  Each popup is a `position: fixed` element anchored
+   at the captured `clientX` / `clientY` from the click.  The
+   keyframe translates the element up by ~60px and fades opacity
+   to 0 over 1.2s; `pointer-events: none` keeps it from
+   intercepting subsequent clicks; `z-index: 9999` puts it above
+   modals so a click on a stat-block dice link inside the
+   compendium browser still reads as a popup. */
+.roll-popup-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.roll-popup {
+  position: fixed;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #facc15;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px rgba(250, 204, 21, 0.35);
+  pointer-events: none;
+  letter-spacing: 0.02em;
+  transform: translate(-50%, -100%);
+  animation: roll-popup-float 1.2s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes roll-popup-float {
+  0% {
+    transform: translate(-50%, -100%) translateY(0);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(-50%, -100%) translateY(-12px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -100%) translateY(-72px);
+    opacity: 0;
+  }
+}
