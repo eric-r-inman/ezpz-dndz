@@ -593,12 +593,18 @@ type Msg
     | QuickAddClose
     | QuickAddSortToggle
     | QuickAddPick String
-      -- Saving-throw modal triggered from compendium ability cells
-    | AbilitySaveOpen String String Int
-      -- (creatureName, abilityLabel, saveBonus)
+      -- Saving-throw modal triggered from compendium ability cells.
+      -- The two `Int`s on `AbilitySaveOpen` are the `clientX` /
+      -- `clientY` of the click on the ability cell; they ride
+      -- through the modal so the floating roll-result popup can
+      -- anchor at the cell when the dice eventually land.
+    | AbilitySaveOpen String String Int Int Int
+      -- (creatureName, abilityLabel, saveBonus, clickX, clickY)
     | AbilitySaveClose
     | AbilitySaveRoll RollMode
-    | AbilitySaveLanded Dice.Roll
+    | AbilitySaveLanded Int Int Dice.Roll
+      -- (clickX, clickY captured at original ability-cell click,
+      --  the resolved roll)
     | EncounterControlConfirm
     | EncounterControlCancel
     | EncounterRun

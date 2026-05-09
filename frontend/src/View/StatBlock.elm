@@ -65,7 +65,7 @@ import View.Tooltips as Tooltips
 -}
 view :
     (String -> Dice.Expression -> Int -> Int -> msg)
-    -> (String -> String -> Int -> msg)
+    -> (String -> String -> Int -> Int -> Int -> msg)
     -> Creature
     -> Html msg
 view onRoll onAbilityClick c =
@@ -221,7 +221,7 @@ whenPositive n fmt =
 -- ── ABILITIES ────────────────────────────────────────────────────────────────
 
 
-viewAbilities : (String -> String -> Int -> msg) -> Creature -> Html msg
+viewAbilities : (String -> String -> Int -> Int -> Int -> msg) -> Creature -> Html msg
 viewAbilities onAbilityClick c =
     let
         cell label ability score =
@@ -253,7 +253,7 @@ saveBonus saves ability score =
 
 
 viewAbilityCell :
-    (String -> String -> Int -> msg)
+    (String -> String -> Int -> Int -> Int -> msg)
     -> String
     -> String
     -> Int
@@ -263,7 +263,11 @@ viewAbilityCell onAbilityClick creatureName label bonus score =
     Html.button
         [ class "ability ability--clickable"
         , Html.Attributes.type_ "button"
-        , onClick (onAbilityClick creatureName label bonus)
+        , Html.Events.on "click"
+            (Decode.map2 (onAbilityClick creatureName label bonus)
+                (Decode.field "clientX" Decode.int)
+                (Decode.field "clientY" Decode.int)
+            )
         , title (Tooltips.statBlockSavingThrow label)
         ]
         [ div [ class "ability__label" ] [ text label ]

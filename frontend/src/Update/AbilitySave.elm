@@ -15,13 +15,17 @@ import Effects
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..), RollMode(..))
 import Ui.AbilitySave exposing (AbilitySaveUi)
+import Update.Dice
 
 
-open : String -> String -> Int -> Model -> ( Model, Cmd Msg )
-open creatureName ability bonus model =
+open : String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
+open creatureName ability bonus clickX clickY model =
     ( { model
         | modal =
-            Just (ModalAbilitySave (Ui.AbilitySave.fresh creatureName ability bonus))
+            Just
+                (ModalAbilitySave
+                    (Ui.AbilitySave.fresh creatureName ability bonus clickX clickY)
+                )
       }
     , Cmd.none
     )
@@ -52,6 +56,12 @@ roll mode model =
 the full `1d20 + bonus` expression; advantage / disadvantage
 delegate to the dedicated 2d20 helpers so the kept-die labelling
 shows up correctly in the history.
+
+The result-handler Msg is partial-applied with the original
+ability-cell click position so the floating popup spawns at the
+cell when the dice land — even though the modal has already
+closed by then.
+
 -}
 rollCmd : RollMode -> AbilitySaveUi -> Cmd Msg
 rollCmd mode ui =
@@ -60,24 +70,36 @@ rollCmd mode ui =
             { feature = ui.ability ++ " Save"
             , target = Just ui.creatureName
             }
+
+        landedCtor =
+            AbilitySaveLanded ui.clickX ui.clickY
     in
     case mode of
         ModeStandard ->
-            Dice.rollCmd AbilitySaveLanded src (Effects.saveExpression ui.bonus)
+            Dice.rollCmd landedCtor src (Effects.saveExpression ui.bonus)
 
         ModeAdvantage ->
-            Dice.advantageCmd AbilitySaveLanded src ui.bonus
+            Dice.advantageCmd landedCtor src ui.bonus
 
         ModeDisadvantage ->
-            Dice.disadvantageCmd AbilitySaveLanded src ui.bonus
+            Dice.disadvantageCmd landedCtor src ui.bonus
 
 
 {-| Roll landed. Reuse the shared dice-history pipeline so the
 "unread rolls" indicator and the server-side persistence happen
-exactly the same way as a manual roll from the dice modal.
+exactly the same way as a manual roll from the dice modal, AND
+spawn a floating roll-result popup at the original ability-cell
+click position so the GM gets the same inline feedback they
+already get from clicking an inline dice link in a stat block.
 -}
-landed : Dice.Roll -> Model -> ( Model, Cmd Msg )
-landed roll_ model =
-    ( Effects.pushDiceRoll roll_ model
-    , Effects.persistDiceRoll roll_
+landed : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+landed x y roll_ model =
+    let
+        ( withPopup, popupCmd ) =
+            Update.Dice.spawnRollPopup
+                { x = x, y = y, total = roll_.total }
+                model
+    in
+    ( Effects.pushDiceRoll roll_ withPopup
+    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd ]
     )

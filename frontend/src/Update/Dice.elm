@@ -18,6 +18,7 @@ module Update.Dice exposing
     , rollFromStatBlock
     , rollLanded
     , rollPopupExpired
+    , spawnRollPopup
     , statBlockRollLanded
     )
 
@@ -273,34 +274,44 @@ rollFromStatBlock creatureName expr x y model =
 
 {-| Result handler for stat-block dice-link clicks. Pushes the
 roll to history (same as `rollLanded` for manual rolls) AND
-spawns a floating "+N" popup at the captured cursor position.
-The popup is auto-cleaned via a `Process.sleep` Msg; the duration
-matches the CSS animation length so the DOM node stays alive
-through the full fade-out.
+spawns a floating popup at the captured cursor position.
 -}
 statBlockRollLanded : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 statBlockRollLanded x y roll model =
+    let
+        ( withPopup, popupCmd ) =
+            spawnRollPopup { x = x, y = y, total = roll.total } model
+    in
+    ( Effects.pushDiceRoll roll withPopup
+    , Cmd.batch [ Effects.persistDiceRoll roll, popupCmd ]
+    )
+
+
+{-| Add a floating popup at the given screen position with the
+given roll total, returning the modified model + the auto-expire
+Cmd. Shared by every roll source that wants the floating-popup
+feedback (stat-block dice links, ability-save modal lands). The
+caller is responsible for any other roll-landed bookkeeping
+(push to dice history, persist, etc.) and for batching
+`popupCmd` with whatever else the source needs to fire.
+-}
+spawnRollPopup : { x : Int, y : Int, total : Int } -> Model -> ( Model, Cmd Msg )
+spawnRollPopup { x, y, total } model =
     let
         popup : RollPopup
         popup =
             { id = model.nextRollPopupId
             , x = x
             , y = y
-            , total = roll.total
+            , total = total
             }
-
-        spawned =
-            { model
-                | rollPopups = popup :: model.rollPopups
-                , nextRollPopupId = model.nextRollPopupId + 1
-            }
-
-        expireCmd =
-            Process.sleep popupLifetimeMs
-                |> Task.perform (\_ -> RollPopupExpired popup.id)
     in
-    ( Effects.pushDiceRoll roll spawned
-    , Cmd.batch [ Effects.persistDiceRoll roll, expireCmd ]
+    ( { model
+        | rollPopups = popup :: model.rollPopups
+        , nextRollPopupId = model.nextRollPopupId + 1
+      }
+    , Process.sleep popupLifetimeMs
+        |> Task.perform (\_ -> RollPopupExpired popup.id)
     )
 
 

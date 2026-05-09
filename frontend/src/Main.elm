@@ -1219,8 +1219,8 @@ updateInner msg model =
         QuickAddPick id ->
             Update.QuickAdd.pick id model
 
-        AbilitySaveOpen creatureName ability bonus ->
-            Update.AbilitySave.open creatureName ability bonus model
+        AbilitySaveOpen creatureName ability bonus x y ->
+            Update.AbilitySave.open creatureName ability bonus x y model
 
         AbilitySaveClose ->
             Update.AbilitySave.close model
@@ -1228,8 +1228,8 @@ updateInner msg model =
         AbilitySaveRoll mode ->
             Update.AbilitySave.roll mode model
 
-        AbilitySaveLanded roll ->
-            Update.AbilitySave.landed roll model
+        AbilitySaveLanded x y roll ->
+            Update.AbilitySave.landed x y roll model
 
         CompendiumImportClick ->
             Update.Compendium.Bulk.importClick model
