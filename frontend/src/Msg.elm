@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), SaveDestination(..), Theme(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), SaveDestination(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -222,6 +222,21 @@ type FeatureGroup
     | ActionsGroup
     | BonusActionsGroup
     | ReactionsGroup
+
+
+{-| Discriminator for the `Compendium.Usage` ADT variants in the
+per-feature Usage editor. `UsageNone` corresponds to
+`usage = Nothing`; the rest map 1:1 to the `Usage` constructors.
+The edit modal pairs this with conditional param fields per
+variant (Recharge low/high, Per-Day-style uses count).
+-}
+type UsageKind
+    = UsageNone
+    | UsageRecharge
+    | UsagePerDay
+    | UsagePerShortRest
+    | UsagePerLongRest
+    | UsageAtWill
 
 
 {-| Discriminator for the three damage-list multi-select pickers
@@ -449,6 +464,14 @@ type Msg
     | CompendiumEditFeatureRemove FeatureGroup Int
     | CompendiumEditFeatureNameChanged FeatureGroup Int String
     | CompendiumEditFeatureDescriptionChanged FeatureGroup Int String
+      -- Per-feature Usage editor.  `UsageKind` selects which Usage
+      -- ADT variant the feature should hold; the param Msgs tweak
+      -- the per-variant payload (e.g. Recharge low/high, PerDay
+      -- uses count).
+    | CompendiumEditFeatureUsageKindSet FeatureGroup Int UsageKind
+    | CompendiumEditFeatureUsageRechargeLowChanged FeatureGroup Int String
+    | CompendiumEditFeatureUsageRechargeHighChanged FeatureGroup Int String
+    | CompendiumEditFeatureUsageUsesChanged FeatureGroup Int String
     | CompendiumEditCustomSectionAdd
     | CompendiumEditCustomSectionRemove Int
     | CompendiumEditCustomSectionNameChanged Int String

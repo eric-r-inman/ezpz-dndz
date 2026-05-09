@@ -853,6 +853,18 @@ updateInner msg model =
         CompendiumEditFeatureDescriptionChanged group idx text ->
             Update.Compendium.Edit.featureDescriptionChanged group idx text model
 
+        CompendiumEditFeatureUsageKindSet group idx kind ->
+            Update.Compendium.Edit.featureUsageKindSet group idx kind model
+
+        CompendiumEditFeatureUsageRechargeLowChanged group idx text ->
+            Update.Compendium.Edit.featureUsageRechargeLowChanged group idx text model
+
+        CompendiumEditFeatureUsageRechargeHighChanged group idx text ->
+            Update.Compendium.Edit.featureUsageRechargeHighChanged group idx text model
+
+        CompendiumEditFeatureUsageUsesChanged group idx text ->
+            Update.Compendium.Edit.featureUsageUsesChanged group idx text model
+
         CompendiumEditCustomSectionAdd ->
             Update.Compendium.Edit.customSectionAdd model
 

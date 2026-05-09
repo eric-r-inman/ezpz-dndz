@@ -24,6 +24,7 @@ import Msg
         , DamagePicker(..)
         , FeatureGroup(..)
         , Msg(..)
+        , UsageKind(..)
         )
 import Ui.Compendium as CompendiumUi
     exposing
@@ -576,6 +577,145 @@ featureRow group idx draft =
             , Attr.placeholder "Description (free text; inline dice notation like 1d8+3 becomes clickable)"
             ]
             []
+        , featureUsageRow group idx draft.usage
+        ]
+
+
+{-| Per-feature Usage editor: a kind dropdown plus conditional
+param fields for the chosen variant. `None` collapses to just
+the dropdown; `Recharge` shows low/high; the per-day-style
+variants show a single uses count.
+-}
+featureUsageRow : FeatureGroup -> Int -> Maybe Compendium.Usage -> Html Msg
+featureUsageRow group idx usage =
+    div [ class "edit-feature__usage" ]
+        [ Html.label [ class "edit-feature__usage-label" ]
+            [ Html.span [ class "edit-field__label" ] [ text "Usage" ]
+            , Html.select
+                [ class "edit-field__input"
+                , Html.Events.onInput (usageKindFromString >> CompendiumEditFeatureUsageKindSet group idx)
+                ]
+                (List.map (usageKindOption usage)
+                    [ ( UsageNone, "—" )
+                    , ( UsageRecharge, "Recharge" )
+                    , ( UsagePerDay, "Per Day" )
+                    , ( UsagePerShortRest, "Per Short Rest" )
+                    , ( UsagePerLongRest, "Per Long Rest" )
+                    , ( UsageAtWill, "At Will" )
+                    ]
+                )
+            ]
+        , usageParams group idx usage
+        ]
+
+
+usageKindOption : Maybe Compendium.Usage -> ( UsageKind, String ) -> Html Msg
+usageKindOption usage ( kind, label_ ) =
+    Html.option
+        [ value (usageKindToString kind)
+        , selected (kind == kindOf usage)
+        ]
+        [ text label_ ]
+
+
+kindOf : Maybe Compendium.Usage -> UsageKind
+kindOf usage =
+    case usage of
+        Nothing ->
+            UsageNone
+
+        Just (Compendium.Recharge _) ->
+            UsageRecharge
+
+        Just (Compendium.PerDay _) ->
+            UsagePerDay
+
+        Just (Compendium.PerShortRest _) ->
+            UsagePerShortRest
+
+        Just (Compendium.PerLongRest _) ->
+            UsagePerLongRest
+
+        Just Compendium.AtWill ->
+            UsageAtWill
+
+
+usageKindToString : UsageKind -> String
+usageKindToString kind =
+    case kind of
+        UsageNone ->
+            "none"
+
+        UsageRecharge ->
+            "recharge"
+
+        UsagePerDay ->
+            "per_day"
+
+        UsagePerShortRest ->
+            "per_short_rest"
+
+        UsagePerLongRest ->
+            "per_long_rest"
+
+        UsageAtWill ->
+            "at_will"
+
+
+usageKindFromString : String -> UsageKind
+usageKindFromString s =
+    case s of
+        "recharge" ->
+            UsageRecharge
+
+        "per_day" ->
+            UsagePerDay
+
+        "per_short_rest" ->
+            UsagePerShortRest
+
+        "per_long_rest" ->
+            UsagePerLongRest
+
+        "at_will" ->
+            UsageAtWill
+
+        _ ->
+            UsageNone
+
+
+usageParams : FeatureGroup -> Int -> Maybe Compendium.Usage -> Html Msg
+usageParams group idx usage =
+    case usage of
+        Just (Compendium.Recharge { low, high }) ->
+            Html.span [ class "edit-feature__usage-params" ]
+                [ rawNumberField "Low"
+                    (CompendiumEditFeatureUsageRechargeLowChanged group idx)
+                    (String.fromInt low)
+                , rawNumberField "High"
+                    (CompendiumEditFeatureUsageRechargeHighChanged group idx)
+                    (String.fromInt high)
+                ]
+
+        Just (Compendium.PerDay n) ->
+            usesField group idx n
+
+        Just (Compendium.PerShortRest n) ->
+            usesField group idx n
+
+        Just (Compendium.PerLongRest n) ->
+            usesField group idx n
+
+        _ ->
+            text ""
+
+
+usesField : FeatureGroup -> Int -> Int -> Html Msg
+usesField group idx n =
+    Html.span [ class "edit-feature__usage-params" ]
+        [ rawNumberField "Uses"
+            (CompendiumEditFeatureUsageUsesChanged group idx)
+            (String.fromInt n)
         ]
 
 

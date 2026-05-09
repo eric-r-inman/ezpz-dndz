@@ -4064,6 +4064,32 @@ body {
   border-bottom: none;
 }
 
+/* Per-feature Usage editor — Recharge / Per-Day-style / At Will
+   selector with conditional param fields.  Sits below the
+   description textarea on each Trait / Action / Bonus / Reaction
+   row.  Compact horizontal layout so the params stay inline with
+   the kind dropdown. */
+.edit-feature__usage {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.edit-feature__usage-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 160px;
+  min-width: 0;
+}
+
+.edit-feature__usage-params {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .edit-error {
   background: var(--color-danger-soft);
   border: 1px solid var(--color-danger);

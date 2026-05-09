@@ -15,6 +15,10 @@ module Update.Compendium.Edit exposing
     , featureDescriptionChanged
     , featureNameChanged
     , featureRemove
+    , featureUsageKindSet
+    , featureUsageRechargeHighChanged
+    , featureUsageRechargeLowChanged
+    , featureUsageUsesChanged
     , fieldChanged
     , kindSet
     , lairAdd
@@ -399,6 +403,131 @@ featureDescriptionChanged group idx text model =
         model
     , Cmd.none
     )
+
+
+{-| Switch a feature's `usage` between the six `UsageKind`
+options. The kind selector is the dropdown; per-kind params
+(Recharge low/high, per-day-style uses count) are tweaked by
+the `featureUsageRechargeLowChanged` etc. handlers below.
+-}
+featureUsageKindSet : FeatureGroup -> Int -> Msg.UsageKind -> Model -> ( Model, Cmd Msg )
+featureUsageKindSet group idx kind model =
+    ( withCompendiumEdit
+        (mapFeatureGroup group
+            (updateAt idx (\f -> { f | usage = usageFromKind kind f.usage }))
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| When the user picks a new Usage kind, carry over any param
+values that still make sense (e.g. switching Per Day → Per Long
+Rest preserves the uses count) so the form doesn't drop input
+on every kind change.
+-}
+usageFromKind : Msg.UsageKind -> Maybe Compendium.Usage -> Maybe Compendium.Usage
+usageFromKind kind prev =
+    let
+        prevUses =
+            case prev of
+                Just (Compendium.PerDay n) ->
+                    n
+
+                Just (Compendium.PerShortRest n) ->
+                    n
+
+                Just (Compendium.PerLongRest n) ->
+                    n
+
+                _ ->
+                    1
+
+        prevRecharge =
+            case prev of
+                Just (Compendium.Recharge r) ->
+                    r
+
+                _ ->
+                    { low = 5, high = 6 }
+    in
+    case kind of
+        Msg.UsageNone ->
+            Nothing
+
+        Msg.UsageRecharge ->
+            Just (Compendium.Recharge prevRecharge)
+
+        Msg.UsagePerDay ->
+            Just (Compendium.PerDay prevUses)
+
+        Msg.UsagePerShortRest ->
+            Just (Compendium.PerShortRest prevUses)
+
+        Msg.UsagePerLongRest ->
+            Just (Compendium.PerLongRest prevUses)
+
+        Msg.UsageAtWill ->
+            Just Compendium.AtWill
+
+
+featureUsageRechargeLowChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
+featureUsageRechargeLowChanged group idx text model =
+    ( withCompendiumEdit
+        (mapFeatureGroup group
+            (updateAt idx (mapRecharge (\r -> { r | low = CompendiumUi.parseIntOr r.low text })))
+        )
+        model
+    , Cmd.none
+    )
+
+
+featureUsageRechargeHighChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
+featureUsageRechargeHighChanged group idx text model =
+    ( withCompendiumEdit
+        (mapFeatureGroup group
+            (updateAt idx (mapRecharge (\r -> { r | high = CompendiumUi.parseIntOr r.high text })))
+        )
+        model
+    , Cmd.none
+    )
+
+
+featureUsageUsesChanged : FeatureGroup -> Int -> String -> Model -> ( Model, Cmd Msg )
+featureUsageUsesChanged group idx text model =
+    ( withCompendiumEdit
+        (mapFeatureGroup group
+            (updateAt idx (\f -> { f | usage = mapUses (CompendiumUi.parseIntOr 1 text) f.usage }))
+        )
+        model
+    , Cmd.none
+    )
+
+
+mapRecharge : ({ low : Int, high : Int } -> { low : Int, high : Int }) -> CompendiumUi.FeatureDraft -> CompendiumUi.FeatureDraft
+mapRecharge fn f =
+    case f.usage of
+        Just (Compendium.Recharge r) ->
+            { f | usage = Just (Compendium.Recharge (fn r)) }
+
+        _ ->
+            f
+
+
+mapUses : Int -> Maybe Compendium.Usage -> Maybe Compendium.Usage
+mapUses uses usage =
+    case usage of
+        Just (Compendium.PerDay _) ->
+            Just (Compendium.PerDay uses)
+
+        Just (Compendium.PerShortRest _) ->
+            Just (Compendium.PerShortRest uses)
+
+        Just (Compendium.PerLongRest _) ->
+            Just (Compendium.PerLongRest uses)
+
+        _ ->
+            usage
 
 
 customSectionAdd : Model -> ( Model, Cmd Msg )

@@ -359,7 +359,10 @@ type EditMode
 
 
 type alias FeatureDraft =
-    { name : String, description : String }
+    { name : String
+    , description : String
+    , usage : Maybe Compendium.Usage
+    }
 
 
 blankEdit : CompendiumEditUi
@@ -487,12 +490,12 @@ editFromCreature c =
 
 featureToDraft : Compendium.Feature -> FeatureDraft
 featureToDraft f =
-    { name = f.name, description = f.description }
+    { name = f.name, description = f.description, usage = f.usage }
 
 
 emptyFeatureDraft : FeatureDraft
 emptyFeatureDraft =
-    { name = "", description = "" }
+    { name = "", description = "", usage = Nothing }
 
 
 {-| Run validation and produce the final `Compendium.Creature`
@@ -631,7 +634,7 @@ draftToFeature d =
         Nothing
 
     else
-        Just { name = trimmedName, description = d.description, usage = Nothing }
+        Just { name = trimmedName, description = d.description, usage = d.usage }
 
 
 customSectionRowToValue : ( String, String ) -> Maybe Compendium.CustomSection
