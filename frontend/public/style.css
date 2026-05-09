@@ -1,12 +1,12 @@
 :root {
   color-scheme: light dark;
-  --color-bg: #f5f6fb;
+  --color-bg: #f8fafd;
   --color-surface: #ffffff;
-  --color-surface-2: #eef0f7;
+  --color-surface-2: #eef3fb;
   --color-text: #14161c;
-  --color-text-muted: #5c6478;
+  --color-text-muted: #525d75;
   --color-link: #2952cc;
-  --color-border: #dde1ec;
+  --color-border: #d4dce9;
   --color-accent: #6d4ed8;
   --color-accent-hover: #5a3ec5;
   --color-accent-soft: rgba(109, 78, 216, 0.12);
@@ -15,8 +15,8 @@
   --color-success: #2f9e44;
   --color-success-soft: rgba(47, 158, 68, 0.14);
   --shadow-sm:
-    0 1px 2px rgba(20, 22, 28, 0.04), 0 1px 3px rgba(20, 22, 28, 0.06);
-  --shadow-md: 0 6px 18px rgba(20, 22, 28, 0.08);
+    0 1px 2px rgba(34, 47, 78, 0.06), 0 1px 3px rgba(34, 47, 78, 0.05);
+  --shadow-md: 0 8px 24px rgba(34, 47, 78, 0.1);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -46,6 +46,28 @@
   --color-btn-red: #c62828;
   --color-btn-orange: #d97706;
   --color-dirty-outline: #fff59d;
+
+  /* Soft-tint button variant tokens for the Light theme.  The
+     blue / red / orange variants render as colored text on a
+     12% tinted background with a 24% tinted border — a calmer,
+     more modern look than the heavy filled blocks the dark
+     theme uses.  Hover bumps the bg tint to ~20%.
+     `[data-theme="dark"]` redefines these to the legacy filled
+     pattern below, so the dark theme is unchanged.  Green stays
+     filled in both modes — it's the affirmative-CTA variant
+     and earns the visual weight. */
+  --btn-blue-bg: rgba(25, 118, 210, 0.1);
+  --btn-blue-fg: #1864ab;
+  --btn-blue-bd: rgba(25, 118, 210, 0.32);
+  --btn-blue-bg-hover: rgba(25, 118, 210, 0.18);
+  --btn-red-bg: rgba(198, 40, 40, 0.09);
+  --btn-red-fg: #b02323;
+  --btn-red-bd: rgba(198, 40, 40, 0.3);
+  --btn-red-bg-hover: rgba(198, 40, 40, 0.16);
+  --btn-orange-bg: rgba(217, 119, 6, 0.1);
+  --btn-orange-fg: #b65a06;
+  --btn-orange-bd: rgba(217, 119, 6, 0.3);
+  --btn-orange-bg-hover: rgba(217, 119, 6, 0.18);
 }
 
 /* Dark theme overrides.  Applied two ways:
@@ -87,6 +109,23 @@
   --color-temp-blue: #4d9bff;
   --color-orange: #ff9a3c;
   --color-blue: #4d9bff;
+
+  /* Dark theme keeps the legacy filled-block button look — solid
+     bg, near-black text.  The `:hover` brightness filter on
+     `.action-btn` does the highlight; hover tokens collapse to
+     the same value so light-only hover overrides don't leak. */
+  --btn-blue-bg: var(--color-btn-blue);
+  --btn-blue-fg: #000;
+  --btn-blue-bd: transparent;
+  --btn-blue-bg-hover: var(--color-btn-blue);
+  --btn-red-bg: var(--color-btn-red);
+  --btn-red-fg: #000;
+  --btn-red-bd: transparent;
+  --btn-red-bg-hover: var(--color-btn-red);
+  --btn-orange-bg: var(--color-btn-orange);
+  --btn-orange-fg: #000;
+  --btn-orange-bd: transparent;
+  --btn-orange-bg-hover: var(--color-btn-orange);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -120,6 +159,21 @@
     --color-temp-blue: #4d9bff;
     --color-orange: #ff9a3c;
     --color-blue: #4d9bff;
+
+    /* Match the explicit dark-theme overrides — solid filled
+       buttons with brightness-on-hover. */
+    --btn-blue-bg: var(--color-btn-blue);
+    --btn-blue-fg: #000;
+    --btn-blue-bd: transparent;
+    --btn-blue-bg-hover: var(--color-btn-blue);
+    --btn-red-bg: var(--color-btn-red);
+    --btn-red-fg: #000;
+    --btn-red-bd: transparent;
+    --btn-red-bg-hover: var(--color-btn-red);
+    --btn-orange-bg: var(--color-btn-orange);
+    --btn-orange-fg: #000;
+    --btn-orange-bd: transparent;
+    --btn-orange-bg-hover: var(--color-btn-orange);
   }
 }
 
@@ -1216,9 +1270,13 @@ body {
 }
 
 .action-btn--blue {
-  --btn-bg: var(--color-btn-blue);
-  --btn-fg: #000;
-  --btn-bd: transparent;
+  --btn-bg: var(--btn-blue-bg);
+  --btn-fg: var(--btn-blue-fg);
+  --btn-bd: var(--btn-blue-bd);
+}
+
+.action-btn--blue:hover {
+  background: var(--btn-blue-bg-hover);
 }
 
 .action-btn--green {
@@ -1228,15 +1286,23 @@ body {
 }
 
 .action-btn--red {
-  --btn-bg: var(--color-btn-red);
-  --btn-fg: #000;
-  --btn-bd: transparent;
+  --btn-bg: var(--btn-red-bg);
+  --btn-fg: var(--btn-red-fg);
+  --btn-bd: var(--btn-red-bd);
+}
+
+.action-btn--red:hover {
+  background: var(--btn-red-bg-hover);
 }
 
 .action-btn--orange {
-  --btn-bg: var(--color-btn-orange);
-  --btn-fg: #000;
-  --btn-bd: transparent;
+  --btn-bg: var(--btn-orange-bg);
+  --btn-fg: var(--btn-orange-fg);
+  --btn-bd: var(--btn-orange-bd);
+}
+
+.action-btn--orange:hover {
+  background: var(--btn-orange-bg-hover);
 }
 
 .action-btn--holding {
