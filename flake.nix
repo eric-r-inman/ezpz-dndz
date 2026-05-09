@@ -7,6 +7,11 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     crane.url = "github:ipetkov/crane";
     changelog-roller.url = "github:LoganBarnett/changelog-roller";
+    # Shared infrastructure crate + Nix helpers (mkRustProject,
+    # mkNixosService, mkDarwinService).  Pinned through the same
+    # rust-template repo we forward-port from.
+    foundation.url = "github:LoganBarnett/rust-template";
+    foundation.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
@@ -15,6 +20,7 @@
     rust-overlay,
     crane,
     changelog-roller,
+    foundation,
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
     overlays = [

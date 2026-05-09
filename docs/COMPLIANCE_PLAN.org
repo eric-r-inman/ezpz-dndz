@@ -1,0 +1,238 @@
+#+title:     rust-template Compliance Plan
+#+language:  en
+
+This file is the working brief for forward-porting ~ezpz-dndz~ to the
+current state of [[https://github.com/LoganBarnett/rust-template][LoganBarnett/rust-template]].  It is a /diff-based/
+compliance run (see [[file:../../rust-template/docs/compliance.org][rust-template/docs/compliance.org]]).
+
+* Sync state
+
+| Field          | Value                                                                  |
+|----------------+------------------------------------------------------------------------|
+| Last sync hash | =51239f878d85679a0bb7197f27ddbb22a0ebda8d= (from =rust-template.json=) |
+| Template HEAD  | =9924140= (=feat(env-vars): adopt POSIX-conformant lowercase per-app prefix=) |
+| Local clone    | =~/dev/rust-template= (already pulled to HEAD)                         |
+| Process        | Diff-based — review =git diff 51239f8..HEAD= scoped to =template/=     |
+
+When the work below is applied, append =9924140= to
+=template_sync_hashes= in =rust-template.json=.
+
+* Headline change: the =foundation= crate
+
+The template now ships a =rust-template-foundation= crate (plus a
+sibling =rust-template-foundation-derive= proc-macro crate) that
+derived projects consume as a *Cargo git dep* and as a *Nix flake
+input*.  It absorbs everything that used to live duplicated in each
+spawned repo.
+
+What foundation now owns:
+
+- =auth/= — OIDC login / callback / logout, =require_auth= middleware,
+  *new* JWT bearer-token validation for service callers.
+- =server/runner.rs= — =Server<S>= builder, =BaseServerState=,
+  =ServerApp= trait, =ServerRunConfig=, =impl_server_state!= macro.
+- =server/health.rs=, =server/metrics.rs=, =server/openapi.rs=,
+  =server/me.rs=, =server/spa.rs=, =server/shutdown.rs=, =server/systemd.rs= —
+  the entire web base.
+- =config.rs= — XDG config-file discovery, =find_config_file=,
+  =credential_secret_path= (LoadCredential), =CommonConfigFile=,
+  =ConfigFileError=.
+- =logging.rs= — =LogLevel=, =LogFormat=, =init_logging=.  The
+  template lib crate now just re-exports these.
+- =MergeConfig= proc-macro — generates =CliRaw=, =ConfigFileRaw=, and
+  the merge into =Config= from a single struct annotation.  Supports
+  =extra_cli= / =extra_file= flatten escapes, =subcommand= field kind
+  (=788f787=), =extra_error= attribute (=1269b8a=).
+- =#[foundation_main]= proc-macro — wraps your =async fn main(config:
+  Config, server: Server) -> Result<...>= and inserts CLI parse,
+  config resolve, logging init, OIDC discovery, listener bind, systemd
+  notify, graceful shutdown.
+- Nix helpers — =mkRustProject= (workspace flake outputs),
+  =mkNixosService=, =mkDarwinService=, exposed from the foundation
+  flake's =lib=.
+- Reusable GitHub Actions workflows — =reusable-ci.yml=,
+  =reusable-publish.yml=, =reusable-branch-protection.yml=,
+  =reusable-dependabot-automerge.yml=.
+
+The net effect on the template's =template/= subtree (what derived
+projects mirror): ≈2400 LOC removed, ≈700 added across 36 files.
+
+* Gap report
+
+** Per-crate source
+
+| Path                              | ezpz-dndz                                  | Template HEAD                     | Action                                                                     |
+|-----------------------------------+--------------------------------------------+-----------------------------------+----------------------------------------------------------------------------|
+| =crates/server/src/main.rs=       | 157 lines, hand-wired                      | 22 lines, =#[foundation_main]=    | Rewrite using foundation entry-point macro                                 |
+| =crates/server/src/auth.rs=       | 315 lines (full OIDC handlers)             | (deleted; lives in foundation)    | Delete; enable foundation's =auth= feature                                 |
+| =crates/server/src/systemd.rs=    | 43 lines                                   | (deleted; lives in foundation)    | Delete                                                                     |
+| =crates/server/src/logging.rs=    | 51 lines                                   | (deleted; lives in foundation)    | Delete                                                                     |
+| =crates/server/src/web_base.rs=   | 291 lines (registry, openapi, app routes)  | 11 lines, =impl_server_state!=    | Rewrite — keep ezpz-specific stores in =AppState=, base goes via macro     |
+| =crates/server/src/config.rs=     | 354 lines, hand-rolled three-stage merge   | 171 lines via =MergeConfig=       | Rewrite using derive; keep app fields (=data_dir=, =compendium_path=, etc.) |
+| =crates/server/src/dice.rs=       | 182 lines, app routes                      | (project-specific)                | Keep; just re-attach via =Server::merge(ApiRouter)= or =api_route(..)=     |
+| =crates/cli/src/main.rs=          | 80 lines                                   | 25 lines, =#[foundation_main]=    | Rewrite using foundation entry-point macro                                 |
+| =crates/cli/src/config.rs=        | 141 lines, hand-rolled                     | 14 lines, =MergeConfig=           | Rewrite using derive + =subcommand= field kind                             |
+| =crates/cli/src/logging.rs=       | 37 lines                                   | (deleted; lives in foundation)    | Delete                                                                     |
+| =crates/lib/src/logging.rs=       | 94 lines (full body)                       | 3-line re-export of foundation    | Slim to re-export, or delete and import directly                           |
+| =crates/lib/src/lib.rs=           | exports app modules                        | re-exports from foundation        | Update re-exports                                                          |
+
+App-specific code that stays untouched: =crates/lib/src/json_file_store.rs=,
+=crates/lib/src/compendium/=, =crates/lib/src/cr_calc.rs=,
+=crates/cli/src/{compendium,encounter,dice}.rs=, the ezpz dice/compendium/encounter
+HTTP routes in =crates/server/src/=.  These are business logic and
+out of compliance scope.
+
+** Workspace / =Cargo.toml=
+
+| Item                                              | State          | Action                                                          |
+|---------------------------------------------------+----------------+-----------------------------------------------------------------|
+| =rust-template-foundation= workspace dep          | absent         | Add =rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git" }= |
+| =[workspace.lints.clippy]= deny block             | absent         | Add =unwrap_used = "deny"=, =expect_used = "deny"=, =panic = "deny"= |
+| =clippy.toml= at workspace root                   | absent         | Add =allow-{unwrap,expect,panic}-in-tests = true=               |
+| =[lints] workspace = true= on each crate          | absent         | Add to all three crate manifests                                |
+| =crates/{cli,server,lib}/workspace-deps.toml=     | absent         | Add (informational; used by =crate-add.sh=)                     |
+| Direct =openidconnect=, =tower-sessions=, =sd-notify= deps in server | present | Mostly redundant after foundation absorbs auth/systemd, but keep =openidconnect= since the app holds =Arc<CoreClient>= refs |
+
+** =flake.nix= and Nix modules
+
+| File                              | State                            | Action                                                          |
+|-----------------------------------+----------------------------------+-----------------------------------------------------------------|
+| =flake.nix=                       | 237 lines, hand-rolled           | Rewrite using =foundation.lib.mkRustProject=; ≈90 lines target  |
+| =nix/modules/nixos-server.nix=    | hand-rolled                      | Rewrite using =mkNixosService=                                  |
+| =nix/modules/darwin-server.nix=   | hand-rolled                      | Rewrite using =mkDarwinService=                                 |
+| =foundation= flake input          | absent                           | Add =foundation.url = "github:LoganBarnett/rust-template"=      |
+
+** GitHub / CI
+
+| File                                        | State                                                          | Action                                                                |
+|---------------------------------------------+----------------------------------------------------------------+-----------------------------------------------------------------------|
+| =.github/workflows/ci.yml=                  | hand-rolled, 80 lines, includes Elm steps                      | *Decision needed* — see [[*Open questions]].  Reusable upstream is 11 lines but Rust-only |
+| =.github/workflows/branch-protection.yml=   | absent                                                         | Add (calls =reusable-branch-protection.yml=)                          |
+| =.github/branch-protection.json=            | absent                                                         | Add                                                                   |
+| =.github/dependabot.yml=                    | absent                                                         | Add                                                                   |
+| =.github/workflows/dependabot-automerge.yml= | absent                                                         | Add                                                                   |
+| =.github/workflows/publish.yml=             | absent                                                         | Skip — ezpz lib has =publish = false= and is not a =--public= project |
+
+** Behavioural / convention shifts
+
+These are user-visible and worth flagging before applying.
+
+| Shift                                                                                                                                                  |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| *Env var prefix.*  Old: =LOG_LEVEL=, =LISTEN=, =CONFIG_FILE=, =DATA_DIR=, etc.  New: =ezpz-dndz_log_level=, =ezpz-dndz_listen= … (POSIX §8.1 lowercase, app-prefixed).  Affects any systemd unit, justfile, or script that sets the old names. |
+| *=.unwrap()= / =.expect()= ban.*  21 call sites in =crates/*/src/= (none in tests/) need to go.  Hot spots: =crates/lib/src/json_file_store.rs= (13), =crates/server/src/{main,web_base}.rs= (4), CLI subcommand modules (3).  Required to pass =cargo clippy --workspace -- -D warnings=. |
+| *OIDC redirect path.*  Foundation owns =/auth/login=, =/auth/callback=, =/auth/logout=.  Verify the IdP registration matches; should be identical since template path was unchanged. |
+| *=AppState= shape.*  =BaseServerState= now carries the registry, request counter, OIDC client, and frontend path.  ezpz =AppState= becomes ={ base: BaseServerState, dice_store, compendium_store, compendium_saves, encounter_store, encounter_saves }=.  Wire via =impl_server_state!(AppState, base)= and pass to =Server::with_state=. |
+| =llms.org=.  Template version (374 lines) adds the full "no unwrap/expect" treatise.  ezpz =llms.org= (201 lines) lacks it; CLAUDE.md does not currently echo it either.  Update both. |
+
+* Compliance plan
+
+Phased so each step leaves the workspace green (=cargo build --workspace= +
+=cargo test --workspace= passing inside =nix develop=).  Each phase is
+one or two commits.
+
+** Phase 1 — Wire the foundation
+
+1. Add =rust-template-foundation= to =[workspace.dependencies]=.
+2. Add =foundation= flake input + thread it through =outputs=.
+3. =cargo build --workspace= to confirm resolution.
+
+No source changes yet; this is just plumbing.
+
+** Phase 2 — Lints and toolchain hygiene
+
+1. Add =[workspace.lints.clippy]= deny block + =clippy.toml=.
+2. Add =[lints] workspace = true= to each crate's =Cargo.toml=.
+3. Eliminate the 21 =.unwrap()= / =.expect()= sites in shipping code.
+   Strategy: replace with =?= via semantic =thiserror= variants, or
+   move literal validation to =const= / proc-macro per the new
+   =llms.org= guidance.
+4. =cargo clippy --workspace -- -D warnings= must pass.
+
+This phase is the largest single body of work.  It also provides
+forcing-function value: every =.unwrap()= replaced becomes a real
+named error variant.
+
+** Phase 3 — CLI migration
+
+1. Replace =crates/cli/src/main.rs= with the =#[foundation_main]=
+   shape.
+2. Rewrite =crates/cli/src/config.rs= using =MergeConfig= with the
+   =subcommand= field kind for compendium/encounter/dice subcommands.
+3. Delete =crates/cli/src/logging.rs=.
+4. Verify subcommand UX: =ezpz-dndz-cli compendium list=, etc. still
+   work end-to-end.
+
+** Phase 4 — Server migration
+
+1. Rewrite =crates/server/src/web_base.rs= around
+   =impl_server_state!=; keep app stores on =AppState=, drop the
+   registry/counter/oidc/frontend_path fields (now in =base=).
+2. Rewrite =crates/server/src/config.rs= using =MergeConfig= with
+   =extra_cli= / =extra_file= for the OIDC-style fields and the
+   ezpz-specific paths (=data_dir=, =dice_history_path=,
+   =compendium_path=, =compendium_saves_path=, =encounter_path=,
+   =encounter_saves_path=).  Implement =ServerApp::server_run_configs=.
+3. Replace =crates/server/src/main.rs= with the
+   =#[foundation_main]=-style entry; attach app routes via
+   =Server::merge(ApiRouter)=.
+4. Delete =crates/server/src/{auth,logging,systemd}.rs=.
+5. Verify HTTP integration tests still pass; manual smoke =/healthz=,
+   =/metrics=, =/scalar=, =/api-docs/openapi.json=, OIDC roundtrip,
+   compendium and encounter routes.
+
+** Phase 5 — Library slimming
+
+1. Slim =crates/lib/src/logging.rs= to a foundation re-export (or
+   remove the file and update imports).
+2. Update =crates/lib/src/lib.rs= re-exports.
+
+** Phase 6 — Nix + CI
+
+1. Rewrite =flake.nix= around =foundation.lib.mkRustProject=.
+2. Rewrite =nix/modules/{nixos,darwin}-server.nix= around the
+   =mk*Service= helpers.
+3. Verify =nix build .#cli=, =nix build .#server=, =nix flake check=.
+4. Add =.github/branch-protection.json= and the
+   =branch-protection.yml= caller workflow.
+5. Add =.github/dependabot.yml= and =dependabot-automerge.yml=.
+6. Resolve the CI question (see [[*Open questions]]).
+
+** Phase 7 — Docs + sync record
+
+1. Sync =llms.org= with the template version (or replace and re-add
+   the project-specific server-scope preamble).
+2. Update CLAUDE.md to reference the new =unwrap=/=expect= rule (or
+   point at =llms.org=).
+3. Append =9924140= to =rust-template.json='s
+   =template_sync_hashes=.
+4. =nix develop --command cargo build --workspace= and
+   =nix develop --command cargo test --workspace= must succeed
+   before declaring compliance done.
+
+* Open questions
+
+These need a human decision before Phase 6 (or earlier where flagged):
+
+1. *CI workflow.*  The reusable =reusable-ci.yml@main= is Rust-only.
+   ezpz needs Elm =elm make= and =elm-test= steps.  Options:
+   - (a) Keep our hand-rolled =ci.yml= and accept this single
+     non-compliance.
+   - (b) Call =reusable-ci.yml= and add a follow-up Elm job in the
+     same workflow.
+   - (c) Contribute Elm support upstream into the reusable.
+
+2. *Env var rename.*  Adopting =ezpz-dndz_log_level= etc. breaks any
+   systemd unit / justfile that sets the old =LOG_LEVEL= names.
+   Options: cut over cleanly, or keep aliases via =extra_cli= for one
+   release.
+
+3. *=lib= crate logging file.*  Slim to a re-export, or delete the
+   file outright and update call sites?  Either is compliant; the
+   second is cleaner.
+
+4. *=.unwrap()= cleanup ordering.*  Phase 2 does it before the
+   CLI/server rewrites so the rewrites land on lint-clean ground.
+   Alternative: do it after the rewrites since some sites disappear
+   in the migration anyway.  Phase-2-first reduces churn risk; Phase-2-after
+   avoids touching code about to be deleted.
