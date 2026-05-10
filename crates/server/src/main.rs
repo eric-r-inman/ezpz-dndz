@@ -6,8 +6,10 @@
 //! shutdown.  This file owns only the application-specific setup:
 //! loading the JSON-backed stores and registering app routes.
 
+use aide::axum::ApiRouter;
+use axum::middleware;
 use ezpz_dndz_server::{
-  compendium, config::Config, dice, encounters, web_base::AppState,
+  compendium, config::Config, dice, encounters, users, web_base::AppState,
 };
 use rust_template_foundation::main as foundation_main;
 use rust_template_foundation::Server;
@@ -37,12 +39,24 @@ pub async fn main(
   // state back.
   let base = server.base_state().clone();
   let app_state = AppState::assemble(base, &config.paths).await?;
+  let auth_state = app_state.clone();
+
+  // Auth-gated routes: every /api/* endpoint that touches per-user
+  // data goes through `require_auth`, which extracts the user_id
+  // from the session, looks up the User, and inserts a CurrentUser
+  // extension for the handler.  The /api/auth/* endpoints
+  // (registration / login / logout / me) merge in unwrapped so an
+  // unauthenticated client can use them to obtain a session.
+  let protected: ApiRouter<AppState> = ApiRouter::new()
+    .merge(dice::router())
+    .merge(compendium::router())
+    .merge(encounters::router())
+    .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let server = server
     .with_state(move |_base| app_state)
-    .merge(dice::router())
-    .merge(compendium::router())
-    .merge(encounters::router());
+    .merge(users::router())
+    .merge(protected);
 
   server.listen().await?;
   Ok(ExitCode::SUCCESS)

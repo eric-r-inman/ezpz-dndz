@@ -37,6 +37,9 @@ uuid = { workspace = true }
 # resolvable from this crate's namespace.
 prometheus = { workspace = true }
 openidconnect = { workspace = true }
+# Used directly by the auth handlers to read/write the session
+# cookie store that foundation's runner sets up.
+tower-sessions = { workspace = true }
 
 [dev-dependencies]
 prometheus = { workspace = true }

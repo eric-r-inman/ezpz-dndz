@@ -65,6 +65,11 @@ pub struct ExtraCliFields {
   /// Defaults to `<data_dir>/encounter-saves.json`.
   #[arg(long, env = "ezpz_dndz_encounter_saves_path")]
   pub encounter_saves_path: Option<PathBuf>,
+
+  /// Path to the JSON file backing the user-account database.
+  /// Defaults to `<data_dir>/users.json`.
+  #[arg(long, env = "ezpz_dndz_users_path")]
+  pub users_path: Option<PathBuf>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -78,6 +83,7 @@ pub struct ExtraFileFields {
   pub compendium_saves_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
+  pub users_path: Option<PathBuf>,
 }
 
 /// Concrete on-disk locations for the per-store JSON files,
@@ -89,6 +95,7 @@ pub struct RuntimePaths {
   pub compendium_saves: PathBuf,
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
+  pub users: PathBuf,
 }
 
 #[derive(Debug, Clone, MergeConfig)]
@@ -186,6 +193,11 @@ impl Config {
         cli.extra.encounter_saves_path.as_ref(),
         file.extra.encounter_saves_path.as_ref(),
         "encounter-saves.json",
+      ),
+      users: pick(
+        cli.extra.users_path.as_ref(),
+        file.extra.users_path.as_ref(),
+        "users.json",
       ),
     })
   }

@@ -50,6 +50,10 @@ thiserror = "2.0"
 # so the schemars JsonSchema derives stay clean.
 uuid = { version = "1", features = ["v4", "v5"] }
 
+# Password hashing for user accounts.  Argon2id is the modern
+# best-practice choice (memory-hard, side-channel resistant).
+argon2 = { version = "0.5", features = ["std"] }
+
 # Web framework
 axum = "0.8"
 tokio = { version = "1.41", features = ["full"] }

@@ -5,9 +5,11 @@
 //! The custom fields below carry the JSON-backed stores that ezpz-dndz
 //! actually serves.
 
+use ezpz_dndz_lib::users::UserStore;
 use rust_template_foundation::{
   impl_server_state, server::runner::BaseServerState,
 };
+use std::sync::Arc;
 use thiserror::Error;
 
 use crate::compendium::{CompendiumStore, SavedCompendiumStore};
@@ -23,6 +25,7 @@ pub struct AppState {
   pub compendium_saves: SavedCompendiumStore,
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
+  pub user_store: Arc<UserStore>,
 }
 
 impl_server_state!(AppState, base);
@@ -37,6 +40,9 @@ pub enum AppStateError {
 
   #[error("Failed to load live-encounter store: {0}")]
   EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
+
+  #[error("Failed to load user store: {0}")]
+  UserStoreLoad(#[source] ezpz_dndz_lib::users::UserStoreError),
 }
 
 impl AppState {
@@ -70,6 +76,10 @@ impl AppState {
         .await
         .map_err(AppStateError::EncounterStoreLoad)?;
 
+    let user_store = UserStore::load_or_default(paths.users.clone())
+      .await
+      .map_err(AppStateError::UserStoreLoad)?;
+
     Ok(Self {
       base,
       dice_store,
@@ -77,6 +87,7 @@ impl AppState {
       compendium_saves,
       encounter_store,
       encounter_saves,
+      user_store: Arc::new(user_store),
     })
   }
 }
