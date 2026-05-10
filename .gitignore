@@ -28,6 +28,15 @@ dice-history.json
 # server; location is configurable via --encounter-saves-path).
 /encounter-saves.json
 
+# Named compendium-saves persistence file (created at runtime by the
+# server; location is configurable via --compendium-saves-path).
+/compendium-saves.json
+
+# User-account database (created at runtime by the server when the
+# first registration lands; carries Argon2id password hashes — must
+# never end up in git).  Location configurable via --users-path.
+/users.json
+
 # Runtime compendium directory (created at runtime by the server when
 # bootstrapping; location is configurable via --compendium-path).
 # Leading slash anchors the rule to repo root so it doesn't shadow

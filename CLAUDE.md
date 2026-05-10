@@ -253,12 +253,16 @@ layouts and for the modal-state invariants the type system enforces.
 
 =docs/archive/= holds historical planning documents
 (=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=, =CHANGELOG.org=).  They are no longer
+=COMPENDIUM_PLAN.org=, =CHANGELOG.org=, plus the locally-
+preserved-but-untracked =MODULARIZATION_PLAN.org=,
+=COMPLIANCE_PLAN.org=, and =TOOLTIPS.org=).  They are no longer
 maintained and should not be read or updated.  Instructions
 inside that say "update X" are stale.
 
-The active plan, and the only one to consult for project status, is
-[[file:docs/MODULARIZATION_PLAN.org][docs/MODULARIZATION_PLAN.org]] (Phases 1–11, substantially complete).
+For project status / structure, consult [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] —
+the load-bearing decisions live there.  Live planning docs
+that ARE current: [[file:docs/AUTH_TESTING.org][docs/AUTH_TESTING.org]] (local-dev account
+flows) and [[file:docs/systemd.org][docs/systemd.org]] (LoadCredential / secret passing).
 
 * Changelog: don't.
 
