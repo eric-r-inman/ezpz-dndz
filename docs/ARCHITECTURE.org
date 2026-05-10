@@ -7,8 +7,20 @@ the codebase is organized and the conventions you're expected to
 follow.
 
 For the big picture diagram see [[file:diagrams/data-model.svg]] (rendered
-from [[file:diagrams/data-model.d2]]).  Active modularization status:
-[[file:MODULARIZATION_PLAN.org]].
+from [[file:diagrams/data-model.d2]]).
+
+Companion docs:
+
+- [[file:MODULARIZATION_PLAN.org]] — historical record of the Phase
+  1–11 frontend re-shape that drove =Main.elm= from 9,268 → ~1.4k
+  lines.  Substantially complete.
+- [[file:COMPLIANCE_PLAN.org]] — the working brief for the
+  rust-template forward-port (foundation-crate adoption,
+  =MergeConfig= migration, etc.); see also [[*Template compliance][Template compliance]] below.
+- [[file:AUTH_TESTING.org]] — local-dev guide for poking at user
+  accounts (browser walkthrough + curl recipes).
+- [[file:TOOLTIPS.org]] — every UI ~title~ string with the
+  affordance it sits on, mirroring =View/Tooltips.elm=.
 
 * Stack
 
@@ -16,12 +28,18 @@ from [[file:diagrams/data-model.d2]]).  Active modularization status:
   (~ezpz-dndz-cli~), a server (~ezpz-dndz-server~,
   [[https://docs.rs/axum][axum]] + ~aide~ for OpenAPI), and a
   shared lib (~ezpz-dndz-lib~) holding the ~Creature~ schema,
-  ~JsonFileStore<T>~, and logging primitives.
+  ~JsonFileStore<T>~, the ~User~ + ~UserStore~ types, and
+  logging-type re-exports.  All three crates consume
+  *rust-template-foundation* (a git dep + Nix flake input) for
+  the cross-cutting plumbing — config / logging / health /
+  metrics / OIDC scaffolding / session machinery / the ~Server~
+  runner — so this repo only owns the application code.
 - *Frontend* — Elm 0.19 SPA, served as static files by the Rust
   server.  The server falls back to ~index.html~ for any unknown
   path so client-side routing keeps working.
 - *Build* — ~cargo~ for Rust, ~elm make~ for Elm.  Both run inside
-  a Nix dev shell defined by ~flake.nix~.  ~just dev~ and ~just
+  a Nix dev shell defined by ~flake.nix~ (which itself delegates
+  to ~foundation.lib.mkRustProject~).  ~just dev~ and ~just
   serve~ auto-enter the dev shell if needed.
 
 * Source layout
@@ -30,26 +48,62 @@ from [[file:diagrams/data-model.d2]]).  Active modularization status:
 
 Under =crates/=:
 
-- =cli/= — ~ezpz-dndz-cli~ binary.  ~clap~ subcommand structure;
-  currently exposes ~compendium {list,count,show}~.
+- =cli/= — ~ezpz-dndz-cli~ binary.  Body is a ~#[foundation_main]~-
+  wrapped one-liner; configuration is a single ~MergeConfig~
+  derive that generates ~CliRaw~, ~ConfigFileRaw~, and the
+  ~Config::from_cli_and_file~ merge.  The ~clap~ subcommand
+  structure rides through ~MergeConfig~'s ~subcommand~ field
+  kind.  Subcommands today: ~compendium {list,count,show}~,
+  ~encounter {show,count}~, ~dice {count,tail,clear}~.
 - =server/src/=
-  - ~main.rs~ / ~lib.rs~ / ~web_base.rs~ — wiring + ~AppState~.
-  - ~auth.rs~ — OIDC scaffolding.
-  - ~config.rs~ — CLI flags + env.
-  - ~dice.rs~ — ~/api/dice/*~.
+  - ~main.rs~ — ~#[foundation_main]~ entry point.  Loads the
+    per-user stores, hands them to ~Server::with_state~, layers
+    ~require_auth~ over the ~/api/*~ subtree, and merges the
+    auth + dice + compendium + encounter sub-routers.
+  - ~lib.rs~ / ~web_base.rs~ — module index + the slimmed
+    ~AppState~ (just app stores; foundation's ~BaseServerState~
+    rides through ~impl_server_state!(AppState, base)~).
+  - ~config.rs~ — ~MergeConfig~-derived ~Config~ with two
+    skip-field resolvers (~paths~ / ~oidc~) handling cross-field
+    rules MergeConfig can't model directly.
+  - ~users/~ — *real surface*, not a stub: ~/api/auth/{register,
+    login,logout,me}~ handlers, ~require_auth~ middleware,
+    ~CurrentUser~ extension wrapper, ~AuthHttpError~ → status
+    code mapper.
+  - ~dice.rs~ — ~/api/dice/*~ (per-user history; ~UserId~ keys
+    the on-disk map).
   - ~compendium/~ — ~/api/compendium/*~ (mod / store / error)
-    + ~/api/compendium/saves/*~ (~saves.rs~) for user-named
-    compendium snapshots, mirroring the encounter-saves wire
-    shape.
-  - ~encounters/~ — ~/api/encounter~ (live, opaque-JSON store
-    in ~store.rs~) + ~/api/encounter/saves/*~ (~saves.rs~) for
-    user-named encounter saves, with conflict / not-found /
-    name-validation semantic errors.
-  - ~users/~ + ~prefs/~ — Phase 11 stubs (mounted in =lib.rs=
-    but not yet wired through =web_base= or producing any
-    routes).
-- =lib/src/= — shared types, ~JsonFileStore<T>~, bundled
-  creatures (=data/bundled-creatures.json= via ~include_str!~).
+    + ~/api/compendium/saves/*~ (~saves.rs~).  The shared
+    330-creature catalogue is global (any logged-in user can
+    read / write); each user's named snapshots live under their
+    own ~UserId~ key.
+  - ~encounters/~ — ~/api/encounter~ (per-user live encounter
+    in ~store.rs~ — ~HashMap<UserId, Value>~) +
+    ~/api/encounter/saves/*~ (~saves.rs~, also keyed by user)
+    with conflict / not-found / name-validation semantic errors.
+  - ~prefs/~ — Phase 11 stub (mounted in =lib.rs= but not yet
+    wired through =web_base= or producing any routes).
+- =lib/src/=
+  - ~json_file_store.rs~ — ~JsonFileStore<T>~ (mutex + atomic
+    file writes, the canonical persistence helper).
+  - ~compendium/~ — ~Creature~ schema, parser, Open5e import,
+    bundled-creatures (=data/bundled-creatures.json= via
+    ~include_str!~).
+  - ~users/~ — ~User~ / ~UserId~ / ~UserPublic~ types,
+    ~UserStore~ (Argon2id hashing, email-uniqueness check,
+    validation rules).
+  - ~logging.rs~ — re-exports of foundation's
+    ~LogLevel~ / ~LogFormat~ so existing
+    =use ezpz_dndz_lib::{LogLevel, LogFormat};= imports keep
+    resolving.
+  - ~cr_calc/~ — challenge-rating estimator used by the paste-
+    block path.
+
+Foundation owns everything that used to live in =server/src/= as
+~auth.rs~ / ~systemd.rs~ / ~logging.rs~: OIDC handlers, systemd
+notify / watchdog, structured-logging init.  The Phase-4
+forward-port deleted those files from this repo; their
+behaviour is intact, just imported.
 
 ** Frontend
 
@@ -61,16 +115,18 @@ own module.
 | Region          | Modules                                                                                                                                 |
 |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
 | Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=                                                          |
+| Auth            | =Auth.elm= (~AuthState~ ADT + ~User~ + decoder)                                                                                          |
 | Domain          | =Encounter.elm= + =Encounter/{Lifecycle,Roster,Seed,Wire,DeathSaves,SaveNotice,Xp}=                                                      |
 | Domain          | =Compendium.elm= + =Compendium/{Wire,Parser}=                                                                                            |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
 | Routing / Cmd   | =Route.elm=, =Effects.elm=, =Ports.elm= (outbound JS for ~savePreferences~)                                                              |
-| UI substate     | =Ui/{AbilitySave,Compendium,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| UI substate     | =Ui/{AbilitySave,Compendium,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
+| Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes)                                           |
 | Update / domain | =Update/{AbilitySave,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / split  | =Update/Compendium/{Add,Browser,Bulk,Edit,Paste}.elm=                                                                                   |
 | View / modals   | =View/Modal/{AbilitySave,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
-| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Modal,PanelControls,PanelDetail,PhaseToggle,StatBlock,Toast,Tooltips,Workspace}.elm=         |
+| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm= |
 | Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
@@ -165,6 +221,10 @@ single feature:
   Export) follow the same shape but live on the compendium UI
   substate as ~bulkMenu : Maybe CompendiumBulkMenu~.
 - ~preferences : Preferences~ — see [[*Preferences][Preferences]] below.
+- ~auth : Auth.AuthState~ + ~loginUi : Ui.Login.LoginUi~ —
+  authentication status (Loading / Anonymous / Authenticated)
+  and the login / register form's typing state.  See
+  [[*Authentication and per-user storage][Authentication and per-user storage]] for the boot flow.
 
 Two modals — the dice roller and the compendium browser — sit
 *outside* the ADT because their substate has to survive a modal
@@ -296,25 +356,31 @@ rather than inflating =Main.elm=.
 
 * View dispatch
 
-~Main.view~ is a flat list of imported view-module calls:
+~Main.view~ branches on ~model.auth~ before getting to the app
+shell.  The three branches:
 
 #+begin_src elm
-view : Model -> Browser.Document Msg
-view model =
-    { title = "eZpZ-dndZ"
-    , body =
-        [ div [ class "app-shell" ]
-            [ View.AppBar.view
-            , viewPage model
-            , View.Modal.Dice.view model.dice
-            , View.Modal.HpChange.view model
-            , ...
-            , View.Toast.list model.toasts
-            , View.Audio.ringer model
-            ]
+case model.auth of
+    Auth.AuthLoading ->
+        [ -- "Loading…" panel ]
+
+    Auth.AuthAnonymous ->
+        [ View.Login.view model.loginUi ]
+
+    Auth.AuthAuthenticated user ->
+        [ View.AppBar.view ... user
+        , viewPage model
+        , View.Modal.Dice.view model.dice
+        , ...
+        , View.Toast.list model.toasts
+        , View.Audio.ringer model
         ]
-    }
 #+end_src
+
+The login screen replaces the entire body — no AppBar, no
+modals, no workspace — because no API call would succeed
+without a session anyway.  After a successful submit, the page
+reloads and re-enters this branch as ~AuthAuthenticated~.
 
 Modal views pattern-match on ~model.modal~ for the matching
 constructor and render ~text ""~ otherwise.  The
@@ -322,15 +388,131 @@ constructor and render ~text ""~ otherwise.  The
 header, ✕ close, click-out-to-close, Esc-to-close) — every modal
 in the app routes through it.
 
+* Authentication and per-user storage
+
+The app is account-gated: every ~/api/*~ endpoint outside
+~/api/auth/*~ requires a session, and every persisted store
+except the shared compendium catalogue is keyed by the
+authenticated user's ~UserId~.
+
+** Account model
+
+~User~ records carry a stable UUID id, a case-insensitively-
+unique email, an Argon2id PHC password hash, a free-form
+display name, and a unix-epoch ~created_at~.  Storage is a flat
+~Vec<User>~ in =users.json= via ~JsonFileStore~.
+
+Email + password is the only auth mechanism today.  The
+foundation crate also ships an OIDC flow (login / callback /
+logout handlers, ~require_auth~ middleware), and we leave it
+mounted but unconfigured — the ~/auth/*~ routes return 404
+until ~--oidc-issuer~ + friends are set.  The "free, no email
+verification, self-service" model lives at ~/api/auth/*~ and is
+ours.
+
+** HTTP surface
+
+| Endpoint                  | Behaviour                                                                  |
+|---------------------------+----------------------------------------------------------------------------|
+| ~POST /api/auth/register~ | Create an account; auto-login on success.  201 + the new ~UserPublic~.     |
+| ~POST /api/auth/login~    | Verify credentials, cycle the session id (anti-fixation), set ~user_id~ in the session.  200 + ~UserPublic~. |
+| ~POST /api/auth/logout~   | Flush the session.  204.  Idempotent.                                      |
+| ~GET  /api/auth/me~       | Echo the current user, or 401.                                             |
+
+The credential-error variants (no such email, wrong password)
+collapse to a single 401 ~"Invalid email or password"~ response
+so timing / error-text differences don't leak account-existence
+information.
+
+** Session and middleware
+
+Sessions ride on ~tower-sessions~ via foundation's runner
+(~MemoryStore~ today; restarting the server logs everyone out).
+The session cookie is ~SameSite=Lax~ and ~Secure~ in
+production builds.  ~user_id~ is the only key the app stores.
+
+~users::require_auth~ is the middleware layered over the
+protected ApiRouter: it pulls ~user_id~ off the session, looks
+up the ~User~ via ~UserStore::find_by_id~, and inserts a
+~CurrentUser(User)~ extension on the request.  Handlers that
+need the user extract ~Extension<CurrentUser>~ alongside their
+other inputs.  No session, no user → 401 with a JSON body.
+
+** Per-user data shapes
+
+| Store                | Disk shape                                                                                            | Notes                                                              |
+|----------------------+-------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
+| =users.json=         | ~Vec<User>~                                                                                           | Single global list; uniqueness enforced on email.                  |
+| =encounter.json=     | ~HashMap<UserId, Value>~                                                                              | Each user has their own live encounter; absent key reads as ~null~. |
+| =encounter-saves.json= | ~HashMap<UserId, Vec<SavedEncounter>>~                                                              | Save-name uniqueness is per-user; Alice + Bob can both have a "Goblin Ambush". |
+| =compendium-saves.json= | ~HashMap<UserId, Vec<SavedCompendium>>~                                                            | Same per-user keying.                                              |
+| =dice-history.json=  | ~HashMap<UserId, Vec<Value>>~                                                                         | 30-entry cap is per-user.                                          |
+| =compendium/creatures.json= | ~Vec<Creature>~                                                                                | *Shared* — all logged-in users see + can edit the same bestiary.   |
+
+The shared compendium is intentional: the 330-creature
+catalogue is the one piece of state the homelab DM crowd
+expects to collaborate on.  An admin / player role split is on
+the table for if mixed-trust deployments materialise; the seam
+is in =crates/server/src/users/=.
+
+Existing dev-mode JSON of an older flat shape will fail to
+deserialize and ~JsonFileStore::load_or_default~ falls back to
+an empty map (logged at WARN).  Fine for dev; production has no
+data in this repo yet, so no migration helper exists.
+
+** Frontend boot through the auth screen
+
+~Model.auth : Auth.AuthState~ is one of three:
+
+#+begin_src elm
+type AuthState
+    = AuthLoading
+    | AuthAnonymous
+    | AuthAuthenticated User
+#+end_src
+
+~init~ fires ~Effects.fetchAuthMe~ alongside the other data-load
+Cmds.  ~AuthMeReceived~ flips ~AuthLoading~ → either
+~AuthAuthenticated~ (the cookie was good, the parallel
+data-loads succeed) or ~AuthAnonymous~ (the parallel loads
+silently 401, but the body switches to =View.Login= so they're
+hidden anyway).
+
+The login form is mode-toggleable (Sign in ↔ Create account)
+and lives on ~Model.loginUi : LoginUi~.  Submit posts to
+~/api/auth/{login,register}~ — both return ~UserPublic~ so the
+two share the ~AuthLoginResponse~ Msg.  On success the page
+does ~Browser.Navigation.reload~ so ~init~ re-runs with the
+fresh cookie attached and every existing data-load Cmd issues
+authenticated.  Cheaper than threading auth state into every
+existing Cmd; the cost is one extra round-trip on first login.
+
+Logout posts to ~/api/auth/logout~ then ~Nav.reload~ regardless
+of response status — the user pressed the button and should
+land on the login screen.
+
+The AppBar nav (when authenticated) shows the user's display
+name + a *Sign out* button; the gear ⚙ theme switcher is
+*currently hidden* from the nav while the Light theme gets
+more polish.  Its supporting code (the ~settings~ popover,
+~themeRow~, ~themeRadio~, ~PreferencesThemeSet~ wiring) is
+intact in =View/AppBar.elm= so re-enabling is a one-line
+change.
+
 * Persistence
 
-| Path                          | Endpoint                          | Notes                                                                                                                                              |
-|-------------------------------+-----------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------|
-| =encounter.json=              | ~/api/encounter~ GET / PUT        | Live encounter state; auto-saved on every mutation                                                                                                 |
-| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | User-named encounter saves (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
-| =compendium/creatures.json=   | ~/api/compendium/*~               | Library of creature templates; bundled-creatures merge on boot                                                                                     |
-| =compendium-saves.json=       | ~/api/compendium/saves(/:name)*~  | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
-| =dice-history.json=           | ~/api/dice/history~               | Bounded persistent dice-roll log                                                                                                                   |
+The persisted JSON files all live under ~--data-dir~ (default
+~./~).  Each is read at boot and atomically rewritten on every
+mutation through ~JsonFileStore<T>~ from =crates/lib/=.
+
+| Path                          | Endpoint                          | Per-user? | Notes                                                                                                                                              |
+|-------------------------------+-----------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
+| =users.json=                  | ~/api/auth/{register,login,me}~   | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
+| =encounter.json=              | ~/api/encounter~ GET / PUT        | yes       | Live encounter state; auto-saved on every mutation                                                                                                 |
+| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | yes       | User-named encounter saves (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| =compendium/creatures.json=   | ~/api/compendium/*~               | no        | Shared bestiary; bundled-creatures merge on boot.                                                                                                  |
+| =compendium-saves.json=       | ~/api/compendium/saves(/:name)*~  | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
+| =dice-history.json=           | ~/api/dice/history~               | yes       | Bounded persistent dice-roll log (30-entry cap, per user).                                                                                         |
 
 The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
 persistence helper.  Every server-side feature with a JSON
@@ -600,14 +782,18 @@ type alias Preferences =
 
 Wire status today:
 
-- *Theme* is the only field with a UI surface — the AppBar
-  settings popover (the ⚙ button at top-right; ~settingsOpen :
-  Bool~ on the Model holds its open state).  Picks dispatch
-  ~PreferencesThemeSet Theme~ → =Update.Preferences.themeSet=,
-  which writes the new value to ~model.preferences~ and fires
-  ~Ports.savePreferences~ so the JS host persists it to
-  ~localStorage~ + mirrors it onto ~<html data-theme>~ for the
-  pre-Elm FOUC script on next reload.
+- *Theme* — has a full plumbing story but the trigger is
+  *currently hidden* from the AppBar nav while the Light theme
+  gets more polish (commit ~f7cb7f6~).  The popover, the radio
+  group, the ~PreferencesThemeSet Theme~ Msg, the
+  =Update.Preferences.themeSet= handler that writes
+  ~model.preferences~ + fires ~Ports.savePreferences~ to mirror
+  to ~localStorage~ + ~<html data-theme>~ — all of that is
+  intact in =View/AppBar.elm=.  Re-enabling is a single line
+  in =View.AppBar.view= once the Light variant is presentable.
+  Until then, the app effectively runs Dark-only (with the
+  pre-Elm FOUC script honouring ~prefers-color-scheme: dark~ as
+  the default).
 - ~autoScrollActiveCard~ is consulted by
   =Update.Encounter.nextTurn= when the turn advances.
 - The remaining fields (density, sound, auto-roll initiative,
@@ -725,19 +911,47 @@ Same idea, narrower:
 1. *Persistence* — use =JsonFileStore<T>= from =crates/lib/=.
    Don't roll a one-off file store.  The dice store, encounter
    store, and compendium store all use it; new features should
-   match.
+   match.  If the data is per-user, the canonical shape is
+   ~JsonFileStore<HashMap<UserId, T>>~ with operations taking
+   a leading ~&UserId~ parameter — see =saves.rs= /
+   =encounters/store.rs= for the templates.
 2. *HTTP routes* — register through ~aide::ApiRouter~ in the
-   relevant module's ~router()~ function (or =web_base.rs= for
-   cross-cutting routes).  Hand-rolling an =axum::Router= is a
-   miss; OpenAPI stays complete only when every route flows
-   through ~ApiRouter~.
-3. *Errors* — semantic ~thiserror~ variants that name the
+   relevant module's ~router()~ function.  Hand-rolling an
+   =axum::Router= is a miss; OpenAPI stays complete only when
+   every route flows through ~ApiRouter~.  When a route's
+   inputs include ~tower_sessions::Session~ (which has no
+   ~aide::OperationInput~ impl today), drop down to plain
+   ~axum::routing::{get,post}~ and add the route to the
+   ApiRouter via ~.route(...)~ rather than ~.api_route(...)~ —
+   the auth handlers do this.
+3. *Authentication* — if the route should require a session,
+   merge it into the ~protected~ ApiRouter in =main.rs= (which
+   carries the ~require_auth~ middleware layer).  Unauthenticated
+   routes (registration, login, infra) merge directly onto the
+   foundation ~Server~ outside that subtree.  Handlers extract
+   ~Extension<CurrentUser>~ to get the authenticated user.
+4. *Errors* — semantic ~thiserror~ variants that name the
    *operation*, not just the kind: ~ConfigFileReadError~, not
    ~FileReadError~.  Internal helpers use ~?~; HTTP handlers
    map to ~StatusCode~ at the boundary via ~impl IntoResponse~.
-4. *AppState* — if the feature needs state, add a field to
-   ~AppState~ in =web_base.rs=.  Construct it in =main.rs='s
-   ~load_or_default~ chain.
+   The ~unwrap_used~ / ~expect_used~ / ~panic~ workspace lints
+   are deny-by-default — every shipping code path returns a
+   typed error.
+5. *Config* — add fields to the ~Config~ struct in
+   =server/src/config.rs= via ~MergeConfig~.  Field-level
+   attributes drive CLI-flag generation and env-var derivation
+   (env var = ~ezpz_dndz_<field>~, lowercase per POSIX §8.1).
+   Cross-field defaults that depend on ~--data-dir~ flow
+   through ~RuntimePaths~ + ~Config::resolve_paths~.  If the
+   value isn't a primitive that ~MergeConfig~ knows about, use
+   the ~extra_cli~ / ~extra_file~ / ~skip~ + ~resolve_<field>~
+   escape hatches — see the OIDC + path-override pattern in
+   =config.rs=.
+6. *AppState* — if the feature needs state, add a field to
+   ~AppState~ in =web_base.rs= and load it in
+   ~AppState::assemble~.  ~AppState~ keeps app-specific stores
+   only; foundation's ~BaseServerState~ is spliced in via
+   ~impl_server_state!(AppState, base)~.
 
 ** Backend: a new CLI subcommand
 
@@ -775,6 +989,102 @@ decoration; it's load-bearing for swappable UI layouts (the
 "simple view" still on the roadmap) and for the modal-state
 invariants the type system now enforces.
 
+* Template compliance
+
+The repo was generated from [[https://github.com/LoganBarnett/rust-template][rust-template]] and tracks its
+upstream via a sync-record file at the workspace root.
+
+** Foundation crate
+
+~rust-template-foundation~ is consumed two ways:
+
+- *Cargo* — git dep declared in =Cargo.toml='s
+  ~[workspace.dependencies]~ section.  Member crates opt into
+  the features they need (~cli~ on the CLI crate, ~auth~ on the
+  server crate; ~lib~ takes the no-features default for the
+  shared logging types).
+- *Nix* — flake input, with ~foundation.lib.mkRustProject~
+  driving the bulk of =flake.nix= (Rust toolchain, crane build,
+  devShell composition, package + app generation) and
+  ~mkNixosService~ / ~mkDarwinService~ collapsing the two
+  service-module wrappers under =nix/modules/= to ~30 lines
+  each.
+
+What foundation owns (and we don't):
+
+- ~Server~ runner (~Server::new~, ~with_state~, ~merge~,
+  ~listen~), ~BaseServerState~ (registry / counter / OIDC client
+  / frontend path), the ~impl_server_state!~ macro that splices
+  the base into a custom ~AppState~.
+- Health / metrics / OpenAPI / Scalar / SPA-fallback / session-
+  layer routes and middleware.
+- OIDC handlers + ~require_auth~ middleware, ~credential_secret_path~
+  for systemd ~LoadCredential~, ~find_config_file~ for XDG
+  config-file discovery.
+- The ~MergeConfig~ derive macro (generates ~CliRaw~,
+  ~ConfigFileRaw~, ~Config::from_cli_and_file~, and the
+  ~CliApp~ trait impl from a single struct annotation), the
+  ~#[foundation_main]~ proc-macro entry point, and the
+  ~init_cli_logging~ / ~init_server_logging~ functions.
+- Reusable GitHub Actions workflows
+  (=reusable-{ci,publish,branch-protection,dependabot-automerge}.yml=)
+  the project's CI files call into.
+
+The Phase-4 forward-port deleted the corresponding files from
+this repo (=server/src/auth.rs=, =server/src/systemd.rs=,
+=server/src/logging.rs=, plus 354-line ~Config~, 291-line
+~web_base~, 237-line ~flake.nix~, and 560-line service modules).
+Net diff for the migration: ≈900 LOC removed across the
+workspace.
+
+** Sync record
+
+=rust-template.json= at the workspace root carries a
+~template_sync_hashes~ list — every commit hash the repo has
+synced against, oldest first.  The last entry is the base for
+the next diff-based compliance pass.  See
+[[file:COMPLIANCE_PLAN.org]] for the working brief of the most
+recent run and ~~/dev/rust-template/docs/compliance.org~ for
+the canonical process.
+
+** Lints + clippy
+
+Workspace-level deny:
+
+#+begin_src toml :exports code
+[workspace.lints.clippy]
+unwrap_used  = "deny"
+expect_used  = "deny"
+panic        = "deny"
+#+end_src
+
+Member crates opt in via ~[lints] workspace = true~.  =clippy.toml=
+at the workspace root carries ~allow-{unwrap,expect,panic}-in-tests
+= true~ so test code can panic on its desired-failure path.
+Helper functions in =tests/*.rs= integration files are not inside
+~#[test]~ items, so the lint there isn't suppressed by the
+toml — those files carry a file-level
+~#![allow(clippy::expect_used, clippy::unwrap_used)]~.
+
+Shipping code uses ~?~ + semantic ~thiserror~ variants
+exclusively; the LLM-facing rule is in =llms.org= (synced from
+foundation).
+
+** Env-var convention
+
+Every env var read by the binaries is *lowercase* and prefixed
+with the app name: ~ezpz_dndz_log_level~, ~ezpz_dndz_listen~,
+~ezpz_dndz_base_url~, etc.  POSIX §8.1 reserves the lowercase
+namespace for applications; the upper-case namespace is for
+shell/utility variables.  Hyphens in the app name become
+underscores because POSIX env-var names are restricted to
+letters, digits, and underscore.
+
+This is a deviation from the pre-compliance shape (~LOG_LEVEL~,
+~LISTEN~, etc.).  Anything outside this repo that sets the old
+spellings — systemd unit drop-ins, justfile recipes, shell
+scripts — needs the new names to take effect.
+
 * Conventions
 
 - Pascal Initialisms in new identifiers: ~Url~, not ~URL~; ~Db~,
@@ -793,14 +1103,21 @@ invariants the type system now enforces.
 
 =docs/archive/= holds historical planning documents
 (=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=, =CHANGELOG.org=).  They are no longer
-maintained and should not be read or updated.  Instructions
-inside that say "update X" are stale and superseded by this
-document.  The project does not maintain a changelog — commit
-messages and the git log are the canonical record of what
-changed; this document captures the load-bearing decisions.
+=COMPENDIUM_PLAN.org=, =CHANGELOG.org=, =TOOLTIPS.org=).  They
+are no longer maintained and should not be read or updated.
+Instructions inside that say "update X" are stale and
+superseded by this document.  The project does not maintain a
+changelog — commit messages and the git log are the canonical
+record of what changed; this document captures the load-bearing
+decisions.
 
-The active plan, and the only one to consult for status, is
-[[file:MODULARIZATION_PLAN.org]] — Phases 1–11, substantially
-complete.  See also [[file:TOOLTIPS.org][docs/TOOLTIPS.org]] (tooltip review companion to
-=View/Tooltips.elm=).
+** Live docs
+
+| Document                     | Purpose                                                        |
+|------------------------------+----------------------------------------------------------------|
+| [[file:MODULARIZATION_PLAN.org][MODULARIZATION_PLAN.org]] | Phases 1–11 of the Main.elm reshape — substantially complete. |
+| [[file:COMPLIANCE_PLAN.org][COMPLIANCE_PLAN.org]]    | Working brief for the rust-template forward-port.             |
+| [[file:AUTH_TESTING.org][AUTH_TESTING.org]]       | Local-dev guide for poking at user accounts.                  |
+| [[file:TOOLTIPS.org][TOOLTIPS.org]]           | Tooltip review companion to =View/Tooltips.elm=.              |
+| [[file:systemd.org][systemd.org]]            | LoadCredential + secret-passing notes for the NixOS module.   |
+| ~llms.org~ (workspace root)  | LLM-facing coding-rule reference, synced from foundation.    |
