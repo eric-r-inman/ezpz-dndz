@@ -7,6 +7,10 @@
 //! a user-provided string.  Callers can create / overwrite / list /
 //! get / delete / rename these by name.
 //!
+//! Disk shape is `HashMap<UserId, Vec<SavedEncounter>>` — each user
+//! sees only their own saves and name uniqueness is per-user (Alice
+//! and Bob can both have a "Goblin ambush" without collision).
+//!
 //! Backed by a single JSON file (`<data_dir>/encounter-saves.json`)
 //! through the shared `JsonFileStore` for atomic writes.  The
 //! encounter body is stored as opaque `serde_json::Value` so the
@@ -14,12 +18,13 @@
 //! migration.
 
 use std::{
+  collections::HashMap,
   path::PathBuf,
   sync::Arc,
   time::{SystemTime, UNIX_EPOCH},
 };
 
-use ezpz_dndz_lib::json_file_store::JsonFileStore;
+use ezpz_dndz_lib::{json_file_store::JsonFileStore, users::UserId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -51,54 +56,71 @@ pub struct RenameBody {
   pub new_name: String,
 }
 
-/// File-backed list of named saves.
+/// File-backed list of named saves, keyed by user.
 #[derive(Clone)]
 pub struct SavedEncounterStore {
-  inner: Arc<JsonFileStore<Vec<SavedEncounter>>>,
+  inner: Arc<JsonFileStore<HashMap<UserId, Vec<SavedEncounter>>>>,
 }
 
 impl SavedEncounterStore {
-  /// Open the store at `path`.  Missing file is treated as an
-  /// empty list (matches `JsonFileStore::load_or_default` for
-  /// `Vec<T>`).
+  /// Open the store at `path`.  Missing file is treated as an empty
+  /// map; malformed JSON (including the legacy pre-auth flat-list
+  /// shape) is logged at WARN by the underlying `JsonFileStore` and
+  /// also drops to an empty map.
   pub async fn load_or_default(
     path: PathBuf,
   ) -> Result<Self, EncounterStoreError> {
     let inner =
-      JsonFileStore::<Vec<SavedEncounter>>::load_or_default(path).await?;
+      JsonFileStore::<HashMap<UserId, Vec<SavedEncounter>>>::load_or_default(
+        path,
+      )
+      .await?;
     Ok(Self {
       inner: Arc::new(inner),
     })
   }
 
-  /// Project the store down to its metadata for the listing
+  /// Project one user's saves down to metadata for the listing
   /// endpoint.  Sorted by `updated_at` descending so the most
   /// recently touched save sits at the top of the modal.
-  pub async fn list(&self) -> Vec<SavedEncounterMeta> {
-    let mut all: Vec<SavedEncounterMeta> = self
+  pub async fn list(&self, user_id: &UserId) -> Vec<SavedEncounterMeta> {
+    let all = self.inner.read().await;
+    let mut metas: Vec<SavedEncounterMeta> = all
+      .get(user_id)
+      .map(|saves| {
+        saves
+          .iter()
+          .map(|s| SavedEncounterMeta {
+            name: s.name.clone(),
+            created_at: s.created_at,
+            updated_at: s.updated_at,
+          })
+          .collect()
+      })
+      .unwrap_or_default();
+    metas.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    metas
+  }
+
+  pub async fn get(
+    &self,
+    user_id: &UserId,
+    name: &str,
+  ) -> Option<SavedEncounter> {
+    self
       .inner
       .read()
       .await
-      .into_iter()
-      .map(|s| SavedEncounterMeta {
-        name: s.name,
-        created_at: s.created_at,
-        updated_at: s.updated_at,
-      })
-      .collect();
-    all.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    all
+      .get(user_id)
+      .and_then(|saves| saves.iter().find(|s| s.name == name).cloned())
   }
 
-  pub async fn get(&self, name: &str) -> Option<SavedEncounter> {
-    self.inner.read().await.into_iter().find(|s| s.name == name)
-  }
-
-  /// Insert a brand new save.  Errors if a save with this name
-  /// already exists — callers wanting overwrite semantics use
-  /// [`replace`](Self::replace).
+  /// Insert a brand new save for the given user.  Errors if a save
+  /// with this name already exists for that user — callers wanting
+  /// overwrite semantics use [`replace`](Self::replace).
   pub async fn create(
     &self,
+    user_id: &UserId,
     name: String,
     encounter: Value,
   ) -> Result<SavedEncounter, EncounterStoreError> {
@@ -109,13 +131,15 @@ impl SavedEncounterStore {
       created_at: now,
       updated_at: now,
     };
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if all.iter().any(|s| s.name == name) {
+        let saves = all.entry(user_id_owned).or_default();
+        if saves.iter().any(|s| s.name == name) {
           Err(())
         } else {
-          all.push(record.clone());
+          saves.push(record.clone());
           Ok(record)
         }
       })
@@ -124,17 +148,21 @@ impl SavedEncounterStore {
   }
 
   /// Overwrite an existing save by name; preserves the original
-  /// `created_at`.  Errors if no save with this name exists.
+  /// `created_at`.  Errors if no save with this name exists for the
+  /// given user.
   pub async fn replace(
     &self,
+    user_id: &UserId,
     name: String,
     encounter: Value,
   ) -> Result<SavedEncounter, EncounterStoreError> {
     let now = epoch_millis();
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if let Some(slot) = all.iter_mut().find(|s| s.name == name) {
+        let saves = all.entry(user_id_owned).or_default();
+        if let Some(slot) = saves.iter_mut().find(|s| s.name == name) {
           slot.encounter = encounter;
           slot.updated_at = now;
           Ok(slot.clone())
@@ -146,15 +174,21 @@ impl SavedEncounterStore {
     outcome.map_err(|()| EncounterStoreError::SaveNotFound)
   }
 
-  /// Drop the save with the given name.
-  pub async fn delete(&self, name: &str) -> Result<(), EncounterStoreError> {
+  /// Drop the save with the given name from the user's list.
+  pub async fn delete(
+    &self,
+    user_id: &UserId,
+    name: &str,
+  ) -> Result<(), EncounterStoreError> {
     let owned = name.to_string();
+    let user_id_owned = user_id.clone();
     let removed = self
       .inner
       .mutate(move |all| {
-        let before = all.len();
-        all.retain(|s| s.name != owned);
-        before != all.len()
+        let saves = all.entry(user_id_owned).or_default();
+        let before = saves.len();
+        saves.retain(|s| s.name != owned);
+        before != saves.len()
       })
       .await?;
     if removed {
@@ -164,24 +198,27 @@ impl SavedEncounterStore {
     }
   }
 
-  /// Rename a save in place.  Errors if the source name is
-  /// missing or the destination name already exists (no implicit
-  /// overwrite — the frontend should prompt).  `updated_at` is
-  /// bumped to reflect the user-visible change.
+  /// Rename a save in place.  Errors if the source name is missing
+  /// in the user's list or the destination name already exists for
+  /// that user (no implicit overwrite — the frontend prompts).
+  /// `updated_at` is bumped to reflect the user-visible change.
   pub async fn rename(
     &self,
+    user_id: &UserId,
     from: &str,
     to: String,
   ) -> Result<SavedEncounter, EncounterStoreError> {
     let from_owned = from.to_string();
     let now = epoch_millis();
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if all.iter().any(|s| s.name == to) {
+        let saves = all.entry(user_id_owned).or_default();
+        if saves.iter().any(|s| s.name == to) {
           return Err(EncounterStoreError::SaveAlreadyExists);
         }
-        match all.iter_mut().find(|s| s.name == from_owned) {
+        match saves.iter_mut().find(|s| s.name == from_owned) {
           Some(slot) => {
             slot.name = to;
             slot.updated_at = now;

@@ -372,6 +372,150 @@ async fn test_dice_history_concurrent_appends_lose_nothing() {
   );
 }
 
+/// Variant of `register_and_get_cookie` that takes the email +
+/// display name explicitly so a single test can produce multiple
+/// independent sessions for cross-user isolation checks.
+async fn register_user(
+  app: &Router,
+  email: &str,
+  display_name: &str,
+) -> String {
+  let body = format!(
+    r#"{{"email":"{email}","password":"hunter2hunter","display_name":"{display_name}"}}"#
+  );
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/auth/register")
+        .header("content-type", "application/json")
+        .body(Body::from(body))
+        .unwrap(),
+    )
+    .await
+    .expect("register");
+  assert_eq!(response.status(), StatusCode::CREATED);
+  extract_session_cookie(&response).expect("cookie")
+}
+
+#[tokio::test]
+async fn test_per_user_isolation_for_saved_encounters() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+
+  let alice = register_user(&app, "alice@example.com", "Alice").await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice creates a save.
+  let alice_put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/encounter/saves/Goblins")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(r#"{"creatures":[]}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(alice_put.status(), StatusCode::OK);
+
+  // Bob lists his saves — should be empty.
+  let bob_list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(bob_list.status(), StatusCode::OK);
+  let bob_body = read_body(bob_list).await;
+  assert_eq!(
+    bob_body.trim(),
+    "[]",
+    "Bob should not see Alice's saves; got: {bob_body}"
+  );
+
+  // Bob also tries to fetch Alice's save by name — must 404.
+  let bob_get = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Goblins")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(bob_get.status(), StatusCode::NOT_FOUND);
+
+  // Bob can save under the same name without a conflict — saves
+  // are per-user.
+  let bob_put = app
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/encounter/saves/Goblins")
+        .header("content-type", "application/json")
+        .header("cookie", &bob)
+        .body(Body::from(r#"{"creatures":[]}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(bob_put.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_per_user_isolation_for_live_encounter() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+
+  let alice = register_user(&app, "alice@example.com", "Alice").await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice posts an encounter.
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/encounter")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(r#"{"activeName":"Alice","round":1}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  // Bob reads — should be null (his own encounter, not Alice's).
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let body = read_body(bob_get).await;
+  assert_eq!(
+    body.trim(),
+    "null",
+    "Bob should see his own (empty) encounter, not Alice's; got: {body}"
+  );
+}
+
 #[tokio::test]
 async fn test_protected_route_without_session_is_unauthorized() {
   let (_temp, state) = stub_app_state().await;

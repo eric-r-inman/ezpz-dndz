@@ -30,12 +30,13 @@ use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   response::{IntoResponse, Response},
-  Json,
+  Extension, Json,
 };
 use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::users::CurrentUser;
 use crate::web_base::AppState;
 
 // ── handlers ─────────────────────────────────────────────────────────────────
@@ -127,15 +128,19 @@ async fn reset_compendium(State(state): State<AppState>) -> Response {
 // `serde_json::Value` so frontend-only schema changes don't need a
 // server migration.
 
-async fn list_compendium_saves(State(state): State<AppState>) -> Response {
-  Json(state.compendium_saves.list().await).into_response()
+async fn list_compendium_saves(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  Json(state.compendium_saves.list(&user.id).await).into_response()
 }
 
 async fn get_compendium_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.compendium_saves.get(&name).await {
+  match state.compendium_saves.get(&user.id, &name).await {
     Some(record) => Json(record).into_response(),
     None => CompendiumStoreError::SaveNotFound.into_response(),
   }
@@ -153,6 +158,7 @@ struct PutCompendiumSaveQuery {
 
 async fn put_compendium_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(raw_name): Path<String>,
   Query(query): Query<PutCompendiumSaveQuery>,
   Json(body): Json<Value>,
@@ -166,17 +172,17 @@ async fn put_compendium_save(
     // PUT?overwrite=true call upserts.
     match state
       .compendium_saves
-      .replace(name.clone(), body.clone())
+      .replace(&user.id, name.clone(), body.clone())
       .await
     {
       Ok(record) => Ok(record),
       Err(CompendiumStoreError::SaveNotFound) => {
-        state.compendium_saves.create(name, body).await
+        state.compendium_saves.create(&user.id, name, body).await
       }
       Err(other) => Err(other),
     }
   } else {
-    state.compendium_saves.create(name, body).await
+    state.compendium_saves.create(&user.id, name, body).await
   };
   match result {
     Ok(record) => (StatusCode::OK, Json(record)).into_response(),
@@ -186,9 +192,10 @@ async fn put_compendium_save(
 
 async fn delete_compendium_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.compendium_saves.delete(&name).await {
+  match state.compendium_saves.delete(&user.id, &name).await {
     Ok(()) => StatusCode::NO_CONTENT.into_response(),
     Err(e) => e.into_response(),
   }
@@ -196,6 +203,7 @@ async fn delete_compendium_save(
 
 async fn rename_compendium_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
   Json(body): Json<saves::RenameBody>,
 ) -> Response {
@@ -203,7 +211,11 @@ async fn rename_compendium_save(
     Ok(n) => n,
     Err(e) => return e.into_response(),
   };
-  match state.compendium_saves.rename(&name, new_name).await {
+  match state
+    .compendium_saves
+    .rename(&user.id, &name, new_name)
+    .await
+  {
     Ok(record) => Json(record).into_response(),
     Err(e) => e.into_response(),
   }

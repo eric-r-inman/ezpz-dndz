@@ -45,36 +45,45 @@ use axum::{
   extract::{Path, Query, State},
   http::StatusCode,
   response::{IntoResponse, Response},
-  Json,
+  Extension, Json,
 };
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::users::CurrentUser;
 use crate::web_base::AppState;
 
-async fn get_encounter(State(state): State<AppState>) -> Response {
-  Json(state.encounter_store.read().await).into_response()
+async fn get_encounter(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  Json(state.encounter_store.read(&user.id).await).into_response()
 }
 
 async fn put_encounter(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Json(body): Json<Value>,
 ) -> Response {
-  match state.encounter_store.replace(body.clone()).await {
+  match state.encounter_store.replace(&user.id, body.clone()).await {
     Ok(()) => Json(body).into_response(),
     Err(e) => e.into_response(),
   }
 }
 
-async fn list_saves(State(state): State<AppState>) -> Response {
-  Json(state.encounter_saves.list().await).into_response()
+async fn list_saves(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  Json(state.encounter_saves.list(&user.id).await).into_response()
 }
 
 async fn get_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.encounter_saves.get(&name).await {
+  match state.encounter_saves.get(&user.id, &name).await {
     Some(record) => Json(record).into_response(),
     None => EncounterStoreError::SaveNotFound.into_response(),
   }
@@ -92,6 +101,7 @@ struct PutSaveQuery {
 
 async fn put_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(raw_name): Path<String>,
   Query(query): Query<PutSaveQuery>,
   Json(body): Json<Value>,
@@ -105,17 +115,17 @@ async fn put_save(
     // PUT?overwrite=true call upserts.
     match state
       .encounter_saves
-      .replace(name.clone(), body.clone())
+      .replace(&user.id, name.clone(), body.clone())
       .await
     {
       Ok(record) => Ok(record),
       Err(EncounterStoreError::SaveNotFound) => {
-        state.encounter_saves.create(name, body).await
+        state.encounter_saves.create(&user.id, name, body).await
       }
       Err(other) => Err(other),
     }
   } else {
-    state.encounter_saves.create(name, body).await
+    state.encounter_saves.create(&user.id, name, body).await
   };
   match result {
     Ok(record) => (StatusCode::OK, Json(record)).into_response(),
@@ -125,9 +135,10 @@ async fn put_save(
 
 async fn delete_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.encounter_saves.delete(&name).await {
+  match state.encounter_saves.delete(&user.id, &name).await {
     Ok(()) => StatusCode::NO_CONTENT.into_response(),
     Err(e) => e.into_response(),
   }
@@ -135,6 +146,7 @@ async fn delete_save(
 
 async fn rename_save(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
   Json(body): Json<saves::RenameBody>,
 ) -> Response {
@@ -142,7 +154,11 @@ async fn rename_save(
     Ok(n) => n,
     Err(e) => return e.into_response(),
   };
-  match state.encounter_saves.rename(&name, new_name).await {
+  match state
+    .encounter_saves
+    .rename(&user.id, &name, new_name)
+    .await
+  {
     Ok(record) => Json(record).into_response(),
     Err(e) => e.into_response(),
   }

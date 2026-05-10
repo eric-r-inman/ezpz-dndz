@@ -1,25 +1,28 @@
 //! Named-compendium save store.
 //!
 //! Distinct from the live compendium (`compendium/store.rs`), which
-//! holds the single working creature library the user edits.  This
-//! store holds the user's named compendium snapshots: a list of
+//! holds the single shared bestiary all users edit.  This store
+//! holds each user's named compendium snapshots: a list of
 //! `{ name, creatures, created_at, updated_at }` records keyed by a
 //! user-provided string.  Callers can create / overwrite / list /
 //! get / delete / rename these by name, exactly mirroring the
 //! `SavedEncounterStore` pattern.
 //!
-//! Backed by a single JSON file (`<data_dir>/compendium-saves.json`)
-//! through the shared `JsonFileStore` for atomic writes.  The
-//! creature list is stored as opaque `serde_json::Value` so the
-//! `Creature` shape can evolve without a server-side migration.
+//! Disk shape is `HashMap<UserId, Vec<SavedCompendium>>` — name
+//! uniqueness is per-user.  Backed by a single JSON file
+//! (`<data_dir>/compendium-saves.json`) through the shared
+//! `JsonFileStore` for atomic writes.  The creature list is stored
+//! as opaque `serde_json::Value` so the `Creature` shape can evolve
+//! without a server-side migration.
 
 use std::{
+  collections::HashMap,
   path::PathBuf,
   sync::Arc,
   time::{SystemTime, UNIX_EPOCH},
 };
 
-use ezpz_dndz_lib::json_file_store::JsonFileStore;
+use ezpz_dndz_lib::{json_file_store::JsonFileStore, users::UserId};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,54 +57,70 @@ pub struct RenameBody {
   pub new_name: String,
 }
 
-/// File-backed list of named compendium snapshots.
+/// File-backed list of named compendium snapshots, keyed by user.
 #[derive(Clone)]
 pub struct SavedCompendiumStore {
-  inner: Arc<JsonFileStore<Vec<SavedCompendium>>>,
+  inner: Arc<JsonFileStore<HashMap<UserId, Vec<SavedCompendium>>>>,
 }
 
 impl SavedCompendiumStore {
   /// Open the store at `path`.  Missing file is treated as an
-  /// empty list (matches `JsonFileStore::load_or_default` for
-  /// `Vec<T>`).
+  /// empty map; malformed JSON (including the legacy pre-auth
+  /// flat-list shape) drops to an empty map.
   pub async fn load_or_default(
     path: PathBuf,
   ) -> Result<Self, CompendiumStoreError> {
     let inner =
-      JsonFileStore::<Vec<SavedCompendium>>::load_or_default(path).await?;
+      JsonFileStore::<HashMap<UserId, Vec<SavedCompendium>>>::load_or_default(
+        path,
+      )
+      .await?;
     Ok(Self {
       inner: Arc::new(inner),
     })
   }
 
-  /// Project the store down to its metadata for the listing
+  /// Project one user's snapshots down to metadata for the listing
   /// endpoint.  Sorted by `updated_at` descending so the most
   /// recently touched save sits at the top of the modal.
-  pub async fn list(&self) -> Vec<SavedCompendiumMeta> {
-    let mut all: Vec<SavedCompendiumMeta> = self
+  pub async fn list(&self, user_id: &UserId) -> Vec<SavedCompendiumMeta> {
+    let all = self.inner.read().await;
+    let mut metas: Vec<SavedCompendiumMeta> = all
+      .get(user_id)
+      .map(|saves| {
+        saves
+          .iter()
+          .map(|s| SavedCompendiumMeta {
+            name: s.name.clone(),
+            created_at: s.created_at,
+            updated_at: s.updated_at,
+          })
+          .collect()
+      })
+      .unwrap_or_default();
+    metas.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    metas
+  }
+
+  pub async fn get(
+    &self,
+    user_id: &UserId,
+    name: &str,
+  ) -> Option<SavedCompendium> {
+    self
       .inner
       .read()
       .await
-      .into_iter()
-      .map(|s| SavedCompendiumMeta {
-        name: s.name,
-        created_at: s.created_at,
-        updated_at: s.updated_at,
-      })
-      .collect();
-    all.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
-    all
+      .get(user_id)
+      .and_then(|saves| saves.iter().find(|s| s.name == name).cloned())
   }
 
-  pub async fn get(&self, name: &str) -> Option<SavedCompendium> {
-    self.inner.read().await.into_iter().find(|s| s.name == name)
-  }
-
-  /// Insert a brand new snapshot.  Errors if a save with this
-  /// name already exists — callers wanting overwrite semantics
-  /// use [`replace`](Self::replace).
+  /// Insert a brand new snapshot for the given user.  Errors if a
+  /// save with this name already exists for that user — callers
+  /// wanting overwrite semantics use [`replace`](Self::replace).
   pub async fn create(
     &self,
+    user_id: &UserId,
     name: String,
     creatures: Value,
   ) -> Result<SavedCompendium, CompendiumStoreError> {
@@ -112,13 +131,15 @@ impl SavedCompendiumStore {
       created_at: now,
       updated_at: now,
     };
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if all.iter().any(|s| s.name == name) {
+        let saves = all.entry(user_id_owned).or_default();
+        if saves.iter().any(|s| s.name == name) {
           Err(())
         } else {
-          all.push(record.clone());
+          saves.push(record.clone());
           Ok(record)
         }
       })
@@ -128,17 +149,20 @@ impl SavedCompendiumStore {
 
   /// Overwrite an existing snapshot by name; preserves the
   /// original `created_at`.  Errors if no save with this name
-  /// exists.
+  /// exists for the given user.
   pub async fn replace(
     &self,
+    user_id: &UserId,
     name: String,
     creatures: Value,
   ) -> Result<SavedCompendium, CompendiumStoreError> {
     let now = epoch_millis();
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if let Some(slot) = all.iter_mut().find(|s| s.name == name) {
+        let saves = all.entry(user_id_owned).or_default();
+        if let Some(slot) = saves.iter_mut().find(|s| s.name == name) {
           slot.creatures = creatures;
           slot.updated_at = now;
           Ok(slot.clone())
@@ -150,15 +174,21 @@ impl SavedCompendiumStore {
     outcome.map_err(|()| CompendiumStoreError::SaveNotFound)
   }
 
-  /// Drop the snapshot with the given name.
-  pub async fn delete(&self, name: &str) -> Result<(), CompendiumStoreError> {
+  /// Drop the snapshot with the given name from the user's list.
+  pub async fn delete(
+    &self,
+    user_id: &UserId,
+    name: &str,
+  ) -> Result<(), CompendiumStoreError> {
     let owned = name.to_string();
+    let user_id_owned = user_id.clone();
     let removed = self
       .inner
       .mutate(move |all| {
-        let before = all.len();
-        all.retain(|s| s.name != owned);
-        before != all.len()
+        let saves = all.entry(user_id_owned).or_default();
+        let before = saves.len();
+        saves.retain(|s| s.name != owned);
+        before != saves.len()
       })
       .await?;
     if removed {
@@ -169,23 +199,26 @@ impl SavedCompendiumStore {
   }
 
   /// Rename a snapshot in place.  Errors if the source name is
-  /// missing or the destination name already exists (no implicit
-  /// overwrite — the frontend should prompt).  `updated_at` is
-  /// bumped to reflect the user-visible change.
+  /// missing or the destination name already exists for the user
+  /// (no implicit overwrite — the frontend should prompt).
+  /// `updated_at` is bumped to reflect the user-visible change.
   pub async fn rename(
     &self,
+    user_id: &UserId,
     from: &str,
     to: String,
   ) -> Result<SavedCompendium, CompendiumStoreError> {
     let from_owned = from.to_string();
     let now = epoch_millis();
+    let user_id_owned = user_id.clone();
     let outcome = self
       .inner
       .mutate(move |all| {
-        if all.iter().any(|s| s.name == to) {
+        let saves = all.entry(user_id_owned).or_default();
+        if saves.iter().any(|s| s.name == to) {
           return Err(CompendiumStoreError::SaveAlreadyExists);
         }
-        match all.iter_mut().find(|s| s.name == from_owned) {
+        match saves.iter_mut().find(|s| s.name == from_owned) {
           Some(slot) => {
             slot.name = to;
             slot.updated_at = now;
