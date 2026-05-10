@@ -40,7 +40,15 @@ import View.Tooltips as Tooltips
 
 
 view : Bool -> Theme -> Html Msg
-view settingsOpen theme =
+view _ _ =
+    -- The ⚙ settings popover (light/dark/auto theme switcher) is
+    -- temporarily hidden from the nav while the light theme gets
+    -- more polish.  All the supporting code below — `settings`,
+    -- `themeRow`, `themeRadio`, the PreferencesThemeSet wiring —
+    -- stays in place so re-enabling is a one-line change in `nav`.
+    -- The two parameters stay on the signature so callers in
+    -- Main.elm don't have to be edited; they're passed through
+    -- but ignored here for now.
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -49,7 +57,6 @@ view settingsOpen theme =
             [ a [ href "/" ] [ text "Encounter" ]
             , a [ href "/me" ] [ text "Me" ]
             , a [ href "/scalar" ] [ text "API" ]
-            , settings settingsOpen theme
             ]
         ]
 
