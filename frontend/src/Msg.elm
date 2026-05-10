@@ -29,6 +29,7 @@ stay in `Main.elm` for now and are scheduled for per-feature
 
 -}
 
+import Auth
 import Browser
 import Browser.Dom
 import Compendium
@@ -673,4 +674,19 @@ type Msg
     | SettingsClose
       -- Keyboard shortcuts
     | CompendiumFocusSearch
+      -- Authentication.  AuthMeReceived fires once on boot from
+      -- the GET /api/auth/me probe; Login* / Register* drive the
+      -- form on the AuthAnonymous screen; Logout dismantles the
+      -- session.  AuthLoginResponse covers both register and
+      -- login (the wire shapes are identical) so the form re-uses
+      -- a single "did the request fail?" branch.
+    | AuthMeReceived (Result Http.Error Auth.User)
+    | AuthLoginEmailChanged String
+    | AuthLoginPasswordChanged String
+    | AuthLoginDisplayNameChanged String
+    | AuthLoginModeChanged Auth.LoginMode
+    | AuthLoginSubmit
+    | AuthLoginResponse (Result Http.Error Auth.User)
+    | AuthLogout
+    | AuthLogoutDone (Result Http.Error ())
     | NoOp

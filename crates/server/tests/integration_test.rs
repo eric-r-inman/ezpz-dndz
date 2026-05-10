@@ -315,7 +315,7 @@ async fn test_dice_history_concurrent_appends_lose_nothing() {
   // should land in the file (under the 30-entry MAX cap), and
   // every id should appear exactly once.
   let (_temp, state) = stub_app_state().await;
-  let app = build_test_router(state.clone());
+  let app = build_test_router(state);
   let cookie = register_and_get_cookie(&app).await;
   let n_rolls = 20usize;
 
@@ -350,9 +350,23 @@ async fn test_dice_history_concurrent_appends_lose_nothing() {
     res.expect("spawned task panicked");
   }
 
-  // Read the persisted history back through the in-memory store
-  // (the file is auto-flushed on every mutate).
-  let entries = state.dice_store.load().await;
+  // Read the persisted history back via the HTTP API as the same
+  // user — exercises the per-user filter rather than peeking at
+  // the underlying map directly.
+  let history_response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/dice/history")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(history_response.status(), StatusCode::OK);
+  let body = read_body(history_response).await;
+  let entries: Vec<serde_json::Value> =
+    serde_json::from_str(&body).expect("history is JSON array");
   assert_eq!(
     entries.len(),
     n_rolls,
@@ -513,6 +527,51 @@ async fn test_per_user_isolation_for_live_encounter() {
     body.trim(),
     "null",
     "Bob should see his own (empty) encounter, not Alice's; got: {body}"
+  );
+}
+
+#[tokio::test]
+async fn test_per_user_isolation_for_dice_history() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+
+  let alice = register_user(&app, "alice@example.com", "Alice").await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice posts one roll.
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/dice/history")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(
+          r#"{"id":1,"feature":"Test","total":17,"expression":{"dice":[],"constant":0,"damageType":null},"groups":[],"formula":"1d20","kind":"standard","source":{"feature":"Test","target":null}}"#,
+        ))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  // Bob lists his history — should be empty.
+  let bob_history = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/dice/history")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(bob_history.status(), StatusCode::OK);
+  let body = read_body(bob_history).await;
+  assert_eq!(
+    body.trim(),
+    "[]",
+    "Bob should not see Alice's rolls; got: {body}"
   );
 }
 

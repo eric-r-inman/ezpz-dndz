@@ -1,5 +1,6 @@
 module Main exposing (Flags, main)
 
+import Auth
 import Browser
 import Browser.Dom
 import Browser.Events
@@ -61,7 +62,9 @@ import Ui.Condition as ConditionUi exposing (ConditionUi, SaveToEndUi)
 import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
+import Ui.Login as LoginUi
 import Update.AbilitySave
+import Update.Auth
 import Update.Compendium.Add
 import Update.Compendium.Browser
 import Update.Compendium.Bulk
@@ -91,6 +94,7 @@ import Util.Keyboard
 import View.AppBar
 import View.Audio
 import View.Card
+import View.Login
 import View.Modal
 import View.Modal.AbilitySave
 import View.Modal.Compendium
@@ -339,6 +343,8 @@ init flags url key =
       , url = url
       , route = route
       , me = Loading
+      , auth = Auth.AuthLoading
+      , loginUi = LoginUi.empty
       , encounter = Encounter.empty
       , savedSnapshot = Nothing
       , savedAs = Nothing
@@ -364,7 +370,8 @@ init flags url key =
       -- are silently swallowed so a fresh server (no
       -- dice-history.json yet) still loads.
     , Cmd.batch
-        [ Effects.cmdForRoute route
+        [ Effects.fetchAuthMe
+        , Effects.cmdForRoute route
         , Effects.fetchDiceHistory
         , Compendium.Wire.fetchAll CompendiumLoaded
         , Encounter.Wire.fetchEncounterCmd EncounterLoaded
@@ -1315,6 +1322,33 @@ updateInner msg model =
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model
 
+        AuthMeReceived result ->
+            Update.Auth.meReceived result model
+
+        AuthLoginEmailChanged value ->
+            Update.Auth.emailChanged value model
+
+        AuthLoginPasswordChanged value ->
+            Update.Auth.passwordChanged value model
+
+        AuthLoginDisplayNameChanged value ->
+            Update.Auth.displayNameChanged value model
+
+        AuthLoginModeChanged mode ->
+            Update.Auth.modeChanged mode model
+
+        AuthLoginSubmit ->
+            Update.Auth.submit model
+
+        AuthLoginResponse result ->
+            Update.Auth.response result model
+
+        AuthLogout ->
+            Update.Auth.logout model
+
+        AuthLogoutDone result ->
+            Update.Auth.logoutDone result model
+
         NoOp ->
             Update.Shell.noOp model
 
@@ -1331,30 +1365,45 @@ view model =
             [ class "app-shell"
             , attribute "data-theme" (themeAttr model.preferences.theme)
             ]
-            [ View.AppBar.view model.settingsOpen model.preferences.theme
-            , viewPage model
-            , View.Modal.Dice.view model.dice
-            , View.Modal.HpChange.view model
-            , View.Modal.Initiative.view model
-            , View.Modal.Note.view model
-            , View.Modal.Condition.view model
-            , View.Modal.Memo.view model
-            , View.Modal.Timer.view model
-            , View.Modal.Compendium.view model.compendium
-                (List.filterMap .creatureId model.encounter.creatures)
-            , View.Modal.CompendiumEdit.view model
-            , View.Modal.CompendiumPaste.view model
-            , View.Modal.Save.view model
-            , View.Modal.Load.view model
-            , View.Modal.SaveCompendium.view model
-            , View.Modal.LoadCompendium.view model
-            , View.Modal.AbilitySave.view model
-            , View.Modal.QuickAdd.view model
-            , View.Modal.Duplicate.view model
-            , View.Toast.list model.toasts
-            , View.RollPopup.list model.rollPopups
-            , View.Audio.ringer model
-            ]
+            (case model.auth of
+                Auth.AuthLoading ->
+                    [ div [ class "auth-login" ]
+                        [ div [ class "auth-login__panel" ]
+                            [ p [ class "auth-login__tagline" ]
+                                [ text "Loading…" ]
+                            ]
+                        ]
+                    ]
+
+                Auth.AuthAnonymous ->
+                    [ View.Login.view model.loginUi ]
+
+                Auth.AuthAuthenticated user ->
+                    [ View.AppBar.view model.settingsOpen model.preferences.theme user
+                    , viewPage model
+                    , View.Modal.Dice.view model.dice
+                    , View.Modal.HpChange.view model
+                    , View.Modal.Initiative.view model
+                    , View.Modal.Note.view model
+                    , View.Modal.Condition.view model
+                    , View.Modal.Memo.view model
+                    , View.Modal.Timer.view model
+                    , View.Modal.Compendium.view model.compendium
+                        (List.filterMap .creatureId model.encounter.creatures)
+                    , View.Modal.CompendiumEdit.view model
+                    , View.Modal.CompendiumPaste.view model
+                    , View.Modal.Save.view model
+                    , View.Modal.Load.view model
+                    , View.Modal.SaveCompendium.view model
+                    , View.Modal.LoadCompendium.view model
+                    , View.Modal.AbilitySave.view model
+                    , View.Modal.QuickAdd.view model
+                    , View.Modal.Duplicate.view model
+                    , View.Toast.list model.toasts
+                    , View.RollPopup.list model.rollPopups
+                    , View.Audio.ringer model
+                    ]
+            )
         ]
     }
 

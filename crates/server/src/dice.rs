@@ -24,7 +24,7 @@
 //! cheap because the typical load is a handful of rolls per second
 //! at the table.
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use aide::{
   axum::{
@@ -36,13 +36,17 @@ use axum::{
   extract::State,
   http::StatusCode,
   response::{IntoResponse, Response},
-  Json,
+  Extension, Json,
 };
-use ezpz_dndz_lib::json_file_store::{JsonFileStore, JsonFileStoreError};
+use ezpz_dndz_lib::{
+  json_file_store::{JsonFileStore, JsonFileStoreError},
+  users::UserId,
+};
 use serde_json::Value;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::users::CurrentUser;
 use crate::web_base::AppState;
 
 /// Hard cap on persisted rolls.  Matches the in-memory cap on the
@@ -71,17 +75,17 @@ impl IntoResponse for DiceHistoryError {
   }
 }
 
-/// File-backed dice history store.  Thin wrapper around the shared
-/// `JsonFileStore<Vec<Value>>` from the lib crate; encodes only
-/// the dice-specific append + cap behavior.
+/// File-backed dice history store, scoped per user.  Disk shape is
+/// `HashMap<UserId, Vec<Value>>`: each user has their own log,
+/// independently capped at `MAX_ENTRIES`.
 #[derive(Clone)]
 pub struct DiceStore {
-  inner: Arc<JsonFileStore<Vec<Value>>>,
+  inner: Arc<JsonFileStore<HashMap<UserId, Vec<Value>>>>,
 }
 
 impl DiceStore {
   /// Open a store backed by `path`.  Loads the file (or initializes
-  /// to an empty history) eagerly so the first request doesn't pay
+  /// to an empty map) eagerly so the first request doesn't pay
   /// the file-IO cost.
   pub async fn load_or_default(
     path: std::path::PathBuf,
@@ -92,21 +96,31 @@ impl DiceStore {
     })
   }
 
-  /// Read the current history.  Cheap clone of the in-memory cache;
-  /// no file IO.
-  pub async fn load(&self) -> Vec<Value> {
-    self.inner.read().await
-  }
-
-  /// Prepend `roll` to the history, truncate to `MAX_ENTRIES`, and
-  /// persist the result.  Returns the new history.
-  pub async fn append(
-    &self,
-    roll: Value,
-  ) -> Result<Vec<Value>, DiceHistoryError> {
+  /// Read the given user's history.  Returns an empty `Vec` for
+  /// users who haven't rolled anything yet.
+  pub async fn load(&self, user_id: &UserId) -> Vec<Value> {
     self
       .inner
-      .mutate(|entries| {
+      .read()
+      .await
+      .get(user_id)
+      .cloned()
+      .unwrap_or_default()
+  }
+
+  /// Prepend `roll` to the user's history, truncate to
+  /// `MAX_ENTRIES`, and persist the result.  Returns the user's
+  /// updated history.
+  pub async fn append(
+    &self,
+    user_id: &UserId,
+    roll: Value,
+  ) -> Result<Vec<Value>, DiceHistoryError> {
+    let user_id_owned = user_id.clone();
+    self
+      .inner
+      .mutate(move |all| {
+        let entries = all.entry(user_id_owned).or_default();
         entries.insert(0, roll);
         entries.truncate(MAX_ENTRIES);
         entries.clone()
@@ -115,9 +129,15 @@ impl DiceStore {
       .map_err(DiceHistoryError::from)
   }
 
-  /// Clear the history (overwrites the file with `[]`).
-  pub async fn clear(&self) -> Result<(), DiceHistoryError> {
-    self.inner.replace(Vec::new()).await?;
+  /// Clear the user's history (drops their entry from the map).
+  pub async fn clear(&self, user_id: &UserId) -> Result<(), DiceHistoryError> {
+    let user_id_owned = user_id.clone();
+    self
+      .inner
+      .mutate(move |all| {
+        all.remove(&user_id_owned);
+      })
+      .await?;
     Ok(())
   }
 }
@@ -131,22 +151,29 @@ impl DiceStore {
 // `impl IntoResponse for DiceHistoryError` so the handler bodies stay
 // tight: success path picks one branch, error path picks the other.
 
-async fn get_history(State(state): State<AppState>) -> Json<Vec<Value>> {
-  Json(state.dice_store.load().await)
+async fn get_history(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Json<Vec<Value>> {
+  Json(state.dice_store.load(&user.id).await)
 }
 
 async fn post_roll(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Json(roll): Json<Value>,
 ) -> Response {
-  match state.dice_store.append(roll).await {
+  match state.dice_store.append(&user.id, roll).await {
     Ok(entries) => Json(entries).into_response(),
     Err(err) => err.into_response(),
   }
 }
 
-async fn delete_history(State(state): State<AppState>) -> Response {
-  match state.dice_store.clear().await {
+async fn delete_history(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  match state.dice_store.clear(&user.id).await {
     Ok(()) => StatusCode::NO_CONTENT.into_response(),
     Err(err) => err.into_response(),
   }

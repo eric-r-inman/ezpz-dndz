@@ -207,10 +207,11 @@ pub fn router() -> ApiRouter<AppState> {
 
 // ── error type ─────────────────────────────────────────────────────────────
 
-/// HTTP-side error type for the auth surface.  Maps `UserStoreError`
-/// + session-store errors onto status codes and JSON bodies.  The
-/// credential-check variants collapse to `401 Unauthorized` so
-/// account enumeration via timing/error-text differences is harder.
+/// HTTP-side error type for the auth surface.  Maps
+/// `UserStoreError` and session-store errors onto status codes
+/// and JSON bodies.  The credential-check variants collapse to
+/// `401 Unauthorized` so account enumeration via timing or
+/// error-text differences is harder.
 pub enum AuthHttpError {
   Unauthorized,
   EmailTaken,

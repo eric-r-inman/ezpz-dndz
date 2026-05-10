@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , saveExpression, saveSource
+    , fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -28,11 +28,13 @@ way: Update modules → Effects.
 
 -}
 
+import Auth
 import Browser.Dom
 import Dice
 import Encounter
 import Http
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
 import Process
@@ -296,3 +298,62 @@ cmdForRoute route =
 
         _ ->
             Cmd.none
+
+
+
+-- ── /api/auth/* ──────────────────────────────────────────────────────────────
+
+
+{-| Boot probe. Returns the current user when the session
+cookie is good, 401 otherwise. The 401 path goes to
+`AuthMeReceived (Err _)` and switches the model into
+`AuthAnonymous`.
+-}
+fetchAuthMe : Cmd Msg
+fetchAuthMe =
+    Http.get
+        { url = "/api/auth/me"
+        , expect = Http.expectJson AuthMeReceived Auth.userDecoder
+        }
+
+
+submitLogin : { email : String, password : String } -> Cmd Msg
+submitLogin { email, password } =
+    Http.post
+        { url = "/api/auth/login"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "email", Encode.string email )
+                    , ( "password", Encode.string password )
+                    ]
+                )
+        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        }
+
+
+submitRegister :
+    { email : String, password : String, displayName : String }
+    -> Cmd Msg
+submitRegister { email, password, displayName } =
+    Http.post
+        { url = "/api/auth/register"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "email", Encode.string email )
+                    , ( "password", Encode.string password )
+                    , ( "display_name", Encode.string displayName )
+                    ]
+                )
+        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        }
+
+
+submitLogout : Cmd Msg
+submitLogout =
+    Http.post
+        { url = "/api/auth/logout"
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever AuthLogoutDone
+        }

@@ -279,6 +279,147 @@ body {
   background: var(--color-surface-2);
 }
 
+.app-bar__user {
+  color: var(--color-text-muted);
+  padding: 6px 10px;
+  font-style: italic;
+}
+
+.app-bar__logout {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.app-bar__logout:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+/* Login / register screen — full-viewport overlay shown when
+   the boot probe to /api/auth/me reports 401.  The single panel
+   is centered horizontally and vertically; the form is plain
+   stacked rows. */
+.auth-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--color-bg);
+}
+
+.auth-login__panel {
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.auth-login__title {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  color: var(--color-text);
+}
+
+.auth-login__tagline {
+  margin: 0 0 20px 0;
+  color: var(--color-text-muted);
+}
+
+.auth-login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-login__field label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.auth-login__input {
+  appearance: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font: inherit;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.auth-login__input:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.auth-login__submit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.auth-login__submit {
+  appearance: none;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.auth-login__submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.auth-login__submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.auth-login__error {
+  margin: 0;
+  color: var(--color-danger, #ff6b6b);
+  font-size: 13px;
+}
+
+.auth-login__mode-toggle {
+  margin: 12px 0 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.auth-login__mode-link {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.auth-login__mode-link:hover {
+  text-decoration: underline;
+}
+
 /* AppBar settings popover.  ⚙ trigger sits in the nav row; the
    menu floats below it as a small panel.  Esc + click-outside
    handlers in `Main.subscriptions` close it; clicks inside the

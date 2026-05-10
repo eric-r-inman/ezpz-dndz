@@ -36,6 +36,7 @@ user retype the filename.
 
 -}
 
+import Auth exposing (AuthState)
 import Browser.Navigation as Nav
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
@@ -51,6 +52,7 @@ import Ui.HpChange exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
 import Ui.LoadCompendium exposing (LoadCompendiumUi)
+import Ui.Login exposing (LoginUi)
 import Ui.Memo exposing (MemoEditUi)
 import Ui.Note exposing (NoteEditUi)
 import Ui.QuickAdd exposing (QuickAddUi)
@@ -326,6 +328,8 @@ type alias Model =
     , url : Url
     , route : Route
     , me : MeStatus
+    , auth : AuthState
+    , loginUi : LoginUi
     , encounter : Encounter
     , savedSnapshot : Maybe Encounter
     , savedAs : Maybe String

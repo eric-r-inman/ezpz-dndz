@@ -17,6 +17,10 @@ Theme row when those preferences land.
 
 -}
 
+-- import Auth handled below; kept here to make the module exports
+-- self-explanatory.
+
+import Auth
 import Html
     exposing
         ( Html
@@ -30,6 +34,7 @@ import Html
         , legend
         , nav
         , p
+        , span
         , text
         )
 import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
@@ -39,16 +44,16 @@ import Msg exposing (MeStatus(..), Msg(..), Theme(..))
 import View.Tooltips as Tooltips
 
 
-view : Bool -> Theme -> Html Msg
-view _ _ =
+view : Bool -> Theme -> Auth.User -> Html Msg
+view _ _ user =
     -- The ⚙ settings popover (light/dark/auto theme switcher) is
     -- temporarily hidden from the nav while the light theme gets
     -- more polish.  All the supporting code below — `settings`,
     -- `themeRow`, `themeRadio`, the PreferencesThemeSet wiring —
     -- stays in place so re-enabling is a one-line change in `nav`.
-    -- The two parameters stay on the signature so callers in
-    -- Main.elm don't have to be edited; they're passed through
-    -- but ignored here for now.
+    -- The two parameters stay on the signature so the call site
+    -- doesn't have to drop them; they're passed through but
+    -- ignored here while the theme switcher is hidden.
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -57,6 +62,13 @@ view _ _ =
             [ a [ href "/" ] [ text "Encounter" ]
             , a [ href "/me" ] [ text "Me" ]
             , a [ href "/scalar" ] [ text "API" ]
+            , span [ class "app-bar__user" ] [ text user.displayName ]
+            , button
+                [ class "app-bar__logout"
+                , type_ "button"
+                , onClick AuthLogout
+                ]
+                [ text "Sign out" ]
             ]
         ]
 
