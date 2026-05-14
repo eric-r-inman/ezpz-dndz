@@ -652,14 +652,20 @@ body {
 /* Toggled-on state for boolean icon buttons (currently used by
    the ∅ inactive toggle).  Red outline so an inactive creature
    reads at a glance — the colour matches `--color-danger` used
-   by other destructive affordances on the card. */
-.icon-btn--toggled {
+   by other destructive affordances on the card.
+
+   Selector is doubled (`.icon-btn.icon-btn--toggled`) so it wins
+   the cascade over the `.icon-btn` base rule lower in this file
+   without depending on rule order.  The base sets
+   `border: 1px solid transparent` which would otherwise reset
+   our colour back to invisible. */
+.icon-btn.icon-btn--toggled {
   border-color: var(--color-danger, #ff6b6b);
   color: var(--color-danger, #ff6b6b);
   border-width: 2px;
 }
 
-.icon-btn--toggled:hover {
+.icon-btn.icon-btn--toggled:hover {
   background: var(--color-danger-soft, rgba(255, 107, 107, 0.12));
 }
 
@@ -698,6 +704,28 @@ body {
 [data-tooltip]:focus-visible::after {
   opacity: 1;
   transition: opacity 0.1s ease-in 0.3s;
+}
+
+/* Right-side tooltips: buttons on the card's right rail sit
+   right up against the encounter panel's right edge.  Their
+   centred tooltip extends both left AND right of the trigger,
+   so the right half spills out and gets clipped by the panel's
+   `overflow: auto`.  For these, anchor the tooltip's RIGHT edge
+   to the button's right edge so the whole tooltip grows
+   leftward into the card — never past the panel boundary. */
+.creature-card__rail--right [data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* Same treatment for the LA / LR column header tooltips — the
+   column sits between the centre and the right rail, so the
+   centred tooltip still risks clipping on narrower panels. */
+.creature-card__legendary [data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 .creature-card__rail {
