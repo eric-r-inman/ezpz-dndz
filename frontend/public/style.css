@@ -739,6 +739,17 @@ body {
   transform: none;
 }
 
+/* Encounter title-bar tooltips: the bar sits in the panel's
+   header strip at the very top of the panel.  The default
+   tooltip anchors ABOVE the trigger and so renders above the
+   title bar — outside the panel — and gets clipped by
+   `.panel { overflow: hidden }`.  Drop them BELOW the trigger
+   instead so they land inside the panel body, fully visible. */
+.encounter-bar [data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+
 .creature-card__rail {
   display: flex;
   flex-direction: column;
