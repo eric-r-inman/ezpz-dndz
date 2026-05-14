@@ -619,9 +619,21 @@ body {
    this is purely a visual signal that the GM can stop tracking
    them. Pips, name, controls all stay clickable so a GM can still
    un-set the third failure pip if it was a misclick. */
+/* Dead / inactive state: the GRAYSCALE filter lives on the
+   center column rather than the card root.  Filter on the root
+   would create a fixed-positioning containing block, which
+   traps `[data-tooltip]::after`'s anchor positioning inside the
+   card and breaks tooltips on the rail buttons.  Splitting it
+   keeps the rails crisp (their tooltips work) while the rules-
+   content column still reads as muted. */
 .creature-card--dead {
-  filter: grayscale(0.85);
   opacity: 0.55;
+}
+
+.creature-card--dead .creature-card__center,
+.creature-card--dead .deathsave-col,
+.creature-card--dead .creature-card__legendary {
+  filter: grayscale(0.85);
 }
 
 .creature-card--dead:hover {
@@ -633,16 +645,26 @@ body {
    highlight wins on border but the grey filter still applies so
    it's obvious they're dead. */
 .creature-card--dead.creature-card--active {
-  filter: grayscale(0.6);
   opacity: 0.7;
+}
+
+.creature-card--dead.creature-card--active .creature-card__center,
+.creature-card--dead.creature-card--active .deathsave-col,
+.creature-card--dead.creature-card--active .creature-card__legendary {
+  filter: grayscale(0.6);
 }
 
 /* Inactive: explicitly skipped via the ∅ toggle.  Lighter dim
    than `--dead` since the creature is still alive and editable;
    the GM just doesn't want to take their turn right now. */
 .creature-card--inactive {
-  filter: grayscale(0.5);
   opacity: 0.65;
+}
+
+.creature-card--inactive .creature-card__center,
+.creature-card--inactive .deathsave-col,
+.creature-card--inactive .creature-card__legendary {
+  filter: grayscale(0.5);
 }
 
 .creature-card--inactive:hover {
@@ -875,7 +897,14 @@ body {
 }
 
 .legendary-col__pip:hover {
-  transform: scale(1.15);
+  /* `transform` would create a containing block for the
+     `[data-tooltip]::after` pseudo-element on this pip, which
+     would trap its anchor positioning to the pip's own bounding
+     box and put the tooltip directly under the cursor instead
+     of above the trigger.  Use a ring instead — same visual
+     "the pip is highlighted" cue, no containing-block side
+     effect. */
+  box-shadow: 0 0 0 2px currentColor;
 }
 
 .legendary-col__pip:focus-visible {
@@ -951,7 +980,11 @@ body {
 }
 
 .death-save-col__pip:hover {
-  transform: scale(1.15);
+  /* `box-shadow` ring instead of `transform: scale` — same
+     reason as `.legendary-col__pip:hover`: transform creates a
+     containing block that breaks the tooltip's anchor
+     positioning. */
+  box-shadow: 0 0 0 2px currentColor;
 }
 
 .death-save-col__pip:focus-visible {
