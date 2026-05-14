@@ -70,7 +70,7 @@ buttonGrid round rosterDirty controlMenu =
         [ button
             [ class "action-btn action-btn--blue"
             , onClick QuickAddOpen
-            , title Tooltips.quickAddButton
+            , Tooltips.attr Tooltips.quickAddButton
             ]
             [ text "➕ Quick Add" ]
         , saveMenu rosterDirty (controlMenu == Just SaveControlMenu)
@@ -79,7 +79,7 @@ buttonGrid round rosterDirty controlMenu =
         , button
             [ class "action-btn action-btn--orange"
             , onClick EncounterReset
-            , title Tooltips.reset
+            , Tooltips.attr Tooltips.reset
             ]
             [ span [ class "btn-glyph" ] [ text "⟲" ]
             , text " Reset"
@@ -87,7 +87,7 @@ buttonGrid round rosterDirty controlMenu =
         , button
             [ class "action-btn action-btn--red"
             , onClick EncounterClear
-            , title Tooltips.clear
+            , Tooltips.attr Tooltips.clear
             ]
             [ text "🗑 Clear" ]
         ]
@@ -136,7 +136,7 @@ saveMenu rosterDirty isOpen =
         [ button
             [ class triggerClass
             , onClick (ControlMenuToggle SaveControlMenu)
-            , title triggerTitle
+            , Tooltips.attr triggerTitle
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if isOpen then
@@ -193,7 +193,7 @@ loadMenu isOpen =
         [ button
             [ class "action-btn action-btn--blue control-menu__trigger"
             , onClick (ControlMenuToggle LoadControlMenu)
-            , title Tooltips.loadButton
+            , Tooltips.attr Tooltips.loadButton
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if isOpen then
@@ -241,7 +241,7 @@ turnOrRunButton round =
         button
             [ class "action-btn action-btn--green"
             , onClick EncounterRun
-            , title Tooltips.runEncounter
+            , Tooltips.attr Tooltips.runEncounter
             ]
             [ text "▶ Run Encounter" ]
 
@@ -249,7 +249,7 @@ turnOrRunButton round =
         button
             [ class "action-btn action-btn--green"
             , onClick NextTurn
-            , title Tooltips.nextTurn
+            , Tooltips.attr Tooltips.nextTurn
             ]
             [ text "⏭ Next Turn" ]
 
@@ -313,7 +313,7 @@ diceLastTotal dice =
             in
             span
                 [ class cls
-                , title Tooltips.lastRollTotal
+                , Tooltips.attr Tooltips.lastRollTotal
                 ]
                 [ text (String.fromInt roll.total) ]
 

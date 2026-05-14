@@ -3,6 +3,7 @@ module View.Tooltips exposing
     , appBarSettings
     , applyCondition
     , armorClass
+    , attr
     , bloodied
     , chipClickToEdit
     , chipDismiss
@@ -86,6 +87,7 @@ module View.Tooltips exposing
     , queueMakeActive
     , queueMoveDown
     , queueMoveUp
+    , queueReactivate
     , queueRemove
     , queueSelectShiftClick
     , quickAddButton
@@ -150,6 +152,27 @@ Controls panel, Card rows, Compendium modal, etc.); see
 back-links to the call site.
 
 -}
+
+import Html
+import Html.Attributes
+
+
+{-| Wrap a tooltip string as a single `data-tooltip` attribute.
+Style + show-delay live in `style.css` under `[data-tooltip]`;
+the CSS pseudo-element renders the tooltip at about half the
+delay of the browser's native `title=` implementation (~300ms
+on macOS vs the ~600ms native default).
+
+Used everywhere the codebase previously did `title Tooltips.foo`
+— same call shape, just `Tooltips.attr Tooltips.foo`. `aria-label`
+on the same element continues to cover screen-reader needs.
+
+-}
+attr : String -> Html.Attribute msg
+attr s =
+    Html.Attributes.attribute "data-tooltip" s
+
+
 
 -- ── APP BAR ──────────────────────────────────────────────────────────────────
 
@@ -344,9 +367,20 @@ queueDuplicate =
     "Duplicate creature"
 
 
+{-| Tooltip on the per-card ∅ toggle. Reads asymmetrically: the
+button label is the _action_ a click will perform, not the
+current state — "Make inactive" when the creature is currently
+active in the queue, "Make active" when they're currently
+skipped. The frontend picks the right variant per creature.
+-}
 queueInactive : String
 queueInactive =
     "Make inactive (skips turn)"
+
+
+queueReactivate : String
+queueReactivate =
+    "Make active (returns creature to queue)"
 
 
 legendaryActionColumn : String

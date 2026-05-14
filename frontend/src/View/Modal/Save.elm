@@ -217,21 +217,21 @@ displayRow meta =
     , div [ class "save-modal__row-actions" ]
         [ button
             [ class "icon-btn"
-            , title Tooltips.saveRowOverwrite
+            , Tooltips.attr Tooltips.saveRowOverwrite
             , attribute "aria-label" "Overwrite"
             , onClick (SaveOverwriteRequested meta.name)
             ]
             [ text "💾" ]
         , button
             [ class "icon-btn"
-            , title Tooltips.saveRowRename
+            , Tooltips.attr Tooltips.saveRowRename
             , attribute "aria-label" "Rename"
             , onClick (SaveRenameStart meta.name)
             ]
             [ text "✎" ]
         , button
             [ class "icon-btn icon-btn--danger"
-            , title Tooltips.saveRowDelete
+            , Tooltips.attr Tooltips.saveRowDelete
             , attribute "aria-label" "Delete"
             , onClick (SaveDeleteRequested meta.name)
             ]

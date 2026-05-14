@@ -82,20 +82,20 @@ view activeName hpEdit creature =
                     , checked creature.selected
                     , selectionClickHandler creature.name
                     , attribute "aria-label" ("Select " ++ creature.name)
-                    , title Tooltips.queueSelectShiftClick
+                    , Tooltips.attr Tooltips.queueSelectShiftClick
                     ]
                     []
                 , button
                     [ class "icon-btn"
                     , onClick (MoveCreatureUp creature.name)
-                    , title Tooltips.queueMoveUp
+                    , Tooltips.attr Tooltips.queueMoveUp
                     , attribute "aria-label" "Move up in queue"
                     ]
                     [ text "↑" ]
                 , button
                     [ class "icon-btn"
                     , onClick (MoveCreatureDown creature.name)
-                    , title Tooltips.queueMoveDown
+                    , Tooltips.attr Tooltips.queueMoveDown
                     , attribute "aria-label" "Move down in queue"
                     ]
                     [ text "↓" ]
@@ -104,7 +104,7 @@ view activeName hpEdit creature =
                 [ button
                     [ class "icon-btn icon-btn--accent"
                     , onClick (SetActive creature.name)
-                    , title Tooltips.queueMakeActive
+                    , Tooltips.attr Tooltips.queueMakeActive
                     , attribute "aria-label" "Make active"
                     ]
                     [ text "→" ]
@@ -122,7 +122,7 @@ view activeName hpEdit creature =
                 [ button
                     [ class "icon-btn icon-btn--danger"
                     , onClick (RemoveCreature creature.name)
-                    , title Tooltips.queueRemove
+                    , Tooltips.attr Tooltips.queueRemove
                     , attribute "aria-label" "Remove"
                     ]
                     [ text "×" ]
@@ -139,7 +139,13 @@ view activeName hpEdit creature =
                                )
                         )
                     , onClick (ToggleInactive creature.name)
-                    , title Tooltips.queueInactive
+                    , Tooltips.attr
+                        (if creature.inactive then
+                            Tooltips.queueReactivate
+
+                         else
+                            Tooltips.queueInactive
+                        )
                     , attribute "aria-label" "Toggle inactive"
                     , attribute "aria-pressed"
                         (if creature.inactive then
@@ -155,7 +161,7 @@ view activeName hpEdit creature =
                 [ button
                     [ class "icon-btn"
                     , onClick (DuplicateOpen creature.name)
-                    , title Tooltips.queueDuplicate
+                    , Tooltips.attr Tooltips.queueDuplicate
                     , attribute "aria-label" "Duplicate"
                     ]
                     [ text "⧉" ]
@@ -201,7 +207,7 @@ rowTop creature hpEdit =
         [ button
             [ class "init-circle init-circle--clickable"
             , onClick (InitiativeOpen creature.name)
-            , title Tooltips.initiativeManager
+            , Tooltips.attr Tooltips.initiativeManager
             , attribute "aria-label"
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
@@ -227,7 +233,7 @@ creatureName creature =
             span
                 [ class "creature-name creature-name--default creature-name--linked"
                 , onClick (PanelShowCreature id_ creature.name)
-                , title Tooltips.showStatBlock
+                , Tooltips.attr Tooltips.showStatBlock
                 ]
                 [ text creature.name ]
 
@@ -253,7 +259,7 @@ noteOrPencil creature =
         button
             [ class "icon-btn icon-btn--sm"
             , onClick (NoteEditOpen creature.name creature.note)
-            , title Tooltips.noteAdd
+            , Tooltips.attr Tooltips.noteAdd
             , attribute "aria-label" "Add note"
             ]
             [ text "✏️" ]
@@ -263,7 +269,7 @@ noteOrPencil creature =
             [ button
                 [ class "creature-note creature-note--clickable"
                 , onClick (NoteEditOpen creature.name creature.note)
-                , title Tooltips.noteEdit
+                , Tooltips.attr Tooltips.noteEdit
                 , attribute "aria-label" ("Edit note: " ++ creature.note)
                 ]
                 [ text creature.note ]
@@ -366,7 +372,7 @@ legendaryColumn cfg =
                            )
                     )
                 , onClick (cfg.onToggle idx)
-                , title
+                , Tooltips.attr
                     (cfg.label
                         ++ " pip "
                         ++ String.fromInt (idx + 1)
@@ -392,7 +398,7 @@ legendaryColumn cfg =
     div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
         [ div
             [ class "legendary-col__header"
-            , title (headerTooltipFor cfg.label)
+            , Tooltips.attr (headerTooltipFor cfg.label)
             ]
             [ text cfg.label ]
         , pip 0
@@ -454,13 +460,13 @@ saveNoticeChip : String -> Encounter.SaveNotice -> Html Msg
 saveNoticeChip target notice =
     span
         [ class "save-notice"
-        , title (Tooltips.savedAgainstNotice notice.conditionName)
+        , Tooltips.attr (Tooltips.savedAgainstNotice notice.conditionName)
         ]
         [ text ("Saved: " ++ notice.conditionName)
         , button
             [ class "save-notice__dismiss"
             , onClick (SaveNoticeDismiss target notice.id)
-            , title Tooltips.saveNoticeDismiss
+            , Tooltips.attr Tooltips.saveNoticeDismiss
             , attribute "aria-label" "Dismiss save notice"
             ]
             [ text "×" ]
@@ -481,12 +487,12 @@ conditionChip : String -> Encounter.Condition -> Html Msg
 conditionChip target cond =
     span
         [ class "condition-chip"
-        , title (chipTitle cond)
+        , Tooltips.attr (chipTitle cond)
         ]
         [ button
             [ class "condition-chip__name"
             , onClick (ConditionOpenEdit target cond.id)
-            , title Tooltips.clickToEdit
+            , Tooltips.attr Tooltips.clickToEdit
             ]
             [ text cond.name
             , if String.isEmpty cond.note then
@@ -502,7 +508,7 @@ conditionChip target cond =
             [ class "condition-chip__remove"
             , stopPropagationOn "click"
                 (Decode.succeed ( ConditionRemoveChip target cond.id, True ))
-            , title Tooltips.chipRemoveModalRow
+            , Tooltips.attr Tooltips.chipRemoveModalRow
             , attribute "aria-label" "Remove condition"
             ]
             [ text "×" ]
@@ -644,7 +650,7 @@ hpDisplay creature hpEdit =
         , if creature.tempHp > 0 then
             span
                 [ class "hp-display__temp"
-                , title Tooltips.tempHp
+                , Tooltips.attr Tooltips.tempHp
                 ]
                 [ text ("+" ++ String.fromInt creature.tempHp) ]
 
@@ -688,7 +694,7 @@ hpEditable creature hpEdit field current cls =
         span
             [ class (cls ++ " hp-display__editable")
             , onClick (HpEditStart creature.name field current)
-            , title Tooltips.clickToEdit
+            , Tooltips.attr Tooltips.clickToEdit
             ]
             [ text (String.fromInt current) ]
 
@@ -718,7 +724,7 @@ bloodied creature =
     if creature.bloodied then
         span
             [ class "bloodied"
-            , title Tooltips.bloodied
+            , Tooltips.attr Tooltips.bloodied
             , attribute "aria-label" "Bloodied"
             ]
             [ text "🩸" ]
@@ -764,14 +770,14 @@ deathSaveColumn creature =
                 if dead then
                     span
                         [ class "death-save-cols__badge death-save-cols__badge--dead"
-                        , title Tooltips.deathDead
+                        , Tooltips.attr Tooltips.deathDead
                         ]
                         [ text "💀" ]
 
                 else if stable then
                     span
                         [ class "death-save-cols__badge death-save-cols__badge--stable"
-                        , title Tooltips.deathStable
+                        , Tooltips.attr Tooltips.deathStable
                         ]
                         [ text "🛡" ]
 
@@ -779,7 +785,7 @@ deathSaveColumn creature =
                     button
                         [ class "death-save-cols__roll"
                         , onClick (DeathSaveRoll creature.name)
-                        , title Tooltips.deathRoll
+                        , Tooltips.attr Tooltips.deathRoll
                         , attribute "aria-label" "Roll death save"
                         ]
                         [ text "🎲" ]
@@ -875,7 +881,7 @@ boolToggle _ label isOn msg =
     button
         [ class cls
         , onClick msg
-        , title tip
+        , Tooltips.attr tip
         , attribute "aria-label" label
         , attribute "aria-pressed"
             (if isOn then
@@ -908,7 +914,7 @@ coverToggle creature =
     button
         [ class ("status-toggle " ++ modifier)
         , onClick (CycleCover creature.name)
-        , title (Tooltips.coverCycleTip label)
+        , Tooltips.attr (Tooltips.coverCycleTip label)
         , attribute "aria-label" ("Cover: " ++ label)
         ]
         [ text bodyText ]
@@ -921,7 +927,7 @@ flyHeight creature =
             [ button
                 [ class "fly-height__btn"
                 , onClick (AdjustFlyHeight creature.name 5)
-                , title Tooltips.flyHeightUp
+                , Tooltips.attr Tooltips.flyHeightUp
                 , attribute "aria-label" "Increase flight height by 5 feet"
                 ]
                 [ text "▲" ]
@@ -930,7 +936,7 @@ flyHeight creature =
             , button
                 [ class "fly-height__btn"
                 , onClick (AdjustFlyHeight creature.name -5)
-                , title Tooltips.flyHeightDown
+                , Tooltips.attr Tooltips.flyHeightDown
                 , attribute "aria-label" "Decrease flight height by 5 feet"
                 ]
                 [ text "▼" ]
@@ -938,7 +944,7 @@ flyHeight creature =
             , button
                 [ class "icon-btn icon-btn--sm fly-height__fall"
                 , onClick (RollFallDamage creature.name)
-                , title Tooltips.fallDamage
+                , Tooltips.attr Tooltips.fallDamage
                 , attribute "aria-label" "Roll falling damage"
                 ]
                 [ text "↯" ]
@@ -958,25 +964,25 @@ rowBot creature =
         [ button
             [ class "action-btn action-btn--damage"
             , onClick (HpChangeOpen creature.name DamageKind)
-            , title Tooltips.damage
+            , Tooltips.attr Tooltips.damage
             ]
             [ text "Damage" ]
         , button
             [ class "action-btn action-btn--heal"
             , onClick (HpChangeOpen creature.name HealKind)
-            , title Tooltips.heal
+            , Tooltips.attr Tooltips.heal
             ]
             [ text "Heal" ]
         , button
             [ class "action-btn action-btn--temp"
             , onClick (HpChangeOpen creature.name TempHpKind)
-            , title Tooltips.addTempHp
+            , Tooltips.attr Tooltips.addTempHp
             ]
             [ text "Temp HP" ]
         , button
             [ class "action-btn action-btn--condition"
             , onClick (ConditionOpenNew creature.name)
-            , title Tooltips.applyCondition
+            , Tooltips.attr Tooltips.applyCondition
             ]
             [ text "Condition/Effect" ]
         , holdToggle creature
@@ -995,7 +1001,7 @@ memoSlot creature =
         button
             [ class "action-btn action-btn--icon"
             , onClick (MemoOpen creature.name)
-            , title Tooltips.memoAdd
+            , Tooltips.attr Tooltips.memoAdd
             , attribute "aria-label" "Add memo"
             ]
             [ text "📝" ]
@@ -1003,18 +1009,18 @@ memoSlot creature =
     else
         span
             [ class "memo-pill"
-            , title creature.memo
+            , Tooltips.attr creature.memo
             ]
             [ button
                 [ class "memo-pill__text"
                 , onClick (MemoOpen creature.name)
-                , title Tooltips.memoEdit
+                , Tooltips.attr Tooltips.memoEdit
                 ]
                 [ text creature.memo ]
             , button
                 [ class "memo-pill__dismiss"
                 , onClick (MemoClear creature.name)
-                , title Tooltips.memoClear
+                , Tooltips.attr Tooltips.memoClear
                 , attribute "aria-label" "Clear memo"
                 ]
                 [ text "×" ]
@@ -1037,7 +1043,7 @@ timerSlot creature =
             button
                 [ class "action-btn action-btn--icon"
                 , onClick (TimerOpen creature.name)
-                , title Tooltips.timerSet
+                , Tooltips.attr Tooltips.timerSet
                 , attribute "aria-label" "Set timer"
                 ]
                 [ text "⏱️" ]
@@ -1051,14 +1057,14 @@ timerSlot creature =
                      else
                         "timer-pill"
                     )
-                , title (timerTooltip t)
+                , Tooltips.attr (timerTooltip t)
                 ]
                 [ span [ class "timer-pill__count" ]
                     [ text (String.fromInt t.remaining) ]
                 , button
                     [ class "timer-pill__dismiss"
                     , onClick (TimerDismiss creature.name)
-                    , title Tooltips.timerCancel
+                    , Tooltips.attr Tooltips.timerCancel
                     , attribute "aria-label" "Cancel timer"
                     ]
                     [ text "×" ]
@@ -1105,7 +1111,7 @@ holdToggle creature =
     button
         [ class cls
         , onClick (ToggleHolding creature.name)
-        , title label
+        , Tooltips.attr label
         , attribute "aria-label" label
         , attribute "aria-pressed"
             (if creature.holding then

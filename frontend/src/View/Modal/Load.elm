@@ -168,7 +168,7 @@ displayRow : SavedEncounterMeta -> Bool -> List (Html Msg)
 displayRow meta isBusy =
     [ button
         [ class "save-modal__row-name save-modal__row-name--clickable"
-        , title Tooltips.loadRowEncounter
+        , Tooltips.attr Tooltips.loadRowEncounter
         , disabled isBusy
         , onClick (LoadFromServerRequested meta.name)
         ]
@@ -176,14 +176,14 @@ displayRow meta isBusy =
     , div [ class "save-modal__row-actions" ]
         [ button
             [ class "icon-btn"
-            , title Tooltips.saveRowRename
+            , Tooltips.attr Tooltips.saveRowRename
             , attribute "aria-label" "Rename"
             , onClick (LoadRenameStart meta.name)
             ]
             [ text "✎" ]
         , button
             [ class "icon-btn icon-btn--danger"
-            , title Tooltips.saveRowDelete
+            , Tooltips.attr Tooltips.saveRowDelete
             , attribute "aria-label" "Delete"
             , onClick (LoadDeleteRequested meta.name)
             ]

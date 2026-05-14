@@ -650,12 +650,54 @@ body {
 }
 
 /* Toggled-on state for boolean icon buttons (currently used by
-   the ∅ inactive toggle).  Inverts the foreground / background so
-   a button you've turned ON reads at a glance. */
+   the ∅ inactive toggle).  Red outline so an inactive creature
+   reads at a glance — the colour matches `--color-danger` used
+   by other destructive affordances on the card. */
 .icon-btn--toggled {
-  background: var(--color-text);
-  color: var(--color-bg);
-  border-color: var(--color-text);
+  border-color: var(--color-danger, #ff6b6b);
+  color: var(--color-danger, #ff6b6b);
+  border-width: 2px;
+}
+
+.icon-btn--toggled:hover {
+  background: var(--color-danger-soft, rgba(255, 107, 107, 0.12));
+}
+
+/* ── CSS-driven tooltips ───────────────────────────────────────────────
+   Elements with `data-tooltip="..."` get a pseudo-element tooltip that
+   shows ~300 ms after hover/focus — about half the macOS browser-
+   native `title=` delay (~600 ms on Safari/Chrome).  `aria-label` on
+   the same element covers screen-reader needs; no native `title=`
+   means no double tooltip.  Centred above the trigger by default; if
+   you need it on a different side, add per-class overrides.
+   ────────────────────────────────────────────────────────────────────── */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  z-index: 1000;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 24, 0.95);
+  color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transition: opacity 0.1s ease-in 0.3s;
 }
 
 .creature-card__rail {

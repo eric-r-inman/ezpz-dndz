@@ -45,14 +45,14 @@ view model =
                 [ button
                     [ class "action-btn action-btn--blue"
                     , onClick CompendiumOpen
-                    , title Tooltips.panelOpenCompendium
+                    , Tooltips.attr Tooltips.panelOpenCompendium
                     ]
                     [ text "📖 Open" ]
                 , button
                     [ class "action-btn action-btn--blue"
                     , Attr.disabled True
                     , attribute "aria-disabled" "true"
-                    , title Tooltips.panelCrCalculator
+                    , Tooltips.attr Tooltips.panelCrCalculator
                     ]
                     [ text "⚔️ CR Calculator" ]
                 ]
@@ -104,7 +104,7 @@ pinnedStatBlock creature =
             , href ("/compendium/creatures/" ++ creature.id)
             , target "_blank"
             , attribute "rel" "noopener"
-            , title Tooltips.panelStatBlockNewWindow
+            , Tooltips.attr Tooltips.panelStatBlockNewWindow
             , attribute "aria-label" "Open in new window"
             ]
             [ text "↗" ]

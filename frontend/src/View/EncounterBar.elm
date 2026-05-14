@@ -48,7 +48,7 @@ view enc savedAs db xpScope xpFilterOpen =
         [ div [ class "encounter-bar__group" ]
             [ span
                 [ class "encounter-bar__info"
-                , title sourceTooltip
+                , Tooltips.attr sourceTooltip
                 , attribute "aria-label" sourceTooltip
                 , tabindex 0
                 ]
@@ -81,13 +81,13 @@ xpReadout enc db scope =
             span [ class "encounter-bar__xp-group" ]
                 [ span
                     [ class "encounter-bar__xp"
-                    , title (xpScopeTooltip scope)
+                    , Tooltips.attr (xpScopeTooltip scope)
                     ]
                     [ text (Xp.formatThousands totals.total ++ " XP") ]
                 , if totals.lairTotal > totals.total then
                     span
                         [ class "encounter-bar__xp-lair"
-                        , title Tooltips.xpLairTotal
+                        , Tooltips.attr Tooltips.xpLairTotal
                         ]
                         [ text ("(" ++ Xp.formatThousands totals.lairTotal ++ " w/Lair)") ]
 
@@ -98,7 +98,7 @@ xpReadout enc db scope =
         _ ->
             span
                 [ class "encounter-bar__xp"
-                , title (xpScopeTooltip scope)
+                , Tooltips.attr (xpScopeTooltip scope)
                 ]
                 [ text "— XP" ]
 
@@ -137,7 +137,7 @@ hp active =
                 , if c.tempHp > 0 then
                     span
                         [ class "hp-display__temp"
-                        , title Tooltips.tempHp
+                        , Tooltips.attr Tooltips.tempHp
                         ]
                         [ text ("+" ++ String.fromInt c.tempHp) ]
 
@@ -161,7 +161,7 @@ ac active =
         Just c ->
             span
                 [ class "encounter-bar__ac"
-                , title (Tooltips.armorClass c.armorClass)
+                , Tooltips.attr (Tooltips.armorClass c.armorClass)
                 ]
                 [ span [ class "encounter-bar__ac-value" ]
                     [ text (String.fromInt c.armorClass) ]
@@ -209,7 +209,7 @@ xpFilter current isOpen =
                     "false"
                 )
             , attribute "aria-label" Tooltips.xpFilter
-            , title Tooltips.xpFilter
+            , Tooltips.attr Tooltips.xpFilter
             , onClick XpFilterToggle
             ]
             [ text "▾" ]
@@ -283,7 +283,7 @@ stateIconIf on glyph label =
         Just
             (span
                 [ class "encounter-bar__state"
-                , title label
+                , Tooltips.attr label
                 , attribute "aria-label" label
                 ]
                 [ text glyph ]
@@ -318,7 +318,7 @@ flyingIcon c =
         Just
             (span
                 [ class "encounter-bar__state"
-                , title (Tooltips.flying c.flyHeight)
+                , Tooltips.attr (Tooltips.flying c.flyHeight)
                 , attribute "aria-label" "Flying"
                 ]
                 [ text ("🪽 " ++ String.fromInt c.flyHeight) ]
@@ -332,7 +332,7 @@ stateIcon : String -> String -> Html Msg
 stateIcon glyph label =
     span
         [ class "encounter-bar__state"
-        , title label
+        , Tooltips.attr label
         , attribute "aria-label" label
         ]
         [ text glyph ]

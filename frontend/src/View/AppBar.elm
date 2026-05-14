@@ -105,7 +105,7 @@ settings isOpen theme =
                     "false"
                 )
             , attribute "aria-label" "Open settings"
-            , Attr.title Tooltips.appBarSettings
+            , Tooltips.attr Tooltips.appBarSettings
             , onClick SettingsToggle
             ]
             [ text "⚙" ]

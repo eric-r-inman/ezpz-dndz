@@ -53,7 +53,7 @@ view config =
             [ class ("pill " ++ config.class_) ]
                 ++ (case config.title_ of
                         Just t ->
-                            [ title t ]
+                            [ Tooltips.attr t ]
 
                         Nothing ->
                             []
@@ -65,7 +65,7 @@ view config =
                     button
                         [ class "pill__label pill__label--clickable"
                         , onClick msg
-                        , title Tooltips.chipClickToEdit
+                        , Tooltips.attr Tooltips.chipClickToEdit
                         ]
                         [ text config.label ]
 
@@ -78,7 +78,7 @@ view config =
                     button
                         [ class "pill__dismiss"
                         , onClick msg
-                        , title Tooltips.chipDismiss
+                        , Tooltips.attr Tooltips.chipDismiss
                         , attribute "aria-label" "Dismiss"
                         ]
                         [ text "×" ]

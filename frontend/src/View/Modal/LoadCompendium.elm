@@ -143,7 +143,7 @@ saveRow isBusy meta =
     li [ class "save-modal__row-item" ]
         [ button
             [ class "save-modal__row-name save-modal__row-name--clickable"
-            , title Tooltips.loadRowCompendium
+            , Tooltips.attr Tooltips.loadRowCompendium
             , disabled isBusy
             , onClick (LoadCompendiumFromServerRequested meta.name)
             ]

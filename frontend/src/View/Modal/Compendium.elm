@@ -450,7 +450,7 @@ listItem selectedId selectedIds encounterIds c =
                 , if inEncounter then
                     span
                         [ class "compendium__row-in-enc"
-                        , title Tooltips.compendiumInEncounter
+                        , Tooltips.attr Tooltips.compendiumInEncounter
                         , attribute "aria-label" "in encounter"
                         ]
                         []
@@ -482,7 +482,7 @@ rowCheckbox creatureId isChecked =
         , class "compendium__row-check"
         , Attr.checked isChecked
         , attribute "aria-label" "Select for bulk action"
-        , title Tooltips.compendiumRowSelect
+        , Tooltips.attr Tooltips.compendiumRowSelect
         , Html.Events.stopPropagationOn "click"
             (Decode.field "shiftKey" Decode.bool
                 |> Decode.map
@@ -557,31 +557,31 @@ actionBar creature inEncounter =
     div [ class "compendium__action-bar" ]
         [ span
             [ class badgeClass
-            , title Tooltips.compendiumInstanceCount
+            , Tooltips.attr Tooltips.compendiumInstanceCount
             ]
             [ text (String.fromInt inEncounter ++ " in Encounter") ]
         , button
             [ class "action-btn action-btn--green compendium__add-btn"
             , onClick (CompendiumAddToQueue creature.id)
-            , title Tooltips.compendiumAddToEncounter
+            , Tooltips.attr Tooltips.compendiumAddToEncounter
             ]
             [ text "➕ Add to Encounter" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditExisting
-            , title Tooltips.compendiumEdit
+            , Tooltips.attr Tooltips.compendiumEdit
             ]
             [ text "✏️ Edit" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditDuplicate
-            , title Tooltips.compendiumDuplicate
+            , Tooltips.attr Tooltips.compendiumDuplicate
             ]
             [ text "📋 Duplicate" ]
         , button
             [ class "action-btn action-btn--red compendium__delete-btn"
             , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
-            , title Tooltips.compendiumDelete
+            , Tooltips.attr Tooltips.compendiumDelete
             , attribute "aria-label" "Delete creature"
             ]
             [ text "🗑" ]
@@ -593,7 +593,7 @@ newButton =
     button
         [ class "action-btn action-btn--green compendium__new-btn"
         , onClick CompendiumEditNew
-        , title Tooltips.compendiumNewCreature
+        , Tooltips.attr Tooltips.compendiumNewCreature
         ]
         [ text "➕ New Creature" ]
 
@@ -603,7 +603,7 @@ pasteButton =
     button
         [ class "action-btn action-btn--blue"
         , onClick CompendiumPasteOpen
-        , title Tooltips.compendiumPasteStatBlock
+        , Tooltips.attr Tooltips.compendiumPasteStatBlock
         ]
         [ text "📋 Paste Stat Block" ]
 
@@ -624,7 +624,7 @@ bulkButtons ui =
         , button
             [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
-            , title Tooltips.compendiumReset
+            , Tooltips.attr Tooltips.compendiumReset
             ]
             [ text "↺ Reset" ]
         , clearMenu ui
@@ -672,7 +672,7 @@ splitMenu cfg =
         [ button
             [ class cfg.triggerClass
             , onClick (CompendiumBulkMenuToggle cfg.menu)
-            , title cfg.triggerTitle
+            , Tooltips.attr cfg.triggerTitle
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if cfg.isOpen then

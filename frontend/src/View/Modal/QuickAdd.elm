@@ -62,7 +62,7 @@ sortRow ui =
         [ button
             [ class "action-btn action-btn--blue quick-add__sort-toggle"
             , onClick QuickAddSortToggle
-            , title tooltip
+            , Tooltips.attr tooltip
             ]
             [ text label ]
         ]
@@ -103,7 +103,7 @@ row c =
     li
         [ class "quick-add__row"
         , onClick (QuickAddPick c.id)
-        , title (Tooltips.quickAddCreatureRow c.name)
+        , Tooltips.attr (Tooltips.quickAddCreatureRow c.name)
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

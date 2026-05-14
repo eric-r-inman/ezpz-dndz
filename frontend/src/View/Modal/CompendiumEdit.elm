@@ -428,7 +428,7 @@ savingThrowRow idx ( ability, bonus ) =
         , button
             [ class "edit-row__remove"
             , onClick (CompendiumEditSavingThrowRemove idx)
-            , title Tooltips.compendiumEditRemoveSave
+            , Tooltips.attr Tooltips.compendiumEditRemoveSave
             ]
             [ text "×" ]
         ]
@@ -533,7 +533,7 @@ skillRow idx ( name_, bonus ) =
         , button
             [ class "edit-row__remove"
             , onClick (CompendiumEditSkillRemove idx)
-            , title Tooltips.compendiumEditRemoveSkill
+            , Tooltips.attr Tooltips.compendiumEditRemoveSkill
             ]
             [ text "×" ]
         ]
@@ -565,7 +565,7 @@ featureRow group idx draft =
             , button
                 [ class "edit-row__remove"
                 , onClick (CompendiumEditFeatureRemove group idx)
-                , title Tooltips.compendiumEditRemoveEntry
+                , Tooltips.attr Tooltips.compendiumEditRemoveEntry
                 ]
                 [ text "×" ]
             ]
@@ -745,7 +745,7 @@ customSectionRow idx ( name_, body_ ) =
             , button
                 [ class "edit-row__remove"
                 , onClick (CompendiumEditCustomSectionRemove idx)
-                , title Tooltips.compendiumEditRemoveSection
+                , Tooltips.attr Tooltips.compendiumEditRemoveSection
                 ]
                 [ text "×" ]
             ]
@@ -1177,7 +1177,7 @@ removeButton msg =
         , type_ "button"
         , onClick msg
         , attribute "aria-label" "Remove"
-        , title "Remove"
+        , Tooltips.attr "Remove"
         ]
         [ text "×" ]
 
@@ -1190,7 +1190,7 @@ footer ui =
                 [ class "action-btn action-btn--red"
                 , onClick CompendiumEditDelete
                 , disabled ui.submitting
-                , title Tooltips.compendiumEditDeleteCreature
+                , Tooltips.attr Tooltips.compendiumEditDeleteCreature
                 ]
                 [ text "🗑 Delete" ]
 

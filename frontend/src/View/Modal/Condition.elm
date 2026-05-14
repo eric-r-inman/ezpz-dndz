@@ -442,7 +442,7 @@ footer ui =
                 button
                     [ class "action-btn action-btn--damage"
                     , onClick ConditionDelete
-                    , title Tooltips.chipRemoveModalRow
+                    , Tooltips.attr Tooltips.chipRemoveModalRow
                     ]
                     [ text "Delete" ]
 

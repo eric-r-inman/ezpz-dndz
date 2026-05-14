@@ -131,7 +131,7 @@ autoRollPair scope label enabled tipOverride =
         , onClick (InitiativeAutoRoll scope ModeStandard)
         , disabled (not enabled)
         , ariaDisabled
-        , title mainTitle
+        , Tooltips.attr mainTitle
         ]
         [ text label ]
     , button
@@ -139,7 +139,7 @@ autoRollPair scope label enabled tipOverride =
         , onClick (InitiativeAutoRoll scope ModeAdvantage)
         , disabled (not enabled)
         , ariaDisabled
-        , title advTitle
+        , Tooltips.attr advTitle
         ]
         [ text "Advantage" ]
     , button
@@ -147,7 +147,7 @@ autoRollPair scope label enabled tipOverride =
         , onClick (InitiativeAutoRoll scope ModeDisadvantage)
         , disabled (not enabled)
         , ariaDisabled
-        , title disTitle
+        , Tooltips.attr disTitle
         ]
         [ text "Disadvantage" ]
     ]
@@ -189,7 +189,7 @@ custom ui selectedCount =
                  else
                     "false"
                 )
-            , title (selectedTitle selectedCount)
+            , Tooltips.attr (selectedTitle selectedCount)
             ]
             [ text ("Apply & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
         ]

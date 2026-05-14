@@ -49,7 +49,7 @@ one toast =
         , button
             [ class "toast__dismiss"
             , onClick (ToastDismiss toast.id)
-            , title Tooltips.toastDismiss
+            , Tooltips.attr Tooltips.toastDismiss
             , attribute "aria-label" "Dismiss notification"
             ]
             [ text "×" ]

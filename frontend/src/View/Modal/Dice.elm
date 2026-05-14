@@ -90,7 +90,7 @@ form ui =
             , button
                 [ class "dice-form__reset"
                 , onClick DiceResetSliders
-                , title Tooltips.diceReset
+                , Tooltips.attr Tooltips.diceReset
                 , attribute "aria-label" "Reset count and modifier"
                 ]
                 [ text "❌" ]
@@ -116,7 +116,7 @@ faceButton faces colorClass =
     button
         [ class ("die-btn " ++ colorClass)
         , onClick (DiceRollFaces faces)
-        , title (Tooltips.diceFaceRoll faces)
+        , Tooltips.attr (Tooltips.diceFaceRoll faces)
         ]
         [ text ("d" ++ String.fromInt faces) ]
 
@@ -127,19 +127,19 @@ specialButtons =
         [ button
             [ class "action-btn action-btn--green"
             , onClick DiceRollAdvantage
-            , title Tooltips.diceAdvantage
+            , Tooltips.attr Tooltips.diceAdvantage
             ]
             [ text "Advantage" ]
         , button
             [ class "action-btn action-btn--orange"
             , onClick DiceRollDisadvantage
-            , title Tooltips.diceDisadvantage
+            , Tooltips.attr Tooltips.diceDisadvantage
             ]
             [ text "Disadvantage" ]
         , button
             [ class "action-btn"
             , onClick DiceFlipCoin
-            , title Tooltips.diceCoinFlip
+            , Tooltips.attr Tooltips.diceCoinFlip
             ]
             [ text "🪙 Coin Flip" ]
         ]
@@ -162,7 +162,7 @@ history h =
                 button
                     [ class "dice-history__rerun"
                     , onClick DiceClearHistory
-                    , title Tooltips.diceClearHistory
+                    , Tooltips.attr Tooltips.diceClearHistory
                     ]
                     [ text "Clear" ]
             ]
@@ -195,7 +195,7 @@ historyEntry roll =
         , button
             [ class "dice-history__rerun"
             , onClick (DiceRerun roll)
-            , title Tooltips.diceRollAgain
+            , Tooltips.attr Tooltips.diceRollAgain
             ]
             [ text "↻" ]
         ]
@@ -221,7 +221,7 @@ rollSource source =
                     Nothing ->
                         source.feature
         in
-        span [ class "dice-history__source", title label_ ]
+        span [ class "dice-history__source", Tooltips.attr label_ ]
             [ text label_ ]
 
 

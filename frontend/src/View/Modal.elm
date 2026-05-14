@@ -63,7 +63,7 @@ view config =
                 , button
                     [ class "modal__close"
                     , onClick config.close
-                    , title Tooltips.modalClose
+                    , Tooltips.attr Tooltips.modalClose
                     , attribute "aria-label" "Close"
                     ]
                     [ text "×" ]
