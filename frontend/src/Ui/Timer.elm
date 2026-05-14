@@ -16,6 +16,7 @@ type alias TimerSetupUi =
     , turnsText : String
     , turns : Int
     , phase : Encounter.TurnPhase
+    , note : String
     }
 
 
@@ -25,4 +26,5 @@ fresh target =
     , turnsText = "3"
     , turns = 3
     , phase = Encounter.AtEnd
+    , note = ""
     }

@@ -2,6 +2,7 @@ module Update.Timer exposing
     ( apply
     , cancel
     , dismiss
+    , noteChanged
     , open
     , phaseSet
     , turnsChanged
@@ -53,6 +54,18 @@ phaseSet phase model =
     ( withTimerSetup (\u -> { u | phase = phase }) model, Cmd.none )
 
 
+{-| Free-form short label the GM can attach to the timer to
+remember what's ticking down (e.g. "Bless", "Rage", "Slow").
+Capped at 10 chars to keep the card-row pill compact; the input
+itself sets `maxlength` so we don't need to truncate here.
+-}
+noteChanged : String -> Model -> ( Model, Cmd Msg )
+noteChanged text model =
+    ( withTimerSetup (\u -> { u | note = String.left 10 text }) model
+    , Cmd.none
+    )
+
+
 apply : Model -> ( Model, Cmd Msg )
 apply model =
     case model.modal of
@@ -62,6 +75,7 @@ apply model =
                     { remaining = ui.turns
                     , phase = ui.phase
                     , ringing = False
+                    , note = String.trim ui.note
                     }
             in
             ( { model

@@ -279,6 +279,7 @@ type alias Timer =
     { remaining : Int
     , phase : TurnPhase
     , ringing : Bool
+    , note : String
     }
 
 

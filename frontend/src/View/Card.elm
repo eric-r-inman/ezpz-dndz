@@ -1061,6 +1061,11 @@ timerSlot creature =
                 ]
                 [ span [ class "timer-pill__count" ]
                     [ text (String.fromInt t.remaining) ]
+                , if String.isEmpty t.note then
+                    text ""
+
+                  else
+                    span [ class "timer-pill__note" ] [ text t.note ]
                 , button
                     [ class "timer-pill__dismiss"
                     , onClick (TimerDismiss creature.name)

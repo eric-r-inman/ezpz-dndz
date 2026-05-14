@@ -430,6 +430,7 @@ type Msg
     | TimerOpen String
     | TimerSetupTurnsChanged String
     | TimerSetupPhaseSet Encounter.TurnPhase
+    | TimerSetupNoteChanged String
     | TimerSetupApply
     | TimerSetupCancel
     | TimerDismiss String

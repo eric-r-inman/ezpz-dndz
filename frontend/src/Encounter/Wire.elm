@@ -380,6 +380,7 @@ encodeTimer t =
         [ ( "remaining", E.int t.remaining )
         , ( "phase", encodeTurnPhase t.phase )
         , ( "ringing", E.bool t.ringing )
+        , ( "note", E.string t.note )
         ]
 
 
@@ -655,7 +656,8 @@ decodeDeathSaves =
 
 decodeTimer : D.Decoder Timer
 decodeTimer =
-    D.map3 Timer
+    D.map4 Timer
         (D.field "remaining" D.int)
         (D.field "phase" decodeTurnPhase)
         (D.field "ringing" D.bool)
+        (D.oneOf [ D.field "note" D.string, D.succeed "" ])

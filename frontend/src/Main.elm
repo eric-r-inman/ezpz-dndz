@@ -764,6 +764,9 @@ updateInner msg model =
         TimerSetupPhaseSet phase ->
             Update.Timer.phaseSet phase model
 
+        TimerSetupNoteChanged text ->
+            Update.Timer.noteChanged text model
+
         TimerSetupApply ->
             Update.Timer.apply model
 

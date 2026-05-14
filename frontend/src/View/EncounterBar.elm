@@ -60,6 +60,7 @@ view enc savedAs db xpScope xpFilterOpen =
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
             , ac active
+            , noteSpan active
             , stateIcons active
             , conditionsText active
             ]
@@ -167,6 +168,35 @@ ac active =
                     [ text (String.fromInt c.armorClass) ]
                 , span [ class "encounter-bar__ac-label" ] [ text "AC" ]
                 ]
+
+        Nothing ->
+            text ""
+
+
+{-| Echo the active creature's row-1 note up into the title bar
+to the right of AC, prefixed by a flashing red `!` so it reads
+as "pay attention to this creature right now." Only renders
+when the active creature actually has a non-empty note; the
+title bar always shows the active creature, so the `!` is
+present whenever the note is present.
+
+The bang is deliberately a text-character `!` (not an icon) per
+the design request, styled with a CSS keyframe pulse — see
+`.encounter-bar__note-bang` in style.css.
+
+-}
+noteSpan : Maybe Creature -> Html Msg
+noteSpan active =
+    case active of
+        Just c ->
+            if String.isEmpty (String.trim c.note) then
+                text ""
+
+            else
+                span [ class "encounter-bar__note" ]
+                    [ span [ class "encounter-bar__note-bang" ] [ text "!" ]
+                    , span [ class "encounter-bar__note-text" ] [ text c.note ]
+                    ]
 
         Nothing ->
             text ""
@@ -336,6 +366,31 @@ stateIcon glyph label =
         , attribute "aria-label" label
         ]
         [ text glyph ]
+
+
+{-| Active-creature short-note slot in the title bar. Mirrors
+the inline note on the card's top row, surfaced here so the GM
+can read it without finding the card in the queue. Prefixed
+with a flashing red `!` (text, not icon) because the title bar
+already implies "active creature" — the marker emphasises that
+the note belongs to whoever's acting right now. Hidden when
+the note is empty.
+-}
+noteSpan : Maybe Creature -> Html Msg
+noteSpan active =
+    case active of
+        Just c ->
+            if String.isEmpty (String.trim c.note) then
+                text ""
+
+            else
+                span [ class "encounter-bar__note" ]
+                    [ span [ class "encounter-bar__note-bang" ] [ text "!" ]
+                    , text c.note
+                    ]
+
+        Nothing ->
+            text ""
 
 
 {-| Active-creature conditions slot in the title bar. Plain

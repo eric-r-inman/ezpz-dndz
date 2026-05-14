@@ -3393,6 +3393,38 @@ body {
   text-align: center;
 }
 
+/* Optional 10-char label set in the timer modal.  Renders to
+   the right of the count, separated by a thin space, in a slightly
+   muted weight so the count stays the primary read. */
+.timer-pill__note {
+  margin-left: 6px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Active-creature note read in the encounter title bar.  Slot
+   sits between AC and the state icons.  The leading "!" is
+   styled separately as a red, flashing attention mark — the
+   note body itself stays the regular title-bar text colour. */
+.encounter-bar__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.encounter-bar__note-bang {
+  color: var(--color-danger);
+  font-weight: 800;
+  animation: encounter-bar-note-blink 0.8s steps(1, end) infinite;
+}
+
+@keyframes encounter-bar-note-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
+
 .timer-pill--ringing {
   background: rgba(214, 59, 59, 0.2);
   border-color: var(--color-danger);

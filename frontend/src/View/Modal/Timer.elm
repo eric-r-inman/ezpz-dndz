@@ -44,6 +44,21 @@ view model =
                         , View.PhaseToggle.view "timer-phase" ui.phase TimerSetupPhaseSet
                         , Html.label [] [ text "of the bearer's turn" ]
                         ]
+                    , div [ class "cond-row" ]
+                        [ Html.label [ for "timer-note-input" ]
+                            [ text "Label" ]
+                        , input
+                            [ id "timer-note-input"
+                            , class "cond-input"
+                            , type_ "text"
+                            , Attr.maxlength 10
+                            , Attr.placeholder "optional (10 chars)"
+                            , value ui.note
+                            , onInput TimerSetupNoteChanged
+                            , Html.Events.on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
+                            ]
+                            []
+                        ]
                     , div [ class "cond-section__caption" ]
                         [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
                     , div [ class "note-edit__buttons" ]
