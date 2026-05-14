@@ -21,6 +21,7 @@ import Msg
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -373,7 +374,7 @@ logEntry index entry =
             button
                 [ class "icon-btn icon-btn--sm hp-change__log-undo"
                 , onClick HpChangeUndoLatest
-                , Attr.title
+                , Tooltips.attr
                     ("Undo: revert " ++ entry.target ++ " to " ++ beforeStr)
                 , attribute "aria-label"
                     ("Undo " ++ kindLabel ++ " on " ++ entry.target)
