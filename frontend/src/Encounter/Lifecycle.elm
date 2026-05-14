@@ -38,10 +38,14 @@ active. When the marker would step off the end of the queue it
 wraps back to the first creature, which marks the start of a new
 combat round, so `round` increments.
 
-**Dead skipping**: creatures with three failed death saves are
-skipped — the dead state isn't cleared, so the marker keeps
-walking past them on every subsequent Next Turn. An iteration
-cap of `length creatures` protects the all-dead TPK edge case.
+**Skip rules**: creatures with three failed death saves OR
+explicitly marked inactive (via the card's ∅ toggle) are
+skipped — the marker keeps walking past them on every
+subsequent Next Turn. Dead state isn't cleared automatically;
+inactive state only clears when the user toggles the button
+back off. An iteration cap of `length creatures` protects the
+all-skipped edge case (TPK, or all-inactive while the GM is
+setting up an encounter).
 
 In addition to the queue walk, this fires two condition hooks
 once per Next Turn click: end-of-turn for the OUTGOING active
@@ -69,7 +73,7 @@ skipUnplayable budget enc =
         in
         case findByName advanced.activeName advanced.creatures of
             Just c ->
-                if Encounter.DeathSaves.isDead c.deathSaves then
+                if Encounter.DeathSaves.isDead c.deathSaves || c.inactive then
                     skipUnplayable (budget - 1) advanced
 
                 else

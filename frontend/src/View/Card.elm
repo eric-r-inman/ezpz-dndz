@@ -65,6 +65,11 @@ view activeName hpEdit creature =
 
                       else
                         Nothing
+                    , if creature.inactive then
+                        Just "creature-card--inactive"
+
+                      else
+                        Nothing
                     ]
                 )
     in
@@ -121,6 +126,30 @@ view activeName hpEdit creature =
                     , attribute "aria-label" "Remove"
                     ]
                     [ text "×" ]
+                ]
+            , div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class
+                        ("icon-btn"
+                            ++ (if creature.inactive then
+                                    " icon-btn--toggled"
+
+                                else
+                                    ""
+                               )
+                        )
+                    , onClick (ToggleInactive creature.name)
+                    , title Tooltips.queueInactive
+                    , attribute "aria-label" "Toggle inactive"
+                    , attribute "aria-pressed"
+                        (if creature.inactive then
+                            "true"
+
+                         else
+                            "false"
+                        )
+                    ]
+                    [ text "∅" ]
                 ]
             , div [ class "creature-card__rail-group" ]
                 [ button
@@ -361,13 +390,35 @@ legendaryColumn cfg =
                 []
     in
     div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
-        [ div [ class "legendary-col__header" ] [ text cfg.label ]
+        [ div
+            [ class "legendary-col__header"
+            , title (headerTooltipFor cfg.label)
+            ]
+            [ text cfg.label ]
         , pip 0
         , pip 1
         , pip 2
         , div [ class "legendary-col__sep" ] []
         , pip 3
         ]
+
+
+{-| Map the column's bold-header letter to the static tooltip
+that describes what the pips count. Tooltips live in
+=View.Tooltips=; the helper here picks the right one without
+making the column-builder caller pass it in.
+-}
+headerTooltipFor : String -> String
+headerTooltipFor label =
+    case label of
+        "LA" ->
+            Tooltips.legendaryActionColumn
+
+        "LR" ->
+            Tooltips.legendaryResistanceColumn
+
+        _ ->
+            ""
 
 
 

@@ -637,6 +637,27 @@ body {
   opacity: 0.7;
 }
 
+/* Inactive: explicitly skipped via the ∅ toggle.  Lighter dim
+   than `--dead` since the creature is still alive and editable;
+   the GM just doesn't want to take their turn right now. */
+.creature-card--inactive {
+  filter: grayscale(0.5);
+  opacity: 0.65;
+}
+
+.creature-card--inactive:hover {
+  opacity: 0.85;
+}
+
+/* Toggled-on state for boolean icon buttons (currently used by
+   the ∅ inactive toggle).  Inverts the foreground / background so
+   a button you've turned ON reads at a glance. */
+.icon-btn--toggled {
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-color: var(--color-text);
+}
+
 .creature-card__rail {
   display: flex;
   flex-direction: column;

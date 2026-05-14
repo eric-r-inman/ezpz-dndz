@@ -386,6 +386,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , bloodied = False
     , deathSaves = Encounter.emptyDeathSaves
     , holding = False
+    , inactive = False
     , note = ""
     , memo = ""
     , timer = Nothing

@@ -56,6 +56,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 1 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -93,6 +94,7 @@ seedCreatures =
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -123,6 +125,7 @@ seedCreatures =
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
       , holding = True
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -153,6 +156,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -183,6 +187,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -213,6 +218,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -243,6 +249,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing
@@ -273,6 +280,7 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , holding = False
+      , inactive = False
       , note = ""
       , memo = ""
       , timer = Nothing

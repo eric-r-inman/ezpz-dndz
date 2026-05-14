@@ -66,6 +66,8 @@ module View.Tooltips exposing
     , initSelectedOne
     , initiativeManager
     , lastRollTotal
+    , legendaryActionColumn
+    , legendaryResistanceColumn
     , loadButton
     , loadRowCompendium
     , loadRowEncounter
@@ -80,6 +82,7 @@ module View.Tooltips exposing
     , panelOpenCompendium
     , panelStatBlockNewWindow
     , queueDuplicate
+    , queueInactive
     , queueMakeActive
     , queueMoveDown
     , queueMoveUp
@@ -339,6 +342,21 @@ queueRemove =
 queueDuplicate : String
 queueDuplicate =
     "Duplicate creature"
+
+
+queueInactive : String
+queueInactive =
+    "Make inactive (skips turn)"
+
+
+legendaryActionColumn : String
+legendaryActionColumn =
+    "Legendary Action (3, +1 Lair)"
+
+
+legendaryResistanceColumn : String
+legendaryResistanceColumn =
+    "Legendary Resistance (3, +1 Lair)"
 
 
 

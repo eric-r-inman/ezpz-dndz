@@ -322,6 +322,7 @@ type Msg
     | DeathSaveRoll String
     | DeathSaveRollLanded String Dice.Roll
     | ToggleHolding String
+    | ToggleInactive String
       -- Dice modal
     | OpenDice
     | CloseDice

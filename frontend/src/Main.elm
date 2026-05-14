@@ -480,6 +480,9 @@ updateInner msg model =
         ToggleHolding name ->
             Update.Encounter.toggleHolding name model
 
+        ToggleInactive name ->
+            Update.Encounter.toggleInactive name model
+
         -- Dice modal lifecycle
         OpenDice ->
             Update.Dice.open model

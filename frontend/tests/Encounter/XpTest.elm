@@ -52,6 +52,7 @@ mkInstance args =
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
     , holding = False
+    , inactive = False
     , note = ""
     , memo = ""
     , timer = Nothing
@@ -225,6 +226,7 @@ totalsForSuite =
                         , bloodied = False
                         , deathSaves = { successes = 0, failures = 0 }
                         , holding = False
+                        , inactive = False
                         , note = ""
                         , memo = ""
                         , timer = Nothing

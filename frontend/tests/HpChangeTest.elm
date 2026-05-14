@@ -41,6 +41,7 @@ fixture =
     , bloodied = False
     , deathSaves = DeathSaves.empty
     , holding = False
+    , inactive = False
     , note = ""
     , memo = ""
     , timer = Nothing

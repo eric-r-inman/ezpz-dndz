@@ -49,6 +49,7 @@ mkCreature name initiative =
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
     , holding = False
+    , inactive = False
     , note = ""
     , memo = ""
     , timer = Nothing

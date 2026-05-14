@@ -357,6 +357,7 @@ type alias Creature =
     , bloodied : Bool
     , deathSaves : DeathSaves
     , holding : Bool
+    , inactive : Bool
     , note : String
     , memo : String
     , timer : Maybe Timer

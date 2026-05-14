@@ -247,6 +247,7 @@ encodeCreature c =
         , ( "bloodied", E.bool c.bloodied )
         , ( "deathSaves", encodeDeathSaves c.deathSaves )
         , ( "holding", E.bool c.holding )
+        , ( "inactive", E.bool c.inactive )
         , ( "note", E.string c.note )
         , ( "memo", E.string c.memo )
         , ( "timer", encodeMaybe encodeTimer c.timer )
@@ -432,7 +433,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves holding note memo timer creatureId hasLA laUsed hasLR lrUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves holding inactive note memo timer creatureId hasLA laUsed hasLR lrUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -454,6 +455,7 @@ decodeCreature =
             , bloodied = bloodied
             , deathSaves = deathSaves
             , holding = holding
+            , inactive = inactive
             , note = note
             , memo = memo
             , timer = timer
@@ -485,6 +487,7 @@ decodeCreature =
         |> optional "bloodied" D.bool False
         |> optional "deathSaves" decodeDeathSaves { successes = 0, failures = 0 }
         |> optional "holding" D.bool False
+        |> optional "inactive" D.bool False
         |> optional "note" D.string ""
         |> optional "memo" D.string ""
         |> optional "timer" (D.nullable decodeTimer) Nothing

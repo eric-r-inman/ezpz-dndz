@@ -190,6 +190,7 @@ puddingHalf src =
         , bloodied = False
         , deathSaves = Encounter.emptyDeathSaves
         , holding = False
+        , inactive = False
         , timer = Nothing
         , selected = False
         , legendaryActionsUsed = Set.empty

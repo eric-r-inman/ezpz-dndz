@@ -19,6 +19,7 @@ module Update.Encounter exposing
     , toggleFlying
     , toggleHiding
     , toggleHolding
+    , toggleInactive
     , toggleSelected
     )
 
@@ -153,6 +154,20 @@ adjustFlyHeight name delta model =
 toggleHolding : String -> Model -> ( Model, Cmd Msg )
 toggleHolding name model =
     ( withEncounter (Encounter.mapCreature name (\c -> { c | holding = not c.holding })) model
+    , Cmd.none
+    )
+
+
+{-| Toggle the per-creature `inactive` flag. An inactive
+creature stays in the queue (visible, editable) but is skipped
+by `Encounter.Lifecycle.nextTurn` — useful for benched mounts,
+NPCs whose turn the GM doesn't want to take, or anyone waiting
+to enter combat later. The card view greys the creature out so
+the state is visible at a glance.
+-}
+toggleInactive : String -> Model -> ( Model, Cmd Msg )
+toggleInactive name model =
+    ( withEncounter (Encounter.mapCreature name (\c -> { c | inactive = not c.inactive })) model
     , Cmd.none
     )
 
