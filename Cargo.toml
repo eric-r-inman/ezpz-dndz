@@ -64,15 +64,28 @@ tower-http = { version = "0.6", features = ["trace", "cors", "fs", "set-header"]
 # Testing
 tempfile = "3"
 
-# OpenMetrics/Prometheus
-prometheus = "0.14"
+# OpenMetrics/Prometheus.  Pinned to 0.13 so the version matches
+# the foundation crate's BaseServerState (foundation pulls in
+# prometheus 0.13 transitively; `impl_server_state!` emits
+# FromRef impls that reference `::prometheus::Registry` from THIS
+# crate's namespace, so the two must agree).  Bumping past 0.13
+# requires foundation to move first.
+prometheus = "0.13"
 
 # OpenAPI
 aide = { version = "0.15", features = ["axum", "axum-json", "axum-query", "scalar", "macros"] }
-schemars = "1.2"
+# Pinned to 0.9 so JsonSchema derives in our types resolve to the
+# same `schemars` version that aide 0.15.x consumes internally.
+# Bumping to 1.x requires aide to move first; mixing the two breaks
+# the `Json<T>: OperationInput` trait check for handlers.
+schemars = "0.9"
 
-# Authentication
-openidconnect = { version = "4", features = ["reqwest"] }
+# Authentication.  Pinned to 3.x so the `CoreClient` type lines up
+# with what foundation's `BaseServerState` uses — same reasoning as
+# the prometheus pin above; `impl_server_state!` emits FromRef impls
+# that reference foundation's openidconnect version through this
+# crate's namespace.
+openidconnect = { version = "3", features = ["reqwest"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
 tower-sessions = { version = "0.15", features = ["memory-store"] }
 
