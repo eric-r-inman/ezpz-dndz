@@ -81,19 +81,27 @@ encounterPanelBodyId =
     "encounter-panel-body"
 
 
-{-| Scroll the named creature card into view if (and only if) its
-bottom edge is past the encounter panel's visible bottom edge.
-Cards already fully visible — including those above the viewport
-top — are left alone. Result lands in `ActiveCardScrollChecked`,
-a no-op handler; failure means the card or the container wasn't
-in the DOM yet, which is benign.
+{-| Scroll the named creature card into view if it sits outside
+the encounter panel's visible region. Two cases:
+
+  - Card's bottom is past the panel's bottom edge → scroll _down_
+    by the overflow. Covers the "Next Turn moved past where I
+    was looking" case.
+  - Card's top is above the panel's top edge → scroll _up_ by
+    the underflow. Covers the "round just wrapped and the active
+    creature is now back at the top of the queue, which is above
+    the viewport" case.
+
+Cards already fully visible are left alone. Result lands in
+`ActiveCardScrollChecked`, a no-op handler; failure means the
+card or the container wasn't in the DOM yet, which is benign.
 
 Math: bounding-client rects from `Browser.Dom.getElement` are in
 _window_ coordinates and reflect current scroll position, so the
-overflow calculation works against the panel's element rect
-without having to manually offset by the panel's scrollTop. The
-correction is then applied to the _panel's_ scrollTop via
-`Browser.Dom.setViewportOf`.
+overflow / underflow calculations work against the panel's
+element rect without having to manually offset by the panel's
+scrollTop. The correction is then applied to the _panel's_
+scrollTop via `Browser.Dom.setViewportOf`.
 
 -}
 scrollActiveIntoView : String -> Cmd Msg
@@ -101,23 +109,41 @@ scrollActiveIntoView name =
     Task.map3
         (\containerElement cardElement containerVp ->
             let
+                cardTop =
+                    cardElement.element.y
+
                 cardBottom =
-                    cardElement.element.y + cardElement.element.height
+                    cardTop + cardElement.element.height
+
+                containerTop =
+                    containerElement.element.y
 
                 containerBottom =
-                    containerElement.element.y + containerElement.element.height
+                    containerTop + containerElement.element.height
+
+                topMargin =
+                    16
 
                 bottomMargin =
                     16
 
-                overflow =
+                overflowBelow =
                     cardBottom - (containerBottom - bottomMargin)
+
+                overflowAbove =
+                    (containerTop + topMargin) - cardTop
             in
-            if overflow > 0 then
+            if overflowBelow > 0 then
                 Browser.Dom.setViewportOf
                     encounterPanelBodyId
                     containerVp.viewport.x
-                    (containerVp.viewport.y + overflow)
+                    (containerVp.viewport.y + overflowBelow)
+
+            else if overflowAbove > 0 then
+                Browser.Dom.setViewportOf
+                    encounterPanelBodyId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y - overflowAbove)
 
             else
                 Task.succeed ()
