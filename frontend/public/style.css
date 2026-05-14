@@ -674,8 +674,24 @@ body {
    shows ~300 ms after hover/focus — about half the macOS browser-
    native `title=` delay (~600 ms on Safari/Chrome).  `aria-label` on
    the same element covers screen-reader needs; no native `title=`
-   means no double tooltip.  Centred above the trigger by default; if
-   you need it on a different side, add per-class overrides.
+   means no double tooltip.
+
+   Two positioning paths, picked by `@supports`:
+
+   - Modern browsers (Chrome / Edge 125+, Safari 17.5+, Firefox 192+):
+     `position: fixed` + `position-area: top` uses the host element
+     as the implicit anchor.  The tooltip is lifted out of every
+     clipping ancestor (overflow: hidden / overflow: auto), and
+     `position-try-fallbacks` makes the browser auto-flip to the
+     other side when there's no room.  No per-container CSS needed
+     — drop in `[data-tooltip]` anywhere and it positions itself.
+
+   - Older browsers: `position: absolute` relative to the host
+     (the host stays `position: relative`).  Clips at scroll
+     ancestors the way it always did; functional but suboptimal.
+     This is the same path we shipped before anchor positioning
+     landed in all majors, so behaviour is unchanged for that
+     audience.
    ────────────────────────────────────────────────────────────────────── */
 [data-tooltip] {
   position: relative;
@@ -700,54 +716,29 @@ body {
   transition: opacity 0.1s ease-out;
 }
 
+@supports (position-area: top) {
+  [data-tooltip]::after {
+    position: fixed;
+    position-area: top;
+    /* Flip to the other side when there's no room, then flip the
+       inline axis when the tooltip would overflow off the side
+       of the viewport. */
+    position-try-fallbacks:
+      flip-block,
+      flip-inline,
+      flip-block flip-inline;
+    /* Reset the absolute-fallback offsets so position-area is the
+       sole positioning source for supporting browsers. */
+    inset: auto;
+    transform: none;
+    margin: 6px;
+  }
+}
+
 [data-tooltip]:hover::after,
 [data-tooltip]:focus-visible::after {
   opacity: 1;
   transition: opacity 0.1s ease-in 0.3s;
-}
-
-/* Right-side tooltips: buttons on the card's right rail sit
-   right up against the encounter panel's right edge.  Their
-   centred tooltip extends both left AND right of the trigger,
-   so the right half spills out and gets clipped by the panel's
-   `overflow: auto`.  For these, anchor the tooltip's RIGHT edge
-   to the button's right edge so the whole tooltip grows
-   leftward into the card — never past the panel boundary. */
-.creature-card__rail--right [data-tooltip]::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-
-/* Same treatment for the LA / LR column header tooltips — the
-   column sits between the centre and the right rail, so the
-   centred tooltip still risks clipping on narrower panels. */
-.creature-card__legendary [data-tooltip]::after {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-
-/* Mirror fix for the LEFT rail: select checkbox, ↑ / ↓, → all
-   sit against the panel's LEFT edge, so the centred tooltip's
-   left half spills out and gets clipped.  Anchor the tooltip's
-   LEFT edge to the button's left edge so it grows rightward
-   into the card. */
-.creature-card__rail--left [data-tooltip]::after {
-  left: 0;
-  right: auto;
-  transform: none;
-}
-
-/* Encounter title-bar tooltips: the bar sits in the panel's
-   header strip at the very top of the panel.  The default
-   tooltip anchors ABOVE the trigger and so renders above the
-   title bar — outside the panel — and gets clipped by
-   `.panel { overflow: hidden }`.  Drop them BELOW the trigger
-   instead so they land inside the panel body, fully visible. */
-.encounter-bar [data-tooltip]::after {
-  bottom: auto;
-  top: calc(100% + 6px);
 }
 
 .creature-card__rail {
