@@ -728,6 +728,17 @@ body {
   transform: none;
 }
 
+/* Mirror fix for the LEFT rail: select checkbox, ↑ / ↓, → all
+   sit against the panel's LEFT edge, so the centred tooltip's
+   left half spills out and gets clipped.  Anchor the tooltip's
+   LEFT edge to the button's left edge so it grows rightward
+   into the card. */
+.creature-card__rail--left [data-tooltip]::after {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
 .creature-card__rail {
   display: flex;
   flex-direction: column;
