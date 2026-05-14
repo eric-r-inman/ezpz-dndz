@@ -2021,6 +2021,45 @@ body {
   font-weight: 600;
 }
 
+/* Active creature's note, echoed up into the title bar to the
+   right of AC.  The leading `!` is a text character (not an
+   icon glyph) per the design request, animated with a 1 s
+   opacity pulse to draw the eye.  The note body itself stays
+   solid so the text remains readable. */
+.encounter-bar__note {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 10px;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.encounter-bar__note-bang {
+  color: var(--color-danger, #c92a2a);
+  font-weight: 800;
+  animation: encounter-bar-bang-pulse 1s ease-in-out infinite;
+}
+
+.encounter-bar__note-text {
+  font-style: italic;
+  opacity: 0.9;
+}
+
+@keyframes encounter-bar-bang-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
 .encounter-bar__states {
   display: flex;
   gap: 4px;

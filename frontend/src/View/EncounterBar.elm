@@ -173,35 +173,6 @@ ac active =
             text ""
 
 
-{-| Echo the active creature's row-1 note up into the title bar
-to the right of AC, prefixed by a flashing red `!` so it reads
-as "pay attention to this creature right now." Only renders
-when the active creature actually has a non-empty note; the
-title bar always shows the active creature, so the `!` is
-present whenever the note is present.
-
-The bang is deliberately a text-character `!` (not an icon) per
-the design request, styled with a CSS keyframe pulse — see
-`.encounter-bar__note-bang` in style.css.
-
--}
-noteSpan : Maybe Creature -> Html Msg
-noteSpan active =
-    case active of
-        Just c ->
-            if String.isEmpty (String.trim c.note) then
-                text ""
-
-            else
-                span [ class "encounter-bar__note" ]
-                    [ span [ class "encounter-bar__note-bang" ] [ text "!" ]
-                    , span [ class "encounter-bar__note-text" ] [ text c.note ]
-                    ]
-
-        Nothing ->
-            text ""
-
-
 {-| Hand-rolled controlled dropdown. Replaced the native
 `<details>/<summary>` pair so we can drive the open state from
 the model — the global Esc / click-outside subscriptions in
