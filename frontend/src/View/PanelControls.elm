@@ -41,7 +41,7 @@ view dice pendingControl round rosterDirty controlMenu =
                             "action-btn action-btn--green dice-roll-btn"
                         )
                     , onClick OpenDice
-                    , title
+                    , Tooltips.attr
                         (if dice.unread then
                             Tooltips.rollDiceUnread
 

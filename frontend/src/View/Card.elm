@@ -539,7 +539,7 @@ chipSaveButton target cond =
                 [ class "condition-chip__save"
                 , stopPropagationOn "click"
                     (Decode.succeed ( ConditionRollSave target cond.id, True ))
-                , title
+                , Tooltips.attr
                     (Tooltips.chipRollSave
                         { ability = spec.ability
                         , dc = spec.dc
@@ -831,7 +831,7 @@ deathSavePip kind filled onToggle kindLabel ordinal =
                    )
             )
         , onClick onToggle
-        , title
+        , Tooltips.attr
             (kindLabel
                 ++ " "
                 ++ String.fromInt ordinal

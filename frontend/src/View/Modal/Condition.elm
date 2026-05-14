@@ -428,7 +428,7 @@ footer ui =
                  else
                     "true"
                 )
-            , title
+            , Tooltips.attr
                 (if canSubmit then
                     applyLabel
 

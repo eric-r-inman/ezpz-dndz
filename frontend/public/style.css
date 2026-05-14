@@ -1549,7 +1549,14 @@ body {
 }
 
 .action-btn:hover {
-  filter: brightness(1.15);
+  /* `filter: brightness(1.15)` previously — but `filter` on the
+     trigger creates a containing block for the
+     `[data-tooltip]::after` pseudo-element on every hover, which
+     collapses the tooltip onto the trigger.  Use a faint
+     overlay (white at low opacity, light-on-dark legible) via
+     `box-shadow: inset` instead — same "lift" feel for coloured
+     variants, no containing-block side effect. */
+  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.08);
 }
 
 /* Unvariant `.action-btn` (Cancel / Close): brightness has no
@@ -1673,8 +1680,10 @@ body {
 
 .action-btn:disabled:hover,
 .action-btn[aria-disabled="true"]:hover {
-  filter: grayscale(0.6);
-  transform: none;
+  /* No `filter` here — see `.action-btn:hover`.  Disabled
+     variant relies on its already-muted base colour for the
+     visual cue. */
+  box-shadow: none;
 }
 
 .btn-glyph {
@@ -2129,7 +2138,10 @@ body {
 }
 
 .encounter-bar__state:hover {
-  transform: translateY(-1px);
+  /* `transform` would create a containing block for the
+     `[data-tooltip]::after` pseudo-element, breaking the tooltip
+     during hover.  Drop the lift and rely on the border-colour
+     change for the hover affordance. */
   border-color: var(--color-accent);
 }
 
@@ -2537,7 +2549,9 @@ body {
 }
 
 .die-btn:hover {
-  filter: brightness(1.15);
+  /* `box-shadow: inset` overlay — see `.action-btn:hover` for the
+     reason we avoid `filter:` on tooltip-bearing buttons. */
+  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.08);
 }
 
 .die-btn:active {

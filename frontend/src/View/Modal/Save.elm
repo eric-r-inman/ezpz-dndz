@@ -27,7 +27,6 @@ import Html.Attributes
         , maxlength
         , name
         , placeholder
-        , title
         , type_
         , value
         )

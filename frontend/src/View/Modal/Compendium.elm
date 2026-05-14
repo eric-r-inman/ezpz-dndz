@@ -188,7 +188,7 @@ addedFilter active =
                    )
             )
         , onClick CompendiumAddedToggle
-        , title
+        , Tooltips.attr
             (if active then
                 Tooltips.compendiumAddedFilterOn
 
@@ -775,7 +775,7 @@ clearMenu ui =
                 [ class "compendium__bulk-menu__item"
                 , onClick CompendiumClearSelected
                 , disabled nothingSelected
-                , title
+                , Tooltips.attr
                     (if nothingSelected then
                         Tooltips.compendiumClearSelectedNone
 

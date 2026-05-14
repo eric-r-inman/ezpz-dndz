@@ -14,6 +14,7 @@ import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumPasteUi)
 import View.Modal
 import View.StatBlock
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -102,7 +103,7 @@ footer ui =
             [ class "action-btn action-btn--green"
             , onClick CompendiumPasteApply
             , disabled (not isOk)
-            , title
+            , Tooltips.attr
                 (if isOk then
                     "Open the edit modal pre-filled with the parsed data"
 

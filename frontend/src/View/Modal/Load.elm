@@ -23,7 +23,6 @@ import Html.Attributes
         , class
         , disabled
         , maxlength
-        , title
         , type_
         , value
         )

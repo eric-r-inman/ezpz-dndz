@@ -25,6 +25,7 @@ import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Duplicate exposing (DuplicateUi)
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -96,7 +97,7 @@ row args =
                  else
                     "duplicate__row duplicate__row--disabled"
                 )
-            , title
+            , Tooltips.attr
                 (if args.available then
                     args.description
 
