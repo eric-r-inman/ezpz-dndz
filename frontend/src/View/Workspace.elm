@@ -9,10 +9,11 @@ them together with the model fragments each one needs.
 
 -}
 
+import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, div, main_, section)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, id)
 import Model exposing (Model)
 import Msg exposing (Msg)
 import Ui.Compendium exposing (CompendiumDb)
@@ -65,7 +66,14 @@ panelMain enc hpEdit savedAs db xpScope xpFilterOpen =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ View.EncounterBar.view enc savedAs db xpScope xpFilterOpen ]
-        , div [ class "panel__body" ]
+        , -- Stable id so `Effects.scrollActiveIntoView` can target
+          -- THIS scroll container (cards live inside a panel with
+          -- `overflow: auto`, not in the document scroll, so
+          -- document-level setViewport doesn't move them).
+          div
+            [ class "panel__body"
+            , id Effects.encounterPanelBodyId
+            ]
             [ div [ class "creature-grid" ]
                 (List.map (View.Card.view enc.activeName hpEdit) enc.creatures)
             ]

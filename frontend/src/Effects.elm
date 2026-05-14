@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister
+    , encounterPanelBodyId, fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -70,40 +70,61 @@ slugifyName name =
         |> String.fromList
 
 
-{-| Compose `Browser.Dom.getViewport` and
-`Browser.Dom.getElement` to scroll the named creature card into
-view if its bottom edge is below the viewport. Result lands in
-`ActiveCardScrollChecked`, which is a no-op handler (we don't
-care whether it succeeded — failure just means the card wasn't
-in the DOM yet, which is benign).
+{-| DOM id stamped onto the encounter panel's scrollable body
+(=View.Workspace=). Cards live inside this scroll container, so
+auto-scroll-to-active has to target it explicitly —
+document-level setViewport doesn't reach an inner overflow-auto
+div.
+-}
+encounterPanelBodyId : String
+encounterPanelBodyId =
+    "encounter-panel-body"
+
+
+{-| Scroll the named creature card into view if (and only if) its
+bottom edge is past the encounter panel's visible bottom edge.
+Cards already fully visible — including those above the viewport
+top — are left alone. Result lands in `ActiveCardScrollChecked`,
+a no-op handler; failure means the card or the container wasn't
+in the DOM yet, which is benign.
+
+Math: bounding-client rects from `Browser.Dom.getElement` are in
+_window_ coordinates and reflect current scroll position, so the
+overflow calculation works against the panel's element rect
+without having to manually offset by the panel's scrollTop. The
+correction is then applied to the _panel's_ scrollTop via
+`Browser.Dom.setViewportOf`.
+
 -}
 scrollActiveIntoView : String -> Cmd Msg
 scrollActiveIntoView name =
-    Task.map2
-        (\viewport element ->
+    Task.map3
+        (\containerElement cardElement containerVp ->
             let
                 cardBottom =
-                    element.element.y + element.element.height
+                    cardElement.element.y + cardElement.element.height
 
-                viewportBottom =
-                    viewport.viewport.y + viewport.viewport.height
+                containerBottom =
+                    containerElement.element.y + containerElement.element.height
 
                 bottomMargin =
                     16
 
                 overflow =
-                    cardBottom - (viewportBottom - bottomMargin)
+                    cardBottom - (containerBottom - bottomMargin)
             in
             if overflow > 0 then
-                Browser.Dom.setViewport
-                    viewport.viewport.x
-                    (viewport.viewport.y + overflow)
+                Browser.Dom.setViewportOf
+                    encounterPanelBodyId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y + overflow)
 
             else
                 Task.succeed ()
         )
-        Browser.Dom.getViewport
+        (Browser.Dom.getElement encounterPanelBodyId)
         (Browser.Dom.getElement (cardId name))
+        (Browser.Dom.getViewportOf encounterPanelBodyId)
         |> Task.andThen identity
         |> Task.attempt ActiveCardScrollChecked
 
