@@ -46,6 +46,7 @@ import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
+import Ui.Account exposing (AccountUi)
 import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition exposing (ConditionUi)
@@ -402,6 +403,12 @@ type alias Model =
     -- inline click-to-edit features keep working.  Toggled by
     -- the AppBar's "Use custom card layout" button.
     , useCustomCardLayout : Bool
+
+    -- Account page (`/me`) form state.  Independent of the auth
+    -- ADT — `auth` holds *who's signed in*; `accountUi` holds
+    -- *what the GM has typed into the profile / password forms
+    -- on the Account page*.
+    , accountUi : AccountUi
     }
 
 

@@ -60,14 +60,13 @@ view _ _ user useCustomCardLayout =
             ]
         , nav [ class "app-bar__nav" ]
             [ a [ href "/" ] [ text "Encounter" ]
-            , a [ href "/me" ] [ text "Me" ]
             , button
                 [ class "app-bar__card-editor"
                 , type_ "button"
                 , onClick CardEditorOpen
                 , Tooltips.attr Tooltips.appBarCardEditor
                 ]
-                [ text "🎨 Customize card" ]
+                [ text "Customize card" ]
             , button
                 [ class
                     ("app-bar__card-editor"
@@ -80,7 +79,7 @@ view _ _ user useCustomCardLayout =
                     )
                 , type_ "button"
                 , onClick CustomCardLayoutToggle
-                , attribute "title"
+                , Tooltips.attr
                     (if useCustomCardLayout then
                         "Switch encounter cards back to the classic renderer"
 
@@ -90,19 +89,24 @@ view _ _ user useCustomCardLayout =
                 ]
                 [ text
                     (if useCustomCardLayout then
-                        "🎴 Custom: on"
+                        "Custom: on"
 
                      else
-                        "🎴 Custom: off"
+                        "Custom: off"
                     )
                 ]
-            , span [ class "app-bar__user" ] [ text user.displayName ]
-            , button
-                [ class "app-bar__logout"
-                , type_ "button"
-                , onClick AuthLogout
+            , a
+                [ class "app-bar__user"
+                , href "/me"
+                , Tooltips.attr Tooltips.appBarAccount
                 ]
-                [ text "Sign out" ]
+                [ text user.displayName ]
+            , a
+                [ class "app-bar__donate"
+                , href "/donate"
+                , Tooltips.attr Tooltips.appBarDonate
+                ]
+                [ text "Donate" ]
             ]
         ]
 

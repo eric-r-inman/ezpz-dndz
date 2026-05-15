@@ -30,6 +30,7 @@ import Model exposing (Model)
 import Msg exposing (MeInfo, MeStatus(..), Msg)
 import Route
 import Ui.Toast exposing (ToastKind(..))
+import Update.Account
 import Update.Toast
 import Url exposing (Url)
 import Util.Http
@@ -58,9 +59,25 @@ urlChanged url model =
     let
         route =
             Route.fromUrl url
+
+        withRoute =
+            { model | url = url, route = route, me = Loading }
+
+        -- Some routes need a one-shot side-effect on entry — the
+        -- Account page seeds its display-name input from the
+        -- authenticated user, for instance.  Keep this list flat
+        -- and route-shaped rather than scattering Cmd-emitting
+        -- effects across handlers.
+        ( finalModel, sideCmd ) =
+            case route of
+                Route.Me ->
+                    Update.Account.open withRoute
+
+                _ ->
+                    ( withRoute, Cmd.none )
     in
-    ( { model | url = url, route = route, me = Loading }
-    , Effects.cmdForRoute route
+    ( finalModel
+    , Cmd.batch [ Effects.cmdForRoute route, sideCmd ]
     )
 
 

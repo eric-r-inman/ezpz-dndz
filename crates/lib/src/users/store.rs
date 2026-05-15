@@ -136,6 +136,71 @@ impl UserStore {
   pub async fn find_by_id(&self, id: &UserId) -> Option<User> {
     self.inner.read().await.into_iter().find(|u| &u.id == id)
   }
+
+  /// Set the display name on an existing user.  Trims and rejects
+  /// empty input.  Returns the updated `User` so the caller can
+  /// respond without re-fetching.
+  pub async fn update_display_name(
+    &self,
+    id: &UserId,
+    new_display_name: &str,
+  ) -> Result<User, UserStoreError> {
+    let trimmed = new_display_name.trim().to_string();
+    if trimmed.is_empty() {
+      return Err(UserStoreError::DisplayNameEmpty);
+    }
+    let id_owned = id.clone();
+    let updated = self
+      .inner
+      .mutate(move |users| match users.iter_mut().find(|u| u.id == id_owned) {
+        Some(slot) => {
+          slot.display_name = trimmed;
+          Ok(slot.clone())
+        }
+        None => Err(UserStoreError::InvalidCredentials),
+      })
+      .await
+      .map_err(UserStoreError::StorePersist)?;
+    updated
+  }
+
+  /// Verify the supplied `current_password` against the stored hash
+  /// and, on success, replace the hash with a fresh Argon2id digest
+  /// of `new_password`.  Returns `InvalidCredentials` for both "user
+  /// missing" and "current password mismatch" so handlers can't leak
+  /// account-existence by inspecting the error.
+  pub async fn change_password(
+    &self,
+    id: &UserId,
+    current_password: &str,
+    new_password: &str,
+  ) -> Result<(), UserStoreError> {
+    if new_password.len() < MIN_PASSWORD_LEN {
+      return Err(UserStoreError::PasswordTooShort);
+    }
+    // Verify against the current hash BEFORE we touch anything on
+    // disk — defence-in-depth against accidentally clobbering an
+    // account when the wrong password is supplied.
+    let user = self
+      .find_by_id(id)
+      .await
+      .ok_or(UserStoreError::InvalidCredentials)?;
+    verify_password(current_password, &user.password_hash)?;
+
+    let new_hash = hash_password(new_password)?;
+    let id_owned = id.clone();
+    self
+      .inner
+      .mutate(move |users| match users.iter_mut().find(|u| u.id == id_owned) {
+        Some(slot) => {
+          slot.password_hash = new_hash;
+          Ok(())
+        }
+        None => Err(UserStoreError::InvalidCredentials),
+      })
+      .await
+      .map_err(UserStoreError::StorePersist)?
+  }
 }
 
 /// Argon2id with the crate's recommended defaults.  Output is a

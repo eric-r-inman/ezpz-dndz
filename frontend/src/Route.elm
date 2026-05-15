@@ -27,6 +27,7 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
 type Route
     = Home
     | Me
+    | Donate
     | CompendiumCreaturePage String
     | NotFound
 
@@ -36,6 +37,7 @@ parser =
     oneOf
         [ Url.Parser.map Home top
         , Url.Parser.map Me (Url.Parser.s "me")
+        , Url.Parser.map Donate (Url.Parser.s "donate")
         , Url.Parser.map CompendiumCreaturePage
             (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         ]

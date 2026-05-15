@@ -54,6 +54,17 @@ pub struct LoginRequest {
   pub password: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct UpdateProfileRequest {
+  pub display_name: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ChangePasswordRequest {
+  pub current_password: String,
+  pub new_password: String,
+}
+
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ErrorBody {
   pub error: String,
@@ -131,6 +142,59 @@ async fn logout_handler(session: Session) -> Response {
   StatusCode::NO_CONTENT.into_response()
 }
 
+/// Resolve the `UserId` from the session cookie.  Mirrors what
+/// `me_handler` does — used by the authenticated `/api/auth/*`
+/// endpoints that aren't covered by the `require_auth` layer (the
+/// `users::router()` is merged outside the protected subtree so
+/// unauthenticated clients can hit `/register` / `/login`).
+async fn current_user_id(session: &Session) -> Result<UserId, AuthHttpError> {
+  let id: Option<String> = session
+    .get(SESSION_KEY_USER_ID)
+    .await
+    .map_err(|e| AuthHttpError::Session(e.to_string()))?;
+  id.map(UserId).ok_or(AuthHttpError::Unauthorized)
+}
+
+async fn update_profile_handler(
+  State(state): State<AppState>,
+  session: Session,
+  Json(body): Json<UpdateProfileRequest>,
+) -> Response {
+  let result: Result<Json<UserPublic>, AuthHttpError> = async {
+    let id = current_user_id(&session).await?;
+    let updated = state
+      .user_store
+      .update_display_name(&id, &body.display_name)
+      .await?;
+    Ok(Json(UserPublic::from(&updated)))
+  }
+  .await;
+  match result {
+    Ok(ok) => ok.into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+async fn change_password_handler(
+  State(state): State<AppState>,
+  session: Session,
+  Json(body): Json<ChangePasswordRequest>,
+) -> Response {
+  let result: Result<StatusCode, AuthHttpError> = async {
+    let id = current_user_id(&session).await?;
+    state
+      .user_store
+      .change_password(&id, &body.current_password, &body.new_password)
+      .await?;
+    Ok(StatusCode::NO_CONTENT)
+  }
+  .await;
+  match result {
+    Ok(status) => status.into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
 async fn me_handler(
   State(state): State<AppState>,
   session: Session,
@@ -202,7 +266,8 @@ pub fn router() -> ApiRouter<AppState> {
     .route("/api/auth/register", post(register_handler))
     .route("/api/auth/login", post(login_handler))
     .route("/api/auth/logout", post(logout_handler))
-    .route("/api/auth/me", get(me_handler))
+    .route("/api/auth/me", get(me_handler).put(update_profile_handler))
+    .route("/api/auth/password", post(change_password_handler))
 }
 
 // ── error type ─────────────────────────────────────────────────────────────

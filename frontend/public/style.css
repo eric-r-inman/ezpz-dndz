@@ -509,8 +509,184 @@ body {
   grid-template-columns: 2fr 1fr;
   grid-template-rows: auto 1fr;
   gap: var(--space-4);
-  padding: var(--space-4);
+  /* Bottom padding makes room for the fixed-position
+     `.app-footer`; without it, scrollable panel bodies would
+     park their last row permanently behind the footer. */
+  padding: var(--space-4) var(--space-4)
+    calc(var(--space-4) + var(--app-footer-height, 32px)) var(--space-4);
   min-height: 0;
+}
+
+/* ── Account page (`/me`) ──────────────────────────────────────────── */
+.workspace--account {
+  display: block;
+  padding: var(--space-4);
+}
+
+.account-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.account-page__body {
+  padding: var(--space-4);
+  overflow: auto;
+}
+
+.account-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.account-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.account-card__title {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.15rem;
+}
+
+.account-card__subtitle {
+  margin: var(--space-2) 0 0 0;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+}
+
+.account-card__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-card__row--readonly {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.account-card__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  min-width: 140px;
+}
+
+.account-card__value {
+  font-size: 0.95rem;
+}
+
+.account-card__input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.account-card__error {
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--color-danger-soft, rgba(214, 59, 59, 0.1));
+  color: var(--color-danger, #d63b3b);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+}
+
+.account-card__success {
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--color-heal-soft, rgba(60, 180, 85, 0.1));
+  color: var(--color-heal, #3cb455);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+}
+
+.account-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--space-2);
+}
+
+.account-card__actions--column {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.account-card__hint {
+  margin: var(--space-2) 0 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+/* ── App-wide footer ────────────────────────────────────────────────
+   Anchored to the bottom of the viewport; panels' scrollable bodies
+   slide BEHIND it (per the bottom padding above).  Three slots —
+   copyright on the left, beta disclaimer in the centre, contact on
+   the right — collapse to a column on narrow viewports. */
+:root {
+  --app-footer-height: 32px;
+}
+
+.app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--app-footer-height);
+  padding: 0 var(--space-4);
+  background: var(--color-surface-2);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.app-footer__copyright,
+.app-footer__beta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-footer__beta {
+  font-style: italic;
+}
+
+.app-footer__contact a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.app-footer__contact a:hover,
+.app-footer__contact a:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --app-footer-height: 56px;
+  }
+  .app-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 4px var(--space-3);
+  }
 }
 
 .panel {

@@ -51,6 +51,7 @@ import Msg
 import Preferences
 import Route exposing (Route(..))
 import Task
+import Ui.Account
 import Ui.Compendium as CompendiumUi
     exposing
         ( CompendiumDb(..)
@@ -68,6 +69,7 @@ import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.Toast
 import Update.AbilitySave
+import Update.Account
 import Update.Auth
 import Update.CardEditor
 import Update.Compendium.Add
@@ -98,9 +100,11 @@ import Update.Timer
 import Update.Toast
 import Url exposing (Url)
 import Util.Keyboard
+import View.Account
 import View.AppBar
 import View.Audio
 import View.Card
+import View.Footer
 import View.Login
 import View.Modal
 import View.Modal.AbilitySave
@@ -377,6 +381,7 @@ init flags url key =
       , queueView = Card.Layout.ListView
       , savedCardLayouts = []
       , useCustomCardLayout = False
+      , accountUi = Ui.Account.empty
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
@@ -1526,6 +1531,30 @@ updateInner msg model =
         AuthLogoutDone result ->
             Update.Auth.logoutDone result model
 
+        AccountDisplayNameChanged raw ->
+            Update.Account.displayNameChanged raw model
+
+        AccountProfileSubmit ->
+            Update.Account.submitProfile model
+
+        AccountProfileSaved result ->
+            Update.Account.profileSaved result model
+
+        AccountCurrentPasswordChanged raw ->
+            Update.Account.currentPasswordChanged raw model
+
+        AccountNewPasswordChanged raw ->
+            Update.Account.newPasswordChanged raw model
+
+        AccountConfirmPasswordChanged raw ->
+            Update.Account.confirmPasswordChanged raw model
+
+        AccountPasswordSubmit ->
+            Update.Account.submitPassword model
+
+        AccountPasswordChanged result ->
+            Update.Account.passwordChanged result model
+
         NoOp ->
             Update.Shell.noOp model
 
@@ -1581,6 +1610,7 @@ view model =
                     , View.Toast.list model.toasts
                     , View.RollPopup.list model.rollPopups
                     , View.Audio.ringer model
+                    , View.Footer.view
                     ]
             )
         ]
@@ -1594,11 +1624,17 @@ viewPage model =
             View.Workspace.view model
 
         Me ->
+            View.Account.view model
+
+        Donate ->
             div [ class "workspace" ]
                 [ section [ class "panel panel--main" ]
                     [ div [ class "panel__header" ]
-                        [ div [ class "panel__title" ] [ text "Account" ] ]
-                    , div [ class "panel__body" ] [ View.AppBar.me model.me ]
+                        [ div [ class "panel__title" ] [ text "Donate" ] ]
+                    , div [ class "panel__body" ]
+                        [ p [ class "empty" ]
+                            [ text "This page is under construction. Thanks for thinking about supporting the project!" ]
+                        ]
                     ]
                 ]
 

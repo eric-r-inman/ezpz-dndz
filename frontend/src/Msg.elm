@@ -763,4 +763,13 @@ type Msg
     | AuthLoginResponse (Result Http.Error Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
+      -- Account page (`/me`) form interactions.
+    | AccountDisplayNameChanged String
+    | AccountProfileSubmit
+    | AccountProfileSaved (Result Http.Error Auth.User)
+    | AccountCurrentPasswordChanged String
+    | AccountNewPasswordChanged String
+    | AccountConfirmPasswordChanged String
+    | AccountPasswordSubmit
+    | AccountPasswordChanged (Result Http.Error ())
     | NoOp

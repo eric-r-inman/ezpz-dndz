@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , encounterPanelBodyId, fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister
+    , changePassword, encounterPanelBodyId, fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -403,4 +403,42 @@ submitLogout =
         { url = "/api/auth/logout"
         , body = Http.emptyBody
         , expect = Http.expectWhatever AuthLogoutDone
+        }
+
+
+updateProfile :
+    { displayName : String }
+    -> (Result Http.Error Auth.User -> Msg)
+    -> Cmd Msg
+updateProfile { displayName } toMsg =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/auth/me"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "display_name", Encode.string displayName ) ]
+                )
+        , expect = Http.expectJson toMsg Auth.userDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+changePassword :
+    { currentPassword : String, newPassword : String }
+    -> (Result Http.Error () -> Msg)
+    -> Cmd Msg
+changePassword { currentPassword, newPassword } toMsg =
+    Http.post
+        { url = "/api/auth/password"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "current_password", Encode.string currentPassword )
+                    , ( "new_password", Encode.string newPassword )
+                    ]
+                )
+        , expect = Http.expectWhatever toMsg
         }
