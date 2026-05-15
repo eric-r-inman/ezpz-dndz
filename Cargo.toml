@@ -85,7 +85,7 @@ schemars = "0.9"
 # the prometheus pin above; `impl_server_state!` emits FromRef impls
 # that reference foundation's openidconnect version through this
 # crate's namespace.
-openidconnect = { version = "3", features = ["reqwest"] }
+openidconnect = { version = "4", features = ["reqwest"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
 tower-sessions = { version = "0.15", features = ["memory-store"] }
 
