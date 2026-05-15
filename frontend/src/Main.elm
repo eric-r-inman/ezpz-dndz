@@ -376,6 +376,7 @@ init flags url key =
       , cardLayout = Card.Layout.defaultLayout
       , queueView = Card.Layout.ListView
       , savedCardLayouts = []
+      , useCustomCardLayout = False
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
@@ -902,6 +903,11 @@ updateInner msg model =
         CardEditorOpen ->
             Update.CardEditor.open model
 
+        CustomCardLayoutToggle ->
+            ( { model | useCustomCardLayout = not model.useCustomCardLayout }
+            , Cmd.none
+            )
+
         CardEditorClose ->
             Update.CardEditor.close model
 
@@ -943,6 +949,12 @@ updateInner msg model =
 
         CardEditorSaveAs ->
             Update.CardEditor.saveAs model
+
+        CardEditorOverwriteConfirm ->
+            Update.CardEditor.overwriteConfirm model
+
+        CardEditorOverwriteCancel ->
+            Update.CardEditor.overwriteCancel model
 
         CardEditorLoad name ->
             Update.CardEditor.load name model
@@ -1544,7 +1556,7 @@ view model =
                     [ View.Login.view model.loginUi ]
 
                 Auth.AuthAuthenticated user ->
-                    [ View.AppBar.view model.settingsOpen model.preferences.theme user
+                    [ View.AppBar.view model.settingsOpen model.preferences.theme user model.useCustomCardLayout
                     , viewPage model
                     , View.Modal.Dice.view model.dice
                     , View.Modal.HpChange.view model

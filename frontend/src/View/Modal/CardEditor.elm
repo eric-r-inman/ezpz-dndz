@@ -74,6 +74,7 @@ view model =
                 , body =
                     [ banner
                     , errorBanner ui
+                    , overwriteBanner ui
                     , savedLayoutsSection ui model.savedCardLayouts
                     , twoColumn ui
                     , footer ui
@@ -97,6 +98,38 @@ errorBanner ui =
     case ui.error of
         Just err ->
             p [ class "card-editor__error" ] [ text err ]
+
+        Nothing ->
+            text ""
+
+
+overwriteBanner : CardEditorUi -> Html Msg
+overwriteBanner ui =
+    case ui.confirmOverwrite of
+        Just name ->
+            div [ class "card-editor__confirm" ]
+                [ span [ class "card-editor__confirm-msg" ]
+                    [ text
+                        ("A layout named \""
+                            ++ name
+                            ++ "\" already exists. Replace it?"
+                        )
+                    ]
+                , div [ class "card-editor__confirm-actions" ]
+                    [ button
+                        [ class "action-btn action-btn--red"
+                        , onClick CardEditorOverwriteConfirm
+                        , disabled ui.busy
+                        ]
+                        [ text "Overwrite" ]
+                    , button
+                        [ class "action-btn"
+                        , onClick CardEditorOverwriteCancel
+                        , disabled ui.busy
+                        ]
+                        [ text "Cancel" ]
+                    ]
+                ]
 
         Nothing ->
             text ""

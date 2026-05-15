@@ -44,8 +44,8 @@ import Msg exposing (MeStatus(..), Msg(..), Theme(..))
 import View.Tooltips as Tooltips
 
 
-view : Bool -> Theme -> Auth.User -> Html Msg
-view _ _ user =
+view : Bool -> Theme -> Auth.User -> Bool -> Html Msg
+view _ _ user useCustomCardLayout =
     -- The ⚙ settings popover (light/dark/auto theme switcher) is
     -- temporarily hidden from the nav while the light theme gets
     -- more polish.  All the supporting code below — `settings`,
@@ -61,7 +61,6 @@ view _ _ user =
         , nav [ class "app-bar__nav" ]
             [ a [ href "/" ] [ text "Encounter" ]
             , a [ href "/me" ] [ text "Me" ]
-            , a [ href "/scalar" ] [ text "API" ]
             , button
                 [ class "app-bar__card-editor"
                 , type_ "button"
@@ -69,6 +68,34 @@ view _ _ user =
                 , Tooltips.attr Tooltips.appBarCardEditor
                 ]
                 [ text "🎨 Customize card" ]
+            , button
+                [ class
+                    ("app-bar__card-editor"
+                        ++ (if useCustomCardLayout then
+                                " app-bar__card-editor--active"
+
+                            else
+                                ""
+                           )
+                    )
+                , type_ "button"
+                , onClick CustomCardLayoutToggle
+                , attribute "title"
+                    (if useCustomCardLayout then
+                        "Switch encounter cards back to the classic renderer"
+
+                     else
+                        "Use the custom card layout in the encounter (prototype: limited inline-edit)"
+                    )
+                ]
+                [ text
+                    (if useCustomCardLayout then
+                        "🎴 Custom: on"
+
+                     else
+                        "🎴 Custom: off"
+                    )
+                ]
             , span [ class "app-bar__user" ] [ text user.displayName ]
             , button
                 [ class "app-bar__logout"

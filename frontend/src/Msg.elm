@@ -479,6 +479,10 @@ type Msg
     | CompendiumGroupDeleted String (Result Http.Error ())
       -- Card-editor (creature-card customization) modal lifecycle.
     | CardEditorOpen
+      -- Switch the encounter panel between the classic hardcoded
+      -- `View.Card` renderer and the layout-driven
+      -- `View.Card.Custom` renderer.
+    | CustomCardLayoutToggle
     | CardEditorClose
     | CardEditorSave
     | CardEditorReset
@@ -494,6 +498,8 @@ type Msg
       -- Saved-layout persistence (`/api/card-layouts`).
     | CardEditorLayoutNameChanged String
     | CardEditorSaveAs
+    | CardEditorOverwriteConfirm
+    | CardEditorOverwriteCancel
     | CardEditorLoad String
     | CardEditorDelete String
     | CardEditorLayoutsLoaded (Result Http.Error (List Card.Wire.SavedLayoutMeta))

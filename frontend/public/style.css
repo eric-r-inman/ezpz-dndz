@@ -586,6 +586,260 @@ body {
   gap: var(--space-3);
 }
 
+/* Queue-view variants — set by `View.Workspace.panelMain` based
+   on `model.queueView`.  --list is the classic vertical stack
+   (matches the default flex column above); --grid switches to a
+   responsive CSS grid so cards tile in two or three columns
+   depending on panel width.  The classic `View.Card` is wider
+   than a typical grid cell, so --grid is most useful with the
+   custom renderer turned on. */
+.creature-grid--list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.creature-grid--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-3);
+}
+
+/* ── Custom (layout-driven) creature card ─────────────────────────── */
+.creature-card--custom {
+  display: block;
+  padding: var(--space-3);
+}
+
+.creature-card-custom__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.creature-card-custom__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.creature-card-custom__row--align-left {
+  justify-content: flex-start;
+}
+
+.creature-card-custom__row--align-center {
+  justify-content: center;
+}
+
+.creature-card-custom__row--align-right {
+  justify-content: flex-end;
+}
+
+.creature-card-custom__row--align-space-between {
+  justify-content: space-between;
+}
+
+.creature-card-custom__name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.creature-card-custom__ac,
+.creature-card-custom__initiative {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__hp {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.creature-card-custom__hp-current {
+  color: var(--color-heal, #3cb455);
+}
+
+.creature-card-custom__hp-sep,
+.creature-card-custom__hp-max {
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__temp {
+  background: var(--color-temp, #b56cd5);
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.82rem;
+}
+
+.creature-card-custom__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.creature-card-custom__chip--condition {
+  background: var(--color-condition, #c98c1d);
+  border-color: transparent;
+  color: white;
+}
+
+.creature-card-custom__conditions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.creature-card-custom__bloodied {
+  font-size: 0.95rem;
+}
+
+.creature-card-custom__toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.creature-card-custom__toggle--active {
+  background: var(--color-accent-soft, rgba(74, 144, 226, 0.15));
+  border-color: var(--color-accent, #4a90e2);
+}
+
+.creature-card-custom__icon-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.creature-card-custom__icon-btn:hover {
+  background: var(--color-surface);
+}
+
+.creature-card-custom__icon-btn--toggled {
+  border-color: var(--color-danger, #d63b3b);
+  color: var(--color-danger, #d63b3b);
+}
+
+.creature-card-custom__icon-btn--danger {
+  color: var(--color-danger, #d63b3b);
+}
+
+.creature-card-custom__icon-btn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.creature-card-custom__memo-pill,
+.creature-card-custom__timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.creature-card-custom__memo-text {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+.creature-card-custom__memo-clear {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.creature-card-custom__memo-clear:hover {
+  color: var(--color-danger, #d63b3b);
+}
+
+.creature-card-custom__select {
+  margin: 0;
+}
+
+/* Pip strips inside the running encounter — same shape as the
+   editor preview but with their own class namespace so the
+   colours can diverge if needed. */
+.creature-card-custom__deathsaves,
+.creature-card-custom__legendary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.creature-card-custom__pip-label {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__pip-strip {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.creature-card-custom__pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+
+.creature-card-custom__pip--filled {
+  background: currentColor;
+}
+
+.creature-card-custom__pip--success {
+  color: #3cb455;
+}
+
+.creature-card-custom__pip--failure {
+  color: #d63b3b;
+}
+
+.creature-card-custom__pip--legendary {
+  color: var(--color-accent, #4a90e2);
+}
+
+.creature-card-custom__pip--resistance {
+  color: #c98c1d;
+}
+
+/* AppBar toggle button — toggled-on state. */
+.app-bar__card-editor--active {
+  background: var(--color-accent-soft, rgba(74, 144, 226, 0.15));
+  border-color: var(--color-accent, #4a90e2);
+}
+
 .creature-card {
   display: flex;
   align-items: stretch;
@@ -2686,6 +2940,102 @@ body {
   font-style: italic;
 }
 
+/* Pip strips (death saves + legendary action / resistance) */
+.card-preview__deathsaves,
+.card-preview__legendary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-preview__deathsaves-label,
+.card-preview__legendary-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.card-preview__pip-strip {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.card-preview__pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+
+.card-preview__pip--filled {
+  background: currentColor;
+}
+
+.card-preview__pip--success {
+  color: #3cb455;
+}
+
+.card-preview__pip--failure {
+  color: #d63b3b;
+}
+
+.card-preview__pip--legendary {
+  color: var(--color-accent, #4a90e2);
+}
+
+.card-preview__pip--resistance {
+  color: #c98c1d;
+}
+
+/* Icon chips (skip / duplicate / remove / pin) */
+.card-preview__icon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.card-preview__icon-chip-glyph {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.card-preview__icon-chip-label {
+  color: var(--color-text-muted);
+}
+
+.card-preview__checkbox {
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+}
+
+/* Confirm banner: name collision on Save. */
+.card-editor__confirm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 18px;
+  background: var(--color-warn-soft, rgba(255, 180, 0, 0.08));
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.card-editor__confirm-msg {
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.card-editor__confirm-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
 /* Inline error banner shown after a failed HTTP cycle. */
 .card-editor__error {
   margin: 0;
@@ -2793,6 +3143,226 @@ body {
   gap: 8px;
   padding: 12px 18px;
   border-top: 1px solid var(--color-border);
+}
+
+/* ── Custom (layout-driven) creature card ───────────────────────────── */
+.creature-card--custom .creature-card-custom__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.creature-card-custom__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.creature-card-custom__row--align-left {
+  justify-content: flex-start;
+}
+
+.creature-card-custom__row--align-center {
+  justify-content: center;
+}
+
+.creature-card-custom__row--align-right {
+  justify-content: flex-end;
+}
+
+.creature-card-custom__row--align-space-between {
+  justify-content: space-between;
+}
+
+.creature-card-custom__name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.creature-card-custom__ac,
+.creature-card-custom__hp,
+.creature-card-custom__initiative {
+  font-variant-numeric: tabular-nums;
+}
+
+.creature-card-custom__hp-current {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.creature-card-custom__hp-max,
+.creature-card-custom__hp-sep {
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__temp {
+  color: var(--color-temp, #6cb4ee);
+  font-weight: 700;
+}
+
+.creature-card-custom__chip {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.78rem;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+
+.creature-card-custom__chip--condition {
+  background: var(--color-condition-soft, rgba(155, 100, 200, 0.15));
+  border-color: transparent;
+}
+
+.creature-card-custom__conditions {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.creature-card-custom__bloodied {
+  font-size: 0.95rem;
+}
+
+.creature-card-custom__toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__toggle--active {
+  background: var(--color-accent-soft, rgba(74, 144, 226, 0.15));
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.creature-card-custom__icon-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font: inherit;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.creature-card-custom__icon-btn:hover {
+  background: var(--color-surface-2);
+}
+
+.creature-card-custom__icon-btn--danger {
+  color: var(--color-danger, #ff6b6b);
+}
+
+.creature-card-custom__icon-btn--toggled {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.creature-card-custom__icon-btn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.creature-card-custom__select {
+  margin: 0 4px 0 0;
+}
+
+.creature-card-custom__deathsaves,
+.creature-card-custom__legendary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.creature-card-custom__pip-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.creature-card-custom__pip-strip {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.creature-card-custom__pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  background: transparent;
+}
+
+.creature-card-custom__pip--filled {
+  background: currentColor;
+}
+
+.creature-card-custom__pip--success {
+  color: #3cb455;
+}
+
+.creature-card-custom__pip--failure {
+  color: #d63b3b;
+}
+
+.creature-card-custom__pip--legendary {
+  color: var(--color-accent, #4a90e2);
+}
+
+.creature-card-custom__pip--resistance {
+  color: #c98c1d;
+}
+
+.creature-card-custom__memo-pill,
+.creature-card-custom__timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px 0 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.creature-card-custom__memo-text {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.creature-card-custom__memo-clear {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.creature-card-custom__memo-clear:hover {
+  color: var(--color-danger);
+}
+
+.app-bar__card-editor--active {
+  background: var(--color-accent-soft, rgba(74, 144, 226, 0.18));
+  border-color: var(--color-accent);
 }
 
 /* AppBar entry point */

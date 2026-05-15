@@ -9,6 +9,7 @@ them together with the model fragments each one needs.
 
 -}
 
+import Card.Layout exposing (CardLayout, QueueView(..))
 import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
@@ -19,6 +20,7 @@ import Msg exposing (Msg)
 import Ui.Compendium exposing (CompendiumDb)
 import Ui.HpChange exposing (HpEdit)
 import View.Card
+import View.Card.Custom
 import View.EncounterBar
 import View.PanelControls
 import View.PanelDetail
@@ -34,6 +36,9 @@ view model =
             model.compendium.db
             model.xpScope
             model.xpFilterOpen
+            model.useCustomCardLayout
+            model.cardLayout
+            model.queueView
         , View.PanelControls.view
             model.dice
             model.pendingControl
@@ -61,20 +66,40 @@ panelMain :
     -> CompendiumDb
     -> XpScope
     -> Bool
+    -> Bool
+    -> CardLayout
+    -> QueueView
     -> Html Msg
-panelMain enc hpEdit savedAs db xpScope xpFilterOpen =
+panelMain enc hpEdit savedAs db xpScope xpFilterOpen useCustom layout queueView =
+    let
+        renderCard =
+            if useCustom then
+                View.Card.Custom.view layout enc.activeName hpEdit
+
+            else
+                View.Card.view enc.activeName hpEdit
+
+        -- Queue-view picker (List / Grid) is meaningful only when
+        -- the custom renderer is on; the classic card has fixed
+        -- dimensions and ignores the modifier class.  Either way
+        -- the class lands on `.creature-grid` and the CSS decides
+        -- whether to honour it.
+        gridClass =
+            case queueView of
+                ListView ->
+                    "creature-grid creature-grid--list"
+
+                GridView ->
+                    "creature-grid creature-grid--grid"
+    in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ View.EncounterBar.view enc savedAs db xpScope xpFilterOpen ]
-        , -- Stable id so `Effects.scrollActiveIntoView` can target
-          -- THIS scroll container (cards live inside a panel with
-          -- `overflow: auto`, not in the document scroll, so
-          -- document-level setViewport doesn't move them).
-          div
+        , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
             ]
-            [ div [ class "creature-grid" ]
-                (List.map (View.Card.view enc.activeName hpEdit) enc.creatures)
+            [ div [ class gridClass ]
+                (List.map renderCard enc.creatures)
             ]
         ]

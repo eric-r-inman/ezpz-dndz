@@ -74,10 +74,12 @@ Under =crates/=:
   - ~dice.rs~ — ~/api/dice/*~ (per-user history; ~UserId~ keys
     the on-disk map).
   - ~compendium/~ — ~/api/compendium/*~ (mod / store / error)
-    + ~/api/compendium/saves/*~ (~saves.rs~).  The shared
-    330-creature catalogue is global (any logged-in user can
-    read / write); each user's named snapshots live under their
-    own ~UserId~ key.
+    + ~/api/compendium/saves/*~ (~saves.rs~) + per-user
+    ~/api/compendium/groups/*~ (~groups.rs~,
+    ~CompendiumGroupStore~ — ~HashMap<UserId, Vec<Group>>~).
+    The shared 330-creature catalogue is global (any logged-in
+    user can read / write); each user's named snapshots and
+    creature-groups live under their own ~UserId~ key.
   - ~encounters/~ — ~/api/encounter~ (per-user live encounter
     in ~store.rs~ — ~HashMap<UserId, Value>~) +
     ~/api/encounter/saves/*~ (~saves.rs~, also keyed by user)
@@ -89,7 +91,9 @@ Under =crates/=:
     file writes, the canonical persistence helper).
   - ~compendium/~ — ~Creature~ schema, parser, Open5e import,
     bundled-creatures (=data/bundled-creatures.json= via
-    ~include_str!~).
+    ~include_str!~), plus ~group.rs~ (~Group~ /
+    ~GroupDraft~ / ~GroupEntry~ / ~InitiativeMode~ /
+    ~MinionType~) for the compendium-groups feature.
   - ~users/~ — ~User~ / ~UserId~ / ~UserPublic~ types,
     ~UserStore~ (Argon2id hashing, email-uniqueness check,
     validation rules).
@@ -118,16 +122,17 @@ own module.
 | Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=                                                          |
 | Auth            | =Auth.elm= (~AuthState~ ADT + ~User~ + decoder)                                                                                          |
 | Domain          | =Encounter.elm= + =Encounter/{Lifecycle,Roster,Seed,Wire,DeathSaves,SaveNotice,Xp}=                                                      |
-| Domain          | =Compendium.elm= + =Compendium/{Wire,Parser}=                                                                                            |
+| Domain          | =Compendium.elm= + =Compendium/{Wire,Parser,Reference}=, =Compendium/{Group,GroupWire}= (per-user creature groups)                       |
+| Domain          | =Card/{Layout,Preview,Wire}= (customizable creature-card layouts: types, no-msg preview renderer, HTTP wire)                             |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
 | Routing / Cmd   | =Route.elm=, =Effects.elm=, =Ports.elm= (outbound JS for ~savePreferences~)                                                              |
-| UI substate     | =Ui/{AbilitySave,Compendium,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes)                                           |
-| Update / domain | =Update/{AbilitySave,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
-| Update / split  | =Update/Compendium/{Add,Browser,Bulk,Edit,Paste}.elm=                                                                                   |
-| View / modals   | =View/Modal/{AbilitySave,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
-| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm= |
+| Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Paste}.elm=                                                                    |
+| View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
+| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer) |
 | Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
@@ -181,6 +186,8 @@ type Modal
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
+    | ModalGroupEdit GroupEditUi
+    | ModalCardEditor CardEditorUi
 #+end_src
 
 ~Model.modal : Maybe Modal~ replaces a stack of ~Maybe XxxUi~
@@ -447,6 +454,8 @@ other inputs.  No session, no user → 401 with a JSON body.
 | =encounter.json=     | ~HashMap<UserId, Value>~                                                                              | Each user has their own live encounter; absent key reads as ~null~. |
 | =encounter-saves.json= | ~HashMap<UserId, Vec<SavedEncounter>>~                                                              | Save-name uniqueness is per-user; Alice + Bob can both have a "Goblin Ambush". |
 | =compendium-saves.json= | ~HashMap<UserId, Vec<SavedCompendium>>~                                                            | Same per-user keying.                                              |
+| =compendium-groups.json= | ~HashMap<UserId, Vec<Group>>~                                                                     | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
+| =card-layouts.json=  | ~HashMap<UserId, Vec<SavedLayout>>~                                                                   | Per-user named creature-card layouts; see [[*Customizable creature card][Customizable creature card]].   |
 | =dice-history.json=  | ~HashMap<UserId, Vec<Value>>~                                                                         | 30-entry cap is per-user.                                          |
 | =compendium/creatures.json= | ~Vec<Creature>~                                                                                | *Shared* — all logged-in users see + can edit the same bestiary.   |
 
@@ -492,13 +501,16 @@ Logout posts to ~/api/auth/logout~ then ~Nav.reload~ regardless
 of response status — the user pressed the button and should
 land on the login screen.
 
-The AppBar nav (when authenticated) shows the user's display
-name + a *Sign out* button; the gear ⚙ theme switcher is
+The AppBar nav (when authenticated) shows two links (Encounter /
+Me), the *🎨 Customize card* and *🎴 Custom: on/off* buttons
+(see [[*Customizable creature card][Customizable creature card]]), the user's display name,
+and a *Sign out* button.  The gear ⚙ theme switcher is
 *currently hidden* from the nav while the Light theme gets
 more polish.  Its supporting code (the ~settings~ popover,
 ~themeRow~, ~themeRadio~, ~PreferencesThemeSet~ wiring) is
 intact in =View/AppBar.elm= so re-enabling is a one-line
-change.
+change.  Foundation's Scalar (OpenAPI) UI is still mounted at
+~/scalar~ but no longer linked from the nav.
 
 * Persistence
 
@@ -513,6 +525,8 @@ mutation through ~JsonFileStore<T>~ from =crates/lib/=.
 | =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | yes       | User-named encounter saves (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
 | =compendium/creatures.json=   | ~/api/compendium/*~               | no        | Shared bestiary; bundled-creatures merge on boot.                                                                                                  |
 | =compendium-saves.json=       | ~/api/compendium/saves(/:name)*~  | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
+| =compendium-groups.json=      | ~/api/compendium/groups(/:id)*~   | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
+| =card-layouts.json=           | ~/api/card-layouts(/:name)*~      | yes       | Named creature-card layouts plus a queue-view (List / Grid) preference per layout.  PUT?overwrite=true upserts.                                    |
 | =dice-history.json=           | ~/api/dice/history~               | yes       | Bounded persistent dice-roll log (30-entry cap, per user).                                                                                         |
 
 The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
@@ -584,8 +598,19 @@ been deleted.
 
 * Compendium browser bulk actions
 
-The Compendium modal's filter-bar right cluster runs Import /
-Export / Reset / Clear.  Three of the four are split-button
+The Compendium modal's toolbar is split into two rows.
+
+*Top row (filters):* search box, kind chips (Player / Enemy /
+NPC / Groups), and the Sort picker.  The Groups chip toggles
+~CompendiumUi.showGroups~ — when off, group rows are hidden
+from the list entirely.
+
+*Bottom row (actions):* New Creature, Paste Stat Block, Create
+Group, and (when 1+ row is checkbox-selected) Create Group
+w/Selected on the left; the bulk-action cluster (Import /
+Export / Reset / Clear) on the right via ~margin-left: auto~.
+
+Three of the four bulk-action triggers are split-button
 dropdowns following the same pattern as the Encounter Controls
 Save / Load triggers.  Mediating state lives on the compendium
 UI substate as ~bulkMenu : Maybe CompendiumBulkMenu~
@@ -619,6 +644,163 @@ the common case.  Successful save / load clears
 ~compendiumDirty~ and stamps the snapshot's name into
 ~CompendiumUi.savedAs~ so the next Save modal opens
 pre-populated.
+
+** Selection-driven right-pane actions
+
+When 1+ creature is checkbox-selected, the right-pane action
+bar grows extra buttons:
+
+- *Add Selected (N)* — sits next to "+ Add to Encounter".
+  Fires =Update.Compendium.Add.addSelectedToQueue= which builds
+  a batched ~Dice.batchRollCmd~ with one roll per selected
+  creature.  Display names are disambiguated against the
+  encounter's existing roster in one pass so the spawned
+  instances land as Goblin, Goblin 2, Goblin 3.  Materialised
+  with a single success toast rather than N.
+- *Delete Selected (N)* — appears in the delete-confirm banner
+  on top of the regular Delete button when more than one row
+  is checked.  Routes through =Update.Compendium.Bulk.deleteSelected=,
+  which is structurally identical to ~clearSelected~ but also
+  clears the ~pending~ state so the confirm banner dismisses
+  on click.
+
+* Compendium groups (Hordes)
+
+A *group* bundles one or more compendium creatures into a unit
+that adds to the encounter atomically.  Solves three things
+the single-creature add flow can't:
+
+- Multiple instances of the same creature in one click (five
+  Skeletons → one ~GroupEntry { count = 5 }~).
+- Coordinated initiative across the bundle: each-rolls (every
+  spawned instance rolls its own) / shared-rolled (one d20,
+  applied to all) / shared-manual (GM types a value).
+- Per-entry minion HP override at materialise time:
+  None / Half / 1 HP — rewrites ~maxHp~ on the spawned
+  ~Encounter.Creature~ without touching the compendium source.
+
+** Data model
+
+Domain types live in [[file:../crates/lib/src/compendium/group.rs][crates/lib/src/compendium/group.rs]]
+(Rust) and [[file:../frontend/src/Compendium/Group.elm][frontend/src/Compendium/Group.elm]] (Elm).  The
+initiative-mode enum is internally tagged on the wire so the
+JSON reads cleanly:
+
+#+begin_src json :exports code
+{ "type": "each_rolls" }
+{ "type": "shared_rolled" }
+{ "type": "shared_manual", "value": 12 }
+#+end_src
+
+** HTTP surface
+
+| Endpoint                            | Behaviour                                                                            |
+|-------------------------------------+--------------------------------------------------------------------------------------|
+| ~GET    /api/compendium/groups~     | List the caller's groups.                                                            |
+| ~POST   /api/compendium/groups~     | Create one.  Server allocates the id + timestamps; client posts a ~GroupDraft~.      |
+| ~GET    /api/compendium/groups/{id}~ | Fetch one by id.                                                                    |
+| ~PUT    /api/compendium/groups/{id}~ | Replace a group's record.  ~created_at~ preserved server-side; ~updated_at~ bumped. |
+| ~DELETE /api/compendium/groups/{id}~ | Delete one of the caller's groups.                                                  |
+
+Errors: ~GroupIdNotFoundError~ → 404, ~GroupIdMismatchError~ →
+400 (path id ≠ body id), serde / IO failures → 500.
+
+** UI surface
+
+- *Compendium list rendering* — groups render at the top of the
+  list as expandable rows (~▸~/~▾~ disclosure) above the
+  creature rows.  =View.Modal.Compendium.groupListItem=
+  produces a header + an optional list of child entry rows
+  (read-only — to edit contents the GM re-opens the Edit
+  modal).  The Groups filter chip on the toolbar hides them
+  entirely.  Groups don't carry bulk-selection checkboxes; the
+  group is the unit.
+- *Create / Edit* — =View.Modal.GroupEdit= opens via
+  *Create Group* (fresh) or *Create Group w/Selected*
+  (entries seeded one-per-checked-creature with ~count = 1~).
+  Form layout: name input, initiative-mode radio group (with
+  a manual-value number input shown only when "Shared manual"
+  is picked), per-entry rows with creature picker + count +
+  minion-type select + remove ×, and a "+ Add Entry" button.
+- *Add to encounter* — clicking a group row pins it in the
+  right pane with an action bar (➕ Add Group to Encounter /
+  ✏️ Edit / 🗑 Delete).  Add dispatches
+  =Update.Compendium.AddGroup.addGroup= which:
+  1. Expands the group's entries into a flat list of
+     ~Skeleton~ records (one per spawned instance), name-
+     disambiguating against the existing roster as it goes.
+  2. Dispatches the right initiative Cmd for the chosen mode:
+     ~Task.succeed~ for shared-manual, single-spec
+     ~Dice.batchRollCmd~ for shared-rolled, N-spec
+     ~Dice.batchRollCmd~ for each-rolls.
+  3. The response Msg ~CompendiumGroupAddMaterialise~ carries
+     a fully-resolved ~List GroupSpawn~ + a ~List Dice.Roll~
+     (for history).  =materialise= writes the encounter,
+     pushes the dice pool, toasts.
+
+* Customizable creature card
+
+Users can rearrange the creature card's contents to taste — pick
+which widgets render, in which rows, with what alignment, and
+switch the encounter queue between vertical-list and tiled-grid
+arrangements.  Modeled on Wordpress-style widget composition.
+
+** Data model
+
+[[file:../frontend/src/Card/Layout.elm][frontend/src/Card/Layout.elm]] owns the layout types: a
+~CardLayout~ is a list of ~CardRow~ s; each row is a list of
+~CardWidget~ s + a ~RowAlignment~ (left / center / right /
+space-between).  The ~CardWidget~ enumeration is the *stable
+catalogue* of everything today's card is capable of rendering
+— add a variant here (and to ~widgetAllValues~) when a new
+widget lands on =View.Card=.  ~QueueView~ (~ListView | GridView~)
+is the queue-level layout choice.
+
+A ~defaultLayout~ approximates today's hardcoded card.  Users
+who haven't customized see this; the editor opens to it the
+first time.
+
+** Editor + renderer
+
+| Layer                   | Module                          | Notes                                                                                                          |
+|-------------------------+---------------------------------+----------------------------------------------------------------------------------------------------------------|
+| Read-only preview       | =Card.Preview=                  | Renders a sample creature against any ~CardLayout~; fires no Msgs.  Used inside the editor's preview pane.     |
+| Interactive renderer    | =View.Card.Custom=              | Renders a *real* creature in the encounter panel; wires Msg-firing handlers for action buttons + status toggles.  HP / AC inline edit is not yet ported (prototype). |
+| Editor modal            | =View.Modal.CardEditor=         | Two-column: left editor (queue-view picker, per-row controls, widget picker, save panel), right preview.       |
+| Editor state            | =Ui.CardEditor=                 | In-progress layout, queue view, focus row, save name, busy / error / overwrite-confirm flags.                  |
+| Update handlers         | =Update.CardEditor=             | One function per Msg branch (row add/remove/move/align, widget add/remove, save / save-as / load / delete).   |
+
+** Save / load
+
+| Endpoint                          | Behaviour                                                                                       |
+|-----------------------------------+-------------------------------------------------------------------------------------------------|
+| ~GET    /api/card-layouts~        | List saved layouts (metadata only).                                                             |
+| ~GET    /api/card-layouts/{name}~ | Fetch one named layout (full record).                                                           |
+| ~PUT    /api/card-layouts/{name}~ | Create or overwrite.  ~?overwrite=true~ replaces in place; client-side collision check against the metadata list surfaces an inline confirm banner before the PUT fires. |
+| ~DELETE /api/card-layouts/{name}~ | Drop a saved layout.                                                                            |
+
+Reset-to-defaults is in the editor itself — clicking the
+*↺ Reset to defaults* button copies ~Card.Layout.defaultLayout~
+back over the in-progress layout (it does *not* touch any
+saved record on the server).
+
+** Encounter wiring
+
+[[file:../frontend/src/View/Workspace.elm][frontend/src/View/Workspace.elm]]'s ~panelMain~ picks between
+=View.Card.view= (classic, full inline edit) and
+=View.Card.Custom.view= (layout-driven) based on
+~model.useCustomCardLayout~, toggled by the *🎴 Custom: on/off*
+AppBar button.  The ~queueView~ field drives the
+~.creature-grid--list~ vs ~.creature-grid--grid~ class on the
+panel body.
+
+The custom renderer wires Msg-firing handlers for the action
+buttons (Damage / Heal / Temp HP / Condition), status toggles
+(concentrating / hiding / dodging / flying / holding / skip),
+row controls (×, ⧉, panel pin), memo + timer slots, and the
+selection checkbox.  Inline click-to-edit on HP / AC is
+read-only in this prototype — GMs adjust HP via the
+Damage / Heal / Temp HP modals; AC via the classic renderer.
 
 * Saving-throw modal
 
@@ -812,22 +994,44 @@ constructor; =Preferences= re-exports it.
 
 * User-facing copy (tooltips)
 
-Every ~title~ HTML attribute string in the view layer is a
-top-level constant in =View/Tooltips.elm=.  View modules import
-the module and reference constants by name; the Elm compiler
-guarantees every reference resolves, so a tooltip can't drift
-out of the codebase silently.  Static tooltips are plain
-~String~ values grouped by feature with section comments;
-dynamic tooltips (XP scope, condition chip, timer pill, stat-
-block dice links, etc.) are small helper functions taking
-primitive params at the bottom of the module.
+Every tooltip string in the view layer is a top-level constant
+in =View/Tooltips.elm=.  Views call ~Tooltips.attr Tooltips.fooLabel~
+on an element to attach the string (the helper sets
+~data-tooltip="..."~).  View modules import the module and
+reference constants by name; the Elm compiler guarantees every
+reference resolves, so a tooltip can't drift out of the codebase
+silently.  Static tooltips are plain ~String~ values grouped by
+feature with section comments; dynamic tooltips (XP scope,
+condition chip, timer pill, stat-block dice links, etc.) are
+small helper functions taking primitive params at the bottom of
+the module.
+
+** Rendering mechanism
+
+Tooltips are rendered by a single =#tooltip-portal= ~<div>~
+appended to ~<body>~ by a tiny vanilla-JS script in
+[[file:../frontend/public/index.html][frontend/public/index.html]].  The script delegates
+~mouseover~ / ~mouseout~ / ~focusin~ / ~focusout~ on
+~document~, walks up to find the nearest ~[data-tooltip]~,
+and positions the portal via ~getBoundingClientRect()~ of the
+trigger — flip-below-when-no-room-above + viewport-edge
+clamping, hide on ~scroll~ / ~resize~.
+
+This replaced an earlier CSS-pseudo-element approach
+(~::after~ + native ~title=~) for two reasons: ~position: absolute~
+clipped at the encounter panel's ~overflow: hidden~ ancestor,
+and the CSS Anchor Positioning workaround (~position: fixed~ +
+~position-area: top~) failed on form-control triggers and on the
+named-anchor / scope path didn't isolate per the spec across the
+browsers we tested.  A JS portal trivially escapes all clipping
+ancestors and computes coordinates predictably.
 
 When adding a new view, *do not inline* a ~title "..."~ literal
-— add a constant to =View/Tooltips.elm= and reference it.  The
-grep ~grep -rn ', title "' frontend/src/View/= must return zero
-hits.  An archived =docs/archive/TOOLTIPS.org= captures the
-walking-tour copy of every tooltip from the time it was last
-swept; not actively maintained.
+or a ~data-tooltip~ attribute — add a constant to
+=View/Tooltips.elm= and call ~Tooltips.attr~ to attach it.  An
+archived =docs/archive/TOOLTIPS.org= captures the walking-tour
+copy of every tooltip from the time it was last swept; not
+actively maintained.
 
 * When adding new features
 

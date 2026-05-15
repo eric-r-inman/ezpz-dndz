@@ -5,7 +5,7 @@ module Update.CardEditor exposing
     , rowAlignmentSet
     , widgetAdd, widgetRemove
     , queueViewSet
-    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, saveAs, saveNameChanged
+    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, overwriteCancel, overwriteConfirm, saveAs, saveNameChanged
     )
 
 {-| **Prototype** update handlers for the Creature Card Editor.
@@ -250,12 +250,16 @@ saveNameChanged raw model =
     )
 
 
-{-| `PUT /api/card-layouts/{name}?overwrite=true` — idempotent
-upsert. The user types a name and clicks Save; an existing
-record under that name is updated in place, a new name creates
-a fresh record. We skip the 409-then-confirm dance for now
-since overwrite is the common case (re-saving the design you
-just tweaked).
+{-| User clicked Save. If the typed name collides with an
+existing saved layout, stash it in `confirmOverwrite` and
+surface the confirm banner; the actual PUT only fires once the
+user clicks Overwrite. Otherwise (fresh name), the PUT goes
+through immediately via `firePut` with `overwrite = False`.
+
+Collision detection is client-side against
+`model.savedCardLayouts` — the metadata list we already fetched
+on boot — so we skip the 409-then-confirm round trip.
+
 -}
 saveAs : Model -> ( Model, Cmd Msg )
 saveAs model =
@@ -275,18 +279,80 @@ saveAs model =
                 , Cmd.none
                 )
 
-            else
+            else if nameAlreadyExists trimmed model.savedCardLayouts then
                 ( withEditor
-                    (\u -> { u | busy = True, error = Nothing })
+                    (\u ->
+                        { u
+                            | confirmOverwrite = Just trimmed
+                            , error = Nothing
+                        }
+                    )
                     model
-                , CardWire.save
-                    { name = trimmed
-                    , overwrite = True
-                    , layout = ui.layout
-                    , queueView = ui.queueView
-                    }
-                    CardEditorLayoutSaved
+                , Cmd.none
                 )
+
+            else
+                firePut trimmed False model
+
+
+{-| Continuation when the user confirms an overwrite. Fires the
+same PUT with `overwrite=True` so the server replaces the
+existing record in place (preserving its `created_at`).
+-}
+overwriteConfirm : Model -> ( Model, Cmd Msg )
+overwriteConfirm model =
+    case Maybe.andThen Model.cardEditorLens.extract model.modal of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just ui ->
+            case ui.confirmOverwrite of
+                Just name ->
+                    firePut name True model
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+
+overwriteCancel : Model -> ( Model, Cmd Msg )
+overwriteCancel model =
+    ( withEditor (\u -> { u | confirmOverwrite = Nothing }) model
+    , Cmd.none
+    )
+
+
+firePut : String -> Bool -> Model -> ( Model, Cmd Msg )
+firePut name overwrite model =
+    case Maybe.andThen Model.cardEditorLens.extract model.modal of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just ui ->
+            ( withEditor
+                (\u ->
+                    { u
+                        | busy = True
+                        , error = Nothing
+                        , confirmOverwrite = Nothing
+                    }
+                )
+                model
+            , CardWire.save
+                { name = name
+                , overwrite = overwrite
+                , layout = ui.layout
+                , queueView = ui.queueView
+                }
+                CardEditorLayoutSaved
+            )
+
+
+nameAlreadyExists :
+    String
+    -> List CardWire.SavedLayoutMeta
+    -> Bool
+nameAlreadyExists name metas =
+    List.any (\m -> m.name == name) metas
 
 
 load : String -> Model -> ( Model, Cmd Msg )

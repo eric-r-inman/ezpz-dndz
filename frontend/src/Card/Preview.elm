@@ -234,8 +234,52 @@ renderWidget creature widget =
         WidgetConditionButton ->
             actionPill "Condition" "card-preview__btn--condition"
 
-        _ ->
-            placeholder widget "Coming soon"
+        WidgetDeathSaves ->
+            -- Mock pip strip — three success + three failure dots
+            -- shown regardless of the creature's actual deathSaves
+            -- state, since this is a sample card.  The real
+            -- `Card.Render` renders the actual DeathSaves struct.
+            span [ class "card-preview__deathsaves" ]
+                [ span [ class "card-preview__deathsaves-label" ] [ text "✓" ]
+                , pipStrip 3 0 "card-preview__pip--success"
+                , span [ class "card-preview__deathsaves-label" ] [ text "✗" ]
+                , pipStrip 3 0 "card-preview__pip--failure"
+                ]
+
+        WidgetLegendaryActions ->
+            span [ class "card-preview__legendary" ]
+                [ span [ class "card-preview__legendary-label" ] [ text "LA" ]
+                , pipStrip 3 0 "card-preview__pip--legendary"
+                ]
+
+        WidgetLegendaryResistance ->
+            span [ class "card-preview__legendary" ]
+                [ span [ class "card-preview__legendary-label" ] [ text "LR" ]
+                , pipStrip 3 0 "card-preview__pip--resistance"
+                ]
+
+        WidgetSkipToggle ->
+            iconChip "∅" (boolLabel "inactive" creature.inactive)
+
+        WidgetDuplicateButton ->
+            iconChip "⧉" "duplicate"
+
+        WidgetRemoveButton ->
+            iconChip "×" "remove"
+
+        WidgetSelectCheckbox ->
+            span [ class "card-preview__checkbox" ]
+                [ text
+                    (if creature.selected then
+                        "☑"
+
+                     else
+                        "☐"
+                    )
+                ]
+
+        WidgetPanelPinButton ->
+            iconChip "📌" "pin to right panel"
 
 
 
@@ -246,6 +290,45 @@ conditionChip : String -> Html msg
 conditionChip name =
     span [ class "card-preview__chip card-preview__chip--condition" ]
         [ text name ]
+
+
+iconChip : String -> String -> Html msg
+iconChip glyph descriptor =
+    span [ class "card-preview__icon-chip" ]
+        [ span [ class "card-preview__icon-chip-glyph" ] [ text glyph ]
+        , span [ class "card-preview__icon-chip-label" ] [ text descriptor ]
+        ]
+
+
+{-| Horizontal strip of `total` pip circles, with the first
+`filled` shown as solid. Used by death-saves and the LA / LR
+trackers; the `cls` argument applies a colour modifier so the
+pips read distinctly (green success, red failure, gold
+legendary).
+-}
+pipStrip : Int -> Int -> String -> Html msg
+pipStrip total filled cls =
+    span [ class "card-preview__pip-strip" ]
+        (List.range 1 total
+            |> List.map
+                (\i ->
+                    let
+                        isFilled =
+                            i <= filled
+
+                        pipClass =
+                            "card-preview__pip "
+                                ++ cls
+                                ++ (if isFilled then
+                                        " card-preview__pip--filled"
+
+                                    else
+                                        ""
+                                   )
+                    in
+                    span [ class pipClass ] []
+                )
+        )
 
 
 toggleChip : String -> String -> Html msg

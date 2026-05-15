@@ -395,6 +395,13 @@ type alias Model =
     -- fetched on boot via `Card.Wire.fetchList`.  Used by
     -- the card-editor modal's "Saved layouts" panel.
     , savedCardLayouts : List CardWire.SavedLayoutMeta
+
+    -- When True, the encounter panel renders cards through
+    -- `View.Card.Custom` (layout-driven).  When False (the
+    -- default), the classic `View.Card` renderer is used so
+    -- inline click-to-edit features keep working.  Toggled by
+    -- the AppBar's "Use custom card layout" button.
+    , useCustomCardLayout : Bool
     }
 
 

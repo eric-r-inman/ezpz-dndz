@@ -47,6 +47,14 @@ type alias CardEditorUi =
     -- Inline banner shown after a failed HTTP cycle.  Cleared
     -- on the next user action.
     , error : Maybe String
+
+    -- When `Just name`, the editor is asking the user to
+    -- confirm an overwrite of an existing saved layout.  Set
+    -- by `Update.CardEditor.saveAs` when the typed name
+    -- collides with one of `model.savedCardLayouts`; cleared
+    -- by Confirm / Cancel.  Detection is client-side so we
+    -- skip the 409 round-trip dance.
+    , confirmOverwrite : Maybe String
     }
 
 
@@ -58,6 +66,7 @@ fresh =
     , saveName = ""
     , busy = False
     , error = Nothing
+    , confirmOverwrite = Nothing
     }
 
 
@@ -79,4 +88,5 @@ fromCurrent layout queueView =
     , saveName = ""
     , busy = False
     , error = Nothing
+    , confirmOverwrite = Nothing
     }
