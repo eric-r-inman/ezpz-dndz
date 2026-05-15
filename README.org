@@ -5,6 +5,12 @@ A D&D combat encounter manager and monster database — a server with an
 Elm frontend for running combat at the table, plus a CLI for managing
 the underlying monster catalog.
 
+Copyright (c) 2026 Eric Inman.  All rights reserved.  Licensed under
+the PolyForm Strict License 1.0.0 — see [[file:LICENSE][LICENSE]] for the full text,
+or the [[*License][License]] section below for a short summary.  This is
+*source-available, not open source*: noncommercial / personal use
+only; no distribution, forks, modifications, or derivative works.
+
 * Introduction
 
 Running combat at a D&D table involves a lot of bookkeeping: initiative
@@ -29,12 +35,12 @@ shell are wired up; the encounter-manager logic is not yet implemented.
 
 * Installation
 
-** From source
+** From source (personal use only — see [[*License][License]])
 
 Requires Nix with flakes enabled.
 
 #+begin_src sh :exports code
-git clone https://github.com/ericrinman/ezpz-dndz
+git clone https://github.com/eric-r-inman/ezpz-dndz
 cd ezpz-dndz
 nix develop
 cargo build --workspace
@@ -54,6 +60,23 @@ Run the CLI:
 cargo run -p ezpz-dndz-cli -- --help
 #+end_src
 
-* Contributing
+* License
 
-See [[file:CONTRIBUTING.org][CONTRIBUTING.org]].
+Copyright (c) 2026 Eric Inman.  All rights reserved.
+
+This project is source-available, *not* open source.  It is
+distributed under the [[https://polyformproject.org/licenses/strict/1.0.0][PolyForm Strict License 1.0.0]] — the full
+text is in [[file:LICENSE][LICENSE]].  In summary, you may view this code and use
+it for noncommercial / personal / educational purposes only.  You
+may *not* distribute it, fork it, modify it, or build derivative
+works.
+
+Third-party Rust crates, Elm packages, Nix flake inputs, and
+bundled JSON data remain under their own respective licenses;
+the terms above cover only this project's original code, configs,
+and documentation.
+
+This is a personal project — external contributions are not
+currently accepted.  The [[file:CONTRIBUTING.org][CONTRIBUTING.org]] document, where it
+remains, is an internal code-style reference and not a
+contribution invitation.

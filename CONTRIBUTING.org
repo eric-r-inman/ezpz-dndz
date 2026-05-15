@@ -1,5 +1,19 @@
-#+title:     Contributing
+#+title:     Code style (internal)
 #+language:  en
+
+* Note
+
+This document is an *internal* code-style reference for the
+project maintainer (and AI assistants working in the repo).
+External contributions are not currently accepted — the project
+is distributed under [[https://polyformproject.org/licenses/strict/1.0.0][PolyForm Strict License 1.0.0]], which does
+not grant rights to modify or distribute derivative works.  See
+[[file:LICENSE][LICENSE]] for the full terms.
+
+The historical "Contributing" framing has been kept (rather than
+moved) because the rules below — error handling, CSS, logging
+discipline — are still the load-bearing conventions for new code
+inside the repo.
 
 * Code style
 
@@ -10,8 +24,8 @@ automatically.
 
 ** Linting
 
-Run ~cargo clippy --workspace~ and resolve any warnings before opening
-a pull request.
+Run ~cargo clippy --workspace~ and resolve any warnings before
+committing.
 
 ** Testing
 

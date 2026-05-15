@@ -10,7 +10,11 @@ members = [
 version = "0.1.0"
 edition = "2021"
 authors = ["Eric Rinman <ericrinman@gmail.com>"]
-license = "AGPL-3.0-or-later"
+# Source-available, not OSS — see LICENSE for the full PolyForm
+# Strict 1.0.0 text.  The `LicenseRef-` prefix is the SPDX
+# convention for licenses that aren't on the SPDX-approved list;
+# Cargo accepts it as a free-form identifier.
+license = "LicenseRef-PolyForm-Strict-1.0.0"
 repository = "https://github.com/eric-r-inman/ezpz-dndz"
 
 [workspace.dependencies]
