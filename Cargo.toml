@@ -78,7 +78,7 @@ aide = { version = "0.15", features = ["axum", "axum-json", "axum-query", "scala
 # same `schemars` version that aide 0.15.x consumes internally.
 # Bumping to 1.x requires aide to move first; mixing the two breaks
 # the `Json<T>: OperationInput` trait check for handlers.
-schemars = "0.9"
+schemars = "1.2"
 
 # Authentication.  Pinned to 3.x so the `CoreClient` type lines up
 # with what foundation's `BaseServerState` uses — same reasoning as
