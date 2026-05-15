@@ -5,6 +5,16 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    # Pinned by `rust-template-foundation`'s public surface — bumping
+    # either crate before foundation moves produces two copies in the
+    # dependency graph and breaks the `impl_server_state!` macro
+    # output.  See the comments next to each pin in `Cargo.toml`.
+    # Remove these ignore entries once foundation upgrades.
+    ignore:
+      - dependency-name: "prometheus"
+        versions: [">= 0.14"]
+      - dependency-name: "schemars"
+        versions: [">= 1.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
