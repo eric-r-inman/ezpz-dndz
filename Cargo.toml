@@ -70,7 +70,7 @@ tempfile = "3"
 # FromRef impls that reference `::prometheus::Registry` from THIS
 # crate's namespace, so the two must agree).  Bumping past 0.13
 # requires foundation to move first.
-prometheus = "0.13"
+prometheus = "0.14"
 
 # OpenAPI
 aide = { version = "0.15", features = ["axum", "axum-json", "axum-query", "scalar", "macros"] }
