@@ -6,6 +6,7 @@ import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
 import Compendium
+import Compendium.GroupWire
 import Compendium.Wire
 import Dice
 import Effects
@@ -63,12 +64,15 @@ import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
+import Ui.Toast
 import Update.AbilitySave
 import Update.Auth
 import Update.Compendium.Add
+import Update.Compendium.AddGroup
 import Update.Compendium.Browser
 import Update.Compendium.Bulk
 import Update.Compendium.Edit
+import Update.Compendium.Group
 import Update.Compendium.Paste
 import Update.Condition
 import Update.DeathSave
@@ -103,6 +107,7 @@ import View.Modal.CompendiumPaste
 import View.Modal.Condition
 import View.Modal.Dice
 import View.Modal.Duplicate
+import View.Modal.GroupEdit
 import View.Modal.HpChange
 import View.Modal.Initiative
 import View.Modal.Load
@@ -374,6 +379,7 @@ init flags url key =
         , Effects.cmdForRoute route
         , Effects.fetchDiceHistory
         , Compendium.Wire.fetchAll CompendiumLoaded
+        , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
         , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
@@ -805,6 +811,85 @@ updateInner msg model =
 
         CompendiumInitiativeRolled creatureId rolls ->
             Update.Compendium.Add.initiativeRolled creatureId rolls model
+
+        CompendiumAddSelectedToQueue ->
+            Update.Compendium.Add.addSelectedToQueue model
+
+        CompendiumAddSelectedRolled triples ->
+            Update.Compendium.Add.addSelectedRolled triples model
+
+        CompendiumGroupsToggle ->
+            ( Update.Compendium.Browser.withCompendium
+                (\ui -> { ui | showGroups = not ui.showGroups })
+                model
+            , Cmd.none
+            )
+
+        CompendiumGroupCreate ->
+            Update.Compendium.Group.open model
+
+        CompendiumGroupCreateFromSelected ->
+            Update.Compendium.Group.openFromSelected model
+
+        CompendiumGroupExpandToggle groupId ->
+            Update.Compendium.Group.expandToggle groupId model
+
+        CompendiumGroupSelect groupId ->
+            Update.Compendium.Group.select groupId model
+
+        CompendiumGroupDelete groupId ->
+            Update.Compendium.Group.delete groupId model
+
+        CompendiumGroupEditOpenExisting groupId ->
+            Update.Compendium.Group.openExisting groupId model
+
+        CompendiumGroupAdd groupId ->
+            Update.Compendium.AddGroup.addGroup groupId model
+
+        CompendiumGroupAddMaterialise spawns rolls ->
+            Update.Compendium.AddGroup.materialise spawns rolls model
+
+        GroupEditClose ->
+            Update.Compendium.Group.close model
+
+        GroupEditNameChanged raw ->
+            Update.Compendium.Group.nameChanged raw model
+
+        GroupEditInitiativeModeSet key ->
+            Update.Compendium.Group.initiativeModeSet key model
+
+        GroupEditManualInitiativeChanged raw ->
+            Update.Compendium.Group.manualInitiativeChanged raw model
+
+        GroupEditEntryAdd ->
+            Update.Compendium.Group.entryAdd model
+
+        GroupEditEntryRemove idx ->
+            Update.Compendium.Group.entryRemove idx model
+
+        GroupEditEntryCreatureChanged idx cid ->
+            Update.Compendium.Group.entryCreatureChanged idx cid model
+
+        GroupEditEntryCountChanged idx raw ->
+            Update.Compendium.Group.entryCountChanged idx raw model
+
+        GroupEditEntryMinionTypeSet idx key ->
+            Update.Compendium.Group.entryMinionTypeSet idx key model
+
+        GroupEditSubmit ->
+            Update.Compendium.Group.submit model
+
+        CompendiumGroupsLoaded result ->
+            Update.Compendium.Group.groupsLoaded result model
+
+        CompendiumGroupCreated result ->
+            Update.Compendium.Group.created result model
+
+        CompendiumGroupUpdated result ->
+            Update.Compendium.Group.updated result model
+
+        CompendiumGroupDeleted groupId result ->
+            Update.Compendium.Group.deleteResponse groupId result model
 
         CompendiumEditNew ->
             Update.Compendium.Edit.new model
@@ -1304,6 +1389,9 @@ updateInner msg model =
         CompendiumClearSelected ->
             Update.Compendium.Bulk.clearSelected model
 
+        CompendiumDeleteSelected ->
+            Update.Compendium.Bulk.deleteSelected model
+
         CompendiumExportClick ->
             Update.Compendium.Browser.exportClick model
 
@@ -1405,6 +1493,7 @@ view model =
                     , View.Modal.AbilitySave.view model
                     , View.Modal.QuickAdd.view model
                     , View.Modal.Duplicate.view model
+                    , View.Modal.GroupEdit.view model
                     , View.Toast.list model.toasts
                     , View.RollPopup.list model.rollPopups
                     , View.Audio.ringer model

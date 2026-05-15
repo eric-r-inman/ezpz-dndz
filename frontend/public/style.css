@@ -691,33 +691,37 @@ body {
   background: var(--color-danger-soft, rgba(255, 107, 107, 0.12));
 }
 
-/* ── CSS-driven tooltips ───────────────────────────────────────────────
-   Elements with `data-tooltip="..."` get a pseudo-element tooltip that
-   shows ~300 ms after hover/focus — about half the macOS browser-
-   native `title=` delay (~600 ms on Safari/Chrome).  `aria-label` on
-   the same element covers screen-reader needs; no native `title=`
-   means no double tooltip.
+/* ── Tooltips ──────────────────────────────────────────────────────────
+   Tooltips are rendered by a JS-managed portal element appended to
+   `<body>` (see the `tooltip-portal` script in `index.html`).  The
+   portal is a single `position: fixed` div whose contents and
+   coordinates are set from the hovered `[data-tooltip]` element's
+   `data-tooltip` attribute and `getBoundingClientRect()`.
 
-   Two positioning paths, picked by `@supports`:
+   Why JS rather than CSS:
 
-   - Modern browsers (Chrome / Edge 125+, Safari 17.5+, Firefox 192+):
-     `position: fixed` + `position-area: top` uses the host element
-     as the implicit anchor.  The tooltip is lifted out of every
-     clipping ancestor (overflow: hidden / overflow: auto), and
-     `position-try-fallbacks` makes the browser auto-flip to the
-     other side when there's no room.  No per-container CSS needed
-     — drop in `[data-tooltip]` anywhere and it positions itself.
+   - `position: absolute` (the obvious CSS pseudo-element approach)
+     clips at the nearest `overflow: hidden` / `overflow: auto`
+     ancestor — a problem in the encounter panel, modal bodies,
+     and rail buttons near the panel edges.
 
-   - Older browsers: `position: absolute` relative to the host
-     (the host stays `position: relative`).  Clips at scroll
-     ancestors the way it always did; functional but suboptimal.
-     This is the same path we shipped before anchor positioning
-     landed in all majors, so behaviour is unchanged for that
-     audience.
-   ────────────────────────────────────────────────────────────────────── */
-/* Common styling for both positioning paths. */
-[data-tooltip]::after {
-  content: attr(data-tooltip);
+   - CSS anchor positioning (`position: fixed` + `position-area: top`)
+     escapes clipping in theory, but in practice (as of May 2026)
+     it fails reliably on `<button>` triggers (the implicit-anchor
+     binding doesn't fire), and the `anchor-name` + `anchor-scope`
+     workaround for per-trigger isolation didn't behave per spec
+     across the browsers we tested.
+
+   The portal mirrors the CSS tooltip's visual styling (dark
+   translucent pill, 12 px text, 6 px gap from the trigger) and
+   its ~300 ms show delay.  `aria-label` on the trigger covers
+   screen-reader needs; no native `title=` means no double
+   tooltip.  Elements with `data-tooltip` no longer need
+   `position: relative`, so we set nothing on them here. */
+#tooltip-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
   z-index: 1000;
   background: rgba(20, 20, 24, 0.95);
   color: #f5f5f5;
@@ -728,55 +732,9 @@ body {
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
+  visibility: hidden;
   transition: opacity 0.1s ease-out;
-}
-
-/* Fallback path: older browsers without anchor positioning use
-   `position: absolute` relative to the host (which carries
-   `position: relative`).  Centred 6 px above the trigger.  Clips
-   at scroll ancestors — same behaviour we had before anchor
-   positioning. */
-@supports not (position-area: top) {
-  [data-tooltip] {
-    position: relative;
-  }
-
-  [data-tooltip]::after {
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
-  }
-}
-
-/* Modern path: anchor positioning.  `position: fixed` +
-   `position-area: top` uses the host element as the implicit
-   anchor (originating-element rule for pseudo-elements) and
-   places the tooltip ABOVE the trigger, with a 6 px margin gap.
-   The two paths are mutually exclusive via `@supports`, so no
-   `inset: auto` reset is needed — and accidentally writing one
-   here would silently undo `position-area`'s implicit insets,
-   collapsing the tooltip onto the trigger (i.e. right under
-   the cursor). */
-@supports (position-area: top) {
-  [data-tooltip]::after {
-    position: fixed;
-    position-area: top;
-    /* Flip to the other side when there's no room, then flip
-       the inline axis when the tooltip would overflow off the
-       side of the viewport. */
-    position-try-fallbacks:
-      flip-block,
-      flip-inline,
-      flip-block flip-inline;
-    margin: 6px;
-  }
-}
-
-[data-tooltip]:hover::after,
-[data-tooltip]:focus-visible::after {
-  opacity: 1;
-  transition: opacity 0.1s ease-in 0.3s;
+  max-width: 320px;
 }
 
 .creature-card__rail {
@@ -1398,7 +1356,6 @@ body {
   margin-right: var(--space-2);
   line-height: 1;
   cursor: help;
-  filter: saturate(1.2);
 }
 
 .status-toggle {
@@ -2354,6 +2311,200 @@ body {
   --modal-max-w: 1100px;
   height: calc(100vh - 32px);
   width: calc(100% - 32px);
+}
+
+.modal--group-edit {
+  --modal-max-w: 680px;
+  width: calc(100% - 32px);
+}
+
+/* ── Group-edit modal form ─────────────────────────────────────────── */
+.group-edit__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.group-edit__row--initiative {
+  flex-wrap: wrap;
+}
+
+.group-edit__label {
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.group-edit__input {
+  flex: 1 1 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.group-edit__radio-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.group-edit__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.group-edit__manual-initiative {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.group-edit__entries {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.group-edit__entries-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.group-edit__add-entry {
+  flex: 0 0 auto;
+}
+
+.group-edit__empty {
+  margin: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.group-edit__entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-edit__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-edit__creature {
+  flex: 1 1 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.group-edit__count {
+  width: 56px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.group-edit__minion {
+  width: 140px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.group-edit__entry-remove {
+  flex: 0 0 auto;
+}
+
+.group-edit__error {
+  margin: 0;
+  padding: 8px 18px;
+  color: var(--color-danger);
+  font-size: 0.9rem;
+}
+
+.group-edit__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+}
+
+/* ── Compendium list: group rows ───────────────────────────────────── */
+.compendium__row--group {
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-accent, #4a90e2);
+  font-weight: 600;
+}
+
+.compendium__group-disclosure {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+}
+
+.compendium__group-disclosure:hover {
+  color: var(--color-text);
+}
+
+.compendium__row--group-entry {
+  padding-left: 36px;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+
+.compendium__group-detail {
+  padding: 16px 18px;
+}
+
+.compendium__group-detail-title {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+}
+
+.compendium__group-detail-mode {
+  margin: 0 0 12px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.compendium__group-detail-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compendium__group-entry {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal--compendium-paste {
@@ -3654,6 +3805,37 @@ body {
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+/* Second toolbar row: creation affordances on the left, bulk
+   action cluster on the right.  Same surface colour and padding
+   as the filter bar above, no sticky positioning (the filter bar
+   stays pinned, the actions row scrolls away with the list). */
+.compendium__actions-bar {
+  display: flex;
+  gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Push the bulk cluster (last child) to the right edge so the
+   New Creature / Paste / Create Group buttons cluster on the
+   left and the destructive bulk operations cluster on the
+   right. */
+.compendium__actions-bar > .compendium__bulk-cluster {
+  margin-left: auto;
+}
+
+/* Groups filter chip uses the same shape as the kind filters
+   but signals a different axis (visibility toggle, not a kind
+   refinement).  A faint left margin gives it visual separation
+   from the kind-filter cluster so the GM reads it as a
+   different control. */
+.compendium__kind-filter--groups {
+  margin-left: 6px;
 }
 
 .compendium__search {

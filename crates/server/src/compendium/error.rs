@@ -76,20 +76,31 @@ pub enum CompendiumStoreError {
   /// static slice describing the rule that fired.
   #[error("Saved compendium name is invalid: {reason}")]
   SaveNameInvalid { reason: &'static str },
+
+  /// Lookup-by-id missed on the groups store.  Used by GET / PUT
+  /// / DELETE `/api/compendium/groups/{id}`.
+  #[error("Compendium group with id {id} was not found")]
+  GroupIdNotFoundError { id: String },
+
+  /// PUT was sent to a path that doesn't match the group's id.
+  #[error(
+    "Path id {path_id} does not match body id {body_id} on compendium group update"
+  )]
+  GroupIdMismatchError { path_id: String, body_id: String },
 }
 
 impl IntoResponse for CompendiumStoreError {
   fn into_response(self) -> Response {
     let status = match &self {
-      Self::CreatureIdNotFoundError { .. } | Self::SaveNotFound => {
-        StatusCode::NOT_FOUND
-      }
+      Self::CreatureIdNotFoundError { .. }
+      | Self::SaveNotFound
+      | Self::GroupIdNotFoundError { .. } => StatusCode::NOT_FOUND,
       Self::CreatureDuplicateIdError { .. } | Self::SaveAlreadyExists => {
         StatusCode::CONFLICT
       }
-      Self::CreatureIdMismatchError { .. } | Self::SaveNameInvalid { .. } => {
-        StatusCode::BAD_REQUEST
-      }
+      Self::CreatureIdMismatchError { .. }
+      | Self::GroupIdMismatchError { .. }
+      | Self::SaveNameInvalid { .. } => StatusCode::BAD_REQUEST,
       Self::StoreError(_)
       | Self::BundledParseError { .. }
       | Self::BundleSeedWriteError { .. }

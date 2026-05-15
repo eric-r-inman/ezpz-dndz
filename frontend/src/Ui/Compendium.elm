@@ -9,7 +9,7 @@ module Ui.Compendium exposing
     , creatureKindLabel
     , parseIntOr, parseCsv, saveRowToValue, skillRowToValue
     , draftToFeature, customSectionRowToValue
-    , closeMenus, currentCreatures, markSaved
+    , addGroup, closeMenus, currentCreatures, groupsList, markSaved, removeGroup, visibleGroups
     )
 
 {-| Compendium browser + paste + edit modal state, plus helpers
@@ -34,7 +34,9 @@ pending state.
 -}
 
 import Compendium
+import Compendium.Group as Group exposing (Group)
 import Compendium.Parser
+import Dict exposing (Dict)
 import Http
 import Msg exposing (CompendiumBulkMenu, CompendiumSort(..))
 import Set exposing (Set)
@@ -121,6 +123,27 @@ type alias CompendiumUi =
     -- input and lets the toast / banner identify the snapshot.
     -- Session-only.
     , savedAs : Maybe String
+
+    -- Show / hide creature groups in the browser list.  Toggled
+    -- by the "Groups" chip on the right of the kind filters.
+    , showGroups : Bool
+
+    -- In-memory group store.  Will move to a server-side
+    -- `JsonFileStore<Group>` per user in a follow-up; for now
+    -- groups live until the page reloads.  Keyed by `Group.id`
+    -- so updates / deletes are O(1).
+    , groups : Dict String Group
+
+    -- Which groups are expanded in the compendium list (their
+    -- per-entry rows are visible underneath the group header
+    -- row).  Set rather than `Bool` per group so the canonical
+    -- group record stays purely about the group's *contents*.
+    , expandedGroupIds : Set String
+
+    -- Which group is selected in the right-pane stat block.
+    -- Mutually exclusive with `selectedId` (creature selection);
+    -- clicking a group row clears `selectedId` and vice versa.
+    , selectedGroupId : Maybe String
     }
 
 
@@ -163,6 +186,10 @@ emptyCompendium =
     , bulkBusy = False
     , bulkError = Nothing
     , savedAs = Nothing
+    , showGroups = True
+    , groups = Dict.empty
+    , expandedGroupIds = Set.empty
+    , selectedGroupId = Nothing
     }
 
 
@@ -661,3 +688,69 @@ creatureKindLabel k =
 
         Compendium.Npc ->
             "NPC"
+
+
+
+-- ── GROUPS ───────────────────────────────────────────────────────────────────
+
+
+{-| Return the groups dict as a list, sorted by name so the
+visible order is deterministic regardless of insertion order.
+The compendium list renderer puts groups above creatures, so
+this ordering only governs intra-group sorting.
+-}
+groupsList : CompendiumUi -> List Group
+groupsList ui =
+    Dict.values ui.groups
+        |> List.sortBy (.name >> String.toLower)
+
+
+{-| Filter the groups list down to those that survive the
+current search box / kind-filter / "Added" toggle settings.
+Re-using the creature filters here keeps the GM's filtering
+model consistent: typing "goblin" narrows BOTH creatures
+matching that text and groups whose name matches.
+
+Currently a name-only search. CR / kind don't apply because a
+group isn't a single creature with a CR or a kind; the GM
+filters by group name and that's that.
+
+-}
+visibleGroups : CompendiumUi -> List Group
+visibleGroups ui =
+    let
+        needle =
+            String.toLower (String.trim ui.searchText)
+    in
+    if not ui.showGroups then
+        []
+
+    else
+        groupsList ui
+            |> List.filter
+                (\g ->
+                    if String.isEmpty needle then
+                        True
+
+                    else
+                        String.contains needle (String.toLower g.name)
+                )
+
+
+addGroup : Group -> CompendiumUi -> CompendiumUi
+addGroup group ui =
+    { ui | groups = Dict.insert group.id group ui.groups }
+
+
+removeGroup : String -> CompendiumUi -> CompendiumUi
+removeGroup groupId ui =
+    { ui
+        | groups = Dict.remove groupId ui.groups
+        , expandedGroupIds = Set.remove groupId ui.expandedGroupIds
+        , selectedGroupId =
+            if ui.selectedGroupId == Just groupId then
+                Nothing
+
+            else
+                ui.selectedGroupId
+    }

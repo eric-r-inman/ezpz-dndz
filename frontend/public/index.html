@@ -64,5 +64,138 @@
         });
       }
     </script>
+    <script>
+      // Tooltip portal: single position: fixed div on <body>,
+      // positioned by JS via getBoundingClientRect() of whichever
+      // [data-tooltip] element is hovered.  Lifts the tooltip out
+      // of every clipping ancestor (scroll panels, modals, rails)
+      // and avoids the cross-browser quirks of CSS anchor
+      // positioning (implicit-anchor failures on <button>, named-
+      // anchor collisions without a working anchor-scope).
+      (function () {
+        var portal = document.createElement("div");
+        portal.id = "tooltip-portal";
+        portal.setAttribute("role", "tooltip");
+        document.body.appendChild(portal);
+
+        var showTimer = null;
+        var currentTarget = null;
+        var SHOW_DELAY_MS = 300;
+        var GAP_PX = 6;
+        var EDGE_PX = 4;
+
+        function findTrigger(node) {
+          while (node && node.nodeType === 1) {
+            if (node.hasAttribute && node.hasAttribute("data-tooltip")) {
+              return node;
+            }
+            node = node.parentNode;
+          }
+          return null;
+        }
+
+        function hide() {
+          if (showTimer !== null) {
+            clearTimeout(showTimer);
+            showTimer = null;
+          }
+          currentTarget = null;
+          portal.style.opacity = "0";
+          portal.style.visibility = "hidden";
+        }
+
+        function place(target) {
+          var rect = target.getBoundingClientRect();
+          var pw = portal.offsetWidth;
+          var ph = portal.offsetHeight;
+          var vw = document.documentElement.clientWidth;
+          var vh = document.documentElement.clientHeight;
+
+          // Default: above the trigger, horizontally centred.
+          var top = rect.top - ph - GAP_PX;
+          var left = rect.left + rect.width / 2 - pw / 2;
+
+          // Flip below if no room above.
+          if (top < EDGE_PX) {
+            top = rect.bottom + GAP_PX;
+          }
+          // Clamp horizontally to the viewport.
+          if (left < EDGE_PX) left = EDGE_PX;
+          if (left + pw > vw - EDGE_PX) left = vw - pw - EDGE_PX;
+          // Clamp vertically too, in case neither above nor below fits.
+          if (top + ph > vh - EDGE_PX) top = vh - ph - EDGE_PX;
+          if (top < EDGE_PX) top = EDGE_PX;
+
+          portal.style.top = top + "px";
+          portal.style.left = left + "px";
+        }
+
+        function show(target) {
+          var text = target.getAttribute("data-tooltip");
+          if (!text) return;
+          portal.textContent = text;
+          // Render at (0, 0) hidden first so offsetWidth / offsetHeight
+          // are accurate, then position and reveal on the next frame.
+          portal.style.visibility = "hidden";
+          portal.style.opacity = "0";
+          portal.style.top = "0";
+          portal.style.left = "0";
+          requestAnimationFrame(function () {
+            if (currentTarget !== target) return;
+            place(target);
+            portal.style.visibility = "visible";
+            portal.style.opacity = "1";
+          });
+        }
+
+        document.addEventListener("mouseover", function (e) {
+          var trigger = findTrigger(e.target);
+          if (!trigger || trigger === currentTarget) return;
+          if (showTimer !== null) clearTimeout(showTimer);
+          currentTarget = trigger;
+          showTimer = setTimeout(function () {
+            if (currentTarget === trigger) show(trigger);
+          }, SHOW_DELAY_MS);
+        });
+
+        document.addEventListener("mouseout", function (e) {
+          var trigger = findTrigger(e.target);
+          if (!trigger) return;
+          // Ignore mouseout between the trigger and one of its
+          // descendants — still inside the trigger.
+          var related = e.relatedTarget;
+          if (related && trigger.contains(related)) return;
+          hide();
+        });
+
+        document.addEventListener("focusin", function (e) {
+          var trigger = findTrigger(e.target);
+          if (!trigger) return;
+          // Only show on keyboard focus, mirroring the CSS rule we
+          // previously used (`:focus-visible`).  Mouse-click focus
+          // shouldn't trigger a tooltip pop.
+          var fv = false;
+          try {
+            fv = trigger.matches(":focus-visible");
+          } catch (_) {
+            fv = true;
+          }
+          if (!fv) return;
+          currentTarget = trigger;
+          show(trigger);
+        });
+
+        document.addEventListener("focusout", function (e) {
+          var trigger = findTrigger(e.target);
+          if (!trigger) return;
+          hide();
+        });
+
+        // Tooltip position becomes stale if anything scrolls under
+        // the cursor — just hide.  Cheaper than recomputing.
+        document.addEventListener("scroll", hide, true);
+        window.addEventListener("resize", hide);
+      })();
+    </script>
   </body>
 </html>

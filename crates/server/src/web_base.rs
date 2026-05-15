@@ -12,7 +12,9 @@ use rust_template_foundation::{
 use std::sync::Arc;
 use thiserror::Error;
 
-use crate::compendium::{CompendiumStore, SavedCompendiumStore};
+use crate::compendium::{
+  CompendiumGroupStore, CompendiumStore, SavedCompendiumStore,
+};
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
@@ -23,6 +25,7 @@ pub struct AppState {
   pub dice_store: DiceStore,
   pub compendium_store: CompendiumStore,
   pub compendium_saves: SavedCompendiumStore,
+  pub compendium_groups: CompendiumGroupStore,
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
@@ -66,6 +69,11 @@ impl AppState {
         .await
         .map_err(AppStateError::CompendiumStoreLoad)?;
 
+    let compendium_groups =
+      CompendiumGroupStore::load_or_default(paths.compendium_groups.clone())
+        .await
+        .map_err(AppStateError::CompendiumStoreLoad)?;
+
     let encounter_store =
       EncounterStore::load_or_default(paths.encounter.clone())
         .await
@@ -85,6 +93,7 @@ impl AppState {
       dice_store,
       compendium_store,
       compendium_saves,
+      compendium_groups,
       encounter_store,
       encounter_saves,
       user_store: Arc::new(user_store),

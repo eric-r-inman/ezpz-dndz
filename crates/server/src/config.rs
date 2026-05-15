@@ -56,6 +56,11 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_compendium_saves_path")]
   pub compendium_saves_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing per-user compendium groups.
+  /// Defaults to `<data_dir>/compendium-groups.json`.
+  #[arg(long, env = "ezpz_dndz_compendium_groups_path")]
+  pub compendium_groups_path: Option<PathBuf>,
+
   /// Path to the JSON file backing the persisted live encounter.
   /// Defaults to `<data_dir>/encounter.json`.
   #[arg(long, env = "ezpz_dndz_encounter_path")]
@@ -81,6 +86,7 @@ pub struct ExtraFileFields {
   pub dice_history_path: Option<PathBuf>,
   pub compendium_path: Option<PathBuf>,
   pub compendium_saves_path: Option<PathBuf>,
+  pub compendium_groups_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
@@ -93,6 +99,7 @@ pub struct RuntimePaths {
   pub dice_history: PathBuf,
   pub compendium: PathBuf,
   pub compendium_saves: PathBuf,
+  pub compendium_groups: PathBuf,
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
   pub users: PathBuf,
@@ -183,6 +190,11 @@ impl Config {
         cli.extra.compendium_saves_path.as_ref(),
         file.extra.compendium_saves_path.as_ref(),
         "compendium-saves.json",
+      ),
+      compendium_groups: pick(
+        cli.extra.compendium_groups_path.as_ref(),
+        file.extra.compendium_groups_path.as_ref(),
+        "compendium-groups.json",
       ),
       encounter: pick(
         cli.extra.encounter_path.as_ref(),

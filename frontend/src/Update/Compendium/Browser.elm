@@ -143,7 +143,21 @@ sortChanged sort model =
 
 select : String -> Model -> ( Model, Cmd Msg )
 select id model =
-    ( withCompendium (\ui -> { ui | selectedId = Just id }) model, Cmd.none )
+    ( withCompendium
+        (\ui ->
+            { ui
+                | selectedId = Just id
+
+                -- Selecting a creature clears any group selection
+                -- so the right pane reads as "this creature's
+                -- stat block" rather than "this group's
+                -- contents".
+                , selectedGroupId = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
 
 
 {-| Flip the "Added" filter — when on, the visible compendium

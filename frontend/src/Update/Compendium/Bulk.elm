@@ -2,7 +2,7 @@ module Update.Compendium.Bulk exposing
     ( deleteFromBrowser, importClick, importFileChosen
     , importFileRead, importResponse, pendingCancel, pendingConfirm
     , resetClick, resetResponse
-    , clearAll, clearResponse, clearSelected
+    , clearAll, clearResponse, clearSelected, deleteSelected
     )
 
 {-| Bulk import / reset / per-row delete flow for the compendium
@@ -238,6 +238,42 @@ clearSelected model =
 
         _ ->
             ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
+            , Cmd.none
+            )
+
+
+{-| "Delete Selected" from the delete-confirm banner: identical
+to `clearSelected`'s wire path, but also dismisses the pending
+PendingDelete that opened the banner so the confirm UI doesn't
+linger after the bulk op fires.
+-}
+deleteSelected : Model -> ( Model, Cmd Msg )
+deleteSelected model =
+    case model.compendium.db of
+        CompendiumDbLoaded db ->
+            let
+                kept =
+                    Compendium.toList db
+                        |> List.filter
+                            (\c -> not (Set.member c.id model.compendium.selectedIds))
+            in
+            ( withCompendium
+                (\ui ->
+                    { ui
+                        | bulkMenu = Nothing
+                        , bulkBusy = True
+                        , pending = Nothing
+                        , bulkError = Nothing
+                    }
+                )
+                model
+            , clearCmd kept
+            )
+
+        _ ->
+            ( withCompendium
+                (\ui -> { ui | bulkMenu = Nothing, pending = Nothing })
+                model
             , Cmd.none
             )
 

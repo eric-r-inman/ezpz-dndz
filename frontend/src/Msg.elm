@@ -33,6 +33,7 @@ import Auth
 import Browser
 import Browser.Dom
 import Compendium
+import Compendium.Group
 import Compendium.Wire
 import Dice
 import Encounter exposing (Encounter)
@@ -446,6 +447,46 @@ type Msg
     | CompendiumAddToQueue String
     | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
       -- (creatureId, [(displayName, roll)])
+    | CompendiumAddSelectedToQueue
+    | CompendiumAddSelectedRolled (List ( String, String, Dice.Roll ))
+      -- [(creatureId, displayName, roll)] — one entry per selected
+      -- compendium creature, materialised together with one toast.
+      -- Group feature (Phase A: UI scaffolding only — buttons fire
+      -- placeholder toasts until the modal + store land).
+    | CompendiumGroupsToggle
+    | CompendiumGroupCreate
+    | CompendiumGroupCreateFromSelected
+      -- Group browser-list interactions.
+    | CompendiumGroupExpandToggle String
+    | CompendiumGroupSelect String
+    | CompendiumGroupDelete String
+    | CompendiumGroupEditOpenExisting String
+      -- Group → encounter handoff.  Like CompendiumAddToQueue
+      -- but the materialiser is a separate path because it has
+      -- to honour the group's initiative mode + per-entry
+      -- minion overrides.
+    | CompendiumGroupAdd String
+      -- Response continuation: the fully-resolved spawn specs
+      -- (one per spawned creature) and the dice pool to push to
+      -- history (empty for manual initiative, one entry for
+      -- shared-rolled, N for each-rolls).
+    | CompendiumGroupAddMaterialise (List Compendium.Group.GroupSpawn) (List Dice.Roll)
+      -- Boot fetch + persistence callbacks.
+    | CompendiumGroupsLoaded (Result Http.Error (List Compendium.Group.Group))
+    | CompendiumGroupCreated (Result Http.Error Compendium.Group.Group)
+    | CompendiumGroupUpdated (Result Http.Error Compendium.Group.Group)
+    | CompendiumGroupDeleted String (Result Http.Error ())
+      -- Group-edit modal lifecycle.
+    | GroupEditClose
+    | GroupEditNameChanged String
+    | GroupEditInitiativeModeSet String
+    | GroupEditManualInitiativeChanged String
+    | GroupEditEntryAdd
+    | GroupEditEntryRemove Int
+    | GroupEditEntryCreatureChanged Int String
+    | GroupEditEntryCountChanged Int String
+    | GroupEditEntryMinionTypeSet Int String
+    | GroupEditSubmit
       -- Compendium edit / create modal
     | CompendiumEditNew
     | CompendiumEditExisting
@@ -657,6 +698,7 @@ type Msg
     | CompendiumBulkMenuClose
     | CompendiumClearAll
     | CompendiumClearSelected
+    | CompendiumDeleteSelected
     | CompendiumExportClick
       -- (creatureId, displayName)
     | CompendiumPendingCancel

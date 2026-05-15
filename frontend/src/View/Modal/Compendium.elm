@@ -7,7 +7,9 @@ Encounter" handoff plus per-creature edit / duplicate / delete.
 -}
 
 import Compendium
-import Html exposing (Html, button, div, input, label, option, p, span, text)
+import Compendium.Group
+import Dict
+import Html exposing (Html, button, div, h3, input, label, option, p, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
@@ -44,6 +46,7 @@ view ui encounterIds =
             , extraClass = "modal--compendium"
             , body =
                 [ filterBar ui
+                , actionsBar ui
                 , bulkBanner ui
                 , body ui encounterIds
                 ]
@@ -79,6 +82,7 @@ bulkBanner ui =
                 , confirmLabel = "Reset"
                 , danger = True
                 , busy = ui.bulkBusy
+                , extra = Nothing
                 }
 
         ( Just (PendingImport _ count), _ ) ->
@@ -90,9 +94,32 @@ bulkBanner ui =
                 , confirmLabel = "Replace library"
                 , danger = True
                 , busy = ui.bulkBusy
+                , extra = Nothing
                 }
 
         ( Just (PendingDelete _ displayName), _ ) ->
+            let
+                selectedCount =
+                    Set.size ui.selectedIds
+
+                -- "Delete Selected" only appears when 2+ creatures
+                -- are checkbox-selected.  A single selection has the
+                -- same effect as the regular Delete button, so we
+                -- skip it to keep the banner uncluttered.
+                extra =
+                    if selectedCount > 1 then
+                        Just
+                            { label =
+                                "Delete Selected ("
+                                    ++ String.fromInt selectedCount
+                                    ++ ")"
+                            , msg = CompendiumDeleteSelected
+                            , tooltip = Tooltips.compendiumDeleteSelected
+                            }
+
+                    else
+                        Nothing
+            in
             confirmBanner
                 { message =
                     "Delete \""
@@ -101,6 +128,7 @@ bulkBanner ui =
                 , confirmLabel = "Delete"
                 , danger = True
                 , busy = ui.bulkBusy
+                , extra = extra
                 }
 
         ( Nothing, Just err ) ->
@@ -111,9 +139,29 @@ bulkBanner ui =
 
 
 confirmBanner :
-    { message : String, confirmLabel : String, danger : Bool, busy : Bool }
+    { message : String
+    , confirmLabel : String
+    , danger : Bool
+    , busy : Bool
+    , extra : Maybe { label : String, msg : Msg, tooltip : String }
+    }
     -> Html Msg
 confirmBanner cfg =
+    let
+        extraButton =
+            case cfg.extra of
+                Just e ->
+                    button
+                        [ class "action-btn action-btn--red"
+                        , onClick e.msg
+                        , disabled cfg.busy
+                        , Tooltips.attr e.tooltip
+                        ]
+                        [ text e.label ]
+
+                Nothing ->
+                    text ""
+    in
     div [ class "compendium__bulk-confirm" ]
         [ span [ class "compendium__bulk-confirm-msg" ] [ text cfg.message ]
         , button
@@ -141,6 +189,7 @@ confirmBanner cfg =
                     cfg.confirmLabel
                 )
             ]
+        , extraButton
         ]
 
 
@@ -161,12 +210,97 @@ filterBar ui =
             (addedFilter ui.showOnlyAdded
                 :: List.map (kindFilter ui.kindFilter)
                     [ Compendium.Player, Compendium.Enemy, Compendium.Npc ]
+                ++ [ groupsFilter ui.showGroups ]
             )
         , sortPicker ui.sort
-        , newButton
+        ]
+
+
+{-| Second-row toolbar. Creation affordances (New Creature,
+Paste Stat Block, Create Group, optional Create Group w/Selected)
+sit on the left; the bulk-action cluster (Import / Export / Reset
+/ Clear) stays on the right.
+
+The Create Group buttons are wired to placeholder toasts in this
+first pass while the Group store + modal land in follow-up
+commits — see [feature: Group UI placeholders, follow-ups for
+store + modal].
+
+-}
+actionsBar : CompendiumUi -> Html Msg
+actionsBar ui =
+    div [ class "compendium__actions-bar" ]
+        [ newButton
         , pasteButton
+        , createGroupButton
+        , if Set.isEmpty ui.selectedIds then
+            text ""
+
+          else
+            createGroupFromSelectedButton ui
         , bulkButtons ui
         ]
+
+
+createGroupButton : Html Msg
+createGroupButton =
+    button
+        [ class "action-btn action-btn--green"
+        , onClick CompendiumGroupCreate
+        , Tooltips.attr Tooltips.compendiumCreateGroup
+        ]
+        [ text "👥 Create Group" ]
+
+
+createGroupFromSelectedButton : CompendiumUi -> Html Msg
+createGroupFromSelectedButton ui =
+    button
+        [ class "action-btn action-btn--green"
+        , onClick CompendiumGroupCreateFromSelected
+        , Tooltips.attr Tooltips.compendiumCreateGroupFromSelected
+        ]
+        [ text
+            ("👥 Create Group w/Selected ("
+                ++ String.fromInt (Set.size ui.selectedIds)
+                ++ ")"
+            )
+        ]
+
+
+{-| Show / hide groups chip — sits on the right of the kind
+filters. Styled like the kind-filter chips so the row reads
+as one filter cluster, but distinct because it toggles a
+different axis (group visibility) rather than a creature kind.
+-}
+groupsFilter : Bool -> Html Msg
+groupsFilter active =
+    button
+        [ class
+            ("compendium__kind-filter compendium__kind-filter--groups"
+                ++ (if active then
+                        " compendium__kind-filter--active"
+
+                    else
+                        ""
+                   )
+            )
+        , onClick CompendiumGroupsToggle
+        , Tooltips.attr
+            (if active then
+                Tooltips.compendiumGroupsHide
+
+             else
+                Tooltips.compendiumGroupsShow
+            )
+        , attribute "aria-pressed"
+            (if active then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text "Groups" ]
 
 
 {-| Toggle button that narrows the visible list to creatures
@@ -363,7 +497,17 @@ list :
     -> Set String
     -> Html Msg
 list ui totalCount visible encounterIds selectedIds =
-    if List.isEmpty visible then
+    let
+        groups =
+            CompendiumUi.visibleGroups ui
+
+        groupRows =
+            List.concatMap (groupListItem ui) groups
+
+        creatureRows =
+            List.map (listItem ui.selectedId selectedIds encounterIds) visible
+    in
+    if List.isEmpty visible && List.isEmpty groups then
         if totalCount == 0 then
             div [ class "compendium__list compendium__list--empty" ]
                 [ p [] [ text "Your compendium is empty." ]
@@ -399,7 +543,134 @@ list ui totalCount visible encounterIds selectedIds =
 
     else
         div [ class "compendium__list" ]
-            (List.map (listItem ui.selectedId selectedIds encounterIds) visible)
+            (groupRows ++ creatureRows)
+
+
+{-| Render a group as a header row + (optional) expansion of its
+entry rows. Returns a list because a single group can expand
+into multiple rendered rows. Groups don't have bulk-selection
+checkboxes — the GM operates on the group as a whole.
+
+When the header is expanded, the child rows render the
+underlying creature names + per-entry settings (count, minion
+type) read-only. The GM can't bulk-select or pin those rows;
+to change the group's contents they re-open the edit modal.
+
+-}
+groupListItem : CompendiumUi -> Compendium.Group.Group -> List (Html Msg)
+groupListItem ui group =
+    let
+        isExpanded =
+            Set.member group.id ui.expandedGroupIds
+
+        isSelected =
+            ui.selectedGroupId == Just group.id
+
+        headerClass =
+            "compendium__row compendium__row--group"
+                ++ (if isSelected then
+                        " compendium__row--selected"
+
+                    else
+                        ""
+                   )
+
+        totalCount =
+            Compendium.Group.totalCreatureCount group
+
+        header =
+            div
+                [ class headerClass
+                , onClick (CompendiumGroupSelect group.id)
+                , attribute "role" "button"
+                , attribute "tabindex" "0"
+                ]
+                [ button
+                    [ class "compendium__group-disclosure"
+                    , onClickStopPropagation (CompendiumGroupExpandToggle group.id)
+                    , attribute "aria-expanded"
+                        (if isExpanded then
+                            "true"
+
+                         else
+                            "false"
+                        )
+                    , attribute "aria-label" "Toggle group entries"
+                    ]
+                    [ text
+                        (if isExpanded then
+                            "▾"
+
+                         else
+                            "▸"
+                        )
+                    ]
+                , div [ class "compendium__row-text" ]
+                    [ span [ class "compendium__row-name" ]
+                        [ text ("👥 " ++ group.name) ]
+                    , span [ class "compendium__row-meta" ]
+                        [ text
+                            (String.fromInt totalCount
+                                ++ " creature"
+                                ++ (if totalCount == 1 then
+                                        ""
+
+                                    else
+                                        "s"
+                                   )
+                                ++ " · "
+                                ++ Compendium.Group.initiativeModeLabel
+                                    group.initiativeMode
+                            )
+                        ]
+                    ]
+                ]
+
+        creatureNameById creatureId =
+            case ui.db of
+                CompendiumDbLoaded db ->
+                    Compendium.find creatureId db
+                        |> Maybe.map .name
+                        |> Maybe.withDefault "Unknown creature"
+
+                _ ->
+                    "Unknown creature"
+
+        entryRow entry =
+            div [ class "compendium__row compendium__row--group-entry" ]
+                [ div [ class "compendium__row-text" ]
+                    [ span [ class "compendium__row-name" ]
+                        [ text
+                            (String.fromInt entry.count
+                                ++ " × "
+                                ++ creatureNameById entry.creatureId
+                            )
+                        ]
+                    , case entry.minionType of
+                        Compendium.Group.MinionNone ->
+                            text ""
+
+                        other ->
+                            span [ class "compendium__row-meta" ]
+                                [ text (Compendium.Group.minionTypeLabel other) ]
+                    ]
+                ]
+    in
+    if isExpanded then
+        header :: List.map entryRow group.entries
+
+    else
+        [ header ]
+
+
+{-| Click handler that calls `Html.Events.stopPropagationOn` so
+the inner disclosure button doesn't also fire the row's
+`CompendiumGroupSelect` (which would shift the right pane).
+-}
+onClickStopPropagation : Msg -> Html.Attribute Msg
+onClickStopPropagation msg =
+    Html.Events.stopPropagationOn "click"
+        (Decode.succeed ( msg, True ))
 
 
 listItem : Maybe String -> Set String -> List String -> Compendium.Creature -> Html Msg
@@ -521,21 +792,116 @@ crLabel cr =
 detail : CompendiumUi -> List Compendium.Creature -> List String -> Html Msg
 detail ui visible encounterIds =
     let
+        chosenGroup =
+            ui.selectedGroupId
+                |> Maybe.andThen (\id -> Dict.get id ui.groups)
+
         chosen =
             ui.selectedId
                 |> Maybe.andThen (\id -> List.filter (\c -> c.id == id) visible |> List.head)
     in
-    case chosen of
-        Just creature ->
+    case ( chosenGroup, chosen ) of
+        ( Just group, _ ) ->
+            div [ class "compendium__detail" ]
+                [ groupActionBar group
+                , groupDetailBody ui group
+                ]
+
+        ( Nothing, Just creature ) ->
             div [ class "compendium__detail" ]
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
+                    ui.selectedIds
                 , View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
                 ]
 
-        Nothing ->
+        ( Nothing, Nothing ) ->
             div [ class "compendium__detail compendium__detail--empty" ]
-                [ text "Select a creature on the left to see its stat block." ]
+                [ text "Select a creature or group on the left." ]
+
+
+groupActionBar : Compendium.Group.Group -> Html Msg
+groupActionBar group =
+    div [ class "compendium__action-bar" ]
+        [ span [ class "compendium__in-encounter" ]
+            [ text
+                (String.fromInt (Compendium.Group.totalCreatureCount group)
+                    ++ " creatures · "
+                    ++ Compendium.Group.initiativeModeLabel group.initiativeMode
+                )
+            ]
+        , button
+            [ class "action-btn action-btn--green compendium__add-btn"
+            , onClick (CompendiumGroupAdd group.id)
+            , Tooltips.attr Tooltips.compendiumGroupAdd
+            ]
+            [ text "➕ Add Group to Encounter" ]
+        , button
+            [ class "action-btn action-btn--blue compendium__edit-btn"
+            , onClick (CompendiumGroupEditOpenExisting group.id)
+            , Tooltips.attr Tooltips.compendiumGroupEdit
+            ]
+            [ text "✏️ Edit" ]
+        , button
+            [ class "action-btn action-btn--red compendium__delete-btn"
+            , onClick (CompendiumGroupDelete group.id)
+            , Tooltips.attr Tooltips.compendiumGroupDelete
+            , attribute "aria-label" "Delete group"
+            ]
+            [ text "🗑" ]
+        ]
+
+
+{-| Right-pane content for the selected group: a heading + the
+list of entries with their counts and minion types. Read-only;
+to mutate the group the GM opens the Edit modal.
+-}
+groupDetailBody : CompendiumUi -> Compendium.Group.Group -> Html Msg
+groupDetailBody ui group =
+    let
+        creatureNameById creatureId =
+            case ui.db of
+                CompendiumDbLoaded db ->
+                    Compendium.find creatureId db
+                        |> Maybe.map .name
+                        |> Maybe.withDefault "Unknown creature"
+
+                _ ->
+                    "Unknown creature"
+
+        entryLine entry =
+            let
+                minionSuffix =
+                    case entry.minionType of
+                        Compendium.Group.MinionNone ->
+                            ""
+
+                        other ->
+                            " · " ++ Compendium.Group.minionTypeLabel other
+            in
+            div [ class "compendium__group-entry" ]
+                [ text
+                    (String.fromInt entry.count
+                        ++ " × "
+                        ++ creatureNameById entry.creatureId
+                        ++ minionSuffix
+                    )
+                ]
+    in
+    div [ class "compendium__group-detail" ]
+        [ h3 [ class "compendium__group-detail-title" ] [ text group.name ]
+        , p [ class "compendium__group-detail-mode" ]
+            [ text ("Initiative: " ++ Compendium.Group.initiativeModeLabel group.initiativeMode)
+            , case group.initiativeMode of
+                Compendium.Group.InitiativeSharedManual n ->
+                    text (" (" ++ String.fromInt n ++ ")")
+
+                _ ->
+                    text ""
+            ]
+        , div [ class "compendium__group-detail-entries" ]
+            (List.map entryLine group.entries)
+        ]
 
 
 {-| Right-pane action bar for the selected creature. Replaces
@@ -543,9 +909,14 @@ the old Count input with a read-only "[N] in Encounter" badge so
 the GM can see at a glance how many instances of this creature
 are already in the queue. Each click of "Add to Encounter"
 spawns one fresh instance; the modal stays open across adds.
+
+When one or more rows are checkbox-selected, an "Add Selected"
+button appears next to "+ Add to Encounter" to bulk-add every
+checked creature in a single batched roll.
+
 -}
-actionBar : Compendium.Creature -> Int -> Html Msg
-actionBar creature inEncounter =
+actionBar : Compendium.Creature -> Int -> Set String -> Html Msg
+actionBar creature inEncounter selectedIds =
     let
         badgeClass =
             if inEncounter > 0 then
@@ -553,6 +924,26 @@ actionBar creature inEncounter =
 
             else
                 "compendium__in-encounter"
+
+        selectedCount =
+            Set.size selectedIds
+
+        addSelectedButton =
+            if selectedCount == 0 then
+                text ""
+
+            else
+                button
+                    [ class "action-btn action-btn--green compendium__add-btn"
+                    , onClick CompendiumAddSelectedToQueue
+                    , Tooltips.attr Tooltips.compendiumAddSelected
+                    ]
+                    [ text
+                        ("➕ Add Selected ("
+                            ++ String.fromInt selectedCount
+                            ++ ")"
+                        )
+                    ]
     in
     div [ class "compendium__action-bar" ]
         [ span
@@ -566,6 +957,7 @@ actionBar creature inEncounter =
             , Tooltips.attr Tooltips.compendiumAddToEncounter
             ]
             [ text "➕ Add to Encounter" ]
+        , addSelectedButton
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditExisting

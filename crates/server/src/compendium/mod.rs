@@ -12,10 +12,12 @@
 //!   variants per the project's CLAUDE.md conventions.
 
 pub mod error;
+pub mod groups;
 pub mod saves;
 pub mod store;
 
 pub use error::CompendiumStoreError;
+pub use groups::CompendiumGroupStore;
 pub use saves::{SavedCompendium, SavedCompendiumMeta, SavedCompendiumStore};
 pub use store::CompendiumStore;
 
@@ -32,7 +34,7 @@ use axum::{
   response::{IntoResponse, Response},
   Extension, Json,
 };
-use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
+use ezpz_dndz_lib::compendium::{Creature, CreatureDraft, Group, GroupDraft};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -221,6 +223,64 @@ async fn rename_compendium_save(
   }
 }
 
+// ── group handlers ───────────────────────────────────────────────────────────
+//
+// Per-user CRUD on `/api/compendium/groups`.  Mirrors the creature endpoints
+// in shape (list / get / create / update / delete) but with `CurrentUser`
+// scoping every operation so the on-disk shape is `HashMap<UserId, Vec<Group>>`.
+
+async fn list_groups(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  Json(state.compendium_groups.list(&user.id).await).into_response()
+}
+
+async fn get_group(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Path(id): Path<String>,
+) -> Response {
+  match state.compendium_groups.get(&user.id, &id).await {
+    Some(g) => Json(g).into_response(),
+    None => CompendiumStoreError::GroupIdNotFoundError { id }.into_response(),
+  }
+}
+
+async fn create_group(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Json(draft): Json<GroupDraft>,
+) -> Response {
+  match state.compendium_groups.insert(&user.id, draft).await {
+    Ok(g) => (StatusCode::CREATED, Json(g)).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+async fn update_group(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Path(id): Path<String>,
+  Json(group): Json<Group>,
+) -> Response {
+  match state.compendium_groups.update(&user.id, &id, group).await {
+    Ok(g) => Json(g).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+async fn delete_group(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Path(id): Path<String>,
+) -> Response {
+  match state.compendium_groups.remove(&user.id, &id).await {
+    Ok(()) => StatusCode::NO_CONTENT.into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
 // ── router ───────────────────────────────────────────────────────────────────
 
 /// Build the compendium subrouter.  Returned as `ApiRouter<AppState>`
@@ -327,6 +387,42 @@ pub fn router() -> ApiRouter<AppState> {
           "Rename a compendium snapshot.  Body: `{ \"new_name\": \"...\" }`. \
            Errors if the destination name already exists.",
         )
+      }),
+    )
+    .api_route(
+      "/api/compendium/groups",
+      get_with(list_groups, |op: TransformOperation| {
+        op.description("List the calling user's compendium groups.")
+      }),
+    )
+    .api_route(
+      "/api/compendium/groups",
+      post_with(create_group, |op: TransformOperation| {
+        op.description(
+          "Create a group.  Server allocates the id and timestamps; \
+           client provides a GroupDraft.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/groups/{id}",
+      get_with(get_group, |op: TransformOperation| {
+        op.description("Fetch one group by id.")
+      }),
+    )
+    .api_route(
+      "/api/compendium/groups/{id}",
+      put_with(update_group, |op: TransformOperation| {
+        op.description(
+          "Replace a group's full record.  Body must be a Group with \
+           the matching id; created_at is preserved server-side.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/groups/{id}",
+      delete_with(delete_group, |op: TransformOperation| {
+        op.description("Delete one of the user's groups.")
       }),
     )
 }

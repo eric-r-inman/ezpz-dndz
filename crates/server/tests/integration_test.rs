@@ -37,6 +37,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     dice_history: temp.path().join("dice-history.json"),
     compendium: temp.path().join("compendium.json"),
     compendium_saves: temp.path().join("compendium-saves.json"),
+    compendium_groups: temp.path().join("compendium-groups.json"),
     encounter: temp.path().join("encounter.json"),
     encounter_saves: temp.path().join("encounter-saves.json"),
     users: temp.path().join("users.json"),
@@ -868,4 +869,226 @@ async fn test_auth_wrong_password_unauthorized() {
     .await
     .unwrap();
   assert_eq!(bad_login.status(), StatusCode::UNAUTHORIZED);
+}
+
+// ── compendium groups ───────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_compendium_groups_create_list_get_delete_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  // Empty list on a fresh user.
+  let list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/compendium/groups")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(list.status(), StatusCode::OK);
+  let body = read_body(list).await;
+  assert_eq!(body.trim(), "[]");
+
+  // Create a group with two entries — one normal, one half-HP minion.
+  let create_body = serde_json::json!({
+      "name": "Goblin Patrol",
+      "initiative_mode": { "type": "shared_rolled" },
+      "entries": [
+          { "creature_id": "goblin", "count": 3, "minion_type": "half" },
+          { "creature_id": "wolf",   "count": 1, "minion_type": "none" }
+      ]
+  });
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/compendium/groups")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(create_body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(create.status(), StatusCode::CREATED);
+  let created_body = read_body(create).await;
+  let created: serde_json::Value =
+    serde_json::from_str(&created_body).expect("created body");
+  let id = created["id"].as_str().expect("id").to_string();
+  assert!(!id.is_empty(), "server should mint a non-empty id");
+  assert_eq!(created["name"], "Goblin Patrol");
+  assert_eq!(created["entries"].as_array().unwrap().len(), 2);
+  assert!(created["created_at"].as_i64().unwrap() > 0);
+
+  // The new group shows up in the list.
+  let list2 = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/compendium/groups")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let listed_body = read_body(list2).await;
+  let listed: serde_json::Value = serde_json::from_str(&listed_body).unwrap();
+  assert_eq!(listed.as_array().unwrap().len(), 1);
+  assert_eq!(listed[0]["id"], id);
+
+  // GET by id round-trips.
+  let single = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri(format!("/api/compendium/groups/{id}"))
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(single.status(), StatusCode::OK);
+
+  // DELETE removes it.
+  let deleted = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("DELETE")
+        .uri(format!("/api/compendium/groups/{id}"))
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(deleted.status(), StatusCode::NO_CONTENT);
+
+  // GET-after-delete is 404.
+  let after = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri(format!("/api/compendium/groups/{id}"))
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(after.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_compendium_groups_update_preserves_created_at() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let create_body = serde_json::json!({
+      "name": "Skeletons",
+      "initiative_mode": { "type": "each_rolls" },
+      "entries": [{ "creature_id": "skeleton", "count": 5, "minion_type": "one" }]
+  });
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/compendium/groups")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(create_body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let mut created: serde_json::Value =
+    serde_json::from_str(&read_body(create).await).unwrap();
+  let id = created["id"].as_str().unwrap().to_string();
+  let original_created_at = created["created_at"].as_i64().unwrap();
+
+  // Bump the name + change initiative to shared_manual.  Send a
+  // bogus created_at to confirm the server overrides it.
+  created["name"] = serde_json::json!("Restless Skeletons");
+  created["initiative_mode"] =
+    serde_json::json!({ "type": "shared_manual", "value": 12 });
+  created["created_at"] = serde_json::json!(0);
+
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri(format!("/api/compendium/groups/{id}"))
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(created.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+  let updated: serde_json::Value =
+    serde_json::from_str(&read_body(put).await).unwrap();
+  assert_eq!(updated["name"], "Restless Skeletons");
+  assert_eq!(updated["initiative_mode"]["type"], "shared_manual");
+  assert_eq!(updated["initiative_mode"]["value"], 12);
+  assert_eq!(updated["created_at"].as_i64().unwrap(), original_created_at);
+  assert!(updated["updated_at"].as_i64().unwrap() >= original_created_at);
+}
+
+#[tokio::test]
+async fn test_compendium_groups_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+
+  let alice_cookie = register_and_get_cookie(&app).await;
+  let bob_cookie = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice creates a group.
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/compendium/groups")
+        .header("content-type", "application/json")
+        .header("cookie", &alice_cookie)
+        .body(Body::from(
+          r#"{"name":"Alice's Crew","initiative_mode":{"type":"each_rolls"},"entries":[]}"#,
+        ))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(create.status(), StatusCode::CREATED);
+
+  // Bob sees an empty list.
+  let bob_list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/compendium/groups")
+        .header("cookie", &bob_cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(read_body(bob_list).await.trim(), "[]");
 }

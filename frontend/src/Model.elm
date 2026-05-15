@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, duplicateLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -48,6 +48,7 @@ import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi
 import Ui.Condition exposing (ConditionUi)
 import Ui.Dice exposing (DiceUi)
 import Ui.Duplicate exposing (DuplicateUi)
+import Ui.GroupEdit exposing (GroupEditUi)
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
@@ -111,6 +112,7 @@ type Modal
     | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
+    | ModalGroupEdit GroupEditUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -166,6 +168,20 @@ duplicateLens =
                 _ ->
                     Nothing
     , wrap = ModalDuplicate
+    }
+
+
+groupEditLens : ModalLens GroupEditUi
+groupEditLens =
+    { extract =
+        \m ->
+            case m of
+                ModalGroupEdit ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalGroupEdit
     }
 
 

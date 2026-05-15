@@ -12,13 +12,17 @@ module View.Tooltips exposing
     , chipRollSave
     , clear
     , clickToEdit
+    , compendiumAddSelected
     , compendiumAddToEncounter
     , compendiumAddedFilterOff
     , compendiumAddedFilterOn
     , compendiumClear
     , compendiumClearSelectedNone
     , compendiumClearSelectedReady
+    , compendiumCreateGroup
+    , compendiumCreateGroupFromSelected
     , compendiumDelete
+    , compendiumDeleteSelected
     , compendiumDuplicate
     , compendiumEdit
     , compendiumEditDeleteCreature
@@ -28,6 +32,11 @@ module View.Tooltips exposing
     , compendiumEditRemoveSkill
     , compendiumExport
     , compendiumExportDirty
+    , compendiumGroupAdd
+    , compendiumGroupDelete
+    , compendiumGroupEdit
+    , compendiumGroupsHide
+    , compendiumGroupsShow
     , compendiumImport
     , compendiumInEncounter
     , compendiumInstanceCount
@@ -605,6 +614,11 @@ compendiumAddToEncounter =
     "Roll initiative and add to the encounter"
 
 
+compendiumAddSelected : String
+compendiumAddSelected =
+    "Roll initiative for every checked creature and add them all"
+
+
 compendiumEdit : String
 compendiumEdit =
     "Edit this creature"
@@ -618,6 +632,46 @@ compendiumDuplicate =
 compendiumDelete : String
 compendiumDelete =
     "Delete this creature from the compendium"
+
+
+compendiumDeleteSelected : String
+compendiumDeleteSelected =
+    "Delete every checked creature from the compendium"
+
+
+compendiumCreateGroup : String
+compendiumCreateGroup =
+    "Bundle creatures into a Group that adds to the encounter as a whole"
+
+
+compendiumCreateGroupFromSelected : String
+compendiumCreateGroupFromSelected =
+    "Bundle the checked creatures into a new Group"
+
+
+compendiumGroupsShow : String
+compendiumGroupsShow =
+    "Show groups in the compendium list"
+
+
+compendiumGroupsHide : String
+compendiumGroupsHide =
+    "Hide groups from the compendium list"
+
+
+compendiumGroupAdd : String
+compendiumGroupAdd =
+    "Add every creature in this group to the encounter at once"
+
+
+compendiumGroupEdit : String
+compendiumGroupEdit =
+    "Edit this group"
+
+
+compendiumGroupDelete : String
+compendiumGroupDelete =
+    "Delete this group from the compendium"
 
 
 compendiumNewCreature : String

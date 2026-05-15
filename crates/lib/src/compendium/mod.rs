@@ -9,7 +9,9 @@
 //! `JsonFileStore<Vec<Creature>>` from this crate's
 //! `json_file_store` module.
 
+pub mod group;
 pub mod open5e;
 pub mod types;
 
+pub use group::{Group, GroupDraft, GroupEntry, InitiativeMode, MinionType};
 pub use types::*;
