@@ -149,7 +149,8 @@
       "Bash(PATH=/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:__TRACKED_VAR__ /nix/store/1kyg3qgpskvhf5q4c36ymp02zfrdzhp6-elm-test-0.19.1-revision17/bin/elm-test --report json)",
       "Bash(PATH=/nix/store/7f5396wm36j206r3kmj57lkzm1pvfgcq-rust-default-1.93.0/bin:__TRACKED_VAR__ cargo clippy --workspace --all-targets)",
       "Bash(PATH=/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/7f5396wm36j206r3kmj57lkzm1pvfgcq-rust-default-1.93.0/bin:__TRACKED_VAR__ git commit -m ' *)",
-      "Bash(PATH=/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/7f5396wm36j206r3kmj57lkzm1pvfgcq-rust-default-1.93.0/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:__TRACKED_VAR__ git commit -m ' *)"
+      "Bash(PATH=/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/7f5396wm36j206r3kmj57lkzm1pvfgcq-rust-default-1.93.0/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:__TRACKED_VAR__ git commit -m ' *)",
+      "Bash(PATH=/nix/store/r44bjvyqldv6ndlj1jlv6ixm258slwk3-elm-format-0.8.8/bin:/nix/store/k28cghl11pqn21vf2lp6ha212zvx0p5s-elm-0.19.1/bin:/nix/store/7f5396wm36j206r3kmj57lkzm1pvfgcq-rust-default-1.93.0/bin:/nix/store/xcnb40li3bqgcq30spjl2kf96m9pp3n2-prettier-3.6.2/bin:/nix/store/77q87sh9x1n92m383nkxsk9yw5hyfmrl-treefmt-2.4.0/bin:__TRACKED_VAR__ git add .github/dependabot.yml)"
     ],
     "deny": [
       "Bash(sudo *)",

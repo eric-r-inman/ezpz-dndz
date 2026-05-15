@@ -62,6 +62,13 @@ view _ _ user =
             [ a [ href "/" ] [ text "Encounter" ]
             , a [ href "/me" ] [ text "Me" ]
             , a [ href "/scalar" ] [ text "API" ]
+            , button
+                [ class "app-bar__card-editor"
+                , type_ "button"
+                , onClick CardEditorOpen
+                , Tooltips.attr Tooltips.appBarCardEditor
+                ]
+                [ text "🎨 Customize card" ]
             , span [ class "app-bar__user" ] [ text user.displayName ]
             , button
                 [ class "app-bar__logout"

@@ -2318,6 +2318,501 @@ body {
   width: calc(100% - 32px);
 }
 
+/* ── Card Editor modal ─────────────────────────────────────────────── */
+.modal--card-editor {
+  --modal-max-w: 1100px;
+  height: calc(100vh - 32px);
+  width: calc(100% - 32px);
+}
+
+.card-editor__banner {
+  margin: 0;
+  padding: 8px 18px;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-editor__columns {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.card-editor__pane {
+  padding: 16px 18px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.card-editor__pane--editor {
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.card-editor__pane--preview {
+  background: var(--color-surface-2);
+}
+
+.card-editor__label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Queue view picker (List / Grid) */
+.card-editor__queue-view {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-editor__queue-view-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.card-editor__queue-view-btn {
+  appearance: none;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: none;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.card-editor__queue-view-btn + .card-editor__queue-view-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.card-editor__queue-view-btn--active {
+  background: var(--color-blue);
+  color: white;
+}
+
+/* Rows list */
+.card-editor__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card-editor__empty {
+  margin: 0;
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.card-editor__row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.card-editor__row--focused {
+  border-color: var(--color-accent, #4a90e2);
+  box-shadow: 0 0 0 2px var(--color-accent-soft, rgba(74, 144, 226, 0.12));
+}
+
+.card-editor__row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.card-editor__row-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-width: 60px;
+}
+
+.card-editor__alignment {
+  flex: 0 1 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.card-editor__row-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.card-editor__row-action {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+}
+
+.card-editor__row-empty {
+  margin: 6px 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Widget chips */
+.card-editor__widget-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.card-editor__widget-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.card-editor__widget-remove {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.card-editor__widget-remove:hover {
+  color: var(--color-danger, #ff6b6b);
+}
+
+.card-editor__widget-picker-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.card-editor__row-footer {
+  display: flex;
+  gap: 8px;
+}
+
+/* Preview pane */
+.card-editor__preview-queue {
+  margin-top: 8px;
+}
+
+.card-editor__preview-queue--list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-editor__preview-queue--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+
+.card-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.card-preview__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-preview__row--align-left {
+  justify-content: flex-start;
+}
+
+.card-preview__row--align-center {
+  justify-content: center;
+}
+
+.card-preview__row--align-right {
+  justify-content: flex-end;
+}
+
+.card-preview__row--align-space-between {
+  justify-content: space-between;
+}
+
+.card-preview__name {
+  font-weight: 700;
+}
+
+.card-preview__ac,
+.card-preview__initiative {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-preview__hp {
+  font-variant-numeric: tabular-nums;
+}
+
+.card-preview__hp-current {
+  color: var(--color-heal, #3cb455);
+  font-weight: 600;
+}
+
+.card-preview__hp-sep {
+  color: var(--color-text-muted);
+}
+
+.card-preview__hp-max {
+  color: var(--color-text-muted);
+}
+
+.card-preview__temp {
+  color: var(--color-temp, #4a90e2);
+  font-weight: 600;
+}
+
+.card-preview__chip {
+  display: inline-block;
+  padding: 1px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.card-preview__chip--condition {
+  background: var(--color-condition-soft, rgba(255, 200, 100, 0.18));
+}
+
+.card-preview__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.card-preview__toggle-glyph {
+  font-size: 1rem;
+}
+
+.card-preview__btn {
+  appearance: none;
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: default;
+  color: white;
+}
+
+.card-preview__btn--damage {
+  background: var(--color-damage, #d63b3b);
+}
+
+.card-preview__btn--heal {
+  background: var(--color-heal, #3cb455);
+}
+
+.card-preview__btn--temp {
+  background: var(--color-temp, #4a90e2);
+}
+
+.card-preview__btn--condition {
+  background: var(--color-condition, #b07d2b);
+}
+
+.card-preview__memo,
+.card-preview__timer,
+.card-preview__bloodied,
+.card-preview__race {
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.card-preview__placeholder {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.card-preview__placeholder-label {
+  font-weight: 600;
+}
+
+.card-preview__placeholder-hint {
+  font-style: italic;
+}
+
+/* Inline error banner shown after a failed HTTP cycle. */
+.card-editor__error {
+  margin: 0;
+  padding: 8px 18px;
+  color: var(--color-danger, #ff6b6b);
+  background: var(--color-danger-soft, rgba(255, 107, 107, 0.08));
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.88rem;
+}
+
+/* Saved layouts section.  Sits above the two-column editor so
+   load / save controls aren't competing for space inside either
+   pane. */
+.card-editor__saved {
+  padding: 10px 18px 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.card-editor__saved-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.card-editor__saved-header .card-editor__label {
+  margin-bottom: 0;
+  flex: 0 0 auto;
+}
+
+.card-editor__save-as {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.card-editor__save-as-input {
+  width: 220px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.card-editor__saved-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.card-editor__saved-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-editor__saved-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-surface-2);
+}
+
+.card-editor__saved-name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.card-editor__saved-name:hover:not(:disabled) {
+  background: var(--color-accent-soft, rgba(74, 144, 226, 0.12));
+}
+
+.card-editor__saved-name:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.card-editor__saved-row .icon-btn {
+  border: none;
+  border-left: 1px solid var(--color-border);
+  border-radius: 0;
+  padding: 4px 8px;
+}
+
+/* Footer (Save / Close) */
+.card-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* AppBar entry point */
+.app-bar__card-editor {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.app-bar__card-editor:hover {
+  background: var(--color-surface-2);
+}
+
 /* ── Group-edit modal form ─────────────────────────────────────────── */
 .group-edit__row {
   display: flex;

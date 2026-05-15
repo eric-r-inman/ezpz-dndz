@@ -1,5 +1,6 @@
 module View.Tooltips exposing
     ( addTempHp
+    , appBarCardEditor
     , appBarSettings
     , applyCondition
     , armorClass
@@ -189,6 +190,11 @@ attr s =
 appBarSettings : String
 appBarSettings =
     "Settings"
+
+
+appBarCardEditor : String
+appBarCardEditor =
+    "Customize the creature card layout (prototype)"
 
 
 

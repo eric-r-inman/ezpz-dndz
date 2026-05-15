@@ -1,3 +1,4 @@
+pub mod card_editor;
 pub mod compendium;
 pub mod config;
 pub mod dice;

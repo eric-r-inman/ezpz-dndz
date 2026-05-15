@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -38,12 +38,15 @@ user retype the filename.
 
 import Auth exposing (AuthState)
 import Browser.Navigation as Nav
+import Card.Layout exposing (CardLayout, QueueView)
+import Card.Wire as CardWire
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
 import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
+import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition exposing (ConditionUi)
 import Ui.Dice exposing (DiceUi)
@@ -113,6 +116,7 @@ type Modal
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
     | ModalGroupEdit GroupEditUi
+    | ModalCardEditor CardEditorUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -182,6 +186,20 @@ groupEditLens =
                 _ ->
                     Nothing
     , wrap = ModalGroupEdit
+    }
+
+
+cardEditorLens : ModalLens CardEditorUi
+cardEditorLens =
+    { extract =
+        \m ->
+            case m of
+                ModalCardEditor ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalCardEditor
     }
 
 
@@ -365,6 +383,18 @@ type alias Model =
     , rollPopups : List RollPopup
     , nextRollPopupId : Int
     , preferences : Preferences
+
+    -- Live creature-card layout + queue arrangement.  Bootstraps
+    -- from the bundled default; the boot fetch of `/api/card-layouts`
+    -- populates [`savedCardLayouts`](#Model) but doesn't pick one —
+    -- the user picks which saved layout to load from the editor.
+    , cardLayout : CardLayout
+    , queueView : QueueView
+
+    -- Metadata for the user's server-side saved card layouts,
+    -- fetched on boot via `Card.Wire.fetchList`.  Used by
+    -- the card-editor modal's "Saved layouts" panel.
+    , savedCardLayouts : List CardWire.SavedLayoutMeta
     }
 
 

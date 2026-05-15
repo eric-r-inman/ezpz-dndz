@@ -32,6 +32,7 @@ stay in `Main.elm` for now and are scheduled for per-feature
 import Auth
 import Browser
 import Browser.Dom
+import Card.Wire
 import Compendium
 import Compendium.Group
 import Compendium.Wire
@@ -476,6 +477,29 @@ type Msg
     | CompendiumGroupCreated (Result Http.Error Compendium.Group.Group)
     | CompendiumGroupUpdated (Result Http.Error Compendium.Group.Group)
     | CompendiumGroupDeleted String (Result Http.Error ())
+      -- Card-editor (creature-card customization) modal lifecycle.
+    | CardEditorOpen
+    | CardEditorClose
+    | CardEditorSave
+    | CardEditorReset
+    | CardEditorFocusRow Int
+    | CardEditorRowAdd
+    | CardEditorRowRemove Int
+    | CardEditorRowMoveUp Int
+    | CardEditorRowMoveDown Int
+    | CardEditorRowAlignmentSet Int String
+    | CardEditorWidgetAdd Int String
+    | CardEditorWidgetRemove Int Int
+    | CardEditorQueueViewSet String
+      -- Saved-layout persistence (`/api/card-layouts`).
+    | CardEditorLayoutNameChanged String
+    | CardEditorSaveAs
+    | CardEditorLoad String
+    | CardEditorDelete String
+    | CardEditorLayoutsLoaded (Result Http.Error (List Card.Wire.SavedLayoutMeta))
+    | CardEditorLayoutFetched (Result Http.Error Card.Wire.SavedLayout)
+    | CardEditorLayoutSaved (Result Http.Error Card.Wire.SavedLayout)
+    | CardEditorLayoutDeleted String (Result Http.Error ())
       -- Group-edit modal lifecycle.
     | GroupEditClose
     | GroupEditNameChanged String

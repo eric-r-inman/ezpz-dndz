@@ -5,6 +5,8 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
+import Card.Layout
+import Card.Wire
 import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
@@ -67,6 +69,7 @@ import Ui.Login as LoginUi
 import Ui.Toast
 import Update.AbilitySave
 import Update.Auth
+import Update.CardEditor
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
 import Update.Compendium.Browser
@@ -101,6 +104,7 @@ import View.Card
 import View.Login
 import View.Modal
 import View.Modal.AbilitySave
+import View.Modal.CardEditor
 import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
@@ -369,6 +373,9 @@ init flags url key =
       , rollPopups = []
       , nextRollPopupId = 0
       , preferences = prefs
+      , cardLayout = Card.Layout.defaultLayout
+      , queueView = Card.Layout.ListView
+      , savedCardLayouts = []
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
@@ -380,6 +387,7 @@ init flags url key =
         , Effects.fetchDiceHistory
         , Compendium.Wire.fetchAll CompendiumLoaded
         , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
+        , Card.Wire.fetchList CardEditorLayoutsLoaded
         , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
@@ -890,6 +898,69 @@ updateInner msg model =
 
         CompendiumGroupDeleted groupId result ->
             Update.Compendium.Group.deleteResponse groupId result model
+
+        CardEditorOpen ->
+            Update.CardEditor.open model
+
+        CardEditorClose ->
+            Update.CardEditor.close model
+
+        CardEditorSave ->
+            Update.CardEditor.save model
+
+        CardEditorReset ->
+            Update.CardEditor.reset model
+
+        CardEditorFocusRow idx ->
+            Update.CardEditor.focusRow idx model
+
+        CardEditorRowAdd ->
+            Update.CardEditor.rowAdd model
+
+        CardEditorRowRemove idx ->
+            Update.CardEditor.rowRemove idx model
+
+        CardEditorRowMoveUp idx ->
+            Update.CardEditor.rowMoveUp idx model
+
+        CardEditorRowMoveDown idx ->
+            Update.CardEditor.rowMoveDown idx model
+
+        CardEditorRowAlignmentSet idx key ->
+            Update.CardEditor.rowAlignmentSet idx key model
+
+        CardEditorWidgetAdd idx key ->
+            Update.CardEditor.widgetAdd idx key model
+
+        CardEditorWidgetRemove rowIdx widgetIdx ->
+            Update.CardEditor.widgetRemove rowIdx widgetIdx model
+
+        CardEditorQueueViewSet key ->
+            Update.CardEditor.queueViewSet key model
+
+        CardEditorLayoutNameChanged raw ->
+            Update.CardEditor.saveNameChanged raw model
+
+        CardEditorSaveAs ->
+            Update.CardEditor.saveAs model
+
+        CardEditorLoad name ->
+            Update.CardEditor.load name model
+
+        CardEditorDelete name ->
+            Update.CardEditor.delete name model
+
+        CardEditorLayoutsLoaded result ->
+            Update.CardEditor.layoutsLoaded result model
+
+        CardEditorLayoutFetched result ->
+            Update.CardEditor.layoutFetched result model
+
+        CardEditorLayoutSaved result ->
+            Update.CardEditor.layoutSaved result model
+
+        CardEditorLayoutDeleted name result ->
+            Update.CardEditor.layoutDeleted name result model
 
         CompendiumEditNew ->
             Update.Compendium.Edit.new model
@@ -1494,6 +1565,7 @@ view model =
                     , View.Modal.QuickAdd.view model
                     , View.Modal.Duplicate.view model
                     , View.Modal.GroupEdit.view model
+                    , View.Modal.CardEditor.view model
                     , View.Toast.list model.toasts
                     , View.RollPopup.list model.rollPopups
                     , View.Audio.ringer model

@@ -18,7 +18,8 @@ use axum::{
   middleware, Router,
 };
 use ezpz_dndz_server::{
-  compendium, config::RuntimePaths, dice, encounters, users, web_base::AppState,
+  card_editor, compendium, config::RuntimePaths, dice, encounters, users,
+  web_base::AppState,
 };
 use rust_template_foundation::server::runner::{
   BaseServerState, ServerRunConfig,
@@ -38,6 +39,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     compendium: temp.path().join("compendium.json"),
     compendium_saves: temp.path().join("compendium-saves.json"),
     compendium_groups: temp.path().join("compendium-groups.json"),
+    card_layouts: temp.path().join("card-layouts.json"),
     encounter: temp.path().join("encounter.json"),
     encounter_saves: temp.path().join("encounter-saves.json"),
     users: temp.path().join("users.json"),
@@ -83,6 +85,7 @@ fn build_test_router(state: AppState) -> Router {
   let protected: ApiRouter<AppState> = ApiRouter::new()
     .merge(dice::router())
     .merge(compendium::router())
+    .merge(card_editor::router())
     .merge(encounters::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
@@ -1049,6 +1052,186 @@ async fn test_compendium_groups_update_preserves_created_at() {
   assert_eq!(updated["initiative_mode"]["value"], 12);
   assert_eq!(updated["created_at"].as_i64().unwrap(), original_created_at);
   assert!(updated["updated_at"].as_i64().unwrap() >= original_created_at);
+}
+
+// ── card layouts ────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn test_card_layouts_create_get_list_delete_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  // Empty list on a fresh user.
+  let list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/card-layouts")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(list.status(), StatusCode::OK);
+  assert_eq!(read_body(list).await.trim(), "[]");
+
+  // Save one.  The body is opaque JSON — server doesn't interpret.
+  let layout_body = serde_json::json!({
+      "rows": [
+          { "widgets": ["name", "hit_points"], "alignment": "left" },
+          { "widgets": ["conditions"],         "alignment": "center" }
+      ],
+      "queue_view": "list"
+  });
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/card-layouts/Compact")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(layout_body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(create.status(), StatusCode::OK);
+  let created: serde_json::Value =
+    serde_json::from_str(&read_body(create).await).unwrap();
+  assert_eq!(created["name"], "Compact");
+  assert_eq!(created["body"]["rows"].as_array().unwrap().len(), 2);
+  assert!(created["created_at"].as_i64().unwrap() > 0);
+
+  // Re-PUT without overwrite=true should 409.
+  let conflict = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/card-layouts/Compact")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(layout_body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(conflict.status(), StatusCode::CONFLICT);
+
+  // With overwrite=true the same call succeeds.
+  let overwrite_body = serde_json::json!({ "rows": [], "queue_view": "grid" });
+  let overwrite = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/card-layouts/Compact?overwrite=true")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(overwrite_body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(overwrite.status(), StatusCode::OK);
+  let overwritten: serde_json::Value =
+    serde_json::from_str(&read_body(overwrite).await).unwrap();
+  assert_eq!(overwritten["body"]["queue_view"], "grid");
+  assert_eq!(
+    overwritten["created_at"].as_i64().unwrap(),
+    created["created_at"].as_i64().unwrap(),
+    "overwrite must preserve created_at"
+  );
+
+  // List metadata.
+  let list2 = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/card-layouts")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let listed: serde_json::Value =
+    serde_json::from_str(&read_body(list2).await).unwrap();
+  assert_eq!(listed.as_array().unwrap().len(), 1);
+  assert_eq!(listed[0]["name"], "Compact");
+
+  // DELETE removes it, and a follow-up GET is 404.
+  let deleted = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("DELETE")
+        .uri("/api/card-layouts/Compact")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(deleted.status(), StatusCode::NO_CONTENT);
+
+  let after = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/card-layouts/Compact")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(after.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_card_layouts_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice_cookie = register_and_get_cookie(&app).await;
+  let bob_cookie = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice saves a layout.
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/card-layouts/Mine")
+        .header("content-type", "application/json")
+        .header("cookie", &alice_cookie)
+        .body(Body::from(r#"{"rows":[],"queue_view":"list"}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(create.status(), StatusCode::OK);
+
+  // Bob sees an empty list.
+  let bob_list = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("GET")
+        .uri("/api/card-layouts")
+        .header("cookie", &bob_cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(read_body(bob_list).await.trim(), "[]");
 }
 
 #[tokio::test]
