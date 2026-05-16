@@ -15,3 +15,23 @@ pub mod types;
 
 pub use group::{Group, GroupDraft, GroupEntry, InitiativeMode, MinionType};
 pub use types::*;
+
+use serde::{Deserialize, Serialize};
+
+/// Combined export bundle — what a "save my compendium" produces.
+///
+/// Wraps the shared bestiary (`creatures`) and the *caller's*
+/// per-user groups (`groups`) into a single JSON object so a
+/// device download / server snapshot / wholesale import round-
+/// trips both halves of a user's compendium customization.
+///
+/// Backward compatibility on import: the server accepts either
+/// this bundle shape OR a bare `Vec<Creature>` for older exports
+/// (see `crates/server/src/compendium/mod.rs::import_compendium`).
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct CompendiumExport {
+  #[serde(default)]
+  pub creatures: Vec<Creature>,
+  #[serde(default)]
+  pub groups: Vec<Group>,
+}

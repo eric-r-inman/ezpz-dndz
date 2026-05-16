@@ -152,15 +152,20 @@ Click once on Reset / Import to set the pending action +
 inline banner; click "Confirm" in the banner to fire the
 actual Cmd.
 
-`PendingImport` carries the parsed creature list so the
-confirmation re-uses it without re-reading the file.
+`PendingImport` carries the parsed creature list and the
+caller's groups (if the export file included them) so the
+confirmation banner re-uses both without re-reading the file.
+The third field is the creature count we surface in the
+confirm message; groups don't get their own count line because
+they're a secondary detail.
+
 `PendingDelete` carries `(creatureId, displayName)` for the
 confirmation message.
 
 -}
 type PendingAction
     = PendingReset
-    | PendingImport (List Compendium.Creature) Int
+    | PendingImport (List Compendium.Creature) (List Group) Int
     | PendingDelete String String
 
 

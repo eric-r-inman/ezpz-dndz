@@ -97,30 +97,116 @@ async fn delete_creature(
   }
 }
 
-async fn export_compendium(State(state): State<AppState>) -> Response {
-  Json(state.compendium_store.list().await).into_response()
+/// Full-compendium export payload: shared creatures plus the
+/// caller's per-user groups.  Wire shape is
+/// `{ "creatures": [...], "groups": [...] }`.  The bare
+/// `Vec<Creature>` shape that earlier exports produced is still
+/// accepted on import as a legacy fallback so the older download
+/// files keep working — see `import_compendium`.
+async fn export_compendium(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  let creatures = state.compendium_store.list().await;
+  let groups = state.compendium_groups.list(&user.id).await;
+  Json(serde_json::json!({
+    "creatures": creatures,
+    "groups": groups,
+  }))
+  .into_response()
 }
 
+/// Import a compendium.  Accepts two body shapes:
+///
+/// - **Legacy** (`[creature, creature, ...]`) — bare array of
+///   creatures.  Replaces the shared compendium; does not touch
+///   groups.  Used by the in-app "Clear" operations
+///   (`clearAll` / `clearSelected`) which only care about
+///   creatures.
+/// - **Full** (`{ "creatures": [...], "groups": [...]? }`) —
+///   replaces both the shared compendium and the *caller's*
+///   group list.  Used when the user uploads a JSON export that
+///   `export_compendium` produced.  `groups` is optional; absent
+///   keeps existing groups in place.
 async fn import_compendium(
   State(state): State<AppState>,
-  Json(creatures): Json<Vec<Creature>>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Json(body): Json<serde_json::Value>,
 ) -> Response {
-  let count = creatures.len();
-  match state.compendium_store.replace_all(creatures).await {
-    Ok(()) => Json(serde_json::json!({
-      "imported": count,
-      "replaced": true,
-    }))
-    .into_response(),
-    Err(e) => e.into_response(),
+  #[derive(serde::Deserialize)]
+  struct FullBody {
+    creatures: Vec<Creature>,
+    #[serde(default)]
+    groups: Option<Vec<ezpz_dndz_lib::compendium::Group>>,
   }
+
+  let (creatures, groups) = match body {
+    serde_json::Value::Array(_) => {
+      match serde_json::from_value::<Vec<Creature>>(body) {
+        Ok(c) => (c, None),
+        Err(_) => return import_bad_body(),
+      }
+    }
+    serde_json::Value::Object(_) => {
+      match serde_json::from_value::<FullBody>(body) {
+        Ok(b) => (b.creatures, b.groups),
+        Err(_) => return import_bad_body(),
+      }
+    }
+    _ => return import_bad_body(),
+  };
+
+  let count = creatures.len();
+  if let Err(e) = state.compendium_store.replace_all(creatures).await {
+    return e.into_response();
+  }
+  if let Some(g) = groups {
+    if let Err(e) = state.compendium_groups.replace_for_user(&user.id, g).await
+    {
+      return e.into_response();
+    }
+  }
+  Json(serde_json::json!({
+    "imported": count,
+    "replaced": true,
+  }))
+  .into_response()
 }
 
-async fn reset_compendium(State(state): State<AppState>) -> Response {
-  match state.compendium_store.reset_to_bundled().await {
-    Ok(creatures) => Json(creatures).into_response(),
-    Err(e) => e.into_response(),
+fn import_bad_body() -> Response {
+  (
+    StatusCode::BAD_REQUEST,
+    Json(serde_json::json!({
+      "error":
+        "Import body must be either a JSON array of creatures \
+         or an object with \"creatures\" (and optional \"groups\")."
+    })),
+  )
+    .into_response()
+}
+
+/// Reset to the bundled creature set AND wipe the caller's
+/// groups.  Groups reference creature ids that may have been
+/// removed by the reset, so leaving them behind would orphan
+/// references; clearing them is the safer baseline.  Other users'
+/// groups are untouched (creatures are shared but groups are
+/// per-user).
+async fn reset_compendium(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  let creatures = match state.compendium_store.reset_to_bundled().await {
+    Ok(c) => c,
+    Err(e) => return e.into_response(),
+  };
+  if let Err(e) = state
+    .compendium_groups
+    .replace_for_user(&user.id, Vec::new())
+    .await
+  {
+    return e.into_response();
   }
+  Json(creatures).into_response()
 }
 
 // ── named-save handlers ──────────────────────────────────────────────────────

@@ -85,12 +85,32 @@ bulkBanner ui =
                 , extra = Nothing
                 }
 
-        ( Just (PendingImport _ count), _ ) ->
+        ( Just (PendingImport _ groups count), _ ) ->
+            let
+                groupNote =
+                    case List.length groups of
+                        0 ->
+                            ""
+
+                        n ->
+                            " (plus "
+                                ++ String.fromInt n
+                                ++ " group"
+                                ++ (if n == 1 then
+                                        ""
+
+                                    else
+                                        "s"
+                                   )
+                                ++ ")"
+            in
             confirmBanner
                 { message =
                     "Import "
                         ++ String.fromInt count
-                        ++ " creatures? This REPLACES the entire current library."
+                        ++ " creatures"
+                        ++ groupNote
+                        ++ "? This REPLACES the entire current library."
                 , confirmLabel = "Replace library"
                 , danger = True
                 , busy = ui.bulkBusy

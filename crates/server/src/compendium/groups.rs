@@ -130,6 +130,26 @@ impl CompendiumGroupStore {
     })
   }
 
+  /// Replace this user's entire group list with `groups`.  Used by
+  /// the reset-to-bundled path (empty `groups`) and by full-
+  /// compendium import (groups bundled with the creature list in
+  /// the export file).  Server preserves nothing — what you send
+  /// is what's on disk for this user.
+  pub async fn replace_for_user(
+    &self,
+    user_id: &UserId,
+    groups: Vec<Group>,
+  ) -> Result<(), CompendiumStoreError> {
+    let user_id_owned = user_id.clone();
+    self
+      .inner
+      .mutate(move |all| {
+        all.insert(user_id_owned, groups);
+      })
+      .await?;
+    Ok(())
+  }
+
   pub async fn remove(
     &self,
     user_id: &UserId,

@@ -21,7 +21,10 @@ queued; `pendingConfirm` dispatches to the right Cmd.
 -}
 
 import Compendium
+import Compendium.Group exposing (Group)
+import Compendium.GroupWire
 import Compendium.Wire
+import Dict
 import File exposing (File)
 import File.Select
 import Http
@@ -60,18 +63,46 @@ importFileRead raw model =
     ( withCompendium (importFileLoaded raw) model, Cmd.none )
 
 
-{-| Decode the file the user picked. On parse success we set the
-pending action and surface an inline confirmation banner so the GM
-gets one final "yes, replace everything" before the wire call
-fires. On parse failure we keep the modal open and show the
+{-| Decode the file the user picked. Two shapes accepted:
+
+  - **New** — `{ "creatures": [...], "groups": [...] }` produced
+    by today's `Update.SaveCompendium.downloadCompendium`. The
+    `groups` field is optional so a file authored before the
+    Group feature still imports.
+  - **Legacy** — a bare `[creature, ...]` array from earlier
+    exports.
+
+The two parsers are tried in order via `Decode.oneOf`; whichever
+matches sets the `PendingImport` ready for the confirmation
+banner. On parse failure we keep the modal open and show the
 error.
+
 -}
 importFileLoaded : String -> CompendiumUi -> CompendiumUi
 importFileLoaded raw ui =
-    case Decode.decodeString (Decode.list Compendium.Wire.decodeCreature) raw of
-        Ok creatures ->
+    let
+        fullDecoder =
+            Decode.map2 Tuple.pair
+                (Decode.field "creatures"
+                    (Decode.list Compendium.Wire.decodeCreature)
+                )
+                (Decode.oneOf
+                    [ Decode.field "groups"
+                        (Decode.list Compendium.GroupWire.decodeGroup)
+                    , Decode.succeed []
+                    ]
+                )
+
+        legacyDecoder =
+            Decode.list Compendium.Wire.decodeCreature
+                |> Decode.map (\cs -> ( cs, [] ))
+    in
+    case Decode.decodeString (Decode.oneOf [ fullDecoder, legacyDecoder ]) raw of
+        Ok ( creatures, groups ) ->
             { ui
-                | pending = Just (PendingImport creatures (List.length creatures))
+                | pending =
+                    Just
+                        (PendingImport creatures groups (List.length creatures))
                 , bulkError = Nothing
             }
 
@@ -120,11 +151,11 @@ pendingConfirm model =
             , resetCmd
             )
 
-        Just (PendingImport creatures _) ->
+        Just (PendingImport creatures groups _) ->
             ( withCompendium
                 (\ui -> { ui | bulkBusy = True, pending = Nothing })
                 model
-            , importCmd creatures
+            , importCmd creatures groups
             )
 
         Just (PendingDelete id _) ->
@@ -162,35 +193,46 @@ resetCmd =
         }
 
 
-importCmd : List Compendium.Creature -> Cmd Msg
-importCmd creatures =
-    importLikeCmd CompendiumImportResponse creatures
+{-| Import-from-file path. Sends the **full** body shape
+(`{ creatures, groups }`) so both the shared bestiary and the
+caller's groups get replaced server-side in one wire call.
+-}
+importCmd : List Compendium.Creature -> List Compendium.Group.Group -> Cmd Msg
+importCmd creatures groups =
+    Http.post
+        { url = "/api/compendium/import"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "creatures"
+                      , Encode.list Compendium.Wire.encodeCreature creatures
+                      )
+                    , ( "groups"
+                      , Encode.list Compendium.GroupWire.encodeGroup groups
+                      )
+                    ]
+                )
+        , expect =
+            Http.expectJson CompendiumImportResponse
+                (Decode.field "imported" Decode.int)
+        }
 
 
-{-| Same wire shape as `importCmd` but tagged so the response
-lands in `clearResponse` rather than `importResponse`. Both
-hit `POST /api/compendium/import` (which the server treats as a
-wholesale replace) but the frontend semantics differ: a Clear
-should leave the library in a "dirty" state since the user has
-discarded creatures, while a regular Import-from-file is a
-clean import that should clear the dirty flag.
+{-| Clear-All / Clear-Selected wire path. Sends the **legacy**
+bare-array body shape so the server's `import_compendium`
+handler keeps groups untouched — a clear is about creatures
+only. The response shape (`{ imported }`) is the same as
+`importCmd`, but the Msg is tagged so the frontend dirty-flag
+semantics differ: Clear keeps dirty=True, file-import clears it.
 -}
 clearCmd : List Compendium.Creature -> Cmd Msg
 clearCmd creatures =
-    importLikeCmd CompendiumClearResponse creatures
-
-
-importLikeCmd :
-    (Result Http.Error Int -> Msg)
-    -> List Compendium.Creature
-    -> Cmd Msg
-importLikeCmd toMsg creatures =
     Http.post
         { url = "/api/compendium/import"
         , body =
             Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
         , expect =
-            Http.expectJson toMsg
+            Http.expectJson CompendiumClearResponse
                 (Decode.field "imported" Decode.int)
         }
 
@@ -299,6 +341,11 @@ importResponse result model =
             -- dirty flag clears.  Clear All / Clear Selected
             -- route through `clearResponse` instead, which keeps
             -- dirty=True since the GM just discarded creatures.
+            --
+            -- Refetch BOTH creatures AND groups — `importCmd`
+            -- sends the full body shape so the server may have
+            -- replaced the caller's groups along with the
+            -- creatures.
             withCompendium
                 (\ui ->
                     { ui
@@ -312,7 +359,11 @@ importResponse result model =
                 model
                 |> Update.Toast.pushWith ToastSuccess
                     ("Imported " ++ String.fromInt count ++ " creatures")
-                    (Compendium.Wire.fetchAll CompendiumLoaded)
+                    (Cmd.batch
+                        [ Compendium.Wire.fetchAll CompendiumLoaded
+                        , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
+                        ]
+                    )
 
 
 {-| Response handler for Clear All / Clear Selected. Same
@@ -371,6 +422,9 @@ resetResponse result model =
             -- Reset restores the bundled set; the library is
             -- back to its baseline so dirty clears, and any
             -- bulk-selection from before the reset is now stale.
+            -- The server also wipes the caller's groups (groups
+            -- reference creature ids that may be gone after the
+            -- reset), so clear them locally too.
             withCompendium
                 (\ui ->
                     { ui
@@ -378,6 +432,9 @@ resetResponse result model =
                         , selectedId = Nothing
                         , selectedIds = Set.empty
                         , compendiumDirty = False
+                        , groups = Dict.empty
+                        , expandedGroupIds = Set.empty
+                        , selectedGroupId = Nothing
                     }
                 )
                 model

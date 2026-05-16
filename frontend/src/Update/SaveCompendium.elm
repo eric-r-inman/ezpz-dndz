@@ -29,6 +29,8 @@ encounter Reset.
 -}
 
 import Compendium
+import Compendium.Group
+import Compendium.GroupWire
 import Compendium.Wire
 import File.Download
 import Http
@@ -144,12 +146,14 @@ submit model =
                             (SaveCompendiumPersistResponse trimmed)
                             { name = trimmed, overwrite = False }
                             (CompendiumUi.currentCreatures model.compendium)
+                            (CompendiumUi.groupsList model.compendium)
                         )
 
                     SaveDestinationDevice ->
                         ( { model | modal = Nothing }
                         , downloadCompendium trimmed
                             (CompendiumUi.currentCreatures model.compendium)
+                            (CompendiumUi.groupsList model.compendium)
                         )
 
         _ ->
@@ -157,11 +161,19 @@ submit model =
 
 
 {-| Encode the compendium and trigger a JSON download with the
-user's filename. Slash / backslash get sanitized so the user
-can't inadvertently navigate paths via the download filename.
+user's filename. Bundles the shared creature catalogue and the
+GM's per-user creature groups in a single object so the file
+round-trips both halves on import (the server's
+`/api/compendium/import` accepts this shape). Slash / backslash
+in the filename get sanitized so the user can't inadvertently
+navigate paths via the download filename.
 -}
-downloadCompendium : String -> List Compendium.Creature -> Cmd Msg
-downloadCompendium rawName creatures =
+downloadCompendium :
+    String
+    -> List Compendium.Creature
+    -> List Compendium.Group.Group
+    -> Cmd Msg
+downloadCompendium rawName creatures groups =
     let
         safe =
             rawName
@@ -169,7 +181,10 @@ downloadCompendium rawName creatures =
                 |> String.replace "\\" "_"
 
         body =
-            E.list Compendium.Wire.encodeCreature creatures
+            E.object
+                [ ( "creatures", E.list Compendium.Wire.encodeCreature creatures )
+                , ( "groups", E.list Compendium.GroupWire.encodeGroup groups )
+                ]
                 |> E.encode 2
     in
     File.Download.string (safe ++ ".json") "application/json" body
@@ -259,6 +274,7 @@ confirmConfirm model =
                         (SaveCompendiumPersistResponse name)
                         { name = name, overwrite = True }
                         (CompendiumUi.currentCreatures model.compendium)
+                        (CompendiumUi.groupsList model.compendium)
                     )
 
                 Just (ConfirmDelete _) ->
