@@ -80,6 +80,7 @@ import Update.Compendium.Edit
 import Update.Compendium.Group
 import Update.Compendium.Paste
 import Update.Condition
+import Update.CrCalculator
 import Update.DeathSave
 import Update.Dice
 import Update.Duplicate
@@ -113,6 +114,7 @@ import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
 import View.Modal.Condition
+import View.Modal.CrCalculator
 import View.Modal.Dice
 import View.Modal.Duplicate
 import View.Modal.GroupEdit
@@ -382,6 +384,8 @@ init flags url key =
       , savedCardLayouts = []
       , useCustomCardLayout = False
       , accountUi = Ui.Account.empty
+      , party = []
+      , nextPartyMemberId = 1
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
@@ -912,6 +916,24 @@ updateInner msg model =
             ( { model | useCustomCardLayout = not model.useCustomCardLayout }
             , Cmd.none
             )
+
+        CrCalculatorOpen ->
+            Update.CrCalculator.open model
+
+        CrCalculatorClose ->
+            Update.CrCalculator.close model
+
+        CrCalculatorScopeSet scope ->
+            Update.CrCalculator.scopeSet scope model
+
+        CrCalculatorPartyAdd ->
+            Update.CrCalculator.partyMemberAdd model
+
+        CrCalculatorPartyRemove memberId ->
+            Update.CrCalculator.partyMemberRemove memberId model
+
+        CrCalculatorPartyLevelSet memberId raw ->
+            Update.CrCalculator.partyMemberLevelSet memberId raw model
 
         CardEditorClose ->
             Update.CardEditor.close model
@@ -1607,6 +1629,7 @@ view model =
                     , View.Modal.Duplicate.view model
                     , View.Modal.GroupEdit.view model
                     , View.Modal.CardEditor.view model
+                    , View.Modal.CrCalculator.view model
                     , View.Toast.list model.toasts
                     , View.RollPopup.list model.rollPopups
                     , View.Audio.ringer model

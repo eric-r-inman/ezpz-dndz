@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -41,6 +41,7 @@ import Browser.Navigation as Nav
 import Card.Layout exposing (CardLayout, QueueView)
 import Card.Wire as CardWire
 import Encounter exposing (Encounter)
+import Encounter.Difficulty as Difficulty
 import Encounter.Xp exposing (XpScope)
 import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
@@ -50,6 +51,7 @@ import Ui.Account exposing (AccountUi)
 import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition exposing (ConditionUi)
+import Ui.CrCalculator exposing (CrCalculatorUi)
 import Ui.Dice exposing (DiceUi)
 import Ui.Duplicate exposing (DuplicateUi)
 import Ui.GroupEdit exposing (GroupEditUi)
@@ -118,6 +120,7 @@ type Modal
     | ModalDuplicate DuplicateUi
     | ModalGroupEdit GroupEditUi
     | ModalCardEditor CardEditorUi
+    | ModalCrCalculator CrCalculatorUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -201,6 +204,20 @@ cardEditorLens =
                 _ ->
                     Nothing
     , wrap = ModalCardEditor
+    }
+
+
+crCalculatorLens : ModalLens CrCalculatorUi
+crCalculatorLens =
+    { extract =
+        \m ->
+            case m of
+                ModalCrCalculator ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalCrCalculator
     }
 
 
@@ -409,6 +426,15 @@ type alias Model =
     -- *what the GM has typed into the profile / password forms
     -- on the Account page*.
     , accountUi : AccountUi
+
+    -- Player party — used by the CR Calculator modal to compute
+    -- the per-tier XP budgets the encounter is measured against.
+    -- Lives on Model (rather than only inside the calculator's
+    -- modal state) so edits persist across modal opens within a
+    -- session.  Backend persistence is a follow-up; the in-memory
+    -- shape will round-trip cleanly when added.
+    , party : List Difficulty.PartyMember
+    , nextPartyMemberId : Int
     }
 
 

@@ -663,6 +663,233 @@ body {
   color: var(--color-danger, #d63b3b);
 }
 
+/* ── CR Calculator (encounter-bar entry + modal) ──────────────────────── */
+.encounter-bar__difficulty {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 10px;
+  margin-left: 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.encounter-bar__difficulty:hover,
+.encounter-bar__difficulty:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.modal--cr-calculator {
+  --modal-max-w: 640px;
+  width: calc(100% - 32px);
+}
+
+.cr-calc__blurb {
+  margin: 0;
+  padding: 12px 18px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.cr-calc__section {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cr-calc__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cr-calc__section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.cr-calc__empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Party rows */
+.cr-calc__party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cr-calc__party-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cr-calc__party-index {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 48px;
+}
+
+.cr-calc__party-level-label {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.cr-calc__party-level {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.cr-calc__party-remove {
+  margin-left: auto;
+}
+
+/* Scope picker */
+.cr-calc__scope-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cr-calc__scope-btn {
+  appearance: none;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.cr-calc__scope-btn--active {
+  background: var(--color-accent, #4a90e2);
+  border-color: var(--color-accent, #4a90e2);
+  color: white;
+}
+
+/* Result panel */
+.cr-calc__result-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cr-calc__result-label {
+  font-weight: 600;
+}
+
+.cr-calc__result-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-accent, #4a90e2);
+  font-variant-numeric: tabular-nums;
+}
+
+.cr-calc__budget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cr-calc__budget-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.cr-calc__budget-tier {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.cr-calc__budget-amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Difficulty badge — colour-coded by bucket. */
+.cr-calc__difficulty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-border);
+}
+
+.cr-calc__difficulty-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cr-calc__difficulty-description {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.cr-calc__difficulty--trivial {
+  border-color: var(--color-text-muted);
+}
+
+.cr-calc__difficulty--low {
+  border-color: #3cb455;
+  background: rgba(60, 180, 85, 0.08);
+}
+
+.cr-calc__difficulty--moderate {
+  border-color: var(--color-accent, #4a90e2);
+  background: rgba(74, 144, 226, 0.08);
+}
+
+.cr-calc__difficulty--high {
+  border-color: #c98c1d;
+  background: rgba(201, 140, 29, 0.1);
+}
+
+.cr-calc__difficulty--beyond_high {
+  border-color: var(--color-danger, #d63b3b);
+  background: rgba(214, 59, 59, 0.1);
+}
+
 /* ── App-wide footer ────────────────────────────────────────────────
    Anchored to the bottom of the viewport; panels' scrollable bodies
    slide BEHIND it (per the bottom padding above).  Three slots —

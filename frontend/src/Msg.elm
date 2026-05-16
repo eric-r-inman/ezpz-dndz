@@ -678,7 +678,7 @@ type Msg
     | LoadCompendiumFromServerRequested String
     | LoadCompendiumConfirmCancel
     | LoadCompendiumConfirmConfirm
-    | LoadCompendiumServerResponse String (Result Http.Error (List Compendium.Creature))
+    | LoadCompendiumServerResponse String (Result Http.Error ( List Compendium.Creature, List Compendium.Group.Group ))
       -- Encounter Controls panel: which (if any) of the
       -- Save / Load split-button dropdowns is currently open.
     | ControlMenuToggle ControlMenu
@@ -763,6 +763,13 @@ type Msg
     | AuthLoginResponse (Result Http.Error Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
+      -- CR Calculator modal.
+    | CrCalculatorOpen
+    | CrCalculatorClose
+    | CrCalculatorScopeSet XpScope
+    | CrCalculatorPartyAdd
+    | CrCalculatorPartyRemove Int
+    | CrCalculatorPartyLevelSet Int String
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

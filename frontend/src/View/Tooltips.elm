@@ -61,6 +61,7 @@ module View.Tooltips exposing
     , diceReset
     , diceRollAgain
     , dodging
+    , encounterBarDifficulty
     , fallDamage
     , flyHeightDown
     , flyHeightUp
@@ -308,6 +309,11 @@ xpLairTotal =
 xpFilter : String
 xpFilter =
     "Filter XP total"
+
+
+encounterBarDifficulty : String
+encounterBarDifficulty =
+    "Open the encounter-difficulty calculator (2024 XP budgets)"
 
 
 halfCover : String

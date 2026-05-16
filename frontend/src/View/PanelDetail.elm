@@ -50,8 +50,7 @@ view model =
                     [ text "📖 Open" ]
                 , button
                     [ class "action-btn action-btn--blue"
-                    , Attr.disabled True
-                    , attribute "aria-disabled" "true"
+                    , onClick CrCalculatorOpen
                     , Tooltips.attr Tooltips.panelCrCalculator
                     ]
                     [ text "⚔️ CR Calculator" ]
