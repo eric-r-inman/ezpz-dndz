@@ -211,7 +211,7 @@ securitySection draft =
         , passwordFeedback draft
         , div [ class "account-card__actions" ]
             [ button
-                [ class "action-btn action-btn--green"
+                [ class "account-card__text-link"
                 , onClick AccountPasswordSubmit
                 , disabled draft.busy
                 ]
@@ -250,12 +250,12 @@ actionsSection =
         [ h2 [ class "account-card__title" ] [ text "Account actions" ]
         , div [ class "account-card__actions account-card__actions--column" ]
             [ a
-                [ class "action-btn action-btn--blue"
+                [ class "account-card__text-link"
                 , href "mailto:feedback@ezpzdndz?subject=ezpz-dndz%20feedback"
                 ]
                 [ text "Leave feedback" ]
             , button
-                [ class "action-btn action-btn--red"
+                [ class "account-card__text-link account-card__text-link--danger"
                 , onClick AuthLogout
                 ]
                 [ text "Sign out" ]

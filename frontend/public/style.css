@@ -627,6 +627,42 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Text-link affordance for low-emphasis account actions
+   (Update Password / Leave Feedback / Sign Out).  Renders as an
+   underlined link rather than a colored button so the Account
+   page reads as administrative rather than action-heavy.
+   Works on both `<button>` and `<a>` elements via shared
+   `appearance: none` + transparent background. */
+.account-card__text-link {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  color: var(--color-accent, #4a90e2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.account-card__text-link:hover,
+.account-card__text-link:focus-visible {
+  text-decoration-thickness: 2px;
+}
+
+.account-card__text-link:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.account-card__text-link--danger {
+  color: var(--color-danger, #d63b3b);
+}
+
 /* ── App-wide footer ────────────────────────────────────────────────
    Anchored to the bottom of the viewport; panels' scrollable bodies
    slide BEHIND it (per the bottom padding above).  Three slots —
