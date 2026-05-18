@@ -67,6 +67,14 @@ view enc savedAs db xpScope xpFilterOpen =
         , div [ class "encounter-bar__group encounter-bar__right" ]
             [ xpReadout enc db xpScope
             , xpFilter xpScope xpFilterOpen
+            , button
+                [ class "encounter-bar__difficulty"
+                , type_ "button"
+                , onClick CrCalculatorOpen
+                , Tooltips.attr Tooltips.encounterBarDifficulty
+                , attribute "aria-label" Tooltips.encounterBarDifficulty
+                ]
+                [ text "Difficulty" ]
             ]
         ]
 

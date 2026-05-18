@@ -41,6 +41,8 @@ import Compendium
         , Spellcasting
         , Usage(..)
         )
+import Compendium.Group
+import Compendium.GroupWire
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -123,31 +125,59 @@ listCompendiumSavesCmd toMsg =
 
 
 {-| `GET /api/compendium/saves/:name` — fetch one snapshot's full
-creature list. The server response wraps the list in
-`{ name, creatures, created_at, updated_at }`; we project down to
-just the creatures here so callers don't have to.
+contents. The server wraps the body in
+`{ name, creatures, created_at, updated_at }`, and as of the
+groups-in-export change the inner `creatures` field is either a
+bare creature array (legacy) or a bundle object
+`{ "creatures": [...], "groups": [...] }`. This decoder accepts
+both and projects down to a `(creatures, groups)` tuple.
 -}
 getCompendiumSaveCmd :
-    (Result Http.Error (List Creature) -> msg)
+    (Result Http.Error ( List Creature, List Compendium.Group.Group ) -> msg)
     -> String
     -> Cmd msg
 getCompendiumSaveCmd toMsg name =
+    let
+        bundleDecoder =
+            D.map2 Tuple.pair
+                (D.field "creatures" (D.list decodeCreature))
+                (D.oneOf
+                    [ D.field "groups"
+                        (D.list Compendium.GroupWire.decodeGroup)
+                    , D.succeed []
+                    ]
+                )
+
+        legacyDecoder =
+            D.list decodeCreature
+                |> D.map (\cs -> ( cs, [] ))
+
+        bodyDecoder =
+            D.field "creatures" (D.oneOf [ bundleDecoder, legacyDecoder ])
+    in
     Http.get
         { url = "/api/compendium/saves/" ++ urlPathSegment name
-        , expect =
-            Http.expectJson toMsg
-                (D.field "creatures" (D.list decodeCreature))
+        , expect = Http.expectJson toMsg bodyDecoder
         }
 
 
 {-| `PUT /api/compendium/saves/:name(?overwrite=true)`.
+
+The body is a `{ "creatures": [...], "groups": [...] }` bundle so
+a named snapshot captures both halves of the user's compendium
+customization (the shared bestiary AND their per-user groups).
+Older snapshots stored bare-array bodies; the load path
+(`getCompendiumSaveCmd`) accepts either shape for backward
+compatibility.
+
 -}
 putCompendiumSaveCmd :
     (Result Http.Error () -> msg)
     -> { name : String, overwrite : Bool }
     -> List Creature
+    -> List Compendium.Group.Group
     -> Cmd msg
-putCompendiumSaveCmd toMsg opts creatures =
+putCompendiumSaveCmd toMsg opts creatures groups =
     let
         suffix =
             if opts.overwrite then
@@ -163,7 +193,13 @@ putCompendiumSaveCmd toMsg opts creatures =
             "/api/compendium/saves/"
                 ++ urlPathSegment opts.name
                 ++ suffix
-        , body = Http.jsonBody (E.list encodeCreature creatures)
+        , body =
+            Http.jsonBody
+                (E.object
+                    [ ( "creatures", E.list encodeCreature creatures )
+                    , ( "groups", E.list Compendium.GroupWire.encodeGroup groups )
+                    ]
+                )
         , expect = Http.expectWhatever toMsg
         , timeout = Nothing
         , tracker = Nothing

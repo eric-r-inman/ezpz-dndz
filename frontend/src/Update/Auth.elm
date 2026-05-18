@@ -135,11 +135,14 @@ logout model =
 
 logoutDone : Result Http.Error () -> Model -> ( Model, Cmd Msg )
 logoutDone _ model =
-    -- Reload regardless of the response status: the user pressed
-    -- logout, the cookie is now stale or about to be, and a fresh
-    -- boot is what gives us the consistent post-logout state.
+    -- Navigate to `/` regardless of the response status: the user
+    -- pressed logout, the cookie is now stale or about to be, and a
+    -- fresh boot at the root URL gives us the consistent post-logout
+    -- state. Going to `/` (instead of just reloading the current URL)
+    -- means a sign-out from `/me` doesn't leave the URL bar pointing
+    -- at the now-inaccessible account page.
     ( { model | auth = AuthAnonymous, loginUi = LoginUi.empty }
-    , Nav.reload
+    , Nav.load "/"
     )
 
 

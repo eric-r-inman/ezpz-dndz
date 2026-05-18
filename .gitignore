@@ -32,6 +32,14 @@ dice-history.json
 # server; location is configurable via --compendium-saves-path).
 /compendium-saves.json
 
+# Per-user compendium-groups persistence file (created at runtime by
+# the server; location is configurable via --compendium-groups-path).
+/compendium-groups.json
+
+# Per-user card-layouts persistence file (created at runtime by the
+# server; location is configurable via --card-layouts-path).
+/card-layouts.json
+
 # User-account database (created at runtime by the server when the
 # first registration lands; carries Argon2id password hashes — must
 # never end up in git).  Location configurable via --users-path.
