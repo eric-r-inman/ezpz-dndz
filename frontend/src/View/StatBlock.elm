@@ -1,4 +1,7 @@
-module View.StatBlock exposing (view)
+module View.StatBlock exposing
+    ( view
+    , TagDisplay(..)
+    )
 
 {-| Read-only stat-block renderer for `Compendium.Creature`.
 
@@ -35,7 +38,7 @@ import Compendium
         )
 import Dice
 import Html exposing (Html, button, div, em, hr, p, span, strong, text)
-import Html.Attributes exposing (class, title)
+import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import View.Tooltips as Tooltips
@@ -43,6 +46,22 @@ import View.Tooltips as Tooltips
 
 
 -- ── ENTRY POINT ──────────────────────────────────────────────────────────────
+
+
+{-| How tags are rendered in the stat-block header.
+
+  - `TagBadges` puts each tag as a right-justified badge on the
+    name row — used by the compendium modal where there's room.
+  - `TagIconTooltip` collapses tags to a single 🏷 icon next to
+    the name, with the full list in a hover tooltip — used by the
+    pinned right-rail panel where vertical space is at a premium.
+
+When a creature has no tags, both modes render nothing.
+
+-}
+type TagDisplay
+    = TagBadges
+    | TagIconTooltip
 
 
 {-| Render a creature stat block.
@@ -66,11 +85,12 @@ import View.Tooltips as Tooltips
 view :
     (String -> Dice.Expression -> Int -> Int -> msg)
     -> (String -> String -> Int -> Int -> Int -> msg)
+    -> TagDisplay
     -> Creature
     -> Html msg
-view onRoll onAbilityClick c =
+view onRoll onAbilityClick tagDisplay c =
     div [ class "statblock" ]
-        ([ viewHead c
+        ([ viewHead tagDisplay c
          , hr [ class "statblock__divider" ] []
          , viewCoreLine c
          , hr [ class "statblock__divider" ] []
@@ -88,6 +108,7 @@ view onRoll onAbilityClick c =
             ++ viewRegionalEffects onRoll c.name c.regionalEffects
             ++ viewSpellcasting c.spellcasting
             ++ viewCustomSections c.customSections
+            ++ viewMetaTags c
         )
 
 
@@ -95,10 +116,13 @@ view onRoll onAbilityClick c =
 -- ── HEAD ─────────────────────────────────────────────────────────────────────
 
 
-viewHead : Creature -> Html msg
-viewHead c =
+viewHead : TagDisplay -> Creature -> Html msg
+viewHead tagDisplay c =
     div [ class "statblock__head" ]
-        [ div [ class "statblock__name" ] [ text c.name ]
+        [ div [ class "statblock__name-row" ]
+            [ div [ class "statblock__name" ] [ text c.name ]
+            , viewNameRowTags tagDisplay c.tags
+            ]
         , div [ class "statblock__type" ]
             [ text (typeLine c) ]
         , if String.isEmpty c.description then
@@ -108,6 +132,37 @@ viewHead c =
             p [ class "statblock__description" ]
                 [ em [] [ text c.description ] ]
         ]
+
+
+{-| Right-side decoration on the name row. Switches between
+inline badges (modal) and a single hover-tooltip icon (panel)
+based on the caller's `TagDisplay` choice. Returns an empty
+inline span when the creature has no tags so the CSS grid for
+the name row stays balanced.
+-}
+viewNameRowTags : TagDisplay -> List String -> Html msg
+viewNameRowTags tagDisplay tags =
+    if List.isEmpty tags then
+        text ""
+
+    else
+        case tagDisplay of
+            TagBadges ->
+                div [ class "statblock__tags" ]
+                    (List.map tagBadge tags)
+
+            TagIconTooltip ->
+                span
+                    [ class "statblock__tag-icon"
+                    , title (String.join ", " tags)
+                    , attribute "aria-label" ("Tags: " ++ String.join ", " tags)
+                    ]
+                    [ text "🏷" ]
+
+
+tagBadge : String -> Html msg
+tagBadge t =
+    span [ class "statblock__tag-badge" ] [ text t ]
 
 
 typeLine : Creature -> String
@@ -373,6 +428,70 @@ languagesLine langs =
 
     else
         String.join ", " langs
+
+
+{-| 2024 MM habitat line: Material-Plane habitats render bare,
+the planar ones group under a single "Planar (…)" wrapper so the
+rendered string mirrors what's printed in the book. Empty list →
+empty string so the prop line drops out entirely.
+-}
+habitatsLine : List Compendium.Habitat -> String
+habitatsLine hs =
+    if List.isEmpty hs then
+        ""
+
+    else
+        let
+            ( material, planar ) =
+                List.partition (not << Compendium.isPlanarHabitat) hs
+
+            materialPart =
+                List.map Compendium.habitatLabel material
+
+            planarPart =
+                if List.isEmpty planar then
+                    []
+
+                else
+                    [ "Planar ("
+                        ++ String.join ", "
+                            (List.map Compendium.habitatLabel planar)
+                        ++ ")"
+                    ]
+        in
+        String.join ", " (materialPart ++ planarPart)
+
+
+treasuresLine : List Compendium.Treasure -> String
+treasuresLine ts =
+    if List.isEmpty ts then
+        ""
+
+    else
+        ts
+            |> List.map Compendium.treasureLabel
+            |> String.join ", "
+
+
+{-| Habitat + Treasure tag block. Sits at the very bottom of the
+stat block (below custom sections), separated by a divider so the
+2024 MM meta tags don't visually attach to the last lore section.
+Renders nothing when both fields are empty.
+-}
+viewMetaTags : Creature -> List (Html msg)
+viewMetaTags c =
+    let
+        rows =
+            List.filterMap identity
+                [ propLine "Habitat" (habitatsLine c.habitats)
+                , propLine "Treasure" (treasuresLine c.treasures)
+                ]
+    in
+    if List.isEmpty rows then
+        []
+
+    else
+        hr [ class "statblock__divider" ] [] :: rows
 
 
 {-| "16 (XP 15,000, or 18,000 in lair)" — mirrors the D&D 2024

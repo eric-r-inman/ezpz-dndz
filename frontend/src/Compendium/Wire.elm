@@ -28,6 +28,7 @@ import Compendium
         , CreatureKind(..)
         , CustomSection
         , Feature
+        , Habitat
         , InnatePerDay
         , LairActions
         , LegendaryActions
@@ -39,6 +40,7 @@ import Compendium
         , Speed
         , SpellSlotLevel
         , Spellcasting
+        , Treasure
         , Usage(..)
         )
 import Compendium.Group
@@ -292,6 +294,9 @@ decodeCreature =
         |> optional "regional_effects" (D.nullable decodeRegionalEffects) Nothing
         |> optional "spellcasting" (D.nullable decodeSpellcasting) Nothing
         |> optional "custom_sections" (D.list decodeCustomSection) []
+        |> optional "habitats" decodeHabitats []
+        |> optional "treasures" decodeTreasures []
+        |> optional "tags" (D.list D.string) []
         |> optional "created_at" D.int 0
         |> optional "updated_at" D.int 0
 
@@ -605,6 +610,9 @@ draftFields c =
     , ( "regional_effects", encodeMaybe encodeRegionalEffects c.regionalEffects )
     , ( "spellcasting", encodeMaybe encodeSpellcasting c.spellcasting )
     , ( "custom_sections", E.list encodeCustomSection c.customSections )
+    , ( "habitats", E.list encodeHabitat c.habitats )
+    , ( "treasures", E.list encodeTreasure c.treasures )
+    , ( "tags", E.list E.string c.tags )
     ]
 
 
@@ -821,6 +829,37 @@ encodeCustomSection cs =
         [ ( "name", E.string cs.name )
         , ( "body", E.string cs.body )
         ]
+
+
+encodeHabitat : Habitat -> E.Value
+encodeHabitat =
+    Compendium.habitatToWire >> E.string
+
+
+{-| Tolerant habitat-list decoder. Habitats are decorative, not
+load-bearing for combat — silently dropping an unrecognized token
+keeps old clients forward-compatible if the 2024 list ever gets
+extended. Falling the whole creature payload over a single
+unknown habitat would be cure-worse-than-disease.
+-}
+decodeHabitats : D.Decoder (List Habitat)
+decodeHabitats =
+    D.list (D.string |> D.map Compendium.habitatFromWire)
+        |> D.map (List.filterMap identity)
+
+
+encodeTreasure : Treasure -> E.Value
+encodeTreasure =
+    Compendium.treasureToWire >> E.string
+
+
+{-| Same forward-compat shape as `decodeHabitats`: drop unknown
+tokens silently rather than refuse the creature payload.
+-}
+decodeTreasures : D.Decoder (List Treasure)
+decodeTreasures =
+    D.list (D.string |> D.map Compendium.treasureFromWire)
+        |> D.map (List.filterMap identity)
 
 
 encodeMaybe : (a -> E.Value) -> Maybe a -> E.Value

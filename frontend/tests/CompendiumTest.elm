@@ -79,6 +79,9 @@ mkCreature args =
     , regionalEffects = Nothing
     , spellcasting = Nothing
     , customSections = []
+    , habitats = []
+    , treasures = []
+    , tags = []
     , createdAt = args.createdAt
     , updatedAt = args.createdAt
     }

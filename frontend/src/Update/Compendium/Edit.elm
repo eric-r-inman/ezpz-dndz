@@ -20,6 +20,7 @@ module Update.Compendium.Edit exposing
     , featureUsageRechargeLowChanged
     , featureUsageUsesChanged
     , fieldChanged
+    , habitatToggle
     , kindSet
     , lairAdd
     , lairDescriptionChanged
@@ -75,6 +76,10 @@ module Update.Compendium.Edit exposing
     , spellcastingSlotSpellsChanged
     , submit
     , submitResponse
+    , tagAdd
+    , tagChanged
+    , tagRemove
+    , treasureToggle
     )
 
 {-| Compendium-edit modal: the form for creating, editing, and
@@ -646,13 +651,58 @@ conditionToggle name model =
     )
 
 
-toggleListMember : String -> List String -> List String
+habitatToggle : Compendium.Habitat -> Model -> ( Model, Cmd Msg )
+habitatToggle h model =
+    ( withCompendiumEdit
+        (\ui -> { ui | habitats = toggleListMember h ui.habitats })
+        model
+    , Cmd.none
+    )
+
+
+treasureToggle : Compendium.Treasure -> Model -> ( Model, Cmd Msg )
+treasureToggle t model =
+    ( withCompendiumEdit
+        (\ui -> { ui | treasures = toggleListMember t ui.treasures })
+        model
+    , Cmd.none
+    )
+
+
+toggleListMember : a -> List a -> List a
 toggleListMember name xs =
     if List.member name xs then
         List.filter ((/=) name) xs
 
     else
         xs ++ [ name ]
+
+
+
+-- ── FREE-FORM TAGS ──────────────────────────────────────────────────────
+
+
+tagAdd : Model -> ( Model, Cmd Msg )
+tagAdd model =
+    ( withCompendiumEdit (\ui -> { ui | tags = ui.tags ++ [ "" ] }) model
+    , Cmd.none
+    )
+
+
+tagRemove : Int -> Model -> ( Model, Cmd Msg )
+tagRemove idx model =
+    ( withCompendiumEdit (\ui -> { ui | tags = removeAt idx ui.tags }) model
+    , Cmd.none
+    )
+
+
+tagChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+tagChanged idx text model =
+    ( withCompendiumEdit
+        (\ui -> { ui | tags = updateAt idx (\_ -> text) ui.tags })
+        model
+    , Cmd.none
+    )
 
 
 

@@ -116,12 +116,13 @@ view model =
                             , conditionPicker ui.conditionImmunities
                             ]
                         , inlineRow
-                            [ textField "Languages" CFLanguages ui.languages []
-                            , textField "Challenge Rating" CFChallengeRating ui.challengeRating []
+                            [ narrowTextField "Challenge Rating" CFChallengeRating ui.challengeRating []
                             , numberField "XP" CFXp ui.xp []
                             , numberField "XP in Lair" CFXpInLair ui.xpInLair []
                             , numberField "Proficiency Bonus" CFProficiencyBonus ui.proficiencyBonus []
                             ]
+                        , inlineRow
+                            [ textField "Languages" CFLanguages ui.languages [] ]
                         ]
                     , editSection "Senses"
                         [ inlineRow
@@ -144,12 +145,24 @@ view model =
                         (customSectionsEditor ui.customSections)
                     , editSection "Legendary Actions"
                         (legendaryEditor ui.legendaryActions)
+                    , editSection "Tags"
+                        (tagsEditor ui.tags)
                     , editSection "Lair Actions"
                         (lairEditor ui.lairActions)
                     , editSection "Regional Effects"
                         (regionalEditor ui.regionalEffects)
                     , editSection "Spellcasting"
                         (spellcastingEditor ui.spellcasting)
+                    , editSection "Habitats"
+                        [ habitatPicker "Material Plane"
+                            (List.filter (not << Compendium.isPlanarHabitat) Compendium.allHabitats)
+                            ui.habitats
+                        , habitatPicker "Planar"
+                            (List.filter Compendium.isPlanarHabitat Compendium.allHabitats)
+                            ui.habitats
+                        ]
+                    , editSection "Treasure"
+                        [ treasurePicker Compendium.allTreasures ui.treasures ]
                     , footer ui
                     ]
                 }
@@ -192,6 +205,25 @@ inlineRow children =
 textField : String -> CompendiumField -> String -> List (Html.Attribute Msg) -> Html Msg
 textField labelText field current extras =
     label [ class "edit-field" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , input
+            ([ type_ "text"
+             , value current
+             , onInput (CompendiumEditFieldChanged field)
+             , class "edit-field__input"
+             ]
+                ++ extras
+            )
+            []
+        ]
+
+
+{-| Width-constrained text field for short values like CR
+("1/4", "20") that don't need the default 140px flex.
+-}
+narrowTextField : String -> CompendiumField -> String -> List (Html.Attribute Msg) -> Html Msg
+narrowTextField labelText field current extras =
+    label [ class "edit-field edit-field--narrow" ]
         [ span [ class "edit-field__label" ] [ text labelText ]
         , input
             ([ type_ "text"
@@ -759,6 +791,41 @@ customSectionRow idx ( name_, body_ ) =
         ]
 
 
+{-| Free-form tag editor. Each row is a single text input + a
+remove button; "+ Add Tag" appends an empty row. Validation
+(one-word / dedup) runs at submit, so the UI accepts the row as
+typed even mid-edit.
+-}
+tagsEditor : List String -> List (Html Msg)
+tagsEditor rows =
+    List.indexedMap tagRow rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditTagAdd
+                ]
+                [ text "+ Add Tag" ]
+           ]
+
+
+tagRow : Int -> String -> Html Msg
+tagRow idx tag =
+    div [ class "edit-row edit-row--list-item" ]
+        [ input
+            [ type_ "text"
+            , value tag
+            , Attr.placeholder "tag_name"
+            , onInput (CompendiumEditTagChanged idx)
+            , class "edit-field__input"
+            ]
+            []
+        , button
+            [ class "edit-row__remove"
+            , onClick (CompendiumEditTagRemove idx)
+            ]
+            [ text "×" ]
+        ]
+
+
 
 -- ── DAMAGE / CONDITION MULTI-SELECT PICKERS ────────────────────────────
 
@@ -788,6 +855,87 @@ conditionPicker selected =
         , selected = selected
         , onToggle = CompendiumEditConditionToggle
         }
+
+
+{-| Typed multi-select for habitats. Mirrors `chipPicker` but
+toggles a `Habitat` value (not a string) so the wire format is
+the closed ADT and a typo can't sneak into the saved record.
+-}
+habitatPicker : String -> List Compendium.Habitat -> List Compendium.Habitat -> Html Msg
+habitatPicker labelText options selected =
+    let
+        chip h =
+            let
+                active =
+                    List.member h selected
+
+                cls =
+                    if active then
+                        "edit-chip-picker__chip edit-chip-picker__chip--active"
+
+                    else
+                        "edit-chip-picker__chip"
+            in
+            button
+                [ type_ "button"
+                , class cls
+                , onClick (CompendiumEditHabitatToggle h)
+                , attribute "aria-pressed"
+                    (if active then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ text (Compendium.habitatLabel h) ]
+    in
+    div [ class "edit-field edit-field--picker" ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , div [ class "edit-chip-picker" ]
+            (List.map chip options)
+        ]
+
+
+{-| Typed multi-select for treasure tags. Same shape as
+`habitatPicker`; kept as a sibling rather than abstracted to a
+generic `typedChipPicker` because two callers don't pay for the
+extra parameter plumbing.
+-}
+treasurePicker : List Compendium.Treasure -> List Compendium.Treasure -> Html Msg
+treasurePicker options selected =
+    let
+        chip t =
+            let
+                active =
+                    List.member t selected
+
+                cls =
+                    if active then
+                        "edit-chip-picker__chip edit-chip-picker__chip--active"
+
+                    else
+                        "edit-chip-picker__chip"
+            in
+            button
+                [ type_ "button"
+                , class cls
+                , onClick (CompendiumEditTreasureToggle t)
+                , attribute "aria-pressed"
+                    (if active then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ text (Compendium.treasureLabel t) ]
+    in
+    div [ class "edit-field edit-field--picker" ]
+        [ span [ class "edit-field__label" ] [ text "Treasure" ]
+        , div [ class "edit-chip-picker" ]
+            (List.map chip options)
+        ]
 
 
 {-| Generic multi-select chip picker. Renders the label, then a

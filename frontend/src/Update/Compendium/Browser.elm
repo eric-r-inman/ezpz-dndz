@@ -2,7 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle
+    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, tagFilterChanged
     )
 
 {-| Update branches for the compendium browser modal: load, open /
@@ -139,6 +139,20 @@ toggleKindFilter kind ui =
 sortChanged : CompendiumSort -> Model -> ( Model, Cmd Msg )
 sortChanged sort model =
     ( withCompendium (\ui -> { ui | sort = sort }) model, Cmd.none )
+
+
+tagFilterChanged : String -> Model -> ( Model, Cmd Msg )
+tagFilterChanged wire model =
+    ( withCompendium
+        (\ui ->
+            { ui
+                | tagFilter = CompendiumUi.tagFilterFromWire wire
+                , selectedId = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
 
 
 select : String -> Model -> ( Model, Cmd Msg )

@@ -4,6 +4,8 @@ module Compendium exposing
     , Senses, Feature, Usage(..)
     , LegendaryActions, LegendaryOption, LairActions, RegionalEffects
     , Spellcasting, SpellSlotLevel, InnatePerDay, CustomSection
+    , Habitat(..), allHabitats, habitatLabel, habitatToWire, habitatFromWire, isPlanarHabitat
+    , Treasure(..), allTreasures, treasureLabel, treasureToWire, treasureFromWire
     , Db, fromList, toList, count
     , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
@@ -27,6 +29,8 @@ lives in `View/` modules and consumes this domain.
 @docs Senses, Feature, Usage
 @docs LegendaryActions, LegendaryOption, LairActions, RegionalEffects
 @docs Spellcasting, SpellSlotLevel, InnatePerDay, CustomSection
+@docs Habitat, allHabitats, habitatLabel, habitatToWire, habitatFromWire, isPlanarHabitat
+@docs Treasure, allTreasures, treasureLabel, treasureToWire, treasureFromWire
 
 
 # Database
@@ -107,6 +111,9 @@ type alias Creature =
     , regionalEffects : Maybe RegionalEffects
     , spellcasting : Maybe Spellcasting
     , customSections : List CustomSection
+    , habitats : List Habitat
+    , treasures : List Treasure
+    , tags : List String
     , createdAt : Int
     , updatedAt : Int
     }
@@ -223,6 +230,434 @@ type alias InnatePerDay =
 
 type alias CustomSection =
     { name : String, body : String }
+
+
+{-| 2024 Monster Manual habitat tag. The Material-Plane block
+(Arctic … Urban) and the Planar block (Abyss … Upper Planes) sit
+in one ADT so the editor can render them as a flat checklist and
+the wire format is a single `List Habitat`.
+-}
+type Habitat
+    = Arctic
+    | Coastal
+    | Desert
+    | Forest
+    | Grassland
+    | Hill
+    | Mountain
+    | Swamp
+    | Underdark
+    | Underwater
+    | Urban
+    | Abyss
+    | Acheron
+    | AstralPlane
+    | Beastlands
+    | ElementalChaos
+    | ElementalPlaneOfAir
+    | ElementalPlaneOfEarth
+    | ElementalPlaneOfFire
+    | ElementalPlaneOfWater
+    | Feywild
+    | Limbo
+    | LowerPlanes
+    | NineHells
+    | UpperPlanes
+
+
+{-| Every `Habitat` constructor in display order: the Material-
+Plane group first, then the Planar group. Used by the editor to
+build the checkbox grid.
+-}
+allHabitats : List Habitat
+allHabitats =
+    [ Arctic
+    , Coastal
+    , Desert
+    , Forest
+    , Grassland
+    , Hill
+    , Mountain
+    , Swamp
+    , Underdark
+    , Underwater
+    , Urban
+    , Abyss
+    , Acheron
+    , AstralPlane
+    , Beastlands
+    , ElementalChaos
+    , ElementalPlaneOfAir
+    , ElementalPlaneOfEarth
+    , ElementalPlaneOfFire
+    , ElementalPlaneOfWater
+    , Feywild
+    , Limbo
+    , LowerPlanes
+    , NineHells
+    , UpperPlanes
+    ]
+
+
+{-| Human-readable label as it appears in the 2024 Monster Manual.
+-}
+habitatLabel : Habitat -> String
+habitatLabel h =
+    case h of
+        Arctic ->
+            "Arctic"
+
+        Coastal ->
+            "Coastal"
+
+        Desert ->
+            "Desert"
+
+        Forest ->
+            "Forest"
+
+        Grassland ->
+            "Grassland"
+
+        Hill ->
+            "Hill"
+
+        Mountain ->
+            "Mountain"
+
+        Swamp ->
+            "Swamp"
+
+        Underdark ->
+            "Underdark"
+
+        Underwater ->
+            "Underwater"
+
+        Urban ->
+            "Urban"
+
+        Abyss ->
+            "Abyss"
+
+        Acheron ->
+            "Acheron"
+
+        AstralPlane ->
+            "Astral Plane"
+
+        Beastlands ->
+            "Beastlands"
+
+        ElementalChaos ->
+            "Elemental Chaos"
+
+        ElementalPlaneOfAir ->
+            "Elemental Plane of Air"
+
+        ElementalPlaneOfEarth ->
+            "Elemental Plane of Earth"
+
+        ElementalPlaneOfFire ->
+            "Elemental Plane of Fire"
+
+        ElementalPlaneOfWater ->
+            "Elemental Plane of Water"
+
+        Feywild ->
+            "Feywild"
+
+        Limbo ->
+            "Limbo"
+
+        LowerPlanes ->
+            "Lower Planes"
+
+        NineHells ->
+            "Nine Hells"
+
+        UpperPlanes ->
+            "Upper Planes"
+
+
+{-| Kebab-case wire token. Matches `#[serde(rename_all =
+"kebab-case")]` on the Rust enum so the JSON round-trips.
+-}
+habitatToWire : Habitat -> String
+habitatToWire h =
+    case h of
+        Arctic ->
+            "arctic"
+
+        Coastal ->
+            "coastal"
+
+        Desert ->
+            "desert"
+
+        Forest ->
+            "forest"
+
+        Grassland ->
+            "grassland"
+
+        Hill ->
+            "hill"
+
+        Mountain ->
+            "mountain"
+
+        Swamp ->
+            "swamp"
+
+        Underdark ->
+            "underdark"
+
+        Underwater ->
+            "underwater"
+
+        Urban ->
+            "urban"
+
+        Abyss ->
+            "abyss"
+
+        Acheron ->
+            "acheron"
+
+        AstralPlane ->
+            "astral-plane"
+
+        Beastlands ->
+            "beastlands"
+
+        ElementalChaos ->
+            "elemental-chaos"
+
+        ElementalPlaneOfAir ->
+            "elemental-plane-of-air"
+
+        ElementalPlaneOfEarth ->
+            "elemental-plane-of-earth"
+
+        ElementalPlaneOfFire ->
+            "elemental-plane-of-fire"
+
+        ElementalPlaneOfWater ->
+            "elemental-plane-of-water"
+
+        Feywild ->
+            "feywild"
+
+        Limbo ->
+            "limbo"
+
+        LowerPlanes ->
+            "lower-planes"
+
+        NineHells ->
+            "nine-hells"
+
+        UpperPlanes ->
+            "upper-planes"
+
+
+{-| Inverse of `habitatToWire`. Returns `Nothing` for unknown
+tokens so wire decoding can drop them silently rather than
+failing the whole creature payload — habitats are a low-stakes
+field and forward-compat tags shouldn't break the load path.
+-}
+habitatFromWire : String -> Maybe Habitat
+habitatFromWire s =
+    case s of
+        "arctic" ->
+            Just Arctic
+
+        "coastal" ->
+            Just Coastal
+
+        "desert" ->
+            Just Desert
+
+        "forest" ->
+            Just Forest
+
+        "grassland" ->
+            Just Grassland
+
+        "hill" ->
+            Just Hill
+
+        "mountain" ->
+            Just Mountain
+
+        "swamp" ->
+            Just Swamp
+
+        "underdark" ->
+            Just Underdark
+
+        "underwater" ->
+            Just Underwater
+
+        "urban" ->
+            Just Urban
+
+        "abyss" ->
+            Just Abyss
+
+        "acheron" ->
+            Just Acheron
+
+        "astral-plane" ->
+            Just AstralPlane
+
+        "beastlands" ->
+            Just Beastlands
+
+        "elemental-chaos" ->
+            Just ElementalChaos
+
+        "elemental-plane-of-air" ->
+            Just ElementalPlaneOfAir
+
+        "elemental-plane-of-earth" ->
+            Just ElementalPlaneOfEarth
+
+        "elemental-plane-of-fire" ->
+            Just ElementalPlaneOfFire
+
+        "elemental-plane-of-water" ->
+            Just ElementalPlaneOfWater
+
+        "feywild" ->
+            Just Feywild
+
+        "limbo" ->
+            Just Limbo
+
+        "lower-planes" ->
+            Just LowerPlanes
+
+        "nine-hells" ->
+            Just NineHells
+
+        "upper-planes" ->
+            Just UpperPlanes
+
+        _ ->
+            Nothing
+
+
+{-| Predicate used by the editor view to split the checkbox grid
+into the Material-Plane column and the Planar column.
+-}
+isPlanarHabitat : Habitat -> Bool
+isPlanarHabitat h =
+    case h of
+        Arctic ->
+            False
+
+        Coastal ->
+            False
+
+        Desert ->
+            False
+
+        Forest ->
+            False
+
+        Grassland ->
+            False
+
+        Hill ->
+            False
+
+        Mountain ->
+            False
+
+        Swamp ->
+            False
+
+        Underdark ->
+            False
+
+        Underwater ->
+            False
+
+        Urban ->
+            False
+
+        _ ->
+            True
+
+
+{-| 2024 Monster Manual treasure tag. The four buckets describe
+the _kind_ of magic items a creature's hoard is likely to seed.
+Like `Habitat`, the field is decorative — the wire format is a
+flat `List Treasure` and unknown tokens drop on decode.
+-}
+type Treasure
+    = Arcana
+    | Armaments
+    | Implements
+    | Relics
+
+
+allTreasures : List Treasure
+allTreasures =
+    [ Arcana, Armaments, Implements, Relics ]
+
+
+treasureLabel : Treasure -> String
+treasureLabel t =
+    case t of
+        Arcana ->
+            "Arcana"
+
+        Armaments ->
+            "Armaments"
+
+        Implements ->
+            "Implements"
+
+        Relics ->
+            "Relics"
+
+
+treasureToWire : Treasure -> String
+treasureToWire t =
+    case t of
+        Arcana ->
+            "arcana"
+
+        Armaments ->
+            "armaments"
+
+        Implements ->
+            "implements"
+
+        Relics ->
+            "relics"
+
+
+treasureFromWire : String -> Maybe Treasure
+treasureFromWire s =
+    case s of
+        "arcana" ->
+            Just Arcana
+
+        "armaments" ->
+            Just Armaments
+
+        "implements" ->
+            Just Implements
+
+        "relics" ->
+            Just Relics
+
+        _ ->
+            Nothing
 
 
 

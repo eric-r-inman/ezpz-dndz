@@ -232,6 +232,9 @@ impl Monster {
       regional_effects: draft.regional_effects,
       spellcasting: draft.spellcasting,
       custom_sections: draft.custom_sections,
+      habitats: draft.habitats,
+      treasures: draft.treasures,
+      tags: draft.tags,
       created_at: now,
       updated_at: now,
     }
@@ -322,6 +325,9 @@ impl From<Monster> for CreatureDraft {
       regional_effects: None,
       spellcasting: None,
       custom_sections: Vec::new(),
+      habitats: Vec::new(),
+      treasures: Vec::new(),
+      tags: Vec::new(),
     }
   }
 }

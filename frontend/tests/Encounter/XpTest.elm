@@ -123,6 +123,9 @@ mkSource args =
     , regionalEffects = Nothing
     , spellcasting = Nothing
     , customSections = []
+    , habitats = []
+    , treasures = []
+    , tags = []
     , createdAt = 0
     , updatedAt = 0
     }

@@ -81,6 +81,23 @@ pub struct Creature {
   pub spellcasting: Option<Spellcasting>,
   #[serde(default)]
   pub custom_sections: Vec<CustomSection>,
+  /// 2024 Monster Manual habitat tags.  Empty in the bundled
+  /// dataset (Open5e's `srd-2024` exposes the field but populates
+  /// no values); user edits and successful Paste-Stat-Block parses
+  /// fill it in over time.
+  #[serde(default)]
+  pub habitats: Vec<Habitat>,
+  /// 2024 Monster Manual treasure tags.  Same forward-fill model
+  /// as `habitats`: empty in the bundle, populated by edits and
+  /// successful Paste-Stat-Block parses.
+  #[serde(default)]
+  pub treasures: Vec<Treasure>,
+  /// Free-form user-authored tags.  Single-word strings (no
+  /// internal whitespace; underscores allowed) that the UI uses
+  /// for filtering.  There is no separate tag DB — a tag "exists"
+  /// for as long as some creature carries it.
+  #[serde(default)]
+  pub tags: Vec<String>,
   pub created_at: i64,
   pub updated_at: i64,
 }
@@ -157,6 +174,76 @@ pub struct CreatureDraft {
   pub spellcasting: Option<Spellcasting>,
   #[serde(default)]
   pub custom_sections: Vec<CustomSection>,
+  #[serde(default)]
+  pub habitats: Vec<Habitat>,
+  #[serde(default)]
+  pub treasures: Vec<Treasure>,
+  #[serde(default)]
+  pub tags: Vec<String>,
+}
+
+/// 2024 Monster Manual habitat tag.  Material-Plane habitats
+/// (Arctic … Urban) and Planar habitats (Abyss … Upper Planes)
+/// share one enum so the wire format is a flat `Vec<Habitat>`.
+/// The Elm side keeps the same arrangement in `Compendium.Habitat`.
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  Serialize,
+  Deserialize,
+  PartialEq,
+  Eq,
+  schemars::JsonSchema,
+)]
+#[serde(rename_all = "kebab-case")]
+pub enum Habitat {
+  Arctic,
+  Coastal,
+  Desert,
+  Forest,
+  Grassland,
+  Hill,
+  Mountain,
+  Swamp,
+  Underdark,
+  Underwater,
+  Urban,
+  Abyss,
+  Acheron,
+  AstralPlane,
+  Beastlands,
+  ElementalChaos,
+  ElementalPlaneOfAir,
+  ElementalPlaneOfEarth,
+  ElementalPlaneOfFire,
+  ElementalPlaneOfWater,
+  Feywild,
+  Limbo,
+  LowerPlanes,
+  NineHells,
+  UpperPlanes,
+}
+
+/// 2024 Monster Manual treasure tag.  Four buckets that classify
+/// the kind of magic items in a creature's hoard.  Mirrors the
+/// Elm `Compendium.Treasure` ADT.
+#[derive(
+  Debug,
+  Clone,
+  Copy,
+  Serialize,
+  Deserialize,
+  PartialEq,
+  Eq,
+  schemars::JsonSchema,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Treasure {
+  Arcana,
+  Armaments,
+  Implements,
+  Relics,
 }
 
 #[derive(

@@ -443,6 +443,10 @@ type Msg
     | CompendiumSearchChanged String
     | CompendiumKindToggled Compendium.CreatureKind
     | CompendiumSortChanged CompendiumSort
+      -- "Tag" dropdown to the right of A-Z.  Payload is the wire
+      -- token ("habitat:limbo" / "tag:fire_resist" / "" for clear),
+      -- decoded into a `TagFilter` by the browser handler.
+    | CompendiumTagFilterChanged String
     | CompendiumSelect String
     | CompendiumAddedToggle
     | CompendiumAddToQueue String
@@ -557,6 +561,14 @@ type Msg
       -- different canonical list.
     | CompendiumEditDamageToggle DamagePicker String
     | CompendiumEditConditionToggle String
+    | CompendiumEditHabitatToggle Compendium.Habitat
+    | CompendiumEditTreasureToggle Compendium.Treasure
+      -- Free-form user tags.  Add creates a new empty row, Remove
+      -- drops the row at the index, Changed updates the row text.
+      -- Validation (one-word, dedup) runs at submit time.
+    | CompendiumEditTagAdd
+    | CompendiumEditTagRemove Int
+    | CompendiumEditTagChanged Int String
       -- Advanced section editors: legendary actions, lair actions,
       -- regional effects, spellcasting.  Each section can be
       -- entirely absent (`Nothing`); the Add / Remove Msgs flip

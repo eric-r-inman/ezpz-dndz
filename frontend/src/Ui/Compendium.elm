@@ -9,7 +9,7 @@ module Ui.Compendium exposing
     , creatureKindLabel
     , parseIntOr, parseCsv, saveRowToValue, skillRowToValue
     , draftToFeature, customSectionRowToValue
-    , addGroup, closeMenus, currentCreatures, groupsList, markSaved, removeGroup, visibleGroups
+    , TagFilter(..), addGroup, closeMenus, currentCreatures, groupsList, markSaved, removeGroup, tagFilterFromWire, tagFilterToWire, userTagsInDb, visibleGroups
     )
 
 {-| Compendium browser + paste + edit modal state, plus helpers
@@ -94,6 +94,7 @@ type alias CompendiumUi =
     , searchText : String
     , kindFilter : Set String
     , sort : CompendiumSort
+    , tagFilter : Maybe TagFilter
     , selectedId : Maybe String
     , showOnlyAdded : Bool
     , pending : Maybe PendingAction
@@ -182,6 +183,7 @@ emptyCompendium =
     , searchText = ""
     , kindFilter = Set.empty
     , sort = SortName
+    , tagFilter = Nothing
     , selectedId = Nothing
     , showOnlyAdded = False
     , pending = Nothing
@@ -237,6 +239,15 @@ closeMenus ui =
     { ui | bulkMenu = Nothing }
 
 
+{-| The browser "Tag" dropdown filters by either a Habitat or a
+user-authored tag. Encoded as a sum so the wire token decode
+returns a closed value rather than a raw string.
+-}
+type TagFilter
+    = TagFilterHabitat Compendium.Habitat
+    | TagFilterTag String
+
+
 {-| Filter / sort pipeline against the loaded `Db`. Empty
 search and empty kind filter are no-ops, so a freshly opened
 modal shows the full library.
@@ -248,11 +259,78 @@ compendiumVisible ui =
             db
                 |> Compendium.search ui.searchText
                 |> Compendium.filterByKind (kindFilterAsList ui.kindFilter)
+                |> filterByTag ui.tagFilter
                 |> compendiumSort ui.sort
                 |> Compendium.toList
 
         _ ->
             []
+
+
+filterByTag : Maybe TagFilter -> Compendium.Db -> Compendium.Db
+filterByTag maybeFilter db =
+    case maybeFilter of
+        Nothing ->
+            db
+
+        Just (TagFilterHabitat h) ->
+            db
+                |> Compendium.toList
+                |> List.filter (\c -> List.member h c.habitats)
+                |> Compendium.fromList
+
+        Just (TagFilterTag t) ->
+            db
+                |> Compendium.toList
+                |> List.filter (\c -> List.member t c.tags)
+                |> Compendium.fromList
+
+
+{-| Distinct user-authored tags across every creature in the
+loaded compendium, sorted alphabetically. The browser's Tag
+dropdown reads from this to build its second optgroup; the list
+goes empty when no creature carries a tag, which is the
+"no separate tag DB" invariant the feature is designed around.
+-}
+userTagsInDb : CompendiumUi -> List String
+userTagsInDb ui =
+    case ui.db of
+        CompendiumDbLoaded db ->
+            db
+                |> Compendium.toList
+                |> List.concatMap .tags
+                |> List.sort
+                |> dedupOrdered
+
+        _ ->
+            []
+
+
+{-| Wire token used by the `<select>` `<option>` value attribute.
+A leading prefix distinguishes habitat tokens from user tags so a
+habitat named identically to a user tag doesn't collide.
+-}
+tagFilterToWire : TagFilter -> String
+tagFilterToWire f =
+    case f of
+        TagFilterHabitat h ->
+            "habitat:" ++ Compendium.habitatToWire h
+
+        TagFilterTag t ->
+            "tag:" ++ t
+
+
+tagFilterFromWire : String -> Maybe TagFilter
+tagFilterFromWire s =
+    if String.startsWith "habitat:" s then
+        Compendium.habitatFromWire (String.dropLeft 8 s)
+            |> Maybe.map TagFilterHabitat
+
+    else if String.startsWith "tag:" s then
+        Just (TagFilterTag (String.dropLeft 4 s))
+
+    else
+        Nothing
 
 
 kindFilterAsList : Set String -> List Compendium.CreatureKind
@@ -380,6 +458,9 @@ type alias CompendiumEditUi =
     , lairActions : Maybe Compendium.LairActions
     , regionalEffects : Maybe Compendium.RegionalEffects
     , spellcasting : Maybe Compendium.Spellcasting
+    , habitats : List Compendium.Habitat
+    , treasures : List Compendium.Treasure
+    , tags : List String
     , submitting : Bool
     , submitError : Maybe String
     }
@@ -450,6 +531,9 @@ blankEdit =
     , lairActions = Nothing
     , regionalEffects = Nothing
     , spellcasting = Nothing
+    , habitats = []
+    , treasures = []
+    , tags = []
     , submitting = False
     , submitError = Nothing
     }
@@ -515,6 +599,9 @@ editFromCreature c =
     , lairActions = c.lairActions
     , regionalEffects = c.regionalEffects
     , spellcasting = c.spellcasting
+    , habitats = c.habitats
+    , treasures = c.treasures
+    , tags = c.tags
     , submitting = False
     , submitError = Nothing
     }
@@ -619,6 +706,13 @@ validateEdit ui =
                     , regionalEffects = ui.regionalEffects
                     , spellcasting = ui.spellcasting
                     , customSections = List.filterMap customSectionRowToValue ui.customSections
+                    , habitats = ui.habitats
+                    , treasures = ui.treasures
+                    , tags =
+                        ui.tags
+                            |> List.map String.trim
+                            |> List.filter isOneWord
+                            |> dedupOrdered
                     , createdAt = createdAt
                     , updatedAt = 0
                     }
@@ -680,6 +774,40 @@ customSectionRowToValue ( name, body ) =
 
     else
         Just { name = trimmed, body = body }
+
+
+{-| A tag is a single non-empty word — no internal whitespace.
+Underscores are explicitly allowed; everything else is permitted
+too (digits, hyphens, etc.) as long as the token contains no
+whitespace.
+-}
+isOneWord : String -> Bool
+isOneWord s =
+    not (String.isEmpty s) && not (String.contains " " s || String.contains "\t" s || String.contains "\n" s)
+
+
+{-| First-occurrence-wins deduplication that preserves order.
+Lets the validator collapse `["fire", "fire"]` to `["fire"]`
+without sorting (which would scramble the user's intentional
+ordering of tags).
+-}
+dedupOrdered : List String -> List String
+dedupOrdered xs =
+    dedupOrderedHelp xs []
+
+
+dedupOrderedHelp : List String -> List String -> List String
+dedupOrderedHelp xs seenRev =
+    case xs of
+        [] ->
+            List.reverse seenRev
+
+        x :: rest ->
+            if List.member x seenRev then
+                dedupOrderedHelp rest seenRev
+
+            else
+                dedupOrderedHelp rest (x :: seenRev)
 
 
 creatureKindLabel : Compendium.CreatureKind -> String

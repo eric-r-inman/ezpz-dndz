@@ -24,6 +24,8 @@ suite =
         , standaloneInitiativeSuite
         , scanLairDice
         , empties
+        , habitatSuite
+        , treasureSuite
         ]
 
 
@@ -698,6 +700,205 @@ empties =
             \_ ->
                 Compendium.Parser.parseStatBlock "Just A Name"
                     |> Expect.equal (Err Compendium.Parser.MissingHeader)
+        ]
+
+
+habitatSuite : Test
+habitatSuite =
+    let
+        minimal habitatLine =
+            String.join "\n"
+                [ "Test Creature"
+                , "Medium humanoid, neutral"
+                , "Armor Class 12"
+                , "Hit Points 10"
+                , "Speed 30 ft."
+                , "STR 10 (+0) DEX 10 (+0) CON 10 (+0) INT 10 (+0) WIS 10 (+0) CHA 10 (+0)"
+                , habitatLine
+                ]
+    in
+    describe "Habitat line (2024 MM)"
+        [ test "colon-prefixed Material-Plane CSV" <|
+            \_ ->
+                expectFields (minimal "Habitat: Mountain, Hill")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal [ Compendium.Mountain, Compendium.Hill ]
+                    )
+        , test "bare prefix without colon also matches" <|
+            \_ ->
+                expectFields (minimal "Habitat Forest, Swamp")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal [ Compendium.Forest, Compendium.Swamp ]
+                    )
+        , test "trailing '; Treasure: ...' is trimmed before splitting" <|
+            \_ ->
+                expectFields (minimal "Habitat: Underdark; Treasure: Any")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal [ Compendium.Underdark ]
+                    )
+        , test "planar habitats with multi-word names round-trip" <|
+            \_ ->
+                expectFields
+                    (minimal "Habitat: Elemental Plane of Fire, Nine Hells")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal
+                                [ Compendium.ElementalPlaneOfFire
+                                , Compendium.NineHells
+                                ]
+                    )
+        , test "unknown tokens drop silently, known ones survive" <|
+            \_ ->
+                expectFields (minimal "Habitat: Forest, Cyberspace, Urban")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal [ Compendium.Forest, Compendium.Urban ]
+                    )
+        , test "no Habitat line leaves the field empty" <|
+            \_ ->
+                expectFields (minimal "Languages Common")
+                    (\c -> c.habitats |> Expect.equal [])
+        , test "Planar (X) wrapper unwraps to the planar habitat" <|
+            \_ ->
+                expectFields (minimal "Habitat: Planar (Limbo)")
+                    (\c ->
+                        c.habitats |> Expect.equal [ Compendium.Limbo ]
+                    )
+        , test "Planar (X, Y) wrapper expands across multiple planes" <|
+            \_ ->
+                expectFields (minimal "Habitat: Planar (Abyss, Nine Hells)")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal
+                                [ Compendium.Abyss, Compendium.NineHells ]
+                    )
+        , test "Mixed Material + Planar (X) on one line" <|
+            \_ ->
+                expectFields (minimal "Habitat: Mountain, Planar (Abyss)")
+                    (\c ->
+                        c.habitats
+                            |> Expect.equal
+                                [ Compendium.Mountain, Compendium.Abyss ]
+                    )
+        , test "Same-line Habitat + Treasure: habitats parsed correctly" <|
+            \_ ->
+                expectFields
+                    (minimal "Habitat: Planar (Limbo) Treasure: Any")
+                    (\c ->
+                        c.habitats |> Expect.equal [ Compendium.Limbo ]
+                    )
+        , test "Same-line Habitat + Treasure: treasure parsed correctly" <|
+            \_ ->
+                expectFields
+                    (minimal "Habitat: Forest Treasure: Arcana, Relics")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal
+                                [ Compendium.Arcana, Compendium.Relics ]
+                    )
+        , test "Same-line Treasure + Habitat (reverse order)" <|
+            \_ ->
+                expectFields
+                    (minimal "Treasure: Arcana Habitat: Forest")
+                    (\c ->
+                        ( c.habitats, c.treasures )
+                            |> Expect.equal
+                                ( [ Compendium.Forest ]
+                                , [ Compendium.Arcana ]
+                                )
+                    )
+        , test "Habitat after lore prose still parses (2024 MM order)" <|
+            \_ ->
+                let
+                    input =
+                        String.join "\n"
+                            [ "Test Creature"
+                            , "Medium aberration, chaotic evil"
+                            , "AC 12"
+                            , "HP 10"
+                            , "Speed 30 ft."
+                            , "STR 10 (+0) DEX 10 (+0) CON 10 (+0) INT 10 (+0) WIS 10 (+0) CHA 10 (+0)"
+                            , "Actions"
+                            , "Bite. Melee Attack Roll: +2. Hit: 1 piercing damage."
+                            , "Lore paragraph one talks about the creature's origins."
+                            , "Lore paragraph two adds further colour about the species."
+                            , "Habitat: Planar (Limbo)"
+                            , "Treasure: Arcana"
+                            ]
+                in
+                expectFields input
+                    (\c ->
+                        ( c.habitats, c.treasures )
+                            |> Expect.equal
+                                ( [ Compendium.Limbo ]
+                                , [ Compendium.Arcana ]
+                                )
+                    )
+        ]
+
+
+treasureSuite : Test
+treasureSuite =
+    let
+        minimal treasureLine =
+            String.join "\n"
+                [ "Test Creature"
+                , "Medium humanoid, neutral"
+                , "Armor Class 12"
+                , "Hit Points 10"
+                , "Speed 30 ft."
+                , "STR 10 (+0) DEX 10 (+0) CON 10 (+0) INT 10 (+0) WIS 10 (+0) CHA 10 (+0)"
+                , treasureLine
+                ]
+    in
+    describe "Treasure line (2024 MM)"
+        [ test "colon-prefixed CSV" <|
+            \_ ->
+                expectFields (minimal "Treasure: Arcana, Implements")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal [ Compendium.Arcana, Compendium.Implements ]
+                    )
+        , test "bare prefix without colon also matches" <|
+            \_ ->
+                expectFields (minimal "Treasure Armaments, Relics")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal [ Compendium.Armaments, Compendium.Relics ]
+                    )
+        , test "unknown tokens drop silently" <|
+            \_ ->
+                expectFields (minimal "Treasure: Arcana, Goldpiles, Relics")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal [ Compendium.Arcana, Compendium.Relics ]
+                    )
+        , test "no Treasure line leaves the field empty" <|
+            \_ ->
+                expectFields (minimal "Languages Common")
+                    (\c -> c.treasures |> Expect.equal [])
+        , test "case-insensitive label matching" <|
+            \_ ->
+                expectFields (minimal "Treasure: arcana, RELICS")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal [ Compendium.Arcana, Compendium.Relics ]
+                    )
+        , test "'Treasure: Any' expands to all four buckets" <|
+            \_ ->
+                expectFields (minimal "Treasure: Any")
+                    (\c ->
+                        c.treasures
+                            |> Expect.equal
+                                [ Compendium.Arcana
+                                , Compendium.Armaments
+                                , Compendium.Implements
+                                , Compendium.Relics
+                                ]
+                    )
         ]
 
 

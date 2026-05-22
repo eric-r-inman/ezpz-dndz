@@ -818,6 +818,9 @@ updateInner msg model =
         CompendiumSortChanged sort ->
             Update.Compendium.Browser.sortChanged sort model
 
+        CompendiumTagFilterChanged wire ->
+            Update.Compendium.Browser.tagFilterChanged wire model
+
         CompendiumSelect id ->
             Update.Compendium.Browser.select id model
 
@@ -1090,6 +1093,21 @@ updateInner msg model =
 
         CompendiumEditConditionToggle name ->
             Update.Compendium.Edit.conditionToggle name model
+
+        CompendiumEditHabitatToggle h ->
+            Update.Compendium.Edit.habitatToggle h model
+
+        CompendiumEditTreasureToggle t ->
+            Update.Compendium.Edit.treasureToggle t model
+
+        CompendiumEditTagAdd ->
+            Update.Compendium.Edit.tagAdd model
+
+        CompendiumEditTagRemove idx ->
+            Update.Compendium.Edit.tagRemove idx model
+
+        CompendiumEditTagChanged idx text ->
+            Update.Compendium.Edit.tagChanged idx text model
 
         CompendiumEditLegendaryAdd ->
             Update.Compendium.Edit.legendaryAdd model
@@ -1702,7 +1720,7 @@ viewCompendiumStandalone model id =
                 CompendiumDbLoaded db ->
                     case Compendium.find id db of
                         Just creature ->
-                            View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
+                            View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadges creature
 
                         Nothing ->
                             p [ class "empty" ]

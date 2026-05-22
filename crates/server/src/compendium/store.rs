@@ -220,6 +220,9 @@ impl CompendiumStore {
       regional_effects: draft.regional_effects,
       spellcasting: draft.spellcasting,
       custom_sections: draft.custom_sections,
+      habitats: draft.habitats,
+      treasures: draft.treasures,
+      tags: draft.tags,
       created_at: now,
       updated_at: now,
     };

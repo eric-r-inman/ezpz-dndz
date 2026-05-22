@@ -2513,9 +2513,41 @@ body {
   gap: 2px;
 }
 
+.statblock__name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .statblock__name {
   font-weight: 700;
   font-size: 1.1rem;
+}
+
+.statblock__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.statblock__tag-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-2, #2a2a2a);
+  color: var(--color-text-muted, #aaa);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border, #444);
+  white-space: nowrap;
+}
+
+.statblock__tag-icon {
+  font-size: 0.95rem;
+  cursor: help;
+  user-select: none;
 }
 
 .statblock__type {

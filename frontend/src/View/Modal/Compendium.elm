@@ -233,6 +233,7 @@ filterBar ui =
                 ++ [ groupsFilter ui.showGroups ]
             )
         , sortPicker ui.sort
+        , tagPicker ui
         ]
 
 
@@ -439,6 +440,59 @@ sortFromInput raw =
 
         _ ->
             CompendiumSortChanged SortName
+
+
+{-| "Tag" filter dropdown to the right of A-Z. Two optgroups —
+the full Habitat list first, then whatever user-authored tags
+are in the loaded compendium. The user-tag optgroup is omitted
+entirely when no creature carries a tag, which is the visible
+expression of the "no separate tag DB" invariant.
+-}
+tagPicker : CompendiumUi -> Html Msg
+tagPicker ui =
+    let
+        currentWire =
+            ui.tagFilter
+                |> Maybe.map CompendiumUi.tagFilterToWire
+                |> Maybe.withDefault ""
+
+        opt wire label_ =
+            option
+                [ value wire, selected (wire == currentWire) ]
+                [ text label_ ]
+
+        habitatOpt h =
+            opt
+                (CompendiumUi.tagFilterToWire (CompendiumUi.TagFilterHabitat h))
+                (Compendium.habitatLabel h)
+
+        tagOpt t =
+            opt
+                (CompendiumUi.tagFilterToWire (CompendiumUi.TagFilterTag t))
+                t
+
+        userTags =
+            CompendiumUi.userTagsInDb ui
+
+        userTagsGroup =
+            if List.isEmpty userTags then
+                []
+
+            else
+                [ Html.optgroup [ attribute "label" "Tags" ]
+                    (List.map tagOpt userTags)
+                ]
+    in
+    Html.select
+        [ class "compendium__tag-filter"
+        , onInput CompendiumTagFilterChanged
+        , attribute "aria-label" "Filter compendium by tag"
+        ]
+        (opt "" "Tag"
+            :: Html.optgroup [ attribute "label" "Habitats" ]
+                (List.map habitatOpt Compendium.allHabitats)
+            :: userTagsGroup
+        )
 
 
 body : CompendiumUi -> List String -> Html Msg
@@ -832,7 +886,7 @@ detail ui visible encounterIds =
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
-                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen creature
+                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadges creature
                 ]
 
         ( Nothing, Nothing ) ->

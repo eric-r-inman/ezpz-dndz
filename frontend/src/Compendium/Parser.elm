@@ -81,6 +81,68 @@ nonEmptyLines raw =
         |> String.lines
         |> List.map String.trim
         |> List.filter (not << String.isEmpty)
+        |> List.concatMap splitCompoundMetaLine
+
+
+{-| 2024 MM stat blocks sometimes print Habitat and Treasure on a
+single physical line — "Habitat: Planar (Limbo) Treasure: Any" —
+which would otherwise be claimed in full by whichever meta
+prefix the line begins with, dropping the second key's body on
+the floor. Only split when the line itself starts with a meta
+key, so feature descriptions that happen to mention "habitat" or
+"treasure" mid-sentence stay intact.
+-}
+splitCompoundMetaLine : String -> List String
+splitCompoundMetaLine line =
+    if startsWithMetaKey (String.toLower line) then
+        splitCompoundMetaLineHelp line
+
+    else
+        [ line ]
+
+
+startsWithMetaKey : String -> Bool
+startsWithMetaKey lower =
+    List.any (\m -> String.startsWith m lower)
+        [ "habitat:"
+        , "habitat "
+        , "habitats:"
+        , "habitats "
+        , "treasure:"
+        , "treasure "
+        , "treasures:"
+        , "treasures "
+        ]
+
+
+splitCompoundMetaLineHelp : String -> List String
+splitCompoundMetaLineHelp line =
+    let
+        lower =
+            String.toLower line
+
+        nextKeyIdx =
+            [ " habitat:"
+            , " habitats:"
+            , " treasure:"
+            , " treasures:"
+            ]
+                |> List.filterMap (\m -> List.head (String.indexes m lower))
+                |> List.minimum
+    in
+    case nextKeyIdx of
+        Just i ->
+            let
+                head_ =
+                    String.trim (String.left i line)
+
+                tail =
+                    String.trim (String.dropLeft (i + 1) line)
+            in
+            head_ :: splitCompoundMetaLineHelp tail
+
+        Nothing ->
+            [ line ]
 
 
 
@@ -159,6 +221,9 @@ initialState name typeLine =
         , regionalEffects = Nothing
         , spellcasting = Nothing
         , customSections = []
+        , habitats = []
+        , treasures = []
+        , tags = []
         , createdAt = 0
         , updatedAt = 0
         }
@@ -231,9 +296,12 @@ handleLine line state =
         -- headers like "Blue Dragon Lairs" — D&D Beyond emits
         -- these AFTER the monster description prose, so by the
         -- time they show up we're already past the legendary
-        -- actions and dumping into Description. When detected,
-        -- exit lore mode and resume structured parsing in the
-        -- new section.
+        -- actions and dumping into Description.  The 2024 MM also
+        -- prints Habitat: / Treasure: at the very end of a stat
+        -- block (frequently AFTER the lore paragraph), so those
+        -- prefixes need the same lore-mode escape — otherwise the
+        -- typed fields stay empty and the tag line shows up as
+        -- description text.
         case classifySection line (String.toLower line) of
             Just (LineSectionHeader section) ->
                 { state
@@ -243,10 +311,33 @@ handleLine line state =
                 }
 
             _ ->
-                appendLore line state
+                if isLateMetaLine (String.toLower line) then
+                    dispatchClassifiedLine line { state | loreMode = False }
+
+                else
+                    appendLore line state
 
     else
         dispatchClassifiedLine line state
+
+
+{-| Predicate: line begins with a meta key (Habitat / Treasure)
+that the 2024 MM emits after the lore prose. Used by the
+lore-mode escape so these tags actually land in their typed
+fields instead of being swallowed by the description.
+-}
+isLateMetaLine : String -> Bool
+isLateMetaLine lower =
+    List.any (\m -> String.startsWith m lower)
+        [ "habitat:"
+        , "habitat "
+        , "habitats:"
+        , "habitats "
+        , "treasure:"
+        , "treasure "
+        , "treasures:"
+        , "treasures "
+        ]
 
 
 dispatchClassifiedLine : String -> State -> State
@@ -301,6 +392,12 @@ dispatchClassifiedLine line state =
 
         LineLanguages langs ->
             withCreature (\c -> { c | languages = langs }) (commitFeature state)
+
+        LineHabitats hs ->
+            withCreature (\c -> { c | habitats = hs }) (commitFeature state)
+
+        LineTreasures ts ->
+            withCreature (\c -> { c | treasures = ts }) (commitFeature state)
 
         LineChallenge fields ->
             withCreature
@@ -821,6 +918,8 @@ type Line
     | LineConditionImmunities (List String)
     | LineSenses Compendium.Senses
     | LineLanguages (List String)
+    | LineHabitats (List Compendium.Habitat)
+    | LineTreasures (List Compendium.Treasure)
     | LineChallenge { cr : String, xp : Int, xpInLair : Int, pb : Int }
       -- ^ `xpInLair` is 0 when the source omits the lair-XP clause.
       -- `pb` is 0 when no `PB +N` is on the line; the consumer
@@ -1023,6 +1122,23 @@ classifyByPrefix line lower =
             -- Senses / languages.
             , ( "senses ", \rest -> LineSenses (parseSenses rest) )
             , ( "languages ", \rest -> LineLanguages (parseCsv rest) )
+
+            -- 2024 MM habitat tags.  The colon-bearing forms come
+            -- first so they shadow the bare prefixes; both singular
+            -- ("Habitat:") and plural ("Habitats:") variants exist
+            -- in third-party exports.
+            , ( "habitat: ", \rest -> LineHabitats (parseHabitats rest) )
+            , ( "habitats: ", \rest -> LineHabitats (parseHabitats rest) )
+            , ( "habitat ", \rest -> LineHabitats (parseHabitats rest) )
+            , ( "habitats ", \rest -> LineHabitats (parseHabitats rest) )
+
+            -- 2024 MM treasure tags.  Same colon-first ordering as
+            -- habitats; bare-prefix forms catch sources that omit
+            -- the colon.
+            , ( "treasure: ", \rest -> LineTreasures (parseTreasures rest) )
+            , ( "treasures: ", \rest -> LineTreasures (parseTreasures rest) )
+            , ( "treasure ", \rest -> LineTreasures (parseTreasures rest) )
+            , ( "treasures ", \rest -> LineTreasures (parseTreasures rest) )
 
             -- CR + the legacy standalone PB line.
             , ( "challenge ", parseChallenge )
@@ -1491,6 +1607,169 @@ parseCsv raw =
         |> String.split ","
         |> List.map String.trim
         |> List.filter (not << String.isEmpty)
+
+
+{-| Parse the body of a 2024-MM habitat line. Two shapes to
+handle on top of the comma-separated bare labels:
+
+  - Trailing semicolon-separated continuation ("...; Treasure:
+    Any") gets trimmed before the comma split.
+
+  - Planar habitats are wrapped — "Planar (Limbo)" or
+    "Planar (Abyss, Nine Hells)". The outer split must respect
+    paren depth so the inner commas don't split prematurely, and
+    each `Planar (…)` segment expands to its inner labels.
+
+Unknown tokens drop silently — the field is decorative and a
+typo shouldn't swallow the whole creature parse.
+
+-}
+parseHabitats : String -> List Compendium.Habitat
+parseHabitats raw =
+    let
+        body =
+            case String.indexes ";" raw of
+                i :: _ ->
+                    String.left i raw
+
+                [] ->
+                    raw
+    in
+    body
+        |> splitTopLevelCommas
+        |> List.concatMap expandHabitatSegment
+
+
+{-| One segment of the comma-split habitat list. A bare label
+like "Mountain" maps directly; a "Planar (X, Y)" wrapper expands
+to its inner labels so each one lands in the typed list.
+-}
+expandHabitatSegment : String -> List Compendium.Habitat
+expandHabitatSegment seg =
+    let
+        trimmed =
+            String.trim seg
+
+        lower =
+            String.toLower trimmed
+    in
+    if String.startsWith "planar (" lower && String.endsWith ")" trimmed then
+        trimmed
+            |> String.slice 8 (String.length trimmed - 1)
+            |> String.split ","
+            |> List.filterMap (String.trim >> habitatFromLabel)
+
+    else
+        case habitatFromLabel trimmed of
+            Just h ->
+                [ h ]
+
+            Nothing ->
+                []
+
+
+habitatFromLabel : String -> Maybe Compendium.Habitat
+habitatFromLabel raw =
+    let
+        normalized =
+            String.toLower (String.trim raw)
+    in
+    Compendium.allHabitats
+        |> List.filter
+            (\h -> String.toLower (Compendium.habitatLabel h) == normalized)
+        |> List.head
+
+
+{-| Split a comma-separated list, but treat commas inside
+parentheses as ordinary characters. Lets "Mountain, Planar
+(Abyss, Nine Hells)" survive as two top-level segments instead
+of getting shredded into four.
+-}
+splitTopLevelCommas : String -> List String
+splitTopLevelCommas s =
+    splitTopLevelCommasHelp (String.toList s) 0 [] []
+
+
+splitTopLevelCommasHelp :
+    List Char
+    -> Int
+    -> List Char
+    -> List String
+    -> List String
+splitTopLevelCommasHelp chars depth currentRev acc =
+    case chars of
+        [] ->
+            List.reverse
+                (String.fromList (List.reverse currentRev) :: acc)
+
+        c :: rest ->
+            case ( c, depth ) of
+                ( '(', _ ) ->
+                    splitTopLevelCommasHelp rest
+                        (depth + 1)
+                        (c :: currentRev)
+                        acc
+
+                ( ')', _ ) ->
+                    splitTopLevelCommasHelp rest
+                        (max 0 (depth - 1))
+                        (c :: currentRev)
+                        acc
+
+                ( ',', 0 ) ->
+                    splitTopLevelCommasHelp rest
+                        depth
+                        []
+                        (String.fromList (List.reverse currentRev) :: acc)
+
+                _ ->
+                    splitTopLevelCommasHelp rest
+                        depth
+                        (c :: currentRev)
+                        acc
+
+
+{-| Same shape as `parseHabitats`: trim any trailing
+semicolon-separated key/value pairs, CSV-split, match each token
+case-insensitively against the four canonical treasure labels,
+silently drop unknowns.
+
+Special case: "Any" — the 2024 MM's most common treasure tag —
+expands to all four buckets. The book uses `Any` to mean "any of
+these four is appropriate," so the typed field reflects that
+intent instead of staying empty.
+
+-}
+parseTreasures : String -> List Compendium.Treasure
+parseTreasures raw =
+    let
+        body =
+            case String.indexes ";" raw of
+                i :: _ ->
+                    String.left i raw
+
+                [] ->
+                    raw
+    in
+    if String.toLower (String.trim body) == "any" then
+        Compendium.allTreasures
+
+    else
+        body
+            |> String.split ","
+            |> List.filterMap (String.trim >> treasureFromLabel)
+
+
+treasureFromLabel : String -> Maybe Compendium.Treasure
+treasureFromLabel raw =
+    let
+        normalized =
+            String.toLower (String.trim raw)
+    in
+    Compendium.allTreasures
+        |> List.filter
+            (\t -> String.toLower (Compendium.treasureLabel t) == normalized)
+        |> List.head
 
 
 
