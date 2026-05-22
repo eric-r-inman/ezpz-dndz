@@ -17,9 +17,9 @@ Renders nothing when the modal isn't open.
 -}
 
 import Compendium
-import Html exposing (Html, button, div, li, p, span, text, ul)
-import Html.Attributes exposing (attribute, class, title)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, input, li, p, span, text, ul)
+import Html.Attributes exposing (attribute, class, placeholder, title, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -38,7 +38,7 @@ view model =
                 , title = "Quick Add"
                 , extraClass = "modal--quick-add"
                 , body =
-                    [ sortRow ui
+                    [ controlsRow ui
                     , listSection ui model
                     ]
                 }
@@ -47,8 +47,14 @@ view model =
             text ""
 
 
-sortRow : QuickAddUi -> Html Msg
-sortRow ui =
+{-| Top row of the Quick Add modal: name-search input on the
+left, sort toggle on the right. The search input filters the
+list in real time via `Compendium.search`, which already powers
+the full Compendium browser, so the matching surface is
+consistent (name / race / source / CR).
+-}
+controlsRow : QuickAddUi -> Html Msg
+controlsRow ui =
     let
         ( label, tooltip ) =
             case ui.sort of
@@ -58,8 +64,17 @@ sortRow ui =
                 SortByCr ->
                     ( "Sort: CR ↑", Tooltips.quickAddSortToAlpha )
     in
-    div [ class "quick-add__sort-row" ]
-        [ button
+    div [ class "quick-add__controls-row" ]
+        [ input
+            [ class "quick-add__search"
+            , type_ "search"
+            , placeholder "🔍 Search…"
+            , value ui.searchText
+            , onInput QuickAddSearchChanged
+            , attribute "aria-label" "Filter Quick Add by name"
+            ]
+            []
+        , button
             [ class "action-btn action-btn--blue quick-add__sort-toggle"
             , onClick QuickAddSortToggle
             , Tooltips.attr tooltip
@@ -79,19 +94,29 @@ listSection ui model =
 
         CompendiumDbLoaded db ->
             let
+                filteredDb =
+                    Compendium.search ui.searchText db
+
                 sortedDb =
                     case ui.sort of
                         SortAlpha ->
-                            Compendium.sortByName db
+                            Compendium.sortByName filteredDb
 
                         SortByCr ->
-                            Compendium.sortByCr db
+                            Compendium.sortByCr filteredDb
 
                 creatures =
                     Compendium.toList sortedDb
+
+                searchActive =
+                    not (String.isEmpty (String.trim ui.searchText))
             in
             if List.isEmpty creatures then
-                empty "Your compendium is empty."
+                if searchActive then
+                    empty ("No matches for \"" ++ String.trim ui.searchText ++ "\".")
+
+                else
+                    empty "Your compendium is empty."
 
             else
                 ul [ class "quick-add__list" ]

@@ -1,4 +1,4 @@
-module Update.QuickAdd exposing (close, open, pick, sortToggle)
+module Update.QuickAdd exposing (close, open, pick, searchChanged, sortToggle)
 
 {-| Update branches for the Quick Add modal — a one-click picker
 that lists every compendium creature and adds the chosen one to
@@ -36,6 +36,11 @@ close model =
 sortToggle : Model -> ( Model, Cmd Msg )
 sortToggle model =
     ( withQuickAddUi QuickAddUi.toggleSort model, Cmd.none )
+
+
+searchChanged : String -> Model -> ( Model, Cmd Msg )
+searchChanged text model =
+    ( withQuickAddUi (QuickAddUi.setSearchText text) model, Cmd.none )
 
 
 withQuickAddUi : (QuickAddUi -> QuickAddUi) -> Model -> Model

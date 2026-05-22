@@ -2525,6 +2525,17 @@ body {
   font-size: 1.1rem;
 }
 
+/* Used by `TagIconTooltip` mode in the right-rail Compendium
+   panel: the 🏷 icon sits immediately after the name with a
+   small gap, so it reads as "this creature has tags" rather
+   than floating in space at the row's right edge. */
+.statblock__name--inline-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .statblock__tags {
   display: flex;
   flex-wrap: wrap;
@@ -2537,10 +2548,10 @@ body {
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--color-surface-2, #2a2a2a);
-  color: var(--color-text-muted, #aaa);
+  color: var(--color-yellow);
   font-size: 0.72rem;
   font-weight: 500;
-  border: 1px solid var(--color-border, #444);
+  border: 1px solid rgba(245, 200, 66, 0.55);
   white-space: nowrap;
 }
 
@@ -6690,6 +6701,25 @@ body {
 .quick-add__sort-row {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Top row of Quick Add: search input on the left grows to fill,
+   sort toggle on the right stays its natural width. */
+.quick-add__controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-add__search {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
 }
 
 .quick-add__sort-toggle {

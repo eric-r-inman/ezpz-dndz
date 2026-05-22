@@ -38,7 +38,7 @@ import Compendium
         )
 import Dice
 import Html exposing (Html, button, div, em, hr, p, span, strong, text)
-import Html.Attributes exposing (attribute, class, title)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import View.Tooltips as Tooltips
@@ -119,10 +119,7 @@ view onRoll onAbilityClick tagDisplay c =
 viewHead : TagDisplay -> Creature -> Html msg
 viewHead tagDisplay c =
     div [ class "statblock__head" ]
-        [ div [ class "statblock__name-row" ]
-            [ div [ class "statblock__name" ] [ text c.name ]
-            , viewNameRowTags tagDisplay c.tags
-            ]
+        [ nameRow tagDisplay c
         , div [ class "statblock__type" ]
             [ text (typeLine c) ]
         , if String.isEmpty c.description then
@@ -134,30 +131,66 @@ viewHead tagDisplay c =
         ]
 
 
-{-| Right-side decoration on the name row. Switches between
-inline badges (modal) and a single hover-tooltip icon (panel)
-based on the caller's `TagDisplay` choice. Returns an empty
-inline span when the creature has no tags so the CSS grid for
-the name row stays balanced.
+{-| Name row layout depends on the `TagDisplay` choice.
+
+  - `TagBadges`: name on the left, badge strip right-justified
+    in a flex row — the compendium modal has room for both.
+  - `TagIconTooltip`: name and 🏷 icon sit inline together (no
+    flex spacing), so the icon reads as "this creature has tags"
+    immediately to the right of the name in the cramped right-rail
+    panel.
+
 -}
-viewNameRowTags : TagDisplay -> List String -> Html msg
-viewNameRowTags tagDisplay tags =
+nameRow : TagDisplay -> Creature -> Html msg
+nameRow tagDisplay c =
+    case tagDisplay of
+        TagBadges ->
+            div [ class "statblock__name-row" ]
+                [ div [ class "statblock__name" ] [ text c.name ]
+                , tagBadges c.tags
+                ]
+
+        TagIconTooltip ->
+            div [ class "statblock__name statblock__name--inline-tags" ]
+                (text c.name :: inlineTagIcon c.tags)
+
+
+tagBadges : List String -> Html msg
+tagBadges tags =
     if List.isEmpty tags then
         text ""
 
     else
-        case tagDisplay of
-            TagBadges ->
-                div [ class "statblock__tags" ]
-                    (List.map tagBadge tags)
+        div [ class "statblock__tags" ]
+            (List.map tagBadge tags)
 
-            TagIconTooltip ->
-                span
-                    [ class "statblock__tag-icon"
-                    , title (String.join ", " tags)
-                    , attribute "aria-label" ("Tags: " ++ String.join ", " tags)
-                    ]
-                    [ text "🏷" ]
+
+{-| Single 🏷 icon next to the creature name with an instant
+tooltip carrying the full tag list. `data-tooltip-delay="0"`
+asks the tooltip portal to show without its default 300ms gate
+— the icon has no other affordance and the user is already
+hovering deliberately. Returns an empty list when the creature
+has no tags so the caller can splice it into the name row
+without conditional plumbing.
+-}
+inlineTagIcon : List String -> List (Html msg)
+inlineTagIcon tags =
+    if List.isEmpty tags then
+        []
+
+    else
+        let
+            joined =
+                String.join ", " tags
+        in
+        [ span
+            [ class "statblock__tag-icon"
+            , attribute "data-tooltip" joined
+            , attribute "data-tooltip-delay" "0"
+            , attribute "aria-label" ("Tags: " ++ joined)
+            ]
+            [ text "🏷" ]
+        ]
 
 
 tagBadge : String -> Html msg

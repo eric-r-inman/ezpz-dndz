@@ -153,9 +153,24 @@
           if (!trigger || trigger === currentTarget) return;
           if (showTimer !== null) clearTimeout(showTimer);
           currentTarget = trigger;
-          showTimer = setTimeout(function () {
-            if (currentTarget === trigger) show(trigger);
-          }, SHOW_DELAY_MS);
+          // Per-trigger delay override.  `data-tooltip-delay="0"` (or
+          // any non-positive value) shows the tooltip on the next
+          // frame, useful for low-affordance icons like the stat-block
+          // 🏷 where the user is already hovering deliberately and
+          // shouldn't have to wait 300ms to learn what's behind it.
+          var delayAttr = trigger.getAttribute("data-tooltip-delay");
+          var delay = SHOW_DELAY_MS;
+          if (delayAttr !== null) {
+            var parsed = parseInt(delayAttr, 10);
+            if (!isNaN(parsed)) delay = parsed;
+          }
+          if (delay <= 0) {
+            show(trigger);
+          } else {
+            showTimer = setTimeout(function () {
+              if (currentTarget === trigger) show(trigger);
+            }, delay);
+          }
         });
 
         document.addEventListener("mouseout", function (e) {

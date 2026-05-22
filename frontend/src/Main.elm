@@ -1457,6 +1457,9 @@ updateInner msg model =
         QuickAddSortToggle ->
             Update.QuickAdd.sortToggle model
 
+        QuickAddSearchChanged text ->
+            Update.QuickAdd.searchChanged text model
+
         QuickAddPick id ->
             Update.QuickAdd.pick id model
 

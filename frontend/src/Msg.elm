@@ -702,6 +702,7 @@ type Msg
     | QuickAddOpen
     | QuickAddClose
     | QuickAddSortToggle
+    | QuickAddSearchChanged String
     | QuickAddPick String
       -- Saving-throw modal triggered from compendium ability cells.
       -- The two `Int`s on `AbilitySaveOpen` are the `clientX` /

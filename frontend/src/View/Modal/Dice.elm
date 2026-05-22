@@ -129,13 +129,13 @@ specialButtons =
             , onClick DiceRollAdvantage
             , Tooltips.attr Tooltips.diceAdvantage
             ]
-            [ text "Advantage" ]
+            [ text "Advantage (d20)" ]
         , button
             [ class "action-btn action-btn--orange"
             , onClick DiceRollDisadvantage
             , Tooltips.attr Tooltips.diceDisadvantage
             ]
-            [ text "Disadvantage" ]
+            [ text "Disadvantage (d20)" ]
         , button
             [ class "action-btn"
             , onClick DiceFlipCoin

@@ -75,30 +75,46 @@ loadedUpdate result ui =
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( withCompendium openUpdate model, Cmd.none )
+    ( withCompendium (openUpdate (Maybe.map .id model.panelCreaturePin)) model
+    , Cmd.none
+    )
 
 
 {-| Open the modal and pick a sensible default selection so the
-right pane isn't blank on first open. We pick the first item of
-the currently-rendered (filter+sort applied) list.
+right pane isn't blank on first open.
+
+If the right-rail Compendium Panel has a creature pinned, open
+to that creature — the GM's expectation is "I'm reading this
+stat block, take me there in the full browser." The pinned id
+overrides any previously-set `selectedId` from a prior open.
+
+Otherwise, fall through to the existing behaviour: keep an
+existing selection if one exists, else pick the first row of the
+filter+sort-applied list.
+
 -}
-openUpdate : CompendiumUi -> CompendiumUi
-openUpdate ui =
+openUpdate : Maybe String -> CompendiumUi -> CompendiumUi
+openUpdate maybePinnedId ui =
     let
         opened =
             { ui | open = True }
     in
-    case ui.selectedId of
-        Just _ ->
-            opened
+    case maybePinnedId of
+        Just id ->
+            { opened | selectedId = Just id }
 
         Nothing ->
-            { opened
-                | selectedId =
-                    CompendiumUi.compendiumVisible opened
-                        |> List.head
-                        |> Maybe.map .id
-            }
+            case ui.selectedId of
+                Just _ ->
+                    opened
+
+                Nothing ->
+                    { opened
+                        | selectedId =
+                            CompendiumUi.compendiumVisible opened
+                                |> List.head
+                                |> Maybe.map .id
+                    }
 
 
 close : Model -> ( Model, Cmd Msg )
