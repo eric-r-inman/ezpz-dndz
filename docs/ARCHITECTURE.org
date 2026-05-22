@@ -596,14 +596,43 @@ compendium yet") rather than any placeholder.  The legacy
 =View.StatBlockEmbed= module that defined the Brakka mock has
 been deleted.
 
+** Stat-block meta-tag rendering modes
+
+~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges
+| TagIconTooltip~) because the same renderer needs to behave
+differently in two contexts.  In the compendium modal and the
+standalone view, where there's room on the name row, user tags
+render as a right-justified strip of small badges
+(=.statblock__tag-badge=).  In the pinned right-rail panel, where
+vertical space is at a premium, the same tags collapse to a
+single 🏷 icon (=.statblock__tag-icon=) carrying a ~title=~
+tooltip with the full comma-separated list.  Both modes render
+nothing when ~tags~ is empty.
+
+2024 MM Habitat / Treasure tags render at the very bottom of the
+stat block — below custom sections and lore — via
+~viewMetaTags~.  The function emits a leading divider plus
+labeled prop lines only when at least one of the fields is
+populated, so creatures without meta tags don't accumulate a
+stray divider.  Planar habitats fold into a single "Planar (…)"
+wrapper so the rendered line mirrors the printed book format.
+
 * Compendium browser bulk actions
 
 The Compendium modal's toolbar is split into two rows.
 
 *Top row (filters):* search box, kind chips (Player / Enemy /
-NPC / Groups), and the Sort picker.  The Groups chip toggles
-~CompendiumUi.showGroups~ — when off, group rows are hidden
-from the list entirely.
+NPC / Groups), the Sort picker, and the Tag picker.  The Groups
+chip toggles ~CompendiumUi.showGroups~ — when off, group rows are
+hidden from the list entirely.  The Tag picker is a ~<select>~
+with two ~<optgroup>~ s: the full 25-entry Habitat list, and the
+user-authored tags that currently appear on at least one creature
+in the loaded DB (sorted, deduped, computed on every render via
+~CompendiumUi.userTagsInDb~).  Selection encodes as a
+~TagFilter~ (~TagFilterHabitat Habitat~ / ~TagFilterTag String~)
+on ~CompendiumUi.tagFilter~ — there is no separate tag database,
+so when the last creature carrying a tag drops it, the entry
+disappears from the dropdown automatically.
 
 *Bottom row (actions):* New Creature, Paste Stat Block, Create
 Group, and (when 1+ row is checkbox-selected) Create Group

@@ -821,6 +821,7 @@ tagRow idx tag =
         , button
             [ class "edit-row__remove"
             , onClick (CompendiumEditTagRemove idx)
+            , Tooltips.attr Tooltips.compendiumEditRemoveTag
             ]
             [ text "×" ]
         ]

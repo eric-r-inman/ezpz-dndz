@@ -5541,10 +5541,15 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  /* The 12px visual gap that used to live in `margin-bottom` is
+     now `padding-bottom` so the bar's solid background extends
+     over what would otherwise be a transparent strip — stat-block
+     content scrolling up stays hidden behind the bar.  Bottom
+     corners are squared off for the same reason. */
+  padding: 8px 12px 20px;
+  margin-bottom: 0;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--color-surface-2);
   position: sticky;
   top: 0;

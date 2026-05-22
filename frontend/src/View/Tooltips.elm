@@ -33,6 +33,7 @@ module View.Tooltips exposing
     , compendiumEditRemoveSave
     , compendiumEditRemoveSection
     , compendiumEditRemoveSkill
+    , compendiumEditRemoveTag
     , compendiumExport
     , compendiumExportDirty
     , compendiumGroupAdd
@@ -770,6 +771,11 @@ compendiumEditRemoveSection =
 compendiumEditDeleteCreature : String
 compendiumEditDeleteCreature =
     "Delete this creature from Compendium"
+
+
+compendiumEditRemoveTag : String
+compendiumEditRemoveTag =
+    "Remove this tag"
 
 
 

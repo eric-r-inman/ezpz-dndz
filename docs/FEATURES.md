@@ -347,6 +347,14 @@ action bar on the right.
   name.
 - *Kind toggles* — Player / Enemy / NPC filters.
 - *Sort* — by Name, CR, or Recency.
+- *Tag filter* — drop-down to the right of the sort picker.  Two
+  groups: *Habitats* (every 2024 MM habitat tag, both Material-
+  Plane and Planar) and *Tags* (every user-authored tag that
+  currently appears on at least one creature).  The Tags group
+  disappears when no creature carries a tag — there is no
+  separate tag database, so a tag exists only while at least one
+  creature uses it.  Pick a habitat or tag to narrow the list to
+  creatures carrying that label.
 - *Already in encounter* — the count next to a creature reflects
   how many instances of it are currently in the queue.
 
@@ -360,6 +368,15 @@ right.  Clickable elements inside the stat block:
 - *Inline dice* — any dice expression in a trait or action
   (e.g. "2d6+3 fire damage") is clickable and pops a floating
   result above the cursor.
+- *Tag badges* — if the creature has any user tags, they appear as
+  small pills on the right side of the name row in the
+  Compendium-modal stat block.  In the pinned right-rail Compendium
+  Panel on the main page, the same tags collapse to a single 🏷
+  icon next to the name; hover the icon to see the full list.
+- *Habitat / Treasure row* — at the very bottom of the stat block,
+  below custom sections and lore, the 2024 Monster Manual habitat
+  and treasure tags appear as labeled rows.  Planar habitats render
+  inside a "Planar (…)" wrapper to mirror the printed format.
 
 ** Adding to the encounter
 
@@ -393,6 +410,28 @@ A multi-section form covering everything a 5e stat block needs:
   Long Rest, At Will) with mode-specific fields.
 - *Custom sections* — free-form name + body for anything the
   built-in groups don't cover.
+- *Tags* — free-form, single-word labels you can use to organise
+  the library.  Click *+ Add Tag*, type the tag (no spaces;
+  underscores are fine — e.g. ~boss~, ~fire_resist~, ~ranged~),
+  hit × to remove a row.  Tags are user-authored only; the Paste
+  Stat Block parser does not populate them.  Once at least one
+  creature carries a tag, it appears in the Compendium browser's
+  *Tag* filter dropdown; when the last creature using it is
+  deleted or has the tag removed, the tag silently disappears
+  from the dropdown.
+- *Habitats* — the 2024 Monster Manual habitat list.  A
+  Material-Plane chip row (Arctic, Coastal, Desert, Forest,
+  Grassland, Hill, Mountain, Swamp, Underdark, Underwater, Urban)
+  plus a Planar chip row (Abyss, Acheron, Astral Plane,
+  Beastlands, Elemental Chaos, the four Elemental Planes, Feywild,
+  Limbo, Lower Planes, Nine Hells, Upper Planes).  Multi-select.
+- *Treasure* — the 2024 MM treasure buckets: Arcana, Armaments,
+  Implements, Relics.  Multi-select.  The Paste Stat Block parser
+  reads these automatically when the pasted text includes a
+  ~Habitat:~ or ~Treasure:~ line (handling both colon-prefixed and
+  bare-prefix forms, the ~Planar (X, Y)~ wrapper, same-line
+  ~Habitat: X Treasure: Y~ cramming, and the ~Treasure: Any~
+  shorthand which expands to all four buckets).
 - *Advanced* — placeholders for Legendary Actions, Lair Actions,
   Regional Effects, and Spellcasting.  These read existing data but
   some fields are not yet fully editable; a banner warns you when
