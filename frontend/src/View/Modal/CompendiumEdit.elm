@@ -933,8 +933,7 @@ treasurePicker options selected =
                 [ text (Compendium.treasureLabel t) ]
     in
     div [ class "edit-field edit-field--picker" ]
-        [ span [ class "edit-field__label" ] [ text "Treasure" ]
-        , div [ class "edit-chip-picker" ]
+        [ div [ class "edit-chip-picker" ]
             (List.map chip options)
         ]
 

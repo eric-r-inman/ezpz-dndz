@@ -22,6 +22,7 @@ module View.Tooltips exposing
     , compendiumClear
     , compendiumClearSelectedNone
     , compendiumClearSelectedReady
+    , compendiumClearTagFilter
     , compendiumCreateGroup
     , compendiumCreateGroupFromSelected
     , compendiumDelete
@@ -742,6 +743,11 @@ compendiumClearSelectedNone =
 compendiumClearSelectedReady : String
 compendiumClearSelectedReady =
     "Remove checked creatures"
+
+
+compendiumClearTagFilter : String
+compendiumClearTagFilter =
+    "Clear tag filter"
 
 
 

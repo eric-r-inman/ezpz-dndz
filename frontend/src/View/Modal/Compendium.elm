@@ -447,6 +447,12 @@ the full Habitat list first, then whatever user-authored tags
 are in the loaded compendium. The user-tag optgroup is omitted
 entirely when no creature carries a tag, which is the visible
 expression of the "no separate tag DB" invariant.
+
+Pairs with a × clear button that only appears when a filter is
+active. The dropdown's first option ("Tag") would technically
+clear the filter on its own, but it doesn't read as a clear
+affordance — the explicit × is the discoverable path.
+
 -}
 tagPicker : CompendiumUi -> Html Msg
 tagPicker ui =
@@ -482,17 +488,37 @@ tagPicker ui =
                 [ Html.optgroup [ attribute "label" "Tags" ]
                     (List.map tagOpt userTags)
                 ]
+
+        select_ =
+            Html.select
+                [ class "compendium__tag-filter"
+                , onInput CompendiumTagFilterChanged
+                , attribute "aria-label" "Filter compendium by tag"
+                ]
+                (opt "" "Tag"
+                    :: Html.optgroup [ attribute "label" "Habitats" ]
+                        (List.map habitatOpt Compendium.allHabitats)
+                    :: userTagsGroup
+                )
+
+        clearButton =
+            case ui.tagFilter of
+                Just _ ->
+                    [ button
+                        [ class "compendium__tag-filter-clear"
+                        , type_ "button"
+                        , onClick (CompendiumTagFilterChanged "")
+                        , Tooltips.attr Tooltips.compendiumClearTagFilter
+                        , attribute "aria-label" Tooltips.compendiumClearTagFilter
+                        ]
+                        [ text "×" ]
+                    ]
+
+                Nothing ->
+                    []
     in
-    Html.select
-        [ class "compendium__tag-filter"
-        , onInput CompendiumTagFilterChanged
-        , attribute "aria-label" "Filter compendium by tag"
-        ]
-        (opt "" "Tag"
-            :: Html.optgroup [ attribute "label" "Habitats" ]
-                (List.map habitatOpt Compendium.allHabitats)
-            :: userTagsGroup
-        )
+    div [ class "compendium__tag-filter-group" ]
+        (select_ :: clearButton)
 
 
 body : CompendiumUi -> List String -> Html Msg

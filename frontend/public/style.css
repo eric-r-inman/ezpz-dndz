@@ -5426,6 +5426,45 @@ body {
   font: inherit;
 }
 
+.compendium__tag-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compendium__tag-filter {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+/* × button that appears next to the tag filter when one is
+   active.  Hidden when no filter is set so the toolbar doesn't
+   accumulate dead controls. */
+.compendium__tag-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.compendium__tag-filter-clear:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
 .compendium__placeholder {
   padding: 32px;
   text-align: center;
@@ -5964,17 +6003,22 @@ body {
 }
 
 /* Native fieldset legends sit on top of the border line by
-   default; without an opaque background they bleed through and
-   read as a heading floating off-canvas.  Match the fieldset's
-   own background so the legend masks the border cleanly. */
+   default, which read as a heading "overlapping" the section's
+   top edge.  The `float: left; width: 100%` trick opts the
+   legend out of that special positioning and reflows it as a
+   normal block element at the top of the fieldset's content
+   box, fully inside the bordered pane.  The trailing
+   `clear: both` on the following sibling (gap is handled by
+   the parent flexbox) keeps subsequent content under it. */
 .edit-section legend {
-  padding: 0 6px;
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 6px;
   font-weight: 700;
   font-size: 0.85rem;
   letter-spacing: 0.04em;
-  background: var(--color-surface-2);
   color: var(--color-text);
-  border-radius: var(--radius-sm);
 }
 
 .edit-row {
