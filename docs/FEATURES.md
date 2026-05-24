@@ -678,13 +678,22 @@ In the Compendium browser, selection enables:
 
 * Themes and visual modes
 
-The settings popover (currently being rebuilt; reappears in an
-upcoming release) lets you switch between *Light*, *Dark*, and
-*Auto* (follow OS preference).  Selected creature cards highlight
-with a border and accent fill.  Dead creatures grey out and surface
-their death-save column.  Inactive creatures dim and step out of the
-turn order.  The *Save* button outlines yellow when the encounter
-has unsaved changes.
+The *⚙ settings* button at the right of the app bar opens a
+popover with the *Theme* picker: *Modern*, *Dark*, or *Auto*
+(follow the OS preference).  *Modern* is the Linear/Vercel-style
+light palette — off-white surfaces, indigo accents, hairline
+borders, and the Inter typeface for UI text plus JetBrains Mono
+for numerics.  *Dark* keeps the classic dark palette with the
+system font stack.  *Auto* resolves to whichever matches the
+OS's current colour-scheme preference.
+
+Other always-on visual cues:
+
+- Selected creature cards highlight with a border and accent fill.
+- Dead creatures grey out and surface their death-save column.
+- Inactive creatures dim and step out of the turn order.
+- The *Save* button outlines yellow when the encounter has
+  unsaved changes.
 
 * Keyboard and mouse shortcuts
 
@@ -712,9 +721,6 @@ them at the table.
   Stat Block is the safest way to refresh those sections.
 - *CR Calculator party* persists for the session but not yet to
   the server.  Restarting the app re-empties it.
-- *Theme picker* is temporarily hidden while the settings popover
-  is being rebuilt; the underlying theming still works via OS
-  preference.
 - *Mobile/tablet polish* is incomplete.  The app is targeted at
   laptop and desktop screens for now.
 

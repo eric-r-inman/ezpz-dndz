@@ -156,7 +156,7 @@ without an import cycle, mirroring the `CompendiumSort` pattern
 below. `Preferences.elm` re-exports it.
 -}
 type Theme
-    = Light
+    = Modern
     | Dark
     | Auto
 

@@ -45,15 +45,7 @@ import View.Tooltips as Tooltips
 
 
 view : Bool -> Theme -> Auth.User -> Bool -> Html Msg
-view _ _ user useCustomCardLayout =
-    -- The ⚙ settings popover (light/dark/auto theme switcher) is
-    -- temporarily hidden from the nav while the light theme gets
-    -- more polish.  All the supporting code below — `settings`,
-    -- `themeRow`, `themeRadio`, the PreferencesThemeSet wiring —
-    -- stays in place so re-enabling is a one-line change in `nav`.
-    -- The two parameters stay on the signature so the call site
-    -- doesn't have to drop them; they're passed through but
-    -- ignored here while the theme switcher is hidden.
+view settingsOpen theme user useCustomCardLayout =
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -107,6 +99,7 @@ view _ _ user useCustomCardLayout =
                 , Tooltips.attr Tooltips.appBarDonate
                 ]
                 [ text "Donate" ]
+            , settings settingsOpen theme
             ]
         ]
 
@@ -165,7 +158,7 @@ themeRow current =
     fieldset [ class "app-settings__row" ]
         [ legend [ class "app-settings__row-label" ] [ text "Theme" ]
         , div [ class "app-settings__radio-group" ]
-            [ themeRadio current Light "Light"
+            [ themeRadio current Modern "Modern"
             , themeRadio current Dark "Dark"
             , themeRadio current Auto "Auto"
             ]

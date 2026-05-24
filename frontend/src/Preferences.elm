@@ -26,7 +26,7 @@ import Msg exposing (CompendiumSort(..), Theme(..))
 -- `Theme` is re-exported from `Msg` (where the type is defined
 -- to avoid an import cycle with the `PreferencesThemeSet Theme`
 -- Msg constructor).  `Auto` follows the OS / browser preference
--- (`prefers-color-scheme`); `Light` and `Dark` pin a specific
+-- (`prefers-color-scheme`); `Modern` and `Dark` pin a specific
 -- mode.
 
 

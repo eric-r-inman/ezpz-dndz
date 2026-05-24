@@ -51,8 +51,8 @@ script in `index.html` reads back.
 themeKey : Theme -> String
 themeKey theme =
     case theme of
-        Light ->
-            "light"
+        Modern ->
+            "modern"
 
         Dark ->
             "dark"

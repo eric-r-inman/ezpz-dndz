@@ -7,15 +7,18 @@
     <script>
       // FOUC prevention: read the user's previously-chosen theme
       // from localStorage and set <html data-theme=...> BEFORE the
-      // stylesheet loads.  CSS in style.css uses [data-theme="dark"]
-      // selectors, so this avoids a flash of light theme between
-      // page load and Elm boot.  Falls back to "auto" (= OS pref
-      // via @media) when nothing is saved or the value is invalid.
+      // stylesheet loads.  CSS uses [data-theme="dark"] /
+      // [data-theme="modern"] selectors, so this avoids a flash of
+      // the wrong theme between page load and Elm boot.  Falls back
+      // to "auto" (= OS pref via @media) when nothing is saved or
+      // the value is invalid.  Old "light" values from before the
+      // Light → Modern rename get promoted in flight.
       (function () {
         try {
           var raw = localStorage.getItem("theme");
+          if (raw === "light") raw = "modern";
           var theme =
-            raw === "light" || raw === "dark" || raw === "auto"
+            raw === "modern" || raw === "dark" || raw === "auto"
               ? raw
               : "auto";
           document.documentElement.setAttribute("data-theme", theme);
@@ -36,7 +39,8 @@
       var savedTheme = "auto";
       try {
         var raw = localStorage.getItem("theme");
-        if (raw === "light" || raw === "dark" || raw === "auto") {
+        if (raw === "light") raw = "modern";
+        if (raw === "modern" || raw === "dark" || raw === "auto") {
           savedTheme = raw;
         }
       } catch (_) {}

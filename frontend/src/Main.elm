@@ -322,8 +322,15 @@ default in `index.html`.
 themeFromFlag : String -> Theme
 themeFromFlag raw =
     case raw of
+        "modern" ->
+            Modern
+
+        -- Old key from before the Light → Modern rename.  Any
+        -- localStorage value still saying "light" gets quietly
+        -- promoted; the next preference write will replace it
+        -- with "modern".
         "light" ->
-            Light
+            Modern
 
         "dark" ->
             Dark

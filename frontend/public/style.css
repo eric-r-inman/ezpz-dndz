@@ -1,78 +1,211 @@
+/* Self-hosted webfonts for the Modern theme.  Inter is the
+   variable font (one file covers every weight 100-900); JetBrains
+   Mono is the regular weight only (we only use mono for compact
+   numerics).  `font-display: swap` avoids a blocking text flash
+   if the WOFF2 hasn't loaded yet; the system stack listed below
+   in `body { font-family: … }` is the swap target. */
+@font-face {
+  font-family: "Inter";
+  src:
+    url("/fonts/InterVariable.woff2") format("woff2-variations"),
+    url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The Modern palette is the default (`:root`).  Linear/Vercel
+   light aesthetic — off-white surfaces, indigo accent, tight
+   radii, hairline borders.  The Modern font swap (Inter for UI,
+   JetBrains Mono for numerics) is scoped to this block + the
+   explicit `[data-theme="modern"]` selector below so the Dark
+   theme keeps its classic system stack. */
 :root {
   color-scheme: light dark;
-  --color-bg: #f8fafd;
+
+  /* Surfaces */
+  --color-bg: #fafafa;
   --color-surface: #ffffff;
-  --color-surface-2: #eef3fb;
-  --color-text: #14161c;
-  --color-text-muted: #525d75;
-  --color-link: #2952cc;
-  --color-border: #d4dce9;
-  --color-accent: #6d4ed8;
-  --color-accent-hover: #5a3ec5;
-  --color-accent-soft: rgba(109, 78, 216, 0.12);
-  --color-danger: #c92a2a;
-  --color-danger-soft: rgba(201, 42, 42, 0.12);
-  --color-success: #2f9e44;
-  --color-success-soft: rgba(47, 158, 68, 0.14);
-  --shadow-sm:
-    0 1px 2px rgba(34, 47, 78, 0.06), 0 1px 3px rgba(34, 47, 78, 0.05);
-  --shadow-md: 0 8px 24px rgba(34, 47, 78, 0.1);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --color-surface-2: #f4f4f5;
+
+  /* Text */
+  --color-text: #18181b;
+  --color-text-muted: #71717a;
+
+  /* Borders + dividers — hairline, low contrast */
+  --color-border: #e4e4e7;
+
+  /* Accent — indigo (Linear-style) */
+  --color-link: #5b5bd6;
+  --color-accent: #5b5bd6;
+  --color-accent-hover: #4f46e5;
+  --color-accent-soft: rgba(91, 91, 214, 0.1);
+
+  /* Signal colours — slightly desaturated for the dev-tool look */
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.1);
+  --color-success: #16a34a;
+  --color-success-soft: rgba(22, 163, 74, 0.1);
+
+  /* Shadows — minimal, layered.  Modern aesthetic avoids the
+     "lifted card" 1990s shadow look in favour of barely-there
+     shadows that read more as edges. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  /* Tighter radii than the classic palette — modern dev tools
+     trend toward 4-8px corners, not 10-14px. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --header-height: 56px;
-  --color-yellow: #b07900;
-  --color-init-blue: #3b82f6;
-  --color-orange-dark: #b8521c;
-  --color-temp-blue: #2589e0;
-  --color-orange: #f97316;
-  --color-blue: #3b82f6;
 
-  /* Card row 3 + control-button color tokens.  Each
-     `.action-btn--*` variant just sets `--btn-bg` (and optionally
-     `--btn-fg` / `--btn-bd`) so swapping a variant's hue is a
-     one-line change here rather than a per-variant override. */
-  --color-damage: #dc2626;
-  --color-heal: #16a34a;
-  --color-temp: #0284c7;
-  --color-condition: #7c3aed;
-  --color-btn-blue: #2563eb;
-  --color-btn-green: #16a34a;
-  --color-btn-red: #dc2626;
-  --color-btn-orange: #d97706;
-  --color-dirty-outline: #fff59d;
+  /* Accent / signal hues — muted and saturated together, not the
+     classic Windows-y bright primaries. */
+  --color-yellow: #ca8a04;
+  --color-init-blue: #2563eb;
+  --color-orange-dark: #c2410c;
+  --color-temp-blue: #2563eb;
+  --color-orange: #ea580c;
+  --color-blue: #2563eb;
 
-  /* Foreground (text) color for any solid-filled coloured action
-     button — damage / heal / temp / condition / green / and the
-     Light-theme blue / red / orange.  Light-mode pairs the
-     mid-saturated fills with white text for the modern polished-
-     CTA look; the dark-theme block below overrides this back to
-     near-black, which is the established dark-mode appearance. */
+  /* LA (legendary actions) + LR (legendary resistance) pip
+     tints.  Stepped one tier darker than `--color-orange` /
+     `--color-yellow` on Modern so the pips read with more
+     gravity against the off-white card.  Dark overrides these
+     below to its existing brighter values. */
+  --color-la: #c2410c; /* orange-700 */
+  --color-lr: #a16207; /* yellow-700 */
+
+  /* Action-button tokens.  Modern palette abandons the
+     traditional red/green/blue/purple "primary colors" set in
+     favour of earth/jewel tones at the Tailwind 800 tier:
+     rust / olive / teal / amber.  All four share ~30% lightness
+     and ~70% saturation, so they read as one designed earth-
+     palette rather than four conflicting colour signals.
+     Hover variants drop to the 900 row.  Indigo stays as the
+     single "primary CTA" accent on top of the earth-tone field. */
+  --color-damage: #9a3412; /* rust  — orange-800 */
+  --color-heal: #3f6212; /* olive — lime-800 */
+  --color-temp: #155e75; /* teal  — cyan-800 */
+  --color-condition: #854d0e; /* amber — yellow-800 */
+  --color-btn-blue: #155e75; /* teal — same as Temp HP */
+  --color-btn-green: #3f6212; /* same as heal */
+  --color-btn-red: #9a3412; /* same as damage */
+  --color-btn-orange: #854d0e; /* same as condition */
+  --color-dirty-outline: #fde68a;
+
   --card-btn-fg: #ffffff;
 
-  /* Light-theme colored-button tokens.  Solid mid-saturated fills
-     paired with white text — the modern "polished CTA" look on a
-     white surface.  Hover darkens the fill rather than relying on
-     `filter: brightness`, which has limited visible effect on
-     mid-tone surfaces.  Dark theme overrides these below to keep
-     its existing palette + black-on-color text. */
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
-  --btn-blue-bg-hover: #1d4ed8;
+  --btn-blue-bg-hover: #164e63; /* cyan-900 */
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
   --btn-red-bd: transparent;
-  --btn-red-bg-hover: #b91c1c;
+  --btn-red-bg-hover: #7c2d12; /* orange-900 */
   --btn-orange-bg: var(--color-btn-orange);
   --btn-orange-fg: #ffffff;
   --btn-orange-bd: transparent;
-  --btn-orange-bg-hover: #b45309;
+  --btn-orange-bg-hover: #713f12; /* yellow-900 */
+
+  /* Button-polish tokens.  Modern uses Inter Medium (500) with
+     subtly negative tracking, a hairline shadow on rest, and
+     darken-on-hover (no white overlay).  Dark overrides these
+     below to keep its existing 600-weight + positive-tracking +
+     inset-white-on-hover look. */
+  --btn-font-weight: 500;
+  --btn-letter-spacing: -0.005em;
+  --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --btn-shadow-hover: 0 1px 1px rgba(0, 0, 0, 0.03);
+  --btn-hover-overlay: transparent;
+  --btn-focus-ring: 0 0 0 3px var(--color-accent-soft);
+
+  /* Font tokens — Modern overrides `body { font-family }` below.
+     The classic Dark theme reads these as `--font-system` and
+     reverts to the system stack. */
+  --font-ui:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    monospace;
+}
+
+/* Explicit Modern selector.  Required so a user who picked
+   Modern on a dark-OS still gets the Modern palette — the
+   `@media (prefers-color-scheme: dark)` block below would
+   otherwise repaint `:root` to Dark.  Same tokens as `:root`. */
+[data-theme="modern"] {
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f5;
+  --color-text: #18181b;
+  --color-text-muted: #71717a;
+  --color-border: #e4e4e7;
+  --color-link: #5b5bd6;
+  --color-accent: #5b5bd6;
+  --color-accent-hover: #4f46e5;
+  --color-accent-soft: rgba(91, 91, 214, 0.1);
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.1);
+  --color-success: #16a34a;
+  --color-success-soft: rgba(22, 163, 74, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --color-yellow: #ca8a04;
+  --color-init-blue: #2563eb;
+  --color-orange-dark: #c2410c;
+  --color-temp-blue: #2563eb;
+  --color-orange: #ea580c;
+  --color-blue: #2563eb;
+  --color-la: #c2410c;
+  --color-lr: #a16207;
+  --color-damage: #9a3412;
+  --color-heal: #3f6212;
+  --color-temp: #155e75;
+  --color-condition: #854d0e;
+  --color-btn-blue: #155e75;
+  --color-btn-green: #3f6212;
+  --color-btn-red: #9a3412;
+  --color-btn-orange: #854d0e;
+  --color-dirty-outline: #fde68a;
+  --card-btn-fg: #ffffff;
+  --btn-blue-bg: var(--color-btn-blue);
+  --btn-blue-fg: #ffffff;
+  --btn-blue-bd: transparent;
+  --btn-blue-bg-hover: #164e63;
+  --btn-red-bg: var(--color-btn-red);
+  --btn-red-fg: #ffffff;
+  --btn-red-bd: transparent;
+  --btn-red-bg-hover: #7c2d12;
+  --btn-orange-bg: var(--color-btn-orange);
+  --btn-orange-fg: #ffffff;
+  --btn-orange-bd: transparent;
+  --btn-orange-bg-hover: #713f12;
+  --btn-font-weight: 500;
+  --btn-letter-spacing: -0.005em;
+  --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --btn-shadow-hover: 0 1px 1px rgba(0, 0, 0, 0.03);
+  --btn-hover-overlay: transparent;
+  --btn-focus-ring: 0 0 0 3px var(--color-accent-soft);
 }
 
 /* Dark theme overrides.  Applied two ways:
@@ -92,6 +225,24 @@
  * which is the whole viewport.
  */
 [data-theme="dark"] {
+  /* Classic Dark keeps the system sans stack (no Inter swap)
+     and the original radii — only colours change.  Restores
+     `--font-ui` to the previous default. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Restore the classic button-polish tokens — heavier weight,
+     positive tracking, no rest shadow, white-overlay hover. */
+  --btn-font-weight: 600;
+  --btn-letter-spacing: 0.02em;
+  --btn-shadow: none;
+  --btn-shadow-hover: none;
+  --btn-hover-overlay: rgba(255, 255, 255, 0.08);
+  --btn-focus-ring: none;
   --color-bg: #0e1015;
   --color-surface: #181b23;
   --color-surface-2: #20242e;
@@ -114,6 +265,10 @@
   --color-temp-blue: #4d9bff;
   --color-orange: #ff9a3c;
   --color-blue: #4d9bff;
+  /* LA / LR pip tints — Dark keeps the existing bright values
+     so contrast against the dark card surface is preserved. */
+  --color-la: var(--color-orange);
+  --color-lr: var(--color-yellow);
 
   /* Restore dark-mode legacy colour values for the row-3 + green
      buttons — slightly less saturated than the new light-mode
@@ -151,11 +306,25 @@
   /* Auto mode: the user picked `Auto` (or has no setting yet)
    * and the OS is in dark mode.  Mirrors the explicit
    * data-theme="dark" rule above.  An explicit
-   * data-theme="light" wins over this because attribute
+   * data-theme="modern" wins over this because attribute
    * selectors with a value have higher specificity than
    * :not([data-theme]). */
   [data-theme="auto"],
   :root:not([data-theme]) {
+    /* OS-pref-dark Auto users get the same font + radii reset
+       as the explicit Dark theme. */
+    --font-ui:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      Arial, sans-serif;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --btn-font-weight: 600;
+    --btn-letter-spacing: 0.02em;
+    --btn-shadow: none;
+    --btn-shadow-hover: none;
+    --btn-hover-overlay: rgba(255, 255, 255, 0.08);
+    --btn-focus-ring: none;
     --color-bg: #0e1015;
     --color-surface: #181b23;
     --color-surface-2: #20242e;
@@ -178,6 +347,8 @@
     --color-temp-blue: #4d9bff;
     --color-orange: #ff9a3c;
     --color-blue: #4d9bff;
+    --color-la: var(--color-orange);
+    --color-lr: var(--color-yellow);
 
     /* Match the explicit dark-theme overrides — restore legacy
        palette + black-on-color text + brightness-on-hover. */
@@ -216,12 +387,20 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  /* Reads the `--font-ui` token, which `:root` (Modern) sets to
+     "Inter, …" and the `[data-theme="dark"]` override below
+     resets to the classic system stack. */
+  font-family: var(--font-ui);
   background: var(--color-bg);
   color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Inter ships with a number of stylistic alternates; `cv11`
+     swaps the geometric `a` and `g` for the rounded glyphs that
+     read better as UI text.  `ss03` enables the alternative
+     curved punctuation set.  Tabular numerals (`tnum`) keep
+     stat-block columns aligned. */
+  font-feature-settings: "cv11", "ss03", "tnum";
 }
 
 #app {
@@ -1468,11 +1647,38 @@ body {
 }
 
 .creature-card__select {
+  appearance: none;
+  -webkit-appearance: none;
   width: 18px;
   height: 18px;
-  accent-color: var(--color-accent);
+  background: #ffffff;
+  border: 1.5px solid #a1a1aa; /* zinc-400 */
+  border-radius: 3px;
   cursor: pointer;
   margin: 0;
+  display: inline-grid;
+  place-items: center;
+  transition:
+    border-color 0.1s ease,
+    background 0.1s ease;
+}
+
+.creature-card__select:hover {
+  border-color: #71717a; /* zinc-500 */
+}
+
+/* Black check rendered via an inline SVG so we don't depend on a
+   sprite or font glyph.  The path is the standard √ stroke. */
+.creature-card__select:checked {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23000000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3 8 7 12 13 4'/%3E%3C/svg%3E");
+  background-size: 14px 14px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.creature-card__select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .creature-card__center {
@@ -1509,31 +1715,33 @@ body {
 }
 
 /* Orange for legendary-action pips ("LA"); auto-reset at the
-   start of the creature's turn. */
+   start of the creature's turn.  `--color-la` is theme-aware:
+   slightly darker on Modern, the existing bright orange on Dark. */
 .legendary-col--la .legendary-col__header {
-  color: var(--color-orange);
+  color: var(--color-la);
 }
 
 .legendary-col--la .legendary-col__pip {
-  border-color: var(--color-orange);
+  border-color: var(--color-la);
 }
 
 .legendary-col--la .legendary-col__pip--filled {
-  background: var(--color-orange);
+  background: var(--color-la);
 }
 
 /* Yellow for legendary-resistance pips ("LR"); GM clears
-   manually (rules: per long rest, not per turn). */
+   manually (rules: per long rest, not per turn).  Same Modern /
+   Dark token strategy as LA. */
 .legendary-col--lr .legendary-col__header {
-  color: var(--color-yellow);
+  color: var(--color-lr);
 }
 
 .legendary-col--lr .legendary-col__pip {
-  border-color: var(--color-yellow);
+  border-color: var(--color-lr);
 }
 
 .legendary-col--lr .legendary-col__pip--filled {
-  background: var(--color-yellow);
+  background: var(--color-lr);
 }
 
 .legendary-col__pip {
@@ -1850,8 +2058,13 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--color-init-blue);
-  color: #000000;
+  /* Transparent fill with a dark outline.  `var(--color-text)`
+     resolves to near-black on Modern and near-white on Dark,
+     so the outline reads as crisp in both themes.  Mirrors the
+     "outlined chip" idiom used in modern dashboards. */
+  background: transparent;
+  border: 1.5px solid var(--color-text);
+  color: var(--color-text);
   display: inline-grid;
   place-items: center;
   font-weight: 700;
@@ -1870,6 +2083,13 @@ body {
   text-overflow: ellipsis;
   flex: 0 1 auto;
   min-width: 0;
+  /* Permanent underline so the creature name reads as a strong
+     anchor on each card.  `text-underline-offset` gives the rule
+     air; `text-decoration-thickness` keeps it from looking heavy
+     against the bold weight. */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
 }
 
 .creature-name--default {
@@ -2105,6 +2325,7 @@ body {
 .status-toggle--on {
   color: var(--color-text);
   opacity: 1;
+  font-weight: 700;
 }
 
 .status-toggle--off {
@@ -2199,13 +2420,20 @@ body {
   cursor: pointer;
   padding: 0 10px;
   font-size: 0.78rem;
-  font-weight: 600;
+  /* Typography polish — Modern uses 500 weight + negative
+     tracking; Dark / classic uses 600 + 0.02em.  Tokens set
+     per-theme. */
+  font-weight: var(--btn-font-weight, 600);
+  letter-spacing: var(--btn-letter-spacing, 0.02em);
   line-height: 1;
   font-family: inherit;
   background: var(--btn-bg);
   color: var(--btn-fg);
+  /* Subtle rest shadow on Modern; `none` on Dark — `--btn-shadow`
+     defaults to `none` if the theme didn't set it. */
+  box-shadow: var(--btn-shadow, none);
   transition:
-    filter 0.1s ease,
+    box-shadow 0.1s ease,
     transform 0.05s ease,
     background 0.1s ease,
     color 0.1s ease,
@@ -2216,18 +2444,19 @@ body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  letter-spacing: 0.02em;
 }
 
 .action-btn:hover {
-  /* `filter: brightness(1.15)` previously — but `filter` on the
-     trigger creates a containing block for the
-     `[data-tooltip]::after` pseudo-element on every hover, which
-     collapses the tooltip onto the trigger.  Use a faint
-     overlay (white at low opacity, light-on-dark legible) via
-     `box-shadow: inset` instead — same "lift" feel for coloured
-     variants, no containing-block side effect. */
-  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.08);
+  /* Hover treatment is per-theme — Dark uses a faint white
+     inset overlay (visible on dark surfaces); Modern leaves the
+     overlay transparent and relies on the per-variant darker
+     `--btn-X-bg-hover` value to read as a "press."  The inset
+     `box-shadow` trick keeps `filter` out of play so the
+     `[data-tooltip]::after` pseudo doesn't collapse onto the
+     trigger. */
+  box-shadow:
+    inset 0 0 0 999px var(--btn-hover-overlay, transparent),
+    var(--btn-shadow-hover, none);
 }
 
 /* Unvariant `.action-btn` (Cancel / Close): brightness has no
@@ -2240,11 +2469,16 @@ body {
 
 .action-btn:active {
   transform: translateY(1px);
+  box-shadow: none;
 }
 
 .action-btn:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  /* Soft halo on Modern; falls through to a no-op on Dark.
+     Combined with the existing rest-state shadow so the focus
+     ring layers cleanly over the button's natural elevation. */
+  box-shadow: var(--btn-focus-ring, none), var(--btn-shadow, none);
 }
 
 /* Card row 3 + control-button color variants.  Each variant
