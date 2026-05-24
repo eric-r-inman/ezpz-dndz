@@ -37,8 +37,8 @@ import Compendium
         , Usage(..)
         )
 import Dice
-import Html exposing (Html, button, div, em, hr, p, span, strong, text)
-import Html.Attributes exposing (attribute, class)
+import Html exposing (Html, a, button, div, em, hr, p, span, strong, text)
+import Html.Attributes exposing (attribute, class, href, target)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
 import View.Tooltips as Tooltips
@@ -48,19 +48,30 @@ import View.Tooltips as Tooltips
 -- ── ENTRY POINT ──────────────────────────────────────────────────────────────
 
 
-{-| How tags are rendered in the stat-block header.
+{-| How tags (and the optional ↗ "open in new tab" link) are
+rendered in the stat-block header.
 
   - `TagBadges` puts each tag as a right-justified badge on the
-    name row — used by the compendium modal where there's room.
+    name row. Used by the standalone single-creature page and
+    the paste-modal preview, where there's room for badges but
+    no need for the ↗ link (the standalone view IS the new tab;
+    paste-preview creatures don't have a server id yet).
+  - `TagBadgesOpenInNewTab` is the same plus an ↗ anchor at the
+    far right of the name row that opens the standalone view in
+    a new tab. Used by the compendium modal.
   - `TagIconTooltip` collapses tags to a single 🏷 icon next to
-    the name, with the full list in a hover tooltip — used by the
-    pinned right-rail panel where vertical space is at a premium.
+    the name, with the full list in a hover tooltip. Used by
+    the pinned right-rail panel — which renders its own ↗ link
+    as a sibling absolute-positioned over the stat block.
 
-When a creature has no tags, both modes render nothing.
+When a creature has no tags, the tag affordance is omitted in
+all three modes; the ↗ link still appears in
+`TagBadgesOpenInNewTab`.
 
 -}
 type TagDisplay
     = TagBadges
+    | TagBadgesOpenInNewTab
     | TagIconTooltip
 
 
@@ -150,9 +161,38 @@ nameRow tagDisplay c =
                 , tagBadges c.tags
                 ]
 
+        TagBadgesOpenInNewTab ->
+            div [ class "statblock__name-row" ]
+                [ div [ class "statblock__name" ] [ text c.name ]
+                , div [ class "statblock__name-row-end" ]
+                    [ tagBadges c.tags
+                    , openInNewTabLink c.id
+                    ]
+                ]
+
         TagIconTooltip ->
             div [ class "statblock__name statblock__name--inline-tags" ]
                 (text c.name :: inlineTagIcon c.tags)
+
+
+{-| ↗ anchor that opens the standalone single-creature page in
+a new tab. Used by the compendium-modal stat block so the GM
+can park a creature's full sheet in another browser tab without
+leaving the modal. Mirrors the side-panel link in target, rel,
+and tooltip; only the layout differs (this one sits inline in
+the name row rather than absolute-positioned over the block).
+-}
+openInNewTabLink : String -> Html msg
+openInNewTabLink id =
+    a
+        [ class "statblock__open"
+        , href ("/compendium/creatures/" ++ id)
+        , target "_blank"
+        , attribute "rel" "noopener"
+        , Tooltips.attr Tooltips.panelStatBlockNewWindow
+        , attribute "aria-label" "Open in new window"
+        ]
+        [ text "↗" ]
 
 
 tagBadges : List String -> Html msg

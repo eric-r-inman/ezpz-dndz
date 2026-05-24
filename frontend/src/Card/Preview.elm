@@ -77,7 +77,7 @@ sampleCreature =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = DeathSaves.empty
-    , holding = False
+    , readied = False
     , inactive = False
     , note = ""
     , memo = "Carrying a key"
@@ -203,8 +203,8 @@ renderWidget creature widget =
         WidgetFlying ->
             toggleChip "🪽" (boolLabel "flying" creature.flying)
 
-        WidgetHoldingAction ->
-            toggleChip "⏸" (boolLabel "holding action" creature.holding)
+        WidgetReadiedAction ->
+            toggleChip "⏸" (boolLabel "readied action" creature.readied)
 
         WidgetMemoSlot ->
             if String.isEmpty creature.memo then
@@ -280,6 +280,17 @@ renderWidget creature widget =
 
         WidgetPanelPinButton ->
             iconChip "📌" "pin to right panel"
+
+        WidgetTags ->
+            -- Editor preview uses a synthetic creature with no
+            -- compendium source, so render two sample badges that
+            -- visualise what the widget will look like on a real
+            -- card.  The live encounter card uses the actual
+            -- compendium tag list (see `View.Card.Custom`).
+            span [ class "card-preview__tags" ]
+                [ span [ class "card-preview__tag-badge" ] [ text "boss" ]
+                , span [ class "card-preview__tag-badge" ] [ text "fire_resist" ]
+                ]
 
 
 

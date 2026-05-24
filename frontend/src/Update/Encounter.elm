@@ -18,8 +18,8 @@ module Update.Encounter exposing
     , toggleDodging
     , toggleFlying
     , toggleHiding
-    , toggleHolding
     , toggleInactive
+    , toggleReadied
     , toggleSelected
     )
 
@@ -151,9 +151,9 @@ adjustFlyHeight name delta model =
     )
 
 
-toggleHolding : String -> Model -> ( Model, Cmd Msg )
-toggleHolding name model =
-    ( withEncounter (Encounter.mapCreature name (\c -> { c | holding = not c.holding })) model
+toggleReadied : String -> Model -> ( Model, Cmd Msg )
+toggleReadied name model =
+    ( withEncounter (Encounter.mapCreature name (\c -> { c | readied = not c.readied })) model
     , Cmd.none
     )
 

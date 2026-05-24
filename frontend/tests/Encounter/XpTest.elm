@@ -51,7 +51,7 @@ mkInstance args =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
-    , holding = False
+    , readied = False
     , inactive = False
     , note = ""
     , memo = ""
@@ -228,7 +228,7 @@ totalsForSuite =
                         , flyHeight = 0
                         , bloodied = False
                         , deathSaves = { successes = 0, failures = 0 }
-                        , holding = False
+                        , readied = False
                         , inactive = False
                         , note = ""
                         , memo = ""

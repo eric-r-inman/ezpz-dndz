@@ -246,7 +246,7 @@ encodeCreature c =
         , ( "flyHeight", E.int c.flyHeight )
         , ( "bloodied", E.bool c.bloodied )
         , ( "deathSaves", encodeDeathSaves c.deathSaves )
-        , ( "holding", E.bool c.holding )
+        , ( "readied", E.bool c.readied )
         , ( "inactive", E.bool c.inactive )
         , ( "note", E.string c.note )
         , ( "memo", E.string c.memo )
@@ -417,6 +417,26 @@ optional name dec default =
         )
 
 
+{-| Like [`optional`](#optional) but accepts either of two field
+names. `current` wins when both are present; `legacy` is the
+old name, kept on the read path so encounters saved before a
+rename still decode without a migration script. Used today by
+the `readied` field (was `holding` until the 2014-vs-2024
+terminology cleanup).
+-}
+optionalEither : String -> String -> D.Decoder a -> a -> D.Decoder (a -> b) -> D.Decoder b
+optionalEither current legacy dec default =
+    D.map2 (|>)
+        (D.oneOf
+            [ D.field current dec
+            , D.field current (D.null default)
+            , D.field legacy dec
+            , D.field legacy (D.null default)
+            , D.succeed default
+            ]
+        )
+
+
 decodeEncounter : D.Decoder Encounter
 decodeEncounter =
     D.map3
@@ -434,7 +454,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves holding inactive note memo timer creatureId hasLA laUsed hasLR lrUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -455,7 +475,7 @@ decodeCreature =
             , flyHeight = flyHeight
             , bloodied = bloodied
             , deathSaves = deathSaves
-            , holding = holding
+            , readied = readied
             , inactive = inactive
             , note = note
             , memo = memo
@@ -487,7 +507,7 @@ decodeCreature =
         |> optional "flyHeight" D.int 0
         |> optional "bloodied" D.bool False
         |> optional "deathSaves" decodeDeathSaves { successes = 0, failures = 0 }
-        |> optional "holding" D.bool False
+        |> optionalEither "readied" "holding" D.bool False
         |> optional "inactive" D.bool False
         |> optional "note" D.string ""
         |> optional "memo" D.string ""

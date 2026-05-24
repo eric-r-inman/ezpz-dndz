@@ -11,7 +11,7 @@ Three rows + two side rails + an optional legendary-pip column:
     cover toggle, concentration / hiding / dodging / flying
     toggles, fly-height.
   - Row 3 (bot): Damage / Heal / Temp HP / Condition action
-    buttons, hold toggle, memo slot, timer slot.
+    buttons, ready/readied toggle, memo slot, timer slot.
 
 The two side rails carry the queue-mutation buttons (select,
 move up/down on the left; remove, duplicate on the right) and
@@ -985,7 +985,7 @@ rowBot creature =
             , Tooltips.attr Tooltips.applyCondition
             ]
             [ text "Condition/Effect" ]
-        , holdToggle creature
+        , readiedToggle creature
         , memoSlot creature
         , timerSlot creature
         ]
@@ -1097,29 +1097,29 @@ timerTooltip t =
             }
 
 
-holdToggle : Creature -> Html Msg
-holdToggle creature =
+readiedToggle : Creature -> Html Msg
+readiedToggle creature =
     let
         ( bodyText, cls, label ) =
-            if creature.holding then
+            if creature.readied then
                 ( "✊ Readied"
-                , "action-btn action-btn--holding"
-                , Tooltips.holdReadied
+                , "action-btn action-btn--readied"
+                , Tooltips.releaseReadied
                 )
 
             else
                 ( "✋ Ready"
-                , "action-btn action-btn--hold"
-                , Tooltips.holdReady
+                , "action-btn action-btn--ready"
+                , Tooltips.readyAction
                 )
     in
     button
         [ class cls
-        , onClick (ToggleHolding creature.name)
+        , onClick (ToggleReadied creature.name)
         , Tooltips.attr label
         , attribute "aria-label" label
         , attribute "aria-pressed"
-            (if creature.holding then
+            (if creature.readied then
                 "true"
 
              else

@@ -48,7 +48,7 @@ mkCreature name initiative =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
-    , holding = False
+    , readied = False
     , inactive = False
     , note = ""
     , memo = ""

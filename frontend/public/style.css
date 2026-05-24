@@ -1134,6 +1134,27 @@ body {
   gap: 4px;
 }
 
+.creature-card-custom__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Tag pills on the custom-card renderer.  Match the stat-block
+   badge palette (yellow text + translucent yellow border) so a
+   tag reads the same wherever it appears in the UI. */
+.creature-card-custom__tag-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-yellow);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid rgba(245, 200, 66, 0.55);
+  white-space: nowrap;
+}
+
 .creature-card-custom__bloodied {
   font-size: 0.95rem;
 }
@@ -2256,11 +2277,11 @@ body {
   --btn-bd: transparent;
 }
 
-.action-btn--hold {
+.action-btn--ready {
   --btn-fg: var(--color-text-muted);
 }
 
-.action-btn--hold:hover {
+.action-btn--ready:hover {
   --btn-fg: var(--color-text);
 }
 
@@ -2300,7 +2321,7 @@ body {
   background: var(--btn-orange-bg-hover);
 }
 
-.action-btn--holding {
+.action-btn--readied {
   --btn-bg: var(--color-btn-orange);
   --btn-fg: #fff;
   --btn-bd: transparent;
@@ -2541,6 +2562,42 @@ body {
   flex-wrap: wrap;
   gap: 4px;
   justify-content: flex-end;
+}
+
+/* Wraps tags + the ↗ open-in-new-tab link in the compendium-
+   modal name row.  Keeps them clustered together on the right
+   side of the row with the link rightmost. */
+.statblock__name-row-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ↗ open-in-new-tab anchor inline in the stat-block name row.
+   Mirrors the side-panel `.panel-statblock__open` button visual
+   style but flows in normal layout rather than absolute. */
+.statblock__open {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.statblock__open:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
 }
 
 .statblock__tag-badge {
@@ -3353,6 +3410,24 @@ body {
 
 .card-preview__chip--condition {
   background: var(--color-condition-soft, rgba(255, 200, 100, 0.18));
+}
+
+.card-preview__tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.card-preview__tag-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-yellow);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid rgba(245, 200, 66, 0.55);
+  white-space: nowrap;
 }
 
 .card-preview__toggle {

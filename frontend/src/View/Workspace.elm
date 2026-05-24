@@ -10,6 +10,7 @@ them together with the model fragments each one needs.
 -}
 
 import Card.Layout exposing (CardLayout, QueueView(..))
+import Compendium
 import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
@@ -17,7 +18,7 @@ import Html exposing (Html, div, main_, section)
 import Html.Attributes exposing (class, id)
 import Model exposing (Model)
 import Msg exposing (Msg)
-import Ui.Compendium exposing (CompendiumDb)
+import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.HpChange exposing (HpEdit)
 import View.Card
 import View.Card.Custom
@@ -72,9 +73,22 @@ panelMain :
     -> Html Msg
 panelMain enc hpEdit savedAs db xpScope xpFilterOpen useCustom layout queueView =
     let
+        -- Custom-card renderer needs the loaded compendium to
+        -- resolve tag widgets (tags live on the compendium
+        -- source).  Boot-fetch hasn't finished and load-failed
+        -- both produce an empty Db here, so the tag lookup just
+        -- misses and the widget renders nothing.
+        compendiumDb =
+            case db of
+                CompendiumDbLoaded loaded ->
+                    loaded
+
+                _ ->
+                    Compendium.fromList []
+
         renderCard =
             if useCustom then
-                View.Card.Custom.view layout enc.activeName hpEdit
+                View.Card.Custom.view layout enc.activeName hpEdit compendiumDb
 
             else
                 View.Card.view enc.activeName hpEdit

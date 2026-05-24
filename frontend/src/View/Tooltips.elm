@@ -72,8 +72,6 @@ module View.Tooltips exposing
     , halfCover
     , heal
     , hiding
-    , holdReadied
-    , holdReady
     , initRollAdvantage
     , initRollDisadvantage
     , initRollStandard
@@ -109,6 +107,8 @@ module View.Tooltips exposing
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , readyAction
+    , releaseReadied
     , reset
     , rollDice
     , rollDiceUnread
@@ -467,13 +467,13 @@ fallDamage =
     "Roll falling damage (1d6 per 10 ft, max 20d6) and ground the creature"
 
 
-holdReady : String
-holdReady =
+readyAction : String
+readyAction =
     "Ready an action — click to set"
 
 
-holdReadied : String
-holdReadied =
+releaseReadied : String
+releaseReadied =
     "Action readied — click to release"
 
 

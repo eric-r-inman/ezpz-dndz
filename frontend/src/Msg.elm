@@ -323,7 +323,7 @@ type Msg
     | DeathSaveToggleFailure String Int
     | DeathSaveRoll String
     | DeathSaveRollLanded String Dice.Roll
-    | ToggleHolding String
+    | ToggleReadied String
     | ToggleInactive String
       -- Dice modal
     | OpenDice

@@ -736,6 +736,21 @@ groupListItem ui group =
                 _ ->
                     "Unknown creature"
 
+        -- Apply the global filters + sort to the group's
+        -- entries so the expanded view mirrors what the GM sees
+        -- in the surrounding list.  Search text, kind filter,
+        -- and tag filter all narrow which entries appear; sort
+        -- decides their order.  Entries whose `creatureId` doesn't
+        -- resolve in the loaded DB are dropped from the visible
+        -- list (the GM can't usefully act on them anyway).
+        visibleEntries =
+            case ui.db of
+                CompendiumDbLoaded db ->
+                    filterAndSortGroupEntries ui db group.entries
+
+                _ ->
+                    group.entries
+
         entryRow entry =
             div [ class "compendium__row compendium__row--group-entry" ]
                 [ div [ class "compendium__row-text" ]
@@ -757,10 +772,85 @@ groupListItem ui group =
                 ]
     in
     if isExpanded then
-        header :: List.map entryRow group.entries
+        header :: List.map entryRow visibleEntries
 
     else
         [ header ]
+
+
+{-| Apply the compendium browser's filters + sort to one group's
+entries. Pipeline mirrors `CompendiumUi.compendiumVisible`: resolve
+each entry to its underlying creature, drop entries whose creature
+is missing from the DB, then narrow the resolved creatures through
+the same `Compendium.search` / `filterByKind` / habitat-or-tag
+filter stack used by the global list, and finally sort. Returns
+the original entries (in DB-narrowed order) so the rendered row
+keeps its `count` / `minionType` annotations.
+-}
+filterAndSortGroupEntries : CompendiumUi -> Compendium.Db -> List Compendium.Group.GroupEntry -> List Compendium.Group.GroupEntry
+filterAndSortGroupEntries ui db entries =
+    let
+        -- Resolve each entry to (entry, creature) once so the
+        -- filter + sort passes can read both halves without
+        -- repeating the DB lookup.
+        resolved =
+            List.filterMap
+                (\e ->
+                    Compendium.find e.creatureId db
+                        |> Maybe.map (\c -> ( e, c ))
+                )
+                entries
+
+        kinds =
+            CompendiumUi.kindFilterAsList ui.kindFilter
+
+        passesKind c =
+            List.isEmpty kinds || List.member c.kind kinds
+
+        passesTagFilter c =
+            case ui.tagFilter of
+                Nothing ->
+                    True
+
+                Just (CompendiumUi.TagFilterHabitat h) ->
+                    List.member h c.habitats
+
+                Just (CompendiumUi.TagFilterTag t) ->
+                    List.member t c.tags
+
+        passesSearch c =
+            -- `Compendium.search` is the canonical matcher; build a
+            -- single-element Db so the same name / race / source /
+            -- CR matching applies here as in the global list.
+            Compendium.search ui.searchText (Compendium.fromList [ c ])
+                |> Compendium.toList
+                |> List.isEmpty
+                |> not
+
+        kept =
+            List.filter
+                (\( _, c ) ->
+                    passesKind c
+                        && passesTagFilter c
+                        && passesSearch c
+                )
+                resolved
+    in
+    case ui.sort of
+        SortName ->
+            kept
+                |> List.sortBy (\( _, c ) -> String.toLower c.name)
+                |> List.map Tuple.first
+
+        SortCr ->
+            kept
+                |> List.sortBy (\( _, c ) -> Compendium.crToFloat c.challengeRating)
+                |> List.map Tuple.first
+
+        SortRecency ->
+            kept
+                |> List.sortBy (\( _, c ) -> -c.createdAt)
+                |> List.map Tuple.first
 
 
 {-| Click handler that calls `Html.Events.stopPropagationOn` so
@@ -912,7 +1002,7 @@ detail ui visible encounterIds =
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
-                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadges creature
+                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
                 ]
 
         ( Nothing, Nothing ) ->

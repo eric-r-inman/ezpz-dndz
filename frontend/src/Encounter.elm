@@ -325,7 +325,7 @@ center column rows 1–3:
     when `currentHp == 0`; there's no separate visibility flag.
     Healing back above 0 resets the counts via the HP-change
     engine.
-  - `holding` — row 3 hold-action toggle.
+  - `readied` — row 3 readied-action toggle.
 
 `note` is a short free-text label edited via the row 1 pencil
 button; it surfaces inline next to the creature name when set
@@ -357,7 +357,7 @@ type alias Creature =
     , flyHeight : Int
     , bloodied : Bool
     , deathSaves : DeathSaves
-    , holding : Bool
+    , readied : Bool
     , inactive : Bool
     , note : String
     , memo : String
@@ -510,7 +510,7 @@ setActive name enc =
 {-| Apply `fn` to whichever creature in the encounter has `name`; pass
 through all other creatures (and the rest of the encounter) unchanged.
 Used by every per-creature toggle (cover, concentrating, hiding,
-dodging, flying, fly-height, death-save slots, holding action).
+dodging, flying, fly-height, death-save slots, readied action).
 
 O(n) over the queue. For typical encounter sizes (5–15 combatants)
 this is fine and avoids the complexity of indexing or a Dict keyed by

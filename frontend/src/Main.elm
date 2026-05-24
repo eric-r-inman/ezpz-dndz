@@ -501,8 +501,8 @@ updateInner msg model =
         DeathSaveRollLanded name roll ->
             Update.DeathSave.rollLanded name roll model
 
-        ToggleHolding name ->
-            Update.Encounter.toggleHolding name model
+        ToggleReadied name ->
+            Update.Encounter.toggleReadied name model
 
         ToggleInactive name ->
             Update.Encounter.toggleInactive name model
@@ -1606,9 +1606,37 @@ updateInner msg model =
 -- VIEW
 
 
+{-| Browser tab title. Defaults to the app name but switches to
+the creature's display name on the standalone single-creature
+page (`/compendium/creatures/:id`) so GMs who park multiple
+stat-block tabs can tell them apart at a glance. Falls back to
+the app name when the compendium hasn't loaded yet or the id
+doesn't match any creature.
+-}
+documentTitle : Model -> String
+documentTitle model =
+    let
+        default =
+            "eZpZ-dndZ"
+    in
+    case model.route of
+        CompendiumCreaturePage id ->
+            case model.compendium.db of
+                CompendiumDbLoaded db ->
+                    Compendium.find id db
+                        |> Maybe.map .name
+                        |> Maybe.withDefault default
+
+                _ ->
+                    default
+
+        _ ->
+            default
+
+
 view : Model -> Browser.Document Msg
 view model =
-    { title = "eZpZ-dndZ"
+    { title = documentTitle model
     , body =
         [ div
             [ class "app-shell"

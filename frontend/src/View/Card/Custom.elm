@@ -16,7 +16,7 @@ Interactivity coverage in this prototype:
     fire their respective `HpChangeOpen` / `ConditionOpenNew`
     Msgs identically to the classic card.
   - **Status toggles** (cover, concentrating, hiding, dodging,
-    flying, holding action, skip) fire their `Toggle*` Msgs.
+    flying, readied action, skip) fire their `Toggle*` Msgs.
   - **Row controls** (×, ⧉, ∅, panel pin, selection checkbox)
     fire their respective Msgs.
   - **Memo / Timer slots** fire open / dismiss Msgs.
@@ -39,6 +39,7 @@ import Card.Layout as Layout
         , CardWidget(..)
         , RowAlignment(..)
         )
+import Compendium
 import Effects
 import Encounter
     exposing
@@ -76,8 +77,8 @@ import Ui.HpChange exposing (HpEdit)
 -- ── ENTRY ────────────────────────────────────────────────────────────────────
 
 
-view : CardLayout -> String -> Maybe HpEdit -> Creature -> Html Msg
-view layout activeName _ creature =
+view : CardLayout -> String -> Maybe HpEdit -> Compendium.Db -> Creature -> Html Msg
+view layout activeName _ db creature =
     let
         isActive =
             creature.name == activeName
@@ -111,7 +112,7 @@ view layout activeName _ creature =
     article
         [ id (Effects.cardId creature.name), class cardClass ]
         [ div [ class "creature-card-custom__body" ]
-            (List.map (renderRow creature) layout.rows)
+            (List.map (renderRow db creature) layout.rows)
         ]
 
 
@@ -119,15 +120,15 @@ view layout activeName _ creature =
 -- ── ROWS ─────────────────────────────────────────────────────────────────────
 
 
-renderRow : Creature -> CardRow -> Html Msg
-renderRow creature row =
+renderRow : Compendium.Db -> Creature -> CardRow -> Html Msg
+renderRow db creature row =
     div
         [ class
             ("creature-card-custom__row "
                 ++ alignmentClass row.alignment
             )
         ]
-        (List.map (renderWidget creature) row.widgets)
+        (List.map (renderWidget db creature) row.widgets)
 
 
 alignmentClass : RowAlignment -> String
@@ -150,8 +151,8 @@ alignmentClass a =
 -- ── WIDGET DISPATCH ──────────────────────────────────────────────────────────
 
 
-renderWidget : Creature -> CardWidget -> Html Msg
-renderWidget creature widget =
+renderWidget : Compendium.Db -> Creature -> CardWidget -> Html Msg
+renderWidget db creature widget =
     case widget of
         WidgetName ->
             span [ class "creature-card-custom__name" ] [ text creature.name ]
@@ -234,11 +235,11 @@ renderWidget creature widget =
                 "🪽"
                 (ToggleFlying creature.name)
 
-        WidgetHoldingAction ->
+        WidgetReadiedAction ->
             statusToggle creature
-                creature.holding
+                creature.readied
                 "⏸"
-                (ToggleHolding creature.name)
+                (ToggleReadied creature.name)
 
         WidgetMemoSlot ->
             if String.isEmpty creature.memo then
@@ -395,6 +396,37 @@ renderWidget creature widget =
                     -- widget slot but it doesn't fire.
                     span [ class "creature-card-custom__icon-btn creature-card-custom__icon-btn--disabled" ]
                         [ text "📌" ]
+
+        WidgetTags ->
+            -- Tags live on the compendium source, not the
+            -- encounter instance.  Look up the source by
+            -- `creatureId` and render each tag as a small yellow
+            -- pill matching the stat-block badge styling.  When
+            -- the source is missing (free-typed encounter
+            -- creature, or compendium entry deleted) the widget
+            -- renders nothing rather than a stub — tags are
+            -- decorative, not load-bearing.
+            case creature.creatureId of
+                Just cid ->
+                    case Compendium.find cid db of
+                        Just source ->
+                            if List.isEmpty source.tags then
+                                text ""
+
+                            else
+                                span [ class "creature-card-custom__tags" ]
+                                    (List.map tagBadge source.tags)
+
+                        Nothing ->
+                            text ""
+
+                Nothing ->
+                    text ""
+
+
+tagBadge : String -> Html Msg
+tagBadge t =
+    span [ class "creature-card-custom__tag-badge" ] [ text t ]
 
 
 

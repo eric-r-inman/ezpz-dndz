@@ -108,7 +108,7 @@ type CardWidget
     | WidgetHiding
     | WidgetDodging
     | WidgetFlying
-    | WidgetHoldingAction
+    | WidgetReadiedAction
     | WidgetMemoSlot
     | WidgetTimerSlot
     | WidgetDamageButton
@@ -123,6 +123,7 @@ type CardWidget
     | WidgetRemoveButton
     | WidgetSelectCheckbox
     | WidgetPanelPinButton
+    | WidgetTags
 
 
 {-| Coarse grouping shown in the widget picker so the
@@ -175,7 +176,7 @@ defaultLayout =
                 , WidgetHealButton
                 , WidgetTempHpButton
                 , WidgetConditionButton
-                , WidgetHoldingAction
+                , WidgetReadiedAction
                 , WidgetMemoSlot
                 , WidgetTimerSlot
                 ]
@@ -210,7 +211,7 @@ widgetAllValues =
     , WidgetHiding
     , WidgetDodging
     , WidgetFlying
-    , WidgetHoldingAction
+    , WidgetReadiedAction
     , WidgetMemoSlot
     , WidgetTimerSlot
     , WidgetDamageButton
@@ -225,6 +226,7 @@ widgetAllValues =
     , WidgetRemoveButton
     , WidgetSelectCheckbox
     , WidgetPanelPinButton
+    , WidgetTags
     ]
 
 
@@ -284,8 +286,8 @@ widgetKey w =
         WidgetFlying ->
             "flying"
 
-        WidgetHoldingAction ->
-            "holding_action"
+        WidgetReadiedAction ->
+            "readied_action"
 
         WidgetMemoSlot ->
             "memo_slot"
@@ -329,15 +331,39 @@ widgetKey w =
         WidgetPanelPinButton ->
             "panel_pin_button"
 
+        WidgetTags ->
+            "tags"
+
 
 widgetFromKey : String -> Maybe CardWidget
 widgetFromKey raw =
     -- Linear lookup over the catalogue is fine — there are ~30
     -- variants and this only runs on user form input, not in
     -- a render loop.
-    widgetAllValues
-        |> List.filter (\w -> widgetKey w == raw)
-        |> List.head
+    case widgetAllValues |> List.filter (\w -> widgetKey w == raw) |> List.head of
+        Just w ->
+            Just w
+
+        Nothing ->
+            widgetFromLegacyKey raw
+
+
+{-| Pre-rename wire tokens that older saved layouts may still
+carry. Returning the current variant for each one means a card
+layout authored before a rename keeps working without a manual
+migration. Add an entry here whenever a widget's key changes;
+the canonical key on `widgetKey` always wins.
+-}
+widgetFromLegacyKey : String -> Maybe CardWidget
+widgetFromLegacyKey raw =
+    case raw of
+        "holding_action" ->
+            -- 2014-era "hold action" terminology; the 2024 MM
+            -- uses "readied action".
+            Just WidgetReadiedAction
+
+        _ ->
+            Nothing
 
 
 widgetLabel : CardWidget -> String
@@ -385,8 +411,8 @@ widgetLabel w =
         WidgetFlying ->
             "Flying + Height"
 
-        WidgetHoldingAction ->
-            "Held-Action Toggle"
+        WidgetReadiedAction ->
+            "Readied-Action Toggle"
 
         WidgetMemoSlot ->
             "Memo"
@@ -429,6 +455,9 @@ widgetLabel w =
 
         WidgetPanelPinButton ->
             "Right-Panel Pin"
+
+        WidgetTags ->
+            "Tags"
 
 
 widgetDescription : CardWidget -> String
@@ -476,8 +505,8 @@ widgetDescription w =
         WidgetFlying ->
             "Flying toggle + altitude readout."
 
-        WidgetHoldingAction ->
-            "Held-readied-action marker."
+        WidgetReadiedAction ->
+            "Readied-action marker."
 
         WidgetMemoSlot ->
             "GM-only note pill for this creature."
@@ -521,6 +550,9 @@ widgetDescription w =
         WidgetPanelPinButton ->
             "Pin the right panel to this creature's stat block."
 
+        WidgetTags ->
+            "Yellow pill badges for the creature's user-authored tags."
+
 
 widgetCategory : CardWidget -> WidgetCategory
 widgetCategory w =
@@ -532,6 +564,9 @@ widgetCategory w =
             CategoryIdentity
 
         WidgetRaceLine ->
+            CategoryIdentity
+
+        WidgetTags ->
             CategoryIdentity
 
         WidgetArmorClass ->
@@ -567,7 +602,7 @@ widgetCategory w =
         WidgetFlying ->
             CategoryConditionsAndStatus
 
-        WidgetHoldingAction ->
+        WidgetReadiedAction ->
             CategoryConditionsAndStatus
 
         WidgetMemoSlot ->

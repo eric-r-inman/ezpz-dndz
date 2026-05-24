@@ -138,8 +138,9 @@ optional legendary-pips column, and a right rail.
 - *Temp HP (🌡️)* — opens *HP Change* in temp-HP mode.
 - *Condition (⚡)* — opens the *Condition* modal to add a new
   condition (or several across selected creatures).
-- *Hold (🤚)* — toggle "holding action".  Held creatures skip their
-  turn until the GM releases the hold.
+- *Ready (✋)* — toggle "readied action" (2024 MM terminology;
+  was "hold action" in 2014).  A creature with a readied action
+  skips its turn until the GM releases the readied state.
 - *Memo slot* — a tiny inline label (up to 15 chars), e.g. "leg
   res used".  Click to edit.
 - *Timer slot (⏱️)* — opens the *Timer* modal to attach a countdown
@@ -276,11 +277,12 @@ a column appears; click to toggle results manually or hit *Roll Death
 Save* to roll 1d20.  Natural 20 = back to 1 HP; natural 1 = two
 failures; three successes = stable; three failures = dead.
 
-** Holding an action
+** Readying an action
 
-The *Hold (🤚)* toggle on row 3 marks a creature as holding their
-turn.  Their turn is skipped in the rotation until you turn the
-toggle back off.
+The *Ready (✋)* toggle on row 3 marks a creature as readying an
+action this turn.  Their turn is skipped in the rotation until
+you turn the toggle back off.  (2024 Monster Manual terminology;
+previous "hold action" wording referred to the same mechanic.)
 
 ** Memos and timers
 
