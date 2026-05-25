@@ -746,7 +746,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1283,7 +1283,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tokio",
  "tower-service",
  "tracing",
@@ -2004,7 +2004,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls 0.23.37",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -2041,7 +2041,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.3",
  "tracing",
  "windows-sys 0.52.0",
 ]
@@ -2301,7 +2301,7 @@ dependencies = [
 [[package]]
 name = "rust-template-foundation"
 version = "0.1.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#866d8ac95de415b710e188d195a2f0f3ddd17e7f"
+source = "git+https://github.com/LoganBarnett/rust-template.git#6d65d3d880890eed337cde7556b8c38ad02d0896"
 dependencies = [
  "aide",
  "axum",
@@ -2332,7 +2332,7 @@ dependencies = [
 [[package]]
 name = "rust-template-foundation-derive"
 version = "0.1.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#866d8ac95de415b710e188d195a2f0f3ddd17e7f"
+source = "git+https://github.com/LoganBarnett/rust-template.git#6d65d3d880890eed337cde7556b8c38ad02d0896"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2364,7 +2364,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2936,7 +2936,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
