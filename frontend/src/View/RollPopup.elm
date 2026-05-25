@@ -11,19 +11,29 @@ Renders nothing when no popups are active.
 -}
 
 import Html exposing (Html, div, text)
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (attribute, class, style)
 import Model exposing (RollPopup)
 import Msg exposing (Msg)
 
 
+{-| Container is always present in the DOM (no empty-list short-
+circuit) and carries `aria-live="polite"` so each new popup's
+total is announced to screen readers as it lands. Without this,
+SR users get no signal that a roll happened — the visual "+N"
+chip floats and fades but is otherwise silent. An always-present
+container is what `aria-live` needs to observe reliably; freshly
+created live regions are inconsistent across SR clients.
+-}
 list : List RollPopup -> Html Msg
 list popups =
-    if List.isEmpty popups then
-        text ""
-
-    else
-        div [ class "roll-popup-layer" ]
-            (List.map one popups)
+    div
+        [ class "roll-popup-layer"
+        , attribute "role" "status"
+        , attribute "aria-live" "polite"
+        , attribute "aria-atomic" "true"
+        , attribute "aria-label" "Dice roll results"
+        ]
+        (List.map one popups)
 
 
 {-| Each popup is `position: fixed` at its captured `(x, y)`.

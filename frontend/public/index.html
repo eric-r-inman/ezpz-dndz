@@ -224,5 +224,38 @@
         window.addEventListener("resize", hide);
       })();
     </script>
+
+    <script>
+      // Modal focus-trap.  When Tab walks past the last focusable
+      // element inside a modal it lands on the END sentinel
+      // (`.modal__focus-sentinel`, rendered by `View.Modal`).  We
+      // detect the focus on the sentinel and redirect it back to
+      // the modal close button — the user's keyboard wraps inside
+      // the dialog instead of escaping to the underlying page.
+      //
+      // Implemented here in JS rather than in Elm because a pure-
+      // Elm trap would require threading a "sentinel-focused" Msg
+      // through every modal's update handler (~20 modals).  The
+      // listener lives outside Elm's view layer; Elm just renders
+      // the sentinel + the close button with their stable
+      // class/id, and JS handles the redirect with no Cmd
+      // plumbing.
+      (function () {
+        document.addEventListener(
+          "focus",
+          function (e) {
+            if (
+              e.target &&
+              e.target.classList &&
+              e.target.classList.contains("modal__focus-sentinel")
+            ) {
+              var btn = document.getElementById("modal-close-btn");
+              if (btn) btn.focus();
+            }
+          },
+          true,
+        );
+      })();
+    </script>
   </body>
 </html>

@@ -15,13 +15,24 @@ import Ui.Toast exposing (Toast, ToastKind(..))
 import View.Tooltips as Tooltips
 
 
+{-| The toast stack lives in its own `aria-live` region so screen
+readers announce new messages as they appear. `polite` is the
+default — error toasts get `assertive` further down so urgent
+problems interrupt whatever the reader is currently saying. The
+stack container is always present in the DOM (the empty-list
+branch still renders the container) so SR clients have a stable
+anchor to observe; without that, a freshly-created live region
+won't be announced consistently.
+-}
 list : List Toast -> Html Msg
 list toasts =
-    if List.isEmpty toasts then
-        text ""
-
-    else
-        div [ class "toast-stack" ] (List.map one toasts)
+    div
+        [ class "toast-stack"
+        , attribute "role" "region"
+        , attribute "aria-live" "polite"
+        , attribute "aria-label" "Notifications"
+        ]
+        (List.map one toasts)
 
 
 one : Toast -> Html Msg
@@ -43,7 +54,25 @@ one toast =
                 ToastError ->
                     "⚠"
     in
-    div [ class toastClass, attribute "role" "status" ]
+    div
+        [ class toastClass
+        , attribute "role"
+            (case toast.kind of
+                ToastError ->
+                    "alert"
+
+                ToastSuccess ->
+                    "status"
+            )
+        , attribute "aria-live"
+            (case toast.kind of
+                ToastError ->
+                    "assertive"
+
+                ToastSuccess ->
+                    "polite"
+            )
+        ]
         [ span [ class "toast__icon" ] [ text icon ]
         , span [ class "toast__msg" ] [ text toast.message ]
         , button

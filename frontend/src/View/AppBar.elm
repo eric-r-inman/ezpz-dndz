@@ -47,7 +47,17 @@ import View.Tooltips as Tooltips
 view : Bool -> Theme -> Auth.User -> Bool -> Html Msg
 view settingsOpen theme user useCustomCardLayout =
     header [ class "app-bar" ]
-        [ div [ class "app-bar__brand" ]
+        [ -- Skip-to-main link: visually hidden until focused; lets
+          -- keyboard users jump past the ~half-dozen tab stops in
+          -- the AppBar nav.  Target is `#main`, which `Workspace`
+          -- now sets on its `<main>` element.  CSS in style.css
+          -- handles the focus-visible reveal.
+          a
+            [ class "app-bar__skip-link"
+            , href "#main"
+            ]
+            [ text "Skip to main content" ]
+        , div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
             ]
         , nav [ class "app-bar__nav" ]
@@ -127,7 +137,7 @@ settings isOpen theme =
         [ button
             [ class "app-settings__trigger"
             , type_ "button"
-            , attribute "aria-haspopup" "menu"
+            , attribute "aria-haspopup" "dialog"
             , attribute "aria-expanded"
                 (if isOpen then
                     "true"
@@ -143,7 +153,20 @@ settings isOpen theme =
         , if isOpen then
             div
                 [ class "app-settings__menu"
-                , attribute "role" "menu"
+                , -- Settings popover holds a radio-group, not a
+                  -- menubar of menuitems.  WAI-ARIA's `role="menu"`
+                  -- semantics expect `menuitem` / `menuitemradio`
+                  -- children, not `<input type="radio">`.  The
+                  -- correct role for "a panel of settings" is
+                  -- `dialog` or just no role at all — the trigger
+                  -- already carries `aria-haspopup` + `aria-expanded`
+                  -- which is enough metadata for SR clients.  We
+                  -- use `region` + `aria-label` so the popover
+                  -- shows up as a labelled landmark while the
+                  -- inner radios keep their natural fieldset/legend
+                  -- semantics.
+                  attribute "role" "region"
+                , attribute "aria-label" "Settings"
                 ]
                 [ themeRow theme
                 ]

@@ -655,6 +655,31 @@ body {
   gap: var(--space-3);
 }
 
+/* Skip-to-main link.  Visually hidden until focused; on focus it
+   slides into view at the top-left of the AppBar so keyboard
+   users can jump past the nav to the main workspace.  Uses the
+   "clip + offscreen" pattern (not `display: none`) so the link
+   is reachable by Tab — a `display:none` link is unreachable. */
+.app-bar__skip-link {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 6px 12px;
+  background: var(--color-surface);
+  color: var(--color-link);
+  border: 2px solid var(--color-link);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  z-index: 2;
+  transform: translateY(-200%);
+  transition: transform 0.1s ease-out;
+}
+
+.app-bar__skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 .app-bar__title {
   font-weight: 700;
   font-size: 1.05rem;
@@ -2370,8 +2395,19 @@ body {
 }
 
 /* Compendium-linked creature name: hover-underline cues that
-   clicking will pin the source stat block in the side panel. */
+   clicking will pin the source stat block in the side panel.
+   The underlying element was promoted from `<span>` to
+   `<button>` for keyboard a11y; these resets keep the visual
+   appearance unchanged. */
 .creature-name--linked {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
   cursor: pointer;
 }
 
@@ -4675,9 +4711,28 @@ body {
 }
 
 .modal__title {
+  /* Reset native <h2> margin/padding so the title sits flush in
+     the modal header bar.  The structural promotion from <div>
+     to <h2> is for screen-reader heading hierarchy; the visual
+     appearance stays unchanged. */
+  margin: 0;
+  padding: 0;
   font-weight: 700;
   font-size: 1rem;
   letter-spacing: 0.04em;
+}
+
+/* Focus-trap sentinel at the END of each modal.  Invisible
+   (zero box, no outline) but still tab-reachable
+   (`tabindex="0"`).  The JS listener in `index.html` watches
+   for focus on this class and redirects back to the modal
+   close button, wrapping Tab inside the dialog. */
+.modal__focus-sentinel {
+  width: 0;
+  height: 0;
+  outline: 0;
+  overflow: hidden;
+  position: absolute;
 }
 
 .modal__close {
@@ -5412,6 +5467,17 @@ body {
    ring is faint until you mouse over so it doesn't look like a
    permanent input. */
 .hp-display__editable {
+  /* Reset native button chrome so the click-to-edit trigger
+     looks like inline text — the underlying element was promoted
+     from `<span>` to `<button>` for keyboard a11y, but the visual
+     should still read as "tap-the-number." */
+  appearance: none;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
   cursor: text;
   border-radius: 3px;
   padding: 0 2px;

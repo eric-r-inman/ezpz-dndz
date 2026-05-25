@@ -440,8 +440,23 @@ update msg model =
 
             else
                 Cmd.none
+
+        -- Modal-open focus management.  When the active modal
+        -- transitions from `Nothing` to `Just _` (any modal
+        -- opened by any path), fire `View.Modal.focusInitial`
+        -- so keyboard / SR users land on the modal close button
+        -- the moment the dialog appears.  Lives at the top-level
+        -- update wrapper instead of in each modal's open handler
+        -- so we don't have to plumb the focus Cmd through ~20
+        -- modal Update modules.
+        modalFocusCmd =
+            if model.modal == Nothing && next.modal /= Nothing then
+                View.Modal.focusInitial (\_ -> NoOp)
+
+            else
+                Cmd.none
     in
-    ( next, Cmd.batch [ innerCmd, saveCmd ] )
+    ( next, Cmd.batch [ innerCmd, saveCmd, modalFocusCmd ] )
 
 
 shouldPersistAfter : Msg -> Bool
