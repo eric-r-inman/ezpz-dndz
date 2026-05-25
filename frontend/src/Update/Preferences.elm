@@ -59,3 +59,6 @@ themeKey theme =
 
         Auto ->
             "auto"
+
+        Accessible ->
+            "accessible"

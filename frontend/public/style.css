@@ -392,6 +392,212 @@
   }
 }
 
+/* ── ACCESSIBLE THEME ──────────────────────────────────────────────────
+   AAA-targeting palette + sizing.  Goals:
+     - 7:1 contrast for body text (black on white).
+     - Traditional R/G/B/V signal colours at deep-saturated values
+       so colour-blind users get the strongest hue cues.
+     - 18 px body base (1.125× the classic 16) for low-vision
+       readability without breaking layouts.
+     - 2 px borders + 3 px focus rings.
+     - Larger touch targets (button height, checkbox size).
+     - Always-underlined links.
+     - Status toggles get a `✓` glyph in addition to bold weight so
+       colour is never the only signal.
+
+   The block is two layers: token overrides (palette / radii / fonts)
+   plus opt-in CSS rules scoped to `[data-theme="accessible"]` for the
+   structural a11y polish that can't be expressed as a variable.
+
+   `@media (prefers-reduced-motion: reduce)` further down applies to
+   *all* themes — even Modern / Dark users get the no-transition
+   variant if their OS asks for it. */
+[data-theme="accessible"] {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f0f0;
+  --color-text: #000000;
+  --color-text-muted: #3a3a3a;
+  --color-border: #000000;
+  --color-link: #0033cc;
+  --color-accent: #0033cc;
+  --color-accent-hover: #001a99;
+  --color-accent-soft: rgba(0, 51, 204, 0.16);
+  --color-danger: #a30000;
+  --color-danger-soft: rgba(163, 0, 0, 0.12);
+  --color-success: #006b3c;
+  --color-success-soft: rgba(0, 107, 60, 0.12);
+
+  /* Sharper shadows than Modern — accessible UIs benefit from
+     stronger elevation cues since colour-blind / low-contrast
+     users rely on shadow + border for grouping. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+  /* Slightly larger radii than Modern's 4 / 8 / 12 — softer
+     corners read as friendlier under the heavy black borders. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --color-yellow: #8a6d00;
+  --color-init-blue: #003c8f;
+  --color-orange-dark: #8a4500;
+  --color-temp-blue: #003c8f;
+  --color-orange: #a04500;
+  --color-blue: #003c8f;
+  --color-la: #8a4500;
+  --color-lr: #8a6d00;
+
+  --active-creature-color: var(--color-text);
+  --active-creature-weight: 800;
+
+  /* Signal palette — deep-saturated R/G/B/V meeting 4.5:1+
+     against white when used as button fill with white text. */
+  --color-damage: #a30000;
+  --color-heal: #006b3c;
+  --color-temp: #003c8f;
+  --color-condition: #5b21b6;
+  --color-btn-blue: #003c8f;
+  --color-btn-green: #006b3c;
+  --color-btn-red: #a30000;
+  --color-btn-orange: #8a4500;
+  --color-dirty-outline: #ffd700;
+
+  --card-btn-fg: #ffffff;
+
+  --btn-blue-bg: var(--color-btn-blue);
+  --btn-blue-fg: #ffffff;
+  --btn-blue-bd: #000000;
+  --btn-blue-bg-hover: #001a99;
+  --btn-red-bg: var(--color-btn-red);
+  --btn-red-fg: #ffffff;
+  --btn-red-bd: #000000;
+  --btn-red-bg-hover: #7a0000;
+  --btn-orange-bg: var(--color-btn-orange);
+  --btn-orange-fg: #ffffff;
+  --btn-orange-bd: #000000;
+  --btn-orange-bg-hover: #5e2f00;
+
+  /* Button polish — heavier weight, no negative tracking
+     (tighter letterforms read as less accessible), no rest
+     shadow (the 2 px border carries the elevation cue). */
+  --btn-font-weight: 700;
+  --btn-letter-spacing: 0;
+  --btn-shadow: none;
+  --btn-shadow-hover: none;
+  --btn-hover-overlay: transparent;
+  --btn-focus-ring: 0 0 0 3px #ffffff, 0 0 0 6px #000000;
+
+  /* Font stack — Inter is fine for low-vision readers when
+     weight floor stays at 500.  We re-use Modern's stack. */
+  --font-ui:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    monospace;
+}
+
+/* 18 px body base for the Accessible theme — bumps every rem-
+   based size by 12.5%.  Scoped to `<html>` rather than `body` so
+   `em`/`rem` units everywhere downstream pick up the new scale. */
+html[data-theme="accessible"],
+html:has(.app-shell[data-theme="accessible"]) {
+  font-size: 18px;
+}
+
+/* Always-underlined links.  WCAG 1.4.1: don't use colour alone to
+   convey link-ness.  The Modern theme leaves links un-underlined
+   in some places; here every `<a>` gets an underline. */
+[data-theme="accessible"] a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+
+/* Larger action-button targets.  WCAG 2.5.5 (AAA) asks for 44×44;
+   36 px is the realistic compromise for our compact combat UI.
+   Combined with the 2 px border + heavier font, buttons read with
+   real presence. */
+[data-theme="accessible"] .action-btn {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  border-width: 2px;
+}
+
+/* 24 px checkbox + bold black border / check.  WCAG 1.4.11
+   (Non-text Contrast) wants UI components ≥ 3:1; black-on-white
+   is the maximum. */
+[data-theme="accessible"] .creature-card__select {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+  border-color: #000000;
+}
+
+[data-theme="accessible"] .creature-card__select:checked {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23000000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' d='M3 8 7 12 13 4'/%3E%3C/svg%3E");
+  background-size: 18px 18px;
+}
+
+/* 2 px borders on creature cards in place of the hairline.  Same
+   colour token, just thicker so the card edges hold their shape
+   under low vision. */
+[data-theme="accessible"] .creature-card {
+  border-width: 2px;
+}
+
+/* Universal high-visibility focus ring — 3 px outline + 5 px
+   contrasting halo via box-shadow.  Layered so the ring stays
+   visible on any background colour.  Applied to every focusable
+   element under the Accessible theme. */
+[data-theme="accessible"] *:focus-visible {
+  outline: 3px solid #000000 !important;
+  outline-offset: 2px !important;
+  box-shadow:
+    0 0 0 5px #ffffff,
+    0 0 0 8px #000000 !important;
+}
+
+/* Status-toggle reinforcement: when a toggle is on, prefix the
+   label with `✓ ` so the active state is signalled by glyph too,
+   not only by font-weight + colour.  Generated via ::before so
+   the markup doesn't change. */
+[data-theme="accessible"] .status-toggle--on::before {
+  content: "✓ ";
+  font-weight: 700;
+}
+
+/* Trim transitions to feel snappy without being abrupt.  Doesn't
+   strip them entirely — that's what `prefers-reduced-motion`
+   below is for; this is the "still animates, but quickly"
+   middle ground that low-vision users without a motion sensitivity
+   often prefer (motion catches the eye and reinforces what
+   changed). */
+[data-theme="accessible"] *,
+[data-theme="accessible"] *::before,
+[data-theme="accessible"] *::after {
+  transition-duration: 100ms;
+}
+
+/* ── REDUCED MOTION ────────────────────────────────────────────────────
+   OS-level `prefers-reduced-motion: reduce` honored across every
+   theme.  Strips animations + transitions; keeps scroll snapping
+   instantaneous; collapses iteration counts so a one-shot
+   animation finishes immediately instead of looping. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 *,
 *::before,
 *::after {

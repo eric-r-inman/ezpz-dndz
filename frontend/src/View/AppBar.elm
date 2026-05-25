@@ -161,6 +161,7 @@ themeRow current =
             [ themeRadio current Modern "Modern"
             , themeRadio current Dark "Dark"
             , themeRadio current Auto "Auto"
+            , themeRadio current Accessible "Accessible"
             ]
         ]
 

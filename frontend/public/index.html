@@ -18,7 +18,10 @@
           var raw = localStorage.getItem("theme");
           if (raw === "light") raw = "modern";
           var theme =
-            raw === "modern" || raw === "dark" || raw === "auto"
+            raw === "modern" ||
+            raw === "dark" ||
+            raw === "auto" ||
+            raw === "accessible"
               ? raw
               : "auto";
           document.documentElement.setAttribute("data-theme", theme);
@@ -40,7 +43,12 @@
       try {
         var raw = localStorage.getItem("theme");
         if (raw === "light") raw = "modern";
-        if (raw === "modern" || raw === "dark" || raw === "auto") {
+        if (
+          raw === "modern" ||
+          raw === "dark" ||
+          raw === "auto" ||
+          raw === "accessible"
+        ) {
           savedTheme = raw;
         }
       } catch (_) {}

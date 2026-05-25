@@ -335,6 +335,9 @@ themeFromFlag raw =
         "dark" ->
             Dark
 
+        "accessible" ->
+            Accessible
+
         _ ->
             Auto
 

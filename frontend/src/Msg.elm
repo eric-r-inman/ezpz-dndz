@@ -159,6 +159,7 @@ type Theme
     = Modern
     | Dark
     | Auto
+    | Accessible
 
 
 
