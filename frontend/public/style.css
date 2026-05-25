@@ -90,6 +90,13 @@
   --color-la: #c2410c; /* orange-700 */
   --color-lr: #a16207; /* yellow-700 */
 
+  /* Encounter title-bar "active creature name" tokens.  Modern
+     reads the active name in near-black at weight 800 (black on
+     off-white surface = high-impact at-a-glance signal); Dark
+     keeps the existing yellow/600 below. */
+  --active-creature-color: var(--color-text);
+  --active-creature-weight: 800;
+
   /* Action-button tokens.  Modern palette abandons the
      traditional red/green/blue/purple "primary colors" set in
      favour of earth/jewel tones at the Tailwind 800 tier:
@@ -178,6 +185,8 @@
   --color-blue: #2563eb;
   --color-la: #c2410c;
   --color-lr: #a16207;
+  --active-creature-color: var(--color-text);
+  --active-creature-weight: 800;
   --color-damage: #9a3412;
   --color-heal: #3f6212;
   --color-temp: #155e75;
@@ -270,6 +279,11 @@
   --color-la: var(--color-orange);
   --color-lr: var(--color-yellow);
 
+  /* Dark keeps the prior yellow / 600 treatment for the
+     active-creature name in the title bar. */
+  --active-creature-color: var(--color-yellow);
+  --active-creature-weight: 600;
+
   /* Restore dark-mode legacy colour values for the row-3 + green
      buttons — slightly less saturated than the new light-mode
      values so they don't burn on dark surfaces.  Combined with
@@ -349,6 +363,8 @@
     --color-blue: #4d9bff;
     --color-la: var(--color-orange);
     --color-lr: var(--color-yellow);
+    --active-creature-color: var(--color-yellow);
+    --active-creature-weight: 600;
 
     /* Match the explicit dark-theme overrides — restore legacy
        palette + black-on-color text + brightness-on-hover. */
@@ -1507,6 +1523,20 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+/* Slightly fade the action buttons on creature cards that are
+   NOT the active one.  The active card keeps full-saturation
+   buttons, drawing the GM's eye to whose turn it is.  Hover
+   restores full opacity so the dimmed buttons still feel
+   responsive when targeted directly.  Applies to both themes
+   because it works on the structural class, not theme tokens. */
+.creature-card:not(.creature-card--active) .action-btn {
+  opacity: 0.65;
+}
+
+.creature-card:not(.creature-card--active) .action-btn:hover {
+  opacity: 1;
+}
+
 /* Dead creature: greyed-out card. Combat continues, but the
    `Encounter.nextTurn` queue walker now skips dead creatures, so
    this is purely a visual signal that the GM can stop tracking
@@ -1679,6 +1709,43 @@ body {
 .creature-card__select:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* Dark-theme override: drop the custom-appearance Modern
+   styling entirely and fall back to the native checkbox with
+   `accent-color: var(--color-success)` — same treatment used by
+   the compendium-modal row checkboxes, so the two read as a
+   matched pair across the app.  Setting `appearance: auto` and
+   `background-image: none` undoes the Modern white-fill + SVG
+   check; `border: none` undoes the zinc-400 border so the OS
+   draws its native chrome. */
+[data-theme="dark"] .creature-card__select,
+:root:not([data-theme]) .creature-card__select,
+[data-theme="auto"] .creature-card__select {
+  appearance: auto;
+  -webkit-appearance: auto;
+  background: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  accent-color: var(--color-success);
+  display: inline-block;
+  place-items: initial;
+}
+
+@media (prefers-color-scheme: light) {
+  /* Light-OS Auto users keep the Modern custom-styled
+     checkbox.  Restore everything the Dark override stripped. */
+  [data-theme="auto"] .creature-card__select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #ffffff;
+    border: 1.5px solid #a1a1aa;
+    border-radius: 3px;
+    accent-color: auto;
+    display: inline-grid;
+    place-items: center;
+  }
 }
 
 .creature-card__center {
@@ -2076,7 +2143,7 @@ body {
 
 .creature-name {
   font-weight: 700;
-  font-size: calc(1em + 1pt);
+  font-size: 1.2em;
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -2561,6 +2628,26 @@ body {
   --btn-bd: transparent;
 }
 
+/* Modern: Readied gets a bright orange so it pops against the
+   surrounding muted earth-tone buttons — the GM should be able
+   to spot a creature that's readied an action at a glance from
+   across the queue.  Dark keeps the existing token-driven amber
+   from `.action-btn--readied` above. */
+[data-theme="modern"] .action-btn--readied,
+:root:not([data-theme]) .action-btn--readied {
+  --btn-bg: #f97316; /* orange-500 */
+  --btn-fg: #ffffff;
+  --btn-bd: transparent;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .action-btn--readied {
+    --btn-bg: #f97316;
+    --btn-fg: #ffffff;
+    --btn-bd: transparent;
+  }
+}
+
 /* Save button when the encounter has unsaved roster changes
    (creatures added or removed since the last save / load).  The
    light-yellow outline cues the GM that combat state will be
@@ -3007,8 +3094,10 @@ body {
 }
 
 .encounter-bar__active {
-  color: var(--color-yellow);
-  font-weight: 600;
+  /* Theme-tokened: Modern resolves to near-black + weight 800;
+     Dark resolves to the existing yellow + 600. */
+  color: var(--active-creature-color);
+  font-weight: var(--active-creature-weight);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
