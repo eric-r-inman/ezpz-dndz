@@ -33,6 +33,7 @@ import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dice
+import Dict
 import Effects
 import Encounter
 import Encounter.Wire
@@ -114,6 +115,11 @@ meReceived result model =
                         , localCardLayoutRaw = Nothing
                         , localDiceHistoryRaw = Nothing
                         , localCompendiumRaw = Nothing
+                        , savedCardLayouts =
+                            model.localCardLayoutSaves
+                                |> Dict.toList
+                                |> List.map CardWire.localSaveToMeta
+                                |> List.sortBy (\m -> -m.updatedAt)
                     }
 
                 withDice =

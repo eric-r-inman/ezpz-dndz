@@ -161,6 +161,15 @@ savedLayoutsSection auth ui metas =
 
 saveAsControls : Auth.AuthState -> CardEditorUi -> Html Msg
 saveAsControls auth ui =
+    let
+        tooltip =
+            case auth of
+                Auth.AuthAuthenticated _ ->
+                    "Save this card layout to the server under the entered name."
+
+                _ ->
+                    "Save this card layout in this browser under the entered name."
+    in
     div [ class "card-editor__save-as" ]
         [ input
             [ class "card-editor__save-as-input"
@@ -174,12 +183,8 @@ saveAsControls auth ui =
             []
         , button
             [ class "action-btn action-btn--green"
-            , onClick (AuthGate.clickWhenAuthed auth CardEditorSaveAs)
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    "Save this card layout to the server under the entered name."
-                    "Sign in to save card layouts to the server."
-                )
+            , onClick CardEditorSaveAs
+            , Tooltips.attr tooltip
             , disabled ui.busy
             ]
             [ text
