@@ -1,4 +1,7 @@
-port module Ports exposing (savePreferences, persistLocalEncounter)
+port module Ports exposing
+    ( savePreferences, persistLocalEncounter
+    , persistLocalCardLayout
+    )
 
 {-| Outbound ports for the JS host to consume.
 
@@ -38,3 +41,13 @@ server's `PUT /api/encounter` would receive — so a future
 authenticated migration can replay it without translation.
 -}
 port persistLocalEncounter : E.Value -> Cmd msg
+
+
+{-| Persist the active card layout, queue view, and
+`useCustomCardLayout` toggle into `localStorage` for anonymous
+sessions. Authenticated users persist saved layouts to the
+server (with a name) via `Card.Wire`; anonymous users get a
+single in-place snapshot that restores their customizations on
+the next reload.
+-}
+port persistLocalCardLayout : E.Value -> Cmd msg

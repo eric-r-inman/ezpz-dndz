@@ -70,11 +70,22 @@
         // to a clean slate.
       }
 
+      // Same one-shot read for the anonymous card-layout
+      // snapshot (layout + queueView + useCustomCardLayout).
+      var localCardLayout = null;
+      try {
+        var cardRaw = localStorage.getItem("cardLayout");
+        if (cardRaw) {
+          localCardLayout = JSON.parse(cardRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
           theme: savedTheme,
           localEncounter: localEncounter,
+          localCardLayout: localCardLayout,
         },
       });
 
@@ -104,6 +115,16 @@
         app.ports.persistLocalEncounter.subscribe(function (value) {
           try {
             localStorage.setItem("encounter", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the card-layout snapshot under
+      // `cardLayout`.  Same anonymous-only contract as above.
+      if (app.ports && app.ports.persistLocalCardLayout) {
+        app.ports.persistLocalCardLayout.subscribe(function (value) {
+          try {
+            localStorage.setItem("cardLayout", JSON.stringify(value));
           } catch (_) {}
         });
       }

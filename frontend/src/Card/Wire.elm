@@ -2,6 +2,7 @@ module Card.Wire exposing
     ( SavedLayoutMeta, SavedLayout
     , fetchList, fetchOne, save, delete_
     , encodeLayoutBody, decodeLayoutBody
+    , LocalLayoutSnapshot, decodeLocalLayoutSnapshot, encodeLocalLayoutSnapshot
     )
 
 {-| JSON wire format + HTTP client for saved card layouts.
@@ -233,3 +234,36 @@ delete_ name toMsg =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+
+
+-- ── LOCAL (ANONYMOUS) SNAPSHOT ───────────────────────────────────────────────
+--
+-- Anonymous sessions don't have named saved layouts (those are
+-- server-backed and gated in `View.AuthGate`); instead the live
+-- card layout, queue view, and `useCustomCardLayout` toggle are
+-- persisted as a single snapshot in `localStorage`.  The shape
+-- mirrors the server's `body` blob with one extra boolean.
+
+
+type alias LocalLayoutSnapshot =
+    { layout : CardLayout
+    , queueView : QueueView
+    , useCustomCardLayout : Bool
+    }
+
+
+encodeLocalLayoutSnapshot : LocalLayoutSnapshot -> E.Value
+encodeLocalLayoutSnapshot snap =
+    E.object
+        [ ( "layout", encodeLayoutBody snap.layout snap.queueView )
+        , ( "useCustomCardLayout", E.bool snap.useCustomCardLayout )
+        ]
+
+
+decodeLocalLayoutSnapshot : D.Decoder LocalLayoutSnapshot
+decodeLocalLayoutSnapshot =
+    D.map3 LocalLayoutSnapshot
+        (D.field "layout" decodeLayoutBody)
+        (D.field "layout" decodeQueueView)
+        (D.field "useCustomCardLayout" D.bool)

@@ -355,11 +355,16 @@ themeFromFlag raw =
     resolves; on `AuthAnonymous` we decode and adopt it, on
     `AuthAuthenticated` we discard it (the server is the source
     of truth, the migration prompt is a later phase).
+  - `localCardLayout` — same one-shot snapshot for the active
+    card layout, queue view, and `useCustomCardLayout` flag.
+    Anonymous edits to the card editor land here so the next
+    reload picks them up without a server round-trip.
 
 -}
 type alias Flags =
     { theme : String
     , localEncounter : Maybe Decode.Value
+    , localCardLayout : Maybe Decode.Value
     }
 
 
@@ -408,6 +413,7 @@ init flags url key =
       , party = []
       , nextPartyMemberId = 1
       , localEncounterRaw = flags.localEncounter
+      , localCardLayoutRaw = flags.localCardLayout
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -456,14 +462,21 @@ update msg model =
         ( next, innerCmd ) =
             updateInner msg model
 
-        saveCmd =
+        encounterCmd =
             if shouldPersistAfter msg && next.encounter /= model.encounter then
                 persistEncounterFor next.auth next.encounter
 
             else
                 Cmd.none
+
+        cardLayoutCmd =
+            if shouldPersistAfter msg && cardLayoutChanged model next then
+                persistCardLayoutFor next
+
+            else
+                Cmd.none
     in
-    ( next, Cmd.batch [ innerCmd, saveCmd ] )
+    ( next, Cmd.batch [ innerCmd, encounterCmd, cardLayoutCmd ] )
 
 
 persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
@@ -476,6 +489,41 @@ persistEncounterFor auth encounter =
             Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
         Auth.AuthLoading ->
+            Cmd.none
+
+
+{-| Did any of the three card-layout-bearing fields change?
+We only persist when something the snapshot actually captures
+moved, so theme toggles and modal opens don't drag a duplicate
+write along.
+-}
+cardLayoutChanged : Model -> Model -> Bool
+cardLayoutChanged before after =
+    before.cardLayout
+        /= after.cardLayout
+        || before.queueView
+        /= after.queueView
+        || before.useCustomCardLayout
+        /= after.useCustomCardLayout
+
+
+{-| Persist the card-layout snapshot when anonymous; no-op for
+authenticated users (they save named layouts to the server via
+`Card.Wire.save`).
+-}
+persistCardLayoutFor : Model -> Cmd Msg
+persistCardLayoutFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCardLayout
+                (Card.Wire.encodeLocalLayoutSnapshot
+                    { layout = model.cardLayout
+                    , queueView = model.queueView
+                    , useCustomCardLayout = model.useCustomCardLayout
+                    }
+                )
+
+        _ ->
             Cmd.none
 
 

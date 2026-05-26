@@ -74,12 +74,17 @@ meReceived result model =
             )
 
         Err _ ->
-            ( { model
-                | auth = AuthAnonymous
-                , loginUi = LoginUi.empty
-                , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
-                , localEncounterRaw = Nothing
-              }
+            let
+                anon =
+                    { model
+                        | auth = AuthAnonymous
+                        , loginUi = LoginUi.empty
+                        , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
+                        , localEncounterRaw = Nothing
+                        , localCardLayoutRaw = Nothing
+                    }
+            in
+            ( applyLocalCardLayout model.localCardLayoutRaw anon
             , Compendium.Wire.fetchAllPublic CompendiumLoaded
             )
 
@@ -102,6 +107,31 @@ adoptLocalEncounter raw fallback =
 
         Nothing ->
             fallback
+
+
+{-| Same pattern as `adoptLocalEncounter` for the card-layout
+snapshot. Replaces `cardLayout`, `queueView`, and
+`useCustomCardLayout` on the model when the flag JSON parses,
+leaving them untouched otherwise. Anonymous users with no
+prior session keep the bundled default.
+-}
+applyLocalCardLayout : Maybe Decode.Value -> Model -> Model
+applyLocalCardLayout raw model =
+    case raw of
+        Just value ->
+            case Decode.decodeValue CardWire.decodeLocalLayoutSnapshot value of
+                Ok snap ->
+                    { model
+                        | cardLayout = snap.layout
+                        , queueView = snap.queueView
+                        , useCustomCardLayout = snap.useCustomCardLayout
+                    }
+
+                Err _ ->
+                    model
+
+        Nothing ->
+            model
 
 
 emailChanged : String -> Model -> ( Model, Cmd Msg )

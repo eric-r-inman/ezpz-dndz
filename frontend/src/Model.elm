@@ -443,6 +443,12 @@ type alias Model =
     -- if authenticated we discard it (the server is the source of
     -- truth, the migration prompt lives in a later phase).
     , localEncounterRaw : Maybe Decode.Value
+
+    -- Same one-shot bootstrap stash for the anonymous card-layout
+    -- snapshot (cardLayout + queueView + useCustomCardLayout).
+    -- Decoded and applied by `Update.Auth.meReceived` on the
+    -- anonymous branch; discarded on the authenticated branch.
+    , localCardLayoutRaw : Maybe Decode.Value
     }
 
 
