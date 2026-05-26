@@ -125,14 +125,14 @@ own module.
 | Domain          | =Compendium.elm= + =Compendium/{Wire,Parser,Reference}=, =Compendium/{Group,GroupWire}= (per-user creature groups)                       |
 | Domain          | =Card/{Layout,Preview,Wire}= (customizable creature-card layouts: types, no-msg preview renderer, HTTP wire)                             |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
-| Routing / Cmd   | =Route.elm=, =Effects.elm=, =Ports.elm= (outbound JS for ~savePreferences~)                                                              |
+| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / CompendiumCreaturePage / NotFound~), =Effects.elm=, =Ports.elm= (outbound JS — ~savePreferences~, the six ~persistLocal*~ ports, and the three ~clearLocal*~ ports used by sign-in migration) |
 | UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes)                                           |
 | Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Paste}.elm=                                                                    |
 | View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
-| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer) |
+| View / shell    | =View/{AppBar,Audio,AuthGate,Card,Chip,EncounterBar,Footer,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer).  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
@@ -370,38 +370,52 @@ shell.  The three branches:
 #+begin_src elm
 case model.auth of
     Auth.AuthLoading ->
-        [ -- "Loading…" panel ]
+        [ -- "Loading…" placeholder ]
 
     Auth.AuthAnonymous ->
-        [ View.Login.view model.loginUi ]
+        appShell Nothing model
 
     Auth.AuthAuthenticated user ->
-        [ View.AppBar.view ... user
-        , viewPage model
-        , View.Modal.Dice.view model.dice
-        , ...
-        , View.Toast.list model.toasts
-        , View.Audio.ringer model
-        ]
+        appShell (Just user) model
 #+end_src
 
-The login screen replaces the entire body — no AppBar, no
-modals, no workspace — because no API call would succeed
-without a session anyway.  After a successful submit, the page
-reloads and re-enters this branch as ~AuthAuthenticated~.
+Both ~AuthAnonymous~ and ~AuthAuthenticated~ render the same
+shell (AppBar + ~viewPage~ + every modal + toast / audio /
+footer).  The single difference is the ~Maybe Auth.User~ argument
+threaded into ~View.AppBar.view~: ~Just user~ shows the display-
+name link, ~Nothing~ shows a "Sign in" link to ~/login~ (or
+nothing at all when already on ~/login~ — see [[*Anonymous mode][Anonymous mode]]).
+
+The login form itself is no longer a full-body replacement.  It
+lives behind a new ~Route.Login~ as a normal page-route
+rendered by ~viewPage~, so anonymous users can browse the
+encounter manager, edit creatures, customize cards, etc.,
+without ever signing in.  See [[*Anonymous mode][Anonymous mode]] for the
+localStorage persistence layer that makes that work.
 
 Modal views pattern-match on ~model.modal~ for the matching
 constructor and render ~text ""~ otherwise.  The
 =View.Modal.view= helper provides shared chrome (backdrop,
 header, ✕ close, click-out-to-close, Esc-to-close) — every modal
-in the app routes through it.
+in the app routes through it.  The chrome also installs a focus
+sentinel after the body content and a Stop-hook–style focus
+redirect in =index.html=, so keyboard / SR users land on the
+close button when a modal opens and Tab wraps within the
+modal instead of escaping to the underlying page.
 
 * Authentication and per-user storage
 
-The app is account-gated: every ~/api/*~ endpoint outside
-~/api/auth/*~ requires a session, and every persisted store
+The server is account-gated: every ~/api/*~ endpoint outside
+~/api/auth/*~ requires a session, and every server-side store
 except the shared compendium catalogue is keyed by the
 authenticated user's ~UserId~.
+
+The *frontend* is not account-gated.  Anonymous users get a
+fully-functional app — live encounter, named saves, dice
+roller, customizable card layouts, compendium with full CRUD —
+backed by ~localStorage~ instead of the server.  Signing in
+auto-migrates the relevant local data to the user's account.
+See [[*Anonymous mode][Anonymous mode]] for the architecture.
 
 ** Account model
 
@@ -470,7 +484,7 @@ deserialize and ~JsonFileStore::load_or_default~ falls back to
 an empty map (logged at WARN).  Fine for dev; production has no
 data in this repo yet, so no migration helper exists.
 
-** Frontend boot through the auth screen
+** Frontend boot through the auth probe
 
 ~Model.auth : Auth.AuthState~ is one of three:
 
@@ -481,42 +495,204 @@ type AuthState
     | AuthAuthenticated User
 #+end_src
 
-~init~ fires ~Effects.fetchAuthMe~ alongside the other data-load
-Cmds.  ~AuthMeReceived~ flips ~AuthLoading~ → either
-~AuthAuthenticated~ (the cookie was good, the parallel
-data-loads succeed) or ~AuthAnonymous~ (the parallel loads
-silently 401, but the body switches to =View.Login= so they're
-hidden anyway).
+~init~ fires ~Effects.fetchAuthMe~ alongside the route-specific
+Cmd.  ~AuthMeReceived~ flips ~AuthLoading~ → either
+~AuthAuthenticated~ (cookie was good) or ~AuthAnonymous~ (401 /
+other).
 
-The login form is mode-toggleable (Sign in ↔ Create account)
-and lives on ~Model.loginUi : LoginUi~.  Submit posts to
-~/api/auth/{login,register}~ — both return ~UserPublic~ so the
-two share the ~AuthLoginResponse~ Msg.  On success the page
-does ~Browser.Navigation.reload~ so ~init~ re-runs with the
-fresh cookie attached and every existing data-load Cmd issues
-authenticated.  Cheaper than threading auth state into every
-existing Cmd; the cost is one extra round-trip on first login.
+The init batch deliberately does *not* fire the encounter,
+compendium, groups, card-layouts, or dice-history fetches —
+each one's destination differs between auth states (server vs.
+localStorage adopt vs. public bundled JSON).  =Update/Auth.elm='s
+~meReceived~ owns the per-branch dispatch:
 
-Logout posts to ~/api/auth/logout~ then ~Nav.reload~ regardless
-of response status — the user pressed the button and should
-land on the login screen.
+- ~Ok user~ — fires the four authenticated data fetches
+  (~/api/encounter~, ~/api/compendium/creatures~,
+  ~/api/compendium/groups~, ~/api/card-layouts~) plus the dice-
+  history fetch, plus three optional migration Cmds for any
+  ~localStorage~ data the anonymous session left behind (see
+  [[*Anonymous mode][Anonymous mode]]).
+- ~Err _~ — adopts every ~localStorage~ snapshot into ~Model~
+  (encounter, card layout, dice history, compendium creatures
+  + groups, named encounter saves, named card-layout saves)
+  and falls back to ~/bundled-creatures.json~ for the
+  compendium if the local snapshot is absent.
 
-The AppBar nav (when authenticated) shows two links (Encounter /
-Me), the *🎨 Customize card* and *🎴 Custom: on/off* buttons
-(see [[*Customizable creature card][Customizable creature card]]), the user's display name,
-and a *Sign out* button.  The gear ⚙ theme switcher is
-*currently hidden* from the nav while the Light theme gets
-more polish.  Its supporting code (the ~settings~ popover,
-~themeRow~, ~themeRadio~, ~PreferencesThemeSet~ wiring) is
-intact in =View/AppBar.elm= so re-enabling is a one-line
-change.  Foundation's Scalar (OpenAPI) UI is still mounted at
-~/scalar~ but no longer linked from the nav.
+The login form is mode-toggleable (Sign in ↔ Create account) and
+lives on ~Model.loginUi : LoginUi~ at ~Route.Login~ — anonymous
+users navigate there via the AppBar's "Sign in" link, the Cancel
+link on the form returns to ~/~, and Esc on the route fires
+~LoginCancel~ for the same effect.  The form forces
+~data-theme="dark"~ on its wrapper so the panel reads consistent
+across all four themes (Modern / Dark / Auto / Accessible).
+
+Submit posts to ~/api/auth/{login,register}~ — both return
+~UserPublic~ so the two share the ~AuthLoginResponse~ Msg.  On
+success the page does ~Nav.load "/"~ (not ~reload~) so the user
+lands on Home rather than ~/login~ post-promotion; ~init~ re-runs
+with the cookie attached and every data-load Cmd issues
+authenticated.  Logout posts to ~/api/auth/logout~ then
+~Nav.load "/"~ regardless of response status — but ~localStorage~
+is *deliberately preserved* so a user who had anonymous
+customizations before signing in gets them back on sign-out.
+
+The AppBar nav adapts to auth state:
+
+- *Authenticated* — Encounter / Customize card / Custom: on/off
+  / display name link to ~/me~ / Donate / ⚙ settings.
+- *Anonymous (any route except ~/login~)* — same buttons, but
+  the display-name slot is replaced with a *Sign in* link.
+- *Anonymous on ~/login~* — the Sign-in link is suppressed
+  (it would link back to itself).
+
+The ⚙ settings popover holds the theme picker (Modern / Dark /
+Auto / Accessible) and is enabled in all sessions, anonymous or
+not — theme persists via the existing ~savePreferences~ port
+regardless of auth.  Foundation's Scalar (OpenAPI) UI is still
+mounted at ~/scalar~ but no longer linked from the nav.
+
+* Anonymous mode
+
+The frontend supports a fully-functional unauthenticated session
+backed entirely by ~localStorage~.  Anonymous users get the same
+modal stack, encounter UI, compendium browser, dice roller, and
+customizable cards as authenticated users — the only differences
+are storage destination and a handful of sign-in nudges on
+genuinely-server-only features (server-side compendium snapshots
+via the Save/Load Compendium modals).
+
+** Per-surface persistence routing
+
+Every persisted surface has both a server endpoint and a
+~localStorage~ analogue; ~model.auth~ picks at write time, the
+boot path picks at read time.
+
+| Surface            | Authenticated                        | Anonymous (~localStorage~ key)  |
+|--------------------+--------------------------------------+---------------------------------|
+| Live encounter     | =PUT /api/encounter=                 | =encounter=                     |
+| Named encounter saves | =PUT /api/encounter/saves/:name=  | =encounterSaves= (dict by name) |
+| Active card layout | (server has no single-active concept; only named saves) | =cardLayout= (layout + queueView + useCustomCardLayout) |
+| Named card-layout saves | =PUT /api/card-layouts/:name=   | =cardLayoutSaves= (dict by name) |
+| Dice history       | =/api/dice/history= (per-roll POST)  | =diceHistory= (full list, diff-and-write) |
+| Compendium creatures + groups + ~nextLocalId~ counter | =/api/compendium/*= + =/api/compendium/groups/*= | =compendium= (one combined snapshot) |
+| Theme              | =savePreferences= port → =theme=     | =theme= (same key; never auth-gated) |
+
+The compendium read path also has a public fallback: when no
+local snapshot exists, the anonymous branch fetches
+~/bundled-creatures.json~ (a static asset mirroring
+=crates/lib/data/bundled-creatures.json=) so the GM sees the
+bundled bestiary on first launch.  =crates/server/src/compendium/store.rs= documents
+the lockstep-sync requirement next to its ~include_str!~.
+
+** Persistence pipeline (the diff-and-write wrapper)
+
+=Main.update= sits in front of ~updateInner~ and, after the
+dispatch returns ~next : Model~, fires four diff-and-persist
+Cmds in parallel for the four most-mutated surfaces:
+
+#+begin_src elm
+encounterCmd        = if next.encounter /= model.encounter ...
+cardLayoutCmd       = if cardLayoutChanged model next ...
+diceHistoryCmd      = if next.dice.history.entries /= model.dice.history.entries ...
+compendiumCmd       = if compendiumChanged model next ...
+encounterSavesCmd   = if next.localEncounterSaves /= model.localEncounterSaves ...
+cardLayoutSavesCmd  = if next.localCardLayoutSaves /= model.localCardLayoutSaves ...
+#+end_src
+
+Each helper (~persistEncounterFor~ / ~persistCardLayoutFor~ /
+etc.) branches on ~next.auth~: ~Authenticated~ → server HTTP,
+~Anonymous~ → outbound port to ~localStorage~, ~Loading~ → no-op
+(brief boot window before the auth probe lands).  =Update.Dice=
+follows a slightly different shape because each roll's existing
+=Effects.persistDiceRoll= POST is suppressed when anonymous and
+the wrapper writes the truncated full list to ~localStorage~
+instead; the result is the same diff-and-write discipline.
+
+A small set of Msgs is excluded from ~shouldPersistAfter~:
+~EncounterLoaded~ / ~EncounterPersisted~ / ~AuthMeReceived~ /
+~LocalEncounterMigrated~ / ~LocalCardLayoutMigrated~ /
+~LocalCompendiumMigrated~ — these flow data IN from the
+authoritative source, so re-writing it back would be wasted work
+or an infinite loop.
+
+** Boot flag flow
+
+=index.html='s inline boot script reads every ~localStorage~ key
+synchronously before ~Elm.Main.init~ and hands them in as flags:
+
+| Flag                  | Source key             | Adopted into                           |
+|-----------------------+------------------------+----------------------------------------|
+| =theme=               | =theme= (string)       | ~Preferences.theme~ via FOUC pre-set   |
+| =localEncounter=      | =encounter=            | ~Model.encounter~ on anonymous boot    |
+| =localCardLayout=     | =cardLayout=           | ~cardLayout~ + ~queueView~ + ~useCustomCardLayout~ |
+| =localDiceHistory=    | =diceHistory=          | ~Model.dice.history.entries~           |
+| =localCompendium=     | =compendium=           | ~Model.compendium.db~ + ~groups~ + ~nextLocalCreatureId~ |
+| =localEncounterSaves= | =encounterSaves=       | ~Model.localEncounterSaves~ (Dict)     |
+| =localCardLayoutSaves= | =cardLayoutSaves=     | ~Model.localCardLayoutSaves~ (Dict)    |
+| =migrationDateLabel=  | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
+| =bootMs=              | (computed: ~Date.now()~) | Timestamp for anonymous-session named-save writes |
+
+~Json.Decode.Value~ Maybe fields stash the raw JSON on
+~localCompendiumRaw~ / ~localEncounterRaw~ / ~localCardLayoutRaw~
+/ ~localDiceHistoryRaw~ for one-shot adoption — they're cleared
+after =Update.Auth.meReceived= picks a branch, so the model
+doesn't keep the (possibly-large) JSON value around after boot.
+
+** Login-time migration
+
+When an anonymous session signs in (~meReceived~ Ok branch), the
+boot scoops the same ~localStorage~ snapshots and uploads any
+non-empty / non-default ones to the server in parallel with the
+normal data fetches:
+
+| Snapshot              | Migration                                                                 |
+|-----------------------+---------------------------------------------------------------------------|
+| Encounter             | =PUT /api/encounter/saves/Local — <date>= (overwrite=true) — non-empty only |
+| Active card layout    | =PUT /api/card-layouts/Local — <date>= — only when ~useCustomCardLayout = True~ (user actively customized) |
+| Compendium (creatures + groups) | =POST /api/compendium/import= (full bundle body)                |
+| Dice history          | *Not migrated* — server history takes over on next reload                 |
+| Named encounter saves | *Not auto-migrated* — manual re-save preserves explicit control           |
+| Named card-layout saves | *Not auto-migrated* — same                                              |
+
+Success handlers clear the matching ~localStorage~ key via the
+~clearLocalEncounter~ / ~clearLocalCardLayout~ /
+~clearLocalCompendium~ ports and push a success toast naming the
+slot.  Failures toast but leave the local snapshot in place so
+the user can retry.
+
+** View-layer sign-in nudges
+
+A handful of controls have no anonymous analogue today —
+server-side named compendium snapshots, primarily — and gate on
+auth at the view layer via the =View/AuthGate.elm= helpers:
+
+#+begin_src elm
+clickWhenAuthed : Auth.AuthState -> Msg -> Msg
+clickWhenAuthed auth normalMsg =
+    if Auth.isAuthenticated auth then normalMsg else NavigateToLogin
+
+tooltipWhenAuthed : Auth.AuthState -> String -> String -> String
+tooltipWhenAuthed auth normalTooltip signInTooltip = ...
+#+end_src
+
+The gated control stays visible (so the affordance doesn't
+appear/disappear with auth state); click → ~/login~; tooltip
+swaps to a sign-in nudge.  The PanelControls Save/Load "To
+Server" / "From Server" menu items use a different shape —
+labels rename to "To Browser" / "From Browser" anonymously
+(via ~saveToServerLabel auth~) and the click dispatches the
+real Save modal, which then routes through =Update.Save= /
+=Update.Load='s auth-branched mutators.
 
 * Persistence
 
-The persisted JSON files all live under ~--data-dir~ (default
-~./~).  Each is read at boot and atomically rewritten on every
-mutation through ~JsonFileStore<T>~ from =crates/lib/=.
+The server-side persisted JSON files all live under ~--data-dir~
+(default ~./~).  Each is read at boot and atomically rewritten
+on every mutation through ~JsonFileStore<T>~ from =crates/lib/=.
+For the parallel ~localStorage~ shapes used by anonymous
+sessions, see [[*Anonymous mode][Anonymous mode]] — every server-backed surface
+below has a matching ~localStorage~ key that the
+~Main.update~-wrapper diff-and-write pipeline maintains.
 
 | Path                          | Endpoint                          | Per-user? | Notes                                                                                                                                              |
 |-------------------------------+-----------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -563,9 +739,17 @@ that the rest of the app routes through:
 - *Reset* / *Clear* — staged through ~pendingControl~ so a
   misclick can't drop combat state.  First click swaps the button
   grid for an inline confirmation banner (Cancel / coloured
-  Confirm); second click applies.  Reset returns to
-  ~savedSnapshot~ (or empty) with ~round = 0~; Clear empties the
-  queue.
+  Confirm); second click applies.
+  - *Reset* — keeps every creature in the roster but strips
+    per-fight state: HP to full, no temp HP, no conditions /
+    save notices / death saves, every status toggle off (cover,
+    concentration, hiding, dodging, flying, readied, inactive,
+    bloodied), legendary actions / resistances refilled,
+    timers cleared.  Identity + combat baselines (name, kind,
+    initiative, AC, max HP, note, memo, compendium id)
+    preserved.  Round → 0, active creature → none, so the GM
+    lands back in the pre-combat "Run Encounter" state.
+  - *Clear* — empties the queue.
 
 The shared behaviour: any branch that mutates ~model.encounter~
 flows through ~Main.update~'s diff-and-persist wrapper, which
@@ -982,7 +1166,7 @@ silently rewrite the middle of the history.
 
 #+begin_src elm
 type alias Preferences =
-    { theme : Theme                       -- Light / Dark / Auto
+    { theme : Theme                       -- Modern / Dark / Auto / Accessible
     , cardDensity : CardDensity           -- Compact / Normal / Spacious
     , soundEnabled : Bool
     , autoScrollActiveCard : Bool
@@ -994,18 +1178,27 @@ type alias Preferences =
 
 Wire status today:
 
-- *Theme* — has a full plumbing story but the trigger is
-  *currently hidden* from the AppBar nav while the Light theme
-  gets more polish (commit ~f7cb7f6~).  The popover, the radio
-  group, the ~PreferencesThemeSet Theme~ Msg, the
-  =Update.Preferences.themeSet= handler that writes
-  ~model.preferences~ + fires ~Ports.savePreferences~ to mirror
-  to ~localStorage~ + ~<html data-theme>~ — all of that is
-  intact in =View/AppBar.elm=.  Re-enabling is a single line
-  in =View.AppBar.view= once the Light variant is presentable.
-  Until then, the app effectively runs Dark-only (with the
-  pre-Elm FOUC script honouring ~prefers-color-scheme: dark~ as
-  the default).
+- *Theme* — four variants, all live in the AppBar ⚙ settings
+  popover and in CSS:
+  - *Modern* (~:root~ defaults) — Linear/Vercel-style light
+    palette, Inter for UI + JetBrains Mono for numerics,
+    Modern button polish tokens.
+  - *Dark* (~[data-theme="dark"]~) — classic dark palette,
+    system font stack.
+  - *Auto* — resolves to Modern or Dark per OS
+    ~prefers-color-scheme~ via media-query override.
+  - *Accessible* (~[data-theme="accessible"]~) — WCAG AAA-
+    target high-contrast palette, bumped font sizes across
+    every panel + stat block + dice modal + CR calc, B&W
+    creature-card buttons with black-fill / white-text on
+    hover, 24px checkboxes, 3px focus rings, larger touch
+    targets, and ~prefers-reduced-motion~ honored globally.
+  Theme persists via ~Ports.savePreferences~ → JS writes
+  ~localStorage.theme~ + mirrors to ~<html data-theme>~ so the
+  pre-Elm FOUC script picks the same theme on next reload.
+  Same code path runs anonymous + authenticated; per-account
+  preferences will move to ~/api/me/preferences~ once that
+  endpoint lands (=crates/server/src/prefs/= is a stub today).
 - ~autoScrollActiveCard~ is consulted by
   =Update.Encounter.nextTurn= when the turn advances.
 - The remaining fields (density, sound, auto-roll initiative,
@@ -1013,13 +1206,18 @@ Wire status today:
   wire-defined but not yet read by any feature; they round-trip
   through ~Preferences.default~.
 
-When ~/api/me/preferences~ lands (Phase 11 of the modularization
-plan, =crates/server/src/prefs/= today is a stub), ~Ports.save-
-Preferences~ becomes a fallback for unauthenticated sessions
-and the canonical persistence path is HTTP.  =Theme= itself
-lives in =Msg.elm= rather than =Preferences.elm= to avoid an
-import cycle with the ~PreferencesThemeSet Theme~ Msg
-constructor; =Preferences= re-exports it.
+The ~Readied~ status toggle on row 3 of every creature card
+also animates per-theme via a triple-effect keyframe
+(opacity dip + 1.05× scale + orange glow ring on a 0.9s cycle);
+the animation respects ~prefers-reduced-motion: reduce~ and
+falls back to a static highlight.
+
+When ~/api/me/preferences~ lands, ~Ports.savePreferences~
+becomes a fallback for unauthenticated sessions and the
+canonical persistence path is HTTP.  =Theme= itself lives in
+=Msg.elm= rather than =Preferences.elm= to avoid an import
+cycle with the ~PreferencesThemeSet Theme~ Msg constructor;
+=Preferences= re-exports it.
 
 * User-facing copy (tooltips)
 
@@ -1232,12 +1430,29 @@ upstream via a sync-record file at the workspace root.
   the features they need (~cli~ on the CLI crate, ~auth~ on the
   server crate; ~lib~ takes the no-features default for the
   shared logging types).
-- *Nix* — flake input, with ~foundation.lib.mkRustProject~
-  driving the bulk of =flake.nix= (Rust toolchain, crane build,
-  devShell composition, package + app generation) and
-  ~mkNixosService~ / ~mkDarwinService~ collapsing the two
-  service-module wrappers under =nix/modules/= to ~30 lines
-  each.
+- *Nix* — flake input.  =flake.nix= owns the per-system
+  assembly (rust toolchain, crane build, devShell composition)
+  and delegates the workspace iteration to
+  ~foundation.lib.mkRustPackages~ — the helper returns
+  ~{ packages, apps }~ for the supplied crate map, and the
+  caller composes the rest.  Per-crate overrides under
+  =nix/packages/<key>.nix= are picked up automatically by
+  convention; ezpz-dndz uses this for the server crate's
+  bundled-Elm-frontend build.  =flake.nix= also splices in
+  ~foundation.lib.cargoHuskyHookSnippet pkgs~ inside its
+  ~shellHook~ so the ~.cargo-husky/hooks/~ pre-commit hook is
+  symlinked into ~.git/hooks/~ on devShell entry.
+  ~mkNixosService~ / ~mkDarwinService~ collapse the two
+  service-module wrappers under =nix/modules/= to ~30 lines each.
+
+The mid-2026 foundation flake refactor replaced the older
+single-helper ~mkRustProject~ (which owned ~perSystem~
+iteration internally) with the leaner ~mkRustPackages~ + caller-
+owned ~perSystem~ shape.  Net effect: ~flake.nix= grew from ~75
+to ~130 lines, but every crane attribute (env vars, build
+inputs, ~cargoTestExtraArgs~) is now a plain field on a value
+the caller owns — no ~extraX~ parameter is needed to thread a
+new crane knob through.
 
 What foundation owns (and we don't):
 
@@ -1271,20 +1486,53 @@ workspace.
 =rust-template.json= at the workspace root carries a
 ~template_sync_hashes~ list — every commit hash the repo has
 synced against, oldest first.  The last entry is the base for
-the next diff-based compliance pass.  See
-=docs/archive/COMPLIANCE_PLAN.org= for the working brief of the
-most recent run and ~~/dev/rust-template/docs/compliance.org~
-for the canonical process.
+the next diff-based compliance pass.  Three entries today:
+
+1. =51239f87…= — initial template adoption.
+2. =992414005ea1ce9…= — env-var lowercase / POSIX §8.1 pass.
+3. =6d65d3d8…= — current sync (combinator-preference lints,
+   pre-commit ACMR filter, ~mkRustPackages~ helper rewrite).
+
+See ~/dev/rust-template/docs/compliance.org~ for the canonical
+process — the diff is always ~git -C ~/dev/rust-template diff
+<last-hash>..HEAD~.
 
 ** Lints + clippy
 
-Workspace-level deny:
+Two blocks at workspace-level.  The panic-family lints are
+*deny* — every shipping code path returns a typed error:
 
 #+begin_src toml :exports code
 [workspace.lints.clippy]
 unwrap_used  = "deny"
 expect_used  = "deny"
 panic        = "deny"
+#+end_src
+
+The combinator-preference lints are *warn* — they nudge toward
+the least-powerful construct that fits (~Option::map~ over
+~match~, iterator chains over ~for~ + mutation, ~?~ over
+manual early-return guards).  The complete set:
+
+#+begin_src toml :exports code
+manual_map = "warn"
+manual_filter = "warn"
+manual_filter_map = "warn"
+manual_find = "warn"
+manual_find_map = "warn"
+manual_flatten = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_unwrap_or = "warn"
+manual_unwrap_or_default = "warn"
+option_if_let_else = "warn"
+map_unwrap_or = "warn"
+needless_collect = "warn"
+unnecessary_fold = "warn"
+question_mark = "warn"
+single_match_else = "warn"
+collapsible_match = "warn"
+redundant_pattern_matching = "warn"
 #+end_src
 
 Member crates opt in via ~[lints] workspace = true~.  =clippy.toml=
@@ -1295,9 +1543,12 @@ Helper functions in =tests/*.rs= integration files are not inside
 toml — those files carry a file-level
 ~#![allow(clippy::expect_used, clippy::unwrap_used)]~.
 
-Shipping code uses ~?~ + semantic ~thiserror~ variants
-exclusively; the LLM-facing rule is in =llms.org= (synced from
-foundation).
+When an imperative form is genuinely clearer (multi-line bodies,
+side effects, nested control flow), override site-locally with
+~#[allow(clippy::lint_name)]~ and a one-line reason.  The
+"Rule of least power" section in =llms.org= captures the
+principle behind the set; the LLM-facing
+no-=unwrap=/=expect= rule lives there in full too.
 
 ** Env-var convention
 

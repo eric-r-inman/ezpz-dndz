@@ -4,7 +4,16 @@
 
 * Welcome
 
-~eZpZ-dndZ~ is a fre DnD combat encounter manager. It handles initiative order, hit points, conditions, and much more — offloading combat miuntae from the DM's brain, so they can stay focused on the story. 
+~eZpZ-dndZ~ is a free D&D combat encounter manager.  It handles
+initiative order, hit points, conditions, and much more —
+offloading combat minutiae from the DM's brain so they can stay
+focused on the story.
+
+You can start using it without signing in.  An account unlocks
+multi-device sync and named server-side saves, but every
+feature (compendium editing, named saves, custom card layouts,
+dice history) works in your browser anonymously too.  See
+[[*Using without an account][Using without an account]] below.
 
 * License
 
@@ -17,14 +26,18 @@ for the full text.
 
 This document is a feature-by-feature tour: what each feature is for,
 where to find it in the UI, and how to use it.
-** A note on beta status
 
-** Note on Beta testing
+** Note on beta status
 
-eZpZ-dndZ is in active beta. The core encounter loop (initiative, HP,
-conditions, dice roller, etc.) is stable, probably, as perhaps is the server. But, breaking changes can happen without warning. Use this app at your own risk.
+eZpZ-dndZ is in active beta.  The core encounter loop
+(initiative, HP, conditions, dice roller) is stable, as is the
+server.  Breaking changes can happen without warning.  Use this
+app at your own risk.
 
-Your feedback is welcome and will guide the development of this app. Use the *Leave Feedback* link on the Account page, the *Contact* link in the footer, or email ~feedback@ezpzdndz~ directly.
+Your feedback is welcome and will guide the development of this
+app.  Use the *Leave Feedback* link on the Account page, the
+*Contact* link in the footer, or email ~feedback@ezpzdndz~
+directly.
 
 ** Conventions in this document
 
@@ -35,22 +48,78 @@ Your feedback is welcome and will guide the development of this app. Use the *Le
 - "The compendium" means your personal monster library — the
   catalogue you build encounters from.
 
-* Getting started
+* Using without an account
+
+Open the site and start playing.  No account required.
+
+Anonymous sessions are backed entirely by your browser's
+~localStorage~, with parity to the signed-in experience on every
+common surface:
+
+- The live encounter, dice history, active card layout, and
+  full compendium (creatures + groups) all persist across
+  reloads.
+- The Save / Load buttons on the encounter controls show *To
+  Browser* / *From Browser* labels and write to ~localStorage~
+  under names you choose (overwrite, rename, and delete all
+  work the same as the server-backed flow).
+- The Card Editor's Save button writes named layouts to
+  ~localStorage~ the same way.
+- The compendium has full New / Paste / Edit / Duplicate /
+  Delete / Create Group / Edit Group / Delete Group support
+  with everything persisted locally.
+
+What you give up without an account: cross-device sync (your
+work lives in one browser), and the two genuinely-server-only
+flows behind the compendium *Save/Load Snapshot to Server*
+items (which redirect to the sign-in page with a tooltip).
+
+** Promoting an anonymous session into an account
+
+Sign in or create an account whenever you're ready.  The app
+automatically uploads three pieces of your anonymous work to
+your account in the background:
+
+- Your live encounter is archived under the name *Local — <today>*
+  in Save → Load.
+- If you actively enabled the custom card renderer, your active
+  layout is archived under *Local — <today>* in the Card Editor's
+  Saved Layouts list.
+- Your compendium (creatures + groups) is imported into your
+  account.
+
+You'll see one toast per migrated piece.  After that, every
+mutation persists to the server instead.
+
+** Signing out (preserves anonymous data)
+
+Sign out via the Account page.  Your session ends and you
+return to the anonymous experience.  Critically, anonymous
+~localStorage~ data is *deliberately preserved* — if you had
+work in this browser before signing in, it comes back on
+sign-out instead of being wiped.
+
+* Getting started with an account
+
+An account unlocks:
+
+- Cross-device sync (sign in on a different browser or device
+  and your data follows you).
+- Named server-side compendium snapshots (Save/Load Snapshot
+  in the Compendium modal).
 
 ** Creating an account
 
-Visit the site and you'll be greeted by the *Authentication Portal*.
+Click the *Sign in* link in the AppBar (top right when
+anonymous) to visit the sign-in form.
 
-- *Create Account* — An account allows you to save and import encounters and monsters. You'll be logged in automatically after registration.
-- *Sign In* — for returning users.  The email and password are the
-  same ones you registered with.
+- *Create account* — toggle the form into Create mode; you'll
+  be signed in automatically on success.
+- *Sign in* — for returning users.  The email and password are
+  the same ones you registered with.
 
-Sessions are cookie-based and survive browser restarts.  Closing the
-tab does not log you out.
-
-** Signing out
-
-Signing out clears your session and clears the active encounter. You sign out via the Account page.
+Sessions are cookie-based and survive browser restarts.  Closing
+the tab does not log you out.
 
 * eZpZdndZ Tools
 
@@ -185,23 +254,37 @@ The middle pane is where global encounter actions live.
 *** Action grid (six buttons, three rows of two)
 
 1. *Quick Add (➕)* — lightweight creature picker.  See *Quick Add*.
-2. *Save (💾)* — split button:
-   - Click the main face to save to the server.
-   - Click the dropdown to choose *Save to Server* or *Download to
-     Device*.
-   - The face turns orange/yellow when the encounter has unsaved
-     changes.
+2. *Save (💾)* — split button.  The dropdown picks destination:
+   - *To Server* — saves to your account (signed in).  Shows as
+     *To Browser* when anonymous — same Save modal, same name
+     conflict handling, but the snapshot lands in this browser's
+     storage instead of the server.
+   - *To Device* — downloads a JSON file via the browser.  Works
+     the same regardless of sign-in.
+
+   The button face turns orange/yellow when the encounter has
+   unsaved changes.
+
 3. *Load (📂)* — split button:
-   - Main face / dropdown distinguish between *Load from Server* and
-     *Load from Device*.
+   - *From Server* (or *From Browser* when anonymous) — opens
+     the Load modal listing your saved encounters.
+   - *From Device* — pick a JSON file from disk.
 4. *Next Turn / Run (>❯ / ▶)* — advances the turn.  Before round 1
    the label is *Run* and pressing it kicks off combat (rolls
    initiative-tied effects, ticks per-turn countdowns).  After that,
    the label switches to *Next Turn*.
-5. *Reset (⟲)* — reverts the encounter to the last saved snapshot
-   and forces the round counter to 1.  Asks for confirmation first.
-6. *Clear (🗑)* — empties the encounter back to a blank slate.  Also
-   asks for confirmation.
+5. *Reset (⟲)* — keeps every creature in the roster but wipes
+   per-fight state: HP back to full, no temp HP, no conditions
+   or save notices, death-save counters cleared, every status
+   toggle off (cover, concentration, hiding, dodging, flying,
+   readied, inactive, bloodied), legendary actions and resistances
+   refilled, timers cleared.  Identity and combat baselines
+   (name, kind, initiative, AC, max HP, note, memo, source) are
+   preserved.  Round counter goes back to 0 so you can press *Run
+   Encounter* to start combat over with the same lineup.  Asks
+   for confirmation first.
+6. *Clear (🗑)* — empties the encounter back to a blank slate
+   (no creatures at all).  Also asks for confirmation.
 
 The Reset and Clear buttons swap into an inline *Confirm / Cancel*
 banner when pressed — there is no system dialog to dismiss; just hit
@@ -613,18 +696,28 @@ Visit ~/me~ from the *User* badge in the app bar.
 - *Leave Feedback* — opens your mail client to send to
   ~feedback@ezpzdndz~.  Use this for any bug report, feature
   suggestion, or "this is confusing" note.
-- *Sign Out* — clears your session and returns you to the login
-  screen.
+- *Sign Out* — clears your session and returns you to the
+  anonymous experience.  Anonymous data stored in this browser
+  before you signed in (live encounter, custom card layout,
+  saved compendium edits, named saves) is *preserved*, so a
+  sign-out doesn't wipe your work.
 
 * Site chrome
 
 ** App Bar (top)
 
-- *eZpZ-dndZ* — brand text, links back to the encounter view.
+- *eZpZ-dndZ* — brand text, top-left.
 - *Encounter* — link to the main view at ~/~.
 - *Customize card* — opens the Card Editor.
 - *Custom: on / off* — toggles the customised card renderer.
-- *User badge* — your display name, links to ~/me~.
+- *User badge / Sign in* — shows your display name (links to
+  ~/me~) when signed in.  When anonymous, shows a *Sign in*
+  link that takes you to the sign-in form.  On the sign-in page
+  itself the link is suppressed (it would point back to
+  itself).
+- *Donate* — link to ~/donate~.
+- *⚙ settings* — opens the popover with the Theme picker (and
+  future preferences).
 
 ** Footer (fixed at the bottom)
 
@@ -679,13 +772,27 @@ In the Compendium browser, selection enables:
 * Themes and visual modes
 
 The *⚙ settings* button at the right of the app bar opens a
-popover with the *Theme* picker: *Modern*, *Dark*, or *Auto*
-(follow the OS preference).  *Modern* is the Linear/Vercel-style
-light palette — off-white surfaces, indigo accents, hairline
-borders, and the Inter typeface for UI text plus JetBrains Mono
-for numerics.  *Dark* keeps the classic dark palette with the
-system font stack.  *Auto* resolves to whichever matches the
-OS's current colour-scheme preference.
+popover with the *Theme* picker:
+
+- *Modern* — Linear/Vercel-style light palette: off-white
+  surfaces, indigo accents, hairline borders, Inter for UI text
+  plus JetBrains Mono for numerics.
+- *Dark* — classic dark palette with the system font stack.
+- *Auto* — resolves to Modern or Dark per your OS's current
+  colour-scheme preference.
+- *Accessible* — WCAG AAA-targeted high-contrast theme: bumped
+  font sizes across every panel, B&W creature-card buttons that
+  flip to black-fill / white-text on hover, larger touch
+  targets, 3-pixel focus rings, 24px checkboxes.  Honours
+  ~prefers-reduced-motion: reduce~ globally — animations
+  (including the Readied pulse) fall back to static highlights
+  when the OS asks for less motion.
+
+The picker is available in all sessions — anonymous or signed
+in — and your choice persists across reloads via your browser.
+The sign-in page itself always renders in the Dark palette
+regardless of your selected theme, so the form has a consistent
+look.
 
 Other always-on visual cues:
 
@@ -697,7 +804,12 @@ Other always-on visual cues:
 
 * Keyboard and mouse shortcuts
 
-- *Escape* — closes any open modal, dropdown, or popover.
+- *Escape* — closes any open modal, dropdown, or popover.  On
+  the sign-in form (~/login~), Escape returns to the encounter
+  page.
+- *Skip to main content* — at the very start of the tab order
+  on every page; jumps past the AppBar links straight to the
+  encounter pane.  Visually hidden until focused.
 - *Click outside the modal* — same as Escape.
 - *Enter inside a single-line text field* — submits the form
   (Apply / Save / Roll).
@@ -705,6 +817,8 @@ Other always-on visual cues:
   multi-select range from the last checked item to this one.
 - *Click the inline ability cell or dice expression in a stat
   block* — rolls it.
+- *Tab inside a modal* — wraps within the modal back to the
+  close button rather than escaping into the underlying page.
 
 * Honest limitations and rough edges (today)
 
@@ -723,6 +837,12 @@ them at the table.
   the server.  Restarting the app re-empties it.
 - *Mobile/tablet polish* is incomplete.  The app is targeted at
   laptop and desktop screens for now.
+- *Anonymous named saves don't auto-migrate.*  When you sign
+  in, your live encounter and (if you actively enabled it)
+  custom card layout are auto-archived to your account.  Your
+  *named* encounter saves and named card-layout saves stay in
+  your browser — sign out to access them anonymously again, or
+  open each and re-save under your account.
 
 If you spot something not on this list, it's almost certainly a
 bug — please report it.
