@@ -148,6 +148,7 @@ submitRow ui =
         , a
             [ class "auth-login__cancel"
             , href "/"
+            , attribute "aria-label" "Cancel sign-in and return to the encounter page"
             ]
             [ text "Cancel" ]
         , case ui.error of

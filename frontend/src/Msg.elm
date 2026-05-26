@@ -782,6 +782,10 @@ type Msg
       -- to the login route so they can promote into an
       -- authenticated session.
     | NavigateToLogin
+      -- Cancel the sign-in form and return to the encounter page.
+      -- Fired by the Cancel link on /login as well as the Esc
+      -- subscription scoped to the Login route.
+    | LoginCancel
       -- Login-time migration: the response to the PUT that copies
       -- an anonymous-session encounter into a named server save
       -- slot.  Carries the save-name so the success-toast can

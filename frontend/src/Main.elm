@@ -210,6 +210,17 @@ subscriptions model =
                 Nothing ->
                     []
 
+        -- Esc on the Login route cancels back to the encounter
+        -- page.  Scoped to the route so it doesn't intercept Esc
+        -- on the main app (where the existing modal handlers want
+        -- it for their own dismissal).
+        loginEscSubs =
+            if model.route == Login then
+                [ Browser.Events.onKeyDown (escKey LoginCancel) ]
+
+            else
+                []
+
         primary =
             if model.dice.open then
                 Browser.Events.onKeyDown (escKey CloseDice)
@@ -253,7 +264,7 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs)
+    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs ++ loginEscSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -1692,6 +1703,9 @@ updateInner msg model =
         NavigateToLogin ->
             ( model, Nav.pushUrl model.key "/login" )
 
+        LoginCancel ->
+            ( model, Nav.pushUrl model.key "/" )
+
         LocalEncounterMigrated name result ->
             Update.Auth.localEncounterMigrated name result model
 
@@ -1792,7 +1806,13 @@ way — anonymous users get the full app, they just persist to
 -}
 appShell : Maybe Auth.User -> Model -> List (Html Msg)
 appShell maybeUser model =
-    [ View.AppBar.view model.settingsOpen model.preferences.theme maybeUser model.useCustomCardLayout
+    [ View.AppBar.view
+        { settingsOpen = model.settingsOpen
+        , theme = model.preferences.theme
+        , user = maybeUser
+        , useCustomCardLayout = model.useCustomCardLayout
+        , route = model.route
+        }
     , viewPage model
     , View.Modal.Dice.view model.dice
     , View.Modal.HpChange.view model

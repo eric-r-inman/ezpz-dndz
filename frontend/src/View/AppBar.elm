@@ -41,11 +41,19 @@ import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (MeStatus(..), Msg(..), Theme(..))
+import Route exposing (Route(..))
 import View.Tooltips as Tooltips
 
 
-view : Bool -> Theme -> Maybe Auth.User -> Bool -> Html Msg
-view settingsOpen theme maybeUser useCustomCardLayout =
+view :
+    { settingsOpen : Bool
+    , theme : Theme
+    , user : Maybe Auth.User
+    , useCustomCardLayout : Bool
+    , route : Route
+    }
+    -> Html Msg
+view cfg =
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -62,7 +70,7 @@ view settingsOpen theme maybeUser useCustomCardLayout =
             , button
                 [ class
                     ("app-bar__card-editor"
-                        ++ (if useCustomCardLayout then
+                        ++ (if cfg.useCustomCardLayout then
                                 " app-bar__card-editor--active"
 
                             else
@@ -72,7 +80,7 @@ view settingsOpen theme maybeUser useCustomCardLayout =
                 , type_ "button"
                 , onClick CustomCardLayoutToggle
                 , Tooltips.attr
-                    (if useCustomCardLayout then
+                    (if cfg.useCustomCardLayout then
                         "Switch encounter cards back to the classic renderer"
 
                      else
@@ -80,32 +88,37 @@ view settingsOpen theme maybeUser useCustomCardLayout =
                     )
                 ]
                 [ text
-                    (if useCustomCardLayout then
+                    (if cfg.useCustomCardLayout then
                         "Custom: on"
 
                      else
                         "Custom: off"
                     )
                 ]
-            , userLink maybeUser
+            , userLink cfg.user cfg.route
             , a
                 [ class "app-bar__donate"
                 , href "/donate"
                 , Tooltips.attr Tooltips.appBarDonate
                 ]
                 [ text "Donate" ]
-            , settings settingsOpen theme
+            , settings cfg.settingsOpen cfg.theme
             ]
         ]
 
 
-{-| Identity slot in the AppBar. When a session is live we show
-the display name as a link to `/me`; when the user is anonymous
-we surface a "Sign in" link to `/login` so they can promote the
-local-only session into a server-backed one whenever they want.
+{-| Identity slot in the AppBar.
+
+  - Authenticated → display name link to `/me`.
+  - Anonymous (any route except `/login`) → "Sign in" link to
+    `/login`.
+  - Anonymous AND already on `/login` → render nothing. The form
+    on the page IS the sign-in affordance; an AppBar link back to
+    the same route would look broken.
+
 -}
-userLink : Maybe Auth.User -> Html Msg
-userLink maybeUser =
+userLink : Maybe Auth.User -> Route -> Html Msg
+userLink maybeUser route =
     case maybeUser of
         Just user ->
             a
@@ -116,12 +129,16 @@ userLink maybeUser =
                 [ text user.displayName ]
 
         Nothing ->
-            a
-                [ class "app-bar__user app-bar__user--anonymous"
-                , href "/login"
-                , Tooltips.attr "Sign in or create an account to save encounters on the server."
-                ]
-                [ text "Sign in" ]
+            if route == Login then
+                text ""
+
+            else
+                a
+                    [ class "app-bar__user app-bar__user--anonymous"
+                    , href "/login"
+                    , Tooltips.attr "Sign in or create an account to save encounters on the server."
+                    ]
+                    [ text "Sign in" ]
 
 
 {-| ⚙ button + popover. Wraps the popover in a `<div>` with
