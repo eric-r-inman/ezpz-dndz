@@ -15,7 +15,7 @@ import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, div, main_, section)
-import Html.Attributes exposing (class, id)
+import Html.Attributes exposing (attribute, class, id)
 import Model exposing (Model)
 import Msg exposing (Msg)
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -29,7 +29,11 @@ import View.PanelDetail
 
 view : Model -> Html Msg
 view model =
-    main_ [ class "workspace" ]
+    main_
+        [ class "workspace"
+        , id "main"
+        , attribute "tabindex" "-1"
+        ]
         [ panelMain
             model.encounter
             model.hpEdit

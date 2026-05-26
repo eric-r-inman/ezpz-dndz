@@ -230,10 +230,18 @@ creatureName : Creature -> Html Msg
 creatureName creature =
     case creature.creatureId of
         Just id_ ->
-            span
+            -- Clickable name (pins the compendium stat block in
+            -- the side panel) is a real `<button>` so keyboard
+            -- users can Tab to it and press Enter/Space.  Native
+            -- button chrome is reset by the existing
+            -- `.creature-name--linked` styling.
+            button
                 [ class "creature-name creature-name--default creature-name--linked"
+                , type_ "button"
                 , onClick (PanelShowCreature id_ creature.name)
                 , Tooltips.attr Tooltips.showStatBlock
+                , attribute "aria-label"
+                    ("Pin " ++ creature.name ++ "'s stat block to the side panel")
                 ]
                 [ text creature.name ]
 
@@ -691,12 +699,47 @@ hpEditable creature hpEdit field current cls =
             []
 
     else
-        span
+        -- Trigger is a real `<button>` (not a `<span onClick>`) so
+        -- keyboard users can Tab to it and press Enter/Space to
+        -- enter edit mode.  The styling stays the same via the
+        -- existing `.hp-display__editable` class — CSS resets the
+        -- native button chrome.
+        button
             [ class (cls ++ " hp-display__editable")
+            , type_ "button"
             , onClick (HpEditStart creature.name field current)
             , Tooltips.attr Tooltips.clickToEdit
+            , attribute "aria-label"
+                (hpFieldAriaLabel field creature.name current)
             ]
             [ text (String.fromInt current) ]
+
+
+{-| Screen-reader label for the inline HP / AC edit trigger.
+SR users hear the field role + current value + creature name
+when focus lands on the trigger, so they know what they're about
+to edit.
+-}
+hpFieldAriaLabel : HpField -> String -> Int -> String
+hpFieldAriaLabel field name current =
+    let
+        fieldName =
+            case field of
+                CurrentHpField ->
+                    "Current HP"
+
+                MaxHpField ->
+                    "Max HP"
+
+                ArmorClassField ->
+                    "Armor Class"
+    in
+    fieldName
+        ++ " "
+        ++ String.fromInt current
+        ++ " for "
+        ++ name
+        ++ ", click to edit"
 
 
 {-| Enter commits the inline HP edit, Esc cancels. Other keys
