@@ -409,23 +409,20 @@ init flags url key =
       , nextPartyMemberId = 1
       , localEncounterRaw = flags.localEncounter
       }
-      -- Always fetch the persisted dice history and the compendium
-      -- library alongside whatever the current route needs. Failures
-      -- are silently swallowed so a fresh server (no
-      -- dice-history.json yet) still loads.
+      -- Always fetch the persisted dice history alongside whatever
+      -- the current route needs. Failures are silently swallowed so
+      -- a fresh server (no dice-history.json yet) still loads.
       --
-      -- We deliberately do NOT call `fetchEncounterCmd` here:
-      -- whether the encounter comes from `/api/encounter` (server)
-      -- or `localEncounterRaw` (localStorage) depends on the auth
-      -- probe's result, so we defer that decision to
+      -- We deliberately do NOT call `fetchEncounterCmd` or the
+      -- compendium / groups / card-layout fetches here: whether
+      -- each one targets the authenticated `/api/*` endpoint or the
+      -- public bundled fallback depends on the auth probe's
+      -- result, so we defer those decisions to
       -- `Update.Auth.meReceived`.
     , Cmd.batch
         [ Effects.fetchAuthMe
         , Effects.cmdForRoute route
         , Effects.fetchDiceHistory
-        , Compendium.Wire.fetchAll CompendiumLoaded
-        , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
-        , Card.Wire.fetchList CardEditorLayoutsLoaded
         ]
     )
 

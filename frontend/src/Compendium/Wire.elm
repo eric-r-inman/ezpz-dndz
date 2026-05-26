@@ -1,5 +1,5 @@
 module Compendium.Wire exposing
-    ( fetchAll
+    ( fetchAll, fetchAllPublic
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
     , SavedCompendiumMeta, deleteCompendiumSaveCmd, getCompendiumSaveCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
@@ -13,7 +13,7 @@ module so the rules engine reads cleanly without scrolling past
 600 lines of codecs, and so a future schema bump only touches
 this file.
 
-@docs fetchAll
+@docs fetchAll, fetchAllPublic
 @docs decodeCreature, encodeCreature, encodeDraft
 @docs defaultSpeed, defaultAbilities, defaultSenses
 
@@ -82,6 +82,27 @@ fetchAll : (Result Http.Error (List Creature) -> msg) -> Cmd msg
 fetchAll toMsg =
     Http.get
         { url = "/api/compendium/creatures"
+        , expect = Http.expectJson toMsg (D.list decodeCreature)
+        }
+
+
+{-| Public read-only path used by anonymous sessions. Hits a
+static asset (`/bundled-creatures.json`) served straight from
+`frontend/public/`, which mirrors the same bundled defaults the
+server seeds into a fresh user's compendium. Same decode
+shape as [`fetchAll`](#fetchAll); authentication is not required.
+
+The bundled file ships alongside the binary in `frontend/public/`
+— treat it as the read-only fallback the GM gets before signing
+in. Local edits (later phase) overlay this list inside the
+client; the server route only kicks in once the session is
+authenticated.
+
+-}
+fetchAllPublic : (Result Http.Error (List Creature) -> msg) -> Cmd msg
+fetchAllPublic toMsg =
+    Http.get
+        { url = "/bundled-creatures.json"
         , expect = Http.expectJson toMsg (D.list decodeCreature)
         }
 

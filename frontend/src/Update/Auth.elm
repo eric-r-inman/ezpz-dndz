@@ -25,6 +25,9 @@ the wire shape is identical (both POST a body and get back a
 
 import Auth exposing (AuthState(..), LoginMode(..))
 import Browser.Navigation as Nav
+import Card.Wire as CardWire
+import Compendium.GroupWire
+import Compendium.Wire
 import Effects
 import Encounter
 import Encounter.Wire
@@ -37,17 +40,18 @@ import Ui.Login as LoginUi
 
 {-| Boot probe response. Two paths:
 
-  - Ok user → switch to authenticated and kick off the encounter
-    fetch from `/api/encounter`. The init batch deliberately
-    held that fetch back because we didn't yet know whether the
-    server or `localStorage` was the right source of truth; now
-    we do.
+  - Ok user → switch to authenticated and kick off the
+    authenticated data fetches (encounter, compendium creatures,
+    compendium groups, card layouts). The init batch deliberately
+    held these back because we didn't yet know whether to hit the
+    server endpoints or the public bundled fallbacks.
   - Err 401 / other → switch to anonymous, then adopt the local
     encounter snapshot held in `localEncounterRaw` (passed in via
-    flags from `index.html`'s `localStorage` read). Decode
-    failures fall through silently and leave the user on the
-    empty default; that mirrors how the server fetch handles a
-    missing / unparseable body.
+    flags from `index.html`'s `localStorage` read), and fetch the
+    public bundled compendium (`/bundled-creatures.json`) so the
+    GM can still browse creatures without an account. Groups +
+    card layouts stay empty until anonymous-CRUD support lands
+    in a later phase.
 
 In both branches we clear `localEncounterRaw` afterwards — it's a
 one-shot bootstrap stash, not ongoing state.
@@ -61,7 +65,12 @@ meReceived result model =
                 | auth = AuthAuthenticated user
                 , localEncounterRaw = Nothing
               }
-            , Encounter.Wire.fetchEncounterCmd EncounterLoaded
+            , Cmd.batch
+                [ Encounter.Wire.fetchEncounterCmd EncounterLoaded
+                , Compendium.Wire.fetchAll CompendiumLoaded
+                , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
+                , CardWire.fetchList CardEditorLayoutsLoaded
+                ]
             )
 
         Err _ ->
@@ -71,7 +80,7 @@ meReceived result model =
                 , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
                 , localEncounterRaw = Nothing
               }
-            , Cmd.none
+            , Compendium.Wire.fetchAllPublic CompendiumLoaded
             )
 
 

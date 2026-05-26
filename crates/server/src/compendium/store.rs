@@ -46,6 +46,13 @@ fn fresh_id() -> String {
 /// store-construction time; baked into the binary via
 /// `include_str!` so deployments don't need to copy a separate
 /// data file.
+///
+/// Anonymous (unauthenticated) sessions in the Elm frontend read
+/// the same data from `frontend/public/bundled-creatures.json`,
+/// which is served as a static asset.  When this file is updated
+/// the static copy MUST be refreshed in lockstep, otherwise
+/// anonymous browsers will see a stale compendium even though
+/// the server has been redeployed.
 const BUNDLED_JSON: &str =
   include_str!("../../../lib/data/bundled-creatures.json");
 
