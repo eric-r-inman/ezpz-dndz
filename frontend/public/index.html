@@ -80,12 +80,28 @@
         }
       } catch (_) {}
 
+      // Pre-formatted "today" string used as the suffix on the
+      // named save slot if the auth probe lands authenticated and
+      // there's a non-empty local encounter to migrate.  Falls
+      // back to an ISO date if locale formatting fails.
+      var migrationDateLabel;
+      try {
+        migrationDateLabel = new Date().toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      } catch (_) {
+        migrationDateLabel = new Date().toISOString().slice(0, 10);
+      }
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
           theme: savedTheme,
           localEncounter: localEncounter,
           localCardLayout: localCardLayout,
+          migrationDateLabel: migrationDateLabel,
         },
       });
 
@@ -125,6 +141,17 @@
         app.ports.persistLocalCardLayout.subscribe(function (value) {
           try {
             localStorage.setItem("cardLayout", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: drop the locally-persisted encounter after
+      // a successful login-time migration so the next reload
+      // doesn't re-migrate the same data.
+      if (app.ports && app.ports.clearLocalEncounter) {
+        app.ports.clearLocalEncounter.subscribe(function () {
+          try {
+            localStorage.removeItem("encounter");
           } catch (_) {}
         });
       }

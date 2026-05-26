@@ -359,12 +359,19 @@ themeFromFlag raw =
     card layout, queue view, and `useCustomCardLayout` flag.
     Anonymous edits to the card editor land here so the next
     reload picks them up without a server round-trip.
+  - `migrationDateLabel` — short formatted date string from JS
+    (`Date.now()` localized to the user's browser) used as the
+    suffix on the named save slot when an anonymous encounter
+    is migrated into the server on login (e.g.
+    `Local — May 26, 2026`). JS computes it so we don't have
+    to pull in elm/time + a calendar formatter.
 
 -}
 type alias Flags =
     { theme : String
     , localEncounter : Maybe Decode.Value
     , localCardLayout : Maybe Decode.Value
+    , migrationDateLabel : String
     }
 
 
@@ -414,6 +421,7 @@ init flags url key =
       , nextPartyMemberId = 1
       , localEncounterRaw = flags.localEncounter
       , localCardLayoutRaw = flags.localCardLayout
+      , migrationDateLabel = flags.migrationDateLabel
       }
       -- Always fetch the persisted dice history alongside whatever
       -- the current route needs. Failures are silently swallowed so
@@ -542,6 +550,12 @@ shouldPersistAfter msg =
         -- localStorage slot — idempotent but wasteful, so we skip
         -- it.
         AuthMeReceived _ ->
+            False
+
+        -- Login-time migration response only fires a toast and a
+        -- clear-local port; the encounter itself is untouched, so
+        -- there's nothing to persist here either.
+        LocalEncounterMigrated _ _ ->
             False
 
         _ ->
@@ -1677,6 +1691,9 @@ updateInner msg model =
 
         NavigateToLogin ->
             ( model, Nav.pushUrl model.key "/login" )
+
+        LocalEncounterMigrated name result ->
+            Update.Auth.localEncounterMigrated name result model
 
         AccountDisplayNameChanged raw ->
             Update.Account.displayNameChanged raw model

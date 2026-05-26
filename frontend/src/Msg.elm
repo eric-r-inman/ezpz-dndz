@@ -782,6 +782,11 @@ type Msg
       -- to the login route so they can promote into an
       -- authenticated session.
     | NavigateToLogin
+      -- Login-time migration: the response to the PUT that copies
+      -- an anonymous-session encounter into a named server save
+      -- slot.  Carries the save-name so the success-toast can
+      -- mention it; clears localStorage.encounter on success.
+    | LocalEncounterMigrated String (Result Http.Error ())
       -- CR Calculator modal.
     | CrCalculatorOpen
     | CrCalculatorClose

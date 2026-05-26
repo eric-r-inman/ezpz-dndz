@@ -449,6 +449,13 @@ type alias Model =
     -- Decoded and applied by `Update.Auth.meReceived` on the
     -- anonymous branch; discarded on the authenticated branch.
     , localCardLayoutRaw : Maybe Decode.Value
+
+    -- Pre-formatted "today" string from the JS host (e.g.
+    -- "May 26, 2026"), used to label the named server save slot
+    -- when an anonymous encounter is migrated into a freshly-
+    -- authenticated session.  Held until the migration fires;
+    -- otherwise inert.
+    , migrationDateLabel : String
     }
 
 

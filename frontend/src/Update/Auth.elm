@@ -1,6 +1,7 @@
 module Update.Auth exposing
     ( displayNameChanged
     , emailChanged
+    , localEncounterMigrated
     , logout
     , logoutDone
     , meReceived
@@ -35,7 +36,10 @@ import Http
 import Json.Decode as Decode
 import Model exposing (Model)
 import Msg exposing (Msg(..))
+import Ports
 import Ui.Login as LoginUi
+import Ui.Toast exposing (ToastKind(..))
+import Update.Toast
 
 
 {-| Boot probe response. Two paths:
@@ -61,6 +65,12 @@ meReceived : Result Http.Error Auth.User -> Model -> ( Model, Cmd Msg )
 meReceived result model =
     case result of
         Ok user ->
+            let
+                migrationCmd =
+                    migrateLocalEncounterCmd
+                        model.localEncounterRaw
+                        model.migrationDateLabel
+            in
             ( { model
                 | auth = AuthAuthenticated user
                 , localEncounterRaw = Nothing
@@ -70,6 +80,7 @@ meReceived result model =
                 , Compendium.Wire.fetchAll CompendiumLoaded
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 , CardWire.fetchList CardEditorLayoutsLoaded
+                , migrationCmd
                 ]
             )
 
@@ -132,6 +143,50 @@ applyLocalCardLayout raw model =
 
         Nothing ->
             model
+
+
+{-| Build a Cmd that PUTs the locally-stashed encounter into a
+named server save slot if and only if the local snapshot:
+
+  - decodes cleanly, and
+  - contains at least one creature (i.e. isn't the empty default
+    a fresh anonymous session starts with).
+
+The save name is `Local — <date label>` so it's easy to spot in
+the Load modal alongside the user's own saves. We pass
+`overwrite = True` so a second migration on the same day quietly
+replaces the earlier one instead of returning a 409 — better
+than the user thinking the migration silently failed.
+
+On success the `LocalEncounterMigrated` handler clears
+`localStorage.encounter` so the next reload doesn't re-migrate
+the same data.
+
+-}
+migrateLocalEncounterCmd : Maybe Decode.Value -> String -> Cmd Msg
+migrateLocalEncounterCmd raw dateLabel =
+    case raw of
+        Just value ->
+            case Decode.decodeValue Encounter.Wire.decodeEncounter value of
+                Ok encounter ->
+                    if List.isEmpty encounter.creatures then
+                        Cmd.none
+
+                    else
+                        let
+                            name =
+                                "Local — " ++ dateLabel
+                        in
+                        Encounter.Wire.putSaveCmd
+                            (LocalEncounterMigrated name)
+                            { name = name, overwrite = True }
+                            encounter
+
+                Err _ ->
+                    Cmd.none
+
+        Nothing ->
+            Cmd.none
 
 
 emailChanged : String -> Model -> ( Model, Cmd Msg )
@@ -212,6 +267,37 @@ response result model =
               }
             , Cmd.none
             )
+
+
+{-| Response handler for the login-time migration `PUT` that
+copies a pre-sign-in encounter into a named server save. On
+success we fire the `clearLocalEncounter` port so the browser's
+`localStorage.encounter` is wiped (preventing a re-migration on
+the next boot) and surface a success toast with the slot name so
+the GM knows where to find it. Failures get a toast too — the
+authenticated server encounter is still loaded normally, the
+user just won't have the local copy archived.
+-}
+localEncounterMigrated : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
+localEncounterMigrated name result model =
+    case result of
+        Ok () ->
+            let
+                ( withToast, toastCmd ) =
+                    Update.Toast.push
+                        ToastSuccess
+                        ("Saved your pre-sign-in encounter as “" ++ name ++ "”.")
+                        model
+            in
+            ( withToast
+            , Cmd.batch [ toastCmd, Ports.clearLocalEncounter () ]
+            )
+
+        Err _ ->
+            Update.Toast.push
+                ToastError
+                "Couldn't archive your pre-sign-in encounter on the server. It's still in this browser."
+                model
 
 
 logout : Model -> ( Model, Cmd Msg )

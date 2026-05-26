@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , persistLocalCardLayout
+    , clearLocalEncounter, persistLocalCardLayout
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -51,3 +51,16 @@ single in-place snapshot that restores their customizations on
 the next reload.
 -}
 port persistLocalCardLayout : E.Value -> Cmd msg
+
+
+{-| Remove the locally-persisted encounter from `localStorage`.
+Fired after a successful login-time migration: the anonymous
+encounter has been copied into a named server save so the local
+copy is no longer load-bearing, and we don't want to migrate the
+same encounter again on the next reload.
+
+Passes a unit payload so the JS side knows when to fire — the
+value itself is ignored.
+
+-}
+port clearLocalEncounter : () -> Cmd msg
