@@ -21,6 +21,7 @@ Close discards it.
 
 -}
 
+import Auth
 import Card.Layout as Layout
     exposing
         ( CardLayout
@@ -59,7 +60,9 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.CardEditor exposing (CardEditorUi)
+import View.AuthGate as AuthGate
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -75,7 +78,7 @@ view model =
                     [ banner
                     , errorBanner ui
                     , overwriteBanner ui
-                    , savedLayoutsSection ui model.savedCardLayouts
+                    , savedLayoutsSection model.auth ui model.savedCardLayouts
                     , twoColumn ui
                     , footer ui
                     ]
@@ -139,12 +142,12 @@ overwriteBanner ui =
 -- ── SAVED LAYOUTS ────────────────────────────────────────────────────────────
 
 
-savedLayoutsSection : CardEditorUi -> List CardWire.SavedLayoutMeta -> Html Msg
-savedLayoutsSection ui metas =
+savedLayoutsSection : Auth.AuthState -> CardEditorUi -> List CardWire.SavedLayoutMeta -> Html Msg
+savedLayoutsSection auth ui metas =
     div [ class "card-editor__saved" ]
         [ div [ class "card-editor__saved-header" ]
             [ label [ class "card-editor__label" ] [ text "Saved layouts" ]
-            , saveAsControls ui
+            , saveAsControls auth ui
             ]
         , if List.isEmpty metas then
             p [ class "card-editor__saved-empty" ]
@@ -156,8 +159,8 @@ savedLayoutsSection ui metas =
         ]
 
 
-saveAsControls : CardEditorUi -> Html Msg
-saveAsControls ui =
+saveAsControls : Auth.AuthState -> CardEditorUi -> Html Msg
+saveAsControls auth ui =
     div [ class "card-editor__save-as" ]
         [ input
             [ class "card-editor__save-as-input"
@@ -171,7 +174,12 @@ saveAsControls ui =
             []
         , button
             [ class "action-btn action-btn--green"
-            , onClick CardEditorSaveAs
+            , onClick (AuthGate.clickWhenAuthed auth CardEditorSaveAs)
+            , Tooltips.attr
+                (AuthGate.tooltipWhenAuthed auth
+                    "Save this card layout to the server under the entered name."
+                    "Sign in to save card layouts to the server."
+                )
             , disabled ui.busy
             ]
             [ text

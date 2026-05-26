@@ -6,6 +6,7 @@ right. The right pane has an action bar with the "Add to
 Encounter" handoff plus per-creature edit / duplicate / delete.
 -}
 
+import Auth
 import Compendium
 import Compendium.Group
 import Dict
@@ -28,13 +29,14 @@ import Ui.Compendium as CompendiumUi
         , PendingAction(..)
         )
 import Update.Compendium.Browser
+import View.AuthGate as AuthGate
 import View.Modal
 import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : CompendiumUi -> List String -> Html Msg
-view ui encounterIds =
+view : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
+view auth ui encounterIds =
     if not ui.open then
         text ""
 
@@ -46,7 +48,7 @@ view ui encounterIds =
             , extraClass = "modal--compendium"
             , body =
                 [ filterBar ui
-                , actionsBar ui
+                , actionsBar auth ui
                 , bulkBanner ui
                 , body ui encounterIds
                 ]
@@ -248,8 +250,8 @@ commits — see [feature: Group UI placeholders, follow-ups for
 store + modal].
 
 -}
-actionsBar : CompendiumUi -> Html Msg
-actionsBar ui =
+actionsBar : Auth.AuthState -> CompendiumUi -> Html Msg
+actionsBar auth ui =
     div [ class "compendium__actions-bar" ]
         [ newButton
         , pasteButton
@@ -259,7 +261,7 @@ actionsBar ui =
 
           else
             createGroupFromSelectedButton ui
-        , bulkButtons ui
+        , bulkButtons auth ui
         ]
 
 
@@ -1198,11 +1200,11 @@ Device routes; Reset goes through the destructive-confirm
 banner; Clear opens a dropdown with Clear All / Clear Selected.
 
 -}
-bulkButtons : CompendiumUi -> Html Msg
-bulkButtons ui =
+bulkButtons : Auth.AuthState -> CompendiumUi -> Html Msg
+bulkButtons auth ui =
     div [ class "compendium__bulk-cluster" ]
-        [ importMenu ui
-        , exportMenu ui
+        [ importMenu auth ui
+        , exportMenu auth ui
         , button
             [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
@@ -1291,8 +1293,28 @@ menuItem msg label_ =
         [ text label_ ]
 
 
-importMenu : CompendiumUi -> Html Msg
-importMenu ui =
+{-| Server-only menu item that gates on auth state. Anonymous
+users see the same row in the dropdown — the click navigates to
+the login route and the tooltip explains why, instead of firing
+a request that would 401.
+-}
+serverMenuItem :
+    Auth.AuthState
+    -> { msg : Msg, label : String, signedInTooltip : String, anonymousTooltip : String }
+    -> Html Msg
+serverMenuItem auth opts =
+    button
+        [ class "compendium__bulk-menu__item"
+        , onClick (AuthGate.clickWhenAuthed auth opts.msg)
+        , Tooltips.attr
+            (AuthGate.tooltipWhenAuthed auth opts.signedInTooltip opts.anonymousTooltip)
+        , attribute "role" "menuitem"
+        ]
+        [ text opts.label ]
+
+
+importMenu : Auth.AuthState -> CompendiumUi -> Html Msg
+importMenu auth ui =
     splitMenu
         { menu = ImportMenu
         , isOpen = ui.bulkMenu == Just ImportMenu
@@ -1301,14 +1323,19 @@ importMenu ui =
         , triggerTitle = Tooltips.compendiumImport
         , alignLeft = True
         , items =
-            [ menuItem LoadCompendiumOpen "From Server"
+            [ serverMenuItem auth
+                { msg = LoadCompendiumOpen
+                , label = "From Server"
+                , signedInTooltip = "Load a compendium snapshot saved on the server."
+                , anonymousTooltip = "Sign in to load compendium snapshots from the server."
+                }
             , menuItem CompendiumImportClick "From Device"
             ]
         }
 
 
-exportMenu : CompendiumUi -> Html Msg
-exportMenu ui =
+exportMenu : Auth.AuthState -> CompendiumUi -> Html Msg
+exportMenu auth ui =
     let
         triggerClass =
             if ui.compendiumDirty then
@@ -1332,9 +1359,12 @@ exportMenu ui =
         , triggerTitle = triggerTitle
         , alignLeft = False
         , items =
-            [ menuItem
-                (SaveCompendiumOpen SaveDestinationServer)
-                "To Server"
+            [ serverMenuItem auth
+                { msg = SaveCompendiumOpen SaveDestinationServer
+                , label = "To Server"
+                , signedInTooltip = "Save a snapshot of your compendium to the server."
+                , anonymousTooltip = "Sign in to save compendium snapshots to the server."
+                }
             , menuItem
                 (SaveCompendiumOpen SaveDestinationDevice)
                 "To Device"

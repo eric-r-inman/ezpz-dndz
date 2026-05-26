@@ -41,6 +41,7 @@ view model =
             model.cardLayout
             model.queueView
         , View.PanelControls.view
+            model.auth
             model.dice
             model.pendingControl
             model.encounter.round

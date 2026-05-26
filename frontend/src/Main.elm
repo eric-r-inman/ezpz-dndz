@@ -1630,6 +1630,9 @@ updateInner msg model =
         AuthLogoutDone result ->
             Update.Auth.logoutDone result model
 
+        NavigateToLogin ->
+            ( model, Nav.pushUrl model.key "/login" )
+
         AccountDisplayNameChanged raw ->
             Update.Account.displayNameChanged raw model
 
@@ -1736,7 +1739,8 @@ appShell maybeUser model =
     , View.Modal.Condition.view model
     , View.Modal.Memo.view model
     , View.Modal.Timer.view model
-    , View.Modal.Compendium.view model.compendium
+    , View.Modal.Compendium.view model.auth
+        model.compendium
         (List.filterMap .creatureId model.encounter.creatures)
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model

@@ -777,6 +777,11 @@ type Msg
     | AuthLoginResponse (Result Http.Error Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
+      -- Anonymous-mode nudge: gated controls (Save to Server, etc.)
+      -- dispatch this instead of their real Msg, sending the user
+      -- to the login route so they can promote into an
+      -- authenticated session.
+    | NavigateToLogin
       -- CR Calculator modal.
     | CrCalculatorOpen
     | CrCalculatorClose

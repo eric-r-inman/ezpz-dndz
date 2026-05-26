@@ -14,6 +14,7 @@ of a Reset / Clear before any state is touched.
 
 -}
 
+import Auth
 import Html exposing (Html, button, div, p, section, span, text)
 import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
@@ -21,11 +22,12 @@ import Json.Decode as Decode
 import Model exposing (PendingControl(..))
 import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
+import View.AuthGate as AuthGate
 import View.Tooltips as Tooltips
 
 
-view : DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
-view dice pendingControl round rosterDirty controlMenu =
+view : Auth.AuthState -> DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
+view auth dice pendingControl round rosterDirty controlMenu =
     section [ class "panel panel--controls" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
@@ -59,13 +61,13 @@ view dice pendingControl round rosterDirty controlMenu =
                     confirmBanner pending
 
                 Nothing ->
-                    buttonGrid round rosterDirty controlMenu
+                    buttonGrid auth round rosterDirty controlMenu
             ]
         ]
 
 
-buttonGrid : Int -> Bool -> Maybe ControlMenu -> Html Msg
-buttonGrid round rosterDirty controlMenu =
+buttonGrid : Auth.AuthState -> Int -> Bool -> Maybe ControlMenu -> Html Msg
+buttonGrid auth round rosterDirty controlMenu =
     div [ class "btn-grid btn-grid--two-rows" ]
         [ button
             [ class "action-btn action-btn--blue"
@@ -73,8 +75,8 @@ buttonGrid round rosterDirty controlMenu =
             , Tooltips.attr Tooltips.quickAddButton
             ]
             [ text "➕ Quick Add" ]
-        , saveMenu rosterDirty (controlMenu == Just SaveControlMenu)
-        , loadMenu (controlMenu == Just LoadControlMenu)
+        , saveMenu auth rosterDirty (controlMenu == Just SaveControlMenu)
+        , loadMenu auth (controlMenu == Just LoadControlMenu)
         , turnOrRunButton round
         , button
             [ class "action-btn action-btn--orange"
@@ -104,8 +106,8 @@ unsaved changes — same dirty-highlight behavior as the old plain
 Save button.
 
 -}
-saveMenu : Bool -> Bool -> Html Msg
-saveMenu rosterDirty isOpen =
+saveMenu : Auth.AuthState -> Bool -> Bool -> Html Msg
+saveMenu auth rosterDirty isOpen =
     let
         triggerClass =
             if rosterDirty then
@@ -154,7 +156,15 @@ saveMenu rosterDirty isOpen =
                 ]
                 [ button
                     [ class "control-menu__item"
-                    , onClick (SaveOpen SaveDestinationServer)
+                    , onClick
+                        (AuthGate.clickWhenAuthed auth
+                            (SaveOpen SaveDestinationServer)
+                        )
+                    , Tooltips.attr
+                        (AuthGate.tooltipWhenAuthed auth
+                            "Save this encounter to the server under a name you choose."
+                            "Sign in to save encounters on the server."
+                        )
                     , attribute "role" "menuitem"
                     ]
                     [ text "To Server" ]
@@ -175,8 +185,8 @@ saveMenu rosterDirty isOpen =
 "From Server" opens the existing Load modal; "From Device"
 fires the file-picker (`LoadFromDeviceClick`).
 -}
-loadMenu : Bool -> Html Msg
-loadMenu isOpen =
+loadMenu : Auth.AuthState -> Bool -> Html Msg
+loadMenu auth isOpen =
     let
         wrapperClass =
             if isOpen then
@@ -211,7 +221,12 @@ loadMenu isOpen =
                 ]
                 [ button
                     [ class "control-menu__item"
-                    , onClick LoadOpen
+                    , onClick (AuthGate.clickWhenAuthed auth LoadOpen)
+                    , Tooltips.attr
+                        (AuthGate.tooltipWhenAuthed auth
+                            "Load a previously-saved encounter from the server."
+                            "Sign in to load encounters from the server."
+                        )
                     , attribute "role" "menuitem"
                     ]
                     [ text "From Server" ]
