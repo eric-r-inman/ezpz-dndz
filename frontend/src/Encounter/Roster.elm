@@ -2,7 +2,7 @@ module Encounter.Roster exposing
     ( moveUp, moveDown
     , sortByInitiative
     , removeCreature, duplicateCreature, insertCopyAfter
-    , appendCreatures, uniqueInstanceName, instanceBaseName
+    , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
     )
 
 {-| Queue-mutation helpers for the encounter manager.
@@ -20,7 +20,7 @@ mutations through these and lifecycle ticks through
 @docs moveUp, moveDown
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature, insertCopyAfter
-@docs appendCreatures, uniqueInstanceName, instanceBaseName
+@docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
 
 -}
 
@@ -290,6 +290,51 @@ uniqueInstanceName base existingNames =
                 candidate i
     in
     loop 1
+
+
+{-| Compute a unique `"<base> Minion <n>"` name for a
+minion-style or pudding-split duplicate. Always numbers from 1
+(unlike [`uniqueInstanceName`](#uniqueInstanceName), where the
+first instance is the bare base), so the modal's first minion is
+visibly distinct from the original.
+
+Strips a trailing `" N"` and a trailing `" Minion"` from the
+source name so repeated minion-of-minion calls stay in a flat
+`<base> Minion N` series instead of nesting into
+`<base> Minion 2 Minion 1`. `"Skeleton"`, `"Skeleton 2"`,
+`"Skeleton Minion"`, and `"Skeleton Minion 3"` all collapse to
+the same base of `"Skeleton"`.
+
+-}
+uniqueMinionName : String -> List String -> String
+uniqueMinionName sourceName existingNames =
+    let
+        base =
+            sourceName
+                |> instanceBaseName
+                |> stripTrailingMinion
+
+        candidate i =
+            base ++ " Minion " ++ String.fromInt i
+
+        loop i =
+            if List.member (candidate i) existingNames then
+                loop (i + 1)
+
+            else
+                candidate i
+    in
+    loop 1
+
+
+stripTrailingMinion : String -> String
+stripTrailingMinion name =
+    case List.reverse (String.words name) of
+        "Minion" :: rest ->
+            String.join " " (List.reverse rest)
+
+        _ ->
+            name
 
 
 {-| Append a batch of creatures to the queue, then re-sort by

@@ -73,7 +73,7 @@ exact model =
 -}
 fresh : Model -> ( Model, Cmd Msg )
 fresh =
-    freshLike identity
+    freshLike InstanceName identity
 
 
 {-| Minion variant: halve the source's max HP (rounded down) and
@@ -81,7 +81,7 @@ match current HP to the new max. Fresh state otherwise.
 -}
 minionHalf : Model -> ( Model, Cmd Msg )
 minionHalf =
-    freshLike
+    freshLike MinionName
         (\c ->
             let
                 halved =
@@ -95,7 +95,7 @@ minionHalf =
 -}
 minionOne : Model -> ( Model, Cmd Msg )
 minionOne =
-    freshLike
+    freshLike MinionName
         (\c -> { c | maxHp = 1, currentHp = 1 })
 
 
@@ -145,6 +145,11 @@ unique-name'd against the existing queue (the second's name is
 threaded against an existing-list that already includes the
 first), HP halved, and every condition / save notice / posture
 flag reset to a clean slate.
+
+Naming follows the minion convention (`<base> Minion N`) so
+pudding splits and minion duplicates share a single visual
+series in the queue.
+
 -}
 puddingPair : Creature -> Encounter.Encounter -> ( Creature, Creature )
 puddingPair src enc =
@@ -152,14 +157,11 @@ puddingPair src enc =
         existingNames =
             List.map .name enc.creatures
 
-        baseName =
-            Encounter.Roster.instanceBaseName src.name
-
         nameA =
-            Encounter.Roster.uniqueInstanceName baseName existingNames
+            Encounter.Roster.uniqueMinionName src.name existingNames
 
         nameB =
-            Encounter.Roster.uniqueInstanceName baseName (nameA :: existingNames)
+            Encounter.Roster.uniqueMinionName src.name (nameA :: existingNames)
 
         half =
             puddingHalf src
@@ -202,13 +204,24 @@ puddingHalf src =
 -- ── INTERNAL ─────────────────────────────────────────────────────────────
 
 
+{-| Naming strategy for a freshLike copy. `InstanceName` keeps
+the bare-instance series (`Skeleton`, `Skeleton 2`, …) and is
+used by the plain Fresh path. `MinionName` switches to the
+`<base> Minion N` series shared by both minion variants and the
+pudding split.
+-}
+type NameMode
+    = InstanceName
+    | MinionName
+
+
 {-| Shared engine for Fresh / Minion variants: look up the source
 creature in the queue + the compendium, build a fresh instance
 preserving the source's initiative, apply `tweak`, and insert
 after the source. Falls back to Exact when any lookup fails.
 -}
-freshLike : (Creature -> Creature) -> Model -> ( Model, Cmd Msg )
-freshLike tweak model =
+freshLike : NameMode -> (Creature -> Creature) -> Model -> ( Model, Cmd Msg )
+freshLike nameMode tweak model =
     case sourceName model of
         Nothing ->
             ( { model | modal = Nothing }, Cmd.none )
@@ -223,9 +236,16 @@ freshLike tweak model =
                                     List.map .name model.encounter.creatures
 
                                 newName =
-                                    Encounter.Roster.uniqueInstanceName
-                                        (Encounter.Roster.instanceBaseName src.name)
-                                        existingNames
+                                    case nameMode of
+                                        InstanceName ->
+                                            Encounter.Roster.uniqueInstanceName
+                                                (Encounter.Roster.instanceBaseName src.name)
+                                                existingNames
+
+                                        MinionName ->
+                                            Encounter.Roster.uniqueMinionName
+                                                src.name
+                                                existingNames
 
                                 copy =
                                     Compendium.draftToInstance

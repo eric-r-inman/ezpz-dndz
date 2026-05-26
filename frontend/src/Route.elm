@@ -20,6 +20,8 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
   - `Login` — sign-in / register form, reachable from the AppBar's
     Sign-in button when the user is anonymous.
   - `Me` — placeholder for a future profile page.
+  - `About` — static "about this app" page, linked from the
+    AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
     block, opened via the ↗ link in the side panel.
   - `NotFound` — fallback that the server falls back to
@@ -31,6 +33,7 @@ type Route
     | Login
     | Me
     | Donate
+    | About
     | CompendiumCreaturePage String
     | NotFound
 
@@ -42,6 +45,7 @@ parser =
         , Url.Parser.map Login (Url.Parser.s "login")
         , Url.Parser.map Me (Url.Parser.s "me")
         , Url.Parser.map Donate (Url.Parser.s "donate")
+        , Url.Parser.map About (Url.Parser.s "about")
         , Url.Parser.map CompendiumCreaturePage
             (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         ]

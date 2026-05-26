@@ -36,6 +36,7 @@ suite =
         , removeCreatureSuite
         , duplicateCreatureSuite
         , uniqueInstanceNameSuite
+        , uniqueMinionNameSuite
         , appendCreaturesSuite
         ]
 
@@ -381,6 +382,45 @@ uniqueInstanceNameSuite =
             \_ ->
                 Roster.uniqueInstanceName "Goblin Boss" [ "Goblin Boss" ]
                     |> Expect.equal "Goblin Boss 2"
+        ]
+
+
+
+-- ── uniqueMinionName ─────────────────────────────────────────────────────
+
+
+uniqueMinionNameSuite : Test
+uniqueMinionNameSuite =
+    describe "uniqueMinionName"
+        [ test "always numbers from 1, never bare" <|
+            \_ ->
+                Roster.uniqueMinionName "Skeleton" []
+                    |> Expect.equal "Skeleton Minion 1"
+        , test "advances past a taken slot" <|
+            \_ ->
+                Roster.uniqueMinionName "Skeleton" [ "Skeleton Minion 1" ]
+                    |> Expect.equal "Skeleton Minion 2"
+        , test "strips trailing ' <int>' from the source" <|
+            \_ ->
+                Roster.uniqueMinionName "Skeleton 3" []
+                    |> Expect.equal "Skeleton Minion 1"
+        , test "strips trailing ' Minion <int>' so minion-of-minion stays flat" <|
+            \_ ->
+                Roster.uniqueMinionName "Skeleton Minion 2"
+                    [ "Skeleton Minion 1", "Skeleton Minion 2" ]
+                    |> Expect.equal "Skeleton Minion 3"
+        , test "strips a bare trailing ' Minion'" <|
+            \_ ->
+                Roster.uniqueMinionName "Skeleton Minion" []
+                    |> Expect.equal "Skeleton Minion 1"
+        , test "preserves multi-word base names" <|
+            \_ ->
+                Roster.uniqueMinionName "Black Pudding" []
+                    |> Expect.equal "Black Pudding Minion 1"
+        , test "does not strip 'Minion' from the middle of a name" <|
+            \_ ->
+                Roster.uniqueMinionName "Goblin Minion Boss" []
+                    |> Expect.equal "Goblin Minion Boss Minion 1"
         ]
 
 

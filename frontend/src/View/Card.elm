@@ -1042,12 +1042,14 @@ memoSlot : Creature -> Html Msg
 memoSlot creature =
     if String.isEmpty creature.memo then
         button
-            [ class "action-btn action-btn--icon"
+            [ class "action-btn action-btn--icon action-btn--memo-empty"
             , onClick (MemoOpen creature.name)
             , Tooltips.attr Tooltips.memoAdd
             , attribute "aria-label" "Add memo"
             ]
-            [ text "📝" ]
+            [ span [ class "action-btn__icon" ] [ text "📝" ]
+            , span [ class "action-btn__text" ] [ text "Memo" ]
+            ]
 
     else
         span
@@ -1084,12 +1086,14 @@ timerSlot creature =
     case creature.timer of
         Nothing ->
             button
-                [ class "action-btn action-btn--icon"
+                [ class "action-btn action-btn--icon action-btn--timer-empty"
                 , onClick (TimerOpen creature.name)
                 , Tooltips.attr Tooltips.timerSet
                 , attribute "aria-label" "Set timer"
                 ]
-                [ text "⏱️" ]
+                [ span [ class "action-btn__icon" ] [ text "⏱️" ]
+                , span [ class "action-btn__text" ] [ text "Timer" ]
+                ]
 
         Just t ->
             span

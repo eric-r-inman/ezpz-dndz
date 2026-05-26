@@ -67,6 +67,7 @@ view cfg =
             [ text "Skip to main content" ]
         , div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
+            , signInTagline cfg.user
             ]
         , nav [ class "app-bar__nav" ]
             [ a [ href "/" ] [ text "Encounter" ]
@@ -107,6 +108,12 @@ view cfg =
                 ]
             , userLink cfg.user cfg.route
             , a
+                [ class "app-bar__about"
+                , href "/about"
+                , Tooltips.attr "About eZpZ-dndZ"
+                ]
+                [ text "About" ]
+            , a
                 [ class "app-bar__donate"
                 , href "/donate"
                 , Tooltips.attr Tooltips.appBarDonate
@@ -115,6 +122,23 @@ view cfg =
             , settings cfg.settingsOpen cfg.theme
             ]
         ]
+
+
+{-| Italic prompt sitting next to the brand. Only shown when the
+session is anonymous — authenticated users have nothing to gain
+from a "sign in" nudge. Per-theme colour comes from the
+`--tagline-color` CSS variable in style.css, so adding a new
+theme means setting the token, not editing this view.
+-}
+signInTagline : Maybe Auth.User -> Html msg
+signInTagline maybeUser =
+    case maybeUser of
+        Just _ ->
+            text ""
+
+        Nothing ->
+            span [ class "app-bar__tagline" ]
+                [ text "Sign in to save your encounters and compendium changes." ]
 
 
 {-| Identity slot in the AppBar.
@@ -218,16 +242,21 @@ themeRow current =
     fieldset [ class "app-settings__row" ]
         [ legend [ class "app-settings__row-label" ] [ text "Theme" ]
         , div [ class "app-settings__radio-group" ]
-            [ themeRadio current Modern "Modern"
-            , themeRadio current Dark "Dark"
-            , themeRadio current Auto "Auto"
-            , themeRadio current Accessible "Accessible"
+            [ themeRadio current Modern "Modern" ""
+            , themeRadio current Dark "Dark" ""
+            , themeRadio current Auto "Auto" ""
+            , themeRadio current Accessible "Accessible" "(alpha)"
             ]
         ]
 
 
-themeRadio : Theme -> Theme -> String -> Html Msg
-themeRadio current value labelText =
+{-| A single theme option in the settings popover. `badge` is
+rendered as a muted suffix next to the label when non-empty —
+used to mark the Accessible theme as `(alpha)`. Pass `""` for
+no badge.
+-}
+themeRadio : Theme -> Theme -> String -> String -> Html Msg
+themeRadio current value labelText badge =
     label [ class "app-settings__radio" ]
         [ Html.input
             [ type_ "radio"
@@ -237,6 +266,11 @@ themeRadio current value labelText =
             ]
             []
         , text labelText
+        , if String.isEmpty badge then
+            text ""
+
+          else
+            span [ class "app-settings__radio-badge" ] [ text (" " ++ badge) ]
         ]
 
 

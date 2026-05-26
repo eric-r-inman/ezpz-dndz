@@ -900,6 +900,59 @@ html:has(.app-shell[data-theme="accessible"]) {
   color: #ffffff;
 }
 
+/* Active creature card — 4 px solid black border under
+   Accessible so the "whose turn is it" signal hits at a glance
+   for low-vision GMs.  Overrides the theme-default 2 px border
+   set further up and the accent-colour border from the base
+   `.creature-card--active` rule.  `!important` on `border-color`
+   beats the base-rule `border-color: var(--color-accent)`
+   without needing to restate the full border shorthand. */
+[data-theme="accessible"] .creature-card--active {
+  border-width: 4px;
+  border-color: #000000 !important;
+}
+
+/* Encounter title-bar condition pills — the existing Accessible
+   rule already bumps these to 1.05rem; push further to 1.3rem +
+   bold so the at-a-glance status across the bar reads from
+   across the table.  Pairs with the existing colour-uniformity
+   override at line 588 which forces every text node in the bar
+   to pure black — the `color: #9a3412` here re-tints to match
+   the dark bold orange already used on the card row-1 chip
+   (see [data-theme="accessible"] .creature-card__row--top
+   .condition-chip), so chip text reads as one consistent
+   orange across the bar and the card. */
+[data-theme="accessible"] .encounter-bar .condition-chip {
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  color: #9a3412;
+}
+
+/* Memo + Timer slot buttons — the default rendering shows a
+   single emoji glyph (📝 / ⏱).  Under the Accessible theme,
+   swap to the spelled-out text label that ships hidden inside
+   each button.  Widen the button so the label fits, and lift
+   the font weight so it reads alongside the row-3 toggle text. */
+[data-theme="accessible"] .action-btn--memo-empty,
+[data-theme="accessible"] .action-btn--timer-empty {
+  width: auto;
+  min-width: 72px;
+  padding: 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+[data-theme="accessible"] .action-btn--memo-empty .action-btn__icon,
+[data-theme="accessible"] .action-btn--timer-empty .action-btn__icon {
+  display: none;
+}
+
+[data-theme="accessible"] .action-btn--memo-empty .action-btn__text,
+[data-theme="accessible"] .action-btn--timer-empty .action-btn__text {
+  display: inline;
+}
+
 /* Compendium-modal creature list: bump row name + stat-line meta
    so low-vision users can scan the library at the new 18 px base
    without each row crowding.  Row-name was 0.92rem → 1.1rem (now
@@ -1070,6 +1123,26 @@ body {
   font-size: 1.05rem;
   letter-spacing: 0.06em;
   color: var(--color-text);
+}
+
+/* Italic "Sign in to save…" prompt sitting to the right of the
+   brand title.  Only rendered for anonymous sessions (the view
+   gates on `maybeUser`).  Colour comes from each theme's muted-
+   text token by default; the Accessible theme bumps to full
+   `--color-text` further down so the tagline meets AAA contrast
+   alongside the rest of the AppBar copy. */
+.app-bar__tagline {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+[data-theme="accessible"] .app-bar__tagline {
+  color: var(--color-text);
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .app-bar__nav {
@@ -1323,19 +1396,33 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Theme radio group — stacked vertically so each option lives on
+   its own row.  Previously a wrapped horizontal flex row;
+   verticalising makes the labels (especially "Accessible
+   (alpha)") read cleanly without wrapping awkwardly mid-word. */
 .app-settings__radio-group {
   display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .app-settings__radio {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.88rem;
+  gap: 8px;
+  font-size: 1.05rem;
   color: var(--color-text);
   cursor: pointer;
+  padding: 4px 2px;
+}
+
+/* Muted suffix shown beside a theme name — used by the
+   Accessible "(alpha)" tag.  Italic + slightly smaller than the
+   label so the badge reads as metadata, not part of the name. */
+.app-settings__radio-badge {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--color-text-muted);
 }
 
 .workspace {
@@ -1766,6 +1853,20 @@ body {
 .app-footer__contact a {
   color: var(--color-text-muted);
   text-decoration: none;
+}
+
+/* Inline footer link to the upstream PolyForm license page.
+   Subtle underline so it reads as a link without taking visual
+   weight from the surrounding copyright text. */
+.app-footer__license-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.app-footer__license-link:hover,
+.app-footer__license-link:focus-visible {
+  color: var(--color-text);
 }
 
 .app-footer__contact a:hover,
@@ -2908,7 +3009,12 @@ body {
   font-size: 0.78rem;
   font-weight: 500;
   background: rgba(245, 200, 66, 0.1);
-  color: var(--color-yellow);
+  /* Chip text matches the Condition/Effect button's background
+     token (`--color-condition`) so card chips, title-bar chips,
+     and the rail button all read as one visual family. Each
+     theme already defines `--color-condition`, so this rule
+     follows the palette without per-theme overrides. */
+  color: var(--color-condition);
   border: 1px solid rgba(245, 200, 66, 0.35);
   border-radius: 999px;
   max-width: 220px;
@@ -3312,6 +3418,14 @@ body {
   width: 30px;
   padding: 0;
   font-size: 0.95rem;
+}
+
+/* The memo / timer slots ship with both a glyph and a text
+   label inside the button.  The text label is hidden by default
+   so the glyph alone shows; the Accessible theme flips this
+   below to swap glyph→text for low-vision users. */
+.action-btn__text {
+  display: none;
 }
 
 .action-btn:disabled,
@@ -7500,6 +7614,63 @@ body {
 .panel--standalone {
   max-width: 720px;
   width: 100%;
+}
+
+/* About page (/about).  Sits inside the standalone panel so it
+   gets the same centred max-width treatment as the standalone
+   stat-block page.  Heading hierarchy + paragraph spacing tuned
+   for comfortable reading at the default theme size; the
+   Accessible theme inherits its larger base via the body-level
+   rem bump. */
+.about-page {
+  padding-bottom: var(--space-6);
+}
+
+.about-page__body {
+  padding: var(--space-5) var(--space-6);
+}
+
+.about-page__title {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+}
+
+.about-page__tagline {
+  margin: 0 0 var(--space-5) 0;
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.about-page__section {
+  margin: 0 0 var(--space-5) 0;
+}
+
+.about-page__section h2 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.15rem;
+  color: var(--color-text);
+}
+
+.about-page__section p,
+.about-page__section li {
+  color: var(--color-text);
+  line-height: 1.55;
+}
+
+.about-page__section ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.about-page__section li {
+  margin-bottom: var(--space-2);
+}
+
+.about-page a {
+  color: var(--color-link);
 }
 
 .compendium__detail--empty {

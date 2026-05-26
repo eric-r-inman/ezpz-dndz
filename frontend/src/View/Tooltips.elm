@@ -194,7 +194,7 @@ attr s =
 
 appBarSettings : String
 appBarSettings =
-    "Settings"
+    "Set Theme"
 
 
 appBarCardEditor : String

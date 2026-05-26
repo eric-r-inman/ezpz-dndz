@@ -103,6 +103,7 @@ import Update.Timer
 import Update.Toast
 import Url exposing (Url)
 import Util.Keyboard
+import View.About
 import View.Account
 import View.AppBar
 import View.Audio
@@ -2051,6 +2052,9 @@ viewPage model =
                         ]
                     ]
                 ]
+
+        About ->
+            View.About.view
 
         CompendiumCreaturePage id ->
             viewCompendiumStandalone model id
