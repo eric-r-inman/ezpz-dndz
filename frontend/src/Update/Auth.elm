@@ -321,7 +321,7 @@ migrateLocalCompendiumCmd raw =
                     Compendium.Wire.importCmd
                         (LocalCompendiumMigrated (List.length snap.creatures))
                         snap.creatures
-                        []
+                        snap.groups
 
                 Err _ ->
                     Cmd.none

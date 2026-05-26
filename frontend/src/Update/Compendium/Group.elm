@@ -27,6 +27,7 @@ and `groupsLoaded` ingests the result.
 
 -}
 
+import Auth
 import Compendium.Group as Group exposing (Group, MinionType(..))
 import Compendium.GroupWire as GroupWire
 import Dict exposing (Dict)
@@ -227,23 +228,62 @@ submit model =
                     )
 
                 Ok validated ->
-                    let
-                        cmd =
-                            case ui.mode of
-                                GroupCreateMode ->
-                                    GroupWire.create
-                                        (draftFromGroup validated)
-                                        CompendiumGroupCreated
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            let
+                                cmd =
+                                    case ui.mode of
+                                        GroupCreateMode ->
+                                            GroupWire.create
+                                                (draftFromGroup validated)
+                                                CompendiumGroupCreated
 
-                                GroupEditExisting _ ->
-                                    GroupWire.update validated
-                                        CompendiumGroupUpdated
+                                        GroupEditExisting _ ->
+                                            GroupWire.update validated
+                                                CompendiumGroupUpdated
+                            in
+                            ( withGroupEdit
+                                (\u -> { u | submitting = True, submitError = Nothing })
+                                model
+                            , cmd
+                            )
+
+                        _ ->
+                            applyLocalGroupSubmit ui.mode validated model
+
+
+{-| Anonymous-mode equivalent of the create/update wire round-
+trip. Mutate `model.compendium.groups` directly; CreateMode
+allocates a fresh local id from the shared counter so reload
+won't collide.
+-}
+applyLocalGroupSubmit : GroupEditMode -> Group -> Model -> ( Model, Cmd Msg )
+applyLocalGroupSubmit mode validated model =
+    let
+        ( finalGroup, withId ) =
+            case mode of
+                GroupCreateMode ->
+                    let
+                        idN =
+                            model.nextLocalCreatureId
+
+                        finalId =
+                            "local-group-" ++ String.fromInt idN
                     in
-                    ( withGroupEdit
-                        (\u -> { u | submitting = True, submitError = Nothing })
-                        model
-                    , cmd
+                    ( { validated | id = finalId }
+                    , { model | nextLocalCreatureId = idN + 1 }
                     )
+
+                GroupEditExisting _ ->
+                    ( validated, model )
+
+        next =
+            { withId | modal = Nothing }
+                |> withCompendium (CompendiumUi.addGroup finalGroup)
+    in
+    Update.Toast.push ToastSuccess
+        ("Group \"" ++ finalGroup.name ++ "\" saved.")
+        next
 
 
 draftFromGroup : Group -> GroupWire.Draft
@@ -379,7 +419,21 @@ from the server on a permission / network failure.
 -}
 delete : String -> Model -> ( Model, Cmd Msg )
 delete groupId model =
-    ( model, GroupWire.delete groupId (CompendiumGroupDeleted groupId) )
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( model, GroupWire.delete groupId (CompendiumGroupDeleted groupId) )
+
+        _ ->
+            let
+                groupName =
+                    Dict.get groupId model.compendium.groups
+                        |> Maybe.map .name
+                        |> Maybe.withDefault "Group"
+            in
+            model
+                |> withCompendium (CompendiumUi.removeGroup groupId)
+                |> Update.Toast.push ToastSuccess
+                    ("Deleted group \"" ++ groupName ++ "\".")
 
 
 deleteResponse :
