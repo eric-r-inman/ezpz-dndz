@@ -44,8 +44,8 @@ import Msg exposing (MeStatus(..), Msg(..), Theme(..))
 import View.Tooltips as Tooltips
 
 
-view : Bool -> Theme -> Auth.User -> Bool -> Html Msg
-view settingsOpen theme user useCustomCardLayout =
+view : Bool -> Theme -> Maybe Auth.User -> Bool -> Html Msg
+view settingsOpen theme maybeUser useCustomCardLayout =
     header [ class "app-bar" ]
         [ div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
@@ -87,12 +87,7 @@ view settingsOpen theme user useCustomCardLayout =
                         "Custom: off"
                     )
                 ]
-            , a
-                [ class "app-bar__user"
-                , href "/me"
-                , Tooltips.attr Tooltips.appBarAccount
-                ]
-                [ text user.displayName ]
+            , userLink maybeUser
             , a
                 [ class "app-bar__donate"
                 , href "/donate"
@@ -102,6 +97,31 @@ view settingsOpen theme user useCustomCardLayout =
             , settings settingsOpen theme
             ]
         ]
+
+
+{-| Identity slot in the AppBar. When a session is live we show
+the display name as a link to `/me`; when the user is anonymous
+we surface a "Sign in" link to `/login` so they can promote the
+local-only session into a server-backed one whenever they want.
+-}
+userLink : Maybe Auth.User -> Html Msg
+userLink maybeUser =
+    case maybeUser of
+        Just user ->
+            a
+                [ class "app-bar__user"
+                , href "/me"
+                , Tooltips.attr Tooltips.appBarAccount
+                ]
+                [ text user.displayName ]
+
+        Nothing ->
+            a
+                [ class "app-bar__user app-bar__user--anonymous"
+                , href "/login"
+                , Tooltips.attr "Sign in or create an account to save encounters on the server."
+                ]
+                [ text "Sign in" ]
 
 
 {-| ⚙ button + popover. Wraps the popover in a `<div>` with

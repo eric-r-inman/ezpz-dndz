@@ -43,6 +43,7 @@ import Card.Wire as CardWire
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
 import Encounter.Xp exposing (XpScope)
+import Json.Decode as Decode
 import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
@@ -435,6 +436,13 @@ type alias Model =
     -- shape will round-trip cleanly when added.
     , party : List Difficulty.PartyMember
     , nextPartyMemberId : Int
+
+    -- Anonymous-mode bootstrap: the raw localStorage encounter
+    -- snapshot from boot flags.  Held verbatim until the auth probe
+    -- resolves — if the user is anonymous we decode and adopt it;
+    -- if authenticated we discard it (the server is the source of
+    -- truth, the migration prompt lives in a later phase).
+    , localEncounterRaw : Maybe Decode.Value
     }
 
 

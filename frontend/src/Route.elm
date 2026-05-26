@@ -17,6 +17,8 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
 {-| Every URL the SPA recognizes.
 
   - `Home` — the encounter manager (default).
+  - `Login` — sign-in / register form, reachable from the AppBar's
+    Sign-in button when the user is anonymous.
   - `Me` — placeholder for a future profile page.
   - `CompendiumCreaturePage id` — standalone read-only stat
     block, opened via the ↗ link in the side panel.
@@ -26,6 +28,7 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
 -}
 type Route
     = Home
+    | Login
     | Me
     | Donate
     | CompendiumCreaturePage String
@@ -36,6 +39,7 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Url.Parser.map Home top
+        , Url.Parser.map Login (Url.Parser.s "login")
         , Url.Parser.map Me (Url.Parser.s "me")
         , Url.Parser.map Donate (Url.Parser.s "donate")
         , Url.Parser.map CompendiumCreaturePage

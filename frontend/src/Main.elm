@@ -48,6 +48,7 @@ import Msg
         , RollScope(..)
         , Theme(..)
         )
+import Ports
 import Preferences
 import Route exposing (Route(..))
 import Task
@@ -342,14 +343,24 @@ themeFromFlag raw =
             Auto
 
 
-{-| Init flags handed in by `index.html`. Carries the user's
-previously-saved theme (read from `localStorage` before Elm
-boots) so the first render matches the FOUC pre-set on
-`<html data-theme>`. Unknown / missing strings fall back to
-`Auto`, matching the JS-side default.
+{-| Init flags handed in by `index.html`.
+
+  - `theme` — user's previously-saved theme (read from
+    `localStorage` before Elm boots) so the first render matches
+    the FOUC pre-set on `<html data-theme>`. Unknown / missing
+    strings fall back to `Auto`, matching the JS-side default.
+  - `localEncounter` — raw JSON snapshot of the live encounter
+    read from `localStorage` at boot, used for anonymous-mode
+    sessions. Stashed verbatim on the model until the auth probe
+    resolves; on `AuthAnonymous` we decode and adopt it, on
+    `AuthAuthenticated` we discard it (the server is the source
+    of truth, the migration prompt is a later phase).
+
 -}
 type alias Flags =
-    { theme : String }
+    { theme : String
+    , localEncounter : Maybe Decode.Value
+    }
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -396,11 +407,18 @@ init flags url key =
       , accountUi = Ui.Account.empty
       , party = []
       , nextPartyMemberId = 1
+      , localEncounterRaw = flags.localEncounter
       }
       -- Always fetch the persisted dice history and the compendium
       -- library alongside whatever the current route needs. Failures
       -- are silently swallowed so a fresh server (no
       -- dice-history.json yet) still loads.
+      --
+      -- We deliberately do NOT call `fetchEncounterCmd` here:
+      -- whether the encounter comes from `/api/encounter` (server)
+      -- or `localEncounterRaw` (localStorage) depends on the auth
+      -- probe's result, so we defer that decision to
+      -- `Update.Auth.meReceived`.
     , Cmd.batch
         [ Effects.fetchAuthMe
         , Effects.cmdForRoute route
@@ -408,7 +426,6 @@ init flags url key =
         , Compendium.Wire.fetchAll CompendiumLoaded
         , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
         , Card.Wire.fetchList CardEditorLayoutsLoaded
-        , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
 
@@ -427,6 +444,14 @@ The two save-flow Msgs themselves (`EncounterLoaded`,
 `EncounterPersisted`) skip the diff to avoid an obvious infinite
 loop where loading a saved encounter would re-trigger a save.
 
+The destination of the persist Cmd depends on the auth state:
+authenticated sessions PUT to `/api/encounter`, anonymous sessions
+hand the JSON to the `persistLocalEncounter` port (JS writes
+`localStorage`). `AuthLoading` skips persistence — the user
+shouldn't be touching the encounter before the auth probe lands,
+and silently writing somewhere we'll discard either way is worse
+than a one-frame gap.
+
 -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -436,12 +461,25 @@ update msg model =
 
         saveCmd =
             if shouldPersistAfter msg && next.encounter /= model.encounter then
-                Encounter.Wire.persistEncounterCmd EncounterPersisted next.encounter
+                persistEncounterFor next.auth next.encounter
 
             else
                 Cmd.none
     in
     ( next, Cmd.batch [ innerCmd, saveCmd ] )
+
+
+persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
+persistEncounterFor auth encounter =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
+
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+
+        Auth.AuthLoading ->
+            Cmd.none
 
 
 shouldPersistAfter : Msg -> Bool
@@ -451,6 +489,14 @@ shouldPersistAfter msg =
             False
 
         EncounterPersisted _ ->
+            False
+
+        -- Auth probe response on an anonymous boot adopts the
+        -- local-storage encounter directly into the model.  The
+        -- diff would trigger a persist back into the same
+        -- localStorage slot — idempotent but wasteful, so we skip
+        -- it.
+        AuthMeReceived _ ->
             False
 
         _ ->
@@ -1663,40 +1709,52 @@ view model =
                     ]
 
                 Auth.AuthAnonymous ->
-                    [ View.Login.view model.loginUi ]
+                    appShell Nothing model
 
                 Auth.AuthAuthenticated user ->
-                    [ View.AppBar.view model.settingsOpen model.preferences.theme user model.useCustomCardLayout
-                    , viewPage model
-                    , View.Modal.Dice.view model.dice
-                    , View.Modal.HpChange.view model
-                    , View.Modal.Initiative.view model
-                    , View.Modal.Note.view model
-                    , View.Modal.Condition.view model
-                    , View.Modal.Memo.view model
-                    , View.Modal.Timer.view model
-                    , View.Modal.Compendium.view model.compendium
-                        (List.filterMap .creatureId model.encounter.creatures)
-                    , View.Modal.CompendiumEdit.view model
-                    , View.Modal.CompendiumPaste.view model
-                    , View.Modal.Save.view model
-                    , View.Modal.Load.view model
-                    , View.Modal.SaveCompendium.view model
-                    , View.Modal.LoadCompendium.view model
-                    , View.Modal.AbilitySave.view model
-                    , View.Modal.QuickAdd.view model
-                    , View.Modal.Duplicate.view model
-                    , View.Modal.GroupEdit.view model
-                    , View.Modal.CardEditor.view model
-                    , View.Modal.CrCalculator.view model
-                    , View.Toast.list model.toasts
-                    , View.RollPopup.list model.rollPopups
-                    , View.Audio.ringer model
-                    , View.Footer.view
-                    ]
+                    appShell (Just user) model
             )
         ]
     }
+
+
+{-| Common rendered shell shared by anonymous and authenticated
+sessions. AppBar takes a `Maybe Auth.User` so it can swap the
+identity link for "Sign in" when the session is local-only; the
+rest of the chrome (modals, toasts, ringer) is the same either
+way — anonymous users get the full app, they just persist to
+`localStorage` instead of the server.
+-}
+appShell : Maybe Auth.User -> Model -> List (Html Msg)
+appShell maybeUser model =
+    [ View.AppBar.view model.settingsOpen model.preferences.theme maybeUser model.useCustomCardLayout
+    , viewPage model
+    , View.Modal.Dice.view model.dice
+    , View.Modal.HpChange.view model
+    , View.Modal.Initiative.view model
+    , View.Modal.Note.view model
+    , View.Modal.Condition.view model
+    , View.Modal.Memo.view model
+    , View.Modal.Timer.view model
+    , View.Modal.Compendium.view model.compendium
+        (List.filterMap .creatureId model.encounter.creatures)
+    , View.Modal.CompendiumEdit.view model
+    , View.Modal.CompendiumPaste.view model
+    , View.Modal.Save.view model
+    , View.Modal.Load.view model
+    , View.Modal.SaveCompendium.view model
+    , View.Modal.LoadCompendium.view model
+    , View.Modal.AbilitySave.view model
+    , View.Modal.QuickAdd.view model
+    , View.Modal.Duplicate.view model
+    , View.Modal.GroupEdit.view model
+    , View.Modal.CardEditor.view model
+    , View.Modal.CrCalculator.view model
+    , View.Toast.list model.toasts
+    , View.RollPopup.list model.rollPopups
+    , View.Audio.ringer model
+    , View.Footer.view
+    ]
 
 
 viewPage : Model -> Html Msg
@@ -1704,6 +1762,9 @@ viewPage model =
     case model.route of
         Home ->
             View.Workspace.view model
+
+        Login ->
+            View.Login.view model.loginUi
 
         Me ->
             View.Account.view model

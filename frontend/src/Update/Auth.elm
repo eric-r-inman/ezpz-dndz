@@ -26,27 +26,73 @@ the wire shape is identical (both POST a body and get back a
 import Auth exposing (AuthState(..), LoginMode(..))
 import Browser.Navigation as Nav
 import Effects
+import Encounter
+import Encounter.Wire
 import Http
+import Json.Decode as Decode
 import Model exposing (Model)
-import Msg exposing (Msg)
+import Msg exposing (Msg(..))
 import Ui.Login as LoginUi
 
 
-{-| Boot probe response. On 200 → switch to authenticated and
-let the rest of the init Cmds (cmdForRoute, fetchDiceHistory, …)
-load data with the cookie attached. On 401 → switch to anonymous
-and render the login screen.
+{-| Boot probe response. Two paths:
+
+  - Ok user → switch to authenticated and kick off the encounter
+    fetch from `/api/encounter`. The init batch deliberately
+    held that fetch back because we didn't yet know whether the
+    server or `localStorage` was the right source of truth; now
+    we do.
+  - Err 401 / other → switch to anonymous, then adopt the local
+    encounter snapshot held in `localEncounterRaw` (passed in via
+    flags from `index.html`'s `localStorage` read). Decode
+    failures fall through silently and leave the user on the
+    empty default; that mirrors how the server fetch handles a
+    missing / unparseable body.
+
+In both branches we clear `localEncounterRaw` afterwards — it's a
+one-shot bootstrap stash, not ongoing state.
+
 -}
 meReceived : Result Http.Error Auth.User -> Model -> ( Model, Cmd Msg )
 meReceived result model =
     case result of
         Ok user ->
-            ( { model | auth = AuthAuthenticated user }, Cmd.none )
+            ( { model
+                | auth = AuthAuthenticated user
+                , localEncounterRaw = Nothing
+              }
+            , Encounter.Wire.fetchEncounterCmd EncounterLoaded
+            )
 
         Err _ ->
-            ( { model | auth = AuthAnonymous, loginUi = LoginUi.empty }
+            ( { model
+                | auth = AuthAnonymous
+                , loginUi = LoginUi.empty
+                , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
+                , localEncounterRaw = Nothing
+              }
             , Cmd.none
             )
+
+
+{-| Try to decode the raw local-encounter JSON from flags; if it
+parses, use it, otherwise keep whatever we have (the empty
+default). Anonymous users with no prior session get a clean
+slate — same as a fresh server install.
+-}
+adoptLocalEncounter : Maybe Decode.Value -> Encounter.Encounter -> Encounter.Encounter
+adoptLocalEncounter raw fallback =
+    case raw of
+        Just value ->
+            case Decode.decodeValue Encounter.Wire.decodeEncounter value of
+                Ok encounter ->
+                    encounter
+
+                Err _ ->
+                    fallback
+
+        Nothing ->
+            fallback
 
 
 emailChanged : String -> Model -> ( Model, Cmd Msg )
@@ -107,17 +153,18 @@ submit model =
 
 
 {-| Reused for both register and login responses. Success →
-hard-reload the page so the rest of the app re-runs `init` with
-the cookie attached and all data-load Cmds fire authenticated.
-The reload is the cheapest correct path; a "rerun init" message
-would also work but would mean refactoring every existing init
-Cmd to be re-entrant.
+navigate to `/` (hard load) so the rest of the app re-runs `init`
+with the cookie attached and all data-load Cmds fire
+authenticated. Going to `/` instead of reloading the current URL
+matters since the user submitted from `/login`, which we don't
+want them to land back on after the auth probe flips them to
+authenticated.
 -}
 response : Result Http.Error Auth.User -> Model -> ( Model, Cmd Msg )
 response result model =
     case result of
         Ok _ ->
-            ( model, Nav.reload )
+            ( model, Nav.load "/" )
 
         Err err ->
             ( { model

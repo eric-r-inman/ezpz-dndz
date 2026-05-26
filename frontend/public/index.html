@@ -53,9 +53,29 @@
         }
       } catch (_) {}
 
+      // Read the locally-persisted encounter (anonymous-mode
+      // boot path).  When the cookie-backed auth probe later
+      // returns AuthAuthenticated the value is discarded; on
+      // AuthAnonymous it's decoded and adopted as the live
+      // encounter.  Storing parsed JSON (not a string) keeps
+      // Elm's Json.Decode.Value happy.
+      var localEncounter = null;
+      try {
+        var encRaw = localStorage.getItem("encounter");
+        if (encRaw) {
+          localEncounter = JSON.parse(encRaw);
+        }
+      } catch (_) {
+        // Malformed JSON or storage unavailable — fall through
+        // to a clean slate.
+      }
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
-        flags: { theme: savedTheme },
+        flags: {
+          theme: savedTheme,
+          localEncounter: localEncounter,
+        },
       });
 
       // Outbound port: persist theme changes back to localStorage
@@ -72,6 +92,18 @@
                 prefs.theme,
               );
             }
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the live encounter into
+      // localStorage for anonymous sessions.  Elm only emits this
+      // when model.auth = AuthAnonymous, so we don't need to
+      // double-check here.
+      if (app.ports && app.ports.persistLocalEncounter) {
+        app.ports.persistLocalEncounter.subscribe(function (value) {
+          try {
+            localStorage.setItem("encounter", JSON.stringify(value));
           } catch (_) {}
         });
       }
