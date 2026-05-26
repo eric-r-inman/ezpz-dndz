@@ -385,6 +385,13 @@ themeFromFlag raw =
     compendium (creatures + groups + next-local-id counter).
     When present the anonymous boot branch decodes and adopts
     it in place of fetching the bundled JSON.
+  - `localEncounterSaves` — anonymous named-encounter-saves
+    dict (`{ name → { encounter, created_at, updated_at } }`)
+    that the Save / Load modals consult instead of `/api/encounter/saves`.
+  - `localCardLayoutSaves` — same shape for named card-layout
+    saves used by the Card Editor.
+  - `bootMs` — `Date.now()` at boot, used as the timestamp on
+    every anonymous named-save write done this session.
 
 -}
 type alias Flags =
@@ -394,6 +401,9 @@ type alias Flags =
     , migrationDateLabel : String
     , localDiceHistory : Maybe Decode.Value
     , localCompendium : Maybe Decode.Value
+    , localEncounterSaves : Maybe Decode.Value
+    , localCardLayoutSaves : Maybe Decode.Value
+    , bootMs : Int
     }
 
 
@@ -447,6 +457,21 @@ init flags url key =
       , localDiceHistoryRaw = flags.localDiceHistory
       , localCompendiumRaw = flags.localCompendium
       , nextLocalCreatureId = 1
+      , localEncounterSaves =
+            flags.localEncounterSaves
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , localCardLayoutSaves =
+            flags.localCardLayoutSaves
+                |> Maybe.andThen
+                    (Decode.decodeValue Card.Wire.decodeLocalCardLayoutSaves
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
       -- groups, card layouts, dice history) all live in
@@ -520,6 +545,20 @@ update msg model =
 
             else
                 Cmd.none
+
+        encounterSavesCmd =
+            if shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
+                persistEncounterSavesFor next
+
+            else
+                Cmd.none
+
+        cardLayoutSavesCmd =
+            if shouldPersistAfter msg && model.localCardLayoutSaves /= next.localCardLayoutSaves then
+                persistCardLayoutSavesFor next
+
+            else
+                Cmd.none
     in
     ( next
     , Cmd.batch
@@ -528,6 +567,8 @@ update msg model =
         , cardLayoutCmd
         , diceHistoryCmd
         , compendiumCmd
+        , encounterSavesCmd
+        , cardLayoutSavesCmd
         ]
     )
 
@@ -635,6 +676,28 @@ persistCompendiumFor model =
                     , nextLocalId = model.nextLocalCreatureId
                     }
                 )
+
+        _ ->
+            Cmd.none
+
+
+persistEncounterSavesFor : Model -> Cmd Msg
+persistEncounterSavesFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounterSaves
+                (Encounter.Wire.encodeLocalEncounterSaves model.localEncounterSaves)
+
+        _ ->
+            Cmd.none
+
+
+persistCardLayoutSavesFor : Model -> Cmd Msg
+persistCardLayoutSavesFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCardLayoutSaves
+                (Card.Wire.encodeLocalCardLayoutSaves model.localCardLayoutSaves)
 
         _ ->
             Cmd.none

@@ -120,6 +120,26 @@
         }
       } catch (_) {}
 
+      // Anonymous named encounter saves
+      // ({ "<name>": { encounter, created_at, updated_at } }).
+      var localEncounterSaves = null;
+      try {
+        var savesRaw = localStorage.getItem("encounterSaves");
+        if (savesRaw) {
+          localEncounterSaves = JSON.parse(savesRaw);
+        }
+      } catch (_) {}
+
+      // Anonymous named card-layout saves
+      // ({ "<name>": { body, created_at, updated_at } }).
+      var localCardLayoutSaves = null;
+      try {
+        var layoutSavesRaw = localStorage.getItem("cardLayoutSaves");
+        if (layoutSavesRaw) {
+          localCardLayoutSaves = JSON.parse(layoutSavesRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -129,6 +149,9 @@
           migrationDateLabel: migrationDateLabel,
           localDiceHistory: localDiceHistory,
           localCompendium: localCompendium,
+          localEncounterSaves: localEncounterSaves,
+          localCardLayoutSaves: localCardLayoutSaves,
+          bootMs: Date.now(),
         },
       });
 
@@ -220,6 +243,38 @@
         app.ports.persistLocalDiceHistory.subscribe(function (value) {
           try {
             localStorage.setItem("diceHistory", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous named encounter saves dict writer + eraser.
+      if (app.ports && app.ports.persistLocalEncounterSaves) {
+        app.ports.persistLocalEncounterSaves.subscribe(function (value) {
+          try {
+            localStorage.setItem("encounterSaves", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+      if (app.ports && app.ports.clearLocalEncounterSaves) {
+        app.ports.clearLocalEncounterSaves.subscribe(function () {
+          try {
+            localStorage.removeItem("encounterSaves");
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous named card-layout saves dict writer + eraser.
+      if (app.ports && app.ports.persistLocalCardLayoutSaves) {
+        app.ports.persistLocalCardLayoutSaves.subscribe(function (value) {
+          try {
+            localStorage.setItem("cardLayoutSaves", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+      if (app.ports && app.ports.clearLocalCardLayoutSaves) {
+        app.ports.clearLocalCardLayoutSaves.subscribe(function () {
+          try {
+            localStorage.removeItem("cardLayoutSaves");
           } catch (_) {}
         });
       }

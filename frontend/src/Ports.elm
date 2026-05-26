@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , clearLocalCardLayout, clearLocalCompendium, clearLocalEncounter, persistLocalCardLayout, persistLocalCompendium, persistLocalDiceHistory
+    , clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalDiceHistory, persistLocalEncounterSaves
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -103,3 +103,30 @@ login-time migration. Same role as `clearLocalEncounter` /
 `clearLocalCardLayout`.
 -}
 port clearLocalCompendium : () -> Cmd msg
+
+
+{-| Persist the anonymous named-encounter-saves dict
+(`{ name → { encounter, created_at, updated_at } }`) to
+localStorage. Fired by `Update.Save` / `Update.Load` after any
+local mutation.
+-}
+port persistLocalEncounterSaves : E.Value -> Cmd msg
+
+
+{-| Drop the whole anonymous named-encounter-saves dict. Fired
+after a successful login-time migration that has copied every
+local save into the server.
+-}
+port clearLocalEncounterSaves : () -> Cmd msg
+
+
+{-| Same shape as `persistLocalEncounterSaves` but for named
+card-layout saves
+(`{ name → { body, queue_view, created_at, updated_at } }`).
+-}
+port persistLocalCardLayoutSaves : E.Value -> Cmd msg
+
+
+{-| Drop the whole anonymous named-card-layout-saves dict.
+-}
+port clearLocalCardLayoutSaves : () -> Cmd msg

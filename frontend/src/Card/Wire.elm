@@ -2,7 +2,7 @@ module Card.Wire exposing
     ( SavedLayoutMeta, SavedLayout
     , fetchList, fetchOne, save, delete_
     , encodeLayoutBody, decodeLayoutBody
-    , LocalLayoutSnapshot, decodeLocalLayoutSnapshot, encodeLocalLayoutSnapshot
+    , LocalCardLayoutSave, LocalLayoutSnapshot, decodeLocalCardLayoutSaves, decodeLocalLayoutSnapshot, encodeLocalCardLayoutSaves, encodeLocalLayoutSnapshot, localSaveToMeta
     )
 
 {-| JSON wire format + HTTP client for saved card layouts.
@@ -37,6 +37,7 @@ import Card.Layout as Layout
         , QueueView(..)
         , RowAlignment(..)
         )
+import Dict exposing (Dict)
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -267,3 +268,60 @@ decodeLocalLayoutSnapshot =
         (D.field "layout" decodeLayoutBody)
         (D.field "layout" decodeQueueView)
         (D.field "useCustomCardLayout" D.bool)
+
+
+
+-- ── ANONYMOUS NAMED SAVES ────────────────────────────────────────────────────
+--
+-- Anonymous sessions store named card-layout saves in a single
+-- localStorage dict, mirroring the encounter-saves design.  The
+-- entry shape lines up with `SavedLayout` minus the server-
+-- assigned name field (the key carries the name).
+
+
+type alias LocalCardLayoutSave =
+    { layout : CardLayout
+    , queueView : QueueView
+    , createdAt : Int
+    , updatedAt : Int
+    }
+
+
+{-| Same projection helper as `Encounter.Wire.localSaveToMeta`:
+turn a `(name, save)` pair into the server-style metadata that
+the Card Editor's saved-layouts list renders.
+-}
+localSaveToMeta : ( String, LocalCardLayoutSave ) -> SavedLayoutMeta
+localSaveToMeta ( name, entry ) =
+    { name = name
+    , createdAt = entry.createdAt
+    , updatedAt = entry.updatedAt
+    }
+
+
+encodeLocalCardLayoutSave : LocalCardLayoutSave -> E.Value
+encodeLocalCardLayoutSave entry =
+    E.object
+        [ ( "body", encodeLayoutBody entry.layout entry.queueView )
+        , ( "created_at", E.int entry.createdAt )
+        , ( "updated_at", E.int entry.updatedAt )
+        ]
+
+
+decodeLocalCardLayoutSave : D.Decoder LocalCardLayoutSave
+decodeLocalCardLayoutSave =
+    D.map4 LocalCardLayoutSave
+        (D.field "body" decodeLayoutBody)
+        (D.field "body" decodeQueueView)
+        (D.field "created_at" D.int)
+        (D.field "updated_at" D.int)
+
+
+encodeLocalCardLayoutSaves : Dict String LocalCardLayoutSave -> E.Value
+encodeLocalCardLayoutSaves dict =
+    E.dict identity encodeLocalCardLayoutSave dict
+
+
+decodeLocalCardLayoutSaves : D.Decoder (Dict String LocalCardLayoutSave)
+decodeLocalCardLayoutSaves =
+    D.dict decodeLocalCardLayoutSave

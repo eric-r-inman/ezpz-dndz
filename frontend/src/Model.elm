@@ -40,8 +40,10 @@ import Auth exposing (AuthState)
 import Browser.Navigation as Nav
 import Card.Layout exposing (CardLayout, QueueView)
 import Card.Wire as CardWire
+import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
+import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
 import Msg exposing (ControlMenu, MeStatus)
@@ -473,6 +475,23 @@ type alias Model =
     -- compendium snapshot so reloads don't reuse ids.  Server
     -- creatures use full UUIDs; anonymous use `"local-N"`.
     , nextLocalCreatureId : Int
+
+    -- Anonymous named encounter saves keyed by name.  Authed
+    -- sessions use the server's `/api/encounter/saves` endpoints;
+    -- anonymous sessions mutate this dict and the update-loop
+    -- wrapper persists it to `localStorage.encounterSaves`.
+    , localEncounterSaves : Dict String EncounterWire.LocalEncounterSave
+
+    -- Anonymous named card-layout saves keyed by name.  Same
+    -- shape and purpose as `localEncounterSaves`.  `CardWire`
+    -- defines the entry type.
+    , localCardLayoutSaves : Dict String CardWire.LocalCardLayoutSave
+
+    -- JS `Date.now()` captured at boot, used as the timestamp for
+    -- all anonymous named-save writes done in this session.  All
+    -- saves in one session share this timestamp (cosmetic-only;
+    -- the migration uploads to the server which assigns its own).
+    , bootMs : Int
     }
 
 

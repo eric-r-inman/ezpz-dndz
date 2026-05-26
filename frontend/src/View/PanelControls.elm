@@ -22,8 +22,52 @@ import Json.Decode as Decode
 import Model exposing (PendingControl(..))
 import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
-import View.AuthGate as AuthGate
 import View.Tooltips as Tooltips
+
+
+{-| Per-auth-state label for the Save dropdown's first item.
+Anonymous sessions write to this browser's localStorage, so the
+"server" terminology would be misleading. Authed sessions keep
+the server label.
+-}
+saveToServerLabel : Auth.AuthState -> String
+saveToServerLabel auth =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            "To Server"
+
+        _ ->
+            "To Browser"
+
+
+saveToServerTooltip : Auth.AuthState -> String
+saveToServerTooltip auth =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            "Save this encounter to the server under a name you choose."
+
+        _ ->
+            "Save this encounter in this browser under a name you choose. Sign in to keep it across devices."
+
+
+loadFromServerLabel : Auth.AuthState -> String
+loadFromServerLabel auth =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            "From Server"
+
+        _ ->
+            "From Browser"
+
+
+loadFromServerTooltip : Auth.AuthState -> String
+loadFromServerTooltip auth =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            "Load a previously-saved encounter from the server."
+
+        _ ->
+            "Load a previously-saved encounter from this browser."
 
 
 view : Auth.AuthState -> DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
@@ -156,18 +200,11 @@ saveMenu auth rosterDirty isOpen =
                 ]
                 [ button
                     [ class "control-menu__item"
-                    , onClick
-                        (AuthGate.clickWhenAuthed auth
-                            (SaveOpen SaveDestinationServer)
-                        )
-                    , Tooltips.attr
-                        (AuthGate.tooltipWhenAuthed auth
-                            "Save this encounter to the server under a name you choose."
-                            "Sign in to save encounters on the server."
-                        )
+                    , onClick (SaveOpen SaveDestinationServer)
+                    , Tooltips.attr (saveToServerTooltip auth)
                     , attribute "role" "menuitem"
                     ]
-                    [ text "To Server" ]
+                    [ text (saveToServerLabel auth) ]
                 , button
                     [ class "control-menu__item"
                     , onClick (SaveOpen SaveDestinationDevice)
@@ -221,15 +258,11 @@ loadMenu auth isOpen =
                 ]
                 [ button
                     [ class "control-menu__item"
-                    , onClick (AuthGate.clickWhenAuthed auth LoadOpen)
-                    , Tooltips.attr
-                        (AuthGate.tooltipWhenAuthed auth
-                            "Load a previously-saved encounter from the server."
-                            "Sign in to load encounters from the server."
-                        )
+                    , onClick LoadOpen
+                    , Tooltips.attr (loadFromServerTooltip auth)
                     , attribute "role" "menuitem"
                     ]
-                    [ text "From Server" ]
+                    [ text (loadFromServerLabel auth) ]
                 , button
                     [ class "control-menu__item"
                     , onClick LoadFromDeviceClick
