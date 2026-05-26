@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , clearLocalEncounter, persistLocalCardLayout, persistLocalDiceHistory
+    , clearLocalCardLayout, clearLocalEncounter, persistLocalCardLayout, persistLocalDiceHistory
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -74,3 +74,11 @@ discarded once the user promotes to an authenticated session
 (the server's history takes over).
 -}
 port persistLocalDiceHistory : E.Value -> Cmd msg
+
+
+{-| Drop the locally-persisted card-layout snapshot from
+`localStorage`. Fired after a successful login-time migration of
+the anonymous card layout into a named server save, mirroring
+`clearLocalEncounter`'s role for the encounter.
+-}
+port clearLocalCardLayout : () -> Cmd msg

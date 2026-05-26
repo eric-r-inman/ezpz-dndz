@@ -596,6 +596,9 @@ shouldPersistAfter msg =
         LocalEncounterMigrated _ _ ->
             False
 
+        LocalCardLayoutMigrated _ _ ->
+            False
+
         _ ->
             True
 
@@ -1735,6 +1738,9 @@ updateInner msg model =
 
         LocalEncounterMigrated name result ->
             Update.Auth.localEncounterMigrated name result model
+
+        LocalCardLayoutMigrated name result ->
+            Update.Auth.localCardLayoutMigrated name result model
 
         AccountDisplayNameChanged raw ->
             Update.Account.displayNameChanged raw model

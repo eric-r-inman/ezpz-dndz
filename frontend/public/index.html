@@ -170,6 +170,16 @@
         });
       }
 
+      // Same port semantics for the anonymous card-layout
+      // snapshot — fired after its migration succeeds.
+      if (app.ports && app.ports.clearLocalCardLayout) {
+        app.ports.clearLocalCardLayout.subscribe(function () {
+          try {
+            localStorage.removeItem("cardLayout");
+          } catch (_) {}
+        });
+      }
+
       // Outbound port: persist the dice-history list under
       // `diceHistory` for anonymous sessions.  Same
       // anonymous-only contract as the encounter and cardLayout

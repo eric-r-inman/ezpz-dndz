@@ -791,6 +791,8 @@ type Msg
       -- slot.  Carries the save-name so the success-toast can
       -- mention it; clears localStorage.encounter on success.
     | LocalEncounterMigrated String (Result Http.Error ())
+      -- Same shape for the card-layout migration response.
+    | LocalCardLayoutMigrated String (Result Http.Error Card.Wire.SavedLayout)
       -- CR Calculator modal.
     | CrCalculatorOpen
     | CrCalculatorClose

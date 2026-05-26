@@ -1,6 +1,7 @@
 module Update.Auth exposing
     ( displayNameChanged
     , emailChanged
+    , localCardLayoutMigrated
     , localEncounterMigrated
     , logout
     , logoutDone
@@ -67,9 +68,14 @@ meReceived result model =
     case result of
         Ok user ->
             let
-                migrationCmd =
+                encounterMigrationCmd =
                     migrateLocalEncounterCmd
                         model.localEncounterRaw
+                        model.migrationDateLabel
+
+                cardLayoutMigrationCmd =
+                    migrateLocalCardLayoutCmd
+                        model.localCardLayoutRaw
                         model.migrationDateLabel
             in
             ( { model
@@ -84,7 +90,8 @@ meReceived result model =
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 , CardWire.fetchList CardEditorLayoutsLoaded
                 , Effects.fetchDiceHistory
-                , migrationCmd
+                , encounterMigrationCmd
+                , cardLayoutMigrationCmd
                 ]
             )
 
@@ -228,6 +235,44 @@ migrateLocalEncounterCmd raw dateLabel =
             Cmd.none
 
 
+{-| Card-layout analogue of `migrateLocalEncounterCmd`.
+
+Only fires when the anonymous user had `useCustomCardLayout = True`
+— that's the signal they actively used a non-default layout. When
+the bundled default has been showing the whole time we skip the
+migration to avoid creating a useless "Local — <date>" entry in
+the user's saved-layouts list.
+
+-}
+migrateLocalCardLayoutCmd : Maybe Decode.Value -> String -> Cmd Msg
+migrateLocalCardLayoutCmd raw dateLabel =
+    case raw of
+        Just value ->
+            case Decode.decodeValue CardWire.decodeLocalLayoutSnapshot value of
+                Ok snap ->
+                    if snap.useCustomCardLayout then
+                        let
+                            name =
+                                "Local — " ++ dateLabel
+                        in
+                        CardWire.save
+                            { name = name
+                            , overwrite = True
+                            , layout = snap.layout
+                            , queueView = snap.queueView
+                            }
+                            (LocalCardLayoutMigrated name)
+
+                    else
+                        Cmd.none
+
+                Err _ ->
+                    Cmd.none
+
+        Nothing ->
+            Cmd.none
+
+
 emailChanged : String -> Model -> ( Model, Cmd Msg )
 emailChanged value model =
     let
@@ -336,6 +381,38 @@ localEncounterMigrated name result model =
             Update.Toast.push
                 ToastError
                 "Couldn't archive your pre-sign-in encounter on the server. It's still in this browser."
+                model
+
+
+{-| Card-layout analogue of `localEncounterMigrated`. Success →
+clear the localStorage card-layout snapshot + toast with the
+slot name + refresh the saved-layouts list so the new entry
+shows up in the Card Editor's "Saved layouts" panel without a
+reload. Failure → toast; the local snapshot stays.
+-}
+localCardLayoutMigrated : String -> Result Http.Error CardWire.SavedLayout -> Model -> ( Model, Cmd Msg )
+localCardLayoutMigrated name result model =
+    case result of
+        Ok _ ->
+            let
+                ( withToast, toastCmd ) =
+                    Update.Toast.push
+                        ToastSuccess
+                        ("Saved your pre-sign-in card layout as “" ++ name ++ "”.")
+                        model
+            in
+            ( withToast
+            , Cmd.batch
+                [ toastCmd
+                , Ports.clearLocalCardLayout ()
+                , CardWire.fetchList CardEditorLayoutsLoaded
+                ]
+            )
+
+        Err _ ->
+            Update.Toast.push
+                ToastError
+                "Couldn't archive your pre-sign-in card layout on the server. It's still in this browser."
                 model
 
 
