@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , clearLocalEncounter, persistLocalCardLayout
+    , clearLocalEncounter, persistLocalCardLayout, persistLocalDiceHistory
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -64,3 +64,13 @@ value itself is ignored.
 
 -}
 port clearLocalEncounter : () -> Cmd msg
+
+
+{-| Persist the dice-history entries into `localStorage` for
+anonymous sessions. Mirrors the server-side `/api/dice/history`
+shape: a JSON array of encoded rolls. Sign-in deliberately does
+NOT migrate this — per the launch plan, anonymous roll history is
+discarded once the user promotes to an authenticated session
+(the server's history takes over).
+-}
+port persistLocalDiceHistory : E.Value -> Cmd msg

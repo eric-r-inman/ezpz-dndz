@@ -376,6 +376,10 @@ themeFromFlag raw =
     is migrated into the server on login (e.g.
     `Local — May 26, 2026`). JS computes it so we don't have
     to pull in elm/time + a calendar formatter.
+  - `localDiceHistory` — one-shot snapshot of the anonymous
+    session's roll history (mirrors the `/api/dice/history`
+    response shape). Adopted on anonymous boot, discarded on
+    authenticated boot.
 
 -}
 type alias Flags =
@@ -383,6 +387,7 @@ type alias Flags =
     , localEncounter : Maybe Decode.Value
     , localCardLayout : Maybe Decode.Value
     , migrationDateLabel : String
+    , localDiceHistory : Maybe Decode.Value
     }
 
 
@@ -433,21 +438,16 @@ init flags url key =
       , localEncounterRaw = flags.localEncounter
       , localCardLayoutRaw = flags.localCardLayout
       , migrationDateLabel = flags.migrationDateLabel
+      , localDiceHistoryRaw = flags.localDiceHistory
       }
-      -- Always fetch the persisted dice history alongside whatever
-      -- the current route needs. Failures are silently swallowed so
-      -- a fresh server (no dice-history.json yet) still loads.
-      --
-      -- We deliberately do NOT call `fetchEncounterCmd` or the
-      -- compendium / groups / card-layout fetches here: whether
-      -- each one targets the authenticated `/api/*` endpoint or the
-      -- public bundled fallback depends on the auth probe's
-      -- result, so we defer those decisions to
-      -- `Update.Auth.meReceived`.
+      -- The auth-dependent data fetches (encounter, compendium,
+      -- groups, card layouts, dice history) all live in
+      -- `Update.Auth.meReceived` because each one's destination —
+      -- server route vs. public bundle vs. localStorage — depends
+      -- on the cookie probe's result.
     , Cmd.batch
         [ Effects.fetchAuthMe
         , Effects.cmdForRoute route
-        , Effects.fetchDiceHistory
         ]
     )
 
@@ -494,8 +494,19 @@ update msg model =
 
             else
                 Cmd.none
+
+        diceHistoryCmd =
+            if
+                shouldPersistAfter msg
+                    && model.dice.history.entries
+                    /= next.dice.history.entries
+            then
+                persistDiceHistoryFor next
+
+            else
+                Cmd.none
     in
-    ( next, Cmd.batch [ innerCmd, encounterCmd, cardLayoutCmd ] )
+    ( next, Cmd.batch [ innerCmd, encounterCmd, cardLayoutCmd, diceHistoryCmd ] )
 
 
 persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
@@ -541,6 +552,22 @@ persistCardLayoutFor model =
                     , useCustomCardLayout = model.useCustomCardLayout
                     }
                 )
+
+        _ ->
+            Cmd.none
+
+
+{-| Persist the full dice-history list to `localStorage` when
+anonymous. Authenticated users hit `/api/dice/history` per-roll
+via `Effects.persistDiceRoll` (the server appends + truncates,
+and the response re-syncs the local view).
+-}
+persistDiceHistoryFor : Model -> Cmd Msg
+persistDiceHistoryFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalDiceHistory
+                (Encode.list Dice.encodeRoll model.dice.history.entries)
 
         _ ->
             Cmd.none

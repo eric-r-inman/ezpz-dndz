@@ -35,6 +35,7 @@ The dice modal is always present in the model (no `Maybe`), so
 
 -}
 
+import Auth
 import Dice
 import Effects
 import Http
@@ -177,9 +178,23 @@ rerun roll model =
 
 clearHistory : Model -> ( Model, Cmd Msg )
 clearHistory model =
-    ( withDice (\d -> { d | history = Dice.emptyHistory }) model
-    , Effects.clearDiceHistory
-    )
+    let
+        cleared =
+            withDice (\d -> { d | history = Dice.emptyHistory }) model
+
+        cmd =
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    Effects.clearDiceHistory
+
+                -- Anonymous: the update-loop wrapper notices the
+                -- history just went from N entries to 0 and fires
+                -- the localStorage persist with an empty list, so
+                -- no explicit Cmd here.  Loading mirrors that.
+                _ ->
+                    Cmd.none
+    in
+    ( cleared, cmd )
 
 
 {-| A roll fired from anywhere in the app landed. Update the local
@@ -195,8 +210,30 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, flashCmd ]
     )
+
+
+{-| Per-session router for the after-roll persist Cmd.
+
+  - Authenticated → `POST /api/dice/history` with this single roll;
+    the response re-syncs the local view.
+  - Anonymous → no HTTP; the update-loop wrapper in `Main.update`
+    diffs `model.dice.history.entries` and writes the full list to
+    `localStorage` via the `persistLocalDiceHistory` port.
+  - Loading → skip; the post-probe handler will sort things out
+    and the user shouldn't be rolling during the boot probe
+    anyway.
+
+-}
+persistRollFor : Auth.AuthState -> Dice.Roll -> Cmd Msg
+persistRollFor auth roll =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            Effects.persistDiceRoll roll
+
+        _ ->
+            Cmd.none
 
 
 historyLoaded : Result Http.Error (List Dice.Roll) -> Model -> ( Model, Cmd Msg )
@@ -291,7 +328,7 @@ statBlockRollLanded x y roll model =
             Effects.pushDiceRoll roll withPopup
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, popupCmd, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, popupCmd, flashCmd ]
     )
 
 

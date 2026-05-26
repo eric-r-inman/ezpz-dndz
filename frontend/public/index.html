@@ -95,6 +95,19 @@
         migrationDateLabel = new Date().toISOString().slice(0, 10);
       }
 
+      // Anonymous-mode dice-history snapshot.  Same shape as the
+      // server's /api/dice/history response (an array of encoded
+      // rolls).  Adopted on the anonymous boot branch; discarded
+      // and replaced with the server's history on the
+      // authenticated branch.
+      var localDiceHistory = null;
+      try {
+        var diceRaw = localStorage.getItem("diceHistory");
+        if (diceRaw) {
+          localDiceHistory = JSON.parse(diceRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -102,6 +115,7 @@
           localEncounter: localEncounter,
           localCardLayout: localCardLayout,
           migrationDateLabel: migrationDateLabel,
+          localDiceHistory: localDiceHistory,
         },
       });
 
@@ -152,6 +166,18 @@
         app.ports.clearLocalEncounter.subscribe(function () {
           try {
             localStorage.removeItem("encounter");
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the dice-history list under
+      // `diceHistory` for anonymous sessions.  Same
+      // anonymous-only contract as the encounter and cardLayout
+      // ports (Elm only emits this when model.auth is anonymous).
+      if (app.ports && app.ports.persistLocalDiceHistory) {
+        app.ports.persistLocalDiceHistory.subscribe(function (value) {
+          try {
+            localStorage.setItem("diceHistory", JSON.stringify(value));
           } catch (_) {}
         });
       }

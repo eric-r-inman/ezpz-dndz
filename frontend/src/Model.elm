@@ -456,6 +456,11 @@ type alias Model =
     -- authenticated session.  Held until the migration fires;
     -- otherwise inert.
     , migrationDateLabel : String
+
+    -- One-shot stash for the anonymous dice-history snapshot from
+    -- localStorage.  Adopted on the anonymous boot branch and
+    -- discarded on the authenticated branch (server history wins).
+    , localDiceHistoryRaw : Maybe Decode.Value
     }
 
 

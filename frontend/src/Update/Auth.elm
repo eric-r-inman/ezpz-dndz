@@ -29,6 +29,7 @@ import Browser.Navigation as Nav
 import Card.Wire as CardWire
 import Compendium.GroupWire
 import Compendium.Wire
+import Dice
 import Effects
 import Encounter
 import Encounter.Wire
@@ -75,28 +76,34 @@ meReceived result model =
                 | auth = AuthAuthenticated user
                 , localEncounterRaw = Nothing
                 , localCardLayoutRaw = Nothing
+                , localDiceHistoryRaw = Nothing
               }
             , Cmd.batch
                 [ Encounter.Wire.fetchEncounterCmd EncounterLoaded
                 , Compendium.Wire.fetchAll CompendiumLoaded
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 , CardWire.fetchList CardEditorLayoutsLoaded
+                , Effects.fetchDiceHistory
                 , migrationCmd
                 ]
             )
 
         Err _ ->
             let
-                anon =
+                withEncounter =
                     { model
                         | auth = AuthAnonymous
                         , loginUi = LoginUi.empty
                         , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
                         , localEncounterRaw = Nothing
                         , localCardLayoutRaw = Nothing
+                        , localDiceHistoryRaw = Nothing
                     }
+
+                withDice =
+                    applyLocalDiceHistory model.localDiceHistoryRaw withEncounter
             in
-            ( applyLocalCardLayout model.localCardLayoutRaw anon
+            ( applyLocalCardLayout model.localCardLayoutRaw withDice
             , Compendium.Wire.fetchAllPublic CompendiumLoaded
             )
 
@@ -137,6 +144,37 @@ applyLocalCardLayout raw model =
                         | cardLayout = snap.layout
                         , queueView = snap.queueView
                         , useCustomCardLayout = snap.useCustomCardLayout
+                    }
+
+                Err _ ->
+                    model
+
+        Nothing ->
+            model
+
+
+{-| Adopt the locally-stashed dice history into `model.dice.history`.
+Same shape as `applyLocalCardLayout` — decode failures fall
+through silently and leave the existing (empty) history.
+-}
+applyLocalDiceHistory : Maybe Decode.Value -> Model -> Model
+applyLocalDiceHistory raw model =
+    case raw of
+        Just value ->
+            case Decode.decodeValue (Decode.list Dice.decodeRoll) value of
+                Ok entries ->
+                    let
+                        dice =
+                            model.dice
+                    in
+                    { model
+                        | dice =
+                            { dice
+                                | history =
+                                    { entries = entries
+                                    , max = Dice.maxHistoryEntries
+                                    }
+                            }
                     }
 
                 Err _ ->
