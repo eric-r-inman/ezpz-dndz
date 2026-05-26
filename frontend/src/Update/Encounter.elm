@@ -42,6 +42,7 @@ import Encounter.Lifecycle
 import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
+import Set
 
 
 {-| Local lens for `model.encounter`. Kept private to this module —
@@ -244,10 +245,16 @@ requestClear model =
 
 {-| Apply whichever destructive action is currently staged.
 
-  - `PendingReset` — restore the encounter to its last-saved
-    snapshot (or the empty default if no snapshot exists yet)
-    and force `round = 0` with no active creature, so the GM
-    is back in pre-combat mode.
+  - `PendingReset` — keep the current roster intact but wipe each
+    creature's per-fight state: HP back to full, no temp HP, no
+    conditions / save notices / death saves, every status toggle
+    off (cover, concentration, hiding, dodging, flying, readied,
+    inactive), legendary actions / resistances refilled, timers
+    cleared. Identity + combat baselines (name, kind, initiative,
+    AC, max HP, note, memo, compendium back-reference) survive
+    untouched. Round counter goes back to 0 and `activeName`
+    clears so the GM is back in pre-combat mode with the same
+    cast.
   - `PendingClear` — drop every creature; force `round = 0`.
 
 In both cases the pending state is cleared so the panel returns
@@ -259,15 +266,17 @@ controlConfirm model =
     case model.pendingControl of
         Just PendingReset ->
             let
-                target =
-                    case model.savedSnapshot of
-                        Just snap ->
-                            { snap | round = 0, activeName = "" }
+                enc =
+                    model.encounter
 
-                        Nothing ->
-                            Encounter.empty
+                resetEnc =
+                    { enc
+                        | creatures = List.map resetCreatureState enc.creatures
+                        , round = 0
+                        , activeName = ""
+                    }
             in
-            ( { model | encounter = target, pendingControl = Nothing }
+            ( { model | encounter = resetEnc, pendingControl = Nothing }
             , Cmd.none
             )
 
@@ -281,6 +290,35 @@ controlConfirm model =
 
         Nothing ->
             ( model, Cmd.none )
+
+
+{-| Strip a creature back to "round 0" state. Identity + combat
+baselines (name, kind, initiative, ability stats, AC, max HP,
+note, memo, compendium id, legendary capability flags, selection
+checkbox) are preserved; everything that can change mid-fight is
+reset.
+-}
+resetCreatureState : Encounter.Creature -> Encounter.Creature
+resetCreatureState c =
+    { c
+        | currentHp = c.maxHp
+        , tempHp = 0
+        , conditions = []
+        , saveNotices = []
+        , cover = Encounter.NoCover
+        , concentrating = False
+        , hiding = False
+        , dodging = False
+        , flying = False
+        , flyHeight = 0
+        , bloodied = False
+        , deathSaves = Encounter.emptyDeathSaves
+        , readied = False
+        , inactive = False
+        , timer = Nothing
+        , legendaryActionsUsed = Set.empty
+        , legendaryResistanceUsed = Set.empty
+    }
 
 
 {-| Calculate falling damage for the named creature and fire it

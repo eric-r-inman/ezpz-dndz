@@ -266,7 +266,7 @@ confirmBanner pending =
         ( prompt, confirmLabel, confirmClass ) =
             case pending of
                 PendingReset ->
-                    ( "Reset the encounter to its last-saved state and round 1?"
+                    ( "Reset every creature's HP to full and clear all conditions / status?"
                     , "Reset"
                     , "action-btn action-btn--orange"
                     )

@@ -570,6 +570,391 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-weight: 700;
 }
 
+/* Encounter title-bar: bump the bar's base font-size + the
+   numeric readouts inside it.  Some children (hp-display, etc.)
+   use absolute rem sizes that wouldn't inherit a bar-level
+   bump, so they get explicit overrides too.  Goal: every glyph
+   in the title bar reads at low vision without crowding. */
+[data-theme="accessible"] .encounter-bar {
+  font-size: 1.1rem;
+}
+
+/* Force every text node in the title bar to the theme's
+   foreground colour (pure black on Accessible).  Overrides the
+   per-element tints — HP current-green, condition-chip orange,
+   active-creature orange — so the entire bar reads as one
+   uniformly contrasted strip.  Scoped to text colour only;
+   backgrounds / borders / pip fills keep their tint. */
+[data-theme="accessible"] .encounter-bar,
+[data-theme="accessible"] .encounter-bar * {
+  color: var(--color-text);
+}
+
+[data-theme="accessible"] .encounter-bar .hp-display,
+[data-theme="accessible"] .encounter-bar .ac-readout,
+[data-theme="accessible"] .encounter-bar__active,
+[data-theme="accessible"] .encounter-bar__round,
+[data-theme="accessible"] .encounter-bar__hp-label,
+[data-theme="accessible"] .encounter-bar__ac-label {
+  font-size: 1.15rem;
+}
+
+/* Rail icon-buttons on creature cards (← far-left ↑/↓/→ + far-
+   right ×/inactive/duplicate).  Bump from 28×28 / 0.95rem to
+   36×36 / 1.25rem so the small icons hit the WCAG 2.5.5 touch-
+   target zone and read easily under low vision. */
+[data-theme="accessible"] .icon-btn {
+  width: 36px;
+  height: 36px;
+  font-size: 1.25rem;
+}
+
+/* Creature-card rows 1 and 2 — bump every text node so HP, AC,
+   conditions, status toggles, etc. all read at low vision.  The
+   row base bumps cover em-based children automatically; absolute-
+   rem children get explicit overrides further down. */
+[data-theme="accessible"] .creature-card__row--top,
+[data-theme="accessible"] .creature-card__row--mid {
+  font-size: 1.1rem;
+}
+
+/* Inline-pill displays the GM consults mid-combat: notes,
+   conditions / save-notices, memo, and timer.  Each shipped
+   with a small absolute rem size; bump under Accessible so the
+   text reads at low vision.  Covers the per-card row-1 note
+   text, the row-2 / row-3 condition chips + auto-roll save
+   notices, the row-3 memo and timer pills, AND the title-bar
+   note text mirror (`encounter-bar__note-text`) so the same
+   note reads larger in both places. */
+[data-theme="accessible"] .creature-note,
+[data-theme="accessible"] .encounter-bar__note-text {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .condition-chip,
+[data-theme="accessible"] .save-notice {
+  font-size: 0.95rem;
+  padding: 2px 8px;
+}
+
+[data-theme="accessible"] .memo-pill__text {
+  font-size: 1rem;
+}
+
+[data-theme="accessible"] .timer-pill {
+  font-size: 1rem;
+}
+
+/* Creature-card side columns: LA (legendary actions), LR
+   (legendary resistance), and the two death-save columns
+   (success / failure).  Bump header glyphs + pip diameter so
+   each pip lands inside the WCAG 2.5.5 target zone and the
+   "LA / LR / ✓ / ×" labels are legible at low vision. */
+[data-theme="accessible"] .legendary-col__header,
+[data-theme="accessible"] .death-save-col__header {
+  font-size: 1.1rem;
+}
+
+[data-theme="accessible"] .legendary-col__pip,
+[data-theme="accessible"] .death-save-col__pip {
+  width: 20px;
+  height: 20px;
+  border-width: 2.5px;
+}
+
+[data-theme="accessible"] .legendary-col__sep {
+  width: 20px;
+}
+
+/* Stat-block text (every renderer — compendium modal, pinned
+   panel, standalone single-creature page, paste preview).  Each
+   `.statblock__*` class that ships with an absolute `rem` size
+   gets an Accessible override so the description / property
+   lines / feature paragraphs / section headings all run ~25%
+   bigger.  Children that already use `em`-based sizes
+   (statblock__name, type, etc.) scale automatically off the
+   bumped parent. */
+[data-theme="accessible"] .statblock {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .statblock__description,
+[data-theme="accessible"] .statblock__prop,
+[data-theme="accessible"] .statblock__feature {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .statblock__section-heading {
+  font-size: 1.15rem;
+}
+
+[data-theme="accessible"] .creature-card__row--top .init-circle,
+[data-theme="accessible"] .creature-card__row--top .condition-chip {
+  font-size: 1rem;
+}
+
+[data-theme="accessible"] .creature-card__row--top .init-circle {
+  /* Init circle needs to grow with its number to stay legible. */
+  width: 34px;
+  height: 34px;
+}
+
+/* Row-2 absolute-rem children: HP display is the headline number
+   in this row; status toggles, bloodied marker, fly-height, and
+   the AC readout all sit alongside it.  Each gets its own
+   explicit bump because their absolute rem sizes ignore the
+   row-level base. */
+[data-theme="accessible"] .creature-card__row--mid .hp-display {
+  font-size: 1.2rem;
+}
+
+[data-theme="accessible"] .creature-card__row--mid .status-toggle {
+  font-size: 1rem;
+}
+
+[data-theme="accessible"] .creature-card__row--mid .bloodied,
+[data-theme="accessible"] .creature-card__row--mid .fly-height,
+[data-theme="accessible"] .creature-card__row--mid .ac-readout {
+  font-size: 1.05rem;
+}
+
+/* Heavier creature-name weight — base is already `font-weight:
+   700`, but on the off-white Accessible surface the name benefits
+   from full 800 so it anchors the card visually. */
+[data-theme="accessible"] .creature-name {
+  font-weight: 800;
+}
+
+/* Title-bar note + condition-chip mirror.  Earlier Accessible
+   bumps put these at 1.05rem (note) and 0.95rem (chip) for
+   row-1 / card-side use; the title-bar copies of the same
+   widgets need a touch more so the at-a-glance status reads
+   across the bar. */
+[data-theme="accessible"] .encounter-bar .encounter-bar__note-text {
+  font-size: 1.15rem;
+}
+
+[data-theme="accessible"] .encounter-bar .condition-chip {
+  font-size: 1.05rem;
+}
+
+/* CR Calculator modal: bump every text node so party rows,
+   scope buttons, budget cells, result readouts all read at low
+   vision.  `:not(.action-btn)` exempts the "+ Add character"
+   button, which already sizes well via the shared `.action-btn`
+   rule. */
+[data-theme="accessible"] .modal--cr-calculator,
+[data-theme="accessible"]
+  .modal--cr-calculator
+  *:not(.action-btn):not(.action-btn *) {
+  font-size: 1.1rem;
+}
+
+[data-theme="accessible"] .modal--cr-calculator .cr-calc__section-title {
+  font-size: 1.3rem;
+}
+
+[data-theme="accessible"] .modal--cr-calculator .cr-calc__result-value,
+[data-theme="accessible"] .modal--cr-calculator .cr-calc__budget-tier {
+  font-size: 1.2rem;
+}
+
+/* Creature-card action buttons (Damage / Heal / Temp / Condition
+   / Ready / Readied) styled as black-on-light-gray in the
+   Accessible theme.  Trades the solid R/G/B/V fills for a
+   uniform B&W set — the GM reads the icon + label, not the hue,
+   so colour-blind users get full information.  Scoped to
+   `.creature-card` so the same variants used inside modals (HP
+   Change, etc.) keep their colour fills. */
+[data-theme="accessible"] .creature-card .action-btn--damage,
+[data-theme="accessible"] .creature-card .action-btn--heal,
+[data-theme="accessible"] .creature-card .action-btn--temp,
+[data-theme="accessible"] .creature-card .action-btn--condition,
+[data-theme="accessible"] .creature-card .action-btn--ready,
+[data-theme="accessible"] .creature-card .action-btn--readied {
+  --btn-bg: #f0f0f0;
+  --btn-fg: #000000;
+  --btn-bd: #000000;
+}
+
+/* Unified Accessible hover: every B&W action button (card row 3,
+   Encounter Controls panel, Compendium panel) flips to black-on-
+   white on hover.  Inverted-button feedback is unambiguous for
+   low-vision users and matches the "high contrast" idiom — the
+   button reads as "pressed/active" the moment focus lands. */
+[data-theme="accessible"] .creature-card .action-btn--damage:hover,
+[data-theme="accessible"] .creature-card .action-btn--heal:hover,
+[data-theme="accessible"] .creature-card .action-btn--temp:hover,
+[data-theme="accessible"] .creature-card .action-btn--condition:hover,
+[data-theme="accessible"] .creature-card .action-btn--ready:hover,
+[data-theme="accessible"] .creature-card .action-btn--readied:hover {
+  --btn-bg: #000000;
+  --btn-fg: #ffffff;
+}
+
+/* Encounter Controls panel buttons match the creature-card
+   treatment in Accessible — light gray fill, black text, black
+   border.  Every variant used in the panel
+   (`--blue`, `--green`, `--red`, `--orange`, `--dirty`) gets
+   the same override. */
+[data-theme="accessible"] .panel--controls .action-btn--blue,
+[data-theme="accessible"] .panel--controls .action-btn--green,
+[data-theme="accessible"] .panel--controls .action-btn--red,
+[data-theme="accessible"] .panel--controls .action-btn--orange {
+  --btn-bg: #f0f0f0;
+  --btn-fg: #000000;
+  --btn-bd: #000000;
+}
+
+[data-theme="accessible"] .panel--controls .action-btn--blue:hover,
+[data-theme="accessible"] .panel--controls .action-btn--green:hover,
+[data-theme="accessible"] .panel--controls .action-btn--red:hover,
+[data-theme="accessible"] .panel--controls .action-btn--orange:hover {
+  /* Token override + direct property assignment.  The variant
+     base rules (e.g. `.action-btn--blue:hover { background:
+     var(--btn-blue-bg-hover); }`) set `background` directly,
+     bypassing `--btn-bg`, so the token swap alone wasn't winning
+     the cascade.  Also setting `background` / `color` directly
+     here forces the black-fill flip regardless of which variant
+     the button carries. */
+  --btn-bg: #000000;
+  --btn-fg: #ffffff;
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Catch the unvariant `.action-btn` (Cancel button in the
+   Reset/Clear confirm flow).  Same B&W base + black-fill-on-
+   hover as the variant buttons in the Encounter Controls so the
+   whole panel reads as one B&W set.  The `:not()` selector
+   matches an action-btn that lacks any `--*` modifier class. */
+[data-theme="accessible"]
+  .panel--controls
+  .action-btn:not([class*="action-btn--"]) {
+  --btn-bg: #f0f0f0;
+  --btn-fg: #000000;
+  --btn-bd: #000000;
+}
+
+[data-theme="accessible"]
+  .panel--controls
+  .action-btn:not([class*="action-btn--"]):hover {
+  --btn-bg: #000000;
+  --btn-fg: #ffffff;
+  background: #000000;
+}
+
+/* Card row 1 condition chip — dark bold orange text on the
+   chip's yellow surface.  Orange-800 stands out against the
+   chip's faint yellow background; bold weight reinforces the
+   readability bump. */
+[data-theme="accessible"] .creature-card__row--top .condition-chip {
+  color: #9a3412;
+  font-weight: 700;
+}
+
+/* Readied-action flash.  When a creature has readied an action,
+   the `.action-btn--readied` button strobes attention three
+   ways at once: an opacity dip, an outward orange-glow ring,
+   and a subtle scale pulse.  Triple-effect because the previous
+   opacity-only pulse wasn't noticeable enough — the GM needs to
+   spot a readied creature at a glance across a busy queue.
+   Honors the global `@media (prefers-reduced-motion: reduce)`
+   block, which sets animation-duration to 0.01ms for users with
+   motion sensitivity. */
+@keyframes readied-flash {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(247, 115, 22, 0.9);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(247, 115, 22, 0);
+  }
+}
+
+.action-btn--readied {
+  animation: readied-flash 0.9s ease-in-out infinite;
+}
+
+/* Compendium-panel buttons (Open, CR Calculator) match the
+   creature-card + encounter-controls B&W treatment in
+   Accessible. */
+[data-theme="accessible"] .panel--detail .action-btn--blue {
+  --btn-bg: #f0f0f0;
+  --btn-fg: #000000;
+  --btn-bd: #000000;
+}
+
+[data-theme="accessible"] .panel--detail .action-btn--blue:hover {
+  /* `.action-btn--blue:hover` sets `background` directly via
+     `--btn-blue-bg-hover`, bypassing the `--btn-bg` token.  Set
+     both the token AND `background` / `color` here so the
+     black-fill flip wins the cascade. */
+  --btn-bg: #000000;
+  --btn-fg: #ffffff;
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Compendium-modal creature list: bump row name + stat-line meta
+   so low-vision users can scan the library at the new 18 px base
+   without each row crowding.  Row-name was 0.92rem → 1.1rem (now
+   reads as a clear primary label); row-meta (race / source / CR
+   subline) was 0.78rem → 0.95rem so it stays subordinate to the
+   name but is no longer eye-strain small. */
+[data-theme="accessible"] .compendium__row-name {
+  font-size: 1.1rem;
+}
+
+[data-theme="accessible"] .compendium__row-meta {
+  font-size: 0.95rem;
+}
+
+/* Dice roller modal — roll log entries.  Each entry packs a
+   formula (mono), an out-roll readout, an optional damage chip,
+   and an optional source chip into a single row.  All four use
+   absolute rem sizes (0.68–0.85rem); bump in Accessible so a
+   low-vision GM can scan the log without leaning in. */
+[data-theme="accessible"] .dice-history__title {
+  font-size: 1rem;
+}
+
+[data-theme="accessible"] .dice-history__entry {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .dice-history__formula {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .dice-history__rolled {
+  font-size: 1rem;
+}
+
+[data-theme="accessible"] .dice-history__damage {
+  font-size: 0.9rem;
+}
+
+[data-theme="accessible"] .dice-history__source {
+  font-size: 0.9rem;
+}
+
+/* Tooltip portal lives outside Elm's view tree (appended to
+   `<body>` by the inline-script tooltip system).  The `<html
+   data-theme="accessible">` selector still reaches it because
+   the data-theme attribute is set on `<html>` by the FOUC
+   script — descendants of `<html>` match.  Bump from the
+   default 12 px to 15 px so tooltip text is legible at low
+   vision. */
+[data-theme="accessible"] #tooltip-portal {
+  font-size: 15px;
+  padding: 6px 10px;
+}
+
 /* Trim transitions to feel snappy without being abrupt.  Doesn't
    strip them entirely — that's what `prefers-reduced-motion`
    below is for; this is the "still animates, but quickly"

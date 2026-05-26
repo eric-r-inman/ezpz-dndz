@@ -151,7 +151,7 @@ back to this, and the editor opens to it the first time.
 defaultLayout : CardLayout
 defaultLayout =
     { rows =
-        [ { widgets = [ WidgetName, WidgetArmorClass, WidgetKindBadge ]
+        [ { widgets = [ WidgetName, WidgetArmorClass ]
           , alignment = AlignSpaceBetween
           }
         , { widgets =
