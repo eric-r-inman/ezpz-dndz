@@ -74,6 +74,7 @@ meReceived result model =
             ( { model
                 | auth = AuthAuthenticated user
                 , localEncounterRaw = Nothing
+                , localCardLayoutRaw = Nothing
               }
             , Cmd.batch
                 [ Encounter.Wire.fetchEncounterCmd EncounterLoaded
@@ -313,6 +314,14 @@ logoutDone _ model =
     -- state. Going to `/` (instead of just reloading the current URL)
     -- means a sign-out from `/me` doesn't leave the URL bar pointing
     -- at the now-inaccessible account page.
+    --
+    -- `localStorage.encounter` and `localStorage.cardLayout` are
+    -- deliberately NOT cleared here: a user who had anonymous-mode
+    -- customizations before signing in should get them back on
+    -- logout instead of starting from scratch.  (The encounter
+    -- localStorage was cleared at sign-in IF a successful migration
+    -- archived it to the server, so this only matters when the
+    -- migration didn't fire / hadn't happened yet.)
     ( { model | auth = AuthAnonymous, loginUi = LoginUi.empty }
     , Nav.load "/"
     )
