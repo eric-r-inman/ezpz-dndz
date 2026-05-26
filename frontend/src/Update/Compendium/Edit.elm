@@ -94,6 +94,7 @@ handler.
 
 -}
 
+import Auth
 import Compendium
 import Compendium.Wire
 import Http
@@ -1236,11 +1237,16 @@ submit model =
                     )
 
                 Ok creature ->
-                    ( withCompendiumEdit
-                        (\u -> { u | submitting = True, submitError = Nothing })
-                        model
-                    , submitCreatureCmd ui.mode creature
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withCompendiumEdit
+                                (\u -> { u | submitting = True, submitError = Nothing })
+                                model
+                            , submitCreatureCmd ui.mode creature
+                            )
+
+                        _ ->
+                            applyLocalCreatureSubmit ui.mode creature model
 
         _ ->
             ( model, Cmd.none )
@@ -1266,6 +1272,53 @@ submitCreatureCmd mode creature =
                 , timeout = Nothing
                 , tracker = Nothing
                 }
+
+
+{-| Anonymous-mode equivalent of `submitCreatureCmd` +
+`submitResponse` combined: mutate the in-memory compendium DB
+directly (allocating a local id on CreateMode), close the modal,
+mark the library dirty, and toast. The update-loop wrapper
+notices the DB change and persists the snapshot to localStorage.
+-}
+applyLocalCreatureSubmit : EditMode -> Compendium.Creature -> Model -> ( Model, Cmd Msg )
+applyLocalCreatureSubmit mode incoming model =
+    let
+        ( finalCreature, withId ) =
+            case mode of
+                CreateMode ->
+                    let
+                        idN =
+                            model.nextLocalCreatureId
+                    in
+                    ( { incoming | id = "local-" ++ String.fromInt idN }
+                    , { model | nextLocalCreatureId = idN + 1 }
+                    )
+
+                EditExisting _ ->
+                    ( incoming, model )
+
+        compendium =
+            withId.compendium
+
+        newDb =
+            case compendium.db of
+                CompendiumUi.CompendiumDbLoaded db ->
+                    CompendiumUi.CompendiumDbLoaded
+                        (Compendium.upsert finalCreature db)
+
+                other ->
+                    other
+    in
+    { withId
+        | modal = Nothing
+        , compendium =
+            { compendium
+                | db = newDb
+                , selectedId = Just finalCreature.id
+                , compendiumDirty = True
+            }
+    }
+        |> Update.Toast.push ToastSuccess ("Saved " ++ finalCreature.name)
 
 
 submitResponse : Result Http.Error Compendium.Creature -> Model -> ( Model, Cmd Msg )
@@ -1305,23 +1358,65 @@ delete model =
         Just (ModalCompendiumEdit { mode }) ->
             case mode of
                 EditExisting { id } ->
-                    ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
-                    , Http.request
-                        { method = "DELETE"
-                        , headers = []
-                        , url = "/api/compendium/creatures/" ++ id
-                        , body = Http.emptyBody
-                        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-                        , timeout = Nothing
-                        , tracker = Nothing
-                        }
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
+                            , Http.request
+                                { method = "DELETE"
+                                , headers = []
+                                , url = "/api/compendium/creatures/" ++ id
+                                , body = Http.emptyBody
+                                , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
+                                , timeout = Nothing
+                                , tracker = Nothing
+                                }
+                            )
+
+                        _ ->
+                            applyLocalCreatureDelete id model
 
                 CreateMode ->
                     ( { model | modal = Nothing }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Anonymous-mode equivalent of the DELETE + `deleteResponse`
+sequence: drop the creature from the in-memory DB, clear it from
+any selections, close the modal, toast. The update-loop wrapper
+persists the new snapshot.
+-}
+applyLocalCreatureDelete : String -> Model -> ( Model, Cmd Msg )
+applyLocalCreatureDelete deletedId model =
+    let
+        compendium =
+            model.compendium
+
+        newDb =
+            case compendium.db of
+                CompendiumUi.CompendiumDbLoaded db ->
+                    CompendiumUi.CompendiumDbLoaded
+                        (Compendium.remove deletedId db)
+
+                other ->
+                    other
+
+        clearedSelection =
+            { compendium
+                | db = newDb
+                , selectedId =
+                    if compendium.selectedId == Just deletedId then
+                        Nothing
+
+                    else
+                        compendium.selectedId
+                , selectedIds = Set.remove deletedId compendium.selectedIds
+                , compendiumDirty = True
+            }
+    in
+    { model | modal = Nothing, compendium = clearedSelection }
+        |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
 deleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )

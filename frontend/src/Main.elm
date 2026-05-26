@@ -11,6 +11,7 @@ import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dice
+import Dict
 import Effects
 import Encounter
     exposing
@@ -380,6 +381,10 @@ themeFromFlag raw =
     session's roll history (mirrors the `/api/dice/history`
     response shape). Adopted on anonymous boot, discarded on
     authenticated boot.
+  - `localCompendium` — one-shot snapshot of the anonymous
+    compendium (creatures + groups + next-local-id counter).
+    When present the anonymous boot branch decodes and adopts
+    it in place of fetching the bundled JSON.
 
 -}
 type alias Flags =
@@ -388,6 +393,7 @@ type alias Flags =
     , localCardLayout : Maybe Decode.Value
     , migrationDateLabel : String
     , localDiceHistory : Maybe Decode.Value
+    , localCompendium : Maybe Decode.Value
     }
 
 
@@ -439,6 +445,8 @@ init flags url key =
       , localCardLayoutRaw = flags.localCardLayout
       , migrationDateLabel = flags.migrationDateLabel
       , localDiceHistoryRaw = flags.localDiceHistory
+      , localCompendiumRaw = flags.localCompendium
+      , nextLocalCreatureId = 1
       }
       -- The auth-dependent data fetches (encounter, compendium,
       -- groups, card layouts, dice history) all live in
@@ -505,8 +513,23 @@ update msg model =
 
             else
                 Cmd.none
+
+        compendiumCmd =
+            if shouldPersistAfter msg && compendiumChanged model next then
+                persistCompendiumFor next
+
+            else
+                Cmd.none
     in
-    ( next, Cmd.batch [ innerCmd, encounterCmd, cardLayoutCmd, diceHistoryCmd ] )
+    ( next
+    , Cmd.batch
+        [ innerCmd
+        , encounterCmd
+        , cardLayoutCmd
+        , diceHistoryCmd
+        , compendiumCmd
+        ]
+    )
 
 
 persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
@@ -573,6 +596,50 @@ persistDiceHistoryFor model =
             Cmd.none
 
 
+{-| Did the compendium DB change in a way that should be
+persisted? Compare the loaded creature list and the per-user
+groups dict; transient CompendiumDbLoading / CompendiumDbFailed
+transitions don't trigger a write.
+-}
+compendiumChanged : Model -> Model -> Bool
+compendiumChanged before after =
+    loadedCreatures before.compendium.db
+        /= loadedCreatures after.compendium.db
+        || before.compendium.groups
+        /= after.compendium.groups
+
+
+loadedCreatures : CompendiumDb -> List Compendium.Creature
+loadedCreatures db =
+    case db of
+        CompendiumDbLoaded inner ->
+            Compendium.toList inner
+
+        _ ->
+            []
+
+
+{-| Persist the full compendium snapshot (creatures + groups +
+next-local-id counter) to `localStorage` when anonymous.
+Authenticated users persist per-mutation via the existing
+`/api/compendium/*` endpoints.
+-}
+persistCompendiumFor : Model -> Cmd Msg
+persistCompendiumFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCompendium
+                (Compendium.Wire.encodeLocalCompendiumSnapshot
+                    { creatures = loadedCreatures model.compendium.db
+                    , groups = Dict.values model.compendium.groups
+                    , nextLocalId = model.nextLocalCreatureId
+                    }
+                )
+
+        _ ->
+            Cmd.none
+
+
 shouldPersistAfter : Msg -> Bool
 shouldPersistAfter msg =
     case msg of
@@ -597,6 +664,9 @@ shouldPersistAfter msg =
             False
 
         LocalCardLayoutMigrated _ _ ->
+            False
+
+        LocalCompendiumMigrated _ _ ->
             False
 
         _ ->
@@ -1741,6 +1811,9 @@ updateInner msg model =
 
         LocalCardLayoutMigrated name result ->
             Update.Auth.localCardLayoutMigrated name result model
+
+        LocalCompendiumMigrated count result ->
+            Update.Auth.localCompendiumMigrated count result model
 
         AccountDisplayNameChanged raw ->
             Update.Account.displayNameChanged raw model

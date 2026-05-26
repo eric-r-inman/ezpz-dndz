@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , clearLocalCardLayout, clearLocalEncounter, persistLocalCardLayout, persistLocalDiceHistory
+    , clearLocalCardLayout, clearLocalCompendium, clearLocalEncounter, persistLocalCardLayout, persistLocalCompendium, persistLocalDiceHistory
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -82,3 +82,24 @@ the anonymous card layout into a named server save, mirroring
 `clearLocalEncounter`'s role for the encounter.
 -}
 port clearLocalCardLayout : () -> Cmd msg
+
+
+{-| Persist the anonymous compendium snapshot (creatures + groups
+
+  - next-local-id counter) into `localStorage` on every CRUD edit
+    in an anonymous session. The shape is
+
+    { "creatures": [...], "groups": [...], "next\_local\_id": N }
+
+mirroring the server's export wire format with one extra field for
+the local-id counter so a reload doesn't reuse ids.
+
+-}
+port persistLocalCompendium : E.Value -> Cmd msg
+
+
+{-| Drop the locally-persisted compendium after a successful
+login-time migration. Same role as `clearLocalEncounter` /
+`clearLocalCardLayout`.
+-}
+port clearLocalCompendium : () -> Cmd msg

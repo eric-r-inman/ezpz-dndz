@@ -253,42 +253,34 @@ store + modal].
 actionsBar : Auth.AuthState -> CompendiumUi -> Html Msg
 actionsBar auth ui =
     div [ class "compendium__actions-bar" ]
-        [ newButton auth
-        , pasteButton auth
-        , createGroupButton auth
+        [ newButton
+        , pasteButton
+        , createGroupButton
         , if Set.isEmpty ui.selectedIds then
             text ""
 
           else
-            createGroupFromSelectedButton auth ui
+            createGroupFromSelectedButton ui
         , bulkButtons auth ui
         ]
 
 
-createGroupButton : Auth.AuthState -> Html Msg
-createGroupButton auth =
+createGroupButton : Html Msg
+createGroupButton =
     button
         [ class "action-btn action-btn--green"
-        , onClick (AuthGate.clickWhenAuthed auth CompendiumGroupCreate)
-        , Tooltips.attr
-            (AuthGate.tooltipWhenAuthed auth
-                Tooltips.compendiumCreateGroup
-                "Sign in to create encounter groups in your compendium."
-            )
+        , onClick CompendiumGroupCreate
+        , Tooltips.attr Tooltips.compendiumCreateGroup
         ]
         [ text "👥 Create Group" ]
 
 
-createGroupFromSelectedButton : Auth.AuthState -> CompendiumUi -> Html Msg
-createGroupFromSelectedButton auth ui =
+createGroupFromSelectedButton : CompendiumUi -> Html Msg
+createGroupFromSelectedButton ui =
     button
         [ class "action-btn action-btn--green"
-        , onClick (AuthGate.clickWhenAuthed auth CompendiumGroupCreateFromSelected)
-        , Tooltips.attr
-            (AuthGate.tooltipWhenAuthed auth
-                Tooltips.compendiumCreateGroupFromSelected
-                "Sign in to create encounter groups in your compendium."
-            )
+        , onClick CompendiumGroupCreateFromSelected
+        , Tooltips.attr Tooltips.compendiumCreateGroupFromSelected
         ]
         [ text
             ("👥 Create Group w/Selected ("
@@ -1009,8 +1001,7 @@ detail auth ui visible encounterIds =
 
         ( Nothing, Just creature ) ->
             div [ class "compendium__detail" ]
-                [ actionBar auth
-                    creature
+                [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
                 , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
@@ -1130,8 +1121,8 @@ button appears next to "+ Add to Encounter" to bulk-add every
 checked creature in a single batched roll.
 
 -}
-actionBar : Auth.AuthState -> Compendium.Creature -> Int -> Set String -> Html Msg
-actionBar auth creature inEncounter selectedIds =
+actionBar : Compendium.Creature -> Int -> Set String -> Html Msg
+actionBar creature inEncounter selectedIds =
     let
         badgeClass =
             if inEncounter > 0 then
@@ -1175,65 +1166,42 @@ actionBar auth creature inEncounter selectedIds =
         , addSelectedButton
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
-            , onClick (AuthGate.clickWhenAuthed auth CompendiumEditExisting)
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    Tooltips.compendiumEdit
-                    "Sign in to edit creatures in your compendium."
-                )
+            , onClick CompendiumEditExisting
+            , Tooltips.attr Tooltips.compendiumEdit
             ]
             [ text "✏️ Edit" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
-            , onClick (AuthGate.clickWhenAuthed auth CompendiumEditDuplicate)
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    Tooltips.compendiumDuplicate
-                    "Sign in to duplicate creatures in your compendium."
-                )
+            , onClick CompendiumEditDuplicate
+            , Tooltips.attr Tooltips.compendiumDuplicate
             ]
             [ text "📋 Duplicate" ]
         , button
             [ class "action-btn action-btn--red compendium__delete-btn"
-            , onClick
-                (AuthGate.clickWhenAuthed auth
-                    (CompendiumDeleteFromBrowser creature.id creature.name)
-                )
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    Tooltips.compendiumDelete
-                    "Sign in to delete creatures from your compendium."
-                )
+            , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
+            , Tooltips.attr Tooltips.compendiumDelete
             , attribute "aria-label" "Delete creature"
             ]
             [ text "🗑" ]
         ]
 
 
-newButton : Auth.AuthState -> Html Msg
-newButton auth =
+newButton : Html Msg
+newButton =
     button
         [ class "action-btn action-btn--green compendium__new-btn"
-        , onClick (AuthGate.clickWhenAuthed auth CompendiumEditNew)
-        , Tooltips.attr
-            (AuthGate.tooltipWhenAuthed auth
-                Tooltips.compendiumNewCreature
-                "Sign in to add creatures to your compendium."
-            )
+        , onClick CompendiumEditNew
+        , Tooltips.attr Tooltips.compendiumNewCreature
         ]
         [ text "➕ New Creature" ]
 
 
-pasteButton : Auth.AuthState -> Html Msg
-pasteButton auth =
+pasteButton : Html Msg
+pasteButton =
     button
         [ class "action-btn action-btn--blue"
-        , onClick (AuthGate.clickWhenAuthed auth CompendiumPasteOpen)
-        , Tooltips.attr
-            (AuthGate.tooltipWhenAuthed auth
-                Tooltips.compendiumPasteStatBlock
-                "Sign in to paste stat blocks into your compendium."
-            )
+        , onClick CompendiumPasteOpen
+        , Tooltips.attr Tooltips.compendiumPasteStatBlock
         ]
         [ text "📋 Paste Stat Block" ]
 

@@ -6,7 +6,7 @@ module Compendium exposing
     , Spellcasting, SpellSlotLevel, InnatePerDay, CustomSection
     , Habitat(..), allHabitats, habitatLabel, habitatToWire, habitatFromWire, isPlanarHabitat
     , Treasure(..), allTreasures, treasureLabel, treasureToWire, treasureFromWire
-    , Db, fromList, toList, count
+    , Db, fromList, toList, count, upsert, remove
     , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
     , draftToInstance
@@ -35,7 +35,7 @@ lives in `View/` modules and consumes this domain.
 
 # Database
 
-@docs Db, fromList, toList, count
+@docs Db, fromList, toList, count, upsert, remove
 
 
 # Lookup / filter / sort
@@ -685,6 +685,47 @@ toList (Db cs) =
 count : Db -> Int
 count (Db cs) =
     List.length cs
+
+
+{-| Insert-or-replace a creature by id. Used by anonymous-mode
+local CRUD: every create / edit submits through here so the
+in-memory store is the source of truth that the localStorage
+persistence layer mirrors.
+
+If a creature with the same id already exists it's replaced in
+place (preserving list order); otherwise the new creature is
+appended.
+
+-}
+upsert : Creature -> Db -> Db
+upsert creature (Db cs) =
+    let
+        replaced =
+            List.map
+                (\c ->
+                    if c.id == creature.id then
+                        creature
+
+                    else
+                        c
+                )
+                cs
+    in
+    if List.any (\c -> c.id == creature.id) cs then
+        Db replaced
+
+    else
+        Db (cs ++ [ creature ])
+
+
+{-| Remove a creature by id. No-op if the id isn't found.
+Anonymous-mode delete path uses this; the authenticated path goes
+through the server and the response handler does the equivalent
+in-memory mutation.
+-}
+remove : String -> Db -> Db
+remove id (Db cs) =
+    Db (List.filter (\c -> c.id /= id) cs)
 
 
 find : String -> Db -> Maybe Creature

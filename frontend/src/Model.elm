@@ -461,6 +461,18 @@ type alias Model =
     -- localStorage.  Adopted on the anonymous boot branch and
     -- discarded on the authenticated branch (server history wins).
     , localDiceHistoryRaw : Maybe Decode.Value
+
+    -- One-shot stash for the anonymous compendium snapshot.  If
+    -- present, the anonymous boot branch decodes it and uses it
+    -- in place of the bundled-creatures fetch; if absent we fall
+    -- back to `/bundled-creatures.json`.
+    , localCompendiumRaw : Maybe Decode.Value
+
+    -- Monotonic counter handing out ids for anonymously-created
+    -- creatures.  Persisted to localStorage as part of the
+    -- compendium snapshot so reloads don't reuse ids.  Server
+    -- creatures use full UUIDs; anonymous use `"local-N"`.
+    , nextLocalCreatureId : Int
     }
 
 

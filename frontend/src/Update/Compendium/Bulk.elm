@@ -20,6 +20,7 @@ queued; `pendingConfirm` dispatches to the right Cmd.
 
 -}
 
+import Auth
 import Compendium
 import Compendium.Group exposing (Group)
 import Compendium.GroupWire
@@ -145,28 +146,144 @@ pendingConfirm : Model -> ( Model, Cmd Msg )
 pendingConfirm model =
     case model.compendium.pending of
         Just PendingReset ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , resetCmd
-            )
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withCompendium
+                        (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                        model
+                    , resetCmd
+                    )
+
+                _ ->
+                    applyLocalReset model
 
         Just (PendingImport creatures groups _) ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , importCmd creatures groups
-            )
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withCompendium
+                        (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                        model
+                    , importCmd creatures groups
+                    )
+
+                _ ->
+                    applyLocalImport creatures groups model
 
         Just (PendingDelete id _) ->
-            ( withCompendium
-                (\ui -> { ui | bulkBusy = True, pending = Nothing })
-                model
-            , deleteCmd id
-            )
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withCompendium
+                        (\ui -> { ui | bulkBusy = True, pending = Nothing })
+                        model
+                    , deleteCmd id
+                    )
+
+                _ ->
+                    applyLocalCompendiumDelete id model
 
         Nothing ->
             ( model, Cmd.none )
+
+
+{-| Anonymous-mode equivalent of the import wire round-trip:
+replace the in-memory creatures + groups, mark not-dirty (the
+import IS the saved baseline), clear selections, toast. Update
+loop persists the new snapshot to localStorage.
+-}
+applyLocalImport : List Compendium.Creature -> List Group -> Model -> ( Model, Cmd Msg )
+applyLocalImport creatures groups model =
+    let
+        compendium =
+            model.compendium
+
+        groupsDict =
+            List.foldl (\g acc -> Dict.insert g.id g acc) Dict.empty groups
+    in
+    { model
+        | compendium =
+            { compendium
+                | db = CompendiumDbLoaded (Compendium.fromList creatures)
+                , groups = groupsDict
+                , bulkBusy = False
+                , pending = Nothing
+                , selectedId = Nothing
+                , selectedIds = Set.empty
+                , bulkMenu = Nothing
+                , compendiumDirty = False
+            }
+    }
+        |> Update.Toast.push ToastSuccess
+            ("Imported "
+                ++ String.fromInt (List.length creatures)
+                ++ " creatures"
+            )
+
+
+{-| Anonymous-mode equivalent of the reset wire round-trip: drop
+the local snapshot back to the bundled defaults. We fire
+`fetchAllPublic` to re-read the bundled JSON since the in-memory
+list may have diverged considerably from the bundled set; the
+response handler installs the fresh list and we mark the library
+not-dirty.
+-}
+applyLocalReset : Model -> ( Model, Cmd Msg )
+applyLocalReset model =
+    let
+        compendium =
+            model.compendium
+    in
+    ( { model
+        | compendium =
+            { compendium
+                | bulkBusy = False
+                , pending = Nothing
+                , selectedId = Nothing
+                , selectedIds = Set.empty
+                , bulkMenu = Nothing
+                , compendiumDirty = False
+                , groups = Dict.empty
+            }
+        , nextLocalCreatureId = 1
+      }
+    , Compendium.Wire.fetchAllPublic CompendiumLoaded
+    )
+
+
+{-| Anonymous-mode equivalent of the single-row delete wire round-
+trip. Drop the creature from the in-memory DB, clear it from
+selections, toast. The update wrapper persists the snapshot.
+-}
+applyLocalCompendiumDelete : String -> Model -> ( Model, Cmd Msg )
+applyLocalCompendiumDelete id model =
+    let
+        compendium =
+            model.compendium
+
+        newDb =
+            case compendium.db of
+                CompendiumDbLoaded db ->
+                    CompendiumDbLoaded (Compendium.remove id db)
+
+                other ->
+                    other
+    in
+    { model
+        | compendium =
+            { compendium
+                | db = newDb
+                , bulkBusy = False
+                , pending = Nothing
+                , selectedId =
+                    if compendium.selectedId == Just id then
+                        Nothing
+
+                    else
+                        compendium.selectedId
+                , selectedIds = Set.remove id compendium.selectedIds
+                , compendiumDirty = True
+            }
+    }
+        |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
 deleteCmd : String -> Cmd Msg
@@ -250,11 +367,16 @@ fires.
 -}
 clearAll : Model -> ( Model, Cmd Msg )
 clearAll model =
-    ( withCompendium
-        (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
-        model
-    , clearCmd []
-    )
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( withCompendium
+                (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                model
+            , clearCmd []
+            )
+
+        _ ->
+            applyLocalClear [] model
 
 
 {-| Replace the compendium with the kept set — every creature
@@ -272,11 +394,16 @@ clearSelected model =
                         |> List.filter
                             (\c -> not (Set.member c.id model.compendium.selectedIds))
             in
-            ( withCompendium
-                (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
-                model
-            , clearCmd kept
-            )
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withCompendium
+                        (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                        model
+                    , clearCmd kept
+                    )
+
+                _ ->
+                    applyLocalClear kept model
 
         _ ->
             ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
@@ -299,24 +426,60 @@ deleteSelected model =
                         |> List.filter
                             (\c -> not (Set.member c.id model.compendium.selectedIds))
             in
-            ( withCompendium
-                (\ui ->
-                    { ui
-                        | bulkMenu = Nothing
-                        , bulkBusy = True
-                        , pending = Nothing
-                        , bulkError = Nothing
-                    }
-                )
-                model
-            , clearCmd kept
-            )
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withCompendium
+                        (\ui ->
+                            { ui
+                                | bulkMenu = Nothing
+                                , bulkBusy = True
+                                , pending = Nothing
+                                , bulkError = Nothing
+                            }
+                        )
+                        model
+                    , clearCmd kept
+                    )
+
+                _ ->
+                    applyLocalClear kept model
 
         _ ->
             ( withCompendium
                 (\ui -> { ui | bulkMenu = Nothing, pending = Nothing })
                 model
             , Cmd.none
+            )
+
+
+{-| Anonymous-mode equivalent of `clearCmd` + `clearResponse`:
+keep only the supplied creatures (which the caller has already
+filtered down). Library stays marked dirty since the GM just
+discarded creatures.
+-}
+applyLocalClear : List Compendium.Creature -> Model -> ( Model, Cmd Msg )
+applyLocalClear kept model =
+    let
+        compendium =
+            model.compendium
+    in
+    { model
+        | compendium =
+            { compendium
+                | db = CompendiumDbLoaded (Compendium.fromList kept)
+                , bulkBusy = False
+                , pending = Nothing
+                , selectedId = Nothing
+                , selectedIds = Set.empty
+                , bulkMenu = Nothing
+                , bulkError = Nothing
+                , compendiumDirty = True
+            }
+    }
+        |> Update.Toast.push ToastSuccess
+            ("Library now has "
+                ++ String.fromInt (List.length kept)
+                ++ " creatures"
             )
 
 

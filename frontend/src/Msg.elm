@@ -793,6 +793,10 @@ type Msg
     | LocalEncounterMigrated String (Result Http.Error ())
       -- Same shape for the card-layout migration response.
     | LocalCardLayoutMigrated String (Result Http.Error Card.Wire.SavedLayout)
+      -- Compendium migration response.  Int carries the count of
+      -- creatures that landed server-side so the toast can be
+      -- specific.
+    | LocalCompendiumMigrated Int (Result Http.Error ())
       -- CR Calculator modal.
     | CrCalculatorOpen
     | CrCalculatorClose

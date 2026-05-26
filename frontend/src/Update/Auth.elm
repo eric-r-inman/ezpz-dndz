@@ -2,6 +2,7 @@ module Update.Auth exposing
     ( displayNameChanged
     , emailChanged
     , localCardLayoutMigrated
+    , localCompendiumMigrated
     , localEncounterMigrated
     , logout
     , logoutDone
@@ -28,6 +29,7 @@ the wire shape is identical (both POST a body and get back a
 import Auth exposing (AuthState(..), LoginMode(..))
 import Browser.Navigation as Nav
 import Card.Wire as CardWire
+import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dice
@@ -39,6 +41,7 @@ import Json.Decode as Decode
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ports
+import Ui.Compendium as CompendiumUi
 import Ui.Login as LoginUi
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
@@ -77,12 +80,16 @@ meReceived result model =
                     migrateLocalCardLayoutCmd
                         model.localCardLayoutRaw
                         model.migrationDateLabel
+
+                compendiumMigrationCmd =
+                    migrateLocalCompendiumCmd model.localCompendiumRaw
             in
             ( { model
                 | auth = AuthAuthenticated user
                 , localEncounterRaw = Nothing
                 , localCardLayoutRaw = Nothing
                 , localDiceHistoryRaw = Nothing
+                , localCompendiumRaw = Nothing
               }
             , Cmd.batch
                 [ Encounter.Wire.fetchEncounterCmd EncounterLoaded
@@ -92,6 +99,7 @@ meReceived result model =
                 , Effects.fetchDiceHistory
                 , encounterMigrationCmd
                 , cardLayoutMigrationCmd
+                , compendiumMigrationCmd
                 ]
             )
 
@@ -105,13 +113,17 @@ meReceived result model =
                         , localEncounterRaw = Nothing
                         , localCardLayoutRaw = Nothing
                         , localDiceHistoryRaw = Nothing
+                        , localCompendiumRaw = Nothing
                     }
 
                 withDice =
                     applyLocalDiceHistory model.localDiceHistoryRaw withEncounter
+
+                ( withCompendium, compendiumBootCmd ) =
+                    applyLocalCompendium model.localCompendiumRaw withDice
             in
-            ( applyLocalCardLayout model.localCardLayoutRaw withDice
-            , Compendium.Wire.fetchAllPublic CompendiumLoaded
+            ( applyLocalCardLayout model.localCardLayoutRaw withCompendium
+            , compendiumBootCmd
             )
 
 
@@ -191,6 +203,50 @@ applyLocalDiceHistory raw model =
             model
 
 
+{-| Apply the local compendium snapshot to the anonymous boot
+state. Returns `(model, Cmd)`:
+
+  - Snapshot present + decodes → install the creatures into
+    `model.compendium.db`, restore the next-id counter, and the
+    Cmd is `Cmd.none` (the local snapshot is the truth).
+  - Snapshot absent or undecodable → leave the compendium in its
+    initial state and fire `fetchAllPublic` so the GM sees the
+    bundled defaults.
+
+-}
+applyLocalCompendium : Maybe Decode.Value -> Model -> ( Model, Cmd Msg )
+applyLocalCompendium raw model =
+    let
+        fallback =
+            ( model, Compendium.Wire.fetchAllPublic CompendiumLoaded )
+    in
+    case raw of
+        Just value ->
+            case Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot value of
+                Ok snap ->
+                    let
+                        compendium =
+                            model.compendium
+                    in
+                    ( { model
+                        | compendium =
+                            { compendium
+                                | db =
+                                    CompendiumUi.CompendiumDbLoaded
+                                        (Compendium.fromList snap.creatures)
+                            }
+                        , nextLocalCreatureId = snap.nextLocalId
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    fallback
+
+        Nothing ->
+            fallback
+
+
 {-| Build a Cmd that PUTs the locally-stashed encounter into a
 named server save slot if and only if the local snapshot:
 
@@ -227,6 +283,39 @@ migrateLocalEncounterCmd raw dateLabel =
                             (LocalEncounterMigrated name)
                             { name = name, overwrite = True }
                             encounter
+
+                Err _ ->
+                    Cmd.none
+
+        Nothing ->
+            Cmd.none
+
+
+{-| Replace the user's server compendium with the locally-stored
+list when the anonymous session had any changes. Uses the bare-
+array `POST /api/compendium/import` body so the server keeps the
+caller's groups intact — groups migration is handled separately
+in Round 7's flow.
+
+For brand-new accounts (just signed up after an anonymous trial)
+this populates the user's compendium with whatever they were
+working with anonymously. For pre-existing accounts who happened
+to use anonymous mode on this device first, this DOES replace
+their server compendium with the local one — that's the
+documented behavior of the import endpoint; users who want both
+can Export their server data first.
+
+-}
+migrateLocalCompendiumCmd : Maybe Decode.Value -> Cmd Msg
+migrateLocalCompendiumCmd raw =
+    case raw of
+        Just value ->
+            case Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot value of
+                Ok snap ->
+                    Compendium.Wire.importCmd
+                        (LocalCompendiumMigrated (List.length snap.creatures))
+                        snap.creatures
+                        []
 
                 Err _ ->
                     Cmd.none
@@ -413,6 +502,40 @@ localCardLayoutMigrated name result model =
             Update.Toast.push
                 ToastError
                 "Couldn't archive your pre-sign-in card layout on the server. It's still in this browser."
+                model
+
+
+{-| Compendium analogue of the migration handlers above. On
+success → clear the localStorage compendium snapshot, toast with
+the imported count, and re-fetch the server's list to re-sync
+the in-memory model. On failure → toast; local stays.
+-}
+localCompendiumMigrated : Int -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
+localCompendiumMigrated count result model =
+    case result of
+        Ok () ->
+            let
+                ( withToast, toastCmd ) =
+                    Update.Toast.push
+                        ToastSuccess
+                        ("Imported "
+                            ++ String.fromInt count
+                            ++ " creatures from your pre-sign-in session."
+                        )
+                        model
+            in
+            ( withToast
+            , Cmd.batch
+                [ toastCmd
+                , Ports.clearLocalCompendium ()
+                , Compendium.Wire.fetchAll CompendiumLoaded
+                ]
+            )
+
+        Err _ ->
+            Update.Toast.push
+                ToastError
+                "Couldn't import your pre-sign-in compendium changes. They're still in this browser."
                 model
 
 

@@ -108,6 +108,18 @@
         }
       } catch (_) {}
 
+      // Anonymous-mode compendium snapshot
+      // ({ creatures, groups, next_local_id }).  Adopted on the
+      // anonymous boot branch in place of the bundled-creatures
+      // fetch when present.
+      var localCompendium = null;
+      try {
+        var compRaw = localStorage.getItem("compendium");
+        if (compRaw) {
+          localCompendium = JSON.parse(compRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -116,6 +128,7 @@
           localCardLayout: localCardLayout,
           migrationDateLabel: migrationDateLabel,
           localDiceHistory: localDiceHistory,
+          localCompendium: localCompendium,
         },
       });
 
@@ -176,6 +189,25 @@
         app.ports.clearLocalCardLayout.subscribe(function () {
           try {
             localStorage.removeItem("cardLayout");
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous compendium snapshot writer.
+      if (app.ports && app.ports.persistLocalCompendium) {
+        app.ports.persistLocalCompendium.subscribe(function (value) {
+          try {
+            localStorage.setItem("compendium", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous compendium snapshot eraser — fired after a
+      // successful sign-in migration to the server.
+      if (app.ports && app.ports.clearLocalCompendium) {
+        app.ports.clearLocalCompendium.subscribe(function () {
+          try {
+            localStorage.removeItem("compendium");
           } catch (_) {}
         });
       }
