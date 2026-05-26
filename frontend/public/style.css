@@ -702,15 +702,17 @@ body {
   background: var(--color-surface-2);
 }
 
-/* Login / register screen — full-viewport overlay shown when
-   the boot probe to /api/auth/me reports 401.  The single panel
-   is centered horizontally and vertically; the form is plain
-   stacked rows. */
+/* Login / register screen — rendered for the /login route.
+   Force `data-theme="dark"` on the wrapper so the panel is dark
+   regardless of the user's selected theme; the AppBar above
+   keeps the chosen theme.  `min-height` subtracts the AppBar
+   height so the centered panel fits the visible viewport
+   without forcing a scroll. */
 .auth-login {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--header-height));
   padding: 24px;
   background: var(--color-bg);
 }
@@ -793,6 +795,28 @@ body {
 .auth-login__submit:disabled {
   opacity: 0.6;
   cursor: progress;
+}
+
+/* Secondary "Cancel" link that returns the user to /.  Styled as
+   a quiet outlined button so it reads as cancel-not-submit; the
+   explicit `text-decoration: none` overrides the accessible-theme
+   underline-on-every-link rule that would otherwise leak in
+   through the parent `data-theme` chain. */
+.auth-login__cancel {
+  appearance: none;
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font: inherit;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-login__cancel:hover {
+  background: var(--color-surface-2);
 }
 
 .auth-login__error {
