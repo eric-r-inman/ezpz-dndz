@@ -92,6 +92,9 @@
           # Diagram tooling for architecture / data-model visuals
           # (used by docs in ./docs/diagrams).
           pkgs.d2
+          # PDF tooling (pdftoppm + pdftotext) — used by Claude's
+          # Read tool to render PDF pages for SRD / rulebook audits.
+          pkgs.poppler-utils
           changelog-roller.packages.${system}.default
         ];
         shellHook = ''
