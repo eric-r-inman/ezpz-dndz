@@ -601,12 +601,13 @@ html:has(.app-shell[data-theme="accessible"]) {
 
 /* Rail icon-buttons on creature cards (← far-left ↑/↓/→ + far-
    right ×/inactive/duplicate).  Bump from 28×28 / 0.95rem to
-   36×36 / 1.25rem so the small icons hit the WCAG 2.5.5 touch-
-   target zone and read easily under low vision. */
+   44×44 / 1.6rem under Accessible so the small icons land well
+   inside the WCAG 2.5.5 touch-target zone and read easily under
+   low vision. */
 [data-theme="accessible"] .icon-btn {
-  width: 36px;
-  height: 36px;
-  font-size: 1.25rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.6rem;
 }
 
 /* Creature-card rows 1 and 2 — bump every text node so HP, AC,
@@ -851,6 +852,77 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card__row--top .condition-chip {
   color: #9a3412;
   font-weight: 700;
+}
+
+/* Title-bar "Difficulty" button — slightly larger than the
+   default 0.82rem so it doesn't shrink relative to the bumped
+   bar text under Accessible.  Stays inside the .encounter-bar
+   colour-uniformity rule (black text on the surface tone). */
+[data-theme="accessible"] .encounter-bar__difficulty {
+  font-size: 1rem;
+}
+
+/* Title-bar conditions list — the plain `.encounter-bar__cond`
+   spans (one per active condition, pipe-separated) get bold
+   weight under Accessible so the at-a-glance status reads
+   clearly alongside the other bumped bar text.  Colour stays
+   on the bar-wide `var(--color-text)` (pure black for
+   Accessible) per the rule near line 588. */
+[data-theme="accessible"] .encounter-bar__cond {
+  font-weight: 700;
+}
+
+/* Bump the body text of every modal opened off the creature
+   card — Damage / Heal / Temp / Condition / Memo / Timer /
+   Initiative / Ability Save / Note / Duplicate / etc. — so
+   low-vision GMs read modal content at the same scale as the
+   rest of the Accessible UI.  Action buttons inside modals
+   keep their shared .action-btn sizing via the `:not()` chain
+   (matches the CR Calculator override at line 745).  The
+   title bumps separately so headings still read larger than
+   the body. */
+[data-theme="accessible"] .modal,
+[data-theme="accessible"] .modal *:not(.action-btn):not(.action-btn *) {
+  font-size: 1.1rem;
+}
+
+[data-theme="accessible"] .modal__title {
+  font-size: 1.25rem;
+}
+
+/* Add-Condition modal — the condition picker grid uses a fixed
+   120px column minimum, which clips longer labels ("Incapacitated",
+   "Concentration", etc.) once the Accessible modal-body bump
+   pushes the label font to 1.1rem.  Widen the columns and the
+   badge padding so every condition name reads in full.  Also
+   widen the modal frame itself so the bigger grid fits without
+   forcing a horizontal scroll. */
+[data-theme="accessible"] .modal--condition {
+  --modal-max-w: 780px;
+}
+
+[data-theme="accessible"] .modal--condition .cond-radio-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+
+[data-theme="accessible"] .modal--condition .cond-radio {
+  padding: 6px 12px;
+}
+
+/* Dark theme — card row 1 condition chip text matches the
+   brighter purple-400 used by `.encounter-bar__cond` in the
+   title bar (see View/EncounterBar.elm:conditionsText) so the
+   card chip and the title-bar mirror read as the same colour.
+   The base `.condition-chip` rule resolves to `--color-condition`
+   (`#9355e0`, purple-600) which reads as flat on dark surfaces;
+   `#c084fc` pops against the dark card background the way the
+   title-bar text does against the bar.  Scoped to `data-theme=
+   "dark"` only — explicit Dark was what the user asked about;
+   Auto-dark + Modern keep their per-theme `--color-condition`
+   resolution. */
+[data-theme="dark"] .creature-card__row--top .condition-chip {
+  color: #c084fc;
 }
 
 /* Readied-action flash.  When a creature has readied an action,
@@ -3851,6 +3923,18 @@ body {
   color: var(--color-text);
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* Active-creature bloodied marker — mirrors the row-2 `.bloodied`
+   drop on the card.  Inline-flex baseline so the glyph sits on
+   the same line as the active creature name; small margin so it
+   doesn't crowd the name on the left or the HP readout on the
+   right. */
+.encounter-bar__bloodied {
+  font-size: 0.95rem;
+  line-height: 1;
+  margin: 0 2px 0 4px;
+  cursor: help;
 }
 
 .encounter-bar__sep {

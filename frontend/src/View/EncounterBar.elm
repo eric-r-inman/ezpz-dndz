@@ -57,6 +57,7 @@ view enc savedAs db xpScope xpFilterOpen =
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , span [ class "encounter-bar__sep" ] [ text "|" ]
             , span [ class "encounter-bar__active" ] [ text activeName ]
+            , bloodiedMarker active
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
             , ac active
@@ -345,6 +346,31 @@ stateIcon glyph label =
         , attribute "aria-label" label
         ]
         [ text glyph ]
+
+
+{-| Bloodied drop next to the active creature's name. Mirrors
+the row-2 `.bloodied` marker on the card so the GM can see the
+"below half HP" signal in the title bar without finding the
+card in the queue. Hidden when nothing is active, or when the
+active creature isn't bloodied.
+-}
+bloodiedMarker : Maybe Creature -> Html Msg
+bloodiedMarker active =
+    case active of
+        Just c ->
+            if c.bloodied then
+                span
+                    [ class "encounter-bar__bloodied"
+                    , Tooltips.attr Tooltips.bloodied
+                    , attribute "aria-label" "Bloodied"
+                    ]
+                    [ text "🩸" ]
+
+            else
+                text ""
+
+        Nothing ->
+            text ""
 
 
 {-| Active-creature short-note slot in the title bar. Mirrors
