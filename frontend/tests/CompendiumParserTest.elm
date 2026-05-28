@@ -22,6 +22,7 @@ suite =
         , minimalSuite
         , blueDragonSuite
         , standaloneInitiativeSuite
+        , srd521DualSizeSuite
         , scanLairDice
         , empties
         , habitatSuite
@@ -899,6 +900,79 @@ treasureSuite =
                                 , Compendium.Relics
                                 ]
                     )
+        ]
+
+
+
+-- ── SRD 5.2.1 dual-size type line ────────────────────────────────────────────
+
+
+srd521DualSizeSuite : Test
+srd521DualSizeSuite =
+    let
+        input =
+            String.join "\n"
+                [ "Bandit"
+                , "Medium or Small Humanoid, Neutral"
+                , "AC 12"
+                , "HP 11 (2d8 + 2)"
+                , "Speed 30 ft."
+                , "Str 11 +0 +0 Dex 12 +1 +1 Con 12 +1 +1"
+                , "Int 10 +0 +0 Wis 10 +0 +0 Cha 10 +0 +0"
+                , "Gear Leather Armor, Scimitar"
+                , "Senses Passive Perception 10"
+                , "Languages Common"
+                , "CR 1/8 (XP 25; PB +2)"
+                , "Actions"
+                , "Scimitar. Melee Attack Roll: +3, reach 5 ft. Hit: 4 (1d6 + 1) Slashing damage."
+                ]
+
+        lycanInput =
+            String.join "\n"
+                [ "Werewolf"
+                , "Medium or Small Monstrosity (Lycanthrope), Chaotic Evil"
+                , "AC 15"
+                , "HP 71 (11d8 + 22)"
+                , "Speed 30 ft."
+                , "Str 16 +3 +3 Dex 14 +2 +2 Con 14 +2 +2"
+                , "Int 10 +0 +0 Wis 11 +0 +0 Cha 10 +0 +0"
+                , "Senses Darkvision 60 ft.; Passive Perception 14"
+                , "Languages Common (can't speak in wolf form)"
+                , "CR 3 (XP 700; PB +2)"
+                ]
+
+        tinyInput =
+            String.join "\n"
+                [ "Will-o'-Wisp"
+                , "Tiny Undead, Chaotic Evil"
+                , "AC 19"
+                , "HP 27 (11d4)"
+                , "Speed 5 ft., Fly 50 ft. (hover)"
+                , "Str 1 -5 -5 Dex 28 +9 +9 Con 10 +0 +0"
+                , "Int 13 +1 +1 Wis 14 +2 +2 Cha 11 +0 +0"
+                , "Senses Darkvision 120 ft.; Passive Perception 12"
+                , "Languages Common plus one other language"
+                , "CR 2 (XP 450; PB +2)"
+                ]
+    in
+    describe "SRD 5.2.1 type-line variants"
+        [ test "'Medium or Small Humanoid' picks the larger size" <|
+            \_ ->
+                expectFields input (\c -> c.size |> Expect.equal Compendium.Medium)
+        , test "'Medium or Small Humanoid' race is 'Humanoid', not 'Or Small Humanoid'" <|
+            \_ ->
+                expectFields input (\c -> c.race |> Expect.equal "Humanoid")
+        , test "'Medium or Small Monstrosity (Lycanthrope)' parses size + race + subrace" <|
+            \_ ->
+                expectFields lycanInput
+                    (\c ->
+                        ( c.size, c.race, c.subrace )
+                            |> Expect.equal ( Compendium.Medium, "Monstrosity", "Lycanthrope" )
+                    )
+        , test "single 'Tiny Undead' still works" <|
+            \_ ->
+                expectFields tinyInput
+                    (\c -> ( c.size, c.race ) |> Expect.equal ( Compendium.Tiny, "Undead" ))
         ]
 
 

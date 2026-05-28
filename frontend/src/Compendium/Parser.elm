@@ -1972,8 +1972,22 @@ parseTypeLine line =
         words =
             String.words beforeParen
 
+        -- SRD 5.2.1 prefixes most humanoid + lycanthrope + a few
+        -- undead stat blocks with a dual size — "Medium or Small
+        -- Humanoid", "Medium or Small Monstrosity (Lycanthrope)",
+        -- etc.  Consume all three leading words when the pattern
+        -- matches; the first size wins (matches the bundled
+        -- compendium convention, where these entries are stored
+        -- as the larger of the two).
         ( size, raceWords ) =
             case words of
+                first :: "or" :: third :: rest ->
+                    if isSizeWord first && isSizeWord third then
+                        ( sizeFromWord first, rest )
+
+                    else
+                        ( sizeFromWord first, "or" :: third :: rest )
+
                 first :: rest ->
                     ( sizeFromWord first, rest )
 
@@ -2020,6 +2034,37 @@ sizeFromWord word =
 
         _ ->
             Compendium.Medium
+
+
+{-| True when the word is one of the six canonical D&D size
+labels. Used to disambiguate the SRD 5.2.1 "X or Y" dual-size
+type-line syntax from a creature whose race begins with "or"
+(no real example, but the guard is cheap and keeps the parser
+from over-consuming on a malformed paste).
+-}
+isSizeWord : String -> Bool
+isSizeWord word =
+    case String.toLower word of
+        "tiny" ->
+            True
+
+        "small" ->
+            True
+
+        "medium" ->
+            True
+
+        "large" ->
+            True
+
+        "huge" ->
+            True
+
+        "gargantuan" ->
+            True
+
+        _ ->
+            False
 
 
 capitalize : String -> String
