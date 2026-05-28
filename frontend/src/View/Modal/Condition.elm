@@ -43,6 +43,7 @@ view model =
                 , noOp = NoOp
                 , title = modalTitle
                 , extraClass = "modal--condition"
+                , chrome = model.modalChrome
                 , body =
                     [ standardSection ui
                     , customSection ui

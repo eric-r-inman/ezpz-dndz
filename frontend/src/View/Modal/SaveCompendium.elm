@@ -52,6 +52,7 @@ view model =
                 , noOp = NoOp
                 , title = "Save Compendium"
                 , extraClass = "modal--save"
+                , chrome = model.modalChrome
                 , body =
                     [ destinationSection ui
                     , filenameSection ui

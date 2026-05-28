@@ -11,19 +11,21 @@ import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder,
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
+import Ui.ModalChrome exposing (ModalChrome)
 import Util.Keyboard
 import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : DiceUi -> Html Msg
-view ui =
+view : ModalChrome -> DiceUi -> Html Msg
+view chrome ui =
     if ui.open then
         View.Modal.view
             { close = CloseDice
             , noOp = NoOp
             , title = "🎲 Dice Roller"
             , extraClass = "modal--dice"
+            , chrome = chrome
             , body =
                 [ form ui
                 , faceButtons

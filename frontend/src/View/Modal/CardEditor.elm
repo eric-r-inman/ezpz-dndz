@@ -74,6 +74,7 @@ view model =
                 , noOp = NoOp
                 , title = "🎨 Customize Creature Card"
                 , extraClass = "modal--card-editor"
+                , chrome = model.modalChrome
                 , body =
                     [ banner
                     , errorBanner ui

@@ -24,6 +24,7 @@ view model =
                 , noOp = NoOp
                 , title = "Note — " ++ ui.target
                 , extraClass = "modal--note-edit"
+                , chrome = model.modalChrome
                 , body =
                     [ Html.label [ for "note-edit-input" ]
                         [ text ("Short label (max " ++ String.fromInt NoteUi.maxNoteLength ++ " chars)") ]

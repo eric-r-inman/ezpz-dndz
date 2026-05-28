@@ -27,16 +27,27 @@ a focus-management contract:
     redirect logic lives in JS so we don't have to plumb a Msg
     through every modal's update path.
 
+The modal is also draggable (mousedown on the header) and
+edge-resizable (mousedown on one of eight invisible handles
+along the perimeter). Drag and resize state lives on
+`model.modalChrome`; the view consumes the chrome to apply the
+transform / inline width / height. The chrome-Msg constructors
+are imported directly from `Msg` rather than threaded through
+the config record because every modal needs the same handlers —
+threading them through 20 call sites would be pure noise.
+
 @docs view, closeBtnId, focusInitial
 
 -}
 
 import Browser.Dom
 import Html exposing (Html, button, div, h2, text)
-import Html.Attributes exposing (attribute, class, id, tabindex)
-import Html.Events exposing (onClick, stopPropagationOn)
+import Html.Attributes exposing (attribute, class, id, style, tabindex)
+import Html.Events exposing (onClick, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
+import Msg exposing (ModalChromeEdge(..), Msg(..))
 import Task
+import Ui.ModalChrome exposing (ModalChrome)
 import View.Tooltips as Tooltips
 
 
@@ -78,66 +89,170 @@ and accidentally close the dialog.
     for per-modal sizing (`"modal--initiative"`,
     `"modal--condition"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
+  - `chrome` — drag / resize state. Use `Ui.ModalChrome.fresh`
+    or the model's `modalChrome` field. The view applies the
+    chrome's offset as a CSS transform and the chrome's size
+    as inline width / height.
 
 -}
 view :
-    { close : msg
-    , noOp : msg
+    { close : Msg
+    , noOp : Msg
     , title : String
     , extraClass : String
-    , body : List (Html msg)
+    , body : List (Html Msg)
+    , chrome : ModalChrome
     }
-    -> Html msg
+    -> Html Msg
 view config =
     div
         [ class "modal-backdrop"
         , onClick config.close
         ]
         [ div
-            [ class ("modal " ++ config.extraClass)
-            , stopPropagationOn "click" (Decode.succeed ( config.noOp, True ))
-            , attribute "role" "dialog"
-            , attribute "aria-modal" "true"
-            , -- `aria-labelledby` points at the visible heading so
-              -- SR users hear the modal title when focus enters,
-              -- instead of duplicating it in a hidden `aria-label`.
-              attribute "aria-labelledby" "modal-title"
-            ]
-            [ div [ class "modal__header" ]
-                [ -- Title promoted from a `<div>` to a real `<h2>`
-                  -- so the document heading hierarchy stays valid
-                  -- (Workspace is the `<h1>` host).  The id pairs
-                  -- with `aria-labelledby` above.
-                  h2
-                    [ class "modal__title"
-                    , id "modal-title"
-                    ]
-                    [ text config.title ]
-                , button
-                    [ class "modal__close"
-                    , id closeBtnId
-                    , onClick config.close
-                    , Tooltips.attr Tooltips.modalClose
-                    , attribute "aria-label" "Close"
-                    ]
-                    [ text "×" ]
+            ([ class ("modal " ++ config.extraClass)
+             , stopPropagationOn "click" (Decode.succeed ( config.noOp, True ))
+             , attribute "role" "dialog"
+             , attribute "aria-modal" "true"
+             , attribute "aria-labelledby" "modal-title"
+             ]
+                ++ chromeStyle config.chrome
+            )
+            (List.concat
+                [ [ div
+                        [ class "modal__header modal__drag-handle"
+                        , preventDefaultOn "mousedown" (dragStartDecoder ModalChromeDragStart)
+                        ]
+                        [ h2
+                            [ class "modal__title"
+                            , id "modal-title"
+                            ]
+                            [ text config.title ]
+                        , button
+                            [ class "modal__close"
+                            , id closeBtnId
+                            , onClick config.close
+                            , Tooltips.attr Tooltips.modalClose
+                            , attribute "aria-label" "Close"
+                            ]
+                            [ text "×" ]
+                        ]
+                  , div [ class "modal__body" ] config.body
+                  , div
+                        [ class "modal__focus-sentinel"
+                        , tabindex 0
+                        , attribute "aria-hidden" "true"
+                        ]
+                        []
+                  ]
+                , resizeHandles config.chrome
                 ]
-            , div [ class "modal__body" ] config.body
-            , -- END focus sentinel.  Invisible `<div tabindex="0">`
-              -- at the tail of the modal.  When Tab moves focus
-              -- past the last interactive element inside the body,
-              -- focus lands here; the inline-script focus listener
-              -- in `index.html` (matching
-              -- `.modal__focus-sentinel`) immediately redirects
-              -- focus back to the close button, so the keyboard
-              -- user wraps within the modal instead of escaping
-              -- to the underlying page.  Visually hidden via the
-              -- existing CSS — the sentinel reserves no layout.
-              div
-                [ class "modal__focus-sentinel"
-                , tabindex 0
-                , attribute "aria-hidden" "true"
+            )
+        ]
+
+
+{-| Inline `transform` + `width` / `height` for the modal,
+derived from chrome state. When the user hasn't dragged or
+resized, the resulting style list is empty — CSS defaults apply
+exactly as before the chrome was wired in.
+-}
+chromeStyle : ModalChrome -> List (Html.Attribute Msg)
+chromeStyle chrome =
+    let
+        offsetStyle =
+            if chrome.offset.x == 0 && chrome.offset.y == 0 then
+                []
+
+            else
+                [ style "transform"
+                    ("translate("
+                        ++ String.fromInt chrome.offset.x
+                        ++ "px, "
+                        ++ String.fromInt chrome.offset.y
+                        ++ "px)"
+                    )
+                ]
+
+        sizeStyle =
+            case chrome.size of
+                Just s ->
+                    [ style "width" (String.fromInt s.w ++ "px")
+                    , style "height" (String.fromInt s.h ++ "px")
+                    ]
+
+                Nothing ->
+                    []
+    in
+    offsetStyle ++ sizeStyle
+
+
+{-| Eight invisible handles, one per edge / corner, that capture
+mousedown and fire the appropriate resize-start Msg. Positioning
+and cursors live in CSS (`.modal__resize-*`).
+
+The handle's mousedown decoder reads `currentTarget.parentElement.
+offsetWidth / offsetHeight` to capture the LIVE rendered size of
+the parent `.modal` element. Doing it this way (instead of
+passing a guess from the Elm side) is what keeps the modal from
+snapping to a fallback size the moment the user clicks a handle
+on a freshly-opened modal — `chrome.size` is `Nothing` until the
+user resizes once, but `offsetWidth` always reflects the CSS-
+computed size at the click instant.
+
+-}
+resizeHandles : ModalChrome -> List (Html Msg)
+resizeHandles _ =
+    let
+        handle edge cls =
+            div
+                [ class ("modal__resize " ++ cls)
+                , preventDefaultOn "mousedown" (resizeStartDecoder edge)
                 ]
                 []
-            ]
-        ]
+    in
+    [ handle ModalEdgeN "modal__resize--n"
+    , handle ModalEdgeS "modal__resize--s"
+    , handle ModalEdgeE "modal__resize--e"
+    , handle ModalEdgeW "modal__resize--w"
+    , handle ModalEdgeNW "modal__resize--nw"
+    , handle ModalEdgeNE "modal__resize--ne"
+    , handle ModalEdgeSW "modal__resize--sw"
+    , handle ModalEdgeSE "modal__resize--se"
+    ]
+
+
+{-| Decode a mousedown event into the `dragStart` Msg carrying
+`clientX, clientY`. `preventDefault = True` stops the browser
+from initiating a text-selection drag.
+-}
+dragStartDecoder : (Int -> Int -> Msg) -> Decode.Decoder ( Msg, Bool )
+dragStartDecoder toMsg =
+    Decode.map2 toMsg
+        (Decode.field "clientX" Decode.int)
+        (Decode.field "clientY" Decode.int)
+        |> Decode.map (\msg -> ( msg, True ))
+
+
+{-| Decode a mousedown event on a resize handle into a
+`ModalChromeResizeStart` Msg carrying the edge, the mouse
+position, and the modal's LIVE rendered size (read from the DOM
+via `currentTarget.parentElement.offsetWidth / offsetHeight`).
+
+The parent-element walk depends on the markup contract that
+each `.modal__resize` handle is a direct child of the `.modal`
+div (see `resizeHandles`). `offsetWidth / offsetHeight` give the
+rounded integer pixel size including padding+border, which is
+what the resize math wants.
+
+`preventDefault = True` so the drag doesn't initiate a text
+selection or scroll.
+
+-}
+resizeStartDecoder : ModalChromeEdge -> Decode.Decoder ( Msg, Bool )
+resizeStartDecoder edge =
+    Decode.map4 (\x y w h -> ModalChromeResizeStart edge x y w h)
+        (Decode.field "clientX" Decode.int)
+        (Decode.field "clientY" Decode.int)
+        (Decode.at [ "currentTarget", "parentElement", "offsetWidth" ] Decode.int)
+        (Decode.at [ "currentTarget", "parentElement", "offsetHeight" ] Decode.int)
+        |> Decode.map (\msg -> ( msg, True ))

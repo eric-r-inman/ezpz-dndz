@@ -49,6 +49,7 @@ view model =
                 , noOp = NoOp
                 , title = "Load Encounter"
                 , extraClass = "modal--load"
+                , chrome = model.modalChrome
                 , body =
                     [ deviceRow
                     , confirmBanner ui

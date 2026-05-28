@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), SaveDestination(..), Theme(..), UsageKind(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), ModalChromeEdge(..), SaveDestination(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -813,4 +813,29 @@ type Msg
     | AccountConfirmPasswordChanged String
     | AccountPasswordSubmit
     | AccountPasswordChanged (Result Http.Error ())
+      -- Modal chrome (drag-to-move, edge-resize).  The chrome
+      -- state lives on `model.modalChrome`; subscriptions
+      -- listen for mousemove / mouseup while a gesture is in
+      -- flight.  See Update.ModalChrome + Ui.ModalChrome.
+    | ModalChromeDragStart Int Int
+    | ModalChromeDragMove Int Int
+    | ModalChromeDragEnd
+    | ModalChromeResizeStart ModalChromeEdge Int Int Int Int
+    | ModalChromeResizeMove Int Int
+    | ModalChromeResizeEnd
     | NoOp
+
+
+{-| Wire-friendly mirror of `Ui.ModalChrome.Edge`. Lives here so
+the `Msg` definitions don't pull in the chrome module just for
+this enum (which would invert the dependency direction).
+-}
+type ModalChromeEdge
+    = ModalEdgeN
+    | ModalEdgeS
+    | ModalEdgeE
+    | ModalEdgeW
+    | ModalEdgeNW
+    | ModalEdgeNE
+    | ModalEdgeSW
+    | ModalEdgeSE

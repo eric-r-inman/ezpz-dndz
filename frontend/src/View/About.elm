@@ -22,35 +22,33 @@ view =
     div [ class "workspace workspace--standalone" ]
         [ section [ class "panel panel--standalone about-page" ]
             [ div [ class "panel__body about-page__body" ]
-                [ h1 [ class "about-page__title" ] [ text "About eZpZ-dndZ" ]
+                [ h1 [ class "about-page__title" ] [ text "eZpZ-dndZ" ]
                 , p [ class "about-page__tagline" ]
-                    [ text "A free, fast, browser-based combat tracker and monster compendium for fifth-edition Dungeons & Dragons." ]
+                    [ text "...is a free browser-based combat tracker and monster compendium. It is compatible with DnD System Reference Document 5.2.1, May 2025." ]
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "What it does" ]
                     , ul []
-                        [ li [] [ text "Tracks initiative, HP, conditions, death saves, and legendary actions for every creature in a fight." ]
-                        , li [] [ text "Ships with the full SRD 5.1 monster compendium and lets you add, edit, group, and roll instances into the queue." ]
-                        , li [] [ text "Rolls dice, plays out readied actions, fires timers across rounds, and remembers everything between sessions." ]
-                        , li [] [ text "Splits puddings, spawns minions, manages cover, concentration, and the Dodge / Hide / Fly stances." ]
+                        [ li [] [ text "Tracks initiative, HP, conditions, combat turns, and everything else a GM needs to run DnD 2025 combat." ]
+                        , li [] [ text "Contains all SRD 5.2.1 monster stat blocks, and lets you add, edit, group, and roll creature instances into the combat queue." ]
+                        , li [] [ text "Rolls dice, sets timers, and much more." ]
+                        , li [] [ text "Remembers your encounters between sessions." ]
                         ]
                     ]
                 , section [ class "about-page__section" ]
-                    [ h2 [] [ text "Anonymous vs. signed-in" ]
+                    [ h2 [] [ text "Data persistence" ]
                     , p []
-                        [ text "Use it without an account — every encounter, custom card layout, dice log, and compendium edit lives in your browser's local storage. Sign in to save those things to the server instead, so you can pick up a fight from a different device or share the compendium with co-DMs at the same table." ]
+                        [ text "Anonymous users: your encounters, creature states, dice logs, and compendium data live in your browser's local storage (if your browser allows it), so your data can persist between sessions. You can also save your encounters and compendium to your local device (recommended), which will create a save file that can you can load into the app. Signed-in users: save your encounters and compendiums to the eZpZ-dndZ cloud, keeping your data safe and ready to pick up again in the next session." ]
                     ]
                 , section [ class "about-page__section" ]
-                    [ h2 [] [ text "Accessibility" ]
+                    [ h2 [] [ text "Beta Version" ]
                     , p []
-                        [ text "The Accessible theme targets WCAG AAA contrast, scales every glyph up, replaces icon-only buttons with text, and pairs colour signals with shape or symbol. The whole app is keyboard-driveable, honours "
-                        , Html.code [] [ text "prefers-reduced-motion" ]
-                        , text ", and exposes ARIA labels on every interactive control."
+                        [ text "eZpZ-dndZ is in beta development; use at your own risk. Your saved data could be wiped or rendered unusable without warning. Help me improve eZpZ-dndZ by providing feedback about your experience using the app. I welcome bug reports and ideas for improvement."
                         ]
                     ]
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Source & license" ]
                     , p []
-                        [ text "Source-available under PolyForm Strict 1.0.0 — read it, learn from it, run it for your own table. See the "
+                        [ text "Do not enter or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0, where applicable. See the "
                         , a
                             [ href "https://github.com/eric-r-inman/ezpz-dndz"
                             , target "_blank"

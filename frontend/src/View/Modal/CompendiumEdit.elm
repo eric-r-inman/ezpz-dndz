@@ -45,6 +45,7 @@ view model =
                 , noOp = NoOp
                 , title = modalTitle ui
                 , extraClass = "modal--compendium-edit"
+                , chrome = model.modalChrome
                 , body =
                     [ errorBanner ui
                     , editSection "Identity"

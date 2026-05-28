@@ -64,6 +64,7 @@ import Ui.Load exposing (LoadUi)
 import Ui.LoadCompendium exposing (LoadCompendiumUi)
 import Ui.Login exposing (LoginUi)
 import Ui.Memo exposing (MemoEditUi)
+import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.Save exposing (SaveUi)
@@ -393,6 +394,7 @@ type alias Model =
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
     , modal : Maybe Modal
+    , modalChrome : ModalChrome
     , panelCreaturePin : Maybe PanelPin
     , pendingControl : Maybe PendingControl
     , xpScope : XpScope

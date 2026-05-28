@@ -30,6 +30,7 @@ view model =
                 , noOp = NoOp
                 , title = ui.ability ++ " Save — " ++ ui.creatureName
                 , extraClass = "modal--ability-save"
+                , chrome = model.modalChrome
                 , body =
                     [ summary ui
                     , buttons

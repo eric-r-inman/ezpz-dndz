@@ -58,6 +58,7 @@ view model =
                 , noOp = NoOp
                 , title = "Encounter Difficulty Calculator"
                 , extraClass = "modal--cr-calculator"
+                , chrome = model.modalChrome
                 , body =
                     [ blurb
                     , partySection model.party

@@ -4229,12 +4229,121 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
-  max-width: var(--modal-max-w, 640px);
-  width: calc(100% - 32px);
-  max-height: calc(100vh - 64px);
+  /* `--modal-max-w` from per-modal modifiers sets the *initial*
+     width; the JS-driven drag (View.Modal + Ui.ModalChrome)
+     applies inline width / height / transform on top, capped by
+     `max-width` / `max-height` and floored by `min-*`.  Position
+     is `relative` so the 8 absolute-positioned resize handles
+     can hang off the perimeter. */
+  position: relative;
+  width: var(--modal-max-w, 640px);
+  max-width: 95vw;
+  max-height: 95vh;
+  min-width: 320px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Drag-handle styling on the modal header: changes the cursor
+   so users discover the drag affordance, and disables text
+   selection so a mousedown that initiates a drag doesn't also
+   try to select the title text. */
+.modal__drag-handle {
+  cursor: move;
+  user-select: none;
+}
+
+/* Eight invisible resize handles arranged around the modal
+   perimeter.  Each captures `mousedown` and fires
+   `ModalChromeResizeStart <edge>` (see View.Modal.resizeHandles).
+   `--handle-thick` is the hit-region thickness for the four edge
+   handles (n/s/e/w); the four corner handles overlap the edge
+   handles at the corners and take precedence by being drawn
+   later in the markup. */
+.modal__resize {
+  position: absolute;
+  background: transparent;
+  --handle-thick: 8px;
+}
+
+.modal__resize--n {
+  top: calc(-1 * var(--handle-thick) / 2);
+  left: var(--handle-thick);
+  right: var(--handle-thick);
+  height: var(--handle-thick);
+  cursor: ns-resize;
+}
+
+.modal__resize--s {
+  bottom: calc(-1 * var(--handle-thick) / 2);
+  left: var(--handle-thick);
+  right: var(--handle-thick);
+  height: var(--handle-thick);
+  cursor: ns-resize;
+}
+
+.modal__resize--e {
+  top: var(--handle-thick);
+  bottom: var(--handle-thick);
+  right: calc(-1 * var(--handle-thick) / 2);
+  width: var(--handle-thick);
+  cursor: ew-resize;
+}
+
+.modal__resize--w {
+  top: var(--handle-thick);
+  bottom: var(--handle-thick);
+  left: calc(-1 * var(--handle-thick) / 2);
+  width: var(--handle-thick);
+  cursor: ew-resize;
+}
+
+.modal__resize--nw {
+  top: calc(-1 * var(--handle-thick));
+  left: calc(-1 * var(--handle-thick));
+  width: calc(var(--handle-thick) * 2);
+  height: calc(var(--handle-thick) * 2);
+  cursor: nwse-resize;
+}
+
+.modal__resize--ne {
+  top: calc(-1 * var(--handle-thick));
+  right: calc(-1 * var(--handle-thick));
+  width: calc(var(--handle-thick) * 2);
+  height: calc(var(--handle-thick) * 2);
+  cursor: nesw-resize;
+}
+
+.modal__resize--sw {
+  bottom: calc(-1 * var(--handle-thick));
+  left: calc(-1 * var(--handle-thick));
+  width: calc(var(--handle-thick) * 2);
+  height: calc(var(--handle-thick) * 2);
+  cursor: nesw-resize;
+}
+
+.modal__resize--se {
+  bottom: calc(-1 * var(--handle-thick));
+  right: calc(-1 * var(--handle-thick));
+  width: calc(var(--handle-thick) * 2);
+  height: calc(var(--handle-thick) * 2);
+  cursor: nwse-resize;
+  /* Subtle 8px diagonal-stripe marker so this corner reads as
+     "the resize affordance" — discoverability without a full
+     drag-handle widget.  The other corners are silent to keep
+     the chrome calm. */
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    var(--color-border) 50%,
+    var(--color-border) 70%,
+    transparent 70%
+  );
+  background-size: 4px 4px;
+  background-repeat: repeat;
+  opacity: 0.55;
 }
 
 /* Per-modal width tokens.  Each `.modal--*` modifier sets only
@@ -7707,11 +7816,16 @@ body {
    Accessible theme inherits its larger base via the body-level
    rem bump. */
 .about-page {
-  padding-bottom: var(--space-6);
+  padding-bottom: 32px;
 }
 
+/* Explicit pixel padding (rather than `var(--space-N)`) because
+   the project's spacing scale only defines `--space-1` through
+   `--space-5` (4-24 px); the About page wants more horizontal
+   breathing room than 24 px to keep prose off the panel edge
+   on narrow viewports. */
 .about-page__body {
-  padding: var(--space-5) var(--space-6);
+  padding: 28px 36px;
 }
 
 .about-page__title {

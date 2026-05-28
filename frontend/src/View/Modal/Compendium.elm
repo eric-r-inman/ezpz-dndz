@@ -28,6 +28,7 @@ import Ui.Compendium as CompendiumUi
         , CompendiumUi
         , PendingAction(..)
         )
+import Ui.ModalChrome exposing (ModalChrome)
 import Update.Compendium.Browser
 import View.AuthGate as AuthGate
 import View.Modal
@@ -35,8 +36,8 @@ import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
-view auth ui encounterIds =
+view : ModalChrome -> Auth.AuthState -> CompendiumUi -> List String -> Html Msg
+view chrome auth ui encounterIds =
     if not ui.open then
         text ""
 
@@ -46,6 +47,7 @@ view auth ui encounterIds =
             , noOp = NoOp
             , title = "📚 Compendium"
             , extraClass = "modal--compendium"
+            , chrome = chrome
             , body =
                 [ filterBar ui
                 , actionsBar auth ui

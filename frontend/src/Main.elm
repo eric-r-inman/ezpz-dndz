@@ -69,6 +69,7 @@ import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
+import Ui.ModalChrome
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
@@ -93,6 +94,7 @@ import Update.LegendaryPip
 import Update.Load
 import Update.LoadCompendium
 import Update.Memo
+import Update.ModalChrome
 import Update.Note
 import Update.Preferences
 import Update.QuickAdd
@@ -223,6 +225,25 @@ subscriptions model =
             else
                 []
 
+        -- Modal chrome drag / resize subscriptions.  Only active
+        -- while a gesture is in flight — the rest of the time
+        -- mousemove / mouseup go through the browser's default
+        -- handling.
+        chromeSubs =
+            case ( model.modalChrome.drag, model.modalChrome.resize ) of
+                ( Just _, _ ) ->
+                    [ Browser.Events.onMouseMove (mouseMoveDecoder ModalChromeDragMove)
+                    , Browser.Events.onMouseUp (Decode.succeed ModalChromeDragEnd)
+                    ]
+
+                ( _, Just _ ) ->
+                    [ Browser.Events.onMouseMove (mouseMoveDecoder ModalChromeResizeMove)
+                    , Browser.Events.onMouseUp (Decode.succeed ModalChromeResizeEnd)
+                    ]
+
+                ( Nothing, Nothing ) ->
+                    []
+
         primary =
             if model.dice.open then
                 Browser.Events.onKeyDown (escKey CloseDice)
@@ -266,7 +287,7 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs ++ loginEscSubs)
+    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs ++ loginEscSubs ++ chromeSubs)
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -312,6 +333,17 @@ isFormTag tagName =
 escKey : Msg -> Decode.Decoder Msg
 escKey =
     Util.Keyboard.escKey
+
+
+{-| Decode a MouseEvent into a `Msg` carrying `clientX, clientY`.
+Used by the modal-chrome drag and resize subscriptions to
+translate native mousemove events into update branches.
+-}
+mouseMoveDecoder : (Int -> Int -> Msg) -> Decode.Decoder Msg
+mouseMoveDecoder toMsg =
+    Decode.map2 toMsg
+        (Decode.field "clientX" Decode.int)
+        (Decode.field "clientY" Decode.int)
 
 
 {-| Render the user's theme choice as the `data-theme` attribute
@@ -434,6 +466,7 @@ init flags url key =
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
       , modal = Nothing
+      , modalChrome = Ui.ModalChrome.fresh
       , panelCreaturePin = Nothing
       , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
@@ -575,8 +608,21 @@ update msg model =
 
             else
                 Cmd.none
+
+        -- Reset modal chrome (drag offset + resized dimensions)
+        -- to defaults on every modal-open transition so each
+        -- freshly opened modal starts centered and at its CSS
+        -- default size.  Without this, a user who drags one
+        -- modal off-center would inherit that offset for the
+        -- next modal they open.
+        nextWithChromeReset =
+            if model.modal == Nothing && next.modal /= Nothing then
+                Update.ModalChrome.reset next
+
+            else
+                next
     in
-    ( next
+    ( nextWithChromeReset
     , Cmd.batch
         [ innerCmd
         , encounterCmd
@@ -1919,6 +1965,24 @@ updateInner msg model =
         AccountPasswordChanged result ->
             Update.Account.passwordChanged result model
 
+        ModalChromeDragStart x y ->
+            Update.ModalChrome.dragStart x y model
+
+        ModalChromeDragMove x y ->
+            Update.ModalChrome.dragMove x y model
+
+        ModalChromeDragEnd ->
+            Update.ModalChrome.dragEnd model
+
+        ModalChromeResizeStart edge x y w h ->
+            Update.ModalChrome.resizeStart edge x y w h model
+
+        ModalChromeResizeMove x y ->
+            Update.ModalChrome.resizeMove x y model
+
+        ModalChromeResizeEnd ->
+            Update.ModalChrome.resizeEnd model
+
         NoOp ->
             Update.Shell.noOp model
 
@@ -2000,14 +2064,15 @@ appShell maybeUser model =
         , route = model.route
         }
     , viewPage model
-    , View.Modal.Dice.view model.dice
+    , View.Modal.Dice.view model.modalChrome model.dice
     , View.Modal.HpChange.view model
     , View.Modal.Initiative.view model
     , View.Modal.Note.view model
     , View.Modal.Condition.view model
     , View.Modal.Memo.view model
     , View.Modal.Timer.view model
-    , View.Modal.Compendium.view model.auth
+    , View.Modal.Compendium.view model.modalChrome
+        model.auth
         model.compendium
         (List.filterMap .creatureId model.encounter.creatures)
     , View.Modal.CompendiumEdit.view model

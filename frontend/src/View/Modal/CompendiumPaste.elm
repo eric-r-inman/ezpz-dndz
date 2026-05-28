@@ -26,6 +26,7 @@ view model =
                 , noOp = NoOp
                 , title = "📋 Paste Stat Block"
                 , extraClass = "modal--compendium-paste"
+                , chrome = model.modalChrome
                 , body =
                     [ div [ class "paste-modal__columns" ]
                         [ pasteInput ui

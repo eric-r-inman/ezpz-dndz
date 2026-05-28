@@ -24,6 +24,7 @@ view model =
                 , noOp = NoOp
                 , title = "Timer — " ++ ui.target
                 , extraClass = "modal--timer"
+                , chrome = model.modalChrome
                 , body =
                     [ div [ class "cond-row" ]
                         [ Html.label [ for "timer-turns-input" ]

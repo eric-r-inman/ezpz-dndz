@@ -37,6 +37,7 @@ view model =
                 , noOp = NoOp
                 , title = "Quick Add"
                 , extraClass = "modal--quick-add"
+                , chrome = model.modalChrome
                 , body =
                     [ controlsRow ui
                     , listSection ui model
