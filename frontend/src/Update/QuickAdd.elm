@@ -1,4 +1,4 @@
-module Update.QuickAdd exposing (close, open, pick, searchChanged, sortToggle)
+module Update.QuickAdd exposing (close, open, pick, pickPlaceholder, searchChanged, sortToggle)
 
 {-| Update branches for the Quick Add modal — a one-click picker
 that lists every compendium creature and adds the chosen one to
@@ -46,6 +46,22 @@ searchChanged text model =
 withQuickAddUi : (QuickAddUi -> QuickAddUi) -> Model -> Model
 withQuickAddUi =
     Model.mapModal Model.quickAddLens
+
+
+{-| One-click placeholder: append a stub combatant via
+`Encounter.Roster.appendPlaceholder` and close the modal. No
+initiative roll, no compendium lookup — placeholder rules apply
+directly. Mirrors the queue-bottom "+" button on the Workspace
+so the user has two equivalent surfaces for the same gesture.
+-}
+pickPlaceholder : Model -> ( Model, Cmd Msg )
+pickPlaceholder model =
+    ( { model
+        | modal = Nothing
+        , encounter = Encounter.Roster.appendPlaceholder model.encounter
+      }
+    , Cmd.none
+    )
 
 
 {-| Add one instance of the chosen creature to the encounter:

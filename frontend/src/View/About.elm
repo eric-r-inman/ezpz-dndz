@@ -24,7 +24,7 @@ view =
             [ div [ class "panel__body about-page__body" ]
                 [ h1 [ class "about-page__title" ] [ text "eZpZ-dndZ" ]
                 , p [ class "about-page__tagline" ]
-                    [ text "...is a free browser-based combat tracker and monster compendium. It is compatible with DnD System Reference Document 5.2.1, May 2025." ]
+                    [ text "...is a free browser-based combat tracker and monster compendium. It is based on encounter rules in the DnD System Reference Document 5.2.1, May 2025." ]
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "What it does" ]
                     , ul []

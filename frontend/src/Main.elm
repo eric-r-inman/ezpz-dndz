@@ -96,6 +96,7 @@ import Update.LoadCompendium
 import Update.Memo
 import Update.ModalChrome
 import Update.Note
+import Update.PlaceholderRename
 import Update.Preferences
 import Update.QuickAdd
 import Update.Save
@@ -467,6 +468,7 @@ init flags url key =
       , compendium = CompendiumUi.emptyCompendium
       , modal = Nothing
       , modalChrome = Ui.ModalChrome.fresh
+      , placeholderRename = Nothing
       , panelCreaturePin = Nothing
       , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
@@ -1782,6 +1784,21 @@ updateInner msg model =
         EncounterClear ->
             Update.Encounter.requestClear model
 
+        EncounterAddPlaceholder ->
+            Update.Encounter.addPlaceholder model
+
+        PlaceholderRenameOpen name ->
+            Update.PlaceholderRename.open name model
+
+        PlaceholderRenameChange text ->
+            Update.PlaceholderRename.change text model
+
+        PlaceholderRenameCommit ->
+            Update.PlaceholderRename.commit model
+
+        PlaceholderRenameCancel ->
+            Update.PlaceholderRename.cancel model
+
         EncounterControlConfirm ->
             Update.Encounter.controlConfirm model
 
@@ -1814,6 +1831,9 @@ updateInner msg model =
 
         QuickAddPick id ->
             Update.QuickAdd.pick id model
+
+        QuickAddPickPlaceholder ->
+            Update.QuickAdd.pickPlaceholder model
 
         AbilitySaveOpen creatureName ability bonus x y ->
             Update.AbilitySave.open creatureName ability bonus x y model

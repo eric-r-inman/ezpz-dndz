@@ -698,6 +698,14 @@ type Msg
     | ControlMenuClose
     | EncounterReset
     | EncounterClear
+    | EncounterAddPlaceholder
+      -- Inline rename for Placeholder N cards.  The name span
+      -- on a placeholder card becomes an <input> when its name
+      -- matches the open rename state's target.
+    | PlaceholderRenameOpen String
+    | PlaceholderRenameChange String
+    | PlaceholderRenameCommit
+    | PlaceholderRenameCancel
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
@@ -705,6 +713,7 @@ type Msg
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String
+    | QuickAddPickPlaceholder
       -- Saving-throw modal triggered from compendium ability cells.
       -- The two `Int`s on `AbilitySaveOpen` are the `clientX` /
       -- `clientY` of the click on the ability cell; they ride

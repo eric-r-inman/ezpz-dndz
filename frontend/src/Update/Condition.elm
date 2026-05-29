@@ -84,7 +84,20 @@ close model =
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
 pickStandard label model =
-    ( withConditionUi (\u -> { u | name = label, customName = "" }) model
+    ( withConditionUi
+        (\u ->
+            -- Clicking the already-selected condition clears the
+            -- selection — the badge acts as a toggle, not a
+            -- strict radio.  Custom-name field is cleared either
+            -- way so re-selecting after typing custom text
+            -- doesn't leave a stale value behind.
+            if u.name == label then
+                { u | name = "", customName = "" }
+
+            else
+                { u | name = label, customName = "" }
+        )
+        model
     , Cmd.none
     )
 

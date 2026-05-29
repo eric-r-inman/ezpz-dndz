@@ -966,8 +966,8 @@ rowMetaLine c =
             List.filter (not << String.isEmpty)
                 [ CompendiumUi.creatureKindLabel c.kind
                 , c.race
-                , "AC " ++ String.fromInt c.armorClass
-                , "HP " ++ String.fromInt c.maxHp
+                , "AC\u{00A0}" ++ String.fromInt c.armorClass
+                , "HP\u{00A0}" ++ String.fromInt c.maxHp
                 , crLabel c.challengeRating
                 ]
     in
@@ -980,7 +980,7 @@ crLabel cr =
         ""
 
     else
-        "CR " ++ cr
+        "CR\u{00A0}" ++ cr
 
 
 detail : Auth.AuthState -> CompendiumUi -> List Compendium.Creature -> List String -> Html Msg

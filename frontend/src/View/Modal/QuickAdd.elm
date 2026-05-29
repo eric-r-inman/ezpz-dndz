@@ -86,42 +86,84 @@ controlsRow ui =
 
 listSection : QuickAddUi -> Model -> Html Msg
 listSection ui model =
-    case model.compendium.db of
-        CompendiumDbLoading ->
-            empty "Loading the compendium…"
+    let
+        ( creatureRowsHtml, trailingMessage ) =
+            case model.compendium.db of
+                CompendiumDbLoading ->
+                    ( [], Just "Loading the compendium…" )
 
-        CompendiumDbFailed _ ->
-            empty "Couldn't load the compendium."
+                CompendiumDbFailed _ ->
+                    ( [], Just "Couldn't load the compendium." )
 
-        CompendiumDbLoaded db ->
-            let
-                filteredDb =
-                    Compendium.search ui.searchText db
+                CompendiumDbLoaded db ->
+                    let
+                        filteredDb =
+                            Compendium.search ui.searchText db
 
-                sortedDb =
-                    case ui.sort of
-                        SortAlpha ->
-                            Compendium.sortByName filteredDb
+                        sortedDb =
+                            case ui.sort of
+                                SortAlpha ->
+                                    Compendium.sortByName filteredDb
 
-                        SortByCr ->
-                            Compendium.sortByCr filteredDb
+                                SortByCr ->
+                                    Compendium.sortByCr filteredDb
 
-                creatures =
-                    Compendium.toList sortedDb
+                        creatures =
+                            Compendium.toList sortedDb
 
-                searchActive =
-                    not (String.isEmpty (String.trim ui.searchText))
-            in
-            if List.isEmpty creatures then
-                if searchActive then
-                    empty ("No matches for \"" ++ String.trim ui.searchText ++ "\".")
+                        searchActive =
+                            not (String.isEmpty (String.trim ui.searchText))
+                    in
+                    if List.isEmpty creatures then
+                        if searchActive then
+                            ( [], Just ("No matches for \"" ++ String.trim ui.searchText ++ "\".") )
 
-                else
-                    empty "Your compendium is empty."
+                        else
+                            ( [], Just "Your compendium is empty." )
 
-            else
-                ul [ class "quick-add__list" ]
-                    (List.map row creatures)
+                    else
+                        ( List.map row creatures, Nothing )
+
+        trailingHtml =
+            case trailingMessage of
+                Just msg ->
+                    [ empty msg ]
+
+                Nothing ->
+                    []
+    in
+    -- Placeholder row is always the first <li> in the list,
+    -- regardless of compendium state.  When the creature list
+    -- is empty (loading / failed / search-no-match / empty
+    -- compendium) the empty-state message follows the list so
+    -- the placeholder row stays reachable.
+    div []
+        (ul [ class "quick-add__list" ]
+            (placeholderRow :: creatureRowsHtml)
+            :: trailingHtml
+        )
+
+
+{-| Standing "Placeholder" entry at the top of the Quick Add
+list. Clicking it appends a stub combatant via the same rules
+as the queue-bottom "+" button (Initiative 0, HP 1/1, AC 10,
+`Placeholder N` name). Styled distinctly (italic + sticky to
+the top of the scroll view) so it reads as an action, not a
+compendium creature.
+-}
+placeholderRow : Html Msg
+placeholderRow =
+    li
+        [ class "quick-add__row quick-add__row--placeholder"
+        , onClick QuickAddPickPlaceholder
+        , Tooltips.attr "Add a Placeholder N stub (Initiative 0, HP 1/1, AC 10)"
+        , attribute "role" "button"
+        , attribute "tabindex" "0"
+        , attribute "aria-label" "Add placeholder"
+        ]
+        [ span [ class "quick-add__name" ] [ text "Placeholder" ]
+        , span [ class "quick-add__cr" ] [ text "+" ]
+        ]
 
 
 row : Compendium.Creature -> Html Msg

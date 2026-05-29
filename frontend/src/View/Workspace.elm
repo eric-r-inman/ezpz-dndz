@@ -14,17 +14,20 @@ import Compendium
 import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp exposing (XpScope)
-import Html exposing (Html, div, main_, section)
-import Html.Attributes exposing (attribute, class, id)
+import Html exposing (Html, button, div, main_, section, text)
+import Html.Attributes exposing (attribute, class, id, type_)
+import Html.Events exposing (onClick)
 import Model exposing (Model)
-import Msg exposing (Msg)
+import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.HpChange exposing (HpEdit)
+import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import View.Card
 import View.Card.Custom
 import View.EncounterBar
 import View.PanelControls
 import View.PanelDetail
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -37,6 +40,7 @@ view model =
         [ panelMain
             model.encounter
             model.hpEdit
+            model.placeholderRename
             model.savedAs
             model.compendium.db
             model.xpScope
@@ -68,6 +72,7 @@ it without touching DOM state.
 panelMain :
     Encounter
     -> Maybe HpEdit
+    -> Maybe PlaceholderRenameState
     -> Maybe String
     -> CompendiumDb
     -> XpScope
@@ -76,7 +81,7 @@ panelMain :
     -> CardLayout
     -> QueueView
     -> Html Msg
-panelMain enc hpEdit savedAs db xpScope xpFilterOpen useCustom layout queueView =
+panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layout queueView =
     let
         -- Custom-card renderer needs the loaded compendium to
         -- resolve tag widgets (tags live on the compendium
@@ -96,7 +101,7 @@ panelMain enc hpEdit savedAs db xpScope xpFilterOpen useCustom layout queueView 
                 View.Card.Custom.view layout enc.activeName hpEdit compendiumDb
 
             else
-                View.Card.view enc.activeName hpEdit
+                View.Card.view enc.activeName hpEdit renameState
 
         -- Queue-view picker (List / Grid) is meaningful only when
         -- the custom renderer is on; the classic card has fixed
@@ -120,5 +125,25 @@ panelMain enc hpEdit savedAs db xpScope xpFilterOpen useCustom layout queueView 
             ]
             [ div [ class gridClass ]
                 (List.map renderCard enc.creatures)
+            , addPlaceholderRow
             ]
         ]
+
+
+{-| Full-width "+" row appended below the last creature card in
+the queue. One-click adds a blank "Placeholder N" combatant with
+initiative 0 / HP 1 / AC 10 to the bottom of the queue without
+re-sorting (see `Encounter.Roster.appendPlaceholder`). Hover
+text doubles as the aria-label so screen-reader users hear the
+intent rather than just "+".
+-}
+addPlaceholderRow : Html Msg
+addPlaceholderRow =
+    button
+        [ class "add-placeholder-row"
+        , type_ "button"
+        , onClick EncounterAddPlaceholder
+        , Tooltips.attr "Add placeholder"
+        , attribute "aria-label" "Add placeholder"
+        ]
+        [ text "+" ]

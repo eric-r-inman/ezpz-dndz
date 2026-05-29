@@ -1679,7 +1679,6 @@ body {
 
 .modal--cr-calculator {
   --modal-max-w: 640px;
-  width: calc(100% - 32px);
 }
 
 .cr-calc__blurb {
@@ -2052,6 +2051,48 @@ body {
   gap: var(--space-3);
 }
 
+/* Full-width "+" row that one-click-appends a Placeholder N stub
+   to the bottom of the queue.  Lives directly under the
+   `.creature-grid` inside `.panel__body`, so it stretches the
+   same width as a creature card and sits flush below the last
+   one.  The dashed border + muted background read as "drop a
+   thing here" without competing with the loud red/green action
+   buttons on the cards themselves. */
+.add-placeholder-row {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--space-3);
+  padding: 2px var(--space-3);
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.add-placeholder-row:hover,
+.add-placeholder-row:focus-visible {
+  background: var(--color-surface-2);
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+  outline: none;
+}
+
+[data-theme="accessible"] .add-placeholder-row {
+  font-size: 1.8rem;
+  border-width: 3px;
+  padding: 4px var(--space-3);
+}
+
 /* ── Custom (layout-driven) creature card ─────────────────────────── */
 .creature-card--custom {
   display: block;
@@ -2327,6 +2368,11 @@ body {
 }
 
 .creature-card--active {
+  /* Border-width +1 from the base 1px (= 2px) so the active
+     card pops out for Modern / Dark / Auto.  Accessible has its
+     own 4px override further up the file (search for
+     `[data-theme="accessible"] .creature-card--active`). */
+  border-width: 2px;
   border-color: var(--color-accent);
   background: linear-gradient(
     180deg,
@@ -2935,8 +2981,8 @@ body {
 }
 
 .init-circle {
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   /* Transparent fill with a dark outline.  `var(--color-text)`
      resolves to near-black on Modern and near-white on Dark,
@@ -2949,27 +2995,58 @@ body {
   place-items: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
+  font-size: 1.15rem;
   flex: 0 0 auto;
   line-height: 1;
 }
 
 .creature-name {
   font-weight: 700;
-  font-size: 1.2em;
+  font-size: 1.4em;
   letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 0 1 auto;
   min-width: 0;
-  /* Permanent underline so the creature name reads as a strong
-     anchor on each card.  `text-underline-offset` gives the rule
-     air; `text-decoration-thickness` keeps it from looking heavy
-     against the bold weight. */
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
+  /* No persistent underline — see `.creature-name--linked:hover`
+     for the compendium-pin hover cue, and `.creature-name--placeholder`
+     for the dashed-edit hover cue.  Keeping the resting state
+     clean lets the bold weight + bumped size carry the visual
+     anchoring without the line under every card. */
+  text-decoration: none;
+}
+
+/* Placeholder cards reuse `.creature-name--linked` for the
+   reset-button-chrome trick, but they need a slightly different
+   hover hint than the compendium pin affordance.  The dashed
+   underline reads as "you can edit this text" rather than the
+   solid underline that signals navigation. */
+.creature-name--placeholder {
+  text-decoration-style: dashed;
+}
+
+/* Inline rename input for Placeholder N cards.  Sits in the same
+   flex slot as the static name button, with matching font +
+   padding so the text doesn't jump when the input mounts.  The
+   focus ring is the accent colour for theme consistency. */
+.creature-name--rename-input {
+  appearance: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: 0 6px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.4em;
+  color: var(--color-text);
+  outline: none;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.creature-name--rename-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .creature-name--default {
@@ -2987,14 +3064,24 @@ body {
   border: none;
   padding: 0;
   margin: 0;
-  font: inherit;
+  /* Inherit only the font *family* from the parent — the
+     full `font` shorthand would also reset size/weight, which
+     `.creature-name` deliberately sets (1.4em + 700) and we
+     want to preserve here.  Earlier this rule used
+     `font: inherit` and silently shrank every linked creature
+     name back to the row's 0.85rem baseline. */
+  font-family: inherit;
   color: inherit;
   text-align: inherit;
   cursor: pointer;
 }
 
 .creature-name--linked:hover {
-  text-decoration: underline;
+  /* Longhand `text-decoration-line` instead of the `text-decoration`
+     shorthand so the placeholder-name rule's
+     `text-decoration-style: dashed` keeps applying on hover; the
+     shorthand would reset style back to solid. */
+  text-decoration-line: underline;
   text-underline-offset: 2px;
 }
 
@@ -3002,7 +3089,8 @@ body {
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1rem;
 }
 
 /* Live condition chips on row 1 of each creature card and in the
@@ -3077,9 +3165,9 @@ body {
 /* Variant-specific tweaks: color, padding, border. */
 
 .condition-chip {
-  padding: 1px 6px;
-  font-size: 0.78rem;
-  font-weight: 500;
+  padding: 2px 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
   background: rgba(245, 200, 66, 0.1);
   /* Chip text matches the Condition/Effect button's background
      token (`--color-condition`) so card chips, title-bar chips,
@@ -3168,7 +3256,12 @@ body {
   margin-right: var(--space-2);
 }
 
-.hp-display__current {
+.hp-display__current,
+.hp-display__editable.hp-display__current {
+  /* Compound selector beats the later `.hp-display__editable
+     { color: inherit }` rule in the cascade — without it the
+     click-to-edit `<button>` would inherit the row's white
+     text and clobber the green/muted split. */
   color: var(--color-success);
 }
 
@@ -3177,7 +3270,8 @@ body {
   font-weight: 400;
 }
 
-.hp-display__max {
+.hp-display__max,
+.hp-display__editable.hp-display__max {
   color: var(--color-text-muted);
 }
 
@@ -4371,32 +4465,27 @@ body {
 }
 
 .modal--condition {
-  --modal-max-w: 620px;
-  width: 100%;
+  --modal-max-w: 480px;
 }
 
 .modal--compendium-edit {
   --modal-max-w: 800px;
   max-height: calc(100vh - 32px);
-  width: calc(100% - 32px);
 }
 
 .modal--compendium {
   --modal-max-w: 1100px;
   height: calc(100vh - 32px);
-  width: calc(100% - 32px);
 }
 
 .modal--group-edit {
   --modal-max-w: 680px;
-  width: calc(100% - 32px);
 }
 
 /* ── Card Editor modal ─────────────────────────────────────────────── */
 .modal--card-editor {
   --modal-max-w: 1100px;
   height: calc(100vh - 32px);
-  width: calc(100% - 32px);
 }
 
 .card-editor__banner {
@@ -5413,7 +5502,6 @@ body {
 .modal--compendium-paste {
   --modal-max-w: 1200px;
   max-height: calc(100vh - 32px);
-  width: calc(100% - 32px);
 }
 
 .modal__header {
@@ -8165,6 +8253,33 @@ body {
 .duplicate__row--disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+/* Quick Add modal — "Placeholder" entry pinned to the top of the
+   list.  Styled distinctly (italic name, muted bottom border,
+   accent-tinted background, large "+" in the CR slot) so it
+   reads as an action shortcut rather than a compendium creature.
+   `position: sticky` keeps it visible while the user scrolls the
+   list below. */
+.quick-add__row--placeholder {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-border);
+  font-style: italic;
+}
+
+.quick-add__row--placeholder .quick-add__cr {
+  font-style: normal;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.quick-add__row--placeholder:hover,
+.quick-add__row--placeholder:focus-visible {
+  background: var(--color-accent-soft);
 }
 
 .duplicate__row--disabled:hover {

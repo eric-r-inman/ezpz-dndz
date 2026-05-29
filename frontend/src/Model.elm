@@ -66,6 +66,7 @@ import Ui.Login exposing (LoginUi)
 import Ui.Memo exposing (MemoEditUi)
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
+import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
@@ -395,6 +396,7 @@ type alias Model =
     , compendium : CompendiumUi
     , modal : Maybe Modal
     , modalChrome : ModalChrome
+    , placeholderRename : Maybe PlaceholderRenameState
     , panelCreaturePin : Maybe PanelPin
     , pendingControl : Maybe PendingControl
     , xpScope : XpScope

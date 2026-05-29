@@ -1,5 +1,6 @@
 module Update.Encounter exposing
-    ( adjustFlyHeight
+    ( addPlaceholder
+    , adjustFlyHeight
     , controlCancel
     , controlConfirm
     , cycleCover
@@ -223,6 +224,14 @@ moveCreatureDown name model =
 removeCreature : String -> Model -> ( Model, Cmd Msg )
 removeCreature name model =
     ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
+
+
+{-| Drop a "Placeholder N" stub at the bottom of the queue. No
+sort — see `Encounter.Roster.appendPlaceholder` for the rationale.
+-}
+addPlaceholder : Model -> ( Model, Cmd Msg )
+addPlaceholder model =
+    ( withEncounter Encounter.Roster.appendPlaceholder model, Cmd.none )
 
 
 {-| First click of Reset: stage the pending state so the panel

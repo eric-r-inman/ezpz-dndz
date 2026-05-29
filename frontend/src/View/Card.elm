@@ -29,7 +29,7 @@ import Effects
 import Encounter exposing (Cover(..), Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, title, type_, value)
-import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagationOn)
+import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Msg
     exposing
@@ -39,11 +39,12 @@ import Msg
         )
 import Set exposing (Set)
 import Ui.HpChange exposing (HpEdit)
+import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
 import View.Tooltips as Tooltips
 
 
-view : String -> Maybe HpEdit -> Creature -> Html Msg
-view activeName hpEdit creature =
+view : String -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Creature -> Html Msg
+view activeName hpEdit renameState creature =
     let
         isActive =
             creature.name == activeName
@@ -111,7 +112,7 @@ view activeName hpEdit creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop creature hpEdit
+            [ rowTop creature hpEdit renameState
             , rowMid creature hpEdit
             , rowBot creature
             ]
@@ -201,8 +202,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Creature -> Maybe HpEdit -> Html Msg
-rowTop creature hpEdit =
+rowTop : Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Html Msg
+rowTop creature hpEdit renameState =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -212,22 +213,28 @@ rowTop creature hpEdit =
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
             [ text (String.fromInt creature.initiative) ]
-        , creatureName creature
+        , creatureName creature renameState
         , noteOrPencil creature
         , acReadout creature hpEdit
         , conditionChips creature
         ]
 
 
-{-| The creature name on row 1 of each card. When the creature has
-a `creatureId` back-reference to a compendium entry, the name is
-rendered as a clickable element that pins that entry's stat block
-in the side panel — and an underline-on-hover style hints at the
-affordance. Legacy seed creatures (no compendium link) render as
-a plain span.
+{-| The creature name on row 1 of each card. Three render modes:
+
+  - Compendium-linked: a `<button>` that pins the source stat
+    block in the side panel.
+  - Placeholder (name matches `Placeholder N` and no
+    compendium link): a clickable `<button>` that opens the
+    inline rename — OR, when this creature is currently being
+    renamed, an `<input>` whose Enter/blur commits.
+  - Legacy seed creatures (no compendium link, name doesn't
+    match the placeholder pattern): a plain `<span>`. Unchanged
+    behavior.
+
 -}
-creatureName : Creature -> Html Msg
-creatureName creature =
+creatureName : Creature -> Maybe PlaceholderRenameState -> Html Msg
+creatureName creature renameState =
     case creature.creatureId of
         Just id_ ->
             -- Clickable name (pins the compendium stat block in
@@ -246,8 +253,72 @@ creatureName creature =
                 [ text creature.name ]
 
         Nothing ->
-            span [ class "creature-name creature-name--default" ]
-                [ text creature.name ]
+            if Rename.isPlaceholderName creature.name then
+                placeholderName creature renameState
+
+            else
+                span [ class "creature-name creature-name--default" ]
+                    [ text creature.name ]
+
+
+{-| `Placeholder N` cards: render either a click-to-rename
+button or an active rename input depending on whether this
+creature is the current rename target.
+-}
+placeholderName : Creature -> Maybe PlaceholderRenameState -> Html Msg
+placeholderName creature renameState =
+    case renameState of
+        Just state ->
+            if state.target == creature.name then
+                input
+                    [ class "creature-name creature-name--rename-input"
+                    , value state.draft
+                    , Attr.maxlength Rename.maxNameLength
+                    , autofocus True
+                    , attribute "aria-label" "Rename placeholder"
+                    , onInput PlaceholderRenameChange
+                    , onBlur PlaceholderRenameCommit
+                    , on "keydown" renameKeyDecoder
+                    ]
+                    []
+
+            else
+                placeholderNameButton creature
+
+        Nothing ->
+            placeholderNameButton creature
+
+
+placeholderNameButton : Creature -> Html Msg
+placeholderNameButton creature =
+    button
+        [ class "creature-name creature-name--default creature-name--linked creature-name--placeholder"
+        , type_ "button"
+        , onClick (PlaceholderRenameOpen creature.name)
+        , Tooltips.attr "Click to rename"
+        , attribute "aria-label" ("Rename " ++ creature.name)
+        ]
+        [ text creature.name ]
+
+
+{-| Keydown handler for the rename input: Enter commits, Esc
+cancels. Other keys flow through to `onInput`.
+-}
+renameKeyDecoder : Decode.Decoder Msg
+renameKeyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                case key of
+                    "Enter" ->
+                        Decode.succeed PlaceholderRenameCommit
+
+                    "Escape" ->
+                        Decode.succeed PlaceholderRenameCancel
+
+                    _ ->
+                        Decode.fail "ignored"
+            )
 
 
 {-| Note-or-pencil sliver of row 1.

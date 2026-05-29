@@ -70,12 +70,16 @@ view cfg =
             , signInTagline cfg.user
             ]
         , nav [ class "app-bar__nav" ]
-            [ a [ href "/" ] [ text "Encounter" ]
+            [ -- Text-labelled nav items intentionally omit
+              -- `Tooltips.attr` — the label is self-explanatory,
+              -- and hover bubbles on every item turn the bar
+              -- into noise.  Settings (⚙) keeps its tooltip
+              -- because it's icon-only.
+              a [ href "/" ] [ text "Encounter" ]
             , button
                 [ class "app-bar__card-editor"
                 , type_ "button"
                 , onClick CardEditorOpen
-                , Tooltips.attr Tooltips.appBarCardEditor
                 ]
                 [ text "Customize card" ]
             , button
@@ -90,13 +94,6 @@ view cfg =
                     )
                 , type_ "button"
                 , onClick CustomCardLayoutToggle
-                , Tooltips.attr
-                    (if cfg.useCustomCardLayout then
-                        "Switch encounter cards back to the classic renderer"
-
-                     else
-                        "Use the custom card layout in the encounter (prototype: limited inline-edit)"
-                    )
                 ]
                 [ text
                     (if cfg.useCustomCardLayout then
@@ -110,13 +107,11 @@ view cfg =
             , a
                 [ class "app-bar__about"
                 , href "/about"
-                , Tooltips.attr "About eZpZ-dndZ"
                 ]
                 [ text "About" ]
             , a
                 [ class "app-bar__donate"
                 , href "/donate"
-                , Tooltips.attr Tooltips.appBarDonate
                 ]
                 [ text "Donate" ]
             , settings cfg.settingsOpen cfg.theme
@@ -158,7 +153,6 @@ userLink maybeUser route =
             a
                 [ class "app-bar__user"
                 , href "/me"
-                , Tooltips.attr Tooltips.appBarAccount
                 ]
                 [ text user.displayName ]
 
@@ -170,7 +164,6 @@ userLink maybeUser route =
                 a
                     [ class "app-bar__user app-bar__user--anonymous"
                     , href "/login"
-                    , Tooltips.attr "Sign in or create an account to save encounters on the server."
                     ]
                     [ text "Sign in" ]
 
