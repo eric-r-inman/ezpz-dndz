@@ -41,7 +41,9 @@ companion) are frozen under =docs/archive/= — see [[*Frozen / archived plannin
 - *Build* — ~cargo~ for Rust, ~elm make~ for Elm.  Both run inside
   a Nix dev shell defined by ~flake.nix~ (which itself delegates
   to ~foundation.lib.mkRustProject~).  ~just dev~ and ~just
-  serve~ auto-enter the dev shell if needed.
+  serve~ auto-enter the dev shell if needed.  The dev shell also
+  carries ~pkgs.poppler-utils~ (~pdftotext~ / ~pdftoppm~) for
+  SRD-audit workflows that extract the WotC PDF to text.
 
 * Source layout
 
@@ -126,13 +128,13 @@ own module.
 | Domain          | =Card/{Layout,Preview,Wire}= (customizable creature-card layouts: types, no-msg preview renderer, HTTP wire)                             |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
 | Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / CompendiumCreaturePage / NotFound~), =Effects.elm=, =Ports.elm= (outbound JS — ~savePreferences~, the six ~persistLocal*~ ports, and the three ~clearLocal*~ ports used by sign-in migration) |
-| UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes)                                           |
-| Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,ModalChrome,Note,PlaceholderRename,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Paste}.elm=                                                                    |
-| View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
-| View / shell    | =View/{AppBar,Audio,AuthGate,Card,Chip,EncounterBar,Footer,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer).  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
+| View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= (=View/Modal/CardEditor.elm= is built but the AppBar entry points are commented out — see [[*Customizable creature card][Customizable creature card]]). |
+| View / shell    | =View/{About,AppBar,Audio,AuthGate,Card,Chip,EncounterBar,Footer,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer; built but currently unused — see [[*Customizable creature card][Customizable creature card]]).  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
@@ -306,6 +308,26 @@ domain layer no longer tracks a per-creature ~surprised~ flag and
 surprise narratively or by toggling each surprised creature out
 of the queue manually.
 
+** Creature record extensions
+
+~Encounter.Creature~ gained four fields beyond the original combat
+core to support placeholder stubs and stat-block-style metadata:
+
+- ~isPlaceholder : Bool~ — flags stubs spawned via
+  ~Encounter.Roster.appendPlaceholder~.  Preserved across
+  ~renameCreature~ so the click-to-rename affordance survives the
+  rename round-trip.
+- ~creatureKind : String~ — ~"player"~ / ~"enemy"~ / ~"npc"~ (lower-
+  case wire token); drives the title-row kind badge in
+  =View.StatBlock= and roster filters.
+- ~race : String~ — free-form (e.g. ~"Dragon"~), rendered in the
+  stat-block meta strip.
+- ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
+
+=Encounter.Wire= encodes all four; the decoder uses ~optional~ with
+safe defaults (~False~ / ~""~) so legacy persisted encounters and
+saved snapshots round-trip cleanly.
+
 The auto-roll save path lives in =Update/Encounter.elm=: when
 ~nextTurn~ fires, the outgoing name is captured before the
 lifecycle hooks run, then ~Effects.autoRollCmdsFor AutoRollAtEnd
@@ -402,6 +424,25 @@ sentinel after the body content and a Stop-hook–style focus
 redirect in =index.html=, so keyboard / SR users land on the
 close button when a modal opens and Tab wraps within the
 modal instead of escaping to the underlying page.
+
+** Modal drag + edge-resize
+
+=View.Modal.view= takes a ~chrome : ModalChrome~ argument
+(=Ui/ModalChrome.elm=, pure math: drag / resize state, viewport
+clamp, size clamp, edges N/S/E/W + 4 corners).  The header
+carries a drag handle; eight invisible perimeter handles emit
+~mousedown~ decoders that read
+~currentTarget.parentElement.offsetWidth / offsetHeight~ for live
+size on each gesture.
+
+=Update/ModalChrome.elm= owns the state machine.
+=Main.subscriptions= attaches ~Browser.Events.onMouseMove~ /
+~onMouseUp~ *only while a gesture is in flight* so idle modals
+don't pay the per-frame cost.  Chrome resets to
+~Ui.ModalChrome.fresh~ on every modal-open transition; the size
+clamp uses CSS-token defaults (~--modal-max-w: 640px~, modal-
+specific overrides like ~.modal--condition { --modal-max-w:
+480px }~).
 
 * Authentication and per-user storage
 
@@ -538,18 +579,43 @@ customizations before signing in gets them back on sign-out.
 
 The AppBar nav adapts to auth state:
 
-- *Authenticated* — Encounter / Customize card / Custom: on/off
-  / display name link to ~/me~ / Donate / ⚙ settings.
-- *Anonymous (any route except ~/login~)* — same buttons, but
-  the display-name slot is replaced with a *Sign in* link.
-- *Anonymous on ~/login~* — the Sign-in link is suppressed
-  (it would link back to itself).
+- *Authenticated* — Encounter / display name link to ~/me~ /
+  About / Donate / ⚙ settings.  (The *Customize card* button and
+  the *Custom: on/off* toggle are commented out for launch — see
+  [[*Customizable creature card][Customizable creature card]].)
+- *Anonymous (any route except ~/login~)* — same buttons, but the
+  display-name slot is replaced with a *Sign in* link, and an
+  italic tagline rides next to the brand: *"Sign in to save your
+  encounters and compendium changes."*
+- *Anonymous on ~/login~* — the Sign-in link is suppressed (it
+  would link back to itself).
+
+Text-labelled nav items (Encounter / About / Donate / Sign in)
+omit hover tooltips; the icon-only ⚙ trigger keeps a tooltip
+("Set Theme").
 
 The ⚙ settings popover holds the theme picker (Modern / Dark /
 Auto / Accessible) and is enabled in all sessions, anonymous or
 not — theme persists via the existing ~savePreferences~ port
-regardless of auth.  Foundation's Scalar (OpenAPI) UI is still
-mounted at ~/scalar~ but no longer linked from the nav.
+regardless of auth.  The radio list stacks vertically at 1.05rem,
+with Accessible carrying an italic ~(alpha)~ badge via
+~themeRadio~'s ~badge : String~ argument.  Foundation's Scalar
+(OpenAPI) UI is still mounted at ~/scalar~ but no longer linked
+from the nav.
+
+** About page
+
+=View/About.elm= + ~Route.About~ render a static ~/about~ page
+linked from the AppBar (right of Sign in / display name).  Copy
+is hand-curated in =View/About.elm=; CSS lives under
+=.about-page__*= in =style.css=.  Treated like any other route —
+no Modal ADT entry, no Update module beyond the URL-change
+plumbing in =Update/Shell.elm=.
+
+** Footer license link
+
+The footer's *PolyForm Strict 1.0.0* string is a
+~target="_blank"~ link to ~https://polyformproject.org/licenses/strict/1.0.0/~.
 
 * Anonymous mode
 
@@ -877,6 +943,33 @@ bar grows extra buttons:
   clears the ~pending~ state so the confirm banner dismisses
   on click.
 
+** Row meta strip
+
+Compendium list rows render a meta strip (~HP 150~, ~AC 17~,
+~CR 10~, etc.) with *non-breaking spaces* between label and
+value (~HP\u{00A0}150~, ~AC\u{00A0}17~, ~CR\u{00A0}10~) so the
+label / value pair never breaks across a line wrap.  Visible
+under Accessible where the row width pressure is highest.
+
+* SRD 5.2.1 alignment
+
+The bundled compendium and the paste parser are kept in lockstep
+with the WotC SRD 5.2.1.  Two pieces:
+
+- *Paste parser* — =Compendium.Parser.parseTypeLine= consumes a
+  ~<Size> or <Size> <Type>~ triplet (gated by ~isSizeWord~),
+  taking the *larger* size and the type as race.  Locks in
+  behavior for SRD 5.2.1's dual-size monsters via the new
+  ~srd521DualSizeSuite~ in =CompendiumParserTest=.
+- *Bundled data* — =crates/lib/data/bundled-creatures.json=
+  (mirrored to =frontend/public/bundled-creatures.json= for the
+  anonymous-mode public fetch) carries ~62 SRD 5.2.1 alignment
+  fixes: 25 Tiny-creature sizes (~"small"~ → ~"tiny"~), 36
+  "Medium or Small X" entries collapsed to ~"medium"~, and
+  Awakened Shrub's CR corrected (~"0"~ → ~"1/4"~).  Will-o'-Wisp
+  keeps its ASCII apostrophe by design to avoid orphaning saves
+  that key on the old spelling.
+
 * Compendium groups (Hordes)
 
 A *group* bundles one or more compendium creatures into a unit
@@ -952,6 +1045,21 @@ Errors: ~GroupIdNotFoundError~ → 404, ~GroupIdMismatchError~ →
      pushes the dice pool, toasts.
 
 * Customizable creature card
+
+*Deferred for launch.*  Every supporting module below still
+compiles and tests pass, but the AppBar entry points (the
+*🎨 Customize card* button and the *Custom: on/off* toggle) are
+commented out and =View.Workspace.renderCard= unconditionally
+routes through =View.Card.view= regardless of
+~model.useCustomCardLayout~.  The plumbing — Ui / Update / View
+modules, ~/api/card-layouts~ routes, ~localStorage~ snapshot,
+sign-in migration — is retained so the feature can be re-enabled
+behind one AppBar diff once the widget set is finished.
+~Update.Auth.applyLocalCardLayout~ still calls
+~Card.Layout.migrateLegacyDefault~ on anonymous boot, but the
+result is currently dead in user-visible terms.
+
+The original design notes follow.
 
 Users can rearrange the creature card's contents to taste — pick
 which widgets render, in which rows, with what alignment, and
@@ -1048,6 +1156,21 @@ types — ~acid~, ~bludgeoning~, ~cold~, ~fire~, ~force~,
 cleanly so prose like ~"1d6 from the spell"~ still captures just
 ~1d6~ with no spurious damage type.
 
+** Rerun dropdown in the dice modal
+
+Each history row in the dice modal carries a ↻ rerun button.  The
+button is now a two-item dropdown
+(~Ui.Dice.rerunMenuOpenFor : Maybe Int~ holds the open row, Esc /
+click-outside close):
+
+- *Reroll* — re-runs the original expression.
+- *Reroll, no modifier* — strips ~expression.constant~ to 0 before
+  re-rolling.  Useful for "what if I hadn't been at -2?" checks
+  without retyping the dice.
+
+Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~,
+~DiceRerunMenuClose~, ~DiceRerunNoModifier Dice.Roll~.
+
 * Encounter title-bar XP totals
 
 The right cluster of the encounter title bar runs a real XP
@@ -1106,6 +1229,22 @@ Lair XP is plumbed end-to-end:
 - =View.Modal.CompendiumEdit= — adds an "XP in Lair" numeric
   input alongside "XP" / "Proficiency Bonus".
 
+** Bloodied marker on the active creature
+
+=View.EncounterBar.bloodiedMarker= renders a 🩸 to the right of
+the active creature's name when ~bloodied = True~, every theme.
+The marker is purely view-side — the underlying ~bloodied~ flag
+is recomputed on every ~HpChange.apply~ (see [[*HP change engine][HP change engine]]).
+
+** Stat-block kind badge
+
+=View.StatBlock.kindBadge= renders a small coloured chip
+(Player / Enemy / NPC) next to the creature name in every
+~TagDisplay~ mode (compendium modal, pinned right rail,
+standalone view).  CSS variants in =style.css= colour them blue
+(Player), red (Enemy), and yellow (NPC) so the GM can pick a
+creature out of the queue at a glance.
+
 * Quick Add modal
 
 Lightweight one-click sister to the full Compendium browser.
@@ -1122,6 +1261,75 @@ The roll lands through the existing
 ~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~
 → toast pipeline as the full browser, just with a count of one
 and a different opener UI.  Esc closes.
+
+The Quick Add modal has two extra surfaces beyond compendium picks:
+
+- A pinned "Placeholder" entry at the top of the list (styled
+  italic, sticky) — ~Update.QuickAdd.pickPlaceholder~ →
+  ~Encounter.Roster.appendPlaceholder~.  See [[*Placeholder combatants][Placeholder combatants]].
+- Replace mode — ~Ui.QuickAdd.freshForReplace oldName~ flips the
+  modal title to ~"Replace <old> with…"~ and routes the pick
+  through ~Encounter.Roster.replaceCreature~ instead of appending,
+  preserving the old initiative value but using the new creature's
+  HP / AC.  See [[*Placeholder combatants][Placeholder combatants]] for the swap surface.
+
+* Placeholder combatants
+
+Placeholders are pre-fight stubs the GM drops in when the roster
+isn't fully resolved yet — "the BBEG goes here, I'll fill in stats
+later."  They sit in the queue, take a turn like any other
+creature, and round-trip the inline rename flow.
+
+The domain pieces:
+
+- ~Encounter.Roster.appendPlaceholder : Encounter -> Encounter~ —
+  appends a stub with Initiative 0, HP 1/1, AC 10, name
+  ~Placeholder N~ (~N~ disambiguates against the existing roster).
+  Does *not* re-sort the queue: placeholders land at the bottom by
+  design so they don't displace combat order until the GM resolves
+  them.
+- ~Encounter.Roster.renameCreature : String -> String -> Encounter
+  -> Encounter~ — renames in place.  Preserves queue position,
+  conditions, ~activeName~, ~isPlaceholder~; uniquifies collisions
+  by suffixing as needed.
+- ~Encounter.Roster.replaceCreature : String -> Creature ->
+  Encounter -> Encounter~ — swaps a creature for a new one in
+  place, preserving the *old* initiative value but adopting the
+  new creature's HP / AC / conditions / kind.  Used by both
+  Quick Add replace mode and the placeholder "fill in" flow.
+
+UI surfaces:
+
+- *Queue bottom* — =View.Workspace.addPlaceholderRow= renders a
+  full-width dashed ~+~ row beneath the last card; click fires
+  ~Encounter.Roster.appendPlaceholder~.
+- *Quick Add modal* — the pinned italic ~Placeholder~ entry at the
+  top of the list goes through ~Update.QuickAdd.pickPlaceholder~
+  (same domain call).
+- *Inline rename* — =Ui.PlaceholderRename= + =Update.PlaceholderRename=
+  drive click-to-rename on placeholder cards.  ~isPlaceholder~ is
+  the gate: once a card is renamed it stays a placeholder until
+  it's *replaced* via Quick Add's ⇄ icon (right rail, between ∅
+  and ⧉) → ~Ui.QuickAdd.freshForReplace~.
+
+** Minion naming
+
+~Encounter.Roster.uniqueMinionName~ names duplicates spawned via
+the compendium's Duplicate modal or a Black Pudding split as
+~<Base> Minion N~, always numbered from 1.  The helper strips
+trailing ~" N"~ and ~" Minion"~ before re-suffixing, so a
+minion-of-a-minion stays flat (~Goblin Minion 2~, not
+~Goblin Minion 1 Minion 1~).
+
+* Add Condition modal
+
+The standard-condition picker is a *toggle*, not a one-way set:
+~Update.Condition.pickStandard~ clears ~ui.name~ when the
+clicked condition is already active, so re-clicking the same
+badge backs out instead of doing nothing.  Duration-kind and
+auto-roll-mode controls remain true radios (no deselect-on-
+reclick) — there's always exactly one duration kind and one
+roll mode.
 
 * HP change engine
 

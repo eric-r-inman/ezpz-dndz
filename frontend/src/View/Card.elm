@@ -1,4 +1,4 @@
-module View.Card exposing (view)
+module View.Card exposing (deathSaveColumn, legendaryColumns, view)
 
 {-| Per-creature combat card.
 
@@ -161,6 +161,15 @@ view activeName hpEdit renameState creature =
             , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
+                    , onClick (QuickAddOpenForReplace creature.name)
+                    , Tooltips.attr "Replace creature"
+                    , attribute "aria-label" "Replace creature"
+                    ]
+                    [ text "⇄" ]
+                ]
+            , div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class "icon-btn"
                     , onClick (DuplicateOpen creature.name)
                     , Tooltips.attr Tooltips.queueDuplicate
                     , attribute "aria-label" "Duplicate"
@@ -253,7 +262,7 @@ creatureName creature renameState =
                 [ text creature.name ]
 
         Nothing ->
-            if Rename.isPlaceholderName creature.name then
+            if creature.isPlaceholder then
                 placeholderName creature renameState
 
             else

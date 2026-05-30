@@ -11,6 +11,7 @@ module Card.Layout exposing
     , addRow, removeRow, moveRowUp, moveRowDown
     , addWidget, removeWidget
     , setRowAlignment
+    , centerEditableWidgets, legacyDefaultLayout, migrateLegacyDefault, toggleDeathSaves, toggleLegendary
     )
 
 {-| **Prototype** domain types for the customizable creature
@@ -48,7 +49,10 @@ discipline of `Encounter` / `Compendium`. All view code lives in
 
 
 type alias CardLayout =
-    { rows : List CardRow }
+    { centerRows : List CardRow
+    , deathSavesEnabled : Bool
+    , legendaryEnabled : Bool
+    }
 
 
 type alias CardRow =
@@ -100,7 +104,8 @@ type CardWidget
     | WidgetTempHp
     | WidgetInitiative
     | WidgetKindBadge
-    | WidgetRaceLine
+    | WidgetTypeBadge
+    | WidgetAlignmentBadge
     | WidgetConditions
     | WidgetBloodied
     | WidgetCoverToggle
@@ -124,6 +129,10 @@ type CardWidget
     | WidgetSelectCheckbox
     | WidgetPanelPinButton
     | WidgetTags
+    | WidgetMoveUpButton
+    | WidgetMoveDownButton
+    | WidgetMakeActiveButton
+    | WidgetReplaceButton
 
 
 {-| Coarse grouping shown in the widget picker so the
@@ -150,7 +159,72 @@ back to this, and the editor opens to it the first time.
 -}
 defaultLayout : CardLayout
 defaultLayout =
-    { rows =
+    -- The custom card is a fixed shell: left + right rails are
+    -- always present (and unmodifiable), the death-saves and
+    -- legendary side columns are toggle-only, and the centre
+    -- column has exactly three editable rows.  The default below
+    -- populates the centre rows with the same content the
+    -- non-custom card shows.
+    { centerRows =
+        [ { widgets =
+                [ WidgetInitiative
+                , WidgetName
+                , WidgetKindBadge
+                , WidgetTypeBadge
+                , WidgetAlignmentBadge
+                , WidgetTags
+                , WidgetArmorClass
+                , WidgetConditions
+                ]
+          , alignment = AlignSpaceBetween
+          }
+        , { widgets =
+                [ WidgetHitPoints
+                , WidgetTempHp
+                , WidgetBloodied
+                , WidgetCoverToggle
+                , WidgetConcentrating
+                , WidgetHiding
+                , WidgetDodging
+                , WidgetFlying
+                ]
+          , alignment = AlignLeft
+          }
+        , { widgets =
+                [ WidgetDamageButton
+                , WidgetHealButton
+                , WidgetTempHpButton
+                , WidgetConditionButton
+                , WidgetReadiedAction
+                , WidgetMemoSlot
+                , WidgetTimerSlot
+                ]
+          , alignment = AlignLeft
+          }
+        ]
+    , deathSavesEnabled = True
+    , legendaryEnabled = True
+    }
+
+
+emptyLayout : CardLayout
+emptyLayout =
+    { centerRows = []
+    , deathSavesEnabled = False
+    , legendaryEnabled = False
+    }
+
+
+{-| The shape `defaultLayout` had BEFORE the Kind / Type /
+Alignment split and the row-controls expansion. Held as a
+constant so anonymous-mode bootstrap can detect users who never
+customised their layout and upgrade them to the new default
+instead of leaving them on an obsolete shape. Customised
+layouts won't match this exactly and so won't be touched.
+-}
+legacyDefaultLayout : CardLayout
+legacyDefaultLayout =
+    { centerRows =
         [ { widgets = [ WidgetName, WidgetArmorClass ]
           , alignment = AlignSpaceBetween
           }
@@ -183,12 +257,62 @@ defaultLayout =
           , alignment = AlignLeft
           }
         ]
+    , deathSavesEnabled = False
+    , legendaryEnabled = False
     }
 
 
-emptyLayout : CardLayout
-emptyLayout =
-    { rows = [] }
+{-| Upgrade a loaded layout to include every widget the current
+`defaultLayout` lists. Two-step:
+
+1.  If the layout matches `legacyDefaultLayout` exactly, swap
+    wholesale for `defaultLayout` so the user gets the new row
+    structure (better visual parity with the non-custom card).
+2.  Otherwise — when the user has customised — keep their rows
+    intact and APPEND a new row containing any widgets present
+    in `defaultLayout` but missing from their layout. Additive,
+    never destructive.
+
+This handles both the "fresh user with stale localStorage" case
+and the "user who customised and then a new widget shipped" case
+without losing their work.
+
+-}
+migrateLegacyDefault : CardLayout -> CardLayout
+migrateLegacyDefault layout =
+    if layout == legacyDefaultLayout then
+        defaultLayout
+
+    else
+        supplementMissingWidgets layout
+
+
+{-| If `defaultLayout`'s centre rows reference widgets the input
+layout doesn't have, append them as a third (or trailing) centre
+row so the user picks up new widgets that have shipped since
+they last touched the editor. Caps centre rows at three —
+anything beyond is dropped (the editor enforces the same cap).
+-}
+supplementMissingWidgets : CardLayout -> CardLayout
+supplementMissingWidgets layout =
+    let
+        present =
+            layout.centerRows |> List.concatMap .widgets
+
+        missing =
+            defaultLayout.centerRows
+                |> List.concatMap .widgets
+                |> List.filter (\w -> not (List.member w present))
+
+        supplemented =
+            if List.isEmpty missing then
+                layout.centerRows
+
+            else
+                layout.centerRows
+                    ++ [ { widgets = missing, alignment = AlignLeft } ]
+    in
+    { layout | centerRows = List.take 3 supplemented }
 
 
 
@@ -203,7 +327,8 @@ widgetAllValues =
     , WidgetTempHp
     , WidgetInitiative
     , WidgetKindBadge
-    , WidgetRaceLine
+    , WidgetTypeBadge
+    , WidgetAlignmentBadge
     , WidgetConditions
     , WidgetBloodied
     , WidgetCoverToggle
@@ -227,7 +352,66 @@ widgetAllValues =
     , WidgetSelectCheckbox
     , WidgetPanelPinButton
     , WidgetTags
+    , WidgetMoveUpButton
+    , WidgetMoveDownButton
+    , WidgetMakeActiveButton
+    , WidgetReplaceButton
     ]
+
+
+{-| Subset of the catalogue that's pickable inside the centre
+column. Excludes the rail widgets (move / select / make-active /
+×, inactive, replace, duplicate, panel pin) which always live in
+the left or right rail, and the side-column widgets (death
+saves, LA, LR) which the layout toggles on / off as fixed
+content. The editor's "Add widget" picker presents this list
+rather than `widgetAllValues`.
+-}
+centerEditableWidgets : List CardWidget
+centerEditableWidgets =
+    widgetAllValues
+        |> List.filter
+            (\w ->
+                case w of
+                    WidgetSelectCheckbox ->
+                        False
+
+                    WidgetMoveUpButton ->
+                        False
+
+                    WidgetMoveDownButton ->
+                        False
+
+                    WidgetMakeActiveButton ->
+                        False
+
+                    WidgetRemoveButton ->
+                        False
+
+                    WidgetSkipToggle ->
+                        False
+
+                    WidgetReplaceButton ->
+                        False
+
+                    WidgetDuplicateButton ->
+                        False
+
+                    WidgetPanelPinButton ->
+                        False
+
+                    WidgetDeathSaves ->
+                        False
+
+                    WidgetLegendaryActions ->
+                        False
+
+                    WidgetLegendaryResistance ->
+                        False
+
+                    _ ->
+                        True
+            )
 
 
 widgetCategoryAllValues : List WidgetCategory
@@ -262,8 +446,11 @@ widgetKey w =
         WidgetKindBadge ->
             "kind_badge"
 
-        WidgetRaceLine ->
-            "race_line"
+        WidgetTypeBadge ->
+            "type_badge"
+
+        WidgetAlignmentBadge ->
+            "alignment_badge"
 
         WidgetConditions ->
             "conditions"
@@ -334,6 +521,18 @@ widgetKey w =
         WidgetTags ->
             "tags"
 
+        WidgetMoveUpButton ->
+            "move_up_button"
+
+        WidgetMoveDownButton ->
+            "move_down_button"
+
+        WidgetMakeActiveButton ->
+            "make_active_button"
+
+        WidgetReplaceButton ->
+            "replace_button"
+
 
 widgetFromKey : String -> Maybe CardWidget
 widgetFromKey raw =
@@ -362,6 +561,13 @@ widgetFromLegacyKey raw =
             -- uses "readied action".
             Just WidgetReadiedAction
 
+        "race_line" ->
+            -- Pre-split combined "Race / Alignment" widget;
+            -- legacy saved layouts deserialise to the new
+            -- type-only badge so the alignment half is dropped
+            -- (the layout editor lets the user add it back).
+            Just WidgetTypeBadge
+
         _ ->
             Nothing
 
@@ -387,8 +593,11 @@ widgetLabel w =
         WidgetKindBadge ->
             "Kind Badge"
 
-        WidgetRaceLine ->
-            "Race / Alignment Line"
+        WidgetTypeBadge ->
+            "Type Badge"
+
+        WidgetAlignmentBadge ->
+            "Alignment Badge"
 
         WidgetConditions ->
             "Conditions"
@@ -459,6 +668,18 @@ widgetLabel w =
         WidgetTags ->
             "Tags"
 
+        WidgetMoveUpButton ->
+            "Move Up Button"
+
+        WidgetMoveDownButton ->
+            "Move Down Button"
+
+        WidgetMakeActiveButton ->
+            "Make Active Button"
+
+        WidgetReplaceButton ->
+            "Replace Button"
+
 
 widgetDescription : CardWidget -> String
 widgetDescription w =
@@ -481,8 +702,11 @@ widgetDescription w =
         WidgetKindBadge ->
             "Player / Enemy / NPC chip."
 
-        WidgetRaceLine ->
-            "Race + alignment summary."
+        WidgetTypeBadge ->
+            "Creature type (e.g. Dragon, Humanoid, Beast)."
+
+        WidgetAlignmentBadge ->
+            "Alignment summary (e.g. Lawful Evil, Neutral)."
 
         WidgetConditions ->
             "Inline list of active conditions and effects."
@@ -553,6 +777,18 @@ widgetDescription w =
         WidgetTags ->
             "Yellow pill badges for the creature's user-authored tags."
 
+        WidgetMoveUpButton ->
+            "Move this creature one slot up in the queue."
+
+        WidgetMoveDownButton ->
+            "Move this creature one slot down in the queue."
+
+        WidgetMakeActiveButton ->
+            "Promote this creature to active (whose turn it is)."
+
+        WidgetReplaceButton ->
+            "Swap this creature for another via the Quick Add modal."
+
 
 widgetCategory : CardWidget -> WidgetCategory
 widgetCategory w =
@@ -563,7 +799,10 @@ widgetCategory w =
         WidgetKindBadge ->
             CategoryIdentity
 
-        WidgetRaceLine ->
+        WidgetTypeBadge ->
+            CategoryIdentity
+
+        WidgetAlignmentBadge ->
             CategoryIdentity
 
         WidgetTags ->
@@ -645,6 +884,18 @@ widgetCategory w =
             CategoryRowControls
 
         WidgetPanelPinButton ->
+            CategoryRowControls
+
+        WidgetMoveUpButton ->
+            CategoryRowControls
+
+        WidgetMoveDownButton ->
+            CategoryRowControls
+
+        WidgetMakeActiveButton ->
+            CategoryRowControls
+
+        WidgetReplaceButton ->
             CategoryRowControls
 
 
@@ -768,18 +1019,25 @@ queueViewAllValues =
 -- ── MUTATORS ─────────────────────────────────────────────────────────────────
 
 
+{-| Centre column is capped at three editable rows. `addRow`
+appends an empty row when below the cap; no-op at the cap.
+-}
 addRow : CardLayout -> CardLayout
 addRow layout =
-    { layout
-        | rows =
-            layout.rows
-                ++ [ { widgets = [], alignment = AlignLeft } ]
-    }
+    if List.length layout.centerRows >= 3 then
+        layout
+
+    else
+        { layout
+            | centerRows =
+                layout.centerRows
+                    ++ [ { widgets = [], alignment = AlignLeft } ]
+        }
 
 
 removeRow : Int -> CardLayout -> CardLayout
 removeRow index layout =
-    { layout | rows = removeAt index layout.rows }
+    { layout | centerRows = removeAt index layout.centerRows }
 
 
 moveRowUp : Int -> CardLayout -> CardLayout
@@ -788,46 +1046,63 @@ moveRowUp index layout =
         layout
 
     else
-        { layout | rows = swap (index - 1) index layout.rows }
+        { layout | centerRows = swap (index - 1) index layout.centerRows }
 
 
 moveRowDown : Int -> CardLayout -> CardLayout
 moveRowDown index layout =
-    if index < 0 || index >= List.length layout.rows - 1 then
+    if index < 0 || index >= List.length layout.centerRows - 1 then
         layout
 
     else
-        { layout | rows = swap index (index + 1) layout.rows }
+        { layout | centerRows = swap index (index + 1) layout.centerRows }
 
 
 addWidget : Int -> CardWidget -> CardLayout -> CardLayout
 addWidget rowIndex widget layout =
     { layout
-        | rows =
+        | centerRows =
             updateAt rowIndex
                 (\r -> { r | widgets = r.widgets ++ [ widget ] })
-                layout.rows
+                layout.centerRows
     }
 
 
 removeWidget : Int -> Int -> CardLayout -> CardLayout
 removeWidget rowIndex widgetIndex layout =
     { layout
-        | rows =
+        | centerRows =
             updateAt rowIndex
                 (\r -> { r | widgets = removeAt widgetIndex r.widgets })
-                layout.rows
+                layout.centerRows
     }
 
 
 setRowAlignment : Int -> RowAlignment -> CardLayout -> CardLayout
 setRowAlignment rowIndex alignment layout =
     { layout
-        | rows =
+        | centerRows =
             updateAt rowIndex
                 (\r -> { r | alignment = alignment })
-                layout.rows
+                layout.centerRows
     }
+
+
+{-| Toggle whether the death-saves side column appears on the
+card. The column shows the standard 3 success + 3 failure pip
+strip when on; it's fixed content, not customisable.
+-}
+toggleDeathSaves : CardLayout -> CardLayout
+toggleDeathSaves layout =
+    { layout | deathSavesEnabled = not layout.deathSavesEnabled }
+
+
+{-| Toggle the legendary side column (LA + LR pip strips).
+Same fixed-content contract as `toggleDeathSaves`.
+-}
+toggleLegendary : CardLayout -> CardLayout
+toggleLegendary layout =
+    { layout | legendaryEnabled = not layout.legendaryEnabled }
 
 
 

@@ -28,6 +28,7 @@ the wire shape is identical (both POST a body and get back a
 
 import Auth exposing (AuthState(..), LoginMode(..))
 import Browser.Navigation as Nav
+import Card.Layout
 import Card.Wire as CardWire
 import Compendium
 import Compendium.GroupWire
@@ -166,7 +167,14 @@ applyLocalCardLayout raw model =
             case Decode.decodeValue CardWire.decodeLocalLayoutSnapshot value of
                 Ok snap ->
                     { model
-                        | cardLayout = snap.layout
+                        | cardLayout =
+                            -- One-shot migration: anonymous users
+                            -- who never customised their card
+                            -- layout get upgraded from the legacy
+                            -- 4-row default to the current
+                            -- everything-included default.  Custom
+                            -- layouts pass through untouched.
+                            Card.Layout.migrateLegacyDefault snap.layout
                         , queueView = snap.queueView
                         , useCustomCardLayout = snap.useCustomCardLayout
                     }

@@ -11,9 +11,9 @@ focused on the story.
 
 You can start using it without signing in.  An account unlocks
 multi-device sync and named server-side saves, but every
-feature (compendium editing, named saves, custom card layouts,
-dice history) works in your browser anonymously too.  See
-[[*Using without an account][Using without an account]] below.
+feature (compendium editing, named saves, dice history) works
+in your browser anonymously too.  See [[*Using without an account][Using without an account]]
+below.
 
 * License
 
@@ -56,15 +56,12 @@ Anonymous sessions are backed entirely by your browser's
 ~localStorage~, with parity to the signed-in experience on every
 common surface:
 
-- The live encounter, dice history, active card layout, and
-  full compendium (creatures + groups) all persist across
-  reloads.
+- The live encounter, dice history, and full compendium
+  (creatures + groups) all persist across reloads.
 - The Save / Load buttons on the encounter controls show *To
   Browser* / *From Browser* labels and write to ~localStorage~
   under names you choose (overwrite, rename, and delete all
   work the same as the server-backed flow).
-- The Card Editor's Save button writes named layouts to
-  ~localStorage~ the same way.
 - The compendium has full New / Paste / Edit / Duplicate /
   Delete / Create Group / Edit Group / Delete Group support
   with everything persisted locally.
@@ -77,14 +74,11 @@ items (which redirect to the sign-in page with a tooltip).
 ** Promoting an anonymous session into an account
 
 Sign in or create an account whenever you're ready.  The app
-automatically uploads three pieces of your anonymous work to
-your account in the background:
+automatically uploads two pieces of your anonymous work to your
+account in the background:
 
 - Your live encounter is archived under the name *Local — <today>*
   in Save → Load.
-- If you actively enabled the custom card renderer, your active
-  layout is archived under *Local — <today>* in the Card Editor's
-  Saved Layouts list.
 - Your compendium (creatures + groups) is imported into your
   account.
 
@@ -140,7 +134,9 @@ The bar above the creature queue shows the abbreviated status of the active crea
 - *Round counter* — e.g. "Round 5".  Increments when a full turn
   cycle completes.
 - *Active creature summary* — the current creature's name, HP (click
-  to edit inline), AC (click to edit inline), and any note.
+  to edit inline), AC (click to edit inline), and any note.  A 🩸
+  marker appears to the right of the name when the active creature
+  is bloodied.
 - *State icons* — quick-glance badges for the active creature's
   cover, concentration, hiding, dodging, and flying status (with fly
   height when airborne).
@@ -178,7 +174,10 @@ optional legendary-pips column, and a right rail.
   initiative value.
 - *Creature name* — click to pin this creature's stat block to the
   Compendium Panel on the right.  Names automatically get a numeric
-  suffix ("Goblin 2") for duplicates.
+  suffix ("Goblin 2") for duplicates.  Minion-style duplicates (via
+  the Duplicate modal or a Black Pudding split) name themselves as
+  *Goblin Minion 1*, *Goblin Minion 2*, etc., always numbered from
+  1 — splitting a minion stays flat rather than nesting.
 - *Note pencil (✏️)* — opens the *Note* modal to set a short label
   (~40 chars, displayed in italics).  Useful for "boss",
   "summoned by Lyra", or "ally".
@@ -220,6 +219,11 @@ optional legendary-pips column, and a right rail.
 - *Remove (×)* — pop this creature out of the encounter.
 - *Inactive toggle (⧉)* — keep the card visible but exclude it from
   the turn order.  Useful for downed enemies you want to remember.
+- *Replace (⇄)* — opens *Quick Add* in "Replace mode": picking a
+  creature swaps it in place, keeping the old card's initiative
+  value but adopting the new creature's HP, AC, and stats.  The
+  modal title reads *Replace <old name> with…* until you pick or
+  cancel.
 - *Duplicate (⧉ second group)* — opens the *Duplicate* picker with
   five options (see below).
 
@@ -328,8 +332,11 @@ automatically after they finish:
 
 The *Condition* modal serves both creation and editing.
 
-- *Standard condition* — radio buttons for all 15 standard 5e
-  conditions; selecting one pre-fills the name.
+- *Standard condition* — badges for all 15 standard 5e
+  conditions; selecting one pre-fills the name.  Click the same
+  badge again to deselect it and clear the name field — useful
+  for switching from "I'll pick a standard" to "I want a custom
+  one" without retyping.
 - *Custom name* — override or write a free-form name (e.g.
   "Suppressed", "Bardic inspiration").
 - *Note* — a 10-char hint, shown on the chip ("from Lyra", "DC 13").
@@ -395,8 +402,11 @@ Open from the *🎲 Roll* button in the middle pane.
 - *Advantage / Disadvantage / Coin* — quick rolls for the table's
   most common shapes.
 - *Roll history* — up to 30 entries, newest first.  Click any past
-  roll to re-run it (appends a new entry).  *Clear History* wipes the
-  list (with confirmation).
+  roll to re-run it (appends a new entry).  Each row's *↻* button
+  opens a two-item menu: *Reroll* repeats the original expression;
+  *Reroll, no modifier* strips the constant before re-rolling, so
+  you can ask "what if I hadn't been at -2?" without retyping the
+  dice.  *Clear History* wipes the list (with confirmation).
 
 Roll history is persisted to your account — it survives logout and
 appears on other devices when you sign back in.
@@ -406,6 +416,11 @@ appears on other devices when you sign back in.
 Open from the *➕ Quick Add* button.  This is the fastest way to drop
 a creature into the encounter without leaving the table view.
 
+- *Placeholder row* — pinned italic entry at the top of the list.
+  Adds a stub combatant (Initiative 0, HP 1/1, AC 10, name
+  *Placeholder N*) when the roster isn't fully resolved yet.  Click
+  the card's name later to rename it; use the right-rail ⇄ button
+  to swap in a real creature once you've decided.
 - *Sort toggle* — switch the list between alphabetical and CR order.
 - *Creature list* — every creature in your compendium, with its CR
   on the right.  Click a row to add one instance to the encounter at
@@ -413,6 +428,23 @@ a creature into the encounter without leaving the table view.
 
 Use Quick Add when you know what you want; use the full Compendium
 when you want to read stat blocks first.
+
+** Placeholder combatants
+
+When you want a slot in the queue but don't know who fills it
+yet, drop in a *Placeholder*:
+
+- The full-width dashed *+* row at the bottom of the queue adds
+  one with a single click.
+- Quick Add's pinned *Placeholder* entry does the same thing.
+
+A placeholder behaves like any other creature — takes its turn,
+holds conditions, etc. — but spawns at Initiative 0 so it
+naturally lands at the back of the queue until you sort it in.
+Click the card's name to rename it inline.  When you're ready to
+fill it in with a real stat block, use the right-rail *⇄* button
+to swap it for any creature from the compendium without
+disturbing the initiative order.
 
 * The Compendium
 
@@ -448,6 +480,8 @@ action bar on the right.
 Click a creature in the list to load its full stat block on the
 right.  Clickable elements inside the stat block:
 
+- *Kind badge* — a small coloured chip next to the creature name
+  marking it Player (blue), Enemy (red), or NPC (yellow).
 - *Ability scores* — clicking an ability cell (STR, DEX, …) opens
   an *Ability Save* roll prompt.
 - *Inline dice* — any dice expression in a trait or action
@@ -612,33 +646,16 @@ Two entry points:
 Note: the party roster is currently in-memory only.  Server
 persistence for the party is on the roadmap.
 
-* Card Customization (prototype)
+* Card Customization (deferred for launch)
 
-A *🎨 Customize card* button on the app bar opens the *Card Editor*,
-a prototype layout tool that lets you change which widgets appear on
-your creature cards and how they're arranged.
-
-What's working:
-
-- Pick a queue view mode (List or Grid).
-- Add, remove, and reorder rows.
-- Set per-row alignment.
-- Add widgets to rows from a dropdown picker.
-- Save layouts to your account, load them, rename them, overwrite
-  them, or delete them.
-- A live preview to the right of the editor reflects your changes
-  in real time.
-
-What's not yet finished:
-
-- Several widgets render as labelled placeholders in the preview
-  (and the live encounter) rather than the final visual.  The names
-  on the placeholders match the widgets they'll become.
-- The full widget library is still being filled in.
-
-Toggle the customised renderer with the *Custom: on / off* switch in
-the app bar.  When off, the encounter renders with the classic
-built-in card layout regardless of what's saved.
+The *Card Editor* — a layout tool for choosing which widgets
+appear on creature cards and how they're arranged — is hidden in
+the launch build.  The supporting code (editor modal, layout
+data model, save/load endpoints, anonymous-mode localStorage
+snapshot) is still in place, but the *🎨 Customize card* button
+and *Custom: on / off* switch are commented out in the app bar
+and the encounter always renders with the classic card.  Once
+the widget set is filled out the entry points will come back.
 
 * Saving and loading encounters
 
@@ -706,22 +723,27 @@ Visit ~/me~ from the *User* badge in the app bar.
 
 ** App Bar (top)
 
-- *eZpZ-dndZ* — brand text, top-left.
+- *eZpZ-dndZ* — brand text, top-left.  When you're anonymous, an
+  italic tagline rides next to it: *"Sign in to save your
+  encounters and compendium changes."*
 - *Encounter* — link to the main view at ~/~.
-- *Customize card* — opens the Card Editor.
-- *Custom: on / off* — toggles the customised card renderer.
 - *User badge / Sign in* — shows your display name (links to
   ~/me~) when signed in.  When anonymous, shows a *Sign in*
   link that takes you to the sign-in form.  On the sign-in page
   itself the link is suppressed (it would point back to
   itself).
+- *About* — link to a short ~/about~ page describing what
+  eZpZ-dndZ is and how it works.
 - *Donate* — link to ~/donate~.
-- *⚙ settings* — opens the popover with the Theme picker (and
-  future preferences).
+- *⚙ settings* — opens the *Set Theme* popover with the Theme
+  picker (and future preferences).  The radio list stacks
+  vertically; Accessible carries an italic *(alpha)* badge.
 
 ** Footer (fixed at the bottom)
 
-- *Copyright and license summary* on the left.
+- *Copyright and license summary* on the left.  *PolyForm Strict
+  1.0.0* is a link out to ~polyformproject.org~ for the full
+  license text.
 - *Beta disclaimer* in the middle ("features may change or break
   without notice").
 - *Contact* link on the right (mailto: ~feedback@ezpzdndz~).
@@ -819,15 +841,17 @@ Other always-on visual cues:
   block* — rolls it.
 - *Tab inside a modal* — wraps within the modal back to the
   close button rather than escaping into the underlying page.
+- *Drag a modal's header* — repositions the modal.  *Drag any
+  edge or corner* — resizes the modal.  The chrome clamps to
+  the viewport so a modal can't be dragged off-screen.
 
 * Honest limitations and rough edges (today)
 
 We'd rather you know about these in advance than be surprised by
 them at the table.
 
-- *Card Editor* is a prototype.  Some widgets render as labelled
-  placeholders.  The classic renderer (toggle: *Custom: off*) is
-  the production view.
+- *Card Editor* is hidden for launch.  Every creature card uses
+  the classic built-in layout.  See [[*Card Customization (deferred for launch)][Card Customization (deferred for launch)]].
 - *Compendium Edit's advanced sections* — Legendary Actions, Lair
   Actions, Regional Effects, and Spellcasting — are partially
   editable.  Existing data is preserved on save, but the editor
@@ -838,11 +862,10 @@ them at the table.
 - *Mobile/tablet polish* is incomplete.  The app is targeted at
   laptop and desktop screens for now.
 - *Anonymous named saves don't auto-migrate.*  When you sign
-  in, your live encounter and (if you actively enabled it)
-  custom card layout are auto-archived to your account.  Your
-  *named* encounter saves and named card-layout saves stay in
-  your browser — sign out to access them anonymously again, or
-  open each and re-save under your account.
+  in, your live encounter is auto-archived to your account.
+  Your *named* encounter saves stay in your browser — sign out
+  to access them anonymously again, or open each and re-save
+  under your account.
 
 If you spot something not on this list, it's almost certainly a
 bug — please report it.

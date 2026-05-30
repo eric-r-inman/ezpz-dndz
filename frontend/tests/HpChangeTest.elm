@@ -50,6 +50,10 @@ fixture =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = ""
+    , alignment = ""
     }
 
 

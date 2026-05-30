@@ -367,6 +367,17 @@ type alias Creature =
     , legendaryActionsUsed : Set Int
     , hasLegendaryResistance : Bool
     , legendaryResistanceUsed : Set Int
+    , isPlaceholder : Bool
+
+    -- Structured identity badges separate from the legacy
+    -- `kind` field (which still holds the combined "Race,
+    -- Alignment" descriptor for back-compat / wire payloads).
+    -- `creatureKind` is one of "player" / "enemy" / "npc";
+    -- `race` and `alignment` are free-form strings rendered as
+    -- their own badges by the Custom Card renderer.
+    , creatureKind : String
+    , race : String
+    , alignment : String
     }
 
 

@@ -158,12 +158,14 @@ nameRow tagDisplay c =
         TagBadges ->
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
+                , kindBadge c.kind
                 , tagBadges c.tags
                 ]
 
         TagBadgesOpenInNewTab ->
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
+                , kindBadge c.kind
                 , div [ class "statblock__name-row-end" ]
                     [ tagBadges c.tags
                     , openInNewTabLink c.id
@@ -172,7 +174,31 @@ nameRow tagDisplay c =
 
         TagIconTooltip ->
             div [ class "statblock__name statblock__name--inline-tags" ]
-                (text c.name :: inlineTagIcon c.tags)
+                (text c.name :: kindBadge c.kind :: inlineTagIcon c.tags)
+
+
+{-| Coloured Player / Enemy / NPC chip rendered to the right of
+the creature name. Uses the same `--kind-*` modifier suffixes
+the Custom-card kind badge uses so themed colour tokens stay in
+one place.
+-}
+kindBadge : Compendium.CreatureKind -> Html msg
+kindBadge kind =
+    let
+        ( label, slug ) =
+            case kind of
+                Compendium.Player ->
+                    ( "Player", "kind-player" )
+
+                Compendium.Enemy ->
+                    ( "Enemy", "kind-enemy" )
+
+                Compendium.Npc ->
+                    ( "NPC", "kind-npc" )
+    in
+    span
+        [ class ("statblock__kind-badge statblock__kind-badge--" ++ slug) ]
+        [ text label ]
 
 
 {-| ↗ anchor that opens the standalone single-creature page in

@@ -32,10 +32,19 @@ view : Model -> Html Msg
 view model =
     case model.modal of
         Just (ModalQuickAdd ui) ->
+            let
+                title =
+                    case ui.replaceTarget of
+                        Just oldName ->
+                            "Replace " ++ oldName ++ " with…"
+
+                        Nothing ->
+                            "Quick Add"
+            in
             View.Modal.view
                 { close = QuickAddClose
                 , noOp = NoOp
-                , title = "Quick Add"
+                , title = title
                 , extraClass = "modal--quick-add"
                 , chrome = model.modalChrome
                 , body =

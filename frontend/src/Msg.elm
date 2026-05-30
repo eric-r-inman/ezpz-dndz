@@ -42,6 +42,7 @@ import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
+import Json.Decode as Decode
 import Url exposing (Url)
 
 
@@ -339,8 +340,20 @@ type Msg
     | DiceRollDisadvantage
     | DiceFlipCoin
     | DiceRerun Dice.Roll
+      -- Open or close the re-roll dropdown attached to a single
+      -- history entry (toggle: clicking the open one closes; any
+      -- other entry replaces).  `DiceRerunNoModifier` is the new
+      -- menu item that re-rolls with the constant stripped from
+      -- the expression.
+    | DiceRerunMenuToggle Int
+    | DiceRerunMenuClose
+    | DiceRerunNoModifier Dice.Roll
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
+      -- A peer tab broadcast a freshly-landed roll over the
+      -- BroadcastChannel.  Payload is the encoded `Dice.Roll`;
+      -- decode failures are silently ignored.
+    | DiceRollFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
@@ -500,6 +513,8 @@ type Msg
     | CardEditorWidgetAdd Int String
     | CardEditorWidgetRemove Int Int
     | CardEditorQueueViewSet String
+    | CardEditorToggleDeathSaves
+    | CardEditorToggleLegendary
       -- Saved-layout persistence (`/api/card-layouts`).
     | CardEditorLayoutNameChanged String
     | CardEditorSaveAs
@@ -709,6 +724,10 @@ type Msg
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
+      -- Open the picker in "swap this creature" mode.  The pick
+      -- handler then replaces the named creature in place with
+      -- the chosen one, preserving the old initiative.
+    | QuickAddOpenForReplace String
     | QuickAddClose
     | QuickAddSortToggle
     | QuickAddSearchChanged String

@@ -44,7 +44,7 @@ import Set
 view : CardLayout -> Creature -> Html msg
 view layout creature =
     div [ class "card-preview" ]
-        (List.map (renderRow creature) layout.rows)
+        (List.map (renderRow creature) layout.centerRows)
 
 
 
@@ -87,6 +87,10 @@ sampleCreature =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = "Beast"
+    , alignment = "Neutral"
     }
 
 
@@ -169,9 +173,11 @@ renderWidget creature widget =
         WidgetKindBadge ->
             span [ class "card-preview__chip" ] [ text "Enemy" ]
 
-        WidgetRaceLine ->
-            span [ class "card-preview__race" ]
-                [ text "Goblin · Chaotic Evil" ]
+        WidgetTypeBadge ->
+            span [ class "card-preview__chip" ] [ text "Goblinoid" ]
+
+        WidgetAlignmentBadge ->
+            span [ class "card-preview__chip" ] [ text "Chaotic Evil" ]
 
         WidgetConditions ->
             if List.isEmpty creature.conditions then
@@ -291,6 +297,18 @@ renderWidget creature widget =
                 [ span [ class "card-preview__tag-badge" ] [ text "boss" ]
                 , span [ class "card-preview__tag-badge" ] [ text "fire_resist" ]
                 ]
+
+        WidgetMoveUpButton ->
+            iconChip "↑" "move up"
+
+        WidgetMoveDownButton ->
+            iconChip "↓" "move down"
+
+        WidgetMakeActiveButton ->
+            iconChip "→" "make active"
+
+        WidgetReplaceButton ->
+            iconChip "⇄" "replace"
 
 
 

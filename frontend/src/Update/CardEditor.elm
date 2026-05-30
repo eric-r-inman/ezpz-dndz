@@ -5,7 +5,7 @@ module Update.CardEditor exposing
     , rowAlignmentSet
     , widgetAdd, widgetRemove
     , queueViewSet
-    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, overwriteCancel, overwriteConfirm, saveAs, saveNameChanged
+    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, overwriteCancel, overwriteConfirm, saveAs, saveNameChanged, toggleDeathSaves, toggleLegendary
     )
 
 {-| **Prototype** update handlers for the Creature Card Editor.
@@ -106,7 +106,7 @@ rowAdd model =
                     Layout.addRow ui.layout
 
                 newFocus =
-                    Just (List.length newLayout.rows - 1)
+                    Just (List.length newLayout.centerRows - 1)
             in
             { ui | layout = newLayout, focusRow = newFocus }
         )
@@ -130,11 +130,11 @@ rowRemove index model =
                     -- same index if one exists, otherwise the row
                     -- just before it; `Nothing` when the layout
                     -- becomes empty.
-                    if List.isEmpty newLayout.rows then
+                    if List.isEmpty newLayout.centerRows then
                         Nothing
 
                     else
-                        Just (min index (List.length newLayout.rows - 1))
+                        Just (min index (List.length newLayout.centerRows - 1))
             }
         )
         model
@@ -162,7 +162,7 @@ rowMoveDown index model =
         (\ui ->
             let
                 last =
-                    List.length ui.layout.rows - 1
+                    List.length ui.layout.centerRows - 1
             in
             { ui
                 | layout = Layout.moveRowDown index ui.layout
@@ -239,6 +239,24 @@ queueViewSet key model =
 
         Nothing ->
             ( model, Cmd.none )
+
+
+toggleDeathSaves : Model -> ( Model, Cmd Msg )
+toggleDeathSaves model =
+    ( withEditor
+        (\ui -> { ui | layout = Layout.toggleDeathSaves ui.layout })
+        model
+    , Cmd.none
+    )
+
+
+toggleLegendary : Model -> ( Model, Cmd Msg )
+toggleLegendary model =
+    ( withEditor
+        (\ui -> { ui | layout = Layout.toggleLegendary ui.layout })
+        model
+    , Cmd.none
+    )
 
 
 
@@ -443,7 +461,7 @@ applyLocalLoad name model =
                         , busy = False
                         , error = Nothing
                         , focusRow =
-                            if List.isEmpty entry.layout.rows then
+                            if List.isEmpty entry.layout.centerRows then
                                 Nothing
 
                             else
@@ -528,7 +546,7 @@ layoutFetched result model =
                         , busy = False
                         , error = Nothing
                         , focusRow =
-                            if List.isEmpty record.layout.rows then
+                            if List.isEmpty record.layout.centerRows then
                                 Nothing
 
                             else

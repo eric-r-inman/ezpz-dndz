@@ -61,6 +61,10 @@ mkInstance args =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = ""
+    , alignment = ""
     }
 
 
@@ -238,6 +242,10 @@ totalsForSuite =
                         , legendaryActionsUsed = Set.empty
                         , hasLegendaryResistance = False
                         , legendaryResistanceUsed = Set.empty
+                        , isPlaceholder = False
+                        , creatureKind = "enemy"
+                        , race = ""
+                        , alignment = ""
                         }
 
                     enc =

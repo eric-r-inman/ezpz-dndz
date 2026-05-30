@@ -263,6 +263,46 @@
         });
       }
 
+      // Cross-tab dice-roll sync.  When a roll lands in any tab,
+      // Elm fires `broadcastDiceRoll` with the encoded roll; every
+      // other tab of the app open in the same browser profile
+      // receives the same value via `incomingDiceRoll` and pushes
+      // it into its own dice history.  Solves the case where a
+      // stat block is opened in its own tab — rolls fired there
+      // would otherwise be invisible to the main encounter tab's
+      // dice modal.  `BroadcastChannel` does NOT echo to the
+      // sender, so no self-filtering is needed.
+      var diceChannel = null;
+      try {
+        if (typeof BroadcastChannel === "function") {
+          diceChannel = new BroadcastChannel("ezpz-dndz-dice");
+        }
+      } catch (_) {
+        // Older browser / disabled by privacy mode — degrade to
+        // per-tab dice histories.
+      }
+      if (
+        diceChannel &&
+        app.ports &&
+        app.ports.broadcastDiceRoll &&
+        app.ports.incomingDiceRoll
+      ) {
+        app.ports.broadcastDiceRoll.subscribe(function (value) {
+          try {
+            diceChannel.postMessage(value);
+          } catch (_) {}
+        });
+        diceChannel.onmessage = function (event) {
+          try {
+            app.ports.incomingDiceRoll.send(event.data);
+          } catch (_) {}
+        };
+      } else if (app.ports && app.ports.broadcastDiceRoll) {
+        // No channel available — swallow outbound broadcasts so
+        // the port still has a subscriber (Elm errors otherwise).
+        app.ports.broadcastDiceRoll.subscribe(function () {});
+      }
+
       // Anonymous named card-layout saves dict writer + eraser.
       if (app.ports && app.ports.persistLocalCardLayoutSaves) {
         app.ports.persistLocalCardLayoutSaves.subscribe(function (value) {

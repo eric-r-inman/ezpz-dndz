@@ -288,7 +288,16 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs ++ loginEscSubs ++ chromeSubs)
+    Sub.batch
+        (primary
+            :: Ports.incomingDiceRoll DiceRollFromOtherTab
+            :: xpFilterSubs
+            ++ settingsSubs
+            ++ clearMenuSubs
+            ++ controlMenuSubs
+            ++ loginEscSubs
+            ++ chromeSubs
+        )
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -898,11 +907,23 @@ updateInner msg model =
         DiceRerun roll ->
             Update.Dice.rerun roll model
 
+        DiceRerunMenuToggle idx ->
+            Update.Dice.rerunMenuToggle idx model
+
+        DiceRerunMenuClose ->
+            Update.Dice.rerunMenuClose model
+
+        DiceRerunNoModifier roll ->
+            Update.Dice.rerunNoModifier roll model
+
         DiceClearHistory ->
             Update.Dice.clearHistory model
 
         DiceRollLanded roll ->
             Update.Dice.rollLanded roll model
+
+        DiceRollFromOtherTab raw ->
+            Update.Dice.rollFromOtherTab raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -1327,6 +1348,12 @@ updateInner msg model =
 
         CardEditorQueueViewSet key ->
             Update.CardEditor.queueViewSet key model
+
+        CardEditorToggleDeathSaves ->
+            Update.CardEditor.toggleDeathSaves model
+
+        CardEditorToggleLegendary ->
+            Update.CardEditor.toggleLegendary model
 
         CardEditorLayoutNameChanged raw ->
             Update.CardEditor.saveNameChanged raw model
@@ -1819,6 +1846,9 @@ updateInner msg model =
 
         QuickAddOpen ->
             Update.QuickAdd.open model
+
+        QuickAddOpenForReplace oldName ->
+            Update.QuickAdd.openForReplace oldName model
 
         QuickAddClose ->
             Update.QuickAdd.close model

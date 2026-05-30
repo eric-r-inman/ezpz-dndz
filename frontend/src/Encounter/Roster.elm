@@ -3,7 +3,7 @@ module Encounter.Roster exposing
     , sortByInitiative
     , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
-    , appendPlaceholder, renameCreature
+    , appendPlaceholder, renameCreature, replaceCreature, replaceWithPlaceholder
     )
 
 {-| Queue-mutation helpers for the encounter manager.
@@ -22,7 +22,7 @@ mutations through these and lifecycle ticks through
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
-@docs appendPlaceholder, renameCreature
+@docs appendPlaceholder, renameCreature, replaceCreature, replaceWithPlaceholder
 
 -}
 
@@ -450,6 +450,91 @@ renameCreature oldName rawNewName enc =
         { enc | creatures = renamed, activeName = newActive }
 
 
+{-| Swap one creature in the queue for another, in place. The
+old creature's initiative VALUE (its rolled position in the
+queue) is preserved on the replacement; everything else — kind,
+ability scores, HP, AC, conditions, status flags — comes from
+the new instance. Queue position and `activeName` are
+preserved; the replacement's display name is uniquified against
+the rest of the queue so it doesn't collide with another card.
+
+Caller is responsible for building the `newCreature` via the
+usual draftToInstance / placeholder construction path. This
+helper just plants it.
+
+No-op when `oldName` isn't in the queue.
+
+-}
+replaceCreature : String -> Creature -> Encounter -> Encounter
+replaceCreature oldName newCreature enc =
+    case findByName oldName enc.creatures of
+        Nothing ->
+            enc
+
+        Just old ->
+            let
+                otherNames =
+                    enc.creatures
+                        |> List.filter (\c -> c.name /= oldName)
+                        |> List.map .name
+
+                resolvedName =
+                    uniqueInstanceName
+                        (instanceBaseName newCreature.name)
+                        otherNames
+
+                planted =
+                    { newCreature
+                        | name = resolvedName
+                        , initiative = old.initiative
+                    }
+
+                swapped =
+                    List.map
+                        (\c ->
+                            if c.name == oldName then
+                                planted
+
+                            else
+                                c
+                        )
+                        enc.creatures
+
+                newActive =
+                    if enc.activeName == oldName then
+                        resolvedName
+
+                    else
+                        enc.activeName
+            in
+            { enc | creatures = swapped, activeName = newActive }
+
+
+{-| Swap the named creature for a fresh `Placeholder N` stub,
+preserving the old creature's initiative position. Used by the
+Quick Add modal's "Placeholder" entry when the modal was opened
+in replace mode.
+
+No-op when `oldName` isn't in the queue.
+
+-}
+replaceWithPlaceholder : String -> Encounter -> Encounter
+replaceWithPlaceholder oldName enc =
+    let
+        otherNames =
+            enc.creatures
+                |> List.filter (\c -> c.name /= oldName)
+                |> List.map .name
+
+        placeholderName =
+            nextPlaceholderName otherNames
+
+        stub =
+            freshPlaceholder placeholderName
+    in
+    replaceCreature oldName stub enc
+
+
 freshPlaceholder : String -> Creature
 freshPlaceholder name =
     { name = name
@@ -482,6 +567,10 @@ freshPlaceholder name =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = True
+    , creatureKind = "npc"
+    , race = ""
+    , alignment = ""
     }
 
 

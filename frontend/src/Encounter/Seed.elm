@@ -65,6 +65,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -103,6 +107,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -134,6 +142,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -165,6 +177,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -196,6 +212,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -227,6 +247,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -258,6 +282,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -289,5 +317,9 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     ]

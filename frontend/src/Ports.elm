@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalDiceHistory, persistLocalEncounterSaves
+    , broadcastDiceRoll, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalDiceHistory, persistLocalEncounterSaves
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -25,6 +25,7 @@ persistence path will be HTTP.
 
 -}
 
+import Json.Decode as D
 import Json.Encode as E
 
 
@@ -130,3 +131,25 @@ port persistLocalCardLayoutSaves : E.Value -> Cmd msg
 {-| Drop the whole anonymous named-card-layout-saves dict.
 -}
 port clearLocalCardLayoutSaves : () -> Cmd msg
+
+
+{-| Broadcast a freshly-landed `Dice.Roll` to every other tab of
+this app open in the same browser profile. JS bridges the value
+through a `BroadcastChannel("ezpz-dndz-dice")`; peer tabs receive
+it via [`incomingDiceRoll`](#incomingDiceRoll) and push it into
+their own dice history. Without this, the stat-block page (opened
+in its own tab) would log rolls only into its own dice modal —
+the main encounter tab would never see them. The originating tab
+is NOT notified by the channel, so no echo filtering is needed.
+-}
+port broadcastDiceRoll : E.Value -> Cmd msg
+
+
+{-| Subscription for `Dice.Roll` values that another tab broadcast
+via [`broadcastDiceRoll`](#broadcastDiceRoll). The receiving tab
+should push the decoded roll into its dice history without
+re-persisting or re-broadcasting (the originating tab already
+handled both). Payload shape is whatever `Dice.encodeRoll`
+produces.
+-}
+port incomingDiceRoll : (D.Value -> msg) -> Sub msg

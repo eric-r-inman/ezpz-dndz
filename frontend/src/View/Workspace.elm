@@ -97,11 +97,16 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
                     Compendium.fromList []
 
         renderCard =
-            if useCustom then
-                View.Card.Custom.view layout enc.activeName hpEdit compendiumDb
-
-            else
-                View.Card.view enc.activeName hpEdit renameState
+            -- Customize-card feature hidden for launch.  Always
+            -- use the non-custom `View.Card` renderer regardless
+            -- of `model.useCustomCardLayout`.  Restore the
+            -- branch below when the feature is re-enabled:
+            --
+            -- if useCustom then
+            --     View.Card.Custom.view layout enc.activeName hpEdit compendiumDb
+            -- else
+            --     View.Card.view enc.activeName hpEdit renameState
+            View.Card.view enc.activeName hpEdit renameState
 
         -- Queue-view picker (List / Grid) is meaningful only when
         -- the custom renderer is on; the classic card has fixed
@@ -125,25 +130,26 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
             ]
             [ div [ class gridClass ]
                 (List.map renderCard enc.creatures)
-            , addPlaceholderRow
+            , quickAddRow
             ]
         ]
 
 
 {-| Full-width "+" row appended below the last creature card in
-the queue. One-click adds a blank "Placeholder N" combatant with
-initiative 0 / HP 1 / AC 10 to the bottom of the queue without
-re-sorting (see `Encounter.Roster.appendPlaceholder`). Hover
-text doubles as the aria-label so screen-reader users hear the
-intent rather than just "+".
+the queue. Opens the Quick Add modal — same affordance as the
+"+ Quick Add" button in the encounter-controls panel, surfaced
+inside the queue itself so the GM doesn't have to track across to
+the middle column to add another creature. Hover text doubles as
+the aria-label so screen-reader users hear the intent rather than
+just "+".
 -}
-addPlaceholderRow : Html Msg
-addPlaceholderRow =
+quickAddRow : Html Msg
+quickAddRow =
     button
         [ class "add-placeholder-row"
         , type_ "button"
-        , onClick EncounterAddPlaceholder
-        , Tooltips.attr "Add placeholder"
-        , attribute "aria-label" "Add placeholder"
+        , onClick QuickAddOpen
+        , Tooltips.attr Tooltips.quickAddButton
+        , attribute "aria-label" "Quick Add"
         ]
         [ text "+" ]

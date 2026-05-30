@@ -2094,11 +2094,59 @@ body {
 }
 
 /* ── Custom (layout-driven) creature card ─────────────────────────── */
+/* Mirror the non-custom `.creature-card` flex shell: left rail,
+   centre column, optional side columns (death-saves + legendary),
+   right rail.  Rows in the saved layout carry a `column` tag,
+   and the renderer groups them into these five slots. */
 .creature-card--custom {
-  display: block;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
   padding: var(--space-3);
 }
 
+.creature-card-custom__center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.creature-card-custom__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 6px;
+  min-width: 36px;
+  flex: 0 0 auto;
+}
+
+.creature-card-custom__col-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+/* Rows inside a rail or side-column stack vertically so their
+   widgets land in the same vertical column the non-custom card
+   uses (↑/↓ stacked, LA + LR pip strips stacked, right-rail
+   icons stacked).  Without this override the row's default
+   `display: flex; flex-wrap: wrap` lays widgets side-by-side. */
+.creature-card-custom__rail .creature-card-custom__row,
+.creature-card-custom__col-side .creature-card-custom__row {
+  flex-direction: column;
+  align-items: center;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+/* Backwards compat: legacy `__body` wrapper if any saved layout
+   without a column field renders.  The new renderer doesn't emit
+   it, but pre-PR snapshots / preview cards may. */
 .creature-card-custom__body {
   display: flex;
   flex-direction: column;
@@ -2131,6 +2179,29 @@ body {
 .creature-card-custom__name {
   font-weight: 700;
   font-size: 1.05rem;
+}
+
+/* Linked variant — rendered as a real <button> so keyboard
+   users can Tab + Enter to pin the stat block.  Reset native
+   chrome and pick up an underline-on-hover cue (mirrors the
+   non-custom card's compendium-link affordance). */
+.creature-card-custom__name--linked {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.creature-card-custom__name--linked:hover,
+.creature-card-custom__name--linked:focus-visible {
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+  outline: none;
 }
 
 .creature-card-custom__ac,
@@ -2175,6 +2246,38 @@ body {
   background: var(--color-condition, #c98c1d);
   border-color: transparent;
   color: white;
+}
+
+/* Kind badge variants — colour-coded so the GM can scan a queue
+   and pick out PCs / enemies / NPCs at a glance.  Same chip
+   chrome as the default; only the fill + text colour change. */
+.creature-card-custom__chip--kind-player {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.creature-card-custom__chip--kind-enemy {
+  background: rgba(214, 59, 59, 0.15);
+  border-color: rgba(214, 59, 59, 0.55);
+  color: var(--color-danger, #c62828);
+  font-weight: 600;
+}
+
+.creature-card-custom__chip--kind-npc {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.creature-card-custom__chip--type,
+.creature-card-custom__chip--alignment {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  font-style: italic;
 }
 
 .creature-card-custom__conditions {
@@ -2297,9 +2400,14 @@ body {
 /* Pip strips inside the running encounter — same shape as the
    editor preview but with their own class namespace so the
    colours can diverge if needed. */
+/* Death-saves and legendary widgets stack their label + pip
+   strip vertically inside the side column, matching the
+   `.legendary-col` / `.death-save-col` geometry of the
+   non-custom card. */
 .creature-card-custom__deathsaves,
 .creature-card-custom__legendary {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 4px;
   font-size: 0.82rem;
@@ -2312,6 +2420,7 @@ body {
 
 .creature-card-custom__pip-strip {
   display: inline-flex;
+  flex-direction: column;
   gap: 2px;
 }
 
@@ -2523,7 +2632,11 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  /* `space-evenly` distributes the icons with equal gaps before
+     the first, between each pair, and after the last — looks
+     balanced for both the 2-icon left rail (move up / down) and
+     the 4-icon right rail (×, inactive, replace, duplicate). */
+  justify-content: space-evenly;
   gap: 6px;
   min-width: 36px;
 }
@@ -3798,6 +3911,41 @@ body {
   font-size: 1.1rem;
 }
 
+/* Player / Enemy / NPC chip rendered next to the creature name
+   in the stat block.  Uses theme tokens so the colour palette
+   tracks Modern / Dark / Auto / Accessible automatically; mirrors
+   the badge variants on the (now-hidden) Custom card so the
+   shared vocabulary stays consistent. */
+.statblock__kind-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+
+.statblock__kind-badge--kind-player {
+  background: rgba(74, 144, 226, 0.15);
+  border-color: rgba(74, 144, 226, 0.55);
+  color: var(--color-init-blue, #1976d2);
+}
+
+.statblock__kind-badge--kind-enemy {
+  background: rgba(214, 59, 59, 0.15);
+  border-color: rgba(214, 59, 59, 0.55);
+  color: var(--color-danger, #c62828);
+}
+
+.statblock__kind-badge--kind-npc {
+  background: rgba(245, 200, 66, 0.18);
+  border-color: rgba(245, 200, 66, 0.55);
+  color: var(--color-yellow, #854d0e);
+}
+
 /* Used by `TagIconTooltip` mode in the right-rail Compendium
    panel: the 🏷 icon sits immediately after the name with a
    small gap, so it reads as "this creature has tags" rather
@@ -4560,6 +4708,31 @@ body {
 .card-editor__queue-view-btn--active {
   background: var(--color-blue);
   color: white;
+}
+
+/* Side-columns section — two checkboxes for the death-saves
+   and legendary fixed-content side columns. Contents of these
+   columns aren't user-editable; only the on/off state. */
+.card-editor__side-columns {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-editor__side-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.card-editor__side-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.95rem;
 }
 
 /* Rows list */
@@ -5868,6 +6041,54 @@ body {
 .dice-history__rerun:hover {
   color: var(--color-text);
   border-color: var(--color-text-muted);
+}
+
+/* Wrapper around the ↻ trigger so its dropdown menu can hang
+   off the right edge without disturbing the entry's flex
+   layout. Position: relative is just the anchor for the
+   absolute menu. */
+.dice-history__rerun-wrap {
+  position: relative;
+}
+
+/* Re-roll dropdown menu — two-item list pinned to the right
+   edge of the trigger button.  Uses the same surface +
+   shadow tokens as `.app-settings__menu` so the chrome reads
+   consistently with the AppBar settings popover. */
+.dice-history__rerun-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dice-history__rerun-menu-item {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dice-history__rerun-menu-item:hover,
+.dice-history__rerun-menu-item:focus-visible {
+  background: var(--color-accent-soft);
+  outline: none;
 }
 
 .dice-history__empty {

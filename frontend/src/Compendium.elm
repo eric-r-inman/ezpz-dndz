@@ -871,7 +871,30 @@ draftToInstance { displayName, initiativeRoll } c =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = sourceHasLegendaryResistance c
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = kindKey c.kind
+    , race = c.race
+    , alignment = c.alignment
     }
+
+
+{-| Lowercase wire token for a creature kind. Matches the value
+written into `Encounter.Creature.creatureKind` so the Kind Badge
+in the Custom Card renderer can branch on the same string in
+either spawn path (compendium-spawned creatures, anonymous-mode
+localStorage round-trips, server saves).
+-}
+kindKey : CreatureKind -> String
+kindKey k =
+    case k of
+        Player ->
+            "player"
+
+        Enemy ->
+            "enemy"
+
+        Npc ->
+            "npc"
 
 
 {-| Detect whether a compendium creature has the standard

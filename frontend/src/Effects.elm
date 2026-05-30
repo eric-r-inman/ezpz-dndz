@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, pushIncomingDiceRoll, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -37,6 +37,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
+import Ports
 import Process
 import Route exposing (Route(..))
 import Task
@@ -239,9 +240,35 @@ here.
 When the modal is already open, the user can already see the
 roll, so no indicator is needed.
 
+Also broadcasts the roll to peer tabs via the dice
+BroadcastChannel so a stat block opened in its own tab and the
+main encounter tab keep a single shared log. Peer tabs receive
+the broadcast via `incomingDiceRoll` and run it through
+[`pushIncomingDiceRoll`](#pushIncomingDiceRoll) — same model
+mutation but without the broadcast Cmd, so we don't loop.
+
 -}
 pushDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
 pushDiceRoll roll model =
+    let
+        ( next, flashCmd ) =
+            pushIncomingDiceRoll roll model
+    in
+    ( next
+    , Cmd.batch
+        [ flashCmd
+        , Ports.broadcastDiceRoll (Dice.encodeRoll roll)
+        ]
+    )
+
+
+{-| Same model mutation as [`pushDiceRoll`](#pushDiceRoll) but no
+broadcast Cmd — used by the inbound BroadcastChannel handler so
+receiving a peer's roll doesn't bounce it back across the channel
+and create an echo loop.
+-}
+pushIncomingDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
+pushIncomingDiceRoll roll model =
     let
         d =
             model.dice

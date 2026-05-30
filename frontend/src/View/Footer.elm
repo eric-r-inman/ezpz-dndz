@@ -31,14 +31,14 @@ view =
             [ text "© 2026 Eric Inman · Source-available under "
             , a
                 [ class "app-footer__license-link"
-                , href "https://polyformproject.org/licenses/strict/1.0.0/"
+                , href "https://polyformproject.org/licenses/strict/1.0.0"
                 , target "_blank"
                 , rel "noopener noreferrer"
                 ]
                 [ text "PolyForm Strict 1.0.0" ]
             ]
         , span [ class "app-footer__beta" ]
-            [ text "Beta — features may change or break without notice." ]
+            [ text "Beta Version — features may change or break, and save files could be lost, without notice." ]
         , div [ class "app-footer__contact" ]
             [ a [ href "mailto:feedback@ezpzdndz" ]
                 [ text "Contact" ]

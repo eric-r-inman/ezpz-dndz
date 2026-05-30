@@ -1,6 +1,6 @@
 module Ui.QuickAdd exposing
     ( QuickAddSort(..), QuickAddUi
-    , fresh, setSearchText, toggleSort
+    , fresh, freshForReplace, setSearchText, toggleSort
     )
 
 {-| Quick Add modal state — a one-click "drop a creature into the
@@ -12,8 +12,13 @@ browser: no kind filter, no add-count, no edit affordances —
 just "I want to add one goblin right now," with a search box so
 the GM can narrow the list at speed.
 
+When `replaceTarget` is `Just oldName`, the picker behaves as a
+swap: the chosen creature replaces `oldName` in the queue at the
+same position with the old initiative preserved. When `Nothing`,
+the picker appends.
+
 @docs QuickAddSort, QuickAddUi
-@docs fresh, setSearchText, toggleSort
+@docs fresh, freshForReplace, setSearchText, toggleSort
 
 -}
 
@@ -29,6 +34,7 @@ type QuickAddSort
 type alias QuickAddUi =
     { sort : QuickAddSort
     , searchText : String
+    , replaceTarget : Maybe String
     }
 
 
@@ -36,6 +42,19 @@ fresh : QuickAddUi
 fresh =
     { sort = SortAlpha
     , searchText = ""
+    , replaceTarget = Nothing
+    }
+
+
+{-| Open the picker in "replace this creature" mode. The pick
+handler then swaps in place, preserving the old creature's
+initiative value, instead of appending a fresh batch roll.
+-}
+freshForReplace : String -> QuickAddUi
+freshForReplace oldName =
+    { sort = SortAlpha
+    , searchText = ""
+    , replaceTarget = Just oldName
     }
 
 

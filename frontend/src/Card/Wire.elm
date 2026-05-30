@@ -86,10 +86,65 @@ decodeRecord =
         (D.field "updated_at" D.int)
 
 
+{-| Layout wire schema accepts BOTH the legacy `rows` shape
+(flat list of rows, possibly tagged with the now-removed
+`column` field) and the new `center_rows + death_saves_enabled +
+legendary_enabled` shape. Legacy payloads are reshaped by
+keeping only rows that didn't carry a non-centre column tag,
+capping at the three-row centre limit; the side-column toggles
+default to True so users keep seeing those columns after the
+upgrade.
+-}
 decodeLayoutBody : D.Decoder CardLayout
 decodeLayoutBody =
-    D.map CardLayout
-        (D.field "rows" (D.list decodeRow))
+    D.oneOf [ decodeLayoutCurrent, decodeLayoutLegacy ]
+
+
+decodeLayoutCurrent : D.Decoder CardLayout
+decodeLayoutCurrent =
+    D.map3 CardLayout
+        (D.field "center_rows" (D.list decodeRow))
+        (D.field "death_saves_enabled" D.bool)
+        (D.field "legendary_enabled" D.bool)
+
+
+decodeLayoutLegacy : D.Decoder CardLayout
+decodeLayoutLegacy =
+    D.field "rows" (D.list decodeLegacyRow)
+        |> D.map
+            (\legacyRows ->
+                let
+                    centreRows =
+                        legacyRows
+                            |> List.filter (\r -> r.column == "center" || String.isEmpty r.column)
+                            |> List.map (\r -> { widgets = r.widgets, alignment = r.alignment })
+                            |> List.take 3
+                in
+                { centerRows = centreRows
+                , deathSavesEnabled = True
+                , legendaryEnabled = True
+                }
+            )
+
+
+{-| Loose decoder for a row in the legacy `rows` shape. The
+deprecated `column` tag is kept as a String here just so the
+reshape in [`decodeLayoutLegacy`](#decodeLayoutLegacy) can sort
+centre rows from side / rail rows.
+-}
+decodeLegacyRow : D.Decoder LegacyRow
+decodeLegacyRow =
+    D.map3 LegacyRow
+        (D.field "widgets" (D.list decodeWidget))
+        (D.field "alignment" decodeAlignment)
+        (D.field "column" D.string |> D.maybe |> D.map (Maybe.withDefault ""))
+
+
+type alias LegacyRow =
+    { widgets : List CardWidget
+    , alignment : RowAlignment
+    , column : String
+    }
 
 
 decodeRow : D.Decoder CardRow
@@ -148,7 +203,9 @@ decodeQueueView =
 encodeLayoutBody : CardLayout -> QueueView -> E.Value
 encodeLayoutBody layout queueView =
     E.object
-        [ ( "rows", E.list encodeRow layout.rows )
+        [ ( "center_rows", E.list encodeRow layout.centerRows )
+        , ( "death_saves_enabled", E.bool layout.deathSavesEnabled )
+        , ( "legendary_enabled", E.bool layout.legendaryEnabled )
         , ( "queue_view", E.string (Layout.queueViewKey queueView) )
         ]
 

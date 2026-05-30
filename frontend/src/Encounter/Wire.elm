@@ -258,6 +258,10 @@ encodeCreature c =
         , ( "legendaryActionsUsed", encodeIntSet c.legendaryActionsUsed )
         , ( "hasLegendaryResistance", E.bool c.hasLegendaryResistance )
         , ( "legendaryResistanceUsed", encodeIntSet c.legendaryResistanceUsed )
+        , ( "isPlaceholder", E.bool c.isPlaceholder )
+        , ( "creatureKind", E.string c.creatureKind )
+        , ( "race", E.string c.race )
+        , ( "alignment", E.string c.alignment )
         ]
 
 
@@ -456,7 +460,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -487,6 +491,10 @@ decodeCreature =
             , legendaryActionsUsed = laUsed
             , hasLegendaryResistance = hasLR
             , legendaryResistanceUsed = lrUsed
+            , isPlaceholder = isPlaceholder
+            , creatureKind = creatureKind
+            , race = race
+            , alignment = alignment
             }
         )
         |> required "name" D.string
@@ -519,6 +527,10 @@ decodeCreature =
         |> optional "legendaryActionsUsed" decodeIntSet Set.empty
         |> optional "hasLegendaryResistance" D.bool False
         |> optional "legendaryResistanceUsed" decodeIntSet Set.empty
+        |> optional "isPlaceholder" D.bool False
+        |> optional "creatureKind" D.string "enemy"
+        |> optional "race" D.string ""
+        |> optional "alignment" D.string ""
 
 
 decodeIntSet : D.Decoder (Set Int)
