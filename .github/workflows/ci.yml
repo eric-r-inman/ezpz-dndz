@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job key + display name match the rust-template branch-protection
+  # Job key + display name match the template's branch-protection
   # convention (`ci / Test`, `ci / Formatting`), so the standard
   # branch-protection.json applies as-is.  This workflow stays
   # hand-rolled (rather than using foundation's reusable-ci.yml)
