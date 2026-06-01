@@ -119,13 +119,10 @@
       "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq -r '.[] | select\\(\\(.actions // []\\) | map\\(.usage.kind // \"\"\\) | any\\(. == \"recharge\" or . == \"per_day\" or . == \"per_long_rest\"\\)\\) | .name' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
       "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq -r '[.[].actions // [] | .[] | .usage // null] | map\\(select\\(. != null\\)\\) | length, .[0:3]' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
       "Bash(PATH=/nix/store/8jl1d4pfm5q4afrqzfggsi3s9pck1xw9-jq-1.7.1-bin/bin:__TRACKED_VAR__ jq '.[] | select\\(.name == \"Adult Red Dragon\"\\) | {name, actions, legendary_actions}' /Users/ericrinman/dev/ezpz-dndz/crates/lib/data/bundled-creatures.json)",
-      "Bash(ls -la rust-template.json)",
-      "Bash(ls -la rust-template*)",
       "Bash(ls .github/workflows/)",
       "Bash(ls -la .github/)",
       "Bash(ls .cargo-husky/hooks/)",
       "Bash(/nix/var/nix/profiles/default/bin/nix flake *)",
-      "Bash(cp /Users/ericrinman/dev/rust-template/template/llms.org /Users/ericrinman/dev/ezpz-dndz/llms.org && wc -l /Users/ericrinman/dev/ezpz-dndz/llms.org)",
       "Bash(CARGO_NET_GIT_FETCH_WITH_CLI=true /nix/var/nix/profiles/default/bin/nix develop --command cargo build --workspace)",
       "Bash(ping -c 2 static.crates.io)",
       "Bash(CARGO_HTTP_MULTIPLEXING=false CARGO_NET_RETRY=10 /nix/var/nix/profiles/default/bin/nix develop --command cargo build --workspace)",
@@ -175,9 +172,6 @@
       "Bash(cargo publish *)",
       "Bash(cargo publish)"
     ],
-    "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      "/Users/ericrinman/dev/rust-template/template"
-    ]
+    "defaultMode": "bypassPermissions"
   }
 }
