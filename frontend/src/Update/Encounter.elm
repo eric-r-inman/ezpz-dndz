@@ -322,6 +322,7 @@ resetCreatureState c =
         , flyHeight = 0
         , bloodied = False
         , deathSaves = Encounter.emptyDeathSaves
+        , acceptingDeathSaves = False
         , readied = False
         , inactive = False
         , timer = Nothing

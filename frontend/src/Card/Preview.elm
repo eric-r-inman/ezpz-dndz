@@ -77,6 +77,7 @@ sampleCreature =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = DeathSaves.empty
+    , acceptingDeathSaves = False
     , readied = False
     , inactive = False
     , note = ""
@@ -412,7 +413,7 @@ coverLabel cover =
             "3/4"
 
         FullCover ->
-            "full"
+            "total"
 
 
 boolLabel : String -> Bool -> String

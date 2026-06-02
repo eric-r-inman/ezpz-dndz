@@ -130,6 +130,7 @@ fullyPopulatedCreature =
     , flyHeight = 80
     , bloodied = True
     , deathSaves = { successes = 2, failures = 1 }
+    , acceptingDeathSaves = True
     , readied = True
     , inactive = False
     , note = "boss"

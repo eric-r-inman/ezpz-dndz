@@ -325,6 +325,22 @@ type Msg
     | DeathSaveToggleFailure String Int
     | DeathSaveRoll String
     | DeathSaveRollLanded String Dice.Roll
+      -- Flip the per-creature `acceptingDeathSaves` opt-in on for
+      -- a downed (0 HP) creature so the death-save pip tracker
+      -- appears on its card.  Resets back to False when the
+      -- creature heals above 0.
+    | DeathSavesBegin String
+      -- Mark a downed creature dead immediately: set their death-
+      -- save failures to 3 so the predicate cascade
+      -- (`isDeathSaveDead`, card class, queue skip) flips in one
+      -- shot.  Fired by clicking the DOWN lifecycle badge on the
+      -- card border.
+    | MarkCreatureDead String
+      -- Reverse of `MarkCreatureDead`: clear failures back to 0
+      -- (successes preserved).  Fired by clicking the DEAD
+      -- lifecycle badge so the same physical pill is a reversible
+      -- toggle.
+    | RevertCreatureToDown String
     | ToggleReadied String
     | ToggleInactive String
       -- Dice modal
@@ -464,12 +480,7 @@ type Msg
     | CompendiumSelect String
     | CompendiumAddedToggle
     | CompendiumAddToQueue String
-    | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
-      -- (creatureId, [(displayName, roll)])
     | CompendiumAddSelectedToQueue
-    | CompendiumAddSelectedRolled (List ( String, String, Dice.Roll ))
-      -- [(creatureId, displayName, roll)] — one entry per selected
-      -- compendium creature, materialised together with one toast.
       -- Group feature (Phase A: UI scaffolding only — buttons fire
       -- placeholder toasts until the modal + store land).
     | CompendiumGroupsToggle

@@ -248,6 +248,7 @@ encodeCreature c =
         , ( "flyHeight", E.int c.flyHeight )
         , ( "bloodied", E.bool c.bloodied )
         , ( "deathSaves", encodeDeathSaves c.deathSaves )
+        , ( "acceptingDeathSaves", E.bool c.acceptingDeathSaves )
         , ( "readied", E.bool c.readied )
         , ( "inactive", E.bool c.inactive )
         , ( "note", E.string c.note )
@@ -460,7 +461,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -481,6 +482,7 @@ decodeCreature =
             , flyHeight = flyHeight
             , bloodied = bloodied
             , deathSaves = deathSaves
+            , acceptingDeathSaves = acceptingDeathSaves
             , readied = readied
             , inactive = inactive
             , note = note
@@ -517,6 +519,7 @@ decodeCreature =
         |> optional "flyHeight" D.int 0
         |> optional "bloodied" D.bool False
         |> optional "deathSaves" decodeDeathSaves { successes = 0, failures = 0 }
+        |> optional "acceptingDeathSaves" D.bool False
         |> optionalEither "readied" "holding" D.bool False
         |> optional "inactive" D.bool False
         |> optional "note" D.string ""

@@ -55,6 +55,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 1 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -97,6 +98,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -132,6 +134,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = True
       , inactive = False
       , note = ""
@@ -167,6 +170,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -202,6 +206,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -237,6 +242,7 @@ seedCreatures =
       , flyHeight = 30
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -272,6 +278,7 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""
@@ -307,6 +314,7 @@ seedCreatures =
       , flyHeight = 15
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
       , readied = False
       , inactive = False
       , note = ""

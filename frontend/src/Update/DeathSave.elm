@@ -1,5 +1,8 @@
 module Update.DeathSave exposing
-    ( roll
+    ( begin
+    , markDead
+    , revertToDown
+    , roll
     , rollLanded
     , toggleFailure
     , toggleSuccess
@@ -25,6 +28,85 @@ import Msg exposing (Msg(..))
 withEncounter : (Encounter.Encounter -> Encounter.Encounter) -> Model -> Model
 withEncounter fn model =
     { model | encounter = fn model.encounter }
+
+
+{-| GM clicked the "Death Saves" opt-in button on a downed
+creature's card. Flip `acceptingDeathSaves` so the pip tracker
+appears. No effect when the creature has already been written off
+(currentHp > 0); the button only renders at 0 HP, but we guard
+anyway in case the message arrives stale.
+-}
+begin : String -> Model -> ( Model, Cmd Msg )
+begin name model =
+    ( withEncounter
+        (Encounter.mapCreature name
+            (\c ->
+                if c.currentHp == 0 then
+                    { c | acceptingDeathSaves = True }
+
+                else
+                    c
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| GM clicked the "💤 DOWN" lifecycle badge on a creature's
+card border. Set `deathSaves.failures` to 3 so the predicate
+cascade flips: `isDeathSaveDead` → True, the card class
+swaps `--unconscious` for `--dead`, the badge label swaps
+"DOWN" for "DEAD", and `Encounter.Lifecycle.skipUnplayable`
+starts walking past them. Successes are preserved (a stray
+success-pip from a prior pass is benign once dead).
+
+Guarded on `currentHp == 0` — the badge only renders at 0 HP
+but a stale Msg shouldn't be able to mark a healthy creature
+dead.
+
+-}
+markDead : String -> Model -> ( Model, Cmd Msg )
+markDead name model =
+    ( withEncounter
+        (Encounter.mapCreature name
+            (\c ->
+                if c.currentHp == 0 then
+                    { c
+                        | deathSaves =
+                            { successes = c.deathSaves.successes, failures = 3 }
+                    }
+
+                else
+                    c
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Reverse of `markDead`: clear failures back to 0, preserving
+any successes the creature already had. Fired by clicking the
+DEAD lifecycle badge so the same physical pill toggles between
+the two states. No HP guard — if the creature somehow has a
+stale dead state at positive HP, this still does the safe thing
+(no badge afterwards).
+-}
+revertToDown : String -> Model -> ( Model, Cmd Msg )
+revertToDown name model =
+    ( withEncounter
+        (Encounter.mapCreature name
+            (\c ->
+                { c
+                    | deathSaves =
+                        { successes = c.deathSaves.successes, failures = 0 }
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
 
 
 {-| Click on success pip `idx` (0..2). Star-rating semantics:
@@ -173,6 +255,7 @@ applyResult d20 c =
         { c
             | currentHp = Basics.max 1 c.currentHp
             , deathSaves = Encounter.emptyDeathSaves
+            , acceptingDeathSaves = False
         }
 
     else if d20 == 1 then

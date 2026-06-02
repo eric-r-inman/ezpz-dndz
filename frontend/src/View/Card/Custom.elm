@@ -86,35 +86,16 @@ view layout activeName _ db creature =
         isActive =
             creature.name == activeName
 
-        isDead =
-            Encounter.isDeathSaveDead creature.deathSaves
-
         cardClass =
             String.join " "
-                (List.filterMap identity
-                    [ Just "creature-card"
-                    , Just "creature-card--custom"
-                    , if isActive then
-                        Just "creature-card--active"
-
-                      else
-                        Nothing
-                    , if isDead then
-                        Just "creature-card--dead"
-
-                      else
-                        Nothing
-                    , if creature.inactive then
-                        Just "creature-card--inactive"
-
-                      else
-                        Nothing
-                    ]
+                ("creature-card"
+                    :: "creature-card--custom"
+                    :: View.Card.lifecycleClasses isActive creature
                 )
     in
     article
         [ id (Effects.cardId creature.name), class cardClass ]
-        (renderColumns db creature layout)
+        (View.Card.lifecycleBadge creature :: renderColumns db creature layout)
 
 
 {-| Render the five-column shell. Left rail, right rail, and
@@ -662,7 +643,7 @@ coverLabel cover =
             "3/4"
 
         FullCover ->
-            "full"
+            "total"
 
 
 {-| Render the lowercase `creatureKind` token ("player" /

@@ -1,4 +1,4 @@
-module View.Card exposing (deathSaveColumn, legendaryColumns, view)
+module View.Card exposing (deathSaveColumn, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
@@ -49,33 +49,12 @@ view activeName hpEdit renameState creature =
         isActive =
             creature.name == activeName
 
-        isDead =
-            Encounter.isDeathSaveDead creature.deathSaves
-
         cardClass =
-            String.join " "
-                (List.filterMap identity
-                    [ Just "creature-card"
-                    , if isActive then
-                        Just "creature-card--active"
-
-                      else
-                        Nothing
-                    , if isDead then
-                        Just "creature-card--dead"
-
-                      else
-                        Nothing
-                    , if creature.inactive then
-                        Just "creature-card--inactive"
-
-                      else
-                        Nothing
-                    ]
-                )
+            String.join " " ("creature-card" :: lifecycleClasses isActive creature)
     in
     article [ id (Effects.cardId creature.name), class cardClass ]
-        [ div [ class "creature-card__rail creature-card__rail--left" ]
+        [ lifecycleBadge creature
+        , div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
                 [ input
                     [ type_ "checkbox"
@@ -178,6 +157,137 @@ view activeName hpEdit renameState creature =
                 ]
             ]
         ]
+
+
+{-| Lifecycle modifier classes (active / dead / unconscious /
+inactive) so both the classic-card and custom-card renderers
+classify creatures identically. Order is fixed so a creature
+that's BOTH dead and inactive still picks up both classes; CSS
+specificity decides which visual wins (`--dead` overrides
+`--unconscious` because death implies unconsciousness, and the
+left-border / badge picks the most-severe colour).
+
+  - **alive** (no class) — `currentHp > 0`.
+  - **unconscious** — `currentHp == 0`, not yet 3 failed death
+    saves. Amber border + "DOWN" badge so the GM doesn't lose
+    track of a downed creature when the death-save pip strip is
+    hidden by default.
+  - **dead** — three failed death saves. Red border + 💀 badge,
+    plus the existing grayscale / opacity treatment.
+  - **inactive** — manually skipped via the ∅ rail toggle. Gray
+    border + ⏭ badge.
+
+-}
+lifecycleClasses : Bool -> Creature -> List String
+lifecycleClasses isActive creature =
+    let
+        isDead =
+            Encounter.isDeathSaveDead creature.deathSaves
+
+        isUnconscious =
+            creature.currentHp == 0 && not isDead
+    in
+    List.filterMap identity
+        [ if isActive then
+            Just "creature-card--active"
+
+          else
+            Nothing
+        , if isDead then
+            Just "creature-card--dead"
+
+          else if isUnconscious then
+            Just "creature-card--unconscious"
+
+          else
+            Nothing
+        , if creature.inactive then
+            Just "creature-card--inactive"
+
+          else
+            Nothing
+        ]
+
+
+{-| Top-center status pill that floats above the card.
+Renders nothing for alive, active-only creatures so the
+encounter queue isn't visually noisy when everyone's healthy.
+Inactive wins over unconscious on the label so a manually
+skipped downed creature still reads as SKIPPED — that's the
+GM's explicit choice.
+
+The DOWN and DEAD variants are both clickable, forming a
+reversible toggle on the same physical pill:
+
+  - DOWN → DEAD (`MarkCreatureDead`) sets failures to 3.
+  - DEAD → DOWN (`RevertCreatureToDown`) clears failures back
+    to 0, preserving any successes the creature already had.
+
+The predicate cascade does the rest — `isDeathSaveDead`
+flips, the card class swaps between `--unconscious` and
+`--dead`, the badge label and colour follow. SKIPPED stays a
+non-interactive div; reversing it goes through the ∅ rail
+toggle as before.
+
+-}
+lifecycleBadge : Creature -> Html Msg
+lifecycleBadge creature =
+    let
+        isDead =
+            Encounter.isDeathSaveDead creature.deathSaves
+
+        isStable =
+            Encounter.isDeathSaveStable creature.deathSaves
+
+        baseClass slug =
+            "creature-card__lifecycle creature-card__lifecycle--" ++ slug
+
+        ( downLabel, downClass ) =
+            -- A creature with three success pips has stabilised
+            -- under 5e rules — they're not dying anymore.  Surface
+            -- that on the badge so the GM doesn't need to peek at
+            -- the pip strip to know the death-save clock stopped.
+            -- The button still fires `MarkCreatureDead` because
+            -- the GM may still want to mark them dead manually for
+            -- narrative reasons; clicking remains the explicit
+            -- override path.
+            if isStable then
+                ( "💤 DOWN, STABLE", "down-stable" )
+
+            else
+                ( "💤 DOWN", "down" )
+    in
+    if creature.inactive then
+        div
+            [ class (baseClass "inactive")
+            , attribute "role" "status"
+            ]
+            [ text "⏭ SKIPPED" ]
+
+    else if isDead then
+        button
+            [ class (baseClass "dead")
+            , Attr.type_ "button"
+            , onClick (RevertCreatureToDown creature.name)
+            , Tooltips.attr Tooltips.lifecycleDeadToDown
+            , attribute "aria-label"
+                ("Mark " ++ creature.name ++ " not dead (revert)")
+            ]
+            [ text "💀 DEAD" ]
+
+    else if creature.currentHp == 0 then
+        button
+            [ class (baseClass downClass)
+            , Attr.type_ "button"
+            , onClick (MarkCreatureDead creature.name)
+            , Tooltips.attr Tooltips.lifecycleDownToDead
+            , attribute "aria-label"
+                ("Mark " ++ creature.name ++ " dead")
+            ]
+            [ text downLabel ]
+
+    else
+        text ""
 
 
 {-| Click handler for the row 1 selection checkbox.
@@ -878,6 +988,22 @@ deathSaveColumn creature =
     if creature.currentHp /= 0 then
         text ""
 
+    else if not creature.acceptingDeathSaves then
+        -- Opt-in button.  Most downed enemies never need to roll
+        -- death saves (the DM just narrates them dead), so the
+        -- pip strip stays hidden until the GM explicitly asks
+        -- for it.  Click flips `acceptingDeathSaves = True` and
+        -- the full tracker renders on the next pass.
+        div [ class "death-save-cols death-save-cols--opt-in" ]
+            [ button
+                [ class "death-save-cols__begin"
+                , onClick (DeathSavesBegin creature.name)
+                , Tooltips.attr Tooltips.deathBegin
+                , attribute "aria-label" "Begin death saving throws"
+                ]
+                [ text "Death Saves" ]
+            ]
+
     else
         let
             ds =
@@ -1032,7 +1158,7 @@ coverToggle creature =
                     ( "¾ cover", "Three-quarters cover", "status-toggle--on" )
 
                 FullCover ->
-                    ( "full cover", "Full cover", "status-toggle--on" )
+                    ( "total cover", "Total cover", "status-toggle--on" )
     in
     button
         [ class ("status-toggle " ++ modifier)

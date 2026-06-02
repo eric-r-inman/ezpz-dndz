@@ -937,6 +937,30 @@ viewSegment onRoll creatureName segment =
                 ]
                 [ text shown ]
 
+        Dice.AttackLink shown mod ->
+            button
+                [ class "dice-link attack-link"
+                , Html.Events.on "click"
+                    (Decode.map2 (onRoll creatureName (attackExpression mod))
+                        (Decode.field "clientX" Decode.int)
+                        (Decode.field "clientY" Decode.int)
+                    )
+                , Tooltips.attr (Tooltips.statBlockAttack shown mod)
+                ]
+                [ text shown ]
+
+
+{-| `1d20 + mod` expression for an attack-roll click. The sign
+of `mod` flows into `constant` as-is; negative values render as
+`1d20 - 1` via `expressionToString`.
+-}
+attackExpression : Int -> Dice.Expression
+attackExpression mod =
+    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = mod
+    , damageType = Nothing
+    }
+
 
 descriptionParagraph : String -> Html msg
 descriptionParagraph s =

@@ -4,23 +4,20 @@ module Update.QuickAdd exposing (close, open, openForReplace, pick, pickPlacehol
 that lists every compendium creature and adds the chosen one to
 the encounter as a single instance.
 
-The pick path piggybacks on the existing
-[`CompendiumInitiativeRolled`](Msg#CompendiumInitiativeRolled)
-landing handler: build a single-instance roll spec, fire the
-batched dice Cmd, and let the shared landing path do the
-draftToInstance + appendCreatures + toast work. No new
-infrastructure needed.
+The pick path materialises the creature at initiative 0 — the GM
+sets the value manually on the card after the modal closes, which
+avoids spending a dice-roll telemetry entry on every add and keeps
+the queue's ordering predictable when several creatures are added
+back-to-back.
 
 -}
 
 import Compendium
-import Dice
 import Encounter.Roster
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
-import Update.Initiative
 
 
 open : Model -> ( Model, Cmd Msg )
@@ -89,12 +86,12 @@ pickPlaceholder model =
 In replace mode the swap is synchronous: build a fresh instance
 via `Compendium.draftToInstance` and call
 `Encounter.Roster.replaceCreature`, which preserves the old
-initiative value. No batched dice Cmd needed.
+initiative value.
 
-In normal mode (append) the flow piggybacks on the existing
-batched-initiative roll: build a single-creature spec, fire the
-Cmd, and let `CompendiumInitiativeRolled` do the
-draftToInstance + queue append + toast.
+In normal mode (append) the creature lands at initiative 0; the
+GM types the value on the card afterwards. No batched dice Cmd,
+no dice-history entry, no toast — the modal close + new card
+appearing is the feedback.
 
 -}
 pick : String -> Model -> ( Model, Cmd Msg )
@@ -108,7 +105,7 @@ pick creatureId model =
                             replaceInPlace oldName source model
 
                         Nothing ->
-                            appendViaRoll creatureId source model
+                            appendAtZero source model
 
                 Nothing ->
                     ( { model | modal = Nothing }, Cmd.none )
@@ -147,8 +144,8 @@ replaceInPlace oldName source model =
     )
 
 
-appendViaRoll : String -> Compendium.Creature -> Model -> ( Model, Cmd Msg )
-appendViaRoll creatureId source model =
+appendAtZero : Compendium.Creature -> Model -> ( Model, Cmd Msg )
+appendAtZero source model =
     let
         existing =
             List.map .name model.encounter.creatures
@@ -156,16 +153,17 @@ appendViaRoll creatureId source model =
         name =
             Encounter.Roster.uniqueInstanceName source.name existing
 
-        spec =
-            ( name
-            , Update.Initiative.source name
-            , Dice.generator (Update.Initiative.initiativeExpression source.initiativeBonus)
-            )
+        newCreature =
+            Compendium.draftToInstance
+                { displayName = name, initiativeRoll = 0 }
+                source
     in
-    ( { model | modal = Nothing }
-    , Dice.batchRollCmd
-        (CompendiumInitiativeRolled creatureId)
-        [ spec ]
+    ( { model
+        | modal = Nothing
+        , encounter =
+            Encounter.Roster.appendCreatures [ newCreature ] model.encounter
+      }
+    , Cmd.none
     )
 
 

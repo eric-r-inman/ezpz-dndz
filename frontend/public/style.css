@@ -689,6 +689,19 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.15rem;
 }
 
+/* Ability-score badges (STR / DEX / CON / INT / WIS / CHA): bump
+   the abbreviated label and the modifier (e.g. "+2") from their
+   compact defaults (0.62rem / 0.7rem) so the row reads cleanly
+   at low vision.  The raw score is already the heaviest glyph in
+   the cell, so it keeps its existing size. */
+[data-theme="accessible"] .ability__label {
+  font-size: 0.95rem;
+}
+
+[data-theme="accessible"] .ability__mod {
+  font-size: 1.05rem;
+}
+
 [data-theme="accessible"] .creature-card__row--top .init-circle,
 [data-theme="accessible"] .creature-card__row--top .condition-chip {
   font-size: 1rem;
@@ -2560,6 +2573,180 @@ body {
 
 .creature-card--inactive:hover {
   opacity: 0.85;
+}
+
+/* ── Lifecycle (dead / unconscious / skipped) reinforcement ──
+   Three layers of signal on the card so the GM never has to
+   guess whether a creature is still in the round:
+
+   1. Left-edge colour stripe (4px box-shadow inset).  Visible
+      regardless of the dim filters on `--dead` / `--inactive`
+      because the stripe lives on the card root, not the muted
+      center column.
+   2. Floating "DEAD" / "DOWN" / "SKIPPED" pill above the card
+      (`.creature-card__lifecycle`, rendered by `lifecycleBadge`).
+      High-contrast colour, slight overhang so it reads at a
+      glance across the queue.
+   3. Existing opacity + grayscale on `.creature-card--dead` /
+      `--inactive` carries the muted look.  The new
+      `--unconscious` state intentionally KEEPS full colour — a
+      downed-but-not-dead creature is still a live combatant the
+      GM may want to look at, so we only flag it, we don't mute
+      it.
+
+   `position: relative` is added to the card root so the badge's
+   absolute positioning anchors here. */
+.creature-card {
+  position: relative;
+}
+
+.creature-card--dead {
+  box-shadow: inset 6px 0 0 0 var(--color-danger);
+}
+
+.creature-card--unconscious {
+  box-shadow: inset 6px 0 0 0 var(--color-warn, #d97706);
+}
+
+.creature-card--inactive {
+  box-shadow: inset 6px 0 0 0 var(--color-text-muted);
+}
+
+/* When BOTH dead and inactive are set, the dead stripe wins — a
+   skipped corpse is still a corpse. */
+.creature-card--dead.creature-card--inactive {
+  box-shadow: inset 6px 0 0 0 var(--color-danger);
+}
+
+.creature-card__lifecycle {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 4;
+  border: 1px solid currentColor;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /* Stay full-opacity even when the parent card is dimmed. */
+  opacity: 1;
+}
+
+.creature-card__lifecycle--dead {
+  background: var(--color-danger);
+  color: #ffffff;
+  border-color: var(--color-danger);
+}
+
+.creature-card__lifecycle--down {
+  background: var(--color-warn, #d97706);
+  color: #ffffff;
+  border-color: var(--color-warn, #d97706);
+}
+
+/* DOWN, STABLE: a downed creature with three success pips has
+   stabilised — they're no longer dying.  Green palette signals
+   recovery so the GM can glance and see "no longer needs
+   attention" without reading the pip strip. Click target /
+   action stays the same (mark dead) for the rare narrative
+   override; the hover still previews red to be honest about
+   what the click does. */
+.creature-card__lifecycle--down-stable {
+  background: var(--color-success);
+  color: #ffffff;
+  border-color: var(--color-success);
+}
+
+/* DOWN (incl. DOWN, STABLE) and DEAD all render as <button>
+   elements — the badge is a reversible toggle.  Reset the native
+   button chrome so they look identical to the SKIPPED div, then
+   add a hover/active affordance.  Each direction's hover previews
+   where the click sends the creature — DOWN/DOWN-STABLE hover
+   red (becoming Dead), DEAD hovers amber (becoming Down again). */
+button.creature-card__lifecycle--down,
+button.creature-card__lifecycle--down-stable,
+button.creature-card__lifecycle--dead {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease,
+    transform 0.05s ease;
+}
+
+button.creature-card__lifecycle--down:hover,
+button.creature-card__lifecycle--down-stable:hover {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+button.creature-card__lifecycle--dead:hover {
+  background: var(--color-warn, #d97706);
+  border-color: var(--color-warn, #d97706);
+}
+
+button.creature-card__lifecycle--down:active,
+button.creature-card__lifecycle--down-stable:active,
+button.creature-card__lifecycle--dead:active {
+  transform: translateX(-50%) translateY(1px);
+}
+
+button.creature-card__lifecycle--down:focus-visible,
+button.creature-card__lifecycle--down-stable:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+button.creature-card__lifecycle--dead:focus-visible {
+  outline: 2px solid var(--color-warn, #d97706);
+  outline-offset: 2px;
+}
+
+.creature-card__lifecycle--inactive {
+  background: var(--color-text-muted);
+  color: var(--color-surface);
+  border-color: var(--color-text-muted);
+}
+
+/* "Death Saves" opt-in button rendered in place of the pip
+   tracker until the GM clicks it. Sits in the same column slot
+   the pip strips would occupy so the card width doesn't shift
+   when the GM opts in. */
+.death-save-cols--opt-in {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.death-save-cols__begin {
+  appearance: none;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.death-save-cols__begin:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.death-save-cols__begin:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Toggled-on state for boolean icon buttons (currently used by
@@ -6152,6 +6339,23 @@ body {
   outline-offset: 2px;
 }
 
+/* Attack-roll variant: tinted red so the GM can tell at a glance
+   that "+7 to hit" fires a 1d20 attack roll rather than the
+   damage roll buttons that live alongside it.  Adds onto the
+   base .dice-link rules so layout, sizing, and focus styling
+   stay identical. */
+.dice-link.attack-link {
+  border-color: var(--color-danger-soft);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.dice-link.attack-link:hover {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
 /* HP-change modal — reuses the dice modal's chrome (.modal-backdrop /
    .modal / .modal__header / .modal__body) for layout, with its own
    form / preview / footer styles. */
@@ -6952,6 +7156,26 @@ body {
   letter-spacing: 0.02em;
   min-width: 1.2em;
   text-align: right;
+}
+
+/* Previous-roll trail to the LEFT of `.dice-last-total`.  Up to
+   three entries, oldest-first, in muted text so the eye lands
+   on the headline current total but the recent history is still
+   glanceable.  Gap is smaller than `.dice-roll-cluster`'s 8px so
+   the trail reads as one group rather than three separate
+   readouts. */
+.dice-previous-totals {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.dice-previous-total {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* Hard on/off blink on the panel-header "last roll total"

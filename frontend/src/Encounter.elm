@@ -321,10 +321,13 @@ center column rows 1–3:
   - `cover`, `concentrating`, `hiding`, `dodging`, `flying`,
     `flyHeight` — row 2.
   - `bloodied`, `deathSaves` — row 2 HP indicators. The death-save
-    tracker (see [`DeathSaves`](#DeathSaves)) is rendered exactly
-    when `currentHp == 0`; there's no separate visibility flag.
-    Healing back above 0 resets the counts via the HP-change
-    engine.
+    tracker (see [`DeathSaves`](#DeathSaves)) is gated on a separate
+    `acceptingDeathSaves` opt-in toggle so that a creature dropped
+    to 0 HP shows a single "Death Saves" button by default — most of
+    the time the GM doesn't want a downed enemy to make saves, and
+    revealing the pip strip eagerly is noise. Clicking the button
+    flips the toggle and the pips become visible. Healing back above
+    0 resets BOTH the counts and the toggle via the HP-change engine.
   - `readied` — row 3 readied-action toggle.
 
 `note` is a short free-text label edited via the row 1 pencil
@@ -357,6 +360,7 @@ type alias Creature =
     , flyHeight : Int
     , bloodied : Bool
     , deathSaves : DeathSaves
+    , acceptingDeathSaves : Bool
     , readied : Bool
     , inactive : Bool
     , note : String

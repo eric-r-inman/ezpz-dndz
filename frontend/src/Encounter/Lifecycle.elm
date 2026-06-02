@@ -38,14 +38,24 @@ active. When the marker would step off the end of the queue it
 wraps back to the first creature, which marks the start of a new
 combat round, so `round` increments.
 
-**Skip rules**: creatures with three failed death saves OR
-explicitly marked inactive (via the card's ∅ toggle) are
-skipped — the marker keeps walking past them on every
+**Skip rules**: a creature is skipped if any of the following hold:
+
+  - three failed death saves (dead);
+  - downed (`currentHp == 0`) with `acceptingDeathSaves = False` —
+    the GM hasn't opted into running the death-save clock for
+    this creature, so they're effectively out of combat. Once the
+    GM clicks the "Death Saves" button on the card the flag flips
+    and the creature is back in the rotation; healing above 0
+    also reverses both bits;
+  - explicitly marked inactive (via the card's ∅ toggle).
+
+The marker keeps walking past skipped creatures on every
 subsequent Next Turn. Dead state isn't cleared automatically;
 inactive state only clears when the user toggles the button
-back off. An iteration cap of `length creatures` protects the
-all-skipped edge case (TPK, or all-inactive while the GM is
-setting up an encounter).
+back off; the downed-without-opt-in state clears via the heal /
+opt-in paths just described. An iteration cap of `length creatures`
+protects the all-skipped edge case (TPK, or all-inactive while the
+GM is setting up an encounter).
 
 In addition to the queue walk, this fires two condition hooks
 once per Next Turn click: end-of-turn for the OUTGOING active
@@ -73,7 +83,7 @@ skipUnplayable budget enc =
         in
         case findByName advanced.activeName advanced.creatures of
             Just c ->
-                if Encounter.DeathSaves.isDead c.deathSaves || c.inactive then
+                if isUnplayable c then
                     skipUnplayable (budget - 1) advanced
 
                 else
@@ -81,6 +91,17 @@ skipUnplayable budget enc =
 
             Nothing ->
                 advanced
+
+
+{-| One creature's "skip this slot" predicate. Pulled out so the
+three skip reasons read as a single OR rather than a dense inline
+conditional.
+-}
+isUnplayable : Encounter.Creature -> Bool
+isUnplayable c =
+    Encounter.DeathSaves.isDead c.deathSaves
+        || c.inactive
+        || (c.currentHp == 0 && not c.acceptingDeathSaves)
 
 
 applyBeginOfTurnHook : Encounter -> Encounter

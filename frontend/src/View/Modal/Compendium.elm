@@ -224,7 +224,7 @@ filterBar ui =
             [ class "compendium__search"
             , id Update.Compendium.Browser.searchId
             , type_ "search"
-            , placeholder "🔍 Search by name, race, source, CR… (press / to focus)"
+            , placeholder "Search by name, type, etc."
             , value ui.searchText
             , onInput CompendiumSearchChanged
             , attribute "aria-label" "Search compendium"

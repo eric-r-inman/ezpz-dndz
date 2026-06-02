@@ -864,6 +864,15 @@ updateInner msg model =
         DeathSaveRollLanded name roll ->
             Update.DeathSave.rollLanded name roll model
 
+        DeathSavesBegin name ->
+            Update.DeathSave.begin name model
+
+        MarkCreatureDead name ->
+            Update.DeathSave.markDead name model
+
+        RevertCreatureToDown name ->
+            Update.DeathSave.revertToDown name model
+
         ToggleReadied name ->
             Update.Encounter.toggleReadied name model
 
@@ -1205,14 +1214,8 @@ updateInner msg model =
         CompendiumAddToQueue creatureId ->
             Update.Compendium.Add.addToQueue creatureId model
 
-        CompendiumInitiativeRolled creatureId rolls ->
-            Update.Compendium.Add.initiativeRolled creatureId rolls model
-
         CompendiumAddSelectedToQueue ->
             Update.Compendium.Add.addSelectedToQueue model
-
-        CompendiumAddSelectedRolled triples ->
-            Update.Compendium.Add.addSelectedRolled triples model
 
         CompendiumGroupsToggle ->
             ( Update.Compendium.Browser.withCompendium

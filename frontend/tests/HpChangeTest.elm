@@ -40,6 +40,7 @@ fixture =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = DeathSaves.empty
+    , acceptingDeathSaves = False
     , readied = False
     , inactive = False
     , note = ""

@@ -715,7 +715,7 @@ widgetDescription w =
             "Drop-of-blood marker when current HP ≤ half max."
 
         WidgetCoverToggle ->
-            "Cycle no / half / 3/4 / full cover."
+            "Cycle no / half / 3/4 / total cover."
 
         WidgetConcentrating ->
             "Concentration tracker (🧠)."

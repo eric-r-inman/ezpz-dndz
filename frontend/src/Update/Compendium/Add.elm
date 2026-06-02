@@ -1,57 +1,42 @@
 module Update.Compendium.Add exposing
-    ( addToQueue, initiativeRolled
-    , addSelectedToQueue, addSelectedRolled
+    ( addToQueue
+    , addSelectedToQueue
     )
 
 {-| Add-to-queue flow for the compendium browser: the GM picks a
-creature, clicks Add, and we fire a single-creature initiative
-roll Cmd. When the roll lands, `initiativeRolled` materialises
-the instance, appends it to the encounter, and posts a success
-toast. The browser modal stays open so the GM can quickly add
-several different creatures back-to-back.
+creature (or bulk-selects several), clicks Add, and we append them
+to the encounter at initiative 0 — no dice roll. The GM types the
+real initiative on the card afterwards. Same convention as the
+Quick Add modal.
 
 `addSelectedToQueue` is the bulk-add path: every checkbox-selected
-creature is rolled in one batched Cmd, and the response handler
-materialises all of them with a single toast.
+creature is materialised in one shot with a single summary toast.
+The single-creature `addToQueue` skips the toast and lets the new
+card itself be the feedback, matching the "modal stays open for
+back-to-back adds" pattern.
 
-Decoupled from the rest of the compendium update surface because
-this is the only section that touches `Encounter.Roster`,
-`Update.Initiative.source`, and the dice-batch machinery.
-
-@docs addToQueue, initiativeRolled
-@docs addSelectedToQueue, addSelectedRolled
+@docs addToQueue
+@docs addSelectedToQueue
 
 -}
 
 import Compendium
-import Dice
-import Dict exposing (Dict)
-import Effects
 import Encounter.Roster
 import Model exposing (Model)
 import Msg exposing (Msg(..))
-import Random
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Toast exposing (ToastKind(..))
-import Update.Initiative
 import Update.Toast
 
 
+{-| Single-creature add from the compendium browser. Materialises
+the creature at initiative 0 and appends it to the encounter
+queue; the browser modal stays open so the GM can queue several
+different creatures back-to-back.
+-}
 addToQueue : String -> Model -> ( Model, Cmd Msg )
 addToQueue creatureId model =
-    ( model, addToQueueCmd model creatureId )
-
-
-{-| Resolve the selected compendium creature and dispatch a
-single-creature initiative roll. When it lands,
-`initiativeRolled` spawns one instance with the freshly-rolled
-value. Multi-add was removed because the GM can simply click
-Add again — the modal stays open after each add for that exact
-flow.
--}
-addToQueueCmd : Model -> String -> Cmd Msg
-addToQueueCmd model creatureId =
     case model.compendium.db of
         CompendiumDbLoaded db ->
             case Compendium.find creatureId db of
@@ -60,62 +45,48 @@ addToQueueCmd model creatureId =
                         existing =
                             List.map .name model.encounter.creatures
 
-                        name =
-                            Encounter.Roster.uniqueInstanceName source.name
-                                existing
+                        displayName =
+                            Encounter.Roster.uniqueInstanceName source.name existing
+
+                        instance =
+                            Compendium.draftToInstance
+                                { displayName = displayName, initiativeRoll = 0 }
+                                source
                     in
-                    Dice.batchRollCmd
-                        (CompendiumInitiativeRolled creatureId)
-                        [ instanceSpec source name ]
+                    ( { model
+                        | encounter =
+                            Encounter.Roster.appendCreatures [ instance ] model.encounter
+                      }
+                    , Cmd.none
+                    )
 
                 Nothing ->
-                    Cmd.none
+                    ( model, Cmd.none )
 
         _ ->
-            Cmd.none
+            ( model, Cmd.none )
 
 
-instanceSpec :
-    Compendium.Creature
-    -> String
-    -> ( String, Dice.Source, Random.Generator Dice.Roll )
-instanceSpec source displayName =
-    ( displayName
-    , Update.Initiative.source displayName
-    , Dice.generator (Update.Initiative.initiativeExpression source.initiativeBonus)
-    )
-
-
-{-| Bulk-add: roll initiative for every checkbox-selected creature
-in `ui.selectedIds` in one batched Cmd. Display names are
-generated up-front so name collisions across the bulk add are
-resolved deterministically (e.g. three goblins become Goblin,
-Goblin 2, Goblin 3). We carry each creature's compendium id
-alongside the display name so the response handler can
-`Compendium.find` each source without losing track of which roll
-belongs to which creature.
+{-| Bulk-add: materialise every checkbox-selected creature in
+`ui.selectedIds` at initiative 0 and append them in one shot.
+Display names are assigned by folding left so collisions resolve
+deterministically (three goblins become Goblin, Goblin 2,
+Goblin 3 rather than three Goblins). A single summary toast
+reports the count.
 -}
 addSelectedToQueue : Model -> ( Model, Cmd Msg )
 addSelectedToQueue model =
     case model.compendium.db of
         CompendiumDbLoaded db ->
             let
-                selectedIds =
-                    Set.toList model.compendium.selectedIds
-
                 sources =
-                    List.filterMap
-                        (\id -> Compendium.find id db)
-                        selectedIds
+                    Set.toList model.compendium.selectedIds
+                        |> List.filterMap (\id -> Compendium.find id db)
 
                 existingNames =
                     List.map .name model.encounter.creatures
 
-                -- Fold left so each newly-assigned name is in the
-                -- "existing" set for the next iteration — three
-                -- goblins added at once need to land as Goblin,
-                -- Goblin 2, Goblin 3 rather than three Goblins.
-                ( entriesRev, _ ) =
+                ( instancesRev, _ ) =
                     List.foldl
                         (\source ( acc, takenNames ) ->
                             let
@@ -123,173 +94,35 @@ addSelectedToQueue model =
                                     Encounter.Roster.uniqueInstanceName
                                         source.name
                                         takenNames
+
+                                instance =
+                                    Compendium.draftToInstance
+                                        { displayName = displayName
+                                        , initiativeRoll = 0
+                                        }
+                                        source
                             in
-                            ( ( source.id, source, displayName ) :: acc
-                            , displayName :: takenNames
-                            )
+                            ( instance :: acc, displayName :: takenNames )
                         )
                         ( [], existingNames )
                         sources
 
-                entries =
-                    List.reverse entriesRev
+                instances =
+                    List.reverse instancesRev
             in
-            if List.isEmpty entries then
+            if List.isEmpty instances then
                 ( model, Cmd.none )
 
             else
-                ( model, addSelectedCmd entries )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-{-| Build the batched initiative-roll Cmd for `addSelectedToQueue`.
-The display name doubles as the lookup key on the way back: we
-keep a `displayName -> creatureId` dict so the response handler
-can rejoin each `(displayName, roll)` pair with its source id.
--}
-addSelectedCmd : List ( String, Compendium.Creature, String ) -> Cmd Msg
-addSelectedCmd entries =
-    let
-        idByDisplayName : Dict String String
-        idByDisplayName =
-            entries
-                |> List.map (\( id, _, displayName ) -> ( displayName, id ))
-                |> Dict.fromList
-
-        specs =
-            List.map
-                (\( _, source, displayName ) -> instanceSpec source displayName)
-                entries
-
-        toMsg : List ( String, Dice.Roll ) -> Msg
-        toMsg rolls =
-            CompendiumAddSelectedRolled
-                (List.filterMap
-                    (\( displayName, roll ) ->
-                        Dict.get displayName idByDisplayName
-                            |> Maybe.map
-                                (\creatureId ->
-                                    ( creatureId, displayName, roll )
-                                )
-                    )
-                    rolls
-                )
-    in
-    Dice.batchRollCmd toMsg specs
-
-
-addSelectedRolled :
-    List ( String, String, Dice.Roll )
-    -> Model
-    -> ( Model, Cmd Msg )
-addSelectedRolled triples model =
-    case model.compendium.db of
-        CompendiumDbLoaded db ->
-            let
-                instances =
-                    List.filterMap
-                        (\( creatureId, displayName, roll ) ->
-                            Compendium.find creatureId db
-                                |> Maybe.map
-                                    (\source ->
-                                        Compendium.draftToInstance
-                                            { displayName = displayName
-                                            , initiativeRoll = roll.total
-                                            }
-                                            source
-                                    )
+                { model
+                    | encounter =
+                        Encounter.Roster.appendCreatures instances model.encounter
+                }
+                    |> Update.Toast.push ToastSuccess
+                        ("Added "
+                            ++ String.fromInt (List.length instances)
+                            ++ " creatures to encounter"
                         )
-                        triples
-
-                ( m1, flashCmds ) =
-                    List.foldl
-                        (\( _, _, r ) ( m, cs ) ->
-                            let
-                                ( pushed, flashCmd ) =
-                                    Effects.pushDiceRoll r m
-                            in
-                            ( pushed, flashCmd :: cs )
-                        )
-                        ( model, [] )
-                        triples
-
-                addedCount =
-                    List.length instances
-
-                toastMessage =
-                    "Added " ++ String.fromInt addedCount ++ " creatures to encounter"
-            in
-            { m1 | encounter = Encounter.Roster.appendCreatures instances m1.encounter }
-                |> Update.Toast.pushWith ToastSuccess
-                    toastMessage
-                    (Cmd.batch
-                        (List.map
-                            (\( _, _, r ) -> Effects.persistDiceRoll r)
-                            triples
-                            ++ flashCmds
-                        )
-                    )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-initiativeRolled : String -> List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
-initiativeRolled creatureId rolls model =
-    case model.compendium.db of
-        CompendiumDbLoaded db ->
-            case Compendium.find creatureId db of
-                Just source ->
-                    let
-                        instances =
-                            List.map
-                                (\( displayName, roll ) ->
-                                    Compendium.draftToInstance
-                                        { displayName = displayName
-                                        , initiativeRoll = roll.total
-                                        }
-                                        source
-                                )
-                                rolls
-
-                        ( m1, flashCmds ) =
-                            List.foldl
-                                (\( _, r ) ( m, cs ) ->
-                                    let
-                                        ( pushed, flashCmd ) =
-                                            Effects.pushDiceRoll r m
-                                    in
-                                    ( pushed, flashCmd :: cs )
-                                )
-                                ( model, [] )
-                                rolls
-
-                        addedCount =
-                            List.length instances
-
-                        toastMessage =
-                            if addedCount == 1 then
-                                "Added " ++ source.name ++ " to encounter"
-
-                            else
-                                "Added " ++ String.fromInt addedCount ++ " × " ++ source.name
-                    in
-                    -- Modal stays open intentionally: the GM can
-                    -- queue several different creatures back-to-back
-                    -- without having to re-open the browser each time.
-                    { m1 | encounter = Encounter.Roster.appendCreatures instances m1.encounter }
-                        |> Update.Toast.pushWith ToastSuccess
-                            toastMessage
-                            (Cmd.batch
-                                (List.map (\( _, r ) -> Effects.persistDiceRoll r) rolls
-                                    ++ flashCmds
-                                )
-                            )
-
-                Nothing ->
-                    ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

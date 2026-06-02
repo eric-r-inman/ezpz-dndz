@@ -76,7 +76,8 @@ view auth dice pendingControl round rosterDirty controlMenu =
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Encounter Controls" ]
             , div [ class "dice-roll-cluster" ]
-                [ diceLastTotal dice
+                [ dicePreviousTotals dice
+                , diceLastTotal dice
                 , diceArrow dice
                 , button
                     [ class
@@ -367,6 +368,36 @@ diceLastTotal dice =
 
         Nothing ->
             text ""
+
+
+{-| Up to three previous-roll totals rendered in muted text to
+the LEFT of the current `diceLastTotal`, oldest-first so the
+sequence reads naturally as `[older … newer] [current] ← Roll`.
+Skips when there's no history beyond the current roll. The
+muted colour comes from `--color-text-muted` so the row reads
+as "context, not the headline."
+-}
+dicePreviousTotals : DiceUi -> Html Msg
+dicePreviousTotals dice =
+    let
+        previous =
+            dice.history.entries
+                |> List.drop 1
+                |> List.take 3
+                |> List.reverse
+    in
+    if List.isEmpty previous then
+        text ""
+
+    else
+        span [ class "dice-previous-totals" ]
+            (List.map
+                (\r ->
+                    span [ class "dice-previous-total" ]
+                        [ text (String.fromInt r.total) ]
+                )
+                previous
+            )
 
 
 {-| Left-facing arrow between the latest-total readout and the

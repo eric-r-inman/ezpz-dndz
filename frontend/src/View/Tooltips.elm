@@ -52,6 +52,7 @@ module View.Tooltips exposing
     , concentrating
     , coverCycleTip
     , damage
+    , deathBegin
     , deathDead
     , deathRoll
     , deathStable
@@ -82,6 +83,8 @@ module View.Tooltips exposing
     , lastRollTotal
     , legendaryActionColumn
     , legendaryResistanceColumn
+    , lifecycleDeadToDown
+    , lifecycleDownToDead
     , loadButton
     , loadRowCompendium
     , loadRowEncounter
@@ -123,6 +126,7 @@ module View.Tooltips exposing
     , showStatBlock
     , sourceFromSaved
     , sourceUnsaved
+    , statBlockAttack
     , statBlockRoll
     , statBlockSavingThrow
     , statusOffTip
@@ -330,7 +334,7 @@ threeQuartersCover =
 
 fullCover : String
 fullCover =
-    "Full cover"
+    "Total cover"
 
 
 concentrating : String
@@ -508,7 +512,7 @@ applyCondition =
 
 bloodied : String
 bloodied =
-    "Bloodied — <50% hp"
+    "Bloodied — ≤ half HP"
 
 
 
@@ -528,6 +532,21 @@ deathStable =
 deathRoll : String
 deathRoll =
     "Roll a 1d20 death save (5e: 10+ success, ≤9 failure, nat 20 revives, nat 1 = 2 failures)"
+
+
+deathBegin : String
+deathBegin =
+    "Reveal the death-save pip tracker for this creature"
+
+
+lifecycleDownToDead : String
+lifecycleDownToDead =
+    "Click to mark dead (sets 3 failed death saves)"
+
+
+lifecycleDeadToDown : String
+lifecycleDeadToDown =
+    "Click to revert to Down (clears failed death saves)"
 
 
 
@@ -1020,6 +1039,23 @@ statBlockSavingThrow label =
 statBlockRoll : String -> String
 statBlockRoll shown =
     "Roll " ++ shown
+
+
+{-| Inline attack-roll button (the `+N to hit` phrase). Reads
+"Roll +7 to hit (1d20+7)" so the GM sees both the original
+phrase and the actual expression the click will fire.
+-}
+statBlockAttack : String -> Int -> String
+statBlockAttack shown mod =
+    let
+        signed =
+            if mod >= 0 then
+                "+" ++ String.fromInt mod
+
+            else
+                String.fromInt mod
+    in
+    "Roll " ++ shown ++ " (1d20" ++ signed ++ ")"
 
 
 {-| Quick-add row tooltip identifying the creature being added.
