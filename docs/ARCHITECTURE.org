@@ -19,9 +19,10 @@ Companion docs:
   reference, synced from foundation; the no-=unwrap=/=expect=
   treatise lives there in full.
 
-The historical planning docs (modularization phases 1–11, the
+Historical planning docs (modularization phases 1–11, the
 rust-template forward-port plan, the per-tooltip review
-companion) are frozen under =docs/archive/= — see [[*Frozen / archived planning docs][Frozen / archived planning docs]].
+companion) are no longer kept in-tree; the load-bearing
+decisions they captured are folded into this document.
 
 * Stack
 
@@ -1463,10 +1464,7 @@ ancestors and computes coordinates predictably.
 
 When adding a new view, *do not inline* a ~title "..."~ literal
 or a ~data-tooltip~ attribute — add a constant to
-=View/Tooltips.elm= and call ~Tooltips.attr~ to attach it.  An
-archived =docs/archive/TOOLTIPS.org= captures the walking-tour
-copy of every tooltip from the time it was last swept; not
-actively maintained.
+=View/Tooltips.elm= and call ~Tooltips.attr~ to attach it.
 
 * When adding new features
 
@@ -1475,9 +1473,9 @@ When you're adding a new feature, the new code and structure
 exist yet, embrace the *ideals* of the structure.  The shape is
 already there; extend it, don't recreate it.
 
-The five-run modularization (Phases 1–11, archived under
-=docs/archive/MODULARIZATION_PLAN.org=) drove =Main.elm= from
-9,268 lines down past 1k — it sits around 1.4k today, almost
+The five-run modularization (Phases 1–11) drove =Main.elm=
+from 9,268 lines down past 1k — it sits around 1.4k today,
+almost
 entirely dispatch-table boilerplate (one
 ~MyMsg arg -> Update.Foo.bar arg model~ line per Msg branch
 plus the modal-view + subscriptions composition).  The whole
@@ -1787,26 +1785,7 @@ scripts — needs the new names to take effect.
 - New HTTP routes go through ~aide::ApiRouter~ so OpenAPI stays
   complete.
 
-* Frozen / archived planning docs
-
-=docs/archive/= holds historical planning documents
-(=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=, =CHANGELOG.org=, plus the locally-
-preserved-but-untracked =MODULARIZATION_PLAN.org=,
-=COMPLIANCE_PLAN.org=, and =TOOLTIPS.org= from the most recent
-phases of work).  They are no longer maintained and should not
-be read or updated.  Instructions inside that say "update X"
-are stale and superseded by this document.  The project does
-not maintain a changelog — commit messages and the git log are
-the canonical record of what changed; this document captures
-the load-bearing decisions.
-
-The =docs/archive/*= path itself is gitignored (see =.gitignore=)
-so the original tracked archives stay tracked but no new files
-land there in commits — the folder is treated as read-only
-history.
-
-** Live docs
+* Live docs
 
 | Document                     | Purpose                                                      |
 |------------------------------+--------------------------------------------------------------|
