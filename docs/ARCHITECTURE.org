@@ -658,12 +658,14 @@ dispatch returns ~next : Model~, fires four diff-and-persist
 Cmds in parallel for the four most-mutated surfaces:
 
 #+begin_src elm
-encounterCmd        = if next.encounter /= model.encounter ...
-cardLayoutCmd       = if cardLayoutChanged model next ...
-diceHistoryCmd      = if next.dice.history.entries /= model.dice.history.entries ...
-compendiumCmd       = if compendiumChanged model next ...
-encounterSavesCmd   = if next.localEncounterSaves /= model.localEncounterSaves ...
-cardLayoutSavesCmd  = if next.localCardLayoutSaves /= model.localCardLayoutSaves ...
+encounterCmd         = if next.encounter /= model.encounter ...
+cardLayoutCmd        = if cardLayoutChanged model next ...
+diceHistoryCmd       = if next.dice.history.entries /= model.dice.history.entries ...
+compendiumCmd        = if compendiumChanged model next ...
+encounterSavesCmd    = if next.localEncounterSaves /= model.localEncounterSaves ...
+cardLayoutSavesCmd   = if next.localCardLayoutSaves /= model.localCardLayoutSaves ...
+conditionPresetsCmd  = if next.conditionPresets /= model.conditionPresets ...
+timerPresetsCmd      = if next.timerPresets /= model.timerPresets ...
 #+end_src
 
 Each helper (~persistEncounterFor~ / ~persistCardLayoutFor~ /
@@ -696,6 +698,8 @@ synchronously before ~Elm.Main.init~ and hands them in as flags:
 | =localCompendium=     | =compendium=           | ~Model.compendium.db~ + ~groups~ + ~nextLocalCreatureId~ |
 | =localEncounterSaves= | =encounterSaves=       | ~Model.localEncounterSaves~ (Dict)     |
 | =localCardLayoutSaves= | =cardLayoutSaves=     | ~Model.localCardLayoutSaves~ (Dict)    |
+| =localConditionPresets= | =conditionPresets=   | ~Model.conditionPresets~ (Dict)        |
+| =localTimerPresets=   | =timerPresets=         | ~Model.timerPresets~ (Dict)            |
 | =migrationDateLabel=  | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
 | =bootMs=              | (computed: ~Date.now()~) | Timestamp for anonymous-session named-save writes |
 
@@ -1331,6 +1335,82 @@ badge backs out instead of doing nothing.  Duration-kind and
 auto-roll-mode controls remain true radios (no deselect-on-
 reclick) — there's always exactly one duration kind and one
 roll mode.
+
+* Per-modal preset pattern
+
+The Condition modal and Timer modal each carry a Save / Load
+footer that remembers full configurations under user-chosen
+names.  Both modals follow the same templatable shape so new
+modals can adopt the pattern without re-inventing it.
+
+For a modal =Foo= the pieces are:
+
+1. *Preset body type* — a small record alias on =Ui/Foo.elm=
+   (~FooPreset~) holding only the fields the preset cares about,
+   plus a pair of projections:
+   ~toPreset : FooUi -> FooPreset~ and
+   ~applyPreset : String -> FooPreset -> FooUi -> FooUi~.  The
+   second sets ~loadedPresetName = Just name~ so the title bar
+   can render ~(loaded: <name>)~ until the user mutates the
+   form.
+2. *Modal-UI extras* — ~FooUi~ gains three transient fields:
+   ~loadMenuOpen : Bool~ (dropdown state),
+   ~pendingSaveName : Maybe String~ (in-progress name input),
+   and ~loadedPresetName : Maybe String~ (which preset, if any,
+   currently drives the form).
+3. *Wire codec* — =Ui/Foo/Wire.elm= with ~encodePresets~ /
+   ~decodePresets~ ( ~Dict String FooPreset~ ↔ JSON object
+   keyed by preset name) plus the single-preset
+   ~encodePreset~ / ~decodePreset~ pair.
+4. *Model field* — ~Model.fooPresets : Dict String FooPreset~,
+   initialized from the ~localFooPresets~ boot flag (see the
+   anonymous-mode boot-flag table).
+5. *Port* — ~Ports.persistLocalFooPresets : E.Value -> Cmd msg~
+   with a matching JS subscriber in =index.html= that writes to
+   ~localStorage.fooPresets~.
+6. *Msg family* — eight constructors mirroring the Condition
+   family verbatim: ~FooPresetSaveStart~ /
+   ~FooPresetSaveNameChanged String~ / ~FooPresetSaveCancel~ /
+   ~FooPresetSaveSubmit~ / ~FooPresetLoadMenuToggle~ /
+   ~FooPresetLoadMenuClose~ / ~FooPresetLoad String~ /
+   ~FooPresetDelete String~.
+7. *Update handlers* — eight one-liners on =Update/Foo.elm=
+   (~presetSaveStart~ … ~presetDelete~) that use the existing
+   ~withFooUi~ lens.  ~presetSaveSubmit~ writes to
+   ~Model.fooPresets~ AND flips ~loadedPresetName~; ~presetLoad~
+   delegates to ~Ui.Foo.applyPreset~; ~presetDelete~ also
+   clears ~loadedPresetName~ when the deleted preset was the
+   active one.
+8. *View* — =View/Modal/Foo.elm= renders a footer row built
+   from two helpers:
+   - ~presetSaveControl~ — toggles between a single ~Save~
+     button (when ~pendingSaveName == Nothing~) and a
+     ~[name input][Save][Cancel]~ trio.
+   - ~presetLoadControl~ — disabled ~Load ▾~ when the dict is
+     empty; otherwise opens a dropdown of preset names sorted
+     case-insensitively
+     (~Dict.keys presets |> List.sortBy String.toLower~).  Each
+     row is a ~[name][×]~ pair where the × uses
+     ~stopPropagationOn "click"~ so a misclick on delete inside
+     an otherwise-load row doesn't double-fire.
+   The dropdown wrap uses
+   ~stopPropagationOn "mousedown"~ so internal clicks don't
+   bubble to the document-level click-outside handler in
+   =Main.subscriptions=.
+9. *Subscription* — one ~fooPresetLoadMenuSubs~ block in
+   =Main.subscriptions= that wires Esc + click-outside to
+   ~FooPresetLoadMenuClose~ whenever the menu is open.
+10. *Persistence wrapper* — one ~fooPresetsCmd~ branch in the
+    =Main.update= diff-and-write wrapper, encoded through
+    ~Ui.Foo.Wire.encodePresets~.  No auth split — presets live
+    in ~localStorage~ for every session today (no server
+    endpoint yet); the codec is reusable as the wire body when
+    that lands.
+
+The eight-Msg family is intentionally not collapsed into a
+single ~FooPreset Op~ variant.  The flat shape mirrors the
+existing dispatch table style and keeps each branch a true
+one-liner in =Main.updateInner=.
 
 * HP change engine
 

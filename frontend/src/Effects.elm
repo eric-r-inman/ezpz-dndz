@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, pushIncomingDiceRoll, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, pushIncomingDiceRoll, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -201,6 +201,53 @@ autoRollCmdForCondition mode bearer cond =
 
         Nothing ->
             Nothing
+
+
+{-| Build a `Dice.rollCmd` for every expended recharge ability on
+the named creature at the start of their turn. Each roll is a
+plain `1d6`; the result lands in `RechargeRollLanded` which
+re-checks the ability's `low` threshold and flips `ready=True`
+when the d6 meets or exceeds it. Rolls land in the dice history
+with a source label like "Recharge: Fire Breath → Smaug" so the
+GM can read whether the engine made the check or not.
+
+`abilityName` doubles as the lookup key when the roll lands; the
+handler does an O(n) scan over the creature's `rechargeAbilities`
+matching by name. Names within a creature are assumed unique
+(SRD bestiary follows this); duplicates would mean both
+abilities recharge together, which is harmless.
+
+-}
+rechargeRollCmdsFor : String -> Encounter.Encounter -> List (Cmd Msg)
+rechargeRollCmdsFor name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.concatMap
+            (\c ->
+                List.filterMap (rechargeRollCmd c.name) c.rechargeAbilities
+            )
+
+
+rechargeRollCmd : String -> Encounter.RechargeAbility -> Maybe (Cmd Msg)
+rechargeRollCmd creatureName ability =
+    if ability.ready then
+        Nothing
+
+    else
+        Just
+            (Dice.rollCmd
+                (RechargeRollLanded creatureName ability.name)
+                { feature = "Recharge: " ++ ability.name, target = Just creatureName }
+                rechargeExpression
+            )
+
+
+rechargeExpression : Dice.Expression
+rechargeExpression =
+    { dice = [ { count = 1, faces = 6, sign = Dice.Positive } ]
+    , constant = 0
+    , damageType = Nothing
+    }
 
 
 {-| Source label for save-to-end rolls: "Save: WIS DC 13 →

@@ -49,6 +49,12 @@ toml = "0.8"
 # Error handling
 thiserror = "2.0"
 
+# Content hashing for bundle-version edit detection.  Used by the
+# compendium store to record a stable digest of each bundled
+# creature at apply time so future bundle bumps can detect whether
+# a user has edited a creature (skip update) or not (auto-update).
+sha2 = "0.10"
+
 # UUIDs (compendium creature ids, eventually user ids).  Used to
 # generate the id strings; the wire format keeps them as `String`
 # so the schemars JsonSchema derives stay clean.

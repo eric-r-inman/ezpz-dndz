@@ -342,6 +342,15 @@ type Msg
       -- toggle.
     | RevertCreatureToDown String
     | ToggleReadied String
+    | ToggleReaction String
+      -- Click the recharge chip on a creature's card to flip a
+      -- single recharge ability between ready/expended.  Pure UI
+      -- toggle; doesn't fire a dice roll.
+    | ToggleRechargeAbility String String
+      -- Result of the begin-of-turn auto-roll for one recharge
+      -- ability: (creature name, ability name, the d6 roll).
+      -- If roll.total >= ability.low, flip ready=True.
+    | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
       -- Dice modal
     | OpenDice
@@ -447,6 +456,20 @@ type Msg
     | ConditionApplyToSelectedToggle
     | ConditionSubmit
     | ConditionDelete
+      -- Save/Load presets for the Add-Condition modal.  The GM
+      -- captures a fully-configured form under a user-given name
+      -- so common scenarios (e.g. "Stun" with the bearer's-next-
+      -- turn duration + DC 15 CON save-to-end) can be reapplied
+      -- with one click.  Body is persisted to localStorage via
+      -- `Ports.persistLocalConditionPresets`.
+    | ConditionPresetSaveStart
+    | ConditionPresetSaveNameChanged String
+    | ConditionPresetSaveCancel
+    | ConditionPresetSaveSubmit
+    | ConditionPresetLoadMenuToggle
+    | ConditionPresetLoadMenuClose
+    | ConditionPresetLoad String
+    | ConditionPresetDelete String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Bool Dice.Roll
@@ -466,6 +489,17 @@ type Msg
     | TimerSetupApply
     | TimerSetupCancel
     | TimerDismiss String
+      -- Save/Load presets for the Timer-setup modal.  Mirror of
+      -- the ConditionPreset* family — see those docs for the
+      -- save-then-name → load-then-apply flow.
+    | TimerPresetSaveStart
+    | TimerPresetSaveNameChanged String
+    | TimerPresetSaveCancel
+    | TimerPresetSaveSubmit
+    | TimerPresetLoadMenuToggle
+    | TimerPresetLoadMenuClose
+    | TimerPresetLoad String
+    | TimerPresetDelete String
       -- Compendium browser
     | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
     | CompendiumOpen

@@ -8,6 +8,7 @@ module Update.Encounter exposing
     , moveCreatureDown
     , moveCreatureUp
     , nextTurn
+    , rechargeRollLanded
     , removeCreature
     , requestClear
     , requestReset
@@ -20,7 +21,9 @@ module Update.Encounter exposing
     , toggleFlying
     , toggleHiding
     , toggleInactive
+    , toggleReaction
     , toggleReadied
+    , toggleRechargeAbility
     , toggleSelected
     )
 
@@ -86,6 +89,9 @@ nextTurn model =
         beginRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
 
+        rechargeRolls =
+            Effects.rechargeRollCmdsFor newEnc.activeName newEnc
+
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
                 [ Effects.scrollActiveIntoView newEnc.activeName ]
@@ -94,7 +100,7 @@ nextTurn model =
                 []
     in
     ( { model | encounter = newEnc }
-    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls)
+    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ rechargeRolls)
     )
 
 
@@ -158,6 +164,87 @@ toggleReadied name model =
     ( withEncounter (Encounter.mapCreature name (\c -> { c | readied = not c.readied })) model
     , Cmd.none
     )
+
+
+{-| Toggle the per-creature reaction pip. Every creature gets one
+reaction per round in 5e (opportunity attack, Counterspell,
+Shield, Hellish Rebuke…); the pip flips back to "available"
+automatically at the start of the creature's next turn — see
+`Encounter.Lifecycle.applyBeginOfTurn` for the reset. Click is
+also wired manually so the GM can adjust if they need to undo
+or pre-spend.
+-}
+toggleReaction : String -> Model -> ( Model, Cmd Msg )
+toggleReaction name model =
+    ( withEncounter
+        (Encounter.mapCreature name (\c -> { c | reactionUsed = not c.reactionUsed }))
+        model
+    , Cmd.none
+    )
+
+
+{-| Flip a single recharge ability between ready / expended. Used
+when the GM clicks the recharge chip on a creature's card —
+useful when the engine's auto-roll outcome is wrong (a homebrew
+recharge rule fired, or the GM wants to pre-expend / refund).
+No-op if no ability with `abilityName` is found.
+-}
+toggleRechargeAbility : String -> String -> Model -> ( Model, Cmd Msg )
+toggleRechargeAbility creatureName abilityName model =
+    ( withEncounter
+        (Encounter.mapCreature creatureName
+            (\c ->
+                { c
+                    | rechargeAbilities =
+                        List.map
+                            (\a ->
+                                if a.name == abilityName then
+                                    { a | ready = not a.ready }
+
+                                else
+                                    a
+                            )
+                            c.rechargeAbilities
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Begin-of-turn d6 landed for one recharge ability. If the
+total meets the ability's `low` threshold, flip `ready = True`.
+Either way, push the roll into the dice history so the GM can
+see what was rolled. No-op if the ability is no longer on the
+creature (e.g. the GM edited it away between roll fire and
+landing).
+-}
+rechargeRollLanded : String -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+rechargeRollLanded creatureName abilityName roll model =
+    let
+        nextEncounter =
+            Encounter.mapCreature creatureName
+                (\c ->
+                    { c
+                        | rechargeAbilities =
+                            List.map
+                                (\a ->
+                                    if a.name == abilityName && roll.total >= a.low then
+                                        { a | ready = True }
+
+                                    else
+                                        a
+                                )
+                                c.rechargeAbilities
+                    }
+                )
+                model.encounter
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll { model | encounter = nextEncounter }
+    in
+    ( pushed, flashCmd )
 
 
 {-| Toggle the per-creature `inactive` flag. An inactive
@@ -323,6 +410,8 @@ resetCreatureState c =
         , bloodied = False
         , deathSaves = Encounter.emptyDeathSaves
         , acceptingDeathSaves = False
+        , reactionUsed = False
+        , rechargeAbilities = []
         , readied = False
         , inactive = False
         , timer = Nothing

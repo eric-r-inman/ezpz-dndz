@@ -52,6 +52,8 @@ mkInstance args =
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
     , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -234,6 +236,8 @@ totalsForSuite =
                         , bloodied = False
                         , deathSaves = { successes = 0, failures = 0 }
                         , acceptingDeathSaves = False
+                        , reactionUsed = False
+                        , rechargeAbilities = []
                         , readied = False
                         , inactive = False
                         , note = ""

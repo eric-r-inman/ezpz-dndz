@@ -11,6 +11,14 @@ module Update.Condition exposing
     , openEdit
     , openNew
     , pickStandard
+    , presetDelete
+    , presetLoad
+    , presetLoadMenuClose
+    , presetLoadMenuToggle
+    , presetSaveCancel
+    , presetSaveNameChanged
+    , presetSaveStart
+    , presetSaveSubmit
     , removeChip
     , rollSave
     , saveAbilityChanged
@@ -34,6 +42,7 @@ saving-throw result handler.
 -}
 
 import Dice
+import Dict
 import Effects
 import Encounter
 import Model exposing (Modal(..), Model)
@@ -259,6 +268,153 @@ applyToSelectedToggle model =
     )
 
 
+
+-- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| GM clicked the Save button on the Add-Condition footer. Reveal
+the name-prompt input by stashing an empty `pendingSaveName`. The
+view replaces the static Save/Load buttons with `[input][Save]
+[Cancel]` whenever `pendingSaveName /= Nothing`. Also closes the
+load menu if it was open — only one preset affordance can be
+active at a time.
+-}
+presetSaveStart : Model -> ( Model, Cmd Msg )
+presetSaveStart model =
+    ( withConditionUi
+        (\u ->
+            { u | pendingSaveName = Just "", loadMenuOpen = False }
+        )
+        model
+    , Cmd.none
+    )
+
+
+presetSaveNameChanged : String -> Model -> ( Model, Cmd Msg )
+presetSaveNameChanged text model =
+    ( withConditionUi (\u -> { u | pendingSaveName = Just text }) model
+    , Cmd.none
+    )
+
+
+presetSaveCancel : Model -> ( Model, Cmd Msg )
+presetSaveCancel model =
+    ( withConditionUi (\u -> { u | pendingSaveName = Nothing }) model
+    , Cmd.none
+    )
+
+
+{-| Commit the current form state to the presets dict under the
+user's typed name. Trimmed name; empty / whitespace-only names
+are rejected (the input stays open so the GM can correct it).
+Overwrites silently if a preset with the same name already
+exists, per the user's spec — they explicitly didn't want a
+confirm-prompt on overwrite.
+
+Side effect: stamps the just-saved name into `loadedPresetName`
+so the title bar shows it immediately, mirroring the load flow.
+
+-}
+presetSaveSubmit : Model -> ( Model, Cmd Msg )
+presetSaveSubmit model =
+    case model.modal of
+        Just (ModalCondition ui) ->
+            let
+                trimmed =
+                    Maybe.withDefault "" ui.pendingSaveName
+                        |> String.trim
+            in
+            if String.isEmpty trimmed then
+                ( model, Cmd.none )
+
+            else
+                let
+                    preset =
+                        ConditionUi.toPreset ui
+
+                    newPresets =
+                        Dict.insert trimmed preset model.conditionPresets
+                in
+                ( { model | conditionPresets = newPresets }
+                    |> withConditionUi
+                        (\u ->
+                            { u
+                                | pendingSaveName = Nothing
+                                , loadedPresetName = Just trimmed
+                            }
+                        )
+                , Cmd.none
+                )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+presetLoadMenuToggle : Model -> ( Model, Cmd Msg )
+presetLoadMenuToggle model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | loadMenuOpen = not u.loadMenuOpen
+                , pendingSaveName = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+presetLoadMenuClose : Model -> ( Model, Cmd Msg )
+presetLoadMenuClose model =
+    ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+    , Cmd.none
+    )
+
+
+{-| Pick a preset from the load menu. Overlay its body onto the
+current form state via `ConditionUi.applyPreset`, which preserves
+target / editingId / applyToSelected and re-aims `untilCreature`
+at the current target. No-op when the name isn't in the dict
+(stale click after a delete, for example).
+-}
+presetLoad : String -> Model -> ( Model, Cmd Msg )
+presetLoad name model =
+    case Dict.get name model.conditionPresets of
+        Just preset ->
+            ( withConditionUi (ConditionUi.applyPreset name preset) model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+            , Cmd.none
+            )
+
+
+{-| Remove a preset by name. If the currently-loaded preset is
+the one being deleted, also clear `loadedPresetName` so the title
+bar drops the suffix — the form state is left alone so the GM
+can keep editing the now-orphan configuration.
+-}
+presetDelete : String -> Model -> ( Model, Cmd Msg )
+presetDelete name model =
+    let
+        newPresets =
+            Dict.remove name model.conditionPresets
+    in
+    ( { model | conditionPresets = newPresets }
+        |> withConditionUi
+            (\u ->
+                if u.loadedPresetName == Just name then
+                    { u | loadedPresetName = Nothing }
+
+                else
+                    u
+            )
+    , Cmd.none
+    )
+
+
 {-| Validate that there's a name; empty-name conditions are
 silently dropped (close the modal). Build a draft, then either
 insert (creating) or update (editing).
@@ -310,8 +466,8 @@ removeChip name id model =
     )
 
 
-{-| Manual click on the save chip's d20 button. Same Cmd shape as
-the auto-roll path, but flagged `wasAutoRoll = False` so a
+{-| Manual click on the chip's d20 save button. Same Cmd shape
+as the auto-roll path, but flagged `wasAutoRoll = False` so a
 successful save removes the condition silently rather than posting
 a "Saved: <name>" notice on the card.
 -}

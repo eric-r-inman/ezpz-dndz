@@ -157,11 +157,15 @@ tickTimerFor name phase enc =
 
 
 {-| Begin-of-turn hook for the named creature. Symmetric to
-`applyEndOfTurn` but for `AtBegin` durations, plus the legendary-
-action reset so the LA pip column on the card returns to "all
-available" — mirroring the 5e rule that a legendary creature
-regains expended legendary actions at the start of its turn.
-Legendary resistances do NOT reset (per long rest).
+`applyEndOfTurn` but for `AtBegin` durations, plus:
+
+  - **Legendary-action reset** — the LA pip column returns to "all
+    available", mirroring the 5e rule that a legendary creature
+    regains expended legendary actions at the start of its turn.
+    Legendary resistances do NOT reset (per long rest).
+  - **Reaction reset** — `reactionUsed` flips back to False so
+    the creature has a fresh reaction for the new round.
+
 -}
 applyBeginOfTurn : String -> Encounter -> Encounter
 applyBeginOfTurn name enc =
@@ -170,12 +174,20 @@ applyBeginOfTurn name enc =
         |> tickTimerFor name AtBegin
         |> expireUntilTurn AtBegin name
         |> resetLegendaryActionsFor name
+        |> resetReactionFor name
 
 
 resetLegendaryActionsFor : String -> Encounter -> Encounter
 resetLegendaryActionsFor name enc =
     Encounter.mapCreature name
         (\c -> { c | legendaryActionsUsed = Set.empty })
+        enc
+
+
+resetReactionFor : String -> Encounter -> Encounter
+resetReactionFor name enc =
+    Encounter.mapCreature name
+        (\c -> { c | reactionUsed = False })
         enc
 
 

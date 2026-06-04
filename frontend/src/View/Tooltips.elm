@@ -110,6 +110,8 @@ module View.Tooltips exposing
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , reactionReady
+    , reactionSpent
     , readyAction
     , releaseReadied
     , reset
@@ -479,6 +481,16 @@ readyAction =
 releaseReadied : String
 releaseReadied =
     "Action readied — click to release"
+
+
+reactionReady : String
+reactionReady =
+    "Reaction available — click to spend (auto-resets at turn start)"
+
+
+reactionSpent : String
+reactionSpent =
+    "Reaction spent — click to refund"
 
 
 

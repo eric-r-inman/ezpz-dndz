@@ -475,10 +475,9 @@ fn titlecase_skill(snake: &str) -> String {
     .split('_')
     .map(|word| {
       let mut chars = word.chars();
-      match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_uppercase().chain(chars).collect::<String>(),
-      }
+      chars.next().map_or_else(String::new, |first| {
+        first.to_uppercase().chain(chars).collect::<String>()
+      })
     })
     .collect::<Vec<_>>()
     .join(" ")

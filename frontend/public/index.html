@@ -140,6 +140,25 @@
         }
       } catch (_) {}
 
+      // User-named condition presets ({ "<name>": preset-body }).
+      // Backs the Save/Load row in the Add-Condition modal.
+      var localConditionPresets = null;
+      try {
+        var presetsRaw = localStorage.getItem("conditionPresets");
+        if (presetsRaw) {
+          localConditionPresets = JSON.parse(presetsRaw);
+        }
+      } catch (_) {}
+
+      // User-named timer presets — twin of conditionPresets.
+      var localTimerPresets = null;
+      try {
+        var timerPresetsRaw = localStorage.getItem("timerPresets");
+        if (timerPresetsRaw) {
+          localTimerPresets = JSON.parse(timerPresetsRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -151,6 +170,8 @@
           localCompendium: localCompendium,
           localEncounterSaves: localEncounterSaves,
           localCardLayoutSaves: localCardLayoutSaves,
+          localConditionPresets: localConditionPresets,
+          localTimerPresets: localTimerPresets,
           bootMs: Date.now(),
         },
       });
@@ -243,6 +264,32 @@
         app.ports.persistLocalDiceHistory.subscribe(function (value) {
           try {
             localStorage.setItem("diceHistory", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // User-named condition presets writer.  Both anonymous and
+      // authenticated sessions persist through this same port —
+      // there's no server endpoint for presets yet.
+      if (app.ports && app.ports.persistLocalConditionPresets) {
+        app.ports.persistLocalConditionPresets.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "conditionPresets",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // Twin port for the timer presets dict.
+      if (app.ports && app.ports.persistLocalTimerPresets) {
+        app.ports.persistLocalTimerPresets.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "timerPresets",
+              JSON.stringify(value),
+            );
           } catch (_) {}
         });
       }

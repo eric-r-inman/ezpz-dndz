@@ -862,6 +862,8 @@ draftToInstance { displayName, initiativeRoll } c =
     , bloodied = False
     , deathSaves = Encounter.emptyDeathSaves
     , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = rechargeAbilitiesFor c
     , readied = False
     , inactive = False
     , note = ""
@@ -911,6 +913,122 @@ sourceHasLegendaryResistance c =
     List.any
         (\t -> String.contains "legendary resistance" (String.toLower t.name))
         c.traits
+
+
+{-| Walk every Feature on a compendium creature (traits, actions,
+bonus actions, reactions) and emit one `Encounter.RechargeAbility`
+per feature whose `usage` is `Recharge`. Spawned instances start
+with all recharge abilities `ready = True`. Legendary-action
+options are excluded — they have their own pip-strip mechanism
+(`legendaryActionsUsed`) and don't use the recharge model.
+-}
+rechargeAbilitiesFor : Creature -> List Encounter.RechargeAbility
+rechargeAbilitiesFor c =
+    [ c.traits, c.actions, c.bonusActions, c.reactions ]
+        |> List.concat
+        |> List.filterMap rechargeAbilityFromFeature
+
+
+{-| Extract a `RechargeAbility` from a Feature when possible.
+
+Two paths are tried, in order:
+
+  - **Structured**: the feature's `usage` is `Recharge { low, high }`.
+    The canonical shape, but the bundled SRD 5.2.1 data doesn't
+    populate it — those features carry `usage = null` and bake the
+    recharge into the name instead.
+  - **Name fallback**: parse a trailing `(Recharge N)` or
+    `(Recharge N-M)` suffix on the feature name (e.g.
+    "Petrifying Gaze (Recharge 4-6)" → 4–6). Handles both `-` and
+    `–` (en-dash) since stat-block prose varies. Strip the suffix
+    from the stored name so the chip reads "Petrifying Gaze"
+    instead of repeating the range.
+
+`(Recharge after a Short or Long Rest)` and similar phrasings
+fall through to `Nothing` — those aren't d6-recharge mechanics
+and don't fit this tracker.
+
+-}
+rechargeAbilityFromFeature : Feature -> Maybe Encounter.RechargeAbility
+rechargeAbilityFromFeature f =
+    case f.usage of
+        Just (Recharge { low, high }) ->
+            Just { name = f.name, low = low, high = high, ready = True }
+
+        _ ->
+            parseRechargeFromName f.name
+
+
+parseRechargeFromName : String -> Maybe Encounter.RechargeAbility
+parseRechargeFromName fullName =
+    let
+        ( before, suffix ) =
+            splitOnLastOpenParen fullName
+
+        cleanedName =
+            String.trimRight before
+    in
+    rangeFromSuffix suffix
+        |> Maybe.map
+            (\( low, high ) ->
+                { name = cleanedName, low = low, high = high, ready = True }
+            )
+
+
+{-| Split a string into `(before-last-paren, parenthetical-content)`.
+For `"Petrifying Gaze (Recharge 4-6)"` returns `("Petrifying Gaze ",
+"Recharge 4-6)")`. When no `(` is present, returns the input and an
+empty string so the caller skips the parse.
+-}
+splitOnLastOpenParen : String -> ( String, String )
+splitOnLastOpenParen s =
+    case String.indexes "(" s |> List.reverse |> List.head of
+        Just idx ->
+            ( String.left idx s
+            , String.dropLeft (idx + 1) s
+            )
+
+        Nothing ->
+            ( s, "" )
+
+
+{-| Pull `(low, high)` out of a parenthetical like
+`"Recharge 4-6)"` or `"Recharge 5)"`. Accepts ASCII `-` and the
+en-dash `–` as the range separator; ignores trailing characters
+after the closing paren (or its absence).
+-}
+rangeFromSuffix : String -> Maybe ( Int, Int )
+rangeFromSuffix suffix =
+    let
+        trimmed =
+            suffix
+                |> String.replace ")" ""
+                |> String.trim
+    in
+    case String.words trimmed of
+        [ "Recharge", range ] ->
+            parseRechargeRange range
+
+        _ ->
+            Nothing
+
+
+parseRechargeRange : String -> Maybe ( Int, Int )
+parseRechargeRange range =
+    let
+        normalised =
+            String.replace "–" "-" range
+    in
+    case String.split "-" normalised of
+        [ singleVal ] ->
+            String.toInt singleVal
+                |> Maybe.map (\n -> ( n, n ))
+
+        [ low, high ] ->
+            Maybe.map2 Tuple.pair (String.toInt low) (String.toInt high)
+
+        _ ->
+            Nothing
 
 
 {-| Build the human-readable "kind" line shown under the name on

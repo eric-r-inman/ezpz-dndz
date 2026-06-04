@@ -249,6 +249,8 @@ encodeCreature c =
         , ( "bloodied", E.bool c.bloodied )
         , ( "deathSaves", encodeDeathSaves c.deathSaves )
         , ( "acceptingDeathSaves", E.bool c.acceptingDeathSaves )
+        , ( "reactionUsed", E.bool c.reactionUsed )
+        , ( "rechargeAbilities", E.list encodeRechargeAbility c.rechargeAbilities )
         , ( "readied", E.bool c.readied )
         , ( "inactive", E.bool c.inactive )
         , ( "note", E.string c.note )
@@ -381,6 +383,16 @@ encodeDeathSaves d =
         ]
 
 
+encodeRechargeAbility : Encounter.RechargeAbility -> E.Value
+encodeRechargeAbility r =
+    E.object
+        [ ( "name", E.string r.name )
+        , ( "low", E.int r.low )
+        , ( "high", E.int r.high )
+        , ( "ready", E.bool r.ready )
+        ]
+
+
 encodeTimer : Timer -> E.Value
 encodeTimer t =
     E.object
@@ -461,7 +473,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -483,6 +495,8 @@ decodeCreature =
             , bloodied = bloodied
             , deathSaves = deathSaves
             , acceptingDeathSaves = acceptingDeathSaves
+            , reactionUsed = reactionUsed
+            , rechargeAbilities = rechargeAbilities
             , readied = readied
             , inactive = inactive
             , note = note
@@ -520,6 +534,8 @@ decodeCreature =
         |> optional "bloodied" D.bool False
         |> optional "deathSaves" decodeDeathSaves { successes = 0, failures = 0 }
         |> optional "acceptingDeathSaves" D.bool False
+        |> optional "reactionUsed" D.bool False
+        |> optional "rechargeAbilities" (D.list decodeRechargeAbility) []
         |> optionalEither "readied" "holding" D.bool False
         |> optional "inactive" D.bool False
         |> optional "note" D.string ""
@@ -689,6 +705,15 @@ decodeDeathSaves =
     D.map2 (\s f -> { successes = s, failures = f })
         (D.field "successes" D.int)
         (D.field "failures" D.int)
+
+
+decodeRechargeAbility : D.Decoder Encounter.RechargeAbility
+decodeRechargeAbility =
+    D.map4 Encounter.RechargeAbility
+        (D.field "name" D.string)
+        (D.field "low" D.int)
+        (D.field "high" D.int)
+        (D.field "ready" D.bool)
 
 
 decodeTimer : D.Decoder Timer

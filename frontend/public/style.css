@@ -2915,6 +2915,71 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
 }
 
+/* Recharge-ability chips on row 1 of the creature card, rendered
+   as additional children of `.condition-chips-wrap` so they flow
+   inline immediately after the condition / save-notice chips
+   (sharing the wrap's flex layout means the recharge chip hugs
+   the trailing condition chip instead of getting pushed to the
+   row's far edge by the wrap's flex-grow).  Pill shape mirrors
+   `.condition-chip` exactly — same padding, font size, weight,
+   border radius.  Only the colour palette differs: green when
+   ready, muted-grey with strikethrough when expended. */
+.recharge-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease,
+    color 0.1s ease;
+}
+
+.recharge-chip__range {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.recharge-chip--ready {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid var(--color-success-soft);
+}
+
+.recharge-chip--ready:hover {
+  background: var(--color-success);
+  color: #ffffff;
+  border-color: var(--color-success);
+}
+
+.recharge-chip--spent {
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
+.recharge-chip--spent:hover {
+  opacity: 1;
+  color: var(--color-text);
+  border-color: var(--color-text);
+}
+
+.recharge-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 /* Legendary columns wrapper: a flex strip sitting between the
    center column and the right rail.  Renders nothing when the
    creature has neither Legendary Actions nor Legendary
@@ -3514,13 +3579,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: rgba(245, 200, 66, 0.2);
 }
 
-.condition-chip__duration {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  font-feature-settings: "tnum";
-  white-space: nowrap;
-}
-
 /* "Saved: <Condition>" notice — posted after a successful auto-
    roll save. Green to signal a positive outcome; auto-clears on
    the bearer's next end-of-turn, but the × dismisses earlier. */
@@ -3807,6 +3865,33 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .action-btn--ready:hover {
   --btn-fg: var(--color-text);
+}
+
+/* Reaction pip (5e: one reaction per round).  Ready state reads
+   as a normal card button so it sits inline with the action
+   row; spent state goes muted + strikethrough so the GM can
+   tell at a glance that the creature has burned its reaction
+   for this round.  Auto-resets at the start of the creature's
+   next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
+.action-btn--reaction-ready {
+  --btn-fg: var(--color-warn, #d97706);
+}
+
+.action-btn--reaction-ready:hover {
+  --btn-fg: var(--color-text);
+}
+
+.action-btn--reaction-spent {
+  --btn-fg: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--color-text-muted);
+  opacity: 0.75;
+}
+
+.action-btn--reaction-spent:hover {
+  --btn-fg: var(--color-text);
+  opacity: 1;
 }
 
 .action-btn--blue {
@@ -6200,7 +6285,7 @@ button.creature-card__lifecycle--dead:focus-visible {
     -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  max-width: 200px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
@@ -7133,9 +7218,110 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-footer {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   padding-top: 4px;
+}
+
+/* Left-side cluster of the Add-Condition footer: Save preset and
+   Load preset buttons + the Save name-input row when active. */
+.cond-footer__presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cond-footer__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Inline name-prompt row that replaces the static Save button
+   while the user is naming a preset. */
+.cond-footer__save-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cond-footer__save-input {
+  width: 180px;
+}
+
+/* Load button + dropdown menu container.  `position: relative`
+   anchors the absolute-positioned menu below it. */
+.cond-footer__load-wrap {
+  position: relative;
+}
+
+.cond-footer__load-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  min-width: 200px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cond-footer__load-item {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.cond-footer__load-item-name {
+  appearance: none;
+  flex: 1 1 auto;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cond-footer__load-item-name:hover {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.cond-footer__load-item-delete {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cond-footer__load-item-delete:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
 }
 
 /* Dice "Roll" button cluster in the encounter-controls panel

@@ -65,11 +65,13 @@ import Ui.Compendium as CompendiumUi
         , PendingAction(..)
         )
 import Ui.Condition as ConditionUi exposing (ConditionUi, SaveToEndUi)
+import Ui.Condition.Wire
 import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
+import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
@@ -215,6 +217,34 @@ subscriptions model =
                 Nothing ->
                     []
 
+        conditionPresetLoadMenuSubs =
+            case model.modal of
+                Just (ModalCondition ui) ->
+                    if ui.loadMenuOpen then
+                        [ Browser.Events.onKeyDown (escKey ConditionPresetLoadMenuClose)
+                        , Browser.Events.onMouseDown (Decode.succeed ConditionPresetLoadMenuClose)
+                        ]
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        timerPresetLoadMenuSubs =
+            case model.modal of
+                Just (ModalTimerSetup ui) ->
+                    if ui.loadMenuOpen then
+                        [ Browser.Events.onKeyDown (escKey TimerPresetLoadMenuClose)
+                        , Browser.Events.onMouseDown (Decode.succeed TimerPresetLoadMenuClose)
+                        ]
+
+                    else
+                        []
+
+                _ ->
+                    []
+
         -- Esc on the Login route cancels back to the encounter
         -- page.  Scoped to the route so it doesn't intercept Esc
         -- on the main app (where the existing modal handlers want
@@ -295,6 +325,8 @@ subscriptions model =
             ++ settingsSubs
             ++ clearMenuSubs
             ++ controlMenuSubs
+            ++ conditionPresetLoadMenuSubs
+            ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
             ++ chromeSubs
         )
@@ -446,6 +478,8 @@ type alias Flags =
     , localCompendium : Maybe Decode.Value
     , localEncounterSaves : Maybe Decode.Value
     , localCardLayoutSaves : Maybe Decode.Value
+    , localConditionPresets : Maybe Decode.Value
+    , localTimerPresets : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -513,6 +547,20 @@ init flags url key =
             flags.localCardLayoutSaves
                 |> Maybe.andThen
                     (Decode.decodeValue Card.Wire.decodeLocalCardLayoutSaves
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , conditionPresets =
+            flags.localConditionPresets
+                |> Maybe.andThen
+                    (Decode.decodeValue Ui.Condition.Wire.decodePresets
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , timerPresets =
+            flags.localTimerPresets
+                |> Maybe.andThen
+                    (Decode.decodeValue Ui.Timer.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
@@ -605,6 +653,22 @@ update msg model =
             else
                 Cmd.none
 
+        conditionPresetsCmd =
+            if shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
+                Ports.persistLocalConditionPresets
+                    (Ui.Condition.Wire.encodePresets next.conditionPresets)
+
+            else
+                Cmd.none
+
+        timerPresetsCmd =
+            if shouldPersistAfter msg && model.timerPresets /= next.timerPresets then
+                Ports.persistLocalTimerPresets
+                    (Ui.Timer.Wire.encodePresets next.timerPresets)
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -623,11 +687,17 @@ update msg model =
         -- Reset modal chrome (drag offset + resized dimensions)
         -- to defaults on every modal-open transition so each
         -- freshly opened modal starts centered and at its CSS
-        -- default size.  Without this, a user who drags one
-        -- modal off-center would inherit that offset for the
-        -- next modal they open.
+        -- default size.  Without this, a user who drags or
+        -- resizes one modal would inherit that geometry for the
+        -- next modal they open.  Three modal-open surfaces are
+        -- covered: the unified `model.modal` ADT, plus the Dice
+        -- Roller and Compendium Browser which carry their own
+        -- `open : Bool` flags outside the ADT.
+        anyModalOpen m =
+            m.modal /= Nothing || m.dice.open || m.compendium.open
+
         nextWithChromeReset =
-            if model.modal == Nothing && next.modal /= Nothing then
+            if not (anyModalOpen model) && anyModalOpen next then
                 Update.ModalChrome.reset next
 
             else
@@ -642,6 +712,8 @@ update msg model =
         , compendiumCmd
         , encounterSavesCmd
         , cardLayoutSavesCmd
+        , conditionPresetsCmd
+        , timerPresetsCmd
         , modalFocusCmd
         ]
     )
@@ -875,6 +947,15 @@ updateInner msg model =
 
         ToggleReadied name ->
             Update.Encounter.toggleReadied name model
+
+        ToggleReaction name ->
+            Update.Encounter.toggleReaction name model
+
+        ToggleRechargeAbility creatureName abilityName ->
+            Update.Encounter.toggleRechargeAbility creatureName abilityName model
+
+        RechargeRollLanded creatureName abilityName roll ->
+            Update.Encounter.rechargeRollLanded creatureName abilityName roll model
 
         ToggleInactive name ->
             Update.Encounter.toggleInactive name model
@@ -1130,6 +1211,30 @@ updateInner msg model =
         ConditionDelete ->
             Update.Condition.delete model
 
+        ConditionPresetSaveStart ->
+            Update.Condition.presetSaveStart model
+
+        ConditionPresetSaveNameChanged text ->
+            Update.Condition.presetSaveNameChanged text model
+
+        ConditionPresetSaveCancel ->
+            Update.Condition.presetSaveCancel model
+
+        ConditionPresetSaveSubmit ->
+            Update.Condition.presetSaveSubmit model
+
+        ConditionPresetLoadMenuToggle ->
+            Update.Condition.presetLoadMenuToggle model
+
+        ConditionPresetLoadMenuClose ->
+            Update.Condition.presetLoadMenuClose model
+
+        ConditionPresetLoad name ->
+            Update.Condition.presetLoad name model
+
+        ConditionPresetDelete name ->
+            Update.Condition.presetDelete name model
+
         ConditionRemoveChip name id ->
             Update.Condition.removeChip name id model
 
@@ -1183,6 +1288,30 @@ updateInner msg model =
 
         TimerDismiss name ->
             Update.Timer.dismiss name model
+
+        TimerPresetSaveStart ->
+            Update.Timer.presetSaveStart model
+
+        TimerPresetSaveNameChanged text ->
+            Update.Timer.presetSaveNameChanged text model
+
+        TimerPresetSaveCancel ->
+            Update.Timer.presetSaveCancel model
+
+        TimerPresetSaveSubmit ->
+            Update.Timer.presetSaveSubmit model
+
+        TimerPresetLoadMenuToggle ->
+            Update.Timer.presetLoadMenuToggle model
+
+        TimerPresetLoadMenuClose ->
+            Update.Timer.presetLoadMenuClose model
+
+        TimerPresetLoad name ->
+            Update.Timer.presetLoad name model
+
+        TimerPresetDelete name ->
+            Update.Timer.presetDelete name model
 
         CompendiumLoaded result ->
             Update.Compendium.Browser.loaded result model

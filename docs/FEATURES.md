@@ -190,9 +190,10 @@ optional legendary-pips column, and a right rail.
 
 - *HP display* — "current / max" with optional "+N temp" suffix.
   Click any of current, max, or temp to edit inline.
-- *Bloodied marker* — surfaces when HP drops below 50% of max.
+- *Bloodied marker* — surfaces when current HP is half of max or
+  lower, per SRD 5.2.1.
 - *Cover cycle (⬜/◻/◭/⬛)* — click to step through None → Half →
-  Three-Quarters → Full cover.
+  Three-Quarters → Total cover.
 - *Concentration (✨)* — toggle on/off.
 - *Hiding (👁‍🗨)* — toggle on/off.
 - *Dodging (🛡️)* — toggle on/off.
@@ -209,6 +210,16 @@ optional legendary-pips column, and a right rail.
 - *Ready (✋)* — toggle "readied action" (2024 MM terminology;
   was "hold action" in 2014).  A creature with a readied action
   skips its turn until the GM releases the readied state.
+- *Reaction (⚡ Reaction)* — a one-per-round pip representing
+  the creature's reaction for the round.  Click to mark spent
+  (gray); refills automatically at the start of the creature's
+  next turn.
+- *Recharge chip* — appears to the left of any condition badges
+  when a creature has a Recharge X-Y feature (e.g. dragon
+  breath, *Hellfire Spellcasting* on a Pit Fiend).  The chip
+  names the ability and its recharge window, sits green when
+  available, gray when spent, and auto-rolls 1d6 at the start
+  of the bearer's turn.  Click to flip state manually.
 - *Memo slot* — a tiny inline label (up to 15 chars), e.g. "leg
   res used".  Click to edit.
 - *Timer slot (⏱️)* — opens the *Timer* modal to attach a countdown
@@ -227,16 +238,44 @@ optional legendary-pips column, and a right rail.
 - *Duplicate (⧉ second group)* — opens the *Duplicate* picker with
   five options (see below).
 
+*** Lifecycle badge (top-center on the card)
+
+Every card carries a small lifecycle pill across the top edge
+that reflects its current state at a glance:
+
+- *💤 DOWN* (amber) — current HP is 0 and death-save tracking
+  hasn't been opened yet, or no successes are stored.
+- *💤 DOWN, STABLE* (green) — 0 HP with three death-save
+  successes recorded.
+- *💀 DEAD* (red) — three failures or otherwise marked dead.
+- *⏭ SKIPPED* (gray) — the creature is being walked past in
+  the turn order (downed without death saves opened, inactive,
+  or readying).
+
+The DOWN and DEAD pills are clickable buttons that form a
+reversible toggle: clicking DOWN flips the creature to DEAD
+(failures set to 3); clicking DEAD flips it back to DOWN
+(failures cleared, successes preserved).  Hover previews the
+destination state.  The card's left-edge color stripe mirrors
+the badge color.
+
 *** Optional — Death Saves column
 
-When a creature drops to 0 HP, a column of three success circles and
-three failure × marks appears.  Click any circle or × to toggle it.
+When a creature drops to 0 HP, a single *Death Saves* opt-in
+button appears in place of the pip strip.  Most downed enemies
+never need actual death saves rolled, so the strip stays
+hidden until you ask for it.  Click the button and the usual
+column of three success circles and three failure × marks
+appears — click any circle or × to toggle it manually.
 
 - *Roll Death Save (🎲)* — auto-rolls 1d20.  A roll of 10 or higher
   is a success; 9 or lower is a failure; natural 20 returns the
   creature to 1 HP; natural 1 counts as two failures.
-- The card flips to *Stable* (one success after rest) or *Dead*
-  (three failures) automatically.
+- The card flips to *Stable* (three successes) or *Dead*
+  (three failures) automatically, and the lifecycle badge
+  follows along.
+- Healing the creature above 0 HP resets the opt-in flag, so
+  the next downing starts from a clean tracker.
 
 *** Optional — Legendary pips column
 
@@ -252,6 +291,9 @@ The middle pane is where global encounter actions live.
 *** Dice quick-roll cluster
 
 - *Last total* — a flashing readout of the most recent dice result.
+  Up to three previous totals render to the left of it in muted
+  text (oldest first) so you can see the last few rolls without
+  expanding the strip or opening the modal.
 - *Expand arrow (→)* — toggles the inline dice-history strip.
 - *Roll (🎲)* — opens the full *Dice Roller* (see *Dice* below).
 
@@ -360,6 +402,25 @@ expression and offers normal, Advantage, and Disadvantage roll
 buttons.  Auto-rolling conditions fire silently at the configured
 turn phase, popping a floating "+N" result above the card.
 
+*** Condition presets
+
+The footer of the Condition modal has a *Save / Load* row that
+remembers full condition configurations under names you choose,
+so a "Bardic Inspiration" that auto-rolls a DC 12 save at end of
+turn (with a 10-char note) can be one click away forever.
+
+- *Save* — type a name, hit *Save*.  Stores the current
+  condition's name, custom name, note, duration mode, save-to-
+  end settings, and auto-roll mode under that label.
+- *Load ▾* — dropdown of every saved preset, sorted alphabetically
+  (case-insensitive).  Click a name to apply; the modal title
+  appends ~(loaded: <name>)~ until you change something.
+- *× per row* — delete a preset from the dropdown.
+
+Presets persist to your browser's localStorage (anonymous and
+authenticated sessions both round-trip through it today).  They
+are not yet synced to the server.
+
 ** Death saves
 
 Already covered above in the card column section.  In short: at 0 HP
@@ -386,6 +447,12 @@ Two small per-card slots on row 3.
   end of their turn, and an optional 10-char label.  When the
   countdown reaches 0 the card flashes a 0 and the page plays a
   short ping; click × on the timer to dismiss it.
+
+  The Timer modal also has a *Save / Load* footer (mirror of the
+  Condition modal's preset row) that remembers timer setups —
+  turn count, phase, and label — under names you choose.
+  Dropdown is sorted alphabetically (case-insensitive); presets
+  persist to ~localStorage~.
 
 * The Dice Roller
 
@@ -460,8 +527,9 @@ action bar on the right.
 
 ** Browsing and filtering
 
-- *Search* — live filter as you type.  Matches against creature
-  name.
+- *Search* — live filter as you type (placeholder reads
+  "Search by name, type, etc.").  Matches against creature
+  name, race, alignment, source, and CR.
 - *Kind toggles* — Player / Enemy / NPC filters.
 - *Sort* — by Name, CR, or Recency.
 - *Tag filter* — drop-down to the right of the sort picker.  Two
@@ -486,7 +554,12 @@ right.  Clickable elements inside the stat block:
   an *Ability Save* roll prompt.
 - *Inline dice* — any dice expression in a trait or action
   (e.g. "2d6+3 fire damage") is clickable and pops a floating
-  result above the cursor.
+  result above the cursor.  Blue pills are damage rolls.
+- *Attack-roll pills* — red pills attached to attack lines
+  (recognising both the SRD 5.2.1 ~Melee Attack Roll: +N~ /
+  ~Ranged Attack Roll: +N~ header and the legacy ~+N to hit~
+  form).  One click rolls 1d20 + modifier and lands the result
+  in the dice history.
 - *Tag badges* — if the creature has any user tags, they appear as
   small pills on the right side of the name row in the
   Compendium-modal stat block.  In the pinned right-rail Compendium
@@ -499,9 +572,9 @@ right.  Clickable elements inside the stat block:
 
 ** Adding to the encounter
 
-- *Add to Encounter* — drops one instance into the queue.  An
-  optional "Roll initiative" mode rolls 1d20 + init bonus
-  automatically.
+- *Add to Encounter* — drops one instance into the queue at
+  initiative 0; the GM rolls or types the initiative when ready
+  (no dice-history pollution from add flows).
 - *Duplicate* — clones the creature inside the library (for
   variants).
 - *Edit* — opens the *Compendium Edit* form pre-filled.

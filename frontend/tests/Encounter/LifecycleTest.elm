@@ -49,6 +49,8 @@ mkCreature name initiative =
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
     , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -164,6 +166,8 @@ deadSkipSuite =
                             | currentHp = 0
                             , deathSaves = { successes = 1, failures = 1 }
                             , acceptingDeathSaves = True
+                            , reactionUsed = False
+                            , rechargeAbilities = []
                         }
 
                     enc =

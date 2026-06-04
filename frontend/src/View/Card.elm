@@ -335,7 +335,7 @@ rowTop creature hpEdit renameState =
         , creatureName creature renameState
         , noteOrPencil creature
         , acReadout creature hpEdit
-        , conditionChips creature
+        , rowTopChipCluster creature
         ]
 
 
@@ -538,6 +538,57 @@ legendaryColumns creature =
             ]
 
 
+{-| One recharge-ability pill, sized to match the condition-chip
+shape so it sits inline in row 1's chip cluster. Tinted green
+when ready, muted-gray with a strikethrough when spent. Click
+toggles the state so the GM can correct a missed auto-roll. The
+auto-roll fires at the start of the creature's turn via
+`Effects.rechargeRollCmdsFor` and lands in `RechargeRollLanded`
+which flips `ready=True` when the d6 ≥ `low`.
+-}
+rechargeChip : String -> Encounter.RechargeAbility -> Html Msg
+rechargeChip bearer ability =
+    let
+        rangeLabel =
+            if ability.low == ability.high then
+                String.fromInt ability.low
+
+            else
+                String.fromInt ability.low ++ "–" ++ String.fromInt ability.high
+
+        stateModifier =
+            if ability.ready then
+                "recharge-chip--ready"
+
+            else
+                "recharge-chip--spent"
+
+        tip =
+            if ability.ready then
+                ability.name ++ " — Recharge " ++ rangeLabel ++ " (ready; click to mark spent)"
+
+            else
+                ability.name ++ " — Recharge " ++ rangeLabel ++ " (spent; auto-rolls d6 next turn)"
+    in
+    button
+        [ class ("recharge-chip " ++ stateModifier)
+        , Attr.type_ "button"
+        , onClick (ToggleRechargeAbility bearer ability.name)
+        , Tooltips.attr tip
+        , attribute "aria-label" tip
+        , attribute "aria-pressed"
+            (if ability.ready then
+                "false"
+
+             else
+                "true"
+            )
+        ]
+        [ text ability.name
+        , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
+        ]
+
+
 legendaryColumn :
     { creatureName : String
     , kind : String
@@ -629,22 +680,34 @@ headerTooltipFor label =
 -- ── CONDITION CHIPS ─────────────────────────────────────────────────────
 
 
-{-| Live render of a creature's conditions and any post-save
-"Saved: <name>" notices on row 1 of the card. Empty for both →
-empty text node so the row's flex gap collapses naturally.
-Otherwise we render a leading separator pipe followed by chips
-(active conditions first, then notices) so the eye lands on the
-condition the GM is most likely to act on.
+{-| Row 1 chip cluster: a single `flex: 1 1 auto` container that
+holds the condition / save-notice chips followed immediately by
+the recharge chips, separated by a leading pipe. Combining them
+into one wrap (rather than two siblings) keeps the recharge chip
+hugged to the right of the condition chips instead of getting
+pushed to the row's far edge by the wrap's flex-grow.
+
+Renders nothing if the creature has neither conditions nor save
+notices nor recharge abilities, so the row collapses cleanly for
+PCs and most NPCs.
+
 -}
-conditionChips : Creature -> Html Msg
-conditionChips creature =
-    if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
+rowTopChipCluster : Creature -> Html Msg
+rowTopChipCluster creature =
+    let
+        hasAnyChip =
+            not (List.isEmpty creature.conditions)
+                || not (List.isEmpty creature.saveNotices)
+                || not (List.isEmpty creature.rechargeAbilities)
+    in
+    if not hasAnyChip then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (conditionChip creature.name) creature.conditions
+                :: List.map (rechargeChip creature.name) creature.rechargeAbilities
+                ++ List.map (conditionChip creature.name) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )
 
@@ -671,14 +734,21 @@ saveNoticeChip target notice =
         ]
 
 
-{-| One condition chip. Layout (left → right):
-[ name + note ][ optional save-roll button ] [ duration glyph ][ × ]
+{-| One condition chip. Visible text is just the condition name +
+optional `(note)`; per the release-polish pass the duration glyph
+and the chip body itself stay minimal. Two action affordances sit
+inside the chip:
 
-Clicking the name opens the edit modal; the × runs the remove Msg
-directly (and stops propagation so it doesn't also open the
-modal). The save-roll button (when the condition has a
-`saveToEnd`) fires a 1d20 vs. the DC and removes the condition on
-success.
+  - The 🎲 save-roll button — only when the condition has a
+    `saveToEnd` spec. Fires a 1d20 vs. the DC and removes the
+    condition silently on success.
+  - The × remove button — always present. One-click chip removal
+    without opening the edit modal.
+
+Both action buttons `stopPropagationOn "click"` so they don't
+also bubble up and open the edit modal (which the chip name
+itself triggers). The hover tooltip on the chip wrap composes
+the full duration + save terms via `chipTitle`.
 
 -}
 conditionChip : String -> Encounter.Condition -> Html Msg
@@ -701,7 +771,6 @@ conditionChip target cond =
                     [ text (" (" ++ cond.note ++ ")") ]
             ]
         , chipSaveButton target cond
-        , chipDurationGlyph cond
         , button
             [ class "condition-chip__remove"
             , stopPropagationOn "click"
@@ -750,26 +819,6 @@ chipSaveButton target cond =
 
         Nothing ->
             text ""
-
-
-{-| Compact duration glyph appended to a chip. Manual durations
-get nothing (the GM removes by hand); UntilTurn shows ⏱
-N (where N is "Bk" or first 3 chars of the ref creature's name);
-Countdown shows ⏳N.
--}
-chipDurationGlyph : Encounter.Condition -> Html Msg
-chipDurationGlyph cond =
-    case cond.duration of
-        Encounter.DurationManual ->
-            text ""
-
-        Encounter.DurationUntilTurn _ _ ref ->
-            span [ class "condition-chip__duration" ]
-                [ text ("⏱ " ++ String.left 4 ref) ]
-
-        Encounter.DurationCountdown _ remaining _ ->
-            span [ class "condition-chip__duration" ]
-                [ text ("⏳ " ++ String.fromInt remaining) ]
 
 
 formatBonus : Int -> String
@@ -1235,6 +1284,7 @@ rowBot creature =
             ]
             [ text "Condition/Effect" ]
         , readiedToggle creature
+        , reactionPip creature
         , memoSlot creature
         , timerSlot creature
         ]
@@ -1373,6 +1423,44 @@ readiedToggle creature =
         , attribute "aria-label" label
         , attribute "aria-pressed"
             (if creature.readied then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text bodyText ]
+
+
+{-| One-per-round reaction pip. ⚡ when available, gray ⚡ when
+expended. Mirrors the legendary-resistance pip pattern but with a
+single slot. Auto-resets at the start of the creature's next turn
+via `Encounter.Lifecycle.applyBeginOfTurn`; the click is wired
+manually so the GM can flip it ad-hoc.
+-}
+reactionPip : Creature -> Html Msg
+reactionPip creature =
+    let
+        ( bodyText, cls, label ) =
+            if creature.reactionUsed then
+                ( "⚡ Reaction"
+                , "action-btn action-btn--reaction action-btn--reaction-spent"
+                , Tooltips.reactionSpent
+                )
+
+            else
+                ( "⚡ Reaction"
+                , "action-btn action-btn--reaction action-btn--reaction-ready"
+                , Tooltips.reactionReady
+                )
+    in
+    button
+        [ class cls
+        , onClick (ToggleReaction creature.name)
+        , Tooltips.attr label
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if creature.reactionUsed then
                 "true"
 
              else

@@ -131,6 +131,8 @@ fullyPopulatedCreature =
     , bloodied = True
     , deathSaves = { successes = 2, failures = 1 }
     , acceptingDeathSaves = True
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = True
     , inactive = False
     , note = "boss"

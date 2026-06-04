@@ -38,7 +38,7 @@ view =
                 [ text "PolyForm Strict 1.0.0" ]
             ]
         , span [ class "app-footer__beta" ]
-            [ text "Beta Version — features may change or break, and save files could be lost, without notice." ]
+            [ text "Beta Version — features may change or break without notice." ]
         , div [ class "app-footer__contact" ]
             [ a [ href "mailto:feedback@ezpzdndz" ]
                 [ text "Contact" ]

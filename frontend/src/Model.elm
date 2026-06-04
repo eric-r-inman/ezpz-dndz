@@ -53,7 +53,7 @@ import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
 import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
-import Ui.Condition exposing (ConditionUi)
+import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
 import Ui.Dice exposing (DiceUi)
 import Ui.Duplicate exposing (DuplicateUi)
@@ -70,7 +70,7 @@ import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
-import Ui.Timer exposing (TimerSetupUi)
+import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
 import Url exposing (Url)
 
@@ -490,6 +490,20 @@ type alias Model =
     -- shape and purpose as `localEncounterSaves`.  `CardWire`
     -- defines the entry type.
     , localCardLayoutSaves : Dict String CardWire.LocalCardLayoutSave
+
+    -- User-named presets for the Add-Condition modal, keyed by
+    -- the name the GM gave each save.  Mirrors the pattern of
+    -- the other localStorage-backed dicts: the modal's Save and
+    -- Load buttons mutate this dict; the update-loop wrapper
+    -- persists it under `localStorage.conditionPresets`.  Anonymous
+    -- and authenticated sessions both use this same client-side
+    -- dict for now — there's no server endpoint yet because the
+    -- preset shape is small and per-device defaults are reasonable.
+    , conditionPresets : Dict String UiCondition.ConditionPreset
+
+    -- Twin of `conditionPresets` for the Timer-setup modal.
+    -- Persisted under `localStorage.timerPresets`.
+    , timerPresets : Dict String UiTimer.TimerPreset
 
     -- JS `Date.now()` captured at boot, used as the timestamp for
     -- all anonymous named-save writes done in this session.  All

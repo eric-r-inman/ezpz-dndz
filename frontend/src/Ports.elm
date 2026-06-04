@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalDiceHistory, persistLocalEncounterSaves
+    , broadcastDiceRoll, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -131,6 +131,25 @@ port persistLocalCardLayoutSaves : E.Value -> Cmd msg
 {-| Drop the whole anonymous named-card-layout-saves dict.
 -}
 port clearLocalCardLayoutSaves : () -> Cmd msg
+
+
+{-| Persist the user-named condition presets dict to
+`localStorage.conditionPresets`. Body is an object whose keys
+are the preset names and whose values are the encoded preset
+records — see `Ui.Condition.Wire.encodePresets`. Anonymous and
+authenticated sessions both use this same client-side store
+today; if a server-side store is added later, the encoded
+payload shape can be reused as the wire body.
+-}
+port persistLocalConditionPresets : E.Value -> Cmd msg
+
+
+{-| Persist the user-named timer presets dict to
+`localStorage.timerPresets`. Same dual-session usage and wire
+contract as `persistLocalConditionPresets` but for the
+Timer-setup modal — see `Ui.Timer.Wire.encodePresets`.
+-}
+port persistLocalTimerPresets : E.Value -> Cmd msg
 
 
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of

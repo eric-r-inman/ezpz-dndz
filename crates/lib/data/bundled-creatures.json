@@ -261,7 +261,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 18, each creature in a 60-foot-long, 5-foot-wide Line. Failure: 54 (12d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -409,7 +409,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 19, each creature in a 90-foot-long, 5-foot-wide Line. Failure: 60 (11d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -565,7 +565,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 18, each creature in a 60-foot-long, 5-foot-wide Line. Failure: 45 (10d8) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -580,7 +580,7 @@
         "usage": null
       },
       {
-        "name": "Sleep Breath",
+        "name": "Sleep Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 18, each creature in a 60-foot Cone. Failure: The target has the Incapacitated condition until the end of its next turn, at which point it repeats the save. Second Failure The target has the Unconscious condition for 10 minutes. This effect ends for the target if it takes damage or a creature within 5 feet of it takes an action to wake it.",
         "usage": null
       },
@@ -727,7 +727,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 19, each creature in a 90-foot-long, 5-foot-wide Line. Failure: 55 (10d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -742,7 +742,7 @@
         "usage": null
       },
       {
-        "name": "Repulsion Breath",
+        "name": "Repulsion Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 19, each creature in a 30-foot Cone. Failure: The target is pushed up to 60 feet straight away from the dragon and has the Prone condition.",
         "usage": null
       },
@@ -884,7 +884,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 18, each creature in an 60-foot-long, 5-foot-wide Line. Failure: 54 (12d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -899,7 +899,7 @@
         "usage": null
       },
       {
-        "name": "Slowing Breath",
+        "name": "Slowing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 18, each creature in a 60-foot Cone. Failure: The target can't take Reactions; its Speed is halved; and it can take either an action or a Bonus Action on its turn, not both. This effect lasts until the end of its next turn.",
         "usage": null
       },
@@ -1050,7 +1050,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 21, each creature in a 60-foot Cone. Failure: 66 (12d10) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -1070,7 +1070,7 @@
         "usage": null
       },
       {
-        "name": "Weakening Breath",
+        "name": "Weakening Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 21, each creature that isn't currently affected by this breath in a 60-foot Cone. Failure: The target has Disadvantage on Strength-based D20 Test and subtracts 3 (1d6) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       }
@@ -1223,7 +1223,7 @@
         "usage": null
       },
       {
-        "name": "Poison Breath",
+        "name": "Poison Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 18, each creature in a 60-foot Cone. Failure: 56 (16d6) Poison damage. Success: Half damage.",
         "usage": null
       },
@@ -1366,7 +1366,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 21, each creature in a 60-foot Cone. Failure: 59 (17d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -1518,7 +1518,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 20, each creature in a 60-foot Cone. Failure: 54 (12d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -1528,7 +1528,7 @@
         "usage": null
       },
       {
-        "name": "Paralyzing Breath",
+        "name": "Paralyzing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 20, each creature in a 60-foot Cone. First Failure The target has the Incapacitated condition until the end of its next turn, when it repeats the save. Second Failure The target has the Paralyzed condition, and it repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       },
@@ -1676,7 +1676,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 19, each creature in a 60-foot Cone. Failure: 54 (12d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -2050,7 +2050,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 22, each creature in a 90-foot-long, 10-foot-wide Line. Failure: 67 (15d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -2198,7 +2198,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 23, each creature in a 120-foot-long, 10-foot-wide Line. Failure: 88 (16d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -2354,7 +2354,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 21, each creature in a 90-foot-long, 5-foot-wide Line. Failure: 58 (13d8) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -2369,7 +2369,7 @@
         "usage": null
       },
       {
-        "name": "Sleep Breath",
+        "name": "Sleep Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 21, each creature in a 90-foot Cone. Failure: The target has the Incapacitated condition until the end of its next turn, at which point it repeats the save. Second Failure The target has the Unconscious condition for 10 minutes. This effect ends for the target if it takes damage or a creature within 5 feet of it takes an action to wake it.",
         "usage": null
       },
@@ -2516,7 +2516,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 23, each creature in a 120-foot-long, 10-foot-wide Line. Failure: 82 (15d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -2531,7 +2531,7 @@
         "usage": null
       },
       {
-        "name": "Repulsion Breath",
+        "name": "Repulsion Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 23, each creature in a 30-foot Cone. Failure: The target is pushed up to 60 feet straight away from the dragon and has the Prone condition.",
         "usage": null
       },
@@ -2673,7 +2673,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 22, each creature in an 90-foot-long, 10-foot-wide Line. Failure: 63 (14d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -2688,7 +2688,7 @@
         "usage": null
       },
       {
-        "name": "Slowing Breath",
+        "name": "Slowing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 22, each creature in a 90-foot Cone. Failure: The target can't take Reactions; its Speed is halved; and it can take either an action or a Bonus Action on its turn, not both. This effect lasts until the end of its next turn.",
         "usage": null
       },
@@ -2839,7 +2839,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 24, each creature in a 90-foot Cone. Failure: 71 (13d10) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -2859,7 +2859,7 @@
         "usage": null
       },
       {
-        "name": "Weakening Breath",
+        "name": "Weakening Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 24, each creature that isn't currently affected by this breath in a 90-foot Cone. Failure: The target has Disadvantage on Strength-based D20 Test and subtracts 5 (1d10) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       }
@@ -3012,7 +3012,7 @@
         "usage": null
       },
       {
-        "name": "Poison Breath",
+        "name": "Poison Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 22, each creature in a 90-foot Cone. Failure: 77 (22d6) Poison damage. Success: Half damage.",
         "usage": null
       },
@@ -3155,7 +3155,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 24, each creature in a 90-foot Cone. Failure: 91 (26d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -3307,7 +3307,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 24, each creature in a 90-foot Cone. Failure: 67 (15d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -3317,7 +3317,7 @@
         "usage": null
       },
       {
-        "name": "Paralyzing Breath",
+        "name": "Paralyzing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 24, each creature in a 90-foot Cone. First Failure The target has the Incapacitated condition until the end of its next turn, when it repeats the save. Second Failure The target has the Paralyzed condition, and it repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       },
@@ -3465,7 +3465,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 22, each creature in a 90-foot Cone. Failure: 63 (14d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -6021,7 +6021,7 @@
         "usage": null
       },
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 16, each creature in a 90-foot-long, 5-foot-wide Line. Failure: 66 (12d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -6345,7 +6345,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 11, each creature in a 15-foot-long, 5-foot-wide Line. Failure: 22 (5d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -6798,7 +6798,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 12, each creature in a 30-foot-long, 5-foot-wide Line. Failure: 21 (6d6) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -7142,7 +7142,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 11, each creature in a 20-foot-long, 5-foot-wide Line. Failure: 14 (4d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -7152,7 +7152,7 @@
         "usage": null
       },
       {
-        "name": "Sleep Breath",
+        "name": "Sleep Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 11, each creature in a 15-foot Cone. Failure: The target has the Incapacitated condition until the end of its next turn, at which point it repeats the save. Second Failure The target has the Unconscious condition for 1 minute. This effect ends for the target if it takes damage or a creature within 5 feet of it takes an action to wake it.",
         "usage": null
       }
@@ -7263,7 +7263,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 12, each creature in a 40-foot-long, 5-foot-wide Line. Failure: 16 (3d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -7278,7 +7278,7 @@
         "usage": null
       },
       {
-        "name": "Repulsion Breath",
+        "name": "Repulsion Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 12, each creature in a 30-foot Cone. Failure: The target is pushed up to 30 feet straight away from the dragon and has the Prone condition.",
         "usage": null
       }
@@ -8295,7 +8295,7 @@
         "usage": null
       },
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 15, each creature in a 15-foot Cone. Failure: 31 (7d8) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -9221,7 +9221,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 11, each creature in a 20-foot-long, 5-foot-wide Line. Failure: 18 (4d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -9231,7 +9231,7 @@
         "usage": null
       },
       {
-        "name": "Slowing Breath",
+        "name": "Slowing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 11, each creature in a 15-foot Cone. Failure: The target can't take Reactions; its Speed is halved; and it can take either an action or a Bonus Action on its turn, not both. This effect lasts until the end of its next turn.",
         "usage": null
       }
@@ -10789,7 +10789,7 @@
         "usage": null
       },
       {
-        "name": "Steam Breath",
+        "name": "Steam Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 19, each creature in a 60-foot Cone. Failure: 56 (16d6) Fire damage. Success: Half damage. Failure or Success: Being underwater doesn't grant Resistance to this Fire damage.",
         "usage": null
       },
@@ -11412,7 +11412,7 @@
     ],
     "actions": [
       {
-        "name": "Blinding Breath",
+        "name": "Blinding Breath (Recharge 6)",
         "description": "Dexterity Saving Throw: DC 10, each creature in a 15-foot Cone. Failure: The target has the Blinded condition until the end of the mephit's next turn.",
         "usage": null
       },
@@ -17625,7 +17625,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 13, each creature in a 15-foot Cone. Failure: 22 (4d10) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -17640,7 +17640,7 @@
         "usage": null
       },
       {
-        "name": "Weakening Breath",
+        "name": "Weakening Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 13, each creature that isn't currently affected by this breath in a 15-foot Cone. Failure: The target has Disadvantage on Strength-based D20 Test and subtracts 2 (1d4) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       }
@@ -17742,7 +17742,7 @@
         "usage": null
       },
       {
-        "name": "Petrifying Breath",
+        "name": "Petrifying Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 15, each creature in a 30-foot Cone. First Failure The target has the Restrained condition and repeats the save at the end of its next turn if it is still Restrained, ending the effect on itself on a success. Second Failure The target has the Petrified condition instead of the Restrained condition.",
         "usage": null
       }
@@ -17978,7 +17978,7 @@
         "usage": null
       },
       {
-        "name": "Poison Breath",
+        "name": "Poison Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 11, each creature in a 15-foot Cone. Failure: 21 (6d6) Poison damage. Success: Half damage.",
         "usage": null
       },
@@ -18898,7 +18898,7 @@
         "usage": null
       },
       {
-        "name": "Dragon's Breath",
+        "name": "Dragon's Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 14, each creature in a 30-foot Cone. Failure: 28 (8d6) damage of the type chosen for the Draconic Origin trait. Success: Half damage.",
         "usage": null
       },
@@ -19217,7 +19217,7 @@
         "usage": null
       },
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 12, each creature in a 15-foot Cone. Failure: 17 (5d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -20577,7 +20577,7 @@
       },
       {
         "name": "Ice Wall",
-        "description": "The devil casts Wall of Ice (level 8 version), requiring no spell components and using Intelligence as the spellcasting ability (spell save DC 17).\n\n- **At Will:**",
+        "description": "The devil casts Wall of Ice (level 8 version), requiring no spell components and using Intelligence as the spellcasting ability (spell save DC 17).",
         "usage": null
       },
       {
@@ -20712,7 +20712,7 @@
         "usage": null
       },
       {
-        "name": "Frost Breath",
+        "name": "Frost Breath (Recharge 6)",
         "description": "Constitution Saving Throw: DC 10, each creature in a 15-foot Cone. Failure: 7 (3d4) Cold damage. Success: Half damage.",
         "usage": null
       }
@@ -21259,7 +21259,7 @@
         "usage": null
       },
       {
-        "name": "Poison Breath",
+        "name": "Poison Breath (Recharge 6)",
         "description": "Constitution Saving Throw: DC 18, each creature in a 60-foot Cone. Failure: 55 (10d10) Poison damage. Success: Half damage.",
         "usage": null
       }
@@ -22729,7 +22729,7 @@
         "usage": null
       },
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 6)",
         "description": "Dexterity Saving Throw: DC 11, each creature in a 15-foot Cone. Failure: 7 (2d6) Fire damage. Success: Half damage.",
         "usage": null
       }
@@ -23415,7 +23415,7 @@
     ],
     "bonus_actions": [
       {
-        "name": "Petrifying Gaze",
+        "name": "Petrifying Gaze (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 13, each creature in a 30-foot Cone. If the medusa sees its reflection in the Cone, the medusa must make this save. First Failure The target has the Restrained condition and repeats the save at the end of its next turn if it is still Restrained, ending the effect on itself on a success. Second Failure The target has the Petrified condition instead of the Restrained condition.",
         "usage": null
       }
@@ -26573,8 +26573,8 @@
         "usage": null
       },
       {
-        "name": "Hellfire Spellcasting",
-        "description": "The pit fiend casts Fireball (level 5 version) twice, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 21). It can replace one Fireball with Hold Monster (level 7 version) or Wall of Fire.\n\n- **At Will:**",
+        "name": "Hellfire Spellcasting (Recharge 4-6)",
+        "description": "The pit fiend casts Fireball (level 5 version) twice, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 21). It can replace one Fireball with Hold Monster (level 7 version) or Wall of Fire.",
         "usage": null
       },
       {
@@ -28180,7 +28180,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 13, each creature in a 15-foot Cone. Failure: 24 (7d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -30440,7 +30440,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 13, each creature in a 15-foot Cone. Failure: 18 (4d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -30450,7 +30450,7 @@
         "usage": null
       },
       {
-        "name": "Paralyzing Breath",
+        "name": "Paralyzing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 13, each creature in a 15-foot Cone. First Failure The target has the Incapacitated condition until the end of its next turn, when it repeats the save. Second Failure The target has the Paralyzed condition, and it repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       },
@@ -31893,7 +31893,7 @@
         "usage": null
       },
       {
-        "name": "Steam Breath",
+        "name": "Steam Breath (Recharge 6)",
         "description": "Constitution Saving Throw: DC 10, each creature in a 15-foot Cone. Failure: 5 (2d4) Fire damage, and the target's Speed decreases by 10 feet until the end of the mephit's next turn. Success: Half damage only. Failure or Success: Being underwater doesn't grant Resistance to this Fire damage.",
         "usage": null
       }
@@ -36658,7 +36658,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 12, each creature in a 15-foot Cone. Failure: 22 (5d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -37054,7 +37054,7 @@
         "usage": null
       },
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 12, each creature in a 15-foot Cone. Failure: 18 (4d8) Cold damage. Success: Half damage.",
         "usage": null
       }
@@ -37743,7 +37743,7 @@
     ],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 14, each creature in a 30-foot-long, 5-foot-wide Line. Failure: 49 (14d6) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -37859,7 +37859,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 16, each creature in a 60-foot-long, 5-foot-wide Line. Failure: 55 (10d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -37979,7 +37979,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 14, each creature in a 40-foot-long, 5-foot-wide Line. Failure: 38 (11d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -37994,7 +37994,7 @@
         "usage": null
       },
       {
-        "name": "Sleep Breath",
+        "name": "Sleep Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 14, each creature in a 30-foot Cone. Failure: The target has the Incapacitated condition until the end of its next turn, at which point it repeats the save. Second Failure The target has the Unconscious condition for 1 minute. This effect ends for the target if it takes damage or a creature within 5 feet of it takes an action to wake it.",
         "usage": null
       }
@@ -38110,7 +38110,7 @@
     ],
     "actions": [
       {
-        "name": "Lightning Breath",
+        "name": "Lightning Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 15, each creature in a 60-foot-long, 5-foot-wide Line. Failure: 49 (9d10) Lightning damage. Success: Half damage.",
         "usage": null
       },
@@ -38125,7 +38125,7 @@
         "usage": null
       },
       {
-        "name": "Repulsion Breath",
+        "name": "Repulsion Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 15, each creature in a 30-foot Cone. Failure: The target is pushed up to 40 feet straight away from the dragon and has the Prone condition.",
         "usage": null
       }
@@ -38235,7 +38235,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Acid Breath",
+        "name": "Acid Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 14, each creature in a 40-foot-long, 5-foot-wide Line. Failure: 40 (9d8) Acid damage. Success: Half damage.",
         "usage": null
       },
@@ -38250,7 +38250,7 @@
         "usage": null
       },
       {
-        "name": "Slowing Breath",
+        "name": "Slowing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 14, each creature in a 30-foot Cone. Failure: The target can't take Reactions; its Speed is halved; and it can take either an action or a Bonus Action on its turn, not both. This effect lasts until the end of its next turn.",
         "usage": null
       }
@@ -38370,7 +38370,7 @@
     ],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 17, each creature in a 30-foot Cone. Failure: 55 (10d10) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -38385,7 +38385,7 @@
         "usage": null
       },
       {
-        "name": "Weakening Breath",
+        "name": "Weakening Breath (Recharge 5-6)",
         "description": "Strength Saving Throw: DC 17, each creature that isn't currently affected by this breath in a 30-foot Cone. Failure: The target has Disadvantage on Strength-based D20 Test and subtracts 3 (1d6) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       }
@@ -38508,7 +38508,7 @@
         "usage": null
       },
       {
-        "name": "Poison Breath",
+        "name": "Poison Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 14, each creature in a 30-foot Cone. Failure: 42 (12d6) Poison damage. Success: Half damage.",
         "usage": null
       },
@@ -38619,7 +38619,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Fire Breath",
+        "name": "Fire Breath (Recharge 5-6)",
         "description": "Dexterity Saving Throw: DC 17, each creature in a 30-foot Cone. Failure: 56 (16d6) Fire damage. Success: Half damage.",
         "usage": null
       },
@@ -38739,7 +38739,7 @@
     "traits": [],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 17, each creature in a 30-foot Cone. Failure: 49 (11d8) Cold damage. Success: Half damage.",
         "usage": null
       },
@@ -38749,7 +38749,7 @@
         "usage": null
       },
       {
-        "name": "Paralyzing Breath",
+        "name": "Paralyzing Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 17, each creature in a 30-foot Cone. First Failure The target has the Incapacitated condition until the end of its next turn, when it repeats the save. Second Failure The target has the Paralyzed condition, and it repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
         "usage": null
       },
@@ -38866,7 +38866,7 @@
     ],
     "actions": [
       {
-        "name": "Cold Breath",
+        "name": "Cold Breath (Recharge 5-6)",
         "description": "Constitution Saving Throw: DC 15, each creature in a 30-foot Cone. Failure: 40 (9d8) Cold damage. Success: Half damage.",
         "usage": null
       },

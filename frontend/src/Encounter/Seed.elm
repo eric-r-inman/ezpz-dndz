@@ -56,6 +56,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 1 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -99,6 +101,8 @@ seedCreatures =
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -135,6 +139,8 @@ seedCreatures =
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = True
       , inactive = False
       , note = ""
@@ -171,6 +177,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -207,6 +215,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -243,6 +253,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -279,6 +291,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -315,6 +329,8 @@ seedCreatures =
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
       , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""

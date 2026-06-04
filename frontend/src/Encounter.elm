@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , rosterDirty
+    , RechargeAbility, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -116,6 +116,30 @@ that module for the full discussion and the per-tracker helpers.
 -}
 type alias DeathSaves =
     Encounter.DeathSaves.DeathSaves
+
+
+{-| One recharge-style ability tracked on an in-encounter creature
+instance. Seeded at spawn time from any compendium feature whose
+`Usage` is `Recharge { low, high }` — typical examples are dragon
+Breath Weapons ("Recharge 5–6"). At the start of the creature's
+next turn the engine auto-rolls a d6 for every ability with
+`ready = False`; if the roll ≥ `low`, the ability flips back to
+`ready = True` and the GM can use it again. Click is also wired
+manually so the GM can flip without going through the turn-start
+roll.
+
+The compendium captures other Usage kinds (`PerDay`,
+`PerShortRest`, `PerLongRest`, `AtWill`) but those don't fit the
+"recharge each round" model; they're tracked elsewhere (or
+manually) and don't live in this list.
+
+-}
+type alias RechargeAbility =
+    { name : String
+    , low : Int
+    , high : Int
+    , ready : Bool
+    }
 
 
 {-| One condition or effect riding on a creature. The data is shaped
@@ -361,6 +385,8 @@ type alias Creature =
     , bloodied : Bool
     , deathSaves : DeathSaves
     , acceptingDeathSaves : Bool
+    , reactionUsed : Bool
+    , rechargeAbilities : List RechargeAbility
     , readied : Bool
     , inactive : Bool
     , note : String

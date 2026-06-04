@@ -7,17 +7,19 @@ sub-controls, optional save-to-end block, multi-target apply scope,
 and the action footer (Apply / Cancel / Delete-when-editing).
 -}
 
+import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (attribute, checked, class, disabled, for, id, maxlength, placeholder, title, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, title, type_, value)
+import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
+import Json.Decode as Decode
 import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( DurationKind(..)
         , Msg(..)
         )
-import Ui.Condition exposing (ConditionUi, SaveToEndUi)
+import Ui.Condition exposing (ConditionPreset, ConditionUi, SaveToEndUi)
 import Update.Condition
 import View.Modal
 import View.PhaseToggle
@@ -29,6 +31,14 @@ view model =
     case model.modal of
         Just (ModalCondition ui) ->
             let
+                presetSuffix =
+                    case ui.loadedPresetName of
+                        Just name ->
+                            "  (loaded: " ++ name ++ ")"
+
+                        Nothing ->
+                            ""
+
                 modalTitle =
                     (if ui.editingId == Nothing then
                         "Add Condition — "
@@ -37,6 +47,7 @@ view model =
                         "Edit Condition — "
                     )
                         ++ ui.target
+                        ++ presetSuffix
             in
             View.Modal.view
                 { close = ConditionClose
@@ -51,7 +62,7 @@ view model =
                     , durationSection ui model
                     , saveSection ui
                     , applyScope ui model.encounter
-                    , footer ui
+                    , footer ui model.conditionPresets
                     ]
                 }
 
@@ -404,8 +415,8 @@ autoRollCaption mode =
             "Save fires at the end of the bearer's turn; success removes the condition."
 
 
-footer : ConditionUi -> Html Msg
-footer ui =
+footer : ConditionUi -> Dict String ConditionPreset -> Html Msg
+footer ui presets =
     let
         canSubmit =
             not (String.isEmpty (String.trim ui.name))
@@ -418,40 +429,213 @@ footer ui =
                 "Save Changes"
     in
     div [ class "cond-footer" ]
+        [ div [ class "cond-footer__presets" ]
+            [ presetSaveControl ui canSubmit
+            , presetLoadControl ui presets
+            ]
+        , div [ class "cond-footer__actions" ]
+            [ case ui.editingId of
+                Just _ ->
+                    button
+                        [ class "action-btn action-btn--damage"
+                        , onClick ConditionDelete
+                        , Tooltips.attr Tooltips.chipRemoveModalRow
+                        ]
+                        [ text "Delete" ]
+
+                Nothing ->
+                    text ""
+            , button
+                [ class "action-btn"
+                , onClick ConditionClose
+                ]
+                [ text "Cancel" ]
+            , button
+                [ class "action-btn action-btn--green"
+                , onClick ConditionSubmit
+                , disabled (not canSubmit)
+                , attribute "aria-disabled"
+                    (if canSubmit then
+                        "false"
+
+                     else
+                        "true"
+                    )
+                , Tooltips.attr
+                    (if canSubmit then
+                        applyLabel
+
+                     else
+                        "Pick a condition or type a custom name first"
+                    )
+                ]
+                [ text applyLabel ]
+            ]
+        ]
+
+
+{-| Save button + inline name prompt. When `pendingSaveName` is
+`Nothing` the button reads "Save"; clicking it reveals the name
+input and switches the buttons to `[name][Save][Cancel]`. The
+Save submit is disabled until the typed name is non-empty (after
+trim) AND the underlying form has a condition name set (no point
+saving an empty preset).
+
+The name input gets `autofocus` and an Enter keydown handler so a
+quick GM workflow is: click Save → type "Stun" → press Enter →
+preset stored.
+
+-}
+presetSaveControl : ConditionUi -> Bool -> Html Msg
+presetSaveControl ui canSubmit =
+    case ui.pendingSaveName of
+        Nothing ->
+            button
+                [ class "action-btn cond-footer__save"
+                , onClick ConditionPresetSaveStart
+                , disabled (not canSubmit)
+                , attribute "aria-disabled"
+                    (if canSubmit then
+                        "false"
+
+                     else
+                        "true"
+                    )
+                , Tooltips.attr
+                    (if canSubmit then
+                        "Save this configuration as a named preset"
+
+                     else
+                        "Pick a condition first, then Save the preset"
+                    )
+                ]
+                [ text "Save" ]
+
+        Just typed ->
+            let
+                trimmed =
+                    String.trim typed
+
+                canSaveName =
+                    not (String.isEmpty trimmed) && canSubmit
+            in
+            div [ class "cond-footer__save-row" ]
+                [ input
+                    [ class "cond-input cond-footer__save-input"
+                    , type_ "text"
+                    , value typed
+                    , placeholder "Name this preset"
+                    , autofocus True
+                    , onInput ConditionPresetSaveNameChanged
+                    , on "keydown" (enterKeyDecoder ConditionPresetSaveSubmit)
+                    ]
+                    []
+                , button
+                    [ class "action-btn action-btn--green"
+                    , onClick ConditionPresetSaveSubmit
+                    , disabled (not canSaveName)
+                    , Tooltips.attr "Save preset"
+                    ]
+                    [ text "Save" ]
+                , button
+                    [ class "action-btn"
+                    , onClick ConditionPresetSaveCancel
+                    , Tooltips.attr "Cancel"
+                    ]
+                    [ text "Cancel" ]
+                ]
+
+
+enterKeyDecoder : Msg -> Decode.Decoder Msg
+enterKeyDecoder msg =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                if key == "Enter" then
+                    Decode.succeed msg
+
+                else
+                    Decode.fail "ignored key"
+            )
+
+
+{-| Load button + dropdown menu. Button stays disabled when the
+presets dict is empty (nothing to load) and the menu's
+`stopPropagationOn "mousedown"` keeps internal clicks from
+bubbling to the document-level click-outside handler in
+`Main.subscriptions`.
+
+Each menu row is a `[name button][× delete]` pair. Clicking the
+name fires `ConditionPresetLoad`; the × fires
+`ConditionPresetDelete` and is `stopPropagationOn`'d so a misclick
+on the × inside an otherwise-load row doesn't double-fire.
+
+-}
+presetLoadControl : ConditionUi -> Dict String ConditionPreset -> Html Msg
+presetLoadControl ui presets =
+    let
+        names =
+            -- Case-insensitive alphabetical so "Stun" and "stun"
+            -- don't get sorted into different ranges of the list.
+            Dict.keys presets
+                |> List.sortBy String.toLower
+
+        empty =
+            List.isEmpty names
+    in
+    div
+        [ class "cond-footer__load-wrap"
+        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
+        ]
         [ button
-            [ class "action-btn action-btn--green"
-            , onClick ConditionSubmit
-            , disabled (not canSubmit)
-            , attribute "aria-disabled"
-                (if canSubmit then
-                    "false"
+            [ class "action-btn cond-footer__load"
+            , onClick ConditionPresetLoadMenuToggle
+            , disabled empty
+            , attribute "aria-haspopup" "listbox"
+            , attribute "aria-expanded"
+                (if ui.loadMenuOpen then
+                    "true"
 
                  else
-                    "true"
+                    "false"
                 )
             , Tooltips.attr
-                (if canSubmit then
-                    applyLabel
+                (if empty then
+                    "No saved presets yet — click Save first"
 
                  else
-                    "Pick a condition or type a custom name first"
+                    "Load a saved preset"
                 )
             ]
-            [ text applyLabel ]
-        , case ui.editingId of
-            Just _ ->
-                button
-                    [ class "action-btn action-btn--damage"
-                    , onClick ConditionDelete
-                    , Tooltips.attr Tooltips.chipRemoveModalRow
-                    ]
-                    [ text "Delete" ]
+            [ text "Load ▾" ]
+        , if ui.loadMenuOpen && not empty then
+            div
+                [ class "cond-footer__load-menu"
+                , attribute "role" "listbox"
+                ]
+                (List.map presetMenuItem names)
 
-            Nothing ->
-                text ""
-        , button
-            [ class "action-btn"
-            , onClick ConditionClose
+          else
+            text ""
+        ]
+
+
+presetMenuItem : String -> Html Msg
+presetMenuItem name =
+    div [ class "cond-footer__load-item" ]
+        [ button
+            [ class "cond-footer__load-item-name"
+            , onClick (ConditionPresetLoad name)
+            , Tooltips.attr ("Load preset: " ++ name)
+            , attribute "role" "option"
             ]
-            [ text "Cancel" ]
+            [ text name ]
+        , button
+            [ class "cond-footer__load-item-delete"
+            , stopPropagationOn "click"
+                (Decode.succeed ( ConditionPresetDelete name, True ))
+            , Tooltips.attr ("Delete preset: " ++ name)
+            , attribute "aria-label" ("Delete preset " ++ name)
+            ]
+            [ text "×" ]
         ]
