@@ -1,18 +1,18 @@
 module Ui.Condition.Bundled exposing
     ( defaults
     , categories
-    , categoryPlayer, categorySpell, categoryMonster, categoryItem
+    , categoryPlayer, categorySpell, categoryMonster, categoryItem, categoryEnvironment
     )
 
 {-| Bundled Add-Condition presets seeded into a fresh visitor's
 `Model.conditionPresets` on the very first boot.
 
 The Load dropdown in the Add-Condition modal groups these into
-four collapsible categories below the user's own saves:
+five collapsible categories below the user's own saves:
 _Player Classes_ / _Spell Effects_ / _Monster Abilities_ /
-_Items_. Each preset's `category` field selects its section;
-user-saved presets default to `""` and render in the flat "My
-Presets" list at the top.
+_Items_ / _Environment_. Each preset's `category` field selects
+its section; user-saved presets default to `""` and render in
+the flat "My Presets" list at the top.
 
 Seeding fires from `Main.init` when the `localConditionPresets`
 boot flag is `Nothing` — i.e. no `localStorage.conditionPresets`
@@ -27,7 +27,7 @@ dragon Frightful Presence by CR, etc.).
 
 @docs defaults
 @docs categories
-@docs categoryPlayer, categorySpell, categoryMonster, categoryItem
+@docs categoryPlayer, categorySpell, categoryMonster, categoryItem, categoryEnvironment
 
 -}
 
@@ -61,7 +61,12 @@ categoryItem =
     "Items"
 
 
-{-| The four bundled categories in display order. The view layer
+categoryEnvironment : String
+categoryEnvironment =
+    "Environment"
+
+
+{-| The five bundled categories in display order. The view layer
 walks this list to render category sections in a fixed sequence
 regardless of dict iteration order.
 -}
@@ -71,6 +76,7 @@ categories =
     , categorySpell
     , categoryMonster
     , categoryItem
+    , categoryEnvironment
     ]
 
 
@@ -123,6 +129,12 @@ defaults =
         , ( "Staff of Charming", staffOfCharming )
         , ( "Potion of Invisibility", potionOfInvisibility )
         , ( "Dust of Sneezing and Choking", dustOfSneezingAndChoking )
+
+        -- Environment (4)
+        , ( "Quicksand", quicksand )
+        , ( "Slippery Surface", slipperySurface )
+        , ( "Heavy Obscurement", heavyObscurement )
+        , ( "Drowning", drowning )
         ]
 
 
@@ -185,6 +197,11 @@ monsterBase =
 itemBase : ConditionPreset
 itemBase =
     { playerBase | category = categoryItem }
+
+
+environmentBase : ConditionPreset
+environmentBase =
+    { playerBase | category = categoryEnvironment }
 
 
 
@@ -514,4 +531,45 @@ dustOfSneezingAndChoking =
         | conditionName = "Poisoned"
         , note = "+Incap"
         , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+    }
+
+
+
+-- ── ENVIRONMENT ──────────────────────────────────────────────────────────
+
+
+quicksand : ConditionPreset
+quicksand =
+    { environmentBase
+        | conditionName = "Restrained"
+        , note = "Quick"
+        , saveToEnd = Just (save "STR" 10 AutoRollAtEnd)
+    }
+
+
+slipperySurface : ConditionPreset
+slipperySurface =
+    { environmentBase
+        | conditionName = "Prone"
+        , note = "Slick"
+    }
+
+
+heavyObscurement : ConditionPreset
+heavyObscurement =
+    { environmentBase
+        | conditionName = "Blinded"
+        , note = "Fog/Dk"
+    }
+
+
+drowning : ConditionPreset
+drowning =
+    { environmentBase
+        | conditionName = "Unconscious"
+        , note = "Drown"
+        , durationKind = DurKindCountdown
+        , countdownTurnsText = "3"
+        , countdownTurns = 3
+        , countdownPhase = AtEnd
     }
