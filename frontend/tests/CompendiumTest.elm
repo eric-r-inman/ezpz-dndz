@@ -20,6 +20,7 @@ suite =
         , sortByRecencySuite
         , crToFloatSuite
         , draftToInstanceRechargeSuite
+        , rechargeNameTransformSuite
         ]
 
 
@@ -440,4 +441,52 @@ draftToInstanceRechargeSuite =
                             source
                 in
                 instance.rechargeAbilities |> Expect.equal []
+        ]
+
+
+
+-- ── stripTrailingRecharge / appendRechargeSuffix ──────────────────────────
+
+
+rechargeNameTransformSuite : Test
+rechargeNameTransformSuite =
+    describe "Compendium recharge-name helpers"
+        [ test "stripTrailingRecharge drops a `(Recharge N-M)` parenthetical" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Petrifying Gaze (Recharge 4-6)"
+                    |> Expect.equal "Petrifying Gaze"
+        , test "stripTrailingRecharge drops a single-value `(Recharge 6)`" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Frost Breath (Recharge 6)"
+                    |> Expect.equal "Frost Breath"
+        , test "stripTrailingRecharge accepts the en-dash `(Recharge 5–6)`" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Fire Breath (Recharge 5–6)"
+                    |> Expect.equal "Fire Breath"
+        , test "stripTrailingRecharge leaves names without a recharge suffix untouched" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Multiattack"
+                    |> Expect.equal "Multiattack"
+        , test "stripTrailingRecharge leaves `(Recharge after a Short or Long Rest)` alone" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Breath Weapon (Recharge after a Short or Long Rest)"
+                    |> Expect.equal "Breath Weapon (Recharge after a Short or Long Rest)"
+        , test "appendRechargeSuffix appends a range when low /= high" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 4, high = 6 } "Petrifying Gaze"
+                    |> Expect.equal "Petrifying Gaze (Recharge 4-6)"
+        , test "appendRechargeSuffix appends a single value when low == high" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 6, high = 6 } "Frost Breath"
+                    |> Expect.equal "Frost Breath (Recharge 6)"
+        , test "appendRechargeSuffix replaces any existing recharge suffix rather than duplicating" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 5, high = 6 } "Petrifying Gaze (Recharge 4-6)"
+                    |> Expect.equal "Petrifying Gaze (Recharge 5-6)"
+        , test "strip ∘ append is the identity on a stripped name" <|
+            \_ ->
+                "Petrifying Gaze"
+                    |> Compendium.appendRechargeSuffix { low = 4, high = 6 }
+                    |> Compendium.stripTrailingRecharge
+                    |> Expect.equal "Petrifying Gaze"
         ]

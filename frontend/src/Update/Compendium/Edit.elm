@@ -415,16 +415,75 @@ featureDescriptionChanged group idx text model =
 options. The kind selector is the dropdown; per-kind params
 (Recharge low/high, per-day-style uses count) are tweaked by
 the `featureUsageRechargeLowChanged` etc. handlers below.
+
+When the transition lands ON Recharge, any trailing
+`(Recharge N-M)` parenthetical in the feature name is stripped
+so the structured `usage` field is the single source of truth.
+When the transition leaves Recharge, the just-vacated range is
+re-appended to the name so a Recharge → None → Recharge round
+trip is information-preserving — important for bundled SRD
+creatures whose canonical name bakes the recharge mechanic in.
+
 -}
 featureUsageKindSet : FeatureGroup -> Int -> Msg.UsageKind -> Model -> ( Model, Cmd Msg )
 featureUsageKindSet group idx kind model =
     ( withCompendiumEdit
         (mapFeatureGroup group
-            (updateAt idx (\f -> { f | usage = usageFromKind kind f.usage }))
+            (updateAt idx (applyUsageKindChange kind))
         )
         model
     , Cmd.none
     )
+
+
+applyUsageKindChange : Msg.UsageKind -> CompendiumUi.FeatureDraft -> CompendiumUi.FeatureDraft
+applyUsageKindChange kind f =
+    let
+        newUsage =
+            usageFromKind kind f.usage
+
+        newName =
+            rechargeAwareNameTransition f.usage newUsage f.name
+    in
+    { f | usage = newUsage, name = newName }
+
+
+{-| Pure decision: given the previous and next `Usage` values and
+the current feature name, return the name the form should now
+show.
+
+  - Leaving Recharge → re-append `(Recharge low-high)` using the
+    _previous_ range so the user can round-trip without losing the
+    mechanic embedded in the name.
+  - Entering Recharge → strip a trailing recharge parenthetical so
+    it doesn't double up against the structured field.
+  - Recharge → Recharge with a new range → keep the name as-is (the
+    invariant maintained on entry already excluded any suffix).
+  - Any non-Recharge ↔ non-Recharge transition → name unchanged.
+
+-}
+rechargeAwareNameTransition : Maybe Compendium.Usage -> Maybe Compendium.Usage -> String -> String
+rechargeAwareNameTransition prev next name =
+    case ( prev, next ) of
+        ( Just (Compendium.Recharge _), Just (Compendium.Recharge _) ) ->
+            -- Both Recharge: range tweak only, name already
+            -- canonical (no suffix).  Nothing to do.
+            name
+
+        ( Just (Compendium.Recharge prevRange), _ ) ->
+            -- Leaving Recharge for some other kind (or None):
+            -- restore the parenthetical so the printed name still
+            -- conveys the mechanic.
+            Compendium.appendRechargeSuffix prevRange name
+
+        ( _, Just (Compendium.Recharge _) ) ->
+            -- Entering Recharge from a non-Recharge state: drop
+            -- the trailing `(Recharge ...)` so the structured field
+            -- is the single source of truth.
+            Compendium.stripTrailingRecharge name
+
+        _ ->
+            name
 
 
 {-| When the user picks a new Usage kind, carry over any param

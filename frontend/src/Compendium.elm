@@ -9,6 +9,7 @@ module Compendium exposing
     , Db, fromList, toList, count, upsert, remove
     , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
+    , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
     , instanceKindLine, sourceHasLegendaryResistance
     )
@@ -46,6 +47,7 @@ lives in `View/` modules and consumes this domain.
 # Helpers
 
 @docs crToFloat
+@docs stripTrailingRecharge, appendRechargeSuffix
 
 
 # Compendium → Encounter handoff
@@ -1029,6 +1031,56 @@ parseRechargeRange range =
 
         _ ->
             Nothing
+
+
+{-| Drop a trailing `(Recharge N)` / `(Recharge N-M)` /
+`(Recharge N–M)` parenthetical from a feature name, returning the
+input unchanged if no such suffix is present. Used by the
+Compendium Edit form to keep the canonical mechanic in the
+structured `usage` field instead of duplicated in the name — see
+the comment at `rechargeAbilityFromFeature` for the back-story on
+why the two sources can otherwise diverge.
+
+`(Recharge after a Short or Long Rest)` and other non-d6 phrasings
+intentionally fall through (they don't parse as a range), so the
+helper only strips the d6-recharge form that the tracker
+understands.
+
+-}
+stripTrailingRecharge : String -> String
+stripTrailingRecharge name =
+    let
+        ( before, suffix ) =
+            splitOnLastOpenParen name
+    in
+    case rangeFromSuffix suffix of
+        Just _ ->
+            String.trimRight before
+
+        Nothing ->
+            name
+
+
+{-| Inverse of `stripTrailingRecharge`: append a
+`(Recharge N-M)` (or `(Recharge N)` when low == high)
+parenthetical to a name. If the name already carries a
+trailing recharge parenthetical it's replaced rather than
+duplicated.
+-}
+appendRechargeSuffix : { low : Int, high : Int } -> String -> String
+appendRechargeSuffix { low, high } name =
+    let
+        rangeText =
+            if low == high then
+                String.fromInt low
+
+            else
+                String.fromInt low ++ "-" ++ String.fromInt high
+
+        stripped =
+            stripTrailingRecharge name
+    in
+    stripped ++ " (Recharge " ++ rangeText ++ ")"
 
 
 {-| Build the human-readable "kind" line shown under the name on
