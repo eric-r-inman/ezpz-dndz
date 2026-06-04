@@ -107,10 +107,18 @@ importFileLoaded raw ui =
                 , bulkError = Nothing
             }
 
-        Err err ->
+        Err _ ->
+            -- Surface a friendly compatibility note instead of the
+            -- Json.Decode trace.  Older save files are the common
+            -- cause (a since-renamed field, a new required field,
+            -- etc.); the alert popup that consumes `bulkError`
+            -- carries an OK button so the user can dismiss and
+            -- try a different file.
             { ui
                 | pending = Nothing
-                , bulkError = Just ("Couldn't parse file: " ++ Decode.errorToString err)
+                , bulkError =
+                    Just
+                        "This save file may have compatibility issues with the current software version; some values may be incorrect or missing."
             }
 
 

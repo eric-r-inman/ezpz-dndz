@@ -156,7 +156,19 @@ bulkBanner ui =
                 }
 
         ( Nothing, Just err ) ->
-            div [ class "compendium__bulk-error" ] [ text err ]
+            -- Pop-up notice with an OK button.  `CompendiumPendingCancel`
+            -- already clears both `pending` and `bulkError`, so we
+            -- reuse it as the dismiss handler.  The button takes
+            -- the browser's default Space/Enter activation, so no
+            -- extra keydown wiring is needed.
+            div [ class "compendium__bulk-alert" ]
+                [ p [ class "compendium__bulk-alert-msg" ] [ text err ]
+                , button
+                    [ class "action-btn action-btn--blue"
+                    , onClick CompendiumPendingCancel
+                    ]
+                    [ text "OK" ]
+                ]
 
         ( Nothing, Nothing ) ->
             text ""
@@ -1351,7 +1363,7 @@ importMenu auth ui =
 
 
 exportMenu : Auth.AuthState -> CompendiumUi -> Html Msg
-exportMenu auth ui =
+exportMenu _ ui =
     let
         triggerClass =
             if ui.compendiumDirty then
@@ -1367,25 +1379,18 @@ exportMenu auth ui =
             else
                 Tooltips.compendiumExport
     in
-    splitMenu
-        { menu = ExportMenu
-        , isOpen = ui.bulkMenu == Just ExportMenu
-        , triggerClass = triggerClass
-        , triggerLabel = "📤 Export ▾"
-        , triggerTitle = triggerTitle
-        , alignLeft = False
-        , items =
-            [ serverMenuItem auth
-                { msg = SaveCompendiumOpen SaveDestinationServer
-                , label = "To Server"
-                , signedInTooltip = "Save a snapshot of your compendium to the server."
-                , anonymousTooltip = "Sign in to save compendium snapshots to the server."
-                }
-            , menuItem
-                (SaveCompendiumOpen SaveDestinationDevice)
-                "To Device"
-            ]
-        }
+    -- Plain button (no dropdown).  The Save Compendium modal
+    -- itself carries the Server / Device radios, so the previous
+    -- split-button menu was redundant.  Default destination is
+    -- Device because it works for both anonymous and
+    -- authenticated sessions; the modal lets the user switch to
+    -- Server if they're signed in.
+    button
+        [ class triggerClass
+        , onClick (SaveCompendiumOpen SaveDestinationDevice)
+        , Tooltips.attr triggerTitle
+        ]
+        [ text "📤 Export" ]
 
 
 {-| Clear button + popover dropdown. Same wrapper / behavior

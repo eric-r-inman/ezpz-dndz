@@ -7999,6 +7999,44 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
 }
 
+/* Centered alert popup that consumes `bulkError` — used today
+   by the import-fail compatibility notice.  Sits centered inside
+   the bulk-banner row with a single OK button below the message.
+   Visually a card rather than a strip so the GM treats it as a
+   dialog, not a footnote. */
+.compendium__bulk-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin: 12px 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  max-width: 480px;
+  align-self: center;
+}
+
+.compendium__bulk-alert-msg {
+  margin: 0;
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--color-text);
+  line-height: 1.45;
+}
+
+/* Authentication-specific styling for the Save Compendium modal's
+   inline error.  Same shape as the generic error but neutral
+   blue instead of red — the user hasn't done anything wrong, they
+   just need to sign in first. */
+.save-modal__error--auth {
+  color: var(--color-accent, var(--color-text));
+  background: var(--color-accent-soft, transparent);
+  border-color: var(--color-accent, var(--color-border));
+}
+
 /* Empty state inside the compendium list (genuine empty vs.
    filter-mismatch). Each variant shows a primary line + a
    smaller hint. The "creating one / pasting / importing" links
