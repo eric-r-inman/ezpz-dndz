@@ -55,6 +55,7 @@ encodePreset p =
         , ( "countdownTurns", E.int p.countdownTurns )
         , ( "countdownPhase", encodeTurnPhase p.countdownPhase )
         , ( "saveToEnd", encodeMaybe encodeSaveToEnd p.saveToEnd )
+        , ( "category", E.string p.category )
         ]
 
 
@@ -70,11 +71,22 @@ decodePreset =
         |> required "countdownTurns" D.int
         |> required "countdownPhase" decodeTurnPhase
         |> required "saveToEnd" (D.nullable decodeSaveToEnd)
+        |> optional "category" D.string ""
 
 
 required : String -> D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
 required name decoder =
     D.map2 (|>) (D.field name decoder)
+
+
+{-| Decode a field, falling back to a default when the field is
+absent or null. Used for the `category` field so presets saved
+before the bundled-defaults pass round-trip cleanly with `""`.
+-}
+optional : String -> D.Decoder a -> a -> D.Decoder (a -> b) -> D.Decoder b
+optional name decoder default =
+    D.map2 (|>)
+        (D.oneOf [ D.field name decoder, D.succeed default ])
 
 
 encodeDurationKind : DurationKind -> E.Value

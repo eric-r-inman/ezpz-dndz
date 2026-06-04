@@ -11,6 +11,7 @@ module Update.Condition exposing
     , openEdit
     , openNew
     , pickStandard
+    , presetCategoryToggle
     , presetDelete
     , presetLoad
     , presetLoadMenuClose
@@ -51,6 +52,7 @@ import Msg
         ( DurationKind(..)
         , Msg(..)
         )
+import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
 
 
@@ -411,6 +413,30 @@ presetDelete name model =
                 else
                     u
             )
+    , Cmd.none
+    )
+
+
+{-| Flip the expand/collapse state of one category in the Load
+menu's bundled-presets sections. Categories start collapsed
+each time a fresh modal opens (`Ui.Condition.fresh` initialises
+`expandedCategories = Set.empty`); the GM expands only the
+ones they need to scan.
+-}
+presetCategoryToggle : String -> Model -> ( Model, Cmd Msg )
+presetCategoryToggle category model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | expandedCategories =
+                    if Set.member category u.expandedCategories then
+                        Set.remove category u.expandedCategories
+
+                    else
+                        Set.insert category u.expandedCategories
+            }
+        )
+        model
     , Cmd.none
     )
 

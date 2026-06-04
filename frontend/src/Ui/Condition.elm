@@ -31,6 +31,7 @@ section: `Nothing` hides it, `Just _` reveals.
 
 import Encounter
 import Msg exposing (DurationKind(..))
+import Set exposing (Set)
 
 
 {-| Modal state for the Add / Edit Condition dialog.
@@ -62,6 +63,7 @@ type alias ConditionUi =
     , loadMenuOpen : Bool
     , pendingSaveName : Maybe String
     , loadedPresetName : Maybe String
+    , expandedCategories : Set String
     }
 
 
@@ -115,6 +117,7 @@ fresh target =
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , loadedPresetName = Nothing
+    , expandedCategories = Set.empty
     }
 
 
@@ -189,6 +192,7 @@ fromCondition target cond =
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , loadedPresetName = Nothing
+    , expandedCategories = Set.empty
     }
 
 
@@ -216,12 +220,16 @@ type alias ConditionPreset =
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
+    , category : String
     }
 
 
 {-| Project the current form state down to a savable preset.
 Field names are renamed (`name` → `conditionName`) so the wire
 shape is self-explanatory; the rest map straight through.
+User-saved presets get `category = ""` and render in the "My
+Presets" section at the top of the Load menu, above the four
+bundled categories.
 -}
 toPreset : ConditionUi -> ConditionPreset
 toPreset ui =
@@ -234,6 +242,7 @@ toPreset ui =
     , countdownTurns = ui.countdownTurns
     , countdownPhase = ui.countdownPhase
     , saveToEnd = ui.saveToEnd
+    , category = ""
     }
 
 

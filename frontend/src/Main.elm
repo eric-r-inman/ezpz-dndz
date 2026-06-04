@@ -65,6 +65,7 @@ import Ui.Compendium as CompendiumUi
         , PendingAction(..)
         )
 import Ui.Condition as ConditionUi exposing (ConditionUi, SaveToEndUi)
+import Ui.Condition.Bundled
 import Ui.Condition.Wire
 import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
@@ -551,12 +552,22 @@ init flags url key =
                     )
                 |> Maybe.withDefault Dict.empty
       , conditionPresets =
-            flags.localConditionPresets
-                |> Maybe.andThen
-                    (Decode.decodeValue Ui.Condition.Wire.decodePresets
-                        >> Result.toMaybe
-                    )
-                |> Maybe.withDefault Dict.empty
+            case flags.localConditionPresets of
+                Just raw ->
+                    -- localStorage.conditionPresets exists (even
+                    -- as `{}`).  Decode what's there; don't
+                    -- re-seed.  A GM who deleted every bundled
+                    -- default doesn't want them silently re-added.
+                    Decode.decodeValue Ui.Condition.Wire.decodePresets raw
+                        |> Result.withDefault Dict.empty
+
+                Nothing ->
+                    -- First boot: no localStorage key yet.  Seed
+                    -- the dict with the bundled SRD 5.2.1 default
+                    -- presets so the four collapsible categories
+                    -- in the Load menu are populated out of the
+                    -- box.
+                    Ui.Condition.Bundled.defaults
       , timerPresets =
             flags.localTimerPresets
                 |> Maybe.andThen
@@ -1234,6 +1245,9 @@ updateInner msg model =
 
         ConditionPresetDelete name ->
             Update.Condition.presetDelete name model
+
+        ConditionPresetCategoryToggle category ->
+            Update.Condition.presetCategoryToggle category model
 
         ConditionRemoveChip name id ->
             Update.Condition.removeChip name id model

@@ -19,7 +19,9 @@ import Msg
         ( DurationKind(..)
         , Msg(..)
         )
+import Set
 import Ui.Condition exposing (ConditionPreset, ConditionUi, SaveToEndUi)
+import Ui.Condition.Bundled as Bundled
 import Update.Condition
 import View.Modal
 import View.PhaseToggle
@@ -565,8 +567,18 @@ presets dict is empty (nothing to load) and the menu's
 bubbling to the document-level click-outside handler in
 `Main.subscriptions`.
 
-Each menu row is a `[name button][× delete]` pair. Clicking the
-name fires `ConditionPresetLoad`; the × fires
+Menu layout:
+
+  - The user's own presets (`category == ""`) render as a flat
+    list at the top, alphabetical, no section header.
+  - Below that, the four bundled categories from
+    `Ui.Condition.Bundled.categories` render in fixed order,
+    each as a collapsible section that starts collapsed. The
+    section header shows a disclosure triangle, the category
+    label, and the count of presets inside.
+
+Each preset row is a `[name button][× delete]` pair. Clicking
+the name fires `ConditionPresetLoad`; the × fires
 `ConditionPresetDelete` and is `stopPropagationOn`'d so a misclick
 on the × inside an otherwise-load row doesn't double-fire.
 
@@ -574,14 +586,20 @@ on the × inside an otherwise-load row doesn't double-fire.
 presetLoadControl : ConditionUi -> Dict String ConditionPreset -> Html Msg
 presetLoadControl ui presets =
     let
-        names =
-            -- Case-insensitive alphabetical so "Stun" and "stun"
-            -- don't get sorted into different ranges of the list.
-            Dict.keys presets
+        empty =
+            Dict.isEmpty presets
+
+        userNames =
+            -- Category "" is the user's own (uncategorized) presets.
+            -- Case-insensitive alphabetical.
+            presets
+                |> Dict.filter (\_ p -> p.category == "")
+                |> Dict.keys
                 |> List.sortBy String.toLower
 
-        empty =
-            List.isEmpty names
+        categorizedSections =
+            Bundled.categories
+                |> List.map (categorySection ui presets)
     in
     div
         [ class "cond-footer__load-wrap"
@@ -613,6 +631,51 @@ presetLoadControl ui presets =
                 [ class "cond-footer__load-menu"
                 , attribute "role" "listbox"
                 ]
+                (List.map presetMenuItem userNames ++ categorizedSections)
+
+          else
+            text ""
+        ]
+
+
+categorySection : ConditionUi -> Dict String ConditionPreset -> String -> Html Msg
+categorySection ui presets category =
+    let
+        names =
+            presets
+                |> Dict.filter (\_ p -> p.category == category)
+                |> Dict.keys
+                |> List.sortBy String.toLower
+
+        expanded =
+            Set.member category ui.expandedCategories
+
+        triangle =
+            if expanded then
+                "▾"
+
+            else
+                "▸"
+    in
+    div [ class "cond-footer__load-category" ]
+        [ button
+            [ class "cond-footer__load-category-header"
+            , onClick (ConditionPresetCategoryToggle category)
+            , attribute "aria-expanded"
+                (if expanded then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ span [ class "cond-footer__load-category-triangle" ] [ text triangle ]
+            , span [ class "cond-footer__load-category-label" ] [ text category ]
+            , span [ class "cond-footer__load-category-count" ]
+                [ text (" (" ++ String.fromInt (List.length names) ++ ")") ]
+            ]
+        , if expanded then
+            div [ class "cond-footer__load-category-body" ]
                 (List.map presetMenuItem names)
 
           else

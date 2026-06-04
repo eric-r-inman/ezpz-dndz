@@ -7324,6 +7324,65 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: var(--color-danger);
 }
 
+/* Bundled-preset category sections in the Load dropdown. Each
+   category is a collapsible group below the flat list of the
+   user's own (uncategorized) presets. The header is a row-shaped
+   button carrying a disclosure triangle, the category label, and
+   a parenthesised count of presets inside. */
+.cond-footer__load-category {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cond-footer__load-category-header {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface-3, var(--color-surface-2));
+  border: 1px solid transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.cond-footer__load-category-header:hover {
+  color: var(--color-text);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.cond-footer__load-category-triangle {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.cond-footer__load-category-label {
+  flex: 1 1 auto;
+}
+
+.cond-footer__load-category-count {
+  flex: 0 0 auto;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.cond-footer__load-category-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+
 /* Dice "Roll" button cluster in the encounter-controls panel
    header. The cluster groups the latest-total readout with the
    button so they share a single flex baseline regardless of the

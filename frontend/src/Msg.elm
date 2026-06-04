@@ -470,6 +470,7 @@ type Msg
     | ConditionPresetLoadMenuClose
     | ConditionPresetLoad String
     | ConditionPresetDelete String
+    | ConditionPresetCategoryToggle String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Bool Dice.Roll
