@@ -1228,6 +1228,9 @@ updateInner msg model =
         ConditionPresetSaveNameChanged text ->
             Update.Condition.presetSaveNameChanged text model
 
+        ConditionPresetSaveCategoryChanged category ->
+            Update.Condition.presetSaveCategoryChanged category model
+
         ConditionPresetSaveCancel ->
             Update.Condition.presetSaveCancel model
 

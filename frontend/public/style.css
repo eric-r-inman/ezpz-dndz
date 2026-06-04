@@ -7383,6 +7383,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-left: 8px;
 }
 
+/* Category dropdown that sits between the name input and the
+   Save button in the preset-save row.  Sized just wide enough
+   for "Monster Abilities" without overflowing the footer. */
+.cond-footer__save-category {
+  flex: 0 0 auto;
+  min-width: 160px;
+}
+
 /* Dice "Roll" button cluster in the encounter-controls panel
    header. The cluster groups the latest-total readout with the
    button so they share a single flex baseline regardless of the

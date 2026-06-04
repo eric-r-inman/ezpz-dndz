@@ -62,6 +62,7 @@ type alias ConditionUi =
     , applyToSelected : Bool
     , loadMenuOpen : Bool
     , pendingSaveName : Maybe String
+    , pendingSaveCategory : String
     , loadedPresetName : Maybe String
     , expandedCategories : Set String
     }
@@ -116,6 +117,7 @@ fresh target =
     , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
+    , pendingSaveCategory = ""
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     }
@@ -191,6 +193,7 @@ fromCondition target cond =
     , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
+    , pendingSaveCategory = ""
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     }
@@ -273,5 +276,6 @@ applyPreset presetName preset ui =
         , saveToEnd = preset.saveToEnd
         , loadMenuOpen = False
         , pendingSaveName = Nothing
+        , pendingSaveCategory = ""
         , loadedPresetName = Just presetName
     }

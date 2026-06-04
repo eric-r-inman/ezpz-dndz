@@ -17,6 +17,7 @@ module Update.Condition exposing
     , presetLoadMenuClose
     , presetLoadMenuToggle
     , presetSaveCancel
+    , presetSaveCategoryChanged
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
@@ -283,9 +284,34 @@ active at a time.
 -}
 presetSaveStart : Model -> ( Model, Cmd Msg )
 presetSaveStart model =
+    let
+        -- Pre-fill the category dropdown with the loaded preset's
+        -- category when there is one, so "tweak + re-save" stays a
+        -- single click in the dropdown.  Falls back to "" — the
+        -- placeholder — when no preset is loaded or the loaded one
+        -- predates categories.
+        prefillCategory =
+            model.modal
+                |> (\m ->
+                        case m of
+                            Just (ModalCondition ui) ->
+                                ui.loadedPresetName
+                                    |> Maybe.andThen
+                                        (\name -> Dict.get name model.conditionPresets)
+                                    |> Maybe.map .category
+                                    |> Maybe.withDefault ""
+
+                            _ ->
+                                ""
+                   )
+    in
     ( withConditionUi
         (\u ->
-            { u | pendingSaveName = Just "", loadMenuOpen = False }
+            { u
+                | pendingSaveName = Just ""
+                , pendingSaveCategory = prefillCategory
+                , loadMenuOpen = False
+            }
         )
         model
     , Cmd.none
@@ -299,9 +325,18 @@ presetSaveNameChanged text model =
     )
 
 
+presetSaveCategoryChanged : String -> Model -> ( Model, Cmd Msg )
+presetSaveCategoryChanged category model =
+    ( withConditionUi (\u -> { u | pendingSaveCategory = category }) model
+    , Cmd.none
+    )
+
+
 presetSaveCancel : Model -> ( Model, Cmd Msg )
 presetSaveCancel model =
-    ( withConditionUi (\u -> { u | pendingSaveName = Nothing }) model
+    ( withConditionUi
+        (\u -> { u | pendingSaveName = Nothing, pendingSaveCategory = "" })
+        model
     , Cmd.none
     )
 
@@ -325,14 +360,22 @@ presetSaveSubmit model =
                 trimmed =
                     Maybe.withDefault "" ui.pendingSaveName
                         |> String.trim
+
+                category =
+                    String.trim ui.pendingSaveCategory
             in
-            if String.isEmpty trimmed then
+            -- Both a name and a category are required.  Either
+            -- missing keeps the save form open so the GM can
+            -- correct it; the view-side `disabled` on the Save
+            -- button already prevents the click in normal flow.
+            if String.isEmpty trimmed || String.isEmpty category then
                 ( model, Cmd.none )
 
             else
                 let
                     preset =
                         ConditionUi.toPreset ui
+                            |> (\p -> { p | category = category })
 
                     newPresets =
                         Dict.insert trimmed preset model.conditionPresets
@@ -342,6 +385,7 @@ presetSaveSubmit model =
                         (\u ->
                             { u
                                 | pendingSaveName = Nothing
+                                , pendingSaveCategory = ""
                                 , loadedPresetName = Just trimmed
                             }
                         )
@@ -359,6 +403,7 @@ presetLoadMenuToggle model =
             { u
                 | loadMenuOpen = not u.loadMenuOpen
                 , pendingSaveName = Nothing
+                , pendingSaveCategory = ""
             }
         )
         model

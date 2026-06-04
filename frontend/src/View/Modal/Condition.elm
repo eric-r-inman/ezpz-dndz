@@ -518,8 +518,21 @@ presetSaveControl ui canSubmit =
                 trimmed =
                     String.trim typed
 
+                categoryPicked =
+                    not (String.isEmpty (String.trim ui.pendingSaveCategory))
+
                 canSaveName =
-                    not (String.isEmpty trimmed) && canSubmit
+                    not (String.isEmpty trimmed) && categoryPicked && canSubmit
+
+                disabledReason =
+                    if String.isEmpty trimmed then
+                        "Type a name first"
+
+                    else if not categoryPicked then
+                        "Pick a category first"
+
+                    else
+                        "Save preset"
             in
             div [ class "cond-footer__save-row" ]
                 [ input
@@ -532,11 +545,25 @@ presetSaveControl ui canSubmit =
                     , on "keydown" (enterKeyDecoder ConditionPresetSaveSubmit)
                     ]
                     []
+                , Html.select
+                    [ class "cond-input cond-footer__save-category"
+                    , onInput ConditionPresetSaveCategoryChanged
+                    , attribute "aria-label" "Category"
+                    , Tooltips.attr "Pick a category for this preset"
+                    ]
+                    (Html.option
+                        [ value ""
+                        , Attr.selected (String.isEmpty ui.pendingSaveCategory)
+                        , Attr.disabled True
+                        ]
+                        [ text "Pick category…" ]
+                        :: List.map (categoryOption ui.pendingSaveCategory) Bundled.categories
+                    )
                 , button
                     [ class "action-btn action-btn--green"
                     , onClick ConditionPresetSaveSubmit
                     , disabled (not canSaveName)
-                    , Tooltips.attr "Save preset"
+                    , Tooltips.attr disabledReason
                     ]
                     [ text "Save" ]
                 , button
@@ -546,6 +573,15 @@ presetSaveControl ui canSubmit =
                     ]
                     [ text "Cancel" ]
                 ]
+
+
+categoryOption : String -> String -> Html Msg
+categoryOption pickedCategory category =
+    Html.option
+        [ value category
+        , Attr.selected (pickedCategory == category)
+        ]
+        [ text category ]
 
 
 enterKeyDecoder : Msg -> Decode.Decoder Msg

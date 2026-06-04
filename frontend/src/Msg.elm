@@ -464,6 +464,7 @@ type Msg
       -- `Ports.persistLocalConditionPresets`.
     | ConditionPresetSaveStart
     | ConditionPresetSaveNameChanged String
+    | ConditionPresetSaveCategoryChanged String
     | ConditionPresetSaveCancel
     | ConditionPresetSaveSubmit
     | ConditionPresetLoadMenuToggle
