@@ -87,17 +87,22 @@ categories =
 defaults : Dict String ConditionPreset
 defaults =
     Dict.fromList
-        [ -- Player Classes (8)
+        [ -- Player Classes (13)
           ( "Stunning Strike (Monk)", stunningStrike )
         , ( "Trip Attack", tripAttack )
         , ( "Menacing Attack", menacingAttack )
+        , ( "Goading Attack", goadingAttack )
         , ( "Wrathful Smite", wrathfulSmite )
         , ( "Searing Smite", searingSmite )
+        , ( "Staggering Smite", staggeringSmite )
         , ( "Turn Undead", turnUndead )
         , ( "Bardic Inspiration (+d6)", bardicInspiration )
+        , ( "Bardic Inspiration (+d8)", bardicInspirationD8 )
         , ( "Bless (+d4)", bless )
+        , ( "Hex", hex )
+        , ( "Hunter's Mark", huntersMark )
 
-        -- Spell Effects (15)
+        -- Spell Effects (20)
         , ( "Bane (−d4)", bane )
         , ( "Hold Person", holdPerson )
         , ( "Hold Monster", holdMonster )
@@ -113,8 +118,13 @@ defaults =
         , ( "Web", web )
         , ( "Entangle", entangle )
         , ( "Evard's Black Tentacles", blackTentacles )
+        , ( "Faerie Fire", faerieFire )
+        , ( "Blindness", blindness )
+        , ( "Banishment", banishment )
+        , ( "Stinking Cloud", stinkingCloud )
+        , ( "Greater Invisibility", greaterInvisibility )
 
-        -- Monster Abilities (7)
+        -- Monster Abilities (12)
         , ( "Petrifying Gaze (Medusa)", petrifyingGaze )
         , ( "Mind Blast (Mind Flayer)", mindBlast )
         , ( "Frightful Presence (Dragon)", frightfulPresence )
@@ -122,19 +132,33 @@ defaults =
         , ( "Paralyzing Touch (Ghoul)", paralyzingTouch )
         , ( "Vampire Charm", vampireCharm )
         , ( "Luring Song (Harpy)", luringSong )
+        , ( "Web (Giant Spider)", giantSpiderWeb )
+        , ( "Tendril (Roper)", roperGrab )
+        , ( "Sleep Ray (Beholder)", beholderSleepRay )
+        , ( "Tentacles (Carrion Crawler)", carrionCrawler )
+        , ( "Mummy Rot", mummyRot )
 
-        -- Items (5)
+        -- Items (10)
         , ( "Wand of Paralysis", wandOfParalysis )
         , ( "Wand of Fear", wandOfFear )
         , ( "Staff of Charming", staffOfCharming )
         , ( "Potion of Invisibility", potionOfInvisibility )
         , ( "Dust of Sneezing and Choking", dustOfSneezingAndChoking )
+        , ( "Potion of Heroism", potionOfHeroism )
+        , ( "Potion of Giant Strength", potionOfGiantStrength )
+        , ( "Potion of Climbing", potionOfClimbing )
+        , ( "Dust of Disappearance", dustOfDisappearance )
+        , ( "Net", net )
 
-        -- Environment (4)
+        -- Environment (8)
         , ( "Quicksand", quicksand )
         , ( "Slippery Surface", slipperySurface )
         , ( "Heavy Obscurement", heavyObscurement )
         , ( "Drowning", drowning )
+        , ( "On Fire", onFire )
+        , ( "Extreme Cold", extremeCold )
+        , ( "Extreme Heat", extremeHeat )
+        , ( "Pit Trap (Restrained)", pitTrap )
         ]
 
 
@@ -282,6 +306,49 @@ bless =
     }
 
 
+bardicInspirationD8 : ConditionPreset
+bardicInspirationD8 =
+    { playerBase
+        | customName = "Inspired +d8"
+        , note = "Bard"
+    }
+
+
+hex : ConditionPreset
+hex =
+    { playerBase
+        | customName = "Hexed"
+        , note = "dis abil"
+    }
+
+
+huntersMark : ConditionPreset
+huntersMark =
+    { playerBase
+        | customName = "Marked"
+        , note = "+d6 dmg"
+    }
+
+
+goadingAttack : ConditionPreset
+goadingAttack =
+    { playerBase
+        | customName = "Goaded"
+        , note = "dis atk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+staggeringSmite : ConditionPreset
+staggeringSmite =
+    { playerBase
+        | customName = "Staggered"
+        , note = "dis atk"
+        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+    }
+
+
 
 -- ── SPELL EFFECTS ────────────────────────────────────────────────────────
 
@@ -421,6 +488,49 @@ blackTentacles =
     }
 
 
+faerieFire : ConditionPreset
+faerieFire =
+    { spellBase
+        | customName = "Faerie Fire"
+        , note = "Adv vs"
+    }
+
+
+blindness : ConditionPreset
+blindness =
+    { spellBase
+        | conditionName = "Blinded"
+        , note = "Blind"
+        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+    }
+
+
+banishment : ConditionPreset
+banishment =
+    { spellBase
+        | customName = "Banished"
+        , note = "Banish"
+        , saveToEnd = Just (save "CHA" 14 AutoRollAtEnd)
+    }
+
+
+stinkingCloud : ConditionPreset
+stinkingCloud =
+    { spellBase
+        | conditionName = "Incapacitated"
+        , note = "Stink"
+        , saveToEnd = Just (save "CON" 14 AutoRollAtBegin)
+    }
+
+
+greaterInvisibility : ConditionPreset
+greaterInvisibility =
+    { spellBase
+        | conditionName = "Invisible"
+        , note = "GtInv"
+    }
+
+
 
 -- ── MONSTER ABILITIES ────────────────────────────────────────────────────
 
@@ -487,6 +597,50 @@ luringSong =
     }
 
 
+giantSpiderWeb : ConditionPreset
+giantSpiderWeb =
+    { monsterBase
+        | conditionName = "Restrained"
+        , note = "GSpider"
+        , saveToEnd = Just (save "STR" 12 AutoRollAtEnd)
+    }
+
+
+roperGrab : ConditionPreset
+roperGrab =
+    { monsterBase
+        | conditionName = "Grappled"
+        , note = "Roper"
+        , saveToEnd = Just (save "STR" 15 AutoRollAtEnd)
+    }
+
+
+beholderSleepRay : ConditionPreset
+beholderSleepRay =
+    { monsterBase
+        | conditionName = "Unconscious"
+        , note = "BholSlp"
+        , saveToEnd = Just (save "WIS" 16 AutoRollAtEnd)
+    }
+
+
+carrionCrawler : ConditionPreset
+carrionCrawler =
+    { monsterBase
+        | conditionName = "Paralyzed"
+        , note = "C.Crawl"
+        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+    }
+
+
+mummyRot : ConditionPreset
+mummyRot =
+    { monsterBase
+        | customName = "Mummy Rot"
+        , note = "-HP max"
+    }
+
+
 
 -- ── ITEMS ────────────────────────────────────────────────────────────────
 
@@ -534,6 +688,47 @@ dustOfSneezingAndChoking =
     }
 
 
+potionOfHeroism : ConditionPreset
+potionOfHeroism =
+    { itemBase
+        | customName = "Heroism"
+        , note = "+10 tmpHP"
+    }
+
+
+potionOfGiantStrength : ConditionPreset
+potionOfGiantStrength =
+    { itemBase
+        | customName = "Giant STR"
+        , note = "1 hour"
+    }
+
+
+potionOfClimbing : ConditionPreset
+potionOfClimbing =
+    { itemBase
+        | customName = "Climbing"
+        , note = "1 hour"
+    }
+
+
+dustOfDisappearance : ConditionPreset
+dustOfDisappearance =
+    { itemBase
+        | conditionName = "Invisible"
+        , note = "Dust"
+    }
+
+
+net : ConditionPreset
+net =
+    { itemBase
+        | conditionName = "Restrained"
+        , note = "Net"
+        , saveToEnd = Just (save "STR" 10 AutoRollAtEnd)
+    }
+
+
 
 -- ── ENVIRONMENT ──────────────────────────────────────────────────────────
 
@@ -572,4 +767,38 @@ drowning =
         , countdownTurnsText = "3"
         , countdownTurns = 3
         , countdownPhase = AtEnd
+    }
+
+
+onFire : ConditionPreset
+onFire =
+    { environmentBase
+        | customName = "On Fire"
+        , note = "1d10 fire"
+    }
+
+
+extremeCold : ConditionPreset
+extremeCold =
+    { environmentBase
+        | customName = "Cold"
+        , note = "+1 Exhst"
+        , saveToEnd = Just (save "CON" 10 AutoRollAtEnd)
+    }
+
+
+extremeHeat : ConditionPreset
+extremeHeat =
+    { environmentBase
+        | customName = "Heat"
+        , note = "+1 Exhst"
+        , saveToEnd = Just (save "CON" 10 AutoRollAtEnd)
+    }
+
+
+pitTrap : ConditionPreset
+pitTrap =
+    { environmentBase
+        | conditionName = "Restrained"
+        , note = "Pit"
     }
