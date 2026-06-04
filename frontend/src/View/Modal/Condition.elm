@@ -620,22 +620,36 @@ on the × inside an otherwise-load row doesn't double-fire.
 
 -}
 presetLoadControl : ConditionUi -> Dict String ConditionPreset -> Html Msg
-presetLoadControl ui presets =
+presetLoadControl ui userPresets =
     let
+        -- Bundled SRD defaults are always available as a
+        -- read-only layer underneath the user's own dict.  User
+        -- entries override bundled ones with the same name
+        -- (`Dict.union` keeps left-hand keys on collision).  That
+        -- way the four collapsible category sections always
+        -- render even when the user has saved nothing of their
+        -- own — which fixes the "Load greyed out" case when
+        -- `localStorage.conditionPresets` exists but is `{}`.
+        displayPresets =
+            Dict.union userPresets Bundled.defaults
+
         empty =
-            Dict.isEmpty presets
+            Dict.isEmpty displayPresets
 
         userNames =
-            -- Category "" is the user's own (uncategorized) presets.
-            -- Case-insensitive alphabetical.
-            presets
+            -- Legacy: presets saved before the required-category
+            -- pass landed with `category = ""` and surface in a
+            -- flat list above the categorized sections.  Newly
+            -- saved presets always carry a category and land in
+            -- their group instead.
+            userPresets
                 |> Dict.filter (\_ p -> p.category == "")
                 |> Dict.keys
                 |> List.sortBy String.toLower
 
         categorizedSections =
             Bundled.categories
-                |> List.map (categorySection ui presets)
+                |> List.map (categorySection ui userPresets displayPresets)
     in
     div
         [ class "cond-footer__load-wrap"
@@ -667,18 +681,18 @@ presetLoadControl ui presets =
                 [ class "cond-footer__load-menu"
                 , attribute "role" "listbox"
                 ]
-                (List.map presetMenuItem userNames ++ categorizedSections)
+                (List.map (presetMenuItem True) userNames ++ categorizedSections)
 
           else
             text ""
         ]
 
 
-categorySection : ConditionUi -> Dict String ConditionPreset -> String -> Html Msg
-categorySection ui presets category =
+categorySection : ConditionUi -> Dict String ConditionPreset -> Dict String ConditionPreset -> String -> Html Msg
+categorySection ui userPresets displayPresets category =
     let
         names =
-            presets
+            displayPresets
                 |> Dict.filter (\_ p -> p.category == category)
                 |> Dict.keys
                 |> List.sortBy String.toLower
@@ -712,15 +726,21 @@ categorySection ui presets category =
             ]
         , if expanded then
             div [ class "cond-footer__load-category-body" ]
-                (List.map presetMenuItem names)
+                (List.map (\n -> presetMenuItem (Dict.member n userPresets) n) names)
 
           else
             text ""
         ]
 
 
-presetMenuItem : String -> Html Msg
-presetMenuItem name =
+{-| One menu row. `isDeletable` controls whether the trailing ×
+button renders — only user-saved presets can be deleted; bundled
+SRD defaults are read-only and the × is omitted on those rows so
+the only way to "remove" a bundled is to override it by saving
+a user preset with the same name.
+-}
+presetMenuItem : Bool -> String -> Html Msg
+presetMenuItem isDeletable name =
     div [ class "cond-footer__load-item" ]
         [ button
             [ class "cond-footer__load-item-name"
@@ -729,12 +749,16 @@ presetMenuItem name =
             , attribute "role" "option"
             ]
             [ text name ]
-        , button
-            [ class "cond-footer__load-item-delete"
-            , stopPropagationOn "click"
-                (Decode.succeed ( ConditionPresetDelete name, True ))
-            , Tooltips.attr ("Delete preset: " ++ name)
-            , attribute "aria-label" ("Delete preset " ++ name)
-            ]
-            [ text "×" ]
+        , if isDeletable then
+            button
+                [ class "cond-footer__load-item-delete"
+                , stopPropagationOn "click"
+                    (Decode.succeed ( ConditionPresetDelete name, True ))
+                , Tooltips.attr ("Delete preset: " ++ name)
+                , attribute "aria-label" ("Delete preset " ++ name)
+                ]
+                [ text "×" ]
+
+          else
+            text ""
         ]

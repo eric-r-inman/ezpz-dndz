@@ -55,6 +55,7 @@ import Msg
         )
 import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
+import Ui.Condition.Bundled as Bundled
 
 
 {-| Hard cap on the chip-note text. Ten characters keeps the chip
@@ -287,23 +288,21 @@ presetSaveStart model =
     let
         -- Pre-fill the category dropdown with the loaded preset's
         -- category when there is one, so "tweak + re-save" stays a
-        -- single click in the dropdown.  Falls back to "" — the
-        -- placeholder — when no preset is loaded or the loaded one
-        -- predates categories.
+        -- single click in the dropdown.  Looks up via the merged
+        -- view (user dict first, then bundled defaults) so a
+        -- bundled preset loaded for tweaking still surfaces its
+        -- canonical category.  Falls back to "" when no preset is
+        -- loaded.
         prefillCategory =
-            model.modal
-                |> (\m ->
-                        case m of
-                            Just (ModalCondition ui) ->
-                                ui.loadedPresetName
-                                    |> Maybe.andThen
-                                        (\name -> Dict.get name model.conditionPresets)
-                                    |> Maybe.map .category
-                                    |> Maybe.withDefault ""
+            case model.modal of
+                Just (ModalCondition ui) ->
+                    ui.loadedPresetName
+                        |> Maybe.andThen (\name -> lookupPreset name model)
+                        |> Maybe.map .category
+                        |> Maybe.withDefault ""
 
-                            _ ->
-                                ""
-                   )
+                _ ->
+                    ""
     in
     ( withConditionUi
         (\u ->
@@ -426,7 +425,7 @@ at the current target. No-op when the name isn't in the dict
 -}
 presetLoad : String -> Model -> ( Model, Cmd Msg )
 presetLoad name model =
-    case Dict.get name model.conditionPresets of
+    case lookupPreset name model of
         Just preset ->
             ( withConditionUi (ConditionUi.applyPreset name preset) model
             , Cmd.none
@@ -436,6 +435,22 @@ presetLoad name model =
             ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
             , Cmd.none
             )
+
+
+{-| Resolve a preset name against the user's dict first, falling
+back to the bundled SRD defaults. Bundled entries are always
+loadable even when the user has saved nothing of their own —
+the view layer renders them as a read-only layer below any
+user-saved overrides.
+-}
+lookupPreset : String -> Model -> Maybe ConditionUi.ConditionPreset
+lookupPreset name model =
+    case Dict.get name model.conditionPresets of
+        Just preset ->
+            Just preset
+
+        Nothing ->
+            Dict.get name Bundled.defaults
 
 
 {-| Remove a preset by name. If the currently-loaded preset is
