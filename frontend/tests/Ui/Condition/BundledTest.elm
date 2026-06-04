@@ -4,6 +4,7 @@ import Dict
 import Expect
 import Set
 import Test exposing (Test, describe, test)
+import Ui.Condition as ConditionUi
 import Ui.Condition.Bundled as Bundled
 
 
@@ -56,4 +57,23 @@ suite =
                             |> List.map Tuple.first
                 in
                 Expect.equal invalid []
+        , test "loading any bundled preset yields a non-empty effective name (Apply stays enabled)" <|
+            \_ ->
+                let
+                    blank =
+                        ConditionUi.fresh "TestTarget"
+
+                    presetsThatBreakApply =
+                        Bundled.defaults
+                            |> Dict.toList
+                            |> List.filter
+                                (\( name, preset ) ->
+                                    ConditionUi.applyPreset name preset blank
+                                        |> .name
+                                        |> String.trim
+                                        |> String.isEmpty
+                                )
+                            |> List.map Tuple.first
+                in
+                Expect.equal presetsThatBreakApply []
         ]

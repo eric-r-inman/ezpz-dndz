@@ -263,8 +263,24 @@ pending save-name input so the post-load footer reads cleanly.
 -}
 applyPreset : String -> ConditionPreset -> ConditionUi -> ConditionUi
 applyPreset presetName preset ui =
+    let
+        -- `ui.name` is the effective chip label and drives the
+        -- Apply button's enabled state.  For presets that use a
+        -- standard condition, `conditionName` carries the label
+        -- ("Stunned"); for custom-named bundled presets like
+        -- *Bardic Inspiration*, `conditionName` is empty and the
+        -- label lives in `customName` instead.  Fall back to the
+        -- latter so loading a custom-named preset doesn't land
+        -- with an unset name + a disabled Apply button.
+        effectiveName =
+            if String.isEmpty preset.conditionName then
+                preset.customName
+
+            else
+                preset.conditionName
+    in
     { ui
-        | name = preset.conditionName
+        | name = effectiveName
         , customName = preset.customName
         , note = preset.note
         , durationKind = preset.durationKind
