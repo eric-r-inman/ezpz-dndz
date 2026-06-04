@@ -618,6 +618,15 @@ featureRow group idx draft =
 param fields for the chosen variant. `None` collapses to just
 the dropdown; `Recharge` shows low/high; the per-day-style
 variants show a single uses count.
+
+When the feature already has a usage set, a small × button trails
+the row so the user can clear it back to None without opening the
+dropdown (or having to delete the whole action just to drop the
+usage). The clear routes through `featureUsageKindSet UsageNone`,
+which already restores any `(Recharge ...)` parenthetical stripped
+on the way in — so Recharge → × is a faithful inverse of None →
+Recharge for bundled creatures.
+
 -}
 featureUsageRow : FeatureGroup -> Int -> Maybe Compendium.Usage -> Html Msg
 featureUsageRow group idx usage =
@@ -639,7 +648,25 @@ featureUsageRow group idx usage =
                 )
             ]
         , usageParams group idx usage
+        , usageClearButton group idx usage
         ]
+
+
+usageClearButton : FeatureGroup -> Int -> Maybe Compendium.Usage -> Html Msg
+usageClearButton group idx usage =
+    case usage of
+        Just _ ->
+            button
+                [ class "edit-row__remove edit-feature__usage-clear"
+                , Attr.type_ "button"
+                , onClick (CompendiumEditFeatureUsageKindSet group idx UsageNone)
+                , Tooltips.attr Tooltips.compendiumEditClearUsage
+                , Attr.attribute "aria-label" Tooltips.compendiumEditClearUsage
+                ]
+                [ text "×" ]
+
+        Nothing ->
+            text ""
 
 
 usageKindOption : Maybe Compendium.Usage -> ( UsageKind, String ) -> Html Msg

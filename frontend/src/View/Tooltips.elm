@@ -29,6 +29,7 @@ module View.Tooltips exposing
     , compendiumDeleteSelected
     , compendiumDuplicate
     , compendiumEdit
+    , compendiumEditClearUsage
     , compendiumEditDeleteCreature
     , compendiumEditRemoveEntry
     , compendiumEditRemoveSave
@@ -798,6 +799,11 @@ compendiumEditRemoveSkill =
 compendiumEditRemoveEntry : String
 compendiumEditRemoveEntry =
     "Remove this entry"
+
+
+compendiumEditClearUsage : String
+compendiumEditClearUsage =
+    "Clear Usage (keeps the action)"
 
 
 compendiumEditRemoveSection : String
