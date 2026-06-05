@@ -73,6 +73,36 @@ meReceived result model =
     case result of
         Ok user ->
             let
+                -- Did the anonymous session have a live encounter
+                -- they were actively building?  Empty default
+                -- doesn't count — that's just a freshly-booted
+                -- tab with nothing typed yet, in which case the
+                -- server's last-active encounter is the right
+                -- thing to fetch.
+                localLiveEncounter =
+                    decodeLocalEncounterIfPopulated model.localEncounterRaw
+
+                ( liveEncounter, fetchOrSeedActiveCmd ) =
+                    case localLiveEncounter of
+                        Just enc ->
+                            -- Keep the GM's in-progress encounter as
+                            -- the live one and immediately push it to
+                            -- /api/encounter so the server's "current
+                            -- active" matches what they see.  Skips
+                            -- the GET that would otherwise overwrite
+                            -- their work with the previous device's
+                            -- last save.
+                            ( enc
+                            , Encounter.Wire.persistEncounterCmd
+                                EncounterPersisted
+                                enc
+                            )
+
+                        Nothing ->
+                            ( model.encounter
+                            , Encounter.Wire.fetchEncounterCmd EncounterLoaded
+                            )
+
                 encounterMigrationCmd =
                     migrateLocalEncounterCmd
                         model.localEncounterRaw
@@ -88,13 +118,14 @@ meReceived result model =
             in
             ( { model
                 | auth = AuthAuthenticated user
+                , encounter = liveEncounter
                 , localEncounterRaw = Nothing
                 , localCardLayoutRaw = Nothing
                 , localDiceHistoryRaw = Nothing
                 , localCompendiumRaw = Nothing
               }
             , Cmd.batch
-                [ Encounter.Wire.fetchEncounterCmd EncounterLoaded
+                [ fetchOrSeedActiveCmd
                 , Compendium.Wire.fetchAll CompendiumLoaded
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 , CardWire.fetchList CardEditorLayoutsLoaded
@@ -131,6 +162,36 @@ meReceived result model =
             in
             ( applyLocalCardLayout model.localCardLayoutRaw withCompendium
             , compendiumBootCmd
+            )
+
+
+{-| Decode the local encounter from flags only when it has at
+least one creature. Used by the sign-in flow to detect "the
+user was actively building an encounter when they signed in"
+— in that case we keep their work as the live encounter
+instead of fetching the server's last-saved active one and
+replacing it.
+
+`Nothing` means either there was no flag, the JSON didn't
+parse, or the snapshot was the empty default — all three
+cases fall through to the existing server-fetch behaviour.
+
+-}
+decodeLocalEncounterIfPopulated : Maybe Decode.Value -> Maybe Encounter.Encounter
+decodeLocalEncounterIfPopulated raw =
+    raw
+        |> Maybe.andThen
+            (\value ->
+                Decode.decodeValue Encounter.Wire.decodeEncounter value
+                    |> Result.toMaybe
+            )
+        |> Maybe.andThen
+            (\enc ->
+                if List.isEmpty enc.creatures then
+                    Nothing
+
+                else
+                    Just enc
             )
 
 
