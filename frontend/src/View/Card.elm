@@ -1403,24 +1403,25 @@ timerTooltip t =
 readiedToggle : Creature -> Html Msg
 readiedToggle creature =
     let
-        ( bodyText, cls, label ) =
+        ( iconGlyph, wordLabel, cls ) =
             if creature.readied then
-                ( "✊ Readied"
-                , "action-btn action-btn--readied"
-                , Tooltips.releaseReadied
-                )
+                ( "✊", "Readied", "action-btn action-btn--readied" )
 
             else
-                ( "✋ Ready"
-                , "action-btn action-btn--ready"
-                , Tooltips.readyAction
-                )
+                ( "✋", "Ready", "action-btn action-btn--ready" )
+
+        tooltip =
+            if creature.readied then
+                Tooltips.releaseReadied
+
+            else
+                Tooltips.readyAction
     in
     button
         [ class cls
         , onClick (ToggleReadied creature.name)
-        , Tooltips.attr label
-        , attribute "aria-label" label
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
         , attribute "aria-pressed"
             (if creature.readied then
                 "true"
@@ -1429,7 +1430,12 @@ readiedToggle creature =
                 "false"
             )
         ]
-        [ text bodyText ]
+        -- Icon prefix wrapped in its own span so the Accessible
+        -- theme can drop the unicode glyph and let the word stand
+        -- on its own.  Modern / Dark / Auto leave the span visible.
+        [ span [ class "action-btn__icon-prefix" ] [ text (iconGlyph ++ " ") ]
+        , text wordLabel
+        ]
 
 
 {-| One-per-round reaction pip. ⚡ when available, gray ⚡ when
@@ -1441,24 +1447,22 @@ manually so the GM can flip it ad-hoc.
 reactionPip : Creature -> Html Msg
 reactionPip creature =
     let
-        ( bodyText, cls, label ) =
+        ( cls, tooltip ) =
             if creature.reactionUsed then
-                ( "⚡ Reaction"
-                , "action-btn action-btn--reaction action-btn--reaction-spent"
+                ( "action-btn action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
                 )
 
             else
-                ( "⚡ Reaction"
-                , "action-btn action-btn--reaction action-btn--reaction-ready"
+                ( "action-btn action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
                 )
     in
     button
         [ class cls
         , onClick (ToggleReaction creature.name)
-        , Tooltips.attr label
-        , attribute "aria-label" label
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
         , attribute "aria-pressed"
             (if creature.reactionUsed then
                 "true"
@@ -1467,4 +1471,9 @@ reactionPip creature =
                 "false"
             )
         ]
-        [ text bodyText ]
+        -- Same icon-prefix split as `readiedToggle` so the
+        -- Accessible theme hides the ⚡ glyph and the word
+        -- "Reaction" stands on its own.
+        [ span [ class "action-btn__icon-prefix" ] [ text "⚡ " ]
+        , text "Reaction"
+        ]

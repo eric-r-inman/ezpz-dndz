@@ -785,10 +785,28 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--temp,
 [data-theme="accessible"] .creature-card .action-btn--condition,
 [data-theme="accessible"] .creature-card .action-btn--ready,
-[data-theme="accessible"] .creature-card .action-btn--readied {
+[data-theme="accessible"] .creature-card .action-btn--readied,
+[data-theme="accessible"] .creature-card .action-btn--reaction-ready,
+[data-theme="accessible"] .creature-card .action-btn--reaction-spent {
   --btn-bg: #f0f0f0;
   --btn-fg: #000000;
   --btn-bd: #000000;
+}
+
+/* Drop the warning-orange override and the strikethrough/opacity
+   decorations that the reaction-ready / reaction-spent variants
+   layer on by default — Accessible relies on plain text contrast,
+   not glyph color or struck-out styling, to convey state. */
+[data-theme="accessible"] .creature-card .action-btn--reaction-spent {
+  text-decoration: none;
+  opacity: 1;
+}
+
+/* Drop the leading unicode glyph on Ready / Reaction in
+   Accessible: low-vision users get a cleaner word-only label
+   instead of a small icon-then-text pair. */
+[data-theme="accessible"] .creature-card .action-btn__icon-prefix {
+  display: none;
 }
 
 /* Unified Accessible hover: every B&W action button (card row 3,
@@ -801,7 +819,9 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--temp:hover,
 [data-theme="accessible"] .creature-card .action-btn--condition:hover,
 [data-theme="accessible"] .creature-card .action-btn--ready:hover,
-[data-theme="accessible"] .creature-card .action-btn--readied:hover {
+[data-theme="accessible"] .creature-card .action-btn--readied:hover,
+[data-theme="accessible"] .creature-card .action-btn--reaction-ready:hover,
+[data-theme="accessible"] .creature-card .action-btn--reaction-spent:hover {
   --btn-bg: #000000;
   --btn-fg: #ffffff;
 }
