@@ -94,7 +94,9 @@ creatureCard activeName creature =
 lineOne : Creature -> Html Msg
 lineOne creature =
     div [ class "quick-list-card__line quick-list-card__line--primary" ]
-        [ span [ class "quick-list-card__name" ] [ text creature.name ]
+        [ span [ class "quick-list-card__init" ]
+            [ text (String.fromInt creature.initiative) ]
+        , span [ class "quick-list-card__name" ] [ text creature.name ]
         , creatureNoteSpan creature
         , pipe
         , span [ class "quick-list-card__ac" ]

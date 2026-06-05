@@ -9253,6 +9253,30 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-top: 1px dashed var(--color-border);
 }
 
+/* Initiative badge to the left of the creature name.  Small
+   neutral pill so the eye groups [init][name] together as the
+   row's identity before AC / HP / conditions trail right. */
+.quick-list-card__init {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3, var(--color-surface-1));
+  border: 1px solid var(--color-border);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.quick-list-card--active .quick-list-card__init {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-on-accent, white);
+}
+
 .quick-list-card__name {
   font-weight: 600;
   font-size: 1rem;
