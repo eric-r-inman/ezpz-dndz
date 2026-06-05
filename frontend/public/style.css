@@ -9297,13 +9297,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text-muted);
 }
 
-/* Vertical pipe between Name | AC | HP.  Muted so the eye
-   reads it as a separator, not part of any field. */
+/* Vertical pipe between Name | AC | HP.  Uses the body text
+   color (not muted) so the separator is clearly readable; the
+   eye still reads it as punctuation thanks to its narrow glyph
+   shape.  No opacity dimming — `opacity: 0.5` on top of an
+   already-muted color rendered the pipe essentially invisible
+   on the lighter Modern card surface. */
 .quick-list-card__pipe {
-  color: var(--color-text-muted);
-  opacity: 0.5;
+  color: var(--color-text);
+  font-weight: 400;
   user-select: none;
-  margin: 0 2px;
+  margin: 0 4px;
 }
 
 .quick-list-card__conditions {
