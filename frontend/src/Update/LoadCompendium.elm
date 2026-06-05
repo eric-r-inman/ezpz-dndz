@@ -6,6 +6,7 @@ module Update.LoadCompendium exposing
     , listLoaded
     , open
     , serverResponse
+    , sourceSet
     )
 
 {-| Update branches for the Load-compendium modal.
@@ -61,6 +62,17 @@ open model =
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( { model | modal = Nothing }, Cmd.none )
+
+
+{-| Flip the source radio between Server and Device. Clears
+the inline error so a prior 401 / network message from a
+previous Server attempt doesn't bleed into the Device view.
+-}
+sourceSet : Msg.LoadSource -> Model -> ( Model, Cmd Msg )
+sourceSet source model =
+    ( withLoadUi (\ui -> { ui | source = source, error = Nothing }) model
+    , Cmd.none
+    )
 
 
 listLoaded :

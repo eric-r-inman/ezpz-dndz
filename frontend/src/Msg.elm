@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), ModalChromeEdge(..), SaveDestination(..), Theme(..), UsageKind(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), LoadSource(..), ModalChromeEdge(..), SaveDestination(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -273,6 +273,15 @@ was used because it only sees the half of the flow that uses it.
 type SaveDestination
     = SaveDestinationServer
     | SaveDestinationDevice
+
+
+{-| Where the Load Compendium modal pulls from. Mirrors
+`SaveDestination` so the radio group reads as a symmetric
+Server / Device pair across both modals.
+-}
+type LoadSource
+    = LoadSourceServer
+    | LoadSourceDevice
 
 
 {-| Which Encounter-Controls split-button dropdown is open.
@@ -749,6 +758,7 @@ type Msg
     | SaveCompendiumConfirmConfirm
     | LoadCompendiumOpen
     | LoadCompendiumClose
+    | LoadCompendiumSourceSet LoadSource
     | LoadCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
     | LoadCompendiumFromServerRequested String
     | LoadCompendiumConfirmCancel

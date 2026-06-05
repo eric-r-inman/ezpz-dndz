@@ -18,6 +18,7 @@ import a snapshot from a local file.
 -}
 
 import Compendium.Wire exposing (SavedCompendiumMeta)
+import Msg exposing (LoadSource(..))
 
 
 type LoadListState
@@ -38,7 +39,8 @@ type alias RenameDraft =
 
 
 type alias LoadCompendiumUi =
-    { saves : LoadListState
+    { source : LoadSource
+    , saves : LoadListState
     , busy : Bool
     , error : Maybe String
     , confirm : Maybe ConfirmAction
@@ -46,9 +48,14 @@ type alias LoadCompendiumUi =
     }
 
 
+{-| Default the source to Server to mirror the Save Compendium
+modal — anonymous users see the sign-in hint immediately and
+can flip to Device with one click, same flow either way.
+-}
 fresh : LoadCompendiumUi
 fresh =
-    { saves = LoadsLoading
+    { source = LoadSourceServer
+    , saves = LoadsLoading
     , busy = False
     , error = Nothing
     , confirm = Nothing

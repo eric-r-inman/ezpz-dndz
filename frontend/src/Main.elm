@@ -1939,6 +1939,9 @@ updateInner msg model =
         LoadCompendiumClose ->
             Update.LoadCompendium.close model
 
+        LoadCompendiumSourceSet source ->
+            Update.LoadCompendium.sourceSet source model
+
         LoadCompendiumListLoaded result ->
             Update.LoadCompendium.listLoaded result model
 

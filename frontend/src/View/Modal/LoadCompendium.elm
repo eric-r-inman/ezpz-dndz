@@ -2,22 +2,39 @@ module View.Modal.LoadCompendium exposing (view)
 
 {-| Load-compendium modal.
 
-Mirrors `View.Modal.Load`: top row offers a "from device" file
-picker (which reuses the existing `CompendiumImportClick` flow);
-middle is the list of server-side snapshots; clicking a row
-prompts for confirmation before replacing the live library.
+Mirrors `View.Modal.SaveCompendium` for visual consistency:
+the top row carries a Server / Device radio pair, the body
+changes shape based on which is picked.
 
-The MVP omits rename / delete row affordances — destructive
-management lives on the Save modal's overwrite path.
+  - **Server** — server-side snapshots list (existing flow).
+    Anonymous users see a sign-in hint instead and the row
+    list is suppressed so a 401 "Couldn't load saves" never
+    surfaces.
+  - **Device** — a file-picker button that kicks off the
+    existing `CompendiumImportClick` parse → confirm → replace
+    flow inside the parent Compendium modal.
+
+The destructive replace-the-library step still goes through
+the inline confirmation banner; that hasn't changed.
 
 -}
 
+import Auth
 import Compendium.Wire exposing (SavedCompendiumMeta)
-import Html exposing (Html, button, div, li, p, text, ul)
-import Html.Attributes exposing (class, disabled, title)
+import Html exposing (Html, button, div, input, label, li, p, span, text, ul)
+import Html.Attributes
+    exposing
+        ( attribute
+        , checked
+        , class
+        , disabled
+        , id
+        , name
+        , type_
+        )
 import Html.Events exposing (onClick)
 import Model exposing (Modal(..), Model)
-import Msg exposing (Msg(..))
+import Msg exposing (LoadSource(..), Msg(..))
 import Ui.LoadCompendium as LoadCompendiumUi
     exposing
         ( ConfirmAction(..)
@@ -39,10 +56,10 @@ view model =
                 , extraClass = "modal--load"
                 , chrome = model.modalChrome
                 , body =
-                    [ deviceRow
+                    [ sourceSection ui
                     , confirmBanner ui
-                    , errorBanner ui
-                    , savesSection ui
+                    , errorBanner model.auth ui
+                    , bodyForSource model.auth ui
                     , closeRow
                     ]
                 }
@@ -51,23 +68,39 @@ view model =
             text ""
 
 
-{-| The "from device" path reuses the existing
-`CompendiumImportClick` Msg, which kicks off the file-picker /
-parse / confirm flow already wired through
-`Update.Compendium.Bulk`. We close the load modal first so the
-existing pending-confirm banner inside the Compendium browser
-modal isn't hidden behind us.
+{-| `True` when the user is anonymous AND has picked the
+Server source — the combination where the server fetch
+returns 401. Centralised so the error banner and the body
+share the predicate.
 -}
-deviceRow : Html Msg
-deviceRow =
-    div [ class "load-modal__device" ]
-        [ p [ class "load-modal__device-text" ]
-            [ text "Have a compendium snapshot on your computer?" ]
-        , button
-            [ class "action-btn action-btn--blue"
-            , onClick CompendiumImportClick
+serverNeedsSignIn : Auth.AuthState -> LoadCompendiumUi -> Bool
+serverNeedsSignIn auth ui =
+    ui.source == LoadSourceServer && not (Auth.isAuthenticated auth)
+
+
+sourceSection : LoadCompendiumUi -> Html Msg
+sourceSection ui =
+    div [ class "save-modal__row save-modal__row--destination" ]
+        [ label [ class "save-modal__label" ] [ text "Load from" ]
+        , div [ class "save-modal__radio-group", attribute "role" "radiogroup" ]
+            [ sourceRadio ui LoadSourceServer "Server" "load-cmp-src-server"
+            , sourceRadio ui LoadSourceDevice "Device" "load-cmp-src-device"
             ]
-            [ text "📁 Choose file…" ]
+        ]
+
+
+sourceRadio : LoadCompendiumUi -> LoadSource -> String -> String -> Html Msg
+sourceRadio ui source label_ idAttr =
+    Html.label [ class "save-modal__radio" ]
+        [ input
+            [ type_ "radio"
+            , id idAttr
+            , name "load-compendium-source"
+            , checked (ui.source == source)
+            , onClick (LoadCompendiumSourceSet source)
+            ]
+            []
+        , span [] [ text label_ ]
         ]
 
 
@@ -105,14 +138,58 @@ confirmRow message confirmLabel =
         ]
 
 
-errorBanner : LoadCompendiumUi -> Html Msg
-errorBanner ui =
-    case ui.error of
-        Just err ->
-            p [ class "save-modal__error" ] [ text err ]
+errorBanner : Auth.AuthState -> LoadCompendiumUi -> Html Msg
+errorBanner auth ui =
+    if serverNeedsSignIn auth ui then
+        -- Anonymous + Server: replace any stale 401 / network
+        -- text with the friendlier sign-in hint, same wording
+        -- shape as the Save Compendium modal.
+        p [ class "save-modal__error save-modal__error--auth" ]
+            [ text "Sign in to load your compendium from the eZpZ-dndZ server." ]
 
-        Nothing ->
-            text ""
+    else
+        case ui.error of
+            Just err ->
+                p [ class "save-modal__error" ] [ text err ]
+
+            Nothing ->
+                text ""
+
+
+{-| Body changes based on the picked source. Server: show the
+list of server snapshots (or auth-gated empty). Device: a
+single file-picker button that reuses the existing
+`CompendiumImportClick` parse flow.
+-}
+bodyForSource : Auth.AuthState -> LoadCompendiumUi -> Html Msg
+bodyForSource auth ui =
+    case ui.source of
+        LoadSourceServer ->
+            if Auth.isAuthenticated auth then
+                savesSection ui
+
+            else
+                -- Suppress the savesSection entirely for anonymous
+                -- users.  The error banner above already explains
+                -- they need to sign in; no point also rendering a
+                -- "Couldn't load saves: Server returned 401" strip.
+                text ""
+
+        LoadSourceDevice ->
+            deviceRow
+
+
+deviceRow : Html Msg
+deviceRow =
+    div [ class "load-modal__device" ]
+        [ p [ class "load-modal__device-text" ]
+            [ text "Have a compendium snapshot on your computer?" ]
+        , button
+            [ class "action-btn action-btn--blue"
+            , onClick CompendiumImportClick
+            ]
+            [ text "📁 Choose file…" ]
+        ]
 
 
 savesSection : LoadCompendiumUi -> Html Msg
@@ -122,9 +199,14 @@ savesSection ui =
             div [ class "save-modal__list-empty" ]
                 [ text "Loading saved compendiums…" ]
 
-        LoadsFailed err ->
+        LoadsFailed _ ->
+            -- Per user request: don't surface 401 / generic
+            -- "Couldn't load saves" text.  Authenticated users
+            -- with a real network failure see an empty state;
+            -- the close-and-retry path is more useful than a
+            -- raw error code.
             div [ class "save-modal__list-empty" ]
-                [ text ("Couldn't load saves: " ++ err) ]
+                [ text "No saved compendiums on the server." ]
 
         LoadsLoaded [] ->
             div [ class "save-modal__list-empty" ]

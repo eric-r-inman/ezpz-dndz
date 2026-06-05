@@ -1342,24 +1342,16 @@ serverMenuItem auth opts =
 
 
 importMenu : Auth.AuthState -> CompendiumUi -> Html Msg
-importMenu auth ui =
-    splitMenu
-        { menu = ImportMenu
-        , isOpen = ui.bulkMenu == Just ImportMenu
-        , triggerClass = "action-btn action-btn--blue"
-        , triggerLabel = "📥 Import ▾"
-        , triggerTitle = Tooltips.compendiumImport
-        , alignLeft = True
-        , items =
-            [ serverMenuItem auth
-                { msg = LoadCompendiumOpen
-                , label = "From Server"
-                , signedInTooltip = "Load a compendium snapshot saved on the server."
-                , anonymousTooltip = "Sign in to load compendium snapshots from the server."
-                }
-            , menuItem CompendiumImportClick "From Device"
-            ]
-        }
+importMenu _ _ =
+    -- Single button (no dropdown).  The Load Compendium modal
+    -- it opens carries the Server / Device radios so the
+    -- previous split-button was redundant.
+    button
+        [ class "action-btn action-btn--blue"
+        , onClick LoadCompendiumOpen
+        , Tooltips.attr Tooltips.compendiumImport
+        ]
+        [ text "📥 Import" ]
 
 
 exportMenu : Auth.AuthState -> CompendiumUi -> Html Msg

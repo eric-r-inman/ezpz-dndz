@@ -59,7 +59,7 @@ view model =
                     , filenameSection ui
                     , confirmBanner ui
                     , errorBanner model.auth ui
-                    , savesSection ui
+                    , savesSectionFor model.auth ui
                     , submitRow model.auth ui
                     ]
                 }
@@ -188,6 +188,30 @@ errorBanner auth ui =
                 text ""
 
 
+{-| Server-side snapshot list, gated on destination and auth.
+
+  - Device destination → hide (saves don't apply to a one-shot
+    file download).
+  - Anonymous + Server → hide (the sign-in hint above already
+    covers it; no point showing "Couldn't load saves: Server
+    returned 401" alongside).
+  - Authenticated + Server → render the snapshot list normally.
+
+-}
+savesSectionFor : Auth.AuthState -> SaveCompendiumUi -> Html Msg
+savesSectionFor auth ui =
+    case ui.destination of
+        SaveDestinationDevice ->
+            text ""
+
+        SaveDestinationServer ->
+            if Auth.isAuthenticated auth then
+                savesSection ui
+
+            else
+                text ""
+
+
 savesSection : SaveCompendiumUi -> Html Msg
 savesSection ui =
     case ui.saves of
@@ -195,9 +219,14 @@ savesSection ui =
             div [ class "save-modal__list-empty" ]
                 [ text "Loading saved compendiums…" ]
 
-        SavesFailed err ->
+        SavesFailed _ ->
+            -- Per user request: never surface "Couldn't load saves:
+            -- Server returned 401" (or any other raw error string).
+            -- For authenticated users with a real network failure
+            -- this empty-state read is friendlier; the close-and-
+            -- retry path is more useful than a raw error code.
             div [ class "save-modal__list-empty" ]
-                [ text ("Couldn't load saves: " ++ err) ]
+                [ text "No saved compendiums yet." ]
 
         SavesLoaded [] ->
             div [ class "save-modal__list-empty" ]
