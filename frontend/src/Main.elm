@@ -137,6 +137,7 @@ import View.Modal.QuickAdd
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
+import View.Page.QuickList
 import View.RollPopup
 import View.StatBlock
 import View.Toast
@@ -322,6 +323,7 @@ subscriptions model =
     Sub.batch
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
+            :: Ports.incomingEncounter EncounterFromOtherTab
             :: xpFilterSubs
             ++ settingsSubs
             ++ clearMenuSubs
@@ -625,6 +627,20 @@ update msg model =
             else
                 Cmd.none
 
+        -- Cross-tab broadcast: every encounter mutation that
+        -- isn't itself a received broadcast gets posted to the
+        -- BroadcastChannel so a quick-list tab (or a second
+        -- main tab) picks the change up live.  Same diff guard
+        -- as `encounterCmd` — broadcast only when the encounter
+        -- actually changed.  The QuickList tab is read-only so
+        -- it never triggers this branch anyway.
+        encounterBroadcastCmd =
+            if shouldBroadcastAfter msg && next.encounter /= model.encounter then
+                Ports.broadcastEncounter (Encounter.Wire.encodeEncounter next.encounter)
+
+            else
+                Cmd.none
+
         cardLayoutCmd =
             if shouldPersistAfter msg && cardLayoutChanged model next then
                 persistCardLayoutFor next
@@ -718,6 +734,7 @@ update msg model =
     , Cmd.batch
         [ innerCmd
         , encounterCmd
+        , encounterBroadcastCmd
         , cardLayoutCmd
         , diceHistoryCmd
         , compendiumCmd
@@ -889,8 +906,45 @@ shouldPersistAfter msg =
         LocalCompendiumMigrated _ _ ->
             False
 
+        -- The encounter just arrived from another tab via the
+        -- BroadcastChannel; the originating tab already persisted
+        -- (and already broadcast), so re-doing either from this
+        -- tab would loop.
+        EncounterFromOtherTab _ ->
+            False
+
         _ ->
             True
+
+
+{-| Whether to fire `broadcastEncounter` after this Msg has been
+processed. Excludes the inbound side of the BroadcastChannel
+(re-broadcasting receives would loop) and the QuickList tab's
+own reception (it's read-only).
+-}
+shouldBroadcastAfter : Msg -> Bool
+shouldBroadcastAfter msg =
+    case msg of
+        EncounterFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| `EncounterFromOtherTab` handler — drop the broadcast straight
+into `model.encounter`. Decoder failures are silently ignored
+(the payload always comes from another tab running the same
+build, so a mismatch would mean the wire format had diverged).
+-}
+encounterFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
+encounterFromOtherTab raw model =
+    case Decode.decodeValue Encounter.Wire.decodeEncounter raw of
+        Ok encounter ->
+            ( { model | encounter = encounter }, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
 
 
 updateInner : Msg -> Model -> ( Model, Cmd Msg )
@@ -1025,6 +1079,9 @@ updateInner msg model =
 
         DiceRollFromOtherTab raw ->
             Update.Dice.rollFromOtherTab raw model
+
+        EncounterFromOtherTab raw ->
+            encounterFromOtherTab raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -2328,6 +2385,9 @@ viewPage model =
 
         CompendiumCreaturePage id ->
             viewCompendiumStandalone model id
+
+        QuickList ->
+            View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
 
         NotFound ->
             div [ class "workspace" ]

@@ -123,7 +123,7 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view enc savedAs db xpScope xpFilterOpen ]
+            [ View.EncounterBar.view View.EncounterBar.FullBar enc savedAs db xpScope xpFilterOpen ]
         , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId

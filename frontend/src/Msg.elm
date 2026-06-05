@@ -388,6 +388,11 @@ type Msg
       -- BroadcastChannel.  Payload is the encoded `Dice.Roll`;
       -- decode failures are silently ignored.
     | DiceRollFromOtherTab Decode.Value
+      -- A peer tab broadcast the latest encounter over the
+      -- BroadcastChannel.  Payload is the encoded `Encounter`;
+      -- the receiving handler decodes and replaces
+      -- `model.encounter` in place.  No re-broadcast.
+    | EncounterFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())

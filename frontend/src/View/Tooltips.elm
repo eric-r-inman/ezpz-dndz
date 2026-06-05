@@ -111,6 +111,7 @@ module View.Tooltips exposing
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , quickListOpen
     , reactionReady
     , reactionSpent
     , readyAction
@@ -632,6 +633,11 @@ panelCrCalculator =
 panelStatBlockNewWindow : String
 panelStatBlockNewWindow =
     "Open stat block in new tab"
+
+
+quickListOpen : String
+quickListOpen =
+    "Open a read-only quick-list of the combat queue in a new tab"
 
 
 

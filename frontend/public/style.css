@@ -9172,3 +9172,171 @@ button.creature-card__lifecycle--dead:focus-visible {
     opacity: 0;
   }
 }
+
+/* ── QUICK-LIST PAGE ──────────────────────────────────────────
+   Standalone read-only view at /quick-list.  Lists every
+   creature in initiative order with a 2-line card.  The page
+   reuses .encounter-bar (sans right cluster) so the title row
+   reads identically to the main view.
+*/
+
+.workspace--quick-list {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.panel--quick-list {
+  background: var(--color-surface-1, var(--color-surface-2));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.quick-list__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+}
+
+.quick-list__empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.quick-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.quick-list-card--active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft, var(--color-surface-2));
+  box-shadow: 0 0 0 2px var(--color-accent) inset;
+}
+
+.quick-list-card--inactive {
+  opacity: 0.55;
+}
+
+.quick-list-card--down {
+  border-color: var(--color-danger, #ef4444);
+}
+
+.quick-list-card__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-list-card__line--primary {
+  font-weight: 500;
+}
+
+.quick-list-card__line--secondary {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  padding-top: 2px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.quick-list-card__name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.quick-list-card__note {
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.quick-list-card__stats {
+  display: inline-flex;
+  gap: 12px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-list-card__stat-label {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-right: 2px;
+}
+
+.quick-list-card__ac,
+.quick-list-card__hp {
+  font-weight: 600;
+}
+
+.quick-list-card__temp-hp {
+  color: var(--color-accent, var(--color-text-muted));
+  font-weight: 500;
+}
+
+.quick-list-card__conditions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.quick-list-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-3, var(--color-surface-1));
+  border: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.quick-list-card__chip--bloodied {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: var(--color-danger, #b91c1c);
+}
+
+.quick-list-card__chip--condition {
+  background: var(--color-accent-soft, var(--color-surface-3));
+  border-color: var(--color-accent, var(--color-border));
+}
+
+.quick-list-card__chip--memo {
+  font-style: italic;
+}
+
+.quick-list-card__chip--timer {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ↗ Quick-List link in the encounter title bar — same shape
+   as the .statblock__open anchor for visual continuity. */
+.encounter-bar__quick-list {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  background: transparent;
+  margin-left: 4px;
+}
+
+.encounter-bar__quick-list:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft, transparent);
+}

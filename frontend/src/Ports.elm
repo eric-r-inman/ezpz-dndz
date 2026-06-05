@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -172,3 +172,22 @@ handled both). Payload shape is whatever `Dice.encodeRoll`
 produces.
 -}
 port incomingDiceRoll : (D.Value -> msg) -> Sub msg
+
+
+{-| Broadcast the current encounter to every other tab so a
+quick-list window can stay in sync with the main combat tab.
+Wire shape is whatever `Encounter.Wire.encodeEncounter`
+produces. Fires from the main update loop's persist wrapper
+whenever `model.encounter` mutates AND the source Msg should
+trigger a broadcast (the receive Msg is excluded so the two
+tabs don't loop back at each other).
+-}
+port broadcastEncounter : E.Value -> Cmd msg
+
+
+{-| Subscription for `Encounter` values broadcast by other tabs
+via [`broadcastEncounter`](#broadcastEncounter). The receiving
+tab decodes the payload and replaces its own
+`model.encounter` — no persist, no re-broadcast.
+-}
+port incomingEncounter : (D.Value -> msg) -> Sub msg

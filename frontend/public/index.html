@@ -350,6 +350,40 @@
         app.ports.broadcastDiceRoll.subscribe(function () {});
       }
 
+      // Cross-tab encounter sync.  Mirrors the dice channel above:
+      // the main tab posts the encounter on every change, and a
+      // quick-list tab opened in the same browser profile picks
+      // the changes up live.  Same BroadcastChannel discipline —
+      // no self-echo, so loops are impossible.
+      var encounterChannel = null;
+      try {
+        if (typeof BroadcastChannel === "function") {
+          encounterChannel = new BroadcastChannel("ezpz-dndz-encounter");
+        }
+      } catch (_) {
+        // Older browser / privacy mode — quick-list tab won't
+        // auto-update, but the main app still works.
+      }
+      if (
+        encounterChannel &&
+        app.ports &&
+        app.ports.broadcastEncounter &&
+        app.ports.incomingEncounter
+      ) {
+        app.ports.broadcastEncounter.subscribe(function (value) {
+          try {
+            encounterChannel.postMessage(value);
+          } catch (_) {}
+        });
+        encounterChannel.onmessage = function (event) {
+          try {
+            app.ports.incomingEncounter.send(event.data);
+          } catch (_) {}
+        };
+      } else if (app.ports && app.ports.broadcastEncounter) {
+        app.ports.broadcastEncounter.subscribe(function () {});
+      }
+
       // Anonymous named card-layout saves dict writer + eraser.
       if (app.ports && app.ports.persistLocalCardLayoutSaves) {
         app.ports.persistLocalCardLayoutSaves.subscribe(function (value) {

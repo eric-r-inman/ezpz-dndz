@@ -24,6 +24,12 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
     block, opened via the ↗ link in the side panel.
+  - `QuickList` — standalone read-only condensed view of the
+    combat queue, opened via the ↗ button in the encounter
+    title bar. Cross-tab synced through the
+    `broadcastEncounter` / `incomingEncounter` port pair so
+    the page auto-updates as the GM mutates state in the
+    main tab.
   - `NotFound` — fallback that the server falls back to
     `index.html` for, so deep-link reloads still work.
 
@@ -35,6 +41,7 @@ type Route
     | Donate
     | About
     | CompendiumCreaturePage String
+    | QuickList
     | NotFound
 
 
@@ -46,6 +53,7 @@ parser =
         , Url.Parser.map Me (Url.Parser.s "me")
         , Url.Parser.map Donate (Url.Parser.s "donate")
         , Url.Parser.map About (Url.Parser.s "about")
+        , Url.Parser.map QuickList (Url.Parser.s "quick-list")
         , Url.Parser.map CompendiumCreaturePage
             (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         ]

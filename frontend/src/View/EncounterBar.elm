@@ -1,4 +1,4 @@
-module View.EncounterBar exposing (view)
+module View.EncounterBar exposing (Mode(..), view)
 
 {-| Encounter title bar — the single line above the creature grid.
 
@@ -13,12 +13,20 @@ scope (Enemies & NPCs / Enemies Only / NPCs Only / Selected Only).
 The scope dropdown is the sole click target here; everything
 else is a glanceable summary.
 
+`Mode` toggles the right cluster: `FullBar` is the main
+encounter page; `QuickListBar` omits the XP readout, Difficulty
+button, and the Quick-List ↗ link — the standalone Quick-List
+tab is read-only and shouldn't navigate back into the busy
+workspace surfaces.
+
+@docs Mode, view
+
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter)
 import Encounter.Xp as Xp exposing (XpScope(..))
-import Html exposing (Html, button, div, li, span, text, ul)
-import Html.Attributes exposing (attribute, class, tabindex, title, type_)
+import Html exposing (Html, a, button, div, li, span, text, ul)
+import Html.Attributes exposing (attribute, class, href, tabindex, target, title, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg(..))
@@ -26,8 +34,13 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import View.Tooltips as Tooltips
 
 
-view : Encounter -> Maybe String -> CompendiumDb -> XpScope -> Bool -> Html Msg
-view enc savedAs db xpScope xpFilterOpen =
+type Mode
+    = FullBar
+    | QuickListBar
+
+
+view : Mode -> Encounter -> Maybe String -> CompendiumDb -> XpScope -> Bool -> Html Msg
+view mode enc savedAs db xpScope xpFilterOpen =
     let
         active =
             Encounter.activeCreature enc
@@ -43,6 +56,26 @@ view enc savedAs db xpScope xpFilterOpen =
 
                 Nothing ->
                     Tooltips.sourceUnsaved
+
+        rightCluster =
+            case mode of
+                FullBar ->
+                    div [ class "encounter-bar__group encounter-bar__right" ]
+                        [ xpReadout enc db xpScope
+                        , xpFilter xpScope xpFilterOpen
+                        , button
+                            [ class "encounter-bar__difficulty"
+                            , type_ "button"
+                            , onClick CrCalculatorOpen
+                            , Tooltips.attr Tooltips.encounterBarDifficulty
+                            , attribute "aria-label" Tooltips.encounterBarDifficulty
+                            ]
+                            [ text "Difficulty" ]
+                        , quickListLink
+                        ]
+
+                QuickListBar ->
+                    text ""
     in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
@@ -65,19 +98,25 @@ view enc savedAs db xpScope xpFilterOpen =
             , stateIcons active
             , conditionsText active
             ]
-        , div [ class "encounter-bar__group encounter-bar__right" ]
-            [ xpReadout enc db xpScope
-            , xpFilter xpScope xpFilterOpen
-            , button
-                [ class "encounter-bar__difficulty"
-                , type_ "button"
-                , onClick CrCalculatorOpen
-                , Tooltips.attr Tooltips.encounterBarDifficulty
-                , attribute "aria-label" Tooltips.encounterBarDifficulty
-                ]
-                [ text "Difficulty" ]
-            ]
+        , rightCluster
         ]
+
+
+{-| ↗ link to the standalone Quick-List page. Same shape and
+target as the compendium's "open stat block in new tab" link
+so the affordance is recognisable across surfaces.
+-}
+quickListLink : Html Msg
+quickListLink =
+    a
+        [ class "encounter-bar__quick-list"
+        , href "/quick-list"
+        , target "_blank"
+        , attribute "rel" "noopener"
+        , Tooltips.attr Tooltips.quickListOpen
+        , attribute "aria-label" "Open quick-list in new tab"
+        ]
+        [ text "↗ Quick-List" ]
 
 
 xpReadout : Encounter -> CompendiumDb -> XpScope -> Html Msg
