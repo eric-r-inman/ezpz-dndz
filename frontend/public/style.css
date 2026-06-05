@@ -9264,13 +9264,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.9rem;
 }
 
-.quick-list-card__stats {
-  display: inline-flex;
-  gap: 12px;
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-}
-
 .quick-list-card__stat-label {
   color: var(--color-text-muted);
   font-size: 0.85rem;
@@ -9279,6 +9272,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .quick-list-card__ac {
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Override `.hp-display`'s default margin-right so the temp-HP
@@ -9286,6 +9280,30 @@ button.creature-card__lifecycle--dead:focus-visible {
    the bloodied / condition chips trail right after. */
 .quick-list-card .hp-display {
   margin-right: 0;
+  font-size: inherit;
+}
+
+/* Re-assert the green-current / muted-max HP colors at the
+   quick-list scope.  The shared `.hp-display__current` rule
+   already paints green via `--color-success`, but pinning it
+   here guards against per-theme overrides that target the
+   main card grid and would otherwise leak into the quick-list. */
+.quick-list-card .hp-display__current {
+  color: var(--color-success);
+}
+
+.quick-list-card .hp-display__sep,
+.quick-list-card .hp-display__max {
+  color: var(--color-text-muted);
+}
+
+/* Vertical pipe between Name | AC | HP.  Muted so the eye
+   reads it as a separator, not part of any field. */
+.quick-list-card__pipe {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  user-select: none;
+  margin: 0 2px;
 }
 
 .quick-list-card__conditions {

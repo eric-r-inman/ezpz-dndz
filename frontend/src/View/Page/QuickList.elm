@@ -96,16 +96,25 @@ lineOne creature =
     div [ class "quick-list-card__line quick-list-card__line--primary" ]
         [ span [ class "quick-list-card__name" ] [ text creature.name ]
         , creatureNoteSpan creature
-        , span [ class "quick-list-card__stats" ]
-            [ span [ class "quick-list-card__ac" ]
-                [ span [ class "quick-list-card__stat-label" ] [ text "AC " ]
-                , text (String.fromInt creature.armorClass)
-                ]
-            , hpDisplay creature
+        , pipe
+        , span [ class "quick-list-card__ac" ]
+            [ span [ class "quick-list-card__stat-label" ] [ text "AC " ]
+            , text (String.fromInt creature.armorClass)
             ]
+        , pipe
+        , hpDisplay creature
         , bloodiedChip creature
         , conditionsRow creature
         ]
+
+
+{-| Muted vertical pipe used to separate `Name | AC | HP` on the
+primary row. Renders as plain text so it word-breaks with the
+rest of the line if the viewport gets too narrow.
+-}
+pipe : Html Msg
+pipe =
+    span [ class "quick-list-card__pipe" ] [ text "|" ]
 
 
 creatureNoteSpan : Creature -> Html Msg
