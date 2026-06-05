@@ -9249,7 +9249,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .quick-list-card__line--secondary {
   font-size: 0.85rem;
   color: var(--color-text-muted);
-  padding-top: 2px;
+  padding-top: 4px;
   border-top: 1px dashed var(--color-border);
 }
 
