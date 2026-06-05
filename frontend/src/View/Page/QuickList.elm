@@ -101,15 +101,7 @@ lineOne creature =
                 [ span [ class "quick-list-card__stat-label" ] [ text "AC " ]
                 , text (String.fromInt creature.armorClass)
                 ]
-            , span [ class "quick-list-card__hp" ]
-                [ span [ class "quick-list-card__stat-label" ] [ text "HP " ]
-                , text
-                    (String.fromInt creature.currentHp
-                        ++ "/"
-                        ++ String.fromInt creature.maxHp
-                    )
-                , tempHpSpan creature
-                ]
+            , hpDisplay creature
             ]
         , bloodiedChip creature
         , conditionsRow creature
@@ -126,14 +118,30 @@ creatureNoteSpan creature =
             [ text ("(" ++ creature.note ++ ")") ]
 
 
-tempHpSpan : Creature -> Html Msg
-tempHpSpan creature =
-    if creature.tempHp > 0 then
-        span [ class "quick-list-card__temp-hp" ]
-            [ text (" +" ++ String.fromInt creature.tempHp) ]
+{-| Mirror of the encounter title bar's HP block: same DOM
+shape, same `.hp-display*` class names so the per-theme color
+rules (green current / muted "/" / muted max / temp HP accent)
+cascade for free, including under the Accessible theme.
+-}
+hpDisplay : Creature -> Html Msg
+hpDisplay creature =
+    span [ class "hp-display" ]
+        [ span [ class "quick-list-card__stat-label" ] [ text "HP " ]
+        , span [ class "hp-display__current" ]
+            [ text (String.fromInt creature.currentHp) ]
+        , span [ class "hp-display__sep" ] [ text "/" ]
+        , span [ class "hp-display__max" ]
+            [ text (String.fromInt creature.maxHp) ]
+        , if creature.tempHp > 0 then
+            span
+                [ class "hp-display__temp"
+                , Tooltips.attr Tooltips.tempHp
+                ]
+                [ text ("+" ++ String.fromInt creature.tempHp) ]
 
-    else
-        text ""
+          else
+            text ""
+        ]
 
 
 bloodiedChip : Creature -> Html Msg

@@ -9181,9 +9181,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 */
 
 .workspace--quick-list {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 16px;
+  /* Left-justified, full-width: each creature row needs room to
+     fit on a single line, so don't clamp the wrapper.  The cards
+     themselves still wrap when the viewport gets too narrow. */
+  width: 100%;
+  margin: 0;
+  padding: 12px 16px;
+  box-sizing: border-box;
 }
 
 .panel--quick-list {
@@ -9273,14 +9277,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-right: 2px;
 }
 
-.quick-list-card__ac,
-.quick-list-card__hp {
+.quick-list-card__ac {
   font-weight: 600;
 }
 
-.quick-list-card__temp-hp {
-  color: var(--color-accent, var(--color-text-muted));
-  font-weight: 500;
+/* Override `.hp-display`'s default margin-right so the temp-HP
+   chip doesn't sit awkwardly far from the rest of the row when
+   the bloodied / condition chips trail right after. */
+.quick-list-card .hp-display {
+  margin-right: 0;
 }
 
 .quick-list-card__conditions {

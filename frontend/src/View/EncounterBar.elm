@@ -116,7 +116,7 @@ quickListLink =
         , Tooltips.attr Tooltips.quickListOpen
         , attribute "aria-label" "Open quick-list in new tab"
         ]
-        [ text "↗ Quick-List" ]
+        [ text "↗" ]
 
 
 xpReadout : Encounter -> CompendiumDb -> XpScope -> Html Msg
