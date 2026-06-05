@@ -3971,6 +3971,62 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.95rem;
 }
 
+/* Row-3 outline buttons (Ready, Reaction, Memo, Timer in their
+   empty states) inherit `--btn-bd: var(--color-border)` and a
+   muted foreground from the base rule.  Against both the light
+   Modern card surface and the dark Dark card surface, that
+   default produced a barely-visible outline.  Override the
+   border and foreground for these four button classes in each
+   theme so they read clearly. */
+:root:not([data-theme]) .creature-card .action-btn--ready,
+:root:not([data-theme]) .creature-card .action-btn--reaction,
+:root:not([data-theme]) .creature-card .action-btn--memo-empty,
+:root:not([data-theme]) .creature-card .action-btn--timer-empty,
+[data-theme="modern"] .creature-card .action-btn--ready,
+[data-theme="modern"] .creature-card .action-btn--reaction,
+[data-theme="modern"] .creature-card .action-btn--memo-empty,
+[data-theme="modern"] .creature-card .action-btn--timer-empty {
+  --btn-bd: #9ca3af; /* gray-400 — clearly visible on light card */
+  --btn-fg: var(--color-text);
+}
+
+[data-theme="dark"] .creature-card .action-btn--ready,
+[data-theme="dark"] .creature-card .action-btn--reaction,
+[data-theme="dark"] .creature-card .action-btn--memo-empty,
+[data-theme="dark"] .creature-card .action-btn--timer-empty {
+  --btn-bd: #6b7280; /* gray-500 — visible against dark card */
+  --btn-fg: var(--color-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] .creature-card .action-btn--ready,
+  [data-theme="auto"] .creature-card .action-btn--reaction,
+  [data-theme="auto"] .creature-card .action-btn--memo-empty,
+  [data-theme="auto"] .creature-card .action-btn--timer-empty {
+    --btn-bd: #6b7280;
+    --btn-fg: var(--color-text);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .creature-card .action-btn--ready,
+  [data-theme="auto"] .creature-card .action-btn--reaction,
+  [data-theme="auto"] .creature-card .action-btn--memo-empty,
+  [data-theme="auto"] .creature-card .action-btn--timer-empty {
+    --btn-bd: #9ca3af;
+    --btn-fg: var(--color-text);
+  }
+}
+
+/* Keep the orange reaction-unspent fg so the GM still reads
+   "this creature still has a reaction available" — only the
+   border darkens / lightens per-theme above. */
+:root:not([data-theme]) .creature-card .action-btn--reaction-ready,
+[data-theme="modern"] .creature-card .action-btn--reaction-ready,
+[data-theme="dark"] .creature-card .action-btn--reaction-ready {
+  --btn-fg: var(--color-warn, #d97706);
+}
+
 /* The memo / timer slots ship with both a glyph and a text
    label inside the button.  The text label is hidden by default
    so the glyph alone shows; the Accessible theme flips this
