@@ -19,6 +19,7 @@ operations are the same.
 -}
 
 import Encounter.Wire exposing (SavedEncounterMeta)
+import Msg exposing (LoadSource(..))
 
 
 {-| Loading state for the server-side save listing.
@@ -47,9 +48,16 @@ type alias RenameDraft =
 
 {-| Load-modal state. See `SaveUi` for field semantics — the
 two are deliberately parallel.
+
+`source` mirrors the Save modal's destination radio: Server
+(authenticated) or Browser (anonymous) maps to
+`LoadSourceServer`, the local file picker maps to
+`LoadSourceDevice`.
+
 -}
 type alias LoadUi =
-    { saves : LoadListState
+    { source : LoadSource
+    , saves : LoadListState
     , busy : Bool
     , error : Maybe String
     , confirm : Maybe ConfirmAction
@@ -59,7 +67,8 @@ type alias LoadUi =
 
 fresh : LoadUi
 fresh =
-    { saves = LoadsLoading
+    { source = LoadSourceServer
+    , saves = LoadsLoading
     , busy = False
     , error = Nothing
     , confirm = Nothing

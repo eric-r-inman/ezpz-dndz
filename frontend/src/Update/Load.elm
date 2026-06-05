@@ -16,6 +16,7 @@ module Update.Load exposing
     , renameStart
     , renameSubmit
     , serverResponse
+    , sourceSet
     )
 
 {-| Update branches for the Load modal.
@@ -88,6 +89,18 @@ localSavesMetas model =
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( { model | modal = Nothing }, Cmd.none )
+
+
+{-| Flip the source radio between Server / Device. Clears any
+inline error so a prior network message doesn't bleed across
+sources. The Server list is preloaded on `open` so no
+additional fetch is needed when the user flips back.
+-}
+sourceSet : Msg.LoadSource -> Model -> ( Model, Cmd Msg )
+sourceSet source model =
+    ( withLoadUi (\ui -> { ui | source = source, error = Nothing }) model
+    , Cmd.none
+    )
 
 
 listLoaded :

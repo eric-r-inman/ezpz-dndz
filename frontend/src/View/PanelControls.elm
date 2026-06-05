@@ -18,56 +18,10 @@ import Auth
 import Html exposing (Html, button, div, p, section, span, text)
 import Html.Attributes exposing (attribute, class, title)
 import Html.Events exposing (onClick)
-import Json.Decode as Decode
 import Model exposing (PendingControl(..))
 import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
 import View.Tooltips as Tooltips
-
-
-{-| Per-auth-state label for the Save dropdown's first item.
-Anonymous sessions write to this browser's localStorage, so the
-"server" terminology would be misleading. Authed sessions keep
-the server label.
--}
-saveToServerLabel : Auth.AuthState -> String
-saveToServerLabel auth =
-    case auth of
-        Auth.AuthAuthenticated _ ->
-            "To Server"
-
-        _ ->
-            "To Browser"
-
-
-saveToServerTooltip : Auth.AuthState -> String
-saveToServerTooltip auth =
-    case auth of
-        Auth.AuthAuthenticated _ ->
-            "Save this encounter to the server under a name you choose."
-
-        _ ->
-            "Save this encounter in this browser under a name you choose. Sign in to keep it across devices."
-
-
-loadFromServerLabel : Auth.AuthState -> String
-loadFromServerLabel auth =
-    case auth of
-        Auth.AuthAuthenticated _ ->
-            "From Server"
-
-        _ ->
-            "From Browser"
-
-
-loadFromServerTooltip : Auth.AuthState -> String
-loadFromServerTooltip auth =
-    case auth of
-        Auth.AuthAuthenticated _ ->
-            "Load a previously-saved encounter from the server."
-
-        _ ->
-            "Load a previously-saved encounter from this browser."
 
 
 view : Auth.AuthState -> DiceUi -> Maybe PendingControl -> Int -> Bool -> Maybe ControlMenu -> Html Msg
@@ -140,33 +94,29 @@ buttonGrid auth round rosterDirty controlMenu =
         ]
 
 
-{-| Save split-button + popover dropdown. The trigger toggles the
-popover; menu items dispatch `SaveOpen` with the chosen
-destination. The wrapper stops `mousedown` propagation so a click
-inside the menu doesn't bubble to the document-level
-"click-outside closes" handler in `Main.subscriptions`.
+{-| Save button. Single-click opens the Save modal which now
+carries the Server / Device radio pair (matching the Compendium
+Export pattern), so the previous split-button dropdown was
+redundant.
 
-`rosterDirty` lights the trigger yellow when the encounter has
-unsaved changes — same dirty-highlight behavior as the old plain
-Save button.
+`rosterDirty` lights the button yellow when the encounter has
+unsaved changes — same dirty-highlight behaviour as before.
+
+The default destination is `SaveDestinationServer` because that
+maps to the user's primary storage (server when authenticated,
+`localStorage` when anonymous); flipping to Device in the modal
+remains one click.
 
 -}
 saveMenu : Auth.AuthState -> Bool -> Bool -> Html Msg
-saveMenu auth rosterDirty isOpen =
+saveMenu _ rosterDirty _ =
     let
         triggerClass =
             if rosterDirty then
-                "action-btn action-btn--blue action-btn--dirty control-menu__trigger"
+                "action-btn action-btn--blue action-btn--dirty"
 
             else
-                "action-btn action-btn--blue control-menu__trigger"
-
-        wrapperClass =
-            if isOpen then
-                "control-menu control-menu--open"
-
-            else
-                "control-menu"
+                "action-btn action-btn--blue"
 
         triggerTitle =
             if rosterDirty then
@@ -175,106 +125,26 @@ saveMenu auth rosterDirty isOpen =
             else
                 Tooltips.saveButton
     in
-    div
-        [ class wrapperClass
-        , Html.Events.stopPropagationOn "mousedown"
-            (Decode.succeed ( NoOp, True ))
+    button
+        [ class triggerClass
+        , onClick (SaveOpen SaveDestinationServer)
+        , Tooltips.attr triggerTitle
         ]
-        [ button
-            [ class triggerClass
-            , onClick (ControlMenuToggle SaveControlMenu)
-            , Tooltips.attr triggerTitle
-            , attribute "aria-haspopup" "menu"
-            , attribute "aria-expanded"
-                (if isOpen then
-                    "true"
-
-                 else
-                    "false"
-                )
-            ]
-            [ text "💾 Save ▾" ]
-        , if isOpen then
-            div
-                [ class "control-menu__list"
-                , attribute "role" "menu"
-                ]
-                [ button
-                    [ class "control-menu__item"
-                    , onClick (SaveOpen SaveDestinationServer)
-                    , Tooltips.attr (saveToServerTooltip auth)
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text (saveToServerLabel auth) ]
-                , button
-                    [ class "control-menu__item"
-                    , onClick (SaveOpen SaveDestinationDevice)
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text "To Device" ]
-                ]
-
-          else
-            text ""
-        ]
+        [ text "💾 Save" ]
 
 
-{-| Load split-button + popover dropdown. Mirrors `saveMenu`.
-"From Server" opens the existing Load modal; "From Device"
-fires the file-picker (`LoadFromDeviceClick`).
+{-| Load button. Mirrors `saveMenu`: single click opens the
+Load modal whose own Server / Device radios cover what the
+old dropdown used to.
 -}
 loadMenu : Auth.AuthState -> Bool -> Html Msg
-loadMenu auth isOpen =
-    let
-        wrapperClass =
-            if isOpen then
-                "control-menu control-menu--open"
-
-            else
-                "control-menu"
-    in
-    div
-        [ class wrapperClass
-        , Html.Events.stopPropagationOn "mousedown"
-            (Decode.succeed ( NoOp, True ))
+loadMenu _ _ =
+    button
+        [ class "action-btn action-btn--blue"
+        , onClick LoadOpen
+        , Tooltips.attr Tooltips.loadButton
         ]
-        [ button
-            [ class "action-btn action-btn--blue control-menu__trigger"
-            , onClick (ControlMenuToggle LoadControlMenu)
-            , Tooltips.attr Tooltips.loadButton
-            , attribute "aria-haspopup" "menu"
-            , attribute "aria-expanded"
-                (if isOpen then
-                    "true"
-
-                 else
-                    "false"
-                )
-            ]
-            [ text "📁 Load ▾" ]
-        , if isOpen then
-            div
-                [ class "control-menu__list"
-                , attribute "role" "menu"
-                ]
-                [ button
-                    [ class "control-menu__item"
-                    , onClick LoadOpen
-                    , Tooltips.attr (loadFromServerTooltip auth)
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text (loadFromServerLabel auth) ]
-                , button
-                    [ class "control-menu__item"
-                    , onClick LoadFromDeviceClick
-                    , attribute "role" "menuitem"
-                    ]
-                    [ text "From Device" ]
-                ]
-
-          else
-            text ""
-        ]
+        [ text "📁 Load" ]
 
 
 {-| Round-0 is the pre-combat sentinel: the queue is set up but

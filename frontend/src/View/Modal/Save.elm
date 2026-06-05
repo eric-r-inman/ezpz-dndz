@@ -14,6 +14,7 @@ Renders nothing when the modal isn't open.
 
 -}
 
+import Auth
 import Encounter.Wire exposing (SavedEncounterMeta)
 import Html exposing (Html, button, div, input, label, li, p, span, text, ul)
 import Html.Attributes
@@ -55,7 +56,7 @@ view model =
                 , extraClass = "modal--save"
                 , chrome = model.modalChrome
                 , body =
-                    [ destinationSection ui
+                    [ destinationSection model.auth ui
                     , filenameSection ui
                     , confirmBanner ui
                     , errorBanner ui
@@ -68,13 +69,27 @@ view model =
             text ""
 
 
-destinationSection : SaveUi -> Html Msg
-destinationSection ui =
+{-| Server-destination label adapts to auth: authenticated users
+see "Server" (the canonical server path), anonymous users see
+"Browser" because their save lands in `localStorage` instead.
+Same `SaveDestinationServer` value either way — the submit
+handler in `Update.Save` picks the right backend.
+-}
+destinationSection : Auth.AuthState -> SaveUi -> Html Msg
+destinationSection auth ui =
+    let
+        serverLabel =
+            if Auth.isAuthenticated auth then
+                "Server"
+
+            else
+                "Browser"
+    in
     div [ class "save-modal__row save-modal__row--destination" ]
         [ label [ class "save-modal__label" ] [ text "Save to" ]
         , div [ class "save-modal__radio-group", attribute "role" "radiogroup" ]
-            [ destinationRadio ui SaveDestinationServer "Server" "save-dest-server"
-            , destinationRadio ui SaveDestinationDevice "Download" "save-dest-device"
+            [ destinationRadio ui SaveDestinationServer serverLabel "save-dest-server"
+            , destinationRadio ui SaveDestinationDevice "Device" "save-dest-device"
             ]
         ]
 
@@ -175,9 +190,13 @@ savesSection ui =
         SavesLoading ->
             div [ class "save-modal__list-empty" ] [ text "Loading saved encounters…" ]
 
-        SavesFailed err ->
+        SavesFailed _ ->
+            -- Per user request: never surface "Couldn't load saves:
+            -- ..." text.  A genuine network failure reads as
+            -- empty-state — the close-and-retry path is more useful
+            -- than a raw error string.
             div [ class "save-modal__list-empty" ]
-                [ text ("Couldn't load saves: " ++ err) ]
+                [ text "No saved encounters yet." ]
 
         SavesLoaded [] ->
             div [ class "save-modal__list-empty" ]
@@ -281,15 +300,11 @@ submitRow ui =
             , onClick SaveSubmit
             , disabled ui.busy
             ]
-            [ text
-                (case ui.destination of
-                    SaveDestinationServer ->
-                        "Save"
-
-                    SaveDestinationDevice ->
-                        "Download"
-                )
-            ]
+            -- Single "Save" label across both destinations
+            -- matches the Compendium modal pattern and reads
+            -- consistently with the Encounter-Controls "Save"
+            -- button that opened the modal.
+            [ text "Save" ]
         , button
             [ class "action-btn"
             , onClick SaveClose

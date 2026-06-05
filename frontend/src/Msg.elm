@@ -726,6 +726,7 @@ type Msg
     | SaveRenameResponse { from : String, to : String } (Result Http.Error ())
     | LoadOpen
     | LoadClose
+    | LoadSourceSet LoadSource
     | LoadFromServerRequested String
     | LoadConfirmCancel
     | LoadConfirmConfirm

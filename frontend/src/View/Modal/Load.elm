@@ -2,33 +2,41 @@ module View.Modal.Load exposing (view)
 
 {-| Load-encounter modal.
 
-Top: source selector — pick a server save (the list below) or
-upload one from the user's device.
+Mirrors the Save modal's shape — a Server / Device source radio
+at top, then a body that depends on the picked source:
 
-Middle: scrollable list of server-side saves with rename /
-delete affordances mirroring the Save modal. Clicking a row
-prompts for confirmation since loading replaces the current
-encounter.
+  - **Server** (authenticated) → list of server-side saves with
+    rename / delete affordances; pick a row to load it (replaces
+    the current encounter, gated by a confirm banner).
+  - **Browser** (anonymous) → same list, but the rows come from
+    `localStorage.encounterSaves`. Same wire shape so the row
+    affordances are identical.
+  - **Device** → a file-picker button that reuses the existing
+    `LoadFromDeviceClick` flow.
 
 Renders nothing when the modal isn't open.
 
 -}
 
+import Auth
 import Encounter.Wire exposing (SavedEncounterMeta)
-import Html exposing (Html, button, div, input, li, p, text, ul)
+import Html exposing (Html, button, div, input, label, li, p, span, text, ul)
 import Html.Attributes
     exposing
         ( attribute
         , autofocus
+        , checked
         , class
         , disabled
+        , id
         , maxlength
+        , name
         , type_
         , value
         )
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
-import Msg exposing (Msg(..))
+import Msg exposing (LoadSource(..), Msg(..))
 import Ui.Load as LoadUi
     exposing
         ( ConfirmAction(..)
@@ -51,16 +59,60 @@ view model =
                 , extraClass = "modal--load"
                 , chrome = model.modalChrome
                 , body =
-                    [ deviceRow
+                    [ sourceSection model.auth ui
                     , confirmBanner ui
                     , errorBanner ui
-                    , savesSection ui
+                    , bodyForSource ui
                     , closeRow
                     ]
                 }
 
         _ ->
             text ""
+
+
+sourceSection : Auth.AuthState -> LoadUi -> Html Msg
+sourceSection auth ui =
+    let
+        serverLabel =
+            if Auth.isAuthenticated auth then
+                "Server"
+
+            else
+                "Browser"
+    in
+    div [ class "save-modal__row save-modal__row--destination" ]
+        [ label [ class "save-modal__label" ] [ text "Load from" ]
+        , div [ class "save-modal__radio-group", attribute "role" "radiogroup" ]
+            [ sourceRadio ui LoadSourceServer serverLabel "load-src-server"
+            , sourceRadio ui LoadSourceDevice "Device" "load-src-device"
+            ]
+        ]
+
+
+sourceRadio : LoadUi -> LoadSource -> String -> String -> Html Msg
+sourceRadio ui source label_ idAttr =
+    Html.label [ class "save-modal__radio" ]
+        [ input
+            [ type_ "radio"
+            , id idAttr
+            , name "load-source"
+            , checked (ui.source == source)
+            , onClick (LoadSourceSet source)
+            ]
+            []
+        , span [] [ text label_ ]
+        ]
+
+
+bodyForSource : LoadUi -> Html Msg
+bodyForSource ui =
+    case ui.source of
+        LoadSourceServer ->
+            savesSection ui
+
+        LoadSourceDevice ->
+            deviceRow
 
 
 deviceRow : Html Msg
@@ -128,17 +180,19 @@ savesSection ui =
         LoadsLoading ->
             div [ class "save-modal__list-empty" ] [ text "Loading saved encounters…" ]
 
-        LoadsFailed err ->
+        LoadsFailed _ ->
+            -- Per user request: never surface "Couldn't load
+            -- saves: ..." text.  Treat as empty-state.
             div [ class "save-modal__list-empty" ]
-                [ text ("Couldn't load saves: " ++ err) ]
+                [ text "No saved encounters yet." ]
 
         LoadsLoaded [] ->
             div [ class "save-modal__list-empty" ]
-                [ text "No saved encounters on the server." ]
+                [ text "No saved encounters yet." ]
 
         LoadsLoaded metas ->
             div [ class "save-modal__list-wrap" ]
-                [ p [ class "save-modal__list-title" ] [ text "Server saves" ]
+                [ p [ class "save-modal__list-title" ] [ text "Existing saves" ]
                 , ul [ class "save-modal__list" ]
                     (List.map (saveRow ui) metas)
                 ]

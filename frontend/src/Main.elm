@@ -1858,6 +1858,9 @@ updateInner msg model =
         LoadClose ->
             Update.Load.close model
 
+        LoadSourceSet source ->
+            Update.Load.sourceSet source model
+
         LoadFromServerRequested name ->
             Update.Load.fromServerRequested name model
 
