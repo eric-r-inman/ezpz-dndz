@@ -2318,13 +2318,21 @@ way — anonymous users get the full app, they just persist to
 -}
 appShell : Maybe Auth.User -> Model -> List (Html Msg)
 appShell maybeUser model =
-    [ View.AppBar.view
-        { settingsOpen = model.settingsOpen
-        , theme = model.preferences.theme
-        , user = maybeUser
-        , useCustomCardLayout = model.useCustomCardLayout
-        , route = model.route
-        }
+    [ -- AppBar is suppressed on the standalone Quick-List
+      -- page — that tab is read-only and meant to be parked
+      -- on a second monitor, where the nav row would only
+      -- compete for vertical space against the queue rows.
+      if model.route == QuickList then
+        text ""
+
+      else
+        View.AppBar.view
+            { settingsOpen = model.settingsOpen
+            , theme = model.preferences.theme
+            , user = maybeUser
+            , useCustomCardLayout = model.useCustomCardLayout
+            , route = model.route
+            }
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.dice
     , View.Modal.HpChange.view model
