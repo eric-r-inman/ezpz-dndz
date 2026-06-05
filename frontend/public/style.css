@@ -9304,7 +9304,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .quick-list-card__line--secondary {
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  /* Full body-text color (not muted) so the status chips read
+     clearly under both Modern and Dark.  The `--text-muted`
+     fall-back rendered the row washed-out next to line 1. */
+  color: var(--color-text);
   padding-top: 4px;
   border-top: 1px dashed var(--color-border);
 }

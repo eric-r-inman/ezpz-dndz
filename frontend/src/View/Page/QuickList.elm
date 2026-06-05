@@ -105,8 +105,6 @@ lineOne creature =
             ]
         , pipe
         , hpDisplay creature
-        , bloodiedChip creature
-        , conditionsRow creature
         ]
 
 
@@ -155,29 +153,6 @@ hpDisplay creature =
         ]
 
 
-bloodiedChip : Creature -> Html Msg
-bloodiedChip creature =
-    if creature.bloodied then
-        span
-            [ class "quick-list-card__chip quick-list-card__chip--bloodied"
-            , Tooltips.attr Tooltips.bloodied
-            ]
-            [ text "🩸 Bloodied" ]
-
-    else
-        text ""
-
-
-conditionsRow : Creature -> Html Msg
-conditionsRow creature =
-    if List.isEmpty creature.conditions then
-        text ""
-
-    else
-        span [ class "quick-list-card__conditions" ]
-            (List.map conditionChip creature.conditions)
-
-
 conditionChip : Encounter.Condition -> Html Msg
 conditionChip cond =
     let
@@ -192,13 +167,30 @@ conditionChip cond =
         [ text body ]
 
 
-{-| Optional second line. Only rendered when at least one
-toggle / status is set so a totally idle creature collapses to a
-single line.
+{-| Optional second line. Hosts (in this order) the bloodied
+marker, condition / effect badges, and the per-creature
+toggle / status chips (cover, concentrating, hiding, dodging,
+flying, readied, memo, timer). Renders only when at least one
+of those is set so an idle creature stays a single line.
 -}
 lineTwo : Creature -> Html Msg
 lineTwo creature =
     let
+        bloodiedChips =
+            if creature.bloodied then
+                [ span
+                    [ class "quick-list-card__chip quick-list-card__chip--bloodied"
+                    , Tooltips.attr Tooltips.bloodied
+                    ]
+                    [ text "🩸 Bloodied" ]
+                ]
+
+            else
+                []
+
+        conditionChips =
+            List.map conditionChip creature.conditions
+
         coverChip =
             case creature.cover of
                 NoCover ->
@@ -278,7 +270,7 @@ lineTwo creature =
                 Nothing ->
                     []
 
-        chips =
+        statusChips =
             chip "quick-list-card__chip--cover" coverChip
                 ++ boolChip "quick-list-card__chip--concentrating" creature.concentrating "✨ Concentrating"
                 ++ boolChip "quick-list-card__chip--hiding" creature.hiding "👁\u{200D}🗨 Hiding"
@@ -287,6 +279,9 @@ lineTwo creature =
                 ++ boolChip "quick-list-card__chip--readied" creature.readied "✋ Ready"
                 ++ memoChip
                 ++ timerChip
+
+        chips =
+            bloodiedChips ++ conditionChips ++ statusChips
     in
     if List.isEmpty chips then
         text ""
