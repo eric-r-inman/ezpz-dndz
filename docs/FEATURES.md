@@ -155,6 +155,31 @@ The bar above the creature queue shows the abbreviated status of the active crea
 - *Lair XP note* — appears when one or more creatures has a different
   XP value in their lair.
 
+*** Quick-List view (↗ button)
+
+To the right of the Difficulty button is a small *↗* link that
+opens a standalone read-only view of the combat queue in a
+fresh browser tab.  Park it on a second monitor for a clean
+at-a-glance reference while you run the table.
+
+- Cards are sorted by initiative; the active creature gets the
+  same accent the main view uses, so "whose turn it is" is
+  obvious from across the room.
+- Each card is at most two lines:
+  - *Line 1* — initiative badge · name · (optional note) · AC ·
+    HP / Max HP (with the same green / muted-gray colors as the
+    main view).
+  - *Line 2* — only renders when something is on: bloodied,
+    condition / effect chips, then cover, concentrating,
+    hiding, dodging, flying (+height), readied, memo, timer.
+- Cards are read-only — no buttons, no chips you can click.
+- The page auto-updates as you mutate state in the main tab,
+  via a same-browser ~BroadcastChannel~ — no polling, no
+  server round-trip.  Works for both anonymous and authenticated
+  sessions, in whichever theme you've picked.
+- The AppBar is suppressed on this page so every pixel is queue
+  rows.
+
 ** Creature Cards
 
 Each creature in the queue is a card with up to five columns: a left
@@ -409,17 +434,60 @@ remembers full condition configurations under names you choose,
 so a "Bardic Inspiration" that auto-rolls a DC 12 save at end of
 turn (with a 10-char note) can be one click away forever.
 
-- *Save* — type a name, hit *Save*.  Stores the current
-  condition's name, custom name, note, duration mode, save-to-
-  end settings, and auto-roll mode under that label.
-- *Load ▾* — dropdown of every saved preset, sorted alphabetically
-  (case-insensitive).  Click a name to apply; the modal title
-  appends ~(loaded: <name>)~ until you change something.
-- *× per row* — delete a preset from the dropdown.
+- *Save* — type a name, pick a category from the dropdown, hit
+  *Save*.  Both fields are required; the Save button stays
+  disabled (with a tooltip explaining why) until both are set.
+  Stores the current condition's name, custom name, note,
+  duration mode, save-to-end settings, auto-roll mode, and the
+  picked category.
+- *Load ▾* — dropdown of every available preset.  Your own
+  saves render in a flat list at the top; below that the bundled
+  defaults appear in five collapsible categories — *Player
+  Classes* / *Spell Effects* / *Monster Abilities* / *Items* /
+  *Environment* — each starting collapsed with a parenthesised
+  count.  Within each section presets sort alphabetically,
+  case-insensitive.
+- *× per row* — delete one of your own presets.  Bundled
+  defaults are read-only; you can override them by saving your
+  own preset with the same name (yours wins).
 
-Presets persist to your browser's localStorage (anonymous and
-authenticated sessions both round-trip through it today).  They
-are not yet synced to the server.
+**** Bundled defaults
+
+A fresh visitor's Load menu ships pre-populated with ~60+ common
+SRD 5.2.1 effects across the five categories:
+
+- *Player Classes* — Stunning Strike, Trip Attack, Bardic
+  Inspiration (d6/d8), Bless, Hex, Hunter's Mark, Searing
+  Smite, Wrathful / Staggering Smite, Turn Undead, etc.
+- *Spell Effects* — Hold Person / Monster, Sleep, Charm
+  Person, Fear / Cause Fear, Hypnotic Pattern, Hideous
+  Laughter, Suggestion, Slow, Web, Entangle, Banishment,
+  Stinking Cloud, Greater Invisibility, Blindness, Faerie
+  Fire, Black Tentacles, etc.
+- *Monster Abilities* — Petrifying Gaze (Medusa), Mind Blast
+  (Mind Flayer), Frightful Presence (Dragon), Horrifying
+  Visage (Ghost), Paralyzing Touch (Ghoul), Vampire Charm,
+  Luring Song (Harpy), Web (Giant Spider), Tendril (Roper),
+  Sleep Ray (Beholder), Carrion Crawler Tentacles, Mummy Rot.
+- *Items* — Wand of Paralysis, Wand of Fear, Staff of
+  Charming, Potion of Invisibility / Heroism / Climbing /
+  Giant Strength, Dust of Sneezing & Choking, Dust of
+  Disappearance, Net.
+- *Environment* — Quicksand, Slippery Surface, Heavy
+  Obscurement, Drowning, On Fire, Extreme Cold / Heat, Pit
+  Trap.
+
+DCs default to SRD stat-block values; the GM tweaks per cast
+(dragon Frightful Presence scales by CR, Stunning Strike DC
+scales with the Monk's Wisdom, etc.).  The defaults seed on
+the very first boot (when no ~conditionPresets~ key exists in
+~localStorage~) and are otherwise always available as a
+read-only layer underneath your saved presets — deleting your
+own never removes a bundled default.
+
+User-saved presets persist to your browser's localStorage
+(anonymous and authenticated sessions both round-trip through it
+today).  They are not yet synced to the server.
 
 ** Death saves
 
@@ -677,13 +745,28 @@ snapshots of your entire compendium library.
 
 ** Import, Export, and Reset
 
-- *Export to File* — downloads the entire current compendium as a
-  JSON file.  Includes creatures and groups.
-- *Export Selected* — exports only the creatures you've selected.
-- *Import from File* — uploads a JSON file and replaces the entire
-  library (with confirmation).
+The Compendium toolbar carries plain single-click *📥 Import*,
+*📤 Export*, *↺ Reset*, and *🗑 Clear* buttons.  Import and
+Export both open modals that mirror the encounter Save / Load
+shape — Server / Device radio at top, body changes based on
+the picked option.
+
+- *Export* — opens the Save Compendium modal.  *Device* writes
+  a JSON file to your machine; *Server* writes a named snapshot
+  to your account.  Sign-in required for Server (an inline hint
+  explains; the Save button stays disabled until you flip to
+  Device or sign in).
+- *Import* — opens the Load Compendium modal.  *Device* opens
+  the file picker; *Server* lists your saved snapshots so you
+  can replace the live compendium with one of them.  Same
+  sign-in gating as Export.
+- *Import file errors* — if the file doesn't parse (an old
+  format from before a software update, etc.) a popup with a
+  single *OK* button explains the file may have compatibility
+  issues.  The current compendium isn't touched.
 - *Reset to bundled* — restores the small set of bundled example
   creatures and clears all groups.
+- *Clear* — splits into *Clear All* / *Clear Selected*.
 
 * CR Calculator
 
@@ -735,35 +818,62 @@ the widget set is filled out the entry points will come back.
 ** Saving
 
 Open the *Save* modal from the middle-pane *💾 Save* button.
+The button is a plain single-click affordance — no dropdown.
 
-- *Destination* — Server (persisted to your account) or Device
-  (browser file download).
-- *Filename* — required for server saves.  Device saves get a
-  date-stamped default.
-- *Existing saves* — listed underneath when saving to the server.
-  Each row can be renamed (pencil), overwritten (click the row),
-  or deleted (×).  Inline confirmation banners replace the buttons
-  while a destructive action is pending.
+- *Save to* — a Server / Device radio pair.  The Server label
+  reads "Server" when you're signed in and "Browser" when
+  anonymous (same destination value either way; anonymous saves
+  land in your browser's localStorage with a name, signed-in
+  saves go to the server).
+- *Filename* — required.  The text input gets autofocus when
+  the modal opens.
+- *Existing saves* — listed underneath when saving to Server (and
+  you're signed in).  Each row can be renamed (pencil),
+  overwritten (click the row), or deleted (×).  Inline
+  confirmation banners replace the buttons while a destructive
+  action is pending.
+- *Save button* — always reads *Save* (regardless of destination)
+  and stays disabled until a name is typed.
 
-Encounters auto-save their live state to the server on every change,
-so reopening the app picks up exactly where you left off — but those
-auto-saves overwrite each other.  Use *Save* to bookmark named
-snapshots you can return to (e.g. "Goblin ambush — round 0").
+The button face turns yellow when the encounter has unsaved
+roster changes since the last *Save* / *Load*.
+
+Encounters auto-save their live state to the server (signed in)
+or localStorage (anonymous) on every change, so reopening the
+app picks up exactly where you left off — but those auto-saves
+overwrite each other.  Use *Save* to bookmark named snapshots
+you can return to (e.g. "Goblin ambush — round 0").
 
 ** Loading
 
-Open the *Load* modal from the middle-pane *📂 Load* button.
+Open the *Load* modal from the middle-pane *📂 Load* button —
+also a plain single-click button.
 
+- *Load from* — a Server / Device radio pair mirroring the Save
+  modal.  Server (or "Browser" when anonymous) shows the list
+  of saved encounters; Device shows the file-picker for a
+  JSON snapshot.
+- *Server saves list* — every saved encounter on your account
+  (or in this browser, anonymous).  Click a row to load it (with
+  confirmation), use the pencil to rename, the × to delete.
 - *Choose file…* — picks a JSON file from your device.  After
   selection, a confirmation banner explains that loading replaces
   the current encounter.
-- *Server saves list* — every saved encounter on your account.
-  Click a row to load it (with confirmation), use the pencil to
-  rename it, or the × to delete it.
 
-Loading any encounter forces the round counter back to 1 — the round
-state is part of the snapshot, so a save made on round 5 reloads at
-round 5; only *Reset* and *Clear* alter the round outside of a load.
+Loading any encounter forces the round counter back to 0 — the
+round state is part of the snapshot, so a save made on round 5
+reloads at round 5; only *Reset* and *Clear* alter the round
+outside of a load.
+
+** Signing in mid-build (anonymous → authenticated)
+
+If you've been building an encounter as an anonymous user and
+then sign in, the encounter you were just working on stays as
+the live one — it's *not* replaced by the server's last-active
+save.  Your in-progress work is also pushed to the server as
+the new current active so a second device picks it up on next
+load.  The pre-sign-in state is additionally archived to your
+account under *Local — <today>* as a safety net.
 
 * The Account page
 
