@@ -2342,7 +2342,6 @@ appShell maybeUser model =
             , user = maybeUser
             , useCustomCardLayout = model.useCustomCardLayout
             , route = model.route
-            , recordingState = model.recordingState
             }
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.dice

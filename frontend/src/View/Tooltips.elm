@@ -96,7 +96,6 @@ module View.Tooltips exposing
     , nextTurn
     , noteAdd
     , noteEdit
-    , panelCrCalculator
     , panelOpenCompendium
     , panelStatBlockNewWindow
     , queueDuplicate
@@ -623,11 +622,6 @@ timerCancel =
 panelOpenCompendium : String
 panelOpenCompendium =
     "Open Creature Compendium"
-
-
-panelCrCalculator : String
-panelCrCalculator =
-    "CR Calculator (not yet available)"
 
 
 panelStatBlockNewWindow : String

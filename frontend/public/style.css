@@ -1275,65 +1275,46 @@ body {
 }
 
 /* Session recorder button — the first plugin's UI surface.
-   Sits in the nav row, neutral when idle, red + pulsing
-   while actively capturing audio, muted while preparing or
-   uploading.  Disabled state (anonymous user) reads as a
-   muted neutral button with a tooltip nudge.  Cycle:
-   Idle (🎙 Record) → Preparing → Active (⏺ Stop · mm:ss)
-   → Uploading → Idle. */
-.app-bar__record {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.85rem;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.app-bar__record:hover:not(:disabled) {
-  color: var(--color-text);
-  background: var(--color-surface-2);
-}
-
-.app-bar__record--active {
-  color: white;
+   Lives in the Compendium panel toolbar (replacing the old
+   `⚔️ CR Calculator` slot, which is reachable via the
+   *Difficulty* button in the encounter title bar).  Reuses
+   the `.action-btn--blue` base for an idle look that matches
+   the sibling `📖 Open` button; the modifiers below paint
+   the active / preparing / uploading / failed states. */
+.action-btn--record-active {
   background: #dc2626; /* red-600 */
   border-color: #dc2626;
-  animation: app-bar-record-pulse 1.4s ease-in-out infinite;
+  color: white;
+  font-variant-numeric: tabular-nums;
+  animation: action-btn-record-pulse 1.4s ease-in-out infinite;
 }
 
-.app-bar__record--active:hover {
+.action-btn--record-active:hover {
   background: #b91c1c; /* red-700 */
   border-color: #b91c1c;
   color: white;
 }
 
-.app-bar__record--preparing,
-.app-bar__record--uploading {
-  color: var(--color-text);
+.action-btn--record-preparing,
+.action-btn--record-uploading {
   border-color: var(--color-accent, var(--color-border));
 }
 
-.app-bar__record--failed {
+.action-btn--record-failed {
   border-color: var(--color-danger, #ef4444);
   color: var(--color-danger, #ef4444);
 }
 
-.app-bar__record--disabled,
-.app-bar__record:disabled {
+.action-btn--record-disabled,
+.action-btn--blue.action-btn--record-disabled:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-@keyframes app-bar-record-pulse {
+@keyframes action-btn-record-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45);
   }
   50% {
     box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
@@ -1341,7 +1322,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-bar__record--active {
+  .action-btn--record-active {
     animation: none;
   }
 }

@@ -23,14 +23,16 @@ The stat-block area has four states (in priority order):
 
 -}
 
+import Auth
 import Compendium
 import Encounter.Roster
 import Html exposing (Html, a, button, div, p, section, text)
-import Html.Attributes as Attr exposing (attribute, class, href, target, title)
+import Html.Attributes as Attr exposing (attribute, class, href, target, title, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model, PanelPin)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
+import Ui.Recording exposing (RecordingState(..))
 import View.StatBlock
 import View.Tooltips as Tooltips
 
@@ -48,16 +50,113 @@ view model =
                     , Tooltips.attr Tooltips.panelOpenCompendium
                     ]
                     [ text "📖 Open" ]
-                , button
-                    [ class "action-btn action-btn--blue"
-                    , onClick CrCalculatorOpen
-                    , Tooltips.attr Tooltips.panelCrCalculator
-                    ]
-                    [ text "⚔️ CR Calculator" ]
+                , recordButton (Auth.isAuthenticated model.auth) model.recordingState
                 ]
             , statBlock model
             ]
         ]
+
+
+{-| Session-recorder button (the first plugin's UI surface).
+Replaces the old `⚔️ CR Calculator` slot in this panel because
+the CR Calculator is already reachable via the _Difficulty_
+button in the encounter title bar.
+
+Cycles `🎙 Record → ⏺ Stop · mm:ss → ⏳ Uploading…`. Disabled
+when the user is anonymous because the upload endpoint is
+auth-gated; the tooltip explains why.
+
+-}
+recordButton : Bool -> RecordingState -> Html Msg
+recordButton signedIn state =
+    let
+        ( label_, modifier, disabledNow ) =
+            case ( signedIn, state ) of
+                ( False, _ ) ->
+                    ( "🎙 Record"
+                    , " action-btn--record-disabled"
+                    , True
+                    )
+
+                ( True, RecordingIdle ) ->
+                    ( "🎙 Record", "", False )
+
+                ( True, RecordingPreparing ) ->
+                    ( "⏳ Preparing…"
+                    , " action-btn--record-preparing"
+                    , True
+                    )
+
+                ( True, RecordingActive { elapsedMs } ) ->
+                    ( "⏺ Stop · " ++ formatElapsed elapsedMs
+                    , " action-btn--record-active"
+                    , False
+                    )
+
+                ( True, RecordingUploading ) ->
+                    ( "⏳ Uploading…"
+                    , " action-btn--record-uploading"
+                    , True
+                    )
+
+                ( True, RecordingFailed _ ) ->
+                    ( "🎙 Record"
+                    , " action-btn--record-failed"
+                    , False
+                    )
+
+        tooltip =
+            if not signedIn then
+                "Sign in to record sessions"
+
+            else
+                case state of
+                    RecordingIdle ->
+                        "Start recording this session"
+
+                    RecordingPreparing ->
+                        "Waiting for microphone permission"
+
+                    RecordingActive _ ->
+                        "Stop recording and upload"
+
+                    RecordingUploading ->
+                        "Uploading recording…"
+
+                    RecordingFailed reason ->
+                        "Last attempt failed: " ++ reason ++ " — click to retry"
+    in
+    button
+        [ class ("action-btn action-btn--blue" ++ modifier)
+        , type_ "button"
+        , Attr.disabled disabledNow
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
+        , onClick RecordingToggleClicked
+        ]
+        [ text label_ ]
+
+
+formatElapsed : Int -> String
+formatElapsed elapsedMs =
+    let
+        totalSec =
+            elapsedMs // 1000
+
+        mins =
+            totalSec // 60
+
+        secs =
+            modBy 60 totalSec
+
+        pad n =
+            if n < 10 then
+                "0" ++ String.fromInt n
+
+            else
+                String.fromInt n
+    in
+    pad mins ++ ":" ++ pad secs
 
 
 statBlock : Model -> Html Msg
