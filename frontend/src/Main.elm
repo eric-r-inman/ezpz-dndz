@@ -72,6 +72,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
+import Ui.Recording
 import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
@@ -102,6 +103,7 @@ import Update.Note
 import Update.PlaceholderRename
 import Update.Preferences
 import Update.QuickAdd
+import Update.Recording
 import Update.Save
 import Update.SaveCompendium
 import Update.Shell
@@ -324,6 +326,7 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
+            :: Ports.recordingState RecordingStateReceived
             :: xpFilterSubs
             ++ settingsSubs
             ++ clearMenuSubs
@@ -526,6 +529,7 @@ init flags url key =
       , rollPopups = []
       , nextRollPopupId = 0
       , preferences = prefs
+      , recordingState = Ui.Recording.fresh
       , cardLayout = Card.Layout.defaultLayout
       , queueView = Card.Layout.ListView
       , savedCardLayouts = []
@@ -1082,6 +1086,12 @@ updateInner msg model =
 
         EncounterFromOtherTab raw ->
             encounterFromOtherTab raw model
+
+        RecordingToggleClicked ->
+            Update.Recording.toggleClicked model
+
+        RecordingStateReceived raw ->
+            Update.Recording.stateReceived raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -2332,6 +2342,7 @@ appShell maybeUser model =
             , user = maybeUser
             , useCustomCardLayout = model.useCustomCardLayout
             , route = model.route
+            , recordingState = model.recordingState
             }
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.dice

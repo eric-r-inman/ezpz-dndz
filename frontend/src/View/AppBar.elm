@@ -42,6 +42,7 @@ import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (MeStatus(..), Msg(..), Theme(..))
 import Route exposing (Route(..))
+import Ui.Recording exposing (RecordingState(..))
 import View.Tooltips as Tooltips
 
 
@@ -51,6 +52,7 @@ view :
     , user : Maybe Auth.User
     , useCustomCardLayout : Bool
     , route : Route
+    , recordingState : RecordingState
     }
     -> Html Msg
 view cfg =
@@ -76,6 +78,7 @@ view cfg =
               -- into noise.  Settings (⚙) keeps its tooltip
               -- because it's icon-only.
               a [ href "/" ] [ text "Encounter" ]
+            , recordButton cfg.user cfg.recordingState
 
             -- Customize-card feature hidden for launch.  The
             -- supporting modules (`Card.Layout`, `View.Card.Custom`,
@@ -274,6 +277,109 @@ themeRadio current value labelText badge =
           else
             span [ class "app-settings__radio-badge" ] [ text (" " ++ badge) ]
         ]
+
+
+{-| Session-recorder button (the first plugin's UI surface).
+Cycles `🎙 Record → ⏺ Stop · mm:ss → ⏳ Uploading…`. Disabled
+when the user is anonymous because the upload endpoint is
+auth-gated; the tooltip explains why.
+-}
+recordButton : Maybe Auth.User -> RecordingState -> Html Msg
+recordButton maybeUser state =
+    let
+        signedIn =
+            maybeUser /= Nothing
+
+        ( label_, cls, disabledNow ) =
+            case ( signedIn, state ) of
+                ( False, _ ) ->
+                    ( "🎙 Record"
+                    , "app-bar__record app-bar__record--disabled"
+                    , True
+                    )
+
+                ( True, RecordingIdle ) ->
+                    ( "🎙 Record"
+                    , "app-bar__record"
+                    , False
+                    )
+
+                ( True, RecordingPreparing ) ->
+                    ( "⏳ Preparing…"
+                    , "app-bar__record app-bar__record--preparing"
+                    , True
+                    )
+
+                ( True, RecordingActive { elapsedMs } ) ->
+                    ( "⏺ Stop · " ++ formatElapsed elapsedMs
+                    , "app-bar__record app-bar__record--active"
+                    , False
+                    )
+
+                ( True, RecordingUploading ) ->
+                    ( "⏳ Uploading…"
+                    , "app-bar__record app-bar__record--uploading"
+                    , True
+                    )
+
+                ( True, RecordingFailed _ ) ->
+                    ( "🎙 Record"
+                    , "app-bar__record app-bar__record--failed"
+                    , False
+                    )
+
+        tooltip =
+            if not signedIn then
+                "Sign in to record sessions"
+
+            else
+                case state of
+                    RecordingIdle ->
+                        "Start recording this session"
+
+                    RecordingPreparing ->
+                        "Waiting for microphone permission"
+
+                    RecordingActive _ ->
+                        "Stop recording and upload"
+
+                    RecordingUploading ->
+                        "Uploading recording…"
+
+                    RecordingFailed reason ->
+                        "Last attempt failed: " ++ reason ++ " — click to retry"
+    in
+    button
+        [ class cls
+        , type_ "button"
+        , Attr.disabled disabledNow
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
+        , onClick RecordingToggleClicked
+        ]
+        [ text label_ ]
+
+
+formatElapsed : Int -> String
+formatElapsed elapsedMs =
+    let
+        totalSec =
+            elapsedMs // 1000
+
+        mins =
+            totalSec // 60
+
+        secs =
+            modBy 60 totalSec
+
+        pad n =
+            if n < 10 then
+                "0" ++ String.fromInt n
+
+            else
+                String.fromInt n
+    in
+    pad mins ++ ":" ++ pad secs
 
 
 me : MeStatus -> Html Msg

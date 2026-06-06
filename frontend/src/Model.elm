@@ -68,6 +68,7 @@ import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
+import Ui.Recording exposing (RecordingState)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
@@ -408,6 +409,11 @@ type alias Model =
     , rollPopups : List RollPopup
     , nextRollPopupId : Int
     , preferences : Preferences
+
+    -- Session recorder plugin state.  Idle when no recording is
+    -- in flight; the AppBar button toggles through Preparing /
+    -- Active / Uploading.  See [`Ui.Recording`](Ui-Recording).
+    , recordingState : RecordingState
 
     -- Live creature-card layout + queue arrangement.  Bootstraps
     -- from the bundled default; the boot fetch of `/api/card-layouts`

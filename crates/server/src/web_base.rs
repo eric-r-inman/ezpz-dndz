@@ -31,6 +31,8 @@ pub struct AppState {
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
+  #[cfg(feature = "recording")]
+  pub recording_store: crate::recording::RecordingStore,
 }
 
 impl_server_state!(AppState, base);
@@ -51,6 +53,10 @@ pub enum AppStateError {
 
   #[error("Failed to load user store: {0}")]
   UserStoreLoad(#[source] ezpz_dndz_lib::users::UserStoreError),
+
+  #[cfg(feature = "recording")]
+  #[error("Failed to open recording store: {0}")]
+  RecordingStoreLoad(#[source] crate::recording::RecordingStoreError),
 }
 
 impl AppState {
@@ -98,6 +104,12 @@ impl AppState {
       .await
       .map_err(AppStateError::UserStoreLoad)?;
 
+    #[cfg(feature = "recording")]
+    let recording_store =
+      crate::recording::RecordingStore::open(paths.recordings.clone())
+        .await
+        .map_err(AppStateError::RecordingStoreLoad)?;
+
     Ok(Self {
       base,
       dice_store,
@@ -108,6 +120,8 @@ impl AppState {
       encounter_store,
       encounter_saves,
       user_store: Arc::new(user_store),
+      #[cfg(feature = "recording")]
+      recording_store,
     })
   }
 }

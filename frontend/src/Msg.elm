@@ -393,6 +393,12 @@ type Msg
       -- the receiving handler decodes and replaces
       -- `model.encounter` in place.  No re-broadcast.
     | EncounterFromOtherTab Decode.Value
+      -- Session recorder (the first plugin).  The button in the
+      -- AppBar fires `RecordingToggleClicked`; the JS side
+      -- responds via `Ports.recordingState` with state-change
+      -- payloads that land here as `RecordingStateReceived`.
+    | RecordingToggleClicked
+    | RecordingStateReceived Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())

@@ -4,5 +4,7 @@ pub mod config;
 pub mod dice;
 pub mod encounters;
 pub mod prefs;
+#[cfg(feature = "recording")]
+pub mod recording;
 pub mod users;
 pub mod web_base;

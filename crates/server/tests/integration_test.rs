@@ -43,6 +43,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     encounter: temp.path().join("encounter.json"),
     encounter_saves: temp.path().join("encounter-saves.json"),
     users: temp.path().join("users.json"),
+    recordings: temp.path().join("recordings"),
   };
 
   let run_config = ServerRunConfig {

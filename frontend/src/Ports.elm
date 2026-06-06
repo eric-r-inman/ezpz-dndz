@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets, recordingState, startRecording, stopRecording
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -191,3 +191,25 @@ tab decodes the payload and replaces its own
 `model.encounter` — no persist, no re-broadcast.
 -}
 port incomingEncounter : (D.Value -> msg) -> Sub msg
+
+
+{-| Ask the JS side to start the session recorder. JS handles
+the `getUserMedia` prompt + `MediaRecorder` lifecycle and
+notifies Elm of every state change via
+[`recordingState`](#recordingState).
+-}
+port startRecording : () -> Cmd msg
+
+
+{-| Ask the JS side to stop the active session recorder + upload
+the resulting blob to `POST /api/recording/upload`.
+-}
+port stopRecording : () -> Cmd msg
+
+
+{-| Subscription for recorder state changes. Payload is a small
+discriminated-union object with a `state` field — see
+`Update.Recording.stateChanged` for the wire shape and the
+decoded ADT.
+-}
+port recordingState : (D.Value -> msg) -> Sub msg

@@ -15,6 +15,17 @@ path = "src/lib.rs"
 name = "ezpz-dndz-server"
 path = "src/main.rs"
 
+[features]
+# The first plugin: in-process session recorder.  Default-on so
+# `cargo build` ships the full app; build with
+# `--no-default-features` to drop the recording routes, the
+# `RecordingStore` field on `AppState`, and the `axum/multipart`
+# cost.  Future plugins (transcription, etc.) follow the same
+# template: a feature flag here gating a module under
+# `crates/server/src/<plugin>/`.
+default = ["recording"]
+recording = ["axum/multipart"]
+
 [dependencies]
 rust-template-foundation = { workspace = true, features = ["auth"] }
 ezpz-dndz-lib = { workspace = true }

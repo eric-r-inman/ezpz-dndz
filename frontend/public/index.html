@@ -384,6 +384,176 @@
         app.ports.broadcastEncounter.subscribe(function () {});
       }
 
+      // Session recorder plugin — JS side.
+      //
+      // Owns the `getUserMedia` prompt, the `MediaRecorder`
+      // lifecycle, an `elapsedMs` ticker for the AppBar button,
+      // and the multipart upload to `POST /api/recording/upload`.
+      // Every state transition emits a small JSON message back
+      // to Elm via `Ports.recordingState`; Elm decodes and
+      // mutates `model.recordingState`.
+      //
+      // The recorder uses Opus/WebM (the default `MediaRecorder`
+      // MIME on every browser that supports the API).  Auth
+      // gating happens both client-side (Elm disables the button
+      // when anonymous) and server-side (the upload endpoint is
+      // behind `require_auth`).
+      var recorder = null;          // active MediaRecorder
+      var recorderChunks = [];      // collected Blob parts
+      var recorderStartedAt = 0;    // performance.now() at start
+      var recorderTickHandle = null;
+      var recorderStream = null;    // MediaStream, kept alive to release on stop
+
+      function emitRecording(payload) {
+        if (app.ports && app.ports.recordingState) {
+          try {
+            app.ports.recordingState.send(payload);
+          } catch (_) {}
+        }
+      }
+
+      function clearRecorder() {
+        if (recorderTickHandle) {
+          clearInterval(recorderTickHandle);
+          recorderTickHandle = null;
+        }
+        if (recorderStream) {
+          recorderStream.getTracks().forEach(function (t) {
+            try { t.stop(); } catch (_) {}
+          });
+          recorderStream = null;
+        }
+        recorder = null;
+        recorderChunks = [];
+        recorderStartedAt = 0;
+      }
+
+      if (app.ports && app.ports.startRecording) {
+        app.ports.startRecording.subscribe(function () {
+          if (recorder) {
+            // Already recording — Elm shouldn't fire this, but
+            // be defensive and ignore.
+            return;
+          }
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            emitRecording({
+              state: "error",
+              message: "Microphone API not available in this browser",
+            });
+            return;
+          }
+          emitRecording({ state: "preparing" });
+          navigator.mediaDevices
+            .getUserMedia({ audio: true })
+            .then(function (stream) {
+              recorderStream = stream;
+              try {
+                recorder = new MediaRecorder(stream);
+              } catch (e) {
+                clearRecorder();
+                emitRecording({
+                  state: "error",
+                  message: "MediaRecorder unsupported: " + e.message,
+                });
+                return;
+              }
+              recorderChunks = [];
+              recorder.ondataavailable = function (event) {
+                if (event.data && event.data.size > 0) {
+                  recorderChunks.push(event.data);
+                }
+              };
+              recorder.onstop = function () {
+                var mime = recorder.mimeType || "audio/webm";
+                var blob = new Blob(recorderChunks, { type: mime });
+                clearRecorder();
+                emitRecording({ state: "uploading" });
+
+                var form = new FormData();
+                form.append("audio", blob, "session.webm");
+                fetch("/api/recording/upload", {
+                  method: "POST",
+                  body: form,
+                  credentials: "same-origin",
+                })
+                  .then(function (res) {
+                    if (!res.ok) {
+                      throw new Error("HTTP " + res.status);
+                    }
+                    return res.json();
+                  })
+                  .then(function (meta) {
+                    emitRecording({ state: "done", meta: meta });
+                  })
+                  .catch(function (err) {
+                    emitRecording({
+                      state: "error",
+                      message: "Upload failed: " + (err && err.message ? err.message : err),
+                    });
+                  });
+              };
+              recorder.onerror = function (event) {
+                var msg = "MediaRecorder error";
+                if (event && event.error && event.error.name) {
+                  msg += ": " + event.error.name;
+                }
+                clearRecorder();
+                emitRecording({ state: "error", message: msg });
+              };
+
+              recorderStartedAt = (performance && performance.now)
+                ? performance.now()
+                : Date.now();
+              recorder.start();
+              emitRecording({ state: "recording", elapsedMs: 0 });
+
+              recorderTickHandle = setInterval(function () {
+                if (!recorder) {
+                  return;
+                }
+                var now = (performance && performance.now)
+                  ? performance.now()
+                  : Date.now();
+                emitRecording({
+                  state: "recording",
+                  elapsedMs: Math.round(now - recorderStartedAt),
+                });
+              }, 1000);
+            })
+            .catch(function (err) {
+              clearRecorder();
+              emitRecording({
+                state: "error",
+                message:
+                  err && err.name === "NotAllowedError"
+                    ? "Microphone permission denied"
+                    : "Could not access microphone: " + (err && err.message ? err.message : err),
+              });
+            });
+        });
+      }
+
+      if (app.ports && app.ports.stopRecording) {
+        app.ports.stopRecording.subscribe(function () {
+          if (!recorder) {
+            return;
+          }
+          if (recorderTickHandle) {
+            clearInterval(recorderTickHandle);
+            recorderTickHandle = null;
+          }
+          try {
+            recorder.stop();
+          } catch (e) {
+            clearRecorder();
+            emitRecording({
+              state: "error",
+              message: "Stop failed: " + e.message,
+            });
+          }
+        });
+      }
+
       // Anonymous named card-layout saves dict writer + eraser.
       if (app.ports && app.ports.persistLocalCardLayoutSaves) {
         app.ports.persistLocalCardLayoutSaves.subscribe(function (value) {

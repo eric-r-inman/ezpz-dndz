@@ -80,6 +80,15 @@ pub struct ExtraCliFields {
   /// Defaults to `<data_dir>/users.json`.
   #[arg(long, env = "ezpz_dndz_users_path")]
   pub users_path: Option<PathBuf>,
+
+  /// Directory under which the session-recorder plugin stores
+  /// per-user audio files + the recordings index.  Defaults to
+  /// `<data_dir>/recordings/`.  Always present so the resolved
+  /// `RuntimePaths` shape doesn't change with the `recording`
+  /// cargo feature — the path is just unused when the feature
+  /// is off.
+  #[arg(long, env = "ezpz_dndz_recordings_dir")]
+  pub recordings_dir: Option<PathBuf>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -96,6 +105,7 @@ pub struct ExtraFileFields {
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
+  pub recordings_dir: Option<PathBuf>,
 }
 
 /// Concrete on-disk locations for the per-store JSON files,
@@ -110,6 +120,7 @@ pub struct RuntimePaths {
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
   pub users: PathBuf,
+  pub recordings: PathBuf,
 }
 
 #[derive(Debug, Clone, MergeConfig)]
@@ -222,6 +233,11 @@ impl Config {
         cli.extra.users_path.as_ref(),
         file.extra.users_path.as_ref(),
         "users.json",
+      ),
+      recordings: pick(
+        cli.extra.recordings_dir.as_ref(),
+        file.extra.recordings_dir.as_ref(),
+        "recordings",
       ),
     })
   }

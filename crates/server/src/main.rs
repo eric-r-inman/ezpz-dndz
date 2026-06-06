@@ -48,12 +48,18 @@ pub async fn main(
   // extension for the handler.  The /api/auth/* endpoints
   // (registration / login / logout / me) merge in unwrapped so an
   // unauthenticated client can use them to obtain a session.
-  let protected: ApiRouter<AppState> = ApiRouter::new()
-    .merge(dice::router())
-    .merge(compendium::router())
-    .merge(card_editor::router())
-    .merge(encounters::router())
-    .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
+  let protected: ApiRouter<AppState> = {
+    let r = ApiRouter::new()
+      .merge(dice::router())
+      .merge(compendium::router())
+      .merge(card_editor::router())
+      .merge(encounters::router());
+
+    #[cfg(feature = "recording")]
+    let r = r.merge(ezpz_dndz_server::recording::router());
+
+    r.layer(middleware::from_fn_with_state(auth_state, users::require_auth))
+  };
 
   let server = server
     .with_state(move |_base| app_state)
