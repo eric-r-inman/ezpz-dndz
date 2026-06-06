@@ -83,13 +83,13 @@ recordButton signedIn state =
         ( label_, modifier, disabledNow ) =
             case ( signedIn, state ) of
                 ( False, _ ) ->
-                    ( "🎙 Recordings"
+                    ( "🎙 Recording Tool"
                     , " action-btn--record-disabled"
                     , True
                     )
 
                 ( True, RecordingIdle ) ->
-                    ( "🎙 Recordings", "", False )
+                    ( "🎙 Recording Tool", "", False )
 
                 ( True, RecordingPreparing ) ->
                     ( "⏳ Preparing…"
@@ -110,7 +110,7 @@ recordButton signedIn state =
                     )
 
                 ( True, RecordingFailed _ ) ->
-                    ( "🎙 Recordings"
+                    ( "🎙 Recording Tool"
                     , " action-btn--record-failed"
                     , False
                     )
@@ -122,7 +122,7 @@ recordButton signedIn state =
             else
                 case state of
                     RecordingIdle ->
-                        "Open the Recordings panel"
+                        "Open the Recording Tool"
 
                     RecordingPreparing ->
                         "Waiting for microphone permission"
