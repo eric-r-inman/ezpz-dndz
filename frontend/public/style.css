@@ -1327,6 +1327,141 @@ body {
   }
 }
 
+/* ── Recordings modal ────────────────────────────────────────
+   Modal showing the big "Record session" button + a list of
+   saved recordings.  Reuses `.save-modal__*` scaffolding from
+   the Save / Load modals for the list rows and confirm banner,
+   adding only the hero band + per-row layout below. */
+
+.recordings__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+}
+
+.recordings__hero-btn {
+  appearance: none;
+  background: transparent;
+  border: 2px solid #dc2626; /* red-600 */
+  color: #dc2626;
+  font: inherit;
+  font-weight: 600;
+  font-size: 1.05rem;
+  padding: 12px 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  min-width: 240px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.recordings__hero-btn:hover:not(:disabled) {
+  background: #dc2626;
+  color: white;
+}
+
+.recordings__hero-btn--active {
+  background: #dc2626;
+  color: white;
+  animation: action-btn-record-pulse 1.4s ease-in-out infinite;
+}
+
+.recordings__hero-btn--active:hover {
+  background: #b91c1c; /* red-700 */
+  border-color: #b91c1c;
+  color: white;
+}
+
+.recordings__hero-btn--busy,
+.recordings__hero-btn--failed {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-muted);
+}
+
+.recordings__hero-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.recordings__hero-caption {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.recordings__hero-hint {
+  margin: 0;
+  padding: 12px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.recordings__list {
+  /* Recording rows are taller than encounter-save rows because
+     they carry a filename + date/size on a second line — give
+     them room to breathe. */
+  gap: 4px;
+}
+
+.recordings__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.recordings__row-text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.recordings__row-name {
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recordings__row-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.recordings__row-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.recordings__row-actions a.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recordings__hero-btn--active {
+    animation: none;
+  }
+}
+
 .app-bar__logout {
   appearance: none;
   background: transparent;

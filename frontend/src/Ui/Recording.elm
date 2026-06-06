@@ -1,29 +1,31 @@
 module Ui.Recording exposing
-    ( RecordingMeta, RecordingState(..)
-    , decodeMeta
-    , fresh
+    ( RecordingState(..), RecordingMeta
+    , RecordingsUi, RecordingsListState(..), ConfirmAction(..)
+    , freshState, freshRecordings, decodeMeta
+    , listCmd, deleteCmd
     )
 
-{-| Session recorder UI state.
+{-| Session recorder UI state — both the per-frame "is there a
+recording in flight" pulse on the toolbar button, and the modal
+that lists / downloads / deletes past recordings.
 
-The recorder is intentionally tiny: one button in the AppBar that
-cycles through `RecordingIdle` → `RecordingPreparing` →
-`RecordingActive` → `RecordingUploading` → `RecordingIdle`. All
-state lives on the model — there's no modal, no list view yet
-(see `View.Modal.Recording` and `Update.Recording` for the v0.5
-expansion).
+The two pieces live in this module together because they share
+the wire shape (`RecordingMeta`) and the typical user flow goes
+button → modal → list → record / download / delete and back.
 
-The audio capture itself happens in JS via `MediaRecorder`. Elm
-fires `Ports.startRecording` / `Ports.stopRecording` and listens
-for state-change messages on `Ports.recordingState`.
-
-@docs RecordingMeta, RecordingState
-@docs decodeMeta
-@docs fresh
+@docs RecordingState, RecordingMeta
+@docs RecordingsUi, RecordingsListState, ConfirmAction
+@docs freshState, freshRecordings, decodeMeta
+@docs listCmd, deleteCmd
 
 -}
 
+import Http
 import Json.Decode as D
+
+
+
+-- ── PER-BUTTON STATE (the toolbar pulse) ──────────────────────────────────
 
 
 {-| Where the button is in the cycle.
@@ -50,9 +52,18 @@ type RecordingState
     | RecordingFailed String
 
 
-{-| Metadata for one stored recording — mirrors
-`RecordingMeta` on the server side. Used to surface the toast
-message after a successful upload ("Recording saved — 5.2 MB").
+freshState : RecordingState
+freshState =
+    RecordingIdle
+
+
+
+-- ── SHARED METADATA (server wire shape) ───────────────────────────────────
+
+
+{-| Metadata for one stored recording — mirrors `RecordingMeta`
+in `crates/server/src/recording/store.rs`. Used by the modal's
+list rows and by the post-upload toast.
 -}
 type alias RecordingMeta =
     { id : String
@@ -63,11 +74,6 @@ type alias RecordingMeta =
     }
 
 
-fresh : RecordingState
-fresh =
-    RecordingIdle
-
-
 decodeMeta : D.Decoder RecordingMeta
 decodeMeta =
     D.map5 RecordingMeta
@@ -76,3 +82,73 @@ decodeMeta =
         (D.field "mime" D.string)
         (D.field "size_bytes" D.int)
         (D.field "created_at_ms" D.int)
+
+
+
+-- ── MODAL STATE (the Recordings list) ─────────────────────────────────────
+
+
+{-| State the Recordings modal carries while open. Mirrors the
+shape of the Save / Load modals so the view code can reuse the
+existing `.save-modal__*` CSS scaffolding for the list rows +
+confirm banner.
+-}
+type alias RecordingsUi =
+    { saves : RecordingsListState
+    , busy : Bool
+    , error : Maybe String
+    , confirm : Maybe ConfirmAction
+    }
+
+
+type RecordingsListState
+    = RecordingsLoading
+    | RecordingsLoaded (List RecordingMeta)
+    | RecordingsFailed String
+
+
+type ConfirmAction
+    = ConfirmDelete { id : String, filename : String }
+
+
+freshRecordings : RecordingsUi
+freshRecordings =
+    { saves = RecordingsLoading
+    , busy = False
+    , error = Nothing
+    , confirm = Nothing
+    }
+
+
+
+-- ── HTTP commands ─────────────────────────────────────────────────────────
+
+
+{-| `GET /api/recording` — list the current user's recordings,
+newest-first. Server is auth-gated so this only succeeds for
+signed-in users; anonymous callers get a 401 which the
+view-layer error banner surfaces as a sign-in nudge.
+-}
+listCmd : (Result Http.Error (List RecordingMeta) -> msg) -> Cmd msg
+listCmd toMsg =
+    Http.get
+        { url = "/api/recording"
+        , expect = Http.expectJson toMsg (D.list decodeMeta)
+        }
+
+
+{-| `DELETE /api/recording/:id`. The server removes both the
+audio file and the index entry; the response carries no body
+(204 No Content on success).
+-}
+deleteCmd : (Result Http.Error () -> msg) -> String -> Cmd msg
+deleteCmd toMsg id =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/recording/" ++ id
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever toMsg
+        , timeout = Nothing
+        , tracker = Nothing
+        }

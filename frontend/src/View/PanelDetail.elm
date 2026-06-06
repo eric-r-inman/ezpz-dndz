@@ -62,9 +62,19 @@ Replaces the old `⚔️ CR Calculator` slot in this panel because
 the CR Calculator is already reachable via the _Difficulty_
 button in the encounter title bar.
 
-Cycles `🎙 Record → ⏺ Stop · mm:ss → ⏳ Uploading…`. Disabled
-when the user is anonymous because the upload endpoint is
-auth-gated; the tooltip explains why.
+Click semantics differ by state so the toolbar stays a
+quick-access affordance:
+
+  - **Idle / Failed** — opens the Recordings modal (which has
+    its own large record-now button and the list of past
+    sessions).
+  - **Active** — stops + uploads directly without opening the
+    modal so a recording can be ended fast.
+  - **Preparing / Uploading** — disabled.
+
+Anonymous users see the disabled idle pill with a sign-in
+tooltip; the modal's auth-aware empty state explains how to
+unlock it.
 
 -}
 recordButton : Bool -> RecordingState -> Html Msg
@@ -73,13 +83,13 @@ recordButton signedIn state =
         ( label_, modifier, disabledNow ) =
             case ( signedIn, state ) of
                 ( False, _ ) ->
-                    ( "🎙 Record"
+                    ( "🎙 Recordings"
                     , " action-btn--record-disabled"
                     , True
                     )
 
                 ( True, RecordingIdle ) ->
-                    ( "🎙 Record", "", False )
+                    ( "🎙 Recordings", "", False )
 
                 ( True, RecordingPreparing ) ->
                     ( "⏳ Preparing…"
@@ -100,7 +110,7 @@ recordButton signedIn state =
                     )
 
                 ( True, RecordingFailed _ ) ->
-                    ( "🎙 Record"
+                    ( "🎙 Recordings"
                     , " action-btn--record-failed"
                     , False
                     )
@@ -112,7 +122,7 @@ recordButton signedIn state =
             else
                 case state of
                     RecordingIdle ->
-                        "Start recording this session"
+                        "Open the Recordings panel"
 
                     RecordingPreparing ->
                         "Waiting for microphone permission"
@@ -124,7 +134,15 @@ recordButton signedIn state =
                         "Uploading recording…"
 
                     RecordingFailed reason ->
-                        "Last attempt failed: " ++ reason ++ " — click to retry"
+                        "Last attempt failed: " ++ reason
+
+        clickMsg =
+            case state of
+                RecordingActive _ ->
+                    RecordingToggleClicked
+
+                _ ->
+                    RecordingsOpen
     in
     button
         [ class ("action-btn action-btn--blue" ++ modifier)
@@ -132,7 +150,7 @@ recordButton signedIn state =
         , Attr.disabled disabledNow
         , Tooltips.attr tooltip
         , attribute "aria-label" tooltip
-        , onClick RecordingToggleClicked
+        , onClick clickMsg
         ]
         [ text label_ ]
 

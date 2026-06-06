@@ -43,6 +43,7 @@ import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
 import Json.Decode as Decode
+import Ui.Recording
 import Url exposing (Url)
 
 
@@ -399,6 +400,17 @@ type Msg
       -- payloads that land here as `RecordingStateReceived`.
     | RecordingToggleClicked
     | RecordingStateReceived Decode.Value
+      -- Recordings list modal (the second piece of the recorder
+      -- plugin).  Opens via the toolbar button when idle; the
+      -- modal renders the list of saved recordings + a big
+      -- record-now button that mirrors the toolbar one.
+    | RecordingsOpen
+    | RecordingsClose
+    | RecordingsListLoaded (Result Http.Error (List Ui.Recording.RecordingMeta))
+    | RecordingsDeleteRequested { id : String, filename : String }
+    | RecordingsDeleteCancel
+    | RecordingsDeleteConfirm
+    | RecordingsDeleteResponse String (Result Http.Error ())
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())

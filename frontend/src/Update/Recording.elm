@@ -1,5 +1,12 @@
 module Update.Recording exposing
-    ( stateReceived
+    ( recordingsClose
+    , recordingsDeleteCancel
+    , recordingsDeleteConfirm
+    , recordingsDeleteRequested
+    , recordingsDeleteResponse
+    , recordingsListLoaded
+    , recordingsOpen
+    , stateReceived
     , toggleClicked
     )
 
@@ -26,13 +33,22 @@ what to render.
 -}
 
 import Auth
+import Http
 import Json.Decode as D
-import Model exposing (Model)
+import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ports
-import Ui.Recording as Recording exposing (RecordingMeta, RecordingState(..))
+import Ui.Recording as Recording
+    exposing
+        ( ConfirmAction(..)
+        , RecordingMeta
+        , RecordingState(..)
+        , RecordingsListState(..)
+        , RecordingsUi
+        )
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
+import Util.Http
 
 
 {-| Click on the recorder button. State-machine semantics:
@@ -104,10 +120,12 @@ stateReceived raw model =
 
                 message =
                     "Recording saved — " ++ friendlySize
+
+                modelWithMeta =
+                    { model | recordingState = RecordingIdle }
+                        |> prependToOpenList meta
             in
-            Update.Toast.push ToastSuccess
-                message
-                { model | recordingState = RecordingIdle }
+            Update.Toast.push ToastSuccess message modelWithMeta
 
         Ok (Failed reason) ->
             Update.Toast.push ToastError
@@ -198,3 +216,162 @@ formatFloat n decimals =
             toFloat (round (n * toFloat scale)) / toFloat scale
     in
     String.fromFloat rounded
+
+
+
+-- ── Recordings modal ─────────────────────────────────────────────────────
+
+
+withRecordingsUi : (RecordingsUi -> RecordingsUi) -> Model -> Model
+withRecordingsUi =
+    Model.mapModal Model.recordingsLens
+
+
+{-| Open the Recordings modal. Always kicks off the list fetch
+so the GM sees the freshest server state — recordings can be
+created from another tab too.
+-}
+recordingsOpen : Model -> ( Model, Cmd Msg )
+recordingsOpen model =
+    ( { model
+        | modal = Just (ModalRecordings Recording.freshRecordings)
+      }
+    , if Auth.isAuthenticated model.auth then
+        Recording.listCmd RecordingsListLoaded
+
+      else
+        Cmd.none
+    )
+
+
+recordingsClose : Model -> ( Model, Cmd Msg )
+recordingsClose model =
+    ( { model | modal = Nothing }, Cmd.none )
+
+
+recordingsListLoaded :
+    Result Http.Error (List RecordingMeta)
+    -> Model
+    -> ( Model, Cmd Msg )
+recordingsListLoaded result model =
+    let
+        next =
+            case result of
+                Ok metas ->
+                    RecordingsLoaded metas
+
+                Err err ->
+                    RecordingsFailed (Util.Http.errorToString err)
+    in
+    ( withRecordingsUi (\ui -> { ui | saves = next }) model, Cmd.none )
+
+
+recordingsDeleteRequested :
+    { id : String, filename : String }
+    -> Model
+    -> ( Model, Cmd Msg )
+recordingsDeleteRequested target model =
+    ( withRecordingsUi
+        (\ui -> { ui | confirm = Just (ConfirmDelete target), error = Nothing })
+        model
+    , Cmd.none
+    )
+
+
+recordingsDeleteCancel : Model -> ( Model, Cmd Msg )
+recordingsDeleteCancel model =
+    ( withRecordingsUi (\ui -> { ui | confirm = Nothing }) model, Cmd.none )
+
+
+recordingsDeleteConfirm : Model -> ( Model, Cmd Msg )
+recordingsDeleteConfirm model =
+    case model.modal of
+        Just (ModalRecordings ui) ->
+            case ui.confirm of
+                Just (ConfirmDelete target) ->
+                    ( withRecordingsUi
+                        (\u ->
+                            { u
+                                | busy = True
+                                , confirm = Nothing
+                                , error = Nothing
+                            }
+                        )
+                        model
+                    , Recording.deleteCmd
+                        (RecordingsDeleteResponse target.id)
+                        target.id
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+recordingsDeleteResponse :
+    String
+    -> Result Http.Error ()
+    -> Model
+    -> ( Model, Cmd Msg )
+recordingsDeleteResponse id result model =
+    case result of
+        Ok () ->
+            ( withRecordingsUi
+                (\ui ->
+                    { ui
+                        | busy = False
+                        , saves = dropFromList id ui.saves
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        Err err ->
+            ( withRecordingsUi
+                (\ui ->
+                    { ui
+                        | busy = False
+                        , error = Just (Util.Http.errorToString err)
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+
+dropFromList : String -> RecordingsListState -> RecordingsListState
+dropFromList id state =
+    case state of
+        RecordingsLoaded metas ->
+            RecordingsLoaded (List.filter (\m -> m.id /= id) metas)
+
+        _ ->
+            state
+
+
+{-| When a `done` payload arrives while the Recordings modal is
+open, slot the new entry at the top of its list so the GM sees
+their fresh recording without having to close + reopen.
+-}
+prependToOpenList : RecordingMeta -> Model -> Model
+prependToOpenList meta model =
+    case model.modal of
+        Just (ModalRecordings ui) ->
+            let
+                newSaves =
+                    case ui.saves of
+                        RecordingsLoaded metas ->
+                            RecordingsLoaded (meta :: metas)
+
+                        _ ->
+                            -- List was loading or failed; the open
+                            -- + fetch sequence will reconcile.
+                            ui.saves
+            in
+            { model | modal = Just (ModalRecordings { ui | saves = newSaves }) }
+
+        _ ->
+            model

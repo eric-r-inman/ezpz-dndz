@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, recordingsLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -68,7 +68,7 @@ import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
-import Ui.Recording exposing (RecordingState)
+import Ui.Recording exposing (RecordingState, RecordingsUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
@@ -127,6 +127,7 @@ type Modal
     | ModalGroupEdit GroupEditUi
     | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
+    | ModalRecordings RecordingsUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -378,6 +379,20 @@ loadCompendiumLens =
                 _ ->
                     Nothing
     , wrap = ModalLoadCompendium
+    }
+
+
+recordingsLens : ModalLens RecordingsUi
+recordingsLens =
+    { extract =
+        \m ->
+            case m of
+                ModalRecordings ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalRecordings
     }
 
 

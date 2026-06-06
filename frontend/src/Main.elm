@@ -136,6 +136,7 @@ import View.Modal.LoadCompendium
 import View.Modal.Memo
 import View.Modal.Note
 import View.Modal.QuickAdd
+import View.Modal.Recordings
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
@@ -314,6 +315,9 @@ subscriptions model =
 
                     Just (ModalDuplicate _) ->
                         Browser.Events.onKeyDown (escKey DuplicateClose)
+
+                    Just (ModalRecordings _) ->
+                        Browser.Events.onKeyDown (escKey RecordingsClose)
 
                     _ ->
                         if model.compendium.open then
@@ -529,7 +533,7 @@ init flags url key =
       , rollPopups = []
       , nextRollPopupId = 0
       , preferences = prefs
-      , recordingState = Ui.Recording.fresh
+      , recordingState = Ui.Recording.freshState
       , cardLayout = Card.Layout.defaultLayout
       , queueView = Card.Layout.ListView
       , savedCardLayouts = []
@@ -1092,6 +1096,27 @@ updateInner msg model =
 
         RecordingStateReceived raw ->
             Update.Recording.stateReceived raw model
+
+        RecordingsOpen ->
+            Update.Recording.recordingsOpen model
+
+        RecordingsClose ->
+            Update.Recording.recordingsClose model
+
+        RecordingsListLoaded result ->
+            Update.Recording.recordingsListLoaded result model
+
+        RecordingsDeleteRequested target ->
+            Update.Recording.recordingsDeleteRequested target model
+
+        RecordingsDeleteCancel ->
+            Update.Recording.recordingsDeleteCancel model
+
+        RecordingsDeleteConfirm ->
+            Update.Recording.recordingsDeleteConfirm model
+
+        RecordingsDeleteResponse id result ->
+            Update.Recording.recordingsDeleteResponse id result model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -2367,6 +2392,7 @@ appShell maybeUser model =
     , View.Modal.GroupEdit.view model
     , View.Modal.CardEditor.view model
     , View.Modal.CrCalculator.view model
+    , View.Modal.Recordings.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
