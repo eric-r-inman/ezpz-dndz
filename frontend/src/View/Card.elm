@@ -91,7 +91,7 @@ view activeName hpEdit renameState creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop creature hpEdit renameState
+            [ rowTop isActive creature hpEdit renameState
             , rowMid creature hpEdit
             , rowBot creature
             ]
@@ -321,8 +321,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Html Msg
-rowTop creature hpEdit renameState =
+rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Html Msg
+rowTop isActive creature hpEdit renameState =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -335,7 +335,7 @@ rowTop creature hpEdit renameState =
         , creatureName creature renameState
         , noteOrPencil creature
         , acReadout creature hpEdit
-        , rowTopChipCluster creature
+        , rowTopChipCluster isActive creature
         ]
 
 
@@ -539,15 +539,32 @@ legendaryColumns creature =
 
 
 {-| One recharge-ability pill, sized to match the condition-chip
-shape so it sits inline in row 1's chip cluster. Tinted green
-when ready, muted-gray with a strikethrough when spent. Click
-toggles the state so the GM can correct a missed auto-roll. The
-auto-roll fires at the start of the creature's turn via
-`Effects.rechargeRollCmdsFor` and lands in `RechargeRollLanded`
-which flips `ready=True` when the d6 ≥ `low`.
+shape so it sits inline in row 1's chip cluster.
+
+Three states:
+
+  - **Ready** — green pill with the ability name + range. Click
+    marks it spent (in case the GM resolves it manually).
+  - **Spent on a non-active creature** — muted-gray pill,
+    strikethrough. Click toggles back to ready (GM correction).
+  - **Spent + active + `awaitingRoll`** — the prompt state.
+    The pill splits into a clickable 🎲 (blinking) on the
+    left, a `|` divider, and the ability name on the right.
+    Clicking the dice fires the recharge d6 via
+    `RollRechargeNow`; clicking the name resets the ability
+    to ready without rolling. The `awaitingRoll` flag is
+    flipped on by the begin-of-turn lifecycle hook, so
+    spending an ability mid-turn does NOT raise the prompt
+    on the same turn — the dice doesn't appear until the
+    creature's next turn starts.
+
+The recharge d6 used to auto-roll at the start of the
+creature's turn; the active-spent prompt replaces that so the
+GM gets to time the roll themselves.
+
 -}
-rechargeChip : String -> Encounter.RechargeAbility -> Html Msg
-rechargeChip bearer ability =
+rechargeChip : Bool -> String -> Encounter.RechargeAbility -> Html Msg
+rechargeChip isActive bearer ability =
     let
         rangeLabel =
             if ability.low == ability.high then
@@ -555,7 +572,20 @@ rechargeChip bearer ability =
 
             else
                 String.fromInt ability.low ++ "–" ++ String.fromInt ability.high
+    in
+    if not ability.ready && isActive && ability.awaitingRoll then
+        rechargePromptChip bearer ability rangeLabel
 
+    else
+        rechargeStaticChip ability rangeLabel bearer
+
+
+{-| Default chip rendering for ready (green) and spent-but-
+inactive (muted) states. Single button, click toggles.
+-}
+rechargeStaticChip : Encounter.RechargeAbility -> String -> String -> Html Msg
+rechargeStaticChip ability rangeLabel bearer =
+    let
         stateModifier =
             if ability.ready then
                 "recharge-chip--ready"
@@ -568,7 +598,7 @@ rechargeChip bearer ability =
                 ability.name ++ " — Recharge " ++ rangeLabel ++ " (ready; click to mark spent)"
 
             else
-                ability.name ++ " — Recharge " ++ rangeLabel ++ " (spent; auto-rolls d6 next turn)"
+                ability.name ++ " — Recharge " ++ rangeLabel ++ " (spent; click to mark ready)"
     in
     button
         [ class ("recharge-chip " ++ stateModifier)
@@ -586,6 +616,42 @@ rechargeChip bearer ability =
         ]
         [ text ability.name
         , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
+        ]
+
+
+{-| The active-creature prompt: blinking 🎲 (roll) | name (reset).
+The two clickable halves are independent <button>s wrapped in a
+shared chip container so they share the pill's borders + tint.
+-}
+rechargePromptChip : String -> Encounter.RechargeAbility -> String -> Html Msg
+rechargePromptChip bearer ability rangeLabel =
+    let
+        rollTip =
+            "Roll Recharge " ++ rangeLabel ++ " for " ++ ability.name
+
+        readyTip =
+            "Mark " ++ ability.name ++ " ready (no roll)"
+    in
+    span [ class "recharge-chip recharge-chip--prompt" ]
+        [ button
+            [ class "recharge-chip__dice"
+            , Attr.type_ "button"
+            , onClick (RollRechargeNow bearer ability.name)
+            , Tooltips.attr rollTip
+            , attribute "aria-label" rollTip
+            ]
+            [ text "🎲" ]
+        , span [ class "recharge-chip__pipe" ] [ text "|" ]
+        , button
+            [ class "recharge-chip__name-btn"
+            , Attr.type_ "button"
+            , onClick (ToggleRechargeAbility bearer ability.name)
+            , Tooltips.attr readyTip
+            , attribute "aria-label" readyTip
+            ]
+            [ text ability.name
+            , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
+            ]
         ]
 
 
@@ -692,8 +758,8 @@ notices nor recharge abilities, so the row collapses cleanly for
 PCs and most NPCs.
 
 -}
-rowTopChipCluster : Creature -> Html Msg
-rowTopChipCluster creature =
+rowTopChipCluster : Bool -> Creature -> Html Msg
+rowTopChipCluster isActive creature =
     let
         hasAnyChip =
             not (List.isEmpty creature.conditions)
@@ -706,7 +772,7 @@ rowTopChipCluster creature =
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (rechargeChip creature.name) creature.rechargeAbilities
+                :: List.map (rechargeChip isActive creature.name) creature.rechargeAbilities
                 ++ List.map (conditionChip creature.name) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )

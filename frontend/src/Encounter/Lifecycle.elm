@@ -175,6 +175,7 @@ applyBeginOfTurn name enc =
         |> expireUntilTurn AtBegin name
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
+        |> markSpentRechargesPendingFor name
 
 
 resetLegendaryActionsFor : String -> Encounter -> Encounter
@@ -188,6 +189,33 @@ resetReactionFor : String -> Encounter -> Encounter
 resetReactionFor name enc =
     Encounter.mapCreature name
         (\c -> { c | reactionUsed = False })
+        enc
+
+
+{-| Flip `awaitingRoll = True` for any of the active creature's
+recharge abilities that are currently spent. This is what makes
+the blinking dice appear at the START of the creature's next
+turn — spending an ability mid-turn leaves `awaitingRoll = False`
+so the dice doesn't pop up on the same turn. Ready abilities are
+unaffected.
+-}
+markSpentRechargesPendingFor : String -> Encounter -> Encounter
+markSpentRechargesPendingFor name enc =
+    Encounter.mapCreature name
+        (\c ->
+            { c
+                | rechargeAbilities =
+                    List.map
+                        (\a ->
+                            if a.ready then
+                                a
+
+                            else
+                                { a | awaitingRoll = True }
+                        )
+                        c.rechargeAbilities
+            }
+        )
         enc
 
 

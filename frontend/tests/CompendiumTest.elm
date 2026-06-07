@@ -332,6 +332,7 @@ draftToInstanceRechargeSuite =
                           , low = 4
                           , high = 6
                           , ready = True
+                          , awaitingRoll = False
                           }
                         ]
         , test "handles single-value (Recharge 6) and en-dash variants" <|

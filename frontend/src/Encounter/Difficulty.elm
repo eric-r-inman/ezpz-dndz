@@ -5,6 +5,7 @@ module Encounter.Difficulty exposing
     , classify
     , difficultyKey, difficultyLabel, difficultyDescription
     , maxLevel, minLevel
+    , encodePartyState, decodePartyState
     )
 
 {-| Encounter-difficulty math.
@@ -32,8 +33,12 @@ No `Html`, no `Msg` — same discipline as
 @docs classify
 @docs difficultyKey, difficultyLabel, difficultyDescription
 @docs maxLevel, minLevel
+@docs encodePartyState, decodePartyState
 
 -}
+
+import Json.Decode as D
+import Json.Encode as E
 
 
 type alias PartyMember =
@@ -274,3 +279,56 @@ difficultyDescription d =
 
         BeyondHigh ->
             "Exceeds the 2024 budget ceiling. Likely deadly — split the fight or scale down unless a TPK is desired."
+
+
+
+-- ── WIRE FORMAT ──────────────────────────────────────────────────────────────
+
+
+{-| Encode the full party state for `localStorage.party`. The
+auto-increment `next_id` counter is bundled with the member
+list so a reload-and-add doesn't accidentally reuse an old id
+that's been removed mid-session.
+-}
+encodePartyState : List PartyMember -> Int -> E.Value
+encodePartyState members nextId =
+    E.object
+        [ ( "members", E.list encodeMember members )
+        , ( "next_id", E.int nextId )
+        ]
+
+
+encodeMember : PartyMember -> E.Value
+encodeMember m =
+    E.object
+        [ ( "id", E.int m.id )
+        , ( "level", E.int m.level )
+        ]
+
+
+{-| Decode `localStorage.party`. A missing or malformed
+`next_id` falls back to `length(members) + 1` so a hand-edited
+file still loads — the worst case is a duplicate id on the
+next add, which `partyMemberAdd` would catch on subsequent
+operations anyway.
+-}
+decodePartyState : D.Decoder { members : List PartyMember, nextId : Int }
+decodePartyState =
+    D.map2 (\members nextId -> { members = members, nextId = nextId })
+        (D.field "members" (D.list decodeMember))
+        (D.oneOf [ D.field "next_id" D.int, D.succeed 0 ])
+        |> D.map
+            (\state ->
+                if state.nextId <= 0 then
+                    { state | nextId = List.length state.members + 1 }
+
+                else
+                    state
+            )
+
+
+decodeMember : D.Decoder PartyMember
+decodeMember =
+    D.map2 PartyMember
+        (D.field "id" D.int)
+        (D.field "level" D.int)

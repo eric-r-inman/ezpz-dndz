@@ -81,7 +81,7 @@ const BUNDLED_JSON: &str =
 /// We don't store this inside the JSON itself because the JSON
 /// shape doubles as the public Import / Export wire format; the
 /// version is server-side metadata and lives in source.
-pub const BUNDLED_VERSION: i32 = 2;
+pub const BUNDLED_VERSION: i32 = 3;
 
 /// Sidecar metadata recording the highest bundled-version we've
 /// merged into a given store, plus the content hash of each

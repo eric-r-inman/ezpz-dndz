@@ -156,6 +156,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -309,6 +315,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -457,6 +468,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -618,6 +634,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -780,6 +801,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -937,6 +963,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1103,6 +1134,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1266,6 +1303,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1414,6 +1456,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1571,6 +1618,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1719,6 +1771,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1843,6 +1901,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-air"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -1945,6 +2008,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2098,6 +2166,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2246,6 +2319,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2407,6 +2485,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2569,6 +2652,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2726,6 +2814,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -2892,6 +2985,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3055,6 +3154,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3203,6 +3307,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3360,6 +3469,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3508,6 +3622,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3616,6 +3736,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3719,6 +3844,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3822,6 +3952,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -3925,6 +4060,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4022,6 +4162,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4133,6 +4278,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4241,6 +4391,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4380,6 +4536,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4512,6 +4673,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4606,6 +4772,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4700,6 +4871,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4792,6 +4968,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -4902,6 +5083,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-fire"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5000,6 +5186,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5099,6 +5290,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5245,6 +5441,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5345,6 +5546,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5465,6 +5671,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5610,6 +5821,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5708,6 +5924,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5800,6 +6022,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -5918,6 +6145,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6044,6 +6276,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6144,6 +6382,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6246,6 +6489,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6367,6 +6616,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6493,6 +6747,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6602,6 +6861,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "feywild"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6705,6 +6970,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6820,6 +7091,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -6918,6 +7194,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7049,6 +7330,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7164,6 +7450,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7290,6 +7581,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7397,6 +7693,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7523,6 +7825,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7638,6 +7947,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7751,6 +8067,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7843,6 +8165,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -7950,6 +8277,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8070,6 +8402,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8198,6 +8536,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8317,6 +8660,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8441,6 +8790,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8578,6 +8933,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8705,6 +9065,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8830,6 +9195,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -8922,6 +9292,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9022,6 +9398,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9128,6 +9509,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9243,6 +9629,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9362,6 +9753,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "upper-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9465,6 +9862,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9568,6 +9970,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9671,6 +10078,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9789,6 +10201,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9891,6 +10308,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -9997,6 +10419,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10100,6 +10528,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10232,6 +10665,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "upper-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10339,6 +10777,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10472,6 +10915,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-air"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10596,6 +11044,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10688,6 +11141,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10806,6 +11264,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -10913,6 +11377,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11049,6 +11518,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11173,6 +11647,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11309,6 +11788,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "feywild"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11434,6 +11919,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-chaos"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11531,6 +12021,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11654,6 +12150,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-earth"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11781,6 +12282,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-fire"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11884,6 +12390,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -11981,6 +12492,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12123,6 +12639,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12260,6 +12781,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12369,6 +12895,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12501,6 +13033,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-fire"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12616,6 +13153,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12751,6 +13293,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12849,6 +13396,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -12961,6 +13514,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13082,6 +13640,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13198,6 +13762,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13315,6 +13885,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13428,6 +14003,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13572,6 +14152,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13682,6 +14267,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13803,6 +14393,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13902,6 +14497,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -13994,6 +14594,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14092,6 +14697,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14184,6 +14794,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14291,6 +14906,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14394,6 +15014,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14507,6 +15132,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14614,6 +15244,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14718,6 +15354,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14818,6 +15460,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -14935,6 +15582,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15032,6 +15684,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15135,6 +15793,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15233,6 +15896,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15346,6 +16014,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15465,6 +16139,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15568,6 +16248,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15670,6 +16355,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15774,6 +16464,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15882,6 +16578,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -15999,6 +16701,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16107,6 +16815,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16204,6 +16917,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16311,6 +17029,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16409,6 +17133,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16514,6 +17244,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16621,6 +17356,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16729,6 +17469,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16866,6 +17612,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -16985,6 +17736,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17090,6 +17846,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert",
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17187,6 +17949,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17309,6 +18077,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17415,6 +18190,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17526,6 +18308,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17652,6 +18441,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17760,6 +18555,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17872,6 +18672,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -17995,6 +18800,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18129,6 +18939,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18236,6 +19052,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18338,6 +19159,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18443,6 +19270,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18542,6 +19374,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18655,6 +19492,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18791,6 +19633,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -18921,6 +19769,9 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19020,6 +19871,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19117,6 +19974,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19234,6 +20097,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19363,6 +20231,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19472,6 +20345,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19580,6 +20458,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19688,6 +20572,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19799,6 +20688,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -19905,6 +20801,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20010,6 +20913,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20135,6 +21043,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20238,6 +21151,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20356,6 +21275,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20459,6 +21383,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20598,6 +21527,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20724,6 +21658,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-chaos"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20855,6 +21794,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -20999,6 +21943,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban",
+      "lower-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21135,6 +22085,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-air"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21271,6 +22226,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21372,6 +22332,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21479,6 +22444,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21589,6 +22560,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21695,6 +22671,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21861,6 +22843,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -21990,6 +22977,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22099,6 +23091,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22275,6 +23272,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22397,6 +23400,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22495,6 +23503,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22624,6 +23637,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22741,6 +23759,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-chaos"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22849,6 +23872,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-fire"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -22952,6 +23980,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23056,6 +24089,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23201,6 +24240,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23298,6 +24342,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23426,6 +24475,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23527,6 +24582,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-water"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23643,6 +24703,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23761,6 +24827,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23869,6 +24941,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -23973,6 +25051,13 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24071,6 +25156,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24184,6 +25274,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24363,6 +25458,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24499,6 +25599,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24648,6 +25753,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "lower-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24762,6 +25872,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24875,6 +25990,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -24996,6 +26116,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25114,6 +26239,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25214,6 +26345,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25319,6 +26455,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25461,6 +26602,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25570,6 +26717,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25677,6 +26830,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25779,6 +26937,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25886,6 +27049,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -25988,6 +27156,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26112,6 +27285,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "feywild"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26210,6 +27389,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26314,6 +27499,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26439,6 +27629,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26590,6 +27785,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26728,6 +27928,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "upper-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26835,6 +28040,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -26943,6 +28154,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27035,6 +28251,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27163,6 +28384,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27282,6 +28508,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27401,6 +28632,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27504,6 +28740,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27618,6 +28859,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27747,6 +28993,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27881,6 +29132,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "nine-hells"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -27984,6 +29240,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28087,6 +29348,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28202,6 +29468,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28310,6 +29581,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28417,6 +29694,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28509,6 +29791,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28601,6 +29888,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28714,6 +30006,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28836,6 +30133,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -28955,6 +30257,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29073,6 +30380,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29202,6 +30514,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29314,6 +30632,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-fire"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29434,6 +30757,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "feywild"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29526,6 +30855,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29647,6 +30981,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29764,6 +31103,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -29871,6 +31216,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30004,6 +31355,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30125,6 +31482,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30255,6 +31617,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30347,6 +31714,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30467,6 +31839,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30571,6 +31948,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30736,6 +32118,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "upper-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -30860,6 +32247,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31022,6 +32415,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31180,6 +32578,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31304,6 +32707,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31412,6 +32820,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31533,6 +32947,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31653,6 +33073,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "feywild"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31783,6 +33209,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31905,6 +33336,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-chaos"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -31997,6 +33433,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32120,6 +33562,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain",
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32251,6 +33699,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32394,6 +33847,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32543,6 +34002,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban",
+      "lower-planes"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32641,6 +34106,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32756,6 +34226,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32859,6 +34334,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -32962,6 +34442,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal",
+      "underwater"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33060,6 +34546,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33168,6 +34659,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33266,6 +34762,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33435,6 +34936,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33542,6 +35049,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33647,6 +35159,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33757,6 +35274,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33875,6 +35397,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -33972,6 +35499,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34093,6 +35625,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34196,6 +35734,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34303,6 +35847,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34453,6 +36002,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34616,6 +36170,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34742,6 +36301,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34874,6 +36438,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -34966,6 +36535,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35063,6 +36637,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35191,6 +36770,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "abyss"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35294,6 +36878,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35386,6 +36975,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35483,6 +37077,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35583,6 +37182,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35702,6 +37306,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35831,6 +37440,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-water"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -35936,6 +37550,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36056,6 +37675,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36176,6 +37801,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36300,6 +37931,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36429,6 +38065,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "grassland"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36559,6 +38201,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36680,6 +38328,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36811,6 +38465,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -36949,6 +38608,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37066,6 +38730,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37173,6 +38842,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37273,6 +38947,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest",
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37400,6 +39080,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "underdark",
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37507,6 +39193,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37643,6 +39335,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "elemental-plane-of-earth"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37765,6 +39462,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "swamp"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -37881,6 +39583,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38006,6 +39713,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "desert"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38137,6 +39849,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "coastal"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38262,6 +39979,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "hill"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38397,6 +40119,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "grassland",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38525,6 +40253,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "forest"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38641,6 +40374,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38766,6 +40504,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38888,6 +40631,12 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "arctic",
+      "mountain"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   },
@@ -38993,6 +40742,11 @@
     "regional_effects": null,
     "spellcasting": null,
     "custom_sections": [],
+    "habitats": [
+      "urban"
+    ],
+    "treasures": [],
+    "tags": [],
     "created_at": 1778176013882,
     "updated_at": 1778176013882
   }

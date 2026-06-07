@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -68,6 +68,7 @@ import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
+import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
@@ -126,6 +127,7 @@ type Modal
     | ModalGroupEdit GroupEditUi
     | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
+    | ModalRandomEncounter RandomEncounterUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -223,6 +225,20 @@ crCalculatorLens =
                 _ ->
                     Nothing
     , wrap = ModalCrCalculator
+    }
+
+
+randomEncounterLens : ModalLens RandomEncounterUi
+randomEncounterLens =
+    { extract =
+        \m ->
+            case m of
+                ModalRandomEncounter ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalRandomEncounter
     }
 
 

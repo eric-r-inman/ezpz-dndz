@@ -582,7 +582,7 @@ viewMetaTags c =
     let
         rows =
             List.filterMap identity
-                [ propLine "Habitat" (habitatsLine c.habitats)
+                [ habitatPropLine (habitatsLine c.habitats)
                 , propLine "Treasure" (treasuresLine c.treasures)
                 ]
     in
@@ -591,6 +591,29 @@ viewMetaTags c =
 
     else
         hr [ class "statblock__divider" ] [] :: rows
+
+
+{-| Inline copy of `propLine` for the Habitat row so we can
+attach a tooltip explaining where the data came from — the
+bundled `habitats` field is filled by the CLI's inference pass
+[`Encounter.RandomEncounter`](../Encounter/RandomEncounter.elm)
+description, not by an authoritative SRD source.
+-}
+habitatPropLine : String -> Maybe (Html msg)
+habitatPropLine value =
+    if String.isEmpty value then
+        Nothing
+
+    else
+        Just
+            (p
+                [ class "statblock__prop"
+                , Tooltips.attr Tooltips.statBlockHabitat
+                ]
+                [ strong [] [ text "Habitat " ]
+                , text value
+                ]
+            )
 
 
 {-| "16 (XP 15,000, or 18,000 in lair)" — mirrors the D&D 2024

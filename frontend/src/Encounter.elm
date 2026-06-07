@@ -121,12 +121,21 @@ type alias DeathSaves =
 {-| One recharge-style ability tracked on an in-encounter creature
 instance. Seeded at spawn time from any compendium feature whose
 `Usage` is `Recharge { low, high }` — typical examples are dragon
-Breath Weapons ("Recharge 5–6"). At the start of the creature's
-next turn the engine auto-rolls a d6 for every ability with
-`ready = False`; if the roll ≥ `low`, the ability flips back to
-`ready = True` and the GM can use it again. Click is also wired
-manually so the GM can flip without going through the turn-start
-roll.
+Breath Weapons ("Recharge 5–6").
+
+The GM-facing flow: while `ready = True`, the chip is green and
+clicking marks it spent. Once spent, nothing happens until the
+START of the creature's next turn — at that point the begin-of-
+turn lifecycle hook flips `awaitingRoll = True`, the card's chip
+splits into a blinking 🎲 (roll d6) + ability-name (mark ready
+without rolling), and the GM resolves the recharge themselves.
+Rolling resets `awaitingRoll = False` regardless of outcome, so
+a failed roll doesn't keep re-prompting on the same turn — the
+GM gets one attempt per turn, just like RAW.
+
+The `awaitingRoll` flag is what makes the "wait until next turn"
+behaviour work: spending the ability mid-turn does NOT set it,
+so the dice doesn't appear on the same turn it was spent.
 
 The compendium captures other Usage kinds (`PerDay`,
 `PerShortRest`, `PerLongRest`, `AtWill`) but those don't fit the
@@ -139,6 +148,7 @@ type alias RechargeAbility =
     , low : Int
     , high : Int
     , ready : Bool
+    , awaitingRoll : Bool
     }
 
 

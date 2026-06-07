@@ -96,8 +96,8 @@ module View.Tooltips exposing
     , nextTurn
     , noteAdd
     , noteEdit
-    , panelCrCalculator
     , panelOpenCompendium
+    , panelRandomEncounter
     , panelStatBlockNewWindow
     , queueDuplicate
     , queueInactive
@@ -131,6 +131,7 @@ module View.Tooltips exposing
     , sourceFromSaved
     , sourceUnsaved
     , statBlockAttack
+    , statBlockHabitat
     , statBlockRoll
     , statBlockSavingThrow
     , statusOffTip
@@ -625,14 +626,19 @@ panelOpenCompendium =
     "Open Creature Compendium"
 
 
-panelCrCalculator : String
-panelCrCalculator =
-    "CR Calculator (not yet available)"
+panelRandomEncounter : String
+panelRandomEncounter =
+    "Choose parameters & generate encounter"
 
 
 panelStatBlockNewWindow : String
 panelStatBlockNewWindow =
     "Open stat block in new tab"
+
+
+statBlockHabitat : String
+statBlockHabitat =
+    "Inferred from online public sources"
 
 
 quickListOpen : String

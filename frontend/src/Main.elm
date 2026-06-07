@@ -19,6 +19,7 @@ import Encounter
         , Creature
         , Encounter
         )
+import Encounter.Difficulty as Difficulty
 import Encounter.Roster
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
@@ -102,6 +103,7 @@ import Update.Note
 import Update.PlaceholderRename
 import Update.Preferences
 import Update.QuickAdd
+import Update.RandomEncounter
 import Update.Save
 import Update.SaveCompendium
 import Update.Shell
@@ -134,6 +136,7 @@ import View.Modal.LoadCompendium
 import View.Modal.Memo
 import View.Modal.Note
 import View.Modal.QuickAdd
+import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
@@ -483,6 +486,7 @@ type alias Flags =
     , localCardLayoutSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
+    , localParty : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -498,6 +502,14 @@ init flags url key =
 
         prefs =
             { defaultPrefs | theme = themeFromFlag flags.theme }
+
+        partyFromFlags =
+            flags.localParty
+                |> Maybe.andThen
+                    (Decode.decodeValue Difficulty.decodePartyState
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault { members = [], nextId = 1 }
     in
     ( { key = key
       , url = url
@@ -531,8 +543,8 @@ init flags url key =
       , savedCardLayouts = []
       , useCustomCardLayout = False
       , accountUi = Ui.Account.empty
-      , party = []
-      , nextPartyMemberId = 1
+      , party = partyFromFlags.members
+      , nextPartyMemberId = partyFromFlags.nextId
       , localEncounterRaw = flags.localEncounter
       , localCardLayoutRaw = flags.localCardLayout
       , migrationDateLabel = flags.migrationDateLabel
@@ -696,6 +708,17 @@ update msg model =
             else
                 Cmd.none
 
+        partyCmd =
+            if
+                shouldPersistAfter msg
+                    && (model.party /= next.party || model.nextPartyMemberId /= next.nextPartyMemberId)
+            then
+                Ports.persistLocalParty
+                    (Difficulty.encodePartyState next.party next.nextPartyMemberId)
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -742,6 +765,7 @@ update msg model =
         , cardLayoutSavesCmd
         , conditionPresetsCmd
         , timerPresetsCmd
+        , partyCmd
         , modalFocusCmd
         ]
     )
@@ -1018,6 +1042,9 @@ updateInner msg model =
 
         ToggleRechargeAbility creatureName abilityName ->
             Update.Encounter.toggleRechargeAbility creatureName abilityName model
+
+        RollRechargeNow creatureName abilityName ->
+            Update.Encounter.rollRechargeNow creatureName abilityName model
 
         RechargeRollLanded creatureName abilityName roll ->
             Update.Encounter.rechargeRollLanded creatureName abilityName roll model
@@ -1518,6 +1545,48 @@ updateInner msg model =
 
         CrCalculatorPartyLevelSet memberId raw ->
             Update.CrCalculator.partyMemberLevelSet memberId raw model
+
+        RandomEncounterOpen ->
+            Update.RandomEncounter.open model
+
+        RandomEncounterClose ->
+            Update.RandomEncounter.close model
+
+        RandomEncounterDifficultySet raw ->
+            Update.RandomEncounter.difficultySet raw model
+
+        RandomEncounterScaleSet raw ->
+            Update.RandomEncounter.scaleSet raw model
+
+        RandomEncounterHabitatSet raw ->
+            Update.RandomEncounter.habitatSet raw model
+
+        RandomEncounterCreatureTypeAt index raw ->
+            Update.RandomEncounter.creatureTypeAt index raw model
+
+        RandomEncounterMinionsToggle ->
+            Update.RandomEncounter.minionsToggle model
+
+        RandomEncounterPinSearchChanged raw ->
+            Update.RandomEncounter.pinSearchChanged raw model
+
+        RandomEncounterPinAdd id ->
+            Update.RandomEncounter.pinAdd id model
+
+        RandomEncounterPinDecrement id ->
+            Update.RandomEncounter.pinDecrement id model
+
+        RandomEncounterPinRemove id ->
+            Update.RandomEncounter.pinRemove id model
+
+        RandomEncounterGenerate ->
+            Update.RandomEncounter.generate model
+
+        RandomEncounterRolled groups ->
+            Update.RandomEncounter.rolled groups model
+
+        RandomEncounterAddToEncounter ->
+            Update.RandomEncounter.addToEncounter model
 
         CardEditorClose ->
             Update.CardEditor.close model
@@ -2357,6 +2426,7 @@ appShell maybeUser model =
     , View.Modal.GroupEdit.view model
     , View.Modal.CardEditor.view model
     , View.Modal.CrCalculator.view model
+    , View.Modal.RandomEncounter.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model

@@ -1916,6 +1916,419 @@ body {
   background: rgba(214, 59, 59, 0.1);
 }
 
+/* ── Random Encounter modal ─────────────────────────────────────────
+   Shares the calc-modal layout (party rows, action sections), then
+   adds parameter pickers and a result list.  Class prefix is
+   `random-encounter__` to keep search-by-prefix tidy. */
+.modal--random-encounter {
+  --modal-max-w: 640px;
+}
+
+.random-encounter__blurb {
+  margin: 0;
+  padding: 12px 18px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.random-encounter__section {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.random-encounter__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.random-encounter__section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.random-encounter__empty,
+.random-encounter__hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.random-encounter__hint--warn {
+  color: #c98c1d;
+  font-style: normal;
+}
+
+/* Party rows — same shape as CR Calculator. */
+.random-encounter__party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.random-encounter__party-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.random-encounter__party-index {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 48px;
+}
+
+.random-encounter__party-level-label {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.random-encounter__party-level {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.random-encounter__party-remove {
+  margin-left: auto;
+}
+
+/* Parameter rows (difficulty pills + habitat select). */
+.random-encounter__param-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.random-encounter__param-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 80px;
+  color: var(--color-text-muted);
+}
+
+.random-encounter__difficulty-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.random-encounter__difficulty-btn {
+  appearance: none;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.random-encounter__difficulty-btn--active {
+  background: var(--color-accent, #4a90e2);
+  border-color: var(--color-accent, #4a90e2);
+  color: white;
+}
+
+.random-encounter__budget-pill {
+  margin-left: auto;
+  padding: 4px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__type-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.random-encounter__habitat-select {
+  flex: 1 1 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+/* Result list — one row per group + total. */
+.random-encounter__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.random-encounter__group-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.random-encounter__group-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__group-name {
+  font-weight: 600;
+}
+
+.random-encounter__group-cr,
+.random-encounter__group-xp {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 10px 0 10px;
+  border-top: 1px dashed var(--color-border);
+  margin-top: 4px;
+}
+
+.random-encounter__total-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.random-encounter__total-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-accent, #4a90e2);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.random-encounter__minions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0 2px 0;
+  cursor: pointer;
+}
+
+.random-encounter__minions-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.random-encounter__minions-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.random-encounter__minions-hint {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Specific-creatures section: pinned list + inline picker. */
+.random-encounter__pinned-hint {
+  margin: 0 0 4px 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.random-encounter__pinned-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.random-encounter__pinned-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.random-encounter__pinned-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.random-encounter__pinned-counter-btn {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.random-encounter__pinned-counter-btn:hover:not(:disabled) {
+  background: var(--color-surface-2);
+}
+
+.random-encounter__pinned-counter-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.random-encounter__pinned-count {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__pinned-name {
+  font-weight: 600;
+}
+
+.random-encounter__pinned-cr,
+.random-encounter__pinned-xp {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__pinned-budget {
+  margin: 6px 0 2px 0;
+  padding: 6px 10px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
+
+.random-encounter__pinned-budget--over {
+  border-color: #c98c1d;
+  background: rgba(201, 140, 29, 0.12);
+  color: #c98c1d;
+}
+
+.random-encounter__pin-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.random-encounter__pin-search {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.random-encounter__pin-results {
+  list-style: none;
+  padding: 4px;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.random-encounter__pin-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.random-encounter__pin-result:hover,
+.random-encounter__pin-result:focus {
+  background: var(--color-surface-2);
+  outline: none;
+}
+
+.random-encounter__pin-result-name {
+  font-weight: 500;
+}
+
+.random-encounter__pin-result-cr {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__pin-empty {
+  margin: 0;
+  padding: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 /* ── App-wide footer ────────────────────────────────────────────────
    Anchored to the bottom of the viewport; panels' scrollable bodies
    slide BEHIND it (per the bottom padding above).  Three slots —
@@ -2998,6 +3411,83 @@ button.creature-card__lifecycle--dead:focus-visible {
 .recharge-chip:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* Active-creature prompt variant: the chip splits into a
+   clickable die (left) | ability name (right).  Container is
+   a flex span so each half gets its own click target and the
+   pill stays one tinted unit.  Visual tint reuses the spent
+   colours so it reads as "still spent, waiting on your call". */
+.recharge-chip--prompt {
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  gap: 0;
+}
+
+.recharge-chip__dice,
+.recharge-chip__name-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Tight inner padding so the dice sits visually adjacent to
+   the pipe + name rather than looking like a separate widget. */
+.recharge-chip__dice {
+  padding: 2px 1px 2px 8px;
+  font-size: 1.05em;
+  line-height: 1;
+  /* Blink the die so it draws the GM's eye on turn start.
+     Opacity (not display) so layout stays stable. */
+  animation: recharge-dice-blink 1s ease-in-out infinite;
+}
+
+.recharge-chip__name-btn {
+  padding: 2px 8px 2px 4px;
+}
+
+.recharge-chip__name-btn:hover,
+.recharge-chip__dice:hover {
+  color: var(--color-accent);
+}
+
+.recharge-chip__pipe {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-border);
+  padding: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes recharge-dice-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Honour user-level reduced motion: stop the blink so the
+   prompt is still visible (different colour) without the
+   animation. */
+@media (prefers-reduced-motion: reduce) {
+  .recharge-chip__dice {
+    animation: none;
+    color: var(--color-accent);
+  }
 }
 
 /* Legendary columns wrapper: a flex strip sitting between the

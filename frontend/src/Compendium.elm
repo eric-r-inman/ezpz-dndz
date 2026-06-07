@@ -955,7 +955,7 @@ rechargeAbilityFromFeature : Feature -> Maybe Encounter.RechargeAbility
 rechargeAbilityFromFeature f =
     case f.usage of
         Just (Recharge { low, high }) ->
-            Just { name = f.name, low = low, high = high, ready = True }
+            Just { name = f.name, low = low, high = high, ready = True, awaitingRoll = False }
 
         _ ->
             parseRechargeFromName f.name
@@ -973,7 +973,7 @@ parseRechargeFromName fullName =
     rangeFromSuffix suffix
         |> Maybe.map
             (\( low, high ) ->
-                { name = cleanedName, low = low, high = high, ready = True }
+                { name = cleanedName, low = low, high = high, ready = True, awaitingRoll = False }
             )
 
 

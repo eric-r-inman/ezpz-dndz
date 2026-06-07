@@ -159,6 +159,16 @@
         }
       } catch (_) {}
 
+      // Party roster — { members: [...], next_id: N } —
+      // shared by the CR Calculator and Random Encounter modals.
+      var localParty = null;
+      try {
+        var partyRaw = localStorage.getItem("party");
+        if (partyRaw) {
+          localParty = JSON.parse(partyRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -172,6 +182,7 @@
           localCardLayoutSaves: localCardLayoutSaves,
           localConditionPresets: localConditionPresets,
           localTimerPresets: localTimerPresets,
+          localParty: localParty,
           bootMs: Date.now(),
         },
       });
@@ -290,6 +301,18 @@
               "timerPresets",
               JSON.stringify(value),
             );
+          } catch (_) {}
+        });
+      }
+
+      // Party roster — { members: [...], next_id: N }.
+      // Persists across sessions so the CR Calculator and
+      // Random Encounter modals don't make the GM re-enter
+      // their party every reload.
+      if (app.ports && app.ports.persistLocalParty) {
+        app.ports.persistLocalParty.subscribe(function (value) {
+          try {
+            localStorage.setItem("party", JSON.stringify(value));
           } catch (_) {}
         });
       }

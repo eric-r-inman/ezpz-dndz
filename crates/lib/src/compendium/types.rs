@@ -194,6 +194,9 @@ pub struct CreatureDraft {
   Deserialize,
   PartialEq,
   Eq,
+  Hash,
+  PartialOrd,
+  Ord,
   schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]

@@ -390,6 +390,7 @@ encodeRechargeAbility r =
         , ( "low", E.int r.low )
         , ( "high", E.int r.high )
         , ( "ready", E.bool r.ready )
+        , ( "awaitingRoll", E.bool r.awaitingRoll )
         ]
 
 
@@ -709,11 +710,25 @@ decodeDeathSaves =
 
 decodeRechargeAbility : D.Decoder Encounter.RechargeAbility
 decodeRechargeAbility =
-    D.map4 Encounter.RechargeAbility
+    D.map5
+        (\name low high ready awaitingRoll ->
+            { name = name
+            , low = low
+            , high = high
+            , ready = ready
+            , awaitingRoll = awaitingRoll
+            }
+        )
         (D.field "name" D.string)
         (D.field "low" D.int)
         (D.field "high" D.int)
         (D.field "ready" D.bool)
+        -- `awaitingRoll` was added after `ready`; older saves
+        -- and the server's bundle-versioned recharge entries
+        -- both lack it, so default to False on decode.  Same
+        -- effect as if the begin-of-turn hook had just fired
+        -- and seen `ready = True`.
+        (D.oneOf [ D.field "awaitingRoll" D.bool, D.succeed False ])
 
 
 decodeTimer : D.Decoder Timer

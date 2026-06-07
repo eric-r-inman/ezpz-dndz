@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalTimerPresets
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -150,6 +150,18 @@ contract as `persistLocalConditionPresets` but for the
 Timer-setup modal — see `Ui.Timer.Wire.encodePresets`.
 -}
 port persistLocalTimerPresets : E.Value -> Cmd msg
+
+
+{-| Persist the party roster — the level-per-character list
+shared by the CR Calculator and Random Encounter modals — to
+`localStorage.party`. Body is `{ "members": [...],
+"next_id": N }` so the auto-increment id counter survives a
+reload alongside the actual members. Anonymous and
+authenticated sessions both use this client-side store today;
+a future server-side `/api/me/preferences` can reuse the same
+payload shape.
+-}
+port persistLocalParty : E.Value -> Cmd msg
 
 
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of

@@ -13,6 +13,7 @@ module Update.Encounter exposing
     , requestClear
     , requestReset
     , rollFallDamage
+    , rollRechargeNow
     , run
     , setActive
     , shiftToggleSelected
@@ -89,9 +90,6 @@ nextTurn model =
         beginRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
 
-        rechargeRolls =
-            Effects.rechargeRollCmdsFor newEnc.activeName newEnc
-
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
                 [ Effects.scrollActiveIntoView newEnc.activeName ]
@@ -99,8 +97,12 @@ nextTurn model =
             else
                 []
     in
+    -- Recharge d6s used to auto-fire here; the card now renders a
+    -- blinking dice glyph on the active creature's spent recharge
+    -- chip and the GM clicks to roll, so we don't include the
+    -- recharge cmds in the turn-advance batch any more.
     ( { model | encounter = newEnc }
-    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ rechargeRolls)
+    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls)
     )
 
 
@@ -199,7 +201,12 @@ toggleRechargeAbility creatureName abilityName model =
                         List.map
                             (\a ->
                                 if a.name == abilityName then
-                                    { a | ready = not a.ready }
+                                    -- Always clear awaitingRoll on toggle:
+                                    -- ready→spent shouldn't surface the prompt
+                                    -- this turn (it waits for the next begin-
+                                    -- of-turn hook), and spent→ready obviously
+                                    -- doesn't need the prompt either.
+                                    { a | ready = not a.ready, awaitingRoll = False }
 
                                 else
                                     a
@@ -211,6 +218,39 @@ toggleRechargeAbility creatureName abilityName model =
         model
     , Cmd.none
     )
+
+
+{-| Fire the recharge d6 for a single ability on demand —
+wired to the blinking dice glyph on the spent + active chip.
+The roll continuation lands in `rechargeRollLanded` just like
+the previous auto-roll path did, so result handling is shared.
+
+A no-op if the ability is already ready (the dice shouldn't be
+clickable in that state, but we guard defensively against a
+stale click during a transition).
+
+-}
+rollRechargeNow : String -> String -> Model -> ( Model, Cmd Msg )
+rollRechargeNow creatureName abilityName model =
+    let
+        ability =
+            model.encounter.creatures
+                |> List.filter (\c -> c.name == creatureName)
+                |> List.concatMap .rechargeAbilities
+                |> List.filter (\a -> a.name == abilityName)
+                |> List.head
+    in
+    case ability of
+        Just a ->
+            case Effects.rechargeRollCmd creatureName a of
+                Just cmd ->
+                    ( model, cmd )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
 
 
 {-| Begin-of-turn d6 landed for one recharge ability. If the
@@ -230,8 +270,17 @@ rechargeRollLanded creatureName abilityName roll model =
                         | rechargeAbilities =
                             List.map
                                 (\a ->
-                                    if a.name == abilityName && roll.total >= a.low then
-                                        { a | ready = True }
+                                    if a.name == abilityName then
+                                        -- Clear awaitingRoll regardless of
+                                        -- outcome: a failed roll doesn't get
+                                        -- to re-prompt on the same turn
+                                        -- (RAW: one recharge attempt per
+                                        -- turn).  Next begin-of-turn hook
+                                        -- will set it back if still spent.
+                                        { a
+                                            | ready = roll.total >= a.low
+                                            , awaitingRoll = False
+                                        }
 
                                     else
                                         a
@@ -411,7 +460,14 @@ resetCreatureState c =
         , deathSaves = Encounter.emptyDeathSaves
         , acceptingDeathSaves = False
         , reactionUsed = False
-        , rechargeAbilities = []
+        , rechargeAbilities =
+            -- Identity-level data: the abilities themselves
+            -- persist (they're the creature's stat block, not
+            -- per-fight state).  Per-fight state on each — ready
+            -- + the begin-of-turn awaiting-roll prompt — resets.
+            List.map
+                (\a -> { a | ready = True, awaitingRoll = False })
+                c.rechargeAbilities
         , readied = False
         , inactive = False
         , timer = Nothing

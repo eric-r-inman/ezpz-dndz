@@ -354,11 +354,19 @@ type Msg
     | ToggleReaction String
       -- Click the recharge chip on a creature's card to flip a
       -- single recharge ability between ready/expended.  Pure UI
-      -- toggle; doesn't fire a dice roll.
+      -- toggle; doesn't fire a dice roll.  Used by the ability-
+      -- name half of the split chip (spent + active) to mark
+      -- ready manually, and by the whole chip in non-active
+      -- states (toggle either direction).
     | ToggleRechargeAbility String String
-      -- Result of the begin-of-turn auto-roll for one recharge
-      -- ability: (creature name, ability name, the d6 roll).
-      -- If roll.total >= ability.low, flip ready=True.
+      -- Fire the recharge d6 for one ability on demand.  Wired
+      -- to the blinking dice glyph on the spent + active chip
+      -- form — recharges are no longer auto-rolled at the start
+      -- of the creature's turn; the GM clicks when ready.
+    | RollRechargeNow String String
+      -- Result of the recharge d6 for one ability: (creature
+      -- name, ability name, the d6 roll).  If roll.total >=
+      -- ability.low, flip ready=True.
     | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
       -- Dice modal
@@ -895,6 +903,42 @@ type Msg
     | CrCalculatorPartyAdd
     | CrCalculatorPartyRemove Int
     | CrCalculatorPartyLevelSet Int String
+      -- Random Encounter modal.  Party config reuses the
+      -- CR Calculator's `*Party*` Msgs because the underlying
+      -- `model.party` is shared between the two features.
+    | RandomEncounterOpen
+    | RandomEncounterClose
+      -- Wire tokens for all the dropdown / pill fields —
+      -- keeps the Msg payloads as `String` so the view's
+      -- <select> handlers stay simple.  "" on habitat /
+      -- creature type means Any.
+    | RandomEncounterDifficultySet String
+    | RandomEncounterScaleSet String
+    | RandomEncounterHabitatSet String
+      -- Multi-type picker: the view renders N+1 <select>s where
+      -- N is the current number of selected types and the final
+      -- slot is a blank "add another" picker.  The `Int` is the
+      -- slot index; `""` removes that slot, a non-blank value
+      -- sets or appends.
+    | RandomEncounterCreatureTypeAt Int String
+    | RandomEncounterMinionsToggle
+      -- Specific-creature pin picker.  Search text drives an
+      -- inline result list; PinAdd takes a creature id (used
+      -- by both a picker click and the row's +); PinDecrement
+      -- nudges count down clamped at 1; PinRemove drops the
+      -- entire entry regardless of count.
+    | RandomEncounterPinSearchChanged String
+    | RandomEncounterPinAdd String
+    | RandomEncounterPinDecrement String
+    | RandomEncounterPinRemove String
+      -- Fire the generator with the current params.  Internally
+      -- issues a `Random.generate RandomEncounterRolled` Cmd.
+    | RandomEncounterGenerate
+      -- Continuation: the picked groups land here.  Empty list
+      -- means the filtered pool was empty.
+    | RandomEncounterRolled (List ( Compendium.Creature, Int ))
+      -- Commit the current roll to the encounter queue.
+    | RandomEncounterAddToEncounter
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit
