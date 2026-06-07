@@ -561,19 +561,36 @@ as plain text and a `DiceLink` as a clickable button that fires a
 roll. The first field of `DiceLink` is the original matched substring
 (so it shows the same notation the GM saw); the second is the parsed
 form for actually rolling.
+
+`AttackLink` is the to-hit equivalent: matches both the SRD 5.2.1
+`(Melee|Ranged|Melee or Ranged) Attack Roll: +N` action header
+and the legacy `+N to hit` phrasing still used in spellcasting
+prose. Carries the signed modifier so the view can fire a
+`1d20 + mod` attack roll alongside the existing damage-roll links.
+
 -}
 type Segment
     = Literal String
     | DiceLink String Expression
+    | AttackLink String Int
 
 
 {-| Walk a paragraph of text and split it into literal runs and
 recognized dice-notation matches.
 
-Two patterns are recognized, in priority order:
+Four patterns are recognized, in priority order:
 
   - Stat-block average wrap: `13 (2d8 + 4)` — the whole substring
     becomes a single DiceLink, parsing the inner formula.
+  - SRD 5.2.1 attack-roll header: `Melee Attack Roll: +4`,
+    `Ranged Attack Roll: +N`, `Melee or Ranged Attack Roll: +N`,
+    optionally trailed by `to hit` — becomes a single
+    `AttackLink` so the view can fire a `1d20 + modifier`
+    attack roll. Tried before the legacy form so the whole
+    header (qualifier + modifier) reads as one button.
+  - Legacy attack-roll phrase: `+7 to hit` / `-1 to hit` — still
+    appears in spellcasting prose (`+9 to hit with spell attacks`).
+    Same `AttackLink` segment.
   - Plain dice notation: `1d6`, `2d8 + 3`, `3d10-2`. Whitespace
     around `+`/`-` is optional.
 
@@ -620,6 +637,22 @@ scanStep acc =
                 (\( matched, expr ) ->
                     Parser.Loop
                         { segments = DiceLink matched expr :: flushLit acc.currentLit acc.segments
+                        , currentLit = ""
+                        }
+                )
+        , Parser.backtrackable attackRollMatchParser
+            |> Parser.map
+                (\( matched, mod ) ->
+                    Parser.Loop
+                        { segments = AttackLink matched mod :: flushLit acc.currentLit acc.segments
+                        , currentLit = ""
+                        }
+                )
+        , Parser.backtrackable attackMatchParser
+            |> Parser.map
+                (\( matched, mod ) ->
+                    Parser.Loop
+                        { segments = AttackLink matched mod :: flushLit acc.currentLit acc.segments
                         , currentLit = ""
                         }
                 )
@@ -714,6 +747,143 @@ diceInline =
             , Parser.succeed ()
             ]
         |. optionalDamageTypeTail
+
+
+{-| Match the SRD 5.2.1 action header — `Melee Attack Roll: +4`,
+`Ranged Attack Roll: +N`, `Melee or Ranged Attack Roll: +N`,
+optionally trailed by `to hit`. Captures the full phrase so the
+rendered button reads as the GM saw it in the stat block.
+-}
+attackRollMatchParser : Parser ( String, Int )
+attackRollMatchParser =
+    Parser.getChompedString attackRollInline
+        |> Parser.andThen tryParseAttack
+
+
+attackRollInline : Parser ()
+attackRollInline =
+    Parser.succeed ()
+        |. attackRollPrefix
+        |. requiredSpace
+        |. Parser.symbol "Attack Roll:"
+        |. requiredSpace
+        |. Parser.oneOf
+            [ Parser.symbol "+"
+            , Parser.symbol "-"
+            ]
+        |. digits1
+        |. optionalToHitTail
+
+
+{-| Match one of the SRD 5.2.1 attack-roll qualifiers. Combined
+forms (`Melee or Ranged`) are listed first so the alternation
+doesn't commit on the shorter prefix and then fail on `Attack
+Roll:` expecting it after `or Ranged`.
+-}
+attackRollPrefix : Parser ()
+attackRollPrefix =
+    Parser.oneOf
+        [ Parser.backtrackable (Parser.symbol "Melee or Ranged")
+        , Parser.backtrackable (Parser.symbol "Ranged or Melee")
+        , Parser.symbol "Melee"
+        , Parser.symbol "Ranged"
+        ]
+
+
+{-| Some bundled creatures redundantly stamp `to hit` after the
+SRD-format header (e.g. `Melee Attack Roll: +17 to hit`). When
+present we consume it so the whole phrase reads as one button;
+when absent we backtrack cleanly and the header ends at the
+modifier.
+-}
+optionalToHitTail : Parser ()
+optionalToHitTail =
+    Parser.oneOf
+        [ Parser.backtrackable
+            (Parser.succeed ()
+                |. requiredSpace
+                |. Parser.symbol "to"
+                |. requiredSpace
+                |. Parser.symbol "hit"
+            )
+        , Parser.succeed ()
+        ]
+
+
+{-| Match the legacy `+N to hit` / `-N to hit` phrase still used
+in spell-attack prose. Captured substring is the full phrase;
+modifier extraction is shared with `attackRollMatchParser` via
+[`attackModifier`](#attackModifier).
+-}
+attackMatchParser : Parser ( String, Int )
+attackMatchParser =
+    Parser.getChompedString attackInline
+        |> Parser.andThen tryParseAttack
+
+
+attackInline : Parser ()
+attackInline =
+    Parser.succeed ()
+        |. Parser.oneOf
+            [ Parser.symbol "+"
+            , Parser.symbol "-"
+            ]
+        |. digits1
+        |. requiredSpace
+        |. Parser.symbol "to"
+        |. requiredSpace
+        |. Parser.symbol "hit"
+
+
+{-| Chomp at least one ASCII space. `Parser.spaces` would accept
+zero, which would let `+7to hit` match — vanishingly unlikely in
+real stat blocks but cheap to reject.
+-}
+requiredSpace : Parser ()
+requiredSpace =
+    Parser.succeed ()
+        |. Parser.chompIf (\c -> c == ' ')
+        |. Parser.chompWhile (\c -> c == ' ')
+
+
+tryParseAttack : String -> Parser ( String, Int )
+tryParseAttack matched =
+    case attackModifier matched of
+        Just mod ->
+            Parser.succeed ( matched, mod )
+
+        Nothing ->
+            Parser.problem "not an attack-roll phrase"
+
+
+{-| Pull the signed integer out of a matched attack-roll phrase.
+Finds the first whitespace-separated token starting with `+` or
+`-` and parses it. Works for both forms — `+7 to hit` (signed
+token is the first word) and `Melee Attack Roll: +4 to hit`
+(signed token is the fourth word).
+-}
+attackModifier : String -> Maybe Int
+attackModifier matched =
+    matched
+        |> String.words
+        |> List.filter
+            (\w ->
+                String.startsWith "+" w || String.startsWith "-" w
+            )
+        |> List.head
+        |> Maybe.andThen parseSignedInt
+
+
+{-| Parse a signed integer string. Elm's `String.toInt` rejects a
+leading `+`, so we strip it ourselves; a leading `-` is fine.
+-}
+parseSignedInt : String -> Maybe Int
+parseSignedInt s =
+    if String.startsWith "+" s then
+        s |> String.dropLeft 1 |> String.toInt
+
+    else
+        String.toInt s
 
 
 {-| Optional trailing `<5e-damage-type> [damage]` annotation,

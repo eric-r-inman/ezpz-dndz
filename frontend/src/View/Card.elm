@@ -1,4 +1,4 @@
-module View.Card exposing (view)
+module View.Card exposing (deathSaveColumn, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
@@ -29,7 +29,7 @@ import Effects
 import Encounter exposing (Cover(..), Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, title, type_, value)
-import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagationOn)
+import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Msg
     exposing
@@ -39,42 +39,22 @@ import Msg
         )
 import Set exposing (Set)
 import Ui.HpChange exposing (HpEdit)
+import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
 import View.Tooltips as Tooltips
 
 
-view : String -> Maybe HpEdit -> Creature -> Html Msg
-view activeName hpEdit creature =
+view : String -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Creature -> Html Msg
+view activeName hpEdit renameState creature =
     let
         isActive =
             creature.name == activeName
 
-        isDead =
-            Encounter.isDeathSaveDead creature.deathSaves
-
         cardClass =
-            String.join " "
-                (List.filterMap identity
-                    [ Just "creature-card"
-                    , if isActive then
-                        Just "creature-card--active"
-
-                      else
-                        Nothing
-                    , if isDead then
-                        Just "creature-card--dead"
-
-                      else
-                        Nothing
-                    , if creature.inactive then
-                        Just "creature-card--inactive"
-
-                      else
-                        Nothing
-                    ]
-                )
+            String.join " " ("creature-card" :: lifecycleClasses isActive creature)
     in
     article [ id (Effects.cardId creature.name), class cardClass ]
-        [ div [ class "creature-card__rail creature-card__rail--left" ]
+        [ lifecycleBadge creature
+        , div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
                 [ input
                     [ type_ "checkbox"
@@ -111,7 +91,7 @@ view activeName hpEdit creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop creature hpEdit
+            [ rowTop isActive creature hpEdit renameState
             , rowMid creature hpEdit
             , rowBot creature
             ]
@@ -160,6 +140,15 @@ view activeName hpEdit creature =
             , div [ class "creature-card__rail-group" ]
                 [ button
                     [ class "icon-btn"
+                    , onClick (QuickAddOpenForReplace creature.name)
+                    , Tooltips.attr "Replace creature"
+                    , attribute "aria-label" "Replace creature"
+                    ]
+                    [ text "⇄" ]
+                ]
+            , div [ class "creature-card__rail-group" ]
+                [ button
+                    [ class "icon-btn"
                     , onClick (DuplicateOpen creature.name)
                     , Tooltips.attr Tooltips.queueDuplicate
                     , attribute "aria-label" "Duplicate"
@@ -168,6 +157,137 @@ view activeName hpEdit creature =
                 ]
             ]
         ]
+
+
+{-| Lifecycle modifier classes (active / dead / unconscious /
+inactive) so both the classic-card and custom-card renderers
+classify creatures identically. Order is fixed so a creature
+that's BOTH dead and inactive still picks up both classes; CSS
+specificity decides which visual wins (`--dead` overrides
+`--unconscious` because death implies unconsciousness, and the
+left-border / badge picks the most-severe colour).
+
+  - **alive** (no class) — `currentHp > 0`.
+  - **unconscious** — `currentHp == 0`, not yet 3 failed death
+    saves. Amber border + "DOWN" badge so the GM doesn't lose
+    track of a downed creature when the death-save pip strip is
+    hidden by default.
+  - **dead** — three failed death saves. Red border + 💀 badge,
+    plus the existing grayscale / opacity treatment.
+  - **inactive** — manually skipped via the ∅ rail toggle. Gray
+    border + ⏭ badge.
+
+-}
+lifecycleClasses : Bool -> Creature -> List String
+lifecycleClasses isActive creature =
+    let
+        isDead =
+            Encounter.isDeathSaveDead creature.deathSaves
+
+        isUnconscious =
+            creature.currentHp == 0 && not isDead
+    in
+    List.filterMap identity
+        [ if isActive then
+            Just "creature-card--active"
+
+          else
+            Nothing
+        , if isDead then
+            Just "creature-card--dead"
+
+          else if isUnconscious then
+            Just "creature-card--unconscious"
+
+          else
+            Nothing
+        , if creature.inactive then
+            Just "creature-card--inactive"
+
+          else
+            Nothing
+        ]
+
+
+{-| Top-center status pill that floats above the card.
+Renders nothing for alive, active-only creatures so the
+encounter queue isn't visually noisy when everyone's healthy.
+Inactive wins over unconscious on the label so a manually
+skipped downed creature still reads as SKIPPED — that's the
+GM's explicit choice.
+
+The DOWN and DEAD variants are both clickable, forming a
+reversible toggle on the same physical pill:
+
+  - DOWN → DEAD (`MarkCreatureDead`) sets failures to 3.
+  - DEAD → DOWN (`RevertCreatureToDown`) clears failures back
+    to 0, preserving any successes the creature already had.
+
+The predicate cascade does the rest — `isDeathSaveDead`
+flips, the card class swaps between `--unconscious` and
+`--dead`, the badge label and colour follow. SKIPPED stays a
+non-interactive div; reversing it goes through the ∅ rail
+toggle as before.
+
+-}
+lifecycleBadge : Creature -> Html Msg
+lifecycleBadge creature =
+    let
+        isDead =
+            Encounter.isDeathSaveDead creature.deathSaves
+
+        isStable =
+            Encounter.isDeathSaveStable creature.deathSaves
+
+        baseClass slug =
+            "creature-card__lifecycle creature-card__lifecycle--" ++ slug
+
+        ( downLabel, downClass ) =
+            -- A creature with three success pips has stabilised
+            -- under 5e rules — they're not dying anymore.  Surface
+            -- that on the badge so the GM doesn't need to peek at
+            -- the pip strip to know the death-save clock stopped.
+            -- The button still fires `MarkCreatureDead` because
+            -- the GM may still want to mark them dead manually for
+            -- narrative reasons; clicking remains the explicit
+            -- override path.
+            if isStable then
+                ( "💤 DOWN, STABLE", "down-stable" )
+
+            else
+                ( "💤 DOWN", "down" )
+    in
+    if creature.inactive then
+        div
+            [ class (baseClass "inactive")
+            , attribute "role" "status"
+            ]
+            [ text "⏭ SKIPPED" ]
+
+    else if isDead then
+        button
+            [ class (baseClass "dead")
+            , Attr.type_ "button"
+            , onClick (RevertCreatureToDown creature.name)
+            , Tooltips.attr Tooltips.lifecycleDeadToDown
+            , attribute "aria-label"
+                ("Mark " ++ creature.name ++ " not dead (revert)")
+            ]
+            [ text "💀 DEAD" ]
+
+    else if creature.currentHp == 0 then
+        button
+            [ class (baseClass downClass)
+            , Attr.type_ "button"
+            , onClick (MarkCreatureDead creature.name)
+            , Tooltips.attr Tooltips.lifecycleDownToDead
+            , attribute "aria-label"
+                ("Mark " ++ creature.name ++ " dead")
+            ]
+            [ text downLabel ]
+
+    else
+        text ""
 
 
 {-| Click handler for the row 1 selection checkbox.
@@ -201,8 +321,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Creature -> Maybe HpEdit -> Html Msg
-rowTop creature hpEdit =
+rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Html Msg
+rowTop isActive creature hpEdit renameState =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -212,34 +332,112 @@ rowTop creature hpEdit =
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
             [ text (String.fromInt creature.initiative) ]
-        , creatureName creature
+        , creatureName creature renameState
         , noteOrPencil creature
         , acReadout creature hpEdit
-        , conditionChips creature
+        , rowTopChipCluster isActive creature
         ]
 
 
-{-| The creature name on row 1 of each card. When the creature has
-a `creatureId` back-reference to a compendium entry, the name is
-rendered as a clickable element that pins that entry's stat block
-in the side panel — and an underline-on-hover style hints at the
-affordance. Legacy seed creatures (no compendium link) render as
-a plain span.
+{-| The creature name on row 1 of each card. Three render modes:
+
+  - Compendium-linked: a `<button>` that pins the source stat
+    block in the side panel.
+  - Placeholder (name matches `Placeholder N` and no
+    compendium link): a clickable `<button>` that opens the
+    inline rename — OR, when this creature is currently being
+    renamed, an `<input>` whose Enter/blur commits.
+  - Legacy seed creatures (no compendium link, name doesn't
+    match the placeholder pattern): a plain `<span>`. Unchanged
+    behavior.
+
 -}
-creatureName : Creature -> Html Msg
-creatureName creature =
+creatureName : Creature -> Maybe PlaceholderRenameState -> Html Msg
+creatureName creature renameState =
     case creature.creatureId of
         Just id_ ->
-            span
+            -- Clickable name (pins the compendium stat block in
+            -- the side panel) is a real `<button>` so keyboard
+            -- users can Tab to it and press Enter/Space.  Native
+            -- button chrome is reset by the existing
+            -- `.creature-name--linked` styling.
+            button
                 [ class "creature-name creature-name--default creature-name--linked"
+                , type_ "button"
                 , onClick (PanelShowCreature id_ creature.name)
                 , Tooltips.attr Tooltips.showStatBlock
+                , attribute "aria-label"
+                    ("Pin " ++ creature.name ++ "'s stat block to the side panel")
                 ]
                 [ text creature.name ]
 
         Nothing ->
-            span [ class "creature-name creature-name--default" ]
-                [ text creature.name ]
+            if creature.isPlaceholder then
+                placeholderName creature renameState
+
+            else
+                span [ class "creature-name creature-name--default" ]
+                    [ text creature.name ]
+
+
+{-| `Placeholder N` cards: render either a click-to-rename
+button or an active rename input depending on whether this
+creature is the current rename target.
+-}
+placeholderName : Creature -> Maybe PlaceholderRenameState -> Html Msg
+placeholderName creature renameState =
+    case renameState of
+        Just state ->
+            if state.target == creature.name then
+                input
+                    [ class "creature-name creature-name--rename-input"
+                    , value state.draft
+                    , Attr.maxlength Rename.maxNameLength
+                    , autofocus True
+                    , attribute "aria-label" "Rename placeholder"
+                    , onInput PlaceholderRenameChange
+                    , onBlur PlaceholderRenameCommit
+                    , on "keydown" renameKeyDecoder
+                    ]
+                    []
+
+            else
+                placeholderNameButton creature
+
+        Nothing ->
+            placeholderNameButton creature
+
+
+placeholderNameButton : Creature -> Html Msg
+placeholderNameButton creature =
+    button
+        [ class "creature-name creature-name--default creature-name--linked creature-name--placeholder"
+        , type_ "button"
+        , onClick (PlaceholderRenameOpen creature.name)
+        , Tooltips.attr "Click to rename"
+        , attribute "aria-label" ("Rename " ++ creature.name)
+        ]
+        [ text creature.name ]
+
+
+{-| Keydown handler for the rename input: Enter commits, Esc
+cancels. Other keys flow through to `onInput`.
+-}
+renameKeyDecoder : Decode.Decoder Msg
+renameKeyDecoder =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                case key of
+                    "Enter" ->
+                        Decode.succeed PlaceholderRenameCommit
+
+                    "Escape" ->
+                        Decode.succeed PlaceholderRenameCancel
+
+                    _ ->
+                        Decode.fail "ignored"
+            )
 
 
 {-| Note-or-pencil sliver of row 1.
@@ -340,6 +538,123 @@ legendaryColumns creature =
             ]
 
 
+{-| One recharge-ability pill, sized to match the condition-chip
+shape so it sits inline in row 1's chip cluster.
+
+Three states:
+
+  - **Ready** — green pill with the ability name + range. Click
+    marks it spent (in case the GM resolves it manually).
+  - **Spent on a non-active creature** — muted-gray pill,
+    strikethrough. Click toggles back to ready (GM correction).
+  - **Spent + active + `awaitingRoll`** — the prompt state.
+    The pill splits into a clickable 🎲 (blinking) on the
+    left, a `|` divider, and the ability name on the right.
+    Clicking the dice fires the recharge d6 via
+    `RollRechargeNow`; clicking the name resets the ability
+    to ready without rolling. The `awaitingRoll` flag is
+    flipped on by the begin-of-turn lifecycle hook, so
+    spending an ability mid-turn does NOT raise the prompt
+    on the same turn — the dice doesn't appear until the
+    creature's next turn starts.
+
+The recharge d6 used to auto-roll at the start of the
+creature's turn; the active-spent prompt replaces that so the
+GM gets to time the roll themselves.
+
+-}
+rechargeChip : Bool -> String -> Encounter.RechargeAbility -> Html Msg
+rechargeChip isActive bearer ability =
+    let
+        rangeLabel =
+            if ability.low == ability.high then
+                String.fromInt ability.low
+
+            else
+                String.fromInt ability.low ++ "–" ++ String.fromInt ability.high
+    in
+    if not ability.ready && isActive && ability.awaitingRoll then
+        rechargePromptChip bearer ability rangeLabel
+
+    else
+        rechargeStaticChip ability rangeLabel bearer
+
+
+{-| Default chip rendering for ready (green) and spent-but-
+inactive (muted) states. Single button, click toggles.
+-}
+rechargeStaticChip : Encounter.RechargeAbility -> String -> String -> Html Msg
+rechargeStaticChip ability rangeLabel bearer =
+    let
+        stateModifier =
+            if ability.ready then
+                "recharge-chip--ready"
+
+            else
+                "recharge-chip--spent"
+
+        tip =
+            if ability.ready then
+                ability.name ++ " — Recharge " ++ rangeLabel ++ " (ready; click to mark spent)"
+
+            else
+                ability.name ++ " — Recharge " ++ rangeLabel ++ " (spent; click to mark ready)"
+    in
+    button
+        [ class ("recharge-chip " ++ stateModifier)
+        , Attr.type_ "button"
+        , onClick (ToggleRechargeAbility bearer ability.name)
+        , Tooltips.attr tip
+        , attribute "aria-label" tip
+        , attribute "aria-pressed"
+            (if ability.ready then
+                "false"
+
+             else
+                "true"
+            )
+        ]
+        [ text ability.name
+        , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
+        ]
+
+
+{-| The active-creature prompt: blinking 🎲 (roll) | name (reset).
+The two clickable halves are independent <button>s wrapped in a
+shared chip container so they share the pill's borders + tint.
+-}
+rechargePromptChip : String -> Encounter.RechargeAbility -> String -> Html Msg
+rechargePromptChip bearer ability rangeLabel =
+    let
+        rollTip =
+            "Roll Recharge " ++ rangeLabel ++ " for " ++ ability.name
+
+        readyTip =
+            "Mark " ++ ability.name ++ " ready (no roll)"
+    in
+    span [ class "recharge-chip recharge-chip--prompt" ]
+        [ button
+            [ class "recharge-chip__dice"
+            , Attr.type_ "button"
+            , onClick (RollRechargeNow bearer ability.name)
+            , Tooltips.attr rollTip
+            , attribute "aria-label" rollTip
+            ]
+            [ text "🎲" ]
+        , span [ class "recharge-chip__pipe" ] [ text "|" ]
+        , button
+            [ class "recharge-chip__name-btn"
+            , Attr.type_ "button"
+            , onClick (ToggleRechargeAbility bearer ability.name)
+            , Tooltips.attr readyTip
+            , attribute "aria-label" readyTip
+            ]
+            [ text ability.name
+            , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
+            ]
+        ]
+
+
 legendaryColumn :
     { creatureName : String
     , kind : String
@@ -431,22 +746,34 @@ headerTooltipFor label =
 -- ── CONDITION CHIPS ─────────────────────────────────────────────────────
 
 
-{-| Live render of a creature's conditions and any post-save
-"Saved: <name>" notices on row 1 of the card. Empty for both →
-empty text node so the row's flex gap collapses naturally.
-Otherwise we render a leading separator pipe followed by chips
-(active conditions first, then notices) so the eye lands on the
-condition the GM is most likely to act on.
+{-| Row 1 chip cluster: a single `flex: 1 1 auto` container that
+holds the condition / save-notice chips followed immediately by
+the recharge chips, separated by a leading pipe. Combining them
+into one wrap (rather than two siblings) keeps the recharge chip
+hugged to the right of the condition chips instead of getting
+pushed to the row's far edge by the wrap's flex-grow.
+
+Renders nothing if the creature has neither conditions nor save
+notices nor recharge abilities, so the row collapses cleanly for
+PCs and most NPCs.
+
 -}
-conditionChips : Creature -> Html Msg
-conditionChips creature =
-    if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
+rowTopChipCluster : Bool -> Creature -> Html Msg
+rowTopChipCluster isActive creature =
+    let
+        hasAnyChip =
+            not (List.isEmpty creature.conditions)
+                || not (List.isEmpty creature.saveNotices)
+                || not (List.isEmpty creature.rechargeAbilities)
+    in
+    if not hasAnyChip then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (conditionChip creature.name) creature.conditions
+                :: List.map (rechargeChip isActive creature.name) creature.rechargeAbilities
+                ++ List.map (conditionChip creature.name) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )
 
@@ -473,14 +800,21 @@ saveNoticeChip target notice =
         ]
 
 
-{-| One condition chip. Layout (left → right):
-[ name + note ][ optional save-roll button ] [ duration glyph ][ × ]
+{-| One condition chip. Visible text is just the condition name +
+optional `(note)`; per the release-polish pass the duration glyph
+and the chip body itself stay minimal. Two action affordances sit
+inside the chip:
 
-Clicking the name opens the edit modal; the × runs the remove Msg
-directly (and stops propagation so it doesn't also open the
-modal). The save-roll button (when the condition has a
-`saveToEnd`) fires a 1d20 vs. the DC and removes the condition on
-success.
+  - The 🎲 save-roll button — only when the condition has a
+    `saveToEnd` spec. Fires a 1d20 vs. the DC and removes the
+    condition silently on success.
+  - The × remove button — always present. One-click chip removal
+    without opening the edit modal.
+
+Both action buttons `stopPropagationOn "click"` so they don't
+also bubble up and open the edit modal (which the chip name
+itself triggers). The hover tooltip on the chip wrap composes
+the full duration + save terms via `chipTitle`.
 
 -}
 conditionChip : String -> Encounter.Condition -> Html Msg
@@ -503,7 +837,6 @@ conditionChip target cond =
                     [ text (" (" ++ cond.note ++ ")") ]
             ]
         , chipSaveButton target cond
-        , chipDurationGlyph cond
         , button
             [ class "condition-chip__remove"
             , stopPropagationOn "click"
@@ -552,26 +885,6 @@ chipSaveButton target cond =
 
         Nothing ->
             text ""
-
-
-{-| Compact duration glyph appended to a chip. Manual durations
-get nothing (the GM removes by hand); UntilTurn shows ⏱
-N (where N is "Bk" or first 3 chars of the ref creature's name);
-Countdown shows ⏳N.
--}
-chipDurationGlyph : Encounter.Condition -> Html Msg
-chipDurationGlyph cond =
-    case cond.duration of
-        Encounter.DurationManual ->
-            text ""
-
-        Encounter.DurationUntilTurn _ _ ref ->
-            span [ class "condition-chip__duration" ]
-                [ text ("⏱ " ++ String.left 4 ref) ]
-
-        Encounter.DurationCountdown _ remaining _ ->
-            span [ class "condition-chip__duration" ]
-                [ text ("⏳ " ++ String.fromInt remaining) ]
 
 
 formatBonus : Int -> String
@@ -691,12 +1004,47 @@ hpEditable creature hpEdit field current cls =
             []
 
     else
-        span
+        -- Trigger is a real `<button>` (not a `<span onClick>`) so
+        -- keyboard users can Tab to it and press Enter/Space to
+        -- enter edit mode.  The styling stays the same via the
+        -- existing `.hp-display__editable` class — CSS resets the
+        -- native button chrome.
+        button
             [ class (cls ++ " hp-display__editable")
+            , type_ "button"
             , onClick (HpEditStart creature.name field current)
             , Tooltips.attr Tooltips.clickToEdit
+            , attribute "aria-label"
+                (hpFieldAriaLabel field creature.name current)
             ]
             [ text (String.fromInt current) ]
+
+
+{-| Screen-reader label for the inline HP / AC edit trigger.
+SR users hear the field role + current value + creature name
+when focus lands on the trigger, so they know what they're about
+to edit.
+-}
+hpFieldAriaLabel : HpField -> String -> Int -> String
+hpFieldAriaLabel field name current =
+    let
+        fieldName =
+            case field of
+                CurrentHpField ->
+                    "Current HP"
+
+                MaxHpField ->
+                    "Max HP"
+
+                ArmorClassField ->
+                    "Armor Class"
+    in
+    fieldName
+        ++ " "
+        ++ String.fromInt current
+        ++ " for "
+        ++ name
+        ++ ", click to edit"
 
 
 {-| Enter commits the inline HP edit, Esc cancels. Other keys
@@ -754,6 +1102,22 @@ deathSaveColumn : Creature -> Html Msg
 deathSaveColumn creature =
     if creature.currentHp /= 0 then
         text ""
+
+    else if not creature.acceptingDeathSaves then
+        -- Opt-in button.  Most downed enemies never need to roll
+        -- death saves (the DM just narrates them dead), so the
+        -- pip strip stays hidden until the GM explicitly asks
+        -- for it.  Click flips `acceptingDeathSaves = True` and
+        -- the full tracker renders on the next pass.
+        div [ class "death-save-cols death-save-cols--opt-in" ]
+            [ button
+                [ class "death-save-cols__begin"
+                , onClick (DeathSavesBegin creature.name)
+                , Tooltips.attr Tooltips.deathBegin
+                , attribute "aria-label" "Begin death saving throws"
+                ]
+                [ text "Death Saves" ]
+            ]
 
     else
         let
@@ -909,7 +1273,7 @@ coverToggle creature =
                     ( "¾ cover", "Three-quarters cover", "status-toggle--on" )
 
                 FullCover ->
-                    ( "full cover", "Full cover", "status-toggle--on" )
+                    ( "total cover", "Total cover", "status-toggle--on" )
     in
     button
         [ class ("status-toggle " ++ modifier)
@@ -986,6 +1350,7 @@ rowBot creature =
             ]
             [ text "Condition/Effect" ]
         , readiedToggle creature
+        , reactionPip creature
         , memoSlot creature
         , timerSlot creature
         ]
@@ -999,12 +1364,14 @@ memoSlot : Creature -> Html Msg
 memoSlot creature =
     if String.isEmpty creature.memo then
         button
-            [ class "action-btn action-btn--icon"
+            [ class "action-btn action-btn--icon action-btn--memo-empty"
             , onClick (MemoOpen creature.name)
             , Tooltips.attr Tooltips.memoAdd
             , attribute "aria-label" "Add memo"
             ]
-            [ text "📝" ]
+            [ span [ class "action-btn__icon" ] [ text "📝" ]
+            , span [ class "action-btn__text" ] [ text "Memo" ]
+            ]
 
     else
         span
@@ -1041,12 +1408,14 @@ timerSlot creature =
     case creature.timer of
         Nothing ->
             button
-                [ class "action-btn action-btn--icon"
+                [ class "action-btn action-btn--icon action-btn--timer-empty"
                 , onClick (TimerOpen creature.name)
                 , Tooltips.attr Tooltips.timerSet
                 , attribute "aria-label" "Set timer"
                 ]
-                [ text "⏱️" ]
+                [ span [ class "action-btn__icon" ] [ text "⏱️" ]
+                , span [ class "action-btn__text" ] [ text "Timer" ]
+                ]
 
         Just t ->
             span
@@ -1100,24 +1469,25 @@ timerTooltip t =
 readiedToggle : Creature -> Html Msg
 readiedToggle creature =
     let
-        ( bodyText, cls, label ) =
+        ( iconGlyph, wordLabel, cls ) =
             if creature.readied then
-                ( "✊ Readied"
-                , "action-btn action-btn--readied"
-                , Tooltips.releaseReadied
-                )
+                ( "✊", "Readied", "action-btn action-btn--readied" )
 
             else
-                ( "✋ Ready"
-                , "action-btn action-btn--ready"
-                , Tooltips.readyAction
-                )
+                ( "✋", "Ready", "action-btn action-btn--ready" )
+
+        tooltip =
+            if creature.readied then
+                Tooltips.releaseReadied
+
+            else
+                Tooltips.readyAction
     in
     button
         [ class cls
         , onClick (ToggleReadied creature.name)
-        , Tooltips.attr label
-        , attribute "aria-label" label
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
         , attribute "aria-pressed"
             (if creature.readied then
                 "true"
@@ -1126,4 +1496,50 @@ readiedToggle creature =
                 "false"
             )
         ]
-        [ text bodyText ]
+        -- Icon prefix wrapped in its own span so the Accessible
+        -- theme can drop the unicode glyph and let the word stand
+        -- on its own.  Modern / Dark / Auto leave the span visible.
+        [ span [ class "action-btn__icon-prefix" ] [ text (iconGlyph ++ " ") ]
+        , text wordLabel
+        ]
+
+
+{-| One-per-round reaction pip. ⚡ when available, gray ⚡ when
+expended. Mirrors the legendary-resistance pip pattern but with a
+single slot. Auto-resets at the start of the creature's next turn
+via `Encounter.Lifecycle.applyBeginOfTurn`; the click is wired
+manually so the GM can flip it ad-hoc.
+-}
+reactionPip : Creature -> Html Msg
+reactionPip creature =
+    let
+        ( cls, tooltip ) =
+            if creature.reactionUsed then
+                ( "action-btn action-btn--reaction action-btn--reaction-spent"
+                , Tooltips.reactionSpent
+                )
+
+            else
+                ( "action-btn action-btn--reaction action-btn--reaction-ready"
+                , Tooltips.reactionReady
+                )
+    in
+    button
+        [ class cls
+        , onClick (ToggleReaction creature.name)
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
+        , attribute "aria-pressed"
+            (if creature.reactionUsed then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        -- Same icon-prefix split as `readiedToggle` so the
+        -- Accessible theme hides the ⚡ glyph and the word
+        -- "Reaction" stands on its own.
+        [ span [ class "action-btn__icon-prefix" ] [ text "⚡ " ]
+        , text "Reaction"
+        ]

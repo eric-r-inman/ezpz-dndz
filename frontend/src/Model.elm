@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens
     )
 
 {-| The single source of truth for the running app.
@@ -40,9 +40,12 @@ import Auth exposing (AuthState)
 import Browser.Navigation as Nav
 import Card.Layout exposing (CardLayout, QueueView)
 import Card.Wire as CardWire
+import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
+import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
+import Json.Decode as Decode
 import Msg exposing (ControlMenu, MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
@@ -50,7 +53,7 @@ import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
 import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
-import Ui.Condition exposing (ConditionUi)
+import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
 import Ui.Dice exposing (DiceUi)
 import Ui.Duplicate exposing (DuplicateUi)
@@ -61,11 +64,14 @@ import Ui.Load exposing (LoadUi)
 import Ui.LoadCompendium exposing (LoadCompendiumUi)
 import Ui.Login exposing (LoginUi)
 import Ui.Memo exposing (MemoEditUi)
+import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
+import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
+import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
-import Ui.Timer exposing (TimerSetupUi)
+import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
 import Url exposing (Url)
 
@@ -121,6 +127,7 @@ type Modal
     | ModalGroupEdit GroupEditUi
     | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
+    | ModalRandomEncounter RandomEncounterUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -218,6 +225,20 @@ crCalculatorLens =
                 _ ->
                     Nothing
     , wrap = ModalCrCalculator
+    }
+
+
+randomEncounterLens : ModalLens RandomEncounterUi
+randomEncounterLens =
+    { extract =
+        \m ->
+            case m of
+                ModalRandomEncounter ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalRandomEncounter
     }
 
 
@@ -390,6 +411,8 @@ type alias Model =
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
     , modal : Maybe Modal
+    , modalChrome : ModalChrome
+    , placeholderRename : Maybe PlaceholderRenameState
     , panelCreaturePin : Maybe PanelPin
     , pendingControl : Maybe PendingControl
     , xpScope : XpScope
@@ -435,6 +458,74 @@ type alias Model =
     -- shape will round-trip cleanly when added.
     , party : List Difficulty.PartyMember
     , nextPartyMemberId : Int
+
+    -- Anonymous-mode bootstrap: the raw localStorage encounter
+    -- snapshot from boot flags.  Held verbatim until the auth probe
+    -- resolves — if the user is anonymous we decode and adopt it;
+    -- if authenticated we discard it (the server is the source of
+    -- truth, the migration prompt lives in a later phase).
+    , localEncounterRaw : Maybe Decode.Value
+
+    -- Same one-shot bootstrap stash for the anonymous card-layout
+    -- snapshot (cardLayout + queueView + useCustomCardLayout).
+    -- Decoded and applied by `Update.Auth.meReceived` on the
+    -- anonymous branch; discarded on the authenticated branch.
+    , localCardLayoutRaw : Maybe Decode.Value
+
+    -- Pre-formatted "today" string from the JS host (e.g.
+    -- "May 26, 2026"), used to label the named server save slot
+    -- when an anonymous encounter is migrated into a freshly-
+    -- authenticated session.  Held until the migration fires;
+    -- otherwise inert.
+    , migrationDateLabel : String
+
+    -- One-shot stash for the anonymous dice-history snapshot from
+    -- localStorage.  Adopted on the anonymous boot branch and
+    -- discarded on the authenticated branch (server history wins).
+    , localDiceHistoryRaw : Maybe Decode.Value
+
+    -- One-shot stash for the anonymous compendium snapshot.  If
+    -- present, the anonymous boot branch decodes it and uses it
+    -- in place of the bundled-creatures fetch; if absent we fall
+    -- back to `/bundled-creatures.json`.
+    , localCompendiumRaw : Maybe Decode.Value
+
+    -- Monotonic counter handing out ids for anonymously-created
+    -- creatures.  Persisted to localStorage as part of the
+    -- compendium snapshot so reloads don't reuse ids.  Server
+    -- creatures use full UUIDs; anonymous use `"local-N"`.
+    , nextLocalCreatureId : Int
+
+    -- Anonymous named encounter saves keyed by name.  Authed
+    -- sessions use the server's `/api/encounter/saves` endpoints;
+    -- anonymous sessions mutate this dict and the update-loop
+    -- wrapper persists it to `localStorage.encounterSaves`.
+    , localEncounterSaves : Dict String EncounterWire.LocalEncounterSave
+
+    -- Anonymous named card-layout saves keyed by name.  Same
+    -- shape and purpose as `localEncounterSaves`.  `CardWire`
+    -- defines the entry type.
+    , localCardLayoutSaves : Dict String CardWire.LocalCardLayoutSave
+
+    -- User-named presets for the Add-Condition modal, keyed by
+    -- the name the GM gave each save.  Mirrors the pattern of
+    -- the other localStorage-backed dicts: the modal's Save and
+    -- Load buttons mutate this dict; the update-loop wrapper
+    -- persists it under `localStorage.conditionPresets`.  Anonymous
+    -- and authenticated sessions both use this same client-side
+    -- dict for now — there's no server endpoint yet because the
+    -- preset shape is small and per-device defaults are reasonable.
+    , conditionPresets : Dict String UiCondition.ConditionPreset
+
+    -- Twin of `conditionPresets` for the Timer-setup modal.
+    -- Persisted under `localStorage.timerPresets`.
+    , timerPresets : Dict String UiTimer.TimerPreset
+
+    -- JS `Date.now()` captured at boot, used as the timestamp for
+    -- all anonymous named-save writes done in this session.  All
+    -- saves in one session share this timestamp (cosmetic-only;
+    -- the migration uploads to the server which assigns its own).
+    , bootMs : Int
     }
 
 

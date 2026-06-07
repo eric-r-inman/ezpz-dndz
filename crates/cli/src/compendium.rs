@@ -10,6 +10,7 @@
 //! The schema is shared with the server via
 //! `ezpz_dndz_lib::compendium::Creature`.
 
+use crate::habitats::infer_habitats;
 use clap::Subcommand;
 use ezpz_dndz_lib::compendium::open5e::Page as Open5ePage;
 use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
@@ -110,6 +111,20 @@ pub enum CompendiumCommand {
     limit: Option<usize>,
   },
 
+  /// Fill in empty `habitats` fields on bundled creatures using
+  /// deterministic name-and-race rules.  Creatures that already
+  /// have habitats are left alone.  Pass `--dry-run` to print a
+  /// coverage summary without mutating the file.
+  InferHabitats {
+    /// Path to the compendium JSON file to mutate in place.
+    #[arg(long, default_value = "compendium/creatures.json")]
+    path: PathBuf,
+
+    /// Don't write — just print what would be filled.
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
+  },
+
   /// Merge a JSON file of `Creature` records into the
   /// compendium store, allocating fresh ids and timestamps for
   /// any draft entries (entries without `id` / `created_at`).
@@ -143,6 +158,9 @@ impl CompendiumCommand {
         out,
         limit,
       } => harvest(document, out, *limit),
+      CompendiumCommand::InferHabitats { path, dry_run } => {
+        infer_habitats_cmd(path, *dry_run)
+      }
       CompendiumCommand::Import { src, dst, replace } => {
         import(src, dst, *replace)
       }
@@ -365,6 +383,97 @@ fn epoch_millis() -> i64 {
     .duration_since(UNIX_EPOCH)
     .map(|d| d.as_millis() as i64)
     .unwrap_or(0)
+}
+
+// ── INFER HABITATS ─────────────────────────────────────────────
+
+/// Read the compendium, run `infer_habitats` against every
+/// creature whose `habitats` is empty, write the result back.
+/// Creatures with pre-existing habitats are skipped entirely so
+/// authored data (whether by a future bundle bump or by user
+/// edits propagated through Paste-Stat-Block) wins over the
+/// rules.  Prints a coverage summary grouped by race and lists
+/// any creatures left without a habitat — the input to a
+/// follow-up rules pass.
+fn infer_habitats_cmd(
+  path: &Path,
+  dry_run: bool,
+) -> Result<(), CompendiumCliError> {
+  let mut creatures = read_creatures(path)?;
+
+  let mut filled = 0usize;
+  let mut skipped_had_habitat = 0usize;
+  let mut by_race_filled: std::collections::BTreeMap<String, usize> =
+    Default::default();
+  let mut by_race_unmatched: std::collections::BTreeMap<String, Vec<String>> =
+    Default::default();
+
+  for c in creatures.iter_mut() {
+    if !c.habitats.is_empty() {
+      skipped_had_habitat += 1;
+      continue;
+    }
+    let inferred = infer_habitats(c);
+    if inferred.is_empty() {
+      by_race_unmatched
+        .entry(c.race.clone())
+        .or_default()
+        .push(c.name.clone());
+    } else {
+      filled += 1;
+      *by_race_filled.entry(c.race.clone()).or_default() += 1;
+      c.habitats = inferred;
+    }
+  }
+
+  println!("Compendium: {}", path.display());
+  println!("  total creatures:       {}", creatures.len());
+  println!("  already had habitats:  {skipped_had_habitat}");
+  println!("  filled by rules:       {filled}");
+  let unmatched_total: usize =
+    by_race_unmatched.values().map(|v| v.len()).sum();
+  println!("  still empty:           {unmatched_total}");
+  println!();
+
+  if !by_race_filled.is_empty() {
+    println!("Filled by race:");
+    for (race, n) in &by_race_filled {
+      println!("  {race:<14} {n:>3}");
+    }
+    println!();
+  }
+
+  if !by_race_unmatched.is_empty() {
+    println!("Unmatched (rules need extending):");
+    for (race, names) in &by_race_unmatched {
+      println!("  {race} ({}):", names.len());
+      for n in names {
+        println!("    - {n}");
+      }
+    }
+    println!();
+  }
+
+  if dry_run {
+    println!("--dry-run set; no changes written.");
+    return Ok(());
+  }
+
+  if filled == 0 {
+    println!("Nothing to write — no creatures gained habitats.");
+    return Ok(());
+  }
+
+  let json = serde_json::to_string_pretty(&creatures)
+    .map_err(CompendiumCliError::SerializeError)?;
+  std::fs::write(path, json).map_err(|source| {
+    CompendiumCliError::WriteError {
+      path: path.to_path_buf(),
+      source,
+    }
+  })?;
+  println!("Wrote {} creatures with new habitats.", filled);
+  Ok(())
 }
 
 // ── IMPORT ─────────────────────────────────────────────────────

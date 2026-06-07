@@ -40,6 +40,9 @@ fixture =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = DeathSaves.empty
+    , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -50,6 +53,10 @@ fixture =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = ""
+    , alignment = ""
     }
 
 

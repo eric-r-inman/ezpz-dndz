@@ -85,6 +85,7 @@ view model =
                 , noOp = NoOp
                 , title = "👥 " ++ titleText
                 , extraClass = "modal--group-edit"
+                , chrome = model.modalChrome
                 , body =
                     [ nameSection ui
                     , initiativeSection ui

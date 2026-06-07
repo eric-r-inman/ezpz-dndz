@@ -51,6 +51,9 @@ mkInstance args =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
+    , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -61,6 +64,10 @@ mkInstance args =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = ""
+    , alignment = ""
     }
 
 
@@ -228,6 +235,9 @@ totalsForSuite =
                         , flyHeight = 0
                         , bloodied = False
                         , deathSaves = { successes = 0, failures = 0 }
+                        , acceptingDeathSaves = False
+                        , reactionUsed = False
+                        , rechargeAbilities = []
                         , readied = False
                         , inactive = False
                         , note = ""
@@ -238,6 +248,10 @@ totalsForSuite =
                         , legendaryActionsUsed = Set.empty
                         , hasLegendaryResistance = False
                         , legendaryResistanceUsed = Set.empty
+                        , isPlaceholder = False
+                        , creatureKind = "enemy"
+                        , race = ""
+                        , alignment = ""
                         }
 
                     enc =

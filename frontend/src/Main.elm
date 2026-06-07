@@ -11,6 +11,7 @@ import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dice
+import Dict
 import Effects
 import Encounter
     exposing
@@ -18,6 +19,7 @@ import Encounter
         , Creature
         , Encounter
         )
+import Encounter.Difficulty as Difficulty
 import Encounter.Roster
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
@@ -48,6 +50,7 @@ import Msg
         , RollScope(..)
         , Theme(..)
         )
+import Ports
 import Preferences
 import Route exposing (Route(..))
 import Task
@@ -63,10 +66,14 @@ import Ui.Compendium as CompendiumUi
         , PendingAction(..)
         )
 import Ui.Condition as ConditionUi exposing (ConditionUi, SaveToEndUi)
+import Ui.Condition.Bundled
+import Ui.Condition.Wire
 import Ui.Dice as DiceUi exposing (DiceUi)
 import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
+import Ui.ModalChrome
+import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
@@ -91,9 +98,12 @@ import Update.LegendaryPip
 import Update.Load
 import Update.LoadCompendium
 import Update.Memo
+import Update.ModalChrome
 import Update.Note
+import Update.PlaceholderRename
 import Update.Preferences
 import Update.QuickAdd
+import Update.RandomEncounter
 import Update.Save
 import Update.SaveCompendium
 import Update.Shell
@@ -101,6 +111,7 @@ import Update.Timer
 import Update.Toast
 import Url exposing (Url)
 import Util.Keyboard
+import View.About
 import View.Account
 import View.AppBar
 import View.Audio
@@ -125,9 +136,11 @@ import View.Modal.LoadCompendium
 import View.Modal.Memo
 import View.Modal.Note
 import View.Modal.QuickAdd
+import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
+import View.Page.QuickList
 import View.RollPopup
 import View.StatBlock
 import View.Toast
@@ -209,6 +222,64 @@ subscriptions model =
                 Nothing ->
                     []
 
+        conditionPresetLoadMenuSubs =
+            case model.modal of
+                Just (ModalCondition ui) ->
+                    if ui.loadMenuOpen then
+                        [ Browser.Events.onKeyDown (escKey ConditionPresetLoadMenuClose)
+                        , Browser.Events.onMouseDown (Decode.succeed ConditionPresetLoadMenuClose)
+                        ]
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        timerPresetLoadMenuSubs =
+            case model.modal of
+                Just (ModalTimerSetup ui) ->
+                    if ui.loadMenuOpen then
+                        [ Browser.Events.onKeyDown (escKey TimerPresetLoadMenuClose)
+                        , Browser.Events.onMouseDown (Decode.succeed TimerPresetLoadMenuClose)
+                        ]
+
+                    else
+                        []
+
+                _ ->
+                    []
+
+        -- Esc on the Login route cancels back to the encounter
+        -- page.  Scoped to the route so it doesn't intercept Esc
+        -- on the main app (where the existing modal handlers want
+        -- it for their own dismissal).
+        loginEscSubs =
+            if model.route == Login then
+                [ Browser.Events.onKeyDown (escKey LoginCancel) ]
+
+            else
+                []
+
+        -- Modal chrome drag / resize subscriptions.  Only active
+        -- while a gesture is in flight — the rest of the time
+        -- mousemove / mouseup go through the browser's default
+        -- handling.
+        chromeSubs =
+            case ( model.modalChrome.drag, model.modalChrome.resize ) of
+                ( Just _, _ ) ->
+                    [ Browser.Events.onMouseMove (mouseMoveDecoder ModalChromeDragMove)
+                    , Browser.Events.onMouseUp (Decode.succeed ModalChromeDragEnd)
+                    ]
+
+                ( _, Just _ ) ->
+                    [ Browser.Events.onMouseMove (mouseMoveDecoder ModalChromeResizeMove)
+                    , Browser.Events.onMouseUp (Decode.succeed ModalChromeResizeEnd)
+                    ]
+
+                ( Nothing, Nothing ) ->
+                    []
+
         primary =
             if model.dice.open then
                 Browser.Events.onKeyDown (escKey CloseDice)
@@ -252,7 +323,19 @@ subscriptions model =
                         else
                             Sub.none
     in
-    Sub.batch (primary :: xpFilterSubs ++ settingsSubs ++ clearMenuSubs ++ controlMenuSubs)
+    Sub.batch
+        (primary
+            :: Ports.incomingDiceRoll DiceRollFromOtherTab
+            :: Ports.incomingEncounter EncounterFromOtherTab
+            :: xpFilterSubs
+            ++ settingsSubs
+            ++ clearMenuSubs
+            ++ controlMenuSubs
+            ++ conditionPresetLoadMenuSubs
+            ++ timerPresetLoadMenuSubs
+            ++ loginEscSubs
+            ++ chromeSubs
+        )
 
 
 {-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
@@ -300,6 +383,17 @@ escKey =
     Util.Keyboard.escKey
 
 
+{-| Decode a MouseEvent into a `Msg` carrying `clientX, clientY`.
+Used by the modal-chrome drag and resize subscriptions to
+translate native mousemove events into update branches.
+-}
+mouseMoveDecoder : (Int -> Int -> Msg) -> Decode.Decoder Msg
+mouseMoveDecoder toMsg =
+    Decode.map2 toMsg
+        (Decode.field "clientX" Decode.int)
+        (Decode.field "clientY" Decode.int)
+
+
 {-| Render the user's theme choice as the `data-theme` attribute
 value on the `.app-shell` div. CSS picks it up via attribute
 selectors in `style.css`; `auto` defers to the OS pref via the
@@ -342,14 +436,59 @@ themeFromFlag raw =
             Auto
 
 
-{-| Init flags handed in by `index.html`. Carries the user's
-previously-saved theme (read from `localStorage` before Elm
-boots) so the first render matches the FOUC pre-set on
-`<html data-theme>`. Unknown / missing strings fall back to
-`Auto`, matching the JS-side default.
+{-| Init flags handed in by `index.html`.
+
+  - `theme` — user's previously-saved theme (read from
+    `localStorage` before Elm boots) so the first render matches
+    the FOUC pre-set on `<html data-theme>`. Unknown / missing
+    strings fall back to `Auto`, matching the JS-side default.
+  - `localEncounter` — raw JSON snapshot of the live encounter
+    read from `localStorage` at boot, used for anonymous-mode
+    sessions. Stashed verbatim on the model until the auth probe
+    resolves; on `AuthAnonymous` we decode and adopt it, on
+    `AuthAuthenticated` we discard it (the server is the source
+    of truth, the migration prompt is a later phase).
+  - `localCardLayout` — same one-shot snapshot for the active
+    card layout, queue view, and `useCustomCardLayout` flag.
+    Anonymous edits to the card editor land here so the next
+    reload picks them up without a server round-trip.
+  - `migrationDateLabel` — short formatted date string from JS
+    (`Date.now()` localized to the user's browser) used as the
+    suffix on the named save slot when an anonymous encounter
+    is migrated into the server on login (e.g.
+    `Local — May 26, 2026`). JS computes it so we don't have
+    to pull in elm/time + a calendar formatter.
+  - `localDiceHistory` — one-shot snapshot of the anonymous
+    session's roll history (mirrors the `/api/dice/history`
+    response shape). Adopted on anonymous boot, discarded on
+    authenticated boot.
+  - `localCompendium` — one-shot snapshot of the anonymous
+    compendium (creatures + groups + next-local-id counter).
+    When present the anonymous boot branch decodes and adopts
+    it in place of fetching the bundled JSON.
+  - `localEncounterSaves` — anonymous named-encounter-saves
+    dict (`{ name → { encounter, created_at, updated_at } }`)
+    that the Save / Load modals consult instead of `/api/encounter/saves`.
+  - `localCardLayoutSaves` — same shape for named card-layout
+    saves used by the Card Editor.
+  - `bootMs` — `Date.now()` at boot, used as the timestamp on
+    every anonymous named-save write done this session.
+
 -}
 type alias Flags =
-    { theme : String }
+    { theme : String
+    , localEncounter : Maybe Decode.Value
+    , localCardLayout : Maybe Decode.Value
+    , migrationDateLabel : String
+    , localDiceHistory : Maybe Decode.Value
+    , localCompendium : Maybe Decode.Value
+    , localEncounterSaves : Maybe Decode.Value
+    , localCardLayoutSaves : Maybe Decode.Value
+    , localConditionPresets : Maybe Decode.Value
+    , localTimerPresets : Maybe Decode.Value
+    , localParty : Maybe Decode.Value
+    , bootMs : Int
+    }
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -363,6 +502,14 @@ init flags url key =
 
         prefs =
             { defaultPrefs | theme = themeFromFlag flags.theme }
+
+        partyFromFlags =
+            flags.localParty
+                |> Maybe.andThen
+                    (Decode.decodeValue Difficulty.decodePartyState
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault { members = [], nextId = 1 }
     in
     ( { key = key
       , url = url
@@ -378,6 +525,8 @@ init flags url key =
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
       , modal = Nothing
+      , modalChrome = Ui.ModalChrome.fresh
+      , placeholderRename = Nothing
       , panelCreaturePin = Nothing
       , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
@@ -394,21 +543,62 @@ init flags url key =
       , savedCardLayouts = []
       , useCustomCardLayout = False
       , accountUi = Ui.Account.empty
-      , party = []
-      , nextPartyMemberId = 1
+      , party = partyFromFlags.members
+      , nextPartyMemberId = partyFromFlags.nextId
+      , localEncounterRaw = flags.localEncounter
+      , localCardLayoutRaw = flags.localCardLayout
+      , migrationDateLabel = flags.migrationDateLabel
+      , localDiceHistoryRaw = flags.localDiceHistory
+      , localCompendiumRaw = flags.localCompendium
+      , nextLocalCreatureId = 1
+      , localEncounterSaves =
+            flags.localEncounterSaves
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , localCardLayoutSaves =
+            flags.localCardLayoutSaves
+                |> Maybe.andThen
+                    (Decode.decodeValue Card.Wire.decodeLocalCardLayoutSaves
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , conditionPresets =
+            case flags.localConditionPresets of
+                Just raw ->
+                    -- localStorage.conditionPresets exists (even
+                    -- as `{}`).  Decode what's there; don't
+                    -- re-seed.  A GM who deleted every bundled
+                    -- default doesn't want them silently re-added.
+                    Decode.decodeValue Ui.Condition.Wire.decodePresets raw
+                        |> Result.withDefault Dict.empty
+
+                Nothing ->
+                    -- First boot: no localStorage key yet.  Seed
+                    -- the dict with the bundled SRD 5.2.1 default
+                    -- presets so the four collapsible categories
+                    -- in the Load menu are populated out of the
+                    -- box.
+                    Ui.Condition.Bundled.defaults
+      , timerPresets =
+            flags.localTimerPresets
+                |> Maybe.andThen
+                    (Decode.decodeValue Ui.Timer.Wire.decodePresets
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , bootMs = flags.bootMs
       }
-      -- Always fetch the persisted dice history and the compendium
-      -- library alongside whatever the current route needs. Failures
-      -- are silently swallowed so a fresh server (no
-      -- dice-history.json yet) still loads.
+      -- The auth-dependent data fetches (encounter, compendium,
+      -- groups, card layouts, dice history) all live in
+      -- `Update.Auth.meReceived` because each one's destination —
+      -- server route vs. public bundle vs. localStorage — depends
+      -- on the cookie probe's result.
     , Cmd.batch
         [ Effects.fetchAuthMe
         , Effects.cmdForRoute route
-        , Effects.fetchDiceHistory
-        , Compendium.Wire.fetchAll CompendiumLoaded
-        , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
-        , Card.Wire.fetchList CardEditorLayoutsLoaded
-        , Encounter.Wire.fetchEncounterCmd EncounterLoaded
         ]
     )
 
@@ -427,6 +617,14 @@ The two save-flow Msgs themselves (`EncounterLoaded`,
 `EncounterPersisted`) skip the diff to avoid an obvious infinite
 loop where loading a saved encounter would re-trigger a save.
 
+The destination of the persist Cmd depends on the auth state:
+authenticated sessions PUT to `/api/encounter`, anonymous sessions
+hand the JSON to the `persistLocalEncounter` port (JS writes
+`localStorage`). `AuthLoading` skips persistence — the user
+shouldn't be touching the encounter before the auth probe lands,
+and silently writing somewhere we'll discard either way is worse
+than a one-frame gap.
+
 -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -434,14 +632,273 @@ update msg model =
         ( next, innerCmd ) =
             updateInner msg model
 
-        saveCmd =
+        encounterCmd =
             if shouldPersistAfter msg && next.encounter /= model.encounter then
-                Encounter.Wire.persistEncounterCmd EncounterPersisted next.encounter
+                persistEncounterFor next.auth next.encounter
 
             else
                 Cmd.none
+
+        -- Cross-tab broadcast: every encounter mutation that
+        -- isn't itself a received broadcast gets posted to the
+        -- BroadcastChannel so a quick-list tab (or a second
+        -- main tab) picks the change up live.  Same diff guard
+        -- as `encounterCmd` — broadcast only when the encounter
+        -- actually changed.  The QuickList tab is read-only so
+        -- it never triggers this branch anyway.
+        encounterBroadcastCmd =
+            if shouldBroadcastAfter msg && next.encounter /= model.encounter then
+                Ports.broadcastEncounter (Encounter.Wire.encodeEncounter next.encounter)
+
+            else
+                Cmd.none
+
+        cardLayoutCmd =
+            if shouldPersistAfter msg && cardLayoutChanged model next then
+                persistCardLayoutFor next
+
+            else
+                Cmd.none
+
+        diceHistoryCmd =
+            if
+                shouldPersistAfter msg
+                    && model.dice.history.entries
+                    /= next.dice.history.entries
+            then
+                persistDiceHistoryFor next
+
+            else
+                Cmd.none
+
+        compendiumCmd =
+            if shouldPersistAfter msg && compendiumChanged model next then
+                persistCompendiumFor next
+
+            else
+                Cmd.none
+
+        encounterSavesCmd =
+            if shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
+                persistEncounterSavesFor next
+
+            else
+                Cmd.none
+
+        cardLayoutSavesCmd =
+            if shouldPersistAfter msg && model.localCardLayoutSaves /= next.localCardLayoutSaves then
+                persistCardLayoutSavesFor next
+
+            else
+                Cmd.none
+
+        conditionPresetsCmd =
+            if shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
+                Ports.persistLocalConditionPresets
+                    (Ui.Condition.Wire.encodePresets next.conditionPresets)
+
+            else
+                Cmd.none
+
+        timerPresetsCmd =
+            if shouldPersistAfter msg && model.timerPresets /= next.timerPresets then
+                Ports.persistLocalTimerPresets
+                    (Ui.Timer.Wire.encodePresets next.timerPresets)
+
+            else
+                Cmd.none
+
+        partyCmd =
+            if
+                shouldPersistAfter msg
+                    && (model.party /= next.party || model.nextPartyMemberId /= next.nextPartyMemberId)
+            then
+                Ports.persistLocalParty
+                    (Difficulty.encodePartyState next.party next.nextPartyMemberId)
+
+            else
+                Cmd.none
+
+        -- Modal-open focus management.  When the active modal
+        -- transitions from `Nothing` to `Just _` (any modal
+        -- opened by any path), fire `View.Modal.focusInitial`
+        -- so keyboard / SR users land on the modal close button
+        -- the moment the dialog appears.  Lives at the top-level
+        -- update wrapper instead of in each modal's open handler
+        -- so we don't have to plumb the focus Cmd through ~20
+        -- modal Update modules.
+        modalFocusCmd =
+            if model.modal == Nothing && next.modal /= Nothing then
+                View.Modal.focusInitial (\_ -> NoOp)
+
+            else
+                Cmd.none
+
+        -- Reset modal chrome (drag offset + resized dimensions)
+        -- to defaults on every modal-open transition so each
+        -- freshly opened modal starts centered and at its CSS
+        -- default size.  Without this, a user who drags or
+        -- resizes one modal would inherit that geometry for the
+        -- next modal they open.  Three modal-open surfaces are
+        -- covered: the unified `model.modal` ADT, plus the Dice
+        -- Roller and Compendium Browser which carry their own
+        -- `open : Bool` flags outside the ADT.
+        anyModalOpen m =
+            m.modal /= Nothing || m.dice.open || m.compendium.open
+
+        nextWithChromeReset =
+            if not (anyModalOpen model) && anyModalOpen next then
+                Update.ModalChrome.reset next
+
+            else
+                next
     in
-    ( next, Cmd.batch [ innerCmd, saveCmd ] )
+    ( nextWithChromeReset
+    , Cmd.batch
+        [ innerCmd
+        , encounterCmd
+        , encounterBroadcastCmd
+        , cardLayoutCmd
+        , diceHistoryCmd
+        , compendiumCmd
+        , encounterSavesCmd
+        , cardLayoutSavesCmd
+        , conditionPresetsCmd
+        , timerPresetsCmd
+        , partyCmd
+        , modalFocusCmd
+        ]
+    )
+
+
+persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
+persistEncounterFor auth encounter =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
+
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+
+        Auth.AuthLoading ->
+            Cmd.none
+
+
+{-| Did any of the three card-layout-bearing fields change?
+We only persist when something the snapshot actually captures
+moved, so theme toggles and modal opens don't drag a duplicate
+write along.
+-}
+cardLayoutChanged : Model -> Model -> Bool
+cardLayoutChanged before after =
+    before.cardLayout
+        /= after.cardLayout
+        || before.queueView
+        /= after.queueView
+        || before.useCustomCardLayout
+        /= after.useCustomCardLayout
+
+
+{-| Persist the card-layout snapshot when anonymous; no-op for
+authenticated users (they save named layouts to the server via
+`Card.Wire.save`).
+-}
+persistCardLayoutFor : Model -> Cmd Msg
+persistCardLayoutFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCardLayout
+                (Card.Wire.encodeLocalLayoutSnapshot
+                    { layout = model.cardLayout
+                    , queueView = model.queueView
+                    , useCustomCardLayout = model.useCustomCardLayout
+                    }
+                )
+
+        _ ->
+            Cmd.none
+
+
+{-| Persist the full dice-history list to `localStorage` when
+anonymous. Authenticated users hit `/api/dice/history` per-roll
+via `Effects.persistDiceRoll` (the server appends + truncates,
+and the response re-syncs the local view).
+-}
+persistDiceHistoryFor : Model -> Cmd Msg
+persistDiceHistoryFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalDiceHistory
+                (Encode.list Dice.encodeRoll model.dice.history.entries)
+
+        _ ->
+            Cmd.none
+
+
+{-| Did the compendium DB change in a way that should be
+persisted? Compare the loaded creature list and the per-user
+groups dict; transient CompendiumDbLoading / CompendiumDbFailed
+transitions don't trigger a write.
+-}
+compendiumChanged : Model -> Model -> Bool
+compendiumChanged before after =
+    loadedCreatures before.compendium.db
+        /= loadedCreatures after.compendium.db
+        || before.compendium.groups
+        /= after.compendium.groups
+
+
+loadedCreatures : CompendiumDb -> List Compendium.Creature
+loadedCreatures db =
+    case db of
+        CompendiumDbLoaded inner ->
+            Compendium.toList inner
+
+        _ ->
+            []
+
+
+{-| Persist the full compendium snapshot (creatures + groups +
+next-local-id counter) to `localStorage` when anonymous.
+Authenticated users persist per-mutation via the existing
+`/api/compendium/*` endpoints.
+-}
+persistCompendiumFor : Model -> Cmd Msg
+persistCompendiumFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCompendium
+                (Compendium.Wire.encodeLocalCompendiumSnapshot
+                    { creatures = loadedCreatures model.compendium.db
+                    , groups = Dict.values model.compendium.groups
+                    , nextLocalId = model.nextLocalCreatureId
+                    }
+                )
+
+        _ ->
+            Cmd.none
+
+
+persistEncounterSavesFor : Model -> Cmd Msg
+persistEncounterSavesFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounterSaves
+                (Encounter.Wire.encodeLocalEncounterSaves model.localEncounterSaves)
+
+        _ ->
+            Cmd.none
+
+
+persistCardLayoutSavesFor : Model -> Cmd Msg
+persistCardLayoutSavesFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalCardLayoutSaves
+                (Card.Wire.encodeLocalCardLayoutSaves model.localCardLayoutSaves)
+
+        _ ->
+            Cmd.none
 
 
 shouldPersistAfter : Msg -> Bool
@@ -453,8 +910,65 @@ shouldPersistAfter msg =
         EncounterPersisted _ ->
             False
 
+        -- Auth probe response on an anonymous boot adopts the
+        -- local-storage encounter directly into the model.  The
+        -- diff would trigger a persist back into the same
+        -- localStorage slot — idempotent but wasteful, so we skip
+        -- it.
+        AuthMeReceived _ ->
+            False
+
+        -- Login-time migration response only fires a toast and a
+        -- clear-local port; the encounter itself is untouched, so
+        -- there's nothing to persist here either.
+        LocalEncounterMigrated _ _ ->
+            False
+
+        LocalCardLayoutMigrated _ _ ->
+            False
+
+        LocalCompendiumMigrated _ _ ->
+            False
+
+        -- The encounter just arrived from another tab via the
+        -- BroadcastChannel; the originating tab already persisted
+        -- (and already broadcast), so re-doing either from this
+        -- tab would loop.
+        EncounterFromOtherTab _ ->
+            False
+
         _ ->
             True
+
+
+{-| Whether to fire `broadcastEncounter` after this Msg has been
+processed. Excludes the inbound side of the BroadcastChannel
+(re-broadcasting receives would loop) and the QuickList tab's
+own reception (it's read-only).
+-}
+shouldBroadcastAfter : Msg -> Bool
+shouldBroadcastAfter msg =
+    case msg of
+        EncounterFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| `EncounterFromOtherTab` handler — drop the broadcast straight
+into `model.encounter`. Decoder failures are silently ignored
+(the payload always comes from another tab running the same
+build, so a mismatch would mean the wire format had diverged).
+-}
+encounterFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
+encounterFromOtherTab raw model =
+    case Decode.decodeValue Encounter.Wire.decodeEncounter raw of
+        Ok encounter ->
+            ( { model | encounter = encounter }, Cmd.none )
+
+        Err _ ->
+            ( model, Cmd.none )
 
 
 updateInner : Msg -> Model -> ( Model, Cmd Msg )
@@ -511,8 +1025,29 @@ updateInner msg model =
         DeathSaveRollLanded name roll ->
             Update.DeathSave.rollLanded name roll model
 
+        DeathSavesBegin name ->
+            Update.DeathSave.begin name model
+
+        MarkCreatureDead name ->
+            Update.DeathSave.markDead name model
+
+        RevertCreatureToDown name ->
+            Update.DeathSave.revertToDown name model
+
         ToggleReadied name ->
             Update.Encounter.toggleReadied name model
+
+        ToggleReaction name ->
+            Update.Encounter.toggleReaction name model
+
+        ToggleRechargeAbility creatureName abilityName ->
+            Update.Encounter.toggleRechargeAbility creatureName abilityName model
+
+        RollRechargeNow creatureName abilityName ->
+            Update.Encounter.rollRechargeNow creatureName abilityName model
+
+        RechargeRollLanded creatureName abilityName roll ->
+            Update.Encounter.rechargeRollLanded creatureName abilityName roll model
 
         ToggleInactive name ->
             Update.Encounter.toggleInactive name model
@@ -554,11 +1089,26 @@ updateInner msg model =
         DiceRerun roll ->
             Update.Dice.rerun roll model
 
+        DiceRerunMenuToggle idx ->
+            Update.Dice.rerunMenuToggle idx model
+
+        DiceRerunMenuClose ->
+            Update.Dice.rerunMenuClose model
+
+        DiceRerunNoModifier roll ->
+            Update.Dice.rerunNoModifier roll model
+
         DiceClearHistory ->
             Update.Dice.clearHistory model
 
         DiceRollLanded roll ->
             Update.Dice.rollLanded roll model
+
+        DiceRollFromOtherTab raw ->
+            Update.Dice.rollFromOtherTab raw model
+
+        EncounterFromOtherTab raw ->
+            encounterFromOtherTab raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -756,6 +1306,36 @@ updateInner msg model =
         ConditionDelete ->
             Update.Condition.delete model
 
+        ConditionPresetSaveStart ->
+            Update.Condition.presetSaveStart model
+
+        ConditionPresetSaveNameChanged text ->
+            Update.Condition.presetSaveNameChanged text model
+
+        ConditionPresetSaveCategoryChanged category ->
+            Update.Condition.presetSaveCategoryChanged category model
+
+        ConditionPresetSaveCancel ->
+            Update.Condition.presetSaveCancel model
+
+        ConditionPresetSaveSubmit ->
+            Update.Condition.presetSaveSubmit model
+
+        ConditionPresetLoadMenuToggle ->
+            Update.Condition.presetLoadMenuToggle model
+
+        ConditionPresetLoadMenuClose ->
+            Update.Condition.presetLoadMenuClose model
+
+        ConditionPresetLoad name ->
+            Update.Condition.presetLoad name model
+
+        ConditionPresetDelete name ->
+            Update.Condition.presetDelete name model
+
+        ConditionPresetCategoryToggle category ->
+            Update.Condition.presetCategoryToggle category model
+
         ConditionRemoveChip name id ->
             Update.Condition.removeChip name id model
 
@@ -810,6 +1390,30 @@ updateInner msg model =
         TimerDismiss name ->
             Update.Timer.dismiss name model
 
+        TimerPresetSaveStart ->
+            Update.Timer.presetSaveStart model
+
+        TimerPresetSaveNameChanged text ->
+            Update.Timer.presetSaveNameChanged text model
+
+        TimerPresetSaveCancel ->
+            Update.Timer.presetSaveCancel model
+
+        TimerPresetSaveSubmit ->
+            Update.Timer.presetSaveSubmit model
+
+        TimerPresetLoadMenuToggle ->
+            Update.Timer.presetLoadMenuToggle model
+
+        TimerPresetLoadMenuClose ->
+            Update.Timer.presetLoadMenuClose model
+
+        TimerPresetLoad name ->
+            Update.Timer.presetLoad name model
+
+        TimerPresetDelete name ->
+            Update.Timer.presetDelete name model
+
         CompendiumLoaded result ->
             Update.Compendium.Browser.loaded result model
 
@@ -840,14 +1444,8 @@ updateInner msg model =
         CompendiumAddToQueue creatureId ->
             Update.Compendium.Add.addToQueue creatureId model
 
-        CompendiumInitiativeRolled creatureId rolls ->
-            Update.Compendium.Add.initiativeRolled creatureId rolls model
-
         CompendiumAddSelectedToQueue ->
             Update.Compendium.Add.addSelectedToQueue model
-
-        CompendiumAddSelectedRolled triples ->
-            Update.Compendium.Add.addSelectedRolled triples model
 
         CompendiumGroupsToggle ->
             ( Update.Compendium.Browser.withCompendium
@@ -948,6 +1546,48 @@ updateInner msg model =
         CrCalculatorPartyLevelSet memberId raw ->
             Update.CrCalculator.partyMemberLevelSet memberId raw model
 
+        RandomEncounterOpen ->
+            Update.RandomEncounter.open model
+
+        RandomEncounterClose ->
+            Update.RandomEncounter.close model
+
+        RandomEncounterDifficultySet raw ->
+            Update.RandomEncounter.difficultySet raw model
+
+        RandomEncounterScaleSet raw ->
+            Update.RandomEncounter.scaleSet raw model
+
+        RandomEncounterHabitatSet raw ->
+            Update.RandomEncounter.habitatSet raw model
+
+        RandomEncounterCreatureTypeAt index raw ->
+            Update.RandomEncounter.creatureTypeAt index raw model
+
+        RandomEncounterMinionsToggle ->
+            Update.RandomEncounter.minionsToggle model
+
+        RandomEncounterPinSearchChanged raw ->
+            Update.RandomEncounter.pinSearchChanged raw model
+
+        RandomEncounterPinAdd id ->
+            Update.RandomEncounter.pinAdd id model
+
+        RandomEncounterPinDecrement id ->
+            Update.RandomEncounter.pinDecrement id model
+
+        RandomEncounterPinRemove id ->
+            Update.RandomEncounter.pinRemove id model
+
+        RandomEncounterGenerate ->
+            Update.RandomEncounter.generate model
+
+        RandomEncounterRolled groups ->
+            Update.RandomEncounter.rolled groups model
+
+        RandomEncounterAddToEncounter ->
+            Update.RandomEncounter.addToEncounter model
+
         CardEditorClose ->
             Update.CardEditor.close model
 
@@ -983,6 +1623,12 @@ updateInner msg model =
 
         CardEditorQueueViewSet key ->
             Update.CardEditor.queueViewSet key model
+
+        CardEditorToggleDeathSaves ->
+            Update.CardEditor.toggleDeathSaves model
+
+        CardEditorToggleLegendary ->
+            Update.CardEditor.toggleLegendary model
 
         CardEditorLayoutNameChanged raw ->
             Update.CardEditor.saveNameChanged raw model
@@ -1338,6 +1984,9 @@ updateInner msg model =
         LoadClose ->
             Update.Load.close model
 
+        LoadSourceSet source ->
+            Update.Load.sourceSet source model
+
         LoadFromServerRequested name ->
             Update.Load.fromServerRequested name model
 
@@ -1419,6 +2068,9 @@ updateInner msg model =
         LoadCompendiumClose ->
             Update.LoadCompendium.close model
 
+        LoadCompendiumSourceSet source ->
+            Update.LoadCompendium.sourceSet source model
+
         LoadCompendiumListLoaded result ->
             Update.LoadCompendium.listLoaded result model
 
@@ -1439,6 +2091,21 @@ updateInner msg model =
 
         EncounterClear ->
             Update.Encounter.requestClear model
+
+        EncounterAddPlaceholder ->
+            Update.Encounter.addPlaceholder model
+
+        PlaceholderRenameOpen name ->
+            Update.PlaceholderRename.open name model
+
+        PlaceholderRenameChange text ->
+            Update.PlaceholderRename.change text model
+
+        PlaceholderRenameCommit ->
+            Update.PlaceholderRename.commit model
+
+        PlaceholderRenameCancel ->
+            Update.PlaceholderRename.cancel model
 
         EncounterControlConfirm ->
             Update.Encounter.controlConfirm model
@@ -1461,6 +2128,9 @@ updateInner msg model =
         QuickAddOpen ->
             Update.QuickAdd.open model
 
+        QuickAddOpenForReplace oldName ->
+            Update.QuickAdd.openForReplace oldName model
+
         QuickAddClose ->
             Update.QuickAdd.close model
 
@@ -1472,6 +2142,9 @@ updateInner msg model =
 
         QuickAddPick id ->
             Update.QuickAdd.pick id model
+
+        QuickAddPickPlaceholder ->
+            Update.QuickAdd.pickPlaceholder model
 
         AbilitySaveOpen creatureName ability bonus x y ->
             Update.AbilitySave.open creatureName ability bonus x y model
@@ -1584,6 +2257,21 @@ updateInner msg model =
         AuthLogoutDone result ->
             Update.Auth.logoutDone result model
 
+        NavigateToLogin ->
+            ( model, Nav.pushUrl model.key "/login" )
+
+        LoginCancel ->
+            ( model, Nav.pushUrl model.key "/" )
+
+        LocalEncounterMigrated name result ->
+            Update.Auth.localEncounterMigrated name result model
+
+        LocalCardLayoutMigrated name result ->
+            Update.Auth.localCardLayoutMigrated name result model
+
+        LocalCompendiumMigrated count result ->
+            Update.Auth.localCompendiumMigrated count result model
+
         AccountDisplayNameChanged raw ->
             Update.Account.displayNameChanged raw model
 
@@ -1607,6 +2295,24 @@ updateInner msg model =
 
         AccountPasswordChanged result ->
             Update.Account.passwordChanged result model
+
+        ModalChromeDragStart x y ->
+            Update.ModalChrome.dragStart x y model
+
+        ModalChromeDragMove x y ->
+            Update.ModalChrome.dragMove x y model
+
+        ModalChromeDragEnd ->
+            Update.ModalChrome.dragEnd model
+
+        ModalChromeResizeStart edge x y w h ->
+            Update.ModalChrome.resizeStart edge x y w h model
+
+        ModalChromeResizeMove x y ->
+            Update.ModalChrome.resizeMove x y model
+
+        ModalChromeResizeEnd ->
+            Update.ModalChrome.resizeEnd model
 
         NoOp ->
             Update.Shell.noOp model
@@ -1663,40 +2369,69 @@ view model =
                     ]
 
                 Auth.AuthAnonymous ->
-                    [ View.Login.view model.loginUi ]
+                    appShell Nothing model
 
                 Auth.AuthAuthenticated user ->
-                    [ View.AppBar.view model.settingsOpen model.preferences.theme user model.useCustomCardLayout
-                    , viewPage model
-                    , View.Modal.Dice.view model.dice
-                    , View.Modal.HpChange.view model
-                    , View.Modal.Initiative.view model
-                    , View.Modal.Note.view model
-                    , View.Modal.Condition.view model
-                    , View.Modal.Memo.view model
-                    , View.Modal.Timer.view model
-                    , View.Modal.Compendium.view model.compendium
-                        (List.filterMap .creatureId model.encounter.creatures)
-                    , View.Modal.CompendiumEdit.view model
-                    , View.Modal.CompendiumPaste.view model
-                    , View.Modal.Save.view model
-                    , View.Modal.Load.view model
-                    , View.Modal.SaveCompendium.view model
-                    , View.Modal.LoadCompendium.view model
-                    , View.Modal.AbilitySave.view model
-                    , View.Modal.QuickAdd.view model
-                    , View.Modal.Duplicate.view model
-                    , View.Modal.GroupEdit.view model
-                    , View.Modal.CardEditor.view model
-                    , View.Modal.CrCalculator.view model
-                    , View.Toast.list model.toasts
-                    , View.RollPopup.list model.rollPopups
-                    , View.Audio.ringer model
-                    , View.Footer.view
-                    ]
+                    appShell (Just user) model
             )
         ]
     }
+
+
+{-| Common rendered shell shared by anonymous and authenticated
+sessions. AppBar takes a `Maybe Auth.User` so it can swap the
+identity link for "Sign in" when the session is local-only; the
+rest of the chrome (modals, toasts, ringer) is the same either
+way — anonymous users get the full app, they just persist to
+`localStorage` instead of the server.
+-}
+appShell : Maybe Auth.User -> Model -> List (Html Msg)
+appShell maybeUser model =
+    [ -- AppBar is suppressed on the standalone Quick-List
+      -- page — that tab is read-only and meant to be parked
+      -- on a second monitor, where the nav row would only
+      -- compete for vertical space against the queue rows.
+      if model.route == QuickList then
+        text ""
+
+      else
+        View.AppBar.view
+            { settingsOpen = model.settingsOpen
+            , theme = model.preferences.theme
+            , user = maybeUser
+            , useCustomCardLayout = model.useCustomCardLayout
+            , route = model.route
+            }
+    , viewPage model
+    , View.Modal.Dice.view model.modalChrome model.dice
+    , View.Modal.HpChange.view model
+    , View.Modal.Initiative.view model
+    , View.Modal.Note.view model
+    , View.Modal.Condition.view model
+    , View.Modal.Memo.view model
+    , View.Modal.Timer.view model
+    , View.Modal.Compendium.view model.modalChrome
+        model.auth
+        model.compendium
+        (List.filterMap .creatureId model.encounter.creatures)
+    , View.Modal.CompendiumEdit.view model
+    , View.Modal.CompendiumPaste.view model
+    , View.Modal.Save.view model
+    , View.Modal.Load.view model
+    , View.Modal.SaveCompendium.view model
+    , View.Modal.LoadCompendium.view model
+    , View.Modal.AbilitySave.view model
+    , View.Modal.QuickAdd.view model
+    , View.Modal.Duplicate.view model
+    , View.Modal.GroupEdit.view model
+    , View.Modal.CardEditor.view model
+    , View.Modal.CrCalculator.view model
+    , View.Modal.RandomEncounter.view model
+    , View.Toast.list model.toasts
+    , View.RollPopup.list model.rollPopups
+    , View.Audio.ringer model
+    , View.Footer.view
+    ]
 
 
 viewPage : Model -> Html Msg
@@ -1704,6 +2439,9 @@ viewPage model =
     case model.route of
         Home ->
             View.Workspace.view model
+
+        Login ->
+            View.Login.view model.loginUi
 
         Me ->
             View.Account.view model
@@ -1720,8 +2458,14 @@ viewPage model =
                     ]
                 ]
 
+        About ->
+            View.About.view
+
         CompendiumCreaturePage id ->
             viewCompendiumStandalone model id
+
+        QuickList ->
+            View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
 
         NotFound ->
             div [ class "workspace" ]

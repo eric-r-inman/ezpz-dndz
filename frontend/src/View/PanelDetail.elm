@@ -50,10 +50,10 @@ view model =
                     [ text "📖 Open" ]
                 , button
                     [ class "action-btn action-btn--blue"
-                    , onClick CrCalculatorOpen
-                    , Tooltips.attr Tooltips.panelCrCalculator
+                    , onClick RandomEncounterOpen
+                    , Tooltips.attr Tooltips.panelRandomEncounter
                     ]
-                    [ text "⚔️ CR Calculator" ]
+                    [ text "🎲 Random Encounter" ]
                 ]
             , statBlock model
             ]

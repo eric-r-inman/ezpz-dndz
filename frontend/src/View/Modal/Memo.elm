@@ -25,6 +25,7 @@ view model =
                 , noOp = NoOp
                 , title = "Memo — " ++ ui.target
                 , extraClass = "modal--note-edit"
+                , chrome = model.modalChrome
                 , body =
                     [ Html.label [ for "memo-edit-input" ]
                         [ text ("Short memo (max " ++ String.fromInt MemoUi.maxMemoLength ++ " chars)") ]

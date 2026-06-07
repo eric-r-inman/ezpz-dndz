@@ -171,6 +171,7 @@ applyHeal n c =
         { c
             | currentHp = afterHp
             , deathSaves = Encounter.emptyDeathSaves
+            , acceptingDeathSaves = False
         }
 
     else
@@ -241,10 +242,12 @@ restoreHp before c =
 
 {-| Recompute the bloodied flag from current vs. max HP.
 
-A creature is bloodied iff alive (>0 HP) and at strictly less than
-half their max HP. The "alive" gate matters because at 0 HP the
-creature is unconscious / dying / dead — calling them "bloodied"
-in addition to that would clutter the UI.
+A creature is bloodied iff alive (>0 HP) and at half their max
+HP or fewer. The "or fewer" matches SRD 5.2.1 p. 16: _"If you
+have half your Hit Points or fewer, you're Bloodied."_ The
+"alive" gate matters because at 0 HP the creature is unconscious
+/ dying / dead — calling them "bloodied" in addition to that
+would clutter the UI.
 
 -}
 recomputeBloodied : Creature -> Creature
@@ -253,7 +256,7 @@ recomputeBloodied c =
         | bloodied =
             c.currentHp
                 > 0
-                && (c.currentHp * 2 < c.maxHp)
+                && (c.currentHp * 2 <= c.maxHp)
     }
 
 

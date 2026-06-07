@@ -49,6 +49,12 @@ toml = "0.8"
 # Error handling
 thiserror = "2.0"
 
+# Content hashing for bundle-version edit detection.  Used by the
+# compendium store to record a stable digest of each bundled
+# creature at apply time so future bundle bumps can detect whether
+# a user has edited a creature (skip update) or not (auto-update).
+sha2 = "0.10"
+
 # UUIDs (compendium creature ids, eventually user ids).  Used to
 # generate the id strings; the wire format keeps them as `String`
 # so the schemars JsonSchema derives stay clean.
@@ -135,3 +141,33 @@ debug = false
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
+
+# ----------------------------------------------------------------------------
+# Combinator preference: nudge toward the least powerful construct that
+# fits.  These flag manual reimplementations of standard combinators —
+# match-on-Option that could be Option::map, if-let-else that could be
+# map_or, and so on.  See llms.org "Rule of least power" for the
+# principle behind the set.
+#
+# Configured at "warn" rather than "deny" because some imperative forms
+# are genuinely clearer (multi-line bodies, side effects, nested control
+# flow); humans can override site-locally with #[allow(...)] and a
+# one-line reason.  The defaults push agents toward the combinator form.
+manual_map = "warn"
+manual_filter = "warn"
+manual_filter_map = "warn"
+manual_find = "warn"
+manual_find_map = "warn"
+manual_flatten = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_unwrap_or = "warn"
+manual_unwrap_or_default = "warn"
+option_if_let_else = "warn"
+map_unwrap_or = "warn"
+needless_collect = "warn"
+unnecessary_fold = "warn"
+question_mark = "warn"
+single_match_else = "warn"
+collapsible_match = "warn"
+redundant_pattern_matching = "warn"

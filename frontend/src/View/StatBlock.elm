@@ -158,12 +158,14 @@ nameRow tagDisplay c =
         TagBadges ->
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
+                , kindBadge c.kind
                 , tagBadges c.tags
                 ]
 
         TagBadgesOpenInNewTab ->
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
+                , kindBadge c.kind
                 , div [ class "statblock__name-row-end" ]
                     [ tagBadges c.tags
                     , openInNewTabLink c.id
@@ -172,7 +174,31 @@ nameRow tagDisplay c =
 
         TagIconTooltip ->
             div [ class "statblock__name statblock__name--inline-tags" ]
-                (text c.name :: inlineTagIcon c.tags)
+                (text c.name :: kindBadge c.kind :: inlineTagIcon c.tags)
+
+
+{-| Coloured Player / Enemy / NPC chip rendered to the right of
+the creature name. Uses the same `--kind-*` modifier suffixes
+the Custom-card kind badge uses so themed colour tokens stay in
+one place.
+-}
+kindBadge : Compendium.CreatureKind -> Html msg
+kindBadge kind =
+    let
+        ( label, slug ) =
+            case kind of
+                Compendium.Player ->
+                    ( "Player", "kind-player" )
+
+                Compendium.Enemy ->
+                    ( "Enemy", "kind-enemy" )
+
+                Compendium.Npc ->
+                    ( "NPC", "kind-npc" )
+    in
+    span
+        [ class ("statblock__kind-badge statblock__kind-badge--" ++ slug) ]
+        [ text label ]
 
 
 {-| ↗ anchor that opens the standalone single-creature page in
@@ -556,7 +582,7 @@ viewMetaTags c =
     let
         rows =
             List.filterMap identity
-                [ propLine "Habitat" (habitatsLine c.habitats)
+                [ habitatPropLine (habitatsLine c.habitats)
                 , propLine "Treasure" (treasuresLine c.treasures)
                 ]
     in
@@ -565,6 +591,29 @@ viewMetaTags c =
 
     else
         hr [ class "statblock__divider" ] [] :: rows
+
+
+{-| Inline copy of `propLine` for the Habitat row so we can
+attach a tooltip explaining where the data came from — the
+bundled `habitats` field is filled by the CLI's inference pass
+[`Encounter.RandomEncounter`](../Encounter/RandomEncounter.elm)
+description, not by an authoritative SRD source.
+-}
+habitatPropLine : String -> Maybe (Html msg)
+habitatPropLine value =
+    if String.isEmpty value then
+        Nothing
+
+    else
+        Just
+            (p
+                [ class "statblock__prop"
+                , Tooltips.attr Tooltips.statBlockHabitat
+                ]
+                [ strong [] [ text "Habitat " ]
+                , text value
+                ]
+            )
 
 
 {-| "16 (XP 15,000, or 18,000 in lair)" — mirrors the D&D 2024
@@ -910,6 +959,30 @@ viewSegment onRoll creatureName segment =
                 , Tooltips.attr (Tooltips.statBlockRoll shown)
                 ]
                 [ text shown ]
+
+        Dice.AttackLink shown mod ->
+            button
+                [ class "dice-link attack-link"
+                , Html.Events.on "click"
+                    (Decode.map2 (onRoll creatureName (attackExpression mod))
+                        (Decode.field "clientX" Decode.int)
+                        (Decode.field "clientY" Decode.int)
+                    )
+                , Tooltips.attr (Tooltips.statBlockAttack shown mod)
+                ]
+                [ text shown ]
+
+
+{-| `1d20 + mod` expression for an attack-roll click. The sign
+of `mod` flows into `constant` as-is; negative values render as
+`1d20 - 1` via `expressionToString`.
+-}
+attackExpression : Int -> Dice.Expression
+attackExpression mod =
+    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
+    , constant = mod
+    , damageType = Nothing
+    }
 
 
 descriptionParagraph : String -> Html msg

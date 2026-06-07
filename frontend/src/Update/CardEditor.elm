@@ -5,7 +5,7 @@ module Update.CardEditor exposing
     , rowAlignmentSet
     , widgetAdd, widgetRemove
     , queueViewSet
-    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, overwriteCancel, overwriteConfirm, saveAs, saveNameChanged
+    , delete, layoutDeleted, layoutFetched, layoutSaved, layoutsLoaded, load, overwriteCancel, overwriteConfirm, saveAs, saveNameChanged, toggleDeathSaves, toggleLegendary
     )
 
 {-| **Prototype** update handlers for the Creature Card Editor.
@@ -26,8 +26,10 @@ add a localStorage port or the server-side store.
 
 -}
 
+import Auth
 import Card.Layout as Layout exposing (CardWidget, QueueView, RowAlignment)
 import Card.Wire as CardWire
+import Dict
 import Http
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
@@ -104,7 +106,7 @@ rowAdd model =
                     Layout.addRow ui.layout
 
                 newFocus =
-                    Just (List.length newLayout.rows - 1)
+                    Just (List.length newLayout.centerRows - 1)
             in
             { ui | layout = newLayout, focusRow = newFocus }
         )
@@ -128,11 +130,11 @@ rowRemove index model =
                     -- same index if one exists, otherwise the row
                     -- just before it; `Nothing` when the layout
                     -- becomes empty.
-                    if List.isEmpty newLayout.rows then
+                    if List.isEmpty newLayout.centerRows then
                         Nothing
 
                     else
-                        Just (min index (List.length newLayout.rows - 1))
+                        Just (min index (List.length newLayout.centerRows - 1))
             }
         )
         model
@@ -160,7 +162,7 @@ rowMoveDown index model =
         (\ui ->
             let
                 last =
-                    List.length ui.layout.rows - 1
+                    List.length ui.layout.centerRows - 1
             in
             { ui
                 | layout = Layout.moveRowDown index ui.layout
@@ -237,6 +239,24 @@ queueViewSet key model =
 
         Nothing ->
             ( model, Cmd.none )
+
+
+toggleDeathSaves : Model -> ( Model, Cmd Msg )
+toggleDeathSaves model =
+    ( withEditor
+        (\ui -> { ui | layout = Layout.toggleDeathSaves ui.layout })
+        model
+    , Cmd.none
+    )
+
+
+toggleLegendary : Model -> ( Model, Cmd Msg )
+toggleLegendary model =
+    ( withEditor
+        (\ui -> { ui | layout = Layout.toggleLegendary ui.layout })
+        model
+    , Cmd.none
+    )
 
 
 
@@ -328,23 +348,79 @@ firePut name overwrite model =
             ( model, Cmd.none )
 
         Just ui ->
-            ( withEditor
-                (\u ->
-                    { u
-                        | busy = True
-                        , error = Nothing
-                        , confirmOverwrite = Nothing
-                    }
-                )
-                model
-            , CardWire.save
-                { name = name
-                , overwrite = overwrite
-                , layout = ui.layout
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( withEditor
+                        (\u ->
+                            { u
+                                | busy = True
+                                , error = Nothing
+                                , confirmOverwrite = Nothing
+                            }
+                        )
+                        model
+                    , CardWire.save
+                        { name = name
+                        , overwrite = overwrite
+                        , layout = ui.layout
+                        , queueView = ui.queueView
+                        }
+                        CardEditorLayoutSaved
+                    )
+
+                _ ->
+                    applyLocalSave name ui model
+
+
+{-| Anonymous-mode equivalent of `firePut` + `layoutSaved`:
+upsert into `model.localCardLayoutSaves` directly, apply the
+layout / queueView from the editor onto the live model
+(matching the auth-flow side effect), refresh the saved-layouts
+list so the row shows up, close the modal, toast. The update-
+loop wrapper persists the new snapshot to localStorage.
+-}
+applyLocalSave : String -> CardEditorUi -> Model -> ( Model, Cmd Msg )
+applyLocalSave name ui model =
+    let
+        existing =
+            Dict.get name model.localCardLayoutSaves
+
+        createdAt =
+            existing
+                |> Maybe.map .createdAt
+                |> Maybe.withDefault model.bootMs
+
+        entry =
+            { layout = ui.layout
+            , queueView = ui.queueView
+            , createdAt = createdAt
+            , updatedAt = model.bootMs
+            }
+
+        nextSaves =
+            Dict.insert name entry model.localCardLayoutSaves
+
+        next =
+            { model
+                | localCardLayoutSaves = nextSaves
+                , cardLayout = ui.layout
                 , queueView = ui.queueView
-                }
-                CardEditorLayoutSaved
-            )
+                , savedCardLayouts = localLayoutMetasOf nextSaves
+                , modal = Nothing
+            }
+    in
+    Update.Toast.push ToastSuccess ("Saved layout \"" ++ name ++ "\".") next
+
+
+{-| Build the saved-layouts metas list from the local dict, sorted
+newest first. Mirrors `Encounter`'s analogous helper.
+-}
+localLayoutMetasOf : Dict.Dict String CardWire.LocalCardLayoutSave -> List CardWire.SavedLayoutMeta
+localLayoutMetasOf dict =
+    dict
+        |> Dict.toList
+        |> List.map CardWire.localSaveToMeta
+        |> List.sortBy (\m -> -m.updatedAt)
 
 
 nameAlreadyExists :
@@ -357,16 +433,83 @@ nameAlreadyExists name metas =
 
 load : String -> Model -> ( Model, Cmd Msg )
 load name model =
-    ( withEditor (\u -> { u | busy = True, error = Nothing }) model
-    , CardWire.fetchOne name CardEditorLayoutFetched
-    )
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( withEditor (\u -> { u | busy = True, error = Nothing }) model
+            , CardWire.fetchOne name CardEditorLayoutFetched
+            )
+
+        _ ->
+            applyLocalLoad name model
+
+
+{-| Anonymous-mode equivalent of `fetchOne` + `layoutFetched`:
+look up the entry in the dict and apply its layout / queue view
+to the editor UI. Modal stays open so the user can keep
+working on the loaded layout.
+-}
+applyLocalLoad : String -> Model -> ( Model, Cmd Msg )
+applyLocalLoad name model =
+    case Dict.get name model.localCardLayoutSaves of
+        Just entry ->
+            ( withEditor
+                (\u ->
+                    { u
+                        | layout = entry.layout
+                        , queueView = entry.queueView
+                        , saveName = name
+                        , busy = False
+                        , error = Nothing
+                        , focusRow =
+                            if List.isEmpty entry.layout.centerRows then
+                                Nothing
+
+                            else
+                                Just 0
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( withEditor
+                (\u ->
+                    { u
+                        | busy = False
+                        , error = Just "That layout no longer exists."
+                    }
+                )
+                model
+            , Cmd.none
+            )
 
 
 delete : String -> Model -> ( Model, Cmd Msg )
 delete name model =
-    ( withEditor (\u -> { u | busy = True, error = Nothing }) model
-    , CardWire.delete_ name (CardEditorLayoutDeleted name)
-    )
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( withEditor (\u -> { u | busy = True, error = Nothing }) model
+            , CardWire.delete_ name (CardEditorLayoutDeleted name)
+            )
+
+        _ ->
+            applyLocalDelete name model
+
+
+applyLocalDelete : String -> Model -> ( Model, Cmd Msg )
+applyLocalDelete name model =
+    let
+        nextSaves =
+            Dict.remove name model.localCardLayoutSaves
+
+        next =
+            { model
+                | localCardLayoutSaves = nextSaves
+                , savedCardLayouts = localLayoutMetasOf nextSaves
+            }
+    in
+    ( withEditor (\u -> { u | busy = False, error = Nothing }) next, Cmd.none )
 
 
 layoutsLoaded :
@@ -403,7 +546,7 @@ layoutFetched result model =
                         , busy = False
                         , error = Nothing
                         , focusRow =
-                            if List.isEmpty record.layout.rows then
+                            if List.isEmpty record.layout.centerRows then
                                 Nothing
 
                             else

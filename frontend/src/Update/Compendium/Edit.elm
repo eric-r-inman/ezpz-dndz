@@ -94,6 +94,7 @@ handler.
 
 -}
 
+import Auth
 import Compendium
 import Compendium.Wire
 import Http
@@ -414,16 +415,75 @@ featureDescriptionChanged group idx text model =
 options. The kind selector is the dropdown; per-kind params
 (Recharge low/high, per-day-style uses count) are tweaked by
 the `featureUsageRechargeLowChanged` etc. handlers below.
+
+When the transition lands ON Recharge, any trailing
+`(Recharge N-M)` parenthetical in the feature name is stripped
+so the structured `usage` field is the single source of truth.
+When the transition leaves Recharge, the just-vacated range is
+re-appended to the name so a Recharge → None → Recharge round
+trip is information-preserving — important for bundled SRD
+creatures whose canonical name bakes the recharge mechanic in.
+
 -}
 featureUsageKindSet : FeatureGroup -> Int -> Msg.UsageKind -> Model -> ( Model, Cmd Msg )
 featureUsageKindSet group idx kind model =
     ( withCompendiumEdit
         (mapFeatureGroup group
-            (updateAt idx (\f -> { f | usage = usageFromKind kind f.usage }))
+            (updateAt idx (applyUsageKindChange kind))
         )
         model
     , Cmd.none
     )
+
+
+applyUsageKindChange : Msg.UsageKind -> CompendiumUi.FeatureDraft -> CompendiumUi.FeatureDraft
+applyUsageKindChange kind f =
+    let
+        newUsage =
+            usageFromKind kind f.usage
+
+        newName =
+            rechargeAwareNameTransition f.usage newUsage f.name
+    in
+    { f | usage = newUsage, name = newName }
+
+
+{-| Pure decision: given the previous and next `Usage` values and
+the current feature name, return the name the form should now
+show.
+
+  - Leaving Recharge → re-append `(Recharge low-high)` using the
+    _previous_ range so the user can round-trip without losing the
+    mechanic embedded in the name.
+  - Entering Recharge → strip a trailing recharge parenthetical so
+    it doesn't double up against the structured field.
+  - Recharge → Recharge with a new range → keep the name as-is (the
+    invariant maintained on entry already excluded any suffix).
+  - Any non-Recharge ↔ non-Recharge transition → name unchanged.
+
+-}
+rechargeAwareNameTransition : Maybe Compendium.Usage -> Maybe Compendium.Usage -> String -> String
+rechargeAwareNameTransition prev next name =
+    case ( prev, next ) of
+        ( Just (Compendium.Recharge _), Just (Compendium.Recharge _) ) ->
+            -- Both Recharge: range tweak only, name already
+            -- canonical (no suffix).  Nothing to do.
+            name
+
+        ( Just (Compendium.Recharge prevRange), _ ) ->
+            -- Leaving Recharge for some other kind (or None):
+            -- restore the parenthetical so the printed name still
+            -- conveys the mechanic.
+            Compendium.appendRechargeSuffix prevRange name
+
+        ( _, Just (Compendium.Recharge _) ) ->
+            -- Entering Recharge from a non-Recharge state: drop
+            -- the trailing `(Recharge ...)` so the structured field
+            -- is the single source of truth.
+            Compendium.stripTrailingRecharge name
+
+        _ ->
+            name
 
 
 {-| When the user picks a new Usage kind, carry over any param
@@ -1236,11 +1296,16 @@ submit model =
                     )
 
                 Ok creature ->
-                    ( withCompendiumEdit
-                        (\u -> { u | submitting = True, submitError = Nothing })
-                        model
-                    , submitCreatureCmd ui.mode creature
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withCompendiumEdit
+                                (\u -> { u | submitting = True, submitError = Nothing })
+                                model
+                            , submitCreatureCmd ui.mode creature
+                            )
+
+                        _ ->
+                            applyLocalCreatureSubmit ui.mode creature model
 
         _ ->
             ( model, Cmd.none )
@@ -1266,6 +1331,53 @@ submitCreatureCmd mode creature =
                 , timeout = Nothing
                 , tracker = Nothing
                 }
+
+
+{-| Anonymous-mode equivalent of `submitCreatureCmd` +
+`submitResponse` combined: mutate the in-memory compendium DB
+directly (allocating a local id on CreateMode), close the modal,
+mark the library dirty, and toast. The update-loop wrapper
+notices the DB change and persists the snapshot to localStorage.
+-}
+applyLocalCreatureSubmit : EditMode -> Compendium.Creature -> Model -> ( Model, Cmd Msg )
+applyLocalCreatureSubmit mode incoming model =
+    let
+        ( finalCreature, withId ) =
+            case mode of
+                CreateMode ->
+                    let
+                        idN =
+                            model.nextLocalCreatureId
+                    in
+                    ( { incoming | id = "local-" ++ String.fromInt idN }
+                    , { model | nextLocalCreatureId = idN + 1 }
+                    )
+
+                EditExisting _ ->
+                    ( incoming, model )
+
+        compendium =
+            withId.compendium
+
+        newDb =
+            case compendium.db of
+                CompendiumUi.CompendiumDbLoaded db ->
+                    CompendiumUi.CompendiumDbLoaded
+                        (Compendium.upsert finalCreature db)
+
+                other ->
+                    other
+    in
+    { withId
+        | modal = Nothing
+        , compendium =
+            { compendium
+                | db = newDb
+                , selectedId = Just finalCreature.id
+                , compendiumDirty = True
+            }
+    }
+        |> Update.Toast.push ToastSuccess ("Saved " ++ finalCreature.name)
 
 
 submitResponse : Result Http.Error Compendium.Creature -> Model -> ( Model, Cmd Msg )
@@ -1305,23 +1417,65 @@ delete model =
         Just (ModalCompendiumEdit { mode }) ->
             case mode of
                 EditExisting { id } ->
-                    ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
-                    , Http.request
-                        { method = "DELETE"
-                        , headers = []
-                        , url = "/api/compendium/creatures/" ++ id
-                        , body = Http.emptyBody
-                        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-                        , timeout = Nothing
-                        , tracker = Nothing
-                        }
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
+                            , Http.request
+                                { method = "DELETE"
+                                , headers = []
+                                , url = "/api/compendium/creatures/" ++ id
+                                , body = Http.emptyBody
+                                , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
+                                , timeout = Nothing
+                                , tracker = Nothing
+                                }
+                            )
+
+                        _ ->
+                            applyLocalCreatureDelete id model
 
                 CreateMode ->
                     ( { model | modal = Nothing }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Anonymous-mode equivalent of the DELETE + `deleteResponse`
+sequence: drop the creature from the in-memory DB, clear it from
+any selections, close the modal, toast. The update-loop wrapper
+persists the new snapshot.
+-}
+applyLocalCreatureDelete : String -> Model -> ( Model, Cmd Msg )
+applyLocalCreatureDelete deletedId model =
+    let
+        compendium =
+            model.compendium
+
+        newDb =
+            case compendium.db of
+                CompendiumUi.CompendiumDbLoaded db ->
+                    CompendiumUi.CompendiumDbLoaded
+                        (Compendium.remove deletedId db)
+
+                other ->
+                    other
+
+        clearedSelection =
+            { compendium
+                | db = newDb
+                , selectedId =
+                    if compendium.selectedId == Just deletedId then
+                        Nothing
+
+                    else
+                        compendium.selectedId
+                , selectedIds = Set.remove deletedId compendium.selectedIds
+                , compendiumDirty = True
+            }
+    in
+    { model | modal = Nothing, compendium = clearedSelection }
+        |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
 deleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )

@@ -29,6 +29,7 @@ module View.Tooltips exposing
     , compendiumDeleteSelected
     , compendiumDuplicate
     , compendiumEdit
+    , compendiumEditClearUsage
     , compendiumEditDeleteCreature
     , compendiumEditRemoveEntry
     , compendiumEditRemoveSave
@@ -52,6 +53,7 @@ module View.Tooltips exposing
     , concentrating
     , coverCycleTip
     , damage
+    , deathBegin
     , deathDead
     , deathRoll
     , deathStable
@@ -82,6 +84,8 @@ module View.Tooltips exposing
     , lastRollTotal
     , legendaryActionColumn
     , legendaryResistanceColumn
+    , lifecycleDeadToDown
+    , lifecycleDownToDead
     , loadButton
     , loadRowCompendium
     , loadRowEncounter
@@ -92,8 +96,8 @@ module View.Tooltips exposing
     , nextTurn
     , noteAdd
     , noteEdit
-    , panelCrCalculator
     , panelOpenCompendium
+    , panelRandomEncounter
     , panelStatBlockNewWindow
     , queueDuplicate
     , queueInactive
@@ -107,6 +111,9 @@ module View.Tooltips exposing
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , quickListOpen
+    , reactionReady
+    , reactionSpent
     , readyAction
     , releaseReadied
     , reset
@@ -123,6 +130,8 @@ module View.Tooltips exposing
     , showStatBlock
     , sourceFromSaved
     , sourceUnsaved
+    , statBlockAttack
+    , statBlockHabitat
     , statBlockRoll
     , statBlockSavingThrow
     , statusOffTip
@@ -194,7 +203,7 @@ attr s =
 
 appBarSettings : String
 appBarSettings =
-    "Settings"
+    "Set Theme"
 
 
 appBarCardEditor : String
@@ -330,7 +339,7 @@ threeQuartersCover =
 
 fullCover : String
 fullCover =
-    "Full cover"
+    "Total cover"
 
 
 concentrating : String
@@ -477,6 +486,16 @@ releaseReadied =
     "Action readied — click to release"
 
 
+reactionReady : String
+reactionReady =
+    "Reaction available — click to spend (auto-resets at turn start)"
+
+
+reactionSpent : String
+reactionSpent =
+    "Reaction spent — click to refund"
+
+
 
 -- ── CREATURE CARD HP CLUSTER ─────────────────────────────────────────────────
 
@@ -508,7 +527,7 @@ applyCondition =
 
 bloodied : String
 bloodied =
-    "Bloodied — <50% hp"
+    "Bloodied — ≤ half HP"
 
 
 
@@ -528,6 +547,21 @@ deathStable =
 deathRoll : String
 deathRoll =
     "Roll a 1d20 death save (5e: 10+ success, ≤9 failure, nat 20 revives, nat 1 = 2 failures)"
+
+
+deathBegin : String
+deathBegin =
+    "Reveal the death-save pip tracker for this creature"
+
+
+lifecycleDownToDead : String
+lifecycleDownToDead =
+    "Click to mark dead (sets 3 failed death saves)"
+
+
+lifecycleDeadToDown : String
+lifecycleDeadToDown =
+    "Click to revert to Down (clears failed death saves)"
 
 
 
@@ -592,14 +626,24 @@ panelOpenCompendium =
     "Open Creature Compendium"
 
 
-panelCrCalculator : String
-panelCrCalculator =
-    "CR Calculator (not yet available)"
+panelRandomEncounter : String
+panelRandomEncounter =
+    "Choose parameters & generate encounter"
 
 
 panelStatBlockNewWindow : String
 panelStatBlockNewWindow =
     "Open stat block in new tab"
+
+
+statBlockHabitat : String
+statBlockHabitat =
+    "Inferred from online public sources"
+
+
+quickListOpen : String
+quickListOpen =
+    "Open a read-only quick-list of the combat queue in a new tab"
 
 
 
@@ -767,6 +811,11 @@ compendiumEditRemoveSkill =
 compendiumEditRemoveEntry : String
 compendiumEditRemoveEntry =
     "Remove this entry"
+
+
+compendiumEditClearUsage : String
+compendiumEditClearUsage =
+    "Clear Usage (keeps the action)"
 
 
 compendiumEditRemoveSection : String
@@ -1020,6 +1069,23 @@ statBlockSavingThrow label =
 statBlockRoll : String -> String
 statBlockRoll shown =
     "Roll " ++ shown
+
+
+{-| Inline attack-roll button (the `+N to hit` phrase). Reads
+"Roll +7 to hit (1d20+7)" so the GM sees both the original
+phrase and the actual expression the click will fire.
+-}
+statBlockAttack : String -> Int -> String
+statBlockAttack shown mod =
+    let
+        signed =
+            if mod >= 0 then
+                "+" ++ String.fromInt mod
+
+            else
+                String.fromInt mod
+    in
+    "Roll " ++ shown ++ " (1d20" ++ signed ++ ")"
 
 
 {-| Quick-add row tooltip identifying the creature being added.

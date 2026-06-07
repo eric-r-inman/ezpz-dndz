@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , rosterDirty
+    , RechargeAbility, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -116,6 +116,40 @@ that module for the full discussion and the per-tracker helpers.
 -}
 type alias DeathSaves =
     Encounter.DeathSaves.DeathSaves
+
+
+{-| One recharge-style ability tracked on an in-encounter creature
+instance. Seeded at spawn time from any compendium feature whose
+`Usage` is `Recharge { low, high }` — typical examples are dragon
+Breath Weapons ("Recharge 5–6").
+
+The GM-facing flow: while `ready = True`, the chip is green and
+clicking marks it spent. Once spent, nothing happens until the
+START of the creature's next turn — at that point the begin-of-
+turn lifecycle hook flips `awaitingRoll = True`, the card's chip
+splits into a blinking 🎲 (roll d6) + ability-name (mark ready
+without rolling), and the GM resolves the recharge themselves.
+Rolling resets `awaitingRoll = False` regardless of outcome, so
+a failed roll doesn't keep re-prompting on the same turn — the
+GM gets one attempt per turn, just like RAW.
+
+The `awaitingRoll` flag is what makes the "wait until next turn"
+behaviour work: spending the ability mid-turn does NOT set it,
+so the dice doesn't appear on the same turn it was spent.
+
+The compendium captures other Usage kinds (`PerDay`,
+`PerShortRest`, `PerLongRest`, `AtWill`) but those don't fit the
+"recharge each round" model; they're tracked elsewhere (or
+manually) and don't live in this list.
+
+-}
+type alias RechargeAbility =
+    { name : String
+    , low : Int
+    , high : Int
+    , ready : Bool
+    , awaitingRoll : Bool
+    }
 
 
 {-| One condition or effect riding on a creature. The data is shaped
@@ -321,10 +355,13 @@ center column rows 1–3:
   - `cover`, `concentrating`, `hiding`, `dodging`, `flying`,
     `flyHeight` — row 2.
   - `bloodied`, `deathSaves` — row 2 HP indicators. The death-save
-    tracker (see [`DeathSaves`](#DeathSaves)) is rendered exactly
-    when `currentHp == 0`; there's no separate visibility flag.
-    Healing back above 0 resets the counts via the HP-change
-    engine.
+    tracker (see [`DeathSaves`](#DeathSaves)) is gated on a separate
+    `acceptingDeathSaves` opt-in toggle so that a creature dropped
+    to 0 HP shows a single "Death Saves" button by default — most of
+    the time the GM doesn't want a downed enemy to make saves, and
+    revealing the pip strip eagerly is noise. Clicking the button
+    flips the toggle and the pips become visible. Healing back above
+    0 resets BOTH the counts and the toggle via the HP-change engine.
   - `readied` — row 3 readied-action toggle.
 
 `note` is a short free-text label edited via the row 1 pencil
@@ -357,6 +394,9 @@ type alias Creature =
     , flyHeight : Int
     , bloodied : Bool
     , deathSaves : DeathSaves
+    , acceptingDeathSaves : Bool
+    , reactionUsed : Bool
+    , rechargeAbilities : List RechargeAbility
     , readied : Bool
     , inactive : Bool
     , note : String
@@ -367,6 +407,17 @@ type alias Creature =
     , legendaryActionsUsed : Set Int
     , hasLegendaryResistance : Bool
     , legendaryResistanceUsed : Set Int
+    , isPlaceholder : Bool
+
+    -- Structured identity badges separate from the legacy
+    -- `kind` field (which still holds the combined "Race,
+    -- Alignment" descriptor for back-compat / wire payloads).
+    -- `creatureKind` is one of "player" / "enemy" / "npc";
+    -- `race` and `alignment` are free-form strings rendered as
+    -- their own badges by the Custom Card renderer.
+    , creatureKind : String
+    , race : String
+    , alignment : String
     }
 
 

@@ -48,6 +48,9 @@ mkCreature name initiative =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = { successes = 0, failures = 0 }
+    , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -58,6 +61,10 @@ mkCreature name initiative =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = ""
+    , alignment = ""
     }
 
 
@@ -147,7 +154,7 @@ deadSkipSuite =
                 Lifecycle.nextTurn enc
                     |> .activeName
                     |> Expect.equal "C"
-        , test "does NOT skip a creature at 0 HP who isn't dead yet" <|
+        , test "does NOT skip a downed creature once the GM opted into death saves" <|
             \_ ->
                 let
                     bleeding =
@@ -155,7 +162,13 @@ deadSkipSuite =
                             c =
                                 mkCreature "B" 15
                         in
-                        { c | currentHp = 0, deathSaves = { successes = 1, failures = 1 } }
+                        { c
+                            | currentHp = 0
+                            , deathSaves = { successes = 1, failures = 1 }
+                            , acceptingDeathSaves = True
+                            , reactionUsed = False
+                            , rechargeAbilities = []
+                        }
 
                     enc =
                         { threeCreatures
@@ -166,6 +179,32 @@ deadSkipSuite =
                 Lifecycle.nextTurn enc
                     |> .activeName
                     |> Expect.equal "B"
+        , test "skips a downed creature whose GM hasn't opted into death saves" <|
+            \_ ->
+                let
+                    downed =
+                        let
+                            c =
+                                mkCreature "B" 15
+                        in
+                        -- acceptingDeathSaves defaults to False — the
+                        -- GM dropped this creature and hasn't clicked
+                        -- the "Death Saves" button, so the queue
+                        -- treats them as out of combat.
+                        { c
+                            | currentHp = 0
+                            , deathSaves = { successes = 0, failures = 0 }
+                        }
+
+                    enc =
+                        { threeCreatures
+                            | creatures =
+                                [ mkCreature "A" 20, downed, mkCreature "C" 10 ]
+                        }
+                in
+                Lifecycle.nextTurn enc
+                    |> .activeName
+                    |> Expect.equal "C"
         ]
 
 

@@ -37,6 +37,7 @@ view model =
                 , noOp = NoOp
                 , title = "Duplicate — " ++ ui.creatureName
                 , extraClass = "modal--duplicate"
+                , chrome = model.modalChrome
                 , body = [ list (freshAvailable ui model) ]
                 }
 

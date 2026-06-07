@@ -41,67 +41,140 @@ import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (MeStatus(..), Msg(..), Theme(..))
+import Route exposing (Route(..))
 import View.Tooltips as Tooltips
 
 
-view : Bool -> Theme -> Auth.User -> Bool -> Html Msg
-view settingsOpen theme user useCustomCardLayout =
+view :
+    { settingsOpen : Bool
+    , theme : Theme
+    , user : Maybe Auth.User
+    , useCustomCardLayout : Bool
+    , route : Route
+    }
+    -> Html Msg
+view cfg =
     header [ class "app-bar" ]
-        [ div [ class "app-bar__brand" ]
+        [ -- Skip-to-main link: visually hidden until focused; lets
+          -- keyboard users jump past the ~half-dozen tab stops in
+          -- the AppBar nav.  Target is `#main`, which `Workspace`
+          -- now sets on its `<main>` element.  CSS in style.css
+          -- handles the focus-visible reveal.
+          a
+            [ class "app-bar__skip-link"
+            , href "#main"
+            ]
+            [ text "Skip to main content" ]
+        , div [ class "app-bar__brand" ]
             [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
+            , signInTagline cfg.user
             ]
         , nav [ class "app-bar__nav" ]
-            [ a [ href "/" ] [ text "Encounter" ]
-            , button
-                [ class "app-bar__card-editor"
-                , type_ "button"
-                , onClick CardEditorOpen
-                , Tooltips.attr Tooltips.appBarCardEditor
-                ]
-                [ text "Customize card" ]
-            , button
-                [ class
-                    ("app-bar__card-editor"
-                        ++ (if useCustomCardLayout then
-                                " app-bar__card-editor--active"
+            [ -- Text-labelled nav items intentionally omit
+              -- `Tooltips.attr` — the label is self-explanatory,
+              -- and hover bubbles on every item turn the bar
+              -- into noise.  Settings (⚙) keeps its tooltip
+              -- because it's icon-only.
+              a [ href "/" ] [ text "Encounter" ]
 
-                            else
-                                ""
-                           )
-                    )
-                , type_ "button"
-                , onClick CustomCardLayoutToggle
-                , Tooltips.attr
-                    (if useCustomCardLayout then
-                        "Switch encounter cards back to the classic renderer"
-
-                     else
-                        "Use the custom card layout in the encounter (prototype: limited inline-edit)"
-                    )
-                ]
-                [ text
-                    (if useCustomCardLayout then
-                        "Custom: on"
-
-                     else
-                        "Custom: off"
-                    )
-                ]
+            -- Customize-card feature hidden for launch.  The
+            -- supporting modules (`Card.Layout`, `View.Card.Custom`,
+            -- `Update.CardEditor`, the modal, the editor UI) are
+            -- still in the codebase but unreachable from the
+            -- AppBar.  To re-enable, restore the two buttons
+            -- below and re-instate the `useCustomCardLayout`
+            -- branch in `View.Workspace.panelMain`.
+            --
+            -- , button
+            --     [ class "app-bar__card-editor"
+            --     , type_ "button"
+            --     , onClick CardEditorOpen
+            --     ]
+            --     [ text "Customize card" ]
+            -- , button
+            --     [ class
+            --         ("app-bar__card-editor"
+            --             ++ (if cfg.useCustomCardLayout then
+            --                     " app-bar__card-editor--active"
+            --
+            --                 else
+            --                     ""
+            --                )
+            --         )
+            --     , type_ "button"
+            --     , onClick CustomCardLayoutToggle
+            --     ]
+            --     [ text
+            --         (if cfg.useCustomCardLayout then
+            --             "Custom: on"
+            --
+            --          else
+            --             "Custom: off"
+            --         )
+            --     ]
+            , userLink cfg.user cfg.route
             , a
-                [ class "app-bar__user"
-                , href "/me"
-                , Tooltips.attr Tooltips.appBarAccount
+                [ class "app-bar__about"
+                , href "/about"
                 ]
-                [ text user.displayName ]
+                [ text "About" ]
             , a
                 [ class "app-bar__donate"
                 , href "/donate"
-                , Tooltips.attr Tooltips.appBarDonate
                 ]
                 [ text "Donate" ]
-            , settings settingsOpen theme
+            , settings cfg.settingsOpen cfg.theme
             ]
         ]
+
+
+{-| Italic prompt sitting next to the brand. Only shown when the
+session is anonymous — authenticated users have nothing to gain
+from a "sign in" nudge. Per-theme colour comes from the
+`--tagline-color` CSS variable in style.css, so adding a new
+theme means setting the token, not editing this view.
+-}
+signInTagline : Maybe Auth.User -> Html msg
+signInTagline maybeUser =
+    case maybeUser of
+        Just _ ->
+            text ""
+
+        Nothing ->
+            span [ class "app-bar__tagline" ]
+                [ text "Sign in to save your encounters and compendium changes." ]
+
+
+{-| Identity slot in the AppBar.
+
+  - Authenticated → display name link to `/me`.
+  - Anonymous (any route except `/login`) → "Sign in" link to
+    `/login`.
+  - Anonymous AND already on `/login` → render nothing. The form
+    on the page IS the sign-in affordance; an AppBar link back to
+    the same route would look broken.
+
+-}
+userLink : Maybe Auth.User -> Route -> Html Msg
+userLink maybeUser route =
+    case maybeUser of
+        Just user ->
+            a
+                [ class "app-bar__user"
+                , href "/me"
+                ]
+                [ text user.displayName ]
+
+        Nothing ->
+            if route == Login then
+                text ""
+
+            else
+                a
+                    [ class "app-bar__user app-bar__user--anonymous"
+                    , href "/login"
+                    ]
+                    [ text "Sign in" ]
 
 
 {-| ⚙ button + popover. Wraps the popover in a `<div>` with
@@ -127,7 +200,7 @@ settings isOpen theme =
         [ button
             [ class "app-settings__trigger"
             , type_ "button"
-            , attribute "aria-haspopup" "menu"
+            , attribute "aria-haspopup" "dialog"
             , attribute "aria-expanded"
                 (if isOpen then
                     "true"
@@ -143,7 +216,20 @@ settings isOpen theme =
         , if isOpen then
             div
                 [ class "app-settings__menu"
-                , attribute "role" "menu"
+                , -- Settings popover holds a radio-group, not a
+                  -- menubar of menuitems.  WAI-ARIA's `role="menu"`
+                  -- semantics expect `menuitem` / `menuitemradio`
+                  -- children, not `<input type="radio">`.  The
+                  -- correct role for "a panel of settings" is
+                  -- `dialog` or just no role at all — the trigger
+                  -- already carries `aria-haspopup` + `aria-expanded`
+                  -- which is enough metadata for SR clients.  We
+                  -- use `region` + `aria-label` so the popover
+                  -- shows up as a labelled landmark while the
+                  -- inner radios keep their natural fieldset/legend
+                  -- semantics.
+                  attribute "role" "region"
+                , attribute "aria-label" "Settings"
                 ]
                 [ themeRow theme
                 ]
@@ -158,16 +244,21 @@ themeRow current =
     fieldset [ class "app-settings__row" ]
         [ legend [ class "app-settings__row-label" ] [ text "Theme" ]
         , div [ class "app-settings__radio-group" ]
-            [ themeRadio current Modern "Modern"
-            , themeRadio current Dark "Dark"
-            , themeRadio current Auto "Auto"
-            , themeRadio current Accessible "Accessible"
+            [ themeRadio current Modern "Modern" ""
+            , themeRadio current Dark "Dark" ""
+            , themeRadio current Auto "Auto" ""
+            , themeRadio current Accessible "Accessible" "(alpha)"
             ]
         ]
 
 
-themeRadio : Theme -> Theme -> String -> Html Msg
-themeRadio current value labelText =
+{-| A single theme option in the settings popover. `badge` is
+rendered as a muted suffix next to the label when non-empty —
+used to mark the Accessible theme as `(alpha)`. Pass `""` for
+no badge.
+-}
+themeRadio : Theme -> Theme -> String -> String -> Html Msg
+themeRadio current value labelText badge =
     label [ class "app-settings__radio" ]
         [ Html.input
             [ type_ "radio"
@@ -177,6 +268,11 @@ themeRadio current value labelText =
             ]
             []
         , text labelText
+        , if String.isEmpty badge then
+            text ""
+
+          else
+            span [ class "app-settings__radio-badge" ] [ text (" " ++ badge) ]
         ]
 
 

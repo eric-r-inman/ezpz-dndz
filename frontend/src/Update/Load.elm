@@ -16,6 +16,7 @@ module Update.Load exposing
     , renameStart
     , renameSubmit
     , serverResponse
+    , sourceSet
     )
 
 {-| Update branches for the Load modal.
@@ -33,6 +34,8 @@ a toast.
 
 -}
 
+import Auth
+import Dict
 import Encounter exposing (Encounter)
 import Encounter.Wire
 import File exposing (File)
@@ -55,14 +58,49 @@ withLoadUi =
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalLoad LoadUi.fresh), controlMenu = Nothing }
-    , Encounter.Wire.listSavesCmd LoadListLoaded
+    let
+        ( saves, listCmd ) =
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    ( LoadsLoading, Encounter.Wire.listSavesCmd LoadListLoaded )
+
+                _ ->
+                    ( LoadsLoaded (localSavesMetas model), Cmd.none )
+
+        baseUi =
+            LoadUi.fresh
+
+        primedUi =
+            { baseUi | saves = saves }
+    in
+    ( { model | modal = Just (ModalLoad primedUi), controlMenu = Nothing }
+    , listCmd
     )
+
+
+localSavesMetas : Model -> List Encounter.Wire.SavedEncounterMeta
+localSavesMetas model =
+    model.localEncounterSaves
+        |> Dict.toList
+        |> List.map Encounter.Wire.localSaveToMeta
+        |> List.sortBy (\m -> -m.updatedAt)
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( { model | modal = Nothing }, Cmd.none )
+
+
+{-| Flip the source radio between Server / Device. Clears any
+inline error so a prior network message doesn't bleed across
+sources. The Server list is preloaded on `open` so no
+additional fetch is needed when the user flips back.
+-}
+sourceSet : Msg.LoadSource -> Model -> ( Model, Cmd Msg )
+sourceSet source model =
+    ( withLoadUi (\ui -> { ui | source = source, error = Nothing }) model
+    , Cmd.none
+    )
 
 
 listLoaded :
@@ -102,40 +140,126 @@ confirmConfirm model =
         Just (ModalLoad ui) ->
             case ui.confirm of
                 Just (ConfirmLoad name) ->
-                    ( withLoadUi
-                        (\u ->
-                            { u
-                                | busy = True
-                                , confirm = Nothing
-                                , error = Nothing
-                            }
-                        )
-                        model
-                    , Encounter.Wire.getSaveCmd
-                        (LoadServerResponse name)
-                        name
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withLoadUi
+                                (\u ->
+                                    { u
+                                        | busy = True
+                                        , confirm = Nothing
+                                        , error = Nothing
+                                    }
+                                )
+                                model
+                            , Encounter.Wire.getSaveCmd
+                                (LoadServerResponse name)
+                                name
+                            )
+
+                        _ ->
+                            applyLocalLoad name model
 
                 Just (ConfirmDelete name) ->
-                    ( withLoadUi
-                        (\u ->
-                            { u
-                                | busy = True
-                                , confirm = Nothing
-                                , error = Nothing
-                            }
-                        )
-                        model
-                    , Encounter.Wire.deleteSaveCmd
-                        (LoadDeleteResponse name)
-                        name
-                    )
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withLoadUi
+                                (\u ->
+                                    { u
+                                        | busy = True
+                                        , confirm = Nothing
+                                        , error = Nothing
+                                    }
+                                )
+                                model
+                            , Encounter.Wire.deleteSaveCmd
+                                (LoadDeleteResponse name)
+                                name
+                            )
+
+                        _ ->
+                            applyLocalDelete name model
 
                 Nothing ->
                     ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Anonymous-mode equivalent of `Encounter.Wire.getSaveCmd` plus
+the `serverResponse` handler: look up the saved encounter in the
+local dict, install it as the live encounter, close the modal,
+toast. No-op if the name doesn't resolve (shouldn't happen in
+practice since the list is rendered from the same dict).
+-}
+applyLocalLoad : String -> Model -> ( Model, Cmd Msg )
+applyLocalLoad name model =
+    case Dict.get name model.localEncounterSaves of
+        Just save ->
+            let
+                encounter =
+                    save.encounter
+
+                fresh =
+                    { encounter | round = 0, activeName = "" }
+
+                next =
+                    { model
+                        | encounter = fresh
+                        , savedSnapshot = Just fresh
+                        , savedAs = Just name
+                        , modal = Nothing
+                    }
+            in
+            Update.Toast.push ToastSuccess
+                ("Loaded \"" ++ name ++ "\".")
+                next
+
+        Nothing ->
+            ( withLoadUi
+                (\u ->
+                    { u
+                        | busy = False
+                        , confirm = Nothing
+                        , error = Just "That save no longer exists."
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+
+{-| Anonymous-mode delete from the Load modal. Same dict
+mutation as the Save-modal version; the update wrapper persists.
+-}
+applyLocalDelete : String -> Model -> ( Model, Cmd Msg )
+applyLocalDelete name model =
+    let
+        cleared =
+            if model.savedAs == Just name then
+                { model | savedAs = Nothing }
+
+            else
+                model
+
+        next =
+            { cleared
+                | localEncounterSaves =
+                    Dict.remove name model.localEncounterSaves
+            }
+    in
+    ( withLoadUi
+        (\u ->
+            { u
+                | confirm = Nothing
+                , busy = False
+                , error = Nothing
+                , saves = LoadsLoaded (localSavesMetas next)
+            }
+        )
+        next
+    , Cmd.none
+    )
 
 
 {-| Server returned the encounter body. Replace the live
@@ -263,19 +387,78 @@ renameSubmit model =
                         )
 
                     else
-                        ( withLoadUi
-                            (\u -> { u | busy = True, error = Nothing })
-                            model
-                        , Encounter.Wire.renameSaveCmd
-                            (LoadRenameResponse { from = original, to = trimmed })
-                            { from = original, to = trimmed }
-                        )
+                        case model.auth of
+                            Auth.AuthAuthenticated _ ->
+                                ( withLoadUi
+                                    (\u -> { u | busy = True, error = Nothing })
+                                    model
+                                , Encounter.Wire.renameSaveCmd
+                                    (LoadRenameResponse { from = original, to = trimmed })
+                                    { from = original, to = trimmed }
+                                )
+
+                            _ ->
+                                applyLocalRename original trimmed model
 
                 Nothing ->
                     ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Anonymous-mode rename: swap the dict key. Bumps
+`updated_at` on the entry so the list ordering reflects the
+recent change.
+-}
+applyLocalRename : String -> String -> Model -> ( Model, Cmd Msg )
+applyLocalRename from to model =
+    case Dict.get from model.localEncounterSaves of
+        Just entry ->
+            let
+                bumped =
+                    { entry | updatedAt = model.bootMs }
+
+                renamedSavedAs =
+                    if model.savedAs == Just from then
+                        { model | savedAs = Just to }
+
+                    else
+                        model
+
+                nextSaves =
+                    model.localEncounterSaves
+                        |> Dict.remove from
+                        |> Dict.insert to bumped
+
+                next =
+                    { renamedSavedAs | localEncounterSaves = nextSaves }
+            in
+            ( withLoadUi
+                (\u ->
+                    { u
+                        | busy = False
+                        , renaming = Nothing
+                        , error = Nothing
+                        , saves = LoadsLoaded (localSavesMetas next)
+                    }
+                )
+                next
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( withLoadUi
+                (\u ->
+                    { u
+                        | busy = False
+                        , renaming = Nothing
+                        , error = Just "That save no longer exists."
+                    }
+                )
+                model
+            , Cmd.none
+            )
 
 
 renameCancel : Model -> ( Model, Cmd Msg )

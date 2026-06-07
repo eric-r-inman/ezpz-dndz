@@ -80,7 +80,7 @@ fromCurrent layout queueView =
     { layout = layout
     , queueView = queueView
     , focusRow =
-        if List.isEmpty layout.rows then
+        if List.isEmpty layout.centerRows then
             Nothing
 
         else

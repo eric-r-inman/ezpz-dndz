@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), SaveDestination(..), Theme(..), UsageKind(..)
+    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), LoadSource(..), ModalChromeEdge(..), SaveDestination(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -42,6 +42,7 @@ import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
+import Json.Decode as Decode
 import Url exposing (Url)
 
 
@@ -274,6 +275,15 @@ type SaveDestination
     | SaveDestinationDevice
 
 
+{-| Where the Load Compendium modal pulls from. Mirrors
+`SaveDestination` so the radio group reads as a symmetric
+Server / Device pair across both modals.
+-}
+type LoadSource
+    = LoadSourceServer
+    | LoadSourceDevice
+
+
 {-| Which Encounter-Controls split-button dropdown is open.
 The SaveMenu / LoadMenu options pick destination (Server vs.
 Device) before the Save / Load Msg fires. Mediated by a
@@ -324,7 +334,40 @@ type Msg
     | DeathSaveToggleFailure String Int
     | DeathSaveRoll String
     | DeathSaveRollLanded String Dice.Roll
+      -- Flip the per-creature `acceptingDeathSaves` opt-in on for
+      -- a downed (0 HP) creature so the death-save pip tracker
+      -- appears on its card.  Resets back to False when the
+      -- creature heals above 0.
+    | DeathSavesBegin String
+      -- Mark a downed creature dead immediately: set their death-
+      -- save failures to 3 so the predicate cascade
+      -- (`isDeathSaveDead`, card class, queue skip) flips in one
+      -- shot.  Fired by clicking the DOWN lifecycle badge on the
+      -- card border.
+    | MarkCreatureDead String
+      -- Reverse of `MarkCreatureDead`: clear failures back to 0
+      -- (successes preserved).  Fired by clicking the DEAD
+      -- lifecycle badge so the same physical pill is a reversible
+      -- toggle.
+    | RevertCreatureToDown String
     | ToggleReadied String
+    | ToggleReaction String
+      -- Click the recharge chip on a creature's card to flip a
+      -- single recharge ability between ready/expended.  Pure UI
+      -- toggle; doesn't fire a dice roll.  Used by the ability-
+      -- name half of the split chip (spent + active) to mark
+      -- ready manually, and by the whole chip in non-active
+      -- states (toggle either direction).
+    | ToggleRechargeAbility String String
+      -- Fire the recharge d6 for one ability on demand.  Wired
+      -- to the blinking dice glyph on the spent + active chip
+      -- form — recharges are no longer auto-rolled at the start
+      -- of the creature's turn; the GM clicks when ready.
+    | RollRechargeNow String String
+      -- Result of the recharge d6 for one ability: (creature
+      -- name, ability name, the d6 roll).  If roll.total >=
+      -- ability.low, flip ready=True.
+    | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
       -- Dice modal
     | OpenDice
@@ -339,8 +382,25 @@ type Msg
     | DiceRollDisadvantage
     | DiceFlipCoin
     | DiceRerun Dice.Roll
+      -- Open or close the re-roll dropdown attached to a single
+      -- history entry (toggle: clicking the open one closes; any
+      -- other entry replaces).  `DiceRerunNoModifier` is the new
+      -- menu item that re-rolls with the constant stripped from
+      -- the expression.
+    | DiceRerunMenuToggle Int
+    | DiceRerunMenuClose
+    | DiceRerunNoModifier Dice.Roll
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
+      -- A peer tab broadcast a freshly-landed roll over the
+      -- BroadcastChannel.  Payload is the encoded `Dice.Roll`;
+      -- decode failures are silently ignored.
+    | DiceRollFromOtherTab Decode.Value
+      -- A peer tab broadcast the latest encounter over the
+      -- BroadcastChannel.  Payload is the encoded `Encounter`;
+      -- the receiving handler decodes and replaces
+      -- `model.encounter` in place.  No re-broadcast.
+    | EncounterFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
@@ -418,6 +478,22 @@ type Msg
     | ConditionApplyToSelectedToggle
     | ConditionSubmit
     | ConditionDelete
+      -- Save/Load presets for the Add-Condition modal.  The GM
+      -- captures a fully-configured form under a user-given name
+      -- so common scenarios (e.g. "Stun" with the bearer's-next-
+      -- turn duration + DC 15 CON save-to-end) can be reapplied
+      -- with one click.  Body is persisted to localStorage via
+      -- `Ports.persistLocalConditionPresets`.
+    | ConditionPresetSaveStart
+    | ConditionPresetSaveNameChanged String
+    | ConditionPresetSaveCategoryChanged String
+    | ConditionPresetSaveCancel
+    | ConditionPresetSaveSubmit
+    | ConditionPresetLoadMenuToggle
+    | ConditionPresetLoadMenuClose
+    | ConditionPresetLoad String
+    | ConditionPresetDelete String
+    | ConditionPresetCategoryToggle String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Bool Dice.Roll
@@ -437,6 +513,17 @@ type Msg
     | TimerSetupApply
     | TimerSetupCancel
     | TimerDismiss String
+      -- Save/Load presets for the Timer-setup modal.  Mirror of
+      -- the ConditionPreset* family — see those docs for the
+      -- save-then-name → load-then-apply flow.
+    | TimerPresetSaveStart
+    | TimerPresetSaveNameChanged String
+    | TimerPresetSaveCancel
+    | TimerPresetSaveSubmit
+    | TimerPresetLoadMenuToggle
+    | TimerPresetLoadMenuClose
+    | TimerPresetLoad String
+    | TimerPresetDelete String
       -- Compendium browser
     | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
     | CompendiumOpen
@@ -451,12 +538,7 @@ type Msg
     | CompendiumSelect String
     | CompendiumAddedToggle
     | CompendiumAddToQueue String
-    | CompendiumInitiativeRolled String (List ( String, Dice.Roll ))
-      -- (creatureId, [(displayName, roll)])
     | CompendiumAddSelectedToQueue
-    | CompendiumAddSelectedRolled (List ( String, String, Dice.Roll ))
-      -- [(creatureId, displayName, roll)] — one entry per selected
-      -- compendium creature, materialised together with one toast.
       -- Group feature (Phase A: UI scaffolding only — buttons fire
       -- placeholder toasts until the modal + store land).
     | CompendiumGroupsToggle
@@ -500,6 +582,8 @@ type Msg
     | CardEditorWidgetAdd Int String
     | CardEditorWidgetRemove Int Int
     | CardEditorQueueViewSet String
+    | CardEditorToggleDeathSaves
+    | CardEditorToggleLegendary
       -- Saved-layout persistence (`/api/card-layouts`).
     | CardEditorLayoutNameChanged String
     | CardEditorSaveAs
@@ -655,6 +739,7 @@ type Msg
     | SaveRenameResponse { from : String, to : String } (Result Http.Error ())
     | LoadOpen
     | LoadClose
+    | LoadSourceSet LoadSource
     | LoadFromServerRequested String
     | LoadConfirmCancel
     | LoadConfirmConfirm
@@ -687,6 +772,7 @@ type Msg
     | SaveCompendiumConfirmConfirm
     | LoadCompendiumOpen
     | LoadCompendiumClose
+    | LoadCompendiumSourceSet LoadSource
     | LoadCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
     | LoadCompendiumFromServerRequested String
     | LoadCompendiumConfirmCancel
@@ -698,13 +784,26 @@ type Msg
     | ControlMenuClose
     | EncounterReset
     | EncounterClear
+    | EncounterAddPlaceholder
+      -- Inline rename for Placeholder N cards.  The name span
+      -- on a placeholder card becomes an <input> when its name
+      -- matches the open rename state's target.
+    | PlaceholderRenameOpen String
+    | PlaceholderRenameChange String
+    | PlaceholderRenameCommit
+    | PlaceholderRenameCancel
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
+      -- Open the picker in "swap this creature" mode.  The pick
+      -- handler then replaces the named creature in place with
+      -- the chosen one, preserving the old initiative.
+    | QuickAddOpenForReplace String
     | QuickAddClose
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String
+    | QuickAddPickPlaceholder
       -- Saving-throw modal triggered from compendium ability cells.
       -- The two `Int`s on `AbilitySaveOpen` are the `clientX` /
       -- `clientY` of the click on the ability cell; they ride
@@ -777,6 +876,26 @@ type Msg
     | AuthLoginResponse (Result Http.Error Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
+      -- Anonymous-mode nudge: gated controls (Save to Server, etc.)
+      -- dispatch this instead of their real Msg, sending the user
+      -- to the login route so they can promote into an
+      -- authenticated session.
+    | NavigateToLogin
+      -- Cancel the sign-in form and return to the encounter page.
+      -- Fired by the Cancel link on /login as well as the Esc
+      -- subscription scoped to the Login route.
+    | LoginCancel
+      -- Login-time migration: the response to the PUT that copies
+      -- an anonymous-session encounter into a named server save
+      -- slot.  Carries the save-name so the success-toast can
+      -- mention it; clears localStorage.encounter on success.
+    | LocalEncounterMigrated String (Result Http.Error ())
+      -- Same shape for the card-layout migration response.
+    | LocalCardLayoutMigrated String (Result Http.Error Card.Wire.SavedLayout)
+      -- Compendium migration response.  Int carries the count of
+      -- creatures that landed server-side so the toast can be
+      -- specific.
+    | LocalCompendiumMigrated Int (Result Http.Error ())
       -- CR Calculator modal.
     | CrCalculatorOpen
     | CrCalculatorClose
@@ -784,6 +903,42 @@ type Msg
     | CrCalculatorPartyAdd
     | CrCalculatorPartyRemove Int
     | CrCalculatorPartyLevelSet Int String
+      -- Random Encounter modal.  Party config reuses the
+      -- CR Calculator's `*Party*` Msgs because the underlying
+      -- `model.party` is shared between the two features.
+    | RandomEncounterOpen
+    | RandomEncounterClose
+      -- Wire tokens for all the dropdown / pill fields —
+      -- keeps the Msg payloads as `String` so the view's
+      -- <select> handlers stay simple.  "" on habitat /
+      -- creature type means Any.
+    | RandomEncounterDifficultySet String
+    | RandomEncounterScaleSet String
+    | RandomEncounterHabitatSet String
+      -- Multi-type picker: the view renders N+1 <select>s where
+      -- N is the current number of selected types and the final
+      -- slot is a blank "add another" picker.  The `Int` is the
+      -- slot index; `""` removes that slot, a non-blank value
+      -- sets or appends.
+    | RandomEncounterCreatureTypeAt Int String
+    | RandomEncounterMinionsToggle
+      -- Specific-creature pin picker.  Search text drives an
+      -- inline result list; PinAdd takes a creature id (used
+      -- by both a picker click and the row's +); PinDecrement
+      -- nudges count down clamped at 1; PinRemove drops the
+      -- entire entry regardless of count.
+    | RandomEncounterPinSearchChanged String
+    | RandomEncounterPinAdd String
+    | RandomEncounterPinDecrement String
+    | RandomEncounterPinRemove String
+      -- Fire the generator with the current params.  Internally
+      -- issues a `Random.generate RandomEncounterRolled` Cmd.
+    | RandomEncounterGenerate
+      -- Continuation: the picked groups land here.  Empty list
+      -- means the filtered pool was empty.
+    | RandomEncounterRolled (List ( Compendium.Creature, Int ))
+      -- Commit the current roll to the encounter queue.
+    | RandomEncounterAddToEncounter
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit
@@ -793,4 +948,29 @@ type Msg
     | AccountConfirmPasswordChanged String
     | AccountPasswordSubmit
     | AccountPasswordChanged (Result Http.Error ())
+      -- Modal chrome (drag-to-move, edge-resize).  The chrome
+      -- state lives on `model.modalChrome`; subscriptions
+      -- listen for mousemove / mouseup while a gesture is in
+      -- flight.  See Update.ModalChrome + Ui.ModalChrome.
+    | ModalChromeDragStart Int Int
+    | ModalChromeDragMove Int Int
+    | ModalChromeDragEnd
+    | ModalChromeResizeStart ModalChromeEdge Int Int Int Int
+    | ModalChromeResizeMove Int Int
+    | ModalChromeResizeEnd
     | NoOp
+
+
+{-| Wire-friendly mirror of `Ui.ModalChrome.Edge`. Lives here so
+the `Msg` definitions don't pull in the chrome module just for
+this enum (which would invert the dependency direction).
+-}
+type ModalChromeEdge
+    = ModalEdgeN
+    | ModalEdgeS
+    | ModalEdgeE
+    | ModalEdgeW
+    | ModalEdgeNW
+    | ModalEdgeNE
+    | ModalEdgeSW
+    | ModalEdgeSE

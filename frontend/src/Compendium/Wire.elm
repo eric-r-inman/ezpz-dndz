@@ -1,8 +1,8 @@
 module Compendium.Wire exposing
-    ( fetchAll
+    ( fetchAll, fetchAllPublic
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
-    , SavedCompendiumMeta, deleteCompendiumSaveCmd, getCompendiumSaveCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
+    , LocalCompendiumSnapshot, SavedCompendiumMeta, decodeLocalCompendiumSnapshot, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, getCompendiumSaveCmd, importCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
     )
 
 {-| Wire format + HTTP client for the compendium domain.
@@ -13,7 +13,7 @@ module so the rules engine reads cleanly without scrolling past
 600 lines of codecs, and so a future schema bump only touches
 this file.
 
-@docs fetchAll
+@docs fetchAll, fetchAllPublic
 @docs decodeCreature, encodeCreature, encodeDraft
 @docs defaultSpeed, defaultAbilities, defaultSenses
 
@@ -82,6 +82,27 @@ fetchAll : (Result Http.Error (List Creature) -> msg) -> Cmd msg
 fetchAll toMsg =
     Http.get
         { url = "/api/compendium/creatures"
+        , expect = Http.expectJson toMsg (D.list decodeCreature)
+        }
+
+
+{-| Public read-only path used by anonymous sessions. Hits a
+static asset (`/bundled-creatures.json`) served straight from
+`frontend/public/`, which mirrors the same bundled defaults the
+server seeds into a fresh user's compendium. Same decode
+shape as [`fetchAll`](#fetchAll); authentication is not required.
+
+The bundled file ships alongside the binary in `frontend/public/`
+— treat it as the read-only fallback the GM gets before signing
+in. Local edits (later phase) overlay this list inside the
+client; the server route only kicks in once the session is
+authenticated.
+
+-}
+fetchAllPublic : (Result Http.Error (List Creature) -> msg) -> Cmd msg
+fetchAllPublic toMsg =
+    Http.get
+        { url = "/bundled-creatures.json"
         , expect = Http.expectJson toMsg (D.list decodeCreature)
         }
 
@@ -870,3 +891,72 @@ encodeMaybe enc m =
 
         Nothing ->
             E.null
+
+
+
+-- ── LOCAL (ANONYMOUS) SNAPSHOT ───────────────────────────────────────────────
+--
+-- Anonymous sessions persist the full compendium DB into
+-- localStorage on every CRUD edit, plus a `next_local_id` counter
+-- that hands out unique ids for newly-created creatures without
+-- needing server allocation.  The wire shape mirrors what
+-- `POST /api/compendium/import` accepts so the login-time
+-- migration can hand the snapshot straight to the server.
+
+
+type alias LocalCompendiumSnapshot =
+    { creatures : List Creature
+    , groups : List Compendium.Group.Group
+    , nextLocalId : Int
+    }
+
+
+encodeLocalCompendiumSnapshot : LocalCompendiumSnapshot -> E.Value
+encodeLocalCompendiumSnapshot snap =
+    E.object
+        [ ( "creatures", E.list encodeCreature snap.creatures )
+        , ( "groups", E.list Compendium.GroupWire.encodeGroup snap.groups )
+        , ( "next_local_id", E.int snap.nextLocalId )
+        ]
+
+
+decodeLocalCompendiumSnapshot : D.Decoder LocalCompendiumSnapshot
+decodeLocalCompendiumSnapshot =
+    D.map3 LocalCompendiumSnapshot
+        (D.field "creatures" (D.list decodeCreature))
+        (D.oneOf
+            [ D.field "groups" (D.list Compendium.GroupWire.decodeGroup)
+            , D.succeed []
+            ]
+        )
+        (D.oneOf
+            [ D.field "next_local_id" D.int
+            , D.succeed 1
+            ]
+        )
+
+
+{-| `POST /api/compendium/import` — replace the server's
+compendium + groups with the supplied snapshot. Used by the
+login-time migration to push the anonymous session's local state
+into the freshly-authenticated user's account. Server side
+swaps both the shared bestiary and the caller's groups in one
+shot.
+-}
+importCmd :
+    (Result Http.Error () -> msg)
+    -> List Creature
+    -> List Compendium.Group.Group
+    -> Cmd msg
+importCmd toMsg creatures groups =
+    Http.post
+        { url = "/api/compendium/import"
+        , body =
+            Http.jsonBody
+                (E.object
+                    [ ( "creatures", E.list encodeCreature creatures )
+                    , ( "groups", E.list Compendium.GroupWire.encodeGroup groups )
+                    ]
+                )
+        , expect = Http.expectWhatever toMsg
+        }

@@ -249,15 +249,7 @@ inline in =Main.elm=, stop — find the right home first.  The
 structure isn't decoration; it's load-bearing for swappable UI
 layouts and for the modal-state invariants the type system enforces.
 
-* Frozen / archived planning docs
-
-=docs/archive/= holds historical planning documents
-(=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=, =CHANGELOG.org=, plus the locally-
-preserved-but-untracked =MODULARIZATION_PLAN.org=,
-=COMPLIANCE_PLAN.org=, and =TOOLTIPS.org=).  They are no longer
-maintained and should not be read or updated.  Instructions
-inside that say "update X" are stale.
+* Where to look for context
 
 For project status / structure, consult [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] —
 the load-bearing decisions live there.  Live planning docs
@@ -266,10 +258,9 @@ flows) and [[file:docs/systemd.org][docs/systemd.org]] (LoadCredential / secret 
 
 * Changelog: don't.
 
-The project does not maintain a =CHANGELOG.org= /
-=CHANGELOG.md=.  Don't create one, don't update one if you find
-one (the legacy file lives in =docs/archive/CHANGELOG.org= for
-historical reference only).  Commit messages and the git log are
-the canonical record of what changed; ARCHITECTURE.org captures
-the load-bearing decisions.  If you want to summarize a change
-for the user, do it in the chat reply — not in a tracked doc.
+The project does not maintain a =CHANGELOG.org= / =CHANGELOG.md=.
+Don't create one, don't update one if you find one.  Commit
+messages and the git log are the canonical record of what changed;
+ARCHITECTURE.org captures the load-bearing decisions.  If you want
+to summarize a change for the user, do it in the chat reply — not
+in a tracked doc.

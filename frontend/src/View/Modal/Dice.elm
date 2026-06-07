@@ -11,24 +11,26 @@ import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder,
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
+import Ui.ModalChrome exposing (ModalChrome)
 import Util.Keyboard
 import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : DiceUi -> Html Msg
-view ui =
+view : ModalChrome -> DiceUi -> Html Msg
+view chrome ui =
     if ui.open then
         View.Modal.view
             { close = CloseDice
             , noOp = NoOp
             , title = "🎲 Dice Roller"
             , extraClass = "modal--dice"
+            , chrome = chrome
             , body =
                 [ form ui
                 , faceButtons
                 , specialButtons
-                , history ui.history
+                , history ui
                 ]
             }
 
@@ -145,11 +147,11 @@ specialButtons =
         ]
 
 
-history : Dice.History -> Html Msg
-history h =
+history : DiceUi -> Html Msg
+history ui =
     let
         entries =
-            Dice.historyEntries h
+            Dice.historyEntries ui.history
     in
     div [ class "dice-history" ]
         [ div [ class "dice-history__head" ]
@@ -172,12 +174,16 @@ history h =
 
           else
             ul [ class "dice-history__list" ]
-                (List.map historyEntry entries)
+                (List.indexedMap (historyEntry ui) entries)
         ]
 
 
-historyEntry : Dice.Roll -> Html Msg
-historyEntry roll =
+historyEntry : DiceUi -> Int -> Dice.Roll -> Html Msg
+historyEntry ui idx roll =
+    let
+        isMenuOpen =
+            ui.rerunMenuOpenFor == Just idx
+    in
     li [ class "dice-history__entry" ]
         [ div [ class "dice-history__formula" ]
             [ rollSource roll.source
@@ -192,12 +198,64 @@ historyEntry roll =
                     text ""
             ]
         , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
-        , button
+        , rerunControl idx isMenuOpen roll
+        ]
+
+
+{-| Re-roll trigger + dropdown for one history entry. The
+trigger button toggles the menu; the menu has two items:
+"Reroll" (existing behaviour, fires `DiceRerun`) and
+"Reroll, no modifier" (strips the expression's flat constant
+before rolling, fires `DiceRerunNoModifier`).
+-}
+rerunControl : Int -> Bool -> Dice.Roll -> Html Msg
+rerunControl idx isOpen roll =
+    div
+        [ class
+            (if isOpen then
+                "dice-history__rerun-wrap dice-history__rerun-wrap--open"
+
+             else
+                "dice-history__rerun-wrap"
+            )
+        ]
+        [ button
             [ class "dice-history__rerun"
-            , onClick (DiceRerun roll)
+            , onClick (DiceRerunMenuToggle idx)
             , Tooltips.attr Tooltips.diceRollAgain
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if isOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
             ]
             [ text "↻" ]
+        , if isOpen then
+            div
+                [ class "dice-history__rerun-menu"
+                , attribute "role" "menu"
+                ]
+                [ button
+                    [ class "dice-history__rerun-menu-item"
+                    , type_ "button"
+                    , onClick (DiceRerun roll)
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "Reroll" ]
+                , button
+                    [ class "dice-history__rerun-menu-item"
+                    , type_ "button"
+                    , onClick (DiceRerunNoModifier roll)
+                    , attribute "role" "menuitem"
+                    ]
+                    [ text "Reroll, no modifier" ]
+                ]
+
+          else
+            text ""
         ]
 
 

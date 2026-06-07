@@ -6,6 +6,7 @@ right. The right pane has an action bar with the "Add to
 Encounter" handoff plus per-creature edit / duplicate / delete.
 -}
 
+import Auth
 import Compendium
 import Compendium.Group
 import Dict
@@ -27,14 +28,16 @@ import Ui.Compendium as CompendiumUi
         , CompendiumUi
         , PendingAction(..)
         )
+import Ui.ModalChrome exposing (ModalChrome)
 import Update.Compendium.Browser
+import View.AuthGate as AuthGate
 import View.Modal
 import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : CompendiumUi -> List String -> Html Msg
-view ui encounterIds =
+view : ModalChrome -> Auth.AuthState -> CompendiumUi -> List String -> Html Msg
+view chrome auth ui encounterIds =
     if not ui.open then
         text ""
 
@@ -44,11 +47,12 @@ view ui encounterIds =
             , noOp = NoOp
             , title = "📚 Compendium"
             , extraClass = "modal--compendium"
+            , chrome = chrome
             , body =
                 [ filterBar ui
-                , actionsBar ui
+                , actionsBar auth ui
                 , bulkBanner ui
-                , body ui encounterIds
+                , body auth ui encounterIds
                 ]
             }
 
@@ -152,7 +156,19 @@ bulkBanner ui =
                 }
 
         ( Nothing, Just err ) ->
-            div [ class "compendium__bulk-error" ] [ text err ]
+            -- Pop-up notice with an OK button.  `CompendiumPendingCancel`
+            -- already clears both `pending` and `bulkError`, so we
+            -- reuse it as the dismiss handler.  The button takes
+            -- the browser's default Space/Enter activation, so no
+            -- extra keydown wiring is needed.
+            div [ class "compendium__bulk-alert" ]
+                [ p [ class "compendium__bulk-alert-msg" ] [ text err ]
+                , button
+                    [ class "action-btn action-btn--blue"
+                    , onClick CompendiumPendingCancel
+                    ]
+                    [ text "OK" ]
+                ]
 
         ( Nothing, Nothing ) ->
             text ""
@@ -220,7 +236,7 @@ filterBar ui =
             [ class "compendium__search"
             , id Update.Compendium.Browser.searchId
             , type_ "search"
-            , placeholder "🔍 Search by name, race, source, CR… (press / to focus)"
+            , placeholder "Search by name, type, etc."
             , value ui.searchText
             , onInput CompendiumSearchChanged
             , attribute "aria-label" "Search compendium"
@@ -248,8 +264,8 @@ commits — see [feature: Group UI placeholders, follow-ups for
 store + modal].
 
 -}
-actionsBar : CompendiumUi -> Html Msg
-actionsBar ui =
+actionsBar : Auth.AuthState -> CompendiumUi -> Html Msg
+actionsBar auth ui =
     div [ class "compendium__actions-bar" ]
         [ newButton
         , pasteButton
@@ -259,7 +275,7 @@ actionsBar ui =
 
           else
             createGroupFromSelectedButton ui
-        , bulkButtons ui
+        , bulkButtons auth ui
         ]
 
 
@@ -521,8 +537,8 @@ tagPicker ui =
         (select_ :: clearButton)
 
 
-body : CompendiumUi -> List String -> Html Msg
-body ui encounterIds =
+body : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
+body auth ui encounterIds =
     case ui.db of
         CompendiumDbLoading ->
             skeleton
@@ -532,7 +548,7 @@ body ui encounterIds =
                 [ text "Couldn't load the compendium. Check the server logs." ]
 
         CompendiumDbLoaded _ ->
-            twoColumn ui encounterIds
+            twoColumn auth ui encounterIds
 
 
 skeleton : Html Msg
@@ -557,8 +573,8 @@ skeletonRow =
         ]
 
 
-twoColumn : CompendiumUi -> List String -> Html Msg
-twoColumn ui encounterIds =
+twoColumn : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
+twoColumn auth ui encounterIds =
     let
         baseVisible =
             CompendiumUi.compendiumVisible ui
@@ -585,7 +601,7 @@ twoColumn ui encounterIds =
     in
     div [ class "compendium__columns" ]
         [ list ui totalCount visible encounterIds ui.selectedIds
-        , detail ui visible encounterIds
+        , detail auth ui visible encounterIds
         ]
 
 
@@ -962,8 +978,8 @@ rowMetaLine c =
             List.filter (not << String.isEmpty)
                 [ CompendiumUi.creatureKindLabel c.kind
                 , c.race
-                , "AC " ++ String.fromInt c.armorClass
-                , "HP " ++ String.fromInt c.maxHp
+                , "AC\u{00A0}" ++ String.fromInt c.armorClass
+                , "HP\u{00A0}" ++ String.fromInt c.maxHp
                 , crLabel c.challengeRating
                 ]
     in
@@ -976,11 +992,11 @@ crLabel cr =
         ""
 
     else
-        "CR " ++ cr
+        "CR\u{00A0}" ++ cr
 
 
-detail : CompendiumUi -> List Compendium.Creature -> List String -> Html Msg
-detail ui visible encounterIds =
+detail : Auth.AuthState -> CompendiumUi -> List Compendium.Creature -> List String -> Html Msg
+detail auth ui visible encounterIds =
     let
         chosenGroup =
             ui.selectedGroupId
@@ -993,7 +1009,7 @@ detail ui visible encounterIds =
     case ( chosenGroup, chosen ) of
         ( Just group, _ ) ->
             div [ class "compendium__detail" ]
-                [ groupActionBar group
+                [ groupActionBar auth group
                 , groupDetailBody ui group
                 ]
 
@@ -1010,8 +1026,8 @@ detail ui visible encounterIds =
                 [ text "Select a creature or group on the left." ]
 
 
-groupActionBar : Compendium.Group.Group -> Html Msg
-groupActionBar group =
+groupActionBar : Auth.AuthState -> Compendium.Group.Group -> Html Msg
+groupActionBar auth group =
     div [ class "compendium__action-bar" ]
         [ span [ class "compendium__in-encounter" ]
             [ text
@@ -1028,14 +1044,28 @@ groupActionBar group =
             [ text "➕ Add Group to Encounter" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
-            , onClick (CompendiumGroupEditOpenExisting group.id)
-            , Tooltips.attr Tooltips.compendiumGroupEdit
+            , onClick
+                (AuthGate.clickWhenAuthed auth
+                    (CompendiumGroupEditOpenExisting group.id)
+                )
+            , Tooltips.attr
+                (AuthGate.tooltipWhenAuthed auth
+                    Tooltips.compendiumGroupEdit
+                    "Sign in to edit encounter groups."
+                )
             ]
             [ text "✏️ Edit" ]
         , button
             [ class "action-btn action-btn--red compendium__delete-btn"
-            , onClick (CompendiumGroupDelete group.id)
-            , Tooltips.attr Tooltips.compendiumGroupDelete
+            , onClick
+                (AuthGate.clickWhenAuthed auth
+                    (CompendiumGroupDelete group.id)
+                )
+            , Tooltips.attr
+                (AuthGate.tooltipWhenAuthed auth
+                    Tooltips.compendiumGroupDelete
+                    "Sign in to delete encounter groups."
+                )
             , attribute "aria-label" "Delete group"
             ]
             [ text "🗑" ]
@@ -1198,11 +1228,11 @@ Device routes; Reset goes through the destructive-confirm
 banner; Clear opens a dropdown with Clear All / Clear Selected.
 
 -}
-bulkButtons : CompendiumUi -> Html Msg
-bulkButtons ui =
+bulkButtons : Auth.AuthState -> CompendiumUi -> Html Msg
+bulkButtons auth ui =
     div [ class "compendium__bulk-cluster" ]
-        [ importMenu ui
-        , exportMenu ui
+        [ importMenu auth ui
+        , exportMenu auth ui
         , button
             [ class "action-btn action-btn--orange"
             , onClick CompendiumResetClick
@@ -1291,24 +1321,41 @@ menuItem msg label_ =
         [ text label_ ]
 
 
-importMenu : CompendiumUi -> Html Msg
-importMenu ui =
-    splitMenu
-        { menu = ImportMenu
-        , isOpen = ui.bulkMenu == Just ImportMenu
-        , triggerClass = "action-btn action-btn--blue"
-        , triggerLabel = "📥 Import ▾"
-        , triggerTitle = Tooltips.compendiumImport
-        , alignLeft = True
-        , items =
-            [ menuItem LoadCompendiumOpen "From Server"
-            , menuItem CompendiumImportClick "From Device"
-            ]
-        }
+{-| Server-only menu item that gates on auth state. Anonymous
+users see the same row in the dropdown — the click navigates to
+the login route and the tooltip explains why, instead of firing
+a request that would 401.
+-}
+serverMenuItem :
+    Auth.AuthState
+    -> { msg : Msg, label : String, signedInTooltip : String, anonymousTooltip : String }
+    -> Html Msg
+serverMenuItem auth opts =
+    button
+        [ class "compendium__bulk-menu__item"
+        , onClick (AuthGate.clickWhenAuthed auth opts.msg)
+        , Tooltips.attr
+            (AuthGate.tooltipWhenAuthed auth opts.signedInTooltip opts.anonymousTooltip)
+        , attribute "role" "menuitem"
+        ]
+        [ text opts.label ]
 
 
-exportMenu : CompendiumUi -> Html Msg
-exportMenu ui =
+importMenu : Auth.AuthState -> CompendiumUi -> Html Msg
+importMenu _ _ =
+    -- Single button (no dropdown).  The Load Compendium modal
+    -- it opens carries the Server / Device radios so the
+    -- previous split-button was redundant.
+    button
+        [ class "action-btn action-btn--blue"
+        , onClick LoadCompendiumOpen
+        , Tooltips.attr Tooltips.compendiumImport
+        ]
+        [ text "📥 Import" ]
+
+
+exportMenu : Auth.AuthState -> CompendiumUi -> Html Msg
+exportMenu _ ui =
     let
         triggerClass =
             if ui.compendiumDirty then
@@ -1324,22 +1371,18 @@ exportMenu ui =
             else
                 Tooltips.compendiumExport
     in
-    splitMenu
-        { menu = ExportMenu
-        , isOpen = ui.bulkMenu == Just ExportMenu
-        , triggerClass = triggerClass
-        , triggerLabel = "📤 Export ▾"
-        , triggerTitle = triggerTitle
-        , alignLeft = False
-        , items =
-            [ menuItem
-                (SaveCompendiumOpen SaveDestinationServer)
-                "To Server"
-            , menuItem
-                (SaveCompendiumOpen SaveDestinationDevice)
-                "To Device"
-            ]
-        }
+    -- Plain button (no dropdown).  The Save Compendium modal
+    -- itself carries the Server / Device radios, so the previous
+    -- split-button menu was redundant.  Default destination is
+    -- Device because it works for both anonymous and
+    -- authenticated sessions; the modal lets the user switch to
+    -- Server if they're signed in.
+    button
+        [ class triggerClass
+        , onClick (SaveCompendiumOpen SaveDestinationDevice)
+        , Tooltips.attr triggerTitle
+        ]
+        [ text "📤 Export" ]
 
 
 {-| Clear button + popover dropdown. Same wrapper / behavior

@@ -53,9 +53,138 @@
         }
       } catch (_) {}
 
+      // Read the locally-persisted encounter (anonymous-mode
+      // boot path).  When the cookie-backed auth probe later
+      // returns AuthAuthenticated the value is discarded; on
+      // AuthAnonymous it's decoded and adopted as the live
+      // encounter.  Storing parsed JSON (not a string) keeps
+      // Elm's Json.Decode.Value happy.
+      var localEncounter = null;
+      try {
+        var encRaw = localStorage.getItem("encounter");
+        if (encRaw) {
+          localEncounter = JSON.parse(encRaw);
+        }
+      } catch (_) {
+        // Malformed JSON or storage unavailable — fall through
+        // to a clean slate.
+      }
+
+      // Same one-shot read for the anonymous card-layout
+      // snapshot (layout + queueView + useCustomCardLayout).
+      var localCardLayout = null;
+      try {
+        var cardRaw = localStorage.getItem("cardLayout");
+        if (cardRaw) {
+          localCardLayout = JSON.parse(cardRaw);
+        }
+      } catch (_) {}
+
+      // Pre-formatted "today" string used as the suffix on the
+      // named save slot if the auth probe lands authenticated and
+      // there's a non-empty local encounter to migrate.  Falls
+      // back to an ISO date if locale formatting fails.
+      var migrationDateLabel;
+      try {
+        migrationDateLabel = new Date().toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      } catch (_) {
+        migrationDateLabel = new Date().toISOString().slice(0, 10);
+      }
+
+      // Anonymous-mode dice-history snapshot.  Same shape as the
+      // server's /api/dice/history response (an array of encoded
+      // rolls).  Adopted on the anonymous boot branch; discarded
+      // and replaced with the server's history on the
+      // authenticated branch.
+      var localDiceHistory = null;
+      try {
+        var diceRaw = localStorage.getItem("diceHistory");
+        if (diceRaw) {
+          localDiceHistory = JSON.parse(diceRaw);
+        }
+      } catch (_) {}
+
+      // Anonymous-mode compendium snapshot
+      // ({ creatures, groups, next_local_id }).  Adopted on the
+      // anonymous boot branch in place of the bundled-creatures
+      // fetch when present.
+      var localCompendium = null;
+      try {
+        var compRaw = localStorage.getItem("compendium");
+        if (compRaw) {
+          localCompendium = JSON.parse(compRaw);
+        }
+      } catch (_) {}
+
+      // Anonymous named encounter saves
+      // ({ "<name>": { encounter, created_at, updated_at } }).
+      var localEncounterSaves = null;
+      try {
+        var savesRaw = localStorage.getItem("encounterSaves");
+        if (savesRaw) {
+          localEncounterSaves = JSON.parse(savesRaw);
+        }
+      } catch (_) {}
+
+      // Anonymous named card-layout saves
+      // ({ "<name>": { body, created_at, updated_at } }).
+      var localCardLayoutSaves = null;
+      try {
+        var layoutSavesRaw = localStorage.getItem("cardLayoutSaves");
+        if (layoutSavesRaw) {
+          localCardLayoutSaves = JSON.parse(layoutSavesRaw);
+        }
+      } catch (_) {}
+
+      // User-named condition presets ({ "<name>": preset-body }).
+      // Backs the Save/Load row in the Add-Condition modal.
+      var localConditionPresets = null;
+      try {
+        var presetsRaw = localStorage.getItem("conditionPresets");
+        if (presetsRaw) {
+          localConditionPresets = JSON.parse(presetsRaw);
+        }
+      } catch (_) {}
+
+      // User-named timer presets — twin of conditionPresets.
+      var localTimerPresets = null;
+      try {
+        var timerPresetsRaw = localStorage.getItem("timerPresets");
+        if (timerPresetsRaw) {
+          localTimerPresets = JSON.parse(timerPresetsRaw);
+        }
+      } catch (_) {}
+
+      // Party roster — { members: [...], next_id: N } —
+      // shared by the CR Calculator and Random Encounter modals.
+      var localParty = null;
+      try {
+        var partyRaw = localStorage.getItem("party");
+        if (partyRaw) {
+          localParty = JSON.parse(partyRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
-        flags: { theme: savedTheme },
+        flags: {
+          theme: savedTheme,
+          localEncounter: localEncounter,
+          localCardLayout: localCardLayout,
+          migrationDateLabel: migrationDateLabel,
+          localDiceHistory: localDiceHistory,
+          localCompendium: localCompendium,
+          localEncounterSaves: localEncounterSaves,
+          localCardLayoutSaves: localCardLayoutSaves,
+          localConditionPresets: localConditionPresets,
+          localTimerPresets: localTimerPresets,
+          localParty: localParty,
+          bootMs: Date.now(),
+        },
       });
 
       // Outbound port: persist theme changes back to localStorage
@@ -72,6 +201,224 @@
                 prefs.theme,
               );
             }
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the live encounter into
+      // localStorage for anonymous sessions.  Elm only emits this
+      // when model.auth = AuthAnonymous, so we don't need to
+      // double-check here.
+      if (app.ports && app.ports.persistLocalEncounter) {
+        app.ports.persistLocalEncounter.subscribe(function (value) {
+          try {
+            localStorage.setItem("encounter", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the card-layout snapshot under
+      // `cardLayout`.  Same anonymous-only contract as above.
+      if (app.ports && app.ports.persistLocalCardLayout) {
+        app.ports.persistLocalCardLayout.subscribe(function (value) {
+          try {
+            localStorage.setItem("cardLayout", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: drop the locally-persisted encounter after
+      // a successful login-time migration so the next reload
+      // doesn't re-migrate the same data.
+      if (app.ports && app.ports.clearLocalEncounter) {
+        app.ports.clearLocalEncounter.subscribe(function () {
+          try {
+            localStorage.removeItem("encounter");
+          } catch (_) {}
+        });
+      }
+
+      // Same port semantics for the anonymous card-layout
+      // snapshot — fired after its migration succeeds.
+      if (app.ports && app.ports.clearLocalCardLayout) {
+        app.ports.clearLocalCardLayout.subscribe(function () {
+          try {
+            localStorage.removeItem("cardLayout");
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous compendium snapshot writer.
+      if (app.ports && app.ports.persistLocalCompendium) {
+        app.ports.persistLocalCompendium.subscribe(function (value) {
+          try {
+            localStorage.setItem("compendium", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous compendium snapshot eraser — fired after a
+      // successful sign-in migration to the server.
+      if (app.ports && app.ports.clearLocalCompendium) {
+        app.ports.clearLocalCompendium.subscribe(function () {
+          try {
+            localStorage.removeItem("compendium");
+          } catch (_) {}
+        });
+      }
+
+      // Outbound port: persist the dice-history list under
+      // `diceHistory` for anonymous sessions.  Same
+      // anonymous-only contract as the encounter and cardLayout
+      // ports (Elm only emits this when model.auth is anonymous).
+      if (app.ports && app.ports.persistLocalDiceHistory) {
+        app.ports.persistLocalDiceHistory.subscribe(function (value) {
+          try {
+            localStorage.setItem("diceHistory", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // User-named condition presets writer.  Both anonymous and
+      // authenticated sessions persist through this same port —
+      // there's no server endpoint for presets yet.
+      if (app.ports && app.ports.persistLocalConditionPresets) {
+        app.ports.persistLocalConditionPresets.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "conditionPresets",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // Twin port for the timer presets dict.
+      if (app.ports && app.ports.persistLocalTimerPresets) {
+        app.ports.persistLocalTimerPresets.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "timerPresets",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // Party roster — { members: [...], next_id: N }.
+      // Persists across sessions so the CR Calculator and
+      // Random Encounter modals don't make the GM re-enter
+      // their party every reload.
+      if (app.ports && app.ports.persistLocalParty) {
+        app.ports.persistLocalParty.subscribe(function (value) {
+          try {
+            localStorage.setItem("party", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+
+      // Anonymous named encounter saves dict writer + eraser.
+      if (app.ports && app.ports.persistLocalEncounterSaves) {
+        app.ports.persistLocalEncounterSaves.subscribe(function (value) {
+          try {
+            localStorage.setItem("encounterSaves", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+      if (app.ports && app.ports.clearLocalEncounterSaves) {
+        app.ports.clearLocalEncounterSaves.subscribe(function () {
+          try {
+            localStorage.removeItem("encounterSaves");
+          } catch (_) {}
+        });
+      }
+
+      // Cross-tab dice-roll sync.  When a roll lands in any tab,
+      // Elm fires `broadcastDiceRoll` with the encoded roll; every
+      // other tab of the app open in the same browser profile
+      // receives the same value via `incomingDiceRoll` and pushes
+      // it into its own dice history.  Solves the case where a
+      // stat block is opened in its own tab — rolls fired there
+      // would otherwise be invisible to the main encounter tab's
+      // dice modal.  `BroadcastChannel` does NOT echo to the
+      // sender, so no self-filtering is needed.
+      var diceChannel = null;
+      try {
+        if (typeof BroadcastChannel === "function") {
+          diceChannel = new BroadcastChannel("ezpz-dndz-dice");
+        }
+      } catch (_) {
+        // Older browser / disabled by privacy mode — degrade to
+        // per-tab dice histories.
+      }
+      if (
+        diceChannel &&
+        app.ports &&
+        app.ports.broadcastDiceRoll &&
+        app.ports.incomingDiceRoll
+      ) {
+        app.ports.broadcastDiceRoll.subscribe(function (value) {
+          try {
+            diceChannel.postMessage(value);
+          } catch (_) {}
+        });
+        diceChannel.onmessage = function (event) {
+          try {
+            app.ports.incomingDiceRoll.send(event.data);
+          } catch (_) {}
+        };
+      } else if (app.ports && app.ports.broadcastDiceRoll) {
+        // No channel available — swallow outbound broadcasts so
+        // the port still has a subscriber (Elm errors otherwise).
+        app.ports.broadcastDiceRoll.subscribe(function () {});
+      }
+
+      // Cross-tab encounter sync.  Mirrors the dice channel above:
+      // the main tab posts the encounter on every change, and a
+      // quick-list tab opened in the same browser profile picks
+      // the changes up live.  Same BroadcastChannel discipline —
+      // no self-echo, so loops are impossible.
+      var encounterChannel = null;
+      try {
+        if (typeof BroadcastChannel === "function") {
+          encounterChannel = new BroadcastChannel("ezpz-dndz-encounter");
+        }
+      } catch (_) {
+        // Older browser / privacy mode — quick-list tab won't
+        // auto-update, but the main app still works.
+      }
+      if (
+        encounterChannel &&
+        app.ports &&
+        app.ports.broadcastEncounter &&
+        app.ports.incomingEncounter
+      ) {
+        app.ports.broadcastEncounter.subscribe(function (value) {
+          try {
+            encounterChannel.postMessage(value);
+          } catch (_) {}
+        });
+        encounterChannel.onmessage = function (event) {
+          try {
+            app.ports.incomingEncounter.send(event.data);
+          } catch (_) {}
+        };
+      } else if (app.ports && app.ports.broadcastEncounter) {
+        app.ports.broadcastEncounter.subscribe(function () {});
+      }
+
+      // Anonymous named card-layout saves dict writer + eraser.
+      if (app.ports && app.ports.persistLocalCardLayoutSaves) {
+        app.ports.persistLocalCardLayoutSaves.subscribe(function (value) {
+          try {
+            localStorage.setItem("cardLayoutSaves", JSON.stringify(value));
+          } catch (_) {}
+        });
+      }
+      if (app.ports && app.ports.clearLocalCardLayoutSaves) {
+        app.ports.clearLocalCardLayoutSaves.subscribe(function () {
+          try {
+            localStorage.removeItem("cardLayoutSaves");
           } catch (_) {}
         });
       }
@@ -222,6 +569,39 @@
         // the cursor — just hide.  Cheaper than recomputing.
         document.addEventListener("scroll", hide, true);
         window.addEventListener("resize", hide);
+      })();
+    </script>
+
+    <script>
+      // Modal focus-trap.  When Tab walks past the last focusable
+      // element inside a modal it lands on the END sentinel
+      // (`.modal__focus-sentinel`, rendered by `View.Modal`).  We
+      // detect the focus on the sentinel and redirect it back to
+      // the modal close button — the user's keyboard wraps inside
+      // the dialog instead of escaping to the underlying page.
+      //
+      // Implemented here in JS rather than in Elm because a pure-
+      // Elm trap would require threading a "sentinel-focused" Msg
+      // through every modal's update handler (~20 modals).  The
+      // listener lives outside Elm's view layer; Elm just renders
+      // the sentinel + the close button with their stable
+      // class/id, and JS handles the redirect with no Cmd
+      // plumbing.
+      (function () {
+        document.addEventListener(
+          "focus",
+          function (e) {
+            if (
+              e.target &&
+              e.target.classList &&
+              e.target.classList.contains("modal__focus-sentinel")
+            ) {
+              var btn = document.getElementById("modal-close-btn");
+              if (btn) btn.focus();
+            }
+          },
+          true,
+        );
       })();
     </script>
   </body>

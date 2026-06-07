@@ -49,6 +49,7 @@ view model =
                 , noOp = NoOp
                 , title = verb ++ " — " ++ ui.target
                 , extraClass = "modal--hp-change"
+                , chrome = model.modalChrome
                 , body =
                     [ modeToggle ui
                     , amount ui

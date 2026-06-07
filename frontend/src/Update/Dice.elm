@@ -11,11 +11,15 @@ module Update.Dice exposing
     , open
     , persistResponse
     , rerun
+    , rerunMenuClose
+    , rerunMenuToggle
+    , rerunNoModifier
     , resetSliders
     , rollAdvantage
     , rollDisadvantage
     , rollFaces
     , rollFromInput
+    , rollFromOtherTab
     , rollFromStatBlock
     , rollLanded
     , rollPopupExpired
@@ -35,9 +39,11 @@ The dice modal is always present in the model (no `Maybe`), so
 
 -}
 
+import Auth
 import Dice
 import Effects
 import Http
+import Json.Decode as Decode
 import Model exposing (Model, RollPopup)
 import Msg exposing (Msg(..))
 import Process
@@ -161,25 +167,90 @@ as such in the history (rather than silently demoting to "Manual").
 -}
 rerun : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rerun roll model =
+    let
+        ( closed, _ ) =
+            rerunMenuClose model
+    in
     case roll.kind of
         Dice.Standard ->
-            ( model, Dice.rollCmd DiceRollLanded roll.source roll.expression )
+            ( closed, Dice.rollCmd DiceRollLanded roll.source roll.expression )
 
         Dice.Advantage ->
-            ( model, Dice.advantageCmd DiceRollLanded roll.source roll.expression.constant )
+            ( closed, Dice.advantageCmd DiceRollLanded roll.source roll.expression.constant )
 
         Dice.Disadvantage ->
-            ( model, Dice.disadvantageCmd DiceRollLanded roll.source roll.expression.constant )
+            ( closed, Dice.disadvantageCmd DiceRollLanded roll.source roll.expression.constant )
 
         Dice.Coin ->
-            ( model, Dice.coinCmd DiceRollLanded roll.source )
+            ( closed, Dice.coinCmd DiceRollLanded roll.source )
+
+
+{-| "Reroll, no modifier" — re-execute a historical roll with the
+flat constant on the expression stripped to zero. A 2d6+2 becomes
+2d6; an Advantage d20+5 becomes Advantage d20+0; a Coin flip has
+no modifier concept so this collapses to a regular [`rerun`](#rerun).
+-}
+rerunNoModifier : Dice.Roll -> Model -> ( Model, Cmd Msg )
+rerunNoModifier roll model =
+    let
+        expr =
+            roll.expression
+
+        stripped =
+            { roll | expression = { expr | constant = 0 } }
+    in
+    rerun stripped model
+
+
+{-| Toggle the re-roll dropdown for one history entry. Clicking
+the already-open entry's button closes the menu; clicking a
+different entry's button replaces the open target.
+-}
+rerunMenuToggle : Int -> Model -> ( Model, Cmd Msg )
+rerunMenuToggle idx model =
+    let
+        next =
+            withDice
+                (\d ->
+                    if d.rerunMenuOpenFor == Just idx then
+                        { d | rerunMenuOpenFor = Nothing }
+
+                    else
+                        { d | rerunMenuOpenFor = Just idx }
+                )
+                model
+    in
+    ( next, Cmd.none )
+
+
+{-| Close the re-roll dropdown (no-op when nothing is open).
+Fired by the global click-outside / Esc subscriptions in
+`Main.subscriptions` and by both menu items after they dispatch.
+-}
+rerunMenuClose : Model -> ( Model, Cmd Msg )
+rerunMenuClose model =
+    ( withDice (\d -> { d | rerunMenuOpenFor = Nothing }) model, Cmd.none )
 
 
 clearHistory : Model -> ( Model, Cmd Msg )
 clearHistory model =
-    ( withDice (\d -> { d | history = Dice.emptyHistory }) model
-    , Effects.clearDiceHistory
-    )
+    let
+        cleared =
+            withDice (\d -> { d | history = Dice.emptyHistory }) model
+
+        cmd =
+            case model.auth of
+                Auth.AuthAuthenticated _ ->
+                    Effects.clearDiceHistory
+
+                -- Anonymous: the update-loop wrapper notices the
+                -- history just went from N entries to 0 and fires
+                -- the localStorage persist with an empty list, so
+                -- no explicit Cmd here.  Loading mirrors that.
+                _ ->
+                    Cmd.none
+    in
+    ( cleared, cmd )
 
 
 {-| A roll fired from anywhere in the app landed. Update the local
@@ -195,8 +266,48 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, flashCmd ]
     )
+
+
+{-| A peer tab fired a roll and broadcast it over the
+BroadcastChannel. Push it into our local history so the user
+sees a single shared log across all open tabs, but skip both
+the broadcast (avoids an echo loop) and the persist (the
+originating tab has already POSTed / written localStorage).
+Decode failures silently no-op; we don't want a malformed
+peer payload to wedge the receiving tab.
+-}
+rollFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
+rollFromOtherTab raw model =
+    case Decode.decodeValue Dice.decodeRoll raw of
+        Ok roll ->
+            Effects.pushIncomingDiceRoll roll model
+
+        Err _ ->
+            ( model, Cmd.none )
+
+
+{-| Per-session router for the after-roll persist Cmd.
+
+  - Authenticated → `POST /api/dice/history` with this single roll;
+    the response re-syncs the local view.
+  - Anonymous → no HTTP; the update-loop wrapper in `Main.update`
+    diffs `model.dice.history.entries` and writes the full list to
+    `localStorage` via the `persistLocalDiceHistory` port.
+  - Loading → skip; the post-probe handler will sort things out
+    and the user shouldn't be rolling during the boot probe
+    anyway.
+
+-}
+persistRollFor : Auth.AuthState -> Dice.Roll -> Cmd Msg
+persistRollFor auth roll =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            Effects.persistDiceRoll roll
+
+        _ ->
+            Cmd.none
 
 
 historyLoaded : Result Http.Error (List Dice.Roll) -> Model -> ( Model, Cmd Msg )
@@ -291,7 +402,7 @@ statBlockRollLanded x y roll model =
             Effects.pushDiceRoll roll withPopup
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, popupCmd, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, popupCmd, flashCmd ]
     )
 
 

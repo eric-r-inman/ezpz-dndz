@@ -11,6 +11,16 @@ module Update.Condition exposing
     , openEdit
     , openNew
     , pickStandard
+    , presetCategoryToggle
+    , presetDelete
+    , presetLoad
+    , presetLoadMenuClose
+    , presetLoadMenuToggle
+    , presetSaveCancel
+    , presetSaveCategoryChanged
+    , presetSaveNameChanged
+    , presetSaveStart
+    , presetSaveSubmit
     , removeChip
     , rollSave
     , saveAbilityChanged
@@ -34,6 +44,7 @@ saving-throw result handler.
 -}
 
 import Dice
+import Dict
 import Effects
 import Encounter
 import Model exposing (Modal(..), Model)
@@ -42,7 +53,9 @@ import Msg
         ( DurationKind(..)
         , Msg(..)
         )
+import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
+import Ui.Condition.Bundled as Bundled
 
 
 {-| Hard cap on the chip-note text. Ten characters keeps the chip
@@ -84,7 +97,20 @@ close model =
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
 pickStandard label model =
-    ( withConditionUi (\u -> { u | name = label, customName = "" }) model
+    ( withConditionUi
+        (\u ->
+            -- Clicking the already-selected condition clears the
+            -- selection — the badge acts as a toggle, not a
+            -- strict radio.  Custom-name field is cleared either
+            -- way so re-selecting after typing custom text
+            -- doesn't leave a stale value behind.
+            if u.name == label then
+                { u | name = "", customName = "" }
+
+            else
+                { u | name = label, customName = "" }
+        )
+        model
     , Cmd.none
     )
 
@@ -246,6 +272,235 @@ applyToSelectedToggle model =
     )
 
 
+
+-- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| GM clicked the Save button on the Add-Condition footer. Reveal
+the name-prompt input by stashing an empty `pendingSaveName`. The
+view replaces the static Save/Load buttons with `[input][Save]
+[Cancel]` whenever `pendingSaveName /= Nothing`. Also closes the
+load menu if it was open — only one preset affordance can be
+active at a time.
+-}
+presetSaveStart : Model -> ( Model, Cmd Msg )
+presetSaveStart model =
+    let
+        -- Pre-fill the category dropdown with the loaded preset's
+        -- category when there is one, so "tweak + re-save" stays a
+        -- single click in the dropdown.  Looks up via the merged
+        -- view (user dict first, then bundled defaults) so a
+        -- bundled preset loaded for tweaking still surfaces its
+        -- canonical category.  Falls back to "" when no preset is
+        -- loaded.
+        prefillCategory =
+            case model.modal of
+                Just (ModalCondition ui) ->
+                    ui.loadedPresetName
+                        |> Maybe.andThen (\name -> lookupPreset name model)
+                        |> Maybe.map .category
+                        |> Maybe.withDefault ""
+
+                _ ->
+                    ""
+    in
+    ( withConditionUi
+        (\u ->
+            { u
+                | pendingSaveName = Just ""
+                , pendingSaveCategory = prefillCategory
+                , loadMenuOpen = False
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+presetSaveNameChanged : String -> Model -> ( Model, Cmd Msg )
+presetSaveNameChanged text model =
+    ( withConditionUi (\u -> { u | pendingSaveName = Just text }) model
+    , Cmd.none
+    )
+
+
+presetSaveCategoryChanged : String -> Model -> ( Model, Cmd Msg )
+presetSaveCategoryChanged category model =
+    ( withConditionUi (\u -> { u | pendingSaveCategory = category }) model
+    , Cmd.none
+    )
+
+
+presetSaveCancel : Model -> ( Model, Cmd Msg )
+presetSaveCancel model =
+    ( withConditionUi
+        (\u -> { u | pendingSaveName = Nothing, pendingSaveCategory = "" })
+        model
+    , Cmd.none
+    )
+
+
+{-| Commit the current form state to the presets dict under the
+user's typed name. Trimmed name; empty / whitespace-only names
+are rejected (the input stays open so the GM can correct it).
+Overwrites silently if a preset with the same name already
+exists, per the user's spec — they explicitly didn't want a
+confirm-prompt on overwrite.
+
+Side effect: stamps the just-saved name into `loadedPresetName`
+so the title bar shows it immediately, mirroring the load flow.
+
+-}
+presetSaveSubmit : Model -> ( Model, Cmd Msg )
+presetSaveSubmit model =
+    case model.modal of
+        Just (ModalCondition ui) ->
+            let
+                trimmed =
+                    Maybe.withDefault "" ui.pendingSaveName
+                        |> String.trim
+
+                category =
+                    String.trim ui.pendingSaveCategory
+            in
+            -- Both a name and a category are required.  Either
+            -- missing keeps the save form open so the GM can
+            -- correct it; the view-side `disabled` on the Save
+            -- button already prevents the click in normal flow.
+            if String.isEmpty trimmed || String.isEmpty category then
+                ( model, Cmd.none )
+
+            else
+                let
+                    preset =
+                        ConditionUi.toPreset ui
+                            |> (\p -> { p | category = category })
+
+                    newPresets =
+                        Dict.insert trimmed preset model.conditionPresets
+                in
+                ( { model | conditionPresets = newPresets }
+                    |> withConditionUi
+                        (\u ->
+                            { u
+                                | pendingSaveName = Nothing
+                                , pendingSaveCategory = ""
+                                , loadedPresetName = Just trimmed
+                            }
+                        )
+                , Cmd.none
+                )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+presetLoadMenuToggle : Model -> ( Model, Cmd Msg )
+presetLoadMenuToggle model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | loadMenuOpen = not u.loadMenuOpen
+                , pendingSaveName = Nothing
+                , pendingSaveCategory = ""
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+presetLoadMenuClose : Model -> ( Model, Cmd Msg )
+presetLoadMenuClose model =
+    ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+    , Cmd.none
+    )
+
+
+{-| Pick a preset from the load menu. Overlay its body onto the
+current form state via `ConditionUi.applyPreset`, which preserves
+target / editingId / applyToSelected and re-aims `untilCreature`
+at the current target. No-op when the name isn't in the dict
+(stale click after a delete, for example).
+-}
+presetLoad : String -> Model -> ( Model, Cmd Msg )
+presetLoad name model =
+    case lookupPreset name model of
+        Just preset ->
+            ( withConditionUi (ConditionUi.applyPreset name preset) model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+            , Cmd.none
+            )
+
+
+{-| Resolve a preset name against the user's dict first, falling
+back to the bundled SRD defaults. Bundled entries are always
+loadable even when the user has saved nothing of their own —
+the view layer renders them as a read-only layer below any
+user-saved overrides.
+-}
+lookupPreset : String -> Model -> Maybe ConditionUi.ConditionPreset
+lookupPreset name model =
+    case Dict.get name model.conditionPresets of
+        Just preset ->
+            Just preset
+
+        Nothing ->
+            Dict.get name Bundled.defaults
+
+
+{-| Remove a preset by name. If the currently-loaded preset is
+the one being deleted, also clear `loadedPresetName` so the title
+bar drops the suffix — the form state is left alone so the GM
+can keep editing the now-orphan configuration.
+-}
+presetDelete : String -> Model -> ( Model, Cmd Msg )
+presetDelete name model =
+    let
+        newPresets =
+            Dict.remove name model.conditionPresets
+    in
+    ( { model | conditionPresets = newPresets }
+        |> withConditionUi
+            (\u ->
+                if u.loadedPresetName == Just name then
+                    { u | loadedPresetName = Nothing }
+
+                else
+                    u
+            )
+    , Cmd.none
+    )
+
+
+{-| Flip the expand/collapse state of one category in the Load
+menu's bundled-presets sections. Categories start collapsed
+each time a fresh modal opens (`Ui.Condition.fresh` initialises
+`expandedCategories = Set.empty`); the GM expands only the
+ones they need to scan.
+-}
+presetCategoryToggle : String -> Model -> ( Model, Cmd Msg )
+presetCategoryToggle category model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | expandedCategories =
+                    if Set.member category u.expandedCategories then
+                        Set.remove category u.expandedCategories
+
+                    else
+                        Set.insert category u.expandedCategories
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
 {-| Validate that there's a name; empty-name conditions are
 silently dropped (close the modal). Build a draft, then either
 insert (creating) or update (editing).
@@ -297,8 +552,8 @@ removeChip name id model =
     )
 
 
-{-| Manual click on the save chip's d20 button. Same Cmd shape as
-the auto-roll path, but flagged `wasAutoRoll = False` so a
+{-| Manual click on the chip's d20 save button. Same Cmd shape
+as the auto-roll path, but flagged `wasAutoRoll = False` so a
 successful save removes the condition silently rather than posting
 a "Saved: <name>" notice on the card.
 -}

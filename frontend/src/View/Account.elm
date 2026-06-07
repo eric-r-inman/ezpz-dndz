@@ -62,9 +62,9 @@ view model =
 
                 AuthAnonymous ->
                     p [ class "empty" ]
-                        [ text "You're not signed in — return to the "
-                        , a [ href "/" ] [ text "Encounter" ]
-                        , text " page to sign in or create an account."
+                        [ text "You're not signed in — head to "
+                        , a [ href "/login" ] [ text "the sign-in page" ]
+                        , text " to sign in or create an account."
                         ]
 
                 AuthAuthenticated user ->

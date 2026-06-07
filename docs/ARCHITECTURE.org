@@ -19,9 +19,10 @@ Companion docs:
   reference, synced from foundation; the no-=unwrap=/=expect=
   treatise lives there in full.
 
-The historical planning docs (modularization phases 1–11, the
+Historical planning docs (modularization phases 1–11, the
 rust-template forward-port plan, the per-tooltip review
-companion) are frozen under =docs/archive/= — see [[*Frozen / archived planning docs][Frozen / archived planning docs]].
+companion) are no longer kept in-tree; the load-bearing
+decisions they captured are folded into this document.
 
 * Stack
 
@@ -41,7 +42,9 @@ companion) are frozen under =docs/archive/= — see [[*Frozen / archived plannin
 - *Build* — ~cargo~ for Rust, ~elm make~ for Elm.  Both run inside
   a Nix dev shell defined by ~flake.nix~ (which itself delegates
   to ~foundation.lib.mkRustProject~).  ~just dev~ and ~just
-  serve~ auto-enter the dev shell if needed.
+  serve~ auto-enter the dev shell if needed.  The dev shell also
+  carries ~pkgs.poppler-utils~ (~pdftotext~ / ~pdftoppm~) for
+  SRD-audit workflows that extract the WotC PDF to text.
 
 * Source layout
 
@@ -125,14 +128,14 @@ own module.
 | Domain          | =Compendium.elm= + =Compendium/{Wire,Parser,Reference}=, =Compendium/{Group,GroupWire}= (per-user creature groups)                       |
 | Domain          | =Card/{Layout,Preview,Wire}= (customizable creature-card layouts: types, no-msg preview renderer, HTTP wire)                             |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
-| Routing / Cmd   | =Route.elm=, =Effects.elm=, =Ports.elm= (outbound JS for ~savePreferences~)                                                              |
-| UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,Note,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / CompendiumCreaturePage / NotFound~), =Effects.elm=, =Ports.elm= (outbound JS — ~savePreferences~, the six ~persistLocal*~ ports, and the three ~clearLocal*~ ports used by sign-in migration) |
+| UI substate     | =Ui/{AbilitySave,CardEditor,Compendium,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~)                            |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes)                                           |
-| Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,Note,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
+| Update / domain | =Update/{AbilitySave,CardEditor,Condition,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,Memo,ModalChrome,Note,PlaceholderRename,Preferences,QuickAdd,Save,SaveCompendium,Timer,Toast}.elm= |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Paste}.elm=                                                                    |
-| View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= |
-| View / shell    | =View/{AppBar,Audio,Card,Chip,EncounterBar,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer) |
+| View / modals   | =View/Modal/{AbilitySave,CardEditor,Compendium,CompendiumEdit,CompendiumPaste,Condition,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Memo,Note,QuickAdd,Save,SaveCompendium,Timer}.elm= (=View/Modal/CardEditor.elm= is built but the AppBar entry points are commented out — see [[*Customizable creature card][Customizable creature card]]). |
+| View / shell    | =View/{About,AppBar,Audio,AuthGate,Card,Chip,EncounterBar,Footer,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=, =View/Card/Custom.elm= (layout-driven encounter card renderer; built but currently unused — see [[*Customizable creature card][Customizable creature card]]).  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard}.elm=                                                                                                              |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per
@@ -306,6 +309,26 @@ domain layer no longer tracks a per-creature ~surprised~ flag and
 surprise narratively or by toggling each surprised creature out
 of the queue manually.
 
+** Creature record extensions
+
+~Encounter.Creature~ gained four fields beyond the original combat
+core to support placeholder stubs and stat-block-style metadata:
+
+- ~isPlaceholder : Bool~ — flags stubs spawned via
+  ~Encounter.Roster.appendPlaceholder~.  Preserved across
+  ~renameCreature~ so the click-to-rename affordance survives the
+  rename round-trip.
+- ~creatureKind : String~ — ~"player"~ / ~"enemy"~ / ~"npc"~ (lower-
+  case wire token); drives the title-row kind badge in
+  =View.StatBlock= and roster filters.
+- ~race : String~ — free-form (e.g. ~"Dragon"~), rendered in the
+  stat-block meta strip.
+- ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
+
+=Encounter.Wire= encodes all four; the decoder uses ~optional~ with
+safe defaults (~False~ / ~""~) so legacy persisted encounters and
+saved snapshots round-trip cleanly.
+
 The auto-roll save path lives in =Update/Encounter.elm=: when
 ~nextTurn~ fires, the outgoing name is captured before the
 lifecycle hooks run, then ~Effects.autoRollCmdsFor AutoRollAtEnd
@@ -370,38 +393,71 @@ shell.  The three branches:
 #+begin_src elm
 case model.auth of
     Auth.AuthLoading ->
-        [ -- "Loading…" panel ]
+        [ -- "Loading…" placeholder ]
 
     Auth.AuthAnonymous ->
-        [ View.Login.view model.loginUi ]
+        appShell Nothing model
 
     Auth.AuthAuthenticated user ->
-        [ View.AppBar.view ... user
-        , viewPage model
-        , View.Modal.Dice.view model.dice
-        , ...
-        , View.Toast.list model.toasts
-        , View.Audio.ringer model
-        ]
+        appShell (Just user) model
 #+end_src
 
-The login screen replaces the entire body — no AppBar, no
-modals, no workspace — because no API call would succeed
-without a session anyway.  After a successful submit, the page
-reloads and re-enters this branch as ~AuthAuthenticated~.
+Both ~AuthAnonymous~ and ~AuthAuthenticated~ render the same
+shell (AppBar + ~viewPage~ + every modal + toast / audio /
+footer).  The single difference is the ~Maybe Auth.User~ argument
+threaded into ~View.AppBar.view~: ~Just user~ shows the display-
+name link, ~Nothing~ shows a "Sign in" link to ~/login~ (or
+nothing at all when already on ~/login~ — see [[*Anonymous mode][Anonymous mode]]).
+
+The login form itself is no longer a full-body replacement.  It
+lives behind a new ~Route.Login~ as a normal page-route
+rendered by ~viewPage~, so anonymous users can browse the
+encounter manager, edit creatures, customize cards, etc.,
+without ever signing in.  See [[*Anonymous mode][Anonymous mode]] for the
+localStorage persistence layer that makes that work.
 
 Modal views pattern-match on ~model.modal~ for the matching
 constructor and render ~text ""~ otherwise.  The
 =View.Modal.view= helper provides shared chrome (backdrop,
 header, ✕ close, click-out-to-close, Esc-to-close) — every modal
-in the app routes through it.
+in the app routes through it.  The chrome also installs a focus
+sentinel after the body content and a Stop-hook–style focus
+redirect in =index.html=, so keyboard / SR users land on the
+close button when a modal opens and Tab wraps within the
+modal instead of escaping to the underlying page.
+
+** Modal drag + edge-resize
+
+=View.Modal.view= takes a ~chrome : ModalChrome~ argument
+(=Ui/ModalChrome.elm=, pure math: drag / resize state, viewport
+clamp, size clamp, edges N/S/E/W + 4 corners).  The header
+carries a drag handle; eight invisible perimeter handles emit
+~mousedown~ decoders that read
+~currentTarget.parentElement.offsetWidth / offsetHeight~ for live
+size on each gesture.
+
+=Update/ModalChrome.elm= owns the state machine.
+=Main.subscriptions= attaches ~Browser.Events.onMouseMove~ /
+~onMouseUp~ *only while a gesture is in flight* so idle modals
+don't pay the per-frame cost.  Chrome resets to
+~Ui.ModalChrome.fresh~ on every modal-open transition; the size
+clamp uses CSS-token defaults (~--modal-max-w: 640px~, modal-
+specific overrides like ~.modal--condition { --modal-max-w:
+480px }~).
 
 * Authentication and per-user storage
 
-The app is account-gated: every ~/api/*~ endpoint outside
-~/api/auth/*~ requires a session, and every persisted store
+The server is account-gated: every ~/api/*~ endpoint outside
+~/api/auth/*~ requires a session, and every server-side store
 except the shared compendium catalogue is keyed by the
 authenticated user's ~UserId~.
+
+The *frontend* is not account-gated.  Anonymous users get a
+fully-functional app — live encounter, named saves, dice
+roller, customizable card layouts, compendium with full CRUD —
+backed by ~localStorage~ instead of the server.  Signing in
+auto-migrates the relevant local data to the user's account.
+See [[*Anonymous mode][Anonymous mode]] for the architecture.
 
 ** Account model
 
@@ -470,7 +526,7 @@ deserialize and ~JsonFileStore::load_or_default~ falls back to
 an empty map (logged at WARN).  Fine for dev; production has no
 data in this repo yet, so no migration helper exists.
 
-** Frontend boot through the auth screen
+** Frontend boot through the auth probe
 
 ~Model.auth : Auth.AuthState~ is one of three:
 
@@ -481,42 +537,233 @@ type AuthState
     | AuthAuthenticated User
 #+end_src
 
-~init~ fires ~Effects.fetchAuthMe~ alongside the other data-load
-Cmds.  ~AuthMeReceived~ flips ~AuthLoading~ → either
-~AuthAuthenticated~ (the cookie was good, the parallel
-data-loads succeed) or ~AuthAnonymous~ (the parallel loads
-silently 401, but the body switches to =View.Login= so they're
-hidden anyway).
+~init~ fires ~Effects.fetchAuthMe~ alongside the route-specific
+Cmd.  ~AuthMeReceived~ flips ~AuthLoading~ → either
+~AuthAuthenticated~ (cookie was good) or ~AuthAnonymous~ (401 /
+other).
 
-The login form is mode-toggleable (Sign in ↔ Create account)
-and lives on ~Model.loginUi : LoginUi~.  Submit posts to
-~/api/auth/{login,register}~ — both return ~UserPublic~ so the
-two share the ~AuthLoginResponse~ Msg.  On success the page
-does ~Browser.Navigation.reload~ so ~init~ re-runs with the
-fresh cookie attached and every existing data-load Cmd issues
-authenticated.  Cheaper than threading auth state into every
-existing Cmd; the cost is one extra round-trip on first login.
+The init batch deliberately does *not* fire the encounter,
+compendium, groups, card-layouts, or dice-history fetches —
+each one's destination differs between auth states (server vs.
+localStorage adopt vs. public bundled JSON).  =Update/Auth.elm='s
+~meReceived~ owns the per-branch dispatch:
 
-Logout posts to ~/api/auth/logout~ then ~Nav.reload~ regardless
-of response status — the user pressed the button and should
-land on the login screen.
+- ~Ok user~ — fires the four authenticated data fetches
+  (~/api/encounter~, ~/api/compendium/creatures~,
+  ~/api/compendium/groups~, ~/api/card-layouts~) plus the dice-
+  history fetch, plus three optional migration Cmds for any
+  ~localStorage~ data the anonymous session left behind (see
+  [[*Anonymous mode][Anonymous mode]]).
+- ~Err _~ — adopts every ~localStorage~ snapshot into ~Model~
+  (encounter, card layout, dice history, compendium creatures
+  + groups, named encounter saves, named card-layout saves)
+  and falls back to ~/bundled-creatures.json~ for the
+  compendium if the local snapshot is absent.
 
-The AppBar nav (when authenticated) shows two links (Encounter /
-Me), the *🎨 Customize card* and *🎴 Custom: on/off* buttons
-(see [[*Customizable creature card][Customizable creature card]]), the user's display name,
-and a *Sign out* button.  The gear ⚙ theme switcher is
-*currently hidden* from the nav while the Light theme gets
-more polish.  Its supporting code (the ~settings~ popover,
-~themeRow~, ~themeRadio~, ~PreferencesThemeSet~ wiring) is
-intact in =View/AppBar.elm= so re-enabling is a one-line
-change.  Foundation's Scalar (OpenAPI) UI is still mounted at
-~/scalar~ but no longer linked from the nav.
+The login form is mode-toggleable (Sign in ↔ Create account) and
+lives on ~Model.loginUi : LoginUi~ at ~Route.Login~ — anonymous
+users navigate there via the AppBar's "Sign in" link, the Cancel
+link on the form returns to ~/~, and Esc on the route fires
+~LoginCancel~ for the same effect.  The form forces
+~data-theme="dark"~ on its wrapper so the panel reads consistent
+across all four themes (Modern / Dark / Auto / Accessible).
+
+Submit posts to ~/api/auth/{login,register}~ — both return
+~UserPublic~ so the two share the ~AuthLoginResponse~ Msg.  On
+success the page does ~Nav.load "/"~ (not ~reload~) so the user
+lands on Home rather than ~/login~ post-promotion; ~init~ re-runs
+with the cookie attached and every data-load Cmd issues
+authenticated.  Logout posts to ~/api/auth/logout~ then
+~Nav.load "/"~ regardless of response status — but ~localStorage~
+is *deliberately preserved* so a user who had anonymous
+customizations before signing in gets them back on sign-out.
+
+The AppBar nav adapts to auth state:
+
+- *Authenticated* — Encounter / display name link to ~/me~ /
+  About / Donate / ⚙ settings.  (The *Customize card* button and
+  the *Custom: on/off* toggle are commented out for launch — see
+  [[*Customizable creature card][Customizable creature card]].)
+- *Anonymous (any route except ~/login~)* — same buttons, but the
+  display-name slot is replaced with a *Sign in* link, and an
+  italic tagline rides next to the brand: *"Sign in to save your
+  encounters and compendium changes."*
+- *Anonymous on ~/login~* — the Sign-in link is suppressed (it
+  would link back to itself).
+
+Text-labelled nav items (Encounter / About / Donate / Sign in)
+omit hover tooltips; the icon-only ⚙ trigger keeps a tooltip
+("Set Theme").
+
+The ⚙ settings popover holds the theme picker (Modern / Dark /
+Auto / Accessible) and is enabled in all sessions, anonymous or
+not — theme persists via the existing ~savePreferences~ port
+regardless of auth.  The radio list stacks vertically at 1.05rem,
+with Accessible carrying an italic ~(alpha)~ badge via
+~themeRadio~'s ~badge : String~ argument.  Foundation's Scalar
+(OpenAPI) UI is still mounted at ~/scalar~ but no longer linked
+from the nav.
+
+** About page
+
+=View/About.elm= + ~Route.About~ render a static ~/about~ page
+linked from the AppBar (right of Sign in / display name).  Copy
+is hand-curated in =View/About.elm=; CSS lives under
+=.about-page__*= in =style.css=.  Treated like any other route —
+no Modal ADT entry, no Update module beyond the URL-change
+plumbing in =Update/Shell.elm=.
+
+** Footer license link
+
+The footer's *PolyForm Strict 1.0.0* string is a
+~target="_blank"~ link to ~https://polyformproject.org/licenses/strict/1.0.0/~.
+
+* Anonymous mode
+
+The frontend supports a fully-functional unauthenticated session
+backed entirely by ~localStorage~.  Anonymous users get the same
+modal stack, encounter UI, compendium browser, dice roller, and
+customizable cards as authenticated users — the only differences
+are storage destination and a handful of sign-in nudges on
+genuinely-server-only features (server-side compendium snapshots
+via the Save/Load Compendium modals).
+
+** Per-surface persistence routing
+
+Every persisted surface has both a server endpoint and a
+~localStorage~ analogue; ~model.auth~ picks at write time, the
+boot path picks at read time.
+
+| Surface            | Authenticated                        | Anonymous (~localStorage~ key)  |
+|--------------------+--------------------------------------+---------------------------------|
+| Live encounter     | =PUT /api/encounter=                 | =encounter=                     |
+| Named encounter saves | =PUT /api/encounter/saves/:name=  | =encounterSaves= (dict by name) |
+| Active card layout | (server has no single-active concept; only named saves) | =cardLayout= (layout + queueView + useCustomCardLayout) |
+| Named card-layout saves | =PUT /api/card-layouts/:name=   | =cardLayoutSaves= (dict by name) |
+| Dice history       | =/api/dice/history= (per-roll POST)  | =diceHistory= (full list, diff-and-write) |
+| Compendium creatures + groups + ~nextLocalId~ counter | =/api/compendium/*= + =/api/compendium/groups/*= | =compendium= (one combined snapshot) |
+| Theme              | =savePreferences= port → =theme=     | =theme= (same key; never auth-gated) |
+
+The compendium read path also has a public fallback: when no
+local snapshot exists, the anonymous branch fetches
+~/bundled-creatures.json~ (a static asset mirroring
+=crates/lib/data/bundled-creatures.json=) so the GM sees the
+bundled bestiary on first launch.  =crates/server/src/compendium/store.rs= documents
+the lockstep-sync requirement next to its ~include_str!~.
+
+** Persistence pipeline (the diff-and-write wrapper)
+
+=Main.update= sits in front of ~updateInner~ and, after the
+dispatch returns ~next : Model~, fires four diff-and-persist
+Cmds in parallel for the four most-mutated surfaces:
+
+#+begin_src elm
+encounterCmd         = if next.encounter /= model.encounter ...
+cardLayoutCmd        = if cardLayoutChanged model next ...
+diceHistoryCmd       = if next.dice.history.entries /= model.dice.history.entries ...
+compendiumCmd        = if compendiumChanged model next ...
+encounterSavesCmd    = if next.localEncounterSaves /= model.localEncounterSaves ...
+cardLayoutSavesCmd   = if next.localCardLayoutSaves /= model.localCardLayoutSaves ...
+conditionPresetsCmd  = if next.conditionPresets /= model.conditionPresets ...
+timerPresetsCmd      = if next.timerPresets /= model.timerPresets ...
+#+end_src
+
+Each helper (~persistEncounterFor~ / ~persistCardLayoutFor~ /
+etc.) branches on ~next.auth~: ~Authenticated~ → server HTTP,
+~Anonymous~ → outbound port to ~localStorage~, ~Loading~ → no-op
+(brief boot window before the auth probe lands).  =Update.Dice=
+follows a slightly different shape because each roll's existing
+=Effects.persistDiceRoll= POST is suppressed when anonymous and
+the wrapper writes the truncated full list to ~localStorage~
+instead; the result is the same diff-and-write discipline.
+
+A small set of Msgs is excluded from ~shouldPersistAfter~:
+~EncounterLoaded~ / ~EncounterPersisted~ / ~AuthMeReceived~ /
+~LocalEncounterMigrated~ / ~LocalCardLayoutMigrated~ /
+~LocalCompendiumMigrated~ — these flow data IN from the
+authoritative source, so re-writing it back would be wasted work
+or an infinite loop.
+
+** Boot flag flow
+
+=index.html='s inline boot script reads every ~localStorage~ key
+synchronously before ~Elm.Main.init~ and hands them in as flags:
+
+| Flag                  | Source key             | Adopted into                           |
+|-----------------------+------------------------+----------------------------------------|
+| =theme=               | =theme= (string)       | ~Preferences.theme~ via FOUC pre-set   |
+| =localEncounter=      | =encounter=            | ~Model.encounter~ on anonymous boot    |
+| =localCardLayout=     | =cardLayout=           | ~cardLayout~ + ~queueView~ + ~useCustomCardLayout~ |
+| =localDiceHistory=    | =diceHistory=          | ~Model.dice.history.entries~           |
+| =localCompendium=     | =compendium=           | ~Model.compendium.db~ + ~groups~ + ~nextLocalCreatureId~ |
+| =localEncounterSaves= | =encounterSaves=       | ~Model.localEncounterSaves~ (Dict)     |
+| =localCardLayoutSaves= | =cardLayoutSaves=     | ~Model.localCardLayoutSaves~ (Dict)    |
+| =localConditionPresets= | =conditionPresets=   | ~Model.conditionPresets~ (Dict)        |
+| =localTimerPresets=   | =timerPresets=         | ~Model.timerPresets~ (Dict)            |
+| =migrationDateLabel=  | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
+| =bootMs=              | (computed: ~Date.now()~) | Timestamp for anonymous-session named-save writes |
+
+~Json.Decode.Value~ Maybe fields stash the raw JSON on
+~localCompendiumRaw~ / ~localEncounterRaw~ / ~localCardLayoutRaw~
+/ ~localDiceHistoryRaw~ for one-shot adoption — they're cleared
+after =Update.Auth.meReceived= picks a branch, so the model
+doesn't keep the (possibly-large) JSON value around after boot.
+
+** Login-time migration
+
+When an anonymous session signs in (~meReceived~ Ok branch), the
+boot scoops the same ~localStorage~ snapshots and uploads any
+non-empty / non-default ones to the server in parallel with the
+normal data fetches:
+
+| Snapshot              | Migration                                                                 |
+|-----------------------+---------------------------------------------------------------------------|
+| Encounter             | =PUT /api/encounter/saves/Local — <date>= (overwrite=true) — non-empty only |
+| Active card layout    | =PUT /api/card-layouts/Local — <date>= — only when ~useCustomCardLayout = True~ (user actively customized) |
+| Compendium (creatures + groups) | =POST /api/compendium/import= (full bundle body)                |
+| Dice history          | *Not migrated* — server history takes over on next reload                 |
+| Named encounter saves | *Not auto-migrated* — manual re-save preserves explicit control           |
+| Named card-layout saves | *Not auto-migrated* — same                                              |
+
+Success handlers clear the matching ~localStorage~ key via the
+~clearLocalEncounter~ / ~clearLocalCardLayout~ /
+~clearLocalCompendium~ ports and push a success toast naming the
+slot.  Failures toast but leave the local snapshot in place so
+the user can retry.
+
+** View-layer sign-in nudges
+
+A handful of controls have no anonymous analogue today —
+server-side named compendium snapshots, primarily — and gate on
+auth at the view layer via the =View/AuthGate.elm= helpers:
+
+#+begin_src elm
+clickWhenAuthed : Auth.AuthState -> Msg -> Msg
+clickWhenAuthed auth normalMsg =
+    if Auth.isAuthenticated auth then normalMsg else NavigateToLogin
+
+tooltipWhenAuthed : Auth.AuthState -> String -> String -> String
+tooltipWhenAuthed auth normalTooltip signInTooltip = ...
+#+end_src
+
+The gated control stays visible (so the affordance doesn't
+appear/disappear with auth state); click → ~/login~; tooltip
+swaps to a sign-in nudge.  The PanelControls Save/Load "To
+Server" / "From Server" menu items use a different shape —
+labels rename to "To Browser" / "From Browser" anonymously
+(via ~saveToServerLabel auth~) and the click dispatches the
+real Save modal, which then routes through =Update.Save= /
+=Update.Load='s auth-branched mutators.
 
 * Persistence
 
-The persisted JSON files all live under ~--data-dir~ (default
-~./~).  Each is read at boot and atomically rewritten on every
-mutation through ~JsonFileStore<T>~ from =crates/lib/=.
+The server-side persisted JSON files all live under ~--data-dir~
+(default ~./~).  Each is read at boot and atomically rewritten
+on every mutation through ~JsonFileStore<T>~ from =crates/lib/=.
+For the parallel ~localStorage~ shapes used by anonymous
+sessions, see [[*Anonymous mode][Anonymous mode]] — every server-backed surface
+below has a matching ~localStorage~ key that the
+~Main.update~-wrapper diff-and-write pipeline maintains.
 
 | Path                          | Endpoint                          | Per-user? | Notes                                                                                                                                              |
 |-------------------------------+-----------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -563,9 +810,17 @@ that the rest of the app routes through:
 - *Reset* / *Clear* — staged through ~pendingControl~ so a
   misclick can't drop combat state.  First click swaps the button
   grid for an inline confirmation banner (Cancel / coloured
-  Confirm); second click applies.  Reset returns to
-  ~savedSnapshot~ (or empty) with ~round = 0~; Clear empties the
-  queue.
+  Confirm); second click applies.
+  - *Reset* — keeps every creature in the roster but strips
+    per-fight state: HP to full, no temp HP, no conditions /
+    save notices / death saves, every status toggle off (cover,
+    concentration, hiding, dodging, flying, readied, inactive,
+    bloodied), legendary actions / resistances refilled,
+    timers cleared.  Identity + combat baselines (name, kind,
+    initiative, AC, max HP, note, memo, compendium id)
+    preserved.  Round → 0, active creature → none, so the GM
+    lands back in the pre-combat "Run Encounter" state.
+  - *Clear* — empties the queue.
 
 The shared behaviour: any branch that mutates ~model.encounter~
 flows through ~Main.update~'s diff-and-persist wrapper, which
@@ -693,6 +948,33 @@ bar grows extra buttons:
   clears the ~pending~ state so the confirm banner dismisses
   on click.
 
+** Row meta strip
+
+Compendium list rows render a meta strip (~HP 150~, ~AC 17~,
+~CR 10~, etc.) with *non-breaking spaces* between label and
+value (~HP\u{00A0}150~, ~AC\u{00A0}17~, ~CR\u{00A0}10~) so the
+label / value pair never breaks across a line wrap.  Visible
+under Accessible where the row width pressure is highest.
+
+* SRD 5.2.1 alignment
+
+The bundled compendium and the paste parser are kept in lockstep
+with the WotC SRD 5.2.1.  Two pieces:
+
+- *Paste parser* — =Compendium.Parser.parseTypeLine= consumes a
+  ~<Size> or <Size> <Type>~ triplet (gated by ~isSizeWord~),
+  taking the *larger* size and the type as race.  Locks in
+  behavior for SRD 5.2.1's dual-size monsters via the new
+  ~srd521DualSizeSuite~ in =CompendiumParserTest=.
+- *Bundled data* — =crates/lib/data/bundled-creatures.json=
+  (mirrored to =frontend/public/bundled-creatures.json= for the
+  anonymous-mode public fetch) carries ~62 SRD 5.2.1 alignment
+  fixes: 25 Tiny-creature sizes (~"small"~ → ~"tiny"~), 36
+  "Medium or Small X" entries collapsed to ~"medium"~, and
+  Awakened Shrub's CR corrected (~"0"~ → ~"1/4"~).  Will-o'-Wisp
+  keeps its ASCII apostrophe by design to avoid orphaning saves
+  that key on the old spelling.
+
 * Compendium groups (Hordes)
 
 A *group* bundles one or more compendium creatures into a unit
@@ -768,6 +1050,21 @@ Errors: ~GroupIdNotFoundError~ → 404, ~GroupIdMismatchError~ →
      pushes the dice pool, toasts.
 
 * Customizable creature card
+
+*Deferred for launch.*  Every supporting module below still
+compiles and tests pass, but the AppBar entry points (the
+*🎨 Customize card* button and the *Custom: on/off* toggle) are
+commented out and =View.Workspace.renderCard= unconditionally
+routes through =View.Card.view= regardless of
+~model.useCustomCardLayout~.  The plumbing — Ui / Update / View
+modules, ~/api/card-layouts~ routes, ~localStorage~ snapshot,
+sign-in migration — is retained so the feature can be re-enabled
+behind one AppBar diff once the widget set is finished.
+~Update.Auth.applyLocalCardLayout~ still calls
+~Card.Layout.migrateLegacyDefault~ on anonymous boot, but the
+result is currently dead in user-visible terms.
+
+The original design notes follow.
 
 Users can rearrange the creature card's contents to taste — pick
 which widgets render, in which rows, with what alignment, and
@@ -864,6 +1161,21 @@ types — ~acid~, ~bludgeoning~, ~cold~, ~fire~, ~force~,
 cleanly so prose like ~"1d6 from the spell"~ still captures just
 ~1d6~ with no spurious damage type.
 
+** Rerun dropdown in the dice modal
+
+Each history row in the dice modal carries a ↻ rerun button.  The
+button is now a two-item dropdown
+(~Ui.Dice.rerunMenuOpenFor : Maybe Int~ holds the open row, Esc /
+click-outside close):
+
+- *Reroll* — re-runs the original expression.
+- *Reroll, no modifier* — strips ~expression.constant~ to 0 before
+  re-rolling.  Useful for "what if I hadn't been at -2?" checks
+  without retyping the dice.
+
+Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~,
+~DiceRerunMenuClose~, ~DiceRerunNoModifier Dice.Roll~.
+
 * Encounter title-bar XP totals
 
 The right cluster of the encounter title bar runs a real XP
@@ -922,6 +1234,22 @@ Lair XP is plumbed end-to-end:
 - =View.Modal.CompendiumEdit= — adds an "XP in Lair" numeric
   input alongside "XP" / "Proficiency Bonus".
 
+** Bloodied marker on the active creature
+
+=View.EncounterBar.bloodiedMarker= renders a 🩸 to the right of
+the active creature's name when ~bloodied = True~, every theme.
+The marker is purely view-side — the underlying ~bloodied~ flag
+is recomputed on every ~HpChange.apply~ (see [[*HP change engine][HP change engine]]).
+
+** Stat-block kind badge
+
+=View.StatBlock.kindBadge= renders a small coloured chip
+(Player / Enemy / NPC) next to the creature name in every
+~TagDisplay~ mode (compendium modal, pinned right rail,
+standalone view).  CSS variants in =style.css= colour them blue
+(Player), red (Enemy), and yellow (NPC) so the GM can pick a
+creature out of the queue at a glance.
+
 * Quick Add modal
 
 Lightweight one-click sister to the full Compendium browser.
@@ -938,6 +1266,151 @@ The roll lands through the existing
 ~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~
 → toast pipeline as the full browser, just with a count of one
 and a different opener UI.  Esc closes.
+
+The Quick Add modal has two extra surfaces beyond compendium picks:
+
+- A pinned "Placeholder" entry at the top of the list (styled
+  italic, sticky) — ~Update.QuickAdd.pickPlaceholder~ →
+  ~Encounter.Roster.appendPlaceholder~.  See [[*Placeholder combatants][Placeholder combatants]].
+- Replace mode — ~Ui.QuickAdd.freshForReplace oldName~ flips the
+  modal title to ~"Replace <old> with…"~ and routes the pick
+  through ~Encounter.Roster.replaceCreature~ instead of appending,
+  preserving the old initiative value but using the new creature's
+  HP / AC.  See [[*Placeholder combatants][Placeholder combatants]] for the swap surface.
+
+* Placeholder combatants
+
+Placeholders are pre-fight stubs the GM drops in when the roster
+isn't fully resolved yet — "the BBEG goes here, I'll fill in stats
+later."  They sit in the queue, take a turn like any other
+creature, and round-trip the inline rename flow.
+
+The domain pieces:
+
+- ~Encounter.Roster.appendPlaceholder : Encounter -> Encounter~ —
+  appends a stub with Initiative 0, HP 1/1, AC 10, name
+  ~Placeholder N~ (~N~ disambiguates against the existing roster).
+  Does *not* re-sort the queue: placeholders land at the bottom by
+  design so they don't displace combat order until the GM resolves
+  them.
+- ~Encounter.Roster.renameCreature : String -> String -> Encounter
+  -> Encounter~ — renames in place.  Preserves queue position,
+  conditions, ~activeName~, ~isPlaceholder~; uniquifies collisions
+  by suffixing as needed.
+- ~Encounter.Roster.replaceCreature : String -> Creature ->
+  Encounter -> Encounter~ — swaps a creature for a new one in
+  place, preserving the *old* initiative value but adopting the
+  new creature's HP / AC / conditions / kind.  Used by both
+  Quick Add replace mode and the placeholder "fill in" flow.
+
+UI surfaces:
+
+- *Queue bottom* — =View.Workspace.addPlaceholderRow= renders a
+  full-width dashed ~+~ row beneath the last card; click fires
+  ~Encounter.Roster.appendPlaceholder~.
+- *Quick Add modal* — the pinned italic ~Placeholder~ entry at the
+  top of the list goes through ~Update.QuickAdd.pickPlaceholder~
+  (same domain call).
+- *Inline rename* — =Ui.PlaceholderRename= + =Update.PlaceholderRename=
+  drive click-to-rename on placeholder cards.  ~isPlaceholder~ is
+  the gate: once a card is renamed it stays a placeholder until
+  it's *replaced* via Quick Add's ⇄ icon (right rail, between ∅
+  and ⧉) → ~Ui.QuickAdd.freshForReplace~.
+
+** Minion naming
+
+~Encounter.Roster.uniqueMinionName~ names duplicates spawned via
+the compendium's Duplicate modal or a Black Pudding split as
+~<Base> Minion N~, always numbered from 1.  The helper strips
+trailing ~" N"~ and ~" Minion"~ before re-suffixing, so a
+minion-of-a-minion stays flat (~Goblin Minion 2~, not
+~Goblin Minion 1 Minion 1~).
+
+* Add Condition modal
+
+The standard-condition picker is a *toggle*, not a one-way set:
+~Update.Condition.pickStandard~ clears ~ui.name~ when the
+clicked condition is already active, so re-clicking the same
+badge backs out instead of doing nothing.  Duration-kind and
+auto-roll-mode controls remain true radios (no deselect-on-
+reclick) — there's always exactly one duration kind and one
+roll mode.
+
+* Per-modal preset pattern
+
+The Condition modal and Timer modal each carry a Save / Load
+footer that remembers full configurations under user-chosen
+names.  Both modals follow the same templatable shape so new
+modals can adopt the pattern without re-inventing it.
+
+For a modal =Foo= the pieces are:
+
+1. *Preset body type* — a small record alias on =Ui/Foo.elm=
+   (~FooPreset~) holding only the fields the preset cares about,
+   plus a pair of projections:
+   ~toPreset : FooUi -> FooPreset~ and
+   ~applyPreset : String -> FooPreset -> FooUi -> FooUi~.  The
+   second sets ~loadedPresetName = Just name~ so the title bar
+   can render ~(loaded: <name>)~ until the user mutates the
+   form.
+2. *Modal-UI extras* — ~FooUi~ gains three transient fields:
+   ~loadMenuOpen : Bool~ (dropdown state),
+   ~pendingSaveName : Maybe String~ (in-progress name input),
+   and ~loadedPresetName : Maybe String~ (which preset, if any,
+   currently drives the form).
+3. *Wire codec* — =Ui/Foo/Wire.elm= with ~encodePresets~ /
+   ~decodePresets~ ( ~Dict String FooPreset~ ↔ JSON object
+   keyed by preset name) plus the single-preset
+   ~encodePreset~ / ~decodePreset~ pair.
+4. *Model field* — ~Model.fooPresets : Dict String FooPreset~,
+   initialized from the ~localFooPresets~ boot flag (see the
+   anonymous-mode boot-flag table).
+5. *Port* — ~Ports.persistLocalFooPresets : E.Value -> Cmd msg~
+   with a matching JS subscriber in =index.html= that writes to
+   ~localStorage.fooPresets~.
+6. *Msg family* — eight constructors mirroring the Condition
+   family verbatim: ~FooPresetSaveStart~ /
+   ~FooPresetSaveNameChanged String~ / ~FooPresetSaveCancel~ /
+   ~FooPresetSaveSubmit~ / ~FooPresetLoadMenuToggle~ /
+   ~FooPresetLoadMenuClose~ / ~FooPresetLoad String~ /
+   ~FooPresetDelete String~.
+7. *Update handlers* — eight one-liners on =Update/Foo.elm=
+   (~presetSaveStart~ … ~presetDelete~) that use the existing
+   ~withFooUi~ lens.  ~presetSaveSubmit~ writes to
+   ~Model.fooPresets~ AND flips ~loadedPresetName~; ~presetLoad~
+   delegates to ~Ui.Foo.applyPreset~; ~presetDelete~ also
+   clears ~loadedPresetName~ when the deleted preset was the
+   active one.
+8. *View* — =View/Modal/Foo.elm= renders a footer row built
+   from two helpers:
+   - ~presetSaveControl~ — toggles between a single ~Save~
+     button (when ~pendingSaveName == Nothing~) and a
+     ~[name input][Save][Cancel]~ trio.
+   - ~presetLoadControl~ — disabled ~Load ▾~ when the dict is
+     empty; otherwise opens a dropdown of preset names sorted
+     case-insensitively
+     (~Dict.keys presets |> List.sortBy String.toLower~).  Each
+     row is a ~[name][×]~ pair where the × uses
+     ~stopPropagationOn "click"~ so a misclick on delete inside
+     an otherwise-load row doesn't double-fire.
+   The dropdown wrap uses
+   ~stopPropagationOn "mousedown"~ so internal clicks don't
+   bubble to the document-level click-outside handler in
+   =Main.subscriptions=.
+9. *Subscription* — one ~fooPresetLoadMenuSubs~ block in
+   =Main.subscriptions= that wires Esc + click-outside to
+   ~FooPresetLoadMenuClose~ whenever the menu is open.
+10. *Persistence wrapper* — one ~fooPresetsCmd~ branch in the
+    =Main.update= diff-and-write wrapper, encoded through
+    ~Ui.Foo.Wire.encodePresets~.  No auth split — presets live
+    in ~localStorage~ for every session today (no server
+    endpoint yet); the codec is reusable as the wire body when
+    that lands.
+
+The eight-Msg family is intentionally not collapsed into a
+single ~FooPreset Op~ variant.  The flat shape mirrors the
+existing dispatch table style and keeps each branch a true
+one-liner in =Main.updateInner=.
 
 * HP change engine
 
@@ -982,7 +1455,7 @@ silently rewrite the middle of the history.
 
 #+begin_src elm
 type alias Preferences =
-    { theme : Theme                       -- Light / Dark / Auto
+    { theme : Theme                       -- Modern / Dark / Auto / Accessible
     , cardDensity : CardDensity           -- Compact / Normal / Spacious
     , soundEnabled : Bool
     , autoScrollActiveCard : Bool
@@ -994,18 +1467,27 @@ type alias Preferences =
 
 Wire status today:
 
-- *Theme* — has a full plumbing story but the trigger is
-  *currently hidden* from the AppBar nav while the Light theme
-  gets more polish (commit ~f7cb7f6~).  The popover, the radio
-  group, the ~PreferencesThemeSet Theme~ Msg, the
-  =Update.Preferences.themeSet= handler that writes
-  ~model.preferences~ + fires ~Ports.savePreferences~ to mirror
-  to ~localStorage~ + ~<html data-theme>~ — all of that is
-  intact in =View/AppBar.elm=.  Re-enabling is a single line
-  in =View.AppBar.view= once the Light variant is presentable.
-  Until then, the app effectively runs Dark-only (with the
-  pre-Elm FOUC script honouring ~prefers-color-scheme: dark~ as
-  the default).
+- *Theme* — four variants, all live in the AppBar ⚙ settings
+  popover and in CSS:
+  - *Modern* (~:root~ defaults) — Linear/Vercel-style light
+    palette, Inter for UI + JetBrains Mono for numerics,
+    Modern button polish tokens.
+  - *Dark* (~[data-theme="dark"]~) — classic dark palette,
+    system font stack.
+  - *Auto* — resolves to Modern or Dark per OS
+    ~prefers-color-scheme~ via media-query override.
+  - *Accessible* (~[data-theme="accessible"]~) — WCAG AAA-
+    target high-contrast palette, bumped font sizes across
+    every panel + stat block + dice modal + CR calc, B&W
+    creature-card buttons with black-fill / white-text on
+    hover, 24px checkboxes, 3px focus rings, larger touch
+    targets, and ~prefers-reduced-motion~ honored globally.
+  Theme persists via ~Ports.savePreferences~ → JS writes
+  ~localStorage.theme~ + mirrors to ~<html data-theme>~ so the
+  pre-Elm FOUC script picks the same theme on next reload.
+  Same code path runs anonymous + authenticated; per-account
+  preferences will move to ~/api/me/preferences~ once that
+  endpoint lands (=crates/server/src/prefs/= is a stub today).
 - ~autoScrollActiveCard~ is consulted by
   =Update.Encounter.nextTurn= when the turn advances.
 - The remaining fields (density, sound, auto-roll initiative,
@@ -1013,13 +1495,18 @@ Wire status today:
   wire-defined but not yet read by any feature; they round-trip
   through ~Preferences.default~.
 
-When ~/api/me/preferences~ lands (Phase 11 of the modularization
-plan, =crates/server/src/prefs/= today is a stub), ~Ports.save-
-Preferences~ becomes a fallback for unauthenticated sessions
-and the canonical persistence path is HTTP.  =Theme= itself
-lives in =Msg.elm= rather than =Preferences.elm= to avoid an
-import cycle with the ~PreferencesThemeSet Theme~ Msg
-constructor; =Preferences= re-exports it.
+The ~Readied~ status toggle on row 3 of every creature card
+also animates per-theme via a triple-effect keyframe
+(opacity dip + 1.05× scale + orange glow ring on a 0.9s cycle);
+the animation respects ~prefers-reduced-motion: reduce~ and
+falls back to a static highlight.
+
+When ~/api/me/preferences~ lands, ~Ports.savePreferences~
+becomes a fallback for unauthenticated sessions and the
+canonical persistence path is HTTP.  =Theme= itself lives in
+=Msg.elm= rather than =Preferences.elm= to avoid an import
+cycle with the ~PreferencesThemeSet Theme~ Msg constructor;
+=Preferences= re-exports it.
 
 * User-facing copy (tooltips)
 
@@ -1057,10 +1544,7 @@ ancestors and computes coordinates predictably.
 
 When adding a new view, *do not inline* a ~title "..."~ literal
 or a ~data-tooltip~ attribute — add a constant to
-=View/Tooltips.elm= and call ~Tooltips.attr~ to attach it.  An
-archived =docs/archive/TOOLTIPS.org= captures the walking-tour
-copy of every tooltip from the time it was last swept; not
-actively maintained.
+=View/Tooltips.elm= and call ~Tooltips.attr~ to attach it.
 
 * When adding new features
 
@@ -1069,9 +1553,9 @@ When you're adding a new feature, the new code and structure
 exist yet, embrace the *ideals* of the structure.  The shape is
 already there; extend it, don't recreate it.
 
-The five-run modularization (Phases 1–11, archived under
-=docs/archive/MODULARIZATION_PLAN.org=) drove =Main.elm= from
-9,268 lines down past 1k — it sits around 1.4k today, almost
+The five-run modularization (Phases 1–11) drove =Main.elm=
+from 9,268 lines down past 1k — it sits around 1.4k today,
+almost
 entirely dispatch-table boilerplate (one
 ~MyMsg arg -> Update.Foo.bar arg model~ line per Msg branch
 plus the modal-view + subscriptions composition).  The whole
@@ -1232,12 +1716,29 @@ upstream via a sync-record file at the workspace root.
   the features they need (~cli~ on the CLI crate, ~auth~ on the
   server crate; ~lib~ takes the no-features default for the
   shared logging types).
-- *Nix* — flake input, with ~foundation.lib.mkRustProject~
-  driving the bulk of =flake.nix= (Rust toolchain, crane build,
-  devShell composition, package + app generation) and
-  ~mkNixosService~ / ~mkDarwinService~ collapsing the two
-  service-module wrappers under =nix/modules/= to ~30 lines
-  each.
+- *Nix* — flake input.  =flake.nix= owns the per-system
+  assembly (rust toolchain, crane build, devShell composition)
+  and delegates the workspace iteration to
+  ~foundation.lib.mkRustPackages~ — the helper returns
+  ~{ packages, apps }~ for the supplied crate map, and the
+  caller composes the rest.  Per-crate overrides under
+  =nix/packages/<key>.nix= are picked up automatically by
+  convention; ezpz-dndz uses this for the server crate's
+  bundled-Elm-frontend build.  =flake.nix= also splices in
+  ~foundation.lib.cargoHuskyHookSnippet pkgs~ inside its
+  ~shellHook~ so the ~.cargo-husky/hooks/~ pre-commit hook is
+  symlinked into ~.git/hooks/~ on devShell entry.
+  ~mkNixosService~ / ~mkDarwinService~ collapse the two
+  service-module wrappers under =nix/modules/= to ~30 lines each.
+
+The mid-2026 foundation flake refactor replaced the older
+single-helper ~mkRustProject~ (which owned ~perSystem~
+iteration internally) with the leaner ~mkRustPackages~ + caller-
+owned ~perSystem~ shape.  Net effect: ~flake.nix= grew from ~75
+to ~130 lines, but every crane attribute (env vars, build
+inputs, ~cargoTestExtraArgs~) is now a plain field on a value
+the caller owns — no ~extraX~ parameter is needed to thread a
+new crane knob through.
 
 What foundation owns (and we don't):
 
@@ -1271,20 +1772,53 @@ workspace.
 =rust-template.json= at the workspace root carries a
 ~template_sync_hashes~ list — every commit hash the repo has
 synced against, oldest first.  The last entry is the base for
-the next diff-based compliance pass.  See
-=docs/archive/COMPLIANCE_PLAN.org= for the working brief of the
-most recent run and ~~/dev/rust-template/docs/compliance.org~
-for the canonical process.
+the next diff-based compliance pass.  Three entries today:
+
+1. =51239f87…= — initial template adoption.
+2. =992414005ea1ce9…= — env-var lowercase / POSIX §8.1 pass.
+3. =6d65d3d8…= — current sync (combinator-preference lints,
+   pre-commit ACMR filter, ~mkRustPackages~ helper rewrite).
+
+See ~/dev/rust-template/docs/compliance.org~ for the canonical
+process — the diff is always ~git -C ~/dev/rust-template diff
+<last-hash>..HEAD~.
 
 ** Lints + clippy
 
-Workspace-level deny:
+Two blocks at workspace-level.  The panic-family lints are
+*deny* — every shipping code path returns a typed error:
 
 #+begin_src toml :exports code
 [workspace.lints.clippy]
 unwrap_used  = "deny"
 expect_used  = "deny"
 panic        = "deny"
+#+end_src
+
+The combinator-preference lints are *warn* — they nudge toward
+the least-powerful construct that fits (~Option::map~ over
+~match~, iterator chains over ~for~ + mutation, ~?~ over
+manual early-return guards).  The complete set:
+
+#+begin_src toml :exports code
+manual_map = "warn"
+manual_filter = "warn"
+manual_filter_map = "warn"
+manual_find = "warn"
+manual_find_map = "warn"
+manual_flatten = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_unwrap_or = "warn"
+manual_unwrap_or_default = "warn"
+option_if_let_else = "warn"
+map_unwrap_or = "warn"
+needless_collect = "warn"
+unnecessary_fold = "warn"
+question_mark = "warn"
+single_match_else = "warn"
+collapsible_match = "warn"
+redundant_pattern_matching = "warn"
 #+end_src
 
 Member crates opt in via ~[lints] workspace = true~.  =clippy.toml=
@@ -1295,9 +1829,12 @@ Helper functions in =tests/*.rs= integration files are not inside
 toml — those files carry a file-level
 ~#![allow(clippy::expect_used, clippy::unwrap_used)]~.
 
-Shipping code uses ~?~ + semantic ~thiserror~ variants
-exclusively; the LLM-facing rule is in =llms.org= (synced from
-foundation).
+When an imperative form is genuinely clearer (multi-line bodies,
+side effects, nested control flow), override site-locally with
+~#[allow(clippy::lint_name)]~ and a one-line reason.  The
+"Rule of least power" section in =llms.org= captures the
+principle behind the set; the LLM-facing
+no-=unwrap=/=expect= rule lives there in full too.
 
 ** Env-var convention
 
@@ -1328,26 +1865,7 @@ scripts — needs the new names to take effect.
 - New HTTP routes go through ~aide::ApiRouter~ so OpenAPI stays
   complete.
 
-* Frozen / archived planning docs
-
-=docs/archive/= holds historical planning documents
-(=OPTIMIZATION_AND_COMPLIANCE_PLAN.org=, =ROADMAP.md=,
-=COMPENDIUM_PLAN.org=, =CHANGELOG.org=, plus the locally-
-preserved-but-untracked =MODULARIZATION_PLAN.org=,
-=COMPLIANCE_PLAN.org=, and =TOOLTIPS.org= from the most recent
-phases of work).  They are no longer maintained and should not
-be read or updated.  Instructions inside that say "update X"
-are stale and superseded by this document.  The project does
-not maintain a changelog — commit messages and the git log are
-the canonical record of what changed; this document captures
-the load-bearing decisions.
-
-The =docs/archive/*= path itself is gitignored (see =.gitignore=)
-so the original tracked archives stay tracked but no new files
-land there in commits — the folder is treated as read-only
-history.
-
-** Live docs
+* Live docs
 
 | Document                     | Purpose                                                      |
 |------------------------------+--------------------------------------------------------------|

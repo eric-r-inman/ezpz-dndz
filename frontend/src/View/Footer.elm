@@ -21,16 +21,24 @@ to match the per-feature `View/Foo.elm` discipline.
 -}
 
 import Html exposing (Html, a, div, footer, span, text)
-import Html.Attributes exposing (class, href)
+import Html.Attributes exposing (class, href, rel, target)
 
 
 view : Html msg
 view =
     footer [ class "app-footer" ]
         [ span [ class "app-footer__copyright" ]
-            [ text "© 2026 Eric Inman · Source-available under PolyForm Strict 1.0.0" ]
+            [ text "© 2026 Eric Inman · Source-available under "
+            , a
+                [ class "app-footer__license-link"
+                , href "https://polyformproject.org/licenses/strict/1.0.0"
+                , target "_blank"
+                , rel "noopener noreferrer"
+                ]
+                [ text "PolyForm Strict 1.0.0" ]
+            ]
         , span [ class "app-footer__beta" ]
-            [ text "Beta — features may change or break without notice." ]
+            [ text "Beta Version — features may change or break without notice." ]
         , div [ class "app-footer__contact" ]
             [ a [ href "mailto:feedback@ezpzdndz" ]
                 [ text "Contact" ]

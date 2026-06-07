@@ -3,6 +3,7 @@ module Encounter.Wire exposing
     , decodeEncounter, encodeEncounter
     , fetchEncounterCmd, persistEncounterCmd
     , listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
+    , LocalEncounterSave, decodeLocalEncounterSaves, encodeLocalEncounterSaves, localSaveToMeta
     )
 
 {-| JSON encoders / decoders for `Encounter` and its referenced
@@ -26,6 +27,7 @@ the server doesn't re-model this schema.
 
 -}
 
+import Dict exposing (Dict)
 import Encounter
     exposing
         ( AutoRollMode(..)
@@ -246,6 +248,9 @@ encodeCreature c =
         , ( "flyHeight", E.int c.flyHeight )
         , ( "bloodied", E.bool c.bloodied )
         , ( "deathSaves", encodeDeathSaves c.deathSaves )
+        , ( "acceptingDeathSaves", E.bool c.acceptingDeathSaves )
+        , ( "reactionUsed", E.bool c.reactionUsed )
+        , ( "rechargeAbilities", E.list encodeRechargeAbility c.rechargeAbilities )
         , ( "readied", E.bool c.readied )
         , ( "inactive", E.bool c.inactive )
         , ( "note", E.string c.note )
@@ -256,6 +261,10 @@ encodeCreature c =
         , ( "legendaryActionsUsed", encodeIntSet c.legendaryActionsUsed )
         , ( "hasLegendaryResistance", E.bool c.hasLegendaryResistance )
         , ( "legendaryResistanceUsed", encodeIntSet c.legendaryResistanceUsed )
+        , ( "isPlaceholder", E.bool c.isPlaceholder )
+        , ( "creatureKind", E.string c.creatureKind )
+        , ( "race", E.string c.race )
+        , ( "alignment", E.string c.alignment )
         ]
 
 
@@ -374,6 +383,17 @@ encodeDeathSaves d =
         ]
 
 
+encodeRechargeAbility : Encounter.RechargeAbility -> E.Value
+encodeRechargeAbility r =
+    E.object
+        [ ( "name", E.string r.name )
+        , ( "low", E.int r.low )
+        , ( "high", E.int r.high )
+        , ( "ready", E.bool r.ready )
+        , ( "awaitingRoll", E.bool r.awaitingRoll )
+        ]
+
+
 encodeTimer : Timer -> E.Value
 encodeTimer t =
     E.object
@@ -454,7 +474,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -475,6 +495,9 @@ decodeCreature =
             , flyHeight = flyHeight
             , bloodied = bloodied
             , deathSaves = deathSaves
+            , acceptingDeathSaves = acceptingDeathSaves
+            , reactionUsed = reactionUsed
+            , rechargeAbilities = rechargeAbilities
             , readied = readied
             , inactive = inactive
             , note = note
@@ -485,6 +508,10 @@ decodeCreature =
             , legendaryActionsUsed = laUsed
             , hasLegendaryResistance = hasLR
             , legendaryResistanceUsed = lrUsed
+            , isPlaceholder = isPlaceholder
+            , creatureKind = creatureKind
+            , race = race
+            , alignment = alignment
             }
         )
         |> required "name" D.string
@@ -507,6 +534,9 @@ decodeCreature =
         |> optional "flyHeight" D.int 0
         |> optional "bloodied" D.bool False
         |> optional "deathSaves" decodeDeathSaves { successes = 0, failures = 0 }
+        |> optional "acceptingDeathSaves" D.bool False
+        |> optional "reactionUsed" D.bool False
+        |> optional "rechargeAbilities" (D.list decodeRechargeAbility) []
         |> optionalEither "readied" "holding" D.bool False
         |> optional "inactive" D.bool False
         |> optional "note" D.string ""
@@ -517,6 +547,10 @@ decodeCreature =
         |> optional "legendaryActionsUsed" decodeIntSet Set.empty
         |> optional "hasLegendaryResistance" D.bool False
         |> optional "legendaryResistanceUsed" decodeIntSet Set.empty
+        |> optional "isPlaceholder" D.bool False
+        |> optional "creatureKind" D.string "enemy"
+        |> optional "race" D.string ""
+        |> optional "alignment" D.string ""
 
 
 decodeIntSet : D.Decoder (Set Int)
@@ -674,6 +708,29 @@ decodeDeathSaves =
         (D.field "failures" D.int)
 
 
+decodeRechargeAbility : D.Decoder Encounter.RechargeAbility
+decodeRechargeAbility =
+    D.map5
+        (\name low high ready awaitingRoll ->
+            { name = name
+            , low = low
+            , high = high
+            , ready = ready
+            , awaitingRoll = awaitingRoll
+            }
+        )
+        (D.field "name" D.string)
+        (D.field "low" D.int)
+        (D.field "high" D.int)
+        (D.field "ready" D.bool)
+        -- `awaitingRoll` was added after `ready`; older saves
+        -- and the server's bundle-versioned recharge entries
+        -- both lack it, so default to False on decode.  Same
+        -- effect as if the begin-of-turn hook had just fired
+        -- and seen `ready = True`.
+        (D.oneOf [ D.field "awaitingRoll" D.bool, D.succeed False ])
+
+
 decodeTimer : D.Decoder Timer
 decodeTimer =
     D.map4 Timer
@@ -681,3 +738,59 @@ decodeTimer =
         (D.field "phase" decodeTurnPhase)
         (D.field "ringing" D.bool)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
+
+
+
+-- ── LOCAL (ANONYMOUS) NAMED SAVES ────────────────────────────────────────────
+--
+-- Anonymous sessions store named encounter saves in a single
+-- localStorage dict keyed by name.  Each value carries the
+-- encoded encounter plus created_at / updated_at millis so the
+-- Save / Load modal listings can sort and display dates the
+-- same way the server-backed flow does.
+
+
+type alias LocalEncounterSave =
+    { encounter : Encounter
+    , createdAt : Int
+    , updatedAt : Int
+    }
+
+
+{-| Project a dict entry down to the same metadata shape the
+server returns from `GET /api/encounter/saves` so the Save / Load
+modals can use one row renderer for both paths.
+-}
+localSaveToMeta : ( String, LocalEncounterSave ) -> SavedEncounterMeta
+localSaveToMeta ( name, save ) =
+    { name = name
+    , createdAt = save.createdAt
+    , updatedAt = save.updatedAt
+    }
+
+
+encodeLocalEncounterSave : LocalEncounterSave -> E.Value
+encodeLocalEncounterSave save =
+    E.object
+        [ ( "encounter", encodeEncounter save.encounter )
+        , ( "created_at", E.int save.createdAt )
+        , ( "updated_at", E.int save.updatedAt )
+        ]
+
+
+decodeLocalEncounterSave : D.Decoder LocalEncounterSave
+decodeLocalEncounterSave =
+    D.map3 LocalEncounterSave
+        (D.field "encounter" decodeEncounter)
+        (D.field "created_at" D.int)
+        (D.field "updated_at" D.int)
+
+
+encodeLocalEncounterSaves : Dict String LocalEncounterSave -> E.Value
+encodeLocalEncounterSaves dict =
+    E.dict identity encodeLocalEncounterSave dict
+
+
+decodeLocalEncounterSaves : D.Decoder (Dict String LocalEncounterSave)
+decodeLocalEncounterSaves =
+    D.dict decodeLocalEncounterSave

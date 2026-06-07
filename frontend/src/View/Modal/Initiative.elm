@@ -35,6 +35,7 @@ view model =
                 , noOp = NoOp
                 , title = "Initiative — " ++ ui.target
                 , extraClass = "modal--initiative"
+                , chrome = model.modalChrome
                 , body =
                     [ quickSort
                     , autoRoll ui selectedCount

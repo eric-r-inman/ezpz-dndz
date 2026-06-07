@@ -15,7 +15,7 @@ Styling lives under `.auth-login` in `style.css`.
 -}
 
 import Auth exposing (LoginMode(..))
-import Html exposing (Html, button, div, form, h1, input, label, p, text)
+import Html exposing (Html, a, button, div, form, h1, input, label, p, text)
 import Html.Attributes
     exposing
         ( attribute
@@ -23,6 +23,7 @@ import Html.Attributes
         , autofocus
         , class
         , disabled
+        , href
         , id
         , name
         , placeholder
@@ -35,9 +36,22 @@ import Msg exposing (Msg(..))
 import Ui.Login exposing (LoginUi)
 
 
+{-| Sign-in / register screen.
+
+The outer wrapper carries `data-theme="dark"` regardless of the
+user's chosen theme so the form has a consistent look (and the
+brand framing always reads as the same eZpZ-dndZ landing card).
+`style.css` lets the nested `data-theme` shadow the parent's
+color-token cascade — the AppBar above stays in the user's
+theme, only this panel switches.
+
+-}
 view : LoginUi -> Html Msg
 view ui =
-    div [ class "auth-login" ]
+    div
+        [ class "auth-login"
+        , attribute "data-theme" "dark"
+        ]
         [ div [ class "auth-login__panel" ]
             [ h1 [ class "auth-login__title" ] [ text "eZpZ-dndZ" ]
             , p [ class "auth-login__tagline" ]
@@ -131,6 +145,12 @@ submitRow ui =
             , disabled ui.submitting
             ]
             [ text (submitLabel ui) ]
+        , a
+            [ class "auth-login__cancel"
+            , href "/"
+            , attribute "aria-label" "Cancel sign-in and return to the encounter page"
+            ]
+            [ text "Cancel" ]
         , case ui.error of
             Just message ->
                 p [ class "auth-login__error" ] [ text message ]

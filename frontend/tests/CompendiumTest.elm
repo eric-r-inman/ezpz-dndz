@@ -19,6 +19,8 @@ suite =
         , sortByCrSuite
         , sortByRecencySuite
         , crToFloatSuite
+        , draftToInstanceRechargeSuite
+        , rechargeNameTransformSuite
         ]
 
 
@@ -281,4 +283,211 @@ crToFloatSuite =
             \_ ->
                 Compendium.crToFloat "  3  "
                     |> Expect.within (Expect.Absolute 0.001) 3.0
+        ]
+
+
+
+-- ── draftToInstance recharge name fallback ────────────────────────────────
+
+
+draftToInstanceRechargeSuite : Test
+draftToInstanceRechargeSuite =
+    describe "draftToInstance — recharge name fallback"
+        [ test "extracts (Recharge X-Y) from a parsed-paste feature name" <|
+            \_ ->
+                -- Mirrors what the paste parser produces for a line
+                -- like "Petrifying Gaze (Recharge 4-6). description…"
+                -- — `usage` is `Nothing`, the recharge lives in the
+                -- name suffix.  The fallback in draftToInstance must
+                -- pick it up so the encounter card shows the chip.
+                let
+                    source =
+                        let
+                            c =
+                                mkCreature
+                                    { id = "x"
+                                    , name = "Test"
+                                    , kind = Compendium.Enemy
+                                    , cr = "4"
+                                    , createdAt = 0
+                                    }
+                        in
+                        { c
+                            | bonusActions =
+                                [ { name = "Petrifying Gaze (Recharge 4-6)"
+                                  , description = "Constitution save…"
+                                  , usage = Nothing
+                                  }
+                                ]
+                        }
+
+                    instance =
+                        Compendium.draftToInstance
+                            { displayName = "Test", initiativeRoll = 0 }
+                            source
+                in
+                instance.rechargeAbilities
+                    |> Expect.equal
+                        [ { name = "Petrifying Gaze"
+                          , low = 4
+                          , high = 6
+                          , ready = True
+                          , awaitingRoll = False
+                          }
+                        ]
+        , test "handles single-value (Recharge 6) and en-dash variants" <|
+            \_ ->
+                let
+                    source =
+                        let
+                            c =
+                                mkCreature
+                                    { id = "y"
+                                    , name = "Mephit"
+                                    , kind = Compendium.Enemy
+                                    , cr = "1/4"
+                                    , createdAt = 0
+                                    }
+                        in
+                        { c
+                            | actions =
+                                [ { name = "Frost Breath (Recharge 6)"
+                                  , description = "…"
+                                  , usage = Nothing
+                                  }
+                                , { name = "Fire Breath (Recharge 5–6)"
+
+                                  -- ^ en-dash, not ASCII hyphen
+                                  , description = "…"
+                                  , usage = Nothing
+                                  }
+                                ]
+                        }
+
+                    instance =
+                        Compendium.draftToInstance
+                            { displayName = "Mephit", initiativeRoll = 0 }
+                            source
+
+                    ranges =
+                        instance.rechargeAbilities
+                            |> List.map (\r -> ( r.name, r.low, r.high ))
+                in
+                ranges
+                    |> Expect.equal
+                        [ ( "Frost Breath", 6, 6 )
+                        , ( "Fire Breath", 5, 6 )
+                        ]
+        , test "structured `usage` wins over name suffix when both are present" <|
+            \_ ->
+                let
+                    source =
+                        let
+                            c =
+                                mkCreature
+                                    { id = "z"
+                                    , name = "Custom"
+                                    , kind = Compendium.Enemy
+                                    , cr = "1"
+                                    , createdAt = 0
+                                    }
+                        in
+                        { c
+                            | actions =
+                                [ { name = "Bite (Recharge 5-6)"
+                                  , description = "…"
+                                  , usage =
+                                        Just
+                                            (Compendium.Recharge
+                                                { low = 3, high = 6 }
+                                            )
+                                  }
+                                ]
+                        }
+
+                    instance =
+                        Compendium.draftToInstance
+                            { displayName = "Custom", initiativeRoll = 0 }
+                            source
+                in
+                instance.rechargeAbilities
+                    |> List.map (\r -> ( r.low, r.high ))
+                    |> Expect.equal [ ( 3, 6 ) ]
+        , test "feature without recharge suffix produces no chip" <|
+            \_ ->
+                let
+                    source =
+                        let
+                            c =
+                                mkCreature
+                                    { id = "q"
+                                    , name = "Goblin"
+                                    , kind = Compendium.Enemy
+                                    , cr = "1/4"
+                                    , createdAt = 0
+                                    }
+                        in
+                        { c
+                            | actions =
+                                [ { name = "Scimitar"
+                                  , description = "Melee Attack Roll…"
+                                  , usage = Nothing
+                                  }
+                                ]
+                        }
+
+                    instance =
+                        Compendium.draftToInstance
+                            { displayName = "Goblin", initiativeRoll = 0 }
+                            source
+                in
+                instance.rechargeAbilities |> Expect.equal []
+        ]
+
+
+
+-- ── stripTrailingRecharge / appendRechargeSuffix ──────────────────────────
+
+
+rechargeNameTransformSuite : Test
+rechargeNameTransformSuite =
+    describe "Compendium recharge-name helpers"
+        [ test "stripTrailingRecharge drops a `(Recharge N-M)` parenthetical" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Petrifying Gaze (Recharge 4-6)"
+                    |> Expect.equal "Petrifying Gaze"
+        , test "stripTrailingRecharge drops a single-value `(Recharge 6)`" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Frost Breath (Recharge 6)"
+                    |> Expect.equal "Frost Breath"
+        , test "stripTrailingRecharge accepts the en-dash `(Recharge 5–6)`" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Fire Breath (Recharge 5–6)"
+                    |> Expect.equal "Fire Breath"
+        , test "stripTrailingRecharge leaves names without a recharge suffix untouched" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Multiattack"
+                    |> Expect.equal "Multiattack"
+        , test "stripTrailingRecharge leaves `(Recharge after a Short or Long Rest)` alone" <|
+            \_ ->
+                Compendium.stripTrailingRecharge "Breath Weapon (Recharge after a Short or Long Rest)"
+                    |> Expect.equal "Breath Weapon (Recharge after a Short or Long Rest)"
+        , test "appendRechargeSuffix appends a range when low /= high" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 4, high = 6 } "Petrifying Gaze"
+                    |> Expect.equal "Petrifying Gaze (Recharge 4-6)"
+        , test "appendRechargeSuffix appends a single value when low == high" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 6, high = 6 } "Frost Breath"
+                    |> Expect.equal "Frost Breath (Recharge 6)"
+        , test "appendRechargeSuffix replaces any existing recharge suffix rather than duplicating" <|
+            \_ ->
+                Compendium.appendRechargeSuffix { low = 5, high = 6 } "Petrifying Gaze (Recharge 4-6)"
+                    |> Expect.equal "Petrifying Gaze (Recharge 5-6)"
+        , test "strip ∘ append is the identity on a stripped name" <|
+            \_ ->
+                "Petrifying Gaze"
+                    |> Compendium.appendRechargeSuffix { low = 4, high = 6 }
+                    |> Compendium.stripTrailingRecharge
+                    |> Expect.equal "Petrifying Gaze"
         ]

@@ -4,7 +4,16 @@
 
 * Welcome
 
-~eZpZ-dndZ~ is a fre DnD combat encounter manager. It handles initiative order, hit points, conditions, and much more — offloading combat miuntae from the DM's brain, so they can stay focused on the story. 
+~eZpZ-dndZ~ is a free D&D combat encounter manager.  It handles
+initiative order, hit points, conditions, and much more —
+offloading combat minutiae from the DM's brain so they can stay
+focused on the story.
+
+You can start using it without signing in.  An account unlocks
+multi-device sync and named server-side saves, but every
+feature (compendium editing, named saves, dice history) works
+in your browser anonymously too.  See [[*Using without an account][Using without an account]]
+below.
 
 * License
 
@@ -17,14 +26,18 @@ for the full text.
 
 This document is a feature-by-feature tour: what each feature is for,
 where to find it in the UI, and how to use it.
-** A note on beta status
 
-** Note on Beta testing
+** Note on beta status
 
-eZpZ-dndZ is in active beta. The core encounter loop (initiative, HP,
-conditions, dice roller, etc.) is stable, probably, as perhaps is the server. But, breaking changes can happen without warning. Use this app at your own risk.
+eZpZ-dndZ is in active beta.  The core encounter loop
+(initiative, HP, conditions, dice roller) is stable, as is the
+server.  Breaking changes can happen without warning.  Use this
+app at your own risk.
 
-Your feedback is welcome and will guide the development of this app. Use the *Leave Feedback* link on the Account page, the *Contact* link in the footer, or email ~feedback@ezpzdndz~ directly.
+Your feedback is welcome and will guide the development of this
+app.  Use the *Leave Feedback* link on the Account page, the
+*Contact* link in the footer, or email ~feedback@ezpzdndz~
+directly.
 
 ** Conventions in this document
 
@@ -35,22 +48,72 @@ Your feedback is welcome and will guide the development of this app. Use the *Le
 - "The compendium" means your personal monster library — the
   catalogue you build encounters from.
 
-* Getting started
+* Using without an account
+
+Open the site and start playing.  No account required.
+
+Anonymous sessions are backed entirely by your browser's
+~localStorage~, with parity to the signed-in experience on every
+common surface:
+
+- The live encounter, dice history, and full compendium
+  (creatures + groups) all persist across reloads.
+- The Save / Load buttons on the encounter controls show *To
+  Browser* / *From Browser* labels and write to ~localStorage~
+  under names you choose (overwrite, rename, and delete all
+  work the same as the server-backed flow).
+- The compendium has full New / Paste / Edit / Duplicate /
+  Delete / Create Group / Edit Group / Delete Group support
+  with everything persisted locally.
+
+What you give up without an account: cross-device sync (your
+work lives in one browser), and the two genuinely-server-only
+flows behind the compendium *Save/Load Snapshot to Server*
+items (which redirect to the sign-in page with a tooltip).
+
+** Promoting an anonymous session into an account
+
+Sign in or create an account whenever you're ready.  The app
+automatically uploads two pieces of your anonymous work to your
+account in the background:
+
+- Your live encounter is archived under the name *Local — <today>*
+  in Save → Load.
+- Your compendium (creatures + groups) is imported into your
+  account.
+
+You'll see one toast per migrated piece.  After that, every
+mutation persists to the server instead.
+
+** Signing out (preserves anonymous data)
+
+Sign out via the Account page.  Your session ends and you
+return to the anonymous experience.  Critically, anonymous
+~localStorage~ data is *deliberately preserved* — if you had
+work in this browser before signing in, it comes back on
+sign-out instead of being wiped.
+
+* Getting started with an account
+
+An account unlocks:
+
+- Cross-device sync (sign in on a different browser or device
+  and your data follows you).
+- Named server-side compendium snapshots (Save/Load Snapshot
+  in the Compendium modal).
 
 ** Creating an account
 
-Visit the site and you'll be greeted by the *Authentication Portal*.
+Click the *Sign in* link in the AppBar (top right when
+anonymous) to visit the sign-in form.
 
-- *Create Account* — An account allows you to save and import encounters and monsters. You'll be logged in automatically after registration.
-- *Sign In* — for returning users.  The email and password are the
-  same ones you registered with.
+- *Create account* — toggle the form into Create mode; you'll
+  be signed in automatically on success.
+- *Sign in* — for returning users.  The email and password are
+  the same ones you registered with.
 
-Sessions are cookie-based and survive browser restarts.  Closing the
-tab does not log you out.
-
-** Signing out
-
-Signing out clears your session and clears the active encounter. You sign out via the Account page.
+Sessions are cookie-based and survive browser restarts.  Closing
+the tab does not log you out.
 
 * eZpZdndZ Tools
 
@@ -71,7 +134,9 @@ The bar above the creature queue shows the abbreviated status of the active crea
 - *Round counter* — e.g. "Round 5".  Increments when a full turn
   cycle completes.
 - *Active creature summary* — the current creature's name, HP (click
-  to edit inline), AC (click to edit inline), and any note.
+  to edit inline), AC (click to edit inline), and any note.  A 🩸
+  marker appears to the right of the name when the active creature
+  is bloodied.
 - *State icons* — quick-glance badges for the active creature's
   cover, concentration, hiding, dodging, and flying status (with fly
   height when airborne).
@@ -89,6 +154,31 @@ The bar above the creature queue shows the abbreviated status of the active crea
   the current XP scope pre-selected.
 - *Lair XP note* — appears when one or more creatures has a different
   XP value in their lair.
+
+*** Quick-List view (↗ button)
+
+To the right of the Difficulty button is a small *↗* link that
+opens a standalone read-only view of the combat queue in a
+fresh browser tab.  Park it on a second monitor for a clean
+at-a-glance reference while you run the table.
+
+- Cards are sorted by initiative; the active creature gets the
+  same accent the main view uses, so "whose turn it is" is
+  obvious from across the room.
+- Each card is at most two lines:
+  - *Line 1* — initiative badge · name · (optional note) · AC ·
+    HP / Max HP (with the same green / muted-gray colors as the
+    main view).
+  - *Line 2* — only renders when something is on: bloodied,
+    condition / effect chips, then cover, concentrating,
+    hiding, dodging, flying (+height), readied, memo, timer.
+- Cards are read-only — no buttons, no chips you can click.
+- The page auto-updates as you mutate state in the main tab,
+  via a same-browser ~BroadcastChannel~ — no polling, no
+  server round-trip.  Works for both anonymous and authenticated
+  sessions, in whichever theme you've picked.
+- The AppBar is suppressed on this page so every pixel is queue
+  rows.
 
 ** Creature Cards
 
@@ -109,7 +199,10 @@ optional legendary-pips column, and a right rail.
   initiative value.
 - *Creature name* — click to pin this creature's stat block to the
   Compendium Panel on the right.  Names automatically get a numeric
-  suffix ("Goblin 2") for duplicates.
+  suffix ("Goblin 2") for duplicates.  Minion-style duplicates (via
+  the Duplicate modal or a Black Pudding split) name themselves as
+  *Goblin Minion 1*, *Goblin Minion 2*, etc., always numbered from
+  1 — splitting a minion stays flat rather than nesting.
 - *Note pencil (✏️)* — opens the *Note* modal to set a short label
   (~40 chars, displayed in italics).  Useful for "boss",
   "summoned by Lyra", or "ally".
@@ -122,9 +215,10 @@ optional legendary-pips column, and a right rail.
 
 - *HP display* — "current / max" with optional "+N temp" suffix.
   Click any of current, max, or temp to edit inline.
-- *Bloodied marker* — surfaces when HP drops below 50% of max.
+- *Bloodied marker* — surfaces when current HP is half of max or
+  lower, per SRD 5.2.1.
 - *Cover cycle (⬜/◻/◭/⬛)* — click to step through None → Half →
-  Three-Quarters → Full cover.
+  Three-Quarters → Total cover.
 - *Concentration (✨)* — toggle on/off.
 - *Hiding (👁‍🗨)* — toggle on/off.
 - *Dodging (🛡️)* — toggle on/off.
@@ -141,6 +235,16 @@ optional legendary-pips column, and a right rail.
 - *Ready (✋)* — toggle "readied action" (2024 MM terminology;
   was "hold action" in 2014).  A creature with a readied action
   skips its turn until the GM releases the readied state.
+- *Reaction (⚡ Reaction)* — a one-per-round pip representing
+  the creature's reaction for the round.  Click to mark spent
+  (gray); refills automatically at the start of the creature's
+  next turn.
+- *Recharge chip* — appears to the left of any condition badges
+  when a creature has a Recharge X-Y feature (e.g. dragon
+  breath, *Hellfire Spellcasting* on a Pit Fiend).  The chip
+  names the ability and its recharge window, sits green when
+  available, gray when spent, and auto-rolls 1d6 at the start
+  of the bearer's turn.  Click to flip state manually.
 - *Memo slot* — a tiny inline label (up to 15 chars), e.g. "leg
   res used".  Click to edit.
 - *Timer slot (⏱️)* — opens the *Timer* modal to attach a countdown
@@ -151,19 +255,52 @@ optional legendary-pips column, and a right rail.
 - *Remove (×)* — pop this creature out of the encounter.
 - *Inactive toggle (⧉)* — keep the card visible but exclude it from
   the turn order.  Useful for downed enemies you want to remember.
+- *Replace (⇄)* — opens *Quick Add* in "Replace mode": picking a
+  creature swaps it in place, keeping the old card's initiative
+  value but adopting the new creature's HP, AC, and stats.  The
+  modal title reads *Replace <old name> with…* until you pick or
+  cancel.
 - *Duplicate (⧉ second group)* — opens the *Duplicate* picker with
   five options (see below).
 
+*** Lifecycle badge (top-center on the card)
+
+Every card carries a small lifecycle pill across the top edge
+that reflects its current state at a glance:
+
+- *💤 DOWN* (amber) — current HP is 0 and death-save tracking
+  hasn't been opened yet, or no successes are stored.
+- *💤 DOWN, STABLE* (green) — 0 HP with three death-save
+  successes recorded.
+- *💀 DEAD* (red) — three failures or otherwise marked dead.
+- *⏭ SKIPPED* (gray) — the creature is being walked past in
+  the turn order (downed without death saves opened, inactive,
+  or readying).
+
+The DOWN and DEAD pills are clickable buttons that form a
+reversible toggle: clicking DOWN flips the creature to DEAD
+(failures set to 3); clicking DEAD flips it back to DOWN
+(failures cleared, successes preserved).  Hover previews the
+destination state.  The card's left-edge color stripe mirrors
+the badge color.
+
 *** Optional — Death Saves column
 
-When a creature drops to 0 HP, a column of three success circles and
-three failure × marks appears.  Click any circle or × to toggle it.
+When a creature drops to 0 HP, a single *Death Saves* opt-in
+button appears in place of the pip strip.  Most downed enemies
+never need actual death saves rolled, so the strip stays
+hidden until you ask for it.  Click the button and the usual
+column of three success circles and three failure × marks
+appears — click any circle or × to toggle it manually.
 
 - *Roll Death Save (🎲)* — auto-rolls 1d20.  A roll of 10 or higher
   is a success; 9 or lower is a failure; natural 20 returns the
   creature to 1 HP; natural 1 counts as two failures.
-- The card flips to *Stable* (one success after rest) or *Dead*
-  (three failures) automatically.
+- The card flips to *Stable* (three successes) or *Dead*
+  (three failures) automatically, and the lifecycle badge
+  follows along.
+- Healing the creature above 0 HP resets the opt-in flag, so
+  the next downing starts from a clean tracker.
 
 *** Optional — Legendary pips column
 
@@ -179,29 +316,46 @@ The middle pane is where global encounter actions live.
 *** Dice quick-roll cluster
 
 - *Last total* — a flashing readout of the most recent dice result.
+  Up to three previous totals render to the left of it in muted
+  text (oldest first) so you can see the last few rolls without
+  expanding the strip or opening the modal.
 - *Expand arrow (→)* — toggles the inline dice-history strip.
 - *Roll (🎲)* — opens the full *Dice Roller* (see *Dice* below).
 
 *** Action grid (six buttons, three rows of two)
 
 1. *Quick Add (➕)* — lightweight creature picker.  See *Quick Add*.
-2. *Save (💾)* — split button:
-   - Click the main face to save to the server.
-   - Click the dropdown to choose *Save to Server* or *Download to
-     Device*.
-   - The face turns orange/yellow when the encounter has unsaved
-     changes.
+2. *Save (💾)* — split button.  The dropdown picks destination:
+   - *To Server* — saves to your account (signed in).  Shows as
+     *To Browser* when anonymous — same Save modal, same name
+     conflict handling, but the snapshot lands in this browser's
+     storage instead of the server.
+   - *To Device* — downloads a JSON file via the browser.  Works
+     the same regardless of sign-in.
+
+   The button face turns orange/yellow when the encounter has
+   unsaved changes.
+
 3. *Load (📂)* — split button:
-   - Main face / dropdown distinguish between *Load from Server* and
-     *Load from Device*.
+   - *From Server* (or *From Browser* when anonymous) — opens
+     the Load modal listing your saved encounters.
+   - *From Device* — pick a JSON file from disk.
 4. *Next Turn / Run (>❯ / ▶)* — advances the turn.  Before round 1
    the label is *Run* and pressing it kicks off combat (rolls
    initiative-tied effects, ticks per-turn countdowns).  After that,
    the label switches to *Next Turn*.
-5. *Reset (⟲)* — reverts the encounter to the last saved snapshot
-   and forces the round counter to 1.  Asks for confirmation first.
-6. *Clear (🗑)* — empties the encounter back to a blank slate.  Also
-   asks for confirmation.
+5. *Reset (⟲)* — keeps every creature in the roster but wipes
+   per-fight state: HP back to full, no temp HP, no conditions
+   or save notices, death-save counters cleared, every status
+   toggle off (cover, concentration, hiding, dodging, flying,
+   readied, inactive, bloodied), legendary actions and resistances
+   refilled, timers cleared.  Identity and combat baselines
+   (name, kind, initiative, AC, max HP, note, memo, source) are
+   preserved.  Round counter goes back to 0 so you can press *Run
+   Encounter* to start combat over with the same lineup.  Asks
+   for confirmation first.
+6. *Clear (🗑)* — empties the encounter back to a blank slate
+   (no creatures at all).  Also asks for confirmation.
 
 The Reset and Clear buttons swap into an inline *Confirm / Cancel*
 banner when pressed — there is no system dialog to dismiss; just hit
@@ -245,8 +399,11 @@ automatically after they finish:
 
 The *Condition* modal serves both creation and editing.
 
-- *Standard condition* — radio buttons for all 15 standard 5e
-  conditions; selecting one pre-fills the name.
+- *Standard condition* — badges for all 15 standard 5e
+  conditions; selecting one pre-fills the name.  Click the same
+  badge again to deselect it and clear the name field — useful
+  for switching from "I'll pick a standard" to "I want a custom
+  one" without retyping.
 - *Custom name* — override or write a free-form name (e.g.
   "Suppressed", "Bardic inspiration").
 - *Note* — a 10-char hint, shown on the chip ("from Lyra", "DC 13").
@@ -269,6 +426,68 @@ When you click 🎲 on a chip, a minimal save-roll modal shows the
 expression and offers normal, Advantage, and Disadvantage roll
 buttons.  Auto-rolling conditions fire silently at the configured
 turn phase, popping a floating "+N" result above the card.
+
+*** Condition presets
+
+The footer of the Condition modal has a *Save / Load* row that
+remembers full condition configurations under names you choose,
+so a "Bardic Inspiration" that auto-rolls a DC 12 save at end of
+turn (with a 10-char note) can be one click away forever.
+
+- *Save* — type a name, pick a category from the dropdown, hit
+  *Save*.  Both fields are required; the Save button stays
+  disabled (with a tooltip explaining why) until both are set.
+  Stores the current condition's name, custom name, note,
+  duration mode, save-to-end settings, auto-roll mode, and the
+  picked category.
+- *Load ▾* — dropdown of every available preset.  Your own
+  saves render in a flat list at the top; below that the bundled
+  defaults appear in five collapsible categories — *Player
+  Classes* / *Spell Effects* / *Monster Abilities* / *Items* /
+  *Environment* — each starting collapsed with a parenthesised
+  count.  Within each section presets sort alphabetically,
+  case-insensitive.
+- *× per row* — delete one of your own presets.  Bundled
+  defaults are read-only; you can override them by saving your
+  own preset with the same name (yours wins).
+
+**** Bundled defaults
+
+A fresh visitor's Load menu ships pre-populated with ~60+ common
+SRD 5.2.1 effects across the five categories:
+
+- *Player Classes* — Stunning Strike, Trip Attack, Bardic
+  Inspiration (d6/d8), Bless, Hex, Hunter's Mark, Searing
+  Smite, Wrathful / Staggering Smite, Turn Undead, etc.
+- *Spell Effects* — Hold Person / Monster, Sleep, Charm
+  Person, Fear / Cause Fear, Hypnotic Pattern, Hideous
+  Laughter, Suggestion, Slow, Web, Entangle, Banishment,
+  Stinking Cloud, Greater Invisibility, Blindness, Faerie
+  Fire, Black Tentacles, etc.
+- *Monster Abilities* — Petrifying Gaze (Medusa), Mind Blast
+  (Mind Flayer), Frightful Presence (Dragon), Horrifying
+  Visage (Ghost), Paralyzing Touch (Ghoul), Vampire Charm,
+  Luring Song (Harpy), Web (Giant Spider), Tendril (Roper),
+  Sleep Ray (Beholder), Carrion Crawler Tentacles, Mummy Rot.
+- *Items* — Wand of Paralysis, Wand of Fear, Staff of
+  Charming, Potion of Invisibility / Heroism / Climbing /
+  Giant Strength, Dust of Sneezing & Choking, Dust of
+  Disappearance, Net.
+- *Environment* — Quicksand, Slippery Surface, Heavy
+  Obscurement, Drowning, On Fire, Extreme Cold / Heat, Pit
+  Trap.
+
+DCs default to SRD stat-block values; the GM tweaks per cast
+(dragon Frightful Presence scales by CR, Stunning Strike DC
+scales with the Monk's Wisdom, etc.).  The defaults seed on
+the very first boot (when no ~conditionPresets~ key exists in
+~localStorage~) and are otherwise always available as a
+read-only layer underneath your saved presets — deleting your
+own never removes a bundled default.
+
+User-saved presets persist to your browser's localStorage
+(anonymous and authenticated sessions both round-trip through it
+today).  They are not yet synced to the server.
 
 ** Death saves
 
@@ -297,6 +516,12 @@ Two small per-card slots on row 3.
   countdown reaches 0 the card flashes a 0 and the page plays a
   short ping; click × on the timer to dismiss it.
 
+  The Timer modal also has a *Save / Load* footer (mirror of the
+  Condition modal's preset row) that remembers timer setups —
+  turn count, phase, and label — under names you choose.
+  Dropdown is sorted alphabetically (case-insensitive); presets
+  persist to ~localStorage~.
+
 * The Dice Roller
 
 Open from the *🎲 Roll* button in the middle pane.
@@ -312,8 +537,11 @@ Open from the *🎲 Roll* button in the middle pane.
 - *Advantage / Disadvantage / Coin* — quick rolls for the table's
   most common shapes.
 - *Roll history* — up to 30 entries, newest first.  Click any past
-  roll to re-run it (appends a new entry).  *Clear History* wipes the
-  list (with confirmation).
+  roll to re-run it (appends a new entry).  Each row's *↻* button
+  opens a two-item menu: *Reroll* repeats the original expression;
+  *Reroll, no modifier* strips the constant before re-rolling, so
+  you can ask "what if I hadn't been at -2?" without retyping the
+  dice.  *Clear History* wipes the list (with confirmation).
 
 Roll history is persisted to your account — it survives logout and
 appears on other devices when you sign back in.
@@ -323,6 +551,11 @@ appears on other devices when you sign back in.
 Open from the *➕ Quick Add* button.  This is the fastest way to drop
 a creature into the encounter without leaving the table view.
 
+- *Placeholder row* — pinned italic entry at the top of the list.
+  Adds a stub combatant (Initiative 0, HP 1/1, AC 10, name
+  *Placeholder N*) when the roster isn't fully resolved yet.  Click
+  the card's name later to rename it; use the right-rail ⇄ button
+  to swap in a real creature once you've decided.
 - *Sort toggle* — switch the list between alphabetical and CR order.
 - *Creature list* — every creature in your compendium, with its CR
   on the right.  Click a row to add one instance to the encounter at
@@ -330,6 +563,23 @@ a creature into the encounter without leaving the table view.
 
 Use Quick Add when you know what you want; use the full Compendium
 when you want to read stat blocks first.
+
+** Placeholder combatants
+
+When you want a slot in the queue but don't know who fills it
+yet, drop in a *Placeholder*:
+
+- The full-width dashed *+* row at the bottom of the queue adds
+  one with a single click.
+- Quick Add's pinned *Placeholder* entry does the same thing.
+
+A placeholder behaves like any other creature — takes its turn,
+holds conditions, etc. — but spawns at Initiative 0 so it
+naturally lands at the back of the queue until you sort it in.
+Click the card's name to rename it inline.  When you're ready to
+fill it in with a real stat block, use the right-rail *⇄* button
+to swap it for any creature from the compendium without
+disturbing the initiative order.
 
 * The Compendium
 
@@ -345,8 +595,9 @@ action bar on the right.
 
 ** Browsing and filtering
 
-- *Search* — live filter as you type.  Matches against creature
-  name.
+- *Search* — live filter as you type (placeholder reads
+  "Search by name, type, etc.").  Matches against creature
+  name, race, alignment, source, and CR.
 - *Kind toggles* — Player / Enemy / NPC filters.
 - *Sort* — by Name, CR, or Recency.
 - *Tag filter* — drop-down to the right of the sort picker.  Two
@@ -365,11 +616,18 @@ action bar on the right.
 Click a creature in the list to load its full stat block on the
 right.  Clickable elements inside the stat block:
 
+- *Kind badge* — a small coloured chip next to the creature name
+  marking it Player (blue), Enemy (red), or NPC (yellow).
 - *Ability scores* — clicking an ability cell (STR, DEX, …) opens
   an *Ability Save* roll prompt.
 - *Inline dice* — any dice expression in a trait or action
   (e.g. "2d6+3 fire damage") is clickable and pops a floating
-  result above the cursor.
+  result above the cursor.  Blue pills are damage rolls.
+- *Attack-roll pills* — red pills attached to attack lines
+  (recognising both the SRD 5.2.1 ~Melee Attack Roll: +N~ /
+  ~Ranged Attack Roll: +N~ header and the legacy ~+N to hit~
+  form).  One click rolls 1d20 + modifier and lands the result
+  in the dice history.
 - *Tag badges* — if the creature has any user tags, they appear as
   small pills on the right side of the name row in the
   Compendium-modal stat block.  In the pinned right-rail Compendium
@@ -382,9 +640,9 @@ right.  Clickable elements inside the stat block:
 
 ** Adding to the encounter
 
-- *Add to Encounter* — drops one instance into the queue.  An
-  optional "Roll initiative" mode rolls 1d20 + init bonus
-  automatically.
+- *Add to Encounter* — drops one instance into the queue at
+  initiative 0; the GM rolls or types the initiative when ready
+  (no dice-history pollution from add flows).
 - *Duplicate* — clones the creature inside the library (for
   variants).
 - *Edit* — opens the *Compendium Edit* form pre-filled.
@@ -487,13 +745,28 @@ snapshots of your entire compendium library.
 
 ** Import, Export, and Reset
 
-- *Export to File* — downloads the entire current compendium as a
-  JSON file.  Includes creatures and groups.
-- *Export Selected* — exports only the creatures you've selected.
-- *Import from File* — uploads a JSON file and replaces the entire
-  library (with confirmation).
+The Compendium toolbar carries plain single-click *📥 Import*,
+*📤 Export*, *↺ Reset*, and *🗑 Clear* buttons.  Import and
+Export both open modals that mirror the encounter Save / Load
+shape — Server / Device radio at top, body changes based on
+the picked option.
+
+- *Export* — opens the Save Compendium modal.  *Device* writes
+  a JSON file to your machine; *Server* writes a named snapshot
+  to your account.  Sign-in required for Server (an inline hint
+  explains; the Save button stays disabled until you flip to
+  Device or sign in).
+- *Import* — opens the Load Compendium modal.  *Device* opens
+  the file picker; *Server* lists your saved snapshots so you
+  can replace the live compendium with one of them.  Same
+  sign-in gating as Export.
+- *Import file errors* — if the file doesn't parse (an old
+  format from before a software update, etc.) a popup with a
+  single *OK* button explains the file may have compatibility
+  issues.  The current compendium isn't touched.
 - *Reset to bundled* — restores the small set of bundled example
   creatures and clears all groups.
+- *Clear* — splits into *Clear All* / *Clear Selected*.
 
 * CR Calculator
 
@@ -529,68 +802,78 @@ Two entry points:
 Note: the party roster is currently in-memory only.  Server
 persistence for the party is on the roadmap.
 
-* Card Customization (prototype)
+* Card Customization (deferred for launch)
 
-A *🎨 Customize card* button on the app bar opens the *Card Editor*,
-a prototype layout tool that lets you change which widgets appear on
-your creature cards and how they're arranged.
-
-What's working:
-
-- Pick a queue view mode (List or Grid).
-- Add, remove, and reorder rows.
-- Set per-row alignment.
-- Add widgets to rows from a dropdown picker.
-- Save layouts to your account, load them, rename them, overwrite
-  them, or delete them.
-- A live preview to the right of the editor reflects your changes
-  in real time.
-
-What's not yet finished:
-
-- Several widgets render as labelled placeholders in the preview
-  (and the live encounter) rather than the final visual.  The names
-  on the placeholders match the widgets they'll become.
-- The full widget library is still being filled in.
-
-Toggle the customised renderer with the *Custom: on / off* switch in
-the app bar.  When off, the encounter renders with the classic
-built-in card layout regardless of what's saved.
+The *Card Editor* — a layout tool for choosing which widgets
+appear on creature cards and how they're arranged — is hidden in
+the launch build.  The supporting code (editor modal, layout
+data model, save/load endpoints, anonymous-mode localStorage
+snapshot) is still in place, but the *🎨 Customize card* button
+and *Custom: on / off* switch are commented out in the app bar
+and the encounter always renders with the classic card.  Once
+the widget set is filled out the entry points will come back.
 
 * Saving and loading encounters
 
 ** Saving
 
 Open the *Save* modal from the middle-pane *💾 Save* button.
+The button is a plain single-click affordance — no dropdown.
 
-- *Destination* — Server (persisted to your account) or Device
-  (browser file download).
-- *Filename* — required for server saves.  Device saves get a
-  date-stamped default.
-- *Existing saves* — listed underneath when saving to the server.
-  Each row can be renamed (pencil), overwritten (click the row),
-  or deleted (×).  Inline confirmation banners replace the buttons
-  while a destructive action is pending.
+- *Save to* — a Server / Device radio pair.  The Server label
+  reads "Server" when you're signed in and "Browser" when
+  anonymous (same destination value either way; anonymous saves
+  land in your browser's localStorage with a name, signed-in
+  saves go to the server).
+- *Filename* — required.  The text input gets autofocus when
+  the modal opens.
+- *Existing saves* — listed underneath when saving to Server (and
+  you're signed in).  Each row can be renamed (pencil),
+  overwritten (click the row), or deleted (×).  Inline
+  confirmation banners replace the buttons while a destructive
+  action is pending.
+- *Save button* — always reads *Save* (regardless of destination)
+  and stays disabled until a name is typed.
 
-Encounters auto-save their live state to the server on every change,
-so reopening the app picks up exactly where you left off — but those
-auto-saves overwrite each other.  Use *Save* to bookmark named
-snapshots you can return to (e.g. "Goblin ambush — round 0").
+The button face turns yellow when the encounter has unsaved
+roster changes since the last *Save* / *Load*.
+
+Encounters auto-save their live state to the server (signed in)
+or localStorage (anonymous) on every change, so reopening the
+app picks up exactly where you left off — but those auto-saves
+overwrite each other.  Use *Save* to bookmark named snapshots
+you can return to (e.g. "Goblin ambush — round 0").
 
 ** Loading
 
-Open the *Load* modal from the middle-pane *📂 Load* button.
+Open the *Load* modal from the middle-pane *📂 Load* button —
+also a plain single-click button.
 
+- *Load from* — a Server / Device radio pair mirroring the Save
+  modal.  Server (or "Browser" when anonymous) shows the list
+  of saved encounters; Device shows the file-picker for a
+  JSON snapshot.
+- *Server saves list* — every saved encounter on your account
+  (or in this browser, anonymous).  Click a row to load it (with
+  confirmation), use the pencil to rename, the × to delete.
 - *Choose file…* — picks a JSON file from your device.  After
   selection, a confirmation banner explains that loading replaces
   the current encounter.
-- *Server saves list* — every saved encounter on your account.
-  Click a row to load it (with confirmation), use the pencil to
-  rename it, or the × to delete it.
 
-Loading any encounter forces the round counter back to 1 — the round
-state is part of the snapshot, so a save made on round 5 reloads at
-round 5; only *Reset* and *Clear* alter the round outside of a load.
+Loading any encounter forces the round counter back to 0 — the
+round state is part of the snapshot, so a save made on round 5
+reloads at round 5; only *Reset* and *Clear* alter the round
+outside of a load.
+
+** Signing in mid-build (anonymous → authenticated)
+
+If you've been building an encounter as an anonymous user and
+then sign in, the encounter you were just working on stays as
+the live one — it's *not* replaced by the server's last-active
+save.  Your in-progress work is also pushed to the server as
+the new current active so a second device picks it up on next
+load.  The pre-sign-in state is additionally archived to your
+account under *Local — <today>* as a safety net.
 
 * The Account page
 
@@ -613,22 +896,37 @@ Visit ~/me~ from the *User* badge in the app bar.
 - *Leave Feedback* — opens your mail client to send to
   ~feedback@ezpzdndz~.  Use this for any bug report, feature
   suggestion, or "this is confusing" note.
-- *Sign Out* — clears your session and returns you to the login
-  screen.
+- *Sign Out* — clears your session and returns you to the
+  anonymous experience.  Anonymous data stored in this browser
+  before you signed in (live encounter, custom card layout,
+  saved compendium edits, named saves) is *preserved*, so a
+  sign-out doesn't wipe your work.
 
 * Site chrome
 
 ** App Bar (top)
 
-- *eZpZ-dndZ* — brand text, links back to the encounter view.
+- *eZpZ-dndZ* — brand text, top-left.  When you're anonymous, an
+  italic tagline rides next to it: *"Sign in to save your
+  encounters and compendium changes."*
 - *Encounter* — link to the main view at ~/~.
-- *Customize card* — opens the Card Editor.
-- *Custom: on / off* — toggles the customised card renderer.
-- *User badge* — your display name, links to ~/me~.
+- *User badge / Sign in* — shows your display name (links to
+  ~/me~) when signed in.  When anonymous, shows a *Sign in*
+  link that takes you to the sign-in form.  On the sign-in page
+  itself the link is suppressed (it would point back to
+  itself).
+- *About* — link to a short ~/about~ page describing what
+  eZpZ-dndZ is and how it works.
+- *Donate* — link to ~/donate~.
+- *⚙ settings* — opens the *Set Theme* popover with the Theme
+  picker (and future preferences).  The radio list stacks
+  vertically; Accessible carries an italic *(alpha)* badge.
 
 ** Footer (fixed at the bottom)
 
-- *Copyright and license summary* on the left.
+- *Copyright and license summary* on the left.  *PolyForm Strict
+  1.0.0* is a link out to ~polyformproject.org~ for the full
+  license text.
 - *Beta disclaimer* in the middle ("features may change or break
   without notice").
 - *Contact* link on the right (mailto: ~feedback@ezpzdndz~).
@@ -679,13 +977,27 @@ In the Compendium browser, selection enables:
 * Themes and visual modes
 
 The *⚙ settings* button at the right of the app bar opens a
-popover with the *Theme* picker: *Modern*, *Dark*, or *Auto*
-(follow the OS preference).  *Modern* is the Linear/Vercel-style
-light palette — off-white surfaces, indigo accents, hairline
-borders, and the Inter typeface for UI text plus JetBrains Mono
-for numerics.  *Dark* keeps the classic dark palette with the
-system font stack.  *Auto* resolves to whichever matches the
-OS's current colour-scheme preference.
+popover with the *Theme* picker:
+
+- *Modern* — Linear/Vercel-style light palette: off-white
+  surfaces, indigo accents, hairline borders, Inter for UI text
+  plus JetBrains Mono for numerics.
+- *Dark* — classic dark palette with the system font stack.
+- *Auto* — resolves to Modern or Dark per your OS's current
+  colour-scheme preference.
+- *Accessible* — WCAG AAA-targeted high-contrast theme: bumped
+  font sizes across every panel, B&W creature-card buttons that
+  flip to black-fill / white-text on hover, larger touch
+  targets, 3-pixel focus rings, 24px checkboxes.  Honours
+  ~prefers-reduced-motion: reduce~ globally — animations
+  (including the Readied pulse) fall back to static highlights
+  when the OS asks for less motion.
+
+The picker is available in all sessions — anonymous or signed
+in — and your choice persists across reloads via your browser.
+The sign-in page itself always renders in the Dark palette
+regardless of your selected theme, so the form has a consistent
+look.
 
 Other always-on visual cues:
 
@@ -697,7 +1009,12 @@ Other always-on visual cues:
 
 * Keyboard and mouse shortcuts
 
-- *Escape* — closes any open modal, dropdown, or popover.
+- *Escape* — closes any open modal, dropdown, or popover.  On
+  the sign-in form (~/login~), Escape returns to the encounter
+  page.
+- *Skip to main content* — at the very start of the tab order
+  on every page; jumps past the AppBar links straight to the
+  encounter pane.  Visually hidden until focused.
 - *Click outside the modal* — same as Escape.
 - *Enter inside a single-line text field* — submits the form
   (Apply / Save / Roll).
@@ -705,15 +1022,19 @@ Other always-on visual cues:
   multi-select range from the last checked item to this one.
 - *Click the inline ability cell or dice expression in a stat
   block* — rolls it.
+- *Tab inside a modal* — wraps within the modal back to the
+  close button rather than escaping into the underlying page.
+- *Drag a modal's header* — repositions the modal.  *Drag any
+  edge or corner* — resizes the modal.  The chrome clamps to
+  the viewport so a modal can't be dragged off-screen.
 
 * Honest limitations and rough edges (today)
 
 We'd rather you know about these in advance than be surprised by
 them at the table.
 
-- *Card Editor* is a prototype.  Some widgets render as labelled
-  placeholders.  The classic renderer (toggle: *Custom: off*) is
-  the production view.
+- *Card Editor* is hidden for launch.  Every creature card uses
+  the classic built-in layout.  See [[*Card Customization (deferred for launch)][Card Customization (deferred for launch)]].
 - *Compendium Edit's advanced sections* — Legendary Actions, Lair
   Actions, Regional Effects, and Spellcasting — are partially
   editable.  Existing data is preserved on save, but the editor
@@ -723,6 +1044,11 @@ them at the table.
   the server.  Restarting the app re-empties it.
 - *Mobile/tablet polish* is incomplete.  The app is targeted at
   laptop and desktop screens for now.
+- *Anonymous named saves don't auto-migrate.*  When you sign
+  in, your live encounter is auto-archived to your account.
+  Your *named* encounter saves stay in your browser — sign out
+  to access them anonymously again, or open each and re-save
+  under your account.
 
 If you spot something not on this list, it's almost certainly a
 bug — please report it.

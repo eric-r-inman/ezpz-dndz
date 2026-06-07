@@ -6,9 +6,10 @@ module Compendium exposing
     , Spellcasting, SpellSlotLevel, InnatePerDay, CustomSection
     , Habitat(..), allHabitats, habitatLabel, habitatToWire, habitatFromWire, isPlanarHabitat
     , Treasure(..), allTreasures, treasureLabel, treasureToWire, treasureFromWire
-    , Db, fromList, toList, count
+    , Db, fromList, toList, count, upsert, remove
     , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat
+    , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
     , instanceKindLine, sourceHasLegendaryResistance
     )
@@ -35,7 +36,7 @@ lives in `View/` modules and consumes this domain.
 
 # Database
 
-@docs Db, fromList, toList, count
+@docs Db, fromList, toList, count, upsert, remove
 
 
 # Lookup / filter / sort
@@ -46,6 +47,7 @@ lives in `View/` modules and consumes this domain.
 # Helpers
 
 @docs crToFloat
+@docs stripTrailingRecharge, appendRechargeSuffix
 
 
 # Compendium → Encounter handoff
@@ -687,6 +689,47 @@ count (Db cs) =
     List.length cs
 
 
+{-| Insert-or-replace a creature by id. Used by anonymous-mode
+local CRUD: every create / edit submits through here so the
+in-memory store is the source of truth that the localStorage
+persistence layer mirrors.
+
+If a creature with the same id already exists it's replaced in
+place (preserving list order); otherwise the new creature is
+appended.
+
+-}
+upsert : Creature -> Db -> Db
+upsert creature (Db cs) =
+    let
+        replaced =
+            List.map
+                (\c ->
+                    if c.id == creature.id then
+                        creature
+
+                    else
+                        c
+                )
+                cs
+    in
+    if List.any (\c -> c.id == creature.id) cs then
+        Db replaced
+
+    else
+        Db (cs ++ [ creature ])
+
+
+{-| Remove a creature by id. No-op if the id isn't found.
+Anonymous-mode delete path uses this; the authenticated path goes
+through the server and the response handler does the equivalent
+in-memory mutation.
+-}
+remove : String -> Db -> Db
+remove id (Db cs) =
+    Db (List.filter (\c -> c.id /= id) cs)
+
+
 find : String -> Db -> Maybe Creature
 find id (Db cs) =
     List.filter (\c -> c.id == id) cs |> List.head
@@ -820,6 +863,9 @@ draftToInstance { displayName, initiativeRoll } c =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = Encounter.emptyDeathSaves
+    , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = rechargeAbilitiesFor c
     , readied = False
     , inactive = False
     , note = ""
@@ -830,7 +876,30 @@ draftToInstance { displayName, initiativeRoll } c =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = sourceHasLegendaryResistance c
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = kindKey c.kind
+    , race = c.race
+    , alignment = c.alignment
     }
+
+
+{-| Lowercase wire token for a creature kind. Matches the value
+written into `Encounter.Creature.creatureKind` so the Kind Badge
+in the Custom Card renderer can branch on the same string in
+either spawn path (compendium-spawned creatures, anonymous-mode
+localStorage round-trips, server saves).
+-}
+kindKey : CreatureKind -> String
+kindKey k =
+    case k of
+        Player ->
+            "player"
+
+        Enemy ->
+            "enemy"
+
+        Npc ->
+            "npc"
 
 
 {-| Detect whether a compendium creature has the standard
@@ -846,6 +915,172 @@ sourceHasLegendaryResistance c =
     List.any
         (\t -> String.contains "legendary resistance" (String.toLower t.name))
         c.traits
+
+
+{-| Walk every Feature on a compendium creature (traits, actions,
+bonus actions, reactions) and emit one `Encounter.RechargeAbility`
+per feature whose `usage` is `Recharge`. Spawned instances start
+with all recharge abilities `ready = True`. Legendary-action
+options are excluded — they have their own pip-strip mechanism
+(`legendaryActionsUsed`) and don't use the recharge model.
+-}
+rechargeAbilitiesFor : Creature -> List Encounter.RechargeAbility
+rechargeAbilitiesFor c =
+    [ c.traits, c.actions, c.bonusActions, c.reactions ]
+        |> List.concat
+        |> List.filterMap rechargeAbilityFromFeature
+
+
+{-| Extract a `RechargeAbility` from a Feature when possible.
+
+Two paths are tried, in order:
+
+  - **Structured**: the feature's `usage` is `Recharge { low, high }`.
+    The canonical shape, but the bundled SRD 5.2.1 data doesn't
+    populate it — those features carry `usage = null` and bake the
+    recharge into the name instead.
+  - **Name fallback**: parse a trailing `(Recharge N)` or
+    `(Recharge N-M)` suffix on the feature name (e.g.
+    "Petrifying Gaze (Recharge 4-6)" → 4–6). Handles both `-` and
+    `–` (en-dash) since stat-block prose varies. Strip the suffix
+    from the stored name so the chip reads "Petrifying Gaze"
+    instead of repeating the range.
+
+`(Recharge after a Short or Long Rest)` and similar phrasings
+fall through to `Nothing` — those aren't d6-recharge mechanics
+and don't fit this tracker.
+
+-}
+rechargeAbilityFromFeature : Feature -> Maybe Encounter.RechargeAbility
+rechargeAbilityFromFeature f =
+    case f.usage of
+        Just (Recharge { low, high }) ->
+            Just { name = f.name, low = low, high = high, ready = True, awaitingRoll = False }
+
+        _ ->
+            parseRechargeFromName f.name
+
+
+parseRechargeFromName : String -> Maybe Encounter.RechargeAbility
+parseRechargeFromName fullName =
+    let
+        ( before, suffix ) =
+            splitOnLastOpenParen fullName
+
+        cleanedName =
+            String.trimRight before
+    in
+    rangeFromSuffix suffix
+        |> Maybe.map
+            (\( low, high ) ->
+                { name = cleanedName, low = low, high = high, ready = True, awaitingRoll = False }
+            )
+
+
+{-| Split a string into `(before-last-paren, parenthetical-content)`.
+For `"Petrifying Gaze (Recharge 4-6)"` returns `("Petrifying Gaze ",
+"Recharge 4-6)")`. When no `(` is present, returns the input and an
+empty string so the caller skips the parse.
+-}
+splitOnLastOpenParen : String -> ( String, String )
+splitOnLastOpenParen s =
+    case String.indexes "(" s |> List.reverse |> List.head of
+        Just idx ->
+            ( String.left idx s
+            , String.dropLeft (idx + 1) s
+            )
+
+        Nothing ->
+            ( s, "" )
+
+
+{-| Pull `(low, high)` out of a parenthetical like
+`"Recharge 4-6)"` or `"Recharge 5)"`. Accepts ASCII `-` and the
+en-dash `–` as the range separator; ignores trailing characters
+after the closing paren (or its absence).
+-}
+rangeFromSuffix : String -> Maybe ( Int, Int )
+rangeFromSuffix suffix =
+    let
+        trimmed =
+            suffix
+                |> String.replace ")" ""
+                |> String.trim
+    in
+    case String.words trimmed of
+        [ "Recharge", range ] ->
+            parseRechargeRange range
+
+        _ ->
+            Nothing
+
+
+parseRechargeRange : String -> Maybe ( Int, Int )
+parseRechargeRange range =
+    let
+        normalised =
+            String.replace "–" "-" range
+    in
+    case String.split "-" normalised of
+        [ singleVal ] ->
+            String.toInt singleVal
+                |> Maybe.map (\n -> ( n, n ))
+
+        [ low, high ] ->
+            Maybe.map2 Tuple.pair (String.toInt low) (String.toInt high)
+
+        _ ->
+            Nothing
+
+
+{-| Drop a trailing `(Recharge N)` / `(Recharge N-M)` /
+`(Recharge N–M)` parenthetical from a feature name, returning the
+input unchanged if no such suffix is present. Used by the
+Compendium Edit form to keep the canonical mechanic in the
+structured `usage` field instead of duplicated in the name — see
+the comment at `rechargeAbilityFromFeature` for the back-story on
+why the two sources can otherwise diverge.
+
+`(Recharge after a Short or Long Rest)` and other non-d6 phrasings
+intentionally fall through (they don't parse as a range), so the
+helper only strips the d6-recharge form that the tracker
+understands.
+
+-}
+stripTrailingRecharge : String -> String
+stripTrailingRecharge name =
+    let
+        ( before, suffix ) =
+            splitOnLastOpenParen name
+    in
+    case rangeFromSuffix suffix of
+        Just _ ->
+            String.trimRight before
+
+        Nothing ->
+            name
+
+
+{-| Inverse of `stripTrailingRecharge`: append a
+`(Recharge N-M)` (or `(Recharge N)` when low == high)
+parenthetical to a name. If the name already carries a
+trailing recharge parenthetical it's replaced rather than
+duplicated.
+-}
+appendRechargeSuffix : { low : Int, high : Int } -> String -> String
+appendRechargeSuffix { low, high } name =
+    let
+        rangeText =
+            if low == high then
+                String.fromInt low
+
+            else
+                String.fromInt low ++ "-" ++ String.fromInt high
+
+        stripped =
+            stripTrailingRecharge name
+    in
+    stripped ++ " (Recharge " ++ rangeText ++ ")"
 
 
 {-| Build the human-readable "kind" line shown under the name on

@@ -30,6 +30,7 @@ tokio-listener = { workspace = true }
 aide = { workspace = true }
 schemars = { workspace = true }
 uuid = { workspace = true }
+sha2 = { workspace = true }
 
 # Required by foundation's `impl_server_state!` — the macro emits
 # `FromRef` impls that name `::prometheus::Registry` and

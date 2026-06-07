@@ -1,4 +1,7 @@
-module Ui.Condition exposing (ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition)
+module Ui.Condition exposing
+    ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
+    , ConditionPreset, applyPreset, toPreset
+    )
 
 {-| Condition / effect modal state.
 
@@ -28,6 +31,7 @@ section: `Nothing` hides it, `Just _` reveals.
 
 import Encounter
 import Msg exposing (DurationKind(..))
+import Set exposing (Set)
 
 
 {-| Modal state for the Add / Edit Condition dialog.
@@ -56,6 +60,11 @@ type alias ConditionUi =
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
     , applyToSelected : Bool
+    , loadMenuOpen : Bool
+    , pendingSaveName : Maybe String
+    , pendingSaveCategory : String
+    , loadedPresetName : Maybe String
+    , expandedCategories : Set String
     }
 
 
@@ -106,6 +115,11 @@ fresh target =
     , countdownPhase = Encounter.AtEnd
     , saveToEnd = Nothing
     , applyToSelected = False
+    , loadMenuOpen = False
+    , pendingSaveName = Nothing
+    , pendingSaveCategory = ""
+    , loadedPresetName = Nothing
+    , expandedCategories = Set.empty
     }
 
 
@@ -177,4 +191,107 @@ fromCondition target cond =
     , countdownPhase = durFields.countdownPhase
     , saveToEnd = saveUi
     , applyToSelected = False
+    , loadMenuOpen = False
+    , pendingSaveName = Nothing
+    , pendingSaveCategory = ""
+    , loadedPresetName = Nothing
+    , expandedCategories = Set.empty
+    }
+
+
+{-| Saved-named subset of `ConditionUi` — the parts a user is
+likely to reuse across encounters when they keep applying the
+same condition shape (DM uses Stun a lot? save the whole config).
+
+Excludes everything that's context-specific to one application:
+
+  - `target` / `editingId` / `applyToSelected` — per-creature.
+  - `untilCreature` — references a specific name; on load the
+    handler defaults it to the current target so "Until self's
+    next turn" comes through correctly.
+  - `loadMenuOpen` / `pendingSaveName` / `loadedPresetName` —
+    transient UI state, not part of the preset.
+
+-}
+type alias ConditionPreset =
+    { conditionName : String
+    , customName : String
+    , note : String
+    , durationKind : DurationKind
+    , untilPhase : Encounter.TurnPhase
+    , countdownTurnsText : String
+    , countdownTurns : Int
+    , countdownPhase : Encounter.TurnPhase
+    , saveToEnd : Maybe SaveToEndUi
+    , category : String
+    }
+
+
+{-| Project the current form state down to a savable preset.
+Field names are renamed (`name` → `conditionName`) so the wire
+shape is self-explanatory; the rest map straight through.
+User-saved presets get `category = ""` and render in the "My
+Presets" section at the top of the Load menu, above the four
+bundled categories.
+-}
+toPreset : ConditionUi -> ConditionPreset
+toPreset ui =
+    { conditionName = ui.name
+    , customName = ui.customName
+    , note = ui.note
+    , durationKind = ui.durationKind
+    , untilPhase = ui.untilPhase
+    , countdownTurnsText = ui.countdownTurnsText
+    , countdownTurns = ui.countdownTurns
+    , countdownPhase = ui.countdownPhase
+    , saveToEnd = ui.saveToEnd
+    , category = ""
+    }
+
+
+{-| Overlay a saved preset on the current form state. Keeps the
+form's per-application context (`target`, `editingId`,
+`applyToSelected`) and reuses the current target as the
+`untilCreature` default — that's the natural fit for self-effect
+presets like "Until self's next turn", which is what Stun and
+many other 5e conditions look like in practice.
+
+Stashes the preset name in `loadedPresetName` so the title bar
+shows "(loaded: Stun)". Closes any open load menu and clears the
+pending save-name input so the post-load footer reads cleanly.
+
+-}
+applyPreset : String -> ConditionPreset -> ConditionUi -> ConditionUi
+applyPreset presetName preset ui =
+    let
+        -- `ui.name` is the effective chip label and drives the
+        -- Apply button's enabled state.  For presets that use a
+        -- standard condition, `conditionName` carries the label
+        -- ("Stunned"); for custom-named bundled presets like
+        -- *Bardic Inspiration*, `conditionName` is empty and the
+        -- label lives in `customName` instead.  Fall back to the
+        -- latter so loading a custom-named preset doesn't land
+        -- with an unset name + a disabled Apply button.
+        effectiveName =
+            if String.isEmpty preset.conditionName then
+                preset.customName
+
+            else
+                preset.conditionName
+    in
+    { ui
+        | name = effectiveName
+        , customName = preset.customName
+        , note = preset.note
+        , durationKind = preset.durationKind
+        , untilCreature = ui.target
+        , untilPhase = preset.untilPhase
+        , countdownTurnsText = preset.countdownTurnsText
+        , countdownTurns = preset.countdownTurns
+        , countdownPhase = preset.countdownPhase
+        , saveToEnd = preset.saveToEnd
+        , loadMenuOpen = False
+        , pendingSaveName = Nothing
+        , pendingSaveCategory = ""
+        , loadedPresetName = Just presetName
     }

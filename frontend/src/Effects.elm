@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, pushIncomingDiceRoll, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -37,6 +37,7 @@ import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
+import Ports
 import Process
 import Route exposing (Route(..))
 import Task
@@ -202,6 +203,53 @@ autoRollCmdForCondition mode bearer cond =
             Nothing
 
 
+{-| Build a `Dice.rollCmd` for every expended recharge ability on
+the named creature at the start of their turn. Each roll is a
+plain `1d6`; the result lands in `RechargeRollLanded` which
+re-checks the ability's `low` threshold and flips `ready=True`
+when the d6 meets or exceeds it. Rolls land in the dice history
+with a source label like "Recharge: Fire Breath → Smaug" so the
+GM can read whether the engine made the check or not.
+
+`abilityName` doubles as the lookup key when the roll lands; the
+handler does an O(n) scan over the creature's `rechargeAbilities`
+matching by name. Names within a creature are assumed unique
+(SRD bestiary follows this); duplicates would mean both
+abilities recharge together, which is harmless.
+
+-}
+rechargeRollCmdsFor : String -> Encounter.Encounter -> List (Cmd Msg)
+rechargeRollCmdsFor name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.concatMap
+            (\c ->
+                List.filterMap (rechargeRollCmd c.name) c.rechargeAbilities
+            )
+
+
+rechargeRollCmd : String -> Encounter.RechargeAbility -> Maybe (Cmd Msg)
+rechargeRollCmd creatureName ability =
+    if ability.ready then
+        Nothing
+
+    else
+        Just
+            (Dice.rollCmd
+                (RechargeRollLanded creatureName ability.name)
+                { feature = "Recharge: " ++ ability.name, target = Just creatureName }
+                rechargeExpression
+            )
+
+
+rechargeExpression : Dice.Expression
+rechargeExpression =
+    { dice = [ { count = 1, faces = 6, sign = Dice.Positive } ]
+    , constant = 0
+    , damageType = Nothing
+    }
+
+
 {-| Source label for save-to-end rolls: "Save: WIS DC 13 →
 Brakka". The history reads informatively without the GM
 having to remember which condition the save was for.
@@ -239,9 +287,35 @@ here.
 When the modal is already open, the user can already see the
 roll, so no indicator is needed.
 
+Also broadcasts the roll to peer tabs via the dice
+BroadcastChannel so a stat block opened in its own tab and the
+main encounter tab keep a single shared log. Peer tabs receive
+the broadcast via `incomingDiceRoll` and run it through
+[`pushIncomingDiceRoll`](#pushIncomingDiceRoll) — same model
+mutation but without the broadcast Cmd, so we don't loop.
+
 -}
 pushDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
 pushDiceRoll roll model =
+    let
+        ( next, flashCmd ) =
+            pushIncomingDiceRoll roll model
+    in
+    ( next
+    , Cmd.batch
+        [ flashCmd
+        , Ports.broadcastDiceRoll (Dice.encodeRoll roll)
+        ]
+    )
+
+
+{-| Same model mutation as [`pushDiceRoll`](#pushDiceRoll) but no
+broadcast Cmd — used by the inbound BroadcastChannel handler so
+receiving a peer's roll doesn't bounce it back across the channel
+and create an echo loop.
+-}
+pushIncomingDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
+pushIncomingDiceRoll roll model =
     let
         d =
             model.dice

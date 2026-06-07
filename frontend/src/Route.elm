@@ -17,18 +17,31 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
 {-| Every URL the SPA recognizes.
 
   - `Home` — the encounter manager (default).
+  - `Login` — sign-in / register form, reachable from the AppBar's
+    Sign-in button when the user is anonymous.
   - `Me` — placeholder for a future profile page.
+  - `About` — static "about this app" page, linked from the
+    AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
     block, opened via the ↗ link in the side panel.
+  - `QuickList` — standalone read-only condensed view of the
+    combat queue, opened via the ↗ button in the encounter
+    title bar. Cross-tab synced through the
+    `broadcastEncounter` / `incomingEncounter` port pair so
+    the page auto-updates as the GM mutates state in the
+    main tab.
   - `NotFound` — fallback that the server falls back to
     `index.html` for, so deep-link reloads still work.
 
 -}
 type Route
     = Home
+    | Login
     | Me
     | Donate
+    | About
     | CompendiumCreaturePage String
+    | QuickList
     | NotFound
 
 
@@ -36,8 +49,11 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Url.Parser.map Home top
+        , Url.Parser.map Login (Url.Parser.s "login")
         , Url.Parser.map Me (Url.Parser.s "me")
         , Url.Parser.map Donate (Url.Parser.s "donate")
+        , Url.Parser.map About (Url.Parser.s "about")
+        , Url.Parser.map QuickList (Url.Parser.s "quick-list")
         , Url.Parser.map CompendiumCreaturePage
             (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         ]

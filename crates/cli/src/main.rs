@@ -19,6 +19,7 @@ mod compendium;
 mod config;
 mod dice;
 mod encounter;
+mod habitats;
 
 use compendium::CompendiumCliError;
 use config::{Command, Config};

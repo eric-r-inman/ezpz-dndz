@@ -5,6 +5,14 @@ module Update.Timer exposing
     , noteChanged
     , open
     , phaseSet
+    , presetDelete
+    , presetLoad
+    , presetLoadMenuClose
+    , presetLoadMenuToggle
+    , presetSaveCancel
+    , presetSaveNameChanged
+    , presetSaveStart
+    , presetSaveSubmit
     , turnsChanged
     )
 
@@ -14,6 +22,7 @@ boundary and rings once when it hits zero, after which the GM can
 dismiss it.
 -}
 
+import Dict
 import Encounter exposing (TurnPhase)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg)
@@ -107,5 +116,126 @@ dismiss name model =
         | encounter =
             Encounter.mapCreature name (\c -> { c | timer = Nothing }) model.encounter
       }
+    , Cmd.none
+    )
+
+
+
+-- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| Mirror of `Update.Condition.presetSaveStart` / etc. — see
+those for the shared semantics. The timer flavour stores its
+dict at `Model.timerPresets` and persists to
+`localStorage.timerPresets` via the wrapper in `Main`.
+-}
+presetSaveStart : Model -> ( Model, Cmd Msg )
+presetSaveStart model =
+    ( withTimerSetup
+        (\u -> { u | pendingSaveName = Just "", loadMenuOpen = False })
+        model
+    , Cmd.none
+    )
+
+
+presetSaveNameChanged : String -> Model -> ( Model, Cmd Msg )
+presetSaveNameChanged text model =
+    ( withTimerSetup (\u -> { u | pendingSaveName = Just text }) model
+    , Cmd.none
+    )
+
+
+presetSaveCancel : Model -> ( Model, Cmd Msg )
+presetSaveCancel model =
+    ( withTimerSetup (\u -> { u | pendingSaveName = Nothing }) model
+    , Cmd.none
+    )
+
+
+presetSaveSubmit : Model -> ( Model, Cmd Msg )
+presetSaveSubmit model =
+    case model.modal of
+        Just (ModalTimerSetup ui) ->
+            let
+                trimmed =
+                    Maybe.withDefault "" ui.pendingSaveName
+                        |> String.trim
+            in
+            if String.isEmpty trimmed then
+                ( model, Cmd.none )
+
+            else
+                let
+                    preset =
+                        TimerUi.toPreset ui
+
+                    newPresets =
+                        Dict.insert trimmed preset model.timerPresets
+                in
+                ( { model | timerPresets = newPresets }
+                    |> withTimerSetup
+                        (\u ->
+                            { u
+                                | pendingSaveName = Nothing
+                                , loadedPresetName = Just trimmed
+                            }
+                        )
+                , Cmd.none
+                )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+presetLoadMenuToggle : Model -> ( Model, Cmd Msg )
+presetLoadMenuToggle model =
+    ( withTimerSetup
+        (\u ->
+            { u
+                | loadMenuOpen = not u.loadMenuOpen
+                , pendingSaveName = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+presetLoadMenuClose : Model -> ( Model, Cmd Msg )
+presetLoadMenuClose model =
+    ( withTimerSetup (\u -> { u | loadMenuOpen = False }) model
+    , Cmd.none
+    )
+
+
+presetLoad : String -> Model -> ( Model, Cmd Msg )
+presetLoad name model =
+    case Dict.get name model.timerPresets of
+        Just preset ->
+            ( withTimerSetup (TimerUi.applyPreset name preset) model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( withTimerSetup (\u -> { u | loadMenuOpen = False }) model
+            , Cmd.none
+            )
+
+
+presetDelete : String -> Model -> ( Model, Cmd Msg )
+presetDelete name model =
+    let
+        newPresets =
+            Dict.remove name model.timerPresets
+    in
+    ( { model | timerPresets = newPresets }
+        |> withTimerSetup
+            (\u ->
+                if u.loadedPresetName == Just name then
+                    { u | loadedPresetName = Nothing }
+
+                else
+                    u
+            )
     , Cmd.none
     )

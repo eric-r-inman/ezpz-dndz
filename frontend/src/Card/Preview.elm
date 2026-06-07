@@ -44,7 +44,7 @@ import Set
 view : CardLayout -> Creature -> Html msg
 view layout creature =
     div [ class "card-preview" ]
-        (List.map (renderRow creature) layout.rows)
+        (List.map (renderRow creature) layout.centerRows)
 
 
 
@@ -77,6 +77,9 @@ sampleCreature =
     , flyHeight = 0
     , bloodied = False
     , deathSaves = DeathSaves.empty
+    , acceptingDeathSaves = False
+    , reactionUsed = False
+    , rechargeAbilities = []
     , readied = False
     , inactive = False
     , note = ""
@@ -87,6 +90,10 @@ sampleCreature =
     , legendaryActionsUsed = Set.empty
     , hasLegendaryResistance = False
     , legendaryResistanceUsed = Set.empty
+    , isPlaceholder = False
+    , creatureKind = "enemy"
+    , race = "Beast"
+    , alignment = "Neutral"
     }
 
 
@@ -169,9 +176,11 @@ renderWidget creature widget =
         WidgetKindBadge ->
             span [ class "card-preview__chip" ] [ text "Enemy" ]
 
-        WidgetRaceLine ->
-            span [ class "card-preview__race" ]
-                [ text "Goblin · Chaotic Evil" ]
+        WidgetTypeBadge ->
+            span [ class "card-preview__chip" ] [ text "Goblinoid" ]
+
+        WidgetAlignmentBadge ->
+            span [ class "card-preview__chip" ] [ text "Chaotic Evil" ]
 
         WidgetConditions ->
             if List.isEmpty creature.conditions then
@@ -292,6 +301,18 @@ renderWidget creature widget =
                 , span [ class "card-preview__tag-badge" ] [ text "fire_resist" ]
                 ]
 
+        WidgetMoveUpButton ->
+            iconChip "↑" "move up"
+
+        WidgetMoveDownButton ->
+            iconChip "↓" "move down"
+
+        WidgetMakeActiveButton ->
+            iconChip "→" "make active"
+
+        WidgetReplaceButton ->
+            iconChip "⇄" "replace"
+
 
 
 -- ── WIDGET HELPERS ───────────────────────────────────────────────────────────
@@ -394,7 +415,7 @@ coverLabel cover =
             "3/4"
 
         FullCover ->
-            "full"
+            "total"
 
 
 boolLabel : String -> Bool -> String

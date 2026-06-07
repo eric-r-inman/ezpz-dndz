@@ -21,6 +21,7 @@ Close discards it.
 
 -}
 
+import Auth
 import Card.Layout as Layout
     exposing
         ( CardLayout
@@ -59,7 +60,9 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.CardEditor exposing (CardEditorUi)
+import View.AuthGate as AuthGate
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -71,11 +74,12 @@ view model =
                 , noOp = NoOp
                 , title = "🎨 Customize Creature Card"
                 , extraClass = "modal--card-editor"
+                , chrome = model.modalChrome
                 , body =
                     [ banner
                     , errorBanner ui
                     , overwriteBanner ui
-                    , savedLayoutsSection ui model.savedCardLayouts
+                    , savedLayoutsSection model.auth ui model.savedCardLayouts
                     , twoColumn ui
                     , footer ui
                     ]
@@ -139,12 +143,12 @@ overwriteBanner ui =
 -- ── SAVED LAYOUTS ────────────────────────────────────────────────────────────
 
 
-savedLayoutsSection : CardEditorUi -> List CardWire.SavedLayoutMeta -> Html Msg
-savedLayoutsSection ui metas =
+savedLayoutsSection : Auth.AuthState -> CardEditorUi -> List CardWire.SavedLayoutMeta -> Html Msg
+savedLayoutsSection auth ui metas =
     div [ class "card-editor__saved" ]
         [ div [ class "card-editor__saved-header" ]
             [ label [ class "card-editor__label" ] [ text "Saved layouts" ]
-            , saveAsControls ui
+            , saveAsControls auth ui
             ]
         , if List.isEmpty metas then
             p [ class "card-editor__saved-empty" ]
@@ -156,8 +160,17 @@ savedLayoutsSection ui metas =
         ]
 
 
-saveAsControls : CardEditorUi -> Html Msg
-saveAsControls ui =
+saveAsControls : Auth.AuthState -> CardEditorUi -> Html Msg
+saveAsControls auth ui =
+    let
+        tooltip =
+            case auth of
+                Auth.AuthAuthenticated _ ->
+                    "Save this card layout to the server under the entered name."
+
+                _ ->
+                    "Save this card layout in this browser under the entered name."
+    in
     div [ class "card-editor__save-as" ]
         [ input
             [ class "card-editor__save-as-input"
@@ -172,6 +185,7 @@ saveAsControls ui =
         , button
             [ class "action-btn action-btn--green"
             , onClick CardEditorSaveAs
+            , Tooltips.attr tooltip
             , disabled ui.busy
             ]
             [ text
@@ -225,8 +239,45 @@ editorPane : CardEditorUi -> Html Msg
 editorPane ui =
     div [ class "card-editor__pane card-editor__pane--editor" ]
         [ queueViewSection ui
+        , sideColumnsSection ui
         , rowsSection ui
-        , rowFooterControls
+        , rowFooterControls ui
+        ]
+
+
+{-| Two checkboxes for the death-saves and legendary side
+columns. These columns are toggle-only — when on, they appear
+in the same slot the non-custom card uses with the same fixed
+pip content; when off, the column is hidden entirely. The
+contents are NOT user-customisable.
+-}
+sideColumnsSection : CardEditorUi -> Html Msg
+sideColumnsSection ui =
+    div [ class "card-editor__side-columns" ]
+        [ label [ class "card-editor__label" ] [ text "Side columns" ]
+        , div [ class "card-editor__side-toggles" ]
+            [ sideColumnToggle
+                "Death-save pips"
+                ui.layout.deathSavesEnabled
+                CardEditorToggleDeathSaves
+            , sideColumnToggle
+                "Legendary pips (LA + LR)"
+                ui.layout.legendaryEnabled
+                CardEditorToggleLegendary
+            ]
+        ]
+
+
+sideColumnToggle : String -> Bool -> Msg -> Html Msg
+sideColumnToggle text_ checkedFlag msg =
+    label [ class "card-editor__side-toggle" ]
+        [ Html.input
+            [ type_ "checkbox"
+            , Attr.checked checkedFlag
+            , onClick msg
+            ]
+            []
+        , Html.span [] [ text text_ ]
         ]
 
 
@@ -271,13 +322,13 @@ queueViewOption current option_ =
 rowsSection : CardEditorUi -> Html Msg
 rowsSection ui =
     div [ class "card-editor__rows" ]
-        (if List.isEmpty ui.layout.rows then
+        (if List.isEmpty ui.layout.centerRows then
             [ p [ class "card-editor__empty" ]
                 [ text "No rows yet. Click \"+ Add Row\" below to start." ]
             ]
 
          else
-            List.indexedMap (rowBlock ui.focusRow) ui.layout.rows
+            List.indexedMap (rowBlock ui.focusRow) ui.layout.centerRows
         )
 
 
@@ -388,7 +439,11 @@ widgetGroup : Layout.WidgetCategory -> List (Html Msg)
 widgetGroup category =
     let
         members =
-            Layout.widgetAllValues
+            -- Centre-column picker only — rail widgets (move,
+            -- ×, etc.) and side-column widgets (death saves,
+            -- LA, LR) live in fixed shells and aren't user-
+            -- placeable inside a centre row.
+            Layout.centerEditableWidgets
                 |> List.filter (\w -> Layout.widgetCategory w == category)
 
         opt w =
@@ -406,14 +461,34 @@ widgetGroup category =
         ]
 
 
-rowFooterControls : Html Msg
-rowFooterControls =
+rowFooterControls : CardEditorUi -> Html Msg
+rowFooterControls ui =
+    let
+        rowCount =
+            List.length ui.layout.centerRows
+
+        atCap =
+            rowCount >= 3
+    in
     div [ class "card-editor__row-footer" ]
         [ button
             [ class "action-btn action-btn--blue"
             , onClick CardEditorRowAdd
+            , disabled atCap
+            , Attr.title
+                (if atCap then
+                    "Maximum of 3 centre rows"
+
+                 else
+                    "Append a new centre row"
+                )
             ]
-            [ text "+ Add Row" ]
+            [ text
+                ("+ Add Row ("
+                    ++ String.fromInt rowCount
+                    ++ "/3)"
+                )
+            ]
         , button
             [ class "action-btn action-btn--orange"
             , onClick CardEditorReset

@@ -55,6 +55,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 1 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -65,6 +68,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -93,6 +100,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -103,6 +113,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -124,6 +138,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = True
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = True
       , inactive = False
       , note = ""
@@ -134,6 +151,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -155,6 +176,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -165,6 +189,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -186,6 +214,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -196,6 +227,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -217,6 +252,9 @@ seedCreatures =
       , flyHeight = 30
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -227,6 +265,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -248,6 +290,9 @@ seedCreatures =
       , flyHeight = 0
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -258,6 +303,10 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -279,6 +328,9 @@ seedCreatures =
       , flyHeight = 15
       , bloodied = False
       , deathSaves = { successes = 0, failures = 0 }
+      , acceptingDeathSaves = False
+      , reactionUsed = False
+      , rechargeAbilities = []
       , readied = False
       , inactive = False
       , note = ""
@@ -289,5 +341,9 @@ seedCreatures =
       , legendaryActionsUsed = Set.empty
       , hasLegendaryResistance = False
       , legendaryResistanceUsed = Set.empty
+      , isPlaceholder = False
+      , creatureKind = "enemy"
+      , race = ""
+      , alignment = ""
       }
     ]

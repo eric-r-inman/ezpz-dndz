@@ -1,5 +1,6 @@
 module Update.Encounter exposing
-    ( adjustFlyHeight
+    ( addPlaceholder
+    , adjustFlyHeight
     , controlCancel
     , controlConfirm
     , cycleCover
@@ -7,10 +8,12 @@ module Update.Encounter exposing
     , moveCreatureDown
     , moveCreatureUp
     , nextTurn
+    , rechargeRollLanded
     , removeCreature
     , requestClear
     , requestReset
     , rollFallDamage
+    , rollRechargeNow
     , run
     , setActive
     , shiftToggleSelected
@@ -19,7 +22,9 @@ module Update.Encounter exposing
     , toggleFlying
     , toggleHiding
     , toggleInactive
+    , toggleReaction
     , toggleReadied
+    , toggleRechargeAbility
     , toggleSelected
     )
 
@@ -42,6 +47,7 @@ import Encounter.Lifecycle
 import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
+import Set
 
 
 {-| Local lens for `model.encounter`. Kept private to this module —
@@ -91,6 +97,10 @@ nextTurn model =
             else
                 []
     in
+    -- Recharge d6s used to auto-fire here; the card now renders a
+    -- blinking dice glyph on the active creature's spent recharge
+    -- chip and the GM clicks to roll, so we don't include the
+    -- recharge cmds in the turn-advance batch any more.
     ( { model | encounter = newEnc }
     , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls)
     )
@@ -156,6 +166,134 @@ toggleReadied name model =
     ( withEncounter (Encounter.mapCreature name (\c -> { c | readied = not c.readied })) model
     , Cmd.none
     )
+
+
+{-| Toggle the per-creature reaction pip. Every creature gets one
+reaction per round in 5e (opportunity attack, Counterspell,
+Shield, Hellish Rebuke…); the pip flips back to "available"
+automatically at the start of the creature's next turn — see
+`Encounter.Lifecycle.applyBeginOfTurn` for the reset. Click is
+also wired manually so the GM can adjust if they need to undo
+or pre-spend.
+-}
+toggleReaction : String -> Model -> ( Model, Cmd Msg )
+toggleReaction name model =
+    ( withEncounter
+        (Encounter.mapCreature name (\c -> { c | reactionUsed = not c.reactionUsed }))
+        model
+    , Cmd.none
+    )
+
+
+{-| Flip a single recharge ability between ready / expended. Used
+when the GM clicks the recharge chip on a creature's card —
+useful when the engine's auto-roll outcome is wrong (a homebrew
+recharge rule fired, or the GM wants to pre-expend / refund).
+No-op if no ability with `abilityName` is found.
+-}
+toggleRechargeAbility : String -> String -> Model -> ( Model, Cmd Msg )
+toggleRechargeAbility creatureName abilityName model =
+    ( withEncounter
+        (Encounter.mapCreature creatureName
+            (\c ->
+                { c
+                    | rechargeAbilities =
+                        List.map
+                            (\a ->
+                                if a.name == abilityName then
+                                    -- Always clear awaitingRoll on toggle:
+                                    -- ready→spent shouldn't surface the prompt
+                                    -- this turn (it waits for the next begin-
+                                    -- of-turn hook), and spent→ready obviously
+                                    -- doesn't need the prompt either.
+                                    { a | ready = not a.ready, awaitingRoll = False }
+
+                                else
+                                    a
+                            )
+                            c.rechargeAbilities
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Fire the recharge d6 for a single ability on demand —
+wired to the blinking dice glyph on the spent + active chip.
+The roll continuation lands in `rechargeRollLanded` just like
+the previous auto-roll path did, so result handling is shared.
+
+A no-op if the ability is already ready (the dice shouldn't be
+clickable in that state, but we guard defensively against a
+stale click during a transition).
+
+-}
+rollRechargeNow : String -> String -> Model -> ( Model, Cmd Msg )
+rollRechargeNow creatureName abilityName model =
+    let
+        ability =
+            model.encounter.creatures
+                |> List.filter (\c -> c.name == creatureName)
+                |> List.concatMap .rechargeAbilities
+                |> List.filter (\a -> a.name == abilityName)
+                |> List.head
+    in
+    case ability of
+        Just a ->
+            case Effects.rechargeRollCmd creatureName a of
+                Just cmd ->
+                    ( model, cmd )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Begin-of-turn d6 landed for one recharge ability. If the
+total meets the ability's `low` threshold, flip `ready = True`.
+Either way, push the roll into the dice history so the GM can
+see what was rolled. No-op if the ability is no longer on the
+creature (e.g. the GM edited it away between roll fire and
+landing).
+-}
+rechargeRollLanded : String -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+rechargeRollLanded creatureName abilityName roll model =
+    let
+        nextEncounter =
+            Encounter.mapCreature creatureName
+                (\c ->
+                    { c
+                        | rechargeAbilities =
+                            List.map
+                                (\a ->
+                                    if a.name == abilityName then
+                                        -- Clear awaitingRoll regardless of
+                                        -- outcome: a failed roll doesn't get
+                                        -- to re-prompt on the same turn
+                                        -- (RAW: one recharge attempt per
+                                        -- turn).  Next begin-of-turn hook
+                                        -- will set it back if still spent.
+                                        { a
+                                            | ready = roll.total >= a.low
+                                            , awaitingRoll = False
+                                        }
+
+                                    else
+                                        a
+                                )
+                                c.rechargeAbilities
+                    }
+                )
+                model.encounter
+
+        ( pushed, flashCmd ) =
+            Effects.pushDiceRoll roll { model | encounter = nextEncounter }
+    in
+    ( pushed, flashCmd )
 
 
 {-| Toggle the per-creature `inactive` flag. An inactive
@@ -224,6 +362,14 @@ removeCreature name model =
     ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
 
 
+{-| Drop a "Placeholder N" stub at the bottom of the queue. No
+sort — see `Encounter.Roster.appendPlaceholder` for the rationale.
+-}
+addPlaceholder : Model -> ( Model, Cmd Msg )
+addPlaceholder model =
+    ( withEncounter Encounter.Roster.appendPlaceholder model, Cmd.none )
+
+
 {-| First click of Reset: stage the pending state so the panel
 renders the confirmation banner. The actual revert happens in
 [`controlConfirm`](#controlConfirm); this branch is purely
@@ -244,10 +390,16 @@ requestClear model =
 
 {-| Apply whichever destructive action is currently staged.
 
-  - `PendingReset` — restore the encounter to its last-saved
-    snapshot (or the empty default if no snapshot exists yet)
-    and force `round = 0` with no active creature, so the GM
-    is back in pre-combat mode.
+  - `PendingReset` — keep the current roster intact but wipe each
+    creature's per-fight state: HP back to full, no temp HP, no
+    conditions / save notices / death saves, every status toggle
+    off (cover, concentration, hiding, dodging, flying, readied,
+    inactive), legendary actions / resistances refilled, timers
+    cleared. Identity + combat baselines (name, kind, initiative,
+    AC, max HP, note, memo, compendium back-reference) survive
+    untouched. Round counter goes back to 0 and `activeName`
+    clears so the GM is back in pre-combat mode with the same
+    cast.
   - `PendingClear` — drop every creature; force `round = 0`.
 
 In both cases the pending state is cleared so the panel returns
@@ -259,15 +411,17 @@ controlConfirm model =
     case model.pendingControl of
         Just PendingReset ->
             let
-                target =
-                    case model.savedSnapshot of
-                        Just snap ->
-                            { snap | round = 0, activeName = "" }
+                enc =
+                    model.encounter
 
-                        Nothing ->
-                            Encounter.empty
+                resetEnc =
+                    { enc
+                        | creatures = List.map resetCreatureState enc.creatures
+                        , round = 0
+                        , activeName = ""
+                    }
             in
-            ( { model | encounter = target, pendingControl = Nothing }
+            ( { model | encounter = resetEnc, pendingControl = Nothing }
             , Cmd.none
             )
 
@@ -281,6 +435,45 @@ controlConfirm model =
 
         Nothing ->
             ( model, Cmd.none )
+
+
+{-| Strip a creature back to "round 0" state. Identity + combat
+baselines (name, kind, initiative, ability stats, AC, max HP,
+note, memo, compendium id, legendary capability flags, selection
+checkbox) are preserved; everything that can change mid-fight is
+reset.
+-}
+resetCreatureState : Encounter.Creature -> Encounter.Creature
+resetCreatureState c =
+    { c
+        | currentHp = c.maxHp
+        , tempHp = 0
+        , conditions = []
+        , saveNotices = []
+        , cover = Encounter.NoCover
+        , concentrating = False
+        , hiding = False
+        , dodging = False
+        , flying = False
+        , flyHeight = 0
+        , bloodied = False
+        , deathSaves = Encounter.emptyDeathSaves
+        , acceptingDeathSaves = False
+        , reactionUsed = False
+        , rechargeAbilities =
+            -- Identity-level data: the abilities themselves
+            -- persist (they're the creature's stat block, not
+            -- per-fight state).  Per-fight state on each — ready
+            -- + the begin-of-turn awaiting-roll prompt — resets.
+            List.map
+                (\a -> { a | ready = True, awaitingRoll = False })
+                c.rechargeAbilities
+        , readied = False
+        , inactive = False
+        , timer = Nothing
+        , legendaryActionsUsed = Set.empty
+        , legendaryResistanceUsed = Set.empty
+    }
 
 
 {-| Calculate falling damage for the named creature and fire it
