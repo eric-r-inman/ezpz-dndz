@@ -1567,6 +1567,9 @@ updateInner msg model =
         RandomEncounterMinionsToggle ->
             Update.RandomEncounter.minionsToggle model
 
+        RandomEncounterPinPickerToggle ->
+            Update.RandomEncounter.pinPickerToggle model
+
         RandomEncounterPinSearchChanged raw ->
             Update.RandomEncounter.pinSearchChanged raw model
 
@@ -1579,11 +1582,23 @@ updateInner msg model =
         RandomEncounterPinRemove id ->
             Update.RandomEncounter.pinRemove id model
 
+        RandomEncounterExcludePickerToggle ->
+            Update.RandomEncounter.excludePickerToggle model
+
+        RandomEncounterExcludeSearchChanged raw ->
+            Update.RandomEncounter.excludeSearchChanged raw model
+
+        RandomEncounterExcludeAdd id ->
+            Update.RandomEncounter.excludeAdd id model
+
+        RandomEncounterExcludeRemove id ->
+            Update.RandomEncounter.excludeRemove id model
+
         RandomEncounterGenerate ->
             Update.RandomEncounter.generate model
 
-        RandomEncounterRolled groups ->
-            Update.RandomEncounter.rolled groups model
+        RandomEncounterRolled groups minionIds ->
+            Update.RandomEncounter.rolled groups minionIds model
 
         RandomEncounterAddToEncounter ->
             Update.RandomEncounter.addToEncounter model

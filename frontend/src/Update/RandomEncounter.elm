@@ -1,7 +1,8 @@
 module Update.RandomEncounter exposing
     ( open, close
     , difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle
-    , pinSearchChanged, pinAdd, pinDecrement, pinRemove
+    , pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
+    , excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
     , generate, rolled
     , addToEncounter
     )
@@ -19,7 +20,8 @@ from the runtime; we don't carry a seed. Re-rolling is just
 
 @docs open, close
 @docs difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle
-@docs pinSearchChanged, pinAdd, pinDecrement, pinRemove
+@docs pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
+@docs excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
 @docs generate, rolled
 @docs addToEncounter
 
@@ -232,6 +234,46 @@ minionsToggle model =
 -- ── PIN PICKER ───────────────────────────────────────────────────────────────
 
 
+{-| Open / close the inline pin picker. Opening one picker
+closes the other (mutually exclusive — two open scrolling
+lists in the same modal is visual chaos). Clears the search
+field on close so the next open starts fresh.
+-}
+pinPickerToggle : Model -> ( Model, Cmd Msg )
+pinPickerToggle model =
+    ( Model.mapModal Model.randomEncounterLens
+        (\ui ->
+            let
+                opening =
+                    not ui.pinPickerOpen
+            in
+            { ui
+                | pinPickerOpen = opening
+                , pinSearch =
+                    if opening then
+                        ui.pinSearch
+
+                    else
+                        ""
+                , excludePickerOpen =
+                    if opening then
+                        False
+
+                    else
+                        ui.excludePickerOpen
+                , excludeSearch =
+                    if opening then
+                        ""
+
+                    else
+                        ui.excludeSearch
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
 {-| Search text edits update in real time; the view re-filters
 on every keystroke. We DON'T reset the roll here because
 changing the search doesn't change the pinned set — only adding
@@ -350,6 +392,105 @@ pinRemove id model =
 
 
 
+-- ── EXCLUDE PICKER ───────────────────────────────────────────────────────────
+
+
+{-| Open / close the inline exclude picker. Mutually exclusive
+with the pin picker — opening this one closes the pin picker.
+-}
+excludePickerToggle : Model -> ( Model, Cmd Msg )
+excludePickerToggle model =
+    ( Model.mapModal Model.randomEncounterLens
+        (\ui ->
+            let
+                opening =
+                    not ui.excludePickerOpen
+            in
+            { ui
+                | excludePickerOpen = opening
+                , excludeSearch =
+                    if opening then
+                        ui.excludeSearch
+
+                    else
+                        ""
+                , pinPickerOpen =
+                    if opening then
+                        False
+
+                    else
+                        ui.pinPickerOpen
+                , pinSearch =
+                    if opening then
+                        ""
+
+                    else
+                        ui.pinSearch
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+excludeSearchChanged : String -> Model -> ( Model, Cmd Msg )
+excludeSearchChanged raw model =
+    ( Model.mapModal Model.randomEncounterLens
+        (\ui -> { ui | excludeSearch = raw })
+        model
+    , Cmd.none
+    )
+
+
+{-| Add a creature to the exclude list by id. If it's already
+excluded, no-op. Clears the search so the next add starts
+fresh, mirroring the pin-add behaviour.
+-}
+excludeAdd : String -> Model -> ( Model, Cmd Msg )
+excludeAdd id model =
+    case model.compendium.db of
+        CompendiumDbLoaded db ->
+            case Compendium.find id db of
+                Just creature ->
+                    ( Model.mapModal Model.randomEncounterLens
+                        (\ui ->
+                            { ui
+                                | excluded =
+                                    if List.any (\c -> c.id == id) ui.excluded then
+                                        ui.excluded
+
+                                    else
+                                        ui.excluded ++ [ creature ]
+                                , excludeSearch = ""
+                                , roll = RollIdle
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+excludeRemove : String -> Model -> ( Model, Cmd Msg )
+excludeRemove id model =
+    ( Model.mapModal Model.randomEncounterLens
+        (\ui ->
+            { ui
+                | excluded = List.filter (\c -> c.id /= id) ui.excluded
+                , roll = RollIdle
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+
 -- ── GENERATE / ROLLED ────────────────────────────────────────────────────────
 
 
@@ -375,10 +516,15 @@ generate model =
                         , scale = ui.scale
                         , includeMinions = ui.includeMinions
                         , pinned = ui.pinned
+                        , excludedIds = List.map .id ui.excluded
                         }
                         (Compendium.toList db)
             in
-            ( model, Random.generate RandomEncounterRolled gen )
+            ( model
+            , Random.generate
+                (\r -> RandomEncounterRolled r.groups r.minionIds)
+                gen
+            )
 
         _ ->
             ( model, Cmd.none )
@@ -389,15 +535,15 @@ pool was empty (no creatures matched the filters at the chosen
 budget); store the distinct state so the view can render a
 "no matches" notice instead of a stale previous roll.
 -}
-rolled : List ( Creature, Int ) -> Model -> ( Model, Cmd Msg )
-rolled result model =
+rolled : List ( Creature, Int ) -> List String -> Model -> ( Model, Cmd Msg )
+rolled groups minionIds model =
     let
         next =
-            if List.isEmpty result then
+            if List.isEmpty groups then
                 RollEmptyPool
 
             else
-                RollOk result
+                RollOk groups minionIds
     in
     ( Model.mapModal Model.randomEncounterLens
         (\ui -> { ui | roll = next })
@@ -428,7 +574,7 @@ addToEncounter model =
     case model.modal of
         Just (ModalRandomEncounter ui) ->
             case ui.roll of
-                RollOk groups ->
+                RollOk groups _ ->
                     let
                         instances =
                             buildInstances model.encounter.creatures groups

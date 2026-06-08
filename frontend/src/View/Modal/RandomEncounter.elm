@@ -412,7 +412,18 @@ pinnedSection model ui =
 
           else
             pinnedBudgetRow model ui
-        , pinPicker model ui
+        , excludedList ui
+        , pickerButtons ui
+        , if ui.pinPickerOpen then
+            pinPickerBody model ui
+
+          else
+            text ""
+        , if ui.excludePickerOpen then
+            excludePickerBody model ui
+
+          else
+            text ""
         ]
 
 
@@ -420,10 +431,85 @@ pinnedHint : Html Msg
 pinnedHint =
     p [ class "random-encounter__pinned-hint" ]
         [ text
-            ("Pin specific creatures to lock them into the roll. "
-                ++ "Their XP comes off the budget before the random "
-                ++ "fill rolls."
+            ("Pin creatures to lock them into the roll — their "
+                ++ "XP comes off the budget before the random fill "
+                ++ "rolls. Exclude creatures to keep the random "
+                ++ "fill from ever picking them."
             )
+        ]
+
+
+pickerButtons : RandomEncounterUi -> Html Msg
+pickerButtons ui =
+    div [ class "random-encounter__picker-buttons" ]
+        [ button
+            [ class "action-btn action-btn--blue random-encounter__pin-toggle"
+            , Attr.type_ "button"
+            , onClick RandomEncounterPinPickerToggle
+            , attribute "aria-expanded"
+                (if ui.pinPickerOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text
+                (if ui.pinPickerOpen then
+                    "➖ Close picker"
+
+                 else
+                    "➕ Pin a creature"
+                )
+            ]
+        , button
+            [ class "action-btn action-btn--orange random-encounter__pin-toggle"
+            , Attr.type_ "button"
+            , onClick RandomEncounterExcludePickerToggle
+            , attribute "aria-expanded"
+                (if ui.excludePickerOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ text
+                (if ui.excludePickerOpen then
+                    "➖ Close picker"
+
+                 else
+                    "🚫 Exclude a creature"
+                )
+            ]
+        ]
+
+
+excludedList : RandomEncounterUi -> Html Msg
+excludedList ui =
+    if List.isEmpty ui.excluded then
+        text ""
+
+    else
+        ul [ class "random-encounter__excluded-list" ]
+            (List.map excludedRow ui.excluded)
+
+
+excludedRow : Creature -> Html Msg
+excludedRow creature =
+    li [ class "random-encounter__excluded-row" ]
+        [ span [ class "random-encounter__excluded-glyph" ] [ text "🚫" ]
+        , span [ class "random-encounter__excluded-name" ] [ text creature.name ]
+        , span [ class "random-encounter__excluded-cr" ]
+            [ text ("CR " ++ creature.challengeRating) ]
+        , button
+            [ class "icon-btn icon-btn--danger random-encounter__pinned-remove"
+            , Attr.type_ "button"
+            , onClick (RandomEncounterExcludeRemove creature.id)
+            , attribute "aria-label" ("Stop excluding " ++ creature.name)
+            , Attr.title "Stop excluding this creature"
+            ]
+            [ text "×" ]
         ]
 
 
@@ -529,20 +615,8 @@ pinnedBudgetRow model ui =
     p [ class cls ] [ text message ]
 
 
-{-| Search-as-you-type picker. The full alphabetized list of
-the loaded compendium is visible at all times — same shape as
-[`View.Modal.QuickAdd`](View-Modal-QuickAdd) — and typing in
-the search input narrows it via `Compendium.search`. Click
-any row to pin; the search resets so the GM can pin several
-in a row.
-
-The list is height-bounded by CSS (`max-height` + scroll);
-there's no cap on the row count because the natural
-alphabetical ordering is what the GM wants to scan.
-
--}
-pinPicker : Model -> RandomEncounterUi -> Html Msg
-pinPicker model ui =
+pinPickerBody : Model -> RandomEncounterUi -> Html Msg
+pinPickerBody model ui =
     let
         matches =
             case model.compendium.db of
@@ -557,7 +631,7 @@ pinPicker model ui =
         searchActive =
             not (String.isEmpty (String.trim ui.pinSearch))
     in
-    div [ class "random-encounter__pin-picker" ]
+    div [ class "random-encounter__pin-picker-body" ]
         [ input
             [ class "random-encounter__pin-search"
             , type_ "search"
@@ -583,6 +657,65 @@ pinPicker model ui =
           else
             ul [ class "random-encounter__pin-results" ]
                 (List.map pinResultRow matches)
+        ]
+
+
+excludePickerBody : Model -> RandomEncounterUi -> Html Msg
+excludePickerBody model ui =
+    let
+        matches =
+            case model.compendium.db of
+                CompendiumDbLoaded db ->
+                    Compendium.search ui.excludeSearch db
+                        |> Compendium.sortByName
+                        |> Compendium.toList
+
+                _ ->
+                    []
+
+        searchActive =
+            not (String.isEmpty (String.trim ui.excludeSearch))
+    in
+    div [ class "random-encounter__pin-picker-body" ]
+        [ input
+            [ class "random-encounter__pin-search"
+            , type_ "search"
+            , placeholder "🔍 Search creatures to exclude…"
+            , value ui.excludeSearch
+            , onInput RandomEncounterExcludeSearchChanged
+            , attribute "aria-label" "Search creatures to exclude"
+            ]
+            []
+        , if List.isEmpty matches then
+            if searchActive then
+                p [ class "random-encounter__pin-empty" ]
+                    [ text
+                        ("No matches for \""
+                            ++ String.trim ui.excludeSearch
+                            ++ "\"."
+                        )
+                    ]
+
+            else
+                text ""
+
+          else
+            ul [ class "random-encounter__pin-results" ]
+                (List.map excludeResultRow matches)
+        ]
+
+
+excludeResultRow : Creature -> Html Msg
+excludeResultRow c =
+    li
+        [ class "random-encounter__pin-result"
+        , onClick (RandomEncounterExcludeAdd c.id)
+        , attribute "role" "button"
+        , attribute "tabindex" "0"
+        ]
+        [ span [ class "random-encounter__pin-result-name" ] [ text c.name ]
+        , span [ class "random-encounter__pin-result-cr" ]
+            [ text ("CR " ++ c.challengeRating) ]
         ]
 
 
@@ -640,23 +773,43 @@ resultBody ui =
                     )
                 ]
 
-        RollOk groups ->
+        RollOk groups minionIds ->
             div [ class "random-encounter__groups" ]
-                (List.map groupRow groups
+                (List.map (groupRow minionIds) groups
                     ++ [ totalRow groups ]
                 )
 
 
-groupRow : ( Creature, Int ) -> Html Msg
-groupRow ( creature, count ) =
+groupRow : List String -> ( Creature, Int ) -> Html Msg
+groupRow minionIds ( creature, count ) =
     let
         groupXp =
             count * creature.xp
+
+        isMinion =
+            List.member creature.id minionIds
+
+        rowClass =
+            if isMinion then
+                "random-encounter__group-row random-encounter__group-row--minion"
+
+            else
+                "random-encounter__group-row"
     in
-    div [ class "random-encounter__group-row" ]
+    div [ class rowClass ]
         [ span [ class "random-encounter__group-count" ]
             [ text (String.fromInt count ++ "×") ]
-        , span [ class "random-encounter__group-name" ] [ text creature.name ]
+        , span [ class "random-encounter__group-name" ]
+            (text creature.name
+                :: (if isMinion then
+                        [ span [ class "random-encounter__group-minion-tag" ]
+                            [ text "minion" ]
+                        ]
+
+                    else
+                        []
+                   )
+            )
         , span [ class "random-encounter__group-cr" ]
             [ text ("CR " ++ creature.challengeRating) ]
         , span [ class "random-encounter__group-xp" ]
@@ -682,7 +835,7 @@ actionsRow ui canGenerate =
     let
         generateLabel =
             case ui.roll of
-                RollOk _ ->
+                RollOk _ _ ->
                     "Reroll"
 
                 _ ->
@@ -690,7 +843,7 @@ actionsRow ui canGenerate =
 
         addEnabled =
             case ui.roll of
-                RollOk _ ->
+                RollOk _ _ ->
                     True
 
                 _ ->

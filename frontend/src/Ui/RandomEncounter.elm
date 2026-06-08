@@ -27,13 +27,15 @@ import Encounter.RandomEncounter exposing (Scale(..), TargetDifficulty(..))
   - `RollEmptyPool` — the params produced an empty filter
     pool; the view shows a "no matches" notice with a
     suggestion to widen the filter.
-  - `RollOk groups` — one or more `(creature, count)` groups.
+  - `RollOk groups minionIds` — one or more `(creature, count)`
+    groups, plus the subset of creature ids that came from
+    the minion pick so the view can label those rows.
 
 -}
 type RollState
     = RollIdle
     | RollEmptyPool
-    | RollOk (List ( Creature, Int ))
+    | RollOk (List ( Creature, Int )) (List String)
 
 
 type alias RandomEncounterUi =
@@ -54,8 +56,24 @@ type alias RandomEncounterUi =
     , pinned : List ( Creature, Int )
 
     -- Search-as-you-type text for the pin picker; the view
-    -- shows up to 8 compendium matches as the GM types.
+    -- shows compendium matches as the GM types.
     , pinSearch : String
+
+    -- Whether the inline pin picker (search input + scrollable
+    -- compendium list) is open.  Closed by default so the
+    -- modal stays compact — a "➕ Pin a creature" button toggles
+    -- it open / closed, mirroring the "➕ Quick Add" pattern in
+    -- the Encounter Controls panel.
+    , pinPickerOpen : Bool
+
+    -- Creatures the GM has explicitly excluded from the roll.
+    -- Mirrors `pinned` minus the counts (no useful semantics
+    -- for "two of this excluded creature").  Excluded ids
+    -- flow into the generator's filter so neither the main
+    -- pick nor the minion pick can land on them.
+    , excluded : List Creature
+    , excludeSearch : String
+    , excludePickerOpen : Bool
     , roll : RollState
     }
 
@@ -69,5 +87,9 @@ fresh =
     , includeMinions = False
     , pinned = []
     , pinSearch = ""
+    , pinPickerOpen = False
+    , excluded = []
+    , excludeSearch = ""
+    , excludePickerOpen = False
     , roll = RollIdle
     }

@@ -2094,6 +2094,29 @@ body {
   border-radius: var(--radius-sm);
 }
 
+.random-encounter__group-row--minion {
+  /* Subtle dashed left edge + soft accent tint so the row
+     reads as "supporting cast, not a main pick".  Keeps the
+     same baseline grid so it lines up with main rows. */
+  border-style: dashed;
+  border-color: var(--color-accent, #4a90e2);
+  background: rgba(74, 144, 226, 0.06);
+}
+
+.random-encounter__group-minion-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--color-accent, #4a90e2);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
 .random-encounter__group-count {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -2266,6 +2289,58 @@ body {
 
 .random-encounter__pin-picker {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.random-encounter__picker-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.random-encounter__pin-toggle {
+  /* Each toggle hugs its content; the wrapping flex above
+     places them side by side. */
+}
+
+.random-encounter__excluded-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.random-encounter__excluded-row {
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(201, 140, 29, 0.08);
+  border: 1px solid rgba(201, 140, 29, 0.4);
+  border-radius: var(--radius-sm);
+}
+
+.random-encounter__excluded-glyph {
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.random-encounter__excluded-name {
+  font-weight: 600;
+}
+
+.random-encounter__excluded-cr {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.random-encounter__pin-picker-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
