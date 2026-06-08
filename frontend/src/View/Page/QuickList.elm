@@ -13,12 +13,14 @@ mutates state — every chip, badge, and label is display-only.
 
 Card layout, per spec:
 
-  - **Line 1** — name, optional creature note, AC, HP / HP-max,
-    conditions / effects, bloodied marker.
-  - **Line 2** — only rendered when at least one of the
-    following is set: cover, concentrating, hiding, dodging,
-    flying (+height), readied, memo, timer. Each appears as a
-    small read-only chip.
+  - **Line 1** — name, optional creature note, AC, HP / HP-max.
+  - **Line 2** — bloodied marker, recharge ability chips,
+    conditions / effects, and the per-creature toggle / status
+    chips (cover, concentrating, hiding, dodging, flying +
+    height, readied, memo, timer). Renders only when at least
+    one of those is set. Each appears as a small read-only
+    chip; recharge chips are colour-coded (green = ready,
+    muted = spent).
 
 The active creature gets the same accent class the main view
 uses so it's instantly recognisable as "whose turn it is."
@@ -167,11 +169,40 @@ conditionChip cond =
         [ text body ]
 
 
+{-| Read-only recharge ability chip. Mirrors the interactive
+recharge chip's `name + range` body from the main view so a GM
+glancing at the quick-list sees the same labels. Tinted green
+when the ability is ready; muted with a strikethrough when
+spent. No click handler — the main tab is where the GM
+actually rolls / resets.
+-}
+rechargeChip : Encounter.RechargeAbility -> Html Msg
+rechargeChip ability =
+    let
+        rangeLabel =
+            if ability.low == ability.high then
+                String.fromInt ability.low
+
+            else
+                String.fromInt ability.low ++ "–" ++ String.fromInt ability.high
+
+        stateModifier =
+            if ability.ready then
+                "quick-list-card__chip--recharge-ready"
+
+            else
+                "quick-list-card__chip--recharge-spent"
+    in
+    span [ class ("quick-list-card__chip " ++ stateModifier) ]
+        [ text (ability.name ++ " " ++ rangeLabel) ]
+
+
 {-| Optional second line. Hosts (in this order) the bloodied
-marker, condition / effect badges, and the per-creature
-toggle / status chips (cover, concentrating, hiding, dodging,
-flying, readied, memo, timer). Renders only when at least one
-of those is set so an idle creature stays a single line.
+marker, recharge-ability chips, condition / effect badges, and
+the per-creature toggle / status chips (cover, concentrating,
+hiding, dodging, flying, readied, memo, timer). Renders only
+when at least one of those is set so an idle creature stays a
+single line.
 -}
 lineTwo : Creature -> Html Msg
 lineTwo creature =
@@ -187,6 +218,9 @@ lineTwo creature =
 
             else
                 []
+
+        rechargeChips =
+            List.map rechargeChip creature.rechargeAbilities
 
         conditionChips =
             List.map conditionChip creature.conditions
@@ -281,7 +315,7 @@ lineTwo creature =
                 ++ timerChip
 
         chips =
-            bloodiedChips ++ conditionChips ++ statusChips
+            bloodiedChips ++ rechargeChips ++ conditionChips ++ statusChips
     in
     if List.isEmpty chips then
         text ""

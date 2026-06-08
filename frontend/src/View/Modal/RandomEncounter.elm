@@ -167,6 +167,7 @@ parametersSection model ui =
         , habitatRow ui
         , creatureTypeRow ui
         , minionsRow ui
+        , loreRow ui
         ]
 
 
@@ -370,6 +371,23 @@ minionsRow ui =
             [ text "Include minions" ]
         , span [ class "random-encounter__minions-hint" ]
             [ text "(adds 2–6 low-CR creatures from the same habitat)" ]
+        ]
+
+
+loreRow : RandomEncounterUi -> Html Msg
+loreRow ui =
+    label [ class "random-encounter__minions-row" ]
+        [ input
+            [ type_ "checkbox"
+            , checked ui.loreAccurate
+            , onClick RandomEncounterLoreToggle
+            , class "random-encounter__minions-checkbox"
+            ]
+            []
+        , span [ class "random-encounter__minions-label" ]
+            [ text "Lore accurate" ]
+        , span [ class "random-encounter__minions-hint" ]
+            [ text "(prefer canonical groupings — goblinoid warbands, hag covens, dragon-and-kobolds, …)" ]
         ]
 
 
@@ -774,20 +792,27 @@ resultBody ui =
                 ]
 
         RollOk groups minionIds ->
+            let
+                pinnedIds =
+                    List.map (\( c, _ ) -> c.id) ui.pinned
+            in
             div [ class "random-encounter__groups" ]
-                (List.map (groupRow minionIds) groups
+                (List.map (groupRow pinnedIds minionIds) groups
                     ++ [ totalRow groups ]
                 )
 
 
-groupRow : List String -> ( Creature, Int ) -> Html Msg
-groupRow minionIds ( creature, count ) =
+groupRow : List String -> List String -> ( Creature, Int ) -> Html Msg
+groupRow pinnedIds minionIds ( creature, count ) =
     let
         groupXp =
             count * creature.xp
 
         isMinion =
             List.member creature.id minionIds
+
+        isPinned =
+            List.member creature.id pinnedIds
 
         rowClass =
             if isMinion then
@@ -814,6 +839,35 @@ groupRow minionIds ( creature, count ) =
             [ text ("CR " ++ creature.challengeRating) ]
         , span [ class "random-encounter__group-xp" ]
             [ text (Xp.formatThousands groupXp ++ " XP") ]
+        , if isPinned then
+            -- Pinned creatures are an explicit pick — adding
+            -- them to the exclude list would just contradict
+            -- the pin, so hide the affordance on those rows.
+            text ""
+
+          else
+            button
+                [ class "random-encounter__group-exclude"
+                , Attr.type_ "button"
+                , onClick (RandomEncounterExcludeAdd creature.id)
+                , Attr.title ("Exclude " ++ creature.name ++ " from future rolls")
+                , attribute "aria-label" ("Exclude " ++ creature.name)
+                ]
+                [ text "🚫" ]
+        , button
+            [ class "random-encounter__group-pin"
+            , Attr.type_ "button"
+            , onClick (RandomEncounterPinAdd creature.id)
+            , Attr.title
+                (if isPinned then
+                    "Add one more " ++ creature.name ++ " to the pinned list"
+
+                 else
+                    "Pin " ++ creature.name ++ " so future rolls always include it"
+                )
+            , attribute "aria-label" ("Pin " ++ creature.name)
+            ]
+            [ text "📌" ]
         ]
 
 

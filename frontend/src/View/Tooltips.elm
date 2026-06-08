@@ -47,6 +47,7 @@ module View.Tooltips exposing
     , compendiumInEncounter
     , compendiumInstanceCount
     , compendiumNewCreature
+    , compendiumOpenInTab
     , compendiumPasteStatBlock
     , compendiumReset
     , compendiumRowSelect
@@ -747,6 +748,11 @@ compendiumGroupDelete =
 compendiumNewCreature : String
 compendiumNewCreature =
     "Create a new creature"
+
+
+compendiumOpenInTab : String
+compendiumOpenInTab =
+    "Open compendium in a new tab"
 
 
 compendiumPasteStatBlock : String

@@ -2085,13 +2085,47 @@ body {
 
 .random-encounter__group-row {
   display: grid;
-  grid-template-columns: 40px 1fr auto auto;
-  align-items: baseline;
+  grid-template-columns: 40px 1fr auto auto auto auto;
+  align-items: center;
   gap: 10px;
   padding: 8px 10px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
+}
+
+.random-encounter__group-exclude,
+.random-encounter__group-pin {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.55;
+  transition:
+    opacity 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.random-encounter__group-exclude:hover,
+.random-encounter__group-exclude:focus {
+  opacity: 1;
+  border-color: rgba(201, 140, 29, 0.5);
+  background: rgba(201, 140, 29, 0.1);
+  outline: none;
+}
+
+.random-encounter__group-pin:hover,
+.random-encounter__group-pin:focus {
+  opacity: 1;
+  border-color: var(--color-accent, #4a90e2);
+  background: rgba(74, 144, 226, 0.1);
+  outline: none;
 }
 
 .random-encounter__group-row--minion {
@@ -6530,6 +6564,321 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 12px 18px;
 }
 
+/* ── Lore section appended below the regular Group form ────────── */
+.group-edit__lore-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 18px 18px 18px;
+}
+
+.group-edit__lore-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0 4px 0;
+}
+
+.group-edit__lore-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-edit__lore-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.group-edit__lore-blurb {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.group-edit__lore-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.group-edit__lore-list-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-edit__lore-disclosure {
+  appearance: none;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-edit__lore-disclosure-caret {
+  font-size: 0.85rem;
+}
+
+.group-edit__lore-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.group-edit__lore-empty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.88rem;
+}
+
+.group-edit__lore-row {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-edit__lore-row--bundled {
+  background: transparent;
+}
+
+.group-edit__lore-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-edit__lore-row-toggle {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.group-edit__lore-row-caret {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.group-edit__lore-row-name {
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-edit__lore-row-meta,
+.group-edit__lore-row-locked {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.group-edit__lore-row-locked {
+  font-style: italic;
+}
+
+.group-edit__lore-members {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-edit__lore-member {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding: 2px 0;
+}
+
+.group-edit__lore-member-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.group-edit__lore-member-role {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.group-edit__lore-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(214, 59, 59, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+/* Inline editor (shown in place of the lists while a draft
+   is being authored or edited). */
+.group-edit__lore-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--color-accent, #4a90e2);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--color-surface-2);
+}
+
+.group-edit__lore-editor-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.group-edit__lore-weight-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.group-edit__lore-weight-slider {
+  flex: 1 1 auto;
+}
+
+.group-edit__lore-weight-hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.group-edit__lore-members-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.group-edit__lore-member-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+.group-edit__lore-member-row .group-edit__lore-member-name {
+  flex: 1 1 140px;
+  font-weight: 600;
+}
+
+.group-edit__lore-role-select {
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.group-edit__lore-count-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.group-edit__lore-count-input {
+  width: 50px;
+  padding: 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.group-edit__lore-add-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-edit__lore-add-results {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.group-edit__lore-add-result {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.group-edit__lore-add-result:hover,
+.group-edit__lore-add-result:focus {
+  background: var(--color-surface-2);
+  outline: none;
+}
+
+.group-edit__lore-add-result-cr {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.group-edit__lore-editor-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ── Compendium list: group rows ───────────────────────────────────── */
 .compendium__row--group {
   background: var(--color-surface-2);
@@ -6604,9 +6953,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   /* Reset native <h2> margin/padding so the title sits flush in
      the modal header bar.  The structural promotion from <div>
      to <h2> is for screen-reader heading hierarchy; the visual
-     appearance stays unchanged. */
+     appearance stays unchanged.
+
+     `flex: 1` absorbs the slack between the title and the
+     right-aligned button cluster (× close plus any
+     `viewWithExtras` siblings like the Compendium's ↗),
+     overriding the parent's `justify-content: space-between`
+     so a third header child (↗) hugs the × on the right
+     instead of getting parked in the middle of the bar. */
   margin: 0;
   padding: 0;
+  flex: 1 1 auto;
   font-weight: 700;
   font-size: 1rem;
   letter-spacing: 0.04em;
@@ -6639,6 +6996,58 @@ button.creature-card__lifecycle--dead:focus-visible {
 .modal__close:hover {
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+/* Sibling of .modal__close — extra header buttons (currently
+   the Compendium modal's ↗ "open in new tab" affordance) get
+   the same hit area + hover treatment so they read as a pair
+   to the left of the × close button. */
+.modal__open-in-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+  margin-right: 4px;
+}
+
+.modal__open-in-tab:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* Standalone /compendium page wrapper — borrowed from the
+   QuickList workspace styling so the full-page layout stretches
+   to fill the viewport without the encounter grid's columns. */
+.workspace--compendium-page {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.panel--compendium-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.compendium-page__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
 }
 
 .modal__body {
@@ -10005,6 +10414,27 @@ button.creature-card__lifecycle--dead:focus-visible {
 .quick-list-card__chip--condition {
   background: var(--color-accent-soft, var(--color-surface-3));
   border-color: var(--color-accent, var(--color-border));
+}
+
+/* Read-only recharge chips on the quick-list card.  Tinted
+   green when the ability is ready; muted + strikethrough when
+   spent, matching the interactive recharge chip's visual
+   language on the main encounter card. */
+.quick-list-card__chip--recharge-ready {
+  color: var(--color-success, #15803d);
+  background: var(--color-success-soft, rgba(34, 197, 94, 0.12));
+  border-color: var(--color-success-soft, rgba(34, 197, 94, 0.4));
+  font-weight: 600;
+}
+
+.quick-list-card__chip--recharge-spent {
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: var(--color-border);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--color-text-muted);
+  opacity: 0.85;
 }
 
 .quick-list-card__chip--memo {

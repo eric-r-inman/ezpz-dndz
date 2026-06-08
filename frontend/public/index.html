@@ -169,6 +169,17 @@
         }
       } catch (_) {}
 
+      // User-authored Lore groups for the Random Encounter
+      // generator's Lore Accurate toggle.  Bundled groups
+      // ship with the app; this is the player's additions.
+      var localUserLoreGroups = null;
+      try {
+        var loreRaw = localStorage.getItem("userLoreGroups");
+        if (loreRaw) {
+          localUserLoreGroups = JSON.parse(loreRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -183,6 +194,7 @@
           localConditionPresets: localConditionPresets,
           localTimerPresets: localTimerPresets,
           localParty: localParty,
+          localUserLoreGroups: localUserLoreGroups,
           bootMs: Date.now(),
         },
       });
@@ -317,6 +329,20 @@
         });
       }
 
+      // User-authored Lore groups for the Random Encounter
+      // generator.  Fires on every Save / Delete in the
+      // Create/Edit Group modal's Lore section.
+      if (app.ports && app.ports.persistLocalUserLoreGroups) {
+        app.ports.persistLocalUserLoreGroups.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "userLoreGroups",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
       // Anonymous named encounter saves dict writer + eraser.
       if (app.ports && app.ports.persistLocalEncounterSaves) {
         app.ports.persistLocalEncounterSaves.subscribe(function (value) {
@@ -420,6 +446,54 @@
           try {
             localStorage.removeItem("cardLayoutSaves");
           } catch (_) {}
+        });
+      }
+
+      // Standalone Compendium tab.  Each Elm app instance keeps a
+      // single window reference; opening twice from the same main
+      // tab refocuses the existing window rather than spawning a
+      // duplicate.  When the user closes that tab, the next click
+      // notices `closed === true` and falls back to opening the
+      // modal in place.
+      var compendiumWindow = null;
+
+      if (app.ports && app.ports.openCompendiumTab) {
+        app.ports.openCompendiumTab.subscribe(function () {
+          try {
+            if (compendiumWindow && !compendiumWindow.closed) {
+              compendiumWindow.focus();
+            } else {
+              compendiumWindow = window.open(
+                "/compendium",
+                "ezpz-dndz-compendium",
+              );
+              if (compendiumWindow) {
+                compendiumWindow.focus();
+              }
+            }
+          } catch (_) {
+            compendiumWindow = null;
+          }
+        });
+      }
+
+      if (
+        app.ports &&
+        app.ports.tryFocusCompendiumTab &&
+        app.ports.compendiumTabMissing
+      ) {
+        app.ports.tryFocusCompendiumTab.subscribe(function () {
+          try {
+            if (compendiumWindow && !compendiumWindow.closed) {
+              compendiumWindow.focus();
+            } else {
+              compendiumWindow = null;
+              app.ports.compendiumTabMissing.send(null);
+            }
+          } catch (_) {
+            compendiumWindow = null;
+            app.ports.compendiumTabMissing.send(null);
+          }
         });
       }
     </script>

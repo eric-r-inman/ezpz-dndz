@@ -1,6 +1,6 @@
 module Update.RandomEncounter exposing
     ( open, close
-    , difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle
+    , difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
     , pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
     , excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
     , generate, rolled
@@ -19,7 +19,7 @@ from the runtime; we don't carry a seed. Re-rolling is just
 "fire `generate` again with the same params".
 
 @docs open, close
-@docs difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle
+@docs difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
 @docs pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
 @docs excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
 @docs generate, rolled
@@ -222,6 +222,24 @@ minionsToggle model =
         (\ui ->
             { ui
                 | includeMinions = not ui.includeMinions
+                , roll = RollIdle
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Flip the Lore Accurate checkbox. When on, the generator
+prefers bundled lore groups; when off, the per-slot fill runs
+as before. Same reset-roll discipline.
+-}
+loreToggle : Model -> ( Model, Cmd Msg )
+loreToggle model =
+    ( Model.mapModal Model.randomEncounterLens
+        (\ui ->
+            { ui
+                | loreAccurate = not ui.loreAccurate
                 , roll = RollIdle
             }
         )
@@ -517,6 +535,8 @@ generate model =
                         , includeMinions = ui.includeMinions
                         , pinned = ui.pinned
                         , excludedIds = List.map .id ui.excluded
+                        , loreAccurate = ui.loreAccurate
+                        , userLoreGroups = model.userLoreGroups
                         }
                         (Compendium.toList db)
             in

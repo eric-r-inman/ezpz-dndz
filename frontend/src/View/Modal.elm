@@ -1,4 +1,7 @@
-module View.Modal exposing (view, closeBtnId, focusInitial)
+module View.Modal exposing
+    ( view, closeBtnId, focusInitial
+    , viewWithExtras
+    )
 
 {-| Shared modal chrome.
 
@@ -105,6 +108,25 @@ view :
     }
     -> Html Msg
 view config =
+    viewWithExtras config []
+
+
+{-| Like `view`, but accepts extra header buttons that render
+to the left of the × close button. The Compendium modal uses
+this to slot a ↗ "open in new tab" button without every other
+modal having to grow a new config field.
+-}
+viewWithExtras :
+    { close : Msg
+    , noOp : Msg
+    , title : String
+    , extraClass : String
+    , body : List (Html Msg)
+    , chrome : ModalChrome
+    }
+    -> List (Html Msg)
+    -> Html Msg
+viewWithExtras config headerExtras =
     div
         [ class "modal-backdrop"
         , onClick config.close
@@ -123,20 +145,23 @@ view config =
                         [ class "modal__header modal__drag-handle"
                         , preventDefaultOn "mousedown" (dragStartDecoder ModalChromeDragStart)
                         ]
-                        [ h2
+                        ([ h2
                             [ class "modal__title"
                             , id "modal-title"
                             ]
                             [ text config.title ]
-                        , button
-                            [ class "modal__close"
-                            , id closeBtnId
-                            , onClick config.close
-                            , Tooltips.attr Tooltips.modalClose
-                            , attribute "aria-label" "Close"
-                            ]
-                            [ text "×" ]
-                        ]
+                         ]
+                            ++ headerExtras
+                            ++ [ button
+                                    [ class "modal__close"
+                                    , id closeBtnId
+                                    , onClick config.close
+                                    , Tooltips.attr Tooltips.modalClose
+                                    , attribute "aria-label" "Close"
+                                    ]
+                                    [ text "×" ]
+                               ]
+                        )
                   , div [ class "modal__body" ] config.body
                   , div
                         [ class "modal__focus-sentinel"

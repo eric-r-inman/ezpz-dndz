@@ -528,6 +528,15 @@ type Msg
     | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
     | CompendiumOpen
     | CompendiumClose
+      -- ↗ button in the Compendium modal header: opens the
+      -- standalone /compendium tab (or focuses it if already
+      -- open) and closes the modal.
+    | CompendiumOpenInTab
+      -- Continuation from the JS port: the named compendium
+      -- tab couldn't be focused (never opened, or was closed
+      -- by the user), so the main page should fall back to
+      -- opening the modal locally.
+    | CompendiumTabMissing
     | CompendiumSearchChanged String
     | CompendiumKindToggled Compendium.CreatureKind
     | CompendiumSortChanged CompendiumSort
@@ -606,6 +615,27 @@ type Msg
     | GroupEditEntryCountChanged Int String
     | GroupEditEntryMinionTypeSet Int String
     | GroupEditSubmit
+      -- Lore section embedded in the Create / Edit Group
+      -- modal: expand toggles, per-group expand, new / edit /
+      -- delete affordances, draft field edits.
+    | GroupEditLoreUserExpandToggle
+    | GroupEditLoreBundledExpandToggle
+    | GroupEditLoreGroupExpandToggle String
+    | GroupEditLoreNew
+    | GroupEditLoreEdit String
+    | GroupEditLoreDeleteRequest String
+    | GroupEditLoreDeleteConfirm
+    | GroupEditLoreDeleteCancel
+    | GroupEditLoreDraftCancel
+    | GroupEditLoreDraftSubmit
+    | GroupEditLoreDraftNameChanged String
+    | GroupEditLoreDraftWeightChanged String
+    | GroupEditLoreDraftMemberAdd String
+    | GroupEditLoreDraftMemberRemove Int
+    | GroupEditLoreDraftMemberRoleSet Int String
+    | GroupEditLoreDraftMemberCountMinChanged Int String
+    | GroupEditLoreDraftMemberCountMaxChanged Int String
+    | GroupEditLoreAddSearchChanged String
       -- Compendium edit / create modal
     | CompendiumEditNew
     | CompendiumEditExisting
@@ -922,6 +952,10 @@ type Msg
       -- sets or appends.
     | RandomEncounterCreatureTypeAt Int String
     | RandomEncounterMinionsToggle
+      -- "Lore Accurate" toggle: when on, the generator prefers
+      -- bundled lore groups (goblinoid warband, kobold + dragon,
+      -- hag coven, etc.) over the per-slot fill.
+    | RandomEncounterLoreToggle
       -- Specific-creature pin picker.  PickerToggle opens /
       -- closes the inline picker (search input + compendium
       -- list).  Search text drives an inline result list;

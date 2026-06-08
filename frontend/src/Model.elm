@@ -43,6 +43,7 @@ import Card.Wire as CardWire
 import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
+import Encounter.RandomEncounter.Lore as Lore
 import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
@@ -520,6 +521,14 @@ type alias Model =
     -- Twin of `conditionPresets` for the Timer-setup modal.
     -- Persisted under `localStorage.timerPresets`.
     , timerPresets : Dict String UiTimer.TimerPreset
+
+    -- User-authored Lore groupings for the Random Encounter
+    -- generator's _Lore Accurate_ toggle.  Bundled groups
+    -- live in `Encounter.RandomEncounter.Lore.bundled`;
+    -- these are the player's additions, edited in the
+    -- Create/Edit Group modal and persisted under
+    -- `localStorage.userLoreGroups`.
+    , userLoreGroups : List Lore.Group
 
     -- JS `Date.now()` captured at boot, used as the timestamp for
     -- all anonymous named-save writes done in this session.  All
