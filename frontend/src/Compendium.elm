@@ -11,7 +11,7 @@ module Compendium exposing
     , crToFloat
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
-    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus
+    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, syncLegendaryFields
     )
 
 {-| Pure domain layer for the compendium.
@@ -895,6 +895,50 @@ draftToInstance { displayName, initiativeRoll } c =
     , race = c.race
     , alignment = c.alignment
     }
+
+
+{-| Refresh the stat-block-derived legendary fields on an
+in-encounter creature from the latest compendium source.
+
+The four legendary counts (`legendaryActionsCount`,
+`legendaryActionsLairBonus`, `legendaryResistanceCount`,
+`legendaryResistanceLairBonus`) are constants that come from the
+stat block, not encounter state — they should track whatever the
+compendium currently says. The "used" sets are NOT touched; they
+belong to the encounter run and the GM owns them.
+
+This is called after the compendium DB loads so encounters that
+were saved before a creature's stat block grew lair-bonus data
+pick up the new values automatically, instead of waiting for the
+GM to remove and re-add the creature.
+
+Creatures with no `creatureId` (anonymous-mode adds, custom
+inline blocks) are left untouched — there's no source to sync
+against.
+
+-}
+syncLegendaryFields : Db -> Encounter.Creature -> Encounter.Creature
+syncLegendaryFields db ec =
+    case ec.creatureId |> Maybe.andThen (\id -> find id db) of
+        Nothing ->
+            ec
+
+        Just src ->
+            let
+                ( laCount, laLairBonus ) =
+                    case src.legendaryActions of
+                        Just la ->
+                            ( la.uses, max 0 (la.usesInLair - la.uses) )
+
+                        Nothing ->
+                            ( 0, 0 )
+            in
+            { ec
+                | legendaryActionsCount = laCount
+                , legendaryActionsLairBonus = laLairBonus
+                , legendaryResistanceCount = sourceLegendaryResistanceBase src
+                , legendaryResistanceLairBonus = sourceLegendaryResistanceLairBonus src
+            }
 
 
 {-| Lowercase wire token for a creature kind. Matches the value

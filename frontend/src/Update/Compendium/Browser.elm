@@ -60,7 +60,11 @@ withCompendium fn model =
 
 loaded : Result Http.Error (List Compendium.Creature) -> Model -> ( Model, Cmd Msg )
 loaded result model =
-    ( withCompendium (loadedUpdate result) model, Cmd.none )
+    ( model
+        |> withCompendium (loadedUpdate result)
+        |> syncEncounterFromCompendium result
+    , Cmd.none
+    )
 
 
 loadedUpdate : Result Http.Error (List Compendium.Creature) -> CompendiumUi -> CompendiumUi
@@ -71,6 +75,44 @@ loadedUpdate result ui =
 
         Err err ->
             { ui | db = CompendiumDbFailed err }
+
+
+{-| Refresh the stat-block-derived legendary counters on every
+roster creature against the freshly-loaded compendium DB.
+
+In-progress encounters persist creature snapshots to
+localStorage, so a saved roster from before the bundle grew
+lair-bonus data would stay stuck at `legendaryActionsLairBonus
+= 0` until the GM removed and re-added each creature. Re-syncing
+here makes the lair pip appear as soon as the new bundle loads,
+without touching the "used" sets (which are encounter state the
+GM owns).
+
+A decode failure leaves the encounter alone — without a fresh DB
+there's nothing to sync against.
+
+-}
+syncEncounterFromCompendium : Result Http.Error (List Compendium.Creature) -> Model -> Model
+syncEncounterFromCompendium result model =
+    case result of
+        Err _ ->
+            model
+
+        Ok creatures ->
+            let
+                db =
+                    Compendium.fromList creatures
+
+                encounter =
+                    model.encounter
+
+                synced =
+                    { encounter
+                        | creatures =
+                            List.map (Compendium.syncLegendaryFields db) encounter.creatures
+                    }
+            in
+            { model | encounter = synced }
 
 
 open : Model -> ( Model, Cmd Msg )
