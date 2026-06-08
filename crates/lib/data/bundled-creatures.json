@@ -138,7 +138,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Lash",
@@ -292,7 +292,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Cloud of Insects",
@@ -445,7 +445,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Cloaked Flight",
@@ -611,7 +611,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Blazing Light",
@@ -778,7 +778,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Guiding Light",
@@ -940,7 +940,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Giggling Magic",
@@ -1111,7 +1111,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Banish",
@@ -1280,7 +1280,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Mind Invasion",
@@ -1433,7 +1433,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Commanding Presence",
@@ -1595,7 +1595,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Chill",
@@ -1748,7 +1748,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Freezing Burst",
@@ -2143,7 +2143,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Cloud of Insects",
@@ -2296,7 +2296,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Cloaked Flight",
@@ -2462,7 +2462,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Blazing Light",
@@ -2629,7 +2629,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Guiding Light",
@@ -2791,7 +2791,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Giggling Magic",
@@ -2962,7 +2962,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Banish",
@@ -3131,7 +3131,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Mind Invasion",
@@ -3284,7 +3284,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Commanding Presence",
@@ -3446,7 +3446,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Chill",
@@ -3599,7 +3599,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Freezing Burst",
@@ -22825,7 +22825,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Storm Bolt",
@@ -23249,7 +23249,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Deathly Teleport",
@@ -25435,7 +25435,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Dread Command",
@@ -32397,7 +32397,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Arcane Prowl",
@@ -32560,7 +32560,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Arcane Prowl",
@@ -36152,7 +36152,7 @@
     "legendary_actions": {
       "description": "",
       "uses": 3,
-      "uses_in_lair": 0,
+      "uses_in_lair": 4,
       "options": [
         {
           "name": "Beguile",

@@ -725,12 +725,27 @@ parkPreamble section body c =
                     Just
                         (case c.legendaryActions of
                             Just la ->
-                                { la | description = appendDescription la.description body }
+                                let
+                                    nextDescription =
+                                        appendDescription la.description body
+
+                                    { uses, usesInLair } =
+                                        extractLegendaryUses nextDescription
+                                in
+                                { la
+                                    | description = nextDescription
+                                    , uses = uses
+                                    , usesInLair = usesInLair
+                                }
 
                             Nothing ->
+                                let
+                                    { uses, usesInLair } =
+                                        extractLegendaryUses body
+                                in
                                 { description = body
-                                , uses = 3
-                                , usesInLair = 0
+                                , uses = uses
+                                , usesInLair = usesInLair
                                 , options = []
                                 }
                         )
@@ -745,6 +760,100 @@ parkPreamble section body c =
                     sectionLabel section ++ " (preamble)"
             in
             { c | customSections = c.customSections ++ [ { name = heading, body = body } ] }
+
+
+{-| Pull `uses` and `usesInLair` out of a Legendary Actions preamble.
+
+The 2024 MM canonical phrasing is
+
+    Legendary Action Uses: 3 (4 in Lair).
+
+Older 5e books say
+
+    The dragon can take 3 legendary actions ...
+
+In both shapes the first integer is the base count and a
+parenthesised "N in Lair" or "N in lair" gives the bonus value
+(the lair-bonus PIP is `usesInLair - uses`, not `usesInLair`
+itself, so we keep both numbers raw for the editor and let the
+seed step compute the difference).
+
+Defaults to `uses = 3, usesInLair = 0` when nothing matches, so
+a creature that has a Legendary Actions header with no preamble
+still gets the 5e baseline.
+
+-}
+extractLegendaryUses : String -> { uses : Int, usesInLair : Int }
+extractLegendaryUses body =
+    let
+        lower =
+            String.toLower body
+
+        baseUses =
+            firstIntAfter "legendary action uses" lower
+                |> orElseLazy (\() -> firstIntBeforePhrase "legendary action" lower)
+                |> Maybe.withDefault 3
+
+        lairUses =
+            firstIntBeforePhrase "in lair" lower
+                |> Maybe.withDefault 0
+    in
+    { uses = baseUses, usesInLair = lairUses }
+
+
+{-| Lazy version of `Maybe.orElse` so we don't compute the fallback
+when the first match already succeeded. Inlined here because the
+`Maybe.Extra` package isn't a dependency.
+-}
+orElseLazy : (() -> Maybe a) -> Maybe a -> Maybe a
+orElseLazy fallback first =
+    case first of
+        Just _ ->
+            first
+
+        Nothing ->
+            fallback ()
+
+
+{-| Find the first non-negative integer that appears after `marker`
+in `haystack`. Returns Nothing if the marker isn't present or no
+integer follows it.
+-}
+firstIntAfter : String -> String -> Maybe Int
+firstIntAfter marker haystack =
+    case String.indexes marker haystack of
+        [] ->
+            Nothing
+
+        idx :: _ ->
+            String.dropLeft (idx + String.length marker) haystack
+                |> String.toList
+                |> dropUntil Char.isDigit
+                |> takeWhileChars Char.isDigit
+                |> String.fromList
+                |> String.toInt
+
+
+{-| Find the integer that appears immediately before `marker` in
+`haystack` (any whitespace / punctuation allowed in between).
+Returns Nothing if the marker isn't present or no integer
+precedes it. Used to peel the "4" out of "4 in Lair".
+-}
+firstIntBeforePhrase : String -> String -> Maybe Int
+firstIntBeforePhrase marker haystack =
+    case String.indexes marker haystack of
+        [] ->
+            Nothing
+
+        idx :: _ ->
+            String.left idx haystack
+                |> String.toList
+                |> List.reverse
+                |> dropUntil Char.isDigit
+                |> takeWhileChars Char.isDigit
+                |> List.reverse
+                |> String.fromList
+                |> String.toInt
 
 
 appendDescription : String -> String -> String

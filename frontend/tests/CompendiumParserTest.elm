@@ -27,6 +27,7 @@ suite =
         , empties
         , habitatSuite
         , treasureSuite
+        , legendaryUsesSuite
         ]
 
 
@@ -701,6 +702,65 @@ empties =
             \_ ->
                 Compendium.Parser.parseStatBlock "Just A Name"
                     |> Expect.equal (Err Compendium.Parser.MissingHeader)
+        ]
+
+
+legendaryUsesSuite : Test
+legendaryUsesSuite =
+    let
+        minimal preamble =
+            String.join "\n"
+                [ "Test Drake"
+                , "Large dragon, neutral"
+                , "Armor Class 18"
+                , "Hit Points 200"
+                , "Speed 40 ft."
+                , "STR 20 (+5) DEX 10 (+0) CON 20 (+5) INT 14 (+2) WIS 14 (+2) CHA 18 (+4)"
+                , "Challenge 17 (18,000 XP)"
+                , "Actions"
+                , "Bite. Reach 10 ft., one target."
+                , "Legendary Actions"
+                , preamble
+                , "Detect. The drake makes a Wisdom (Perception) check."
+                ]
+    in
+    describe "Legendary Actions preamble — uses + uses-in-lair extraction"
+        [ test "2024 MM phrasing: 'Legendary Action Uses: 3 (4 in Lair).'" <|
+            \_ ->
+                expectFields
+                    (minimal "Legendary Action Uses: 3 (4 in Lair).")
+                    (\c ->
+                        c.legendaryActions
+                            |> Maybe.map (\la -> ( la.uses, la.usesInLair ))
+                            |> Expect.equal (Just ( 3, 4 ))
+                    )
+        , test "2024 MM phrasing without lair clause stays at usesInLair=0" <|
+            \_ ->
+                expectFields
+                    (minimal "Legendary Action Uses: 3.")
+                    (\c ->
+                        c.legendaryActions
+                            |> Maybe.map (\la -> ( la.uses, la.usesInLair ))
+                            |> Expect.equal (Just ( 3, 0 ))
+                    )
+        , test "older 5e phrasing: 'The dragon can take 3 legendary actions'" <|
+            \_ ->
+                expectFields
+                    (minimal "The dragon can take 3 legendary actions, choosing from the options below.")
+                    (\c ->
+                        c.legendaryActions
+                            |> Maybe.map (\la -> ( la.uses, la.usesInLair ))
+                            |> Expect.equal (Just ( 3, 0 ))
+                    )
+        , test "multi-digit base: 'Legendary Action Uses: 10 (12 in Lair).'" <|
+            \_ ->
+                expectFields
+                    (minimal "Legendary Action Uses: 10 (12 in Lair).")
+                    (\c ->
+                        c.legendaryActions
+                            |> Maybe.map (\la -> ( la.uses, la.usesInLair ))
+                            |> Expect.equal (Just ( 10, 12 ))
+                    )
         ]
 
 
