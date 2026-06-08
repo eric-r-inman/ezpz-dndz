@@ -64,10 +64,11 @@ fn fresh_id() -> String {
 ///
 /// Anonymous (unauthenticated) sessions in the Elm frontend read
 /// the same data from `frontend/public/bundled-creatures.json`,
-/// which is served as a static asset.  When this file is updated
-/// the static copy MUST be refreshed in lockstep, otherwise
-/// anonymous browsers will see a stale compendium even though
-/// the server has been redeployed.
+/// which is served as a static asset.  That path is a symlink
+/// pointing at this same `crates/lib/data/bundled-creatures.json`
+/// file so the two copies cannot drift — edit this canonical
+/// JSON and both the embedded bundle (recompiled via `include_str!`
+/// below) and the anonymous-mode fetch URL update together.
 const BUNDLED_JSON: &str =
   include_str!("../../../lib/data/bundled-creatures.json");
 
@@ -81,7 +82,7 @@ const BUNDLED_JSON: &str =
 /// We don't store this inside the JSON itself because the JSON
 /// shape doubles as the public Import / Export wire format; the
 /// version is server-side metadata and lives in source.
-pub const BUNDLED_VERSION: i32 = 3;
+pub const BUNDLED_VERSION: i32 = 4;
 
 /// Sidecar metadata recording the highest bundled-version we've
 /// merged into a given store, plus the content hash of each
