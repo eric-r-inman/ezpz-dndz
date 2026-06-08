@@ -6,7 +6,7 @@ module Encounter.RandomEncounter.Lore exposing
     )
 
 {-| Bundled "lore-accurate" creature associations for the
-Random Encounter generator's _Lore Accurate_ toggle.
+Random Encounter generator's _Lore-leaning_ toggle.
 
 A `Group` is a small composition of D&D creatures that
 naturally appear together — goblins serving a hobgoblin
@@ -107,7 +107,7 @@ grp id name weight members_ =
 
 
 {-| The full bundled lore-group set. Generator consults this
-list when the Lore Accurate toggle is on.
+list when the Lore-leaning toggle is on.
 -}
 bundled : List Group
 bundled =
@@ -482,8 +482,17 @@ params. A group qualifies when:
   - If the GM picked one or more types, at least one member's
     race is in the list.
   - None of the resolved members appear in `excludedIds`.
-  - The group's minimum total XP fits within 1.2× the budget
-    (so we don't try a Pit Fiend Retinue on a level-1 party).
+  - The group's _minimum_ total XP fits within 1.2× the budget
+    (affordability — so we don't try a Pit Fiend Retinue on a
+    level-1 party).
+  - The group's _maximum_ total XP is at least 50% of the
+    budget (coverage — so we don't pick Fire Elemental's Court
+    for a 14,800 XP budget and watch the roll sum to 2,250).
+
+The affordability + coverage pair bounds the group's natural
+XP range to roughly the GM's budget, leaving the top-up pass
+to fill the gap when the rolled total lands near the low end
+of that range.
 
 The "at least one member matches the filter" rule keeps groups
 flexible — a Goblinoid Warband with Forest / Hill / Underdark
@@ -529,18 +538,34 @@ groupFits params group pool =
                 0
                 resolved
 
+        maxTotalXp =
+            List.foldl
+                (\r acc -> acc + r.creature.xp * r.slot.countMax)
+                0
+                resolved
+
         affordable =
             -- Allow the minimum to push the original budget by
             -- up to 20% so a group near the budget ceiling still
             -- qualifies — the materialiser will scale counts
             -- down if needed.
             minTotalXp <= params.budget * 12 // 10
+
+        meaningful =
+            -- The group's MAX rolls must hit at least 50% of
+            -- the budget so a small-XP group (Wolf Pack at
+            -- 650 XP max) doesn't get picked for a level-12
+            -- Moderate budget (~14,800).  Slot-queue fill
+            -- takes over via `pickLoreFill` falling back to
+            -- `pickMainGroups` when no lore group qualifies.
+            maxTotalXp * 2 >= params.budget
     in
     not (List.isEmpty resolved)
         && habitatOK
         && typeOK
         && notExcluded
         && affordable
+        && meaningful
 
 
 {-| Roll concrete counts for each member and return the

@@ -55,7 +55,7 @@ type alias RandomEncounterUi =
     -- coven, dragon's kobold court, etc.).  Falls back to the
     -- per-slot fill when no lore group fits the active
     -- habitat / type filters at the current budget.
-    , loreAccurate : Bool
+    , loreLeaning : Bool
 
     -- Pinned creatures the GM has chosen to lock into the
     -- roll, deduplicated by creature id with a per-entry
@@ -92,7 +92,7 @@ fresh =
     , habitat = Nothing
     , creatureTypes = []
     , includeMinions = False
-    , loreAccurate = False
+    , loreLeaning = False
     , pinned = []
     , pinSearch = ""
     , pinPickerOpen = False

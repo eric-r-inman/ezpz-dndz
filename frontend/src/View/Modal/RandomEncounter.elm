@@ -89,8 +89,8 @@ blurb : Html Msg
 blurb =
     p [ class "random-encounter__blurb" ]
         [ text
-            "Pick a difficulty and habitat, then roll the dice. "
-        , text "The generator draws from your bundled compendium "
+            "Set the difficulty and optional parameters, then roll to generate. "
+        , text "The generator draws from your compendium, "
         , text "sized to fit your party's XP budget. "
         , text
             ("Algorithm derived from online public discussions, "
@@ -379,13 +379,13 @@ loreRow ui =
     label [ class "random-encounter__minions-row" ]
         [ input
             [ type_ "checkbox"
-            , checked ui.loreAccurate
+            , checked ui.loreLeaning
             , onClick RandomEncounterLoreToggle
             , class "random-encounter__minions-checkbox"
             ]
             []
         , span [ class "random-encounter__minions-label" ]
-            [ text "Lore accurate" ]
+            [ text "Lore-leaning" ]
         , span [ class "random-encounter__minions-hint" ]
             [ text "(prefer canonical groupings — goblinoid warbands, hag covens, dragon-and-kobolds, …)" ]
         ]

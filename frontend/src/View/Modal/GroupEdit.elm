@@ -380,9 +380,16 @@ loreSection ui userGroups creatures =
                 [ text "Lore groupings" ]
             , p [ class "group-edit__lore-blurb" ]
                 [ text
-                    ("Lore groupings are used by the Random "
-                        ++ "Encounter generator when Lore Accurate "
-                        ++ "is selected."
+                    ("Lore groupings are considered by the Random "
+                        ++ "Encounter generator when Lore-leaning is "
+                        ++ "selected. If your Lore grouping includes "
+                        ++ "user-generated creatures, ensure all "
+                        ++ "crucial stat block fields have values "
+                        ++ "(CR, XP, Habitat, Type, etc., for each "
+                        ++ "creature). If your Lore grouping is never "
+                        ++ "pulled by the Encounter Generator, you "
+                        ++ "may need to tweak some Lore Grouping, "
+                        ++ "Random Encounter, or stat block values."
                     )
                 ]
             ]

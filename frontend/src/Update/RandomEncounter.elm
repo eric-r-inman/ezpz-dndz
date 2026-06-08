@@ -230,7 +230,7 @@ minionsToggle model =
     )
 
 
-{-| Flip the Lore Accurate checkbox. When on, the generator
+{-| Flip the Lore-leaning checkbox. When on, the generator
 prefers bundled lore groups; when off, the per-slot fill runs
 as before. Same reset-roll discipline.
 -}
@@ -239,7 +239,7 @@ loreToggle model =
     ( Model.mapModal Model.randomEncounterLens
         (\ui ->
             { ui
-                | loreAccurate = not ui.loreAccurate
+                | loreLeaning = not ui.loreLeaning
                 , roll = RollIdle
             }
         )
@@ -535,7 +535,7 @@ generate model =
                         , includeMinions = ui.includeMinions
                         , pinned = ui.pinned
                         , excludedIds = List.map .id ui.excluded
-                        , loreAccurate = ui.loreAccurate
+                        , loreLeaning = ui.loreLeaning
                         , userLoreGroups = model.userLoreGroups
                         }
                         (Compendium.toList db)
