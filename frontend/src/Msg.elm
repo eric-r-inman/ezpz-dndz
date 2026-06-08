@@ -952,7 +952,7 @@ type Msg
       -- sets or appends.
     | RandomEncounterCreatureTypeAt Int String
     | RandomEncounterMinionsToggle
-      -- "Lore Accurate" toggle: when on, the generator prefers
+      -- "Lore-leaning" toggle: when on, the generator prefers
       -- bundled lore groups (goblinoid warband, kobold + dragon,
       -- hag coven, etc.) over the per-slot fill.
     | RandomEncounterLoreToggle

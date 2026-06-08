@@ -765,7 +765,7 @@ the groups; resetting the compendium clears the groups.
 
 Below the Group editor's Create button, a *Lore groupings*
 section is the editor for the Random Encounter generator's
-*Lore Accurate* toggle.  Two collapsible lists:
+*Lore-leaning* toggle.  Two collapsible lists:
 
 - *Your lore groups* — what you've authored.  ▾ to expand a row
   and see its members; ✎ to edit; × to delete (with confirm).
@@ -897,7 +897,7 @@ in the other.  Persisted in ~localStorage~.
 - *Include minions* — adds 2–6 low-CR creatures (xp ≤ 100) on
   top of the random fill, sharing 20% of the budget.  Marked
   with a *MINION* badge in the result.
-- *Lore accurate* — when on, the generator prefers
+- *Lore-leaning* — when on, the generator prefers
   hand-authored canonical groupings (Goblinoid Warband, Adult
   Dragon's Tribute, Hag Coven, Pit Fiend's Retinue, etc.).
   Bundled + user lore groups are pooled together; weights and

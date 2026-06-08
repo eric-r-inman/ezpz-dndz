@@ -211,13 +211,13 @@ budgetFor party target =
     pick. The exclusion only applies to the random fill;
     pinned creatures take precedence and still appear even if
     their id ends up in the list.
-  - `loreAccurate` — when `True`, the generator preferentially
+  - `loreLeaning` — when `True`, the generator preferentially
     draws the main fill from lore groups (bundled + user)
     sized to fit the budget. Falls back to the per-slot fill
     when no lore group matches the active filters. Pinned
     creatures, the top-up pass, and minions still run on top.
   - `userLoreGroups` — user-authored lore groups merged into
-    the bundled set when `loreAccurate` is on. The user list
+    the bundled set when `loreLeaning` is on. The user list
     is consulted alongside the bundled list with no preference
     given to either source; weights from each group control
     relative pick frequency.
@@ -231,7 +231,7 @@ type alias GenParams =
     , includeMinions : Bool
     , pinned : List ( Creature, Int )
     , excludedIds : List String
-    , loreAccurate : Bool
+    , loreLeaning : Bool
     , userLoreGroups : List Lore.Group
     }
 
@@ -263,9 +263,9 @@ generator params pool =
     let
         filtered =
             pool
+                |> List.filter hasRequiredFields
                 |> List.filter (matchesHabitat params.habitat)
                 |> List.filter (matchesAnyType params.creatureTypes)
-                |> List.filter (\c -> c.xp > 0)
                 |> List.filter (\c -> not (List.member c.id params.excludedIds))
 
         pinnedXp =
@@ -409,7 +409,35 @@ matchesAnyType types c =
     List.isEmpty types || List.member c.race types
 
 
-{-| Dispatch the main fill. When `loreAccurate` is on, try
+{-| Every creature the generator considers needs the four
+fields the algorithm reads: a positive `xp`, a non-empty
+`challengeRating` for the row display, a non-empty `race` so
+the Type filter can match, and a non-empty `habitats` list
+so the Habitat filter can match (and so the inferred-habitat
+hover note on the stat block isn't lying).
+
+Bundled creatures all satisfy this; the Half-Dragon is the
+one intentional exception (it's a template, not a creature)
+and quietly drops out here. User-created creatures missing
+any of these fields are skipped so a half-finished compendium
+entry doesn't surface in random rolls as a CR-blank, no-XP
+ghost. The skip is silent — the GM fills in the missing
+field via Compendium → Edit Creature and the creature
+re-enters the pool on the next roll.
+
+Pinned creatures bypass this check (they're an explicit
+pick); excluded creatures are removed downstream regardless.
+
+-}
+hasRequiredFields : Creature -> Bool
+hasRequiredFields c =
+    (c.xp > 0)
+        && not (String.isEmpty (String.trim c.challengeRating))
+        && not (String.isEmpty (String.trim c.race))
+        && not (List.isEmpty c.habitats)
+
+
+{-| Dispatch the main fill. When `loreLeaning` is on, try
 drawing from the bundled lore groups first; if no group fits
 the active filters at this budget, fall through to the regular
 slot-based pick so the GM still gets a roll.
@@ -427,7 +455,7 @@ mainFill :
     -> List String
     -> Generator (List ( Creature, Int ))
 mainFill params countCap totalBudget pool excludedIds =
-    if params.loreAccurate then
+    if params.loreLeaning then
         pickLoreFill params countCap totalBudget pool excludedIds
             |> Random.andThen
                 (\maybeGroups ->

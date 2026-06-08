@@ -1442,7 +1442,7 @@ The GM sets:
 - *Include minions* — adds a low-XP species (xp ≤ 100,
   ≈ CR ½) on top of the main fill, sized to fit a 20%
   budget reserve.
-- *Lore Accurate* — when on, the generator prefers
+- *Lore-leaning* — when on, the generator prefers
   ~Lore.bundled ++ params.userLoreGroups~ over the per-slot
   fill (see "Lore groupings" below).
 - *Pinned creatures* — locked in regardless of filters.
@@ -1460,12 +1460,12 @@ The generator pipeline is:
    return pinned alone — no random fill.
 3. Reserve 20% for minions if the toggle is on, otherwise
    the full remainder goes to the main fill.
-4. *Main fill*: when Lore Accurate is on, try a
+4. *Main fill*: when Lore-leaning is on, try a
    weighted-pick from ~Lore.bundled ++ userLoreGroups~
    filtered by the same params; the materialiser rolls each
    member's count in ~[countMin, countMax]~ and scales down
    if the rolled total exceeds budget×1.2 OR the
-   ~randomCountCap~ derived from Scale.  When Lore Accurate
+   ~randomCountCap~ derived from Scale.  When Lore-leaning
    is off (or no group qualifies), fall back to a
    *slot-queue* fill that cycles the selected types,
    picking a distinct species per slot from a budget-aware

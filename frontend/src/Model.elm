@@ -523,7 +523,7 @@ type alias Model =
     , timerPresets : Dict String UiTimer.TimerPreset
 
     -- User-authored Lore groupings for the Random Encounter
-    -- generator's _Lore Accurate_ toggle.  Bundled groups
+    -- generator's _Lore-leaning_ toggle.  Bundled groups
     -- live in `Encounter.RandomEncounter.Lore.bundled`;
     -- these are the player's additions, edited in the
     -- Create/Edit Group modal and persisted under
