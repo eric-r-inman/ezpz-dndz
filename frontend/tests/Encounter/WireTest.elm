@@ -145,9 +145,11 @@ fullyPopulatedCreature =
             , note = "spell ends"
             }
     , creatureId = Just "smaug-id"
-    , hasLegendaryActions = True
+    , legendaryActionsCount = 3
+    , legendaryActionsLairBonus = 0
     , legendaryActionsUsed = Set.fromList [ 0, 1, 3 ]
-    , hasLegendaryResistance = True
+    , legendaryResistanceCount = 3
+    , legendaryResistanceLairBonus = 0
     , legendaryResistanceUsed = Set.fromList [ 0, 2 ]
     , isPlaceholder = False
     , creatureKind = "enemy"
