@@ -1412,6 +1412,158 @@ single ~FooPreset Op~ variant.  The flat shape mirrors the
 existing dispatch table style and keeps each branch a true
 one-liner in =Main.updateInner=.
 
+* Random Encounter generator
+
+The 🎲 Random Encounter modal (opened from the Compendium
+side panel) builds an encounter to a party's XP budget and
+drops it into the queue.  The pure domain lives in
+=frontend/src/Encounter/RandomEncounter.elm=; the UI substate
+in =Ui/RandomEncounter.elm=; the modal view in
+=View/Modal/RandomEncounter.elm=.  Bundled lore content lives
+in =Encounter/RandomEncounter/Lore.elm=; user-authored lore
+lives on =model.userLoreGroups= and persists via
+=localStorage.userLoreGroups= (wire format in
+=Encounter/RandomEncounter/Lore/Wire.elm=).
+
+** Knobs
+
+The GM sets:
+
+- *Difficulty* — Low / Moderate / High, fed into
+  ~Encounter.Difficulty.partyBudget~ for the XP target.
+- *Scale* — ~ScaleOne~ (1 creature), ~ScaleFew~ (2–4),
+  ~ScaleMany~ (4–18).  Drives a total-count ceiling
+  (~scaleMaxTotal~) that every step honors.
+- *Habitat* — ~Nothing~ = wildcard; otherwise filters the
+  pool to creatures whose ~habitats~ list contains it.
+- *Types* — one or more creature races (Dragon, Fiend, …).
+  OR-of-types: a creature qualifies if any of its races
+  appear.  Pinned creatures bypass the filter.
+- *Include minions* — adds a low-XP species (xp ≤ 100,
+  ≈ CR ½) on top of the main fill, sized to fit a 20%
+  budget reserve.
+- *Lore Accurate* — when on, the generator prefers
+  ~Lore.bundled ++ params.userLoreGroups~ over the per-slot
+  fill (see "Lore groupings" below).
+- *Pinned creatures* — locked in regardless of filters.
+  Counts come off the budget before the random fill rolls.
+- *Excluded creatures* — filtered out of every random pick
+  (pinned wins if a pin is also excluded).
+
+** Algorithm
+
+The generator pipeline is:
+
+1. Apply the global filter (habitat / type / xp > 0 / not
+   excluded) to produce the eligible pool.
+2. Subtract pinned XP from the budget.  If pinned ≥ budget,
+   return pinned alone — no random fill.
+3. Reserve 20% for minions if the toggle is on, otherwise
+   the full remainder goes to the main fill.
+4. *Main fill*: when Lore Accurate is on, try a
+   weighted-pick from ~Lore.bundled ++ userLoreGroups~
+   filtered by the same params; the materialiser rolls each
+   member's count in ~[countMin, countMax]~ and scales down
+   if the rolled total exceeds budget×1.2 OR the
+   ~randomCountCap~ derived from Scale.  When Lore Accurate
+   is off (or no group qualifies), fall back to a
+   *slot-queue* fill that cycles the selected types,
+   picking a distinct species per slot from a budget-aware
+   sweet-spot pool.
+5. *Top-up*: if main spent < ~85% of mainBudget, pick ONE
+   more species sized to land in ~[0.7, 1.2]~ × remaining
+   budget — capped by the remaining count budget so a Few
+   roll never overshoots its Scale ceiling.
+6. *Minions*: if the toggle is on AND there's count room
+   left, pick one ≤ 100-XP species and stuff 2–6 into the
+   reserved minion budget.
+
+The result is a record ~{ groups, minionIds }~ — ~groups~
+in display order (pinned → main → top-up → minions), with
+~minionIds~ pulled out so the view can apply the minion
+badge.  Pinned + group + minion clicks in the result panel
+fire =RandomEncounterPinAdd= and =RandomEncounterExcludeAdd=
+respectively for per-creature roster tweaks without
+reopening the picker.
+
+** Lore groupings
+
+A *lore group* is a hand-authored composition of creatures
+that naturally appear together — goblinoid warband, kobold-
+and-dragon, hag coven.  ~Lore.Group~ carries an id, name,
+member list, weight (1–10), and source flag
+(~Bundled | UserCurated~).  Each ~Slot~ in the member list
+references a creature by *name* (not id) so a saved group
+survives a compendium re-bundle.
+
+Bundled groups (~Lore.bundled~) ship ~50 hand-authored
+compositions covering the iconic associations across the
+2024 SRD set.  User groups live in
+=model.userLoreGroups= and are edited inline in the
+Create/Edit Group modal's appended Lore section
+(=View.Modal.GroupEdit.loreSection=) — collapsible
+"Your lore groups" + "Bundled lore groups" lists, expand-
+to-see-members on every row, ✎ + × icons on user rows only,
+inline editor with weight slider and per-member role +
+count range.
+
+Both sources flow into the generator's
+~pickLoreFill~ unchanged: ~Lore.bundled ++ params.userLoreGroups~
+is filtered + weighted-picked as a single pool.
+
+** Recharge prompt (no-auto-roll)
+
+Recharge abilities (dragon breath weapons, beholder rays,
+etc.) used to auto-roll a d6 at the start of the creature's
+turn.  They now wait for the GM to click.  The mechanic:
+
+- ~Encounter.RechargeAbility~ gains an ~awaitingRoll : Bool~
+  flag.  Begin-of-turn lifecycle
+  (=Encounter.Lifecycle.markSpentRechargesPendingFor=) flips
+  the flag on for any *spent* ability on the active
+  creature.
+- The card-row chip
+  (=View.Card.rechargeChip=) renders three states:
+  green pill (ready), muted strikethrough (spent on a non-
+  active creature), and *split prompt* (blinking 🎲 |
+  ability name) when ~isActive && not ready && awaitingRoll~.
+- Clicking 🎲 fires ~RollRechargeNow~ → reuses the existing
+  ~rechargeRollCmd~ path → lands in ~RechargeRollLanded~ →
+  flips ~ready=True~ if the d6 ≥ ~low~ and clears
+  ~awaitingRoll~ either way (one attempt per turn, matching
+  5e RAW).
+- Clicking the ability name fires ~ToggleRechargeAbility~ →
+  marks ready without rolling.
+
+The Encounter Reset
+(=Update.Encounter.controlConfirm= → ~PendingReset~ branch)
+preserves the recharge ability list while resetting each
+ability to ~ready=True, awaitingRoll=False~ — a previous
+bug that wiped the list entirely is fixed by treating the
+abilities as identity-level (stat-block) data rather than
+per-fight state.
+
+** Habitat data
+
+The Open5e SRD 5.2 dataset exposes the 2024 MM ~habitats~
+field but populates no values (the habitat lists themselves
+are in the proprietary 2024 MM, not the CC-BY SRD).  We
+fill the gap via deterministic rules in the CLI:
+
+#+begin_src sh
+ezpz-dndz-cli compendium infer-habitats \
+  --path crates/lib/data/bundled-creatures.json
+#+end_src
+
+The rules (~crates/cli/src/habitats.rs~) cover dragons by
+colour, fiends → Abyss/Nine Hells, elementals by element,
+Underdark dwellers, and a name-fragment fallback for
+beasts.  329/330 bundled creatures get populated; the
+Half-Dragon template is correctly left empty.  The stat
+block's Habitat row carries a hover tooltip
+("Inferred from online public sources") so GMs know the
+provenance isn't authoritative.
+
 * HP change engine
 
 The Damage / Heal / Temp HP buttons on card row 3 and the future

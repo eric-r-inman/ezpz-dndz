@@ -20,6 +20,7 @@ import Encounter
         , Encounter
         )
 import Encounter.Difficulty as Difficulty
+import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
@@ -140,6 +141,7 @@ import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
+import View.Page.Compendium
 import View.Page.QuickList
 import View.RollPopup
 import View.StatBlock
@@ -327,6 +329,7 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
+            :: Ports.compendiumTabMissing (\_ -> CompendiumTabMissing)
             :: xpFilterSubs
             ++ settingsSubs
             ++ clearMenuSubs
@@ -487,6 +490,7 @@ type alias Flags =
     , localConditionPresets : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
+    , localUserLoreGroups : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -589,6 +593,13 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
+      , userLoreGroups =
+            flags.localUserLoreGroups
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.RandomEncounter.Lore.Wire.decodeGroups
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault []
       , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -719,6 +730,14 @@ update msg model =
             else
                 Cmd.none
 
+        userLoreGroupsCmd =
+            if shouldPersistAfter msg && model.userLoreGroups /= next.userLoreGroups then
+                Ports.persistLocalUserLoreGroups
+                    (Encounter.RandomEncounter.Lore.Wire.encodeGroups next.userLoreGroups)
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -766,6 +785,7 @@ update msg model =
         , conditionPresetsCmd
         , timerPresetsCmd
         , partyCmd
+        , userLoreGroupsCmd
         , modalFocusCmd
         ]
     )
@@ -1418,7 +1438,23 @@ updateInner msg model =
             Update.Compendium.Browser.loaded result model
 
         CompendiumOpen ->
+            -- If the standalone /compendium tab is open, focus
+            -- it; otherwise JS calls back via
+            -- `compendiumTabMissing` and the modal opens.
+            ( model, Ports.tryFocusCompendiumTab () )
+
+        CompendiumTabMissing ->
             Update.Compendium.Browser.open model
+
+        CompendiumOpenInTab ->
+            -- Open (or focus) the named compendium window via
+            -- the JS port, and close the modal — the GM is
+            -- moving the work into a dedicated tab.
+            let
+                ( closed, closeCmd ) =
+                    Update.Compendium.Browser.close model
+            in
+            ( closed, Cmd.batch [ closeCmd, Ports.openCompendiumTab () ] )
 
         CompendiumClose ->
             Update.Compendium.Browser.close model
@@ -1508,6 +1544,60 @@ updateInner msg model =
         GroupEditSubmit ->
             Update.Compendium.Group.submit model
 
+        GroupEditLoreUserExpandToggle ->
+            Update.Compendium.Group.loreUserExpandToggle model
+
+        GroupEditLoreBundledExpandToggle ->
+            Update.Compendium.Group.loreBundledExpandToggle model
+
+        GroupEditLoreGroupExpandToggle id ->
+            Update.Compendium.Group.loreGroupExpandToggle id model
+
+        GroupEditLoreNew ->
+            Update.Compendium.Group.loreNew model
+
+        GroupEditLoreEdit id ->
+            Update.Compendium.Group.loreEdit id model
+
+        GroupEditLoreDeleteRequest id ->
+            Update.Compendium.Group.loreDeleteRequest id model
+
+        GroupEditLoreDeleteConfirm ->
+            Update.Compendium.Group.loreDeleteConfirm model
+
+        GroupEditLoreDeleteCancel ->
+            Update.Compendium.Group.loreDeleteCancel model
+
+        GroupEditLoreDraftCancel ->
+            Update.Compendium.Group.loreDraftCancel model
+
+        GroupEditLoreDraftSubmit ->
+            Update.Compendium.Group.loreDraftSubmit model
+
+        GroupEditLoreDraftNameChanged raw ->
+            Update.Compendium.Group.loreDraftNameChanged raw model
+
+        GroupEditLoreDraftWeightChanged raw ->
+            Update.Compendium.Group.loreDraftWeightChanged raw model
+
+        GroupEditLoreDraftMemberAdd cname ->
+            Update.Compendium.Group.loreDraftMemberAdd cname model
+
+        GroupEditLoreDraftMemberRemove idx ->
+            Update.Compendium.Group.loreDraftMemberRemove idx model
+
+        GroupEditLoreDraftMemberRoleSet idx raw ->
+            Update.Compendium.Group.loreDraftMemberRoleSet idx raw model
+
+        GroupEditLoreDraftMemberCountMinChanged idx raw ->
+            Update.Compendium.Group.loreDraftMemberCountMinChanged idx raw model
+
+        GroupEditLoreDraftMemberCountMaxChanged idx raw ->
+            Update.Compendium.Group.loreDraftMemberCountMaxChanged idx raw model
+
+        GroupEditLoreAddSearchChanged raw ->
+            Update.Compendium.Group.loreAddSearchChanged raw model
+
         CompendiumGroupsLoaded result ->
             Update.Compendium.Group.groupsLoaded result model
 
@@ -1566,6 +1656,9 @@ updateInner msg model =
 
         RandomEncounterMinionsToggle ->
             Update.RandomEncounter.minionsToggle model
+
+        RandomEncounterLoreToggle ->
+            Update.RandomEncounter.loreToggle model
 
         RandomEncounterPinPickerToggle ->
             Update.RandomEncounter.pinPickerToggle model
@@ -2403,10 +2496,10 @@ way — anonymous users get the full app, they just persist to
 appShell : Maybe Auth.User -> Model -> List (Html Msg)
 appShell maybeUser model =
     [ -- AppBar is suppressed on the standalone Quick-List
-      -- page — that tab is read-only and meant to be parked
-      -- on a second monitor, where the nav row would only
-      -- compete for vertical space against the queue rows.
-      if model.route == QuickList then
+      -- and Compendium pages — those tabs are meant to be
+      -- parked on a second monitor, where the nav row would
+      -- only compete for vertical space with the page body.
+      if model.route == QuickList || model.route == Compendium then
         text ""
 
       else
@@ -2481,6 +2574,11 @@ viewPage model =
 
         QuickList ->
             View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
+
+        Compendium ->
+            View.Page.Compendium.view model.auth
+                model.compendium
+                (List.filterMap .creatureId model.encounter.creatures)
 
         NotFound ->
             div [ class "workspace" ]

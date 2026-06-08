@@ -1,4 +1,4 @@
-module View.Modal.Compendium exposing (view)
+module View.Modal.Compendium exposing (pageBody, view)
 
 {-| Read-only browser for the creature library. Two-column layout:
 filterable + sortable list on the left, full stat block on the
@@ -42,19 +42,38 @@ view chrome auth ui encounterIds =
         text ""
 
     else
-        View.Modal.view
+        View.Modal.viewWithExtras
             { close = CompendiumClose
             , noOp = NoOp
             , title = "📚 Compendium"
             , extraClass = "modal--compendium"
             , chrome = chrome
-            , body =
-                [ filterBar ui
-                , actionsBar auth ui
-                , bulkBanner ui
-                , body auth ui encounterIds
-                ]
+            , body = pageBody auth ui encounterIds
             }
+            [ button
+                [ class "modal__open-in-tab"
+                , Attr.type_ "button"
+                , onClick CompendiumOpenInTab
+                , Tooltips.attr Tooltips.compendiumOpenInTab
+                , attribute "aria-label" "Open compendium in a new tab"
+                ]
+                [ text "↗" ]
+            ]
+
+
+{-| The compendium's body content — filter bar, actions bar,
+bulk-confirm banner, and the main list/stat-block pane.
+Exposed so [`View.Page.Compendium`](View-Page-Compendium) can
+render the same UI as a full standalone page without the
+modal chrome wrapper.
+-}
+pageBody : Auth.AuthState -> CompendiumUi -> List String -> List (Html Msg)
+pageBody auth ui encounterIds =
+    [ filterBar ui
+    , actionsBar auth ui
+    , bulkBanner ui
+    , body auth ui encounterIds
+    ]
 
 
 {-| Count how many encounter creatures point at the given

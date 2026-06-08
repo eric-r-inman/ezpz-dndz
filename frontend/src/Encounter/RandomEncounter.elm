@@ -47,6 +47,7 @@ without the full 2024 DMG composition-template model. No
 
 import Compendium exposing (Creature, Habitat)
 import Encounter.Difficulty as Difficulty exposing (PartyMember)
+import Encounter.RandomEncounter.Lore as Lore
 import Random exposing (Generator)
 
 
@@ -210,6 +211,16 @@ budgetFor party target =
     pick. The exclusion only applies to the random fill;
     pinned creatures take precedence and still appear even if
     their id ends up in the list.
+  - `loreAccurate` — when `True`, the generator preferentially
+    draws the main fill from lore groups (bundled + user)
+    sized to fit the budget. Falls back to the per-slot fill
+    when no lore group matches the active filters. Pinned
+    creatures, the top-up pass, and minions still run on top.
+  - `userLoreGroups` — user-authored lore groups merged into
+    the bundled set when `loreAccurate` is on. The user list
+    is consulted alongside the bundled list with no preference
+    given to either source; weights from each group control
+    relative pick frequency.
 
 -}
 type alias GenParams =
@@ -220,6 +231,8 @@ type alias GenParams =
     , includeMinions : Bool
     , pinned : List ( Creature, Int )
     , excludedIds : List String
+    , loreAccurate : Bool
+    , userLoreGroups : List Lore.Group
     }
 
 
@@ -276,8 +289,18 @@ generator params pool =
         let
             pinnedIds =
                 List.map (\( c, _ ) -> c.id) params.pinned
+
+            pinnedCount =
+                countCreatures params.pinned
+
+            -- Scale's total-count cap, minus what the GM has
+            -- already pinned.  Threaded through every step that
+            -- spawns creatures so a Few roll never grows past
+            -- 4, a One roll stays at 1, etc.
+            randomCountCap =
+                max 0 (scaleMaxTotal params.scale - pinnedCount)
         in
-        pickMainGroups params.scale params.creatureTypes mainBudget filtered pinnedIds
+        mainFill params randomCountCap mainBudget filtered pinnedIds
             |> Random.andThen
                 (\main ->
                     let
@@ -287,22 +310,34 @@ generator params pool =
                                 0
                                 main
 
+                        afterMainCount =
+                            countCreatures main
+
                         afterMainIds =
                             pinnedIds ++ List.map (\( c, _ ) -> c.id) main
+
+                        topUpCountCap =
+                            max 0 (randomCountCap - afterMainCount)
                     in
-                    topUp (mainBudget - mainSpent) filtered afterMainIds
+                    topUp topUpCountCap (mainBudget - mainSpent) filtered afterMainIds
                         |> Random.andThen
                             (\extras ->
                                 let
                                     filled =
                                         main ++ extras
 
+                                    afterExtrasCount =
+                                        afterMainCount + countCreatures extras
+
                                     afterExtrasIds =
                                         afterMainIds
                                             ++ List.map (\( c, _ ) -> c.id) extras
+
+                                    minionCountCap =
+                                        max 0 (randomCountCap - afterExtrasCount)
                                 in
-                                if params.includeMinions then
-                                    pickMinions minionBudget filtered afterExtrasIds
+                                if params.includeMinions && minionCountCap >= 2 then
+                                    pickMinions minionCountCap minionBudget filtered afterExtrasIds
                                         |> Random.map
                                             (\minions ->
                                                 { groups = params.pinned ++ filled ++ minions
@@ -318,6 +353,33 @@ generator params pool =
                                         }
                             )
                 )
+
+
+{-| Total creature count across a list of `(creature, count)`
+groups — the live "have we hit the Scale cap yet?" number.
+-}
+countCreatures : List ( Creature, Int ) -> Int
+countCreatures groups =
+    List.foldl (\( _, n ) acc -> acc + n) 0 groups
+
+
+{-| Total-count ceiling implied by each Scale. The generator
+deducts pinned + main + top-up + minion counts from this so
+the final roster honors the GM's Scale promise even when the
+lore fill, top-up, or minion pick would otherwise blow past
+it.
+-}
+scaleMaxTotal : Scale -> Int
+scaleMaxTotal s =
+    case s of
+        ScaleOne ->
+            1
+
+        ScaleFew ->
+            4
+
+        ScaleMany ->
+            18
 
 
 {-| Habitat match: `Nothing` is the wildcard (any creature
@@ -345,6 +407,100 @@ only offer `allCreatureTypes` so case drift can't happen.
 matchesAnyType : List String -> Creature -> Bool
 matchesAnyType types c =
     List.isEmpty types || List.member c.race types
+
+
+{-| Dispatch the main fill. When `loreAccurate` is on, try
+drawing from the bundled lore groups first; if no group fits
+the active filters at this budget, fall through to the regular
+slot-based pick so the GM still gets a roll.
+
+`countCap` is the maximum total creature count the main fill
+is allowed to produce — already adjusted for pinned creatures,
+so a Scale=Few roll with 1 pinned creature has `countCap = 3`.
+
+-}
+mainFill :
+    GenParams
+    -> Int
+    -> Int
+    -> List Creature
+    -> List String
+    -> Generator (List ( Creature, Int ))
+mainFill params countCap totalBudget pool excludedIds =
+    if params.loreAccurate then
+        pickLoreFill params countCap totalBudget pool excludedIds
+            |> Random.andThen
+                (\maybeGroups ->
+                    case maybeGroups of
+                        Just groups ->
+                            Random.constant groups
+
+                        Nothing ->
+                            pickMainGroups params.scale
+                                params.creatureTypes
+                                totalBudget
+                                pool
+                                excludedIds
+                )
+
+    else
+        pickMainGroups params.scale
+            params.creatureTypes
+            totalBudget
+            pool
+            excludedIds
+
+
+{-| Filter the bundled lore groups against the active params
+and the current pool, weighted-pick one, and materialise its
+members sized to the budget AND the count cap. Returns
+`Nothing` when no group qualifies (or the pool can't resolve
+any of the chosen group's members, or the count cap is zero)
+so the caller can fall back to the slot-based fill.
+-}
+pickLoreFill :
+    GenParams
+    -> Int
+    -> Int
+    -> List Creature
+    -> List String
+    -> Generator (Maybe (List ( Creature, Int )))
+pickLoreFill params countCap totalBudget pool excludedIds =
+    if countCap <= 0 then
+        Random.constant Nothing
+
+    else
+        let
+            fitCheck =
+                { budget = totalBudget
+                , habitat = params.habitat
+                , creatureTypes = params.creatureTypes
+                , excludedIds = excludedIds
+                }
+
+            eligible =
+                List.filter
+                    (\g -> Lore.groupFits fitCheck g pool)
+                    (Lore.bundled ++ params.userLoreGroups)
+        in
+        case List.map (\g -> ( toFloat g.weight, g )) eligible of
+            [] ->
+                Random.constant Nothing
+
+            first :: rest ->
+                Random.weighted first rest
+                    |> Random.andThen
+                        (\group ->
+                            Lore.materialize totalBudget countCap group pool
+                                |> Random.map
+                                    (\pairs ->
+                                        if List.isEmpty pairs then
+                                            Nothing
+
+                                        else
+                                            Just pairs
+                                    )
+                        )
 
 
 {-| Pick the main encounter groups. The encounter is built as a
@@ -622,8 +778,8 @@ than to hunt the compendium for one to add, so this favours
 "slightly over" over "noticeably under" as the user requested.
 
 -}
-topUp : Int -> List Creature -> List String -> Generator (List ( Creature, Int ))
-topUp remaining pool excludedIds =
+topUp : Int -> Int -> List Creature -> List String -> Generator (List ( Creature, Int ))
+topUp countCap remaining pool excludedIds =
     let
         eligible =
             pool
@@ -641,7 +797,12 @@ topUp remaining pool excludedIds =
                 affordable =
                     overTolerance // max 1 c.xp
             in
-            clamp 1 6 affordable
+            -- Cap by both the per-group ceiling (6) and the
+            -- remaining count budget so a Scale=Few roll's
+            -- top-up never adds 6 Adult Dragons when the
+            -- random fill already brought the encounter to
+            -- 3 creatures.
+            clamp 1 (Basics.min 6 countCap) affordable
 
         score c =
             ( c, bestCount c )
@@ -658,10 +819,10 @@ topUp remaining pool excludedIds =
                 |> List.map score
                 |> List.filter candidate
     in
-    -- Tiny remaining → don't bother; the main fill is close
-    -- enough to budget that another group would over-shoot
-    -- the encounter's intent rather than help it.
-    if remaining <= 0 then
+    -- Skip the top-up entirely when there's no room for more
+    -- creatures (Scale's count budget is full) or no budget
+    -- left to spend on them.
+    if countCap <= 0 || remaining <= 0 then
         Random.constant []
 
     else
@@ -686,8 +847,8 @@ so the minion group always introduces a new creature instead
 of doubling up.
 
 -}
-pickMinions : Int -> List Creature -> List String -> Generator (List ( Creature, Int ))
-pickMinions budget pool excludedIds =
+pickMinions : Int -> Int -> List Creature -> List String -> Generator (List ( Creature, Int ))
+pickMinions countCap budget pool excludedIds =
     let
         minionPool =
             pool
@@ -702,7 +863,8 @@ pickMinions budget pool excludedIds =
                     (\minion ->
                         let
                             count =
-                                (budget // max 1 minion.xp) |> clamp 2 6
+                                (budget // max 1 minion.xp)
+                                    |> clamp 2 (Basics.min 6 countCap)
                         in
                         [ ( minion, count ) ]
                     )

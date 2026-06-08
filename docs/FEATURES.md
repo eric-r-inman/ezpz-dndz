@@ -241,10 +241,19 @@ optional legendary-pips column, and a right rail.
   next turn.
 - *Recharge chip* — appears to the left of any condition badges
   when a creature has a Recharge X-Y feature (e.g. dragon
-  breath, *Hellfire Spellcasting* on a Pit Fiend).  The chip
-  names the ability and its recharge window, sits green when
-  available, gray when spent, and auto-rolls 1d6 at the start
-  of the bearer's turn.  Click to flip state manually.
+  breath, *Hellfire Spellcasting* on a Pit Fiend).  Three
+  visual states:
+  * *Green* (ready) — click marks spent.
+  * *Gray, strikethrough* (spent, idle creature OR same-turn
+    use) — click marks ready manually.
+  * *Split prompt with a blinking 🎲* — appears at the START
+    of the creature's next turn after the ability was spent.
+    Click 🎲 to roll the d6 (success ≥ ~low~ → ready, failure
+    → stays spent and the prompt clears until next turn).
+    Click the ability name to mark ready without rolling.
+  Spending the ability mid-turn doesn't raise the dice on the
+  same turn — it waits for the begin-of-turn lifecycle hook,
+  matching the 5e RAW "once per turn" recharge attempt.
 - *Memo slot* — a tiny inline label (up to 15 chars), e.g. "leg
   res used".  Click to edit.
 - *Timer slot (⏱️)* — opens the *Timer* modal to attach a countdown
@@ -456,9 +465,15 @@ turn (with a 10-char note) can be one click away forever.
 A fresh visitor's Load menu ships pre-populated with ~60+ common
 SRD 5.2.1 effects across the five categories:
 
-- *Player Classes* — Stunning Strike, Trip Attack, Bardic
-  Inspiration (d6/d8), Bless, Hex, Hunter's Mark, Searing
-  Smite, Wrathful / Staggering Smite, Turn Undead, etc.
+- *Player Classes* — 33 presets covering all 12 standard 5e
+  classes.  Highlights: Stunning Strike, Trip / Menacing /
+  Goading / Pushing / Disarming Attack, Bardic Inspiration
+  (d6 / d8 / d10), Bless, Hex, Hunter's Mark, Searing /
+  Wrathful / Staggering / Branding Smite, Turn Undead, Rage,
+  Reckless Attack, Vicious Mockery, Guidance, Sanctuary,
+  Shield of Faith, Wild Shape, Spike Growth, Action Surge,
+  Patient Defense, Pass Without Trace, Ensnaring Strike,
+  Sneak Attack, Hexblade's Curse, Shield, Haste.
 - *Spell Effects* — Hold Person / Monster, Sleep, Charm
   Person, Fear / Cause Fear, Hypnotic Pattern, Hideous
   Laughter, Suggestion, Slow, Web, Entangle, Banishment,
@@ -593,6 +608,16 @@ Click *📖 Open* on the right Compendium Panel.  The library opens as
 a two-column modal: a filterable list on the left, a stat block and
 action bar on the right.
 
+The Compendium modal also has a *↗* button next to the close ×.
+Click it to open the same compendium as a *full-page tab* (route
+~/compendium~) — useful on a second monitor while combat runs in
+the main tab.  When that tab is open, clicking *📖 Open* on the
+main page focuses the existing tab instead of opening the modal
+again; closing the tab restores the modal-open behaviour.  Each
+tab runs its own Elm instance, so edits in the standalone tab
+don't live-sync to the main tab's right panel until you reload
+the main page.
+
 ** Browsing and filtering
 
 - *Search* — live filter as you type (placeholder reads
@@ -635,7 +660,12 @@ right.  Clickable elements inside the stat block:
   icon next to the name; hover the icon to see the full list.
 - *Habitat / Treasure row* — at the very bottom of the stat block,
   below custom sections and lore, the 2024 Monster Manual habitat
-  and treasure tags appear as labeled rows.  Planar habitats render
+  and treasure tags appear as labeled rows.  Hovering the Habitat
+  row shows the tooltip *"Inferred from online public sources"* —
+  the bundled habitats were filled in by a deterministic name +
+  race rule pass (Open5e's SRD dataset exposes the field but
+  ships no values), so treat them as best-guess unless you've
+  edited them yourself.  Planar habitats render
   inside a "Planar (…)" wrapper to mirror the printed format.
 
 ** Adding to the encounter
@@ -731,6 +761,31 @@ encounter in one click — for example, "Hobgoblin patrol" containing
 Groups travel with your compendium: exporting the compendium exports
 the groups; resetting the compendium clears the groups.
 
+*** Lore groupings (in the same modal)
+
+Below the Group editor's Create button, a *Lore groupings*
+section is the editor for the Random Encounter generator's
+*Lore Accurate* toggle.  Two collapsible lists:
+
+- *Your lore groups* — what you've authored.  ▾ to expand a row
+  and see its members; ✎ to edit; × to delete (with confirm).
+- *Bundled lore groups* — ~50 hand-authored canonical
+  combos (Goblinoid Warband, Adult Dragon's Tribute, Hag Coven,
+  Pit Fiend's Retinue, etc.).  Read-only; expand-only.
+
+Click *➕ New lore group* to author your own.  The inline form
+takes a name, a weight slider (1 = rare, 10 = common), a member
+list (each with a *Role* — Leader / Member / Minion / Pet — and
+a min/max count range), and a creature picker to add new
+members.  Saved groups land in your *Your lore groups* list and
+flow into the Random Encounter generator alongside the bundled
+set on the very next roll.  Persisted to ~localStorage~ so your
+canon survives reloads.
+
+Bundled groups can't be edited.  If you want to tweak one —
+say, change the Hobgoblin Patrol's worg count — create a new
+lore group with the same composition and tune from there.
+
 ** Saving and loading the compendium itself
 
 Separate from individual encounter saves, you can save and load
@@ -799,8 +854,98 @@ Two entry points:
   - A short GM-facing description of what that bucket means at the
     table.
 
-Note: the party roster is currently in-memory only.  Server
-persistence for the party is on the roadmap.
+Note: the party roster persists across browser sessions in
+~localStorage~ (shared with the Random Encounter modal below).
+Server-side persistence so the party follows a signed-in user
+across devices is on the roadmap.
+
+* Random Encounter generator
+
+The *🎲 Random Encounter* button on the right Compendium panel
+opens a generator that builds an encounter to a party's XP
+budget and drops it into your queue.  It's a planning tool
+("what does a Moderate forest fight look like for my level-5
+party?") and a flavor tool ("give me a Hag Coven for tonight's
+session") in one.
+
+The algorithm is community-derived and may not reflect official
+2024 DMG guidance — the in-modal blurb says so.  The XP-budget
+math reuses the same per-character table the CR Calculator
+uses, so the two stay aligned.
+
+** Party
+
+Same party roster as the CR Calculator — opening either modal
+seeds 4 level-1 PCs if no party exists yet.  Edits in one show
+in the other.  Persisted in ~localStorage~.
+
+** Parameters
+
+- *Difficulty* — Low / Moderate / High.  The live "Budget" pill
+  shows the XP target derived from the party.
+- *Scale* — *One* (1 creature, a boss), *Few (2-4)* (a hunting
+  band), *Many (4+)* (a swarm / mob).  Caps the total creature
+  count regardless of how many bodies a lore group or top-up
+  pass would otherwise add.
+- *Habitat* — *Any* (wildcard) or one of 24 habitat tags
+  (Forest, Coastal, Underdark, Abyss, Feywild, …).  Filters the
+  pool to creatures whose stat block lists the habitat.
+- *Type* — *Any* or one of the 14 standard 5e creature types.
+  Click *Any* on the empty trailing dropdown to add another
+  type — the filter is OR-of-types so you can mix Dragon +
+  Fiend for a chaos roll.
+- *Include minions* — adds 2–6 low-CR creatures (xp ≤ 100) on
+  top of the random fill, sharing 20% of the budget.  Marked
+  with a *MINION* badge in the result.
+- *Lore accurate* — when on, the generator prefers
+  hand-authored canonical groupings (Goblinoid Warband, Adult
+  Dragon's Tribute, Hag Coven, Pit Fiend's Retinue, etc.).
+  Bundled + user lore groups are pooled together; weights and
+  filters decide which wins on any given roll.
+
+** Specific creatures
+
+A "Specific creatures" panel below the parameters lets you
+shape the roll further:
+
+- *➕ Pin a creature* opens a searchable picker; pick to lock
+  the creature into the roll.  Pinned creatures appear in the
+  result with no badge.  Per-pin *−*/*+* buttons adjust the
+  count; *×* removes the pin.  Pinned XP comes off the budget
+  before the random fill rolls, so a Pit Fiend pin will eat
+  most of a low-level budget on its own.
+- *🚫 Exclude a creature* opens the same picker for the
+  opposite intent — any creature in the exclude list gets
+  filtered out of the random fill (and minions).  Pinned beats
+  exclude if both are set for the same creature.
+- A *budget summary row* appears whenever you've pinned at
+  least one creature — shows pinned XP vs total budget and
+  flags when pins overflow the budget.
+
+** Result panel
+
+Click *🎲 Generate* (or *🎲 Reroll*) and the result shows up as
+a list of ~count × Creature~ rows with CR + group XP.  Pinned
+creatures appear first, then the random fill, then minions.
+Each row has two affordances on the right:
+
+- *🚫* — adds the creature to the Exclude list for next time
+  (works on both random and minion rows; hidden on pinned rows
+  since exclude-vs-pin is a contradiction).
+- *📌* — pins the creature for next time (or bumps the count
+  if it's already pinned).
+
+A *Total* line at the bottom sums the encounter XP.  Both
+actions reset the result panel to encourage a fresh reroll so
+you see the new outcome immediately.
+
+** Add to Encounter
+
+*Add to Encounter* spawns every group into the queue at
+initiative 0 (the GM rolls per card once combat starts).
+Duplicate species get auto-suffixed (Goblin, Goblin 2,
+Goblin 3) so the queue doesn't collide.  The modal closes on
+success with a toast confirming the count.
 
 * Card Customization (deferred for launch)
 

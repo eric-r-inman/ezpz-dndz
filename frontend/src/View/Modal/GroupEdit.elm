@@ -23,18 +23,24 @@ import Compendium.Group as Group
         ( InitiativeMode(..)
         , MinionType(..)
         )
+import Encounter.RandomEncounter.Lore as Lore
 import Html
     exposing
         ( Html
+        , a
         , button
         , div
+        , h3
         , input
         , label
+        , li
         , option
         , p
+        , section
         , select
         , span
         , text
+        , ul
         )
 import Html.Attributes as Attr
     exposing
@@ -48,14 +54,24 @@ import Html.Attributes as Attr
         , name
         , placeholder
         , selected
+        , step
         , type_
         , value
         )
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
+import Set
 import Ui.Compendium exposing (CompendiumDb(..))
-import Ui.GroupEdit as GroupEdit exposing (EntryDraft, GroupEditMode(..), GroupEditUi)
+import Ui.GroupEdit as GroupEdit
+    exposing
+        ( EntryDraft
+        , GroupEditMode(..)
+        , GroupEditUi
+        , LoreDraft
+        , LoreMemberDraft
+        , LoreSection
+        )
 import View.Modal
 
 
@@ -92,6 +108,7 @@ view model =
                     , entriesSection ui creatures
                     , errorBanner ui
                     , submitRow ui
+                    , loreSection ui model.userLoreGroups creatures
                     ]
                 }
 
@@ -334,6 +351,573 @@ submitRow ui =
             [ class "action-btn"
             , onClick GroupEditClose
             , disabled ui.submitting
+            ]
+            [ text "Cancel" ]
+        ]
+
+
+
+-- ── LORE SECTION ─────────────────────────────────────────────────────────────
+
+
+{-| Lore-groupings panel that sits below the regular group
+form. Shows two collapsible sections — player-authored on top,
+bundled below — with an expand toggle on each lore group
+revealing its members. Player groups carry edit + delete
+buttons; bundled are read-only. The "+ New lore group" button
+opens an inline draft form.
+-}
+loreSection :
+    GroupEditUi
+    -> List Lore.Group
+    -> List Compendium.Creature
+    -> Html Msg
+loreSection ui userGroups creatures =
+    section [ class "group-edit__lore-section" ]
+        ([ div [ class "group-edit__lore-divider" ] []
+         , div [ class "group-edit__lore-header" ]
+            [ h3 [ class "group-edit__lore-title" ]
+                [ text "Lore groupings" ]
+            , p [ class "group-edit__lore-blurb" ]
+                [ text
+                    ("Lore groupings are used by the Random "
+                        ++ "Encounter generator when Lore Accurate "
+                        ++ "is selected."
+                    )
+                ]
+            ]
+         ]
+            ++ loreContent ui userGroups creatures
+        )
+
+
+loreContent :
+    GroupEditUi
+    -> List Lore.Group
+    -> List Compendium.Creature
+    -> List (Html Msg)
+loreContent ui userGroups creatures =
+    case ui.lore.editing of
+        Just draft ->
+            [ loreEditor draft creatures ui.lore.addSearch ]
+
+        Nothing ->
+            [ loreActions ui.lore
+            , loreUserList ui.lore userGroups
+            , loreBundledList ui.lore
+            , loreDeleteBanner ui.lore userGroups
+            ]
+
+
+loreActions : LoreSection -> Html Msg
+loreActions _ =
+    div [ class "group-edit__lore-actions" ]
+        [ button
+            [ class "action-btn action-btn--blue"
+            , Attr.type_ "button"
+            , onClick GroupEditLoreNew
+            ]
+            [ text "➕ New lore group" ]
+        ]
+
+
+loreDeleteBanner : LoreSection -> List Lore.Group -> Html Msg
+loreDeleteBanner lore userGroups =
+    case lore.confirmDelete of
+        Just id ->
+            let
+                groupName =
+                    List.filter (\g -> g.id == id) userGroups
+                        |> List.head
+                        |> Maybe.map .name
+                        |> Maybe.withDefault id
+            in
+            div [ class "group-edit__lore-confirm" ]
+                [ span []
+                    [ text ("Delete \"" ++ groupName ++ "\"?") ]
+                , button
+                    [ class "action-btn action-btn--red"
+                    , Attr.type_ "button"
+                    , onClick GroupEditLoreDeleteConfirm
+                    ]
+                    [ text "Delete" ]
+                , button
+                    [ class "action-btn action-btn--blue"
+                    , Attr.type_ "button"
+                    , onClick GroupEditLoreDeleteCancel
+                    ]
+                    [ text "Cancel" ]
+                ]
+
+        Nothing ->
+            text ""
+
+
+loreUserList : LoreSection -> List Lore.Group -> Html Msg
+loreUserList lore userGroups =
+    let
+        count =
+            List.length userGroups
+
+        header =
+            disclosureRow
+                { expanded = lore.userExpanded
+                , label =
+                    "Your lore groups ("
+                        ++ String.fromInt count
+                        ++ ")"
+                , msg = GroupEditLoreUserExpandToggle
+                , extraClass = "group-edit__lore-disclosure--user"
+                }
+    in
+    div [ class "group-edit__lore-list-block" ]
+        (header
+            :: (if lore.userExpanded then
+                    if List.isEmpty userGroups then
+                        [ p [ class "group-edit__lore-empty" ]
+                            [ text "No custom lore groups yet — click \"+ New lore group\" to author one." ]
+                        ]
+
+                    else
+                        [ ul [ class "group-edit__lore-list" ]
+                            (List.map (userGroupRow lore.expandedGroups) userGroups)
+                        ]
+
+                else
+                    []
+               )
+        )
+
+
+loreBundledList : LoreSection -> Html Msg
+loreBundledList lore =
+    let
+        count =
+            List.length Lore.bundled
+
+        header =
+            disclosureRow
+                { expanded = lore.bundledExpanded
+                , label =
+                    "Bundled lore groups ("
+                        ++ String.fromInt count
+                        ++ ")"
+                , msg = GroupEditLoreBundledExpandToggle
+                , extraClass = "group-edit__lore-disclosure--bundled"
+                }
+    in
+    div [ class "group-edit__lore-list-block" ]
+        (header
+            :: (if lore.bundledExpanded then
+                    [ ul [ class "group-edit__lore-list" ]
+                        (List.map (bundledGroupRow lore.expandedGroups) Lore.bundled)
+                    ]
+
+                else
+                    []
+               )
+        )
+
+
+disclosureRow :
+    { expanded : Bool, label : String, msg : Msg, extraClass : String }
+    -> Html Msg
+disclosureRow cfg =
+    button
+        [ class ("group-edit__lore-disclosure " ++ cfg.extraClass)
+        , Attr.type_ "button"
+        , onClick cfg.msg
+        , attribute "aria-expanded"
+            (if cfg.expanded then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ span [ class "group-edit__lore-disclosure-caret" ]
+            [ text
+                (if cfg.expanded then
+                    "▾"
+
+                 else
+                    "▸"
+                )
+            ]
+        , span [ class "group-edit__lore-disclosure-label" ]
+            [ text cfg.label ]
+        ]
+
+
+userGroupRow : Set.Set String -> Lore.Group -> Html Msg
+userGroupRow expandedSet g =
+    let
+        isOpen =
+            Set.member g.id expandedSet
+    in
+    li [ class "group-edit__lore-row group-edit__lore-row--user" ]
+        [ div [ class "group-edit__lore-row-header" ]
+            [ button
+                [ class "group-edit__lore-row-toggle"
+                , Attr.type_ "button"
+                , onClick (GroupEditLoreGroupExpandToggle g.id)
+                , attribute "aria-expanded"
+                    (if isOpen then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ span [ class "group-edit__lore-row-caret" ]
+                    [ text
+                        (if isOpen then
+                            "▾"
+
+                         else
+                            "▸"
+                        )
+                    ]
+                , span [ class "group-edit__lore-row-name" ] [ text g.name ]
+                , span [ class "group-edit__lore-row-meta" ]
+                    [ text
+                        (String.fromInt (List.length g.members)
+                            ++ " species · weight "
+                            ++ String.fromInt g.weight
+                        )
+                    ]
+                ]
+            , button
+                [ class "icon-btn group-edit__lore-row-edit"
+                , Attr.type_ "button"
+                , onClick (GroupEditLoreEdit g.id)
+                , Attr.title "Edit this lore group"
+                , attribute "aria-label" ("Edit " ++ g.name)
+                ]
+                [ text "✎" ]
+            , button
+                [ class "icon-btn icon-btn--danger group-edit__lore-row-delete"
+                , Attr.type_ "button"
+                , onClick (GroupEditLoreDeleteRequest g.id)
+                , Attr.title "Delete this lore group"
+                , attribute "aria-label" ("Delete " ++ g.name)
+                ]
+                [ text "×" ]
+            ]
+        , if isOpen then
+            loreMembersList g
+
+          else
+            text ""
+        ]
+
+
+bundledGroupRow : Set.Set String -> Lore.Group -> Html Msg
+bundledGroupRow expandedSet g =
+    let
+        isOpen =
+            Set.member g.id expandedSet
+    in
+    li [ class "group-edit__lore-row group-edit__lore-row--bundled" ]
+        [ div [ class "group-edit__lore-row-header" ]
+            [ button
+                [ class "group-edit__lore-row-toggle"
+                , Attr.type_ "button"
+                , onClick (GroupEditLoreGroupExpandToggle g.id)
+                , attribute "aria-expanded"
+                    (if isOpen then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ span [ class "group-edit__lore-row-caret" ]
+                    [ text
+                        (if isOpen then
+                            "▾"
+
+                         else
+                            "▸"
+                        )
+                    ]
+                , span [ class "group-edit__lore-row-name" ] [ text g.name ]
+                , span [ class "group-edit__lore-row-meta" ]
+                    [ text
+                        (String.fromInt (List.length g.members)
+                            ++ " species · weight "
+                            ++ String.fromInt g.weight
+                        )
+                    ]
+                , span [ class "group-edit__lore-row-locked" ]
+                    [ text "🔒 bundled" ]
+                ]
+            ]
+        , if isOpen then
+            loreMembersList g
+
+          else
+            text ""
+        ]
+
+
+loreMembersList : Lore.Group -> Html Msg
+loreMembersList g =
+    ul [ class "group-edit__lore-members" ]
+        (List.map loreMemberRow g.members)
+
+
+loreMemberRow : Lore.Slot -> Html Msg
+loreMemberRow s =
+    let
+        countLabel =
+            if s.countMin == s.countMax then
+                String.fromInt s.countMin
+
+            else
+                String.fromInt s.countMin ++ "–" ++ String.fromInt s.countMax
+    in
+    li [ class "group-edit__lore-member" ]
+        [ span [ class "group-edit__lore-member-count" ] [ text countLabel ]
+        , span [ class "group-edit__lore-member-name" ] [ text s.name ]
+        , span [ class "group-edit__lore-member-role" ]
+            [ text (roleLabel s.role) ]
+        ]
+
+
+roleLabel : Lore.Role -> String
+roleLabel r =
+    case r of
+        Lore.Leader ->
+            "leader"
+
+        Lore.Member ->
+            "member"
+
+        Lore.Minion ->
+            "minion"
+
+        Lore.Pet ->
+            "pet"
+
+
+
+-- ── LORE EDITOR ──────────────────────────────────────────────────────────────
+
+
+loreEditor : LoreDraft -> List Compendium.Creature -> String -> Html Msg
+loreEditor draft creatures addSearch =
+    div [ class "group-edit__lore-editor" ]
+        [ p [ class "group-edit__lore-editor-title" ]
+            [ text
+                (case draft.id of
+                    Just _ ->
+                        "Editing lore group"
+
+                    Nothing ->
+                        "New lore group"
+                )
+            ]
+        , loreNameRow draft
+        , loreWeightRow draft
+        , loreMembersEditor draft
+        , loreAddMemberPicker addSearch creatures draft.members
+        , loreEditorActions
+        ]
+
+
+loreNameRow : LoreDraft -> Html Msg
+loreNameRow draft =
+    div [ class "group-edit__row" ]
+        [ label [ class "group-edit__label" ] [ text "Name" ]
+        , input
+            [ class "group-edit__input"
+            , type_ "text"
+            , value draft.name
+            , maxlength GroupEdit.maxNameLength
+            , placeholder "e.g. Kobold Skirmishers"
+            , onInput GroupEditLoreDraftNameChanged
+            ]
+            []
+        ]
+
+
+loreWeightRow : LoreDraft -> Html Msg
+loreWeightRow draft =
+    div [ class "group-edit__row group-edit__lore-weight-row" ]
+        [ label [ class "group-edit__label" ]
+            [ text ("Weight (" ++ String.fromInt draft.weight ++ ")") ]
+        , input
+            [ class "group-edit__lore-weight-slider"
+            , type_ "range"
+            , Attr.min "1"
+            , Attr.max "10"
+            , step "1"
+            , value (String.fromInt draft.weight)
+            , onInput GroupEditLoreDraftWeightChanged
+            ]
+            []
+        , span [ class "group-edit__lore-weight-hint" ]
+            [ text "1 = rare · 10 = common" ]
+        ]
+
+
+loreMembersEditor : LoreDraft -> Html Msg
+loreMembersEditor draft =
+    if List.isEmpty draft.members then
+        p [ class "group-edit__lore-empty" ]
+            [ text "Add at least one creature to the lore group." ]
+
+    else
+        div [ class "group-edit__lore-members-editor" ]
+            (List.indexedMap loreMemberEditorRow draft.members)
+
+
+loreMemberEditorRow : Int -> LoreMemberDraft -> Html Msg
+loreMemberEditorRow index m =
+    div [ class "group-edit__lore-member-row" ]
+        [ span [ class "group-edit__lore-member-name" ]
+            [ text m.creatureName ]
+        , select
+            [ class "group-edit__lore-role-select"
+            , onInput (GroupEditLoreDraftMemberRoleSet index)
+            , attribute "aria-label" "Role"
+            ]
+            (List.map (roleOption m.role) allRoles)
+        , label [ class "group-edit__lore-count-label" ] [ text "min" ]
+        , input
+            [ class "group-edit__lore-count-input"
+            , type_ "number"
+            , Attr.min "0"
+            , Attr.max "50"
+            , value m.countMin
+            , onInput (GroupEditLoreDraftMemberCountMinChanged index)
+            , attribute "aria-label" "Minimum count"
+            ]
+            []
+        , label [ class "group-edit__lore-count-label" ] [ text "max" ]
+        , input
+            [ class "group-edit__lore-count-input"
+            , type_ "number"
+            , Attr.min "0"
+            , Attr.max "50"
+            , value m.countMax
+            , onInput (GroupEditLoreDraftMemberCountMaxChanged index)
+            , attribute "aria-label" "Maximum count"
+            ]
+            []
+        , button
+            [ class "icon-btn icon-btn--danger"
+            , Attr.type_ "button"
+            , onClick (GroupEditLoreDraftMemberRemove index)
+            , Attr.title "Remove this member"
+            , attribute "aria-label" "Remove member"
+            ]
+            [ text "×" ]
+        ]
+
+
+allRoles : List Lore.Role
+allRoles =
+    [ Lore.Leader, Lore.Member, Lore.Minion, Lore.Pet ]
+
+
+roleOption : Lore.Role -> Lore.Role -> Html Msg
+roleOption current role =
+    option
+        [ value (roleKey role)
+        , selected (role == current)
+        ]
+        [ text (roleLabel role) ]
+
+
+roleKey : Lore.Role -> String
+roleKey r =
+    case r of
+        Lore.Leader ->
+            "leader"
+
+        Lore.Member ->
+            "member"
+
+        Lore.Minion ->
+            "minion"
+
+        Lore.Pet ->
+            "pet"
+
+
+loreAddMemberPicker :
+    String
+    -> List Compendium.Creature
+    -> List LoreMemberDraft
+    -> Html Msg
+loreAddMemberPicker addSearch creatures already =
+    let
+        alreadyNames =
+            List.map .creatureName already
+
+        matches =
+            if String.isEmpty (String.trim addSearch) then
+                []
+
+            else
+                creatures
+                    |> List.filter
+                        (\c ->
+                            String.contains
+                                (String.toLower addSearch)
+                                (String.toLower c.name)
+                        )
+                    |> List.filter (\c -> not (List.member c.name alreadyNames))
+                    |> List.sortBy .name
+                    |> List.take 12
+    in
+    div [ class "group-edit__lore-add-row" ]
+        [ input
+            [ class "group-edit__input"
+            , type_ "search"
+            , placeholder "🔍 Search a creature to add…"
+            , value addSearch
+            , onInput GroupEditLoreAddSearchChanged
+            ]
+            []
+        , if List.isEmpty matches then
+            text ""
+
+          else
+            ul [ class "group-edit__lore-add-results" ]
+                (List.map loreAddResultRow matches)
+        ]
+
+
+loreAddResultRow : Compendium.Creature -> Html Msg
+loreAddResultRow c =
+    li
+        [ class "group-edit__lore-add-result"
+        , onClick (GroupEditLoreDraftMemberAdd c.name)
+        , attribute "role" "button"
+        , attribute "tabindex" "0"
+        ]
+        [ span [] [ text c.name ]
+        , span [ class "group-edit__lore-add-result-cr" ]
+            [ text ("CR " ++ c.challengeRating) ]
+        ]
+
+
+loreEditorActions : Html Msg
+loreEditorActions =
+    div [ class "group-edit__lore-editor-actions" ]
+        [ button
+            [ class "action-btn action-btn--blue"
+            , Attr.type_ "button"
+            , onClick GroupEditLoreDraftSubmit
+            ]
+            [ text "Save lore group" ]
+        , button
+            [ class "action-btn"
+            , Attr.type_ "button"
+            , onClick GroupEditLoreDraftCancel
             ]
             [ text "Cancel" ]
         ]

@@ -6,6 +6,7 @@ module Update.Compendium.Group exposing
     , submit, created, updated
     , expandToggle, select, delete, deleteResponse
     , groupsLoaded
+    , loreAddSearchChanged, loreBundledExpandToggle, loreDeleteCancel, loreDeleteConfirm, loreDeleteRequest, loreDraftCancel, loreDraftMemberAdd, loreDraftMemberCountMaxChanged, loreDraftMemberCountMinChanged, loreDraftMemberRemove, loreDraftMemberRoleSet, loreDraftNameChanged, loreDraftSubmit, loreDraftWeightChanged, loreEdit, loreGroupExpandToggle, loreNew, loreUserExpandToggle
     )
 
 {-| Update branches for the **Create / Edit Group** modal and the
@@ -31,12 +32,19 @@ import Auth
 import Compendium.Group as Group exposing (Group, MinionType(..))
 import Compendium.GroupWire as GroupWire
 import Dict exposing (Dict)
+import Encounter.RandomEncounter.Lore as Lore
 import Http
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Set
 import Ui.Compendium as CompendiumUi
-import Ui.GroupEdit as GroupEdit exposing (GroupEditMode(..))
+import Ui.GroupEdit as GroupEdit
+    exposing
+        ( GroupEditMode(..)
+        , LoreDraft
+        , LoreMemberDraft
+        , LoreSection
+        )
 import Ui.Toast exposing (ToastKind(..))
 import Update.Compendium.Browser exposing (withCompendium)
 import Update.Toast
@@ -494,3 +502,318 @@ updateAt index fn xs =
                 x
         )
         xs
+
+
+
+-- ── LORE SECTION HANDLERS ────────────────────────────────────────────────────
+
+
+withLore : (LoreSection -> LoreSection) -> Model -> Model
+withLore fn =
+    withGroupEdit (\ui -> { ui | lore = fn ui.lore })
+
+
+withLoreDraft : (LoreDraft -> LoreDraft) -> Model -> Model
+withLoreDraft fn =
+    withLore
+        (\lore ->
+            { lore
+                | editing = Maybe.map fn lore.editing
+            }
+        )
+
+
+loreUserExpandToggle : Model -> ( Model, Cmd Msg )
+loreUserExpandToggle model =
+    ( withLore (\l -> { l | userExpanded = not l.userExpanded }) model
+    , Cmd.none
+    )
+
+
+loreBundledExpandToggle : Model -> ( Model, Cmd Msg )
+loreBundledExpandToggle model =
+    ( withLore (\l -> { l | bundledExpanded = not l.bundledExpanded }) model
+    , Cmd.none
+    )
+
+
+loreGroupExpandToggle : String -> Model -> ( Model, Cmd Msg )
+loreGroupExpandToggle id model =
+    ( withLore
+        (\l ->
+            { l
+                | expandedGroups =
+                    if Set.member id l.expandedGroups then
+                        Set.remove id l.expandedGroups
+
+                    else
+                        Set.insert id l.expandedGroups
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+loreNew : Model -> ( Model, Cmd Msg )
+loreNew model =
+    ( withLore
+        (\l ->
+            { l
+                | editing = Just GroupEdit.freshLoreDraft
+                , confirmDelete = Nothing
+                , addSearch = ""
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+loreEdit : String -> Model -> ( Model, Cmd Msg )
+loreEdit id model =
+    let
+        found =
+            List.filter (\g -> g.id == id) model.userLoreGroups
+                |> List.head
+    in
+    case found of
+        Just g ->
+            ( withLore
+                (\l ->
+                    { l
+                        | editing = Just (GroupEdit.loreDraftFromGroup g)
+                        , confirmDelete = Nothing
+                        , addSearch = ""
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+loreDraftCancel : Model -> ( Model, Cmd Msg )
+loreDraftCancel model =
+    ( withLore (\l -> { l | editing = Nothing, addSearch = "" }) model
+    , Cmd.none
+    )
+
+
+{-| Commit the draft. On validation failure, surface the error
+on the parent modal's `submitError`. On success, upsert into
+`model.userLoreGroups` (preserves id when editing, allocates
+otherwise) and close the draft.
+-}
+loreDraftSubmit : Model -> ( Model, Cmd Msg )
+loreDraftSubmit model =
+    case Maybe.andThen Model.groupEditLens.extract model.modal of
+        Just ui ->
+            case ui.lore.editing of
+                Just draft ->
+                    case GroupEdit.validateLoreDraft draft of
+                        Ok newGroup ->
+                            let
+                                replaced =
+                                    if
+                                        List.any
+                                            (\g -> g.id == newGroup.id)
+                                            model.userLoreGroups
+                                    then
+                                        List.map
+                                            (\g ->
+                                                if g.id == newGroup.id then
+                                                    newGroup
+
+                                                else
+                                                    g
+                                            )
+                                            model.userLoreGroups
+
+                                    else
+                                        model.userLoreGroups ++ [ newGroup ]
+                            in
+                            ( withLore
+                                (\l -> { l | editing = Nothing, addSearch = "" })
+                                { model | userLoreGroups = replaced }
+                            , Cmd.none
+                            )
+
+                        Err msg ->
+                            ( withGroupEdit
+                                (\u -> { u | submitError = Just msg })
+                                model
+                            , Cmd.none
+                            )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+loreDeleteRequest : String -> Model -> ( Model, Cmd Msg )
+loreDeleteRequest id model =
+    ( withLore (\l -> { l | confirmDelete = Just id }) model, Cmd.none )
+
+
+loreDeleteCancel : Model -> ( Model, Cmd Msg )
+loreDeleteCancel model =
+    ( withLore (\l -> { l | confirmDelete = Nothing }) model, Cmd.none )
+
+
+loreDeleteConfirm : Model -> ( Model, Cmd Msg )
+loreDeleteConfirm model =
+    case Maybe.andThen Model.groupEditLens.extract model.modal of
+        Just ui ->
+            case ui.lore.confirmDelete of
+                Just id ->
+                    ( withLore (\l -> { l | confirmDelete = Nothing })
+                        { model
+                            | userLoreGroups =
+                                List.filter (\g -> g.id /= id) model.userLoreGroups
+                        }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+loreDraftNameChanged : String -> Model -> ( Model, Cmd Msg )
+loreDraftNameChanged raw model =
+    ( withLoreDraft
+        (\d -> { d | name = String.left GroupEdit.maxNameLength raw })
+        model
+    , Cmd.none
+    )
+
+
+loreDraftWeightChanged : String -> Model -> ( Model, Cmd Msg )
+loreDraftWeightChanged raw model =
+    case String.toInt (String.trim raw) of
+        Just n ->
+            ( withLoreDraft (\d -> { d | weight = clamp 1 10 n }) model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+loreDraftMemberAdd : String -> Model -> ( Model, Cmd Msg )
+loreDraftMemberAdd creatureName model =
+    let
+        trimmed =
+            String.trim creatureName
+
+        freshMember =
+            { creatureName = trimmed
+            , role = Lore.Member
+            , countMin = "1"
+            , countMax = "1"
+            }
+    in
+    if String.isEmpty trimmed then
+        ( model, Cmd.none )
+
+    else
+        ( withLore
+            (\l ->
+                { l
+                    | editing =
+                        Maybe.map
+                            (\d -> { d | members = d.members ++ [ freshMember ] })
+                            l.editing
+                    , addSearch = ""
+                }
+            )
+            model
+        , Cmd.none
+        )
+
+
+loreDraftMemberRemove : Int -> Model -> ( Model, Cmd Msg )
+loreDraftMemberRemove index model =
+    ( withLoreDraft
+        (\d -> { d | members = removeAt index d.members })
+        model
+    , Cmd.none
+    )
+
+
+loreDraftMemberRoleSet : Int -> String -> Model -> ( Model, Cmd Msg )
+loreDraftMemberRoleSet index raw model =
+    case roleFromKey raw of
+        Just role ->
+            ( withLoreDraft
+                (\d ->
+                    { d
+                        | members =
+                            updateAt index (\m -> { m | role = role }) d.members
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+loreDraftMemberCountMinChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+loreDraftMemberCountMinChanged index raw model =
+    ( withLoreDraft
+        (\d ->
+            { d
+                | members =
+                    updateAt index (\m -> { m | countMin = String.left 2 raw }) d.members
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+loreDraftMemberCountMaxChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+loreDraftMemberCountMaxChanged index raw model =
+    ( withLoreDraft
+        (\d ->
+            { d
+                | members =
+                    updateAt index (\m -> { m | countMax = String.left 2 raw }) d.members
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+loreAddSearchChanged : String -> Model -> ( Model, Cmd Msg )
+loreAddSearchChanged raw model =
+    ( withLore (\l -> { l | addSearch = raw }) model, Cmd.none )
+
+
+roleFromKey : String -> Maybe Lore.Role
+roleFromKey raw =
+    case raw of
+        "leader" ->
+            Just Lore.Leader
+
+        "member" ->
+            Just Lore.Member
+
+        "minion" ->
+            Just Lore.Minion
+
+        "pet" ->
+            Just Lore.Pet
+
+        _ ->
+            Nothing

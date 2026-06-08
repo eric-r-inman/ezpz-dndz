@@ -50,6 +50,13 @@ type alias RandomEncounterUi =
     , creatureTypes : List String
     , includeMinions : Bool
 
+    -- When True the generator preferentially draws the main
+    -- fill from bundled lore groups (goblinoid warband, hag
+    -- coven, dragon's kobold court, etc.).  Falls back to the
+    -- per-slot fill when no lore group fits the active
+    -- habitat / type filters at the current budget.
+    , loreAccurate : Bool
+
     -- Pinned creatures the GM has chosen to lock into the
     -- roll, deduplicated by creature id with a per-entry
     -- count.  Re-pinning increments the count.
@@ -85,6 +92,7 @@ fresh =
     , habitat = Nothing
     , creatureTypes = []
     , includeMinions = False
+    , loreAccurate = False
     , pinned = []
     , pinSearch = ""
     , pinPickerOpen = False

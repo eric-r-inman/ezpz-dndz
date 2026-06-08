@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -164,6 +164,15 @@ payload shape.
 port persistLocalParty : E.Value -> Cmd msg
 
 
+{-| Persist user-authored Lore groups to
+`localStorage.userLoreGroups`. Body is a JSON array of group
+records (see `Encounter.RandomEncounter.Lore.Wire`). Fires on
+every Save / Delete in the Create/Edit Group modal's Lore
+section.
+-}
+port persistLocalUserLoreGroups : E.Value -> Cmd msg
+
+
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of
 this app open in the same browser profile. JS bridges the value
 through a `BroadcastChannel("ezpz-dndz-dice")`; peer tabs receive
@@ -203,3 +212,29 @@ tab decodes the payload and replaces its own
 `model.encounter` — no persist, no re-broadcast.
 -}
 port incomingEncounter : (D.Value -> msg) -> Sub msg
+
+
+{-| Ask the JS host to open the standalone `/compendium` route
+in a named browser window. If a window with that name already
+exists, the call brings it to focus instead of opening a new
+one (browser-defined for tabs vs popups). Fired by the ↗
+button in the Compendium modal header.
+-}
+port openCompendiumTab : () -> Cmd msg
+
+
+{-| Ask the JS host to focus the standalone compendium window
+if it's already open. JS uses its retained `window.open`
+reference to check `.closed`; if there's no live reference,
+it fires [`compendiumTabMissing`](#compendiumTabMissing) so
+the main tab can fall back to opening the modal in place.
+-}
+port tryFocusCompendiumTab : () -> Cmd msg
+
+
+{-| Subscription that fires after `tryFocusCompendiumTab`
+when JS has no live reference (the tab was never opened, was
+closed by the user, or the main tab was reloaded since
+opening it). Triggers a normal `CompendiumOpen` modal flow.
+-}
+port compendiumTabMissing : (() -> msg) -> Sub msg
