@@ -87,7 +87,7 @@ categories =
 defaults : Dict String ConditionPreset
 defaults =
     Dict.fromList
-        [ -- Player Classes (13)
+        [ -- Player Classes (33)
           ( "Stunning Strike (Monk)", stunningStrike )
         , ( "Trip Attack", tripAttack )
         , ( "Menacing Attack", menacingAttack )
@@ -98,9 +98,29 @@ defaults =
         , ( "Turn Undead", turnUndead )
         , ( "Bardic Inspiration (+d6)", bardicInspiration )
         , ( "Bardic Inspiration (+d8)", bardicInspirationD8 )
+        , ( "Bardic Inspiration (+d10)", bardicInspirationD10 )
         , ( "Bless (+d4)", bless )
         , ( "Hex", hex )
         , ( "Hunter's Mark", huntersMark )
+        , ( "Rage (Barbarian)", rage )
+        , ( "Reckless Attack (Barbarian)", recklessAttack )
+        , ( "Vicious Mockery (Bard)", viciousMockery )
+        , ( "Guidance (Cleric)", guidance )
+        , ( "Sanctuary (Cleric)", sanctuary )
+        , ( "Shield of Faith (Cleric/Paladin)", shieldOfFaith )
+        , ( "Wild Shape (Druid)", wildShape )
+        , ( "Spike Growth (Druid/Ranger)", spikeGrowth )
+        , ( "Action Surge (Fighter)", actionSurge )
+        , ( "Disarming Attack (Battle Master)", disarmingAttack )
+        , ( "Pushing Attack (Battle Master)", pushingAttack )
+        , ( "Patient Defense (Monk)", patientDefense )
+        , ( "Branding Smite (Paladin)", brandingSmite )
+        , ( "Pass Without Trace (Druid/Ranger)", passWithoutTrace )
+        , ( "Ensnaring Strike (Ranger)", ensnaringStrike )
+        , ( "Sneak Attack (Rogue)", sneakAttack )
+        , ( "Hexblade's Curse (Warlock)", hexbladeCurse )
+        , ( "Shield (Wizard/Sorcerer)", shieldSpell )
+        , ( "Haste (Wizard/Sorcerer)", haste )
 
         -- Spell Effects (20)
         , ( "Bane (−d4)", bane )
@@ -346,6 +366,177 @@ staggeringSmite =
         | customName = "Staggered"
         , note = "dis atk"
         , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+    }
+
+
+bardicInspirationD10 : ConditionPreset
+bardicInspirationD10 =
+    { playerBase
+        | customName = "Inspired +d10"
+        , note = "Bard"
+    }
+
+
+rage : ConditionPreset
+rage =
+    { playerBase
+        | customName = "Raging"
+        , note = "+dmg, resist"
+    }
+
+
+recklessAttack : ConditionPreset
+recklessAttack =
+    { playerBase
+        | customName = "Reckless"
+        , note = "adv↔dis atk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+viciousMockery : ConditionPreset
+viciousMockery =
+    { playerBase
+        | customName = "Mocked"
+        , note = "dis next atk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+guidance : ConditionPreset
+guidance =
+    { playerBase
+        | customName = "Guidance"
+        , note = "+d4 chk"
+    }
+
+
+sanctuary : ConditionPreset
+sanctuary =
+    { playerBase
+        | customName = "Sanctuary"
+        , note = "atkr WIS save"
+    }
+
+
+shieldOfFaith : ConditionPreset
+shieldOfFaith =
+    { playerBase
+        | customName = "Shield of Faith"
+        , note = "+2 AC"
+    }
+
+
+wildShape : ConditionPreset
+wildShape =
+    { playerBase
+        | customName = "Wild Shape"
+        , note = "beast form"
+    }
+
+
+spikeGrowth : ConditionPreset
+spikeGrowth =
+    { playerBase
+        | customName = "Spike Growth"
+        , note = "diff terr"
+    }
+
+
+actionSurge : ConditionPreset
+actionSurge =
+    { playerBase
+        | customName = "Surged"
+        , note = "+1 action"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+disarmingAttack : ConditionPreset
+disarmingAttack =
+    { playerBase
+        | customName = "Disarmed"
+        , note = "drop wpn"
+    }
+
+
+pushingAttack : ConditionPreset
+pushingAttack =
+    { playerBase
+        | customName = "Pushed"
+        , note = "15 ft back"
+    }
+
+
+patientDefense : ConditionPreset
+patientDefense =
+    { playerBase
+        | customName = "Dodge"
+        , note = "Monk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+brandingSmite : ConditionPreset
+brandingSmite =
+    { playerBase
+        | customName = "Branded"
+        , note = "no invis"
+    }
+
+
+passWithoutTrace : ConditionPreset
+passWithoutTrace =
+    { playerBase
+        | customName = "Pass w/o T"
+        , note = "+10 stealth"
+    }
+
+
+ensnaringStrike : ConditionPreset
+ensnaringStrike =
+    { playerBase
+        | conditionName = "Restrained"
+        , note = "Ensnare"
+        , saveToEnd = Just (save "STR" 13 AutoRollAtEnd)
+    }
+
+
+sneakAttack : ConditionPreset
+sneakAttack =
+    { playerBase
+        | customName = "Sneak Atk"
+        , note = "+xd6 dmg"
+    }
+
+
+hexbladeCurse : ConditionPreset
+hexbladeCurse =
+    { playerBase
+        | customName = "Hex Curse"
+        , note = "+PB dmg"
+    }
+
+
+shieldSpell : ConditionPreset
+shieldSpell =
+    { playerBase
+        | customName = "Shield"
+        , note = "+5 AC"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+haste : ConditionPreset
+haste =
+    { playerBase
+        | customName = "Hasted"
+        , note = "+2 AC, +spd"
     }
 
 

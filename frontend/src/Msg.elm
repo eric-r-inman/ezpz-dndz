@@ -922,21 +922,35 @@ type Msg
       -- sets or appends.
     | RandomEncounterCreatureTypeAt Int String
     | RandomEncounterMinionsToggle
-      -- Specific-creature pin picker.  Search text drives an
-      -- inline result list; PinAdd takes a creature id (used
-      -- by both a picker click and the row's +); PinDecrement
-      -- nudges count down clamped at 1; PinRemove drops the
-      -- entire entry regardless of count.
+      -- Specific-creature pin picker.  PickerToggle opens /
+      -- closes the inline picker (search input + compendium
+      -- list).  Search text drives an inline result list;
+      -- PinAdd takes a creature id (used by both a picker
+      -- click and the row's +); PinDecrement nudges count
+      -- down clamped at 1; PinRemove drops the entire entry
+      -- regardless of count.
+    | RandomEncounterPinPickerToggle
     | RandomEncounterPinSearchChanged String
     | RandomEncounterPinAdd String
     | RandomEncounterPinDecrement String
     | RandomEncounterPinRemove String
+      -- Exclude-creature picker.  Same shape as the pin
+      -- picker but the chosen creatures are *filtered out* of
+      -- the random roll instead of guaranteed.  No counts —
+      -- exclusion is a boolean.
+    | RandomEncounterExcludePickerToggle
+    | RandomEncounterExcludeSearchChanged String
+    | RandomEncounterExcludeAdd String
+    | RandomEncounterExcludeRemove String
       -- Fire the generator with the current params.  Internally
       -- issues a `Random.generate RandomEncounterRolled` Cmd.
     | RandomEncounterGenerate
-      -- Continuation: the picked groups land here.  Empty list
-      -- means the filtered pool was empty.
-    | RandomEncounterRolled (List ( Compendium.Creature, Int ))
+      -- Continuation: the picked groups land here.  First
+      -- list is every (creature, count) row in display order;
+      -- second is the creature ids that came from the minion
+      -- pick, so the view can mark those rows.  An empty
+      -- groups list means the filtered pool was empty.
+    | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
       -- Account page (`/me`) form interactions.
