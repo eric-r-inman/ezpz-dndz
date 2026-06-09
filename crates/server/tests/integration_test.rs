@@ -1235,6 +1235,248 @@ async fn test_card_layouts_per_user_isolation() {
   assert_eq!(read_body(bob_list).await.trim(), "[]");
 }
 
+// ── per-user compendium creatures ───────────────────────────────────────────
+//
+// The 5-test cluster below covers the contract introduced by the
+// per-user-compendium split:
+//
+// - Bundled creatures are visible to every authenticated user.
+// - User-created creatures are visible only to their author.
+// - PUT / DELETE on a bundled id returns 403 BundledNotEditable.
+// - POST /:id/duplicate clones into the caller's per-user store
+//   with a fresh UUID and a "Copy of …" name.
+
+async fn list_creatures(app: &Router, cookie: &str) -> Vec<serde_json::Value> {
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/compendium/creatures")
+        .header("cookie", cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  serde_json::from_str(&read_body(response).await).unwrap()
+}
+
+/// Pick a bundled creature id (any) from a real list response.
+/// Avoids hard-coding a UUID that could change if the bundle
+/// is regenerated.
+async fn pick_bundled_id(app: &Router, cookie: &str) -> String {
+  list_creatures(app, cookie)
+    .await
+    .into_iter()
+    .find(|c| c["is_bundled"].as_bool() == Some(true))
+    .and_then(|c| c["id"].as_str().map(str::to_string))
+    .expect("bundle must contain at least one creature")
+}
+
+#[tokio::test]
+async fn test_compendium_creatures_bundled_visible_to_every_user() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  let alice_list = list_creatures(&app, &alice).await;
+  let bob_list = list_creatures(&app, &bob).await;
+  let alice_bundled = alice_list
+    .iter()
+    .filter(|c| c["is_bundled"] == true)
+    .count();
+  let bob_bundled = bob_list.iter().filter(|c| c["is_bundled"] == true).count();
+
+  assert!(alice_bundled > 0, "Alice should see bundled creatures");
+  assert_eq!(
+    alice_bundled, bob_bundled,
+    "Alice and Bob should see the same bundled set"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_creatures_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  // Alice creates a creature (POST takes a CreatureDraft).
+  let draft = serde_json::json!({
+      "name": "Alice's Hippo",
+      "kind": "enemy",
+      "size": "huge",
+      "race": "Beast",
+      "subrace": "",
+      "alignment": "unaligned",
+      "source": "Test",
+      "description": "",
+      "armor_class": 14,
+      "armor_class_note": "",
+      "max_hp": 60,
+      "hp_formula": "8d12+8",
+      "initiative_bonus": 0,
+      "speed": { "walk": 30, "fly": 0, "swim": 30, "climb": 0, "burrow": 0, "hover": false },
+      "abilities": { "str": 21, "dex": 8, "con": 15, "int": 2, "wis": 10, "cha": 5 },
+      "senses": { "blindsight": 0, "darkvision": 0, "tremorsense": 0, "truesight": 0, "passive_perception": 10 },
+      "challenge_rating": "4",
+      "xp": 1100,
+      "proficiency_bonus": 2
+  });
+  let create = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/compendium/creatures")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(draft.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(create.status(), StatusCode::CREATED);
+
+  // Alice sees Alice's Hippo; Bob does not.
+  let alice_names: Vec<String> = list_creatures(&app, &alice)
+    .await
+    .into_iter()
+    .filter_map(|c| c["name"].as_str().map(str::to_string))
+    .collect();
+  let bob_names: Vec<String> = list_creatures(&app, &bob)
+    .await
+    .into_iter()
+    .filter_map(|c| c["name"].as_str().map(str::to_string))
+    .collect();
+  assert!(
+    alice_names.iter().any(|n| n == "Alice's Hippo"),
+    "Alice should see her own creature; got names: {alice_names:?}"
+  );
+  assert!(
+    !bob_names.iter().any(|n| n == "Alice's Hippo"),
+    "Bob must NOT see Alice's creature; got names: {bob_names:?}"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_update_bundled_returns_forbidden() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+
+  let bundled_id = pick_bundled_id(&app, &alice).await;
+  let body = serde_json::json!({
+      "id": bundled_id,
+      "name": "Hacked Aboleth",
+      "kind": "enemy",
+      "size": "large",
+      "race": "Aberration",
+      "subrace": "", "alignment": "", "source": "", "description": "",
+      "armor_class": 17, "armor_class_note": "", "max_hp": 1, "hp_formula": "",
+      "initiative_bonus": 0,
+      "speed": { "walk": 0, "fly": 0, "swim": 0, "climb": 0, "burrow": 0, "hover": false },
+      "abilities": { "str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10 },
+      "senses": { "blindsight": 0, "darkvision": 0, "tremorsense": 0, "truesight": 0, "passive_perception": 10 },
+      "challenge_rating": "10", "xp": 5900, "proficiency_bonus": 4,
+      "created_at": 0, "updated_at": 0
+  });
+  let put = app
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri(format!("/api/compendium/creatures/{bundled_id}"))
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    put.status(),
+    StatusCode::FORBIDDEN,
+    "PUT on a bundled creature must be rejected"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_delete_bundled_returns_forbidden() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bundled_id = pick_bundled_id(&app, &alice).await;
+
+  let delete = app
+    .oneshot(
+      Request::builder()
+        .method("DELETE")
+        .uri(format!("/api/compendium/creatures/{bundled_id}"))
+        .header("cookie", &alice)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    delete.status(),
+    StatusCode::FORBIDDEN,
+    "DELETE on a bundled creature must be rejected"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_duplicate_bundled_creates_per_user_copy() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bundled_id = pick_bundled_id(&app, &alice).await;
+
+  let duplicate = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri(format!("/api/compendium/creatures/{bundled_id}/duplicate"))
+        .header("cookie", &alice)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(duplicate.status(), StatusCode::CREATED);
+  let copy: serde_json::Value =
+    serde_json::from_str(&read_body(duplicate).await).unwrap();
+  let copy_id = copy["id"].as_str().expect("copy id").to_string();
+  assert_ne!(
+    copy_id, bundled_id,
+    "duplicate must mint a fresh id, not echo the bundled one"
+  );
+  assert_eq!(
+    copy["is_bundled"], false,
+    "duplicate must land in the user's per-user store"
+  );
+  let name = copy["name"].as_str().expect("copy name");
+  assert!(
+    name.starts_with("Copy of "),
+    "copy name should be prefixed; got: {name}"
+  );
+
+  // The copy now appears in Alice's list; the original bundled
+  // row is still there and still bundled.
+  let names: Vec<String> = list_creatures(&app, &alice)
+    .await
+    .into_iter()
+    .filter_map(|c| c["name"].as_str().map(str::to_string))
+    .collect();
+  assert!(
+    names.iter().any(|n| n == name),
+    "duplicate should appear in subsequent list responses; got: {names:?}"
+  );
+}
+
 #[tokio::test]
 async fn test_compendium_groups_per_user_isolation() {
   let (_temp, state) = stub_app_state().await;

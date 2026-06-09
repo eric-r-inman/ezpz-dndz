@@ -96,11 +96,10 @@ pub async fn run(
     return Ok(());
   }
 
-  let email =
-    claim_user_email.ok_or_else(|| MigrationError::ClaimUserMissing {
-      forks: forks.len(),
-      user_created: user_created.len(),
-    })?;
+  let email = claim_user_email.ok_or(MigrationError::ClaimUserMissing {
+    forks: forks.len(),
+    user_created: user_created.len(),
+  })?;
 
   let user = user_store.find_by_email(email).await.ok_or_else(|| {
     MigrationError::ClaimUserNotFound {

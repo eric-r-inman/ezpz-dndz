@@ -120,11 +120,10 @@ impl AppState {
       .await
       .map_err(AppStateError::UserStoreLoad)?;
 
-    let compendium_dir = paths
-      .compendium
-      .parent()
-      .map(std::path::Path::to_path_buf)
-      .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let compendium_dir = paths.compendium.parent().map_or_else(
+      || std::path::PathBuf::from("."),
+      std::path::Path::to_path_buf,
+    );
     compendium_migrate::run(
       &compendium_dir,
       &compendium_store,
