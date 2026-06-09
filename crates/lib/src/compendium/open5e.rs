@@ -237,6 +237,7 @@ impl Monster {
       tags: draft.tags,
       created_at: now,
       updated_at: now,
+      is_bundled: false,
     }
   }
 }

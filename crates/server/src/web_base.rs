@@ -14,7 +14,8 @@ use thiserror::Error;
 
 use crate::card_editor::CardLayoutStore;
 use crate::compendium::{
-  CompendiumGroupStore, CompendiumStore, SavedCompendiumStore,
+  migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
+  CompendiumStore, MigrationError, SavedCompendiumStore, UserCompendiumStore,
 };
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
@@ -27,6 +28,8 @@ pub struct AppState {
   pub compendium_store: CompendiumStore,
   pub compendium_saves: SavedCompendiumStore,
   pub compendium_groups: CompendiumGroupStore,
+  pub user_compendium: UserCompendiumStore,
+  pub bundled_compendium: BundledCompendium,
   pub card_layouts: CardLayoutStore,
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
@@ -51,14 +54,25 @@ pub enum AppStateError {
 
   #[error("Failed to load user store: {0}")]
   UserStoreLoad(#[source] ezpz_dndz_lib::users::UserStoreError),
+
+  #[error("Compendium split migration failed: {0}")]
+  CompendiumSplitMigration(#[source] MigrationError),
 }
 
 impl AppState {
   /// Build the app-specific portion of state from `RuntimePaths`,
   /// then wrap it around the foundation-built `BaseServerState`.
+  ///
+  /// `compendium_claim_user` is the email address passed via
+  /// `--compendium-claim-user` (or the equivalent config-file
+  /// key).  Consumed by the one-shot per-user compendium split
+  /// migration on the first boot of the post-split binary against
+  /// a data dir that contains non-bundled creatures in the legacy
+  /// shared store; ignored on every other boot.
   pub async fn assemble(
     base: BaseServerState,
     paths: &RuntimePaths,
+    compendium_claim_user: Option<&str>,
   ) -> Result<Self, AppStateError> {
     let dice_store = DiceStore::load_or_default(paths.dice_history.clone())
       .await
@@ -79,6 +93,14 @@ impl AppState {
         .await
         .map_err(AppStateError::CompendiumStoreLoad)?;
 
+    let user_compendium =
+      UserCompendiumStore::load_or_default(paths.user_creatures.clone())
+        .await
+        .map_err(AppStateError::CompendiumStoreLoad)?;
+
+    let bundled_compendium =
+      BundledCompendium::load().map_err(AppStateError::CompendiumStoreLoad)?;
+
     let card_layouts =
       CardLayoutStore::load_or_default(paths.card_layouts.clone())
         .await
@@ -98,12 +120,29 @@ impl AppState {
       .await
       .map_err(AppStateError::UserStoreLoad)?;
 
+    let compendium_dir = paths.compendium.parent().map_or_else(
+      || std::path::PathBuf::from("."),
+      std::path::Path::to_path_buf,
+    );
+    compendium_migrate::run(
+      &compendium_dir,
+      &compendium_store,
+      &bundled_compendium,
+      &user_compendium,
+      &user_store,
+      compendium_claim_user,
+    )
+    .await
+    .map_err(AppStateError::CompendiumSplitMigration)?;
+
     Ok(Self {
       base,
       dice_store,
       compendium_store,
       compendium_saves,
       compendium_groups,
+      user_compendium,
+      bundled_compendium,
       card_layouts,
       encounter_store,
       encounter_saves,

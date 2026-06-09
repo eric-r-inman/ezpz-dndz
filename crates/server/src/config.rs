@@ -61,6 +61,22 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_compendium_groups_path")]
   pub compendium_groups_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing the per-user compendium
+  /// creature store.  Defaults to
+  /// `<data_dir>/compendium/user-creatures.json`.
+  #[arg(long, env = "ezpz_dndz_user_creatures_path")]
+  pub user_creatures_path: Option<PathBuf>,
+
+  /// Email address of the user who should receive the legacy
+  /// shared-compendium creatures during the one-time per-user
+  /// split migration.  Only consulted on first boot of the post-
+  /// split binary against a data dir that has non-bundled
+  /// creatures in the legacy shared store; absent on subsequent
+  /// boots because the migration writes a sidecar marker file
+  /// that suppresses re-runs.
+  #[arg(long, env = "ezpz_dndz_compendium_claim_user")]
+  pub compendium_claim_user: Option<String>,
+
   /// Path to the JSON file backing per-user saved card layouts.
   /// Defaults to `<data_dir>/card-layouts.json`.
   #[arg(long, env = "ezpz_dndz_card_layouts_path")]
@@ -92,10 +108,12 @@ pub struct ExtraFileFields {
   pub compendium_path: Option<PathBuf>,
   pub compendium_saves_path: Option<PathBuf>,
   pub compendium_groups_path: Option<PathBuf>,
+  pub user_creatures_path: Option<PathBuf>,
   pub card_layouts_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
+  pub compendium_claim_user: Option<String>,
 }
 
 /// Concrete on-disk locations for the per-store JSON files,
@@ -106,6 +124,7 @@ pub struct RuntimePaths {
   pub compendium: PathBuf,
   pub compendium_saves: PathBuf,
   pub compendium_groups: PathBuf,
+  pub user_creatures: PathBuf,
   pub card_layouts: PathBuf,
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
@@ -159,6 +178,13 @@ pub struct Config {
   /// Resolved OIDC client config, or `None` if OIDC is disabled.
   #[merge_config(skip)]
   pub oidc: Option<OidcConfig>,
+
+  /// Email address that should receive the legacy shared-compendium
+  /// creatures during the one-time per-user split migration.
+  /// `None` after the migration has run (the sidecar marker
+  /// suppresses re-runs regardless of this value).
+  #[merge_config(skip)]
+  pub compendium_claim_user: Option<String>,
 }
 
 impl Config {
@@ -203,6 +229,14 @@ impl Config {
         file.extra.compendium_groups_path.as_ref(),
         "compendium-groups.json",
       ),
+      user_creatures: cli
+        .extra
+        .user_creatures_path
+        .clone()
+        .or_else(|| file.extra.user_creatures_path.clone())
+        .unwrap_or_else(|| {
+          data_dir.join("compendium").join("user-creatures.json")
+        }),
       card_layouts: pick(
         cli.extra.card_layouts_path.as_ref(),
         file.extra.card_layouts_path.as_ref(),
@@ -224,6 +258,24 @@ impl Config {
         "users.json",
       ),
     })
+  }
+
+  /// One-shot input for the per-user-compendium split migration.
+  /// CLI flag wins over the TOML config file value; both are
+  /// optional, since the migration only requires a value on the
+  /// first boot of the post-split binary that actually finds
+  /// non-bundled creatures in the legacy shared store.
+  fn resolve_compendium_claim_user(
+    cli: &CliRaw,
+    file: &ConfigFileRaw,
+  ) -> Result<Option<String>, ConfigError> {
+    Ok(
+      cli
+        .extra
+        .compendium_claim_user
+        .clone()
+        .or_else(|| file.extra.compendium_claim_user.clone()),
+    )
   }
 
   fn resolve_oidc(

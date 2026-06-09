@@ -41,6 +41,16 @@ pub enum CompendiumStoreError {
   )]
   CreatureIdMismatchError { path_id: String, body_id: String },
 
+  /// PUT or DELETE targeted a bundled (read-only) creature.  Users
+  /// who want to modify a bundled creature must duplicate it first
+  /// via `POST /api/compendium/creatures/{id}/duplicate`, which
+  /// returns a per-user copy with a fresh UUIDv4 id.
+  #[error(
+    "Bundled creature {id} is read-only — duplicate it first if you \
+     want an editable copy"
+  )]
+  BundledNotEditable { id: String },
+
   /// Failed to write the bundle-seed sidecar file that records
   /// "the highest BUNDLED_VERSION we've ever applied to this
   /// store".  Non-fatal at the data level (the creatures
@@ -101,6 +111,7 @@ impl IntoResponse for CompendiumStoreError {
       Self::CreatureIdMismatchError { .. }
       | Self::GroupIdMismatchError { .. }
       | Self::SaveNameInvalid { .. } => StatusCode::BAD_REQUEST,
+      Self::BundledNotEditable { .. } => StatusCode::FORBIDDEN,
       Self::StoreError(_)
       | Self::BundledParseError { .. }
       | Self::BundleSeedWriteError { .. }

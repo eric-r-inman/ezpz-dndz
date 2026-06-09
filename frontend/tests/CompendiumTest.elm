@@ -86,6 +86,7 @@ mkCreature args =
     , tags = []
     , createdAt = args.createdAt
     , updatedAt = args.createdAt
+    , isBundled = False
     }
 
 

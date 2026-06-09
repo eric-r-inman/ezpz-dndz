@@ -923,6 +923,23 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.25rem;
 }
 
+/* Accessible mode keeps a near-black on white palette; the
+   default medium-grey title-meta colour reads too light against
+   that contrast.  Drop it to a darker grey while staying off
+   pure black so the line still parses as metadata rather than
+   competing with the bold title to its left. */
+[data-theme="accessible"] .modal__title-meta {
+  color: #2a2a2a;
+}
+
+/* Dark mode does the opposite — the same default grey vanishes
+   against the dark surface.  Lift the value so the "From file:"
+   tag reads at a glance while still ranking below the title in
+   the visual hierarchy. */
+[data-theme="dark"] .modal__title-meta {
+  color: #c4c4cc;
+}
+
 /* Add-Condition modal — the condition picker grid uses a fixed
    120px column minimum, which clips longer labels ("Incapacitated",
    "Concentration", etc.) once the Accessible modal-body bump
@@ -4893,6 +4910,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-yellow, #854d0e);
 }
 
+/* Bundled (SRD) creatures: muted neutral chip so the read-only
+   status reads as "static reference" rather than competing with
+   the Player / Enemy / NPC colour vocabulary. */
+.statblock__kind-badge--bundled {
+  background: rgba(120, 120, 120, 0.12);
+  border-color: rgba(120, 120, 120, 0.45);
+  color: var(--color-muted, #555);
+}
+
 /* Used by `TagIconTooltip` mode in the right-rail Compendium
    panel: the 🏷 icon sits immediately after the name with a
    small gap, so it reads as "this creature has tags" rather
@@ -6955,18 +6981,37 @@ button.creature-card__lifecycle--dead:focus-visible {
      to <h2> is for screen-reader heading hierarchy; the visual
      appearance stays unchanged.
 
-     `flex: 1` absorbs the slack between the title and the
-     right-aligned button cluster (× close plus any
-     `viewWithExtras` siblings like the Compendium's ↗),
-     overriding the parent's `justify-content: space-between`
-     so a third header child (↗) hugs the × on the right
-     instead of getting parked in the middle of the bar. */
+     `flex: 0 0 auto` keeps the title intrinsic-width so the
+     `modal__title-meta` sibling (e.g. the Compendium's "From
+     file: …" tag) can sit immediately to its right.  The
+     remaining slack is absorbed by `modal__title-meta`'s own
+     `flex: 1`, which still pushes the button cluster (× close +
+     any `viewWithExtras` siblings) all the way to the right
+     edge. */
   margin: 0;
   padding: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   font-weight: 700;
   font-size: 1rem;
   letter-spacing: 0.04em;
+}
+
+/* Secondary label rendered to the immediate right of the modal
+   title.  Used by the Compendium modal to display "From file:
+   <save name>" so the GM can see at a glance which snapshot the
+   current library was loaded from.  Visually muted (smaller,
+   lighter) so it reads as metadata next to the heading rather
+   than competing with it. */
+.modal__title-meta {
+  flex: 1 1 auto;
+  margin-left: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-muted, #6b6b6b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Focus-trap sentinel at the END of each modal.  Invisible

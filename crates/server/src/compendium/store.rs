@@ -334,6 +334,7 @@ impl CompendiumStore {
       tags: draft.tags,
       created_at: now,
       updated_at: now,
+      is_bundled: false,
     };
     let to_return = creature.clone();
     self.inner.mutate(|all| all.push(creature)).await?;

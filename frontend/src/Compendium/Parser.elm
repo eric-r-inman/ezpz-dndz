@@ -226,6 +226,7 @@ initialState name typeLine =
         , tags = []
         , createdAt = 0
         , updatedAt = 0
+        , isBundled = False
         }
     , section = TraitsSection
     , pending = Nothing

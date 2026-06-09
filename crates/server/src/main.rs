@@ -39,7 +39,12 @@ pub async fn main(
   // before the closure runs.  The closure just hands the pre-built
   // state back.
   let base = server.base_state().clone();
-  let app_state = AppState::assemble(base, &config.paths).await?;
+  let app_state = AppState::assemble(
+    base,
+    &config.paths,
+    config.compendium_claim_user.as_deref(),
+  )
+  .await?;
   let auth_state = app_state.clone();
 
   // Auth-gated routes: every /api/* endpoint that touches per-user

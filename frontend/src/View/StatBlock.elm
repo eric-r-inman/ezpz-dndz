@@ -159,6 +159,7 @@ nameRow tagDisplay c =
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
+                , bundledBadge c.isBundled
                 , tagBadges c.tags
                 ]
 
@@ -166,6 +167,7 @@ nameRow tagDisplay c =
             div [ class "statblock__name-row" ]
                 [ div [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
+                , bundledBadge c.isBundled
                 , div [ class "statblock__name-row-end" ]
                     [ tagBadges c.tags
                     , openInNewTabLink c.id
@@ -174,7 +176,33 @@ nameRow tagDisplay c =
 
         TagIconTooltip ->
             div [ class "statblock__name statblock__name--inline-tags" ]
-                (text c.name :: kindBadge c.kind :: inlineTagIcon c.tags)
+                (text c.name
+                    :: kindBadge c.kind
+                    :: bundledBadge c.isBundled
+                    :: inlineTagIcon c.tags
+                )
+
+
+{-| Small chip rendered next to the kind badge when the creature
+originates from the read-only SRD bundle. Mirrors the existing
+kind-badge styling pattern so themed colour tokens stay in one
+place; the dedicated `--bundled` modifier lets CSS distinguish
+bundled vs Player/Enemy/NPC visually.
+
+Omitted entirely for user-owned creatures to keep the row visually
+quiet — the absence of the chip is the affirmative signal that the
+creature is editable.
+
+-}
+bundledBadge : Bool -> Html msg
+bundledBadge isBundled =
+    if isBundled then
+        span
+            [ class "statblock__kind-badge statblock__kind-badge--bundled" ]
+            [ text "Bundled" ]
+
+    else
+        text ""
 
 
 {-| Coloured Player / Enemy / NPC chip rendered to the right of

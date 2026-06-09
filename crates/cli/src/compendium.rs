@@ -375,6 +375,7 @@ fn draft_to_creature(draft: CreatureDraft, now: i64) -> Creature {
     tags: draft.tags,
     created_at: now,
     updated_at: now,
+    is_bundled: false,
   }
 }
 

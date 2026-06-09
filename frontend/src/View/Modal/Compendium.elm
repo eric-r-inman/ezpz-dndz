@@ -50,7 +50,8 @@ view chrome auth ui encounterIds =
             , chrome = chrome
             , body = pageBody auth ui encounterIds
             }
-            [ button
+            [ savedAsLabel ui.savedAs
+            , button
                 [ class "modal__open-in-tab"
                 , Attr.type_ "button"
                 , onClick CompendiumOpenInTab
@@ -59,6 +60,23 @@ view chrome auth ui encounterIds =
                 ]
                 [ text "↗" ]
             ]
+
+
+{-| Title-bar tag identifying which compendium snapshot is in
+view. `Nothing` means "the bundled SRD default plus whatever
+this user has authored locally" — labelled with the project's
+own name so the GM has an immediate cue that they're not
+editing a named save.
+-}
+savedAsLabel : Maybe String -> Html Msg
+savedAsLabel savedAs =
+    let
+        name =
+            savedAs |> Maybe.withDefault "eZpZ-dndZ default"
+    in
+    span
+        [ class "modal__title-meta" ]
+        [ text ("From file: " ++ name) ]
 
 
 {-| The compendium's body content — filter bar, actions bar,
@@ -1184,6 +1202,38 @@ actionBar creature inEncounter selectedIds =
                         )
                     ]
     in
+    let
+        -- Bundled (SRD) creatures are read-only: hide Edit and
+        -- Delete, keep Duplicate as the path to a per-user copy.
+        -- Pre-Phase-2 snapshots may load a creature with
+        -- `isBundled = False` even when the id happens to belong
+        -- to the bundle, but those rows are now flagged correctly
+        -- on every fresh fetch.
+        editButton =
+            if creature.isBundled then
+                text ""
+
+            else
+                button
+                    [ class "action-btn action-btn--blue compendium__edit-btn"
+                    , onClick CompendiumEditExisting
+                    , Tooltips.attr Tooltips.compendiumEdit
+                    ]
+                    [ text "✏️ Edit" ]
+
+        deleteButton =
+            if creature.isBundled then
+                text ""
+
+            else
+                button
+                    [ class "action-btn action-btn--red compendium__delete-btn"
+                    , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
+                    , Tooltips.attr Tooltips.compendiumDelete
+                    , attribute "aria-label" "Delete creature"
+                    ]
+                    [ text "🗑" ]
+    in
     div [ class "compendium__action-bar" ]
         [ span
             [ class badgeClass
@@ -1197,25 +1247,14 @@ actionBar creature inEncounter selectedIds =
             ]
             [ text "➕ Add to Encounter" ]
         , addSelectedButton
-        , button
-            [ class "action-btn action-btn--blue compendium__edit-btn"
-            , onClick CompendiumEditExisting
-            , Tooltips.attr Tooltips.compendiumEdit
-            ]
-            [ text "✏️ Edit" ]
+        , editButton
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
             , onClick CompendiumEditDuplicate
             , Tooltips.attr Tooltips.compendiumDuplicate
             ]
             [ text "📋 Duplicate" ]
-        , button
-            [ class "action-btn action-btn--red compendium__delete-btn"
-            , onClick (CompendiumDeleteFromBrowser creature.id creature.name)
-            , Tooltips.attr Tooltips.compendiumDelete
-            , attribute "aria-label" "Delete creature"
-            ]
-            [ text "🗑" ]
+        , deleteButton
         ]
 
 

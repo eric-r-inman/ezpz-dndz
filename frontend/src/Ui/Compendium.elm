@@ -715,6 +715,7 @@ validateEdit ui =
                             |> dedupOrdered
                     , createdAt = createdAt
                     , updatedAt = 0
+                    , isBundled = False
                     }
 
 

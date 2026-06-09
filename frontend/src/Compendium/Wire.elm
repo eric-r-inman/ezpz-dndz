@@ -103,7 +103,16 @@ fetchAllPublic : (Result Http.Error (List Creature) -> msg) -> Cmd msg
 fetchAllPublic toMsg =
     Http.get
         { url = "/bundled-creatures.json"
-        , expect = Http.expectJson toMsg (D.list decodeCreature)
+        , expect =
+            -- The static JSON file omits `is_bundled` (it's a
+            -- server-computed flag for the merged-list endpoint),
+            -- so stamp it here.  Every creature served by this
+            -- fetch IS bundled by definition — the file is the
+            -- canonical SRD set.
+            Http.expectJson toMsg
+                (D.list decodeCreature
+                    |> D.map (List.map (\c -> { c | isBundled = True }))
+                )
         }
 
 
@@ -320,6 +329,7 @@ decodeCreature =
         |> optional "tags" (D.list D.string) []
         |> optional "created_at" D.int 0
         |> optional "updated_at" D.int 0
+        |> optional "is_bundled" D.bool False
 
 
 decodeKind : D.Decoder CreatureKind
