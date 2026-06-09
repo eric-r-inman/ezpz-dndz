@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, pushIncomingDiceRoll, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -31,7 +31,10 @@ way: Update modules → Effects.
 import Auth
 import Browser.Dom
 import Dice
+import Dict exposing (Dict)
 import Encounter
+import Encounter.RandomEncounter.Lore
+import Encounter.RandomEncounter.Lore.Wire
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -41,6 +44,8 @@ import Ports
 import Process
 import Route exposing (Route(..))
 import Task
+import Ui.Condition
+import Ui.Condition.Wire
 
 
 
@@ -387,6 +392,78 @@ clearDiceHistory =
         , url = "/api/dice/history"
         , body = Http.emptyBody
         , expect = Http.expectWhatever DiceClearResponse
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+
+-- ── /api/lore-groups + /api/condition-presets ────────────────────────────────
+
+
+{-| GET the caller's saved Lore groups. The server returns
+`null` when the user has nothing persisted yet — the
+`Decode.oneOf` here folds that into an empty list so the caller
+doesn't have to special-case it.
+-}
+fetchLoreGroups : Cmd Msg
+fetchLoreGroups =
+    Http.get
+        { url = "/api/lore-groups"
+        , expect =
+            Http.expectJson LoreGroupsLoaded
+                (Decode.oneOf
+                    [ Decode.null []
+                    , Encounter.RandomEncounter.Lore.Wire.decodeGroups
+                    ]
+                )
+        }
+
+
+{-| PUT the caller's full Lore-group list, replacing whatever
+the server held. Response body is the body we sent — we don't
+read it; failure raises a toast via `LoreGroupsPersisted` so the
+GM knows the change didn't make it server-side.
+-}
+putLoreGroups : List Encounter.RandomEncounter.Lore.Group -> Cmd Msg
+putLoreGroups groups =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/lore-groups"
+        , body =
+            Http.jsonBody
+                (Encounter.RandomEncounter.Lore.Wire.encodeGroups groups)
+        , expect = Http.expectWhatever LoreGroupsPersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| GET the caller's saved condition presets. The payload is
+passed through as a raw `Decode.Value` because the typed
+preset record type lives in `Ui.Condition` (which imports `Msg`,
+so adding a typed Msg variant would cycle). The `Main` handler
+decodes via `Ui.Condition.Wire.decodePresets` before adopting.
+-}
+fetchConditionPresets : Cmd Msg
+fetchConditionPresets =
+    Http.get
+        { url = "/api/condition-presets"
+        , expect = Http.expectJson ConditionPresetsLoaded Decode.value
+        }
+
+
+{-| PUT the caller's full condition-preset map.
+-}
+putConditionPresets : Dict String Ui.Condition.ConditionPreset -> Cmd Msg
+putConditionPresets presets =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/condition-presets"
+        , body = Http.jsonBody (Ui.Condition.Wire.encodePresets presets)
+        , expect = Http.expectWhatever ConditionPresetsPersisted
         , timeout = Nothing
         , tracker = Nothing
         }

@@ -130,6 +130,8 @@ meReceived result model =
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 , CardWire.fetchList CardEditorLayoutsLoaded
                 , Effects.fetchDiceHistory
+                , Effects.fetchLoreGroups
+                , Effects.fetchConditionPresets
                 , encounterMigrationCmd
                 , cardLayoutMigrationCmd
                 , compendiumMigrationCmd

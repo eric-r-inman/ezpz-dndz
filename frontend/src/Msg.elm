@@ -38,6 +38,7 @@ import Compendium.Group
 import Compendium.Wire
 import Dice
 import Encounter exposing (Encounter)
+import Encounter.RandomEncounter.Lore
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
@@ -404,6 +405,23 @@ type Msg
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
+      -- Per-user Lore-group sync (Tier-3 feature parity with
+      -- card layouts).  Fetched once on authed boot; PUT after
+      -- every Save/Delete in the Lore section of the Group-
+      -- Edit modal.  Anonymous users still ride localStorage.
+    | LoreGroupsLoaded (Result Http.Error (List Encounter.RandomEncounter.Lore.Group))
+    | LoreGroupsPersisted (Result Http.Error ())
+      -- Per-user condition-preset sync.  Same flow as Lore
+      -- groups: fetch on authed boot, PUT on every Save / Delete
+      -- in the Add-Condition modal's preset row.  Anonymous
+      -- users persist to localStorage as before.  Payload is an
+      -- opaque `Decode.Value` because the preset record type
+      -- lives in `Ui.Condition`, which already imports `Msg` for
+      -- `DurationKind` — typing the Msg here would cycle.  The
+      -- handler in Main runs `Ui.Condition.Wire.decodePresets`
+      -- before adopting.
+    | ConditionPresetsLoaded (Result Http.Error Decode.Value)
+    | ConditionPresetsPersisted (Result Http.Error ())
     | RollFromStatBlock String Dice.Expression Int Int
       -- (creatureName, expression, clientX, clientY at click time)
     | StatBlockRollLanded Int Int Dice.Roll
