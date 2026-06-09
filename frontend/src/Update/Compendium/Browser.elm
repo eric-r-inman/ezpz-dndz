@@ -2,7 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, tagFilterChanged
+    , bulkMenuClose, bulkMenuToggle, exportClick, openInTab, rowToggle, tagFilterChanged
     )
 
 {-| Update branches for the compendium browser modal: load, open /
@@ -31,6 +31,7 @@ import Msg
         ( CompendiumSort
         , Msg(..)
         )
+import Ports
 import Set
 import Task
 import Ui.Compendium as CompendiumUi
@@ -216,6 +217,21 @@ openUpdate maybePinnedId ui =
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( withCompendium (\ui -> { ui | open = False }) model, Cmd.none )
+
+
+{-| Close the in-page modal AND open (or focus) the standalone
+compendium window via the JS port. The GM is moving the work
+into a dedicated browser tab. Fires both the modal-close state
+mutation and the `openCompendiumTab` port in one Cmd batch so
+`Main.updateInner` stays a single-line delegation.
+-}
+openInTab : Model -> ( Model, Cmd Msg )
+openInTab model =
+    let
+        ( closed, closeCmd ) =
+            close model
+    in
+    ( closed, Cmd.batch [ closeCmd, Ports.openCompendiumTab () ] )
 
 
 searchChanged : String -> Model -> ( Model, Cmd Msg )
