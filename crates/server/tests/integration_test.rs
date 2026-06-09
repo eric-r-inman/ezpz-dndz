@@ -18,8 +18,8 @@ use axum::{
   middleware, Router,
 };
 use ezpz_dndz_server::{
-  card_editor, compendium, config::RuntimePaths, dice, encounters, users,
-  web_base::AppState,
+  card_editor, compendium, condition_presets, config::RuntimePaths, dice,
+  encounters, lore_groups, users, web_base::AppState,
 };
 use rust_template_foundation::server::runner::{
   BaseServerState, ServerRunConfig,
@@ -44,6 +44,8 @@ async fn stub_app_state() -> (TempDir, AppState) {
     encounter: temp.path().join("encounter.json"),
     encounter_saves: temp.path().join("encounter-saves.json"),
     users: temp.path().join("users.json"),
+    lore_groups: temp.path().join("lore-groups.json"),
+    condition_presets: temp.path().join("condition-presets.json"),
   };
 
   let run_config = ServerRunConfig {
@@ -88,6 +90,8 @@ fn build_test_router(state: AppState) -> Router {
     .merge(compendium::router())
     .merge(card_editor::router())
     .merge(encounters::router())
+    .merge(lore_groups::router())
+    .merge(condition_presets::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let users_state = state.clone();
@@ -1286,6 +1290,177 @@ async fn test_card_layouts_per_user_isolation() {
     .await
     .unwrap();
   assert_eq!(read_body(bob_list).await.trim(), "[]");
+}
+
+// ── per-user lore-groups + condition-presets ────────────────────────────────
+//
+// Both are a single-blob GET/PUT store: one JSON value per user
+// (whatever the frontend serializes — Lore.Group list, preset
+// map, etc.).  These tests pin the contract that
+//   1. an unset user reads `null`
+//   2. a PUT round-trips back through GET
+//   3. Bob's read is `null` after Alice writes
+//
+// Same pattern is used for both stores so the suite stays
+// symmetric.
+
+#[tokio::test]
+async fn test_lore_groups_get_returns_null_when_unset() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/lore-groups")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(read_body(response).await.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_lore_groups_put_then_get_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let payload = r#"[{"id":"horde-1","name":"Goblin warband"}]"#;
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/lore-groups")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/lore-groups")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let body = read_body(get).await;
+  assert!(
+    body.contains("\"id\":\"horde-1\""),
+    "expected PUT body to round-trip, got: {body}"
+  );
+  assert!(
+    body.contains("Goblin warband"),
+    "expected PUT body to round-trip, got: {body}"
+  );
+}
+
+#[tokio::test]
+async fn test_lore_groups_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/lore-groups")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(r#"[{"id":"alice-only","name":"Alice's"}]"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/lore-groups")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    read_body(bob_get).await.trim(),
+    "null",
+    "Bob must not see Alice's lore groups"
+  );
+}
+
+#[tokio::test]
+async fn test_condition_presets_get_returns_null_when_unset() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/condition-presets")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(read_body(response).await.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_condition_presets_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/condition-presets")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(r#"{"Stun":{"name":"Stunned","dc":15}}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/condition-presets")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    read_body(bob_get).await.trim(),
+    "null",
+    "Bob must not see Alice's condition presets"
+  );
 }
 
 // ── per-user compendium creatures ───────────────────────────────────────────

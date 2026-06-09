@@ -110,6 +110,7 @@ import Update.SaveCompendium
 import Update.Shell
 import Update.Timer
 import Update.Toast
+import Update.UserSync
 import Url exposing (Url)
 import Util.Keyboard
 import View.About
@@ -708,8 +709,13 @@ update msg model =
 
         conditionPresetsCmd =
             if shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
-                Ports.persistLocalConditionPresets
-                    (Ui.Condition.Wire.encodePresets next.conditionPresets)
+                case next.auth of
+                    Auth.AuthAuthenticated _ ->
+                        Effects.putConditionPresets next.conditionPresets
+
+                    _ ->
+                        Ports.persistLocalConditionPresets
+                            (Ui.Condition.Wire.encodePresets next.conditionPresets)
 
             else
                 Cmd.none
@@ -735,8 +741,13 @@ update msg model =
 
         userLoreGroupsCmd =
             if shouldPersistAfter msg && model.userLoreGroups /= next.userLoreGroups then
-                Ports.persistLocalUserLoreGroups
-                    (Encounter.RandomEncounter.Lore.Wire.encodeGroups next.userLoreGroups)
+                case next.auth of
+                    Auth.AuthAuthenticated _ ->
+                        Effects.putLoreGroups next.userLoreGroups
+
+                    _ ->
+                        Ports.persistLocalUserLoreGroups
+                            (Encounter.RandomEncounter.Lore.Wire.encodeGroups next.userLoreGroups)
 
             else
                 Cmd.none
@@ -1151,6 +1162,18 @@ updateInner msg model =
 
         DiceClearResponse result ->
             Update.Dice.clearResponse result model
+
+        LoreGroupsLoaded result ->
+            Update.UserSync.loreGroupsLoaded result model
+
+        LoreGroupsPersisted result ->
+            Update.UserSync.loreGroupsPersisted result model
+
+        ConditionPresetsLoaded result ->
+            Update.UserSync.conditionPresetsLoaded result model
+
+        ConditionPresetsPersisted result ->
+            Update.UserSync.conditionPresetsPersisted result model
 
         RollFromStatBlock creatureName expr x y ->
             Update.Dice.rollFromStatBlock creatureName expr x y model

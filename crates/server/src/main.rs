@@ -9,8 +9,8 @@
 use aide::axum::ApiRouter;
 use axum::middleware;
 use ezpz_dndz_server::{
-  card_editor, compendium, config::Config, dice, encounters, users,
-  web_base::AppState,
+  card_editor, compendium, condition_presets, config::Config, dice, encounters,
+  lore_groups, users, web_base::AppState,
 };
 use rust_template_foundation::main as foundation_main;
 use rust_template_foundation::Server;
@@ -58,6 +58,8 @@ pub async fn main(
     .merge(compendium::router())
     .merge(card_editor::router())
     .merge(encounters::router())
+    .merge(lore_groups::router())
+    .merge(condition_presets::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let users_state = app_state.clone();

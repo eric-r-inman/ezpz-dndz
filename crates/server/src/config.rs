@@ -96,6 +96,18 @@ pub struct ExtraCliFields {
   /// Defaults to `<data_dir>/users.json`.
   #[arg(long, env = "ezpz_dndz_users_path")]
   pub users_path: Option<PathBuf>,
+
+  /// Path to the JSON file backing per-user user-authored Lore
+  /// groups for the Random Encounter generator.  Defaults to
+  /// `<data_dir>/lore-groups.json`.
+  #[arg(long, env = "ezpz_dndz_lore_groups_path")]
+  pub lore_groups_path: Option<PathBuf>,
+
+  /// Path to the JSON file backing per-user saved presets for
+  /// the Add-Condition modal.  Defaults to
+  /// `<data_dir>/condition-presets.json`.
+  #[arg(long, env = "ezpz_dndz_condition_presets_path")]
+  pub condition_presets_path: Option<PathBuf>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -112,6 +124,8 @@ pub struct ExtraFileFields {
   pub card_layouts_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
+  pub lore_groups_path: Option<PathBuf>,
+  pub condition_presets_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
   pub compendium_claim_user: Option<String>,
 }
@@ -129,6 +143,8 @@ pub struct RuntimePaths {
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
   pub users: PathBuf,
+  pub lore_groups: PathBuf,
+  pub condition_presets: PathBuf,
 }
 
 #[derive(Debug, Clone, MergeConfig)]
@@ -256,6 +272,16 @@ impl Config {
         cli.extra.users_path.as_ref(),
         file.extra.users_path.as_ref(),
         "users.json",
+      ),
+      lore_groups: pick(
+        cli.extra.lore_groups_path.as_ref(),
+        file.extra.lore_groups_path.as_ref(),
+        "lore-groups.json",
+      ),
+      condition_presets: pick(
+        cli.extra.condition_presets_path.as_ref(),
+        file.extra.condition_presets_path.as_ref(),
+        "condition-presets.json",
       ),
     })
   }

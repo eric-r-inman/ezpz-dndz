@@ -18,9 +18,13 @@ use crate::compendium::{
   migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
   CompendiumStore, MigrationError, SavedCompendiumStore, UserCompendiumStore,
 };
+use crate::condition_presets::{
+  ConditionPresetStore, ConditionPresetStoreError,
+};
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
+use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -36,6 +40,8 @@ pub struct AppState {
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
   pub auth_rate_limiter: AuthRateLimiter,
+  pub lore_groups: LoreGroupStore,
+  pub condition_presets: ConditionPresetStore,
 }
 
 impl_server_state!(AppState, base);
@@ -59,6 +65,12 @@ pub enum AppStateError {
 
   #[error("Compendium split migration failed: {0}")]
   CompendiumSplitMigration(#[source] MigrationError),
+
+  #[error("Failed to load lore-group store: {0}")]
+  LoreGroupStoreLoad(#[source] LoreGroupStoreError),
+
+  #[error("Failed to load condition-preset store: {0}")]
+  ConditionPresetStoreLoad(#[source] ConditionPresetStoreError),
 }
 
 impl AppState {
@@ -122,6 +134,16 @@ impl AppState {
       .await
       .map_err(AppStateError::UserStoreLoad)?;
 
+    let lore_groups =
+      LoreGroupStore::load_or_default(paths.lore_groups.clone())
+        .await
+        .map_err(AppStateError::LoreGroupStoreLoad)?;
+
+    let condition_presets =
+      ConditionPresetStore::load_or_default(paths.condition_presets.clone())
+        .await
+        .map_err(AppStateError::ConditionPresetStoreLoad)?;
+
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),
       std::path::Path::to_path_buf,
@@ -150,6 +172,8 @@ impl AppState {
       encounter_saves,
       user_store: Arc::new(user_store),
       auth_rate_limiter: AuthRateLimiter::new(),
+      lore_groups,
+      condition_presets,
     })
   }
 }
