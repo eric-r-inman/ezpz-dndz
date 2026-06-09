@@ -14,7 +14,8 @@ use thiserror::Error;
 
 use crate::card_editor::CardLayoutStore;
 use crate::compendium::{
-  CompendiumGroupStore, CompendiumStore, SavedCompendiumStore,
+  BundledCompendium, CompendiumGroupStore, CompendiumStore,
+  SavedCompendiumStore, UserCompendiumStore,
 };
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
@@ -27,6 +28,8 @@ pub struct AppState {
   pub compendium_store: CompendiumStore,
   pub compendium_saves: SavedCompendiumStore,
   pub compendium_groups: CompendiumGroupStore,
+  pub user_compendium: UserCompendiumStore,
+  pub bundled_compendium: BundledCompendium,
   pub card_layouts: CardLayoutStore,
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
@@ -79,6 +82,14 @@ impl AppState {
         .await
         .map_err(AppStateError::CompendiumStoreLoad)?;
 
+    let user_compendium =
+      UserCompendiumStore::load_or_default(paths.user_creatures.clone())
+        .await
+        .map_err(AppStateError::CompendiumStoreLoad)?;
+
+    let bundled_compendium =
+      BundledCompendium::load().map_err(AppStateError::CompendiumStoreLoad)?;
+
     let card_layouts =
       CardLayoutStore::load_or_default(paths.card_layouts.clone())
         .await
@@ -104,6 +115,8 @@ impl AppState {
       compendium_store,
       compendium_saves,
       compendium_groups,
+      user_compendium,
+      bundled_compendium,
       card_layouts,
       encounter_store,
       encounter_saves,

@@ -39,6 +39,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     compendium: temp.path().join("compendium.json"),
     compendium_saves: temp.path().join("compendium-saves.json"),
     compendium_groups: temp.path().join("compendium-groups.json"),
+    user_creatures: temp.path().join("user-creatures.json"),
     card_layouts: temp.path().join("card-layouts.json"),
     encounter: temp.path().join("encounter.json"),
     encounter_saves: temp.path().join("encounter-saves.json"),

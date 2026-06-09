@@ -61,6 +61,12 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_compendium_groups_path")]
   pub compendium_groups_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing the per-user compendium
+  /// creature store.  Defaults to
+  /// `<data_dir>/compendium/user-creatures.json`.
+  #[arg(long, env = "ezpz_dndz_user_creatures_path")]
+  pub user_creatures_path: Option<PathBuf>,
+
   /// Path to the JSON file backing per-user saved card layouts.
   /// Defaults to `<data_dir>/card-layouts.json`.
   #[arg(long, env = "ezpz_dndz_card_layouts_path")]
@@ -92,6 +98,7 @@ pub struct ExtraFileFields {
   pub compendium_path: Option<PathBuf>,
   pub compendium_saves_path: Option<PathBuf>,
   pub compendium_groups_path: Option<PathBuf>,
+  pub user_creatures_path: Option<PathBuf>,
   pub card_layouts_path: Option<PathBuf>,
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
@@ -106,6 +113,7 @@ pub struct RuntimePaths {
   pub compendium: PathBuf,
   pub compendium_saves: PathBuf,
   pub compendium_groups: PathBuf,
+  pub user_creatures: PathBuf,
   pub card_layouts: PathBuf,
   pub encounter: PathBuf,
   pub encounter_saves: PathBuf,
@@ -203,6 +211,14 @@ impl Config {
         file.extra.compendium_groups_path.as_ref(),
         "compendium-groups.json",
       ),
+      user_creatures: cli
+        .extra
+        .user_creatures_path
+        .clone()
+        .or_else(|| file.extra.user_creatures_path.clone())
+        .unwrap_or_else(|| {
+          data_dir.join("compendium").join("user-creatures.json")
+        }),
       card_layouts: pick(
         cli.extra.card_layouts_path.as_ref(),
         file.extra.card_layouts_path.as_ref(),

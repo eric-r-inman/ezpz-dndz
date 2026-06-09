@@ -11,15 +11,19 @@
 //! - Errors: semantic `CompendiumStoreError` with descriptive
 //!   variants per the project's CLAUDE.md conventions.
 
+pub mod bundled;
 pub mod error;
 pub mod groups;
 pub mod saves;
 pub mod store;
+pub mod user_store;
 
+pub use bundled::BundledCompendium;
 pub use error::CompendiumStoreError;
 pub use groups::CompendiumGroupStore;
 pub use saves::{SavedCompendium, SavedCompendiumMeta, SavedCompendiumStore};
 pub use store::CompendiumStore;
+pub use user_store::UserCompendiumStore;
 
 use aide::{
   axum::{
