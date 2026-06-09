@@ -67,6 +67,16 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_user_creatures_path")]
   pub user_creatures_path: Option<PathBuf>,
 
+  /// Email address of the user who should receive the legacy
+  /// shared-compendium creatures during the one-time per-user
+  /// split migration.  Only consulted on first boot of the post-
+  /// split binary against a data dir that has non-bundled
+  /// creatures in the legacy shared store; absent on subsequent
+  /// boots because the migration writes a sidecar marker file
+  /// that suppresses re-runs.
+  #[arg(long, env = "ezpz_dndz_compendium_claim_user")]
+  pub compendium_claim_user: Option<String>,
+
   /// Path to the JSON file backing per-user saved card layouts.
   /// Defaults to `<data_dir>/card-layouts.json`.
   #[arg(long, env = "ezpz_dndz_card_layouts_path")]
@@ -103,6 +113,7 @@ pub struct ExtraFileFields {
   pub encounter_path: Option<PathBuf>,
   pub encounter_saves_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
+  pub compendium_claim_user: Option<String>,
 }
 
 /// Concrete on-disk locations for the per-store JSON files,
@@ -167,6 +178,13 @@ pub struct Config {
   /// Resolved OIDC client config, or `None` if OIDC is disabled.
   #[merge_config(skip)]
   pub oidc: Option<OidcConfig>,
+
+  /// Email address that should receive the legacy shared-compendium
+  /// creatures during the one-time per-user split migration.
+  /// `None` after the migration has run (the sidecar marker
+  /// suppresses re-runs regardless of this value).
+  #[merge_config(skip)]
+  pub compendium_claim_user: Option<String>,
 }
 
 impl Config {
@@ -240,6 +258,24 @@ impl Config {
         "users.json",
       ),
     })
+  }
+
+  /// One-shot input for the per-user-compendium split migration.
+  /// CLI flag wins over the TOML config file value; both are
+  /// optional, since the migration only requires a value on the
+  /// first boot of the post-split binary that actually finds
+  /// non-bundled creatures in the legacy shared store.
+  fn resolve_compendium_claim_user(
+    cli: &CliRaw,
+    file: &ConfigFileRaw,
+  ) -> Result<Option<String>, ConfigError> {
+    Ok(
+      cli
+        .extra
+        .compendium_claim_user
+        .clone()
+        .or_else(|| file.extra.compendium_claim_user.clone()),
+    )
   }
 
   fn resolve_oidc(

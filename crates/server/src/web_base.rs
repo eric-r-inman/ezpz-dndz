@@ -14,8 +14,8 @@ use thiserror::Error;
 
 use crate::card_editor::CardLayoutStore;
 use crate::compendium::{
-  BundledCompendium, CompendiumGroupStore, CompendiumStore,
-  SavedCompendiumStore, UserCompendiumStore,
+  migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
+  CompendiumStore, MigrationError, SavedCompendiumStore, UserCompendiumStore,
 };
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
@@ -54,14 +54,25 @@ pub enum AppStateError {
 
   #[error("Failed to load user store: {0}")]
   UserStoreLoad(#[source] ezpz_dndz_lib::users::UserStoreError),
+
+  #[error("Compendium split migration failed: {0}")]
+  CompendiumSplitMigration(#[source] MigrationError),
 }
 
 impl AppState {
   /// Build the app-specific portion of state from `RuntimePaths`,
   /// then wrap it around the foundation-built `BaseServerState`.
+  ///
+  /// `compendium_claim_user` is the email address passed via
+  /// `--compendium-claim-user` (or the equivalent config-file
+  /// key).  Consumed by the one-shot per-user compendium split
+  /// migration on the first boot of the post-split binary against
+  /// a data dir that contains non-bundled creatures in the legacy
+  /// shared store; ignored on every other boot.
   pub async fn assemble(
     base: BaseServerState,
     paths: &RuntimePaths,
+    compendium_claim_user: Option<&str>,
   ) -> Result<Self, AppStateError> {
     let dice_store = DiceStore::load_or_default(paths.dice_history.clone())
       .await
@@ -108,6 +119,22 @@ impl AppState {
     let user_store = UserStore::load_or_default(paths.users.clone())
       .await
       .map_err(AppStateError::UserStoreLoad)?;
+
+    let compendium_dir = paths
+      .compendium
+      .parent()
+      .map(std::path::Path::to_path_buf)
+      .unwrap_or_else(|| std::path::PathBuf::from("."));
+    compendium_migrate::run(
+      &compendium_dir,
+      &compendium_store,
+      &bundled_compendium,
+      &user_compendium,
+      &user_store,
+      compendium_claim_user,
+    )
+    .await
+    .map_err(AppStateError::CompendiumSplitMigration)?;
 
     Ok(Self {
       base,

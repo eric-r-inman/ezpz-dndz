@@ -60,7 +60,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     .await
     .expect("base server state");
 
-  let state = AppState::assemble(base, &paths)
+  let state = AppState::assemble(base, &paths, None)
     .await
     .expect("app state assemble");
 

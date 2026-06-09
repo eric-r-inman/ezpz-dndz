@@ -137,6 +137,21 @@ impl UserStore {
     self.inner.read().await.into_iter().find(|u| &u.id == id)
   }
 
+  /// Look up a user by email address (case-insensitive, trimmed).
+  /// Used by the compendium-split migration at boot to resolve the
+  /// `--compendium-claim-user <email>` flag into a `UserId`.  Not
+  /// suitable for authentication — there's no password check; use
+  /// [`Self::authenticate`] for that.
+  pub async fn find_by_email(&self, email: &str) -> Option<User> {
+    let normalized = email.trim().to_lowercase();
+    self
+      .inner
+      .read()
+      .await
+      .into_iter()
+      .find(|u| u.email == normalized)
+  }
+
   /// Set the display name on an existing user.  Trims and rejects
   /// empty input.  Returns the updated `User` so the caller can
   /// respond without re-fetching.

@@ -14,6 +14,7 @@
 pub mod bundled;
 pub mod error;
 pub mod groups;
+pub mod migrate;
 pub mod saves;
 pub mod store;
 pub mod user_store;
@@ -21,6 +22,7 @@ pub mod user_store;
 pub use bundled::BundledCompendium;
 pub use error::CompendiumStoreError;
 pub use groups::CompendiumGroupStore;
+pub use migrate::MigrationError;
 pub use saves::{SavedCompendium, SavedCompendiumMeta, SavedCompendiumStore};
 pub use store::CompendiumStore;
 pub use user_store::UserCompendiumStore;
