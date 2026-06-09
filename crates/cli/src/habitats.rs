@@ -710,6 +710,7 @@ mod tests {
       tags: vec![],
       created_at: 0,
       updated_at: 0,
+      is_bundled: false,
     }
   }
 

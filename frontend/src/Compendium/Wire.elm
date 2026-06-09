@@ -320,6 +320,7 @@ decodeCreature =
         |> optional "tags" (D.list D.string) []
         |> optional "created_at" D.int 0
         |> optional "updated_at" D.int 0
+        |> optional "is_bundled" D.bool False
 
 
 decodeKind : D.Decoder CreatureKind

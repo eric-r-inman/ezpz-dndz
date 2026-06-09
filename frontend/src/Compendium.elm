@@ -118,6 +118,7 @@ type alias Creature =
     , tags : List String
     , createdAt : Int
     , updatedAt : Int
+    , isBundled : Bool
     }
 
 

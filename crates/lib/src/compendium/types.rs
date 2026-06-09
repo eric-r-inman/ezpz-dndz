@@ -100,6 +100,14 @@ pub struct Creature {
   pub tags: Vec<String>,
   pub created_at: i64,
   pub updated_at: i64,
+  /// `true` when this creature originates from the read-only SRD
+  /// bundle; `false` when it lives in some user's per-user store.
+  /// Server-computed on output, ignored on input — the field is
+  /// flagged `skip_deserializing` so clients can round-trip a
+  /// creature payload (the server recomputes from the bundled-id
+  /// set before responding).
+  #[serde(default, skip_deserializing)]
+  pub is_bundled: bool,
 }
 
 /// What a `CreatureDraft` becomes once the server allocates an
