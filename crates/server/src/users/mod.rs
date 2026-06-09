@@ -17,7 +17,7 @@ use aide::axum::ApiRouter;
 use axum::{
   extract::{Request, State},
   http::StatusCode,
-  middleware::Next,
+  middleware::{self, Next},
   response::{IntoResponse, Response},
   routing::{get, post},
   Json,
@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use tracing::warn;
 
+use crate::auth_rate_limit;
 use crate::web_base::AppState;
 
 /// Session key under which the authenticated `UserId` is stored.
@@ -254,15 +255,28 @@ pub async fn require_auth(
 
 // ── router ─────────────────────────────────────────────────────────────────
 
-pub fn router() -> ApiRouter<AppState> {
+pub fn router(state: AppState) -> ApiRouter<AppState> {
   // Plain `route` instead of `api_route` — aide's `OperationHandler`
   // trait has no impl for `tower_sessions::Session`, so these
   // endpoints can't participate in the OpenAPI schema today.  Their
   // behaviour is documented in the module docs above; no /scalar UI
   // entry is generated for them.
-  ApiRouter::new()
+  //
+  // The credential-checking endpoints (register, login) carry a
+  // per-IP rate limit so a brute-forcer can't burn the box's CPU
+  // on Argon2id verification.  The session-only endpoints (logout,
+  // me, password) are NOT rate-limited — they need a valid cookie
+  // to reach, and the cookie is the implicit gate.
+  let rate_limited: ApiRouter<AppState> = ApiRouter::new()
     .route("/api/auth/register", post(register_handler))
     .route("/api/auth/login", post(login_handler))
+    .layer(middleware::from_fn_with_state(
+      state.auth_rate_limiter.clone(),
+      auth_rate_limit::middleware,
+    ));
+
+  ApiRouter::new()
+    .merge(rate_limited)
     .route("/api/auth/logout", post(logout_handler))
     .route("/api/auth/me", get(me_handler).put(update_profile_handler))
     .route("/api/auth/password", post(change_password_handler))

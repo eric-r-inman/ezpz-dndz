@@ -90,9 +90,10 @@ fn build_test_router(state: AppState) -> Router {
     .merge(encounters::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
+  let users_state = state.clone();
   Server::new(state.base.clone(), run_config)
     .with_state(move |_base| state)
-    .merge(users::router())
+    .merge(users::router(users_state))
     .merge(protected)
     .into_test_router()
 }
@@ -803,6 +804,58 @@ async fn test_auth_register_validation_errors() {
       "unexpected status for body: {body}"
     );
   }
+}
+
+#[tokio::test]
+async fn test_auth_login_rate_limit_returns_429_after_threshold() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+
+  // The limiter caps attempts at MAX_ATTEMPTS_PER_WINDOW (10) per
+  // 60-second window.  Every call uses the DIRECT_FALLBACK_IP
+  // bucket because the test harness doesn't set X-Forwarded-For,
+  // so all attempts share a single bucket and the 11th must 429.
+  let body = r#"{"email":"alice@example.com","password":"wrongpassword"}"#;
+
+  // The first 10 attempts go through (and return 401 for bad
+  // credentials — the limiter doesn't care about the status,
+  // only that the request reached the handler).
+  for i in 0..10 {
+    let response = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri("/api/auth/login")
+          .header("content-type", "application/json")
+          .body(Body::from(body))
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_ne!(
+      response.status(),
+      StatusCode::TOO_MANY_REQUESTS,
+      "request {i} (0-indexed) should not be rate-limited"
+    );
+  }
+
+  let throttled = app
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/auth/login")
+        .header("content-type", "application/json")
+        .body(Body::from(body))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(throttled.status(), StatusCode::TOO_MANY_REQUESTS);
+  assert!(
+    throttled.headers().get("retry-after").is_some(),
+    "rate-limited response must include a Retry-After header"
+  );
 }
 
 #[tokio::test]

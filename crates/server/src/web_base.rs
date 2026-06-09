@@ -12,6 +12,7 @@ use rust_template_foundation::{
 use std::sync::Arc;
 use thiserror::Error;
 
+use crate::auth_rate_limit::AuthRateLimiter;
 use crate::card_editor::CardLayoutStore;
 use crate::compendium::{
   migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
@@ -34,6 +35,7 @@ pub struct AppState {
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
+  pub auth_rate_limiter: AuthRateLimiter,
 }
 
 impl_server_state!(AppState, base);
@@ -147,6 +149,7 @@ impl AppState {
       encounter_store,
       encounter_saves,
       user_store: Arc::new(user_store),
+      auth_rate_limiter: AuthRateLimiter::new(),
     })
   }
 }
