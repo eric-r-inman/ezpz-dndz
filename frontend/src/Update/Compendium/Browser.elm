@@ -60,9 +60,13 @@ withCompendium fn model =
 
 loaded : Result Http.Error (List Compendium.Creature) -> Model -> ( Model, Cmd Msg )
 loaded result model =
-    ( model
-        |> withCompendium (loadedUpdate result)
-        |> syncEncounterFromCompendium result
+    let
+        effectiveResult =
+            mergedResult result model
+    in
+    ( { model | pendingBundleMerge = False }
+        |> withCompendium (loadedUpdate effectiveResult)
+        |> syncEncounterFromCompendium effectiveResult
     , Cmd.none
     )
 
@@ -75,6 +79,56 @@ loadedUpdate result ui =
 
         Err err ->
             { ui | db = CompendiumDbFailed err }
+
+
+{-| When the anonymous boot path detected a stale-bundled-version
+snapshot (`pendingBundleMerge = True`), the freshly-fetched
+bundle has to be unioned with the user-created creatures in the
+snapshot instead of replacing the whole DB. Otherwise the user
+would lose every creature they'd authored in anonymous mode
+every time the bundle version bumped.
+
+The merge: take all fetched creatures (they win on id collisions
+— bundled-id creatures get refreshed) plus any creatures in the
+current DB whose ids aren't in the fetched set (user-created).
+We return a fresh `Ok merged` so the downstream `loadedUpdate`
+and `syncEncounterFromCompendium` both see the unioned list.
+
+When `pendingBundleMerge = False` or the fetch failed, fall
+through to the standard replace-everything behaviour by passing
+the original result through untouched.
+
+-}
+mergedResult :
+    Result Http.Error (List Compendium.Creature)
+    -> Model
+    -> Result Http.Error (List Compendium.Creature)
+mergedResult result model =
+    case ( result, model.pendingBundleMerge ) of
+        ( Ok fetched, True ) ->
+            let
+                fetchedIds =
+                    fetched |> List.map .id |> Set.fromList
+
+                preserved =
+                    model.compendium.db
+                        |> loadedCreaturesOrEmpty
+                        |> List.filter (\c -> not (Set.member c.id fetchedIds))
+            in
+            Ok (fetched ++ preserved)
+
+        _ ->
+            result
+
+
+loadedCreaturesOrEmpty : CompendiumDb -> List Compendium.Creature
+loadedCreaturesOrEmpty db =
+    case db of
+        CompendiumDbLoaded loaded_ ->
+            Compendium.toList loaded_
+
+        _ ->
+            []
 
 
 {-| Refresh the stat-block-derived legendary counters on every

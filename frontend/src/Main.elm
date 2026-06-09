@@ -554,6 +554,7 @@ init flags url key =
       , migrationDateLabel = flags.migrationDateLabel
       , localDiceHistoryRaw = flags.localDiceHistory
       , localCompendiumRaw = flags.localCompendium
+      , pendingBundleMerge = False
       , nextLocalCreatureId = 1
       , localEncounterSaves =
             flags.localEncounterSaves
@@ -892,6 +893,7 @@ persistCompendiumFor model =
                     { creatures = loadedCreatures model.compendium.db
                     , groups = Dict.values model.compendium.groups
                     , nextLocalId = model.nextLocalCreatureId
+                    , bundledVersion = Compendium.Wire.currentBundledVersion
                     }
                 )
 

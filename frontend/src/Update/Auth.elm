@@ -281,9 +281,19 @@ applyLocalDiceHistory raw model =
 {-| Apply the local compendium snapshot to the anonymous boot
 state. Returns `(model, Cmd)`:
 
-  - Snapshot present + decodes → install the creatures into
-    `model.compendium.db`, restore the next-id counter, and the
-    Cmd is `Cmd.none` (the local snapshot is the truth).
+  - Snapshot present + decodes + recorded `bundledVersion` is
+    current → install the creatures into `model.compendium.db`,
+    restore the next-id counter, and the Cmd is `Cmd.none` (the
+    local snapshot is the truth).
+  - Snapshot present + decodes + recorded `bundledVersion` is
+    OLDER than `Compendium.Wire.currentBundledVersion` → adopt
+    the snapshot as initial state, set `pendingBundleMerge = True`,
+    and fire `fetchAllPublic`. When the fetch lands, the
+    `CompendiumLoaded` handler replaces bundled-id creatures
+    with the fresh data while preserving user-created creatures
+    whose ids aren't in the bundle. This is what unsticks
+    anonymous users who built up a snapshot before a data fix
+    landed in `bundled-creatures.json`.
   - Snapshot absent or undecodable → leave the compendium in its
     initial state and fire `fetchAllPublic` so the GM sees the
     bundled defaults.
@@ -302,18 +312,25 @@ applyLocalCompendium raw model =
                     let
                         compendium =
                             model.compendium
-                    in
-                    ( { model
-                        | compendium =
-                            { compendium
-                                | db =
-                                    CompendiumUi.CompendiumDbLoaded
-                                        (Compendium.fromList snap.creatures)
+
+                        adopted =
+                            { model
+                                | compendium =
+                                    { compendium
+                                        | db =
+                                            CompendiumUi.CompendiumDbLoaded
+                                                (Compendium.fromList snap.creatures)
+                                    }
+                                , nextLocalCreatureId = snap.nextLocalId
                             }
-                        , nextLocalCreatureId = snap.nextLocalId
-                      }
-                    , Cmd.none
-                    )
+                    in
+                    if snap.bundledVersion < Compendium.Wire.currentBundledVersion then
+                        ( { adopted | pendingBundleMerge = True }
+                        , Compendium.Wire.fetchAllPublic CompendiumLoaded
+                        )
+
+                    else
+                        ( adopted, Cmd.none )
 
                 Err _ ->
                     fallback

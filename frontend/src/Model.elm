@@ -491,6 +491,17 @@ type alias Model =
     -- back to `/bundled-creatures.json`.
     , localCompendiumRaw : Maybe Decode.Value
 
+    -- Set on the anonymous boot branch when the local snapshot was
+    -- written under an older `bundledVersion` than the running
+    -- build.  We adopt the snapshot as initial state AND fire a
+    -- `/bundled-creatures.json` fetch; when the fetch lands the
+    -- `CompendiumLoaded` handler replaces bundled-id creatures
+    -- with the fresh data while preserving user-created ones
+    -- (id not in the bundle).  Cleared once the merge runs so
+    -- subsequent in-session fetches (post sign-in, etc.) keep
+    -- the standard replace-everything behaviour.
+    , pendingBundleMerge : Bool
+
     -- Monotonic counter handing out ids for anonymously-created
     -- creatures.  Persisted to localStorage as part of the
     -- compendium snapshot so reloads don't reuse ids.  Server
