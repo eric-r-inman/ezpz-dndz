@@ -12,7 +12,14 @@ from [[file:diagrams/data-model.d2]]).
 Companion docs:
 
 - [[file:AUTH_TESTING.org]] — local-dev guide for poking at user
-  accounts (browser walkthrough + curl recipes).
+  accounts (browser walkthrough + curl recipes), including the
+  rate-limit and per-user-isolation smoke tests.
+- [[file:DEPLOY.org]] — step-by-step Linux VPS deployment:
+  service account, OIDC secret via ~LoadCredential~, systemd
+  units (server + backup timer), Caddy reverse proxy with auto-
+  TLS, first-user onboarding, and the per-user compendium claim
+  flow.  Backup script lives at ~scripts/backup.sh~; ready-to-
+  ~sed~ systemd + Caddy templates under ~deploy/{systemd,caddy}/~.
 - [[file:systemd.org]] — LoadCredential + secret-passing notes for
   the NixOS module.
 - ~llms.org~ at the workspace root — LLM-facing coding-rule
@@ -57,8 +64,11 @@ Under =crates/=:
   derive that generates ~CliRaw~, ~ConfigFileRaw~, and the
   ~Config::from_cli_and_file~ merge.  The ~clap~ subcommand
   structure rides through ~MergeConfig~'s ~subcommand~ field
-  kind.  Subcommands today: ~compendium {list,count,show}~,
-  ~encounter {show,count}~, ~dice {count,tail,clear}~.
+  kind.  Subcommands today: ~compendium {list,count,show,harvest,
+  infer-habitats,promote-to-bundle}~, ~encounter {show,count}~,
+  ~dice {count,tail,clear}~, ~users {reset-password}~ (operator-
+  only — opens the on-disk ~users.json~ directly and writes a
+  fresh Argon2id hash, no server required).
 - =server/src/=
   - ~main.rs~ — ~#[foundation_main]~ entry point.  Loads the
     per-user stores, hands them to ~Server::with_state~, layers
@@ -504,27 +514,126 @@ other inputs.  No session, no user → 401 with a JSON body.
 
 ** Per-user data shapes
 
-| Store                | Disk shape                                                                                            | Notes                                                              |
-|----------------------+-------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------|
-| =users.json=         | ~Vec<User>~                                                                                           | Single global list; uniqueness enforced on email.                  |
-| =encounter.json=     | ~HashMap<UserId, Value>~                                                                              | Each user has their own live encounter; absent key reads as ~null~. |
-| =encounter-saves.json= | ~HashMap<UserId, Vec<SavedEncounter>>~                                                              | Save-name uniqueness is per-user; Alice + Bob can both have a "Goblin Ambush". |
-| =compendium-saves.json= | ~HashMap<UserId, Vec<SavedCompendium>>~                                                            | Same per-user keying.                                              |
-| =compendium-groups.json= | ~HashMap<UserId, Vec<Group>>~                                                                     | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
-| =card-layouts.json=  | ~HashMap<UserId, Vec<SavedLayout>>~                                                                   | Per-user named creature-card layouts; see [[*Customizable creature card][Customizable creature card]].   |
-| =dice-history.json=  | ~HashMap<UserId, Vec<Value>>~                                                                         | 30-entry cap is per-user.                                          |
-| =compendium/creatures.json= | ~Vec<Creature>~                                                                                | *Shared* — all logged-in users see + can edit the same bestiary.   |
+| Store                            | Disk shape                                | Notes                                                              |
+|----------------------------------+-------------------------------------------+--------------------------------------------------------------------|
+| =users.json=                     | ~Vec<User>~                               | Single global list; uniqueness enforced on email.                  |
+| =encounter.json=                 | ~HashMap<UserId, Value>~                  | Each user has their own live encounter; absent key reads as ~null~. |
+| =encounter-saves.json=           | ~HashMap<UserId, Vec<SavedEncounter>>~    | Save-name uniqueness is per-user; Alice + Bob can both have a "Goblin Ambush". |
+| =compendium-saves.json=          | ~HashMap<UserId, Vec<SavedCompendium>>~   | Same per-user keying.                                              |
+| =compendium-groups.json=         | ~HashMap<UserId, Vec<Group>>~             | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
+| =compendium/user-creatures.json= | ~HashMap<UserId, Vec<Creature>>~          | Per-user creature edits + creations + duplicates of bundled.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
+| =card-layouts.json=              | ~HashMap<UserId, Vec<SavedLayout>>~       | Per-user named creature-card layouts; see [[*Customizable creature card][Customizable creature card]].   |
+| =dice-history.json=              | ~HashMap<UserId, Vec<Value>>~             | 30-entry cap is per-user.                                          |
+| =compendium/creatures.json=      | ~Vec<Creature>~                           | *Legacy* — pre-split shared store; read once at boot by the migration, then unused.  Safe to delete after the migration writes ~.split-v1~. |
 
-The shared compendium is intentional: the 330-creature
-catalogue is the one piece of state the homelab DM crowd
-expects to collaborate on.  An admin / player role split is on
-the table for if mixed-trust deployments materialise; the seam
-is in =crates/server/src/users/=.
+The bundled SRD set is *not* on disk for the server — it lives
+in the binary via ~include_str!~ and is merged into every read
+at request time.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]] for
+the full split and migration story.
+
+** Compendium: bundled vs per-user
+
+The compendium has two layers that the server merges at request
+time:
+
+- *Bundled creatures* (the SRD 5.2.1 set) live read-only in the
+  binary.  ~crates/server/src/compendium/bundled.rs~ parses
+  =crates/lib/data/bundled-creatures.json= at boot and exposes an
+  O(1) ~contains(id)~ check.  Updates only ship via a binary
+  rebuild + ~BUNDLED_VERSION~ bump in
+  ~crates/server/src/compendium/store.rs~.
+- *Per-user creatures* (custom creations, edits, duplicates)
+  live in ~UserCompendiumStore~ at
+  =<data_dir>/compendium/user-creatures.json= keyed by ~UserId~.
+
+Every ~Creature~ that crosses the wire carries an
+~is_bundled : bool~ field that the server computes from
+~BundledCompendium::contains(id)~ on the way out.  The flag is
+~#[serde(default, skip_deserializing)]~ so clients can't forge
+it on the way in.
+
+The HTTP surface:
+
+| Endpoint                                    | Behaviour                                                                 |
+|---------------------------------------------+---------------------------------------------------------------------------|
+| ~GET /api/compendium/creatures~             | Returns bundled rows ++ the caller's per-user rows, with ~is_bundled~ stamped. |
+| ~GET /api/compendium/creatures/{id}~        | Tries bundled first, then the caller's per-user store; 404 otherwise.    |
+| ~POST /api/compendium/creatures~            | Creates in the caller's per-user store with a fresh UUIDv4.              |
+| ~PUT /api/compendium/creatures/{id}~        | 403 ~BundledNotEditable~ if ~id~ is bundled; otherwise updates the caller's record. |
+| ~DELETE /api/compendium/creatures/{id}~     | Same scoping — 403 on bundled.                                            |
+| ~POST /api/compendium/creatures/{id}/duplicate~ | Clones (bundled or own) into caller's store with a fresh UUIDv4 and "Copy of …" name prefix.  The only path to an editable copy of a bundled creature. |
+| ~POST /api/compendium/import~               | Replaces the caller's per-user list (bundled-id rows in the body are silently dropped). |
+| ~POST /api/compendium/reset~                | Drops the caller's per-user creatures + groups; bundled reappears via the merge. |
+| ~GET /api/compendium/export~                | Returns the caller's per-user creatures + groups only — bundled is omitted because the receiver's server already has it. |
+
+Frontend UI mirrors the model: the compendium browser hides
+Edit and Delete on bundled rows, shows Duplicate, and stamps a
+small "Bundled" chip on the stat-block header.  See
+~frontend/src/View/Modal/Compendium.elm:actionBar~ and
+~View.StatBlock.bundledBadge~.
+
+** Anonymous-mode compendium split
+
+The anonymous snapshot in ~localStorage["compendium"]~ stores
+*only* user-created creatures.  Bundled rows are always refetched
+from ~/bundled-creatures.json~ on every boot and merged with the
+snapshot's user data.  Why:
+
+- The snapshot stays small (KB instead of MB).
+- A bundle update reaches an anonymous browser on the next
+  reload, no DevTools surgery required.
+- The merge step (~Update.Compendium.Browser.mergedResult~) keeps
+  user-created creatures whose ids aren't in the fetched bundle,
+  so authoring locally still survives a refresh.
+
+The snapshot carries a ~bundled_version~ stamp; on boot, when
+the recorded version is older than ~Compendium.Wire.currentBundledVersion~,
+the merge fires automatically.  See ~Update.Auth.applyLocalCompendium~.
+
+** Split migration (pre-split → post-split data dir)
+
+Pre-split deployments had a single shared
+=<data_dir>/compendium/creatures.json= that mixed bundled +
+user-edited + user-created rows.  The one-shot migration at
+~crates/server/src/compendium/migrate.rs~ runs on boot when the
+sidecar marker =<compendium_dir>/.split-v1= is absent:
+
+1. Walks the legacy store and partitions rows into:
+   - *Canonical bundled* (id matches the bundle byte-for-byte) →
+     dropped.  Bundled rows live in-binary post-split.
+   - *Edited bundled* (id in the bundle but content differs) →
+     forked into the claim user's store with a fresh UUIDv4 and
+     a "Copy of …" name prefix.  The bundled original is
+     restored.
+   - *User-created* (id not in the bundle, typically a UUIDv4
+     from the legacy create path) → migrated as-is.  Original
+     ids are preserved so existing encounter references keep
+     resolving.
+2. Requires ~--compendium-claim-user <email>~ when there's data
+   to claim; the server refuses to start without the flag so the
+   operator can make the decision deliberately.
+3. Writes the marker file recording version, timestamp,
+   claimed user, and counts.  Subsequent boots see the marker
+   and skip.
 
 Existing dev-mode JSON of an older flat shape will fail to
 deserialize and ~JsonFileStore::load_or_default~ falls back to
-an empty map (logged at WARN).  Fine for dev; production has no
-data in this repo yet, so no migration helper exists.
+an empty map (logged at WARN).  Fine for dev.
+
+** Login-only rate limit
+
+~crates/server/src/auth_rate_limit.rs~ wraps
+~/api/auth/login~ and ~/api/auth/register~ with a per-IP fixed-
+window token bucket: 10 attempts / IP / 60 seconds, returning
+~429 Too Many Requests~ + ~Retry-After~ once the bucket
+overflows.  IPs come from ~X-Forwarded-For~'s first hop (Caddy /
+nginx set this in the documented deployment) with a shared
+fallback bucket for direct connections.
+
+Session-only endpoints (~logout~, ~me~, ~password~) are *not*
+rate-limited because they already require a valid session
+cookie as the implicit gate.  The limiter is layered onto a
+sub-router in ~users::router~ so the scope is explicit.
 
 ** Frontend boot through the auth probe
 
@@ -730,6 +839,31 @@ Success handlers clear the matching ~localStorage~ key via the
 ~clearLocalCompendium~ ports and push a success toast naming the
 slot.  Failures toast but leave the local snapshot in place so
 the user can retry.
+
+** Anonymous-mode banner
+
+~View.AnonymousBanner~ renders a yellow-accent strip between the
+AppBar and the page body when ~model.auth = AuthAnonymous~ and
+the user hasn't dismissed it for the session.  The message names
+the persistence reality explicitly:
+
+#+begin_quote
+You're browsing as a guest — your encounters and compendium
+edits live only in this browser.  Create an account to keep
+your work across devices.  ×
+#+end_quote
+
+Dismissal is session-only (~model.anonymousBannerDismissed~).
+The banner reappears on every page reload by design — the
+persistence reality doesn't change between reloads, so the
+reminder shouldn't either.  Suppressed on the second-monitor
+~QuickList~ and ~Compendium~ standalone routes since those are
+read-only references that don't accept input.
+
+Theme overrides at ~.anonymous-banner~ in
+~frontend/public/style.css~ keep the strip legible in Dark
+(muted) and Accessible (high-contrast yellow with a heavier
+border).
 
 ** View-layer sign-in nudges
 

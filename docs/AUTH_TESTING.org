@@ -9,14 +9,20 @@ PATH (both come with the Nix dev shell).
 
 * What's wired up
 
-| Layer                          | Status                                |
-|--------------------------------+---------------------------------------|
-| User store + Argon2id hashing  | shipped                               |
-| Register / login / logout / me | shipped — ~/api/auth/*~                |
-| ~require_auth~ on /api/*       | shipped — every non-auth route        |
-| Per-user encounter + saves     | shipped                               |
-| Per-user dice history          | shipped (each user's own roll log)    |
-| Frontend login / register UI   | shipped — in-Elm screen at app boot   |
+| Layer                              | Status                                |
+|------------------------------------+---------------------------------------|
+| User store + Argon2id hashing      | shipped                               |
+| Register / login / logout / me     | shipped — ~/api/auth/*~                |
+| Per-IP rate limit on register+login | shipped — 10 attempts / IP / 60s       |
+| ~require_auth~ on /api/*           | shipped — every non-auth route        |
+| Per-user encounter + saves         | shipped                               |
+| Per-user compendium creatures      | shipped — bundled rows are shared read-only, user-created rows are per-user |
+| Per-user compendium groups         | shipped                               |
+| Per-user card layouts              | shipped                               |
+| Per-user dice history              | shipped (each user's own roll log)    |
+| Frontend login / register UI       | shipped — in-Elm screen at app boot   |
+| Anonymous-mode banner              | shipped — top-of-page reminder for guests |
+| Operator password reset (CLI)      | shipped — ~ezpz-dndz-cli users reset-password~ |
 
 * Setup
 
@@ -182,6 +188,30 @@ curl -s -b "$BOB" -X PUT "$BASE/api/encounter/saves/Goblin%20Ambush" \
 The same isolation applies to compendium-saves
 (=/api/compendium/saves/...=).  Try it with a similar pair.
 
+* Hit the rate limit deliberately
+
+The auth endpoints carry a per-IP token bucket: 10 attempts per
+IP per 60-second window.  Verify it from a fresh shell:
+
+#+begin_src sh :exports code
+for i in $(seq 1 11); do
+  curl -s -o /dev/null -w "attempt $i: %{http_code}\n" \
+    -X POST "$BASE/api/auth/login" \
+    -H 'content-type: application/json' \
+    -d '{"email":"alice@example.com","password":"wrongpassword"}'
+done
+#+end_src
+
+Expected: the first ten attempts return 401, the eleventh
+returns 429 with a ~Retry-After~ header.  Wait 60 seconds and
+the bucket resets.
+
+Behind Caddy / nginx the bucket is keyed on
+~X-Forwarded-For~'s first hop, so each tester gets their own
+quota.  In dev (no proxy) every attempt shares a single fallback
+bucket — annoying if you're hammering it during a test but
+exactly the intended signal that the limiter is active.
+
 * Inspect the on-disk shape
 
 The user records:
@@ -243,13 +273,31 @@ to drop the entry under their UUID key.
 
 * What's missing
 
-** Email verification + password reset
+** Email verification
 
-Both require an SMTP setup that the project doesn't have.  Add
-once you've decided how mail is going to work in your homelab —
-maybe via a relay through ~msmtp~ or whatever your existing setup
-uses.  Until then, password recovery is "edit users.json on disk
-and remove the row, then re-register."
+Email verification on signup is still missing.  Requires an SMTP
+setup the project doesn't have today.  Add once you've decided
+how mail is going to work in your homelab — maybe via a relay
+through ~msmtp~ or whatever your existing setup uses.
+
+** Password reset
+
+Password recovery for the user themselves still requires an email
+flow (same SMTP gap as above).  The *operator* path is wired up:
+
+#+begin_src sh :exports code
+nix develop --command cargo run -p ezpz-dndz-cli -- \
+  users reset-password \
+  --email alice@example.com \
+  --data-dir /tmp/auth-scratch
+#+end_src
+
+The CLI prompts twice for a new password (hidden TTY input), writes
+a fresh Argon2id hash directly to ~users.json~, and prints
+~"Reset password for <display-name> <email>"~ on success.  No
+current-password check — assumes the operator has disk access.
+Useful when a tester forgets their password and you don't want to
+hand-edit JSON.
 
 ** Admin role / user management UI
 
@@ -276,7 +324,8 @@ tests:
 nix develop --command cargo test -p ezpz-dndz-server --test integration_test
 #+end_src
 
-15 tests pass, including:
+26 server tests pass at HEAD, including the auth + isolation
+suite:
 
 - ~test_auth_register_then_me_round_trip~
 - ~test_auth_me_without_session_is_unauthorized~
@@ -284,11 +333,19 @@ nix develop --command cargo test -p ezpz-dndz-server --test integration_test
 - ~test_auth_register_validation_errors~
 - ~test_auth_duplicate_email_conflicts~
 - ~test_auth_wrong_password_unauthorized~
+- ~test_auth_login_rate_limit_returns_429_after_threshold~
 - ~test_protected_route_without_session_is_unauthorized~
 - ~test_per_user_isolation_for_saved_encounters~
 - ~test_per_user_isolation_for_live_encounter~
 - ~test_per_user_isolation_for_dice_history~
+- ~test_compendium_creatures_bundled_visible_to_every_user~
+- ~test_compendium_creatures_per_user_isolation~
+- ~test_compendium_update_bundled_returns_forbidden~
+- ~test_compendium_delete_bundled_returns_forbidden~
+- ~test_compendium_duplicate_bundled_creates_per_user_copy~
+- ~test_compendium_groups_per_user_isolation~
+- ~test_card_layouts_per_user_isolation~
 
-Frontend assertions are covered separately by
-~elm-test~ (183 tests, run via ~just test~ or
-~nix develop --command elm-test~).
+Frontend assertions are covered separately by ~elm-test~
+(259 tests at HEAD, run via ~just test~ or ~nix develop --command
+elm-test~).

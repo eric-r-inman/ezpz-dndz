@@ -3,21 +3,26 @@
 
 A D&D combat encounter manager and monster database — a server with an
 Elm frontend for running combat at the table, plus a CLI for managing
-the underlying monster catalog.
+the underlying monster catalog. Creature stat blocks, and some other content,
+sourced from D&D System Reference Document 5.2.1, and information available
+in public forums. 
 
-Copyright (c) 2026 Eric Inman.  All rights reserved.  Licensed under
+This app is Copyright (c) 2026 Eric Inman.  All rights reserved.  Licensed under
 the PolyForm Strict License 1.0.0 — see [[file:LICENSE][LICENSE]] for the full text,
 or the [[*License][License]] section below for a short summary.  This is
 *source-available, not open source*: noncommercial / personal use
-only; no distribution, forks, modifications, or derivative works.
+only; no distribution, forks, modifications, or derivative works. If you
+want to see some changes/improvements, drop me a line. You do not have 
+permission to setup a public server running this app or any derivitive thereof; 
+source code is provided for your local use only.
 
 * Introduction
 
 Running combat at a D&D table involves a lot of bookkeeping: initiative
 order, hit points, conditions, legendary actions, lair effects, and the
-ever-present need to look up a monster's stat block.  ~ezpz-dndz~ aims
-to take that bookkeeping off the DM's plate so the table can focus on
-the fiction.
+ever-present need to look up a monster's stat block.  ~ezpz-dndz~ is a
+project I've been working on for my own D&D games; it aims to take 
+that bookkeeping off my plate so I can focus on the narrative.
 
 The project ships two binaries and a shared library:
 
@@ -30,35 +35,125 @@ The project ships two binaries and a shared library:
 
 * Status
 
-Early scaffolding.  The Rust workspace, Nix dev shell, and Elm frontend
-shell are wired up; the encounter-manager logic is not yet implemented.
+Beta-test ready: local hosting, and remote hosting.
 
-* Installation
+* Running it locally
 
-** From source (personal use only — see [[*License][License]])
+Personal use only — see [[*License][License]].
 
-Requires Nix with flakes enabled.
+** Prerequisites
+
+- [[https://nixos.org/download/][Nix]] with flakes enabled.  Everything else (Rust toolchain,
+  Elm, treefmt, ~just~, ~elm-test~) is pulled into the dev shell
+  automatically.
+- ~git~.  That's the whole list.
+
+You don't need Rust, Elm, or any toolchain installed system-wide.
+The Nix dev shell provides them at the versions the project pins.
+
+** First-run setup
 
 #+begin_src sh :exports code
 git clone https://github.com/eric-r-inman/ezpz-dndz
 cd ezpz-dndz
-nix develop
-cargo build --workspace
+nix develop --command cargo build --workspace
+nix develop --command bash -c \
+  "cd frontend && elm make src/Main.elm --output public/elm.js"
 #+end_src
 
-* Usage
+The first ~nix develop~ pulls a few hundred MB of toolchain (one-
+time); subsequent invocations are instant.  The ~cargo build~
+output goes under ~target/~ (gitignored); the Elm bundle lands at
+~frontend/public/elm.js~ (also gitignored).
 
-Start the server:
+If you have ~just~ on your PATH, ~just dev~ does the elm build
+and starts the server in one step — see [[*Day-to-day]] below.
+
+** Day-to-day
+
+Start the server with the dev shell's tooling:
 
 #+begin_src sh :exports code
-cargo run -p ezpz-dndz-server
+just dev
 #+end_src
 
-Run the CLI:
+That rebuilds the Elm bundle, launches ~ezpz-dndz-server~ on
+~http://127.0.0.1:4040~, and opens it in your default browser
+(~just serve~ is the same minus the browser-open).  Stop with
+Ctrl-C.
+
+If you don't have ~just~, the equivalent long form is:
 
 #+begin_src sh :exports code
-cargo run -p ezpz-dndz-cli -- --help
+nix develop --command bash -c \
+  "cd frontend && elm make src/Main.elm --output public/elm.js"
+nix develop --command \
+  cargo run -p ezpz-dndz-server -- \
+    --listen 127.0.0.1:4040 \
+    --base-url http://127.0.0.1:4040 \
+    --frontend-path frontend/public
 #+end_src
+
+Persistence lives in whatever ~--data-dir~ resolves to.  Without
+the flag, the server writes its JSON store files into the current
+directory (~./users.json~, ~./encounter.json~, etc., all
+gitignored).  For a clean scratch dir, pass ~--data-dir
+/tmp/ezpz-scratch~ on the ~cargo run~ line.
+
+** Trying it out
+
+Open ~http://127.0.0.1:4040~.  You'll boot into anonymous mode —
+your work persists in browser ~localStorage~, no account
+required.  A banner at the top reminds you that anonymous data is
+local-only.
+
+To switch to a server-backed account, click *Sign in* in the
+top-right and *Create one* to register.  Anything you built up
+in anonymous mode (encounters, custom creatures, named saves)
+migrates into the new account automatically.
+
+** Running the tests
+
+Cargo + Elm test suites:
+
+#+begin_src sh :exports code
+nix develop --command cargo test --workspace
+cd frontend && nix develop --command elm-test
+#+end_src
+
+Or the one-shot via ~just~:
+
+#+begin_src sh :exports code
+just test
+#+end_src
+
+The compendium-CLI subcommands sit under ~ezpz-dndz-cli~:
+
+#+begin_src sh :exports code
+nix develop --command cargo run -p ezpz-dndz-cli -- --help
+#+end_src
+
+Operator-only subcommands (currently: ~users reset-password~
+for resetting a forgotten password against a local data dir)
+live under ~users~ — see ~--help~ for the full list.
+
+** When something doesn't work
+
+- ~nix develop~ hangs or fails on the first run :: this is the
+  toolchain download.  Wait it out the first time; subsequent
+  shells reuse the cached store paths.
+- ~elm make~ complains about missing packages :: delete
+  ~frontend/elm-stuff/~ and re-run.  The package index
+  occasionally needs a fresh cache.
+- Port 4040 already in use :: another instance is running, or
+  another app squatted the port.  Either kill it or pass
+  ~--listen 127.0.0.1:4041~ to the ~cargo run~ line above.
+- Server logs "compendium split migration: ... ClaimUserMissing"
+  :: you have data from an earlier version that the new per-user
+  compendium layer doesn't know who owns.  Register your account
+  in the UI, stop the server, and restart with
+  ~--compendium-claim-user <your-email>~.  See
+  ~docs/DEPLOY.org~ for the longer migration story.
 
 * License
 
@@ -77,6 +172,10 @@ the terms above cover only this project's original code, configs,
 and documentation.
 
 This is a personal project — external contributions are not
-currently accepted.  The [[file:CONTRIBUTING.org][CONTRIBUTING.org]] document, where it
-remains, is an internal code-style reference and not a
-contribution invitation.
+currently accepted.  The [[file:CONTRIBUTING.org][CONTRIBUTING.org]] document, 
+where it remains, is an internal code-style reference and not a
+contribution invitation. Other documents, like ARCHITECTURE.org, I've included
+for anyone who wants a peekypoo into the app's guts. However, a claude agent 
+has been solely responsible for maintaining these documents, and I haven't 
+reviewed them yet, so trust at your own risk. Drop me a line if you see anything
+excessively baffling. 
