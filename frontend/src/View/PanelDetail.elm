@@ -123,7 +123,11 @@ notFound pin db =
                     "Couldn't load the compendium."
 
                 CompendiumDbLoaded _ ->
-                    "\"" ++ pin.name ++ "\" isn't in your compendium yet."
+                    "\""
+                        ++ pin.name
+                        ++ "\" isn't in your compendium yet. "
+                        ++ "To see this creature's stat block, import the "
+                        ++ "compendium save file that contains this creature."
     in
     div [ class "panel-statblock panel-statblock--empty" ]
         [ p [ class "empty" ] [ text message ] ]

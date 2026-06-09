@@ -923,6 +923,23 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.25rem;
 }
 
+/* Accessible mode keeps a near-black on white palette; the
+   default medium-grey title-meta colour reads too light against
+   that contrast.  Drop it to a darker grey while staying off
+   pure black so the line still parses as metadata rather than
+   competing with the bold title to its left. */
+[data-theme="accessible"] .modal__title-meta {
+  color: #2a2a2a;
+}
+
+/* Dark mode does the opposite — the same default grey vanishes
+   against the dark surface.  Lift the value so the "From file:"
+   tag reads at a glance while still ranking below the title in
+   the visual hierarchy. */
+[data-theme="dark"] .modal__title-meta {
+  color: #c4c4cc;
+}
+
 /* Add-Condition modal — the condition picker grid uses a fixed
    120px column minimum, which clips longer labels ("Incapacitated",
    "Concentration", etc.) once the Accessible modal-body bump
