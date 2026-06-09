@@ -50,7 +50,8 @@ view chrome auth ui encounterIds =
             , chrome = chrome
             , body = pageBody auth ui encounterIds
             }
-            [ button
+            [ savedAsLabel ui.savedAs
+            , button
                 [ class "modal__open-in-tab"
                 , Attr.type_ "button"
                 , onClick CompendiumOpenInTab
@@ -59,6 +60,23 @@ view chrome auth ui encounterIds =
                 ]
                 [ text "↗" ]
             ]
+
+
+{-| Title-bar tag identifying which compendium snapshot is in
+view. `Nothing` means "the bundled SRD default plus whatever
+this user has authored locally" — labelled with the project's
+own name so the GM has an immediate cue that they're not
+editing a named save.
+-}
+savedAsLabel : Maybe String -> Html Msg
+savedAsLabel savedAs =
+    let
+        name =
+            savedAs |> Maybe.withDefault "eZpZ-dndZ default"
+    in
+    span
+        [ class "modal__title-meta" ]
+        [ text ("From file: " ++ name) ]
 
 
 {-| The compendium's body content — filter bar, actions bar,
