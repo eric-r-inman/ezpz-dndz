@@ -9,6 +9,7 @@
 use crate::compendium::CompendiumCommand;
 use crate::dice::DiceCommand;
 use crate::encounter::EncounterCommand;
+use crate::users::UsersCommand;
 use clap::Subcommand;
 use ezpz_dndz_lib::{LogFormat, LogLevel};
 use rust_template_foundation::MergeConfig;
@@ -31,6 +32,14 @@ pub enum Command {
   Dice {
     #[command(subcommand)]
     command: DiceCommand,
+  },
+
+  /// Admin operations against the file-backed user store
+  /// (password reset, etc.).  Intended for the operator running
+  /// the binary on the same host as the data dir.
+  Users {
+    #[command(subcommand)]
+    command: UsersCommand,
   },
 }
 

@@ -25,6 +25,12 @@ uuid = { workspace = true }
 # pulls open-licensed monster JSON from Open5e in a one-shot
 # fashion.  No tokio runtime needed; blocking is fine for CLI use.
 reqwest = { workspace = true, features = ["blocking", "json"] }
+# Mutating UserStore (password reset) requires the same tokio
+# runtime the server uses — the file-backed store is async.
+tokio = { workspace = true }
+# Hidden password prompt for the `users reset-password` subcommand
+# so the new value never lands in shell history or `ps` output.
+rpassword = "7.4"
 
 [lints]
 workspace = true

@@ -1,0 +1,63 @@
+# Caddy reverse-proxy config for ezpz-dndz.
+#
+# Caddy auto-provisions a Let's Encrypt cert for the named site
+# and renews it automatically, so the only ongoing operator work
+# is keeping the DNS A/AAAA record current.
+#
+# Install Caddy (https://caddyserver.com/docs/install) and copy
+# this file to /etc/caddy/Caddyfile (or import it via
+# `import /etc/caddy/conf.d/*.conf` if you keep per-site files).
+# Then:
+#
+#   sudo systemctl reload caddy
+#
+# Replace `ezpz.example.com` with your actual hostname before
+# install.  Port 80 redirects to HTTPS automatically — no extra
+# block needed.
+
+ezpz.example.com {
+  # ── reverse proxy ──────────────────────────────────────────
+  # The server binds to 127.0.0.1:4040 in the example systemd
+  # unit, so the reverse proxy is localhost-to-localhost.  No
+  # TLS to the backend; Caddy terminates HTTPS.
+  reverse_proxy 127.0.0.1:4040
+
+  # ── headers ────────────────────────────────────────────────
+  # Sensible security defaults — session cookies are already
+  # SameSite=Lax + Secure (foundation default).  These headers
+  # cover the rest of the OWASP-recommended baseline.
+  header {
+    # 1y HSTS, no preload (preload is a permanent commitment;
+    # add it once you're sure the cert renewal pipeline is
+    # solid).
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Don't let the page be embedded in a frame on another
+    # origin — the app has no legitimate need for that.
+    X-Frame-Options "DENY"
+
+    # Block content sniffing.  Static assets all have explicit
+    # MIME types from the Rust side.
+    X-Content-Type-Options "nosniff"
+
+    # Conservative referrer policy.
+    Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions policy — opt out of features the app doesn't
+    # use.  Extend if you ever ship voice / camera / etc.
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # The `-Server` directive strips the default `Server: Caddy`
+    # header, narrowing the surface area exposed to scanners.
+    -Server
+  }
+
+  # ── logging ────────────────────────────────────────────────
+  # Per-site access log; Caddy rotates and compresses on its
+  # own.  Drop to `format json` for downstream aggregation
+  # (Loki, ELK, etc.).
+  log {
+    output file /var/log/caddy/ezpz-dndz.access.log
+    format console
+  }
+}

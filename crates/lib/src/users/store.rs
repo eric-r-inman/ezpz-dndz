@@ -169,6 +169,49 @@ impl UserStore {
   /// of `new_password`.  Returns `InvalidCredentials` for both "user
   /// missing" and "current password mismatch" so handlers can't leak
   /// account-existence by inspecting the error.
+  /// Admin-mediated password reset.  Skips the current-password
+  /// check that [`Self::change_password`] enforces — intended for
+  /// the CLI `users reset-password` subcommand, where the
+  /// operator has direct disk access and runs the binary as the
+  /// service account.
+  ///
+  /// Looks the user up by email (case-insensitive, trimmed) and
+  /// returns the user record so the CLI can print "reset password
+  /// for {display_name}" as confirmation.  Returns
+  /// `InvalidCredentials` when no matching email exists so the
+  /// error vocabulary stays uniform across all lookup paths.
+  pub async fn admin_reset_password(
+    &self,
+    email: &str,
+    new_password: &str,
+  ) -> Result<User, UserStoreError> {
+    if new_password.len() < MIN_PASSWORD_LEN {
+      return Err(UserStoreError::PasswordTooShort);
+    }
+    let normalized = email.trim().to_lowercase();
+    let user = self
+      .inner
+      .read()
+      .await
+      .into_iter()
+      .find(|u| u.email == normalized)
+      .ok_or(UserStoreError::InvalidCredentials)?;
+    let new_hash = hash_password(new_password)?;
+    let user_id = user.id.clone();
+    self
+      .inner
+      .mutate(move |users| match users.iter_mut().find(|u| u.id == user_id) {
+        Some(slot) => {
+          slot.password_hash = new_hash;
+          Ok(())
+        }
+        None => Err(UserStoreError::InvalidCredentials),
+      })
+      .await
+      .map_err(UserStoreError::StorePersist)??;
+    Ok(user)
+  }
+
   pub async fn change_password(
     &self,
     id: &UserId,

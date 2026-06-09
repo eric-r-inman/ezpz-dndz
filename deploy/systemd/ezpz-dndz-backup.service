@@ -1,0 +1,46 @@
+# systemd service unit for ezpz-dndz daily backups.
+#
+# Paired with `ezpz-dndz-backup.timer`.  Install both files under
+# /etc/systemd/system/, then:
+#
+#   systemctl daemon-reload
+#   systemctl enable --now ezpz-dndz-backup.timer
+#
+# Adjust the placeholders before installing:
+#
+#   {{USER}}        — service account that owns the data dir.
+#                     Same user as the main service so the backup
+#                     can read every persisted file without
+#                     elevated privileges.
+#   {{INSTALL_DIR}} — path containing the `scripts/backup.sh`
+#                     helper (i.e. the project checkout, or a
+#                     `/opt/ezpz-dndz/scripts/` install).
+#   {{DATA_DIR}}    — runtime persistence root.  Mirrors the main
+#                     service's `--data-dir`.
+#
+# The script defaults `BACKUP_DIR` to `<DATA_DIR>/backups` and
+# `RETENTION_DAYS` to 14; override either via the environment
+# block below.
+
+[Unit]
+Description=ezpz-dndz daily backup
+After=ezpz-dndz.service
+
+[Service]
+Type=oneshot
+User={{USER}}
+Group={{USER}}
+Environment=DATA_DIR={{DATA_DIR}}
+# Optional overrides:
+# Environment=BACKUP_DIR=/var/backups/ezpz-dndz
+# Environment=RETENTION_DAYS=30
+ExecStart={{INSTALL_DIR}}/scripts/backup.sh
+
+# Backup is not security-sensitive but inherits the same
+# hardening as the main service so a compromised script can't
+# pivot.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{DATA_DIR}}
