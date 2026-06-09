@@ -20,6 +20,7 @@ mod config;
 mod dice;
 mod encounter;
 mod habitats;
+mod users;
 
 use compendium::CompendiumCliError;
 use config::{Command, Config};
@@ -29,6 +30,7 @@ use rust_template_foundation::main as foundation_main;
 use std::process::ExitCode;
 use thiserror::Error;
 use tracing::info;
+use users::UsersCliError;
 
 #[derive(Debug, Error)]
 enum ApplicationError {
@@ -40,6 +42,9 @@ enum ApplicationError {
 
   #[error("Dice subcommand failed: {0}")]
   Dice(#[from] DiceCliError),
+
+  #[error("Users subcommand failed: {0}")]
+  Users(#[from] UsersCliError),
 }
 
 #[foundation_main]
@@ -50,6 +55,7 @@ pub fn main(config: Config) -> Result<ExitCode, ApplicationError> {
     Some(Command::Compendium { command }) => command.run()?,
     Some(Command::Encounter { command }) => command.run()?,
     Some(Command::Dice { command }) => command.run()?,
+    Some(Command::Users { command }) => command.run()?,
     None => {
       println!(
         "ezpz-dndz-cli: no subcommand provided.  Run with --help \

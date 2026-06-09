@@ -1,0 +1,24 @@
+# systemd timer that fires `ezpz-dndz-backup.service` once a day.
+#
+# Install at /etc/systemd/system/ezpz-dndz-backup.timer (or the
+# user equivalent) and enable with `systemctl enable --now
+# ezpz-dndz-backup.timer`.
+#
+# `OnCalendar=daily` resolves to midnight UTC; the
+# `RandomizedDelaySec` jitter spreads the load if multiple
+# services are scheduled at the same time.
+# `Persistent=true` runs a missed backup the next time the
+# machine is up, so a power-off overnight doesn't silently skip a
+# day.
+
+[Unit]
+Description=ezpz-dndz daily backup timer
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=15min
+Persistent=true
+Unit=ezpz-dndz-backup.service
+
+[Install]
+WantedBy=timers.target

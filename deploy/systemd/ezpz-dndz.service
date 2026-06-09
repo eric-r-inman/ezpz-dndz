@@ -1,0 +1,79 @@
+# systemd service unit for ezpz-dndz-server.
+#
+# Copy to /etc/systemd/system/ezpz-dndz.service (or
+# ~/.config/systemd/user/ezpz-dndz.service for user-mode), then
+# `systemctl daemon-reload` and `systemctl enable --now ezpz-dndz`.
+#
+# Adjust the placeholders before installing:
+#
+#   {{USER}}        — service account that owns the data dir.
+#                     Typically a dedicated `ezpz-dndz` system user.
+#   {{INSTALL_DIR}} — path containing the `ezpz-dndz-server`
+#                     binary plus the `frontend/public/` static
+#                     asset tree.
+#   {{DATA_DIR}}    — runtime persistence root.  All JSON stores
+#                     and the backups/ subdirectory live here.
+#
+# Secrets pattern: the OIDC client secret is passed via systemd's
+# `LoadCredential=` rather than env, so it never appears in the
+# process environment or in `systemctl show`.  Drop the credential
+# file at /etc/credstore/ezpz-dndz-oidc-secret with mode 0600 owned
+# by root, then reference it via the `ezpz_dndz_oidc_client_secret_file`
+# env var below.
+
+[Unit]
+Description=ezpz-dndz D&D encounter manager
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User={{USER}}
+Group={{USER}}
+WorkingDirectory={{INSTALL_DIR}}
+ExecStart={{INSTALL_DIR}}/ezpz-dndz-server \
+  --listen 127.0.0.1:4040 \
+  --base-url https://ezpz.example.com \
+  --frontend-path {{INSTALL_DIR}}/frontend/public \
+  --data-dir {{DATA_DIR}}
+
+# systemd-watchdog: foundation's runner calls sd_notify() to
+# refresh this heartbeat at half the configured interval.  60s is
+# generous for an idle service; tighten if the box is hot.
+WatchdogSec=60s
+Restart=on-failure
+RestartSec=5s
+NotifyAccess=main
+
+# OIDC client secret arrives via LoadCredential so it never lands
+# in the process env or in `systemctl show`.  The server reads it
+# via the `--oidc-client-secret-file` flag (or the matching env
+# var) once it's in scope as $CREDENTIALS_DIRECTORY/oidc-secret.
+LoadCredential=oidc-secret:/etc/credstore/ezpz-dndz-oidc-secret
+Environment=ezpz_dndz_oidc_client_secret_file=%d/oidc-secret
+
+# Optional: set log format to JSON for downstream aggregation.
+# Comment out to keep the default human-readable format.
+# Environment=ezpz_dndz_log_format=json
+
+# ── hardening ────────────────────────────────────────────────
+# Sensible defaults for a service that only needs to read its
+# install dir, write to its data dir, and bind to localhost.  Tune
+# if the install dir is unusual (e.g. /usr/local vs /opt).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{DATA_DIR}}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+RestrictRealtime=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target
