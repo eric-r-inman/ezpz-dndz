@@ -8703,6 +8703,22 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Left cluster — the four creation affordances (New Creature,
+   Paste Stat Block, Create Group, Create Group w/Selected).
+   Wrapped in its own flex container so they read as a single
+   unit, anchored at the left edge of the actions bar.  margin-
+   right: auto absorbs the slack and pushes the bulk-cluster
+   sibling all the way to the right edge regardless of how many
+   creation buttons are showing (the w/Selected one is
+   conditional). */
+.compendium__actions-bar > .compendium__create-cluster {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+
 /* Push the bulk cluster (last child) to the right edge so the
    New Creature / Paste / Create Group buttons cluster on the
    left and the destructive bulk operations cluster on the

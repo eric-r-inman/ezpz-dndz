@@ -304,14 +304,16 @@ store + modal].
 actionsBar : Auth.AuthState -> CompendiumUi -> Html Msg
 actionsBar auth ui =
     div [ class "compendium__actions-bar" ]
-        [ newButton
-        , pasteButton
-        , createGroupButton
-        , if Set.isEmpty ui.selectedIds then
-            text ""
+        [ div [ class "compendium__create-cluster" ]
+            [ newButton
+            , pasteButton
+            , createGroupButton
+            , if Set.isEmpty ui.selectedIds then
+                text ""
 
-          else
-            createGroupFromSelectedButton ui
+              else
+                createGroupFromSelectedButton ui
+            ]
         , bulkButtons auth ui
         ]
 
