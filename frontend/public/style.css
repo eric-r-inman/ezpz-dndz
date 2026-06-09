@@ -4893,6 +4893,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-yellow, #854d0e);
 }
 
+/* Bundled (SRD) creatures: muted neutral chip so the read-only
+   status reads as "static reference" rather than competing with
+   the Player / Enemy / NPC colour vocabulary. */
+.statblock__kind-badge--bundled {
+  background: rgba(120, 120, 120, 0.12);
+  border-color: rgba(120, 120, 120, 0.45);
+  color: var(--color-muted, #555);
+}
+
 /* Used by `TagIconTooltip` mode in the right-rail Compendium
    panel: the 🏷 icon sits immediately after the name with a
    small gap, so it reads as "this creature has tags" rather
