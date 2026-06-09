@@ -313,24 +313,41 @@ applyLocalCompendium raw model =
                         compendium =
                             model.compendium
 
+                        -- Post-split snapshots store only user-
+                        -- created creatures, so every entry is
+                        -- definitionally NOT bundled.  Stamping
+                        -- here protects us if an older snapshot
+                        -- (written before the split) carried mixed
+                        -- data: any creature whose id collides
+                        -- with the fetched bundle gets replaced
+                        -- by the canonical bundle entry during the
+                        -- pending-bundle-merge step.
+                        userOnlyCreatures =
+                            snap.creatures
+                                |> List.map (\c -> { c | isBundled = False })
+
                         adopted =
                             { model
                                 | compendium =
                                     { compendium
                                         | db =
                                             CompendiumUi.CompendiumDbLoaded
-                                                (Compendium.fromList snap.creatures)
+                                                (Compendium.fromList userOnlyCreatures)
                                     }
                                 , nextLocalCreatureId = snap.nextLocalId
                             }
                     in
-                    if snap.bundledVersion < Compendium.Wire.currentBundledVersion then
-                        ( { adopted | pendingBundleMerge = True }
-                        , Compendium.Wire.fetchAllPublic CompendiumLoaded
-                        )
-
-                    else
-                        ( adopted, Cmd.none )
+                    -- Always fetch the bundle and merge: the
+                    -- snapshot no longer carries bundled creatures,
+                    -- and the bundled file may have been updated
+                    -- (data fix, new monster) since the user last
+                    -- visited.  `pendingBundleMerge = True` makes
+                    -- the CompendiumLoaded handler union the fetch
+                    -- with the user-created creatures we just
+                    -- adopted instead of replacing the whole DB.
+                    ( { adopted | pendingBundleMerge = True }
+                    , Compendium.Wire.fetchAllPublic CompendiumLoaded
+                    )
 
                 Err _ ->
                     fallback

@@ -888,9 +888,18 @@ persistCompendiumFor : Model -> Cmd Msg
 persistCompendiumFor model =
     case model.auth of
         Auth.AuthAnonymous ->
+            -- Snapshot only carries creatures the user authored or
+            -- imported locally — bundled SRD creatures are always
+            -- refetched from `/bundled-creatures.json` on boot,
+            -- never stored client-side.  Filtering by `isBundled`
+            -- keeps the snapshot small AND ensures stale bundled
+            -- bytes can't shadow a corrected bundle after an app
+            -- update.
             Ports.persistLocalCompendium
                 (Compendium.Wire.encodeLocalCompendiumSnapshot
-                    { creatures = loadedCreatures model.compendium.db
+                    { creatures =
+                        loadedCreatures model.compendium.db
+                            |> List.filter (\c -> not c.isBundled)
                     , groups = Dict.values model.compendium.groups
                     , nextLocalId = model.nextLocalCreatureId
                     , bundledVersion = Compendium.Wire.currentBundledVersion
