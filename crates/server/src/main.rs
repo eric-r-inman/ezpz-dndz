@@ -55,9 +55,10 @@ pub async fn main(
     .merge(encounters::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
+  let users_state = app_state.clone();
   let server = server
     .with_state(move |_base| app_state)
-    .merge(users::router())
+    .merge(users::router(users_state))
     .merge(protected);
 
   server.listen().await?;

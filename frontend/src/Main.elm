@@ -114,6 +114,7 @@ import Url exposing (Url)
 import Util.Keyboard
 import View.About
 import View.Account
+import View.AnonymousBanner
 import View.AppBar
 import View.Audio
 import View.Card
@@ -536,6 +537,7 @@ init flags url key =
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
       , settingsOpen = False
+      , anonymousBannerDismissed = False
       , controlMenu = Nothing
       , toasts = []
       , nextToastId = 0
@@ -2324,6 +2326,9 @@ updateInner msg model =
         SettingsClose ->
             Update.Shell.settingsClose model
 
+        AnonymousBannerDismiss ->
+            Update.Shell.anonymousBannerDismiss model
+
         ControlMenuToggle which ->
             Update.Shell.controlMenuToggle which model
 
@@ -2504,6 +2509,17 @@ appShell maybeUser model =
             , user = maybeUser
             , useCustomCardLayout = model.useCustomCardLayout
             , route = model.route
+            }
+    , -- Suppressed on the second-monitor tabs for the same reason
+      -- the AppBar is — the banner is a navigation-adjacent
+      -- affordance that doesn't belong on a parked reference view.
+      if model.route == QuickList || model.route == Compendium then
+        text ""
+
+      else
+        View.AnonymousBanner.view
+            { auth = model.auth
+            , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.dice

@@ -419,6 +419,14 @@ type alias Model =
     , xpScope : XpScope
     , xpFilterOpen : Bool
     , settingsOpen : Bool
+
+    -- Dismissed-the-anonymous-banner flag.  When `True`, the
+    -- "you're browsing as a guest" strip at the top of the
+    -- workspace stays hidden for the rest of the session.
+    -- Session-only — reappears on every page reload by design,
+    -- because forgetting that anonymous data is local-only is
+    -- exactly the failure mode the banner exists to prevent.
+    , anonymousBannerDismissed : Bool
     , controlMenu : Maybe ControlMenu
     , toasts : List Toast
     , nextToastId : Int

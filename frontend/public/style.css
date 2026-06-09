@@ -1250,6 +1250,74 @@ body {
   font-weight: 600;
 }
 
+/* Anonymous-mode reminder strip rendered between the AppBar and
+   the page body.  Visually quiet by default — a muted accent bar
+   so it reads as a help banner rather than an error.  Dismiss
+   button (×) lives on the right edge with a small hit area so
+   the strip is easy to clear once read. */
+.anonymous-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(245, 200, 66, 0.12);
+  border-bottom: 1px solid rgba(245, 200, 66, 0.4);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.anonymous-banner__message {
+  flex: 1 1 auto;
+}
+
+.anonymous-banner__link {
+  color: var(--color-init-blue, #1976d2);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.anonymous-banner__link:hover,
+.anonymous-banner__link:focus {
+  text-decoration: none;
+}
+
+.anonymous-banner__dismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text-muted);
+}
+
+.anonymous-banner__dismiss:hover,
+.anonymous-banner__dismiss:focus {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .anonymous-banner {
+  background: rgba(245, 200, 66, 0.08);
+  border-bottom-color: rgba(245, 200, 66, 0.25);
+}
+
+[data-theme="dark"] .anonymous-banner__dismiss:hover,
+[data-theme="dark"] .anonymous-banner__dismiss:focus {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="accessible"] .anonymous-banner {
+  background: rgba(245, 200, 66, 0.2);
+  border-bottom: 2px solid rgba(120, 80, 0, 0.6);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .app-bar__nav {
   display: flex;
   gap: var(--space-3);
