@@ -58,62 +58,168 @@ use crate::web_base::AppState;
 // schemas; response bodies appear as `application/json` without a typed
 // schema (acceptable trade-off for now).
 
-async fn list_creatures(State(state): State<AppState>) -> Response {
-  Json(state.compendium_store.list().await).into_response()
+/// Merge the read-only bundled creatures with the caller's per-
+/// user creatures, stamping the `is_bundled` flag so the frontend
+/// can branch Edit/Delete vs Duplicate on each row.  Bundled
+/// creatures come first to match the legacy ordering; user
+/// creatures append.
+async fn list_creatures(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+) -> Response {
+  let bundled = state
+    .bundled_compendium
+    .list()
+    .iter()
+    .cloned()
+    .map(|mut c| {
+      c.is_bundled = true;
+      c
+    });
+  let user_owned =
+    state
+      .user_compendium
+      .list(&user.id)
+      .await
+      .into_iter()
+      .map(|mut c| {
+        c.is_bundled = false;
+        c
+      });
+  Json(bundled.chain(user_owned).collect::<Vec<_>>()).into_response()
 }
 
 async fn get_creature(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(id): Path<String>,
 ) -> Response {
-  state.compendium_store.get(&id).await.map_or_else(
+  if let Some(canonical) = state.bundled_compendium.get(&id) {
+    let mut copy = canonical.clone();
+    copy.is_bundled = true;
+    return Json(copy).into_response();
+  }
+  state.user_compendium.get(&user.id, &id).await.map_or_else(
     || StatusCode::NOT_FOUND.into_response(),
-    |c| Json(c).into_response(),
+    |mut c| {
+      c.is_bundled = false;
+      Json(c).into_response()
+    },
   )
 }
 
 async fn create_creature(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Json(draft): Json<CreatureDraft>,
 ) -> Response {
-  match state.compendium_store.insert(draft).await {
-    Ok(c) => (StatusCode::CREATED, Json(c)).into_response(),
+  match state.user_compendium.insert(&user.id, draft).await {
+    Ok(mut c) => {
+      c.is_bundled = false;
+      (StatusCode::CREATED, Json(c)).into_response()
+    }
     Err(e) => e.into_response(),
   }
 }
 
 async fn update_creature(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(id): Path<String>,
   Json(creature): Json<Creature>,
 ) -> Response {
-  match state.compendium_store.update(&id, creature).await {
-    Ok(c) => Json(c).into_response(),
+  if state.bundled_compendium.contains(&id) {
+    return CompendiumStoreError::BundledNotEditable { id }.into_response();
+  }
+  match state.user_compendium.update(&user.id, &id, creature).await {
+    Ok(mut c) => {
+      c.is_bundled = false;
+      Json(c).into_response()
+    }
     Err(e) => e.into_response(),
   }
 }
 
 async fn delete_creature(
   State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(id): Path<String>,
 ) -> Response {
-  match state.compendium_store.remove(&id).await {
+  if state.bundled_compendium.contains(&id) {
+    return CompendiumStoreError::BundledNotEditable { id }.into_response();
+  }
+  match state.user_compendium.remove(&user.id, &id).await {
     Ok(()) => StatusCode::NO_CONTENT.into_response(),
     Err(e) => e.into_response(),
   }
 }
 
-/// Full-compendium export payload: shared creatures plus the
-/// caller's per-user groups.  Wire shape is
-/// `{ "creatures": [...], "groups": [...] }`.  The bare
-/// `Vec<Creature>` shape that earlier exports produced is still
-/// accepted on import as a legacy fallback so the older download
-/// files keep working — see `import_compendium`.
+/// `POST /api/compendium/creatures/{id}/duplicate` — clone the
+/// creature at `id` (bundled OR the caller's own) into the
+/// caller's per-user store with a fresh UUIDv4 and a "Copy of …"
+/// name prefix.  Returns the new per-user creature with
+/// `is_bundled = false` and `201 Created`.
+///
+/// This is the only path that lets a user "edit" a bundled
+/// creature: duplicate first, then edit the user-owned copy.
+/// Bundled originals are never mutated.
+///
+/// 404 when neither bundle nor per-user store carries `id` —
+/// duplicating another user's creature is not possible, since
+/// the read paths only ever see the caller's own per-user list.
+async fn duplicate_creature(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Path(id): Path<String>,
+) -> Response {
+  let source = if let Some(c) = state.bundled_compendium.get(&id) {
+    c.clone()
+  } else {
+    match state.user_compendium.get(&user.id, &id).await {
+      Some(c) => c,
+      None => {
+        return CompendiumStoreError::CreatureIdNotFoundError { id }
+          .into_response()
+      }
+    }
+  };
+
+  let mut copy = source;
+  copy.id = uuid::Uuid::new_v4().to_string();
+  copy.name = format!("Copy of {}", copy.name);
+  copy.is_bundled = false;
+  let now = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .map(|d| d.as_millis() as i64)
+    .unwrap_or(0);
+  copy.created_at = now;
+  copy.updated_at = now;
+
+  match state
+    .user_compendium
+    .insert_raw(&user.id, copy.clone())
+    .await
+  {
+    Ok(()) => (StatusCode::CREATED, Json(copy)).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+/// Full-compendium export payload: the caller's per-user creatures
+/// plus the caller's per-user groups.  Wire shape is
+/// `{ "creatures": [...], "groups": [...] }`.  Bundled creatures
+/// are intentionally omitted — every server runs the same bundle
+/// in its binary, and a user re-importing this file on another
+/// deployment shouldn't accidentally shadow the receiver's
+/// bundled set with stale copies.  The bare `Vec<Creature>`
+/// shape that earlier exports produced is still accepted on
+/// import as a legacy fallback so older download files keep
+/// working — see `import_compendium`.
 async fn export_compendium(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  let creatures = state.compendium_store.list().await;
+  let creatures = state.user_compendium.list(&user.id).await;
   let groups = state.compendium_groups.list(&user.id).await;
   Json(serde_json::json!({
     "creatures": creatures,
@@ -122,18 +228,25 @@ async fn export_compendium(
   .into_response()
 }
 
-/// Import a compendium.  Accepts two body shapes:
+/// Import a compendium into the caller's per-user store.  Accepts
+/// two body shapes:
 ///
 /// - **Legacy** (`[creature, creature, ...]`) — bare array of
-///   creatures.  Replaces the shared compendium; does not touch
-///   groups.  Used by the in-app "Clear" operations
-///   (`clearAll` / `clearSelected`) which only care about
-///   creatures.
+///   creatures.  Replaces the caller's per-user creature list;
+///   does not touch groups.  Pre-split exports stored the shared
+///   compendium this way; we still accept it so older download
+///   files keep importing into a single user's per-user store.
 /// - **Full** (`{ "creatures": [...], "groups": [...]? }`) —
-///   replaces both the shared compendium and the *caller's*
+///   replaces both the caller's per-user creatures and their
 ///   group list.  Used when the user uploads a JSON export that
 ///   `export_compendium` produced.  `groups` is optional; absent
 ///   keeps existing groups in place.
+///
+/// Bundled creature ids in the body are silently dropped — the
+/// shared bundled set is the source of truth and per-user
+/// creatures must have unique (user-owned) ids.  This protects
+/// against an import that would otherwise shadow bundled rows
+/// with stale forks of them.
 async fn import_compendium(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
@@ -162,8 +275,18 @@ async fn import_compendium(
     _ => return import_bad_body(),
   };
 
+  // Drop any creature whose id collides with a bundled id — those
+  // belong to the read-only bundle, not the per-user store.
+  let creatures: Vec<Creature> = creatures
+    .into_iter()
+    .filter(|c| !state.bundled_compendium.contains(&c.id))
+    .collect();
   let count = creatures.len();
-  if let Err(e) = state.compendium_store.replace_all(creatures).await {
+  if let Err(e) = state
+    .user_compendium
+    .replace_for_user(&user.id, creatures)
+    .await
+  {
     return e.into_response();
   }
   if let Some(g) = groups {
@@ -191,20 +314,26 @@ fn import_bad_body() -> Response {
     .into_response()
 }
 
-/// Reset to the bundled creature set AND wipe the caller's
-/// groups.  Groups reference creature ids that may have been
-/// removed by the reset, so leaving them behind would orphan
-/// references; clearing them is the safer baseline.  Other users'
-/// groups are untouched (creatures are shared but groups are
-/// per-user).
+/// Reset the caller's per-user compendium to empty AND wipe their
+/// groups.  Bundled creatures are always present (in-binary), so
+/// "reset" only has to drop the user's own creatures + groups —
+/// the bundled rows reappear automatically the next time the
+/// merged list is read.  Other users are untouched.
+///
+/// Groups reference creature ids that may have been removed by
+/// the reset, so leaving them behind would orphan references;
+/// clearing them is the safer baseline.
 async fn reset_compendium(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  let creatures = match state.compendium_store.reset_to_bundled().await {
-    Ok(c) => c,
-    Err(e) => return e.into_response(),
-  };
+  if let Err(e) = state
+    .user_compendium
+    .replace_for_user(&user.id, Vec::new())
+    .await
+  {
+    return e.into_response();
+  }
   if let Err(e) = state
     .compendium_groups
     .replace_for_user(&user.id, Vec::new())
@@ -212,7 +341,19 @@ async fn reset_compendium(
   {
     return e.into_response();
   }
-  Json(creatures).into_response()
+  // Return the merged view (bundled + the now-empty per-user
+  // list) so the client can update its in-memory DB without a
+  // separate GET round-trip.
+  let bundled = state
+    .bundled_compendium
+    .list()
+    .iter()
+    .cloned()
+    .map(|mut c| {
+      c.is_bundled = true;
+      c
+    });
+  Json(bundled.collect::<Vec<_>>()).into_response()
 }
 
 // ── named-save handlers ──────────────────────────────────────────────────────
@@ -421,6 +562,18 @@ pub fn router() -> ApiRouter<AppState> {
       "/api/compendium/creatures/{id}",
       delete_with(delete_creature, |op: TransformOperation| {
         op.description("Delete a creature from the compendium.")
+      }),
+    )
+    .api_route(
+      "/api/compendium/creatures/{id}/duplicate",
+      post_with(duplicate_creature, |op: TransformOperation| {
+        op.description(
+          "Duplicate a creature (bundled or user-owned) into the \
+           caller's per-user compendium.  Returns the new copy \
+           with a fresh UUID and a 'Copy of …' name prefix.  The \
+           only way to obtain an editable version of a bundled \
+           creature.",
+        )
       }),
     )
     .api_route(
