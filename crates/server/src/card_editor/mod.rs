@@ -48,10 +48,10 @@ async fn get_layout(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.card_layouts.get(&user.id, &name).await {
-    Some(record) => Json(record).into_response(),
-    None => CardLayoutStoreError::LayoutNotFound.into_response(),
-  }
+  state.card_layouts.get(&user.id, &name).await.map_or_else(
+    || CardLayoutStoreError::LayoutNotFound.into_response(),
+    |record| Json(record).into_response(),
+  )
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]

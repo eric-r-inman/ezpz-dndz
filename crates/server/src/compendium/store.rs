@@ -357,12 +357,13 @@ impl CompendiumStore {
     let updated = self
       .inner
       .mutate(move |all| {
-        if let Some(slot) = all.iter_mut().find(|c| c.id == id_owned) {
-          *slot = creature;
-          true
-        } else {
-          false
-        }
+        all
+          .iter_mut()
+          .find(|c| c.id == id_owned)
+          .is_some_and(|slot| {
+            *slot = creature;
+            true
+          })
       })
       .await?;
     if updated {
@@ -429,10 +430,10 @@ impl CompendiumStore {
 /// which use random `NamedTempFile` paths in `/tmp`).
 fn bundle_seed_path(creatures_path: &Path) -> PathBuf {
   let mut path = creatures_path.to_path_buf();
-  let filename = path
-    .file_name()
-    .map(|s| s.to_string_lossy().into_owned())
-    .unwrap_or_else(|| "compendium".to_string());
+  let filename = path.file_name().map_or_else(
+    || "compendium".to_string(),
+    |s| s.to_string_lossy().into_owned(),
+  );
   path.set_file_name(format!("{filename}.bundle-seed.json"));
   path
 }

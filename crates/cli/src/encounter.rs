@@ -86,8 +86,7 @@ fn count(path: &Path) -> Result<(), EncounterCliError> {
   let n = value
     .get("creatures")
     .and_then(|v| v.as_array())
-    .map(|a| a.len())
-    .unwrap_or(0);
+    .map_or(0, |a| a.len());
   info!(count = n, path = %path.display(), "Counted creatures");
   println!("{n}");
   Ok(())

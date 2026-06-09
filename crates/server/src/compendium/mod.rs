@@ -60,10 +60,10 @@ async fn get_creature(
   State(state): State<AppState>,
   Path(id): Path<String>,
 ) -> Response {
-  match state.compendium_store.get(&id).await {
-    Some(c) => Json(c).into_response(),
-    None => StatusCode::NOT_FOUND.into_response(),
-  }
+  state.compendium_store.get(&id).await.map_or_else(
+    || StatusCode::NOT_FOUND.into_response(),
+    |c| Json(c).into_response(),
+  )
 }
 
 async fn create_creature(
@@ -228,10 +228,14 @@ async fn get_compendium_save(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.compendium_saves.get(&user.id, &name).await {
-    Some(record) => Json(record).into_response(),
-    None => CompendiumStoreError::SaveNotFound.into_response(),
-  }
+  state
+    .compendium_saves
+    .get(&user.id, &name)
+    .await
+    .map_or_else(
+      || CompendiumStoreError::SaveNotFound.into_response(),
+      |record| Json(record).into_response(),
+    )
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -327,10 +331,14 @@ async fn get_group(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(id): Path<String>,
 ) -> Response {
-  match state.compendium_groups.get(&user.id, &id).await {
-    Some(g) => Json(g).into_response(),
-    None => CompendiumStoreError::GroupIdNotFoundError { id }.into_response(),
-  }
+  state
+    .compendium_groups
+    .get(&user.id, &id)
+    .await
+    .map_or_else(
+      || CompendiumStoreError::GroupIdNotFoundError { id }.into_response(),
+      |g| Json(g).into_response(),
+    )
 }
 
 async fn create_group(

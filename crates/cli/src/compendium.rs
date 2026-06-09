@@ -503,21 +503,20 @@ fn import(
   // CreatureDraft for files that came out of an external tool.
   let now = epoch_millis();
   let incoming: Vec<Creature> =
-    match serde_json::from_str::<Vec<Creature>>(&raw) {
-      Ok(creatures) => creatures,
-      Err(_) => {
-        let drafts: Vec<CreatureDraft> =
-          serde_json::from_str(&raw).map_err(|source| {
-            CompendiumCliError::ParseError {
-              path: src.to_path_buf(),
-              source,
-            }
-          })?;
-        drafts
-          .into_iter()
-          .map(|d| draft_to_creature(d, now))
-          .collect()
-      }
+    if let Ok(creatures) = serde_json::from_str::<Vec<Creature>>(&raw) {
+      creatures
+    } else {
+      let drafts: Vec<CreatureDraft> =
+        serde_json::from_str(&raw).map_err(|source| {
+          CompendiumCliError::ParseError {
+            path: src.to_path_buf(),
+            source,
+          }
+        })?;
+      drafts
+        .into_iter()
+        .map(|d| draft_to_creature(d, now))
+        .collect()
     };
 
   let mut merged: Vec<Creature> = if replace {

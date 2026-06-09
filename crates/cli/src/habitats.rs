@@ -189,10 +189,11 @@ fn apply_race_rules(name: &str, race: &str, out: &mut BTreeSet<Habitat>) {
       } else if name == "worg" {
         out.insert(Habitat::Forest);
         out.insert(Habitat::Hill);
-      } else if name == "blink dog" {
-        out.insert(Habitat::Feywild);
-        out.insert(Habitat::Forest);
-      } else if name == "dryad" || name == "satyr" || name == "sprite" {
+      } else if name == "blink dog"
+        || name == "dryad"
+        || name == "satyr"
+        || name == "sprite"
+      {
         out.insert(Habitat::Feywild);
         out.insert(Habitat::Forest);
       } else if name == "green hag" {
