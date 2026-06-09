@@ -48,14 +48,14 @@ view =
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Source & license" ]
                     , p []
-                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property, nor do I profit from it. Do not use this app to enter or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
+                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property. Do not use this app to enter or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
                         , a
                             [ href "https://github.com/eric-r-inman/ezpz-dndz"
                             , target "_blank"
                             , rel "noopener noreferrer"
                             ]
                             [ text "GitHub repository" ]
-                        , text " for the full code and license text."
+                        , text " for the full code. The app is in beta testing, and may be unreliable at this stage."
                         ]
                     ]
                 ]
