@@ -508,27 +508,38 @@ card flex row stays compact.
 -}
 legendaryColumns : Creature -> Html Msg
 legendaryColumns creature =
-    if not creature.hasLegendaryActions && not creature.hasLegendaryResistance then
+    let
+        hasLA =
+            creature.legendaryActionsCount > 0
+
+        hasLR =
+            creature.legendaryResistanceCount > 0
+    in
+    if not hasLA && not hasLR then
         text ""
 
     else
         div [ class "creature-card__legendary" ]
-            [ if creature.hasLegendaryActions then
+            [ if hasLA then
                 legendaryColumn
                     { creatureName = creature.name
                     , kind = "la"
                     , label = "LA"
+                    , baseCount = creature.legendaryActionsCount
+                    , lairBonus = creature.legendaryActionsLairBonus
                     , used = creature.legendaryActionsUsed
                     , onToggle = ToggleLegendaryActionPip creature.name
                     }
 
               else
                 text ""
-            , if creature.hasLegendaryResistance then
+            , if hasLR then
                 legendaryColumn
                     { creatureName = creature.name
                     , kind = "lr"
                     , label = "LR"
+                    , baseCount = creature.legendaryResistanceCount
+                    , lairBonus = creature.legendaryResistanceLairBonus
                     , used = creature.legendaryResistanceUsed
                     , onToggle = ToggleLegendaryResistancePip creature.name
                     }
@@ -659,16 +670,25 @@ legendaryColumn :
     { creatureName : String
     , kind : String
     , label : String
+    , baseCount : Int
+    , lairBonus : Int
     , used : Set Int
     , onToggle : Int -> Msg
     }
     -> Html Msg
 legendaryColumn cfg =
     let
-        pip idx =
+        pip { idx, isLair } =
             let
                 filled =
                     Set.member idx cfg.used
+
+                lairTip =
+                    if isLair then
+                        ": Lair bonus"
+
+                    else
+                        ""
             in
             button
                 [ class
@@ -679,7 +699,7 @@ legendaryColumn cfg =
                             else
                                 ""
                            )
-                        ++ (if idx == 3 then
+                        ++ (if isLair then
                                 " legendary-col__pip--lair"
 
                             else
@@ -691,15 +711,25 @@ legendaryColumn cfg =
                     (cfg.label
                         ++ " pip "
                         ++ String.fromInt (idx + 1)
+                        ++ lairTip
                         ++ (if filled then
-                                ": used"
+                                " (used)"
 
                             else
-                                ": available"
+                                " (available)"
                            )
                     )
                 , attribute "aria-label"
-                    (cfg.label ++ " pip " ++ String.fromInt (idx + 1))
+                    (cfg.label
+                        ++ " pip "
+                        ++ String.fromInt (idx + 1)
+                        ++ (if isLair then
+                                " (lair bonus)"
+
+                            else
+                                ""
+                           )
+                    )
                 , attribute "aria-pressed"
                     (if filled then
                         "true"
@@ -709,19 +739,36 @@ legendaryColumn cfg =
                     )
                 ]
                 []
+
+        basePips =
+            List.range 0 (cfg.baseCount - 1)
+                |> List.map (\i -> pip { idx = i, isLair = False })
+
+        lairPips =
+            if cfg.lairBonus > 0 then
+                List.range cfg.baseCount (cfg.baseCount + cfg.lairBonus - 1)
+                    |> List.map (\i -> pip { idx = i, isLair = True })
+
+            else
+                []
+
+        separator =
+            if cfg.lairBonus > 0 then
+                [ div [ class "legendary-col__sep" ] [] ]
+
+            else
+                []
     in
     div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
-        [ div
+        (div
             [ class "legendary-col__header"
             , Tooltips.attr (headerTooltipFor cfg.label)
             ]
             [ text cfg.label ]
-        , pip 0
-        , pip 1
-        , pip 2
-        , div [ class "legendary-col__sep" ] []
-        , pip 3
-        ]
+            :: basePips
+            ++ separator
+            ++ lairPips
+        )
 
 
 {-| Map the column's bold-header letter to the static tooltip

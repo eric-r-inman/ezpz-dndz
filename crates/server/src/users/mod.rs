@@ -240,14 +240,12 @@ pub async fn require_auth(
     }
   };
 
-  let id = match user_id_opt {
-    Some(s) => s,
-    None => return AuthHttpError::Unauthorized.into_response(),
+  let Some(id) = user_id_opt else {
+    return AuthHttpError::Unauthorized.into_response();
   };
 
-  let user = match state.user_store.find_by_id(&UserId(id)).await {
-    Some(u) => u,
-    None => return AuthHttpError::Unauthorized.into_response(),
+  let Some(user) = state.user_store.find_by_id(&UserId(id)).await else {
+    return AuthHttpError::Unauthorized.into_response();
   };
 
   request.extensions_mut().insert(CurrentUser(user));

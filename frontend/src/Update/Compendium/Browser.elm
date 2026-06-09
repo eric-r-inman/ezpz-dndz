@@ -2,7 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, close, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, tagFilterChanged
+    , bulkMenuClose, bulkMenuToggle, exportClick, openInTab, rowToggle, tagFilterChanged
     )
 
 {-| Update branches for the compendium browser modal: load, open /
@@ -31,6 +31,7 @@ import Msg
         ( CompendiumSort
         , Msg(..)
         )
+import Ports
 import Set
 import Task
 import Ui.Compendium as CompendiumUi
@@ -60,7 +61,15 @@ withCompendium fn model =
 
 loaded : Result Http.Error (List Compendium.Creature) -> Model -> ( Model, Cmd Msg )
 loaded result model =
-    ( withCompendium (loadedUpdate result) model, Cmd.none )
+    let
+        effectiveResult =
+            mergedResult result model
+    in
+    ( { model | pendingBundleMerge = False }
+        |> withCompendium (loadedUpdate effectiveResult)
+        |> syncEncounterFromCompendium effectiveResult
+    , Cmd.none
+    )
 
 
 loadedUpdate : Result Http.Error (List Compendium.Creature) -> CompendiumUi -> CompendiumUi
@@ -71,6 +80,94 @@ loadedUpdate result ui =
 
         Err err ->
             { ui | db = CompendiumDbFailed err }
+
+
+{-| When the anonymous boot path detected a stale-bundled-version
+snapshot (`pendingBundleMerge = True`), the freshly-fetched
+bundle has to be unioned with the user-created creatures in the
+snapshot instead of replacing the whole DB. Otherwise the user
+would lose every creature they'd authored in anonymous mode
+every time the bundle version bumped.
+
+The merge: take all fetched creatures (they win on id collisions
+— bundled-id creatures get refreshed) plus any creatures in the
+current DB whose ids aren't in the fetched set (user-created).
+We return a fresh `Ok merged` so the downstream `loadedUpdate`
+and `syncEncounterFromCompendium` both see the unioned list.
+
+When `pendingBundleMerge = False` or the fetch failed, fall
+through to the standard replace-everything behaviour by passing
+the original result through untouched.
+
+-}
+mergedResult :
+    Result Http.Error (List Compendium.Creature)
+    -> Model
+    -> Result Http.Error (List Compendium.Creature)
+mergedResult result model =
+    case ( result, model.pendingBundleMerge ) of
+        ( Ok fetched, True ) ->
+            let
+                fetchedIds =
+                    fetched |> List.map .id |> Set.fromList
+
+                preserved =
+                    model.compendium.db
+                        |> loadedCreaturesOrEmpty
+                        |> List.filter (\c -> not (Set.member c.id fetchedIds))
+            in
+            Ok (fetched ++ preserved)
+
+        _ ->
+            result
+
+
+loadedCreaturesOrEmpty : CompendiumDb -> List Compendium.Creature
+loadedCreaturesOrEmpty db =
+    case db of
+        CompendiumDbLoaded loaded_ ->
+            Compendium.toList loaded_
+
+        _ ->
+            []
+
+
+{-| Refresh the stat-block-derived legendary counters on every
+roster creature against the freshly-loaded compendium DB.
+
+In-progress encounters persist creature snapshots to
+localStorage, so a saved roster from before the bundle grew
+lair-bonus data would stay stuck at `legendaryActionsLairBonus
+= 0` until the GM removed and re-added each creature. Re-syncing
+here makes the lair pip appear as soon as the new bundle loads,
+without touching the "used" sets (which are encounter state the
+GM owns).
+
+A decode failure leaves the encounter alone — without a fresh DB
+there's nothing to sync against.
+
+-}
+syncEncounterFromCompendium : Result Http.Error (List Compendium.Creature) -> Model -> Model
+syncEncounterFromCompendium result model =
+    case result of
+        Err _ ->
+            model
+
+        Ok creatures ->
+            let
+                db =
+                    Compendium.fromList creatures
+
+                encounter =
+                    model.encounter
+
+                synced =
+                    { encounter
+                        | creatures =
+                            List.map (Compendium.syncLegendaryFields db) encounter.creatures
+                    }
+            in
+            { model | encounter = synced }
 
 
 open : Model -> ( Model, Cmd Msg )
@@ -120,6 +217,21 @@ openUpdate maybePinnedId ui =
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( withCompendium (\ui -> { ui | open = False }) model, Cmd.none )
+
+
+{-| Close the in-page modal AND open (or focus) the standalone
+compendium window via the JS port. The GM is moving the work
+into a dedicated browser tab. Fires both the modal-close state
+mutation and the `openCompendiumTab` port in one Cmd batch so
+`Main.updateInner` stays a single-line delegation.
+-}
+openInTab : Model -> ( Model, Cmd Msg )
+openInTab model =
+    let
+        ( closed, closeCmd ) =
+            close model
+    in
+    ( closed, Cmd.batch [ closeCmd, Ports.openCompendiumTab () ] )
 
 
 searchChanged : String -> Model -> ( Model, Cmd Msg )

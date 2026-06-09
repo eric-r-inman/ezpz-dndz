@@ -2,7 +2,7 @@ module Compendium.Wire exposing
     ( fetchAll, fetchAllPublic
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
-    , LocalCompendiumSnapshot, SavedCompendiumMeta, decodeLocalCompendiumSnapshot, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, getCompendiumSaveCmd, importCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
+    , LocalCompendiumSnapshot, SavedCompendiumMeta, currentBundledVersion, decodeLocalCompendiumSnapshot, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, getCompendiumSaveCmd, importCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
     )
 
 {-| Wire format + HTTP client for the compendium domain.
@@ -904,10 +904,30 @@ encodeMaybe enc m =
 -- migration can hand the snapshot straight to the server.
 
 
+{-| Bundled-data version the Elm side knows about. Mirror of the
+Rust-side `BUNDLED_VERSION` constant in
+`crates/server/src/compendium/store.rs`. Bump both at the same
+time whenever `crates/lib/data/bundled-creatures.json` changes
+shape OR carries a data fix that anonymous users should pick up.
+
+The anonymous-mode snapshot in localStorage records the version
+it was written under (see `LocalCompendiumSnapshot.bundledVersion`).
+On boot, a snapshot whose recorded version is lower than this
+constant triggers a re-fetch of `/bundled-creatures.json` so the
+freshly-bumped data flows through; user-created creatures whose
+ids aren't in the bundle are preserved across the merge.
+
+-}
+currentBundledVersion : Int
+currentBundledVersion =
+    4
+
+
 type alias LocalCompendiumSnapshot =
     { creatures : List Creature
     , groups : List Compendium.Group.Group
     , nextLocalId : Int
+    , bundledVersion : Int
     }
 
 
@@ -917,12 +937,13 @@ encodeLocalCompendiumSnapshot snap =
         [ ( "creatures", E.list encodeCreature snap.creatures )
         , ( "groups", E.list Compendium.GroupWire.encodeGroup snap.groups )
         , ( "next_local_id", E.int snap.nextLocalId )
+        , ( "bundled_version", E.int snap.bundledVersion )
         ]
 
 
 decodeLocalCompendiumSnapshot : D.Decoder LocalCompendiumSnapshot
 decodeLocalCompendiumSnapshot =
-    D.map3 LocalCompendiumSnapshot
+    D.map4 LocalCompendiumSnapshot
         (D.field "creatures" (D.list decodeCreature))
         (D.oneOf
             [ D.field "groups" (D.list Compendium.GroupWire.decodeGroup)
@@ -932,6 +953,11 @@ decodeLocalCompendiumSnapshot =
         (D.oneOf
             [ D.field "next_local_id" D.int
             , D.succeed 1
+            ]
+        )
+        (D.oneOf
+            [ D.field "bundled_version" D.int
+            , D.succeed 0
             ]
         )
 

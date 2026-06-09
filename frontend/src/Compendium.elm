@@ -11,7 +11,7 @@ module Compendium exposing
     , crToFloat
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
-    , instanceKindLine, sourceHasLegendaryResistance
+    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, syncLegendaryFields
     )
 
 {-| Pure domain layer for the compendium.
@@ -872,15 +872,73 @@ draftToInstance { displayName, initiativeRoll } c =
     , memo = ""
     , timer = Nothing
     , creatureId = Just c.id
-    , hasLegendaryActions = c.legendaryActions /= Nothing
+    , legendaryActionsCount =
+        case c.legendaryActions of
+            Just la ->
+                la.uses
+
+            Nothing ->
+                0
+    , legendaryActionsLairBonus =
+        case c.legendaryActions of
+            Just la ->
+                max 0 (la.usesInLair - la.uses)
+
+            Nothing ->
+                0
     , legendaryActionsUsed = Set.empty
-    , hasLegendaryResistance = sourceHasLegendaryResistance c
+    , legendaryResistanceCount = sourceLegendaryResistanceBase c
+    , legendaryResistanceLairBonus = sourceLegendaryResistanceLairBonus c
     , legendaryResistanceUsed = Set.empty
     , isPlaceholder = False
     , creatureKind = kindKey c.kind
     , race = c.race
     , alignment = c.alignment
     }
+
+
+{-| Refresh the stat-block-derived legendary fields on an
+in-encounter creature from the latest compendium source.
+
+The four legendary counts (`legendaryActionsCount`,
+`legendaryActionsLairBonus`, `legendaryResistanceCount`,
+`legendaryResistanceLairBonus`) are constants that come from the
+stat block, not encounter state — they should track whatever the
+compendium currently says. The "used" sets are NOT touched; they
+belong to the encounter run and the GM owns them.
+
+This is called after the compendium DB loads so encounters that
+were saved before a creature's stat block grew lair-bonus data
+pick up the new values automatically, instead of waiting for the
+GM to remove and re-add the creature.
+
+Creatures with no `creatureId` (anonymous-mode adds, custom
+inline blocks) are left untouched — there's no source to sync
+against.
+
+-}
+syncLegendaryFields : Db -> Encounter.Creature -> Encounter.Creature
+syncLegendaryFields db ec =
+    case ec.creatureId |> Maybe.andThen (\id -> find id db) of
+        Nothing ->
+            ec
+
+        Just src ->
+            let
+                ( laCount, laLairBonus ) =
+                    case src.legendaryActions of
+                        Just la ->
+                            ( la.uses, max 0 (la.usesInLair - la.uses) )
+
+                        Nothing ->
+                            ( 0, 0 )
+            in
+            { ec
+                | legendaryActionsCount = laCount
+                , legendaryActionsLairBonus = laLairBonus
+                , legendaryResistanceCount = sourceLegendaryResistanceBase src
+                , legendaryResistanceLairBonus = sourceLegendaryResistanceLairBonus src
+            }
 
 
 {-| Lowercase wire token for a creature kind. Matches the value
@@ -902,19 +960,85 @@ kindKey k =
             "npc"
 
 
-{-| Detect whether a compendium creature has the standard
-"Legendary Resistance" trait. We don't have a structured field
-for this — Legendary Resistance is one of the several recurring
-traits authored as free text — so we check for the trait name
-case-insensitively. The substring check matches both the bare
-"Legendary Resistance" and the more usual "Legendary Resistance
-(3/Day, or 4/Day in Lair)" forms.
+{-| The first integer in the creature's Legendary Resistance
+trait name — the base per-day count. Returns 0 when the
+creature has no Legendary Resistance trait, since that's the
+signal the view uses ("no LR column").
+
+The trait name conventionally encodes the count in one of two
+forms:
+
+    "Legendary Resistance (3/Day)"
+
+    "Legendary Resistance (4/Day, or 5/Day in Lair)"
+
+We scan the name for digits and take the first run as base.
+A creature whose trait is named just "Legendary Resistance"
+(no parenthetical) defaults to 3 — the 5e historical norm.
+
 -}
-sourceHasLegendaryResistance : Creature -> Bool
-sourceHasLegendaryResistance c =
-    List.any
-        (\t -> String.contains "legendary resistance" (String.toLower t.name))
-        c.traits
+sourceLegendaryResistanceBase : Creature -> Int
+sourceLegendaryResistanceBase c =
+    case findLegendaryResistanceTrait c of
+        Nothing ->
+            0
+
+        Just trait ->
+            case collectIntegers trait.name of
+                base :: _ ->
+                    base
+
+                [] ->
+                    3
+
+
+{-| The lair bonus pip count — how many EXTRA pips appear when
+the creature is in its lair, on top of `sourceLegendaryResistanceBase`.
+Returns 0 when there is no Legendary Resistance trait, when
+the trait doesn't encode an "or M/Day in Lair" clause, or when
+the lair count isn't higher than the base.
+-}
+sourceLegendaryResistanceLairBonus : Creature -> Int
+sourceLegendaryResistanceLairBonus c =
+    case findLegendaryResistanceTrait c of
+        Nothing ->
+            0
+
+        Just trait ->
+            case collectIntegers trait.name of
+                base :: inLair :: _ ->
+                    max 0 (inLair - base)
+
+                _ ->
+                    0
+
+
+findLegendaryResistanceTrait : Creature -> Maybe Feature
+findLegendaryResistanceTrait c =
+    c.traits
+        |> List.filter
+            (\t -> String.contains "legendary resistance" (String.toLower t.name))
+        |> List.head
+
+
+{-| Pull every run of consecutive digit characters out of a
+string and parse them as integers in order. Non-digit
+characters act as separators. Used by the Legendary Resistance
+parsers to extract `(N/Day, or M/Day in Lair)` counts.
+-}
+collectIntegers : String -> List Int
+collectIntegers s =
+    s
+        |> String.map
+            (\c ->
+                if Char.isDigit c then
+                    c
+
+                else
+                    ' '
+            )
+        |> String.words
+        |> List.filterMap String.toInt
 
 
 {-| Walk every Feature on a compendium creature (traits, actions,

@@ -257,9 +257,11 @@ encodeCreature c =
         , ( "memo", E.string c.memo )
         , ( "timer", encodeMaybe encodeTimer c.timer )
         , ( "creatureId", encodeMaybe E.string c.creatureId )
-        , ( "hasLegendaryActions", E.bool c.hasLegendaryActions )
+        , ( "legendaryActionsCount", E.int c.legendaryActionsCount )
+        , ( "legendaryActionsLairBonus", E.int c.legendaryActionsLairBonus )
         , ( "legendaryActionsUsed", encodeIntSet c.legendaryActionsUsed )
-        , ( "hasLegendaryResistance", E.bool c.hasLegendaryResistance )
+        , ( "legendaryResistanceCount", E.int c.legendaryResistanceCount )
+        , ( "legendaryResistanceLairBonus", E.int c.legendaryResistanceLairBonus )
         , ( "legendaryResistanceUsed", encodeIntSet c.legendaryResistanceUsed )
         , ( "isPlaceholder", E.bool c.isPlaceholder )
         , ( "creatureKind", E.string c.creatureKind )
@@ -457,6 +459,20 @@ optionalEither current legacy dec default =
         )
 
 
+{-| Map the old `hasLegendaryActions : Bool` / `hasLegendaryResistance : Bool`
+fields onto the new count-typed fields. A `True` legacy flag
+becomes 3 (the historical default for both LA and LR per 5e
+norms); a `False` flag becomes 0 (no column).
+-}
+boolToLegacyCount : Bool -> Int
+boolToLegacyCount b =
+    if b then
+        3
+
+    else
+        0
+
+
 decodeEncounter : D.Decoder Encounter
 decodeEncounter =
     D.map3
@@ -474,7 +490,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId hasLA laUsed hasLR lrUsed isPlaceholder creatureKind race alignment ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -504,9 +520,11 @@ decodeCreature =
             , memo = memo
             , timer = timer
             , creatureId = creatureId
-            , hasLegendaryActions = hasLA
+            , legendaryActionsCount = laCount
+            , legendaryActionsLairBonus = laLairBonus
             , legendaryActionsUsed = laUsed
-            , hasLegendaryResistance = hasLR
+            , legendaryResistanceCount = lrCount
+            , legendaryResistanceLairBonus = lrLairBonus
             , legendaryResistanceUsed = lrUsed
             , isPlaceholder = isPlaceholder
             , creatureKind = creatureKind
@@ -543,9 +561,23 @@ decodeCreature =
         |> optional "memo" D.string ""
         |> optional "timer" (D.nullable decodeTimer) Nothing
         |> optional "creatureId" (D.nullable D.string) Nothing
-        |> optional "hasLegendaryActions" D.bool False
+        -- Old encoder wrote `hasLegendaryActions : Bool`; the
+        -- newer one writes a numeric count + lair bonus.
+        -- Honor both shapes so saved encounters from the
+        -- pre-count era still load — a `True` flag maps to a
+        -- conservative 3-pip default, the count itself wins
+        -- when present.
+        |> optionalEither "legendaryActionsCount"
+            "hasLegendaryActions"
+            (D.oneOf [ D.int, D.bool |> D.map boolToLegacyCount ])
+            0
+        |> optional "legendaryActionsLairBonus" D.int 0
         |> optional "legendaryActionsUsed" decodeIntSet Set.empty
-        |> optional "hasLegendaryResistance" D.bool False
+        |> optionalEither "legendaryResistanceCount"
+            "hasLegendaryResistance"
+            (D.oneOf [ D.int, D.bool |> D.map boolToLegacyCount ])
+            0
+        |> optional "legendaryResistanceLairBonus" D.int 0
         |> optional "legendaryResistanceUsed" decodeIntSet Set.empty
         |> optional "isPlaceholder" D.bool False
         |> optional "creatureKind" D.string "enemy"

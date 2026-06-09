@@ -554,6 +554,7 @@ init flags url key =
       , migrationDateLabel = flags.migrationDateLabel
       , localDiceHistoryRaw = flags.localDiceHistory
       , localCompendiumRaw = flags.localCompendium
+      , pendingBundleMerge = False
       , nextLocalCreatureId = 1
       , localEncounterSaves =
             flags.localEncounterSaves
@@ -892,6 +893,7 @@ persistCompendiumFor model =
                     { creatures = loadedCreatures model.compendium.db
                     , groups = Dict.values model.compendium.groups
                     , nextLocalId = model.nextLocalCreatureId
+                    , bundledVersion = Compendium.Wire.currentBundledVersion
                     }
                 )
 
@@ -1447,14 +1449,7 @@ updateInner msg model =
             Update.Compendium.Browser.open model
 
         CompendiumOpenInTab ->
-            -- Open (or focus) the named compendium window via
-            -- the JS port, and close the modal — the GM is
-            -- moving the work into a dedicated tab.
-            let
-                ( closed, closeCmd ) =
-                    Update.Compendium.Browser.close model
-            in
-            ( closed, Cmd.batch [ closeCmd, Ports.openCompendiumTab () ] )
+            Update.Compendium.Browser.openInTab model
 
         CompendiumClose ->
             Update.Compendium.Browser.close model

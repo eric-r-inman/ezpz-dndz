@@ -83,10 +83,14 @@ async fn get_save(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  match state.encounter_saves.get(&user.id, &name).await {
-    Some(record) => Json(record).into_response(),
-    None => EncounterStoreError::SaveNotFound.into_response(),
-  }
+  state
+    .encounter_saves
+    .get(&user.id, &name)
+    .await
+    .map_or_else(
+      || EncounterStoreError::SaveNotFound.into_response(),
+      |record| Json(record).into_response(),
+    )
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]

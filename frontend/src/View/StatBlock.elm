@@ -724,8 +724,40 @@ viewLegendaryActions onRoll creatureName maybeLa =
 
         Just la ->
             sectionHeading "Legendary Actions"
-                :: descriptionParagraph la.description
+                :: descriptionParagraph (legendaryPreamble la)
                 :: List.map (viewLegendaryOption onRoll creatureName) la.options
+
+
+{-| Compose the SRD-format "Legendary Action Uses: N (M in Lair)."
+preamble. When the creature carries a non-empty `description`
+(typically because the user pasted in their own block), trust
+that text and show it verbatim — otherwise synthesize the 2024
+MM canonical paragraph from the structured `uses` / `usesInLair`
+fields.
+
+The lair clause is omitted entirely when `usesInLair <= uses`
+so non-lair creatures (Solar, Tarrasque, Unicorn) read cleanly.
+
+-}
+legendaryPreamble : LegendaryActions -> String
+legendaryPreamble la =
+    if not (String.isEmpty (String.trim la.description)) then
+        la.description
+
+    else
+        let
+            usesPart =
+                "Legendary Action Uses: "
+                    ++ String.fromInt la.uses
+                    ++ (if la.usesInLair > la.uses then
+                            " (" ++ String.fromInt la.usesInLair ++ " in Lair)."
+
+                        else
+                            "."
+                       )
+        in
+        usesPart
+            ++ " Immediately after another creature's turn, this creature can expend a use to take one of the following actions. This creature regains all expended uses at the start of each of its turns."
 
 
 viewLegendaryOption : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> LegendaryOption -> Html msg

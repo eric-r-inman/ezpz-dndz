@@ -552,14 +552,26 @@ fn partition_features(
   let legendary_actions = if legendary_options.is_empty() {
     None
   } else {
+    // Open5e doesn't carry the legendary-actions preamble as a
+    // separate field; leave the description blank and let the GM
+    // fill in the standard "can take 3 legendary actions…" text
+    // in the editor if needed.
+    //
+    // For `uses_in_lair`: Open5e mirrors the SRD trait shape, so
+    // a Legendary Resistance trait whose name reads "(N/Day, or
+    // M/Day in Lair)" tells us the creature has a lair.  We
+    // infer the 2024 MM convention — +1 legendary action use in
+    // lair — when that marker is present.  Creatures without a
+    // lair-marked LR trait keep `uses_in_lair = 0`.
+    let uses_in_lair = if traits.iter().any(has_lair_resistance_marker) {
+      4
+    } else {
+      0
+    };
     Some(LegendaryActions {
-      // Open5e doesn't carry the legendary-actions preamble as a
-      // separate field; leave the description blank and let the
-      // GM fill in the standard "can take 3 legendary actions…"
-      // text in the editor if needed.
       description: String::new(),
       uses: 3,
-      uses_in_lair: 0,
+      uses_in_lair,
       options: legendary_options,
     })
   };
@@ -571,6 +583,16 @@ fn partition_features(
     reactions,
     legendary_actions,
   }
+}
+
+/// `true` when this trait is the SRD-style Legendary Resistance
+/// entry whose name carries the lair-bonus modifier — e.g.
+/// `"Legendary Resistance (3/Day, or 4/Day in Lair)"`.  Used to
+/// infer that a creature has a lair and therefore should also
+/// pick up the +1 lair Legendary Action use.
+fn has_lair_resistance_marker(t: &Feature) -> bool {
+  let lower = t.name.to_lowercase();
+  lower.contains("legendary resistance") && lower.contains("in lair")
 }
 
 #[cfg(test)]
