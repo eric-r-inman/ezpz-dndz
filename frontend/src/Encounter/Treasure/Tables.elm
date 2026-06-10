@@ -708,68 +708,121 @@ hoardBracketFour =
                 , platinum = Just ( 8, 6, 1000 )
             }
     in
-    [ { coinBase | weight = 2, gems = Just ( 3, 6, Gem1000gp ) }
-    , { coinBase | weight = 5, art = Just ( 1, 10, Art2500gp ) }
-    , { coinBase | weight = 8, art = Just ( 1, 4, Art7500gp ) }
-    , { coinBase | weight = 3, gems = Just ( 1, 8, Gem5000gp ) }
+    -- Mixed rows pair like-tier: gems@1000 with art@2500, gems@5000
+    -- with art@7500.  Dice halve awkwardly (1d10 → 1d6 over, 1d8 → 1d4
+    -- under, 3d6 → 1d6 under) so each pair lands ~1–9% off its
+    -- preservation target individually; the asymmetric drifts roughly
+    -- cancel across the level so net stays ~1–2% under per level.
+    -- Bracket 4 is rare in practice (CR 17+), so a tighter tune isn't
+    -- worth additional row complexity.
+    [ { coinBase | weight = 1, gems = Just ( 3, 6, Gem1000gp ) }
+    , { coinBase | weight = 4, art = Just ( 1, 10, Art2500gp ) }
+    , { coinBase | weight = 7, art = Just ( 1, 4, Art7500gp ) }
+    , { coinBase | weight = 2, gems = Just ( 1, 8, Gem5000gp ) }
     , { coinBase
-        | weight = 15
+        | weight = 2
+        , gems = Just ( 1, 6, Gem1000gp )
+        , art = Just ( 1, 6, Art2500gp )
+      }
+    , { coinBase
+        | weight = 2
+        , gems = Just ( 1, 2, Gem5000gp )
+        , art = Just ( 1, 2, Art7500gp )
+      }
+    , { coinBase
+        | weight = 11
         , gems = Just ( 3, 6, Gem1000gp )
         , magic = Just ( 1, 8, TableC )
       }
     , { coinBase
-        | weight = 15
+        | weight = 11
         , art = Just ( 1, 10, Art2500gp )
         , magic = Just ( 1, 8, TableC )
       }
     , { coinBase
-        | weight = 12
+        | weight = 9
         , art = Just ( 1, 4, Art7500gp )
+        , magic = Just ( 1, 8, TableC )
+      }
+    , { coinBase
+        | weight = 5
+        , gems = Just ( 1, 8, Gem5000gp )
         , magic = Just ( 1, 8, TableC )
       }
     , { coinBase
         | weight = 8
-        , gems = Just ( 1, 8, Gem5000gp )
+        , gems = Just ( 1, 6, Gem1000gp )
+        , art = Just ( 1, 6, Art2500gp )
         , magic = Just ( 1, 8, TableC )
       }
     , { coinBase
         | weight = 6
-        , gems = Just ( 3, 6, Gem1000gp )
-        , magic = Just ( 1, 6, TableD )
-      }
-    , { coinBase
-        | weight = 6
-        , art = Just ( 1, 10, Art2500gp )
-        , magic = Just ( 1, 6, TableD )
-      }
-    , { coinBase
-        | weight = 5
-        , art = Just ( 1, 4, Art7500gp )
-        , magic = Just ( 1, 6, TableD )
-      }
-    , { coinBase
-        | weight = 5
-        , gems = Just ( 1, 8, Gem5000gp )
-        , magic = Just ( 1, 6, TableD )
+        , gems = Just ( 1, 2, Gem5000gp )
+        , art = Just ( 1, 2, Art7500gp )
+        , magic = Just ( 1, 8, TableC )
       }
     , { coinBase
         | weight = 4
         , gems = Just ( 3, 6, Gem1000gp )
-        , magic = Just ( 1, 6, TableE )
+        , magic = Just ( 1, 6, TableD )
       }
     , { coinBase
         | weight = 4
         , art = Just ( 1, 10, Art2500gp )
-        , magic = Just ( 1, 6, TableE )
+        , magic = Just ( 1, 6, TableD )
       }
     , { coinBase
-        | weight = 4
+        | weight = 3
         , art = Just ( 1, 4, Art7500gp )
-        , magic = Just ( 1, 6, TableE )
+        , magic = Just ( 1, 6, TableD )
       }
     , { coinBase
         | weight = 3
         , gems = Just ( 1, 8, Gem5000gp )
+        , magic = Just ( 1, 6, TableD )
+      }
+    , { coinBase
+        | weight = 4
+        , gems = Just ( 1, 6, Gem1000gp )
+        , art = Just ( 1, 6, Art2500gp )
+        , magic = Just ( 1, 6, TableD )
+      }
+    , { coinBase
+        | weight = 4
+        , gems = Just ( 1, 2, Gem5000gp )
+        , art = Just ( 1, 2, Art7500gp )
+        , magic = Just ( 1, 6, TableD )
+      }
+    , { coinBase
+        | weight = 3
+        , gems = Just ( 3, 6, Gem1000gp )
+        , magic = Just ( 1, 6, TableE )
+      }
+    , { coinBase
+        | weight = 3
+        , art = Just ( 1, 10, Art2500gp )
+        , magic = Just ( 1, 6, TableE )
+      }
+    , { coinBase
+        | weight = 3
+        , art = Just ( 1, 4, Art7500gp )
+        , magic = Just ( 1, 6, TableE )
+      }
+    , { coinBase
+        | weight = 2
+        , gems = Just ( 1, 8, Gem5000gp )
+        , magic = Just ( 1, 6, TableE )
+      }
+    , { coinBase
+        | weight = 2
+        , gems = Just ( 1, 6, Gem1000gp )
+        , art = Just ( 1, 6, Art2500gp )
+        , magic = Just ( 1, 6, TableE )
+      }
+    , { coinBase
+        | weight = 2
+        , gems = Just ( 1, 2, Gem5000gp )
+        , art = Just ( 1, 2, Art7500gp )
         , magic = Just ( 1, 6, TableE )
       }
     ]
