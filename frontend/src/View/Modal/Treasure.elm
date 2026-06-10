@@ -275,10 +275,22 @@ coinsSection coins distributed =
         ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text "Coins" ]
+            , rerollCategoryButton Treasure.CoinsCategory
             , distributedCheckbox slug isDistributed
             ]
         , ul [ class "treasure__list" ] (coinLines coins)
         ]
+
+
+rerollCategoryButton : Treasure.Category -> Html Msg
+rerollCategoryButton category =
+    button
+        [ class "treasure__reroll-category"
+        , type_ "button"
+        , onClick (TreasureRerollCategory category)
+        , attribute "aria-label" ("Re-roll " ++ Treasure.categoryLabel category)
+        ]
+        [ text "↻" ]
 
 
 coinLines : Coins -> List (Html Msg)
@@ -313,7 +325,12 @@ gemsSection items distributed =
         text ""
 
     else
-        valuedSection "Gems" "gem" items distributed (\g -> ( g.name, g.valueGp ))
+        valuedSection "Gems"
+            "gem"
+            Treasure.GemsCategory
+            items
+            distributed
+            (\g -> ( g.name, g.valueGp ))
 
 
 artSection : List ArtItem -> Set.Set String -> Html Msg
@@ -322,20 +339,28 @@ artSection items distributed =
         text ""
 
     else
-        valuedSection "Art objects" "art" items distributed (\a -> ( a.name, a.valueGp ))
+        valuedSection "Art objects"
+            "art"
+            Treasure.ArtCategory
+            items
+            distributed
+            (\a -> ( a.name, a.valueGp ))
 
 
 valuedSection :
     String
     -> String
+    -> Treasure.Category
     -> List a
     -> Set.Set String
     -> (a -> ( String, Int ))
     -> Html Msg
-valuedSection title slugPrefix items distributed project =
+valuedSection title slugPrefix category items distributed project =
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
-            [ span [ class "treasure__section-title" ] [ text title ] ]
+            [ span [ class "treasure__section-title" ] [ text title ]
+            , rerollCategoryButton category
+            ]
         , ul [ class "treasure__list" ]
             (List.indexedMap
                 (\idx item ->
@@ -383,7 +408,9 @@ magicSection items distributed =
     else
         section [ class "treasure__section" ]
             [ div [ class "treasure__section-header" ]
-                [ span [ class "treasure__section-title" ] [ text "Magic items" ] ]
+                [ span [ class "treasure__section-title" ] [ text "Magic items" ]
+                , rerollCategoryButton Treasure.MagicCategory
+                ]
             , ul [ class "treasure__list" ]
                 (List.indexedMap (magicRow distributed) items)
             ]
@@ -410,7 +437,11 @@ magicRow distributed idx item =
             )
         ]
         [ distributedCheckbox slug isDistributed
-        , span [ class "treasure__row-name" ] [ text item.name ]
+        , span [ class "treasure__row-name" ]
+            [ text item.name
+            , span [ class "treasure__row-source" ]
+                [ text (" — Table " ++ Tables.magicTableLabel item.table) ]
+            ]
         , span
             [ class
                 ("treasure__rarity treasure__rarity--"

@@ -1757,6 +1757,12 @@ updateInner msg model =
         TreasureRerollCancel ->
             Update.Treasure.rerollCancel model
 
+        TreasureRerollCategory category ->
+            Update.Treasure.rerollCategory category model
+
+        TreasureCategoryRolled category fresh ->
+            Update.Treasure.categoryRolled category fresh model
+
         CardEditorClose ->
             Update.CardEditor.close model
 

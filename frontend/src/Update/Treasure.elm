@@ -4,6 +4,7 @@ module Update.Treasure exposing
     , roll, rolled
     , toggleDistributed
     , rerollRequest, rerollConfirm, rerollCancel
+    , categoryRolled, rerollCategory
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -245,3 +246,86 @@ rerollCancel model =
         model
     , Cmd.none
     )
+
+
+{-| Fire a fresh random Generator targeting the chosen category.
+The runtime lands the result in `TreasureCategoryRolled`, which
+[`categoryRolled`](#categoryRolled) below merges into the
+existing roll.
+-}
+rerollCategory : Treasure.Category -> Model -> ( Model, Cmd Msg )
+rerollCategory category model =
+    case model.modal of
+        Just (Model.ModalTreasure ui) ->
+            ( model
+            , Random.generate (TreasureCategoryRolled category)
+                (Treasure.generateCategory ui.kind ui.bracket category)
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Materialised single-category re-roll landed. Replace only
+the chosen category's data on the existing `TreasureState`
+(merging slices from a fresh full roll), and drop the
+distributed marks for the replaced rows so the GM doesn't see
+stale checkmarks on freshly-rolled items.
+-}
+categoryRolled :
+    Treasure.Category
+    -> Treasure.TreasureRoll
+    -> Model
+    -> ( Model, Cmd Msg )
+categoryRolled category fresh model =
+    case model.encounter.treasure of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just state ->
+            let
+                existing =
+                    state.roll
+
+                ( nextRoll, droppedSlugPrefix ) =
+                    case category of
+                        Treasure.CoinsCategory ->
+                            ( { existing | coins = fresh.coins }
+                            , "coins"
+                            )
+
+                        Treasure.GemsCategory ->
+                            ( { existing | gems = fresh.gems }
+                            , "gem:"
+                            )
+
+                        Treasure.ArtCategory ->
+                            ( { existing | art = fresh.art }
+                            , "art:"
+                            )
+
+                        Treasure.MagicCategory ->
+                            ( { existing | magic = fresh.magic }
+                            , "magic:"
+                            )
+
+                nextDistributed =
+                    Set.filter
+                        (\slug ->
+                            if droppedSlugPrefix == "coins" then
+                                slug /= "coins"
+
+                            else
+                                not (String.startsWith droppedSlugPrefix slug)
+                        )
+                        state.distributed
+
+                nextState =
+                    { roll = nextRoll, distributed = nextDistributed }
+
+                encounter =
+                    model.encounter
+            in
+            ( { model | encounter = { encounter | treasure = Just nextState } }
+            , Cmd.none
+            )

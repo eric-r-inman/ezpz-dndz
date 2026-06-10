@@ -3,6 +3,7 @@ module Encounter.Treasure.Tables exposing
     , artObjects, artTierValue, gemTierValue, gems
     , hoardEntries, individualEntries, magicItems
     , magicTableRarity, rarityLabel
+    , magicTableLabel
     )
 
 {-| Bundled SRD 5.1 treasure-table data.
@@ -123,6 +124,37 @@ type MagicTable
     | TableG
     | TableH
     | TableI
+
+
+magicTableLabel : MagicTable -> String
+magicTableLabel t =
+    case t of
+        TableA ->
+            "A"
+
+        TableB ->
+            "B"
+
+        TableC ->
+            "C"
+
+        TableD ->
+            "D"
+
+        TableE ->
+            "E"
+
+        TableF ->
+            "F"
+
+        TableG ->
+            "G"
+
+        TableH ->
+            "H"
+
+        TableI ->
+            "I"
 
 
 magicTableRarity : MagicTable -> Rarity

@@ -7,6 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
+    , Category(..), categoryLabel, generateCategory
     )
 
 {-| Treasure-roll domain.
@@ -202,7 +203,7 @@ type alias ArtItem =
 
 
 type alias MagicItem =
-    { name : String, rarity : Rarity }
+    { name : String, rarity : Rarity, table : MagicTable }
 
 
 type alias TreasureRoll =
@@ -213,6 +214,34 @@ type alias TreasureRoll =
     , art : List ArtItem
     , magic : List MagicItem
     }
+
+
+{-| Which sub-section of the treasure the GM is asking to
+re-roll. Single-category re-rolls leave the other three
+sections untouched — useful when the magic item came up wildly
+off-theme but the rest of the loot is good.
+-}
+type Category
+    = CoinsCategory
+    | GemsCategory
+    | ArtCategory
+    | MagicCategory
+
+
+categoryLabel : Category -> String
+categoryLabel c =
+    case c of
+        CoinsCategory ->
+            "coins"
+
+        GemsCategory ->
+            "gems"
+
+        ArtCategory ->
+            "art"
+
+        MagicCategory ->
+            "magic"
 
 
 totalGemValue : List GemItem -> Int
@@ -241,6 +270,25 @@ generate kind bracket =
 
         Hoard ->
             generateHoard bracket
+
+
+{-| Re-roll a single category. Returns a fresh full
+`TreasureRoll`; the caller's update handler merges only the
+chosen category into the existing roll, leaving the other three
+untouched.
+
+The implementation just rolls a fresh hoard (or individual) and
+lets the caller pick which slice to keep — the SRD doesn't
+factor coin / gem / art / magic rolls into independent
+sub-tables, so "re-roll just the magic" is necessarily a fresh
+draw from a fresh hoard row. In practice that gives the GM
+exactly what they want: a new flavour of that single category
+without disturbing the rest.
+
+-}
+generateCategory : Kind -> Bracket -> Category -> Random.Generator TreasureRoll
+generateCategory kind bracket _ =
+    generate kind bracket
 
 
 generateIndividual : Bracket -> Random.Generator TreasureRoll
@@ -416,6 +464,7 @@ rollMagic mSpec =
                                     (\name ->
                                         { name = name
                                         , rarity = Tables.magicTableRarity table
+                                        , table = table
                                         }
                                     )
                                 )

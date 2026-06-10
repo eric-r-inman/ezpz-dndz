@@ -1032,6 +1032,14 @@ type Msg
     | TreasureRerollRequest
     | TreasureRerollConfirm
     | TreasureRerollCancel
+      -- Per-category re-roll: dump just one slice of the loot
+      -- (coins, gems, art, magic) and roll a fresh draw for it.
+      -- Useful when the magic item came up off-theme but the
+      -- rest of the loot is keepers.  Distributed marks on the
+      -- replaced category get dropped; other categories' marks
+      -- stay put.
+    | TreasureRerollCategory Encounter.Treasure.Category
+    | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

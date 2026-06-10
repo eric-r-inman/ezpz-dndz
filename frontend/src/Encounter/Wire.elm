@@ -399,14 +399,92 @@ encodeMagicItem m =
     E.object
         [ ( "name", E.string m.name )
         , ( "rarity", E.string (rarityWire m.rarity) )
+        , ( "table", E.string (magicTableWire m.table) )
         ]
 
 
 decodeMagicItem : D.Decoder Encounter.Treasure.MagicItem
 decodeMagicItem =
-    D.map2 Encounter.Treasure.MagicItem
+    D.map3 Encounter.Treasure.MagicItem
         (D.field "name" D.string)
         (D.field "rarity" rarityDecoder)
+        -- Older treasure rolls (pre-table-letter) decode with a
+        -- TableA fallback.  TableA is "Common consumables" so the
+        -- fallback at least implies the right tier order.
+        (D.oneOf
+            [ D.field "table" magicTableDecoder
+            , D.succeed Encounter.Treasure.Tables.TableA
+            ]
+        )
+
+
+magicTableWire : Encounter.Treasure.Tables.MagicTable -> String
+magicTableWire t =
+    case t of
+        Encounter.Treasure.Tables.TableA ->
+            "A"
+
+        Encounter.Treasure.Tables.TableB ->
+            "B"
+
+        Encounter.Treasure.Tables.TableC ->
+            "C"
+
+        Encounter.Treasure.Tables.TableD ->
+            "D"
+
+        Encounter.Treasure.Tables.TableE ->
+            "E"
+
+        Encounter.Treasure.Tables.TableF ->
+            "F"
+
+        Encounter.Treasure.Tables.TableG ->
+            "G"
+
+        Encounter.Treasure.Tables.TableH ->
+            "H"
+
+        Encounter.Treasure.Tables.TableI ->
+            "I"
+
+
+magicTableDecoder : D.Decoder Encounter.Treasure.Tables.MagicTable
+magicTableDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "A" ->
+                        D.succeed Encounter.Treasure.Tables.TableA
+
+                    "B" ->
+                        D.succeed Encounter.Treasure.Tables.TableB
+
+                    "C" ->
+                        D.succeed Encounter.Treasure.Tables.TableC
+
+                    "D" ->
+                        D.succeed Encounter.Treasure.Tables.TableD
+
+                    "E" ->
+                        D.succeed Encounter.Treasure.Tables.TableE
+
+                    "F" ->
+                        D.succeed Encounter.Treasure.Tables.TableF
+
+                    "G" ->
+                        D.succeed Encounter.Treasure.Tables.TableG
+
+                    "H" ->
+                        D.succeed Encounter.Treasure.Tables.TableH
+
+                    "I" ->
+                        D.succeed Encounter.Treasure.Tables.TableI
+
+                    other ->
+                        D.fail ("Unknown magic-item table: " ++ other)
+            )
 
 
 rarityWire : Encounter.Treasure.Tables.Rarity -> String
