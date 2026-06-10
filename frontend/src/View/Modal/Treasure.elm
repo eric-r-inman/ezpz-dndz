@@ -25,7 +25,6 @@ whole roll with a fresh draw.
 import Encounter.Treasure as Treasure
     exposing
         ( ArtItem
-        , Bracket(..)
         , Coins
         , CreatureContribution
         , GemItem
@@ -154,7 +153,11 @@ contributionsSection expanded contributions =
 contributionRow : CreatureContribution -> Html Msg
 contributionRow c =
     li [ class "treasure__contributions-row" ]
-        [ span [ class "treasure__contributions-name" ] [ text c.creatureName ]
+        [ span [ class "treasure__contributions-name" ]
+            [ text c.creatureName
+            , span [ class "treasure__contributions-bracket" ]
+                [ text (" — " ++ Treasure.bracketLabel c.bracket) ]
+            ]
         , span [ class "treasure__contributions-coins" ]
             [ text (coinSummary c.coins) ]
         ]
@@ -211,11 +214,6 @@ controlRow ui =
             , select [ class "treasure__select", onInput TreasureKindSet ]
                 (List.map (kindOption ui.kind) Treasure.kindOptions)
             ]
-        , label [ class "treasure__field" ]
-            [ span [ class "treasure__field-label" ] [ text "CR bracket" ]
-            , select [ class "treasure__select", onInput TreasureBracketSet ]
-                (List.map (bracketOption ui.bracket) Treasure.bracketOptions)
-            ]
         , button
             [ class "action-btn action-btn--green treasure__roll"
             , onClick TreasureRoll
@@ -239,27 +237,6 @@ kindOption current k =
         [ text (Treasure.kindLabel k) ]
 
 
-bracketOption : Bracket -> Bracket -> Html Msg
-bracketOption current b =
-    let
-        wire =
-            case b of
-                B1to4 ->
-                    "1to4"
-
-                B5to10 ->
-                    "5to10"
-
-                B11to16 ->
-                    "11to16"
-
-                B17plus ->
-                    "17plus"
-    in
-    option [ value wire, selected (b == current) ]
-        [ text (Treasure.bracketLabel b) ]
-
-
 
 -- ── RESULTS ──────────────────────────────────────────────────────────────────
 
@@ -267,7 +244,7 @@ bracketOption current b =
 emptyState : Html Msg
 emptyState =
     p [ class "treasure__empty" ]
-        [ text "Pick a kind + bracket above and hit Roll." ]
+        [ text "Pick a kind above and hit Roll." ]
 
 
 resultBlock : Treasure.TreasureRoll -> Html Msg

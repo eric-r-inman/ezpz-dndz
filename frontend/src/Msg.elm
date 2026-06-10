@@ -1017,7 +1017,6 @@ type Msg
     | TreasureOpen
     | TreasureClose
     | TreasureKindSet String
-    | TreasureBracketSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised
       -- TreasureRoll.  Saved straight into the encounter, which

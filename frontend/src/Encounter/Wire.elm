@@ -304,14 +304,20 @@ encodeContribution c =
     E.object
         [ ( "creatureName", E.string c.creatureName )
         , ( "coins", encodeCoins c.coins )
+        , ( "bracket", E.string (treasureBracketWire c.bracket) )
         ]
 
 
 decodeContribution : D.Decoder Encounter.Treasure.CreatureContribution
 decodeContribution =
-    D.map2 Encounter.Treasure.CreatureContribution
+    D.map3 Encounter.Treasure.CreatureContribution
         (D.field "creatureName" D.string)
         (D.field "coins" decodeCoins)
+        (D.oneOf
+            [ D.field "bracket" treasureBracketDecoder
+            , D.succeed Encounter.Treasure.B1to4
+            ]
+        )
 
 
 encodeRowSource : Encounter.Treasure.RowSource -> E.Value

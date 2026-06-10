@@ -1,6 +1,6 @@
 module Update.Treasure exposing
     ( open, close
-    , kindSet, bracketSet
+    , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
     , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove
@@ -28,7 +28,8 @@ without anything extra from this module.
 -}
 
 import Compendium
-import Encounter.Treasure as Treasure exposing (Bracket)
+import Encounter
+import Encounter.Treasure as Treasure exposing (Bracket, EnemyInfo, RollContext)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Random
@@ -36,17 +37,13 @@ import Ui.Compendium
 import Ui.Treasure
 
 
-{-| Open the modal. Seeds the UI with the bracket suggested
-from the encounter's toughest creature (the modal opens to a
-sensible default even when the GM didn't think about it).
+{-| Open the modal. UI state is now bracket-free; the bracket
+each enemy uses falls out of their own CR at roll time, so the
+modal opens straight into the Kind picker.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    let
-        bracket =
-            suggestedBracketFor model
-    in
-    ( { model | modal = Just (Model.ModalTreasure (Ui.Treasure.fresh bracket)) }
+    ( { model | modal = Just (Model.ModalTreasure Ui.Treasure.fresh) }
     , Cmd.none
     )
 
@@ -63,22 +60,6 @@ contributionsToggle model =
         model
     , Cmd.none
     )
-
-
-{-| Resolve CR floats from the encounter's creatures + the
-compendium DB, then ask `Encounter.Treasure` which bracket
-covers the toughest one.
--}
-suggestedBracketFor : Model -> Bracket
-suggestedBracketFor model =
-    let
-        db =
-            loadedDb model
-    in
-    model.encounter.creatures
-        |> List.filterMap (\c -> c.creatureId |> Maybe.andThen (\id -> Compendium.find id db))
-        |> List.map (.challengeRating >> Compendium.crToFloat)
-        |> Treasure.suggestedBracket
 
 
 loadedDb : Model -> Compendium.Db
@@ -110,35 +91,6 @@ kindSet wire model =
     )
 
 
-{-| Update the Bracket dropdown. Same fallback story as
-[`kindSet`](#kindSet) — typos collapse to the default
-suggestion the modal opened with rather than guessing.
--}
-bracketSet : String -> Model -> ( Model, Cmd Msg )
-bracketSet wire model =
-    let
-        bracket =
-            case wire of
-                "1to4" ->
-                    Treasure.B1to4
-
-                "5to10" ->
-                    Treasure.B5to10
-
-                "11to16" ->
-                    Treasure.B11to16
-
-                "17plus" ->
-                    Treasure.B17plus
-
-                _ ->
-                    suggestedBracketFor model
-    in
-    ( Model.mapModal Model.treasureLens (\ui -> { ui | bracket = bracket }) model
-    , Cmd.none
-    )
-
-
 {-| Fire the random Generator with the current Kind + Bracket.
 The runtime feeds the result into `TreasureRolled` via the
 standard `Random.generate` glue.
@@ -149,7 +101,7 @@ roll model =
         Just (Model.ModalTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
-                (Treasure.generate ui.kind ui.bracket (activeTable model) (enemyNames model))
+                (Treasure.generate ui.kind (activeTable model) (rollContext model))
             )
 
         _ ->
@@ -165,17 +117,82 @@ activeTable model =
     Maybe.withDefault Treasure.bundledTable model.userTreasureTable
 
 
-{-| The list of creature names eligible for a "Sum (all
-Enemies)" Individual roll: any creature tagged `creatureKind ==
-"enemy"` that isn't a placeholder slot. Placeholders have no
-treasure to roll for; PCs and allies aren't getting their
-pockets emptied either.
+{-| Build the per-roll context from the encounter:
+
+  - One `EnemyInfo` per non-placeholder, `creatureKind ==
+    "enemy"` creature, paired with the bracket derived from
+    its CR (compendium lookup; defaults to `B1to4` for
+    manual-entry creatures with no link).
+  - `hoardBracket` = the toughest enemy's bracket, used by
+    Hoard rolls. Defaults to `B1to4` when there are no enemies.
+
+The CR Bracket dropdown is gone; this context replaces the
+GM's manual pick with what the encounter already knows.
+
 -}
-enemyNames : Model -> List String
-enemyNames model =
+rollContext : Model -> RollContext
+rollContext model =
+    let
+        enemies =
+            enemyInfos model
+    in
+    { enemies = enemies
+    , hoardBracket = highestBracketOrDefault (List.map .bracket enemies)
+    }
+
+
+enemyInfos : Model -> List EnemyInfo
+enemyInfos model =
+    let
+        db =
+            loadedDb model
+    in
     model.encounter.creatures
         |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
-        |> List.map .name
+        |> List.map (\c -> { name = c.name, bracket = creatureBracket db c })
+
+
+creatureBracket : Compendium.Db -> Encounter.Creature -> Bracket
+creatureBracket db c =
+    c.creatureId
+        |> Maybe.andThen (\id -> Compendium.find id db)
+        |> Maybe.map (.challengeRating >> Compendium.crToFloat >> Treasure.bracketFor)
+        |> Maybe.withDefault Treasure.B1to4
+
+
+highestBracketOrDefault : List Bracket -> Bracket
+highestBracketOrDefault brackets =
+    case brackets of
+        [] ->
+            Treasure.B1to4
+
+        head :: rest ->
+            List.foldl
+                (\b acc ->
+                    if bracketRank b > bracketRank acc then
+                        b
+
+                    else
+                        acc
+                )
+                head
+                rest
+
+
+bracketRank : Bracket -> Int
+bracketRank b =
+    case b of
+        Treasure.B1to4 ->
+            0
+
+        Treasure.B5to10 ->
+            1
+
+        Treasure.B11to16 ->
+            2
+
+        Treasure.B17plus ->
+            3
 
 
 {-| Materialised roll landed — save it onto the encounter.
@@ -212,7 +229,7 @@ rerollCategory category model =
             , Random.generate (TreasureCategoryRolled category)
                 (Treasure.generateRerollCategory
                     (activeTable model)
-                    (enemyNames model)
+                    (rollContext model)
                     currentRoll
                     category
                 )

@@ -2123,6 +2123,11 @@ body {
   color: var(--color-text);
 }
 
+.treasure__contributions-bracket {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
 .treasure__contributions-coins {
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;

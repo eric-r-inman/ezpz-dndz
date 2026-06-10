@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, CreatureContribution, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
+    , Category(..), CoinFormulas, CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
     )
 
 {-| Treasure-roll domain.
@@ -254,6 +254,34 @@ a single shared stash rather than per-creature pockets.
 type alias CreatureContribution =
     { creatureName : String
     , coins : Coins
+    , bracket : Bracket
+    }
+
+
+{-| Context passed to the random Generator at roll time.
+
+  - `enemies` — one entry per enemy creature in the encounter,
+    each with its own per-CR bracket. Used by Sum rolls; the
+    Generator rolls the right bracket's table independently for
+    each entry and sums the coins.
+  - `hoardBracket` — the bracket used by a Hoard roll, picked
+    from the toughest enemy in the encounter (or `B1to4` when
+    there are no enemies). Ignored by Sum rolls.
+
+Replaces the old CR Bracket dropdown: the encounter already
+knows what creatures are in it, so the GM doesn't have to pick
+a bracket the modal could derive itself.
+
+-}
+type alias RollContext =
+    { enemies : List EnemyInfo
+    , hoardBracket : Bracket
+    }
+
+
+type alias EnemyInfo =
+    { name : String
+    , bracket : Bracket
     }
 
 
@@ -626,27 +654,25 @@ setMagicNames magicTable names table =
 -- ── GENERATOR ────────────────────────────────────────────────────────────────
 
 
-{-| Roll fresh treasure for the chosen kind + bracket against
-the supplied table. Callers thread `model.userTreasureTable` (or
-`bundledTable` for a fresh boot) so edits to the user's table
-take effect immediately on the next roll.
+{-| Roll fresh treasure for the chosen kind against the
+supplied table, drawing per-creature CR brackets from the
+context.
 
-`enemyNames` is the list of non-PC, non-placeholder creature
-names tagged as enemies in the current encounter. Individual
-rolls (now relabeled "Sum (all Enemies)") roll the bracket's
-table ONCE PER ENEMY and sum the coins, so adding three more
-kobolds tripled the take. Hoard rolls ignore the list — a
-single shared stash doesn't scale with party size.
+Sum rolls iterate `ctx.enemies` and roll each enemy's
+matched bracket. Hoard rolls use `ctx.hoardBracket` (the
+toughest enemy's bracket). The CR bracket is no longer
+user-selectable — the encounter already knows which creatures
+are present, so the right bracket falls out naturally.
 
 -}
-generate : Kind -> Bracket -> TreasureTable -> List String -> Random.Generator TreasureRoll
-generate kind bracket table enemyNames =
+generate : Kind -> TreasureTable -> RollContext -> Random.Generator TreasureRoll
+generate kind table ctx =
     case kind of
         Individual ->
-            generateIndividualSum bracket table enemyNames
+            generateIndividualSum table ctx.enemies
 
         Hoard ->
-            generateHoard bracket table
+            generateHoard ctx.hoardBracket table
 
 
 {-| Re-roll just one category of the existing roll, using the
@@ -668,17 +694,17 @@ still do something useful.
 -}
 generateRerollCategory :
     TreasureTable
-    -> List String
+    -> RollContext
     -> TreasureRoll
     -> Category
     -> Random.Generator TreasureRoll
-generateRerollCategory table enemyNames currentRoll category =
+generateRerollCategory table ctx currentRoll category =
     case currentRoll.source of
         Just source ->
             generateRerollFromSource table currentRoll source category
 
         Nothing ->
-            generate currentRoll.kind currentRoll.bracket table enemyNames
+            generate currentRoll.kind table ctx
 
 
 generateRerollFromSource :
@@ -754,20 +780,15 @@ the encounter, no pockets to loot.
 
 -}
 generateIndividualSum :
-    Bracket
-    -> TreasureTable
-    -> List String
+    TreasureTable
+    -> List EnemyInfo
     -> Random.Generator TreasureRoll
-generateIndividualSum bracket table enemyNames =
-    let
-        rows =
-            individualRowsFor bracket table
-    in
-    sequenceList (List.map (rollOneEnemy rows) enemyNames)
+generateIndividualSum table enemies =
+    sequenceList (List.map (rollOneEnemy table) enemies)
         |> Random.map
             (\contributions ->
                 { kind = Individual
-                , bracket = bracket
+                , bracket = highestContributionBracket contributions
                 , coins = sumContributions contributions
                 , gems = []
                 , art = []
@@ -778,19 +799,43 @@ generateIndividualSum bracket table enemyNames =
             )
 
 
-rollOneEnemy : List IndividualEntry -> String -> Random.Generator CreatureContribution
-rollOneEnemy rows name =
+rollOneEnemy : TreasureTable -> EnemyInfo -> Random.Generator CreatureContribution
+rollOneEnemy table enemy =
+    let
+        rows =
+            individualRowsFor enemy.bracket table
+    in
     weightedPick rows emptyIndividualRow
         |> Random.andThen
             (\row ->
                 rollIndividualCoins row
                     |> Random.map
                         (\coins ->
-                            { creatureName = name
+                            { creatureName = enemy.name
                             , coins = coins
+                            , bracket = enemy.bracket
                             }
                         )
             )
+
+
+highestContributionBracket : List CreatureContribution -> Bracket
+highestContributionBracket contributions =
+    case contributions of
+        [] ->
+            B1to4
+
+        head :: rest ->
+            List.foldl
+                (\c acc ->
+                    if bracketIndex c.bracket > bracketIndex acc then
+                        c.bracket
+
+                    else
+                        acc
+                )
+                head.bracket
+                rest
 
 
 sumContributions : List CreatureContribution -> Coins

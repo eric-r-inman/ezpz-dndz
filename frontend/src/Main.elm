@@ -1763,9 +1763,6 @@ updateInner msg model =
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
 
-        TreasureBracketSet raw ->
-            Update.Treasure.bracketSet raw model
-
         TreasureRoll ->
             Update.Treasure.roll model
 
