@@ -159,20 +159,28 @@ rolled treasureRoll model =
 
 
 {-| Fire a fresh random Generator targeting the chosen category.
+Re-uses the originating row's spec (stored on `roll.source`) so
+the gem tier / dice count stay consistent with the original
+roll — only the specific stone / object / item names change.
+
+Pre-source rolls (legacy saved encounters) fall through to a
+fresh full-row regen, since there's no spec to re-use.
+
 The runtime lands the result in `TreasureCategoryRolled`, which
 [`categoryRolled`](#categoryRolled) below merges into the
 existing roll.
+
 -}
 rerollCategory : Treasure.Category -> Model -> ( Model, Cmd Msg )
 rerollCategory category model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case model.encounter.treasure of
+        Just currentRoll ->
             ( model
             , Random.generate (TreasureCategoryRolled category)
-                (Treasure.generateCategory ui.kind ui.bracket category)
+                (Treasure.generateRerollCategory currentRoll category)
             )
 
-        _ ->
+        Nothing ->
             ( model, Cmd.none )
 
 

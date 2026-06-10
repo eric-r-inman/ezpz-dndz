@@ -257,13 +257,14 @@ encodeTreasureRoll roll =
         , ( "art", E.list encodeArtItem roll.art )
         , ( "magic", E.list encodeMagicItem roll.magic )
         , ( "custom", E.list encodeCustomRoll roll.custom )
+        , ( "source", encodeMaybe encodeRowSource roll.source )
         ]
 
 
 decodeTreasureRoll : D.Decoder Encounter.Treasure.TreasureRoll
 decodeTreasureRoll =
-    D.map7
-        (\kind bracket coins gems art magic custom ->
+    D.map8
+        (\kind bracket coins gems art magic custom source ->
             { kind = kind
             , bracket = bracket
             , coins = coins
@@ -271,6 +272,7 @@ decodeTreasureRoll =
             , art = art
             , magic = magic
             , custom = custom
+            , source = source
             }
         )
         (D.field "kind" treasureKindDecoder)
@@ -286,6 +288,220 @@ decodeTreasureRoll =
             , D.succeed []
             ]
         )
+        -- Pre-source rolls (saved before the row's originating
+        -- formulas were tracked) decode `source = Nothing`; the
+        -- re-roll-category path falls back to picking a fresh
+        -- row in that case.
+        (D.oneOf
+            [ D.field "source" (D.nullable decodeRowSource)
+            , D.succeed Nothing
+            ]
+        )
+
+
+encodeRowSource : Encounter.Treasure.RowSource -> E.Value
+encodeRowSource source =
+    E.object
+        [ ( "coinFormulas", encodeCoinFormulas source.coinFormulas )
+        , ( "gemsSpec", encodeMaybe (encodeSpec gemTierWire) source.gemsSpec )
+        , ( "artSpec", encodeMaybe (encodeSpec artTierWire) source.artSpec )
+        , ( "magicSpec", encodeMaybe (encodeSpec magicTableWire) source.magicSpec )
+        ]
+
+
+decodeRowSource : D.Decoder Encounter.Treasure.RowSource
+decodeRowSource =
+    D.map4
+        (\coinFormulas gemsSpec artSpec magicSpec ->
+            { coinFormulas = coinFormulas
+            , gemsSpec = gemsSpec
+            , artSpec = artSpec
+            , magicSpec = magicSpec
+            }
+        )
+        (D.field "coinFormulas" decodeCoinFormulas)
+        (D.oneOf
+            [ D.field "gemsSpec" (D.nullable (decodeSpec gemTierDecoder))
+            , D.succeed Nothing
+            ]
+        )
+        (D.oneOf
+            [ D.field "artSpec" (D.nullable (decodeSpec artTierDecoder))
+            , D.succeed Nothing
+            ]
+        )
+        (D.oneOf
+            [ D.field "magicSpec" (D.nullable (decodeSpec magicTableDecoder))
+            , D.succeed Nothing
+            ]
+        )
+
+
+encodeCoinFormulas : Encounter.Treasure.CoinFormulas -> E.Value
+encodeCoinFormulas formulas =
+    E.object
+        [ ( "copper", encodeMaybe encodeCoinFormula formulas.copper )
+        , ( "silver", encodeMaybe encodeCoinFormula formulas.silver )
+        , ( "electrum", encodeMaybe encodeCoinFormula formulas.electrum )
+        , ( "gold", encodeMaybe encodeCoinFormula formulas.gold )
+        , ( "platinum", encodeMaybe encodeCoinFormula formulas.platinum )
+        ]
+
+
+decodeCoinFormulas : D.Decoder Encounter.Treasure.CoinFormulas
+decodeCoinFormulas =
+    D.map5
+        (\cp sp ep gp pp ->
+            { copper = cp
+            , silver = sp
+            , electrum = ep
+            , gold = gp
+            , platinum = pp
+            }
+        )
+        (decodeOptionalField "copper" decodeCoinFormula)
+        (decodeOptionalField "silver" decodeCoinFormula)
+        (decodeOptionalField "electrum" decodeCoinFormula)
+        (decodeOptionalField "gold" decodeCoinFormula)
+        (decodeOptionalField "platinum" decodeCoinFormula)
+
+
+decodeOptionalField : String -> D.Decoder a -> D.Decoder (Maybe a)
+decodeOptionalField name inner =
+    D.oneOf
+        [ D.field name (D.nullable inner)
+        , D.succeed Nothing
+        ]
+
+
+encodeCoinFormula : ( Int, Int, Int ) -> E.Value
+encodeCoinFormula ( count, faces, mult ) =
+    E.object
+        [ ( "count", E.int count )
+        , ( "faces", E.int faces )
+        , ( "mult", E.int mult )
+        ]
+
+
+decodeCoinFormula : D.Decoder ( Int, Int, Int )
+decodeCoinFormula =
+    D.map3 (\a b c -> ( a, b, c ))
+        (D.field "count" D.int)
+        (D.field "faces" D.int)
+        (D.field "mult" D.int)
+
+
+encodeSpec : (tier -> String) -> ( Int, Int, tier ) -> E.Value
+encodeSpec tierToWire ( count, faces, tier ) =
+    E.object
+        [ ( "count", E.int count )
+        , ( "faces", E.int faces )
+        , ( "tier", E.string (tierToWire tier) )
+        ]
+
+
+decodeSpec : D.Decoder tier -> D.Decoder ( Int, Int, tier )
+decodeSpec tierDecoder =
+    D.map3 (\a b c -> ( a, b, c ))
+        (D.field "count" D.int)
+        (D.field "faces" D.int)
+        (D.field "tier" tierDecoder)
+
+
+gemTierWire : Encounter.Treasure.Tables.GemTier -> String
+gemTierWire t =
+    case t of
+        Encounter.Treasure.Tables.Gem10gp ->
+            "10gp"
+
+        Encounter.Treasure.Tables.Gem50gp ->
+            "50gp"
+
+        Encounter.Treasure.Tables.Gem100gp ->
+            "100gp"
+
+        Encounter.Treasure.Tables.Gem500gp ->
+            "500gp"
+
+        Encounter.Treasure.Tables.Gem1000gp ->
+            "1000gp"
+
+        Encounter.Treasure.Tables.Gem5000gp ->
+            "5000gp"
+
+
+gemTierDecoder : D.Decoder Encounter.Treasure.Tables.GemTier
+gemTierDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "10gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem10gp
+
+                    "50gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem50gp
+
+                    "100gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem100gp
+
+                    "500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem500gp
+
+                    "1000gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem1000gp
+
+                    "5000gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem5000gp
+
+                    other ->
+                        D.fail ("Unknown gem tier: " ++ other)
+            )
+
+
+artTierWire : Encounter.Treasure.Tables.ArtTier -> String
+artTierWire t =
+    case t of
+        Encounter.Treasure.Tables.Art25gp ->
+            "25gp"
+
+        Encounter.Treasure.Tables.Art250gp ->
+            "250gp"
+
+        Encounter.Treasure.Tables.Art750gp ->
+            "750gp"
+
+        Encounter.Treasure.Tables.Art2500gp ->
+            "2500gp"
+
+        Encounter.Treasure.Tables.Art7500gp ->
+            "7500gp"
+
+
+artTierDecoder : D.Decoder Encounter.Treasure.Tables.ArtTier
+artTierDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "25gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art25gp
+
+                    "250gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art250gp
+
+                    "750gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art750gp
+
+                    "2500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art2500gp
+
+                    "7500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art7500gp
+
+                    other ->
+                        D.fail ("Unknown art tier: " ++ other)
+            )
 
 
 encodeCustomRoll : Encounter.Treasure.UserTable.CustomRoll -> E.Value

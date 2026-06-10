@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), appendCustom, categoryLabel, emptyRoll, generateCategory, removeCustom
+    , Category(..), CoinFormulas, RowSource, appendCustom, categoryLabel, emptyRoll, generateRerollCategory, removeCustom
     )
 
 {-| Treasure-roll domain.
@@ -215,6 +215,70 @@ type alias TreasureRoll =
     , art : List ArtItem
     , magic : List MagicItem
     , custom : List UserTable.CustomRoll
+    , source : Maybe RowSource
+    }
+
+
+{-| The originating SRD row's formulas, stashed alongside the
+materialised roll so per-category re-rolls can use the SAME
+dice spec as the original. Without this, "re-roll just gems"
+would pick a fresh table row and use its gems slice — which
+might be empty (if the new row has no gems) or wildly off-tier
+(50gp → 5000gp).
+
+Coin formulas are tuples `(count, faces, multiplier)`; the gem
+/ art / magic specs are `Maybe (count, faces, tier)` — `Nothing`
+means the originating row didn't include that category.
+
+`Nothing` on `TreasureRoll.source` means the roll was loaded
+from an encounter saved before this field existed; the
+re-roll path falls back to picking a fresh row in that case.
+
+-}
+type alias RowSource =
+    { coinFormulas : CoinFormulas
+    , gemsSpec : Maybe ( Int, Int, GemTier )
+    , artSpec : Maybe ( Int, Int, ArtTier )
+    , magicSpec : Maybe ( Int, Int, MagicTable )
+    }
+
+
+type alias CoinFormulas =
+    { copper : Maybe ( Int, Int, Int )
+    , silver : Maybe ( Int, Int, Int )
+    , electrum : Maybe ( Int, Int, Int )
+    , gold : Maybe ( Int, Int, Int )
+    , platinum : Maybe ( Int, Int, Int )
+    }
+
+
+sourceFromIndividual : IndividualEntry -> RowSource
+sourceFromIndividual row =
+    { coinFormulas =
+        { copper = row.copper
+        , silver = row.silver
+        , electrum = row.electrum
+        , gold = row.gold
+        , platinum = row.platinum
+        }
+    , gemsSpec = Nothing
+    , artSpec = Nothing
+    , magicSpec = Nothing
+    }
+
+
+sourceFromHoard : HoardEntry -> RowSource
+sourceFromHoard row =
+    { coinFormulas =
+        { copper = row.copper
+        , silver = row.silver
+        , electrum = row.electrum
+        , gold = row.gold
+        , platinum = row.platinum
+        }
+    , gemsSpec = row.gems
+    , artSpec = row.art
+    , magicSpec = row.magic
     }
 
 
@@ -232,6 +296,7 @@ emptyRoll kind bracket =
     , art = []
     , magic = []
     , custom = []
+    , source = Nothing
     }
 
 
@@ -313,23 +378,71 @@ generate kind bracket =
             generateHoard bracket
 
 
-{-| Re-roll a single category. Returns a fresh full
-`TreasureRoll`; the caller's update handler merges only the
-chosen category into the existing roll, leaving the other three
-untouched.
+{-| Re-roll just one category of the existing roll, using the
+ORIGINATING row's spec. Re-rolling gems uses the same
+`(count, faces, tier)` the original row gave, so the gem tier
+and count distribution stay consistent — only the specific
+stone names change.
 
-The implementation just rolls a fresh hoard (or individual) and
-lets the caller pick which slice to keep — the SRD doesn't
-factor coin / gem / art / magic rolls into independent
-sub-tables, so "re-roll just the magic" is necessarily a fresh
-draw from a fresh hoard row. In practice that gives the GM
-exactly what they want: a new flavour of that single category
-without disturbing the rest.
+Returns a partial `TreasureRoll` where only the requested
+category's slice is populated; the caller's update handler
+merges that slice into the current roll, leaving the other
+three sections untouched.
+
+Falls back to a fresh full-row generate when the current roll
+has no `source` data — encounters saved before the
+source-tracking field existed take this path so the ↻ icons
+still do something useful.
 
 -}
-generateCategory : Kind -> Bracket -> Category -> Random.Generator TreasureRoll
-generateCategory kind bracket _ =
-    generate kind bracket
+generateRerollCategory : TreasureRoll -> Category -> Random.Generator TreasureRoll
+generateRerollCategory currentRoll category =
+    case currentRoll.source of
+        Just source ->
+            generateRerollFromSource currentRoll source category
+
+        Nothing ->
+            generate currentRoll.kind currentRoll.bracket
+
+
+generateRerollFromSource :
+    TreasureRoll
+    -> RowSource
+    -> Category
+    -> Random.Generator TreasureRoll
+generateRerollFromSource currentRoll source category =
+    let
+        scaffold =
+            emptyRoll currentRoll.kind currentRoll.bracket
+    in
+    case category of
+        CoinsCategory ->
+            rollCoinsFromFormulas source.coinFormulas
+                |> Random.map (\coins -> { scaffold | coins = coins })
+
+        GemsCategory ->
+            rollGems source.gemsSpec
+                |> Random.map (\gems -> { scaffold | gems = gems })
+
+        ArtCategory ->
+            rollArt source.artSpec
+                |> Random.map (\art -> { scaffold | art = art })
+
+        MagicCategory ->
+            rollMagic source.magicSpec
+                |> Random.map (\magic -> { scaffold | magic = magic })
+
+
+rollCoinsFromFormulas : CoinFormulas -> Random.Generator Coins
+rollCoinsFromFormulas formulas =
+    rollIndividualCoins
+        { weight = 0
+        , copper = formulas.copper
+        , silver = formulas.silver
+        , electrum = formulas.electrum
+        , gold = formulas.gold
+        , platinum = formulas.platinum
+        }
 
 
 generateIndividual : Bracket -> Random.Generator TreasureRoll
@@ -350,6 +463,7 @@ generateIndividual bracket =
                         , art = []
                         , magic = []
                         , custom = []
+                        , source = Just (sourceFromIndividual row)
                         }
                     )
                     (rollIndividualCoins row)
@@ -412,6 +526,7 @@ generateHoard bracket =
                         , art = art
                         , magic = magic
                         , custom = []
+                        , source = Just (sourceFromHoard row)
                         }
                     )
                     (rollHoardCoins row)
