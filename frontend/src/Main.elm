@@ -1778,6 +1778,9 @@ updateInner msg model =
         TreasureCategoryRolled category fresh ->
             Update.Treasure.categoryRolled category fresh model
 
+        TreasureContributionsToggle ->
+            Update.Treasure.contributionsToggle model
+
         TreasureCoinRemove denomination ->
             Update.Treasure.coinRemove denomination model
 

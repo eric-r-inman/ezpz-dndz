@@ -27,6 +27,7 @@ import Encounter.Treasure as Treasure
         ( ArtItem
         , Bracket(..)
         , Coins
+        , CreatureContribution
         , GemItem
         , Kind(..)
         , MagicItem
@@ -90,8 +91,99 @@ body ui maybeRoll =
 
         Just roll ->
             resultBlock roll
+    , case maybeRoll of
+        Just roll ->
+            contributionsSection ui.contributionsExpanded roll.contributions
+
+        Nothing ->
+            text ""
     , editTableLink
     ]
+
+
+contributionsSection : Bool -> List CreatureContribution -> Html Msg
+contributionsSection expanded contributions =
+    if List.isEmpty contributions then
+        text ""
+
+    else
+        section [ class "treasure__contributions" ]
+            [ button
+                [ class
+                    ("treasure__contributions-toggle"
+                        ++ (if expanded then
+                                " treasure__contributions-toggle--open"
+
+                            else
+                                ""
+                           )
+                    )
+                , type_ "button"
+                , onClick TreasureContributionsToggle
+                , attribute "aria-expanded"
+                    (if expanded then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ span [ class "treasure__contributions-caret" ]
+                    [ text
+                        (if expanded then
+                            "▾"
+
+                         else
+                            "▸"
+                        )
+                    ]
+                , span [ class "treasure__contributions-label" ]
+                    [ text "By creature" ]
+                , span [ class "treasure__contributions-count" ]
+                    [ text (String.fromInt (List.length contributions) ++ " enemies") ]
+                ]
+            , if expanded then
+                ul [ class "treasure__contributions-list" ]
+                    (List.map contributionRow contributions)
+
+              else
+                text ""
+            ]
+
+
+contributionRow : CreatureContribution -> Html Msg
+contributionRow c =
+    li [ class "treasure__contributions-row" ]
+        [ span [ class "treasure__contributions-name" ] [ text c.creatureName ]
+        , span [ class "treasure__contributions-coins" ]
+            [ text (coinSummary c.coins) ]
+        ]
+
+
+coinSummary : Coins -> String
+coinSummary c =
+    let
+        parts =
+            [ ( c.platinum, "pp" )
+            , ( c.gold, "gp" )
+            , ( c.electrum, "ep" )
+            , ( c.silver, "sp" )
+            , ( c.copper, "cp" )
+            ]
+                |> List.filterMap
+                    (\( amount, abbrev ) ->
+                        if amount > 0 then
+                            Just (formatNumber amount ++ " " ++ abbrev)
+
+                        else
+                            Nothing
+                    )
+    in
+    if List.isEmpty parts then
+        "—"
+
+    else
+        String.join ", " parts
 
 
 editTableLink : Html Msg

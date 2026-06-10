@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
+    , Category(..), CoinFormulas, CreatureContribution, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
     )
 
 {-| Treasure-roll domain.
@@ -176,7 +176,7 @@ kindLabel : Kind -> String
 kindLabel k =
     case k of
         Individual ->
-            "Individual"
+            "Sum (all Enemies)"
 
         Hoard ->
             "Hoard"
@@ -235,6 +235,25 @@ type alias TreasureRoll =
     , art : List ArtItem
     , magic : List MagicItem
     , source : Maybe RowSource
+    , contributions : List CreatureContribution
+    }
+
+
+{-| One enemy creature's contribution to a `Sum (all Enemies)`
+roll. Each creature gets its own row in the bracket's table,
+rolls its own coin formula, and the totals are summed into
+`TreasureRoll.coins`. The per-creature breakdown surfaces in
+the modal under the "By creature" accordion so the GM can see
+who's carrying what — useful for "you defeated three of the
+five; here's what's on them" calls.
+
+Hoard rolls leave `contributions` empty since they represent
+a single shared stash rather than per-creature pockets.
+
+-}
+type alias CreatureContribution =
+    { creatureName : String
+    , coins : Coins
     }
 
 
@@ -611,12 +630,20 @@ setMagicNames magicTable names table =
 the supplied table. Callers thread `model.userTreasureTable` (or
 `bundledTable` for a fresh boot) so edits to the user's table
 take effect immediately on the next roll.
+
+`enemyNames` is the list of non-PC, non-placeholder creature
+names tagged as enemies in the current encounter. Individual
+rolls (now relabeled "Sum (all Enemies)") roll the bracket's
+table ONCE PER ENEMY and sum the coins, so adding three more
+kobolds tripled the take. Hoard rolls ignore the list — a
+single shared stash doesn't scale with party size.
+
 -}
-generate : Kind -> Bracket -> TreasureTable -> Random.Generator TreasureRoll
-generate kind bracket table =
+generate : Kind -> Bracket -> TreasureTable -> List String -> Random.Generator TreasureRoll
+generate kind bracket table enemyNames =
     case kind of
         Individual ->
-            generateIndividual bracket table
+            generateIndividualSum bracket table enemyNames
 
         Hoard ->
             generateHoard bracket table
@@ -639,14 +666,19 @@ source-tracking field existed take this path so the ↻ icons
 still do something useful.
 
 -}
-generateRerollCategory : TreasureTable -> TreasureRoll -> Category -> Random.Generator TreasureRoll
-generateRerollCategory table currentRoll category =
+generateRerollCategory :
+    TreasureTable
+    -> List String
+    -> TreasureRoll
+    -> Category
+    -> Random.Generator TreasureRoll
+generateRerollCategory table enemyNames currentRoll category =
     case currentRoll.source of
         Just source ->
             generateRerollFromSource table currentRoll source category
 
         Nothing ->
-            generate currentRoll.kind currentRoll.bracket table
+            generate currentRoll.kind currentRoll.bracket table enemyNames
 
 
 generateRerollFromSource :
@@ -690,6 +722,7 @@ emptyRollFor kind bracket =
     , art = []
     , magic = []
     , source = Nothing
+    , contributions = []
     }
 
 
@@ -705,28 +738,89 @@ rollCoinsFromFormulas formulas =
         }
 
 
-generateIndividual : Bracket -> TreasureTable -> Random.Generator TreasureRoll
-generateIndividual bracket table =
+{-| Sum-of-enemies Individual roll. Rolls the bracket's
+individual table independently for each enemy name in
+`enemyNames`, sums the coins, and exposes the per-creature
+breakdown through `TreasureRoll.contributions` so the modal
+can show who's carrying what.
+
+`source = Nothing` because the sum draws from many rows; a
+per-category re-roll can't faithfully use the "same spec"
+trick, so it falls back to a fresh full sum (which is what
+the GM almost certainly wants anyway).
+
+Empty `enemyNames` yields a zero-coin roll — no enemies in
+the encounter, no pockets to loot.
+
+-}
+generateIndividualSum :
+    Bracket
+    -> TreasureTable
+    -> List String
+    -> Random.Generator TreasureRoll
+generateIndividualSum bracket table enemyNames =
     let
         rows =
             individualRowsFor bracket table
     in
+    sequenceList (List.map (rollOneEnemy rows) enemyNames)
+        |> Random.map
+            (\contributions ->
+                { kind = Individual
+                , bracket = bracket
+                , coins = sumContributions contributions
+                , gems = []
+                , art = []
+                , magic = []
+                , source = Nothing
+                , contributions = contributions
+                }
+            )
+
+
+rollOneEnemy : List IndividualEntry -> String -> Random.Generator CreatureContribution
+rollOneEnemy rows name =
     weightedPick rows emptyIndividualRow
         |> Random.andThen
             (\row ->
-                Random.map
-                    (\coins ->
-                        { kind = Individual
-                        , bracket = bracket
-                        , coins = coins
-                        , gems = []
-                        , art = []
-                        , magic = []
-                        , source = Just (sourceFromIndividual row)
-                        }
-                    )
-                    (rollIndividualCoins row)
+                rollIndividualCoins row
+                    |> Random.map
+                        (\coins ->
+                            { creatureName = name
+                            , coins = coins
+                            }
+                        )
             )
+
+
+sumContributions : List CreatureContribution -> Coins
+sumContributions =
+    List.foldl (\c acc -> addCoins acc c.coins) emptyCoins
+
+
+addCoins : Coins -> Coins -> Coins
+addCoins a b =
+    { copper = a.copper + b.copper
+    , silver = a.silver + b.silver
+    , electrum = a.electrum + b.electrum
+    , gold = a.gold + b.gold
+    , platinum = a.platinum + b.platinum
+    }
+
+
+sequenceList : List (Random.Generator a) -> Random.Generator (List a)
+sequenceList gens =
+    case gens of
+        [] ->
+            Random.constant []
+
+        head :: rest ->
+            head
+                |> Random.andThen
+                    (\h ->
+                        sequenceList rest
+                            |> Random.map (\tail -> h :: tail)
+                    )
 
 
 emptyIndividualRow : IndividualEntry
@@ -785,6 +879,7 @@ generateHoard bracket table =
                         , art = art
                         , magic = magic
                         , source = Just (sourceFromHoard row)
+                        , contributions = []
                         }
                     )
                     (rollHoardCoins row)

@@ -24,6 +24,7 @@ import Encounter.Treasure exposing (Bracket, Kind)
 type alias TreasureUi =
     { kind : Kind
     , bracket : Bracket
+    , contributionsExpanded : Bool
     }
 
 
@@ -31,9 +32,16 @@ type alias TreasureUi =
 suggested bracket from the encounter and passes it in; the kind
 defaults to Hoard because the GM almost always wants the
 itemised version when they reach for this tool.
+
+`contributionsExpanded` defaults to `True` so the
+per-creature breakdown for a Sum (all Enemies) roll is visible
+without an extra click — that's the data the GM actually wants
+to see when the encounter wraps.
+
 -}
 fresh : Bracket -> TreasureUi
 fresh bracket =
     { kind = Encounter.Treasure.Hoard
     , bracket = bracket
+    , contributionsExpanded = True
     }

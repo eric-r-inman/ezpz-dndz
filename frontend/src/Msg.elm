@@ -1029,6 +1029,9 @@ type Msg
       -- rest of the loot is keepers.
     | TreasureRerollCategory Encounter.Treasure.Category
     | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
+      -- Collapse / expand the "By creature" breakdown that
+      -- accompanies a Sum (all Enemies) roll.
+    | TreasureContributionsToggle
       -- Per-row delete.  The × button on each rolled treasure
       -- item removes just that item from the encounter's roll
       -- (gem/art/magic by index; coin denomination by wire

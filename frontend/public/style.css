@@ -2053,6 +2053,81 @@ body {
 
 /* ── Custom rows (rolled from user-authored tables) ──────────────── */
 
+/* ── Sum (all Enemies): per-creature contributions accordion ─────── */
+
+.treasure__contributions {
+  margin-top: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.treasure__contributions-toggle {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.treasure__contributions-toggle:hover,
+.treasure__contributions-toggle:focus-visible {
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure__contributions-toggle--open {
+  background: var(--color-surface-2, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.treasure__contributions-caret {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.treasure__contributions-label {
+  font-weight: 600;
+}
+
+.treasure__contributions-count {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure__contributions-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.treasure__contributions-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.treasure__contributions-name {
+  color: var(--color-text);
+}
+
+.treasure__contributions-coins {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Main Treasure modal: "Edit treasure table…" link ────────────── */
 
 .treasure__edit-table-row {

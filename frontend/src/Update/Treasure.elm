@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet, bracketSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , artRemove, coinRemove, gemRemove, magicRemove
+    , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -54,6 +54,15 @@ open model =
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( { model | modal = Nothing }, Cmd.none )
+
+
+contributionsToggle : Model -> ( Model, Cmd Msg )
+contributionsToggle model =
+    ( Model.mapModal Model.treasureLens
+        (\ui -> { ui | contributionsExpanded = not ui.contributionsExpanded })
+        model
+    , Cmd.none
+    )
 
 
 {-| Resolve CR floats from the encounter's creatures + the
@@ -140,7 +149,7 @@ roll model =
         Just (Model.ModalTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
-                (Treasure.generate ui.kind ui.bracket (activeTable model))
+                (Treasure.generate ui.kind ui.bracket (activeTable model) (enemyNames model))
             )
 
         _ ->
@@ -154,6 +163,19 @@ here so all the per-category / re-roll handlers stay in sync.
 activeTable : Model -> Treasure.TreasureTable
 activeTable model =
     Maybe.withDefault Treasure.bundledTable model.userTreasureTable
+
+
+{-| The list of creature names eligible for a "Sum (all
+Enemies)" Individual roll: any creature tagged `creatureKind ==
+"enemy"` that isn't a placeholder slot. Placeholders have no
+treasure to roll for; PCs and allies aren't getting their
+pockets emptied either.
+-}
+enemyNames : Model -> List String
+enemyNames model =
+    model.encounter.creatures
+        |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
+        |> List.map .name
 
 
 {-| Materialised roll landed — save it onto the encounter.
@@ -188,7 +210,12 @@ rerollCategory category model =
         Just currentRoll ->
             ( model
             , Random.generate (TreasureCategoryRolled category)
-                (Treasure.generateRerollCategory (activeTable model) currentRoll category)
+                (Treasure.generateRerollCategory
+                    (activeTable model)
+                    (enemyNames model)
+                    currentRoll
+                    category
+                )
             )
 
         Nothing ->

@@ -256,13 +256,14 @@ encodeTreasureRoll roll =
         , ( "art", E.list encodeArtItem roll.art )
         , ( "magic", E.list encodeMagicItem roll.magic )
         , ( "source", encodeMaybe encodeRowSource roll.source )
+        , ( "contributions", E.list encodeContribution roll.contributions )
         ]
 
 
 decodeTreasureRoll : D.Decoder Encounter.Treasure.TreasureRoll
 decodeTreasureRoll =
-    D.map7
-        (\kind bracket coins gems art magic source ->
+    D.map8
+        (\kind bracket coins gems art magic source contributions ->
             { kind = kind
             , bracket = bracket
             , coins = coins
@@ -270,6 +271,7 @@ decodeTreasureRoll =
             , art = art
             , magic = magic
             , source = source
+            , contributions = contributions
             }
         )
         (D.field "kind" treasureKindDecoder)
@@ -288,6 +290,28 @@ decodeTreasureRoll =
             , D.succeed Nothing
             ]
         )
+        -- Pre-sum rolls (saved before the per-creature
+        -- contributions breakdown landed) decode as `[]`.
+        (D.oneOf
+            [ D.field "contributions" (D.list decodeContribution)
+            , D.succeed []
+            ]
+        )
+
+
+encodeContribution : Encounter.Treasure.CreatureContribution -> E.Value
+encodeContribution c =
+    E.object
+        [ ( "creatureName", E.string c.creatureName )
+        , ( "coins", encodeCoins c.coins )
+        ]
+
+
+decodeContribution : D.Decoder Encounter.Treasure.CreatureContribution
+decodeContribution =
+    D.map2 Encounter.Treasure.CreatureContribution
+        (D.field "creatureName" D.string)
+        (D.field "coins" decodeCoins)
 
 
 encodeRowSource : Encounter.Treasure.RowSource -> E.Value
