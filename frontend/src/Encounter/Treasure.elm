@@ -914,24 +914,131 @@ generateHoard bracket table =
     in
     weightedPick rows emptyHoardRow
         |> Random.andThen
-            (\row ->
-                Random.map4
-                    (\coins gems art magic ->
-                        { kind = Hoard
-                        , bracket = bracket
-                        , coins = coins
-                        , gems = gems
-                        , art = art
-                        , magic = magic
-                        , source = Just (sourceFromHoard row)
-                        , contributions = []
-                        }
-                    )
-                    (rollHoardCoins row)
-                    (rollGems table row.gems)
-                    (rollArt table row.art)
-                    (rollMagic table row.magic)
+            (\primary ->
+                resolveHoardSpecs primary rows
+                    |> Random.andThen (rollHoardWithSpecs bracket table primary)
             )
+
+
+{-| Resolved gem / art / magic specs for one hoard roll.
+
+The primary weighted-pick row supplies coins (always) and
+magic (when present). For gems and art the SRD rows pick one
+or the other on any given row, never both — so when the
+primary row gives a gems spec but no art spec (or vice versa),
+this resolver samples the missing category from a weighted
+pick of rows that have it. End result: a single hoard roll
+can give you both gems AND art, instead of one or the other.
+
+Edge cases:
+
+  - Primary has both gems + art (rare in bundled data, possible
+    after user edits): use both as-is.
+  - Primary has neither: leave both empty — a "coins + maybe
+    magic" row is still SRD-faithful.
+  - The bracket has no rows of the missing category at all:
+    can't sample, so it stays empty.
+
+-}
+resolveHoardSpecs : HoardEntry -> List HoardEntry -> Random.Generator HoardSpecs
+resolveHoardSpecs primary rows =
+    let
+        gemsGen =
+            case ( primary.gems, primary.art ) of
+                ( Just _, _ ) ->
+                    Random.constant primary.gems
+
+                ( Nothing, Just _ ) ->
+                    sampleField .gems rows
+
+                ( Nothing, Nothing ) ->
+                    Random.constant Nothing
+
+        artGen =
+            case ( primary.art, primary.gems ) of
+                ( Just _, _ ) ->
+                    Random.constant primary.art
+
+                ( Nothing, Just _ ) ->
+                    sampleField .art rows
+
+                ( Nothing, Nothing ) ->
+                    Random.constant Nothing
+    in
+    Random.map2
+        (\gemsSpec artSpec ->
+            { gemsSpec = gemsSpec
+            , artSpec = artSpec
+            , magicSpec = primary.magic
+            }
+        )
+        gemsGen
+        artGen
+
+
+type alias HoardSpecs =
+    { gemsSpec : Maybe ( Int, Int, GemTier )
+    , artSpec : Maybe ( Int, Int, ArtTier )
+    , magicSpec : Maybe ( Int, Int, MagicTable )
+    }
+
+
+{-| Weighted-pick a row whose `field` is non-Nothing, then take
+that row's `field` value. Falls back to `Nothing` when no row
+has the field set.
+-}
+sampleField :
+    (HoardEntry -> Maybe a)
+    -> List HoardEntry
+    -> Random.Generator (Maybe a)
+sampleField field rows =
+    let
+        eligible =
+            List.filter (\r -> field r /= Nothing) rows
+    in
+    case eligible of
+        [] ->
+            Random.constant Nothing
+
+        _ ->
+            weightedPick eligible emptyHoardRow |> Random.map field
+
+
+rollHoardWithSpecs :
+    Bracket
+    -> TreasureTable
+    -> HoardEntry
+    -> HoardSpecs
+    -> Random.Generator TreasureRoll
+rollHoardWithSpecs bracket table primary specs =
+    Random.map4
+        (\coins gems art magic ->
+            { kind = Hoard
+            , bracket = bracket
+            , coins = coins
+            , gems = gems
+            , art = art
+            , magic = magic
+            , source =
+                Just
+                    { coinFormulas =
+                        { copper = primary.copper
+                        , silver = primary.silver
+                        , electrum = primary.electrum
+                        , gold = primary.gold
+                        , platinum = primary.platinum
+                        }
+                    , gemsSpec = specs.gemsSpec
+                    , artSpec = specs.artSpec
+                    , magicSpec = specs.magicSpec
+                    }
+            , contributions = []
+            }
+        )
+        (rollHoardCoins primary)
+        (rollGems table specs.gemsSpec)
+        (rollArt table specs.artSpec)
+        (rollMagic table specs.magicSpec)
 
 
 emptyHoardRow : HoardEntry
