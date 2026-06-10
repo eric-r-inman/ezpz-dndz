@@ -254,6 +254,7 @@ a single shared stash rather than per-creature pockets.
 type alias CreatureContribution =
     { creatureName : String
     , coins : Coins
+    , gems : List GemItem
     , bracket : Bracket
     }
 
@@ -790,7 +791,7 @@ generateIndividualSum table enemies =
                 { kind = Individual
                 , bracket = highestContributionBracket contributions
                 , coins = sumContributions contributions
-                , gems = []
+                , gems = List.concatMap .gems contributions
                 , art = []
                 , magic = []
                 , source = Nothing
@@ -809,13 +810,117 @@ rollOneEnemy table enemy =
         |> Random.andThen
             (\row ->
                 rollIndividualCoins row
-                    |> Random.map
-                        (\coins ->
-                            { creatureName = enemy.name
-                            , coins = coins
-                            , bracket = enemy.bracket
-                            }
-                        )
+                    |> Random.andThen (maybeConvertGoldToGem table enemy)
+            )
+
+
+{-| Per-creature post-process: with some probability, swap some
+of the rolled gold for a bracket-appropriate gem of equal value.
+Models the SRD-isn't-very-explicit reality that creatures
+carry pocket gems alongside their coin, without inflating the
+encounter's total expected treasure value (the gem replaces gp
+1-for-1).
+
+Conversion only triggers when the creature has enough gold to
+pay for the gem outright, so total value is exactly preserved.
+Probability + tier pool are tuned to keep gems uncommon but
+not vanishingly rare at the bracket's typical loot scale.
+
+-}
+maybeConvertGoldToGem :
+    TreasureTable
+    -> EnemyInfo
+    -> Coins
+    -> Random.Generator CreatureContribution
+maybeConvertGoldToGem table enemy coins =
+    let
+        affordableTiers =
+            individualGemTiers enemy.bracket
+                |> List.filter (\t -> coins.gold >= Tables.gemTierValue t)
+
+        baseContribution =
+            { creatureName = enemy.name
+            , coins = coins
+            , gems = []
+            , bracket = enemy.bracket
+            }
+    in
+    case affordableTiers of
+        [] ->
+            Random.constant baseContribution
+
+        first :: rest ->
+            Random.weighted ( 70, False ) [ ( 30, True ) ]
+                |> Random.andThen
+                    (\shouldConvert ->
+                        if shouldConvert then
+                            convertOneGem table baseContribution first rest
+
+                        else
+                            Random.constant baseContribution
+                    )
+
+
+{-| Bracket-appropriate gem tiers for an individual-loot
+conversion. Caps below the bracket's hoard-tier ceilings on
+purpose — pocket gems shouldn't rival the lair stash.
+-}
+individualGemTiers : Bracket -> List GemTier
+individualGemTiers bracket =
+    case bracket of
+        B1to4 ->
+            [ Tables.Gem10gp, Tables.Gem50gp ]
+
+        B5to10 ->
+            [ Tables.Gem10gp, Tables.Gem50gp, Tables.Gem100gp ]
+
+        B11to16 ->
+            [ Tables.Gem100gp, Tables.Gem500gp ]
+
+        B17plus ->
+            [ Tables.Gem500gp, Tables.Gem1000gp ]
+
+
+convertOneGem :
+    TreasureTable
+    -> CreatureContribution
+    -> GemTier
+    -> List GemTier
+    -> Random.Generator CreatureContribution
+convertOneGem table contribution firstTier restTiers =
+    Random.uniform firstTier restTiers
+        |> Random.andThen
+            (\tier ->
+                let
+                    tierValue =
+                        Tables.gemTierValue tier
+
+                    names =
+                        gemNamesFor tier table
+                in
+                case names of
+                    [] ->
+                        Random.constant contribution
+
+                    n :: ns ->
+                        Random.uniform n ns
+                            |> Random.map
+                                (\name ->
+                                    let
+                                        gem =
+                                            { name = name, valueGp = tierValue }
+
+                                        coins =
+                                            contribution.coins
+
+                                        reducedCoins =
+                                            { coins | gold = coins.gold - tierValue }
+                                    in
+                                    { contribution
+                                        | coins = reducedCoins
+                                        , gems = [ gem ]
+                                    }
+                                )
             )
 
 

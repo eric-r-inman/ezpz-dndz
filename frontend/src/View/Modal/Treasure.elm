@@ -160,8 +160,26 @@ contributionRow c =
                 [ text (" — " ++ Treasure.bracketLabel c.bracket) ]
             ]
         , span [ class "treasure__contributions-coins" ]
-            [ text (coinSummary c.coins) ]
+            [ text (contributionSummary c) ]
         ]
+
+
+contributionSummary : CreatureContribution -> String
+contributionSummary c =
+    let
+        gemPart =
+            if List.isEmpty c.gems then
+                ""
+
+            else
+                " + " ++ String.join ", " (List.map gemLabel c.gems)
+    in
+    coinSummary c.coins ++ gemPart
+
+
+gemLabel : GemItem -> String
+gemLabel g =
+    g.name ++ " (" ++ String.fromInt g.valueGp ++ " gp)"
 
 
 coinSummary : Coins -> String

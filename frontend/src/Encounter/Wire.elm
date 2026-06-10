@@ -304,15 +304,28 @@ encodeContribution c =
     E.object
         [ ( "creatureName", E.string c.creatureName )
         , ( "coins", encodeCoins c.coins )
+        , ( "gems", E.list encodeGemItem c.gems )
         , ( "bracket", E.string (treasureBracketWire c.bracket) )
         ]
 
 
 decodeContribution : D.Decoder Encounter.Treasure.CreatureContribution
 decodeContribution =
-    D.map3 Encounter.Treasure.CreatureContribution
+    D.map4
+        (\creatureName coins gems bracket ->
+            { creatureName = creatureName
+            , coins = coins
+            , gems = gems
+            , bracket = bracket
+            }
+        )
         (D.field "creatureName" D.string)
         (D.field "coins" decodeCoins)
+        (D.oneOf
+            [ D.field "gems" (D.list decodeGemItem)
+            , D.succeed []
+            ]
+        )
         (D.oneOf
             [ D.field "bracket" treasureBracketDecoder
             , D.succeed Encounter.Treasure.B1to4
