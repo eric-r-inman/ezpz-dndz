@@ -1770,21 +1770,6 @@ updateInner msg model =
         TreasureRolled treasureRoll ->
             Update.Treasure.rolled treasureRoll model
 
-        TreasureToggleDistributed slug ->
-            Update.Treasure.toggleDistributed slug model
-
-        TreasureRecipientChanged slug name ->
-            Update.Treasure.recipientChanged slug name model
-
-        TreasureRerollRequest ->
-            Update.Treasure.rerollRequest model
-
-        TreasureRerollConfirm ->
-            Update.Treasure.rerollConfirm model
-
-        TreasureRerollCancel ->
-            Update.Treasure.rerollCancel model
-
         TreasureRerollCategory category ->
             Update.Treasure.rerollCategory category model
 

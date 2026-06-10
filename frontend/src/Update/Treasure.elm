@@ -2,9 +2,7 @@ module Update.Treasure exposing
     ( open, close
     , kindSet, bracketSet
     , roll, rolled
-    , toggleDistributed
-    , rerollRequest, rerollConfirm, rerollCancel
-    , categoryRolled, recipientChanged, rerollCategory
+    , categoryRolled, rerollCategory
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -13,12 +11,8 @@ The modal owns:
 
   - The dropdown selections (Kind + Bracket), which live on
     `Ui.Treasure.TreasureUi`.
-  - The re-roll confirmation flag, also on `TreasureUi`.
   - A pure handler that fires the random `Generator` and lands
     the result into `model.encounter.treasure`.
-  - Per-row "mark distributed" toggling, which mutates the
-    `distributed : Set String` carried in
-    `Encounter.TreasureState`.
 
 The treasure result persists with the encounter (it's a field on
 `Encounter`), so the standard `persistEncounterCmd` hook in the
@@ -28,13 +22,11 @@ without anything extra from this module.
 @docs open, close
 @docs kindSet, bracketSet
 @docs roll, rolled
-@docs toggleDistributed
-@docs rerollRequest, rerollConfirm, rerollCancel
+@docs categoryRolled, rerollCategory
 
 -}
 
 import Compendium
-import Dict exposing (Dict)
 import Encounter.Treasure as Treasure exposing (Bracket)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
@@ -153,117 +145,15 @@ roll model =
             ( model, Cmd.none )
 
 
-{-| Materialised roll landed — save it onto the encounter and
-clear the re-roll confirmation banner if it was open.
+{-| Materialised roll landed — save it onto the encounter.
 -}
 rolled : Treasure.TreasureRoll -> Model -> ( Model, Cmd Msg )
 rolled treasureRoll model =
     let
         encounter =
             model.encounter
-
-        nextState =
-            { roll = treasureRoll
-            , recipients = Dict.empty
-            }
-
-        withTreasure =
-            { model | encounter = { encounter | treasure = Just nextState } }
     in
-    ( Model.mapModal Model.treasureLens
-        (\ui -> { ui | confirmingRereroll = False })
-        withTreasure
-    , Cmd.none
-    )
-
-
-{-| Flip the per-row distributed flag. `slug` identifies the
-row uniquely ("coins", "gem:0", "art:3", "magic:1"). Toggling
-on adds the slug to `recipients` with an empty string value;
-toggling off drops the key (and any recipient name with it).
--}
-toggleDistributed : String -> Model -> ( Model, Cmd Msg )
-toggleDistributed slug model =
-    updateRecipients model
-        (\recipients ->
-            if Dict.member slug recipients then
-                Dict.remove slug recipients
-
-            else
-                Dict.insert slug "" recipients
-        )
-
-
-{-| Set the recipient name for one row. Implicitly marks the row
-distributed if it wasn't already — typing a name shouldn't
-require also checking a box. Empty string is allowed (the GM
-can clear the name without un-distributing); to fully un-mark
-the row, the GM unchecks the distributed checkbox.
--}
-recipientChanged : String -> String -> Model -> ( Model, Cmd Msg )
-recipientChanged slug name model =
-    updateRecipients model (Dict.insert slug name)
-
-
-updateRecipients :
-    Model
-    -> (Dict String String -> Dict String String)
-    -> ( Model, Cmd Msg )
-updateRecipients model fn =
-    let
-        encounter =
-            model.encounter
-    in
-    case encounter.treasure of
-        Just state ->
-            let
-                nextState =
-                    { state | recipients = fn state.recipients }
-            in
-            ( { model | encounter = { encounter | treasure = Just nextState } }
-            , Cmd.none
-            )
-
-        Nothing ->
-            ( model, Cmd.none )
-
-
-{-| Re-roll button clicked. If the existing roll has anything
-marked distributed, show a confirm banner before discarding it.
-Otherwise re-roll immediately.
--}
-rerollRequest : Model -> ( Model, Cmd Msg )
-rerollRequest model =
-    let
-        hasDistributed =
-            case model.encounter.treasure of
-                Just state ->
-                    not (Dict.isEmpty state.recipients)
-
-                Nothing ->
-                    False
-    in
-    if hasDistributed then
-        ( Model.mapModal Model.treasureLens
-            (\ui -> { ui | confirmingRereroll = True })
-            model
-        , Cmd.none
-        )
-
-    else
-        roll model
-
-
-rerollConfirm : Model -> ( Model, Cmd Msg )
-rerollConfirm model =
-    roll model
-
-
-rerollCancel : Model -> ( Model, Cmd Msg )
-rerollCancel model =
-    ( Model.mapModal Model.treasureLens
-        (\ui -> { ui | confirmingRereroll = False })
-        model
+    ( { model | encounter = { encounter | treasure = Just treasureRoll } }
     , Cmd.none
     )
 
@@ -287,10 +177,8 @@ rerollCategory category model =
 
 
 {-| Materialised single-category re-roll landed. Replace only
-the chosen category's data on the existing `TreasureState`
-(merging slices from a fresh full roll), and drop the
-distributed marks for the replaced rows so the GM doesn't see
-stale checkmarks on freshly-rolled items.
+the chosen category's data on the existing `TreasureRoll`,
+leaving the other categories untouched.
 -}
 categoryRolled :
     Treasure.Category
@@ -302,50 +190,25 @@ categoryRolled category fresh model =
         Nothing ->
             ( model, Cmd.none )
 
-        Just state ->
+        Just existing ->
             let
-                existing =
-                    state.roll
-
-                ( nextRoll, droppedSlugPrefix ) =
+                nextRoll =
                     case category of
                         Treasure.CoinsCategory ->
-                            ( { existing | coins = fresh.coins }
-                            , "coins"
-                            )
+                            { existing | coins = fresh.coins }
 
                         Treasure.GemsCategory ->
-                            ( { existing | gems = fresh.gems }
-                            , "gem:"
-                            )
+                            { existing | gems = fresh.gems }
 
                         Treasure.ArtCategory ->
-                            ( { existing | art = fresh.art }
-                            , "art:"
-                            )
+                            { existing | art = fresh.art }
 
                         Treasure.MagicCategory ->
-                            ( { existing | magic = fresh.magic }
-                            , "magic:"
-                            )
-
-                nextRecipients =
-                    Dict.filter
-                        (\slug _ ->
-                            if droppedSlugPrefix == "coins" then
-                                slug /= "coins"
-
-                            else
-                                not (String.startsWith droppedSlugPrefix slug)
-                        )
-                        state.recipients
-
-                nextState =
-                    { roll = nextRoll, recipients = nextRecipients }
+                            { existing | magic = fresh.magic }
 
                 encounter =
                     model.encounter
             in
-            ( { model | encounter = { encounter | treasure = Just nextState } }
+            ( { model | encounter = { encounter | treasure = Just nextRoll } }
             , Cmd.none
             )

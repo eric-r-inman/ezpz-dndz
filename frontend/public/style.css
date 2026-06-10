@@ -1889,10 +1889,6 @@ body {
   border-top: 1px solid var(--color-border);
 }
 
-.treasure__section--distributed {
-  opacity: 0.55;
-}
-
 .treasure__section-header {
   display: flex;
   align-items: center;
@@ -1974,15 +1970,10 @@ body {
 
 .treasure__row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 10px;
   padding: 4px 0;
-}
-
-.treasure__row--distributed {
-  opacity: 0.5;
-  text-decoration: line-through;
 }
 
 .treasure__row-name {
@@ -2032,76 +2023,6 @@ body {
   background: rgba(214, 59, 59, 0.15);
   border-color: rgba(214, 59, 59, 0.55);
   color: #b71c1c;
-}
-
-.treasure__distributed {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  user-select: none;
-}
-
-.treasure__distributed input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
-}
-
-.treasure__distributed-text {
-  min-width: 52px;
-}
-
-.treasure__distribute-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.treasure__recipient {
-  width: 110px;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.82rem;
-}
-
-.treasure__recipient:focus-visible {
-  border-color: var(--color-accent, #4a90e2);
-  outline: none;
-}
-
-.treasure__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
-}
-
-.treasure__footer-summary {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-}
-
-.treasure__confirm {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  margin-top: 8px;
-  background: rgba(214, 59, 59, 0.1);
-  border: 1px solid rgba(214, 59, 59, 0.4);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-}
-
-.treasure__confirm-msg {
-  flex: 1 1 auto;
 }
 
 /* ── Custom rows (rolled from user-authored tables) ──────────────── */

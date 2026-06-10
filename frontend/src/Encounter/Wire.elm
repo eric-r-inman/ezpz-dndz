@@ -225,42 +225,26 @@ encodeEncounter enc =
         [ ( "creatures", E.list encodeCreature enc.creatures )
         , ( "activeName", E.string enc.activeName )
         , ( "round", E.int enc.round )
-        , ( "treasure", encodeMaybe encodeTreasureState enc.treasure )
+        , ( "treasure", encodeMaybe encodeTreasureRoll enc.treasure )
         ]
 
 
-encodeTreasureState : Encounter.TreasureState -> E.Value
-encodeTreasureState state =
-    E.object
-        [ ( "roll", encodeTreasureRoll state.roll )
-        , ( "recipients"
-          , E.object
-                (Dict.toList state.recipients
-                    |> List.map (\( k, v ) -> ( k, E.string v ))
-                )
-          )
+{-| Decode the encounter's `treasure` field. Accepts two shapes
+so saved encounters from earlier builds still load:
+
+  - Current: the raw `TreasureRoll` JSON.
+  - Legacy: `{ "roll": TreasureRoll, "recipients": {...} }` or
+    `{ "roll": ..., "distributed": [...] }` — the old wrapper
+    shape from the now-removed party-loot-ledger feature. We
+    just unwrap to the inner `roll` and drop the recipient data.
+
+-}
+decodeTreasureField : D.Decoder Encounter.Treasure.TreasureRoll
+decodeTreasureField =
+    D.oneOf
+        [ D.field "roll" decodeTreasureRoll
+        , decodeTreasureRoll
         ]
-
-
-decodeTreasureState : D.Decoder Encounter.TreasureState
-decodeTreasureState =
-    -- Two wire shapes to accept:
-    --   `{ roll, recipients: { slug: name } }` — current
-    --   `{ roll, distributed: [slug] }`        — pre-recipients
-    --                                            (decodes to a
-    --                                            map where every
-    --                                            value is "").
-    D.map2 Encounter.TreasureState
-        (D.field "roll" decodeTreasureRoll)
-        (D.oneOf
-            [ D.field "recipients" (D.dict D.string)
-            , D.field "distributed"
-                (D.list D.string
-                    |> D.map (List.map (\s -> ( s, "" )) >> Dict.fromList)
-                )
-            , D.succeed Dict.empty
-            ]
-        )
 
 
 encodeTreasureRoll : Encounter.Treasure.TreasureRoll -> E.Value
@@ -860,7 +844,7 @@ decodeEncounter =
         (D.field "activeName" D.string)
         (D.field "round" D.int)
         (D.oneOf
-            [ D.field "treasure" (D.nullable decodeTreasureState)
+            [ D.field "treasure" (D.nullable decodeTreasureField)
             , D.succeed Nothing
             ]
         )

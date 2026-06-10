@@ -10,17 +10,11 @@ The user-facing flow:
     suggested from the encounter's toughest creature).
   - Hit Roll — the generator produces a `TreasureRoll` which is
     stored on the encounter so subsequent re-opens show the
-    same loot.
-  - Toggle the "distributed" checkmark per row as the GM hands
-    out the spoils.
-  - Hit Re-roll to dump the current loot and roll a fresh batch
-    — the modal warns first if anything's been marked
-    distributed, because re-rolling discards the existing list.
+    same loot. Hitting Roll again replaces it with a fresh draw.
 
-This record carries only the modal's UI state (the dropdown
-selections and the re-roll-confirmation flag). The actual
-treasure data lives on
-`model.encounter.treasure : Maybe Encounter.TreasureState`.
+This record carries only the modal's UI state (the two
+dropdown selections). The actual treasure data lives on
+`model.encounter.treasure : Maybe TreasureRoll`.
 
 -}
 
@@ -30,7 +24,6 @@ import Encounter.Treasure exposing (Bracket, Kind)
 type alias TreasureUi =
     { kind : Kind
     , bracket : Bracket
-    , confirmingRereroll : Bool
     }
 
 
@@ -43,5 +36,4 @@ fresh : Bracket -> TreasureUi
 fresh bracket =
     { kind = Encounter.Treasure.Hoard
     , bracket = bracket
-    , confirmingRereroll = False
     }

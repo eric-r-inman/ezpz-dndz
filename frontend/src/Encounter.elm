@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, TreasureState, rosterDirty
+    , RechargeAbility, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -90,7 +90,6 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 -- IMPORTS
 
-import Dict exposing (Dict)
 import Encounter.DeathSaves
 import Encounter.SaveNotice
 import Encounter.Treasure
@@ -451,28 +450,7 @@ type alias Encounter =
     { creatures : List Creature
     , activeName : String
     , round : Int
-    , treasure : Maybe TreasureState
-    }
-
-
-{-| Loot the GM rolled for this encounter, plus the per-row
-"given to" recipients so the modal can show who walked off with
-what. `Nothing` means the GM hasn't opened the treasure modal
-yet; rolling once populates this and subsequent opens of the
-modal show the same loot.
-
-`recipients` is a dict keyed by opaque row slugs (`"coins"`,
-`"gem:0"`, `"art:2"`, `"magic:1"`) → recipient name. A row is
-"distributed" iff its slug is a key. The value is the GM-
-supplied recipient name; empty string means "given out but
-unassigned" (e.g. "we agreed to sell this and split the gold
-later"). Re-roll workflows clear keys for the replaced
-category.
-
--}
-type alias TreasureState =
-    { roll : Encounter.Treasure.TreasureRoll
-    , recipients : Dict String String
+    , treasure : Maybe Encounter.Treasure.TreasureRoll
     }
 
 

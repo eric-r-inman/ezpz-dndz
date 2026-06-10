@@ -1024,25 +1024,10 @@ type Msg
       -- TreasureRoll.  Saved straight into the encounter, which
       -- triggers the standard persist hook.
     | TreasureRolled Encounter.Treasure.TreasureRoll
-      -- Per-row distributed checkbox.  Slug identifies the row:
-      -- "coins", "gem:<idx>", "art:<idx>", or "magic:<idx>".
-    | TreasureToggleDistributed String
-      -- Per-row recipient name.  Setting a non-empty name
-      -- implicitly marks the row distributed; clearing it does
-      -- NOT undistribute (the checkbox is the binary toggle).
-    | TreasureRecipientChanged String String
-      -- Re-roll workflow: first click asks for confirmation if
-      -- any row is already marked distributed (avoid clobbering
-      -- ledger state).
-    | TreasureRerollRequest
-    | TreasureRerollConfirm
-    | TreasureRerollCancel
       -- Per-category re-roll: dump just one slice of the loot
       -- (coins, gems, art, magic) and roll a fresh draw for it.
       -- Useful when the magic item came up off-theme but the
-      -- rest of the loot is keepers.  Distributed marks on the
-      -- replaced category get dropped; other categories' marks
-      -- stay put.
+      -- rest of the loot is keepers.
     | TreasureRerollCategory Encounter.Treasure.Category
     | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
       -- User-authored treasure tables.  The boot fetch lands in

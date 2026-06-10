@@ -39,7 +39,6 @@ whose result is [`customRolled`](#customRolled).
 
 -}
 
-import Dict
 import Encounter.Treasure as Treasure
 import Encounter.Treasure.Tables exposing (Rarity(..))
 import Encounter.Treasure.UserTable as UserTable exposing (Entry)
@@ -326,23 +325,18 @@ customRolled result model =
                 encounter =
                     model.encounter
 
-                ( baseRoll, baseRecipients ) =
+                baseRoll =
                     case encounter.treasure of
-                        Just state ->
-                            ( state.roll, state.recipients )
+                        Just existing ->
+                            existing
 
                         Nothing ->
-                            ( Treasure.emptyRoll Treasure.Hoard Treasure.B1to4
-                            , Dict.empty
-                            )
+                            Treasure.emptyRoll Treasure.Hoard Treasure.B1to4
 
                 nextRoll =
                     Treasure.appendCustom row baseRoll
-
-                nextState =
-                    { roll = nextRoll, recipients = baseRecipients }
             in
-            ( { model | encounter = { encounter | treasure = Just nextState } }
+            ( { model | encounter = { encounter | treasure = Just nextRoll } }
             , Cmd.none
             )
 
@@ -353,23 +347,14 @@ customRemove index model =
         Nothing ->
             ( model, Cmd.none )
 
-        Just state ->
+        Just existing ->
             let
-                slug =
-                    "custom:" ++ String.fromInt index
-
                 encounter =
                     model.encounter
 
                 nextRoll =
-                    Treasure.removeCustom index state.roll
-
-                nextRecipients =
-                    Dict.remove slug state.recipients
-
-                nextState =
-                    { roll = nextRoll, recipients = nextRecipients }
+                    Treasure.removeCustom index existing
             in
-            ( { model | encounter = { encounter | treasure = Just nextState } }
+            ( { model | encounter = { encounter | treasure = Just nextRoll } }
             , Cmd.none
             )

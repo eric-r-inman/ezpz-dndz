@@ -10,21 +10,18 @@ Layout, top to bottom:
   - Gems list (if the roll produced any).
   - Art-objects list (if the roll produced any).
   - Magic-items list (if the roll produced any).
-  - Footer with the Re-roll button + a "X of N distributed"
-    summary.
+  - Custom rows (if the GM rolled any user-authored tables).
+  - Custom-tables picker — list of the GM's user-authored
+    tables with per-table Roll buttons + a "Manage tables…"
+    link to the editor.
 
-Each item row has a checkbox that marks the row "distributed"
-(i.e., handed to a player). Distributed rows render in a muted
-style so the GM can see what's left at a glance.
-
-When the GM hits Re-roll on a list that's got distributed items,
-the modal shows a confirm banner before discarding the existing
-roll.
+Each section has a small `↻` icon in its header that re-rolls
+just that slice (coins / gems / art / magic) without touching
+the others; the main Roll button at the top replaces the
+whole roll with a fresh draw.
 
 -}
 
-import Dict exposing (Dict)
-import Encounter exposing (TreasureState)
 import Encounter.Treasure as Treasure
     exposing
         ( ArtItem
@@ -41,7 +38,6 @@ import Html
         ( Html
         , button
         , div
-        , input
         , label
         , li
         , option
@@ -55,10 +51,8 @@ import Html
 import Html.Attributes as Attr
     exposing
         ( attribute
-        , checked
         , class
         , disabled
-        , id
         , selected
         , type_
         , value
@@ -88,16 +82,15 @@ view chrome model =
             text ""
 
 
-body : TreasureUi -> Maybe TreasureState -> List UserTable -> List (Html Msg)
-body ui maybeState userTables =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> List UserTable -> List (Html Msg)
+body ui maybeRoll userTables =
     [ controlRow ui
-    , confirmBanner ui maybeState
-    , case maybeState of
+    , case maybeRoll of
         Nothing ->
             emptyState
 
-        Just state ->
-            resultBlock state
+        Just roll ->
+            resultBlock roll
     , userTablesSection userTables
     ]
 
@@ -164,33 +157,6 @@ bracketOption current b =
 
 
 
--- ── CONFIRM BANNER ───────────────────────────────────────────────────────────
-
-
-confirmBanner : TreasureUi -> Maybe TreasureState -> Html Msg
-confirmBanner ui maybeState =
-    case ( ui.confirmingRereroll, maybeState ) of
-        ( True, Just _ ) ->
-            div [ class "treasure__confirm" ]
-                [ span [ class "treasure__confirm-msg" ]
-                    [ text "Re-roll will discard the current loot, including the distributed marks. Continue?" ]
-                , button
-                    [ class "action-btn action-btn--blue"
-                    , onClick TreasureRerollCancel
-                    ]
-                    [ text "Cancel" ]
-                , button
-                    [ class "action-btn action-btn--red"
-                    , onClick TreasureRerollConfirm
-                    ]
-                    [ text "Re-roll anyway" ]
-                ]
-
-        _ ->
-            text ""
-
-
-
 -- ── RESULTS ──────────────────────────────────────────────────────────────────
 
 
@@ -200,23 +166,15 @@ emptyState =
         [ text "Pick a kind + bracket above and hit Roll." ]
 
 
-resultBlock : TreasureState -> Html Msg
-resultBlock state =
-    let
-        roll =
-            state.roll
-
-        r =
-            state.recipients
-    in
+resultBlock : Treasure.TreasureRoll -> Html Msg
+resultBlock roll =
     div [ class "treasure__results" ]
         [ summaryStrip roll
-        , coinsSection roll.coins r
-        , gemsSection roll.gems r
-        , artSection roll.art r
-        , magicSection roll.magic r
-        , customSection roll.custom r
-        , footerRow state
+        , coinsSection roll.coins
+        , gemsSection roll.gems
+        , artSection roll.art
+        , magicSection roll.magic
+        , customSection roll.custom
         ]
 
 
@@ -256,33 +214,12 @@ summaryStrip roll =
 -- ── COINS ────────────────────────────────────────────────────────────────────
 
 
-coinsSection : Coins -> Dict String String -> Html Msg
-coinsSection coins recipients =
-    let
-        slug =
-            "coins"
-
-        isDistributed =
-            Dict.member slug recipients
-
-        recipient =
-            Dict.get slug recipients |> Maybe.withDefault ""
-    in
-    section
-        [ class
-            ("treasure__section "
-                ++ (if isDistributed then
-                        "treasure__section--distributed"
-
-                    else
-                        ""
-                   )
-            )
-        ]
+coinsSection : Coins -> Html Msg
+coinsSection coins =
+    section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text "Coins" ]
             , rerollCategoryButton Treasure.CoinsCategory
-            , distributionControls slug isDistributed recipient
             ]
         , ul [ class "treasure__list" ] (coinLines coins)
         ]
@@ -325,77 +262,51 @@ coinLines c =
 -- ── GEMS / ART ───────────────────────────────────────────────────────────────
 
 
-gemsSection : List GemItem -> Dict String String -> Html Msg
-gemsSection items recipients =
+gemsSection : List GemItem -> Html Msg
+gemsSection items =
     if List.isEmpty items then
         text ""
 
     else
         valuedSection "Gems"
-            "gem"
             Treasure.GemsCategory
             items
-            recipients
             (\g -> ( g.name, g.valueGp ))
 
 
-artSection : List ArtItem -> Dict String String -> Html Msg
-artSection items recipients =
+artSection : List ArtItem -> Html Msg
+artSection items =
     if List.isEmpty items then
         text ""
 
     else
         valuedSection "Art objects"
-            "art"
             Treasure.ArtCategory
             items
-            recipients
             (\a -> ( a.name, a.valueGp ))
 
 
 valuedSection :
     String
-    -> String
     -> Treasure.Category
     -> List a
-    -> Dict String String
     -> (a -> ( String, Int ))
     -> Html Msg
-valuedSection title slugPrefix category items recipients project =
+valuedSection title category items project =
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text title ]
             , rerollCategoryButton category
             ]
         , ul [ class "treasure__list" ]
-            (List.indexedMap
-                (\idx item ->
+            (List.map
+                (\item ->
                     let
-                        slug =
-                            slugPrefix ++ ":" ++ String.fromInt idx
-
-                        isDistributed =
-                            Dict.member slug recipients
-
-                        recipient =
-                            Dict.get slug recipients |> Maybe.withDefault ""
-
                         ( name, valueGp ) =
                             project item
                     in
-                    li
-                        [ class
-                            ("treasure__row"
-                                ++ (if isDistributed then
-                                        " treasure__row--distributed"
-
-                                    else
-                                        ""
-                                   )
-                            )
-                        ]
-                        [ distributionControls slug isDistributed recipient
-                        , span [ class "treasure__row-name" ] [ text name ]
+                    li [ class "treasure__row" ]
+                        [ span [ class "treasure__row-name" ] [ text name ]
                         , span [ class "treasure__row-value" ]
                             [ text (String.fromInt valueGp ++ " gp") ]
                         ]
@@ -409,8 +320,8 @@ valuedSection title slugPrefix category items recipients project =
 -- ── MAGIC ITEMS ──────────────────────────────────────────────────────────────
 
 
-magicSection : List MagicItem -> Dict String String -> Html Msg
-magicSection items recipients =
+magicSection : List MagicItem -> Html Msg
+magicSection items =
     if List.isEmpty items then
         text ""
 
@@ -420,36 +331,14 @@ magicSection items recipients =
                 [ span [ class "treasure__section-title" ] [ text "Magic items" ]
                 , rerollCategoryButton Treasure.MagicCategory
                 ]
-            , ul [ class "treasure__list" ]
-                (List.indexedMap (magicRow recipients) items)
+            , ul [ class "treasure__list" ] (List.map magicRow items)
             ]
 
 
-magicRow : Dict String String -> Int -> MagicItem -> Html Msg
-magicRow recipients idx item =
-    let
-        slug =
-            "magic:" ++ String.fromInt idx
-
-        isDistributed =
-            Dict.member slug recipients
-
-        recipient =
-            Dict.get slug recipients |> Maybe.withDefault ""
-    in
-    li
-        [ class
-            ("treasure__row"
-                ++ (if isDistributed then
-                        " treasure__row--distributed"
-
-                    else
-                        ""
-                   )
-            )
-        ]
-        [ distributionControls slug isDistributed recipient
-        , span [ class "treasure__row-name" ]
+magicRow : MagicItem -> Html Msg
+magicRow item =
+    li [ class "treasure__row" ]
+        [ span [ class "treasure__row-name" ]
             [ text item.name
             , span [ class "treasure__row-source" ]
                 [ text (" — Table " ++ Tables.magicTableLabel item.table) ]
@@ -487,8 +376,8 @@ rarityModifier r =
 -- ── CUSTOM ROWS (rolled from user-authored tables) ──────────────────────────
 
 
-customSection : List CustomRoll -> Dict String String -> Html Msg
-customSection rows recipients =
+customSection : List CustomRoll -> Html Msg
+customSection rows =
     if List.isEmpty rows then
         text ""
 
@@ -498,35 +387,14 @@ customSection rows recipients =
                 [ span [ class "treasure__section-title" ] [ text "Custom" ]
                 ]
             , ul [ class "treasure__list" ]
-                (List.indexedMap (customRow recipients) rows)
+                (List.indexedMap customRow rows)
             ]
 
 
-customRow : Dict String String -> Int -> CustomRoll -> Html Msg
-customRow recipients idx row_ =
-    let
-        slug =
-            "custom:" ++ String.fromInt idx
-
-        isDistributed =
-            Dict.member slug recipients
-
-        recipient =
-            Dict.get slug recipients |> Maybe.withDefault ""
-    in
-    li
-        [ class
-            ("treasure__row"
-                ++ (if isDistributed then
-                        " treasure__row--distributed"
-
-                    else
-                        ""
-                   )
-            )
-        ]
-        [ distributionControls slug isDistributed recipient
-        , span [ class "treasure__row-name" ]
+customRow : Int -> CustomRoll -> Html Msg
+customRow idx row_ =
+    li [ class "treasure__row" ]
+        [ span [ class "treasure__row-name" ]
             [ text row_.label
             , span [ class "treasure__row-source" ]
                 [ text (" — " ++ row_.sourceTableName) ]
@@ -638,84 +506,7 @@ userTableRow table =
 
 
 
--- ── FOOTER ───────────────────────────────────────────────────────────────────
-
-
-footerRow : TreasureState -> Html Msg
-footerRow state =
-    let
-        totalRows =
-            -- coins counts as 1 row; gems / art / magic / custom each one
-            -- row per item.
-            1
-                + List.length state.roll.gems
-                + List.length state.roll.art
-                + List.length state.roll.magic
-                + List.length state.roll.custom
-
-        distributedCount =
-            Dict.size state.recipients
-    in
-    div [ class "treasure__footer" ]
-        [ span [ class "treasure__footer-summary" ]
-            [ text
-                (String.fromInt distributedCount
-                    ++ " of "
-                    ++ String.fromInt totalRows
-                    ++ " distributed"
-                )
-            ]
-        , button
-            [ class "action-btn action-btn--orange"
-            , onClick TreasureRerollRequest
-            ]
-            [ text "↻ Re-roll" ]
-        ]
-
-
-
 -- ── BITS ─────────────────────────────────────────────────────────────────────
-
-
-{-| Distribution controls for one treasure row: a checkbox that
-flips "given out yes/no", paired with a small text input where
-the GM types who got it. Typing a name flips the checkbox on
-automatically (typing implies distribution); unchecking the
-box clears both flags and lets the row come back into play.
--}
-distributionControls : String -> Bool -> String -> Html Msg
-distributionControls slug isDistributed recipient =
-    div [ class "treasure__distribute-cluster" ]
-        [ label
-            [ class "treasure__distributed"
-            , attribute "aria-label" "Mark distributed"
-            ]
-            [ input
-                [ type_ "checkbox"
-                , checked isDistributed
-                , onClick (TreasureToggleDistributed slug)
-                ]
-                []
-            , span [ class "treasure__distributed-text" ]
-                [ text
-                    (if isDistributed then
-                        "Given"
-
-                     else
-                        "Give"
-                    )
-                ]
-            ]
-        , input
-            [ class "treasure__recipient"
-            , type_ "text"
-            , Attr.placeholder "to whom?"
-            , value recipient
-            , onInput (TreasureRecipientChanged slug)
-            , attribute "aria-label" "Recipient name"
-            ]
-            []
-        ]
 
 
 emptyMessageWhenEmpty : String -> List (Html Msg) -> List (Html Msg)
