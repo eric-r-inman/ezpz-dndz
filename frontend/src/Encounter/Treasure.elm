@@ -1085,6 +1085,95 @@ rollGems table mSpec =
                                     )
                                 )
                     )
+                |> Random.andThen (splitGems table)
+
+
+{-| Post-process for rolled hoard gems: with 25% probability per
+gem, "split" a high-tier gem into N gems of the next tier down
+where N is exactly the tier-value ratio. By construction the
+total gp value is preserved.
+
+  - 50gp → 5 × 10gp
+  - 100gp → 2 × 50gp
+  - 500gp → 5 × 100gp
+  - 1000gp → 2 × 500gp
+  - 5000gp → 5 × 1000gp
+
+10gp gems can't split further. The replacement gem names are
+drawn from the user's treasure table at the target tier so
+edits to the gem lists carry through.
+
+-}
+splitGems : TreasureTable -> List GemItem -> Random.Generator (List GemItem)
+splitGems table gems =
+    sequenceList (List.map (maybeSplitOneGem table) gems)
+        |> Random.map List.concat
+
+
+maybeSplitOneGem : TreasureTable -> GemItem -> Random.Generator (List GemItem)
+maybeSplitOneGem table gem =
+    case splitTargetFor gem of
+        Nothing ->
+            Random.constant [ gem ]
+
+        Just ( lowerTier, count ) ->
+            Random.weighted ( 75, False ) [ ( 25, True ) ]
+                |> Random.andThen
+                    (\shouldSplit ->
+                        if shouldSplit then
+                            rollLowerGems table lowerTier count
+
+                        else
+                            Random.constant [ gem ]
+                    )
+
+
+{-| Map a gem to its (lower tier, count) split target — chosen
+so count × lower\_tier\_value == gem\_value, preserving total gp.
+-}
+splitTargetFor : GemItem -> Maybe ( GemTier, Int )
+splitTargetFor gem =
+    case gem.valueGp of
+        50 ->
+            Just ( Tables.Gem10gp, 5 )
+
+        100 ->
+            Just ( Tables.Gem50gp, 2 )
+
+        500 ->
+            Just ( Tables.Gem100gp, 5 )
+
+        1000 ->
+            Just ( Tables.Gem500gp, 2 )
+
+        5000 ->
+            Just ( Tables.Gem1000gp, 5 )
+
+        _ ->
+            Nothing
+
+
+rollLowerGems : TreasureTable -> GemTier -> Int -> Random.Generator (List GemItem)
+rollLowerGems table tier count =
+    let
+        tierValue =
+            Tables.gemTierValue tier
+
+        names =
+            gemNamesFor tier table
+    in
+    case names of
+        [] ->
+            Random.constant []
+
+        first :: rest ->
+            Random.list count (Random.uniform first rest)
+                |> Random.map
+                    (List.map
+                        (\name ->
+                            { name = name, valueGp = tierValue }
+                        )
+                    )
 
 
 rollArt : TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
