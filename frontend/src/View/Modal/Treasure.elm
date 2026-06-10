@@ -61,6 +61,7 @@ import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
+import Util.Number
 import View.Modal
 
 
@@ -210,7 +211,7 @@ controlRow : TreasureUi -> Html Msg
 controlRow ui =
     div [ class "treasure__controls" ]
         [ label [ class "treasure__field" ]
-            [ span [ class "treasure__field-label" ] [ text "Kind" ]
+            [ span [ class "treasure__field-label" ] [ text "Roll:" ]
             , select [ class "treasure__select", onInput TreasureKindSet ]
                 (List.map (kindOption ui.kind) Treasure.kindOptions)
             ]
@@ -490,36 +491,9 @@ emptyMessageWhenEmpty message items =
         items
 
 
-{-| Pretty-print an integer with thousands separators. Used for
-the GM-facing coin counts so "4,200 gp" reads instantly instead
-of "4200gp" — small detail that adds up across a long campaign.
+{-| Local alias for `Util.Number.formatThousands`. Kept around
+as a single-word call site for the inline coin renderers.
 -}
 formatNumber : Int -> String
-formatNumber n =
-    let
-        chars =
-            n |> abs |> String.fromInt |> String.toList
-
-        grouped =
-            chars
-                |> List.reverse
-                |> List.indexedMap
-                    (\i c ->
-                        if i > 0 && modBy 3 i == 0 then
-                            [ c, ',' ]
-
-                        else
-                            [ c ]
-                    )
-                |> List.concat
-                |> List.reverse
-                |> String.fromList
-
-        signed =
-            if n < 0 then
-                "-" ++ grouped
-
-            else
-                grouped
-    in
-    signed
+formatNumber =
+    Util.Number.formatThousands

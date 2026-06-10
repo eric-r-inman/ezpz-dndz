@@ -176,10 +176,10 @@ kindLabel : Kind -> String
 kindLabel k =
     case k of
         Individual ->
-            "Sum (all Enemies)"
+            "All (individual loot)"
 
         Hoard ->
-            "Hoard"
+            "Boss (lair hoard)"
 
 
 kindOptions : List Kind
