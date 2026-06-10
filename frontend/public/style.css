@@ -1926,6 +1926,13 @@ body {
   font-size: 0.82rem;
 }
 
+.treasure__row-count {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
 .treasure__list {
   list-style: none;
   margin: 0;

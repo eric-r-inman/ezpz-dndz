@@ -397,28 +397,87 @@ valuedSection :
     -> (Int -> Msg)
     -> Html Msg
 valuedSection title category items project removeMsg =
+    let
+        groups =
+            groupItems project items
+    in
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text title ]
             , rerollCategoryButton category
             ]
         , ul [ class "treasure__list" ]
-            (List.indexedMap
-                (\idx item ->
-                    let
-                        ( name, valueGp ) =
-                            project item
-                    in
+            (List.map
+                (\g ->
                     li [ class "treasure__row" ]
-                        [ span [ class "treasure__row-name" ] [ text name ]
+                        [ span [ class "treasure__row-name" ]
+                            [ text g.name
+                            , countSuffix g.count
+                            ]
                         , span [ class "treasure__row-value" ]
-                            [ text (String.fromInt valueGp ++ " gp") ]
-                        , rowRemoveButton (removeMsg idx)
+                            [ text (String.fromInt g.valueGp ++ " gp") ]
+                        , rowRemoveButton (removeMsg g.firstIndex)
                         ]
                 )
-                items
+                groups
             )
         ]
+
+
+type alias ValuedGroup =
+    { name : String
+    , valueGp : Int
+    , count : Int
+    , firstIndex : Int
+    }
+
+
+{-| Walk an indexed list and accumulate items into groups keyed
+by the projected identity (name + value). Each group records
+the first occurrence's index so the × button can remove from
+the underlying list and re-render shows the count decremented.
+-}
+groupItems : (a -> ( String, Int )) -> List a -> List ValuedGroup
+groupItems project items =
+    items
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( idx, item ) acc ->
+                let
+                    ( name, valueGp ) =
+                        project item
+                in
+                if List.any (\g -> g.name == name && g.valueGp == valueGp) acc then
+                    List.map
+                        (\g ->
+                            if g.name == name && g.valueGp == valueGp then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc
+                        ++ [ { name = name
+                             , valueGp = valueGp
+                             , count = 1
+                             , firstIndex = idx
+                             }
+                           ]
+            )
+            []
+
+
+countSuffix : Int -> Html Msg
+countSuffix count =
+    if count > 1 then
+        span [ class "treasure__row-count" ]
+            [ text (" × " ++ String.fromInt count) ]
+
+    else
+        text ""
 
 
 
@@ -431,31 +490,84 @@ magicSection items =
         text ""
 
     else
+        let
+            groups =
+                groupMagicItems items
+        in
         section [ class "treasure__section" ]
             [ div [ class "treasure__section-header" ]
                 [ span [ class "treasure__section-title" ] [ text "Magic items" ]
                 , rerollCategoryButton Treasure.MagicCategory
                 ]
-            , ul [ class "treasure__list" ] (List.indexedMap magicRow items)
+            , ul [ class "treasure__list" ] (List.map magicGroupRow groups)
             ]
 
 
-magicRow : Int -> MagicItem -> Html Msg
-magicRow idx item =
+type alias MagicGroup =
+    { name : String
+    , rarity : Rarity
+    , table : Tables.MagicTable
+    , count : Int
+    , firstIndex : Int
+    }
+
+
+{-| Same pattern as `groupItems` but keyed on (name, rarity,
+table) since two different "Bag of Holding" rolls from Table A
+should display as one grouped row.
+-}
+groupMagicItems : List MagicItem -> List MagicGroup
+groupMagicItems items =
+    items
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( idx, item ) acc ->
+                if List.any (sameMagic item) acc then
+                    List.map
+                        (\g ->
+                            if sameMagic item g then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc
+                        ++ [ { name = item.name
+                             , rarity = item.rarity
+                             , table = item.table
+                             , count = 1
+                             , firstIndex = idx
+                             }
+                           ]
+            )
+            []
+
+
+sameMagic : MagicItem -> { g | name : String, rarity : Rarity, table : Tables.MagicTable } -> Bool
+sameMagic item g =
+    g.name == item.name && g.rarity == item.rarity && g.table == item.table
+
+
+magicGroupRow : MagicGroup -> Html Msg
+magicGroupRow g =
     li [ class "treasure__row" ]
         [ span [ class "treasure__row-name" ]
-            [ text item.name
+            [ text g.name
             , span [ class "treasure__row-source" ]
-                [ text (" — Table " ++ Tables.magicTableLabel item.table) ]
+                [ text (" — Table " ++ Tables.magicTableLabel g.table) ]
+            , countSuffix g.count
             ]
         , span
             [ class
                 ("treasure__rarity treasure__rarity--"
-                    ++ rarityModifier item.rarity
+                    ++ rarityModifier g.rarity
                 )
             ]
-            [ text (Tables.rarityLabel item.rarity) ]
-        , rowRemoveButton (TreasureMagicRemove idx)
+            [ text (Tables.rarityLabel g.rarity) ]
+        , rowRemoveButton (TreasureMagicRemove g.firstIndex)
         ]
 
 
