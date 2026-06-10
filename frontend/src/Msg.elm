@@ -40,6 +40,7 @@ import Dice
 import Encounter exposing (Encounter)
 import Encounter.RandomEncounter.Lore
 import Encounter.Treasure
+import Encounter.Treasure.UserTable
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
@@ -1044,6 +1045,54 @@ type Msg
       -- stay put.
     | TreasureRerollCategory Encounter.Treasure.Category
     | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
+      -- User-authored treasure tables.  The boot fetch lands in
+      -- `TreasureTablesLoaded`; every editor save fires
+      -- `Effects.putTreasureTables` and the response lands in
+      -- `TreasureTablesPersisted`.  Anonymous sessions persist via
+      -- `Ports.persistLocalUserTreasureTables` and skip the wire.
+    | TreasureTablesLoaded (Result Http.Error (List Encounter.Treasure.UserTable.UserTable))
+    | TreasureTablesPersisted (Result Http.Error ())
+      -- Editor modal lifecycle.  TreasureTableOpen launches the
+      -- list view; TreasureTableEditNew opens the editor on a
+      -- fresh blank draft; TreasureTableEdit opens it on an
+      -- existing table by id; TreasureTableClose closes the
+      -- modal entirely.
+    | TreasureTableOpen
+    | TreasureTableClose
+    | TreasureTableEditNew
+    | TreasureTableEdit String
+    | TreasureTableBackToList
+      -- Draft mutation while the editor pane is open.  Each Msg
+      -- targets a specific field on the current draft; the update
+      -- branches all funnel through `Update.TreasureTable`.
+    | TreasureTableNameChanged String
+    | TreasureTableEntryAdd
+    | TreasureTableEntryRemove Int
+    | TreasureTableEntryLabelChanged Int String
+    | TreasureTableEntryWeightChanged Int String
+    | TreasureTableEntryGpChanged Int String
+    | TreasureTableEntryRarityChanged Int String
+      -- Commit / discard the draft.  Submit replaces (or appends)
+      -- the table in `model.userTreasureTables`; cancel flips
+      -- back to the list view without touching the model.
+    | TreasureTableDraftSubmit
+    | TreasureTableDraftCancel
+      -- List-view actions.  Delete removes the table by id;
+      -- there's no two-step confirm for now (the list is small
+      -- and tables can be re-authored cheaply).
+    | TreasureTableDelete String
+      -- Roll on a user-authored table from the main Treasure
+      -- modal's Custom section.  TreasureTableRoll picks the
+      -- table by id; the rolled result lands in
+      -- TreasureCustomRolled and the update branch appends it
+      -- to the active TreasureRoll.  Nothing case fires when
+      -- the table has no live entries — the modal pushes a
+      -- toast in that case.
+    | TreasureTableRoll String
+    | TreasureCustomRolled (Maybe Encounter.Treasure.UserTable.CustomRoll)
+      -- Drop one custom row (by index) from the active
+      -- TreasureRoll.  Used by the inline × on each custom row.
+    | TreasureCustomRemove Int
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

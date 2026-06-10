@@ -25,6 +25,7 @@ use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
 use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
+use crate::treasure_tables::{TreasureTableStore, TreasureTableStoreError};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -42,6 +43,7 @@ pub struct AppState {
   pub auth_rate_limiter: AuthRateLimiter,
   pub lore_groups: LoreGroupStore,
   pub condition_presets: ConditionPresetStore,
+  pub treasure_tables: TreasureTableStore,
 }
 
 impl_server_state!(AppState, base);
@@ -71,6 +73,9 @@ pub enum AppStateError {
 
   #[error("Failed to load condition-preset store: {0}")]
   ConditionPresetStoreLoad(#[source] ConditionPresetStoreError),
+
+  #[error("Failed to load treasure-table store: {0}")]
+  TreasureTableStoreLoad(#[source] TreasureTableStoreError),
 }
 
 impl AppState {
@@ -144,6 +149,11 @@ impl AppState {
         .await
         .map_err(AppStateError::ConditionPresetStoreLoad)?;
 
+    let treasure_tables =
+      TreasureTableStore::load_or_default(paths.treasure_tables.clone())
+        .await
+        .map_err(AppStateError::TreasureTableStoreLoad)?;
+
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),
       std::path::Path::to_path_buf,
@@ -174,6 +184,7 @@ impl AppState {
       auth_rate_limiter: AuthRateLimiter::new(),
       lore_groups,
       condition_presets,
+      treasure_tables,
     })
   }
 }

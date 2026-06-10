@@ -1,6 +1,7 @@
 module Update.UserSync exposing
     ( loreGroupsLoaded, loreGroupsPersisted
     , conditionPresetsLoaded, conditionPresetsPersisted
+    , treasureTablesLoaded, treasureTablesPersisted
     )
 
 {-| Msg handlers for the per-user server-stored Lore groups and
@@ -38,6 +39,7 @@ old way.
 import Dict
 import Effects
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.Treasure.UserTable as UserTreasureTable
 import Http
 import Json.Decode as Decode
 import Model exposing (Model)
@@ -148,4 +150,39 @@ conditionPresetsPersisted result model =
                 ("Saving your condition presets failed: "
                     ++ Util.Http.errorToString err
                 )
+                model
+
+
+treasureTablesLoaded :
+    Result Http.Error (List UserTreasureTable.UserTable)
+    -> Model
+    -> ( Model, Cmd Msg )
+treasureTablesLoaded result model =
+    case result of
+        Ok serverTables ->
+            if not (List.isEmpty serverTables) then
+                ( { model | userTreasureTables = serverTables }, Cmd.none )
+
+            else if not (List.isEmpty model.userTreasureTables) then
+                -- Empty server, populated client → migrate.
+                ( model, Effects.putTreasureTables model.userTreasureTables )
+
+            else
+                ( model, Cmd.none )
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Couldn't load your treasure tables: " ++ Util.Http.errorToString err)
+                model
+
+
+treasureTablesPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
+treasureTablesPersisted result model =
+    case result of
+        Ok () ->
+            ( model, Cmd.none )
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Saving your treasure tables failed: " ++ Util.Http.errorToString err)
                 model

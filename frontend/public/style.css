@@ -2104,6 +2104,355 @@ body {
   flex: 1 1 auto;
 }
 
+/* ── Custom rows (rolled from user-authored tables) ──────────────── */
+
+.treasure__section--custom .treasure__section-title::before {
+  content: "✨ ";
+}
+
+.treasure__custom-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: 6px;
+}
+
+.treasure__custom-remove:hover,
+.treasure__custom-remove:focus-visible {
+  color: #d63b3b;
+}
+
+/* ── User-authored table picker (lives below the SRD results) ───── */
+
+.treasure__user-tables {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.treasure__user-tables-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.treasure__user-tables-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+.treasure__user-tables-manage {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-accent, #4a90e2);
+  cursor: pointer;
+  padding: 0;
+}
+
+.treasure__user-tables-manage:hover,
+.treasure__user-tables-manage:focus-visible {
+  text-decoration: underline;
+}
+
+.treasure__user-tables-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.treasure__user-tables-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treasure__user-table-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure__user-table-name {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.treasure__user-table-count {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.treasure__user-table-roll {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.treasure__user-table-roll:hover:not(:disabled),
+.treasure__user-table-roll:focus-visible:not(:disabled) {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure__user-table-roll:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Treasure-table editor modal ─────────────────────────────────── */
+
+.treasure-table__empty {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.treasure-table__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.treasure-table__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.treasure-table__row-meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.treasure-table__row-name {
+  font-weight: 700;
+}
+
+.treasure-table__row-summary {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.treasure-table__row-edit,
+.treasure-table__new {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.treasure-table__row-edit:hover,
+.treasure-table__new:hover,
+.treasure-table__row-edit:focus-visible,
+.treasure-table__new:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure-table__row-delete {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 0.9rem;
+}
+
+.treasure-table__row-delete:hover,
+.treasure-table__row-delete:focus-visible {
+  color: #d63b3b;
+}
+
+.treasure-table__list-actions {
+  margin-top: 12px;
+}
+
+.treasure-table__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.treasure-table__editor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.treasure-table__editor-label {
+  min-width: 60px;
+  font-weight: 600;
+}
+
+.treasure-table__editor-input {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.treasure-table__entries {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.treasure-table__entries-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.treasure-table__entries-title {
+  font-weight: 700;
+}
+
+.treasure-table__entries-hint {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.treasure-table__entries-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.treasure-table__entry-row {
+  display: grid;
+  grid-template-columns: 1fr 70px 40px 90px 120px 28px;
+  gap: 6px;
+  align-items: center;
+}
+
+.treasure-table__entry-label,
+.treasure-table__entry-weight,
+.treasure-table__entry-gp,
+.treasure-table__entry-rarity {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.treasure-table__entry-pct {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.treasure-table__entry-remove,
+.treasure-table__entries-add {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.treasure-table__entries-add {
+  align-self: flex-start;
+  border: 1px dashed var(--color-border);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.treasure-table__entry-remove:hover,
+.treasure-table__entry-remove:focus-visible {
+  color: #d63b3b;
+}
+
+.treasure-table__entries-add:hover,
+.treasure-table__entries-add:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure-table__editor-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.treasure-table__editor-cancel,
+.treasure-table__editor-save {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.treasure-table__editor-save {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure-table__editor-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Dark theme overrides for the rarity chips so they read on the
    darker surface without losing their colour identity. */
 [data-theme="dark"] .treasure__rarity--common {

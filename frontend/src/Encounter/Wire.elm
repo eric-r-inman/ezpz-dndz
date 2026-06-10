@@ -45,6 +45,7 @@ import Encounter
         )
 import Encounter.Treasure
 import Encounter.Treasure.Tables
+import Encounter.Treasure.UserTable
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -271,19 +272,21 @@ encodeTreasureRoll roll =
         , ( "gems", E.list encodeGemItem roll.gems )
         , ( "art", E.list encodeArtItem roll.art )
         , ( "magic", E.list encodeMagicItem roll.magic )
+        , ( "custom", E.list encodeCustomRoll roll.custom )
         ]
 
 
 decodeTreasureRoll : D.Decoder Encounter.Treasure.TreasureRoll
 decodeTreasureRoll =
-    D.map6
-        (\kind bracket coins gems art magic ->
+    D.map7
+        (\kind bracket coins gems art magic custom ->
             { kind = kind
             , bracket = bracket
             , coins = coins
             , gems = gems
             , art = art
             , magic = magic
+            , custom = custom
             }
         )
         (D.field "kind" treasureKindDecoder)
@@ -292,6 +295,50 @@ decodeTreasureRoll =
         (D.field "gems" (D.list decodeGemItem))
         (D.field "art" (D.list decodeArtItem))
         (D.field "magic" (D.list decodeMagicItem))
+        -- Pre-D treasure rolls have no `custom` field; default to
+        -- empty so saved encounters keep loading.
+        (D.oneOf
+            [ D.field "custom" (D.list decodeCustomRoll)
+            , D.succeed []
+            ]
+        )
+
+
+encodeCustomRoll : Encounter.Treasure.UserTable.CustomRoll -> E.Value
+encodeCustomRoll row =
+    E.object
+        [ ( "sourceTableId", E.string row.sourceTableId )
+        , ( "sourceTableName", E.string row.sourceTableName )
+        , ( "label", E.string row.label )
+        , ( "gpValue", encodeMaybe E.int row.gpValue )
+        , ( "rarity", encodeMaybe (rarityWire >> E.string) row.rarity )
+        ]
+
+
+decodeCustomRoll : D.Decoder Encounter.Treasure.UserTable.CustomRoll
+decodeCustomRoll =
+    D.map5
+        (\sourceTableId sourceTableName label gpValue rarity ->
+            { sourceTableId = sourceTableId
+            , sourceTableName = sourceTableName
+            , label = label
+            , gpValue = gpValue
+            , rarity = rarity
+            }
+        )
+        (D.field "sourceTableId" D.string)
+        (D.field "sourceTableName" D.string)
+        (D.field "label" D.string)
+        (D.oneOf
+            [ D.field "gpValue" (D.nullable D.int)
+            , D.succeed Nothing
+            ]
+        )
+        (D.oneOf
+            [ D.field "rarity" (D.nullable rarityDecoder)
+            , D.succeed Nothing
+            ]
+        )
 
 
 treasureKindWire : Encounter.Treasure.Kind -> String

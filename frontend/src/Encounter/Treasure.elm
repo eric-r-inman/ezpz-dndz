@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), categoryLabel, generateCategory
+    , Category(..), appendCustom, categoryLabel, emptyRoll, generateCategory, removeCustom
     )
 
 {-| Treasure-roll domain.
@@ -54,6 +54,7 @@ import Encounter.Treasure.Tables as Tables
         , MagicTable
         , Rarity
         )
+import Encounter.Treasure.UserTable as UserTable
 import Random
 
 
@@ -213,6 +214,46 @@ type alias TreasureRoll =
     , gems : List GemItem
     , art : List ArtItem
     , magic : List MagicItem
+    , custom : List UserTable.CustomRoll
+    }
+
+
+{-| Blank roll seeded from the current Kind + Bracket. Used when
+the GM hits a user-table roll on a fresh modal — there's no SRD
+result to merge into, so we synthesise an empty one to carry the
+custom row.
+-}
+emptyRoll : Kind -> Bracket -> TreasureRoll
+emptyRoll kind bracket =
+    { kind = kind
+    , bracket = bracket
+    , coins = emptyCoins
+    , gems = []
+    , art = []
+    , magic = []
+    , custom = []
+    }
+
+
+{-| Append one user-table result onto the existing custom rows.
+-}
+appendCustom : UserTable.CustomRoll -> TreasureRoll -> TreasureRoll
+appendCustom row roll =
+    { roll | custom = roll.custom ++ [ row ] }
+
+
+{-| Drop the custom row at `index` (0-based). Out-of-range
+indices are a no-op so the update handler doesn't need defensive
+bounds-checking.
+-}
+removeCustom : Int -> TreasureRoll -> TreasureRoll
+removeCustom index roll =
+    { roll
+        | custom =
+            roll.custom
+                |> List.indexedMap Tuple.pair
+                |> List.filter (\( i, _ ) -> i /= index)
+                |> List.map Tuple.second
     }
 
 
@@ -308,6 +349,7 @@ generateIndividual bracket =
                         , gems = []
                         , art = []
                         , magic = []
+                        , custom = []
                         }
                     )
                     (rollIndividualCoins row)
@@ -369,6 +411,7 @@ generateHoard bracket =
                         , gems = gems
                         , art = art
                         , magic = magic
+                        , custom = []
                         }
                     )
                     (rollHoardCoins row)

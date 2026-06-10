@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchTreasureTables, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putTreasureTables, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -35,6 +35,8 @@ import Dict exposing (Dict)
 import Encounter
 import Encounter.RandomEncounter.Lore
 import Encounter.RandomEncounter.Lore.Wire
+import Encounter.Treasure.UserTable exposing (UserTable)
+import Encounter.Treasure.UserTable.Wire
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -464,6 +466,45 @@ putConditionPresets presets =
         , url = "/api/condition-presets"
         , body = Http.jsonBody (Ui.Condition.Wire.encodePresets presets)
         , expect = Http.expectWhatever ConditionPresetsPersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+
+-- ── /api/treasure-tables ─────────────────────────────────────────────────────
+
+
+{-| GET the caller's saved treasure tables. Server returns
+`null` when nothing has been persisted yet, which the
+`oneOf` folds into the empty list.
+-}
+fetchTreasureTables : Cmd Msg
+fetchTreasureTables =
+    Http.get
+        { url = "/api/treasure-tables"
+        , expect =
+            Http.expectJson TreasureTablesLoaded
+                (Decode.oneOf
+                    [ Decode.null []
+                    , Encounter.Treasure.UserTable.Wire.decodeTables
+                    ]
+                )
+        }
+
+
+{-| PUT the caller's full treasure-table list.
+-}
+putTreasureTables : List UserTable -> Cmd Msg
+putTreasureTables tables =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/treasure-tables"
+        , body =
+            Http.jsonBody
+                (Encounter.Treasure.UserTable.Wire.encodeTables tables)
+        , expect = Http.expectWhatever TreasureTablesPersisted
         , timeout = Nothing
         , tracker = Nothing
         }

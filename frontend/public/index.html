@@ -180,6 +180,17 @@
         }
       } catch (_) {}
 
+      // User-authored treasure tables for the Treasure modal's
+      // Custom section.  Anonymous-mode only; authed sessions
+      // pull from /api/treasure-tables instead.
+      var localUserTreasureTables = null;
+      try {
+        var treasureRaw = localStorage.getItem("userTreasureTables");
+        if (treasureRaw) {
+          localUserTreasureTables = JSON.parse(treasureRaw);
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -195,6 +206,7 @@
           localTimerPresets: localTimerPresets,
           localParty: localParty,
           localUserLoreGroups: localUserLoreGroups,
+          localUserTreasureTables: localUserTreasureTables,
           bootMs: Date.now(),
         },
       });
@@ -337,6 +349,19 @@
           try {
             localStorage.setItem(
               "userLoreGroups",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // User-authored treasure tables.  Fires on every Save /
+      // Delete in the Treasure Tables editor modal.
+      if (app.ports && app.ports.persistLocalUserTreasureTables) {
+        app.ports.persistLocalUserTreasureTables.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "userTreasureTables",
               JSON.stringify(value),
             );
           } catch (_) {}

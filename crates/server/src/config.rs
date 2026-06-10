@@ -108,6 +108,12 @@ pub struct ExtraCliFields {
   /// `<data_dir>/condition-presets.json`.
   #[arg(long, env = "ezpz_dndz_condition_presets_path")]
   pub condition_presets_path: Option<PathBuf>,
+
+  /// Path to the JSON file backing per-user user-authored
+  /// treasure tables for the Treasure generator.  Defaults to
+  /// `<data_dir>/treasure-tables.json`.
+  #[arg(long, env = "ezpz_dndz_treasure_tables_path")]
+  pub treasure_tables_path: Option<PathBuf>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -126,6 +132,7 @@ pub struct ExtraFileFields {
   pub encounter_saves_path: Option<PathBuf>,
   pub lore_groups_path: Option<PathBuf>,
   pub condition_presets_path: Option<PathBuf>,
+  pub treasure_tables_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
   pub compendium_claim_user: Option<String>,
 }
@@ -145,6 +152,7 @@ pub struct RuntimePaths {
   pub users: PathBuf,
   pub lore_groups: PathBuf,
   pub condition_presets: PathBuf,
+  pub treasure_tables: PathBuf,
 }
 
 #[derive(Debug, Clone, MergeConfig)]
@@ -282,6 +290,11 @@ impl Config {
         cli.extra.condition_presets_path.as_ref(),
         file.extra.condition_presets_path.as_ref(),
         "condition-presets.json",
+      ),
+      treasure_tables: pick(
+        cli.extra.treasure_tables_path.as_ref(),
+        file.extra.treasure_tables_path.as_ref(),
+        "treasure-tables.json",
       ),
     })
   }

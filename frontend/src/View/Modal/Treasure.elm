@@ -35,6 +35,7 @@ import Encounter.Treasure as Treasure
         , MagicItem
         )
 import Encounter.Treasure.Tables as Tables exposing (Rarity)
+import Encounter.Treasure.UserTable as UserTable exposing (CustomRoll, UserTable)
 import Html
     exposing
         ( Html
@@ -80,15 +81,15 @@ view chrome model =
                 , title = "💰 Treasure"
                 , extraClass = "modal--treasure"
                 , chrome = chrome
-                , body = body ui model.encounter.treasure
+                , body = body ui model.encounter.treasure model.userTreasureTables
                 }
 
         _ ->
             text ""
 
 
-body : TreasureUi -> Maybe TreasureState -> List (Html Msg)
-body ui maybeState =
+body : TreasureUi -> Maybe TreasureState -> List UserTable -> List (Html Msg)
+body ui maybeState userTables =
     [ controlRow ui
     , confirmBanner ui maybeState
     , case maybeState of
@@ -97,6 +98,7 @@ body ui maybeState =
 
         Just state ->
             resultBlock state
+    , userTablesSection userTables
     ]
 
 
@@ -213,6 +215,7 @@ resultBlock state =
         , gemsSection roll.gems r
         , artSection roll.art r
         , magicSection roll.magic r
+        , customSection roll.custom r
         , footerRow state
         ]
 
@@ -481,6 +484,160 @@ rarityModifier r =
 
 
 
+-- ── CUSTOM ROWS (rolled from user-authored tables) ──────────────────────────
+
+
+customSection : List CustomRoll -> Dict String String -> Html Msg
+customSection rows recipients =
+    if List.isEmpty rows then
+        text ""
+
+    else
+        section [ class "treasure__section treasure__section--custom" ]
+            [ div [ class "treasure__section-header" ]
+                [ span [ class "treasure__section-title" ] [ text "Custom" ]
+                ]
+            , ul [ class "treasure__list" ]
+                (List.indexedMap (customRow recipients) rows)
+            ]
+
+
+customRow : Dict String String -> Int -> CustomRoll -> Html Msg
+customRow recipients idx row_ =
+    let
+        slug =
+            "custom:" ++ String.fromInt idx
+
+        isDistributed =
+            Dict.member slug recipients
+
+        recipient =
+            Dict.get slug recipients |> Maybe.withDefault ""
+    in
+    li
+        [ class
+            ("treasure__row"
+                ++ (if isDistributed then
+                        " treasure__row--distributed"
+
+                    else
+                        ""
+                   )
+            )
+        ]
+        [ distributionControls slug isDistributed recipient
+        , span [ class "treasure__row-name" ]
+            [ text row_.label
+            , span [ class "treasure__row-source" ]
+                [ text (" — " ++ row_.sourceTableName) ]
+            ]
+        , customMeta row_
+        , button
+            [ class "treasure__custom-remove"
+            , type_ "button"
+            , onClick (TreasureCustomRemove idx)
+            , attribute "aria-label" "Remove this custom row"
+            , attribute "title" "Remove"
+            ]
+            [ text "✕" ]
+        ]
+
+
+customMeta : CustomRoll -> Html Msg
+customMeta row_ =
+    case ( row_.gpValue, row_.rarity ) of
+        ( Just gp, _ ) ->
+            span [ class "treasure__row-value" ]
+                [ text (String.fromInt gp ++ " gp") ]
+
+        ( Nothing, Just rarity ) ->
+            span
+                [ class
+                    ("treasure__rarity treasure__rarity--"
+                        ++ rarityModifier rarity
+                    )
+                ]
+                [ text (Tables.rarityLabel rarity) ]
+
+        ( Nothing, Nothing ) ->
+            text ""
+
+
+
+-- ── USER-AUTHORED TABLE PICKER ──────────────────────────────────────────────
+
+
+userTablesSection : List UserTable -> Html Msg
+userTablesSection tables =
+    section [ class "treasure__user-tables" ]
+        [ div [ class "treasure__user-tables-header" ]
+            [ span [ class "treasure__user-tables-title" ]
+                [ text "Custom tables" ]
+            , button
+                [ class "treasure__user-tables-manage"
+                , type_ "button"
+                , onClick TreasureTableOpen
+                ]
+                [ text "Manage tables…" ]
+            ]
+        , if List.isEmpty tables then
+            p [ class "treasure__user-tables-empty" ]
+                [ text "Author your own tables to roll on them here." ]
+
+          else
+            ul [ class "treasure__user-tables-list" ]
+                (List.map userTableRow tables)
+        ]
+
+
+userTableRow : UserTable -> Html Msg
+userTableRow table =
+    let
+        entries =
+            List.length table.entries
+
+        hasEntries =
+            UserTable.totalWeight table > 0
+    in
+    li [ class "treasure__user-table-row" ]
+        [ span [ class "treasure__user-table-name" ]
+            [ text
+                (if String.isEmpty (String.trim table.name) then
+                    "(unnamed)"
+
+                 else
+                    table.name
+                )
+            ]
+        , span [ class "treasure__user-table-count" ]
+            [ text
+                (String.fromInt entries
+                    ++ (if entries == 1 then
+                            " entry"
+
+                        else
+                            " entries"
+                       )
+                )
+            ]
+        , button
+            [ class "treasure__user-table-roll"
+            , type_ "button"
+            , onClick (TreasureTableRoll table.id)
+            , disabled (not hasEntries)
+            , attribute "title"
+                (if hasEntries then
+                    "Roll on this table"
+
+                 else
+                    "This table has no live entries yet"
+                )
+            ]
+            [ text "🎲 Roll" ]
+        ]
+
+
+
 -- ── FOOTER ───────────────────────────────────────────────────────────────────
 
 
@@ -488,12 +645,13 @@ footerRow : TreasureState -> Html Msg
 footerRow state =
     let
         totalRows =
-            -- coins counts as 1 row; gems / art / magic each one
+            -- coins counts as 1 row; gems / art / magic / custom each one
             -- row per item.
             1
                 + List.length state.roll.gems
                 + List.length state.roll.art
                 + List.length state.roll.magic
+                + List.length state.roll.custom
 
         distributedCount =
             Dict.size state.recipients

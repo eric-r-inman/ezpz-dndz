@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
     )
 
 {-| The single source of truth for the running app.
@@ -44,6 +44,7 @@ import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.Treasure.UserTable as UserTreasureTable
 import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
@@ -75,6 +76,7 @@ import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
 import Ui.Treasure exposing (TreasureUi)
+import Ui.TreasureTable exposing (TreasureTableUi)
 import Url exposing (Url)
 
 
@@ -131,6 +133,7 @@ type Modal
     | ModalCrCalculator CrCalculatorUi
     | ModalRandomEncounter RandomEncounterUi
     | ModalTreasure TreasureUi
+    | ModalTreasureTable TreasureTableUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -256,6 +259,20 @@ treasureLens =
                 _ ->
                     Nothing
     , wrap = ModalTreasure
+    }
+
+
+treasureTableLens : ModalLens TreasureTableUi
+treasureTableLens =
+    { extract =
+        \m ->
+            case m of
+                ModalTreasureTable ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalTreasureTable
     }
 
 
@@ -564,6 +581,12 @@ type alias Model =
     -- Create/Edit Group modal and persisted under
     -- `localStorage.userLoreGroups`.
     , userLoreGroups : List Lore.Group
+
+    -- User-authored treasure tables for the Treasure modal's
+    -- Custom section.  Edited in the Treasure Tables modal and
+    -- persisted to `/api/treasure-tables` (or
+    -- `localStorage.userTreasureTables` for anonymous sessions).
+    , userTreasureTables : List UserTreasureTable.UserTable
 
     -- JS `Date.now()` captured at boot, used as the timestamp for
     -- all anonymous named-save writes done in this session.  All

@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTables, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -171,6 +171,14 @@ every Save / Delete in the Create/Edit Group modal's Lore
 section.
 -}
 port persistLocalUserLoreGroups : E.Value -> Cmd msg
+
+
+{-| Persist user-authored treasure tables to
+`localStorage.userTreasureTables`. Body is the wrapper object
+defined by [`Encounter.Treasure.UserTable.Wire`](Encounter-Treasure-UserTable-Wire).
+Fires on every Save / Delete in the Treasure Tables editor.
+-}
+port persistLocalUserTreasureTables : E.Value -> Cmd msg
 
 
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of

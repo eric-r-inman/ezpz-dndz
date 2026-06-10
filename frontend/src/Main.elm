@@ -22,6 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
+import Encounter.Treasure.UserTable.Wire
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
 import File exposing (File)
@@ -111,6 +112,7 @@ import Update.Shell
 import Update.Timer
 import Update.Toast
 import Update.Treasure
+import Update.TreasureTable
 import Update.UserSync
 import Url exposing (Url)
 import Util.Keyboard
@@ -145,6 +147,7 @@ import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
 import View.Modal.Treasure
+import View.Modal.TreasureTable
 import View.Page.Compendium
 import View.Page.QuickList
 import View.RollPopup
@@ -495,6 +498,7 @@ type alias Flags =
     , localTimerPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
+    , localUserTreasureTables : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -603,6 +607,13 @@ init flags url key =
             flags.localUserLoreGroups
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.RandomEncounter.Lore.Wire.decodeGroups
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault []
+      , userTreasureTables =
+            flags.localUserTreasureTables
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Treasure.UserTable.Wire.decodeTables
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault []
@@ -754,6 +765,19 @@ update msg model =
             else
                 Cmd.none
 
+        userTreasureTablesCmd =
+            if shouldPersistAfter msg && model.userTreasureTables /= next.userTreasureTables then
+                case next.auth of
+                    Auth.AuthAuthenticated _ ->
+                        Effects.putTreasureTables next.userTreasureTables
+
+                    _ ->
+                        Ports.persistLocalUserTreasureTables
+                            (Encounter.Treasure.UserTable.Wire.encodeTables next.userTreasureTables)
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -802,6 +826,7 @@ update msg model =
         , timerPresetsCmd
         , partyCmd
         , userLoreGroupsCmd
+        , userTreasureTablesCmd
         , modalFocusCmd
         ]
     )
@@ -1766,6 +1791,66 @@ updateInner msg model =
         TreasureCategoryRolled category fresh ->
             Update.Treasure.categoryRolled category fresh model
 
+        TreasureTablesLoaded result ->
+            Update.UserSync.treasureTablesLoaded result model
+
+        TreasureTablesPersisted result ->
+            Update.UserSync.treasureTablesPersisted result model
+
+        TreasureTableOpen ->
+            Update.TreasureTable.open model
+
+        TreasureTableClose ->
+            Update.TreasureTable.close model
+
+        TreasureTableEditNew ->
+            Update.TreasureTable.editNew model
+
+        TreasureTableEdit id ->
+            Update.TreasureTable.edit id model
+
+        TreasureTableBackToList ->
+            Update.TreasureTable.backToList model
+
+        TreasureTableNameChanged name ->
+            Update.TreasureTable.nameChanged name model
+
+        TreasureTableEntryAdd ->
+            Update.TreasureTable.entryAdd model
+
+        TreasureTableEntryRemove idx ->
+            Update.TreasureTable.entryRemove idx model
+
+        TreasureTableEntryLabelChanged idx value ->
+            Update.TreasureTable.entryLabelChanged idx value model
+
+        TreasureTableEntryWeightChanged idx raw ->
+            Update.TreasureTable.entryWeightChanged idx raw model
+
+        TreasureTableEntryGpChanged idx raw ->
+            Update.TreasureTable.entryGpChanged idx raw model
+
+        TreasureTableEntryRarityChanged idx raw ->
+            Update.TreasureTable.entryRarityChanged idx raw model
+
+        TreasureTableDraftSubmit ->
+            Update.TreasureTable.draftSubmit model
+
+        TreasureTableDraftCancel ->
+            Update.TreasureTable.draftCancel model
+
+        TreasureTableDelete id ->
+            Update.TreasureTable.delete id model
+
+        TreasureTableRoll id ->
+            Update.TreasureTable.roll id model
+
+        TreasureCustomRolled result ->
+            Update.TreasureTable.customRolled result model
+
+        TreasureCustomRemove idx ->
+            Update.TreasureTable.customRemove idx model
+
         CardEditorClose ->
             Update.CardEditor.close model
 
@@ -2620,6 +2705,7 @@ appShell maybeUser model =
     , View.Modal.CrCalculator.view model
     , View.Modal.RandomEncounter.view model
     , View.Modal.Treasure.view model.modalChrome model
+    , View.Modal.TreasureTable.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
