@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, RowSource, appendCustom, categoryLabel, emptyRoll, generateRerollCategory, removeCustom
+    , Category(..), CoinFormulas, RowSource, appendCustom, categoryLabel, clearCoin, emptyRoll, generateRerollCategory, removeArt, removeCustom, removeGem, removeMagic
     )
 
 {-| Treasure-roll domain.
@@ -313,13 +313,69 @@ bounds-checking.
 -}
 removeCustom : Int -> TreasureRoll -> TreasureRoll
 removeCustom index roll =
-    { roll
-        | custom =
-            roll.custom
-                |> List.indexedMap Tuple.pair
-                |> List.filter (\( i, _ ) -> i /= index)
-                |> List.map Tuple.second
-    }
+    { roll | custom = dropIndex index roll.custom }
+
+
+{-| Drop the gem at `index` from the rolled list.
+-}
+removeGem : Int -> TreasureRoll -> TreasureRoll
+removeGem index roll =
+    { roll | gems = dropIndex index roll.gems }
+
+
+{-| Drop the art object at `index` from the rolled list.
+-}
+removeArt : Int -> TreasureRoll -> TreasureRoll
+removeArt index roll =
+    { roll | art = dropIndex index roll.art }
+
+
+{-| Drop the magic item at `index` from the rolled list.
+-}
+removeMagic : Int -> TreasureRoll -> TreasureRoll
+removeMagic index roll =
+    { roll | magic = dropIndex index roll.magic }
+
+
+{-| Zero out one denomination on the coin stack. `wire` is the
+denomination key matching the view's slug ("copper", "silver",
+"electrum", "gold", "platinum"). Unknown keys are a no-op.
+-}
+clearCoin : String -> TreasureRoll -> TreasureRoll
+clearCoin wire roll =
+    let
+        c =
+            roll.coins
+
+        nextCoins =
+            case wire of
+                "copper" ->
+                    { c | copper = 0 }
+
+                "silver" ->
+                    { c | silver = 0 }
+
+                "electrum" ->
+                    { c | electrum = 0 }
+
+                "gold" ->
+                    { c | gold = 0 }
+
+                "platinum" ->
+                    { c | platinum = 0 }
+
+                _ ->
+                    c
+    in
+    { roll | coins = nextCoins }
+
+
+dropIndex : Int -> List a -> List a
+dropIndex idx xs =
+    xs
+        |> List.indexedMap Tuple.pair
+        |> List.filter (\( i, _ ) -> i /= idx)
+        |> List.map Tuple.second
 
 
 {-| Which sub-section of the treasure the GM is asking to

@@ -248,14 +248,34 @@ coinLines c =
             (\( amount, abbrev, name ) ->
                 if amount > 0 then
                     Just
-                        (li [ class ("treasure__coin treasure__coin--" ++ name) ]
-                            [ text (formatNumber amount ++ " " ++ abbrev) ]
+                        (li
+                            [ class ("treasure__coin treasure__coin--" ++ name) ]
+                            [ span [ class "treasure__coin-text" ]
+                                [ text (formatNumber amount ++ " " ++ abbrev) ]
+                            , rowRemoveButton (TreasureCoinRemove name)
+                            ]
                         )
 
                 else
                     Nothing
             )
         |> emptyMessageWhenEmpty "(no coins)"
+
+
+{-| Generic × button rendered at the right of every rolled
+treasure row. The msg parameter routes the click to the right
+per-section remove handler.
+-}
+rowRemoveButton : Msg -> Html Msg
+rowRemoveButton msg =
+    button
+        [ class "treasure__row-remove"
+        , type_ "button"
+        , onClick msg
+        , attribute "aria-label" "Remove this item"
+        , attribute "title" "Remove"
+        ]
+        [ text "✕" ]
 
 
 
@@ -272,6 +292,7 @@ gemsSection items =
             Treasure.GemsCategory
             items
             (\g -> ( g.name, g.valueGp ))
+            TreasureGemRemove
 
 
 artSection : List ArtItem -> Html Msg
@@ -284,6 +305,7 @@ artSection items =
             Treasure.ArtCategory
             items
             (\a -> ( a.name, a.valueGp ))
+            TreasureArtRemove
 
 
 valuedSection :
@@ -291,16 +313,17 @@ valuedSection :
     -> Treasure.Category
     -> List a
     -> (a -> ( String, Int ))
+    -> (Int -> Msg)
     -> Html Msg
-valuedSection title category items project =
+valuedSection title category items project removeMsg =
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text title ]
             , rerollCategoryButton category
             ]
         , ul [ class "treasure__list" ]
-            (List.map
-                (\item ->
+            (List.indexedMap
+                (\idx item ->
                     let
                         ( name, valueGp ) =
                             project item
@@ -309,6 +332,7 @@ valuedSection title category items project =
                         [ span [ class "treasure__row-name" ] [ text name ]
                         , span [ class "treasure__row-value" ]
                             [ text (String.fromInt valueGp ++ " gp") ]
+                        , rowRemoveButton (removeMsg idx)
                         ]
                 )
                 items
@@ -331,12 +355,12 @@ magicSection items =
                 [ span [ class "treasure__section-title" ] [ text "Magic items" ]
                 , rerollCategoryButton Treasure.MagicCategory
                 ]
-            , ul [ class "treasure__list" ] (List.map magicRow items)
+            , ul [ class "treasure__list" ] (List.indexedMap magicRow items)
             ]
 
 
-magicRow : MagicItem -> Html Msg
-magicRow item =
+magicRow : Int -> MagicItem -> Html Msg
+magicRow idx item =
     li [ class "treasure__row" ]
         [ span [ class "treasure__row-name" ]
             [ text item.name
@@ -350,6 +374,7 @@ magicRow item =
                 )
             ]
             [ text (Tables.rarityLabel item.rarity) ]
+        , rowRemoveButton (TreasureMagicRemove idx)
         ]
 
 
@@ -400,14 +425,7 @@ customRow idx row_ =
                 [ text (" — " ++ row_.sourceTableName) ]
             ]
         , customMeta row_
-        , button
-            [ class "treasure__custom-remove"
-            , type_ "button"
-            , onClick (TreasureCustomRemove idx)
-            , attribute "aria-label" "Remove this custom row"
-            , attribute "title" "Remove"
-            ]
-            [ text "✕" ]
+        , rowRemoveButton (TreasureCustomRemove idx)
         ]
 
 

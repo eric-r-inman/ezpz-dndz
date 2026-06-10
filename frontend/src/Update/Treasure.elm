@@ -3,6 +3,7 @@ module Update.Treasure exposing
     , kindSet, bracketSet
     , roll, rolled
     , categoryRolled, rerollCategory
+    , artRemove, coinRemove, gemRemove, magicRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -178,6 +179,45 @@ rerollCategory category model =
             ( model
             , Random.generate (TreasureCategoryRolled category)
                 (Treasure.generateRerollCategory currentRoll category)
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Per-row delete: zero out one coin denomination from the
+encounter's current roll.
+-}
+coinRemove : String -> Model -> ( Model, Cmd Msg )
+coinRemove denomination =
+    mutateRoll (Treasure.clearCoin denomination)
+
+
+gemRemove : Int -> Model -> ( Model, Cmd Msg )
+gemRemove index =
+    mutateRoll (Treasure.removeGem index)
+
+
+artRemove : Int -> Model -> ( Model, Cmd Msg )
+artRemove index =
+    mutateRoll (Treasure.removeArt index)
+
+
+magicRemove : Int -> Model -> ( Model, Cmd Msg )
+magicRemove index =
+    mutateRoll (Treasure.removeMagic index)
+
+
+mutateRoll : (Treasure.TreasureRoll -> Treasure.TreasureRoll) -> Model -> ( Model, Cmd Msg )
+mutateRoll fn model =
+    case model.encounter.treasure of
+        Just current ->
+            let
+                encounter =
+                    model.encounter
+            in
+            ( { model | encounter = { encounter | treasure = Just (fn current) } }
+            , Cmd.none
             )
 
         Nothing ->

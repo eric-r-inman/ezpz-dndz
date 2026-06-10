@@ -1937,8 +1937,17 @@ body {
 }
 
 .treasure__coin {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
   font-variant-numeric: tabular-nums;
   padding-left: 12px;
+}
+
+.treasure__coin-text {
+  /* anchor the amount to the grid's flex column so the × stays
+     pinned to the right regardless of denomination width. */
 }
 
 .treasure__coin--platinum {
@@ -1970,10 +1979,27 @@ body {
 
 .treasure__row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 10px;
   padding: 4px 0;
+}
+
+.treasure__row-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.treasure__row-remove:hover,
+.treasure__row-remove:focus-visible {
+  color: #d63b3b;
 }
 
 .treasure__row-name {
@@ -2029,23 +2055,6 @@ body {
 
 .treasure__section--custom .treasure__section-title::before {
   content: "✨ ";
-}
-
-.treasure__custom-remove {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 2px 6px;
-  margin-left: 6px;
-}
-
-.treasure__custom-remove:hover,
-.treasure__custom-remove:focus-visible {
-  color: #d63b3b;
 }
 
 /* ── User-authored table picker (lives below the SRD results) ───── */

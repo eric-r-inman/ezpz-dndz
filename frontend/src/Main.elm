@@ -1776,6 +1776,18 @@ updateInner msg model =
         TreasureCategoryRolled category fresh ->
             Update.Treasure.categoryRolled category fresh model
 
+        TreasureCoinRemove denomination ->
+            Update.Treasure.coinRemove denomination model
+
+        TreasureGemRemove idx ->
+            Update.Treasure.gemRemove idx model
+
+        TreasureArtRemove idx ->
+            Update.Treasure.artRemove idx model
+
+        TreasureMagicRemove idx ->
+            Update.Treasure.magicRemove idx model
+
         TreasureTablesLoaded result ->
             Update.UserSync.treasureTablesLoaded result model
 

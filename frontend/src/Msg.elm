@@ -1030,6 +1030,15 @@ type Msg
       -- rest of the loot is keepers.
     | TreasureRerollCategory Encounter.Treasure.Category
     | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
+      -- Per-row delete.  The × button on each rolled treasure
+      -- item removes just that item from the encounter's roll
+      -- (gem/art/magic by index; coin denomination by wire
+      -- string).  The matching custom-row remove lives below
+      -- alongside the rest of the user-table flow.
+    | TreasureCoinRemove String
+    | TreasureGemRemove Int
+    | TreasureArtRemove Int
+    | TreasureMagicRemove Int
       -- User-authored treasure tables.  The boot fetch lands in
       -- `TreasureTablesLoaded`; every editor save fires
       -- `Effects.putTreasureTables` and the response lands in
