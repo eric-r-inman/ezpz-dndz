@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove
+    , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, settingsCountSet, settingsReset, settingsToggle, settingsValueSet
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -62,6 +62,15 @@ contributionsToggle model =
     )
 
 
+settingsToggle : Model -> ( Model, Cmd Msg )
+settingsToggle model =
+    ( Model.mapModal Model.treasureLens
+        (\ui -> { ui | settingsExpanded = not ui.settingsExpanded })
+        model
+    , Cmd.none
+    )
+
+
 loadedDb : Model -> Compendium.Db
 loadedDb model =
     case model.compendium.db of
@@ -101,7 +110,12 @@ roll model =
         Just (Model.ModalTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
-                (Treasure.generate ui.kind (activeTable model) (rollContext model))
+                (Treasure.generate
+                    model.encounter.treasureSettings
+                    ui.kind
+                    (activeTable model)
+                    (rollContext model)
+                )
             )
 
         _ ->
@@ -228,6 +242,7 @@ rerollCategory category model =
             ( model
             , Random.generate (TreasureCategoryRolled category)
                 (Treasure.generateRerollCategory
+                    model.encounter.treasureSettings
                     (activeTable model)
                     (rollContext model)
                     currentRoll
@@ -237,6 +252,87 @@ rerollCategory category model =
 
         Nothing ->
             ( model, Cmd.none )
+
+
+{-| Per-class roll-knob update. Caller picks which axis of
+which class via wire-friendly strings: `class` is one of
+"coins", "gems", "art", "magic"; `axis` is "count" or "value"
+(coins only support "count"); `value` is the wire token for
+the adjust enum ("fewer" / "normal" / "more" or "lower" /
+"normal" / "higher").
+
+A no-op when an unknown combination comes in — the modal
+never emits invalid ones, but defensive against custom
+serializations.
+
+-}
+settingsCountSet : String -> String -> Model -> ( Model, Cmd Msg )
+settingsCountSet itemClass valueWire model =
+    let
+        value =
+            Treasure.countAdjustFromWire valueWire
+
+        settings =
+            model.encounter.treasureSettings
+
+        next =
+            case itemClass of
+                "coins" ->
+                    { settings | coinsCount = value }
+
+                "gems" ->
+                    { settings | gemsCount = value }
+
+                "art" ->
+                    { settings | artCount = value }
+
+                "magic" ->
+                    { settings | magicCount = value }
+
+                _ ->
+                    settings
+    in
+    ( updateEncounterSettings next model, Cmd.none )
+
+
+settingsValueSet : String -> String -> Model -> ( Model, Cmd Msg )
+settingsValueSet itemClass valueWire model =
+    let
+        value =
+            Treasure.valueAdjustFromWire valueWire
+
+        settings =
+            model.encounter.treasureSettings
+
+        next =
+            case itemClass of
+                "gems" ->
+                    { settings | gemsValue = value }
+
+                "art" ->
+                    { settings | artValue = value }
+
+                "magic" ->
+                    { settings | magicValue = value }
+
+                _ ->
+                    settings
+    in
+    ( updateEncounterSettings next model, Cmd.none )
+
+
+settingsReset : Model -> ( Model, Cmd Msg )
+settingsReset model =
+    ( updateEncounterSettings Treasure.defaultSettings model, Cmd.none )
+
+
+updateEncounterSettings : Treasure.TreasureSettings -> Model -> Model
+updateEncounterSettings settings model =
+    let
+        enc =
+            model.encounter
+    in
+    { model | encounter = { enc | treasureSettings = settings } }
 
 
 {-| Per-row delete: zero out one coin denomination from the

@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
+    , Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames, valueAdjustFromWire, valueAdjustWire
     )
 
 {-| Treasure-roll domain.
@@ -284,6 +284,110 @@ type alias EnemyInfo =
     { name : String
     , bracket : Bracket
     }
+
+
+{-| Per-encounter roll-time knobs. Each knob is a coarse
+"more/normal/fewer" or "higher/normal/lower" adjustment that
+gets applied around the canonical treasure-table values at roll
+time — the table itself stays untouched. Lets a GM say "this
+chest skews to fewer-but-richer gems" without authoring custom
+rows.
+
+  - `*Count` axes multiply dice count by 1.5× / 1× / 0.5×
+    (rounded, min 1).
+  - `gemsValue` and `artValue` shift the tier up or down by one
+    step (10gp ↔ 50gp ↔ 100gp ↔ 500gp ↔ 1000gp ↔ 5000gp; or
+    25gp ↔ 250gp ↔ 750gp ↔ 2500gp ↔ 7500gp).
+  - `magicValue` shifts the SRD table letter (A ↔ B ↔ … ↔ I).
+  - `coinsCount` is a single Amount knob — Coins don't have a
+    natural value axis distinct from their amount.
+
+-}
+type alias TreasureSettings =
+    { coinsCount : CountAdjust
+    , gemsCount : CountAdjust
+    , gemsValue : ValueAdjust
+    , artCount : CountAdjust
+    , artValue : ValueAdjust
+    , magicCount : CountAdjust
+    , magicValue : ValueAdjust
+    }
+
+
+type CountAdjust
+    = CountFewer
+    | CountNormal
+    | CountMore
+
+
+type ValueAdjust
+    = ValueLower
+    | ValueNormal
+    | ValueHigher
+
+
+defaultSettings : TreasureSettings
+defaultSettings =
+    { coinsCount = CountNormal
+    , gemsCount = CountNormal
+    , gemsValue = ValueNormal
+    , artCount = CountNormal
+    , artValue = ValueNormal
+    , magicCount = CountNormal
+    , magicValue = ValueNormal
+    }
+
+
+countAdjustWire : CountAdjust -> String
+countAdjustWire a =
+    case a of
+        CountFewer ->
+            "fewer"
+
+        CountNormal ->
+            "normal"
+
+        CountMore ->
+            "more"
+
+
+countAdjustFromWire : String -> CountAdjust
+countAdjustFromWire s =
+    case s of
+        "fewer" ->
+            CountFewer
+
+        "more" ->
+            CountMore
+
+        _ ->
+            CountNormal
+
+
+valueAdjustWire : ValueAdjust -> String
+valueAdjustWire a =
+    case a of
+        ValueLower ->
+            "lower"
+
+        ValueNormal ->
+            "normal"
+
+        ValueHigher ->
+            "higher"
+
+
+valueAdjustFromWire : String -> ValueAdjust
+valueAdjustFromWire s =
+    case s of
+        "lower" ->
+            ValueLower
+
+        "higher" ->
+            ValueHigher
+
+        _ ->
+            ValueNormal
 
 
 {-| The originating SRD row's formulas, stashed alongside the
@@ -665,15 +769,19 @@ toughest enemy's bracket). The CR bracket is no longer
 user-selectable — the encounter already knows which creatures
 are present, so the right bracket falls out naturally.
 
+`settings` wraps the rolls in coarse "more/fewer" + "higher/
+lower" knobs (see [`TreasureSettings`](#TreasureSettings)).
+Defaults to no-op when the GM hasn't tuned anything.
+
 -}
-generate : Kind -> TreasureTable -> RollContext -> Random.Generator TreasureRoll
-generate kind table ctx =
+generate : TreasureSettings -> Kind -> TreasureTable -> RollContext -> Random.Generator TreasureRoll
+generate settings kind table ctx =
     case kind of
         Individual ->
-            generateIndividualSum table ctx.enemies
+            generateIndividualSum settings table ctx.enemies
 
         Hoard ->
-            generateHoard ctx.hoardBracket table
+            generateHoard settings ctx.hoardBracket table
 
 
 {-| Re-roll just one category of the existing roll, using the
@@ -694,46 +802,48 @@ still do something useful.
 
 -}
 generateRerollCategory :
-    TreasureTable
+    TreasureSettings
+    -> TreasureTable
     -> RollContext
     -> TreasureRoll
     -> Category
     -> Random.Generator TreasureRoll
-generateRerollCategory table ctx currentRoll category =
+generateRerollCategory settings table ctx currentRoll category =
     case currentRoll.source of
         Just source ->
-            generateRerollFromSource table currentRoll source category
+            generateRerollFromSource settings table currentRoll source category
 
         Nothing ->
-            generate currentRoll.kind table ctx
+            generate settings currentRoll.kind table ctx
 
 
 generateRerollFromSource :
-    TreasureTable
+    TreasureSettings
+    -> TreasureTable
     -> TreasureRoll
     -> RowSource
     -> Category
     -> Random.Generator TreasureRoll
-generateRerollFromSource table currentRoll source category =
+generateRerollFromSource settings table currentRoll source category =
     let
         scaffold =
             emptyRollFor currentRoll.kind currentRoll.bracket
     in
     case category of
         CoinsCategory ->
-            rollCoinsFromFormulas source.coinFormulas
+            rollCoinsFromFormulas settings source.coinFormulas
                 |> Random.map (\coins -> { scaffold | coins = coins })
 
         GemsCategory ->
-            rollGems table source.gemsSpec
+            rollGems settings table source.gemsSpec
                 |> Random.map (\gems -> { scaffold | gems = gems })
 
         ArtCategory ->
-            rollArt table source.artSpec
+            rollArt settings table source.artSpec
                 |> Random.map (\art -> { scaffold | art = art })
 
         MagicCategory ->
-            rollMagic table source.magicSpec
+            rollMagic settings table source.magicSpec
                 |> Random.map (\magic -> { scaffold | magic = magic })
 
 
@@ -753,9 +863,9 @@ emptyRollFor kind bracket =
     }
 
 
-rollCoinsFromFormulas : CoinFormulas -> Random.Generator Coins
-rollCoinsFromFormulas formulas =
-    rollIndividualCoins
+rollCoinsFromFormulas : TreasureSettings -> CoinFormulas -> Random.Generator Coins
+rollCoinsFromFormulas settings formulas =
+    rollIndividualCoins settings
         { weight = 0
         , copper = formulas.copper
         , silver = formulas.silver
@@ -781,11 +891,12 @@ the encounter, no pockets to loot.
 
 -}
 generateIndividualSum :
-    TreasureTable
+    TreasureSettings
+    -> TreasureTable
     -> List EnemyInfo
     -> Random.Generator TreasureRoll
-generateIndividualSum table enemies =
-    sequenceList (List.map (rollOneEnemy table) enemies)
+generateIndividualSum settings table enemies =
+    sequenceList (List.map (rollOneEnemy settings table) enemies)
         |> Random.map
             (\contributions ->
                 { kind = Individual
@@ -800,8 +911,8 @@ generateIndividualSum table enemies =
             )
 
 
-rollOneEnemy : TreasureTable -> EnemyInfo -> Random.Generator CreatureContribution
-rollOneEnemy table enemy =
+rollOneEnemy : TreasureSettings -> TreasureTable -> EnemyInfo -> Random.Generator CreatureContribution
+rollOneEnemy settings table enemy =
     let
         rows =
             individualRowsFor enemy.bracket table
@@ -809,8 +920,8 @@ rollOneEnemy table enemy =
     weightedPick rows emptyIndividualRow
         |> Random.andThen
             (\row ->
-                rollIndividualCoins row
-                    |> Random.andThen (maybeConvertGoldToGem table enemy)
+                rollIndividualCoins settings row
+                    |> Random.andThen (maybeConvertGoldToGem settings table enemy)
             )
 
 
@@ -828,14 +939,16 @@ not vanishingly rare at the bracket's typical loot scale.
 
 -}
 maybeConvertGoldToGem :
-    TreasureTable
+    TreasureSettings
+    -> TreasureTable
     -> EnemyInfo
     -> Coins
     -> Random.Generator CreatureContribution
-maybeConvertGoldToGem table enemy coins =
+maybeConvertGoldToGem settings table enemy coins =
     let
         affordableTiers =
             individualGemTiers enemy.bracket
+                |> List.map (shiftGemTier settings.gemsValue)
                 |> List.filter (\t -> coins.gold >= Tables.gemTierValue t)
 
         baseContribution =
@@ -984,13 +1097,14 @@ emptyIndividualRow =
     }
 
 
-rollIndividualCoins : IndividualEntry -> Random.Generator Coins
-rollIndividualCoins row =
+rollIndividualCoins : TreasureSettings -> IndividualEntry -> Random.Generator Coins
+rollIndividualCoins settings row =
     let
         roll mFormula =
             case mFormula of
                 Just ( count, faces, mult ) ->
-                    rollDiceTimes count faces |> Random.map (\n -> n * mult)
+                    rollDiceTimes (adjustCount settings.coinsCount count) faces
+                        |> Random.map (\n -> n * mult)
 
                 Nothing ->
                     Random.constant 0
@@ -1011,8 +1125,8 @@ rollIndividualCoins row =
         (roll row.platinum)
 
 
-generateHoard : Bracket -> TreasureTable -> Random.Generator TreasureRoll
-generateHoard bracket table =
+generateHoard : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator TreasureRoll
+generateHoard settings bracket table =
     let
         rows =
             hoardRowsFor bracket table
@@ -1032,10 +1146,10 @@ generateHoard bracket table =
                         , contributions = []
                         }
                     )
-                    (rollHoardCoins row)
-                    (rollGems table row.gems)
-                    (rollArt table row.art)
-                    (rollMagic table row.magic)
+                    (rollHoardCoins settings row)
+                    (rollGems settings table row.gems)
+                    (rollArt settings table row.art)
+                    (rollMagic settings table row.magic)
             )
 
 
@@ -1053,9 +1167,9 @@ emptyHoardRow =
     }
 
 
-rollHoardCoins : HoardEntry -> Random.Generator Coins
-rollHoardCoins row =
-    rollIndividualCoins
+rollHoardCoins : TreasureSettings -> HoardEntry -> Random.Generator Coins
+rollHoardCoins settings row =
+    rollIndividualCoins settings
         { weight = row.weight
         , copper = row.copper
         , silver = row.silver
@@ -1065,22 +1179,29 @@ rollHoardCoins row =
         }
 
 
-rollGems : TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
-rollGems table mSpec =
+rollGems : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
+rollGems settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
 
         Just ( count, faces, tier ) ->
-            rollDiceTimes count faces
+            let
+                adjustedCount =
+                    adjustCount settings.gemsCount count
+
+                adjustedTier =
+                    shiftGemTier settings.gemsValue tier
+            in
+            rollDiceTimes adjustedCount faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (gemNamesFor tier table)
+                        pickN n (gemNamesFor adjustedTier table)
                             |> Random.map
                                 (List.map
                                     (\name ->
                                         { name = name
-                                        , valueGp = Tables.gemTierValue tier
+                                        , valueGp = Tables.gemTierValue adjustedTier
                                         }
                                     )
                                 )
@@ -1176,49 +1297,241 @@ rollLowerGems table tier count =
                     )
 
 
-rollArt : TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
-rollArt table mSpec =
+rollArt : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
+rollArt settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
 
         Just ( count, faces, tier ) ->
-            rollDiceTimes count faces
+            let
+                adjustedCount =
+                    adjustCount settings.artCount count
+
+                adjustedTier =
+                    shiftArtTier settings.artValue tier
+            in
+            rollDiceTimes adjustedCount faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (artNamesFor tier table)
+                        pickN n (artNamesFor adjustedTier table)
                             |> Random.map
                                 (List.map
                                     (\name ->
                                         { name = name
-                                        , valueGp = Tables.artTierValue tier
+                                        , valueGp = Tables.artTierValue adjustedTier
                                         }
                                     )
                                 )
                     )
 
 
-rollMagic : TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
-rollMagic table mSpec =
+rollMagic : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
+rollMagic settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
 
         Just ( count, faces, magicTable ) ->
-            rollDiceTimes count faces
+            let
+                adjustedCount =
+                    adjustCount settings.magicCount count
+
+                adjustedTable =
+                    shiftMagicTable settings.magicValue magicTable
+            in
+            rollDiceTimes adjustedCount faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (magicNamesFor magicTable table)
+                        pickN n (magicNamesFor adjustedTable table)
                             |> Random.map
                                 (List.map
                                     (\name ->
                                         { name = name
-                                        , rarity = Tables.magicTableRarity magicTable
-                                        , table = magicTable
+                                        , rarity = Tables.magicTableRarity adjustedTable
+                                        , table = adjustedTable
                                         }
                                     )
                                 )
                     )
+
+
+
+-- ── SETTINGS → SPEC ADJUSTMENTS ─────────────────────────────────────────────
+
+
+{-| Coarse multiplier on dice count: ×0.5 / ×1 / ×1.5 (rounded,
+min 1 so a "Fewer" roll on a 1d-something doesn't end up
+rolling 0 dice).
+-}
+adjustCount : CountAdjust -> Int -> Int
+adjustCount adj n =
+    case adj of
+        CountFewer ->
+            max 1 (n // 2)
+
+        CountNormal ->
+            n
+
+        CountMore ->
+            max 1 (n + n // 2)
+
+
+{-| Shift a gem tier up or down one step. Capped at the
+extremes — `Higher` on the top tier is a no-op, same on the
+floor for `Lower`.
+-}
+shiftGemTier : ValueAdjust -> GemTier -> GemTier
+shiftGemTier adj tier =
+    case adj of
+        ValueNormal ->
+            tier
+
+        ValueLower ->
+            case tier of
+                Tables.Gem10gp ->
+                    Tables.Gem10gp
+
+                Tables.Gem50gp ->
+                    Tables.Gem10gp
+
+                Tables.Gem100gp ->
+                    Tables.Gem50gp
+
+                Tables.Gem500gp ->
+                    Tables.Gem100gp
+
+                Tables.Gem1000gp ->
+                    Tables.Gem500gp
+
+                Tables.Gem5000gp ->
+                    Tables.Gem1000gp
+
+        ValueHigher ->
+            case tier of
+                Tables.Gem10gp ->
+                    Tables.Gem50gp
+
+                Tables.Gem50gp ->
+                    Tables.Gem100gp
+
+                Tables.Gem100gp ->
+                    Tables.Gem500gp
+
+                Tables.Gem500gp ->
+                    Tables.Gem1000gp
+
+                Tables.Gem1000gp ->
+                    Tables.Gem5000gp
+
+                Tables.Gem5000gp ->
+                    Tables.Gem5000gp
+
+
+shiftArtTier : ValueAdjust -> ArtTier -> ArtTier
+shiftArtTier adj tier =
+    case adj of
+        ValueNormal ->
+            tier
+
+        ValueLower ->
+            case tier of
+                Tables.Art25gp ->
+                    Tables.Art25gp
+
+                Tables.Art250gp ->
+                    Tables.Art25gp
+
+                Tables.Art750gp ->
+                    Tables.Art250gp
+
+                Tables.Art2500gp ->
+                    Tables.Art750gp
+
+                Tables.Art7500gp ->
+                    Tables.Art2500gp
+
+        ValueHigher ->
+            case tier of
+                Tables.Art25gp ->
+                    Tables.Art250gp
+
+                Tables.Art250gp ->
+                    Tables.Art750gp
+
+                Tables.Art750gp ->
+                    Tables.Art2500gp
+
+                Tables.Art2500gp ->
+                    Tables.Art7500gp
+
+                Tables.Art7500gp ->
+                    Tables.Art7500gp
+
+
+shiftMagicTable : ValueAdjust -> MagicTable -> MagicTable
+shiftMagicTable adj t =
+    case adj of
+        ValueNormal ->
+            t
+
+        ValueLower ->
+            case t of
+                Tables.TableA ->
+                    Tables.TableA
+
+                Tables.TableB ->
+                    Tables.TableA
+
+                Tables.TableC ->
+                    Tables.TableB
+
+                Tables.TableD ->
+                    Tables.TableC
+
+                Tables.TableE ->
+                    Tables.TableD
+
+                Tables.TableF ->
+                    Tables.TableE
+
+                Tables.TableG ->
+                    Tables.TableF
+
+                Tables.TableH ->
+                    Tables.TableG
+
+                Tables.TableI ->
+                    Tables.TableH
+
+        ValueHigher ->
+            case t of
+                Tables.TableA ->
+                    Tables.TableB
+
+                Tables.TableB ->
+                    Tables.TableC
+
+                Tables.TableC ->
+                    Tables.TableD
+
+                Tables.TableD ->
+                    Tables.TableE
+
+                Tables.TableE ->
+                    Tables.TableF
+
+                Tables.TableF ->
+                    Tables.TableG
+
+                Tables.TableG ->
+                    Tables.TableH
+
+                Tables.TableH ->
+                    Tables.TableI
+
+                Tables.TableI ->
+                    Tables.TableI
 
 
 

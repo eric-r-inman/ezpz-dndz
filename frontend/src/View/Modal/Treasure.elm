@@ -75,16 +75,17 @@ view chrome model =
                 , title = "💰 Treasure"
                 , extraClass = "modal--treasure"
                 , chrome = chrome
-                , body = body ui model.encounter.treasure
+                , body = body ui model.encounter.treasure model.encounter.treasureSettings
                 }
 
         _ ->
             text ""
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> List (Html Msg)
-body ui maybeRoll =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> List (Html Msg)
+body ui maybeRoll settings =
     [ controlRow ui
+    , settingsSection ui.settingsExpanded settings
     , case maybeRoll of
         Nothing ->
             emptyState
@@ -99,6 +100,258 @@ body ui maybeRoll =
             text ""
     , editTableLink
     ]
+
+
+{-| Collapsible "Tune your rolls" section: per-class knobs that
+multiply dice counts and shift tier values around what the
+treasure table itself produces. Default collapsed since most
+rolls just use Normal — the section header summarises the
+current knobs when not Normal so the GM can see at a glance
+that a roll is tuned.
+-}
+settingsSection : Bool -> Treasure.TreasureSettings -> Html Msg
+settingsSection expanded settings =
+    let
+        nonDefault =
+            settingsDelta settings
+    in
+    section [ class "treasure__settings" ]
+        [ button
+            [ class
+                ("treasure__settings-toggle"
+                    ++ (if expanded then
+                            " treasure__settings-toggle--open"
+
+                        else
+                            ""
+                       )
+                )
+            , type_ "button"
+            , onClick TreasureSettingsToggle
+            ]
+            [ span [ class "treasure__settings-caret" ]
+                [ text
+                    (if expanded then
+                        "▾"
+
+                     else
+                        "▸"
+                    )
+                ]
+            , span [ class "treasure__settings-label" ]
+                [ text "Tune your rolls" ]
+            , span [ class "treasure__settings-delta" ]
+                [ text
+                    (if String.isEmpty nonDefault then
+                        "All Normal"
+
+                     else
+                        nonDefault
+                    )
+                ]
+            ]
+        , if expanded then
+            div [ class "treasure__settings-body" ]
+                [ settingsRow "Coins"
+                    "coins"
+                    (Just settings.coinsCount)
+                    Nothing
+                , settingsRow "Gems"
+                    "gems"
+                    (Just settings.gemsCount)
+                    (Just settings.gemsValue)
+                , settingsRow "Art"
+                    "art"
+                    (Just settings.artCount)
+                    (Just settings.artValue)
+                , settingsRow "Magic"
+                    "magic"
+                    (Just settings.magicCount)
+                    (Just settings.magicValue)
+                , div [ class "treasure__settings-actions" ]
+                    [ button
+                        [ class "treasure__settings-reset"
+                        , type_ "button"
+                        , onClick TreasureSettingsReset
+                        , attribute "title" "Return every knob to Normal"
+                        ]
+                        [ text "↺ Reset to Normal" ]
+                    ]
+                ]
+
+          else
+            text ""
+        ]
+
+
+{-| Brief one-line summary of any knobs that aren't Normal.
+Empty string when everything is at default; "Gems: More /
+Higher · Art: Fewer" otherwise.
+-}
+settingsDelta : Treasure.TreasureSettings -> String
+settingsDelta s =
+    let
+        coinsPart =
+            knobPair "Coins" s.coinsCount Treasure.ValueNormal
+
+        gemsPart =
+            knobPair "Gems" s.gemsCount s.gemsValue
+
+        artPart =
+            knobPair "Art" s.artCount s.artValue
+
+        magicPart =
+            knobPair "Magic" s.magicCount s.magicValue
+    in
+    [ coinsPart, gemsPart, artPart, magicPart ]
+        |> List.filter (not << String.isEmpty)
+        |> String.join " · "
+
+
+knobPair : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> String
+knobPair label count value =
+    let
+        parts =
+            [ countAdjustLabelSummary count, valueAdjustLabelSummary value ]
+                |> List.filter (not << String.isEmpty)
+    in
+    if List.isEmpty parts then
+        ""
+
+    else
+        label ++ ": " ++ String.join " / " parts
+
+
+countAdjustLabelSummary : Treasure.CountAdjust -> String
+countAdjustLabelSummary c =
+    case c of
+        Treasure.CountFewer ->
+            "Fewer"
+
+        Treasure.CountNormal ->
+            ""
+
+        Treasure.CountMore ->
+            "More"
+
+
+valueAdjustLabelSummary : Treasure.ValueAdjust -> String
+valueAdjustLabelSummary v =
+    case v of
+        Treasure.ValueLower ->
+            "Lower"
+
+        Treasure.ValueNormal ->
+            ""
+
+        Treasure.ValueHigher ->
+            "Higher"
+
+
+settingsRow :
+    String
+    -> String
+    -> Maybe Treasure.CountAdjust
+    -> Maybe Treasure.ValueAdjust
+    -> Html Msg
+settingsRow label_ itemClass maybeCount maybeValue =
+    div [ class "treasure__settings-row" ]
+        [ span [ class "treasure__settings-row-label" ] [ text label_ ]
+        , case maybeCount of
+            Just countValue ->
+                countSegmented itemClass countValue
+
+            Nothing ->
+                text ""
+        , case maybeValue of
+            Just valueValue ->
+                valueSegmented itemClass valueValue
+
+            Nothing ->
+                text ""
+        ]
+
+
+countSegmented : String -> Treasure.CountAdjust -> Html Msg
+countSegmented itemClass current =
+    let
+        countLabel =
+            if itemClass == "coins" then
+                "Amount"
+
+            else
+                "Count"
+    in
+    div [ class "treasure__settings-segmented" ]
+        [ span [ class "treasure__settings-axis" ] [ text countLabel ]
+        , segmentedButton itemClass
+            current
+            Treasure.CountFewer
+            "Fewer"
+            (TreasureSettingsCountSet itemClass "fewer")
+        , segmentedButton itemClass
+            current
+            Treasure.CountNormal
+            "Normal"
+            (TreasureSettingsCountSet itemClass "normal")
+        , segmentedButton itemClass
+            current
+            Treasure.CountMore
+            "More"
+            (TreasureSettingsCountSet itemClass "more")
+        ]
+
+
+valueSegmented : String -> Treasure.ValueAdjust -> Html Msg
+valueSegmented itemClass current =
+    let
+        valueLabel =
+            if itemClass == "magic" then
+                "Rarity"
+
+            else
+                "Value"
+    in
+    div [ class "treasure__settings-segmented" ]
+        [ span [ class "treasure__settings-axis" ] [ text valueLabel ]
+        , segmentedButton itemClass
+            current
+            Treasure.ValueLower
+            "Lower"
+            (TreasureSettingsValueSet itemClass "lower")
+        , segmentedButton itemClass
+            current
+            Treasure.ValueNormal
+            "Normal"
+            (TreasureSettingsValueSet itemClass "normal")
+        , segmentedButton itemClass
+            current
+            Treasure.ValueHigher
+            "Higher"
+            (TreasureSettingsValueSet itemClass "higher")
+        ]
+
+
+{-| Tiny generic segmented-control button. Active when `current
+== target`. Stays type-agnostic via Elm's structural typing —
+the call sites supply tagged CountAdjust or ValueAdjust values.
+-}
+segmentedButton : String -> a -> a -> String -> Msg -> Html Msg
+segmentedButton _ current target text_ msg =
+    button
+        [ class
+            ("treasure__settings-segment"
+                ++ (if current == target then
+                        " treasure__settings-segment--active"
+
+                    else
+                        ""
+                   )
+            )
+        , type_ "button"
+        , onClick msg
+        ]
+        [ text text_ ]
 
 
 contributionsSection : Bool -> List CreatureContribution -> Html Msg

@@ -22,6 +22,7 @@ These exercise the documented invariants:
 import Encounter exposing (Cover(..), Creature, Duration(..), Encounter, TurnPhase(..))
 import Encounter.Roster as Roster
 import Encounter.Seed as Seed
+import Encounter.Treasure
 import Expect
 import Set
 import Test exposing (Test, describe, test)
@@ -101,6 +102,7 @@ threeCreatures =
     , activeName = "A"
     , round = 1
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
@@ -278,6 +280,7 @@ removeCreatureSuite =
                         , activeName = "A"
                         , round = 1
                         , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
                         }
                 in
                 Roster.removeCreature "A" enc

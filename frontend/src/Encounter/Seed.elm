@@ -15,6 +15,7 @@ to ship 250 lines of literal records inline.
 -}
 
 import Encounter exposing (AutoRollMode(..), Cover(..), Creature, Duration(..), Encounter, TurnPhase(..))
+import Encounter.Treasure
 import Set
 
 
@@ -29,6 +30,7 @@ initialEncounter =
     , activeName = "Brakka, Ogre Brute"
     , round = 1
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 

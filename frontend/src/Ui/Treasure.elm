@@ -25,6 +25,7 @@ import Encounter.Treasure exposing (Kind)
 type alias TreasureUi =
     { kind : Kind
     , contributionsExpanded : Bool
+    , settingsExpanded : Bool
     }
 
 
@@ -38,4 +39,5 @@ fresh : TreasureUi
 fresh =
     { kind = Encounter.Treasure.Hoard
     , contributionsExpanded = True
+    , settingsExpanded = False
     }

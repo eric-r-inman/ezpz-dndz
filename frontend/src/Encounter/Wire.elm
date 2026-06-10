@@ -225,6 +225,48 @@ encodeEncounter enc =
         , ( "activeName", E.string enc.activeName )
         , ( "round", E.int enc.round )
         , ( "treasure", encodeMaybe encodeTreasureRoll enc.treasure )
+        , ( "treasureSettings", encodeTreasureSettings enc.treasureSettings )
+        ]
+
+
+encodeTreasureSettings : Encounter.Treasure.TreasureSettings -> E.Value
+encodeTreasureSettings s =
+    E.object
+        [ ( "coinsCount", E.string (Encounter.Treasure.countAdjustWire s.coinsCount) )
+        , ( "gemsCount", E.string (Encounter.Treasure.countAdjustWire s.gemsCount) )
+        , ( "gemsValue", E.string (Encounter.Treasure.valueAdjustWire s.gemsValue) )
+        , ( "artCount", E.string (Encounter.Treasure.countAdjustWire s.artCount) )
+        , ( "artValue", E.string (Encounter.Treasure.valueAdjustWire s.artValue) )
+        , ( "magicCount", E.string (Encounter.Treasure.countAdjustWire s.magicCount) )
+        , ( "magicValue", E.string (Encounter.Treasure.valueAdjustWire s.magicValue) )
+        ]
+
+
+decodeTreasureSettings : D.Decoder Encounter.Treasure.TreasureSettings
+decodeTreasureSettings =
+    D.map7 Encounter.Treasure.TreasureSettings
+        (decodeCountField "coinsCount")
+        (decodeCountField "gemsCount")
+        (decodeValueField "gemsValue")
+        (decodeCountField "artCount")
+        (decodeValueField "artValue")
+        (decodeCountField "magicCount")
+        (decodeValueField "magicValue")
+
+
+decodeCountField : String -> D.Decoder Encounter.Treasure.CountAdjust
+decodeCountField name =
+    D.oneOf
+        [ D.field name D.string |> D.map Encounter.Treasure.countAdjustFromWire
+        , D.succeed Encounter.Treasure.CountNormal
+        ]
+
+
+decodeValueField : String -> D.Decoder Encounter.Treasure.ValueAdjust
+decodeValueField name =
+    D.oneOf
+        [ D.field name D.string |> D.map Encounter.Treasure.valueAdjustFromWire
+        , D.succeed Encounter.Treasure.ValueNormal
         ]
 
 
@@ -1045,12 +1087,13 @@ boolToLegacyCount b =
 
 decodeEncounter : D.Decoder Encounter
 decodeEncounter =
-    D.map4
-        (\creatures activeName round treasure ->
+    D.map5
+        (\creatures activeName round treasure treasureSettings ->
             { creatures = creatures
             , activeName = activeName
             , round = round
             , treasure = treasure
+            , treasureSettings = treasureSettings
             }
         )
         (D.field "creatures" (D.list decodeCreature))
@@ -1059,6 +1102,13 @@ decodeEncounter =
         (D.oneOf
             [ D.field "treasure" (D.nullable decodeTreasureField)
             , D.succeed Nothing
+            ]
+        )
+        -- Saved encounters from before this commit didn't carry
+        -- roll knobs; default to all-Normal.
+        (D.oneOf
+            [ D.field "treasureSettings" decodeTreasureSettings
+            , D.succeed Encounter.Treasure.defaultSettings
             ]
         )
 

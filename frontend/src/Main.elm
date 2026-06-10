@@ -1778,6 +1778,18 @@ updateInner msg model =
         TreasureContributionsToggle ->
             Update.Treasure.contributionsToggle model
 
+        TreasureSettingsToggle ->
+            Update.Treasure.settingsToggle model
+
+        TreasureSettingsCountSet itemClass value ->
+            Update.Treasure.settingsCountSet itemClass value model
+
+        TreasureSettingsValueSet itemClass value ->
+            Update.Treasure.settingsValueSet itemClass value model
+
+        TreasureSettingsReset ->
+            Update.Treasure.settingsReset model
+
         TreasureCoinRemove denomination ->
             Update.Treasure.coinRemove denomination model
 

@@ -15,6 +15,7 @@ test fails with a structural mismatch.
 -}
 
 import Encounter exposing (AutoRollMode(..), Cover(..), Duration(..), TurnPhase(..), TurnTarget(..))
+import Encounter.Treasure
 import Encounter.Wire as Wire
 import Expect
 import Json.Decode as D
@@ -69,6 +70,7 @@ singleCreatureEncounter =
     , activeName = "Smaug"
     , round = 7
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
@@ -82,6 +84,7 @@ multiCreatureEncounter =
     , activeName = "Brakka"
     , round = 3
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 

@@ -451,6 +451,7 @@ type alias Encounter =
     , activeName : String
     , round : Int
     , treasure : Maybe Encounter.Treasure.TreasureRoll
+    , treasureSettings : Encounter.Treasure.TreasureSettings
     }
 
 
@@ -473,6 +474,7 @@ empty =
     , activeName = ""
     , round = 0
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 

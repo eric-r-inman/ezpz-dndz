@@ -7,6 +7,7 @@ the dead-skip behavior of `nextTurn`.
 
 import Encounter exposing (AutoRollMode(..), Cover(..), Creature, Duration(..), Encounter, TurnPhase(..), TurnTarget(..))
 import Encounter.Lifecycle as Lifecycle
+import Encounter.Treasure
 import Expect
 import Set
 import Test exposing (Test, describe, test)
@@ -76,6 +77,7 @@ threeCreatures =
     , activeName = "A"
     , round = 1
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
@@ -329,6 +331,7 @@ untilTurnExpireSuite =
                         , activeName = "B"
                         , round = 1
                         , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
                         }
                 in
                 Lifecycle.applyEndOfTurn "B" enc
@@ -359,6 +362,7 @@ untilTurnExpireSuite =
                         , activeName = "A"
                         , round = 1
                         , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
                         }
                 in
                 Lifecycle.applyEndOfTurn "A" enc

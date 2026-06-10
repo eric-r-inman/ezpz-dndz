@@ -1031,6 +1031,17 @@ type Msg
       -- Collapse / expand the "By creature" breakdown that
       -- accompanies a Sum (all Enemies) roll.
     | TreasureContributionsToggle
+      -- Per-encounter roll knobs (More/Normal/Fewer for counts,
+      -- Higher/Normal/Lower for tier values).  Wire strings are
+      -- ("coins" / "gems" / "art" / "magic", "fewer" / "normal" /
+      -- "more") and ("gems" / "art" / "magic", "lower" / "normal" /
+      -- "higher"). Reset returns every knob to Normal.
+    | TreasureSettingsCountSet String String
+    | TreasureSettingsValueSet String String
+    | TreasureSettingsReset
+      -- Collapse / expand the "Tune your rolls" settings panel
+      -- in the Treasure modal.
+    | TreasureSettingsToggle
       -- Per-row delete.  The × button on each rolled treasure
       -- item removes just that item from the encounter's roll
       -- (gem/art/magic by index; coin denomination by wire
