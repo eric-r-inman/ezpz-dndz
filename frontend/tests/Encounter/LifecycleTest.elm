@@ -75,6 +75,7 @@ threeCreatures =
     { creatures = [ mkCreature "A" 20, mkCreature "B" 15, mkCreature "C" 10 ]
     , activeName = "A"
     , round = 1
+    , treasure = Nothing
     }
 
 
@@ -327,6 +328,7 @@ untilTurnExpireSuite =
                         { creatures = [ bearer, mkCreature "B" 15 ]
                         , activeName = "B"
                         , round = 1
+                        , treasure = Nothing
                         }
                 in
                 Lifecycle.applyEndOfTurn "B" enc
@@ -356,6 +358,7 @@ untilTurnExpireSuite =
                         { creatures = [ bearer, mkCreature "B" 15 ]
                         , activeName = "A"
                         , round = 1
+                        , treasure = Nothing
                         }
                 in
                 Lifecycle.applyEndOfTurn "A" enc

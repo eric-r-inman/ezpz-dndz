@@ -43,6 +43,8 @@ import Encounter
         , TurnPhase(..)
         , TurnTarget(..)
         )
+import Encounter.Treasure
+import Encounter.Treasure.Tables
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -222,7 +224,234 @@ encodeEncounter enc =
         [ ( "creatures", E.list encodeCreature enc.creatures )
         , ( "activeName", E.string enc.activeName )
         , ( "round", E.int enc.round )
+        , ( "treasure", encodeMaybe encodeTreasureState enc.treasure )
         ]
+
+
+encodeTreasureState : Encounter.TreasureState -> E.Value
+encodeTreasureState state =
+    E.object
+        [ ( "roll", encodeTreasureRoll state.roll )
+        , ( "distributed", E.list E.string (Set.toList state.distributed) )
+        ]
+
+
+decodeTreasureState : D.Decoder Encounter.TreasureState
+decodeTreasureState =
+    D.map2 Encounter.TreasureState
+        (D.field "roll" decodeTreasureRoll)
+        (D.field "distributed" (D.list D.string |> D.map Set.fromList))
+
+
+encodeTreasureRoll : Encounter.Treasure.TreasureRoll -> E.Value
+encodeTreasureRoll roll =
+    E.object
+        [ ( "kind", E.string (treasureKindWire roll.kind) )
+        , ( "bracket", E.string (treasureBracketWire roll.bracket) )
+        , ( "coins", encodeCoins roll.coins )
+        , ( "gems", E.list encodeGemItem roll.gems )
+        , ( "art", E.list encodeArtItem roll.art )
+        , ( "magic", E.list encodeMagicItem roll.magic )
+        ]
+
+
+decodeTreasureRoll : D.Decoder Encounter.Treasure.TreasureRoll
+decodeTreasureRoll =
+    D.map6
+        (\kind bracket coins gems art magic ->
+            { kind = kind
+            , bracket = bracket
+            , coins = coins
+            , gems = gems
+            , art = art
+            , magic = magic
+            }
+        )
+        (D.field "kind" treasureKindDecoder)
+        (D.field "bracket" treasureBracketDecoder)
+        (D.field "coins" decodeCoins)
+        (D.field "gems" (D.list decodeGemItem))
+        (D.field "art" (D.list decodeArtItem))
+        (D.field "magic" (D.list decodeMagicItem))
+
+
+treasureKindWire : Encounter.Treasure.Kind -> String
+treasureKindWire k =
+    case k of
+        Encounter.Treasure.Individual ->
+            "individual"
+
+        Encounter.Treasure.Hoard ->
+            "hoard"
+
+
+treasureKindDecoder : D.Decoder Encounter.Treasure.Kind
+treasureKindDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "individual" ->
+                        D.succeed Encounter.Treasure.Individual
+
+                    "hoard" ->
+                        D.succeed Encounter.Treasure.Hoard
+
+                    other ->
+                        D.fail ("Unknown treasure kind: " ++ other)
+            )
+
+
+treasureBracketWire : Encounter.Treasure.Bracket -> String
+treasureBracketWire b =
+    case b of
+        Encounter.Treasure.B1to4 ->
+            "1to4"
+
+        Encounter.Treasure.B5to10 ->
+            "5to10"
+
+        Encounter.Treasure.B11to16 ->
+            "11to16"
+
+        Encounter.Treasure.B17plus ->
+            "17plus"
+
+
+treasureBracketDecoder : D.Decoder Encounter.Treasure.Bracket
+treasureBracketDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "1to4" ->
+                        D.succeed Encounter.Treasure.B1to4
+
+                    "5to10" ->
+                        D.succeed Encounter.Treasure.B5to10
+
+                    "11to16" ->
+                        D.succeed Encounter.Treasure.B11to16
+
+                    "17plus" ->
+                        D.succeed Encounter.Treasure.B17plus
+
+                    other ->
+                        D.fail ("Unknown treasure bracket: " ++ other)
+            )
+
+
+encodeCoins : Encounter.Treasure.Coins -> E.Value
+encodeCoins c =
+    E.object
+        [ ( "copper", E.int c.copper )
+        , ( "silver", E.int c.silver )
+        , ( "electrum", E.int c.electrum )
+        , ( "gold", E.int c.gold )
+        , ( "platinum", E.int c.platinum )
+        ]
+
+
+decodeCoins : D.Decoder Encounter.Treasure.Coins
+decodeCoins =
+    D.map5
+        (\cp sp ep gp pp ->
+            { copper = cp
+            , silver = sp
+            , electrum = ep
+            , gold = gp
+            , platinum = pp
+            }
+        )
+        (D.field "copper" D.int)
+        (D.field "silver" D.int)
+        (D.field "electrum" D.int)
+        (D.field "gold" D.int)
+        (D.field "platinum" D.int)
+
+
+encodeGemItem : Encounter.Treasure.GemItem -> E.Value
+encodeGemItem g =
+    E.object [ ( "name", E.string g.name ), ( "valueGp", E.int g.valueGp ) ]
+
+
+decodeGemItem : D.Decoder Encounter.Treasure.GemItem
+decodeGemItem =
+    D.map2 Encounter.Treasure.GemItem
+        (D.field "name" D.string)
+        (D.field "valueGp" D.int)
+
+
+encodeArtItem : Encounter.Treasure.ArtItem -> E.Value
+encodeArtItem a =
+    E.object [ ( "name", E.string a.name ), ( "valueGp", E.int a.valueGp ) ]
+
+
+decodeArtItem : D.Decoder Encounter.Treasure.ArtItem
+decodeArtItem =
+    D.map2 Encounter.Treasure.ArtItem
+        (D.field "name" D.string)
+        (D.field "valueGp" D.int)
+
+
+encodeMagicItem : Encounter.Treasure.MagicItem -> E.Value
+encodeMagicItem m =
+    E.object
+        [ ( "name", E.string m.name )
+        , ( "rarity", E.string (rarityWire m.rarity) )
+        ]
+
+
+decodeMagicItem : D.Decoder Encounter.Treasure.MagicItem
+decodeMagicItem =
+    D.map2 Encounter.Treasure.MagicItem
+        (D.field "name" D.string)
+        (D.field "rarity" rarityDecoder)
+
+
+rarityWire : Encounter.Treasure.Tables.Rarity -> String
+rarityWire r =
+    case r of
+        Encounter.Treasure.Tables.Common ->
+            "common"
+
+        Encounter.Treasure.Tables.Uncommon ->
+            "uncommon"
+
+        Encounter.Treasure.Tables.Rare ->
+            "rare"
+
+        Encounter.Treasure.Tables.VeryRare ->
+            "very-rare"
+
+        Encounter.Treasure.Tables.Legendary ->
+            "legendary"
+
+
+rarityDecoder : D.Decoder Encounter.Treasure.Tables.Rarity
+rarityDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "common" ->
+                        D.succeed Encounter.Treasure.Tables.Common
+
+                    "uncommon" ->
+                        D.succeed Encounter.Treasure.Tables.Uncommon
+
+                    "rare" ->
+                        D.succeed Encounter.Treasure.Tables.Rare
+
+                    "very-rare" ->
+                        D.succeed Encounter.Treasure.Tables.VeryRare
+
+                    "legendary" ->
+                        D.succeed Encounter.Treasure.Tables.Legendary
+
+                    other ->
+                        D.fail ("Unknown magic-item rarity: " ++ other)
+            )
 
 
 encodeCreature : Creature -> E.Value
@@ -475,16 +704,22 @@ boolToLegacyCount b =
 
 decodeEncounter : D.Decoder Encounter
 decodeEncounter =
-    D.map3
-        (\creatures activeName round ->
+    D.map4
+        (\creatures activeName round treasure ->
             { creatures = creatures
             , activeName = activeName
             , round = round
+            , treasure = treasure
             }
         )
         (D.field "creatures" (D.list decodeCreature))
         (D.field "activeName" D.string)
         (D.field "round" D.int)
+        (D.oneOf
+            [ D.field "treasure" (D.nullable decodeTreasureState)
+            , D.succeed Nothing
+            ]
+        )
 
 
 decodeCreature : D.Decoder Creature

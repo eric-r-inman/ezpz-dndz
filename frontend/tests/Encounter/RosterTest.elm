@@ -100,6 +100,7 @@ threeCreatures =
     { creatures = [ mkCreature "A" 20, mkCreature "B" 15, mkCreature "C" 10 ]
     , activeName = "A"
     , round = 1
+    , treasure = Nothing
     }
 
 
@@ -276,6 +277,7 @@ removeCreatureSuite =
                         { creatures = [ mkCreature "A" 20 ]
                         , activeName = "A"
                         , round = 1
+                        , treasure = Nothing
                         }
                 in
                 Roster.removeCreature "A" enc

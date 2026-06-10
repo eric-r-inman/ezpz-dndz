@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens
     )
 
 {-| The single source of truth for the running app.
@@ -74,6 +74,7 @@ import Ui.Save exposing (SaveUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
+import Ui.Treasure exposing (TreasureUi)
 import Url exposing (Url)
 
 
@@ -129,6 +130,7 @@ type Modal
     | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
     | ModalRandomEncounter RandomEncounterUi
+    | ModalTreasure TreasureUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -240,6 +242,20 @@ randomEncounterLens =
                 _ ->
                     Nothing
     , wrap = ModalRandomEncounter
+    }
+
+
+treasureLens : ModalLens TreasureUi
+treasureLens =
+    { extract =
+        \m ->
+            case m of
+                ModalTreasure ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalTreasure
     }
 
 

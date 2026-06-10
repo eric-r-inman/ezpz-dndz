@@ -39,6 +39,7 @@ import Compendium.Wire
 import Dice
 import Encounter exposing (Encounter)
 import Encounter.RandomEncounter.Lore
+import Encounter.Treasure
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
@@ -1008,6 +1009,29 @@ type Msg
     | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
+      -- Treasure modal — random loot generator from the encounter
+      -- title bar.  Open seeds the modal's UI state with the
+      -- bracket suggested from the toughest creature's CR; the
+      -- actual loot lives on `model.encounter.treasure` so it
+      -- persists with the encounter.
+    | TreasureOpen
+    | TreasureClose
+    | TreasureKindSet String
+    | TreasureBracketSet String
+    | TreasureRoll
+      -- The random Generator landed; payload is the materialised
+      -- TreasureRoll.  Saved straight into the encounter, which
+      -- triggers the standard persist hook.
+    | TreasureRolled Encounter.Treasure.TreasureRoll
+      -- Per-row distributed checkbox.  Slug identifies the row:
+      -- "coins", "gem:<idx>", "art:<idx>", or "magic:<idx>".
+    | TreasureToggleDistributed String
+      -- Re-roll workflow: first click asks for confirmation if
+      -- any row is already marked distributed (avoid clobbering
+      -- ledger state).
+    | TreasureRerollRequest
+    | TreasureRerollConfirm
+    | TreasureRerollCancel
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

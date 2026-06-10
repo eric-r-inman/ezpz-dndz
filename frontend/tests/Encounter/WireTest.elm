@@ -68,6 +68,7 @@ singleCreatureEncounter =
     { creatures = [ fullyPopulatedCreature ]
     , activeName = "Smaug"
     , round = 7
+    , treasure = Nothing
     }
 
 
@@ -80,6 +81,7 @@ multiCreatureEncounter =
         ]
     , activeName = "Brakka"
     , round = 3
+    , treasure = Nothing
     }
 
 

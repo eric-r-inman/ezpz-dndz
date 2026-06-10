@@ -150,6 +150,7 @@ mixedEncounter =
         ]
     , activeName = "Goblin"
     , round = 1
+    , treasure = Nothing
     }
 
 
@@ -205,6 +206,7 @@ totalsForSuite =
                         { creatures = [ mkInstance { name = "Dragon", compId = "dragon", selected = False } ]
                         , activeName = "Dragon"
                         , round = 1
+                        , treasure = Nothing
                         }
 
                     db =
@@ -260,7 +262,7 @@ totalsForSuite =
                         }
 
                     enc =
-                        { creatures = [ orphan ], activeName = "Mystery", round = 1 }
+                        { creatures = [ orphan ], activeName = "Mystery", round = 1, treasure = Nothing }
                 in
                 Xp.totalsFor ScopeXpEnemiesAndNpcs enc mixedDb
                     |> Expect.equal { total = 0, lairTotal = 0 }

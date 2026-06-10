@@ -67,6 +67,7 @@ module View.Tooltips exposing
     , diceRollAgain
     , dodging
     , encounterBarDifficulty
+    , encounterBarTreasure
     , fallDamage
     , flyHeightDown
     , flyHeightUp
@@ -326,6 +327,11 @@ xpFilter =
 encounterBarDifficulty : String
 encounterBarDifficulty =
     "Open the encounter-difficulty calculator (2024 XP budgets)"
+
+
+encounterBarTreasure : String
+encounterBarTreasure =
+    "Roll random treasure for this encounter (SRD individual or hoard tables)"
 
 
 halfCover : String

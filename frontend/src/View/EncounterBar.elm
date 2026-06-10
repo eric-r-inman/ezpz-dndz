@@ -71,6 +71,14 @@ view mode enc savedAs db xpScope xpFilterOpen =
                             , attribute "aria-label" Tooltips.encounterBarDifficulty
                             ]
                             [ text "Difficulty" ]
+                        , button
+                            [ class "encounter-bar__treasure"
+                            , type_ "button"
+                            , onClick TreasureOpen
+                            , Tooltips.attr Tooltips.encounterBarTreasure
+                            , attribute "aria-label" Tooltips.encounterBarTreasure
+                            ]
+                            [ text "Treasure" ]
                         , quickListLink
                         ]
 
