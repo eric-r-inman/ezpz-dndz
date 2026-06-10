@@ -44,7 +44,7 @@ import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
-import Encounter.Treasure.UserTable as UserTreasureTable
+import Encounter.Treasure
 import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
@@ -582,11 +582,13 @@ type alias Model =
     -- `localStorage.userLoreGroups`.
     , userLoreGroups : List Lore.Group
 
-    -- User-authored treasure tables for the Treasure modal's
-    -- Custom section.  Edited in the Treasure Tables modal and
-    -- persisted to `/api/treasure-tables` (or
-    -- `localStorage.userTreasureTables` for anonymous sessions).
-    , userTreasureTables : List UserTreasureTable.UserTable
+    -- Singular per-user treasure table.  `Nothing` means the
+    -- user has nothing saved yet — the generator falls back to
+    -- `Encounter.Treasure.bundledTable` in that case.  Edited
+    -- in the Treasure Table modal and persisted to
+    -- `/api/treasure-table` (or `localStorage.userTreasureTable`
+    -- for anonymous sessions).
+    , userTreasureTable : Maybe Encounter.Treasure.TreasureTable
 
     -- JS `Date.now()` captured at boot, used as the timestamp for
     -- all anonymous named-save writes done in this session.  All

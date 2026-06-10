@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTables, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -173,12 +173,12 @@ section.
 port persistLocalUserLoreGroups : E.Value -> Cmd msg
 
 
-{-| Persist user-authored treasure tables to
-`localStorage.userTreasureTables`. Body is the wrapper object
-defined by [`Encounter.Treasure.UserTable.Wire`](Encounter-Treasure-UserTable-Wire).
-Fires on every Save / Delete in the Treasure Tables editor.
+{-| Persist the user's singular treasure table to
+`localStorage.userTreasureTable`. Body is the full table
+encoded by [`Encounter.Treasure.TableWire`](Encounter-Treasure-TableWire).
+Fires on every edit in the Treasure Table editor.
 -}
-port persistLocalUserTreasureTables : E.Value -> Cmd msg
+port persistLocalUserTreasureTable : E.Value -> Cmd msg
 
 
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of

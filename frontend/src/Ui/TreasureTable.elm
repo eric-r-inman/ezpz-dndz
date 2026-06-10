@@ -1,85 +1,79 @@
 module Ui.TreasureTable exposing
-    ( Mode(..)
+    ( Section(..)
     , TreasureTableUi
     , fresh
-    , opening
-    , withDraft
-    , withEditing
+    , toggleSection
     )
 
-{-| UI substate for the user-authored Treasure Tables editor.
+{-| UI substate for the (singular) Treasure Table editor.
 
-The editor is a stand-alone modal opened from the main Treasure
-modal ("Manage tables ..." link beneath the Custom section).
-It owns:
+There's exactly one treasure table per user — bundled by
+default, mutated through this editor. The modal renders a
+collection of collapsible sections (individual rows by
+bracket, hoard rows by bracket, gem name lists by tier, art
+lists by tier, magic lists per SRD table letter), so this
+substate just tracks which sections are currently expanded
+and any in-progress "add new entry" draft for a section.
 
-  - Which mode the modal is in — a list view of the user's
-    tables, or the editor pane for one specific table.
-  - The in-progress draft of the table currently being edited
-    (separate from the persisted list so a hit-Cancel discards
-    cleanly).
-  - The currently-selected entry index inside the draft, so the
-    inline editing affordances know which row to mutate.
-
-The persisted table list itself lives on
-`model.userTreasureTables`; the editor only holds the _draft_
-and the navigation state.
+The treasure-table data itself lives on
+`model.userTreasureTable : Maybe TreasureTable`; the editor
+mutates that directly, so the modal substate stays small.
 
 -}
 
-import Encounter.Treasure.UserTable as UserTable exposing (UserTable)
+import Set exposing (Set)
 
 
-{-| Editor "page" inside the modal.
-
-  - `Listing` — the table list (default open state). Empty list
-    surfaces an inline "No tables yet — create one" prompt.
-  - `Editing table` — the per-table editor. `table` is the
-    in-progress draft (not yet committed to the model).
-
+{-| Discriminator for a collapsible section in the editor.
+Each section knows its own key string ("ind:1to4",
+"gem:50gp", "magic:A", etc.); rendering iterates the table
+data and matches up the expanded set.
 -}
-type Mode
-    = Listing
-    | Editing UserTable
+type Section
+    = IndividualSection String
+    | HoardSection String
+    | GemSection String
+    | ArtSection String
+    | MagicSection String
 
 
 type alias TreasureTableUi =
-    { mode : Mode
+    { expanded : Set String
     }
 
 
-{-| Initial state when the modal first opens — the Listing view.
--}
 fresh : TreasureTableUi
 fresh =
-    { mode = Listing }
+    { expanded = Set.empty }
 
 
-{-| Convenience for opening straight to the editor pane on a
-specific table. Used by the "Edit" affordance on a list row.
--}
-opening : UserTable -> TreasureTableUi
-opening table =
-    { mode = Editing table }
+sectionKey : Section -> String
+sectionKey s =
+    case s of
+        IndividualSection k ->
+            "ind:" ++ k
+
+        HoardSection k ->
+            "hoard:" ++ k
+
+        GemSection k ->
+            "gem:" ++ k
+
+        ArtSection k ->
+            "art:" ++ k
+
+        MagicSection k ->
+            "magic:" ++ k
 
 
-{-| Flip to the editor mode for the given table.
--}
-withEditing : UserTable -> TreasureTableUi -> TreasureTableUi
-withEditing table ui =
-    { ui | mode = Editing table }
+toggleSection : Section -> TreasureTableUi -> TreasureTableUi
+toggleSection section ui =
+    let
+        key =
+            sectionKey section
+    in
+    if Set.member key ui.expanded then
+        { ui | expanded = Set.remove key ui.expanded }
 
-
-{-| Replace the in-progress draft. Caller computes the next
-draft (e.g. by mapping over entries); this is the lens-style
-setter the update branches lean on. No-op when the modal isn't
-in `Editing` mode.
--}
-withDraft : (UserTable -> UserTable) -> TreasureTableUi -> TreasureTableUi
-withDraft fn ui =
-    case ui.mode of
-        Editing table ->
-            { ui | mode = Editing (fn table) }
-
-        Listing ->
-            ui
+    else
+        { ui | expanded = Set.insert key ui.expanded }

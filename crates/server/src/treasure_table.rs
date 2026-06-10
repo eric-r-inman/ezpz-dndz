@@ -1,25 +1,18 @@
-//! Per-user user-authored treasure tables for the Treasure
-//! generator's _Custom_ section.
+//! Per-user singular treasure table.
 //!
-//! A user treasure table is a weighted list of named entries
-//! ("Iridescent Pearl" / "Silver Crown" / "Smoking Censer of
-//! Bahamut") that the GM rolls on alongside the bundled SRD
-//! tables.  Pre-Tier-4 these would live only in
-//! `localStorage.userTreasureTables`, but persisting them
-//! server-side keeps the same table available across browsers
-//! — the same pattern as
-//! [`LoreGroupStore`](crate::lore_groups::LoreGroupStore) and
-//! [`ConditionPresetStore`](crate::condition_presets::ConditionPresetStore).
+//! Every user has exactly one treasure table — bundled SRD
+//! defaults out of the box, mutated through the Treasure Table
+//! editor modal. There's no list of named tables, no per-table
+//! save slots; the table IS the table.
 //!
 //! Disk shape: `HashMap<UserId, Value>` where the value is an
 //! opaque JSON payload defined by
-//! `Encounter.Treasure.UserTable.Wire` on the Elm side.  The
-//! server doesn't model the schema — the frontend owns it,
-//! and the wire format follows the frontend.
+//! `Encounter.Treasure.TableWire` on the Elm side. Server stays
+//! out of the schema — the frontend owns it.
 //!
-//! Anonymous users persist to `localStorage` instead; on
-//! sign-in the existing migration pipeline in `Update.Auth`
-//! PUTs the local snapshot up here once.
+//! Anonymous users persist to `localStorage` instead; on sign-in
+//! the existing migration pipeline in `Update.Auth` PUTs the
+//! local snapshot up here once.
 
 use aide::{
   axum::{
@@ -59,10 +52,10 @@ impl TreasureTableStore {
     })
   }
 
-  /// Return the user's saved treasure-table list, or
-  /// `Value::Null` when they haven't persisted one yet.  The
-  /// frontend treats null as "use the empty default" — no
-  /// migration step needed.
+  /// Return the user's saved treasure table, or `Value::Null`
+  /// when they haven't persisted one yet. The frontend treats
+  /// null as "use the bundled SRD default" — no migration step
+  /// needed.
   pub async fn read(&self, user_id: &UserId) -> Value {
     self
       .inner
@@ -109,19 +102,19 @@ impl IntoResponse for TreasureTableStoreError {
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
-async fn get_treasure_tables(
+async fn get_treasure_table(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  Json(state.treasure_tables.read(&user.id).await).into_response()
+  Json(state.treasure_table.read(&user.id).await).into_response()
 }
 
-async fn put_treasure_tables(
+async fn put_treasure_table(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Json(body): Json<Value>,
 ) -> Response {
-  match state.treasure_tables.replace(&user.id, body.clone()).await {
+  match state.treasure_table.replace(&user.id, body.clone()).await {
     Ok(()) => Json(body).into_response(),
     Err(e) => e.into_response(),
   }
@@ -130,22 +123,22 @@ async fn put_treasure_tables(
 pub fn router() -> ApiRouter<AppState> {
   ApiRouter::new()
     .api_route(
-      "/api/treasure-tables",
-      get_with(get_treasure_tables, |op: TransformOperation| {
+      "/api/treasure-table",
+      get_with(get_treasure_table, |op: TransformOperation| {
         op.description(
-          "Return the caller's saved user-authored treasure tables \
-           as opaque JSON.  Returns `null` when the user hasn't \
-           saved any tables yet — the frontend treats that as the \
-           empty default.",
+          "Return the caller's saved singular treasure table as \
+           opaque JSON. Returns `null` when the user hasn't saved \
+           one yet — the frontend then falls back to the bundled \
+           SRD default.",
         )
       }),
     )
     .api_route(
-      "/api/treasure-tables",
-      put_with(put_treasure_tables, |op: TransformOperation| {
+      "/api/treasure-table",
+      put_with(put_treasure_table, |op: TransformOperation| {
         op.description(
-          "Replace the caller's saved treasure tables with the \
-           supplied JSON.  Body is opaque to the server — the \
+          "Replace the caller's saved treasure table with the \
+           supplied JSON. Body is opaque to the server — the \
            frontend defines the shape.",
         )
       }),

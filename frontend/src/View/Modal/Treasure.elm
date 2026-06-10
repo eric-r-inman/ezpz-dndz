@@ -32,7 +32,6 @@ import Encounter.Treasure as Treasure
         , MagicItem
         )
 import Encounter.Treasure.Tables as Tables exposing (Rarity)
-import Encounter.Treasure.UserTable as UserTable exposing (CustomRoll, UserTable)
 import Html
     exposing
         ( Html
@@ -75,15 +74,15 @@ view chrome model =
                 , title = "💰 Treasure"
                 , extraClass = "modal--treasure"
                 , chrome = chrome
-                , body = body ui model.encounter.treasure model.userTreasureTables
+                , body = body ui model.encounter.treasure
                 }
 
         _ ->
             text ""
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> List UserTable -> List (Html Msg)
-body ui maybeRoll userTables =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> List (Html Msg)
+body ui maybeRoll =
     [ controlRow ui
     , case maybeRoll of
         Nothing ->
@@ -91,8 +90,21 @@ body ui maybeRoll userTables =
 
         Just roll ->
             resultBlock roll
-    , userTablesSection userTables
+    , editTableLink
     ]
+
+
+editTableLink : Html Msg
+editTableLink =
+    div [ class "treasure__edit-table-row" ]
+        [ button
+            [ class "treasure__edit-table"
+            , type_ "button"
+            , onClick TreasureTableOpen
+            , attribute "title" "View / edit your treasure table"
+            ]
+            [ text "Edit treasure table…" ]
+        ]
 
 
 
@@ -174,7 +186,6 @@ resultBlock roll =
         , gemsSection roll.gems
         , artSection roll.art
         , magicSection roll.magic
-        , customSection roll.custom
         ]
 
 
@@ -395,132 +406,6 @@ rarityModifier r =
 
         Tables.Legendary ->
             "legendary"
-
-
-
--- ── CUSTOM ROWS (rolled from user-authored tables) ──────────────────────────
-
-
-customSection : List CustomRoll -> Html Msg
-customSection rows =
-    if List.isEmpty rows then
-        text ""
-
-    else
-        section [ class "treasure__section treasure__section--custom" ]
-            [ div [ class "treasure__section-header" ]
-                [ span [ class "treasure__section-title" ] [ text "Custom" ]
-                ]
-            , ul [ class "treasure__list" ]
-                (List.indexedMap customRow rows)
-            ]
-
-
-customRow : Int -> CustomRoll -> Html Msg
-customRow idx row_ =
-    li [ class "treasure__row" ]
-        [ span [ class "treasure__row-name" ]
-            [ text row_.label
-            , span [ class "treasure__row-source" ]
-                [ text (" — " ++ row_.sourceTableName) ]
-            ]
-        , customMeta row_
-        , rowRemoveButton (TreasureCustomRemove idx)
-        ]
-
-
-customMeta : CustomRoll -> Html Msg
-customMeta row_ =
-    case ( row_.gpValue, row_.rarity ) of
-        ( Just gp, _ ) ->
-            span [ class "treasure__row-value" ]
-                [ text (String.fromInt gp ++ " gp") ]
-
-        ( Nothing, Just rarity ) ->
-            span
-                [ class
-                    ("treasure__rarity treasure__rarity--"
-                        ++ rarityModifier rarity
-                    )
-                ]
-                [ text (Tables.rarityLabel rarity) ]
-
-        ( Nothing, Nothing ) ->
-            text ""
-
-
-
--- ── USER-AUTHORED TABLE PICKER ──────────────────────────────────────────────
-
-
-userTablesSection : List UserTable -> Html Msg
-userTablesSection tables =
-    section [ class "treasure__user-tables" ]
-        [ div [ class "treasure__user-tables-header" ]
-            [ span [ class "treasure__user-tables-title" ]
-                [ text "Custom tables" ]
-            , button
-                [ class "treasure__user-tables-manage"
-                , type_ "button"
-                , onClick TreasureTableOpen
-                ]
-                [ text "Manage tables…" ]
-            ]
-        , if List.isEmpty tables then
-            p [ class "treasure__user-tables-empty" ]
-                [ text "Author your own tables to roll on them here." ]
-
-          else
-            ul [ class "treasure__user-tables-list" ]
-                (List.map userTableRow tables)
-        ]
-
-
-userTableRow : UserTable -> Html Msg
-userTableRow table =
-    let
-        entries =
-            List.length table.entries
-
-        hasEntries =
-            UserTable.totalWeight table > 0
-    in
-    li [ class "treasure__user-table-row" ]
-        [ span [ class "treasure__user-table-name" ]
-            [ text
-                (if String.isEmpty (String.trim table.name) then
-                    "(unnamed)"
-
-                 else
-                    table.name
-                )
-            ]
-        , span [ class "treasure__user-table-count" ]
-            [ text
-                (String.fromInt entries
-                    ++ (if entries == 1 then
-                            " entry"
-
-                        else
-                            " entries"
-                       )
-                )
-            ]
-        , button
-            [ class "treasure__user-table-roll"
-            , type_ "button"
-            , onClick (TreasureTableRoll table.id)
-            , disabled (not hasEntries)
-            , attribute "title"
-                (if hasEntries then
-                    "Roll on this table"
-
-                 else
-                    "This table has no live entries yet"
-                )
-            ]
-            [ text "🎲 Roll" ]
-        ]
 
 
 

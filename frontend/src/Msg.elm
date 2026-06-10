@@ -40,7 +40,6 @@ import Dice
 import Encounter exposing (Encounter)
 import Encounter.RandomEncounter.Lore
 import Encounter.Treasure
-import Encounter.Treasure.UserTable
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope)
 import File exposing (File)
@@ -1039,54 +1038,37 @@ type Msg
     | TreasureGemRemove Int
     | TreasureArtRemove Int
     | TreasureMagicRemove Int
-      -- User-authored treasure tables.  The boot fetch lands in
-      -- `TreasureTablesLoaded`; every editor save fires
-      -- `Effects.putTreasureTables` and the response lands in
-      -- `TreasureTablesPersisted`.  Anonymous sessions persist via
-      -- `Ports.persistLocalUserTreasureTables` and skip the wire.
-    | TreasureTablesLoaded (Result Http.Error (List Encounter.Treasure.UserTable.UserTable))
-    | TreasureTablesPersisted (Result Http.Error ())
-      -- Editor modal lifecycle.  TreasureTableOpen launches the
-      -- list view; TreasureTableEditNew opens the editor on a
-      -- fresh blank draft; TreasureTableEdit opens it on an
-      -- existing table by id; TreasureTableClose closes the
-      -- modal entirely.
+      -- Singular per-user Treasure Table sync.  Boot fetch lands
+      -- in `TreasureTableLoaded`; every editor mutation fires
+      -- `Effects.putTreasureTable` and the response lands in
+      -- `TreasureTablePersisted`.  Anonymous sessions persist via
+      -- `Ports.persistLocalUserTreasureTable` and skip the wire.
+    | TreasureTableLoaded (Result Http.Error (Maybe Encounter.Treasure.TreasureTable))
+    | TreasureTablePersisted (Result Http.Error ())
+      -- Editor modal lifecycle.
     | TreasureTableOpen
     | TreasureTableClose
-    | TreasureTableEditNew
-    | TreasureTableEdit String
-    | TreasureTableBackToList
-      -- Draft mutation while the editor pane is open.  Each Msg
-      -- targets a specific field on the current draft; the update
-      -- branches all funnel through `Update.TreasureTable`.
-    | TreasureTableNameChanged String
-    | TreasureTableEntryAdd
-    | TreasureTableEntryRemove Int
-    | TreasureTableEntryLabelChanged Int String
-    | TreasureTableEntryWeightChanged Int String
-    | TreasureTableEntryGpChanged Int String
-    | TreasureTableEntryRarityChanged Int String
-      -- Commit / discard the draft.  Submit replaces (or appends)
-      -- the table in `model.userTreasureTables`; cancel flips
-      -- back to the list view without touching the model.
-    | TreasureTableDraftSubmit
-    | TreasureTableDraftCancel
-      -- List-view actions.  Delete removes the table by id;
-      -- there's no two-step confirm for now (the list is small
-      -- and tables can be re-authored cheaply).
-    | TreasureTableDelete String
-      -- Roll on a user-authored table from the main Treasure
-      -- modal's Custom section.  TreasureTableRoll picks the
-      -- table by id; the rolled result lands in
-      -- TreasureCustomRolled and the update branch appends it
-      -- to the active TreasureRoll.  Nothing case fires when
-      -- the table has no live entries — the modal pushes a
-      -- toast in that case.
-    | TreasureTableRoll String
-    | TreasureCustomRolled (Maybe Encounter.Treasure.UserTable.CustomRoll)
-      -- Drop one custom row (by index) from the active
-      -- TreasureRoll.  Used by the inline × on each custom row.
-    | TreasureCustomRemove Int
+      -- Toggle one collapsible section's expanded state.  Section
+      -- discriminator + slug get passed verbatim from the view
+      -- so the editor doesn't have to know about the section
+      -- catalogue.
+    | TreasureTableToggleSection String String
+      -- Edit the list of names for one gem / art / magic tier.
+      -- `String` parameter pairs are (tier-key, new-name) for
+      -- add and (tier-key, index, new-value) for edit.  Remove
+      -- just takes (tier-key, index).
+    | TreasureTableGemAdd String
+    | TreasureTableGemEdit String Int String
+    | TreasureTableGemRemoveItem String Int
+    | TreasureTableArtAdd String
+    | TreasureTableArtEdit String Int String
+    | TreasureTableArtRemoveItem String Int
+    | TreasureTableMagicAdd String
+    | TreasureTableMagicEdit String Int String
+    | TreasureTableMagicRemoveItem String Int
+      -- Reset the user's table to the bundled SRD default.
+      -- Two-step confirm gating happens in the view layer.
+    | TreasureTableResetToBundled
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

@@ -139,11 +139,21 @@ roll model =
     case model.modal of
         Just (Model.ModalTreasure ui) ->
             ( model
-            , Random.generate TreasureRolled (Treasure.generate ui.kind ui.bracket)
+            , Random.generate TreasureRolled
+                (Treasure.generate ui.kind ui.bracket (activeTable model))
             )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Resolve the table to roll against — the user's edited copy
+when they have one, otherwise the bundled default. Centralised
+here so all the per-category / re-roll handlers stay in sync.
+-}
+activeTable : Model -> Treasure.TreasureTable
+activeTable model =
+    Maybe.withDefault Treasure.bundledTable model.userTreasureTable
 
 
 {-| Materialised roll landed — save it onto the encounter.
@@ -178,7 +188,7 @@ rerollCategory category model =
         Just currentRoll ->
             ( model
             , Random.generate (TreasureCategoryRolled category)
-                (Treasure.generateRerollCategory currentRoll category)
+                (Treasure.generateRerollCategory (activeTable model) currentRoll category)
             )
 
         Nothing ->

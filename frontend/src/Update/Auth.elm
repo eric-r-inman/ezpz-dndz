@@ -132,7 +132,7 @@ meReceived result model =
                 , Effects.fetchDiceHistory
                 , Effects.fetchLoreGroups
                 , Effects.fetchConditionPresets
-                , Effects.fetchTreasureTables
+                , Effects.fetchTreasureTable
                 , encounterMigrationCmd
                 , cardLayoutMigrationCmd
                 , compendiumMigrationCmd

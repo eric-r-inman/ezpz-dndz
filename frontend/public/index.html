@@ -180,14 +180,24 @@
         }
       } catch (_) {}
 
-      // User-authored treasure tables for the Treasure modal's
-      // Custom section.  Anonymous-mode only; authed sessions
-      // pull from /api/treasure-tables instead.
-      var localUserTreasureTables = null;
+      // Singular per-user treasure table.  Anonymous-mode only;
+      // authed sessions pull from /api/treasure-table instead.
+      var localUserTreasureTable = null;
       try {
-        var treasureRaw = localStorage.getItem("userTreasureTables");
+        var treasureRaw = localStorage.getItem("userTreasureTable");
         if (treasureRaw) {
-          localUserTreasureTables = JSON.parse(treasureRaw);
+          localUserTreasureTable = JSON.parse(treasureRaw);
+        }
+      } catch (_) {}
+
+      // One-time clearance of the obsolete user-tables list from
+      // the prior PR #39 model (a list of named UserTables).  The
+      // new singular-table feature doesn't translate the old shape;
+      // we just drop it so a future reload doesn't accidentally
+      // surface stale data.
+      try {
+        if (localStorage.getItem("userTreasureTables") !== null) {
+          localStorage.removeItem("userTreasureTables");
         }
       } catch (_) {}
 
@@ -206,7 +216,7 @@
           localTimerPresets: localTimerPresets,
           localParty: localParty,
           localUserLoreGroups: localUserLoreGroups,
-          localUserTreasureTables: localUserTreasureTables,
+          localUserTreasureTable: localUserTreasureTable,
           bootMs: Date.now(),
         },
       });
@@ -355,13 +365,13 @@
         });
       }
 
-      // User-authored treasure tables.  Fires on every Save /
-      // Delete in the Treasure Tables editor modal.
-      if (app.ports && app.ports.persistLocalUserTreasureTables) {
-        app.ports.persistLocalUserTreasureTables.subscribe(function (value) {
+      // Singular per-user treasure table.  Fires on every edit
+      // in the Treasure Table editor modal.
+      if (app.ports && app.ports.persistLocalUserTreasureTable) {
+        app.ports.persistLocalUserTreasureTable.subscribe(function (value) {
           try {
             localStorage.setItem(
-              "userTreasureTables",
+              "userTreasureTable",
               JSON.stringify(value),
             );
           } catch (_) {}

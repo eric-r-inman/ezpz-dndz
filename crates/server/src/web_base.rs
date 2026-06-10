@@ -25,7 +25,7 @@ use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
 use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
-use crate::treasure_tables::{TreasureTableStore, TreasureTableStoreError};
+use crate::treasure_table::{TreasureTableStore, TreasureTableStoreError};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -43,7 +43,7 @@ pub struct AppState {
   pub auth_rate_limiter: AuthRateLimiter,
   pub lore_groups: LoreGroupStore,
   pub condition_presets: ConditionPresetStore,
-  pub treasure_tables: TreasureTableStore,
+  pub treasure_table: TreasureTableStore,
 }
 
 impl_server_state!(AppState, base);
@@ -149,8 +149,8 @@ impl AppState {
         .await
         .map_err(AppStateError::ConditionPresetStoreLoad)?;
 
-    let treasure_tables =
-      TreasureTableStore::load_or_default(paths.treasure_tables.clone())
+    let treasure_table =
+      TreasureTableStore::load_or_default(paths.treasure_table.clone())
         .await
         .map_err(AppStateError::TreasureTableStoreLoad)?;
 
@@ -184,7 +184,7 @@ impl AppState {
       auth_rate_limiter: AuthRateLimiter::new(),
       lore_groups,
       condition_presets,
-      treasure_tables,
+      treasure_table,
     })
   }
 }

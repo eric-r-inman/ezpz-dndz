@@ -22,7 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
-import Encounter.Treasure.UserTable.Wire
+import Encounter.Treasure.TableWire
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
 import File exposing (File)
@@ -498,7 +498,7 @@ type alias Flags =
     , localTimerPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
-    , localUserTreasureTables : Maybe Decode.Value
+    , localUserTreasureTable : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -610,13 +610,12 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault []
-      , userTreasureTables =
-            flags.localUserTreasureTables
+      , userTreasureTable =
+            flags.localUserTreasureTable
                 |> Maybe.andThen
-                    (Decode.decodeValue Encounter.Treasure.UserTable.Wire.decodeTables
+                    (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-                |> Maybe.withDefault []
       , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -765,15 +764,18 @@ update msg model =
             else
                 Cmd.none
 
-        userTreasureTablesCmd =
-            if shouldPersistAfter msg && model.userTreasureTables /= next.userTreasureTables then
-                case next.auth of
-                    Auth.AuthAuthenticated _ ->
-                        Effects.putTreasureTables next.userTreasureTables
+        userTreasureTableCmd =
+            if shouldPersistAfter msg && model.userTreasureTable /= next.userTreasureTable then
+                case ( next.auth, next.userTreasureTable ) of
+                    ( Auth.AuthAuthenticated _, Just table ) ->
+                        Effects.putTreasureTable table
 
-                    _ ->
-                        Ports.persistLocalUserTreasureTables
-                            (Encounter.Treasure.UserTable.Wire.encodeTables next.userTreasureTables)
+                    ( _, Just table ) ->
+                        Ports.persistLocalUserTreasureTable
+                            (Encounter.Treasure.TableWire.encodeTable table)
+
+                    ( _, Nothing ) ->
+                        Cmd.none
 
             else
                 Cmd.none
@@ -826,7 +828,7 @@ update msg model =
         , timerPresetsCmd
         , partyCmd
         , userLoreGroupsCmd
-        , userTreasureTablesCmd
+        , userTreasureTableCmd
         , modalFocusCmd
         ]
     )
@@ -1788,11 +1790,11 @@ updateInner msg model =
         TreasureMagicRemove idx ->
             Update.Treasure.magicRemove idx model
 
-        TreasureTablesLoaded result ->
-            Update.UserSync.treasureTablesLoaded result model
+        TreasureTableLoaded result ->
+            Update.UserSync.treasureTableLoaded result model
 
-        TreasureTablesPersisted result ->
-            Update.UserSync.treasureTablesPersisted result model
+        TreasureTablePersisted result ->
+            Update.UserSync.treasureTablePersisted result model
 
         TreasureTableOpen ->
             Update.TreasureTable.open model
@@ -1800,53 +1802,38 @@ updateInner msg model =
         TreasureTableClose ->
             Update.TreasureTable.close model
 
-        TreasureTableEditNew ->
-            Update.TreasureTable.editNew model
+        TreasureTableToggleSection kind key ->
+            Update.TreasureTable.toggleSection kind key model
 
-        TreasureTableEdit id ->
-            Update.TreasureTable.edit id model
+        TreasureTableGemAdd key ->
+            Update.TreasureTable.gemAdd key model
 
-        TreasureTableBackToList ->
-            Update.TreasureTable.backToList model
+        TreasureTableGemEdit key idx value ->
+            Update.TreasureTable.gemEdit key idx value model
 
-        TreasureTableNameChanged name ->
-            Update.TreasureTable.nameChanged name model
+        TreasureTableGemRemoveItem key idx ->
+            Update.TreasureTable.gemRemove key idx model
 
-        TreasureTableEntryAdd ->
-            Update.TreasureTable.entryAdd model
+        TreasureTableArtAdd key ->
+            Update.TreasureTable.artAdd key model
 
-        TreasureTableEntryRemove idx ->
-            Update.TreasureTable.entryRemove idx model
+        TreasureTableArtEdit key idx value ->
+            Update.TreasureTable.artEdit key idx value model
 
-        TreasureTableEntryLabelChanged idx value ->
-            Update.TreasureTable.entryLabelChanged idx value model
+        TreasureTableArtRemoveItem key idx ->
+            Update.TreasureTable.artRemove key idx model
 
-        TreasureTableEntryWeightChanged idx raw ->
-            Update.TreasureTable.entryWeightChanged idx raw model
+        TreasureTableMagicAdd key ->
+            Update.TreasureTable.magicAdd key model
 
-        TreasureTableEntryGpChanged idx raw ->
-            Update.TreasureTable.entryGpChanged idx raw model
+        TreasureTableMagicEdit key idx value ->
+            Update.TreasureTable.magicEdit key idx value model
 
-        TreasureTableEntryRarityChanged idx raw ->
-            Update.TreasureTable.entryRarityChanged idx raw model
+        TreasureTableMagicRemoveItem key idx ->
+            Update.TreasureTable.magicRemove key idx model
 
-        TreasureTableDraftSubmit ->
-            Update.TreasureTable.draftSubmit model
-
-        TreasureTableDraftCancel ->
-            Update.TreasureTable.draftCancel model
-
-        TreasureTableDelete id ->
-            Update.TreasureTable.delete id model
-
-        TreasureTableRoll id ->
-            Update.TreasureTable.roll id model
-
-        TreasureCustomRolled result ->
-            Update.TreasureTable.customRolled result model
-
-        TreasureCustomRemove idx ->
-            Update.TreasureTable.customRemove idx model
+        TreasureTableResetToBundled ->
+            Update.TreasureTable.resetToBundled model
 
         CardEditorClose ->
             Update.CardEditor.close model

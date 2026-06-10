@@ -7,6 +7,6 @@ pub mod dice;
 pub mod encounters;
 pub mod lore_groups;
 pub mod prefs;
-pub mod treasure_tables;
+pub mod treasure_table;
 pub mod users;
 pub mod web_base;

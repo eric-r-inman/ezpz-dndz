@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, RowSource, appendCustom, categoryLabel, clearCoin, emptyRoll, generateRerollCategory, removeArt, removeCustom, removeGem, removeMagic
+    , Category(..), CoinFormulas, RowSource, TreasureTable, artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames
     )
 
 {-| Treasure-roll domain.
@@ -45,6 +45,7 @@ The treasure flow:
 
 -}
 
+import Dict exposing (Dict)
 import Encounter.Treasure.Tables as Tables
     exposing
         ( ArtTier
@@ -54,7 +55,6 @@ import Encounter.Treasure.Tables as Tables
         , MagicTable
         , Rarity
         )
-import Encounter.Treasure.UserTable as UserTable
 import Random
 
 
@@ -108,6 +108,26 @@ bracketLabel b =
 bracketOptions : List Bracket
 bracketOptions =
     [ B1to4, B5to10, B11to16, B17plus ]
+
+
+{-| Wire-friendly slug for one bracket. Stable identifier used
+both in the wire codec and as the key into `TreasureTable`'s
+per-bracket Dicts.
+-}
+bracketWire : Bracket -> String
+bracketWire b =
+    case b of
+        B1to4 ->
+            "1to4"
+
+        B5to10 ->
+            "5to10"
+
+        B11to16 ->
+            "11to16"
+
+        B17plus ->
+            "17plus"
 
 
 {-| Pick a bracket from a CR float. Used by `suggestedBracket`
@@ -214,7 +234,6 @@ type alias TreasureRoll =
     , gems : List GemItem
     , art : List ArtItem
     , magic : List MagicItem
-    , custom : List UserTable.CustomRoll
     , source : Maybe RowSource
     }
 
@@ -280,40 +299,6 @@ sourceFromHoard row =
     , artSpec = row.art
     , magicSpec = row.magic
     }
-
-
-{-| Blank roll seeded from the current Kind + Bracket. Used when
-the GM hits a user-table roll on a fresh modal — there's no SRD
-result to merge into, so we synthesise an empty one to carry the
-custom row.
--}
-emptyRoll : Kind -> Bracket -> TreasureRoll
-emptyRoll kind bracket =
-    { kind = kind
-    , bracket = bracket
-    , coins = emptyCoins
-    , gems = []
-    , art = []
-    , magic = []
-    , custom = []
-    , source = Nothing
-    }
-
-
-{-| Append one user-table result onto the existing custom rows.
--}
-appendCustom : UserTable.CustomRoll -> TreasureRoll -> TreasureRoll
-appendCustom row roll =
-    { roll | custom = roll.custom ++ [ row ] }
-
-
-{-| Drop the custom row at `index` (0-based). Out-of-range
-indices are a no-op so the update handler doesn't need defensive
-bounds-checking.
--}
-removeCustom : Int -> TreasureRoll -> TreasureRoll
-removeCustom index roll =
-    { roll | custom = dropIndex index roll.custom }
 
 
 {-| Drop the gem at `index` from the rolled list.
@@ -417,21 +402,224 @@ totalArtValue =
 
 
 
+-- ── TREASURE TABLE ───────────────────────────────────────────────────────────
+
+
+{-| The singular per-user treasure table. Encapsulates every
+piece of editable treasure data: individual + hoard rows by
+bracket, plus gem / art / magic name lists per tier.
+
+Out of the box, the user's table is a copy of
+[`bundledTable`](#bundledTable) — a faithful SRD 5.1 default.
+Edits are persisted server-side (or to localStorage for
+anonymous sessions) under a single per-user singleton; there's
+no list of named tables, no separate "custom" rolls.
+
+The dict-keyed shape (bracket / tier wires as String keys) is
+verbose but makes the editor + wire codec mechanical, since
+adding a new bracket or tier becomes a one-line addition with
+no record-type surgery.
+
+-}
+type alias TreasureTable =
+    { individualBrackets : Dict String (List IndividualEntry)
+    , hoardBrackets : Dict String (List HoardEntry)
+    , gems : Dict String (List String)
+    , art : Dict String (List String)
+    , magic : Dict String (List String)
+    }
+
+
+{-| Default treasure table — the bundled SRD lists from
+[`Encounter.Treasure.Tables`](Encounter-Treasure-Tables)
+materialised into the editable shape. A first-boot user (no
+saved table on the server) gets this as their working copy.
+-}
+bundledTable : TreasureTable
+bundledTable =
+    { individualBrackets =
+        Dict.fromList
+            (List.map (\b -> ( bracketWire b, Tables.individualEntries (bracketIndex b) ))
+                bracketOptions
+            )
+    , hoardBrackets =
+        Dict.fromList
+            (List.map (\b -> ( bracketWire b, Tables.hoardEntries (bracketIndex b) ))
+                bracketOptions
+            )
+    , gems =
+        Dict.fromList
+            (List.map (\t -> ( gemTierKey t, Tables.gems t ))
+                gemTierAll
+            )
+    , art =
+        Dict.fromList
+            (List.map (\t -> ( artTierKey t, Tables.artObjects t ))
+                artTierAll
+            )
+    , magic =
+        Dict.fromList
+            (List.map (\t -> ( magicTableKey t, Tables.magicItems t ))
+                magicTableAll
+            )
+    }
+
+
+gemTierAll : List GemTier
+gemTierAll =
+    [ Tables.Gem10gp
+    , Tables.Gem50gp
+    , Tables.Gem100gp
+    , Tables.Gem500gp
+    , Tables.Gem1000gp
+    , Tables.Gem5000gp
+    ]
+
+
+artTierAll : List ArtTier
+artTierAll =
+    [ Tables.Art25gp
+    , Tables.Art250gp
+    , Tables.Art750gp
+    , Tables.Art2500gp
+    , Tables.Art7500gp
+    ]
+
+
+magicTableAll : List MagicTable
+magicTableAll =
+    [ Tables.TableA
+    , Tables.TableB
+    , Tables.TableC
+    , Tables.TableD
+    , Tables.TableE
+    , Tables.TableF
+    , Tables.TableG
+    , Tables.TableH
+    , Tables.TableI
+    ]
+
+
+{-| Stable string key for a GemTier — the wire field name and
+the Dict key. Matches the gp denomination so the editor can
+display the same string as a section header.
+-}
+gemTierKey : GemTier -> String
+gemTierKey t =
+    case t of
+        Tables.Gem10gp ->
+            "10gp"
+
+        Tables.Gem50gp ->
+            "50gp"
+
+        Tables.Gem100gp ->
+            "100gp"
+
+        Tables.Gem500gp ->
+            "500gp"
+
+        Tables.Gem1000gp ->
+            "1000gp"
+
+        Tables.Gem5000gp ->
+            "5000gp"
+
+
+artTierKey : ArtTier -> String
+artTierKey t =
+    case t of
+        Tables.Art25gp ->
+            "25gp"
+
+        Tables.Art250gp ->
+            "250gp"
+
+        Tables.Art750gp ->
+            "750gp"
+
+        Tables.Art2500gp ->
+            "2500gp"
+
+        Tables.Art7500gp ->
+            "7500gp"
+
+
+magicTableKey : MagicTable -> String
+magicTableKey =
+    Tables.magicTableLabel
+
+
+{-| Resolve the individual-treasure rows for one CR bracket from
+the user's table. Falls back to `[]` if the table's missing the
+bracket — shouldn't happen for tables seeded from
+[`bundledTable`](#bundledTable), but the empty list keeps the
+generator total.
+-}
+individualRowsFor : Bracket -> TreasureTable -> List IndividualEntry
+individualRowsFor bracket table =
+    Dict.get (bracketWire bracket) table.individualBrackets
+        |> Maybe.withDefault []
+
+
+hoardRowsFor : Bracket -> TreasureTable -> List HoardEntry
+hoardRowsFor bracket table =
+    Dict.get (bracketWire bracket) table.hoardBrackets
+        |> Maybe.withDefault []
+
+
+gemNamesFor : GemTier -> TreasureTable -> List String
+gemNamesFor tier table =
+    Dict.get (gemTierKey tier) table.gems
+        |> Maybe.withDefault []
+
+
+artNamesFor : ArtTier -> TreasureTable -> List String
+artNamesFor tier table =
+    Dict.get (artTierKey tier) table.art
+        |> Maybe.withDefault []
+
+
+magicNamesFor : MagicTable -> TreasureTable -> List String
+magicNamesFor magicTable table =
+    Dict.get (magicTableKey magicTable) table.magic
+        |> Maybe.withDefault []
+
+
+{-| Editor mutation: replace one tier's gem name list.
+-}
+setGemNames : GemTier -> List String -> TreasureTable -> TreasureTable
+setGemNames tier names table =
+    { table | gems = Dict.insert (gemTierKey tier) names table.gems }
+
+
+setArtNames : ArtTier -> List String -> TreasureTable -> TreasureTable
+setArtNames tier names table =
+    { table | art = Dict.insert (artTierKey tier) names table.art }
+
+
+setMagicNames : MagicTable -> List String -> TreasureTable -> TreasureTable
+setMagicNames magicTable names table =
+    { table | magic = Dict.insert (magicTableKey magicTable) names table.magic }
+
+
+
 -- ── GENERATOR ────────────────────────────────────────────────────────────────
 
 
-{-| Roll fresh treasure for the chosen kind + bracket. Pure
-random — the caller threads the seed (or uses `Random.generate`
-in the runtime) per usual Elm `Generator` convention.
+{-| Roll fresh treasure for the chosen kind + bracket against
+the supplied table. Callers thread `model.userTreasureTable` (or
+`bundledTable` for a fresh boot) so edits to the user's table
+take effect immediately on the next roll.
 -}
-generate : Kind -> Bracket -> Random.Generator TreasureRoll
-generate kind bracket =
+generate : Kind -> Bracket -> TreasureTable -> Random.Generator TreasureRoll
+generate kind bracket table =
     case kind of
         Individual ->
-            generateIndividual bracket
+            generateIndividual bracket table
 
         Hoard ->
-            generateHoard bracket
+            generateHoard bracket table
 
 
 {-| Re-roll just one category of the existing roll, using the
@@ -451,25 +639,26 @@ source-tracking field existed take this path so the ↻ icons
 still do something useful.
 
 -}
-generateRerollCategory : TreasureRoll -> Category -> Random.Generator TreasureRoll
-generateRerollCategory currentRoll category =
+generateRerollCategory : TreasureTable -> TreasureRoll -> Category -> Random.Generator TreasureRoll
+generateRerollCategory table currentRoll category =
     case currentRoll.source of
         Just source ->
-            generateRerollFromSource currentRoll source category
+            generateRerollFromSource table currentRoll source category
 
         Nothing ->
-            generate currentRoll.kind currentRoll.bracket
+            generate currentRoll.kind currentRoll.bracket table
 
 
 generateRerollFromSource :
-    TreasureRoll
+    TreasureTable
+    -> TreasureRoll
     -> RowSource
     -> Category
     -> Random.Generator TreasureRoll
-generateRerollFromSource currentRoll source category =
+generateRerollFromSource table currentRoll source category =
     let
         scaffold =
-            emptyRoll currentRoll.kind currentRoll.bracket
+            emptyRollFor currentRoll.kind currentRoll.bracket
     in
     case category of
         CoinsCategory ->
@@ -477,16 +666,31 @@ generateRerollFromSource currentRoll source category =
                 |> Random.map (\coins -> { scaffold | coins = coins })
 
         GemsCategory ->
-            rollGems source.gemsSpec
+            rollGems table source.gemsSpec
                 |> Random.map (\gems -> { scaffold | gems = gems })
 
         ArtCategory ->
-            rollArt source.artSpec
+            rollArt table source.artSpec
                 |> Random.map (\art -> { scaffold | art = art })
 
         MagicCategory ->
-            rollMagic source.magicSpec
+            rollMagic table source.magicSpec
                 |> Random.map (\magic -> { scaffold | magic = magic })
+
+
+{-| Helper: blank scaffold roll used to carry one category's
+slice through to the merge handler.
+-}
+emptyRollFor : Kind -> Bracket -> TreasureRoll
+emptyRollFor kind bracket =
+    { kind = kind
+    , bracket = bracket
+    , coins = emptyCoins
+    , gems = []
+    , art = []
+    , magic = []
+    , source = Nothing
+    }
 
 
 rollCoinsFromFormulas : CoinFormulas -> Random.Generator Coins
@@ -501,11 +705,11 @@ rollCoinsFromFormulas formulas =
         }
 
 
-generateIndividual : Bracket -> Random.Generator TreasureRoll
-generateIndividual bracket =
+generateIndividual : Bracket -> TreasureTable -> Random.Generator TreasureRoll
+generateIndividual bracket table =
     let
         rows =
-            Tables.individualEntries (bracketIndex bracket)
+            individualRowsFor bracket table
     in
     weightedPick rows emptyIndividualRow
         |> Random.andThen
@@ -518,7 +722,6 @@ generateIndividual bracket =
                         , gems = []
                         , art = []
                         , magic = []
-                        , custom = []
                         , source = Just (sourceFromIndividual row)
                         }
                     )
@@ -564,11 +767,11 @@ rollIndividualCoins row =
         (roll row.platinum)
 
 
-generateHoard : Bracket -> Random.Generator TreasureRoll
-generateHoard bracket =
+generateHoard : Bracket -> TreasureTable -> Random.Generator TreasureRoll
+generateHoard bracket table =
     let
         rows =
-            Tables.hoardEntries (bracketIndex bracket)
+            hoardRowsFor bracket table
     in
     weightedPick rows emptyHoardRow
         |> Random.andThen
@@ -581,14 +784,13 @@ generateHoard bracket =
                         , gems = gems
                         , art = art
                         , magic = magic
-                        , custom = []
                         , source = Just (sourceFromHoard row)
                         }
                     )
                     (rollHoardCoins row)
-                    (rollGems row.gems)
-                    (rollArt row.art)
-                    (rollMagic row.magic)
+                    (rollGems table row.gems)
+                    (rollArt table row.art)
+                    (rollMagic table row.magic)
             )
 
 
@@ -618,8 +820,8 @@ rollHoardCoins row =
         }
 
 
-rollGems : Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
-rollGems mSpec =
+rollGems : TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
+rollGems table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
@@ -628,7 +830,7 @@ rollGems mSpec =
             rollDiceTimes count faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (Tables.gems tier)
+                        pickN n (gemNamesFor tier table)
                             |> Random.map
                                 (List.map
                                     (\name ->
@@ -640,8 +842,8 @@ rollGems mSpec =
                     )
 
 
-rollArt : Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
-rollArt mSpec =
+rollArt : TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
+rollArt table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
@@ -650,7 +852,7 @@ rollArt mSpec =
             rollDiceTimes count faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (Tables.artObjects tier)
+                        pickN n (artNamesFor tier table)
                             |> Random.map
                                 (List.map
                                     (\name ->
@@ -662,23 +864,23 @@ rollArt mSpec =
                     )
 
 
-rollMagic : Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
-rollMagic mSpec =
+rollMagic : TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
+rollMagic table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
 
-        Just ( count, faces, table ) ->
+        Just ( count, faces, magicTable ) ->
             rollDiceTimes count faces
                 |> Random.andThen
                     (\n ->
-                        pickN n (Tables.magicItems table)
+                        pickN n (magicNamesFor magicTable table)
                             |> Random.map
                                 (List.map
                                     (\name ->
                                         { name = name
-                                        , rarity = Tables.magicTableRarity table
-                                        , table = table
+                                        , rarity = Tables.magicTableRarity magicTable
+                                        , table = magicTable
                                         }
                                     )
                                 )

@@ -1,7 +1,7 @@
 module Update.UserSync exposing
     ( loreGroupsLoaded, loreGroupsPersisted
     , conditionPresetsLoaded, conditionPresetsPersisted
-    , treasureTablesLoaded, treasureTablesPersisted
+    , treasureTableLoaded, treasureTablePersisted
     )
 
 {-| Msg handlers for the per-user server-stored Lore groups and
@@ -39,7 +39,7 @@ old way.
 import Dict
 import Effects
 import Encounter.RandomEncounter.Lore as Lore
-import Encounter.Treasure.UserTable as UserTreasureTable
+import Encounter.Treasure
 import Http
 import Json.Decode as Decode
 import Model exposing (Model)
@@ -153,36 +153,38 @@ conditionPresetsPersisted result model =
                 model
 
 
-treasureTablesLoaded :
-    Result Http.Error (List UserTreasureTable.UserTable)
+treasureTableLoaded :
+    Result Http.Error (Maybe Encounter.Treasure.TreasureTable)
     -> Model
     -> ( Model, Cmd Msg )
-treasureTablesLoaded result model =
+treasureTableLoaded result model =
     case result of
-        Ok serverTables ->
-            if not (List.isEmpty serverTables) then
-                ( { model | userTreasureTables = serverTables }, Cmd.none )
+        Ok (Just serverTable) ->
+            ( { model | userTreasureTable = Just serverTable }, Cmd.none )
 
-            else if not (List.isEmpty model.userTreasureTables) then
-                -- Empty server, populated client → migrate.
-                ( model, Effects.putTreasureTables model.userTreasureTables )
+        Ok Nothing ->
+            case model.userTreasureTable of
+                Just localTable ->
+                    -- Empty server, populated client (anon-mode
+                    -- migration on sign-in).
+                    ( model, Effects.putTreasureTable localTable )
 
-            else
-                ( model, Cmd.none )
+                Nothing ->
+                    ( model, Cmd.none )
 
         Err err ->
             Update.Toast.push ToastError
-                ("Couldn't load your treasure tables: " ++ Util.Http.errorToString err)
+                ("Couldn't load your treasure table: " ++ Util.Http.errorToString err)
                 model
 
 
-treasureTablesPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
-treasureTablesPersisted result model =
+treasureTablePersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
+treasureTablePersisted result model =
     case result of
         Ok () ->
             ( model, Cmd.none )
 
         Err err ->
             Update.Toast.push ToastError
-                ("Saving your treasure tables failed: " ++ Util.Http.errorToString err)
+                ("Saving your treasure table failed: " ++ Util.Http.errorToString err)
                 model
