@@ -28,6 +28,7 @@ initialEncounter =
     { creatures = seedCreatures
     , activeName = "Brakka, Ogre Brute"
     , round = 1
+    , treasure = Nothing
     }
 
 

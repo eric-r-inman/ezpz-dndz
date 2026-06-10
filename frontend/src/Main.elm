@@ -110,6 +110,7 @@ import Update.SaveCompendium
 import Update.Shell
 import Update.Timer
 import Update.Toast
+import Update.Treasure
 import Update.UserSync
 import Url exposing (Url)
 import Util.Keyboard
@@ -143,6 +144,7 @@ import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
+import View.Modal.Treasure
 import View.Page.Compendium
 import View.Page.QuickList
 import View.RollPopup
@@ -1725,6 +1727,36 @@ updateInner msg model =
         RandomEncounterAddToEncounter ->
             Update.RandomEncounter.addToEncounter model
 
+        TreasureOpen ->
+            Update.Treasure.open model
+
+        TreasureClose ->
+            Update.Treasure.close model
+
+        TreasureKindSet raw ->
+            Update.Treasure.kindSet raw model
+
+        TreasureBracketSet raw ->
+            Update.Treasure.bracketSet raw model
+
+        TreasureRoll ->
+            Update.Treasure.roll model
+
+        TreasureRolled treasureRoll ->
+            Update.Treasure.rolled treasureRoll model
+
+        TreasureToggleDistributed slug ->
+            Update.Treasure.toggleDistributed slug model
+
+        TreasureRerollRequest ->
+            Update.Treasure.rerollRequest model
+
+        TreasureRerollConfirm ->
+            Update.Treasure.rerollConfirm model
+
+        TreasureRerollCancel ->
+            Update.Treasure.rerollCancel model
+
         CardEditorClose ->
             Update.CardEditor.close model
 
@@ -2578,6 +2610,7 @@ appShell maybeUser model =
     , View.Modal.CardEditor.view model
     , View.Modal.CrCalculator.view model
     , View.Modal.RandomEncounter.view model
+    , View.Modal.Treasure.view model.modalChrome model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
