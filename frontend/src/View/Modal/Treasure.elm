@@ -23,6 +23,7 @@ roll.
 
 -}
 
+import Dict exposing (Dict)
 import Encounter exposing (TreasureState)
 import Encounter.Treasure as Treasure
     exposing
@@ -64,7 +65,6 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
-import Set
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
 import View.Modal
@@ -204,15 +204,15 @@ resultBlock state =
         roll =
             state.roll
 
-        d =
-            state.distributed
+        r =
+            state.recipients
     in
     div [ class "treasure__results" ]
         [ summaryStrip roll
-        , coinsSection roll.coins d
-        , gemsSection roll.gems d
-        , artSection roll.art d
-        , magicSection roll.magic d
+        , coinsSection roll.coins r
+        , gemsSection roll.gems r
+        , artSection roll.art r
+        , magicSection roll.magic r
         , footerRow state
         ]
 
@@ -253,14 +253,17 @@ summaryStrip roll =
 -- ── COINS ────────────────────────────────────────────────────────────────────
 
 
-coinsSection : Coins -> Set.Set String -> Html Msg
-coinsSection coins distributed =
+coinsSection : Coins -> Dict String String -> Html Msg
+coinsSection coins recipients =
     let
         slug =
             "coins"
 
         isDistributed =
-            Set.member slug distributed
+            Dict.member slug recipients
+
+        recipient =
+            Dict.get slug recipients |> Maybe.withDefault ""
     in
     section
         [ class
@@ -276,7 +279,7 @@ coinsSection coins distributed =
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text "Coins" ]
             , rerollCategoryButton Treasure.CoinsCategory
-            , distributedCheckbox slug isDistributed
+            , distributionControls slug isDistributed recipient
             ]
         , ul [ class "treasure__list" ] (coinLines coins)
         ]
@@ -319,8 +322,8 @@ coinLines c =
 -- ── GEMS / ART ───────────────────────────────────────────────────────────────
 
 
-gemsSection : List GemItem -> Set.Set String -> Html Msg
-gemsSection items distributed =
+gemsSection : List GemItem -> Dict String String -> Html Msg
+gemsSection items recipients =
     if List.isEmpty items then
         text ""
 
@@ -329,12 +332,12 @@ gemsSection items distributed =
             "gem"
             Treasure.GemsCategory
             items
-            distributed
+            recipients
             (\g -> ( g.name, g.valueGp ))
 
 
-artSection : List ArtItem -> Set.Set String -> Html Msg
-artSection items distributed =
+artSection : List ArtItem -> Dict String String -> Html Msg
+artSection items recipients =
     if List.isEmpty items then
         text ""
 
@@ -343,7 +346,7 @@ artSection items distributed =
             "art"
             Treasure.ArtCategory
             items
-            distributed
+            recipients
             (\a -> ( a.name, a.valueGp ))
 
 
@@ -352,10 +355,10 @@ valuedSection :
     -> String
     -> Treasure.Category
     -> List a
-    -> Set.Set String
+    -> Dict String String
     -> (a -> ( String, Int ))
     -> Html Msg
-valuedSection title slugPrefix category items distributed project =
+valuedSection title slugPrefix category items recipients project =
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text title ]
@@ -369,7 +372,10 @@ valuedSection title slugPrefix category items distributed project =
                             slugPrefix ++ ":" ++ String.fromInt idx
 
                         isDistributed =
-                            Set.member slug distributed
+                            Dict.member slug recipients
+
+                        recipient =
+                            Dict.get slug recipients |> Maybe.withDefault ""
 
                         ( name, valueGp ) =
                             project item
@@ -385,7 +391,7 @@ valuedSection title slugPrefix category items distributed project =
                                    )
                             )
                         ]
-                        [ distributedCheckbox slug isDistributed
+                        [ distributionControls slug isDistributed recipient
                         , span [ class "treasure__row-name" ] [ text name ]
                         , span [ class "treasure__row-value" ]
                             [ text (String.fromInt valueGp ++ " gp") ]
@@ -400,8 +406,8 @@ valuedSection title slugPrefix category items distributed project =
 -- ── MAGIC ITEMS ──────────────────────────────────────────────────────────────
 
 
-magicSection : List MagicItem -> Set.Set String -> Html Msg
-magicSection items distributed =
+magicSection : List MagicItem -> Dict String String -> Html Msg
+magicSection items recipients =
     if List.isEmpty items then
         text ""
 
@@ -412,18 +418,21 @@ magicSection items distributed =
                 , rerollCategoryButton Treasure.MagicCategory
                 ]
             , ul [ class "treasure__list" ]
-                (List.indexedMap (magicRow distributed) items)
+                (List.indexedMap (magicRow recipients) items)
             ]
 
 
-magicRow : Set.Set String -> Int -> MagicItem -> Html Msg
-magicRow distributed idx item =
+magicRow : Dict String String -> Int -> MagicItem -> Html Msg
+magicRow recipients idx item =
     let
         slug =
             "magic:" ++ String.fromInt idx
 
         isDistributed =
-            Set.member slug distributed
+            Dict.member slug recipients
+
+        recipient =
+            Dict.get slug recipients |> Maybe.withDefault ""
     in
     li
         [ class
@@ -436,7 +445,7 @@ magicRow distributed idx item =
                    )
             )
         ]
-        [ distributedCheckbox slug isDistributed
+        [ distributionControls slug isDistributed recipient
         , span [ class "treasure__row-name" ]
             [ text item.name
             , span [ class "treasure__row-source" ]
@@ -487,7 +496,7 @@ footerRow state =
                 + List.length state.roll.magic
 
         distributedCount =
-            Set.size state.distributed
+            Dict.size state.recipients
     in
     div [ class "treasure__footer" ]
         [ span [ class "treasure__footer-summary" ]
@@ -510,27 +519,44 @@ footerRow state =
 -- ── BITS ─────────────────────────────────────────────────────────────────────
 
 
-distributedCheckbox : String -> Bool -> Html Msg
-distributedCheckbox slug isDistributed =
-    label
-        [ class "treasure__distributed"
-        , attribute "aria-label" "Mark distributed to a player"
-        ]
-        [ input
-            [ type_ "checkbox"
-            , checked isDistributed
-            , onClick (TreasureToggleDistributed slug)
+{-| Distribution controls for one treasure row: a checkbox that
+flips "given out yes/no", paired with a small text input where
+the GM types who got it. Typing a name flips the checkbox on
+automatically (typing implies distribution); unchecking the
+box clears both flags and lets the row come back into play.
+-}
+distributionControls : String -> Bool -> String -> Html Msg
+distributionControls slug isDistributed recipient =
+    div [ class "treasure__distribute-cluster" ]
+        [ label
+            [ class "treasure__distributed"
+            , attribute "aria-label" "Mark distributed"
+            ]
+            [ input
+                [ type_ "checkbox"
+                , checked isDistributed
+                , onClick (TreasureToggleDistributed slug)
+                ]
+                []
+            , span [ class "treasure__distributed-text" ]
+                [ text
+                    (if isDistributed then
+                        "Given"
+
+                     else
+                        "Give"
+                    )
+                ]
+            ]
+        , input
+            [ class "treasure__recipient"
+            , type_ "text"
+            , Attr.placeholder "to whom?"
+            , value recipient
+            , onInput (TreasureRecipientChanged slug)
+            , attribute "aria-label" "Recipient name"
             ]
             []
-        , span [ class "treasure__distributed-text" ]
-            [ text
-                (if isDistributed then
-                    "Distributed"
-
-                 else
-                    "Distribute"
-                )
-            ]
         ]
 
 

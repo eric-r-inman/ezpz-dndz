@@ -1026,6 +1026,10 @@ type Msg
       -- Per-row distributed checkbox.  Slug identifies the row:
       -- "coins", "gem:<idx>", "art:<idx>", or "magic:<idx>".
     | TreasureToggleDistributed String
+      -- Per-row recipient name.  Setting a non-empty name
+      -- implicitly marks the row distributed; clearing it does
+      -- NOT undistribute (the checkbox is the binary toggle).
+    | TreasureRecipientChanged String String
       -- Re-roll workflow: first click asks for confirmation if
       -- any row is already marked distributed (avoid clobbering
       -- ledger state).

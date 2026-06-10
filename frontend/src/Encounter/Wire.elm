@@ -232,15 +232,34 @@ encodeTreasureState : Encounter.TreasureState -> E.Value
 encodeTreasureState state =
     E.object
         [ ( "roll", encodeTreasureRoll state.roll )
-        , ( "distributed", E.list E.string (Set.toList state.distributed) )
+        , ( "recipients"
+          , E.object
+                (Dict.toList state.recipients
+                    |> List.map (\( k, v ) -> ( k, E.string v ))
+                )
+          )
         ]
 
 
 decodeTreasureState : D.Decoder Encounter.TreasureState
 decodeTreasureState =
+    -- Two wire shapes to accept:
+    --   `{ roll, recipients: { slug: name } }` — current
+    --   `{ roll, distributed: [slug] }`        — pre-recipients
+    --                                            (decodes to a
+    --                                            map where every
+    --                                            value is "").
     D.map2 Encounter.TreasureState
         (D.field "roll" decodeTreasureRoll)
-        (D.field "distributed" (D.list D.string |> D.map Set.fromList))
+        (D.oneOf
+            [ D.field "recipients" (D.dict D.string)
+            , D.field "distributed"
+                (D.list D.string
+                    |> D.map (List.map (\s -> ( s, "" )) >> Dict.fromList)
+                )
+            , D.succeed Dict.empty
+            ]
+        )
 
 
 encodeTreasureRoll : Encounter.Treasure.TreasureRoll -> E.Value

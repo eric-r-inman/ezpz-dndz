@@ -4,7 +4,7 @@ module Update.Treasure exposing
     , roll, rolled
     , toggleDistributed
     , rerollRequest, rerollConfirm, rerollCancel
-    , categoryRolled, rerollCategory
+    , categoryRolled, recipientChanged, rerollCategory
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -34,11 +34,11 @@ without anything extra from this module.
 -}
 
 import Compendium
+import Dict exposing (Dict)
 import Encounter.Treasure as Treasure exposing (Bracket)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Random
-import Set
 import Ui.Compendium
 import Ui.Treasure
 
@@ -164,7 +164,7 @@ rolled treasureRoll model =
 
         nextState =
             { roll = treasureRoll
-            , distributed = Set.empty
+            , recipients = Dict.empty
             }
 
         withTreasure =
@@ -178,11 +178,38 @@ rolled treasureRoll model =
 
 
 {-| Flip the per-row distributed flag. `slug` identifies the
-row uniquely ("coins", "gem:0", "art:3", "magic:1") — the view
-encodes that, and the domain just toggles set membership.
+row uniquely ("coins", "gem:0", "art:3", "magic:1"). Toggling
+on adds the slug to `recipients` with an empty string value;
+toggling off drops the key (and any recipient name with it).
 -}
 toggleDistributed : String -> Model -> ( Model, Cmd Msg )
 toggleDistributed slug model =
+    updateRecipients model
+        (\recipients ->
+            if Dict.member slug recipients then
+                Dict.remove slug recipients
+
+            else
+                Dict.insert slug "" recipients
+        )
+
+
+{-| Set the recipient name for one row. Implicitly marks the row
+distributed if it wasn't already — typing a name shouldn't
+require also checking a box. Empty string is allowed (the GM
+can clear the name without un-distributing); to fully un-mark
+the row, the GM unchecks the distributed checkbox.
+-}
+recipientChanged : String -> String -> Model -> ( Model, Cmd Msg )
+recipientChanged slug name model =
+    updateRecipients model (Dict.insert slug name)
+
+
+updateRecipients :
+    Model
+    -> (Dict String String -> Dict String String)
+    -> ( Model, Cmd Msg )
+updateRecipients model fn =
     let
         encounter =
             model.encounter
@@ -190,15 +217,8 @@ toggleDistributed slug model =
     case encounter.treasure of
         Just state ->
             let
-                nextDistributed =
-                    if Set.member slug state.distributed then
-                        Set.remove slug state.distributed
-
-                    else
-                        Set.insert slug state.distributed
-
                 nextState =
-                    { state | distributed = nextDistributed }
+                    { state | recipients = fn state.recipients }
             in
             ( { model | encounter = { encounter | treasure = Just nextState } }
             , Cmd.none
@@ -218,7 +238,7 @@ rerollRequest model =
         hasDistributed =
             case model.encounter.treasure of
                 Just state ->
-                    not (Set.isEmpty state.distributed)
+                    not (Dict.isEmpty state.recipients)
 
                 Nothing ->
                     False
@@ -309,19 +329,19 @@ categoryRolled category fresh model =
                             , "magic:"
                             )
 
-                nextDistributed =
-                    Set.filter
-                        (\slug ->
+                nextRecipients =
+                    Dict.filter
+                        (\slug _ ->
                             if droppedSlugPrefix == "coins" then
                                 slug /= "coins"
 
                             else
                                 not (String.startsWith droppedSlugPrefix slug)
                         )
-                        state.distributed
+                        state.recipients
 
                 nextState =
-                    { roll = nextRoll, distributed = nextDistributed }
+                    { roll = nextRoll, recipients = nextRecipients }
 
                 encounter =
                     model.encounter

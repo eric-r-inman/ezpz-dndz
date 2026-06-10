@@ -1748,6 +1748,9 @@ updateInner msg model =
         TreasureToggleDistributed slug ->
             Update.Treasure.toggleDistributed slug model
 
+        TreasureRecipientChanged slug name ->
+            Update.Treasure.recipientChanged slug name model
+
         TreasureRerollRequest ->
             Update.Treasure.rerollRequest model
 
