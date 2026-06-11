@@ -209,15 +209,24 @@ bracketRank b =
             3
 
 
-{-| Materialised roll landed — save it onto the encounter.
+{-| Materialised roll landed — save it onto the encounter and
+collapse the By-Creature accordion. Every fresh roll resets the
+accordion to collapsed regardless of whether the GM had
+expanded it for a prior roll; lets the rolled-loot list use the
+full vertical space by default.
 -}
 rolled : Treasure.TreasureRoll -> Model -> ( Model, Cmd Msg )
 rolled treasureRoll model =
     let
         encounter =
             model.encounter
+
+        withRoll =
+            { model | encounter = { encounter | treasure = Just treasureRoll } }
     in
-    ( { model | encounter = { encounter | treasure = Just treasureRoll } }
+    ( Model.mapModal Model.treasureLens
+        (\ui -> { ui | contributionsExpanded = False })
+        withRoll
     , Cmd.none
     )
 

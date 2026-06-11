@@ -32,12 +32,13 @@ type alias TreasureUi =
 {-| Default UI state when the modal opens. Kind defaults to
 Hoard because the GM almost always wants the itemised version
 when they reach for this tool; `contributionsExpanded` defaults
-to `True` so the per-creature breakdown for a Sum roll is
-visible without an extra click.
+to `False` so the per-creature breakdown sits collapsed next to
+the rolled-loot list — the GM can click it open when they want
+to attribute who's carrying what.
 -}
 fresh : TreasureUi
 fresh =
     { kind = Encounter.Treasure.Hoard
-    , contributionsExpanded = True
+    , contributionsExpanded = False
     , settingsExpanded = False
     }
