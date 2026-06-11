@@ -2062,10 +2062,30 @@ body {
 /* ── Treasure roll settings (per-encounter knobs) ──────────────── */
 
 .treasure__settings {
+  /* The treasure modal's body is `display: flex; flex-direction: column`
+     so direct children inherit `flex-shrink: 1` and collapse when a long
+     results list grows.  Pin the settings pane (and the other chrome
+     sections below) to `flex-shrink: 0` so the rolled-loot list scrolls
+     within the modal instead of crowding the GM's tuning controls off
+     the screen. */
+  flex-shrink: 0;
   margin-top: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+}
+
+.treasure__controls,
+.treasure__contributions,
+.treasure__edit-table-row {
+  flex-shrink: 0;
+}
+
+.treasure__results {
+  /* Lets the rolled-loot list be the scroll target if anything has to
+     give, instead of the controls/settings/contributions chrome. */
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 .treasure__settings-toggle {
