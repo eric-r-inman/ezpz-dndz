@@ -1103,8 +1103,12 @@ rollIndividualCoins settings row =
         roll mFormula =
             case mFormula of
                 Just ( count, faces, mult ) ->
-                    rollDiceTimes (adjustCount settings.coinsCount count) faces
-                        |> Random.map (\n -> n * mult)
+                    adjustCount settings.coinsCount count
+                        |> Random.andThen
+                            (\adjusted ->
+                                rollDiceTimes adjusted faces
+                                    |> Random.map (\n -> n * mult)
+                            )
 
                 Nothing ->
                     Random.constant 0
@@ -1187,23 +1191,24 @@ rollGems settings table mSpec =
 
         Just ( count, faces, tier ) ->
             let
-                adjustedCount =
-                    adjustCount settings.gemsCount count
-
                 adjustedTier =
                     shiftGemTier settings.gemsValue tier
             in
-            rollDiceTimes adjustedCount faces
+            adjustCount settings.gemsCount count
                 |> Random.andThen
-                    (\n ->
-                        pickN n (gemNamesFor adjustedTier table)
-                            |> Random.map
-                                (List.map
-                                    (\name ->
-                                        { name = name
-                                        , valueGp = Tables.gemTierValue adjustedTier
-                                        }
-                                    )
+                    (\adjustedCount ->
+                        rollDiceTimes adjustedCount faces
+                            |> Random.andThen
+                                (\n ->
+                                    pickN n (gemNamesFor adjustedTier table)
+                                        |> Random.map
+                                            (List.map
+                                                (\name ->
+                                                    { name = name
+                                                    , valueGp = Tables.gemTierValue adjustedTier
+                                                    }
+                                                )
+                                            )
                                 )
                     )
                 |> Random.andThen (splitGems table)
@@ -1305,23 +1310,24 @@ rollArt settings table mSpec =
 
         Just ( count, faces, tier ) ->
             let
-                adjustedCount =
-                    adjustCount settings.artCount count
-
                 adjustedTier =
                     shiftArtTier settings.artValue tier
             in
-            rollDiceTimes adjustedCount faces
+            adjustCount settings.artCount count
                 |> Random.andThen
-                    (\n ->
-                        pickN n (artNamesFor adjustedTier table)
-                            |> Random.map
-                                (List.map
-                                    (\name ->
-                                        { name = name
-                                        , valueGp = Tables.artTierValue adjustedTier
-                                        }
-                                    )
+                    (\adjustedCount ->
+                        rollDiceTimes adjustedCount faces
+                            |> Random.andThen
+                                (\n ->
+                                    pickN n (artNamesFor adjustedTier table)
+                                        |> Random.map
+                                            (List.map
+                                                (\name ->
+                                                    { name = name
+                                                    , valueGp = Tables.artTierValue adjustedTier
+                                                    }
+                                                )
+                                            )
                                 )
                     )
 
@@ -1334,24 +1340,25 @@ rollMagic settings table mSpec =
 
         Just ( count, faces, magicTable ) ->
             let
-                adjustedCount =
-                    adjustCount settings.magicCount count
-
                 adjustedTable =
                     shiftMagicTable settings.magicValue magicTable
             in
-            rollDiceTimes adjustedCount faces
+            adjustCount settings.magicCount count
                 |> Random.andThen
-                    (\n ->
-                        pickN n (magicNamesFor adjustedTable table)
-                            |> Random.map
-                                (List.map
-                                    (\name ->
-                                        { name = name
-                                        , rarity = Tables.magicTableRarity adjustedTable
-                                        , table = adjustedTable
-                                        }
-                                    )
+                    (\adjustedCount ->
+                        rollDiceTimes adjustedCount faces
+                            |> Random.andThen
+                                (\n ->
+                                    pickN n (magicNamesFor adjustedTable table)
+                                        |> Random.map
+                                            (List.map
+                                                (\name ->
+                                                    { name = name
+                                                    , rarity = Tables.magicTableRarity adjustedTable
+                                                    , table = adjustedTable
+                                                    }
+                                                )
+                                            )
                                 )
                     )
 
@@ -1362,28 +1369,43 @@ rollMagic settings table mSpec =
 
 {-| Coarse multiplier on dice count.
 
-  - **Fewer** = ⌊n/2⌋ (no clamp). For single-die specs that floors
-    to 0, which produces 0 items of that class on this roll — the
-    only way "Fewer" actually means fewer on a 1d-something
-    spec, given every SRD art / magic row uses 1d-something.
+  - **Fewer** = ⌊n/2⌋ for n ≥ 2. For single-die specs (n=1) the
+    integer floor would either stay at 1 (no effect) or jump to
+    0 (always-none) — neither matches the GM's intent. Instead
+    we return a 50/50 Generator over {0, 1}, so a "Fewer Magic"
+    roll on a 1d6 spec produces no items half the time and 1
+    item the other half, averaging to "fewer" without
+    eliminating the class outright.
   - **More** = n + max 1 ⌊n/2⌋. The `max 1` matters for single-die
     specs: a 1d-something would otherwise round to 1+0 == 1 with
     no effect, so we bump it to 2 instead. Every SRD magic-item
     spec uses 1d-something, so without this clamp the Magic
     Count knob would silently do nothing.
 
+The `n ≤ 0` guard up front protects rows whose category was
+already absent (no gem spec on this row, say) — those rolls
+shouldn't suddenly grow items under "More".
+
 -}
-adjustCount : CountAdjust -> Int -> Int
+adjustCount : CountAdjust -> Int -> Random.Generator Int
 adjustCount adj n =
-    case adj of
-        CountFewer ->
-            n // 2
+    if n <= 0 then
+        Random.constant 0
 
-        CountNormal ->
-            n
+    else
+        case adj of
+            CountFewer ->
+                if n == 1 then
+                    Random.weighted ( 50, 0 ) [ ( 50, 1 ) ]
 
-        CountMore ->
-            n + max 1 (n // 2)
+                else
+                    Random.constant (n // 2)
+
+            CountNormal ->
+                Random.constant n
+
+            CountMore ->
+                Random.constant (n + max 1 (n // 2))
 
 
 {-| Shift a gem tier up or down one step. Capped at the
