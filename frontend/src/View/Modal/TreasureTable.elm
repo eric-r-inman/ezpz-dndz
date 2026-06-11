@@ -36,8 +36,10 @@ import Html
         , div
         , input
         , li
+        , option
         , p
         , section
+        , select
         , span
         , text
         , ul
@@ -47,12 +49,20 @@ import Html.Attributes as Attr
         ( attribute
         , class
         , placeholder
+        , selected
         , type_
         , value
         )
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
-import Msg exposing (Msg(..))
+import Msg
+    exposing
+        ( CoinField(..)
+        , CoinKind(..)
+        , Msg(..)
+        , RowKind(..)
+        , SubKind(..)
+        )
 import Set exposing (Set)
 import View.Modal
 
@@ -103,137 +113,408 @@ blurb =
 
 
 
--- ── INDIVIDUAL / HOARD ROWS (read-only display) ─────────────────────────────
+-- ── INDIVIDUAL / HOARD ROWS (field-by-field editor) ─────────────────────────
 
 
 individualGroup : TreasureTable -> Set String -> Html Msg
 individualGroup table expanded =
-    bracketGroup
-        { title = "Individual treasure (by CR bracket)"
-        , kind = "individual"
-        , expanded = expanded
-        , brackets = Treasure.bracketOptions
-        , bracketLabel = Treasure.bracketLabel
-        , bracketKey = Treasure.bracketWire
-        , rowsFor = \b -> Treasure.individualRowsFor b table
-        , renderRow = individualRowView
-        }
-
-
-hoardGroup : TreasureTable -> Set String -> Html Msg
-hoardGroup table expanded =
-    bracketGroup
-        { title = "Hoard treasure (by CR bracket)"
-        , kind = "hoard"
-        , expanded = expanded
-        , brackets = Treasure.bracketOptions
-        , bracketLabel = Treasure.bracketLabel
-        , bracketKey = Treasure.bracketWire
-        , rowsFor = \b -> Treasure.hoardRowsFor b table
-        , renderRow = hoardRowView
-        }
-
-
-bracketGroup :
-    { title : String
-    , kind : String
-    , expanded : Set String
-    , brackets : List Treasure.Bracket
-    , bracketLabel : Treasure.Bracket -> String
-    , bracketKey : Treasure.Bracket -> String
-    , rowsFor : Treasure.Bracket -> List row
-    , renderRow : row -> Html Msg
-    }
-    -> Html Msg
-bracketGroup cfg =
     section [ class "treasure-table__group" ]
-        [ p [ class "treasure-table__group-title" ] [ text cfg.title ]
+        [ p [ class "treasure-table__group-title" ] [ text "Individual treasure (by CR bracket)" ]
         , div [ class "treasure-table__sections" ]
             (List.map
                 (\bracket ->
                     let
-                        key =
-                            cfg.bracketKey bracket
-
-                        isOpen =
-                            Set.member (cfg.kind ++ ":" ++ key) cfg.expanded
-
                         rows =
-                            cfg.rowsFor bracket
+                            Treasure.individualRowsFor bracket table
                     in
-                    collapsible
-                        { kind = cfg.kind
-                        , key = key
-                        , label = cfg.bracketLabel bracket
-                        , count = String.fromInt (List.length rows) ++ " rows"
-                        , isOpen = isOpen
-                        , content =
-                            if isOpen then
-                                ul [ class "treasure-table__row-list" ]
-                                    (List.map (\r -> li [ class "treasure-table__data-row" ] [ cfg.renderRow r ]) rows)
-
-                            else
-                                text ""
+                    bracketSection
+                        { kind = "individual"
+                        , bracket = bracket
+                        , expanded = expanded
+                        , rows = rows
+                        , weightSum = List.sum (List.map .weight rows)
+                        , renderRow = individualRowEditor (Treasure.bracketWire bracket)
+                        , onAdd = TreasureTableRowAdd IndividualRow (Treasure.bracketWire bracket)
                         }
                 )
-                cfg.brackets
+                Treasure.bracketOptions
             )
         ]
 
 
-individualRowView : IndividualEntry -> Html Msg
-individualRowView row =
-    span [ class "treasure-table__row-summary" ]
-        [ text ("weight " ++ String.fromInt row.weight ++ " · ")
-        , text (formulaSummary "cp" row.copper "")
-        , text (formulaSummary "sp" row.silver " · ")
-        , text (formulaSummary "ep" row.electrum " · ")
-        , text (formulaSummary "gp" row.gold " · ")
-        , text (formulaSummary "pp" row.platinum " · ")
+hoardGroup : TreasureTable -> Set String -> Html Msg
+hoardGroup table expanded =
+    section [ class "treasure-table__group" ]
+        [ p [ class "treasure-table__group-title" ] [ text "Hoard treasure (by CR bracket)" ]
+        , div [ class "treasure-table__sections" ]
+            (List.map
+                (\bracket ->
+                    let
+                        rows =
+                            Treasure.hoardRowsFor bracket table
+                    in
+                    bracketSection
+                        { kind = "hoard"
+                        , bracket = bracket
+                        , expanded = expanded
+                        , rows = rows
+                        , weightSum = List.sum (List.map .weight rows)
+                        , renderRow = hoardRowEditor (Treasure.bracketWire bracket)
+                        , onAdd = TreasureTableRowAdd HoardRow (Treasure.bracketWire bracket)
+                        }
+                )
+                Treasure.bracketOptions
+            )
         ]
 
 
-hoardRowView : HoardEntry -> Html Msg
-hoardRowView row =
-    span [ class "treasure-table__row-summary" ]
-        [ text ("weight " ++ String.fromInt row.weight ++ " · ")
-        , text (formulaSummary "cp" row.copper "")
-        , text (formulaSummary "sp" row.silver " · ")
-        , text (formulaSummary "ep" row.electrum " · ")
-        , text (formulaSummary "gp" row.gold " · ")
-        , text (formulaSummary "pp" row.platinum " · ")
-        , text (subRollSummary "gems" row.gems gemTierGp " · ")
-        , text (subRollSummary "art" row.art artTierGp " · ")
-        , text (subRollSummary "magic" row.magic magicTableLetter " · ")
+{-| Render one bracket: collapsible chrome + the per-row editor
+list + a weight-sum summary + an "add row" button. Generic over
+the row type so individual and hoard collapse into one path.
+-}
+bracketSection :
+    { kind : String
+    , bracket : Treasure.Bracket
+    , expanded : Set String
+    , rows : List row
+    , weightSum : Int
+    , renderRow : Int -> row -> Html Msg
+    , onAdd : Msg
+    }
+    -> Html Msg
+bracketSection cfg =
+    let
+        key =
+            Treasure.bracketWire cfg.bracket
+
+        isOpen =
+            Set.member (cfg.kind ++ ":" ++ key) cfg.expanded
+    in
+    collapsible
+        { kind = cfg.kind
+        , key = key
+        , label = Treasure.bracketLabel cfg.bracket
+        , count = String.fromInt (List.length cfg.rows) ++ " rows"
+        , isOpen = isOpen
+        , content =
+            if isOpen then
+                div [ class "treasure-table__bracket-editor" ]
+                    [ weightSumBanner cfg.weightSum
+                    , ul [ class "treasure-table__row-list" ]
+                        (List.indexedMap
+                            (\i r -> li [ class "treasure-table__data-row" ] [ cfg.renderRow i r ])
+                            cfg.rows
+                        )
+                    , button
+                        [ class "treasure-table__row-add"
+                        , type_ "button"
+                        , onClick cfg.onAdd
+                        ]
+                        [ text "+ Add row" ]
+                    ]
+
+            else
+                text ""
+        }
+
+
+{-| Renders the running "weights sum N · target 100" banner above
+the row editor. The d100 picker still works with any total — it
+just renormalises proportionally — but 100 is the SRD convention
+and any drift from it is usually unintentional, so we surface it
+loudly enough to catch typos without blocking the GM who knows
+what they're doing.
+-}
+weightSumBanner : Int -> Html Msg
+weightSumBanner total =
+    let
+        isOff =
+            total /= 100
+
+        cls =
+            if isOff then
+                "treasure-table__weight-sum treasure-table__weight-sum--warn"
+
+            else
+                "treasure-table__weight-sum"
+
+        message =
+            if total == 0 then
+                "no rows will roll"
+
+            else if total == 100 then
+                "target 100 ✓"
+
+            else
+                "target 100"
+    in
+    p [ class cls ]
+        [ text ("Weights sum: " ++ String.fromInt total ++ " · " ++ message) ]
+
+
+individualRowEditor : String -> Int -> IndividualEntry -> Html Msg
+individualRowEditor bracketKey idx row =
+    div [ class "treasure-table__row-editor" ]
+        [ rowHeader IndividualRow bracketKey idx row.weight
+        , coinGrid IndividualRow bracketKey idx (individualCoins row)
         ]
 
 
-formulaSummary : String -> Maybe ( Int, Int, Int ) -> String -> String
-formulaSummary label mFormula sep =
-    case mFormula of
-        Nothing ->
-            ""
-
-        Just ( count, faces, mult ) ->
-            let
-                multSuffix =
-                    if mult == 1 then
-                        ""
-
-                    else
-                        " × " ++ String.fromInt mult
-            in
-            sep ++ String.fromInt count ++ "d" ++ String.fromInt faces ++ multSuffix ++ " " ++ label
+hoardRowEditor : String -> Int -> HoardEntry -> Html Msg
+hoardRowEditor bracketKey idx row =
+    div [ class "treasure-table__row-editor" ]
+        [ rowHeader HoardRow bracketKey idx row.weight
+        , coinGrid HoardRow bracketKey idx (hoardCoins row)
+        , subGrid bracketKey idx row
+        ]
 
 
-subRollSummary : String -> Maybe ( Int, Int, tier ) -> (tier -> String) -> String -> String
-subRollSummary label mSpec tierLabel sep =
-    case mSpec of
-        Nothing ->
-            ""
+individualCoins : IndividualEntry -> List ( CoinKind, Maybe ( Int, Int, Int ) )
+individualCoins row =
+    [ ( CKCopper, row.copper )
+    , ( CKSilver, row.silver )
+    , ( CKElectrum, row.electrum )
+    , ( CKGold, row.gold )
+    , ( CKPlatinum, row.platinum )
+    ]
 
-        Just ( count, faces, tier ) ->
-            sep ++ String.fromInt count ++ "d" ++ String.fromInt faces ++ " " ++ tierLabel tier ++ " " ++ label
+
+hoardCoins : HoardEntry -> List ( CoinKind, Maybe ( Int, Int, Int ) )
+hoardCoins row =
+    [ ( CKCopper, row.copper )
+    , ( CKSilver, row.silver )
+    , ( CKElectrum, row.electrum )
+    , ( CKGold, row.gold )
+    , ( CKPlatinum, row.platinum )
+    ]
+
+
+rowHeader : RowKind -> String -> Int -> Int -> Html Msg
+rowHeader kind bracketKey idx weight =
+    div [ class "treasure-table__row-header" ]
+        [ Html.label [ class "treasure-table__field" ]
+            [ span [ class "treasure-table__field-label" ] [ text "Weight" ]
+            , input
+                [ class (warnClass "treasure-table__field-input" (weight <= 0))
+                , type_ "number"
+                , Attr.min "0"
+                , value (String.fromInt weight)
+                , onInput (TreasureTableWeightSet kind bracketKey idx)
+                ]
+                []
+            ]
+        , span
+            [ class "treasure-table__row-hint"
+            , attribute "title"
+                "Higher weight = more often.  The bracket's roll is weighted by these numbers; 0 means the row never rolls."
+            ]
+            [ text
+                (if weight <= 0 then
+                    "(never rolls)"
+
+                 else
+                    ""
+                )
+            ]
+        , button
+            [ class "treasure-table__row-remove-btn"
+            , type_ "button"
+            , onClick (TreasureTableRowRemove kind bracketKey idx)
+            , attribute "title" "Remove this row"
+            , attribute "aria-label" "Remove row"
+            ]
+            [ text "✕ Row" ]
+        ]
+
+
+coinGrid :
+    RowKind
+    -> String
+    -> Int
+    -> List ( CoinKind, Maybe ( Int, Int, Int ) )
+    -> Html Msg
+coinGrid kind bracketKey idx coins =
+    div [ class "treasure-table__coin-grid" ]
+        (List.map (coinColumn kind bracketKey idx) coins)
+
+
+coinColumn :
+    RowKind
+    -> String
+    -> Int
+    -> ( CoinKind, Maybe ( Int, Int, Int ) )
+    -> Html Msg
+coinColumn kind bracketKey idx ( coin, mFormula ) =
+    div [ class "treasure-table__coin-column" ]
+        [ span [ class "treasure-table__coin-label" ] [ text (coinLabel coin) ]
+        , case mFormula of
+            Nothing ->
+                button
+                    [ class "treasure-table__coin-add"
+                    , type_ "button"
+                    , onClick (TreasureTableCoinAdd kind bracketKey idx coin)
+                    , attribute "title" ("Add a " ++ coinLabel coin ++ " formula to this row")
+                    ]
+                    [ text "+" ]
+
+            Just ( c, f, m ) ->
+                div [ class "treasure-table__coin-formula" ]
+                    [ numField "Count"
+                        c
+                        1
+                        (TreasureTableCoinSet kind bracketKey idx coin CFCount)
+                    , span [ class "treasure-table__coin-d" ] [ text "d" ]
+                    , numField "Faces"
+                        f
+                        2
+                        (TreasureTableCoinSet kind bracketKey idx coin CFFaces)
+                    , span [ class "treasure-table__coin-x" ] [ text "×" ]
+                    , numField "Mult"
+                        m
+                        1
+                        (TreasureTableCoinSet kind bracketKey idx coin CFMult)
+                    , button
+                        [ class "treasure-table__coin-remove"
+                        , type_ "button"
+                        , onClick (TreasureTableCoinRemove kind bracketKey idx coin)
+                        , attribute "title" ("Clear " ++ coinLabel coin)
+                        , attribute "aria-label" ("Clear " ++ coinLabel coin)
+                        ]
+                        [ text "✕" ]
+                    ]
+        ]
+
+
+numField : String -> Int -> Int -> (String -> Msg) -> Html Msg
+numField title_ current minimum toMsg =
+    input
+        [ class "treasure-table__num-input"
+        , type_ "number"
+        , Attr.min (String.fromInt minimum)
+        , value (String.fromInt current)
+        , attribute "title" title_
+        , onInput toMsg
+        ]
+        []
+
+
+coinLabel : CoinKind -> String
+coinLabel c =
+    case c of
+        CKCopper ->
+            "cp"
+
+        CKSilver ->
+            "sp"
+
+        CKElectrum ->
+            "ep"
+
+        CKGold ->
+            "gp"
+
+        CKPlatinum ->
+            "pp"
+
+
+subGrid : String -> Int -> HoardEntry -> Html Msg
+subGrid bracketKey idx row =
+    div [ class "treasure-table__sub-grid" ]
+        [ subColumn bracketKey
+            idx
+            { kind = SKGems
+            , label = "Gems"
+            , spec = row.gems
+            , tierKey = gemTierGp
+            , tierOptions = List.map (\( k, _ ) -> ( k, k )) gemTierEntries
+            }
+        , subColumn bracketKey
+            idx
+            { kind = SKArt
+            , label = "Art"
+            , spec = row.art
+            , tierKey = artTierGp
+            , tierOptions = List.map (\( k, _ ) -> ( k, k )) artTierEntries
+            }
+        , subColumn bracketKey
+            idx
+            { kind = SKMagic
+            , label = "Magic"
+            , spec = row.magic
+            , tierKey = magicTableLetter
+            , tierOptions = List.map (\( k, _ ) -> ( k, "Table " ++ k )) magicTableEntries
+            }
+        ]
+
+
+subColumn :
+    String
+    -> Int
+    ->
+        { kind : SubKind
+        , label : String
+        , spec : Maybe ( Int, Int, tier )
+        , tierKey : tier -> String
+        , tierOptions : List ( String, String )
+        }
+    -> Html Msg
+subColumn bracketKey idx cfg =
+    div [ class "treasure-table__sub-column" ]
+        [ span [ class "treasure-table__coin-label" ] [ text cfg.label ]
+        , case cfg.spec of
+            Nothing ->
+                button
+                    [ class "treasure-table__coin-add"
+                    , type_ "button"
+                    , onClick (TreasureTableSubAdd bracketKey idx cfg.kind)
+                    , attribute "title" ("Add a " ++ cfg.label ++ " sub-roll to this row")
+                    ]
+                    [ text "+" ]
+
+            Just ( c, f, t ) ->
+                div [ class "treasure-table__coin-formula" ]
+                    [ numField (cfg.label ++ " count")
+                        c
+                        1
+                        (TreasureTableSubCountSet bracketKey idx cfg.kind)
+                    , span [ class "treasure-table__coin-d" ] [ text "d" ]
+                    , numField (cfg.label ++ " faces")
+                        f
+                        2
+                        (TreasureTableSubFacesSet bracketKey idx cfg.kind)
+                    , select
+                        [ class "treasure-table__sub-tier"
+                        , onInput (TreasureTableSubTierSet bracketKey idx cfg.kind)
+                        ]
+                        (List.map
+                            (\( k, label ) ->
+                                option
+                                    [ value k
+                                    , selected (k == cfg.tierKey t)
+                                    ]
+                                    [ text label ]
+                            )
+                            cfg.tierOptions
+                        )
+                    , button
+                        [ class "treasure-table__coin-remove"
+                        , type_ "button"
+                        , onClick (TreasureTableSubRemove bracketKey idx cfg.kind)
+                        , attribute "title" ("Clear " ++ cfg.label)
+                        , attribute "aria-label" ("Clear " ++ cfg.label)
+                        ]
+                        [ text "✕" ]
+                    ]
+        ]
+
+
+warnClass : String -> Bool -> String
+warnClass base shouldWarn =
+    if shouldWarn then
+        base ++ " " ++ base ++ "--warn"
+
+    else
+        base
 
 
 gemTierGp : GemTier -> String

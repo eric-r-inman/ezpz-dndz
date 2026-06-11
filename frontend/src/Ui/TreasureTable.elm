@@ -51,7 +51,12 @@ sectionKey : Section -> String
 sectionKey s =
     case s of
         IndividualSection k ->
-            "ind:" ++ k
+            -- Must match the discriminator string the view uses in
+            -- View.Modal.TreasureTable.individualGroup (`kind = "individual"`).
+            -- Was "ind:" and silently desynced — bracketGroup wrote
+            -- "individual:0to4" into `expanded` and read back "ind:0to4",
+            -- so the panel could never expand.
+            "individual:" ++ k
 
         HoardSection k ->
             "hoard:" ++ k

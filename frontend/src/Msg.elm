@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), LoadSource(..), ModalChromeEdge(..), SaveDestination(..), Theme(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -308,6 +308,47 @@ type CompendiumBulkMenu
     = ClearMenu
     | ImportMenu
     | ExportMenu
+
+
+{-| Which row family a Treasure-Table row-edit message targets.
+Individual and hoard rows share their coin-formula columns; this
+discriminator lets one set of edit messages dispatch to either
+table without duplicating five variants per field.
+-}
+type RowKind
+    = IndividualRow
+    | HoardRow
+
+
+{-| One of the five coin denominations on a row.
+-}
+type CoinKind
+    = CKCopper
+    | CKSilver
+    | CKElectrum
+    | CKGold
+    | CKPlatinum
+
+
+{-| Which sub-tuple of the `(count, faces, mult)` coin formula
+this edit targets. Edits arrive as `String` so the input box can
+hold a transient empty value while the user is typing; the
+handler parses + clamps.
+-}
+type CoinField
+    = CFCount
+    | CFFaces
+    | CFMult
+
+
+{-| One of the three hoard-only subroll categories — gems, art
+objects, or magic items. Each carries its own tier/table enum
+which the editor exposes as a dropdown.
+-}
+type SubKind
+    = SKGems
+    | SKArt
+    | SKMagic
 
 
 
@@ -1087,6 +1128,22 @@ type Msg
     | TreasureTableMagicAdd String
     | TreasureTableMagicEdit String Int String
     | TreasureTableMagicRemoveItem String Int
+      -- Per-row edits for the Individual + Hoard bracket rows.
+      -- All carry (bracketWire, rowIndex, …).  Coin/sub kinds are
+      -- discriminated by the small ADTs below so a single message
+      -- per field-class scales across all five coin denominations
+      -- and the three hoard subroll categories.
+    | TreasureTableRowAdd RowKind String
+    | TreasureTableRowRemove RowKind String Int
+    | TreasureTableWeightSet RowKind String Int String
+    | TreasureTableCoinAdd RowKind String Int CoinKind
+    | TreasureTableCoinRemove RowKind String Int CoinKind
+    | TreasureTableCoinSet RowKind String Int CoinKind CoinField String
+    | TreasureTableSubAdd String Int SubKind
+    | TreasureTableSubRemove String Int SubKind
+    | TreasureTableSubCountSet String Int SubKind String
+    | TreasureTableSubFacesSet String Int SubKind String
+    | TreasureTableSubTierSet String Int SubKind String
       -- Reset the user's table to the bundled SRD default.
       -- Two-step confirm gating happens in the view layer.
     | TreasureTableResetToBundled

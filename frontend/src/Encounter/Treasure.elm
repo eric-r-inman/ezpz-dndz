@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), artNamesFor, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setMagicNames, valueAdjustFromWire, valueAdjustWire
+    , Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, valueAdjustFromWire, valueAdjustWire
     )
 
 {-| Treasure-roll domain.
@@ -128,6 +128,29 @@ bracketWire b =
 
         B17plus ->
             "17plus"
+
+
+{-| Inverse of `bracketWire`. Returns `Nothing` when the string
+isn't one of the four stable slugs — callers in the editor treat
+that as a no-op rather than guessing.
+-}
+bracketFromWire : String -> Maybe Bracket
+bracketFromWire s =
+    case s of
+        "1to4" ->
+            Just B1to4
+
+        "5to10" ->
+            Just B5to10
+
+        "11to16" ->
+            Just B11to16
+
+        "17plus" ->
+            Just B17plus
+
+        _ ->
+            Nothing
 
 
 {-| Pick a bracket from a CR float. Used by `suggestedBracket`
@@ -766,6 +789,32 @@ setArtNames tier names table =
 setMagicNames : MagicTable -> List String -> TreasureTable -> TreasureTable
 setMagicNames magicTable names table =
     { table | magic = Dict.insert (magicTableKey magicTable) names table.magic }
+
+
+{-| Editor mutation: replace one bracket's individual-treasure
+rows wholesale. The editor parses inputs, builds the new row
+list, and hands it here.
+-}
+setIndividualRows :
+    Bracket
+    -> List IndividualEntry
+    -> TreasureTable
+    -> TreasureTable
+setIndividualRows bracket rows table =
+    { table
+        | individualBrackets =
+            Dict.insert (bracketWire bracket) rows table.individualBrackets
+    }
+
+
+{-| Editor mutation: replace one bracket's hoard rows wholesale.
+-}
+setHoardRows : Bracket -> List HoardEntry -> TreasureTable -> TreasureTable
+setHoardRows bracket rows table =
+    { table
+        | hoardBrackets =
+            Dict.insert (bracketWire bracket) rows table.hoardBrackets
+    }
 
 
 

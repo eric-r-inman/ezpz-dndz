@@ -1844,6 +1844,39 @@ updateInner msg model =
         TreasureTableMagicRemoveItem key idx ->
             Update.TreasureTable.magicRemove key idx model
 
+        TreasureTableRowAdd kind key ->
+            Update.TreasureTable.rowAdd kind key model
+
+        TreasureTableRowRemove kind key idx ->
+            Update.TreasureTable.rowRemove kind key idx model
+
+        TreasureTableWeightSet kind key idx raw ->
+            Update.TreasureTable.weightSet kind key idx raw model
+
+        TreasureTableCoinAdd kind key idx coin ->
+            Update.TreasureTable.coinAdd kind key idx coin model
+
+        TreasureTableCoinRemove kind key idx coin ->
+            Update.TreasureTable.coinRemove kind key idx coin model
+
+        TreasureTableCoinSet kind key idx coin field raw ->
+            Update.TreasureTable.coinSet kind key idx coin field raw model
+
+        TreasureTableSubAdd key idx sub ->
+            Update.TreasureTable.subAdd key idx sub model
+
+        TreasureTableSubRemove key idx sub ->
+            Update.TreasureTable.subRemove key idx sub model
+
+        TreasureTableSubCountSet key idx sub raw ->
+            Update.TreasureTable.subCountSet key idx sub raw model
+
+        TreasureTableSubFacesSet key idx sub raw ->
+            Update.TreasureTable.subFacesSet key idx sub raw model
+
+        TreasureTableSubTierSet key idx sub raw ->
+            Update.TreasureTable.subTierSet key idx sub raw model
+
         TreasureTableResetToBundled ->
             Update.TreasureTable.resetToBundled model
 

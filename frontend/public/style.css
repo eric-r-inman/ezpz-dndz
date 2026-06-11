@@ -2473,6 +2473,209 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Row editor (Individual + Hoard) ─────────────────────────────────── */
+
+.treasure-table__bracket-editor {
+  padding: 4px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.treasure-table__weight-sum {
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-table__weight-sum--warn {
+  color: var(--color-warning, #b9602a);
+  border-color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__row-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure-table__row-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.treasure-table__field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treasure-table__field-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__field-input {
+  width: 4em;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: right;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-table__field-input--warn {
+  border-color: var(--color-warning, #b9602a);
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__row-hint {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__row-remove-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__row-remove-btn:hover,
+.treasure-table__row-remove-btn:focus-visible {
+  border-color: var(--color-warning, #b9602a);
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__coin-grid,
+.treasure-table__sub-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.treasure-table__coin-column,
+.treasure-table__sub-column {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treasure-table__coin-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  min-width: 2.5em;
+}
+
+.treasure-table__coin-formula {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.treasure-table__coin-d,
+.treasure-table__coin-x {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__num-input {
+  width: 3.5em;
+  padding: 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: right;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-table__sub-tier {
+  padding: 2px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.82rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.treasure-table__coin-add {
+  appearance: none;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__coin-add:hover,
+.treasure-table__coin-add:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  border-style: solid;
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure-table__coin-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__coin-remove:hover,
+.treasure-table__coin-remove:focus-visible {
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__row-add {
+  align-self: flex-start;
+  appearance: none;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.treasure-table__row-add:hover,
+.treasure-table__row-add:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
 .treasure-table__name-editor {
   padding: 6px 14px 10px;
   display: flex;
