@@ -163,7 +163,13 @@ enemyInfos model =
     in
     model.encounter.creatures
         |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
-        |> List.map (\c -> { name = c.name, bracket = creatureBracket db c })
+        |> List.map
+            (\c ->
+                { name = c.name
+                , bracket = creatureBracket db c
+                , loot = creatureLoot db c
+                }
+            )
 
 
 creatureBracket : Compendium.Db -> Encounter.Creature -> Bracket
@@ -172,6 +178,18 @@ creatureBracket db c =
         |> Maybe.andThen (\id -> Compendium.find id db)
         |> Maybe.map (.challengeRating >> Compendium.crToFloat >> Treasure.bracketFor)
         |> Maybe.withDefault Treasure.B1to4
+
+
+{-| Resolve the creature's compendium loot list — empty when
+the encounter creature has no compendium link (a manually-typed
+placeholder won't have authored loot).
+-}
+creatureLoot : Compendium.Db -> Encounter.Creature -> List String
+creatureLoot db c =
+    c.creatureId
+        |> Maybe.andThen (\id -> Compendium.find id db)
+        |> Maybe.map .loot
+        |> Maybe.withDefault []
 
 
 highestBracketOrDefault : List Bracket -> Bracket

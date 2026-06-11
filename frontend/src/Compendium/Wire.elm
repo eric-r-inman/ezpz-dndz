@@ -327,6 +327,7 @@ decodeCreature =
         |> optional "habitats" decodeHabitats []
         |> optional "treasures" decodeTreasures []
         |> optional "tags" (D.list D.string) []
+        |> optional "loot" (D.list D.string) []
         |> optional "created_at" D.int 0
         |> optional "updated_at" D.int 0
         |> optional "is_bundled" D.bool False
@@ -644,6 +645,7 @@ draftFields c =
     , ( "habitats", E.list encodeHabitat c.habitats )
     , ( "treasures", E.list encodeTreasure c.treasures )
     , ( "tags", E.list E.string c.tags )
+    , ( "loot", E.list E.string c.loot )
     ]
 
 

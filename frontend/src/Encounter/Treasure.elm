@@ -236,6 +236,17 @@ type alias TreasureRoll =
     , magic : List MagicItem
     , source : Maybe RowSource
     , contributions : List CreatureContribution
+
+    -- Aggregate of every enemy's pre-authored loot strings (one
+    -- entry per item).  Surfaces in the Treasure modal as a
+    -- dedicated "Loot" section with no gp values — these are
+    -- DM-flavor item descriptions from the stat blocks, not
+    -- table-rolled treasure.  Loot lands on the roll regardless
+    -- of Kind: both individual sums and hoards aggregate every
+    -- enemy's authored items, since "the lair contained the boss
+    -- and minions, so their stuff is here too" reads the same way
+    -- as "you defeated everyone, here's what was on them."
+    , loot : List String
     }
 
 
@@ -255,6 +266,7 @@ type alias CreatureContribution =
     { creatureName : String
     , coins : Coins
     , gems : List GemItem
+    , loot : List String
     , bracket : Bracket
     }
 
@@ -283,6 +295,7 @@ type alias RollContext =
 type alias EnemyInfo =
     { name : String
     , bracket : Bracket
+    , loot : List String
     }
 
 
@@ -787,12 +800,17 @@ generate settings kind table ctx =
         Random.constant (emptyRollFor kind ctx.hoardBracket)
 
     else
+        let
+            aggregateLoot =
+                List.concatMap .loot ctx.enemies
+        in
         case kind of
             Individual ->
                 generateIndividualSum settings table ctx.enemies
 
             Hoard ->
                 generateHoard settings ctx.hoardBracket table
+                    |> Random.map (\roll -> { roll | loot = aggregateLoot })
 
 
 {-| Re-roll just one category of the existing roll, using the
@@ -871,6 +889,7 @@ emptyRollFor kind bracket =
     , magic = []
     , source = Nothing
     , contributions = []
+    , loot = []
     }
 
 
@@ -918,6 +937,7 @@ generateIndividualSum settings table enemies =
                 , magic = []
                 , source = Nothing
                 , contributions = contributions
+                , loot = List.concatMap .loot contributions
                 }
             )
 
@@ -934,6 +954,7 @@ rollOneEnemy settings table enemy =
                 rollIndividualCoins settings row
                     |> Random.andThen (maybeConvertGoldToGem settings table enemy)
             )
+        |> Random.map (\c -> { c | loot = enemy.loot })
 
 
 {-| Per-creature post-process: with some probability, swap some
@@ -966,6 +987,7 @@ maybeConvertGoldToGem settings table enemy coins =
             { creatureName = enemy.name
             , coins = coins
             , gems = []
+            , loot = []
             , bracket = enemy.bracket
             }
     in
@@ -1159,6 +1181,11 @@ generateHoard settings bracket table =
                         , magic = magic
                         , source = Just (sourceFromHoard row)
                         , contributions = []
+
+                        -- Loot is layered onto the roll in
+                        -- `generate` after this returns (uses the
+                        -- caller's aggregated enemy loot list).
+                        , loot = []
                         }
                     )
                     (rollHoardCoins settings row)

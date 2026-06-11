@@ -708,6 +708,7 @@ mod tests {
       habitats: vec![],
       treasures: vec![],
       tags: vec![],
+      loot: vec![],
       created_at: 0,
       updated_at: 0,
       is_bundled: false,

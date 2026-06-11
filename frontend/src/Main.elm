@@ -2024,6 +2024,15 @@ updateInner msg model =
         CompendiumEditTagChanged idx text ->
             Update.Compendium.Edit.tagChanged idx text model
 
+        CompendiumEditLootAdd ->
+            Update.Compendium.Edit.lootAdd model
+
+        CompendiumEditLootRemove idx ->
+            Update.Compendium.Edit.lootRemove idx model
+
+        CompendiumEditLootChanged idx text ->
+            Update.Compendium.Edit.lootChanged idx text model
+
         CompendiumEditLegendaryAdd ->
             Update.Compendium.Edit.legendaryAdd model
 

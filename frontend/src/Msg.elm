@@ -703,6 +703,14 @@ type Msg
     | CompendiumEditTagAdd
     | CompendiumEditTagRemove Int
     | CompendiumEditTagChanged Int String
+      -- Loot text-row editor on the New / Edit Creature modal.
+      -- Each entry is a free-text item the GM types in (e.g.
+      -- "Bone necklace", "Crumpled map fragment"); the list
+      -- surfaces at the bottom of the stat block and aggregates
+      -- into Treasure roller output.
+    | CompendiumEditLootAdd
+    | CompendiumEditLootRemove Int
+    | CompendiumEditLootChanged Int String
       -- Advanced section editors: legendary actions, lair actions,
       -- regional effects, spellcasting.  Each section can be
       -- entirely absent (`Nothing`); the Add / Remove Msgs flip

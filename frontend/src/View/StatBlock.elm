@@ -37,7 +37,7 @@ import Compendium
         , Usage(..)
         )
 import Dice
-import Html exposing (Html, a, button, div, em, hr, p, span, strong, text)
+import Html exposing (Html, a, button, div, em, hr, li, p, span, strong, text, ul)
 import Html.Attributes exposing (attribute, class, href, target)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
@@ -119,6 +119,7 @@ view onRoll onAbilityClick tagDisplay c =
             ++ viewRegionalEffects onRoll c.name c.regionalEffects
             ++ viewSpellcasting c.spellcasting
             ++ viewCustomSections c.customSections
+            ++ viewLoot c.loot
             ++ viewMetaTags c
         )
 
@@ -961,6 +962,22 @@ viewCustomSection cs =
     [ sectionHeading cs.name
     , p [ class "statblock__feature" ] [ text cs.body ]
     ]
+
+
+{-| Free-form loot list at the bottom of the stat block. Empty
+list renders nothing — bundled creatures don't ship with loot
+and the section shouldn't appear as an empty heading.
+-}
+viewLoot : List String -> List (Html msg)
+viewLoot loot =
+    if List.isEmpty loot then
+        []
+
+    else
+        [ sectionHeading "Loot"
+        , ul [ class "statblock__loot" ]
+            (List.map (\item -> li [] [ text item ]) loot)
+        ]
 
 
 

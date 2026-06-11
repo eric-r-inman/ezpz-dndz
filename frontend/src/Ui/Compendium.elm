@@ -461,6 +461,12 @@ type alias CompendiumEditUi =
     , habitats : List Compendium.Habitat
     , treasures : List Compendium.Treasure
     , tags : List String
+
+    -- Free-text loot items the GM has typed in for this
+    -- creature.  Surfaces at the bottom of the stat block and
+    -- aggregates into Treasure-roller output (one "Loot" row per
+    -- item, no gp computed).
+    , loot : List String
     , submitting : Bool
     , submitError : Maybe String
     }
@@ -534,6 +540,7 @@ blankEdit =
     , habitats = []
     , treasures = []
     , tags = []
+    , loot = []
     , submitting = False
     , submitError = Nothing
     }
@@ -602,6 +609,7 @@ editFromCreature c =
     , habitats = c.habitats
     , treasures = c.treasures
     , tags = c.tags
+    , loot = c.loot
     , submitting = False
     , submitError = Nothing
     }
@@ -713,6 +721,10 @@ validateEdit ui =
                             |> List.map String.trim
                             |> List.filter isOneWord
                             |> dedupOrdered
+                    , loot =
+                        ui.loot
+                            |> List.map String.trim
+                            |> List.filter (not << String.isEmpty)
                     , createdAt = createdAt
                     , updatedAt = 0
                     , isBundled = False

@@ -426,8 +426,15 @@ contributionSummary c =
 
             else
                 " + " ++ String.join ", " (List.map gemLabel c.gems)
+
+        lootPart =
+            if List.isEmpty c.loot then
+                ""
+
+            else
+                " + " ++ String.join ", " c.loot
     in
-    coinSummary c.coins ++ gemPart
+    coinSummary c.coins ++ gemPart ++ lootPart
 
 
 gemLabel : GemItem -> String
@@ -527,6 +534,7 @@ resultBlock roll =
         , gemsSection roll.gems
         , artSection roll.art
         , magicSection roll.magic
+        , lootSection roll.loot
         ]
 
 
@@ -839,6 +847,68 @@ magicGroupRow g =
             ]
             [ text (Tables.rarityLabel g.rarity) ]
         , rowRemoveButton (TreasureMagicRemove g.firstIndex)
+        ]
+
+
+{-| "Loot" section: free-text items the enemies were authored
+with on their compendium entries. No gp values, no rarity —
+just text descriptions surfaced for the GM to read out.
+Duplicate strings collapse into a single row with an "× N"
+suffix, matching the gems/art/magic rendering.
+-}
+lootSection : List String -> Html Msg
+lootSection items =
+    if List.isEmpty items then
+        text ""
+
+    else
+        let
+            groups =
+                groupLootItems items
+        in
+        section [ class "treasure__section treasure__section--loot" ]
+            [ div [ class "treasure__section-header" ]
+                [ span [ class "treasure__section-title" ] [ text "Loot" ]
+                ]
+            , ul [ class "treasure__list" ] (List.map lootGroupRow groups)
+            ]
+
+
+type alias LootGroup =
+    { name : String, count : Int }
+
+
+groupLootItems : List String -> List LootGroup
+groupLootItems items =
+    items
+        |> List.foldl
+            (\name acc ->
+                if List.any (\g -> g.name == name) acc then
+                    List.map
+                        (\g ->
+                            if g.name == name then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc ++ [ { name = name, count = 1 } ]
+            )
+            []
+
+
+lootGroupRow : LootGroup -> Html Msg
+lootGroupRow g =
+    li [ class "treasure__row" ]
+        [ span [ class "treasure__row-name" ]
+            [ text g.name
+            , countSuffix g.count
+            ]
+        , span [ class "treasure__rarity treasure__rarity--loot" ]
+            [ text "Loot" ]
         ]
 
 

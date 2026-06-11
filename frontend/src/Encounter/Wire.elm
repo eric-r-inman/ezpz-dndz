@@ -299,6 +299,7 @@ encodeTreasureRoll roll =
         , ( "magic", E.list encodeMagicItem roll.magic )
         , ( "source", encodeMaybe encodeRowSource roll.source )
         , ( "contributions", E.list encodeContribution roll.contributions )
+        , ( "loot", E.list E.string roll.loot )
         ]
 
 
@@ -314,6 +315,14 @@ decodeTreasureRoll =
             , magic = magic
             , source = source
             , contributions = contributions
+
+            -- Placeholder so the record type-checks; the andThen
+            -- below replaces it with the decoded loot list (or
+            -- keeps `[]` if the field is missing on legacy rolls).
+            -- `D.map9` doesn't exist in elm/json so the standard
+            -- workaround is a partial in `D.map8` plus an
+            -- `andThen` to slot in the ninth field.
+            , loot = []
             }
         )
         (D.field "kind" treasureKindDecoder)
@@ -339,6 +348,14 @@ decodeTreasureRoll =
             , D.succeed []
             ]
         )
+        |> D.andThen
+            (\partial ->
+                D.oneOf
+                    [ D.field "loot" (D.list D.string)
+                        |> D.map (\loot -> { partial | loot = loot })
+                    , D.succeed partial
+                    ]
+            )
 
 
 encodeContribution : Encounter.Treasure.CreatureContribution -> E.Value
@@ -347,17 +364,19 @@ encodeContribution c =
         [ ( "creatureName", E.string c.creatureName )
         , ( "coins", encodeCoins c.coins )
         , ( "gems", E.list encodeGemItem c.gems )
+        , ( "loot", E.list E.string c.loot )
         , ( "bracket", E.string (treasureBracketWire c.bracket) )
         ]
 
 
 decodeContribution : D.Decoder Encounter.Treasure.CreatureContribution
 decodeContribution =
-    D.map4
-        (\creatureName coins gems bracket ->
+    D.map5
+        (\creatureName coins gems loot bracket ->
             { creatureName = creatureName
             , coins = coins
             , gems = gems
+            , loot = loot
             , bracket = bracket
             }
         )
@@ -365,6 +384,11 @@ decodeContribution =
         (D.field "coins" decodeCoins)
         (D.oneOf
             [ D.field "gems" (D.list decodeGemItem)
+            , D.succeed []
+            ]
+        )
+        (D.oneOf
+            [ D.field "loot" (D.list D.string)
             , D.succeed []
             ]
         )

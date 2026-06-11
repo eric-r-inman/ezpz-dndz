@@ -165,7 +165,7 @@ all see zero items.
 -}
 ctx : RollContext
 ctx =
-    { enemies = [ { name = "Dummy", bracket = Treasure.B17plus } ]
+    { enemies = [ { name = "Dummy", bracket = Treasure.B17plus, loot = [] } ]
     , hoardBracket = Treasure.B17plus
     }
 
