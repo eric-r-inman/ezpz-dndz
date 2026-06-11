@@ -2083,9 +2083,15 @@ body {
 
 .treasure__results {
   /* Lets the rolled-loot list be the scroll target if anything has to
-     give, instead of the controls/settings/contributions chrome. */
+     give, instead of the controls/settings/contributions chrome.  The
+     `overflow-y: auto` is the load-bearing bit: without it, when the
+     By-Creature accordion expands and squeezes this section, the gem /
+     art / magic <li>s overflow their container and visually pile on
+     top of the contributions list below.  With it, the rolled loot
+     scrolls within its own box. */
   flex-shrink: 1;
   min-height: 0;
+  overflow-y: auto;
 }
 
 .treasure__settings-toggle {
