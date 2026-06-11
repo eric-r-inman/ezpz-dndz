@@ -47,7 +47,36 @@ encodeTable table =
         , ( "gems", encodeDictList E.string table.gems )
         , ( "art", encodeDictList E.string table.art )
         , ( "magic", encodeDictList E.string table.magic )
+        , ( "mundane", E.list encodeFlatItem table.mundane )
+        , ( "mundaneRoll", encodeBracketSpec table.mundaneRoll )
+        , ( "weapons", E.list encodeFlatItem table.weapons )
+        , ( "weaponsRoll", encodeBracketSpec table.weaponsRoll )
+        , ( "armor", E.list encodeFlatItem table.armor )
+        , ( "armorRoll", encodeBracketSpec table.armorRoll )
         ]
+
+
+encodeFlatItem : { item | name : String, valueGp : Int } -> E.Value
+encodeFlatItem item =
+    E.object
+        [ ( "name", E.string item.name )
+        , ( "valueGp", E.int item.valueGp )
+        ]
+
+
+encodeBracketSpec : Dict String ( Int, Int ) -> E.Value
+encodeBracketSpec dict =
+    Dict.toList dict
+        |> List.map
+            (\( k, ( count, faces ) ) ->
+                ( k
+                , E.object
+                    [ ( "count", E.int count )
+                    , ( "faces", E.int faces )
+                    ]
+                )
+            )
+        |> E.object
 
 
 encodeDictList : (a -> E.Value) -> Dict String (List a) -> E.Value
@@ -116,14 +145,82 @@ encodeMaybe enc m =
 -- ── DECODE ──────────────────────────────────────────────────────────────────
 
 
+{-| Decode a saved treasure table. The five legacy fields come
+through `D.map5`, then the six new opt-in-category fields fold
+in via `andThen` since elm/json caps `map` at 8 (5 + 6 > 8).
+Each new field is missing-field tolerant so tables saved before
+the Mundane / Weapons / Armor categories load cleanly with the
+bundled defaults — that way a one-time upgrade doesn't have to
+mass-mutate everyone's saved tables.
+-}
 decodeTable : D.Decoder TreasureTable
 decodeTable =
-    D.map5 TreasureTable
+    D.map5
+        (\individualBrackets hoardBrackets gems art magic ->
+            { individualBrackets = individualBrackets
+            , hoardBrackets = hoardBrackets
+            , gems = gems
+            , art = art
+            , magic = magic
+            , mundane = []
+            , mundaneRoll = Dict.empty
+            , weapons = []
+            , weaponsRoll = Dict.empty
+            , armor = []
+            , armorRoll = Dict.empty
+            }
+        )
         (D.field "individualBrackets" (decodeDictList decodeIndividualEntry))
         (D.field "hoardBrackets" (decodeDictList decodeHoardEntry))
         (D.field "gems" (decodeDictList D.string))
         (D.field "art" (decodeDictList D.string))
         (D.field "magic" (decodeDictList D.string))
+        |> D.andThen
+            (\partial ->
+                D.map3
+                    (\mundane weapons armor ->
+                        { partial
+                            | mundane = Tuple.first mundane
+                            , mundaneRoll = Tuple.second mundane
+                            , weapons = Tuple.first weapons
+                            , weaponsRoll = Tuple.second weapons
+                            , armor = Tuple.first armor
+                            , armorRoll = Tuple.second armor
+                        }
+                    )
+                    (decodeFlatCategory "mundane")
+                    (decodeFlatCategory "weapons")
+                    (decodeFlatCategory "armor")
+            )
+
+
+decodeFlatCategory : String -> D.Decoder ( List { name : String, valueGp : Int }, Dict String ( Int, Int ) )
+decodeFlatCategory baseName =
+    D.map2 Tuple.pair
+        (D.oneOf
+            [ D.field baseName (D.list decodeFlatItem)
+            , D.succeed []
+            ]
+        )
+        (D.oneOf
+            [ D.field (baseName ++ "Roll") (D.dict decodeBracketSpec)
+            , D.succeed Dict.empty
+            ]
+        )
+
+
+decodeFlatItem : D.Decoder { name : String, valueGp : Int }
+decodeFlatItem =
+    D.map2 (\name value -> { name = name, valueGp = value })
+        (D.field "name" D.string)
+        (D.field "valueGp" D.int)
+
+
+decodeBracketSpec : D.Decoder ( Int, Int )
+decodeBracketSpec =
+    D.map2 Tuple.pair
+        (D.field "count" D.int)
+        (D.field "faces" D.int)
 
 
 decodeDictList : D.Decoder a -> D.Decoder (Dict String (List a))

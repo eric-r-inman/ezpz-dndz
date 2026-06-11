@@ -239,19 +239,49 @@ encodeTreasureSettings s =
         , ( "artValue", E.string (Encounter.Treasure.valueAdjustWire s.artValue) )
         , ( "magicCount", E.string (Encounter.Treasure.countAdjustWire s.magicCount) )
         , ( "magicValue", E.string (Encounter.Treasure.valueAdjustWire s.magicValue) )
+        , ( "mundaneCount", E.string (Encounter.Treasure.countAdjustWire s.mundaneCount) )
+        , ( "weaponsCount", E.string (Encounter.Treasure.countAdjustWire s.weaponsCount) )
+        , ( "armorCount", E.string (Encounter.Treasure.countAdjustWire s.armorCount) )
+        , ( "coinsNone", E.bool s.coinsNone )
+        , ( "gemsNone", E.bool s.gemsNone )
+        , ( "artNone", E.bool s.artNone )
+        , ( "magicNone", E.bool s.magicNone )
+        , ( "mundaneNone", E.bool s.mundaneNone )
+        , ( "weaponsNone", E.bool s.weaponsNone )
+        , ( "armorNone", E.bool s.armorNone )
         ]
 
 
+{-| Decode the 17-field settings record. `D.map` caps at 8, so
+the record assembles via a `succeed |> andMap |> andMap` pipeline.
+Every field decoder is missing-field tolerant so old saves load
+with safe defaults.
+-}
 decodeTreasureSettings : D.Decoder Encounter.Treasure.TreasureSettings
 decodeTreasureSettings =
-    D.map7 Encounter.Treasure.TreasureSettings
-        (decodeCountField "coinsCount")
-        (decodeCountField "gemsCount")
-        (decodeValueField "gemsValue")
-        (decodeCountField "artCount")
-        (decodeValueField "artValue")
-        (decodeCountField "magicCount")
-        (decodeValueField "magicValue")
+    D.succeed Encounter.Treasure.TreasureSettings
+        |> andMap (decodeCountField "coinsCount")
+        |> andMap (decodeCountField "gemsCount")
+        |> andMap (decodeValueField "gemsValue")
+        |> andMap (decodeCountField "artCount")
+        |> andMap (decodeValueField "artValue")
+        |> andMap (decodeCountField "magicCount")
+        |> andMap (decodeValueField "magicValue")
+        |> andMap (decodeCountField "mundaneCount")
+        |> andMap (decodeCountField "weaponsCount")
+        |> andMap (decodeCountField "armorCount")
+        |> andMap (decodeBoolField "coinsNone" False)
+        |> andMap (decodeBoolField "gemsNone" False)
+        |> andMap (decodeBoolField "artNone" False)
+        |> andMap (decodeBoolField "magicNone" False)
+        |> andMap (decodeBoolField "mundaneNone" True)
+        |> andMap (decodeBoolField "weaponsNone" True)
+        |> andMap (decodeBoolField "armorNone" True)
+
+
+andMap : D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
+andMap =
+    D.map2 (|>)
 
 
 decodeCountField : String -> D.Decoder Encounter.Treasure.CountAdjust
@@ -267,6 +297,14 @@ decodeValueField name =
     D.oneOf
         [ D.field name D.string |> D.map Encounter.Treasure.valueAdjustFromWire
         , D.succeed Encounter.Treasure.ValueNormal
+        ]
+
+
+decodeBoolField : String -> Bool -> D.Decoder Bool
+decodeBoolField name fallback =
+    D.oneOf
+        [ D.field name D.bool
+        , D.succeed fallback
         ]
 
 
@@ -297,6 +335,9 @@ encodeTreasureRoll roll =
         , ( "gems", E.list encodeGemItem roll.gems )
         , ( "art", E.list encodeArtItem roll.art )
         , ( "magic", E.list encodeMagicItem roll.magic )
+        , ( "mundane", E.list encodeFlatItem roll.mundane )
+        , ( "weapons", E.list encodeFlatItem roll.weapons )
+        , ( "armor", E.list encodeFlatItem roll.armor )
         , ( "source", encodeMaybe encodeRowSource roll.source )
         , ( "contributions", E.list encodeContribution roll.contributions )
         , ( "loot", E.list E.string roll.loot )
@@ -316,12 +357,15 @@ decodeTreasureRoll =
             , source = source
             , contributions = contributions
 
-            -- Placeholder so the record type-checks; the andThen
-            -- below replaces it with the decoded loot list (or
-            -- keeps `[]` if the field is missing on legacy rolls).
-            -- `D.map9` doesn't exist in elm/json so the standard
-            -- workaround is a partial in `D.map8` plus an
-            -- `andThen` to slot in the ninth field.
+            -- Placeholders so the record type-checks; the andThen
+            -- below replaces them with decoded lists (or keeps `[]`
+            -- if the field is missing on legacy rolls).  `D.map9+`
+            -- doesn't exist in elm/json so the standard workaround
+            -- is a partial in `D.map8` plus an `andThen` to slot in
+            -- the remaining fields.
+            , mundane = []
+            , weapons = []
+            , armor = []
             , loot = []
             }
         )
@@ -356,6 +400,39 @@ decodeTreasureRoll =
                     , D.succeed partial
                     ]
             )
+        |> D.andThen
+            (\partial ->
+                D.map3
+                    (\mundane weapons armor ->
+                        { partial | mundane = mundane, weapons = weapons, armor = armor }
+                    )
+                    (decodeFlatList "mundane")
+                    (decodeFlatList "weapons")
+                    (decodeFlatList "armor")
+            )
+
+
+encodeFlatItem : { item | name : String, valueGp : Int } -> E.Value
+encodeFlatItem item =
+    E.object
+        [ ( "name", E.string item.name )
+        , ( "valueGp", E.int item.valueGp )
+        ]
+
+
+decodeFlatList : String -> D.Decoder (List { name : String, valueGp : Int })
+decodeFlatList name =
+    D.oneOf
+        [ D.field name (D.list decodeFlatItem)
+        , D.succeed []
+        ]
+
+
+decodeFlatItem : D.Decoder { name : String, valueGp : Int }
+decodeFlatItem =
+    D.map2 (\name value -> { name = name, valueGp = value })
+        (D.field "name" D.string)
+        (D.field "valueGp" D.int)
 
 
 encodeContribution : Encounter.Treasure.CreatureContribution -> E.Value

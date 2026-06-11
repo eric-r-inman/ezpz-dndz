@@ -59,6 +59,7 @@ import Msg
     exposing
         ( CoinField(..)
         , CoinKind(..)
+        , FlatCategory(..)
         , Msg(..)
         , RowKind(..)
         , SubKind(..)
@@ -104,9 +105,95 @@ body table expanded dirty =
     , gemGroup table expanded
     , artGroup table expanded
     , magicGroup table expanded
+    , flatGroup "Mundane gear (Adventuring Gear + Artisan's Tools)"
+        "mundane"
+        FlatMundane
+        table.mundane
+        expanded
+    , flatGroup "Weapons" "weapons" FlatWeapons table.weapons expanded
+    , flatGroup "Armor" "armor" FlatArmor table.armor expanded
     , resetRow
     , saveRow dirty
     ]
+
+
+flatGroup :
+    String
+    -> String
+    -> FlatCategory
+    -> List { name : String, valueGp : Int }
+    -> Set String
+    -> Html Msg
+flatGroup title kind cat items expanded =
+    let
+        sectionKey =
+            kind ++ ":list"
+
+        isOpen =
+            Set.member sectionKey expanded
+    in
+    section [ class "treasure-table__group" ]
+        [ p [ class "treasure-table__group-title" ] [ text title ]
+        , collapsible
+            { kind = kind
+            , key = "list"
+            , label = "Items"
+            , count = String.fromInt (List.length items) ++ " entries"
+            , isOpen = isOpen
+            , content =
+                if isOpen then
+                    flatEditor cat items
+
+                else
+                    text ""
+            }
+        ]
+
+
+flatEditor : FlatCategory -> List { name : String, valueGp : Int } -> Html Msg
+flatEditor cat items =
+    div [ class "treasure-table__flat-editor" ]
+        [ ul [ class "treasure-table__flat-list" ]
+            (List.indexedMap (flatRow cat) items)
+        , button
+            [ class "treasure-table__flat-add"
+            , type_ "button"
+            , onClick (TreasureTableFlatAdd cat)
+            ]
+            [ text "+ Add item" ]
+        ]
+
+
+flatRow : FlatCategory -> Int -> { name : String, valueGp : Int } -> Html Msg
+flatRow cat idx item =
+    li [ class "treasure-table__flat-row" ]
+        [ input
+            [ class "treasure-table__flat-name"
+            , type_ "text"
+            , value item.name
+            , placeholder "Item name"
+            , onInput (TreasureTableFlatNameSet cat idx)
+            ]
+            []
+        , input
+            [ class "treasure-table__flat-value"
+            , type_ "number"
+            , Attr.min "0"
+            , value (String.fromInt item.valueGp)
+            , attribute "title" "gp value"
+            , onInput (TreasureTableFlatValueSet cat idx)
+            ]
+            []
+        , span [ class "treasure-table__flat-unit" ] [ text "gp" ]
+        , button
+            [ class "treasure-table__coin-remove"
+            , type_ "button"
+            , onClick (TreasureTableFlatRemove cat idx)
+            , attribute "aria-label" "Remove this entry"
+            , attribute "title" "Remove"
+            ]
+            [ text "🚫" ]
+        ]
 
 
 blurb : Html Msg

@@ -56,7 +56,7 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onCheck, onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.ModalChrome exposing (ModalChrome)
@@ -157,18 +157,37 @@ settingsSection expanded settings =
                     "coins"
                     (Just settings.coinsCount)
                     Nothing
+                    settings.coinsNone
                 , settingsRow "Gems"
                     "gems"
                     (Just settings.gemsCount)
                     (Just settings.gemsValue)
+                    settings.gemsNone
                 , settingsRow "Art"
                     "art"
                     (Just settings.artCount)
                     (Just settings.artValue)
+                    settings.artNone
                 , settingsRow "Magic"
                     "magic"
                     (Just settings.magicCount)
                     (Just settings.magicValue)
+                    settings.magicNone
+                , settingsRow "Mundane"
+                    "mundane"
+                    (Just settings.mundaneCount)
+                    Nothing
+                    settings.mundaneNone
+                , settingsRow "Weapons"
+                    "weapons"
+                    (Just settings.weaponsCount)
+                    Nothing
+                    settings.weaponsNone
+                , settingsRow "Armor"
+                    "armor"
+                    (Just settings.armorCount)
+                    Nothing
+                    settings.armorNone
                 , div [ class "treasure__settings-actions" ]
                     [ button
                         [ class "treasure__settings-reset"
@@ -176,7 +195,7 @@ settingsSection expanded settings =
                         , onClick TreasureSettingsReset
                         , attribute "title" "Return every knob to Normal"
                         ]
-                        [ text "↺ Reset to Normal" ]
+                        [ text "↺ Reset to defaults" ]
                     ]
                 ]
 
@@ -187,26 +206,67 @@ settingsSection expanded settings =
 
 {-| Brief one-line summary of any knobs that aren't Normal.
 Empty string when everything is at default; "Gems: More /
-Higher · Art: Fewer" otherwise.
+Higher · Mundane: Off" otherwise. The None toggles surface as
+"Off" to keep the chip short.
 -}
 settingsDelta : Treasure.TreasureSettings -> String
 settingsDelta s =
     let
         coinsPart =
-            knobPair "Coins" s.coinsCount Treasure.ValueNormal
+            knobPairWithNone "Coins" s.coinsCount Treasure.ValueNormal s.coinsNone
 
         gemsPart =
-            knobPair "Gems" s.gemsCount s.gemsValue
+            knobPairWithNone "Gems" s.gemsCount s.gemsValue s.gemsNone
 
         artPart =
-            knobPair "Art" s.artCount s.artValue
+            knobPairWithNone "Art" s.artCount s.artValue s.artNone
 
         magicPart =
-            knobPair "Magic" s.magicCount s.magicValue
+            knobPairWithNone "Magic" s.magicCount s.magicValue s.magicNone
+
+        -- Mundane / Weapons / Armor default to None=on, so we
+        -- treat "None=on AND Count=Normal" as the default (no
+        -- delta surfaced).  When the GM toggles None off, even
+        -- a Normal Count chip surfaces — "Mundane: On" — so the
+        -- title-bar chip reflects that the category is active.
+        mundanePart =
+            optInChip "Mundane" s.mundaneCount s.mundaneNone
+
+        weaponsPart =
+            optInChip "Weapons" s.weaponsCount s.weaponsNone
+
+        armorPart =
+            optInChip "Armor" s.armorCount s.armorNone
     in
-    [ coinsPart, gemsPart, artPart, magicPart ]
+    [ coinsPart, gemsPart, artPart, magicPart, mundanePart, weaponsPart, armorPart ]
         |> List.filter (not << String.isEmpty)
         |> String.join " · "
+
+
+knobPairWithNone : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> Bool -> String
+knobPairWithNone label count value none =
+    if none then
+        label ++ ": Off"
+
+    else
+        knobPair label count value
+
+
+optInChip : String -> Treasure.CountAdjust -> Bool -> String
+optInChip label count none =
+    if none then
+        ""
+
+    else
+        let
+            countTag =
+                countAdjustLabelSummary count
+        in
+        if String.isEmpty countTag then
+            label ++ ": On"
+
+        else
+            label ++ ": On / " ++ countTag
 
 
 knobPair : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> String
@@ -254,27 +314,63 @@ settingsRow :
     -> String
     -> Maybe Treasure.CountAdjust
     -> Maybe Treasure.ValueAdjust
+    -> Bool
     -> Html Msg
-settingsRow label_ itemClass maybeCount maybeValue =
+settingsRow label_ itemClass maybeCount maybeValue noneOn =
     div [ class "treasure__settings-row" ]
         [ span [ class "treasure__settings-row-label" ] [ text label_ ]
         , case maybeCount of
             Just countValue ->
-                countSegmented itemClass countValue
+                countSegmented itemClass countValue noneOn
 
             Nothing ->
-                text ""
+                span [ class "treasure__settings-row-spacer" ] []
         , case maybeValue of
             Just valueValue ->
-                valueSegmented itemClass valueValue
+                valueSegmented itemClass valueValue noneOn
 
             Nothing ->
-                text ""
+                span [ class "treasure__settings-row-spacer" ] []
+        , noneToggle itemClass noneOn
         ]
 
 
-countSegmented : String -> Treasure.CountAdjust -> Html Msg
-countSegmented itemClass current =
+{-| Right-edge checkbox that suppresses the whole category at
+roll time. Stays at the far right of every row regardless of
+whether the row has Count, Value, or both knobs to its left.
+-}
+noneToggle : String -> Bool -> Html Msg
+noneToggle itemClass current =
+    Html.label
+        [ class
+            ("treasure__settings-none"
+                ++ (if current then
+                        " treasure__settings-none--on"
+
+                    else
+                        ""
+                   )
+            )
+        , attribute "title"
+            (if current then
+                "This category is currently skipped — uncheck to roll it"
+
+             else
+                "Skip this category at roll time"
+            )
+        ]
+        [ Html.input
+            [ type_ "checkbox"
+            , Attr.checked current
+            , onCheck (TreasureSettingsNoneSet itemClass)
+            ]
+            []
+        , span [ class "treasure__settings-none-label" ] [ text "None" ]
+        ]
+
+
+countSegmented : String -> Treasure.CountAdjust -> Bool -> Html Msg
+countSegmented itemClass current disabled =
     let
         countLabel =
             if itemClass == "coins" then
@@ -283,28 +379,41 @@ countSegmented itemClass current =
             else
                 "Count"
     in
-    div [ class "treasure__settings-segmented" ]
+    div
+        [ class
+            ("treasure__settings-segmented"
+                ++ (if disabled then
+                        " treasure__settings-segmented--disabled"
+
+                    else
+                        ""
+                   )
+            )
+        ]
         [ span [ class "treasure__settings-axis" ] [ text countLabel ]
         , segmentedButton itemClass
             current
             Treasure.CountFewer
             "Fewer"
             (TreasureSettingsCountSet itemClass "fewer")
+            disabled
         , segmentedButton itemClass
             current
             Treasure.CountNormal
             "Normal"
             (TreasureSettingsCountSet itemClass "normal")
+            disabled
         , segmentedButton itemClass
             current
             Treasure.CountMore
             "More"
             (TreasureSettingsCountSet itemClass "more")
+            disabled
         ]
 
 
-valueSegmented : String -> Treasure.ValueAdjust -> Html Msg
-valueSegmented itemClass current =
+valueSegmented : String -> Treasure.ValueAdjust -> Bool -> Html Msg
+valueSegmented itemClass current disabled =
     let
         valueLabel =
             if itemClass == "magic" then
@@ -313,23 +422,36 @@ valueSegmented itemClass current =
             else
                 "Value"
     in
-    div [ class "treasure__settings-segmented" ]
+    div
+        [ class
+            ("treasure__settings-segmented"
+                ++ (if disabled then
+                        " treasure__settings-segmented--disabled"
+
+                    else
+                        ""
+                   )
+            )
+        ]
         [ span [ class "treasure__settings-axis" ] [ text valueLabel ]
         , segmentedButton itemClass
             current
             Treasure.ValueLower
             "Lower"
             (TreasureSettingsValueSet itemClass "lower")
+            disabled
         , segmentedButton itemClass
             current
             Treasure.ValueNormal
             "Normal"
             (TreasureSettingsValueSet itemClass "normal")
+            disabled
         , segmentedButton itemClass
             current
             Treasure.ValueHigher
             "Higher"
             (TreasureSettingsValueSet itemClass "higher")
+            disabled
         ]
 
 
@@ -337,8 +459,8 @@ valueSegmented itemClass current =
 == target`. Stays type-agnostic via Elm's structural typing —
 the call sites supply tagged CountAdjust or ValueAdjust values.
 -}
-segmentedButton : String -> a -> a -> String -> Msg -> Html Msg
-segmentedButton _ current target text_ msg =
+segmentedButton : String -> a -> a -> String -> Msg -> Bool -> Html Msg
+segmentedButton _ current target text_ msg disabled =
     button
         [ class
             ("treasure__settings-segment"
@@ -351,6 +473,7 @@ segmentedButton _ current target text_ msg =
             )
         , type_ "button"
         , onClick msg
+        , Attr.disabled disabled
         ]
         [ text text_ ]
 
@@ -545,8 +668,50 @@ resultBlock roll =
         , gemsSection roll.gems
         , artSection roll.art
         , magicSection roll.magic
+        , mundaneSection roll.mundane
+        , weaponsSection roll.weapons
+        , armorSection roll.armor
         , lootSection roll.loot
         ]
+
+
+mundaneSection : List Treasure.MundaneItem -> Html Msg
+mundaneSection items =
+    if List.isEmpty items then
+        text ""
+
+    else
+        valuedSection "Mundane gear"
+            Treasure.MundaneCategory
+            items
+            (\m -> ( m.name, m.valueGp ))
+            TreasureMundaneRemove
+
+
+weaponsSection : List Treasure.WeaponItem -> Html Msg
+weaponsSection items =
+    if List.isEmpty items then
+        text ""
+
+    else
+        valuedSection "Weapons"
+            Treasure.WeaponsCategory
+            items
+            (\w -> ( w.name, w.valueGp ))
+            TreasureWeaponsRemove
+
+
+armorSection : List Treasure.ArmorItem -> Html Msg
+armorSection items =
+    if List.isEmpty items then
+        text ""
+
+    else
+        valuedSection "Armor"
+            Treasure.ArmorCategory
+            items
+            (\a -> ( a.name, a.valueGp ))
+            TreasureArmorRemove
 
 
 summaryStrip : Treasure.TreasureRoll -> Html Msg

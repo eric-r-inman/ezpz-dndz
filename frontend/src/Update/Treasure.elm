@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, settingsCountSet, settingsReset, settingsToggle, settingsValueSet
+    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsReset, settingsToggle, settingsValueSet, weaponsRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -316,6 +316,55 @@ settingsCountSet itemClass valueWire model =
                 "magic" ->
                     { settings | magicCount = value }
 
+                "mundane" ->
+                    { settings | mundaneCount = value }
+
+                "weapons" ->
+                    { settings | weaponsCount = value }
+
+                "armor" ->
+                    { settings | armorCount = value }
+
+                _ ->
+                    settings
+    in
+    ( updateEncounterSettings next model, Cmd.none )
+
+
+{-| Toggle the per-category "None" switch. When on, the category
+is skipped at roll time regardless of its Count knob. Mundane,
+Weapons, and Armor default to None=on (opt-in); the other four
+default to None=off (the historical behavior).
+-}
+settingsNoneSet : String -> Bool -> Model -> ( Model, Cmd Msg )
+settingsNoneSet itemClass none model =
+    let
+        settings =
+            model.encounter.treasureSettings
+
+        next =
+            case itemClass of
+                "coins" ->
+                    { settings | coinsNone = none }
+
+                "gems" ->
+                    { settings | gemsNone = none }
+
+                "art" ->
+                    { settings | artNone = none }
+
+                "magic" ->
+                    { settings | magicNone = none }
+
+                "mundane" ->
+                    { settings | mundaneNone = none }
+
+                "weapons" ->
+                    { settings | weaponsNone = none }
+
+                "armor" ->
+                    { settings | armorNone = none }
+
                 _ ->
                     settings
     in
@@ -385,6 +434,21 @@ magicRemove index =
     mutateRoll (Treasure.removeMagic index)
 
 
+mundaneRemove : Int -> Model -> ( Model, Cmd Msg )
+mundaneRemove index =
+    mutateRoll (Treasure.removeMundaneItem index)
+
+
+weaponsRemove : Int -> Model -> ( Model, Cmd Msg )
+weaponsRemove index =
+    mutateRoll (Treasure.removeWeaponItem index)
+
+
+armorRemove : Int -> Model -> ( Model, Cmd Msg )
+armorRemove index =
+    mutateRoll (Treasure.removeArmorItem index)
+
+
 mutateRoll : (Treasure.TreasureRoll -> Treasure.TreasureRoll) -> Model -> ( Model, Cmd Msg )
 mutateRoll fn model =
     case model.encounter.treasure of
@@ -430,6 +494,15 @@ categoryRolled category fresh model =
 
                         Treasure.MagicCategory ->
                             { existing | magic = fresh.magic }
+
+                        Treasure.MundaneCategory ->
+                            { existing | mundane = fresh.mundane }
+
+                        Treasure.WeaponsCategory ->
+                            { existing | weapons = fresh.weapons }
+
+                        Treasure.ArmorCategory ->
+                            { existing | armor = fresh.armor }
 
                 encounter =
                     model.encounter

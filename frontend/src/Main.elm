@@ -1783,6 +1783,9 @@ updateInner msg model =
         TreasureSettingsValueSet itemClass value ->
             Update.Treasure.settingsValueSet itemClass value model
 
+        TreasureSettingsNoneSet itemClass none ->
+            Update.Treasure.settingsNoneSet itemClass none model
+
         TreasureSettingsReset ->
             Update.Treasure.settingsReset model
 
@@ -1797,6 +1800,15 @@ updateInner msg model =
 
         TreasureMagicRemove idx ->
             Update.Treasure.magicRemove idx model
+
+        TreasureMundaneRemove idx ->
+            Update.Treasure.mundaneRemove idx model
+
+        TreasureWeaponsRemove idx ->
+            Update.Treasure.weaponsRemove idx model
+
+        TreasureArmorRemove idx ->
+            Update.Treasure.armorRemove idx model
 
         TreasureTableLoaded result ->
             Update.UserSync.treasureTableLoaded result model
@@ -1872,6 +1884,18 @@ updateInner msg model =
 
         TreasureTableSubTierSet key idx sub raw ->
             Update.TreasureTable.subTierSet key idx sub raw model
+
+        TreasureTableFlatAdd cat ->
+            Update.TreasureTable.flatAdd cat model
+
+        TreasureTableFlatNameSet cat idx raw ->
+            Update.TreasureTable.flatNameSet cat idx raw model
+
+        TreasureTableFlatValueSet cat idx raw ->
+            Update.TreasureTable.flatValueSet cat idx raw model
+
+        TreasureTableFlatRemove cat idx ->
+            Update.TreasureTable.flatRemove cat idx model
 
         TreasureTableSave ->
             Update.TreasureTable.save model

@@ -40,6 +40,12 @@ type Section
     | GemSection String
     | ArtSection String
     | MagicSection String
+      -- Flat-list categories (Mundane / Weapons / Armor) collapse
+      -- into one variant — the kind string matches the discriminator
+      -- the view uses ("mundane", "weapons", "armor") so the
+      -- view-side `kind ++ ":" ++ key` round-trips through here
+      -- without per-category variants.
+    | FlatSection String String
 
 
 type alias TreasureTableUi =
@@ -103,6 +109,9 @@ sectionKey s =
 
         MagicSection k ->
             "magic:" ++ k
+
+        FlatSection kind k ->
+            kind ++ ":" ++ k
 
 
 toggleSection : Section -> TreasureTableUi -> TreasureTableUi

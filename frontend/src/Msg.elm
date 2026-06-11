@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -348,6 +348,16 @@ type SubKind
     = SKGems
     | SKArt
     | SKMagic
+
+
+{-| Discriminator for the three flat (name, gp) categories —
+Mundane, Weapons, Armor — in the table editor. All three share
+the same shape and the same edit Msg family.
+-}
+type FlatCategory
+    = FlatMundane
+    | FlatWeapons
+    | FlatArmor
 
 
 
@@ -1086,6 +1096,7 @@ type Msg
       -- "higher"). Reset returns every knob to Normal.
     | TreasureSettingsCountSet String String
     | TreasureSettingsValueSet String String
+    | TreasureSettingsNoneSet String Bool
     | TreasureSettingsReset
       -- Collapse / expand the "Tune your rolls" settings panel
       -- in the Treasure modal.
@@ -1099,6 +1110,9 @@ type Msg
     | TreasureGemRemove Int
     | TreasureArtRemove Int
     | TreasureMagicRemove Int
+    | TreasureMundaneRemove Int
+    | TreasureWeaponsRemove Int
+    | TreasureArmorRemove Int
       -- Singular per-user Treasure Table sync.  Boot fetch lands
       -- in `TreasureTableLoaded`; every editor mutation fires
       -- `Effects.putTreasureTable` and the response lands in
@@ -1143,6 +1157,14 @@ type Msg
     | TreasureTableSubCountSet String Int SubKind String
     | TreasureTableSubFacesSet String Int SubKind String
     | TreasureTableSubTierSet String Int SubKind String
+      -- Per-category flat list edits (Mundane / Weapons / Armor).
+      -- Each entry is `{ name, valueGp }`; the value field is
+      -- typed as String so the user can blank it while editing,
+      -- the parser-on-input clamps to a non-negative Int.
+    | TreasureTableFlatAdd FlatCategory
+    | TreasureTableFlatNameSet FlatCategory Int String
+    | TreasureTableFlatValueSet FlatCategory Int String
+    | TreasureTableFlatRemove FlatCategory Int
       -- Reset the in-flight DRAFT (not the saved table) to the
       -- bundled SRD default.  The user still has to click Save
       -- for the reset to commit.

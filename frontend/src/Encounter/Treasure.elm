@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, removeArt, removeGem, removeMagic, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, valueAdjustFromWire, valueAdjustWire
+    , ArmorItem, Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setWeaponsItems, setWeaponsRoll, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
     )
 
 {-| Treasure-roll domain.
@@ -46,6 +46,7 @@ The treasure flow:
 -}
 
 import Dict exposing (Dict)
+import Encounter.Treasure.MundaneTables as MundaneTables
 import Encounter.Treasure.Tables as Tables
     exposing
         ( ArtTier
@@ -250,6 +251,23 @@ type alias MagicItem =
     { name : String, rarity : Rarity, table : MagicTable }
 
 
+{-| Mundane / Weapons / Armor share the same flat (name, gp)
+shape — no tier abstraction, just a uniform pick from the user's
+list. Aliases stay distinct so view code can dispatch on the
+intended category without a tag field.
+-}
+type alias MundaneItem =
+    { name : String, valueGp : Int }
+
+
+type alias WeaponItem =
+    { name : String, valueGp : Int }
+
+
+type alias ArmorItem =
+    { name : String, valueGp : Int }
+
+
 type alias TreasureRoll =
     { kind : Kind
     , bracket : Bracket
@@ -257,6 +275,9 @@ type alias TreasureRoll =
     , gems : List GemItem
     , art : List ArtItem
     , magic : List MagicItem
+    , mundane : List MundaneItem
+    , weapons : List WeaponItem
+    , armor : List ArmorItem
     , source : Maybe RowSource
     , contributions : List CreatureContribution
 
@@ -347,6 +368,22 @@ type alias TreasureSettings =
     , artValue : ValueAdjust
     , magicCount : CountAdjust
     , magicValue : ValueAdjust
+    , mundaneCount : CountAdjust
+    , weaponsCount : CountAdjust
+    , armorCount : CountAdjust
+
+    -- "None" toggles per category — when on, the category is
+    -- skipped at roll time regardless of its Count knob.  Mundane
+    -- / Weapons / Armor default to ON so the opt-in categories
+    -- don't surprise GMs who upgrade and roll without changing
+    -- settings; coins / gems / art / magic default to OFF.
+    , coinsNone : Bool
+    , gemsNone : Bool
+    , artNone : Bool
+    , magicNone : Bool
+    , mundaneNone : Bool
+    , weaponsNone : Bool
+    , armorNone : Bool
     }
 
 
@@ -371,6 +408,16 @@ defaultSettings =
     , artValue = ValueNormal
     , magicCount = CountNormal
     , magicValue = ValueNormal
+    , mundaneCount = CountNormal
+    , weaponsCount = CountNormal
+    , armorCount = CountNormal
+    , coinsNone = False
+    , gemsNone = False
+    , artNone = False
+    , magicNone = False
+    , mundaneNone = True
+    , weaponsNone = True
+    , armorNone = True
     }
 
 
@@ -510,6 +557,21 @@ removeMagic index roll =
     { roll | magic = dropIndex index roll.magic }
 
 
+removeMundaneItem : Int -> TreasureRoll -> TreasureRoll
+removeMundaneItem index roll =
+    { roll | mundane = dropIndex index roll.mundane }
+
+
+removeWeaponItem : Int -> TreasureRoll -> TreasureRoll
+removeWeaponItem index roll =
+    { roll | weapons = dropIndex index roll.weapons }
+
+
+removeArmorItem : Int -> TreasureRoll -> TreasureRoll
+removeArmorItem index roll =
+    { roll | armor = dropIndex index roll.armor }
+
+
 {-| Zero out one denomination on the coin stack. `wire` is the
 denomination key matching the view's slug ("copper", "silver",
 "electrum", "gold", "platinum"). Unknown keys are a no-op.
@@ -561,6 +623,9 @@ type Category
     | GemsCategory
     | ArtCategory
     | MagicCategory
+    | MundaneCategory
+    | WeaponsCategory
+    | ArmorCategory
 
 
 categoryLabel : Category -> String
@@ -577,6 +642,15 @@ categoryLabel c =
 
         MagicCategory ->
             "magic"
+
+        MundaneCategory ->
+            "mundane"
+
+        WeaponsCategory ->
+            "weapons"
+
+        ArmorCategory ->
+            "armor"
 
 
 totalGemValue : List GemItem -> Int
@@ -615,6 +689,17 @@ type alias TreasureTable =
     , gems : Dict String (List String)
     , art : Dict String (List String)
     , magic : Dict String (List String)
+
+    -- Opt-in categories: flat (name, gp) lists with a per-bracket
+    -- (count, faces) dice that fires whenever the category's None
+    -- toggle is off.  No tier abstraction — the item's gp value
+    -- comes straight off the picked entry.
+    , mundane : List MundaneItem
+    , mundaneRoll : Dict String ( Int, Int )
+    , weapons : List WeaponItem
+    , weaponsRoll : Dict String ( Int, Int )
+    , armor : List ArmorItem
+    , armorRoll : Dict String ( Int, Int )
     }
 
 
@@ -650,7 +735,91 @@ bundledTable =
             (List.map (\t -> ( magicTableKey t, Tables.magicItems t ))
                 magicTableAll
             )
+    , mundane = MundaneTables.bundledMundane
+    , mundaneRoll = MundaneTables.bundledMundaneRollByBracket
+    , weapons = MundaneTables.bundledWeapons
+    , weaponsRoll = MundaneTables.bundledWeaponsRollByBracket
+    , armor = MundaneTables.bundledArmor
+    , armorRoll = MundaneTables.bundledArmorRollByBracket
     }
+
+
+mundaneItemsFor : TreasureTable -> List MundaneItem
+mundaneItemsFor table =
+    table.mundane
+
+
+mundaneRollFor : Bracket -> TreasureTable -> ( Int, Int )
+mundaneRollFor bracket table =
+    Dict.get (bracketWire bracket) table.mundaneRoll
+        |> Maybe.withDefault ( 1, 4 )
+
+
+weaponsItemsFor : TreasureTable -> List WeaponItem
+weaponsItemsFor table =
+    table.weapons
+
+
+weaponsRollFor : Bracket -> TreasureTable -> ( Int, Int )
+weaponsRollFor bracket table =
+    Dict.get (bracketWire bracket) table.weaponsRoll
+        |> Maybe.withDefault ( 1, 2 )
+
+
+armorItemsFor : TreasureTable -> List ArmorItem
+armorItemsFor table =
+    table.armor
+
+
+armorRollFor : Bracket -> TreasureTable -> ( Int, Int )
+armorRollFor bracket table =
+    Dict.get (bracketWire bracket) table.armorRoll
+        |> Maybe.withDefault ( 1, 2 )
+
+
+setMundaneItems : List MundaneItem -> TreasureTable -> TreasureTable
+setMundaneItems items table =
+    { table | mundane = items }
+
+
+setMundaneRoll : Bracket -> ( Int, Int ) -> TreasureTable -> TreasureTable
+setMundaneRoll bracket spec table =
+    { table | mundaneRoll = Dict.insert (bracketWire bracket) spec table.mundaneRoll }
+
+
+setWeaponsItems : List WeaponItem -> TreasureTable -> TreasureTable
+setWeaponsItems items table =
+    { table | weapons = items }
+
+
+setWeaponsRoll : Bracket -> ( Int, Int ) -> TreasureTable -> TreasureTable
+setWeaponsRoll bracket spec table =
+    { table | weaponsRoll = Dict.insert (bracketWire bracket) spec table.weaponsRoll }
+
+
+setArmorItems : List ArmorItem -> TreasureTable -> TreasureTable
+setArmorItems items table =
+    { table | armor = items }
+
+
+setArmorRoll : Bracket -> ( Int, Int ) -> TreasureTable -> TreasureTable
+setArmorRoll bracket spec table =
+    { table | armorRoll = Dict.insert (bracketWire bracket) spec table.armorRoll }
+
+
+totalMundaneValue : List MundaneItem -> Int
+totalMundaneValue =
+    List.foldl (\m acc -> acc + m.valueGp) 0
+
+
+totalWeaponsValue : List WeaponItem -> Int
+totalWeaponsValue =
+    List.foldl (\w acc -> acc + w.valueGp) 0
+
+
+totalArmorValue : List ArmorItem -> Int
+totalArmorValue =
+    List.foldl (\a acc -> acc + a.valueGp) 0
 
 
 gemTierAll : List GemTier
@@ -924,6 +1093,18 @@ generateRerollFromSource settings table currentRoll source category =
             rollMagic settings table source.magicSpec
                 |> Random.map (\magic -> { scaffold | magic = magic })
 
+        MundaneCategory ->
+            rollMundane settings currentRoll.bracket table
+                |> Random.map (\mundane -> { scaffold | mundane = mundane })
+
+        WeaponsCategory ->
+            rollWeapons settings currentRoll.bracket table
+                |> Random.map (\weapons -> { scaffold | weapons = weapons })
+
+        ArmorCategory ->
+            rollArmor settings currentRoll.bracket table
+                |> Random.map (\armor -> { scaffold | armor = armor })
+
 
 {-| Helper: blank scaffold roll used to carry one category's
 slice through to the merge handler.
@@ -936,6 +1117,9 @@ emptyRollFor kind bracket =
     , gems = []
     , art = []
     , magic = []
+    , mundane = []
+    , weapons = []
+    , armor = []
     , source = Nothing
     , contributions = []
     , loot = []
@@ -984,6 +1168,9 @@ generateIndividualSum settings table enemies =
                 , gems = List.concatMap .gems contributions
                 , art = []
                 , magic = []
+                , mundane = []
+                , weapons = []
+                , armor = []
                 , source = Nothing
                 , contributions = contributions
                 , loot = List.concatMap .loot contributions
@@ -1181,6 +1368,15 @@ emptyIndividualRow =
 
 rollIndividualCoins : TreasureSettings -> IndividualEntry -> Random.Generator Coins
 rollIndividualCoins settings row =
+    if settings.coinsNone then
+        Random.constant emptyCoins
+
+    else
+        rollIndividualCoinsInner settings row
+
+
+rollIndividualCoinsInner : TreasureSettings -> IndividualEntry -> Random.Generator Coins
+rollIndividualCoinsInner settings row =
     let
         roll mFormula =
             case mFormula of
@@ -1220,27 +1416,51 @@ generateHoard settings bracket table =
     weightedPick rows emptyHoardRow
         |> Random.andThen
             (\row ->
-                Random.map4
-                    (\coins gems art magic ->
-                        { kind = Hoard
-                        , bracket = bracket
-                        , coins = coins
+                -- Random.map only goes up to map5, so the seven
+                -- category slices land via nested map5 + andThen
+                -- pairs.  All three opt-in category generators
+                -- short-circuit to [] when their None toggle is on
+                -- (or when their item list is empty), so this is
+                -- cheap when those toggles are off.
+                Random.map5
+                    (\coins gems art magic mundane ->
+                        { coins = coins
                         , gems = gems
                         , art = art
                         , magic = magic
-                        , source = Just (sourceFromHoard row)
-                        , contributions = []
-
-                        -- Loot is layered onto the roll in
-                        -- `generate` after this returns (uses the
-                        -- caller's aggregated enemy loot list).
-                        , loot = []
+                        , mundane = mundane
                         }
                     )
                     (rollHoardCoins settings row)
                     (rollGems settings table row.gems)
                     (rollArt settings table row.art)
                     (rollMagic settings table row.magic)
+                    (rollMundane settings bracket table)
+                    |> Random.andThen
+                        (\rolled ->
+                            Random.map2
+                                (\weapons armor ->
+                                    { kind = Hoard
+                                    , bracket = bracket
+                                    , coins = rolled.coins
+                                    , gems = rolled.gems
+                                    , art = rolled.art
+                                    , magic = rolled.magic
+                                    , mundane = rolled.mundane
+                                    , weapons = weapons
+                                    , armor = armor
+                                    , source = Just (sourceFromHoard row)
+                                    , contributions = []
+
+                                    -- Loot is layered onto the roll in
+                                    -- `generate` after this returns (uses the
+                                    -- caller's aggregated enemy loot list).
+                                    , loot = []
+                                    }
+                                )
+                                (rollWeapons settings bracket table)
+                                (rollArmor settings bracket table)
+                        )
             )
 
 
@@ -1272,6 +1492,15 @@ rollHoardCoins settings row =
 
 rollGems : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
 rollGems settings table mSpec =
+    if settings.gemsNone then
+        Random.constant []
+
+    else
+        rollGemsInner settings table mSpec
+
+
+rollGemsInner : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
+rollGemsInner settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
@@ -1391,6 +1620,15 @@ rollLowerGems table tier count =
 
 rollArt : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
 rollArt settings table mSpec =
+    if settings.artNone then
+        Random.constant []
+
+    else
+        rollArtInner settings table mSpec
+
+
+rollArtInner : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
+rollArtInner settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
@@ -1421,6 +1659,15 @@ rollArt settings table mSpec =
 
 rollMagic : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
 rollMagic settings table mSpec =
+    if settings.magicNone then
+        Random.constant []
+
+    else
+        rollMagicInner settings table mSpec
+
+
+rollMagicInner : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
+rollMagicInner settings table mSpec =
     case mSpec of
         Nothing ->
             Random.constant []
@@ -1448,6 +1695,67 @@ rollMagic settings table mSpec =
                                             )
                                 )
                     )
+
+
+{-| Roll a flat (name, gp) category — the shared shape for
+mundane / weapons / armor. When the None toggle is on, or the
+item list is empty, returns the empty list without rolling.
+-}
+rollFlatCategory :
+    Bool
+    -> CountAdjust
+    -> ( Int, Int )
+    -> List { item | name : String, valueGp : Int }
+    -> Random.Generator (List { item | name : String, valueGp : Int })
+rollFlatCategory none countAdj ( count, faces ) items =
+    if none || List.isEmpty items then
+        Random.constant []
+
+    else
+        adjustCount countAdj count
+            |> Random.andThen
+                (\adjustedCount ->
+                    rollDiceTimes adjustedCount faces
+                        |> Random.andThen (\n -> pickItemsN n items)
+                )
+
+
+rollMundane : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List MundaneItem)
+rollMundane settings bracket table =
+    rollFlatCategory settings.mundaneNone
+        settings.mundaneCount
+        (mundaneRollFor bracket table)
+        (mundaneItemsFor table)
+
+
+rollWeapons : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List WeaponItem)
+rollWeapons settings bracket table =
+    rollFlatCategory settings.weaponsNone
+        settings.weaponsCount
+        (weaponsRollFor bracket table)
+        (weaponsItemsFor table)
+
+
+rollArmor : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List ArmorItem)
+rollArmor settings bracket table =
+    rollFlatCategory settings.armorNone
+        settings.armorCount
+        (armorRollFor bracket table)
+        (armorItemsFor table)
+
+
+{-| Pick `n` items (with replacement, since the flat categories
+have small lists where uniqueness isn't an SRD requirement).
+Returns at most `n` items; when the list is empty, returns [].
+-}
+pickItemsN : Int -> List a -> Random.Generator (List a)
+pickItemsN n items =
+    case items of
+        [] ->
+            Random.constant []
+
+        first :: _ ->
+            Random.list n (Random.uniform first items)
 
 
 

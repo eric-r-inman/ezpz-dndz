@@ -5,7 +5,7 @@ module Update.TreasureTable exposing
     , artAdd, artEdit, artRemove
     , magicAdd, magicEdit, magicRemove
     , resetToBundled
-    , coinAdd, coinRemove, coinSet, rowAdd, rowRemove, save, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
+    , coinAdd, coinRemove, coinSet, flatAdd, flatNameSet, flatRemove, flatValueSet, rowAdd, rowRemove, save, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
     )
 
 {-| Msg handlers for the singular per-user Treasure Table
@@ -114,8 +114,11 @@ toggleSection kind key model =
                 "art" ->
                     Ui.ArtSection key
 
-                _ ->
+                "magic" ->
                     Ui.MagicSection key
+
+                _ ->
+                    Ui.FlatSection kind key
     in
     ( Model.mapModal Model.treasureTableLens
         (Ui.toggleSection section)
@@ -367,6 +370,55 @@ modal without saving leaves their current saved table intact.
 resetToBundled : Model -> ( Model, Cmd Msg )
 resetToBundled =
     mutateTable (\_ -> Treasure.bundledTable)
+
+
+
+-- ── FLAT-CATEGORY NAME+VALUE EDITS (Mundane / Weapons / Armor) ─────────────
+
+
+flatAdd : Msg.FlatCategory -> Model -> ( Model, Cmd Msg )
+flatAdd cat =
+    mutateFlat cat (\items -> items ++ [ { name = "", valueGp = 0 } ])
+
+
+flatRemove : Msg.FlatCategory -> Int -> Model -> ( Model, Cmd Msg )
+flatRemove cat idx =
+    mutateFlat cat (dropIndex idx)
+
+
+flatNameSet : Msg.FlatCategory -> Int -> String -> Model -> ( Model, Cmd Msg )
+flatNameSet cat idx name =
+    mutateFlat cat (mapIndex idx (\item -> { item | name = name }))
+
+
+flatValueSet : Msg.FlatCategory -> Int -> String -> Model -> ( Model, Cmd Msg )
+flatValueSet cat idx raw =
+    mutateFlat cat
+        (mapIndex idx (\item -> { item | valueGp = parseClampNonNeg raw }))
+
+
+{-| Apply a transformation to the right flat-category list inside
+the draft. Operates on the structurally-identical record type
+the three categories share so one helper covers all three.
+-}
+mutateFlat :
+    Msg.FlatCategory
+    -> (List { name : String, valueGp : Int } -> List { name : String, valueGp : Int })
+    -> Model
+    -> ( Model, Cmd Msg )
+mutateFlat cat fn =
+    mutateTable
+        (\table ->
+            case cat of
+                Msg.FlatMundane ->
+                    { table | mundane = fn table.mundane }
+
+                Msg.FlatWeapons ->
+                    { table | weapons = fn table.weapons }
+
+                Msg.FlatArmor ->
+                    { table | armor = fn table.armor }
+        )
 
 
 
