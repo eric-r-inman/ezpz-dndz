@@ -46,6 +46,30 @@
     {
       "id": "no-stale-rust-template-literals",
       "reason": "Remaining occurrences are legitimate references (foundation crate name, project comments, and personal allowlist paths in .claude/settings.local.json)."
+    },
+    {
+      "id": "review-gate-settings",
+      "reason": "Solo vibe-coded project; per-turn subagent review is not worth the Pro-plan token cost. Manual review happens at commit time and the structural checker covers the mechanical drift."
+    },
+    {
+      "id": "review-gate-settings-wires-hook",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
+    },
+    {
+      "id": "review-gate-hook",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
+    },
+    {
+      "id": "review-gate-hook-reads-marker",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
+    },
+    {
+      "id": "review-gate-agent",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
+    },
+    {
+      "id": "review-gate-agent-emits-marker",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
     }
   ]
 }
