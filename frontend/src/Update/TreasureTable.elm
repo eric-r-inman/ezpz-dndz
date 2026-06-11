@@ -52,6 +52,7 @@ import Msg
         , SubKind(..)
         )
 import Ui.TreasureTable as Ui
+import Update.Treasure
 
 
 open : Model -> ( Model, Cmd Msg )
@@ -68,28 +69,29 @@ open model =
 {-| Close the modal without committing. The draft inside the UI
 state is discarded along with the modal itself; the live
 `model.userTreasureTable` is untouched, so nothing persists.
+The Treasure roller modal opens immediately after — the GM
+almost always edits the table because they're about to roll
+from it, so chaining the two saves a click and keeps focus on
+the task.
 -}
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    Update.Treasure.open model
 
 
 {-| Commit the in-flight draft to `model.userTreasureTable` and
-close the modal. The standard `userTreasureTableCmd` hook in
-`Main.update` sees `model.userTreasureTable` change and fires
-the right persistence Cmd (server PUT for authed, localStorage
-for anonymous).
+hand off to the Treasure roller modal. The standard
+`userTreasureTableCmd` hook in `Main.update` sees
+`model.userTreasureTable` change and fires the right persistence
+Cmd (server PUT for authed, localStorage for anonymous); the
+roller then opens against the freshly-saved table.
 -}
 save : Model -> ( Model, Cmd Msg )
 save model =
     case model.modal of
         Just (Model.ModalTreasureTable ui) ->
-            ( { model
-                | modal = Nothing
-                , userTreasureTable = Just ui.draft
-              }
-            , Cmd.none
-            )
+            Update.Treasure.open
+                { model | userTreasureTable = Just ui.draft }
 
         _ ->
             ( model, Cmd.none )
