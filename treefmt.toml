@@ -19,11 +19,12 @@ includes = ["*.elm"]
 [formatter.prettier]
 command = "prettier"
 options = ["--write"]
-includes = ["*.css"]
+includes = ["*.css", "*.json"]
+# elm.json is managed by the elm toolchain, which rewrites it in its own
+# style on `elm install` / `elm make`; formatting it here only starts a
+# churn battle, so leave it to elm.
+excludes = ["**/elm.json"]
 
-# org-fmt deliberately omitted: the upstream flake at
-# github:LoganBarnett/org-fmt currently pulls its `orgize` input over
-# `ssh://`, which fails in environments without SSH credentials.  Once
-# upstream switches that input to https, port the template's 866d8ac
-# wiring in (this file + flake.nix + reformat existing .org files via
-# the template's f732032 one-shot).
+[formatter.org-fmt]
+command = "org-fmt"
+includes = ["*.org"]

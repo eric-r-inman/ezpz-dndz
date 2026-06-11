@@ -11,8 +11,14 @@
     # mkNixosService, mkDarwinService, cargoHuskyHookSnippet).
     foundation.url = "github:LoganBarnett/rust-template";
     foundation.inputs.nixpkgs.follows = "nixpkgs";
-    # org-fmt deliberately omitted; see note in treefmt.toml for the
-    # upstream-SSH-fetch issue blocking adoption.
+    # Formats org-mode documents (treefmt delegates .org files to it).
+    # Re-adopted after upstream switched its orgize input from ssh:// to
+    # https://, which had previously blocked use in environments without
+    # SSH credentials.
+    org-fmt.url = "github:LoganBarnett/org-fmt";
+    org-fmt.inputs.nixpkgs.follows = "nixpkgs";
+    org-fmt.inputs.rust-overlay.follows = "rust-overlay";
+    org-fmt.inputs.crane.follows = "crane";
   };
 
   outputs = {
@@ -22,6 +28,7 @@
     crane,
     changelog-roller,
     foundation,
+    org-fmt,
   }: let
     forAllSystems =
       nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
@@ -96,6 +103,8 @@
           # Read tool to render PDF pages for SRD / rulebook audits.
           pkgs.poppler-utils
           changelog-roller.packages.${system}.default
+          # Formats org-mode documents (treefmt delegates .org files to it).
+          org-fmt.packages.${system}.default
         ];
         shellHook = ''
           ${foundation.lib.cargoHuskyHookSnippet pkgs}
@@ -103,7 +112,7 @@
           echo ""
           echo "Available Cargo packages (use 'cargo build -p <name>'):"
           cargo metadata --no-deps --format-version 1 2>/dev/null | \
-            jq -r '.packages[].name' | \
+            jq --raw-output '.packages[].name' | \
             sort | \
             sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
 

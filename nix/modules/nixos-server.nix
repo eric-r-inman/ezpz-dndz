@@ -1,6 +1,15 @@
 # NixOS (Linux/systemd) module for the ezpz-dndz-server service.
-# Thin wrapper around the foundation's mkNixosService helper.
-# See darwin-server.nix for the macOS/launchd equivalent.
+# Thin wrapper around the foundation's mkNixosService helper.  See
+# darwin-server.nix for the macOS/launchd equivalent.  Cross-platform
+# declarations live in `./common.nix`, which is imported below so
+# anything added there merges into both platform modules via the
+# module-merge system.
+#
+# This file is the seam where NixOS-only declarations (e.g. systemd
+# drop-ins, tmpfiles rules, polkit hooks) belong.  Adding to the
+# `imports` list or declaring `config.systemd.…` here merges with
+# the foundation-generated service module — no restructuring needed
+# to introduce a platform-specific bit.
 #
 # Minimal usage (defaults to Unix domain socket):
 #
@@ -28,8 +37,12 @@
 {
   self,
   foundation,
-}:
-foundation.lib.mkNixosService {
-  name = "ezpz-dndz-server";
-  inherit self;
+}: {
+  imports = [
+    ./common.nix
+    (foundation.lib.mkNixosService {
+      name = "ezpz-dndz-server";
+      inherit self;
+    })
+  ];
 }

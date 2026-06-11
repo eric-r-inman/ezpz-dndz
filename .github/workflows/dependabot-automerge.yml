@@ -1,14 +1,25 @@
 name: Dependabot auto-merge
 
+# Fires only after CI has actually completed, so the auto-merge attempt
+# can't race ahead of the test job.  The branch-protection rule blocks a
+# bare `on: pull_request` automerge until checks pass anyway, but waiting
+# for the workflow_run event is cheaper and gives us a clean success
+# signal to read.
 on:
-  pull_request:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   automerge:
-    if: github.actor == 'dependabot[bot]'
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.actor == 'dependabot[bot]'
     uses: LoganBarnett/rust-template/.github/workflows/reusable-dependabot-automerge.yml@main
     secrets: inherit

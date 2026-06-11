@@ -3,6 +3,49 @@
     "51239f878d85679a0bb7197f27ddbb22a0ebda8d",
     "992414005ea1ce92fa18f826e2e2c2407745ddd8",
     "6d65d3d880890eed337cde7556b8c38ad02d0896",
-    "e50e9335034f7787c8fbdb33a67f9ec1ae13a047"
+    "e50e9335034f7787c8fbdb33a67f9ec1ae13a047",
+    "2e4cdac079954e9e6b6fd817379c9cbfd2291485"
+  ],
+  "compliance-ignores": [
+    {
+      "id": "required-file-changelog",
+      "reason": "Project policy (see CLAUDE.md): the git log and ARCHITECTURE.org are the canonical record; no CHANGELOG.org is maintained."
+    },
+    {
+      "id": "changelog-upcoming-section",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "changelog-upcoming-added",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "changelog-upcoming-fixes",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "changelog-upcoming-breaking",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "contributing-changelog-conventions-section",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "contributing-changelog-numbered-list",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "ci-uses-reusable-workflows",
+      "reason": "CI is intentionally hand-rolled (Elm + treefmt jobs) since foundation's reusable-ci is Rust-only; see ci.yml header comment."
+    },
+    {
+      "id": "ci-workflow-uses-reusable",
+      "reason": "CI is intentionally hand-rolled (Elm + treefmt jobs) since foundation's reusable-ci is Rust-only; see ci.yml header comment."
+    },
+    {
+      "id": "no-stale-rust-template-literals",
+      "reason": "Remaining occurrences are legitimate references (foundation crate name, project comments, and personal allowlist paths in .claude/settings.local.json)."
+    }
   ]
 }
