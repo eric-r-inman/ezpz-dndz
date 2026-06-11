@@ -2584,7 +2584,6 @@ body {
 .treasure-table__coin-label {
   font-size: 0.78rem;
   color: var(--color-text-muted);
-  min-width: 2.5em;
 }
 
 .treasure-table__coin-formula {
