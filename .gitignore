@@ -40,6 +40,18 @@ dice-history.json
 # server; location is configurable via --card-layouts-path).
 /card-layouts.json
 
+# Per-user lore-groups persistence file (created at runtime by the
+# server; location is configurable via --lore-groups-path).
+/lore-groups.json
+
+# Per-user condition-presets persistence file (created at runtime by
+# the server; location is configurable via --condition-presets-path).
+/condition-presets.json
+
+# Per-user treasure-table persistence file (created at runtime by the
+# server; location is configurable via --treasure-table-path).
+/treasure-table.json
+
 # User-account database (created at runtime by the server when the
 # first registration lands; carries Argon2id password hashes — must
 # never end up in git).  Location configurable via --users-path.
