@@ -38,9 +38,18 @@ encodePresets presets =
         |> E.object
 
 
+{-| Decode the server's preset payload. The `/api/condition-presets`
+endpoint returns JSON `null` when the user has never saved a preset
+(see the handler doc in =crates/server/src/condition\_presets.rs=), so
+the decoder accepts null as the empty dict; otherwise it expects the
+flat-object shape that `encodePresets` writes.
+-}
 decodePresets : D.Decoder (Dict String ConditionPreset)
 decodePresets =
-    D.dict decodePreset
+    D.oneOf
+        [ D.null Dict.empty
+        , D.dict decodePreset
+        ]
 
 
 encodePreset : ConditionPreset -> E.Value
