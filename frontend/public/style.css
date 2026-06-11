@@ -153,10 +153,9 @@
     monospace;
 }
 
-/* Explicit Modern selector.  Required so a user who picked
-   Modern on a dark-OS still gets the Modern palette — the
-   `@media (prefers-color-scheme: dark)` block below would
-   otherwise repaint `:root` to Dark.  Same tokens as `:root`. */
+/* Explicit Modern selector.  Same tokens as `:root`; declared
+   separately so adding a future :root override here (e.g. a
+   neutral baseline) doesn't accidentally drag Modern with it. */
 [data-theme="modern"] {
   --color-bg: #fafafa;
   --color-surface: #ffffff;
@@ -217,15 +216,11 @@
   --btn-focus-ring: 0 0 0 3px var(--color-accent-soft);
 }
 
-/* Dark theme overrides.  Applied two ways:
- *   1. Explicit user choice — `data-theme="dark"` is set on
- *      `.app-shell` by the AppBar settings popover (and
- *      mirrored to `<html>` by an inline script in
- *      `index.html` before Elm boots, to avoid FOUC).
- *   2. OS preference fallback — when the user has chosen
- *      `Auto` (or hasn't picked anything yet), the `@media`
- *      block below mirrors the same overrides.
- * The default `:root` block above is the Light theme.
+/* Dark theme overrides.  Applied when `data-theme="dark"` is
+ * set on `.app-shell` by the AppBar settings popover (and
+ * mirrored to `<html>` by an inline script in `index.html`
+ * before Elm boots, to avoid FOUC).  The default `:root` block
+ * above is the Modern (light) theme.
  *
  * The `[data-theme="dark"]` selector matches any element with
  * the attribute, so the inline FOUC script can set it on
@@ -314,82 +309,6 @@
   --btn-orange-fg: var(--card-btn-fg);
   --btn-orange-bd: transparent;
   --btn-orange-bg-hover: var(--color-btn-orange);
-}
-
-@media (prefers-color-scheme: dark) {
-  /* Auto mode: the user picked `Auto` (or has no setting yet)
-   * and the OS is in dark mode.  Mirrors the explicit
-   * data-theme="dark" rule above.  An explicit
-   * data-theme="modern" wins over this because attribute
-   * selectors with a value have higher specificity than
-   * :not([data-theme]). */
-  [data-theme="auto"],
-  :root:not([data-theme]) {
-    /* OS-pref-dark Auto users get the same font + radii reset
-       as the explicit Dark theme. */
-    --font-ui:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-      Arial, sans-serif;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --btn-font-weight: 600;
-    --btn-letter-spacing: 0.02em;
-    --btn-shadow: none;
-    --btn-shadow-hover: none;
-    --btn-hover-overlay: rgba(255, 255, 255, 0.08);
-    --btn-focus-ring: none;
-    --color-bg: #0e1015;
-    --color-surface: #181b23;
-    --color-surface-2: #20242e;
-    --color-text: #e8eaf2;
-    --color-text-muted: #8e95a8;
-    --color-link: #8aa9ff;
-    --color-border: #2a2f3a;
-    --color-accent: #8a6cff;
-    --color-accent-hover: #9c81ff;
-    --color-accent-soft: rgba(138, 108, 255, 0.18);
-    --color-danger: #ff6a6a;
-    --color-danger-soft: rgba(255, 106, 106, 0.16);
-    --color-success: #51cf66;
-    --color-success-soft: rgba(81, 207, 102, 0.18);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
-    --color-yellow: #ffd95a;
-    --color-init-blue: #4d9bff;
-    --color-orange-dark: #ff9a3c;
-    --color-temp-blue: #4d9bff;
-    --color-orange: #ff9a3c;
-    --color-blue: #4d9bff;
-    --color-la: var(--color-orange);
-    --color-lr: var(--color-yellow);
-    --active-creature-color: var(--color-yellow);
-    --active-creature-weight: 600;
-
-    /* Match the explicit dark-theme overrides — restore legacy
-       palette + black-on-color text + brightness-on-hover. */
-    --color-damage: #d63b3b;
-    --color-heal: #3cb455;
-    --color-temp: #2589e0;
-    --color-condition: #9355e0;
-    --color-btn-blue: #1976d2;
-    --color-btn-green: #2f9e44;
-    --color-btn-red: #c62828;
-    --color-btn-orange: #d97706;
-    --card-btn-fg: #000;
-    --btn-blue-bg: var(--color-btn-blue);
-    --btn-blue-fg: var(--card-btn-fg);
-    --btn-blue-bd: transparent;
-    --btn-blue-bg-hover: var(--color-btn-blue);
-    --btn-red-bg: var(--color-btn-red);
-    --btn-red-fg: var(--card-btn-fg);
-    --btn-red-bd: transparent;
-    --btn-red-bg-hover: var(--color-btn-red);
-    --btn-orange-bg: var(--color-btn-orange);
-    --btn-orange-fg: var(--card-btn-fg);
-    --btn-orange-bd: transparent;
-    --btn-orange-bg-hover: var(--color-btn-orange);
-  }
 }
 
 /* ── ACCESSIBLE THEME ──────────────────────────────────────────────────
@@ -968,8 +887,7 @@ html:has(.app-shell[data-theme="accessible"]) {
    (`#9355e0`, purple-600) which reads as flat on dark surfaces;
    `#c084fc` pops against the dark card background the way the
    title-bar text does against the bar.  Scoped to `data-theme=
-   "dark"` only — explicit Dark was what the user asked about;
-   Auto-dark + Modern keep their per-theme `--color-condition`
+   "dark"` only — Modern keeps its own `--color-condition`
    resolution. */
 [data-theme="dark"] .creature-card__row--top .condition-chip {
   color: #c084fc;
@@ -4169,8 +4087,8 @@ body {
 
 .creature-card--active {
   /* Border-width +1 from the base 1px (= 2px) so the active
-     card pops out for Modern / Dark / Auto.  Accessible has its
-     own 4px override further up the file (search for
+     card pops out for Modern / Dark.  Accessible has its own
+     4px override further up the file (search for
      `[data-theme="accessible"] .creature-card--active`). */
   border-width: 2px;
   border-color: var(--color-accent);
@@ -4556,9 +4474,7 @@ button.creature-card__lifecycle--dead:focus-visible {
    `background-image: none` undoes the Modern white-fill + SVG
    check; `border: none` undoes the zinc-400 border so the OS
    draws its native chrome. */
-[data-theme="dark"] .creature-card__select,
-:root:not([data-theme]) .creature-card__select,
-[data-theme="auto"] .creature-card__select {
+[data-theme="dark"] .creature-card__select {
   appearance: auto;
   -webkit-appearance: auto;
   background: transparent;
@@ -4568,21 +4484,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   accent-color: var(--color-success);
   display: inline-block;
   place-items: initial;
-}
-
-@media (prefers-color-scheme: light) {
-  /* Light-OS Auto users keep the Modern custom-styled
-     checkbox.  Restore everything the Dark override stripped. */
-  [data-theme="auto"] .creature-card__select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-color: #ffffff;
-    border: 1.5px solid #a1a1aa;
-    border-radius: 3px;
-    accent-color: auto;
-    display: inline-grid;
-    place-items: center;
-  }
 }
 
 .creature-card__center {
@@ -5696,19 +5597,10 @@ button.creature-card__lifecycle--dead:focus-visible {
    to spot a creature that's readied an action at a glance from
    across the queue.  Dark keeps the existing token-driven amber
    from `.action-btn--readied` above. */
-[data-theme="modern"] .action-btn--readied,
-:root:not([data-theme]) .action-btn--readied {
+[data-theme="modern"] .action-btn--readied {
   --btn-bg: #f97316; /* orange-500 */
   --btn-fg: #ffffff;
   --btn-bd: transparent;
-}
-
-@media (prefers-color-scheme: light) {
-  [data-theme="auto"] .action-btn--readied {
-    --btn-bg: #f97316;
-    --btn-fg: #ffffff;
-    --btn-bd: transparent;
-  }
 }
 
 /* Save button when the encounter has unsaved roster changes
@@ -5733,10 +5625,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    default produced a barely-visible outline.  Override the
    border and foreground for these four button classes in each
    theme so they read clearly. */
-:root:not([data-theme]) .creature-card .action-btn--ready,
-:root:not([data-theme]) .creature-card .action-btn--reaction,
-:root:not([data-theme]) .creature-card .action-btn--memo-empty,
-:root:not([data-theme]) .creature-card .action-btn--timer-empty,
 [data-theme="modern"] .creature-card .action-btn--ready,
 [data-theme="modern"] .creature-card .action-btn--reaction,
 [data-theme="modern"] .creature-card .action-btn--memo-empty,
@@ -5753,30 +5641,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-fg: var(--color-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  [data-theme="auto"] .creature-card .action-btn--ready,
-  [data-theme="auto"] .creature-card .action-btn--reaction,
-  [data-theme="auto"] .creature-card .action-btn--memo-empty,
-  [data-theme="auto"] .creature-card .action-btn--timer-empty {
-    --btn-bd: #6b7280;
-    --btn-fg: var(--color-text);
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  [data-theme="auto"] .creature-card .action-btn--ready,
-  [data-theme="auto"] .creature-card .action-btn--reaction,
-  [data-theme="auto"] .creature-card .action-btn--memo-empty,
-  [data-theme="auto"] .creature-card .action-btn--timer-empty {
-    --btn-bd: #9ca3af;
-    --btn-fg: var(--color-text);
-  }
-}
-
 /* Keep the orange reaction-unspent fg so the GM still reads
    "this creature still has a reaction available" — only the
    border darkens / lightens per-theme above. */
-:root:not([data-theme]) .creature-card .action-btn--reaction-ready,
 [data-theme="modern"] .creature-card .action-btn--reaction-ready,
 [data-theme="dark"] .creature-card .action-btn--reaction-ready {
   --btn-fg: var(--color-warn, #d97706);
@@ -5996,9 +5863,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Player / Enemy / NPC chip rendered next to the creature name
    in the stat block.  Uses theme tokens so the colour palette
-   tracks Modern / Dark / Auto / Accessible automatically; mirrors
-   the badge variants on the (now-hidden) Custom card so the
-   shared vocabulary stays consistent. */
+   tracks Modern / Dark / Accessible automatically; mirrors the
+   badge variants on the (now-hidden) Custom card so the shared
+   vocabulary stays consistent. */
 .statblock__kind-badge {
   display: inline-flex;
   align-items: center;

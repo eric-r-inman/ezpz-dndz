@@ -1545,7 +1545,7 @@ readiedToggle creature =
         ]
         -- Icon prefix wrapped in its own span so the Accessible
         -- theme can drop the unicode glyph and let the word stand
-        -- on its own.  Modern / Dark / Auto leave the span visible.
+        -- on its own.  Modern / Dark leave the span visible.
         [ span [ class "action-btn__icon-prefix" ] [ text (iconGlyph ++ " ") ]
         , text wordLabel
         ]

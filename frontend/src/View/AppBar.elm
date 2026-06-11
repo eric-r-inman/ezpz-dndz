@@ -246,7 +246,6 @@ themeRow current =
         , div [ class "app-settings__radio-group" ]
             [ themeRadio current Modern "Modern" ""
             , themeRadio current Dark "Dark" ""
-            , themeRadio current Auto "Auto" ""
             , themeRadio current Accessible "Accessible" "(alpha)"
             ]
         ]

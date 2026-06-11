@@ -25,9 +25,8 @@ import Msg exposing (CompendiumSort(..), Theme(..))
 
 -- `Theme` is re-exported from `Msg` (where the type is defined
 -- to avoid an import cycle with the `PreferencesThemeSet Theme`
--- Msg constructor).  `Auto` follows the OS / browser preference
--- (`prefers-color-scheme`); `Modern` and `Dark` pin a specific
--- mode.
+-- Msg constructor).  Each variant pins a specific palette;
+-- there is no OS-following mode.
 
 
 {-| Layout density on the creature cards. `Compact` shrinks the
@@ -54,8 +53,8 @@ type alias Preferences =
 hard-coded behavior so adopting this struct is a no-op until the
 GM tweaks something.
 
-  - Theme `Auto` because the CSS already handles
-    `prefers-color-scheme`.
+  - Theme `Modern` as the default light palette; the GM picks
+    Dark or Accessible from the AppBar settings popover.
   - Density `Normal` because that's the only thing the CSS
     currently renders.
   - Sound on.
@@ -71,7 +70,7 @@ GM tweaks something.
 -}
 default : Preferences
 default =
-    { theme = Auto
+    { theme = Modern
     , cardDensity = Normal
     , soundEnabled = True
     , autoScrollActiveCard = True

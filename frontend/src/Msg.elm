@@ -161,7 +161,6 @@ below. `Preferences.elm` re-exports it.
 type Theme
     = Modern
     | Dark
-    | Auto
     | Accessible
 
 

@@ -420,20 +420,16 @@ themeAttr =
 
 
 {-| Parse a theme flag string from the JS host. Any
-unrecognized value falls back to `Auto`, matching the JS-side
-default in `index.html`.
+unrecognized value falls back to `Modern`, matching the JS-side
+default in `index.html`. Legacy keys (`light` from before the
+Light → Modern rename, `auto` from before the OS-follow theme
+was removed) get quietly promoted to `Modern`; the next
+preference write replaces them in localStorage.
 -}
 themeFromFlag : String -> Theme
 themeFromFlag raw =
     case raw of
         "modern" ->
-            Modern
-
-        -- Old key from before the Light → Modern rename.  Any
-        -- localStorage value still saying "light" gets quietly
-        -- promoted; the next preference write will replace it
-        -- with "modern".
-        "light" ->
             Modern
 
         "dark" ->
@@ -443,7 +439,7 @@ themeFromFlag raw =
             Accessible
 
         _ ->
-            Auto
+            Modern
 
 
 {-| Init flags handed in by `index.html`.
