@@ -773,15 +773,26 @@ are present, so the right bracket falls out naturally.
 lower" knobs (see [`TreasureSettings`](#TreasureSettings)).
 Defaults to no-op when the GM hasn't tuned anything.
 
+An empty enemy list short-circuits to an empty roll regardless
+of `kind`: no enemies means no creatures to loot, no lair to
+plunder. The modal still gets a `Just` treasure record so the
+user sees "(no coins)" rather than the un-rolled empty state,
+making it clear the click registered but the encounter had no
+targets.
+
 -}
 generate : TreasureSettings -> Kind -> TreasureTable -> RollContext -> Random.Generator TreasureRoll
 generate settings kind table ctx =
-    case kind of
-        Individual ->
-            generateIndividualSum settings table ctx.enemies
+    if List.isEmpty ctx.enemies then
+        Random.constant (emptyRollFor kind ctx.hoardBracket)
 
-        Hoard ->
-            generateHoard settings ctx.hoardBracket table
+    else
+        case kind of
+            Individual ->
+                generateIndividualSum settings table ctx.enemies
+
+            Hoard ->
+                generateHoard settings ctx.hoardBracket table
 
 
 {-| Re-roll just one category of the existing roll, using the

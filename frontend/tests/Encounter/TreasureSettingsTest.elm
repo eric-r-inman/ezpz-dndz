@@ -106,7 +106,44 @@ suite =
                     avgGemCountAcross 200 Treasure.defaultSettings
                         |> Expect.greaterThan 0
             ]
+        , describe "Empty encounter short-circuits to empty roll"
+            [ test "Hoard with no enemies produces no coins" <|
+                \_ ->
+                    rollEmptyEncounter Hoard
+                        |> .coins
+                        |> Treasure.totalCoinValueGp
+                        |> Expect.equal 0
+            , test "Hoard with no enemies produces no gems / art / magic" <|
+                \_ ->
+                    let
+                        roll =
+                            rollEmptyEncounter Hoard
+                    in
+                    ( List.length roll.gems, List.length roll.art, List.length roll.magic )
+                        |> Expect.equal ( 0, 0, 0 )
+            , test "Individual with no enemies produces empty contributions" <|
+                \_ ->
+                    rollEmptyEncounter Treasure.Individual
+                        |> .contributions
+                        |> Expect.equal []
+            ]
         ]
+
+
+{-| Run the generator under default settings with an explicitly
+empty enemy list. Used to verify the "no enemies, no loot"
+short-circuit on both Kinds.
+-}
+rollEmptyEncounter : Kind -> TreasureRoll
+rollEmptyEncounter kind =
+    let
+        emptyCtx =
+            { enemies = [], hoardBracket = Treasure.B17plus }
+
+        gen =
+            Treasure.generate Treasure.defaultSettings kind Treasure.bundledTable emptyCtx
+    in
+    Random.step gen (Random.initialSeed 1) |> Tuple.first
 
 
 
@@ -120,13 +157,15 @@ headroom in both directions. Lower brackets float at the floor
 on some tiers (bracket 2's art is single-tier Art25gp, so
 ValueLower is a no-op there) and would mask the signal.
 
-The empty enemy list is fine because Hoard rolls ignore it
-(they use `hoardBracket` directly).
+A single dummy enemy is needed in the list — the generator now
+short-circuits empty-enemy rolls to an empty roll regardless of
+kind, so without a placeholder the statistical assertions would
+all see zero items.
 
 -}
 ctx : RollContext
 ctx =
-    { enemies = []
+    { enemies = [ { name = "Dummy", bracket = Treasure.B17plus } ]
     , hoardBracket = Treasure.B17plus
     }
 
