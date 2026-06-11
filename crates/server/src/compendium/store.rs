@@ -332,6 +332,7 @@ impl CompendiumStore {
       habitats: draft.habitats,
       treasures: draft.treasures,
       tags: draft.tags,
+      loot: draft.loot,
       created_at: now,
       updated_at: now,
       is_bundled: false,

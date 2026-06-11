@@ -6,6 +6,7 @@ across a creature queue + scope filtering.
 
 import Compendium
 import Encounter exposing (Cover(..), Creature, Encounter)
+import Encounter.Treasure
 import Encounter.Xp as Xp exposing (XpScope(..))
 import Expect
 import Set
@@ -135,6 +136,7 @@ mkSource args =
     , habitats = []
     , treasures = []
     , tags = []
+    , loot = []
     , createdAt = 0
     , updatedAt = 0
     , isBundled = False
@@ -151,6 +153,7 @@ mixedEncounter =
     , activeName = "Goblin"
     , round = 1
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
@@ -207,6 +210,7 @@ totalsForSuite =
                         , activeName = "Dragon"
                         , round = 1
                         , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
                         }
 
                     db =
@@ -262,7 +266,12 @@ totalsForSuite =
                         }
 
                     enc =
-                        { creatures = [ orphan ], activeName = "Mystery", round = 1, treasure = Nothing }
+                        { creatures = [ orphan ]
+                        , activeName = "Mystery"
+                        , round = 1
+                        , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
+                        }
                 in
                 Xp.totalsFor ScopeXpEnemiesAndNpcs enc mixedDb
                     |> Expect.equal { total = 0, lairTotal = 0 }

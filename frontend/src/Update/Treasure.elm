@@ -1,9 +1,9 @@
 module Update.Treasure exposing
     ( open, close
-    , kindSet, bracketSet
+    , kindSet
     , roll, rolled
-    , toggleDistributed
-    , rerollRequest, rerollConfirm, rerollCancel
+    , categoryRolled, rerollCategory
+    , artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, settingsCountSet, settingsReset, settingsToggle, settingsValueSet
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -12,12 +12,8 @@ The modal owns:
 
   - The dropdown selections (Kind + Bracket), which live on
     `Ui.Treasure.TreasureUi`.
-  - The re-roll confirmation flag, also on `TreasureUi`.
   - A pure handler that fires the random `Generator` and lands
     the result into `model.encounter.treasure`.
-  - Per-row "mark distributed" toggling, which mutates the
-    `distributed : Set String` carried in
-    `Encounter.TreasureState`.
 
 The treasure result persists with the encounter (it's a field on
 `Encounter`), so the standard `persistEncounterCmd` hook in the
@@ -27,32 +23,27 @@ without anything extra from this module.
 @docs open, close
 @docs kindSet, bracketSet
 @docs roll, rolled
-@docs toggleDistributed
-@docs rerollRequest, rerollConfirm, rerollCancel
+@docs categoryRolled, rerollCategory
 
 -}
 
 import Compendium
-import Encounter.Treasure as Treasure exposing (Bracket)
+import Encounter
+import Encounter.Treasure as Treasure exposing (Bracket, EnemyInfo, RollContext)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Random
-import Set
 import Ui.Compendium
 import Ui.Treasure
 
 
-{-| Open the modal. Seeds the UI with the bracket suggested
-from the encounter's toughest creature (the modal opens to a
-sensible default even when the GM didn't think about it).
+{-| Open the modal. UI state is now bracket-free; the bracket
+each enemy uses falls out of their own CR at roll time, so the
+modal opens straight into the Kind picker.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    let
-        bracket =
-            suggestedBracketFor model
-    in
-    ( { model | modal = Just (Model.ModalTreasure (Ui.Treasure.fresh bracket)) }
+    ( { model | modal = Just (Model.ModalTreasure Ui.Treasure.fresh) }
     , Cmd.none
     )
 
@@ -62,20 +53,22 @@ close model =
     ( { model | modal = Nothing }, Cmd.none )
 
 
-{-| Resolve CR floats from the encounter's creatures + the
-compendium DB, then ask `Encounter.Treasure` which bracket
-covers the toughest one.
--}
-suggestedBracketFor : Model -> Bracket
-suggestedBracketFor model =
-    let
-        db =
-            loadedDb model
-    in
-    model.encounter.creatures
-        |> List.filterMap (\c -> c.creatureId |> Maybe.andThen (\id -> Compendium.find id db))
-        |> List.map (.challengeRating >> Compendium.crToFloat)
-        |> Treasure.suggestedBracket
+contributionsToggle : Model -> ( Model, Cmd Msg )
+contributionsToggle model =
+    ( Model.mapModal Model.treasureLens
+        (\ui -> { ui | contributionsExpanded = not ui.contributionsExpanded })
+        model
+    , Cmd.none
+    )
+
+
+settingsToggle : Model -> ( Model, Cmd Msg )
+settingsToggle model =
+    ( Model.mapModal Model.treasureLens
+        (\ui -> { ui | settingsExpanded = not ui.settingsExpanded })
+        model
+    , Cmd.none
+    )
 
 
 loadedDb : Model -> Compendium.Db
@@ -107,35 +100,6 @@ kindSet wire model =
     )
 
 
-{-| Update the Bracket dropdown. Same fallback story as
-[`kindSet`](#kindSet) — typos collapse to the default
-suggestion the modal opened with rather than guessing.
--}
-bracketSet : String -> Model -> ( Model, Cmd Msg )
-bracketSet wire model =
-    let
-        bracket =
-            case wire of
-                "1to4" ->
-                    Treasure.B1to4
-
-                "5to10" ->
-                    Treasure.B5to10
-
-                "11to16" ->
-                    Treasure.B11to16
-
-                "17plus" ->
-                    Treasure.B17plus
-
-                _ ->
-                    suggestedBracketFor model
-    in
-    ( Model.mapModal Model.treasureLens (\ui -> { ui | bracket = bracket }) model
-    , Cmd.none
-    )
-
-
 {-| Fire the random Generator with the current Kind + Bracket.
 The runtime feeds the result into `TreasureRolled` via the
 standard `Random.generate` glue.
@@ -145,15 +109,129 @@ roll model =
     case model.modal of
         Just (Model.ModalTreasure ui) ->
             ( model
-            , Random.generate TreasureRolled (Treasure.generate ui.kind ui.bracket)
+            , Random.generate TreasureRolled
+                (Treasure.generate
+                    model.encounter.treasureSettings
+                    ui.kind
+                    (activeTable model)
+                    (rollContext model)
+                )
             )
 
         _ ->
             ( model, Cmd.none )
 
 
+{-| Resolve the table to roll against — the user's edited copy
+when they have one, otherwise the bundled default. Centralised
+here so all the per-category / re-roll handlers stay in sync.
+-}
+activeTable : Model -> Treasure.TreasureTable
+activeTable model =
+    Maybe.withDefault Treasure.bundledTable model.userTreasureTable
+
+
+{-| Build the per-roll context from the encounter:
+
+  - One `EnemyInfo` per non-placeholder, `creatureKind ==
+    "enemy"` creature, paired with the bracket derived from
+    its CR (compendium lookup; defaults to `B1to4` for
+    manual-entry creatures with no link).
+  - `hoardBracket` = the toughest enemy's bracket, used by
+    Hoard rolls. Defaults to `B1to4` when there are no enemies.
+
+The CR Bracket dropdown is gone; this context replaces the
+GM's manual pick with what the encounter already knows.
+
+-}
+rollContext : Model -> RollContext
+rollContext model =
+    let
+        enemies =
+            enemyInfos model
+    in
+    { enemies = enemies
+    , hoardBracket = highestBracketOrDefault (List.map .bracket enemies)
+    }
+
+
+enemyInfos : Model -> List EnemyInfo
+enemyInfos model =
+    let
+        db =
+            loadedDb model
+    in
+    model.encounter.creatures
+        |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
+        |> List.map
+            (\c ->
+                { name = c.name
+                , bracket = creatureBracket db c
+                , loot = creatureLoot db c
+                }
+            )
+
+
+creatureBracket : Compendium.Db -> Encounter.Creature -> Bracket
+creatureBracket db c =
+    c.creatureId
+        |> Maybe.andThen (\id -> Compendium.find id db)
+        |> Maybe.map (.challengeRating >> Compendium.crToFloat >> Treasure.bracketFor)
+        |> Maybe.withDefault Treasure.B1to4
+
+
+{-| Resolve the creature's compendium loot list — empty when
+the encounter creature has no compendium link (a manually-typed
+placeholder won't have authored loot).
+-}
+creatureLoot : Compendium.Db -> Encounter.Creature -> List String
+creatureLoot db c =
+    c.creatureId
+        |> Maybe.andThen (\id -> Compendium.find id db)
+        |> Maybe.map .loot
+        |> Maybe.withDefault []
+
+
+highestBracketOrDefault : List Bracket -> Bracket
+highestBracketOrDefault brackets =
+    case brackets of
+        [] ->
+            Treasure.B1to4
+
+        head :: rest ->
+            List.foldl
+                (\b acc ->
+                    if bracketRank b > bracketRank acc then
+                        b
+
+                    else
+                        acc
+                )
+                head
+                rest
+
+
+bracketRank : Bracket -> Int
+bracketRank b =
+    case b of
+        Treasure.B1to4 ->
+            0
+
+        Treasure.B5to10 ->
+            1
+
+        Treasure.B11to16 ->
+            2
+
+        Treasure.B17plus ->
+            3
+
+
 {-| Materialised roll landed — save it onto the encounter and
-clear the re-roll confirmation banner if it was open.
+collapse the By-Creature accordion. Every fresh roll resets the
+accordion to collapsed regardless of whether the GM had
+expanded it for a prior roll; lets the rolled-loot list use the
+full vertical space by default.
 -}
 rolled : Treasure.TreasureRoll -> Model -> ( Model, Cmd Msg )
 rolled treasureRoll model =
@@ -161,45 +239,161 @@ rolled treasureRoll model =
         encounter =
             model.encounter
 
-        nextState =
-            { roll = treasureRoll
-            , distributed = Set.empty
-            }
-
-        withTreasure =
-            { model | encounter = { encounter | treasure = Just nextState } }
+        withRoll =
+            { model | encounter = { encounter | treasure = Just treasureRoll } }
     in
     ( Model.mapModal Model.treasureLens
-        (\ui -> { ui | confirmingRereroll = False })
-        withTreasure
+        (\ui -> { ui | contributionsExpanded = False })
+        withRoll
     , Cmd.none
     )
 
 
-{-| Flip the per-row distributed flag. `slug` identifies the
-row uniquely ("coins", "gem:0", "art:3", "magic:1") — the view
-encodes that, and the domain just toggles set membership.
+{-| Fire a fresh random Generator targeting the chosen category.
+Re-uses the originating row's spec (stored on `roll.source`) so
+the gem tier / dice count stay consistent with the original
+roll — only the specific stone / object / item names change.
+
+Pre-source rolls (legacy saved encounters) fall through to a
+fresh full-row regen, since there's no spec to re-use.
+
+The runtime lands the result in `TreasureCategoryRolled`, which
+[`categoryRolled`](#categoryRolled) below merges into the
+existing roll.
+
 -}
-toggleDistributed : String -> Model -> ( Model, Cmd Msg )
-toggleDistributed slug model =
+rerollCategory : Treasure.Category -> Model -> ( Model, Cmd Msg )
+rerollCategory category model =
+    case model.encounter.treasure of
+        Just currentRoll ->
+            ( model
+            , Random.generate (TreasureCategoryRolled category)
+                (Treasure.generateRerollCategory
+                    model.encounter.treasureSettings
+                    (activeTable model)
+                    (rollContext model)
+                    currentRoll
+                    category
+                )
+            )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Per-class roll-knob update. Caller picks which axis of
+which class via wire-friendly strings: `class` is one of
+"coins", "gems", "art", "magic"; `axis` is "count" or "value"
+(coins only support "count"); `value` is the wire token for
+the adjust enum ("fewer" / "normal" / "more" or "lower" /
+"normal" / "higher").
+
+A no-op when an unknown combination comes in — the modal
+never emits invalid ones, but defensive against custom
+serializations.
+
+-}
+settingsCountSet : String -> String -> Model -> ( Model, Cmd Msg )
+settingsCountSet itemClass valueWire model =
     let
-        encounter =
+        value =
+            Treasure.countAdjustFromWire valueWire
+
+        settings =
+            model.encounter.treasureSettings
+
+        next =
+            case itemClass of
+                "coins" ->
+                    { settings | coinsCount = value }
+
+                "gems" ->
+                    { settings | gemsCount = value }
+
+                "art" ->
+                    { settings | artCount = value }
+
+                "magic" ->
+                    { settings | magicCount = value }
+
+                _ ->
+                    settings
+    in
+    ( updateEncounterSettings next model, Cmd.none )
+
+
+settingsValueSet : String -> String -> Model -> ( Model, Cmd Msg )
+settingsValueSet itemClass valueWire model =
+    let
+        value =
+            Treasure.valueAdjustFromWire valueWire
+
+        settings =
+            model.encounter.treasureSettings
+
+        next =
+            case itemClass of
+                "gems" ->
+                    { settings | gemsValue = value }
+
+                "art" ->
+                    { settings | artValue = value }
+
+                "magic" ->
+                    { settings | magicValue = value }
+
+                _ ->
+                    settings
+    in
+    ( updateEncounterSettings next model, Cmd.none )
+
+
+settingsReset : Model -> ( Model, Cmd Msg )
+settingsReset model =
+    ( updateEncounterSettings Treasure.defaultSettings model, Cmd.none )
+
+
+updateEncounterSettings : Treasure.TreasureSettings -> Model -> Model
+updateEncounterSettings settings model =
+    let
+        enc =
             model.encounter
     in
-    case encounter.treasure of
-        Just state ->
+    { model | encounter = { enc | treasureSettings = settings } }
+
+
+{-| Per-row delete: zero out one coin denomination from the
+encounter's current roll.
+-}
+coinRemove : String -> Model -> ( Model, Cmd Msg )
+coinRemove denomination =
+    mutateRoll (Treasure.clearCoin denomination)
+
+
+gemRemove : Int -> Model -> ( Model, Cmd Msg )
+gemRemove index =
+    mutateRoll (Treasure.removeGem index)
+
+
+artRemove : Int -> Model -> ( Model, Cmd Msg )
+artRemove index =
+    mutateRoll (Treasure.removeArt index)
+
+
+magicRemove : Int -> Model -> ( Model, Cmd Msg )
+magicRemove index =
+    mutateRoll (Treasure.removeMagic index)
+
+
+mutateRoll : (Treasure.TreasureRoll -> Treasure.TreasureRoll) -> Model -> ( Model, Cmd Msg )
+mutateRoll fn model =
+    case model.encounter.treasure of
+        Just current ->
             let
-                nextDistributed =
-                    if Set.member slug state.distributed then
-                        Set.remove slug state.distributed
-
-                    else
-                        Set.insert slug state.distributed
-
-                nextState =
-                    { state | distributed = nextDistributed }
+                encounter =
+                    model.encounter
             in
-            ( { model | encounter = { encounter | treasure = Just nextState } }
+            ( { model | encounter = { encounter | treasure = Just (fn current) } }
             , Cmd.none
             )
 
@@ -207,41 +401,39 @@ toggleDistributed slug model =
             ( model, Cmd.none )
 
 
-{-| Re-roll button clicked. If the existing roll has anything
-marked distributed, show a confirm banner before discarding it.
-Otherwise re-roll immediately.
+{-| Materialised single-category re-roll landed. Replace only
+the chosen category's data on the existing `TreasureRoll`,
+leaving the other categories untouched.
 -}
-rerollRequest : Model -> ( Model, Cmd Msg )
-rerollRequest model =
-    let
-        hasDistributed =
-            case model.encounter.treasure of
-                Just state ->
-                    not (Set.isEmpty state.distributed)
+categoryRolled :
+    Treasure.Category
+    -> Treasure.TreasureRoll
+    -> Model
+    -> ( Model, Cmd Msg )
+categoryRolled category fresh model =
+    case model.encounter.treasure of
+        Nothing ->
+            ( model, Cmd.none )
 
-                Nothing ->
-                    False
-    in
-    if hasDistributed then
-        ( Model.mapModal Model.treasureLens
-            (\ui -> { ui | confirmingRereroll = True })
-            model
-        , Cmd.none
-        )
+        Just existing ->
+            let
+                nextRoll =
+                    case category of
+                        Treasure.CoinsCategory ->
+                            { existing | coins = fresh.coins }
 
-    else
-        roll model
+                        Treasure.GemsCategory ->
+                            { existing | gems = fresh.gems }
 
+                        Treasure.ArtCategory ->
+                            { existing | art = fresh.art }
 
-rerollConfirm : Model -> ( Model, Cmd Msg )
-rerollConfirm model =
-    roll model
+                        Treasure.MagicCategory ->
+                            { existing | magic = fresh.magic }
 
-
-rerollCancel : Model -> ( Model, Cmd Msg )
-rerollCancel model =
-    ( Model.mapModal Model.treasureLens
-        (\ui -> { ui | confirmingRereroll = False })
-        model
-    , Cmd.none
-    )
+                encounter =
+                    model.encounter
+            in
+            ( { model | encounter = { encounter | treasure = Just nextRoll } }
+            , Cmd.none
+            )

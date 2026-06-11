@@ -224,6 +224,7 @@ initialState name typeLine =
         , habitats = []
         , treasures = []
         , tags = []
+        , loot = []
         , createdAt = 0
         , updatedAt = 0
         , isBundled = False

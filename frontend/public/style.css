@@ -1844,7 +1844,6 @@ body {
 
 .treasure__roll {
   align-self: flex-end;
-  margin-left: auto;
 }
 
 .treasure__empty {
@@ -1889,10 +1888,6 @@ body {
   border-top: 1px solid var(--color-border);
 }
 
-.treasure__section--distributed {
-  opacity: 0.55;
-}
-
 .treasure__section-header {
   display: flex;
   align-items: center;
@@ -1907,6 +1902,37 @@ body {
   flex: 1 1 auto;
 }
 
+.treasure__reroll-category {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.treasure__reroll-category:hover,
+.treasure__reroll-category:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure__row-source {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.treasure__row-count {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
 .treasure__list {
   list-style: none;
   margin: 0;
@@ -1917,8 +1943,17 @@ body {
 }
 
 .treasure__coin {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
   font-variant-numeric: tabular-nums;
   padding-left: 12px;
+}
+
+.treasure__coin-text {
+  /* anchor the amount to the grid's flex column so the × stays
+     pinned to the right regardless of denomination width. */
 }
 
 .treasure__coin--platinum {
@@ -1950,15 +1985,27 @@ body {
 
 .treasure__row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 10px;
   padding: 4px 0;
 }
 
-.treasure__row--distributed {
-  opacity: 0.5;
-  text-decoration: line-through;
+.treasure__row-remove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.treasure__row-remove:hover,
+.treasure__row-remove:focus-visible {
+  color: #d63b3b;
 }
 
 .treasure__row-name {
@@ -2010,52 +2057,496 @@ body {
   color: #b71c1c;
 }
 
-.treasure__distributed {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
+.treasure__rarity--loot {
+  background: rgba(120, 120, 120, 0.12);
   color: var(--color-text-muted);
-  cursor: pointer;
-  user-select: none;
 }
 
-.treasure__distributed input[type="checkbox"] {
+.treasure__section--loot .treasure__section-title::before {
+  content: "🎒 ";
+}
+
+.statblock__loot {
+  list-style: disc;
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.statblock__loot li {
   margin: 0;
-  cursor: pointer;
 }
 
-.treasure__distributed-text {
-  min-width: 80px;
+/* ── Custom rows (rolled from user-authored tables) ──────────────── */
+
+/* ── Treasure roll settings (per-encounter knobs) ──────────────── */
+
+.treasure__settings {
+  /* The treasure modal's body is `display: flex; flex-direction: column`
+     so direct children inherit `flex-shrink: 1` and collapse when a long
+     results list grows.  Pin the settings pane (and the other chrome
+     sections below) to `flex-shrink: 0` so the rolled-loot list scrolls
+     within the modal instead of crowding the GM's tuning controls off
+     the screen. */
+  flex-shrink: 0;
+  margin-top: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-.treasure__footer {
-  display: flex;
+.treasure__controls,
+.treasure__contributions,
+.treasure__edit-table-row {
+  flex-shrink: 0;
+}
+
+.treasure__results {
+  /* Lets the rolled-loot list be the scroll target if anything has to
+     give, instead of the controls/settings/contributions chrome.  The
+     `overflow-y: auto` is the load-bearing bit: without it, when the
+     By-Creature accordion expands and squeezes this section, the gem /
+     art / magic <li>s overflow their container and visually pile on
+     top of the contributions list below.  With it, the rolled loot
+     scrolls within its own box. */
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.treasure__settings-toggle {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  text-align: left;
 }
 
-.treasure__footer-summary {
+.treasure__settings-toggle:hover,
+.treasure__settings-toggle:focus-visible {
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure__settings-toggle--open {
+  background: var(--color-surface-2, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.treasure__settings-caret {
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
-.treasure__confirm {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  margin-top: 8px;
-  background: rgba(214, 59, 59, 0.1);
-  border: 1px solid rgba(214, 59, 59, 0.4);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+.treasure__settings-label {
+  font-weight: 600;
 }
 
-.treasure__confirm-msg {
-  flex: 1 1 auto;
+.treasure__settings-delta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure__settings-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.treasure__settings-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  min-height: 28px;
+}
+
+.treasure__settings-row-label {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.treasure__settings-segmented {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.treasure__settings-axis {
+  display: inline-block;
+  min-width: 52px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+  letter-spacing: 0.02em;
+}
+
+.treasure__settings-segment {
+  appearance: none;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.treasure__settings-segment:first-of-type {
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.treasure__settings-segment:last-of-type {
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.treasure__settings-segment + .treasure__settings-segment {
+  border-left-width: 0;
+}
+
+.treasure__settings-segment:hover,
+.treasure__settings-segment:focus-visible {
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure__settings-segment--active {
+  background: var(--color-accent, #4a90e2);
+  color: white;
+  border-color: var(--color-accent, #4a90e2);
+}
+
+.treasure__settings-segment--active + .treasure__settings-segment {
+  border-left-width: 1px;
+}
+
+.treasure__settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.treasure__settings-reset {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.treasure__settings-reset:hover,
+.treasure__settings-reset:focus-visible {
+  color: var(--color-accent, #4a90e2);
+  text-decoration: underline;
+}
+
+/* ── Sum (all Enemies): per-creature contributions accordion ─────── */
+
+.treasure__contributions {
+  margin-top: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  /* Cap the accordion at a viewport-relative max so a 20-enemy
+     encounter doesn't crowd the rolled-loot list off the screen.
+     `display: flex; flex-direction: column` lets the toggle button
+     stay pinned and the list scroll within the cap. */
+  display: flex;
+  flex-direction: column;
+  max-height: 35vh;
+}
+
+.treasure__contributions-toggle {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.treasure__contributions-toggle:hover,
+.treasure__contributions-toggle:focus-visible {
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure__contributions-toggle--open {
+  background: var(--color-surface-2, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.treasure__contributions-caret {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.treasure__contributions-label {
+  font-weight: 600;
+}
+
+.treasure__contributions-count {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure__contributions-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Inner scroll surface when the parent's 35vh cap clips
+     a long enemy list. */
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.treasure__contributions-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.treasure__contributions-name {
+  color: var(--color-text);
+}
+
+.treasure__contributions-bracket {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure__contributions-coins {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Main Treasure modal: "Edit treasure table…" link ────────────── */
+
+.treasure__edit-table-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.treasure__edit-table {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-accent, #4a90e2);
+  cursor: pointer;
+  padding: 0;
+}
+
+.treasure__edit-table:hover,
+.treasure__edit-table:focus-visible {
+  text-decoration: underline;
+}
+
+/* ── Treasure Table editor modal ─────────────────────────────────── */
+
+.treasure-table__blurb {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  background: var(--color-surface-2, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.treasure-table__group {
+  margin-bottom: 16px;
+}
+
+.treasure-table__group-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.treasure-table__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treasure-table__section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.treasure-table__section-toggle {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  text-align: left;
+}
+
+.treasure-table__section-toggle:hover,
+.treasure-table__section-toggle:focus-visible {
+  background: var(--color-surface-2, transparent);
+}
+
+.treasure-table__section-toggle--open {
+  background: var(--color-surface-2, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.treasure-table__section-caret {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.treasure-table__section-label {
+  font-weight: 600;
+}
+
+.treasure-table__section-count {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure-table__row-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.treasure-table__data-row {
+  font-size: 0.82rem;
+}
+
+.treasure-table__row-summary {
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.treasure-table__name-editor {
+  padding: 6px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treasure-table__name-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.treasure-table__name-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.treasure-table__name-input {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.88rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.treasure-table__name-input:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  outline: none;
+}
+
+.treasure-table__name-add {
+  align-self: flex-start;
+  appearance: none;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text);
+  margin-top: 6px;
+}
+
+.treasure-table__name-add:hover,
+.treasure-table__name-add:focus-visible {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure-table__reset-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.treasure-table__reset {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.treasure-table__reset:hover,
+.treasure-table__reset:focus-visible {
+  border-color: #d63b3b;
+  color: #d63b3b;
 }
 
 /* Dark theme overrides for the rarity chips so they read on the

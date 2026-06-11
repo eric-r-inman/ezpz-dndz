@@ -148,6 +148,8 @@ view model =
                         (legendaryEditor ui.legendaryActions)
                     , editSection "Tags"
                         (tagsEditor ui.tags)
+                    , editSection "Loot"
+                        (lootEditor ui.loot)
                     , editSection "Lair Actions"
                         (lairEditor ui.lairActions)
                     , editSection "Regional Effects"
@@ -850,6 +852,41 @@ tagRow idx tag =
             [ class "edit-row__remove"
             , onClick (CompendiumEditTagRemove idx)
             , Tooltips.attr Tooltips.compendiumEditRemoveTag
+            ]
+            [ text "×" ]
+        ]
+
+
+{-| Free-form loot editor. One text input per item the creature
+carries; "+ Add Loot Item" appends a row. Empty rows get
+filtered on submit so a half-typed row mid-edit doesn't end up
+as a phantom "" entry.
+-}
+lootEditor : List String -> List (Html Msg)
+lootEditor rows =
+    List.indexedMap lootRow rows
+        ++ [ button
+                [ class "action-btn action-btn--blue edit-add-btn"
+                , onClick CompendiumEditLootAdd
+                ]
+                [ text "+ Add Loot Item" ]
+           ]
+
+
+lootRow : Int -> String -> Html Msg
+lootRow idx item =
+    div [ class "edit-row edit-row--list-item" ]
+        [ input
+            [ type_ "text"
+            , value item
+            , Attr.placeholder "e.g. Bone necklace, Crumpled map fragment"
+            , onInput (CompendiumEditLootChanged idx)
+            , class "edit-field__input"
+            ]
+            []
+        , button
+            [ class "edit-row__remove"
+            , onClick (CompendiumEditLootRemove idx)
             ]
             [ text "×" ]
         ]

@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, TreasureState, rosterDirty
+    , RechargeAbility, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -450,24 +450,8 @@ type alias Encounter =
     { creatures : List Creature
     , activeName : String
     , round : Int
-    , treasure : Maybe TreasureState
-    }
-
-
-{-| Loot the GM rolled for this encounter, plus the per-row
-"distributed" flags so the modal can show what's already been
-handed to the party. `Nothing` means the GM hasn't opened the
-treasure modal yet; rolling once populates this and subsequent
-opens of the modal show the same loot.
-
-`distributed` is a set of opaque slugs identifying each row
-(`"coins"`, `"gem:0"`, `"art:2"`, `"magic:1"`). Clearing it on
-a re-roll is the modal's job; the domain just stores it.
-
--}
-type alias TreasureState =
-    { roll : Encounter.Treasure.TreasureRoll
-    , distributed : Set String
+    , treasure : Maybe Encounter.Treasure.TreasureRoll
+    , treasureSettings : Encounter.Treasure.TreasureSettings
     }
 
 
@@ -490,6 +474,7 @@ empty =
     , activeName = ""
     , round = 0
     , treasure = Nothing
+    , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 

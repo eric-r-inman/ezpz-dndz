@@ -39,6 +39,9 @@ module Update.Compendium.Edit exposing
     , legendaryRemove
     , legendaryUsesChanged
     , legendaryUsesInLairChanged
+    , lootAdd
+    , lootChanged
+    , lootRemove
     , new
     , regionalAdd
     , regionalDescriptionChanged
@@ -760,6 +763,33 @@ tagChanged : Int -> String -> Model -> ( Model, Cmd Msg )
 tagChanged idx text model =
     ( withCompendiumEdit
         (\ui -> { ui | tags = updateAt idx (\_ -> text) ui.tags })
+        model
+    , Cmd.none
+    )
+
+
+
+-- ── FREE-FORM LOOT ──────────────────────────────────────────────────────
+
+
+lootAdd : Model -> ( Model, Cmd Msg )
+lootAdd model =
+    ( withCompendiumEdit (\ui -> { ui | loot = ui.loot ++ [ "" ] }) model
+    , Cmd.none
+    )
+
+
+lootRemove : Int -> Model -> ( Model, Cmd Msg )
+lootRemove idx model =
+    ( withCompendiumEdit (\ui -> { ui | loot = removeAt idx ui.loot }) model
+    , Cmd.none
+    )
+
+
+lootChanged : Int -> String -> Model -> ( Model, Cmd Msg )
+lootChanged idx text model =
+    ( withCompendiumEdit
+        (\ui -> { ui | loot = updateAt idx (\_ -> text) ui.loot })
         model
     , Cmd.none
     )

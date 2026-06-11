@@ -703,6 +703,14 @@ type Msg
     | CompendiumEditTagAdd
     | CompendiumEditTagRemove Int
     | CompendiumEditTagChanged Int String
+      -- Loot text-row editor on the New / Edit Creature modal.
+      -- Each entry is a free-text item the GM types in (e.g.
+      -- "Bone necklace", "Crumpled map fragment"); the list
+      -- surfaces at the bottom of the stat block and aggregates
+      -- into Treasure roller output.
+    | CompendiumEditLootAdd
+    | CompendiumEditLootRemove Int
+    | CompendiumEditLootChanged Int String
       -- Advanced section editors: legendary actions, lair actions,
       -- regional effects, spellcasting.  Each section can be
       -- entirely absent (`Nothing`); the Add / Remove Msgs flip
@@ -1017,21 +1025,71 @@ type Msg
     | TreasureOpen
     | TreasureClose
     | TreasureKindSet String
-    | TreasureBracketSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised
       -- TreasureRoll.  Saved straight into the encounter, which
       -- triggers the standard persist hook.
     | TreasureRolled Encounter.Treasure.TreasureRoll
-      -- Per-row distributed checkbox.  Slug identifies the row:
-      -- "coins", "gem:<idx>", "art:<idx>", or "magic:<idx>".
-    | TreasureToggleDistributed String
-      -- Re-roll workflow: first click asks for confirmation if
-      -- any row is already marked distributed (avoid clobbering
-      -- ledger state).
-    | TreasureRerollRequest
-    | TreasureRerollConfirm
-    | TreasureRerollCancel
+      -- Per-category re-roll: dump just one slice of the loot
+      -- (coins, gems, art, magic) and roll a fresh draw for it.
+      -- Useful when the magic item came up off-theme but the
+      -- rest of the loot is keepers.
+    | TreasureRerollCategory Encounter.Treasure.Category
+    | TreasureCategoryRolled Encounter.Treasure.Category Encounter.Treasure.TreasureRoll
+      -- Collapse / expand the "By creature" breakdown that
+      -- accompanies a Sum (all Enemies) roll.
+    | TreasureContributionsToggle
+      -- Per-encounter roll knobs (More/Normal/Fewer for counts,
+      -- Higher/Normal/Lower for tier values).  Wire strings are
+      -- ("coins" / "gems" / "art" / "magic", "fewer" / "normal" /
+      -- "more") and ("gems" / "art" / "magic", "lower" / "normal" /
+      -- "higher"). Reset returns every knob to Normal.
+    | TreasureSettingsCountSet String String
+    | TreasureSettingsValueSet String String
+    | TreasureSettingsReset
+      -- Collapse / expand the "Tune your rolls" settings panel
+      -- in the Treasure modal.
+    | TreasureSettingsToggle
+      -- Per-row delete.  The × button on each rolled treasure
+      -- item removes just that item from the encounter's roll
+      -- (gem/art/magic by index; coin denomination by wire
+      -- string).  The matching custom-row remove lives below
+      -- alongside the rest of the user-table flow.
+    | TreasureCoinRemove String
+    | TreasureGemRemove Int
+    | TreasureArtRemove Int
+    | TreasureMagicRemove Int
+      -- Singular per-user Treasure Table sync.  Boot fetch lands
+      -- in `TreasureTableLoaded`; every editor mutation fires
+      -- `Effects.putTreasureTable` and the response lands in
+      -- `TreasureTablePersisted`.  Anonymous sessions persist via
+      -- `Ports.persistLocalUserTreasureTable` and skip the wire.
+    | TreasureTableLoaded (Result Http.Error (Maybe Encounter.Treasure.TreasureTable))
+    | TreasureTablePersisted (Result Http.Error ())
+      -- Editor modal lifecycle.
+    | TreasureTableOpen
+    | TreasureTableClose
+      -- Toggle one collapsible section's expanded state.  Section
+      -- discriminator + slug get passed verbatim from the view
+      -- so the editor doesn't have to know about the section
+      -- catalogue.
+    | TreasureTableToggleSection String String
+      -- Edit the list of names for one gem / art / magic tier.
+      -- `String` parameter pairs are (tier-key, new-name) for
+      -- add and (tier-key, index, new-value) for edit.  Remove
+      -- just takes (tier-key, index).
+    | TreasureTableGemAdd String
+    | TreasureTableGemEdit String Int String
+    | TreasureTableGemRemoveItem String Int
+    | TreasureTableArtAdd String
+    | TreasureTableArtEdit String Int String
+    | TreasureTableArtRemoveItem String Int
+    | TreasureTableMagicAdd String
+    | TreasureTableMagicEdit String Int String
+    | TreasureTableMagicRemoveItem String Int
+      -- Reset the user's table to the bundled SRD default.
+      -- Two-step confirm gating happens in the view layer.
+    | TreasureTableResetToBundled
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

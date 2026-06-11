@@ -98,6 +98,13 @@ pub struct Creature {
   /// for as long as some creature carries it.
   #[serde(default)]
   pub tags: Vec<String>,
+  /// Free-text loot items the GM has typed in for this creature.
+  /// Surface at the bottom of the stat block; the Treasure roller
+  /// aggregates these into its output (one "Loot" row per item,
+  /// no gp value computed — these are DM-flavor descriptions, not
+  /// table values).  Empty on bundled SRD creatures.
+  #[serde(default)]
+  pub loot: Vec<String>,
   pub created_at: i64,
   pub updated_at: i64,
   /// `true` when this creature originates from the read-only SRD
@@ -188,6 +195,8 @@ pub struct CreatureDraft {
   pub treasures: Vec<Treasure>,
   #[serde(default)]
   pub tags: Vec<String>,
+  #[serde(default)]
+  pub loot: Vec<String>,
 }
 
 /// 2024 Monster Manual habitat tag.  Material-Plane habitats

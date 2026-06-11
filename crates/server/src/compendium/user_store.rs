@@ -232,6 +232,7 @@ fn creature_from_draft(draft: CreatureDraft, id: String, now: i64) -> Creature {
     habitats: draft.habitats,
     treasures: draft.treasures,
     tags: draft.tags,
+    loot: draft.loot,
     created_at: now,
     updated_at: now,
     is_bundled: false,

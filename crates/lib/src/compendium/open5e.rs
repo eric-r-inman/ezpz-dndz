@@ -235,6 +235,7 @@ impl Monster {
       habitats: draft.habitats,
       treasures: draft.treasures,
       tags: draft.tags,
+      loot: draft.loot,
       created_at: now,
       updated_at: now,
       is_bundled: false,
@@ -329,6 +330,7 @@ impl From<Monster> for CreatureDraft {
       habitats: Vec::new(),
       treasures: Vec::new(),
       tags: Vec::new(),
+      loot: Vec::new(),
     }
   }
 }

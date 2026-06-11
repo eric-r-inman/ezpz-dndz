@@ -116,6 +116,15 @@ type alias Creature =
     , habitats : List Habitat
     , treasures : List Treasure
     , tags : List String
+
+    -- Free-text loot list — one entry per item the creature
+    -- carries.  Surfaces at the bottom of the stat block and
+    -- gets aggregated into the Treasure roller's output (one
+    -- "Loot" row per item, no gp value computed — these are
+    -- DM-flavor descriptions, not table values).  Empty by
+    -- default on bundled SRD creatures; users can edit it via
+    -- the Edit/Create creature modal.
+    , loot : List String
     , createdAt : Int
     , updatedAt : Int
     , isBundled : Bool

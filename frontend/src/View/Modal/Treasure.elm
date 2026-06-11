@@ -10,25 +10,23 @@ Layout, top to bottom:
   - Gems list (if the roll produced any).
   - Art-objects list (if the roll produced any).
   - Magic-items list (if the roll produced any).
-  - Footer with the Re-roll button + a "X of N distributed"
-    summary.
+  - Custom rows (if the GM rolled any user-authored tables).
+  - Custom-tables picker — list of the GM's user-authored
+    tables with per-table Roll buttons + a "Manage tables…"
+    link to the editor.
 
-Each item row has a checkbox that marks the row "distributed"
-(i.e., handed to a player). Distributed rows render in a muted
-style so the GM can see what's left at a glance.
-
-When the GM hits Re-roll on a list that's got distributed items,
-the modal shows a confirm banner before discarding the existing
-roll.
+Each section has a small `↻` icon in its header that re-rolls
+just that slice (coins / gems / art / magic) without touching
+the others; the main Roll button at the top replaces the
+whole roll with a fresh draw.
 
 -}
 
-import Encounter exposing (TreasureState)
 import Encounter.Treasure as Treasure
     exposing
         ( ArtItem
-        , Bracket(..)
         , Coins
+        , CreatureContribution
         , GemItem
         , Kind(..)
         , MagicItem
@@ -39,7 +37,6 @@ import Html
         ( Html
         , button
         , div
-        , input
         , label
         , li
         , option
@@ -53,10 +50,8 @@ import Html
 import Html.Attributes as Attr
     exposing
         ( attribute
-        , checked
         , class
         , disabled
-        , id
         , selected
         , type_
         , value
@@ -64,9 +59,9 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
-import Set
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
+import Util.Number
 import View.Modal
 
 
@@ -80,24 +75,410 @@ view chrome model =
                 , title = "💰 Treasure"
                 , extraClass = "modal--treasure"
                 , chrome = chrome
-                , body = body ui model.encounter.treasure
+                , body = body ui model.encounter.treasure model.encounter.treasureSettings
                 }
 
         _ ->
             text ""
 
 
-body : TreasureUi -> Maybe TreasureState -> List (Html Msg)
-body ui maybeState =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> List (Html Msg)
+body ui maybeRoll settings =
     [ controlRow ui
-    , confirmBanner ui maybeState
-    , case maybeState of
+    , settingsSection ui.settingsExpanded settings
+    , case maybeRoll of
         Nothing ->
             emptyState
 
-        Just state ->
-            resultBlock state
+        Just roll ->
+            resultBlock roll
+    , case maybeRoll of
+        Just roll ->
+            contributionsSection ui.contributionsExpanded roll.contributions
+
+        Nothing ->
+            text ""
+    , editTableLink
     ]
+
+
+{-| Collapsible "Tune your rolls" section: per-class knobs that
+multiply dice counts and shift tier values around what the
+treasure table itself produces. Default collapsed since most
+rolls just use Normal — the section header summarises the
+current knobs when not Normal so the GM can see at a glance
+that a roll is tuned.
+-}
+settingsSection : Bool -> Treasure.TreasureSettings -> Html Msg
+settingsSection expanded settings =
+    let
+        nonDefault =
+            settingsDelta settings
+    in
+    section [ class "treasure__settings" ]
+        [ button
+            [ class
+                ("treasure__settings-toggle"
+                    ++ (if expanded then
+                            " treasure__settings-toggle--open"
+
+                        else
+                            ""
+                       )
+                )
+            , type_ "button"
+            , onClick TreasureSettingsToggle
+            ]
+            [ span [ class "treasure__settings-caret" ]
+                [ text
+                    (if expanded then
+                        "▾"
+
+                     else
+                        "▸"
+                    )
+                ]
+            , span [ class "treasure__settings-label" ]
+                [ text "Tune your rolls" ]
+            , span [ class "treasure__settings-delta" ]
+                [ text
+                    (if String.isEmpty nonDefault then
+                        "All Normal"
+
+                     else
+                        nonDefault
+                    )
+                ]
+            ]
+        , if expanded then
+            div [ class "treasure__settings-body" ]
+                [ settingsRow "Coins"
+                    "coins"
+                    (Just settings.coinsCount)
+                    Nothing
+                , settingsRow "Gems"
+                    "gems"
+                    (Just settings.gemsCount)
+                    (Just settings.gemsValue)
+                , settingsRow "Art"
+                    "art"
+                    (Just settings.artCount)
+                    (Just settings.artValue)
+                , settingsRow "Magic"
+                    "magic"
+                    (Just settings.magicCount)
+                    (Just settings.magicValue)
+                , div [ class "treasure__settings-actions" ]
+                    [ button
+                        [ class "treasure__settings-reset"
+                        , type_ "button"
+                        , onClick TreasureSettingsReset
+                        , attribute "title" "Return every knob to Normal"
+                        ]
+                        [ text "↺ Reset to Normal" ]
+                    ]
+                ]
+
+          else
+            text ""
+        ]
+
+
+{-| Brief one-line summary of any knobs that aren't Normal.
+Empty string when everything is at default; "Gems: More /
+Higher · Art: Fewer" otherwise.
+-}
+settingsDelta : Treasure.TreasureSettings -> String
+settingsDelta s =
+    let
+        coinsPart =
+            knobPair "Coins" s.coinsCount Treasure.ValueNormal
+
+        gemsPart =
+            knobPair "Gems" s.gemsCount s.gemsValue
+
+        artPart =
+            knobPair "Art" s.artCount s.artValue
+
+        magicPart =
+            knobPair "Magic" s.magicCount s.magicValue
+    in
+    [ coinsPart, gemsPart, artPart, magicPart ]
+        |> List.filter (not << String.isEmpty)
+        |> String.join " · "
+
+
+knobPair : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> String
+knobPair label count value =
+    let
+        parts =
+            [ countAdjustLabelSummary count, valueAdjustLabelSummary value ]
+                |> List.filter (not << String.isEmpty)
+    in
+    if List.isEmpty parts then
+        ""
+
+    else
+        label ++ ": " ++ String.join " / " parts
+
+
+countAdjustLabelSummary : Treasure.CountAdjust -> String
+countAdjustLabelSummary c =
+    case c of
+        Treasure.CountFewer ->
+            "Fewer"
+
+        Treasure.CountNormal ->
+            ""
+
+        Treasure.CountMore ->
+            "More"
+
+
+valueAdjustLabelSummary : Treasure.ValueAdjust -> String
+valueAdjustLabelSummary v =
+    case v of
+        Treasure.ValueLower ->
+            "Lower"
+
+        Treasure.ValueNormal ->
+            ""
+
+        Treasure.ValueHigher ->
+            "Higher"
+
+
+settingsRow :
+    String
+    -> String
+    -> Maybe Treasure.CountAdjust
+    -> Maybe Treasure.ValueAdjust
+    -> Html Msg
+settingsRow label_ itemClass maybeCount maybeValue =
+    div [ class "treasure__settings-row" ]
+        [ span [ class "treasure__settings-row-label" ] [ text label_ ]
+        , case maybeCount of
+            Just countValue ->
+                countSegmented itemClass countValue
+
+            Nothing ->
+                text ""
+        , case maybeValue of
+            Just valueValue ->
+                valueSegmented itemClass valueValue
+
+            Nothing ->
+                text ""
+        ]
+
+
+countSegmented : String -> Treasure.CountAdjust -> Html Msg
+countSegmented itemClass current =
+    let
+        countLabel =
+            if itemClass == "coins" then
+                "Amount"
+
+            else
+                "Count"
+    in
+    div [ class "treasure__settings-segmented" ]
+        [ span [ class "treasure__settings-axis" ] [ text countLabel ]
+        , segmentedButton itemClass
+            current
+            Treasure.CountFewer
+            "Fewer"
+            (TreasureSettingsCountSet itemClass "fewer")
+        , segmentedButton itemClass
+            current
+            Treasure.CountNormal
+            "Normal"
+            (TreasureSettingsCountSet itemClass "normal")
+        , segmentedButton itemClass
+            current
+            Treasure.CountMore
+            "More"
+            (TreasureSettingsCountSet itemClass "more")
+        ]
+
+
+valueSegmented : String -> Treasure.ValueAdjust -> Html Msg
+valueSegmented itemClass current =
+    let
+        valueLabel =
+            if itemClass == "magic" then
+                "Rarity"
+
+            else
+                "Value"
+    in
+    div [ class "treasure__settings-segmented" ]
+        [ span [ class "treasure__settings-axis" ] [ text valueLabel ]
+        , segmentedButton itemClass
+            current
+            Treasure.ValueLower
+            "Lower"
+            (TreasureSettingsValueSet itemClass "lower")
+        , segmentedButton itemClass
+            current
+            Treasure.ValueNormal
+            "Normal"
+            (TreasureSettingsValueSet itemClass "normal")
+        , segmentedButton itemClass
+            current
+            Treasure.ValueHigher
+            "Higher"
+            (TreasureSettingsValueSet itemClass "higher")
+        ]
+
+
+{-| Tiny generic segmented-control button. Active when `current
+== target`. Stays type-agnostic via Elm's structural typing —
+the call sites supply tagged CountAdjust or ValueAdjust values.
+-}
+segmentedButton : String -> a -> a -> String -> Msg -> Html Msg
+segmentedButton _ current target text_ msg =
+    button
+        [ class
+            ("treasure__settings-segment"
+                ++ (if current == target then
+                        " treasure__settings-segment--active"
+
+                    else
+                        ""
+                   )
+            )
+        , type_ "button"
+        , onClick msg
+        ]
+        [ text text_ ]
+
+
+contributionsSection : Bool -> List CreatureContribution -> Html Msg
+contributionsSection expanded contributions =
+    if List.isEmpty contributions then
+        text ""
+
+    else
+        section [ class "treasure__contributions" ]
+            [ button
+                [ class
+                    ("treasure__contributions-toggle"
+                        ++ (if expanded then
+                                " treasure__contributions-toggle--open"
+
+                            else
+                                ""
+                           )
+                    )
+                , type_ "button"
+                , onClick TreasureContributionsToggle
+                , attribute "aria-expanded"
+                    (if expanded then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ span [ class "treasure__contributions-caret" ]
+                    [ text
+                        (if expanded then
+                            "▾"
+
+                         else
+                            "▸"
+                        )
+                    ]
+                , span [ class "treasure__contributions-label" ]
+                    [ text "By creature" ]
+                , span [ class "treasure__contributions-count" ]
+                    [ text (String.fromInt (List.length contributions) ++ " enemies") ]
+                ]
+            , if expanded then
+                ul [ class "treasure__contributions-list" ]
+                    (List.map contributionRow contributions)
+
+              else
+                text ""
+            ]
+
+
+contributionRow : CreatureContribution -> Html Msg
+contributionRow c =
+    li [ class "treasure__contributions-row" ]
+        [ span [ class "treasure__contributions-name" ]
+            [ text c.creatureName
+            , span [ class "treasure__contributions-bracket" ]
+                [ text (" — " ++ Treasure.bracketLabel c.bracket) ]
+            ]
+        , span [ class "treasure__contributions-coins" ]
+            [ text (contributionSummary c) ]
+        ]
+
+
+contributionSummary : CreatureContribution -> String
+contributionSummary c =
+    let
+        gemPart =
+            if List.isEmpty c.gems then
+                ""
+
+            else
+                " + " ++ String.join ", " (List.map gemLabel c.gems)
+
+        lootPart =
+            if List.isEmpty c.loot then
+                ""
+
+            else
+                " + " ++ String.join ", " c.loot
+    in
+    coinSummary c.coins ++ gemPart ++ lootPart
+
+
+gemLabel : GemItem -> String
+gemLabel g =
+    g.name ++ " (" ++ String.fromInt g.valueGp ++ " gp)"
+
+
+coinSummary : Coins -> String
+coinSummary c =
+    let
+        parts =
+            [ ( c.platinum, "pp" )
+            , ( c.gold, "gp" )
+            , ( c.electrum, "ep" )
+            , ( c.silver, "sp" )
+            , ( c.copper, "cp" )
+            ]
+                |> List.filterMap
+                    (\( amount, abbrev ) ->
+                        if amount > 0 then
+                            Just (formatNumber amount ++ " " ++ abbrev)
+
+                        else
+                            Nothing
+                    )
+    in
+    if List.isEmpty parts then
+        "—"
+
+    else
+        String.join ", " parts
+
+
+editTableLink : Html Msg
+editTableLink =
+    div [ class "treasure__edit-table-row" ]
+        [ button
+            [ class "treasure__edit-table"
+            , type_ "button"
+            , onClick TreasureTableOpen
+            , attribute "title" "View / edit your treasure table"
+            ]
+            [ text "Edit treasure table…" ]
+        ]
 
 
 
@@ -108,14 +489,9 @@ controlRow : TreasureUi -> Html Msg
 controlRow ui =
     div [ class "treasure__controls" ]
         [ label [ class "treasure__field" ]
-            [ span [ class "treasure__field-label" ] [ text "Kind" ]
+            [ span [ class "treasure__field-label" ] [ text "Roll:" ]
             , select [ class "treasure__select", onInput TreasureKindSet ]
                 (List.map (kindOption ui.kind) Treasure.kindOptions)
-            ]
-        , label [ class "treasure__field" ]
-            [ span [ class "treasure__field-label" ] [ text "CR bracket" ]
-            , select [ class "treasure__select", onInput TreasureBracketSet ]
-                (List.map (bracketOption ui.bracket) Treasure.bracketOptions)
             ]
         , button
             [ class "action-btn action-btn--green treasure__roll"
@@ -140,54 +516,6 @@ kindOption current k =
         [ text (Treasure.kindLabel k) ]
 
 
-bracketOption : Bracket -> Bracket -> Html Msg
-bracketOption current b =
-    let
-        wire =
-            case b of
-                B1to4 ->
-                    "1to4"
-
-                B5to10 ->
-                    "5to10"
-
-                B11to16 ->
-                    "11to16"
-
-                B17plus ->
-                    "17plus"
-    in
-    option [ value wire, selected (b == current) ]
-        [ text (Treasure.bracketLabel b) ]
-
-
-
--- ── CONFIRM BANNER ───────────────────────────────────────────────────────────
-
-
-confirmBanner : TreasureUi -> Maybe TreasureState -> Html Msg
-confirmBanner ui maybeState =
-    case ( ui.confirmingRereroll, maybeState ) of
-        ( True, Just _ ) ->
-            div [ class "treasure__confirm" ]
-                [ span [ class "treasure__confirm-msg" ]
-                    [ text "Re-roll will discard the current loot, including the distributed marks. Continue?" ]
-                , button
-                    [ class "action-btn action-btn--blue"
-                    , onClick TreasureRerollCancel
-                    ]
-                    [ text "Cancel" ]
-                , button
-                    [ class "action-btn action-btn--red"
-                    , onClick TreasureRerollConfirm
-                    ]
-                    [ text "Re-roll anyway" ]
-                ]
-
-        _ ->
-            text ""
-
-
 
 -- ── RESULTS ──────────────────────────────────────────────────────────────────
 
@@ -195,25 +523,18 @@ confirmBanner ui maybeState =
 emptyState : Html Msg
 emptyState =
     p [ class "treasure__empty" ]
-        [ text "Pick a kind + bracket above and hit Roll." ]
+        [ text "Pick a kind above and hit Roll." ]
 
 
-resultBlock : TreasureState -> Html Msg
-resultBlock state =
-    let
-        roll =
-            state.roll
-
-        d =
-            state.distributed
-    in
+resultBlock : Treasure.TreasureRoll -> Html Msg
+resultBlock roll =
     div [ class "treasure__results" ]
         [ summaryStrip roll
-        , coinsSection roll.coins d
-        , gemsSection roll.gems d
-        , artSection roll.art d
-        , magicSection roll.magic d
-        , footerRow state
+        , coinsSection roll.coins
+        , gemsSection roll.gems
+        , artSection roll.art
+        , magicSection roll.magic
+        , lootSection roll.loot
         ]
 
 
@@ -253,32 +574,26 @@ summaryStrip roll =
 -- ── COINS ────────────────────────────────────────────────────────────────────
 
 
-coinsSection : Coins -> Set.Set String -> Html Msg
-coinsSection coins distributed =
-    let
-        slug =
-            "coins"
-
-        isDistributed =
-            Set.member slug distributed
-    in
-    section
-        [ class
-            ("treasure__section "
-                ++ (if isDistributed then
-                        "treasure__section--distributed"
-
-                    else
-                        ""
-                   )
-            )
-        ]
+coinsSection : Coins -> Html Msg
+coinsSection coins =
+    section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
             [ span [ class "treasure__section-title" ] [ text "Coins" ]
-            , distributedCheckbox slug isDistributed
+            , rerollCategoryButton Treasure.CoinsCategory
             ]
         , ul [ class "treasure__list" ] (coinLines coins)
         ]
+
+
+rerollCategoryButton : Treasure.Category -> Html Msg
+rerollCategoryButton category =
+    button
+        [ class "treasure__reroll-category"
+        , type_ "button"
+        , onClick (TreasureRerollCategory category)
+        , attribute "aria-label" ("Re-roll " ++ Treasure.categoryLabel category)
+        ]
+        [ text "↻" ]
 
 
 coinLines : Coins -> List (Html Msg)
@@ -293,8 +608,12 @@ coinLines c =
             (\( amount, abbrev, name ) ->
                 if amount > 0 then
                     Just
-                        (li [ class ("treasure__coin treasure__coin--" ++ name) ]
-                            [ text (formatNumber amount ++ " " ++ abbrev) ]
+                        (li
+                            [ class ("treasure__coin treasure__coin--" ++ name) ]
+                            [ span [ class "treasure__coin-text" ]
+                                [ text (formatNumber amount ++ " " ++ abbrev) ]
+                            , rowRemoveButton (TreasureCoinRemove name)
+                            ]
                         )
 
                 else
@@ -303,121 +622,293 @@ coinLines c =
         |> emptyMessageWhenEmpty "(no coins)"
 
 
+{-| Generic × button rendered at the right of every rolled
+treasure row. The msg parameter routes the click to the right
+per-section remove handler.
+-}
+rowRemoveButton : Msg -> Html Msg
+rowRemoveButton msg =
+    button
+        [ class "treasure__row-remove"
+        , type_ "button"
+        , onClick msg
+        , attribute "aria-label" "Remove this item"
+        , attribute "title" "Remove"
+        ]
+        [ text "✕" ]
+
+
 
 -- ── GEMS / ART ───────────────────────────────────────────────────────────────
 
 
-gemsSection : List GemItem -> Set.Set String -> Html Msg
-gemsSection items distributed =
+gemsSection : List GemItem -> Html Msg
+gemsSection items =
     if List.isEmpty items then
         text ""
 
     else
-        valuedSection "Gems" "gem" items distributed (\g -> ( g.name, g.valueGp ))
+        valuedSection "Gems"
+            Treasure.GemsCategory
+            items
+            (\g -> ( g.name, g.valueGp ))
+            TreasureGemRemove
 
 
-artSection : List ArtItem -> Set.Set String -> Html Msg
-artSection items distributed =
+artSection : List ArtItem -> Html Msg
+artSection items =
     if List.isEmpty items then
         text ""
 
     else
-        valuedSection "Art objects" "art" items distributed (\a -> ( a.name, a.valueGp ))
+        valuedSection "Art objects"
+            Treasure.ArtCategory
+            items
+            (\a -> ( a.name, a.valueGp ))
+            TreasureArtRemove
 
 
 valuedSection :
     String
-    -> String
+    -> Treasure.Category
     -> List a
-    -> Set.Set String
     -> (a -> ( String, Int ))
+    -> (Int -> Msg)
     -> Html Msg
-valuedSection title slugPrefix items distributed project =
+valuedSection title category items project removeMsg =
+    let
+        groups =
+            groupItems project items
+    in
     section [ class "treasure__section" ]
         [ div [ class "treasure__section-header" ]
-            [ span [ class "treasure__section-title" ] [ text title ] ]
+            [ span [ class "treasure__section-title" ] [ text title ]
+            , rerollCategoryButton category
+            ]
         , ul [ class "treasure__list" ]
-            (List.indexedMap
-                (\idx item ->
-                    let
-                        slug =
-                            slugPrefix ++ ":" ++ String.fromInt idx
-
-                        isDistributed =
-                            Set.member slug distributed
-
-                        ( name, valueGp ) =
-                            project item
-                    in
-                    li
-                        [ class
-                            ("treasure__row"
-                                ++ (if isDistributed then
-                                        " treasure__row--distributed"
-
-                                    else
-                                        ""
-                                   )
-                            )
-                        ]
-                        [ distributedCheckbox slug isDistributed
-                        , span [ class "treasure__row-name" ] [ text name ]
+            (List.map
+                (\g ->
+                    li [ class "treasure__row" ]
+                        [ span [ class "treasure__row-name" ]
+                            [ text g.name
+                            , countSuffix g.count
+                            ]
                         , span [ class "treasure__row-value" ]
-                            [ text (String.fromInt valueGp ++ " gp") ]
+                            [ text (String.fromInt g.valueGp ++ " gp") ]
+                        , rowRemoveButton (removeMsg g.firstIndex)
                         ]
                 )
-                items
+                groups
             )
         ]
+
+
+type alias ValuedGroup =
+    { name : String
+    , valueGp : Int
+    , count : Int
+    , firstIndex : Int
+    }
+
+
+{-| Walk an indexed list and accumulate items into groups keyed
+by the projected identity (name + value). Each group records
+the first occurrence's index so the × button can remove from
+the underlying list and re-render shows the count decremented.
+-}
+groupItems : (a -> ( String, Int )) -> List a -> List ValuedGroup
+groupItems project items =
+    items
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( idx, item ) acc ->
+                let
+                    ( name, valueGp ) =
+                        project item
+                in
+                if List.any (\g -> g.name == name && g.valueGp == valueGp) acc then
+                    List.map
+                        (\g ->
+                            if g.name == name && g.valueGp == valueGp then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc
+                        ++ [ { name = name
+                             , valueGp = valueGp
+                             , count = 1
+                             , firstIndex = idx
+                             }
+                           ]
+            )
+            []
+
+
+countSuffix : Int -> Html Msg
+countSuffix count =
+    if count > 1 then
+        span [ class "treasure__row-count" ]
+            [ text (" × " ++ String.fromInt count) ]
+
+    else
+        text ""
 
 
 
 -- ── MAGIC ITEMS ──────────────────────────────────────────────────────────────
 
 
-magicSection : List MagicItem -> Set.Set String -> Html Msg
-magicSection items distributed =
+magicSection : List MagicItem -> Html Msg
+magicSection items =
     if List.isEmpty items then
         text ""
 
     else
+        let
+            groups =
+                groupMagicItems items
+        in
         section [ class "treasure__section" ]
             [ div [ class "treasure__section-header" ]
-                [ span [ class "treasure__section-title" ] [ text "Magic items" ] ]
-            , ul [ class "treasure__list" ]
-                (List.indexedMap (magicRow distributed) items)
+                [ span [ class "treasure__section-title" ] [ text "Magic items" ]
+                , rerollCategoryButton Treasure.MagicCategory
+                ]
+            , ul [ class "treasure__list" ] (List.map magicGroupRow groups)
             ]
 
 
-magicRow : Set.Set String -> Int -> MagicItem -> Html Msg
-magicRow distributed idx item =
-    let
-        slug =
-            "magic:" ++ String.fromInt idx
+type alias MagicGroup =
+    { name : String
+    , rarity : Rarity
+    , table : Tables.MagicTable
+    , count : Int
+    , firstIndex : Int
+    }
 
-        isDistributed =
-            Set.member slug distributed
-    in
-    li
-        [ class
-            ("treasure__row"
-                ++ (if isDistributed then
-                        " treasure__row--distributed"
 
-                    else
-                        ""
-                   )
+{-| Same pattern as `groupItems` but keyed on (name, rarity,
+table) since two different "Bag of Holding" rolls from Table A
+should display as one grouped row.
+-}
+groupMagicItems : List MagicItem -> List MagicGroup
+groupMagicItems items =
+    items
+        |> List.indexedMap Tuple.pair
+        |> List.foldl
+            (\( idx, item ) acc ->
+                if List.any (sameMagic item) acc then
+                    List.map
+                        (\g ->
+                            if sameMagic item g then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc
+                        ++ [ { name = item.name
+                             , rarity = item.rarity
+                             , table = item.table
+                             , count = 1
+                             , firstIndex = idx
+                             }
+                           ]
             )
-        ]
-        [ distributedCheckbox slug isDistributed
-        , span [ class "treasure__row-name" ] [ text item.name ]
+            []
+
+
+sameMagic : MagicItem -> { g | name : String, rarity : Rarity, table : Tables.MagicTable } -> Bool
+sameMagic item g =
+    g.name == item.name && g.rarity == item.rarity && g.table == item.table
+
+
+magicGroupRow : MagicGroup -> Html Msg
+magicGroupRow g =
+    li [ class "treasure__row" ]
+        [ span [ class "treasure__row-name" ]
+            [ text g.name
+            , span [ class "treasure__row-source" ]
+                [ text (" — Table " ++ Tables.magicTableLabel g.table) ]
+            , countSuffix g.count
+            ]
         , span
             [ class
                 ("treasure__rarity treasure__rarity--"
-                    ++ rarityModifier item.rarity
+                    ++ rarityModifier g.rarity
                 )
             ]
-            [ text (Tables.rarityLabel item.rarity) ]
+            [ text (Tables.rarityLabel g.rarity) ]
+        , rowRemoveButton (TreasureMagicRemove g.firstIndex)
+        ]
+
+
+{-| "Loot" section: free-text items the enemies were authored
+with on their compendium entries. No gp values, no rarity —
+just text descriptions surfaced for the GM to read out.
+Duplicate strings collapse into a single row with an "× N"
+suffix, matching the gems/art/magic rendering.
+-}
+lootSection : List String -> Html Msg
+lootSection items =
+    if List.isEmpty items then
+        text ""
+
+    else
+        let
+            groups =
+                groupLootItems items
+        in
+        section [ class "treasure__section treasure__section--loot" ]
+            [ div [ class "treasure__section-header" ]
+                [ span [ class "treasure__section-title" ] [ text "Loot" ]
+                ]
+            , ul [ class "treasure__list" ] (List.map lootGroupRow groups)
+            ]
+
+
+type alias LootGroup =
+    { name : String, count : Int }
+
+
+groupLootItems : List String -> List LootGroup
+groupLootItems items =
+    items
+        |> List.foldl
+            (\name acc ->
+                if List.any (\g -> g.name == name) acc then
+                    List.map
+                        (\g ->
+                            if g.name == name then
+                                { g | count = g.count + 1 }
+
+                            else
+                                g
+                        )
+                        acc
+
+                else
+                    acc ++ [ { name = name, count = 1 } ]
+            )
+            []
+
+
+lootGroupRow : LootGroup -> Html Msg
+lootGroupRow g =
+    li [ class "treasure__row" ]
+        [ span [ class "treasure__row-name" ]
+            [ text g.name
+            , countSuffix g.count
+            ]
+        , span [ class "treasure__rarity treasure__rarity--loot" ]
+            [ text "Loot" ]
         ]
 
 
@@ -441,66 +932,7 @@ rarityModifier r =
 
 
 
--- ── FOOTER ───────────────────────────────────────────────────────────────────
-
-
-footerRow : TreasureState -> Html Msg
-footerRow state =
-    let
-        totalRows =
-            -- coins counts as 1 row; gems / art / magic each one
-            -- row per item.
-            1
-                + List.length state.roll.gems
-                + List.length state.roll.art
-                + List.length state.roll.magic
-
-        distributedCount =
-            Set.size state.distributed
-    in
-    div [ class "treasure__footer" ]
-        [ span [ class "treasure__footer-summary" ]
-            [ text
-                (String.fromInt distributedCount
-                    ++ " of "
-                    ++ String.fromInt totalRows
-                    ++ " distributed"
-                )
-            ]
-        , button
-            [ class "action-btn action-btn--orange"
-            , onClick TreasureRerollRequest
-            ]
-            [ text "↻ Re-roll" ]
-        ]
-
-
-
 -- ── BITS ─────────────────────────────────────────────────────────────────────
-
-
-distributedCheckbox : String -> Bool -> Html Msg
-distributedCheckbox slug isDistributed =
-    label
-        [ class "treasure__distributed"
-        , attribute "aria-label" "Mark distributed to a player"
-        ]
-        [ input
-            [ type_ "checkbox"
-            , checked isDistributed
-            , onClick (TreasureToggleDistributed slug)
-            ]
-            []
-        , span [ class "treasure__distributed-text" ]
-            [ text
-                (if isDistributed then
-                    "Distributed"
-
-                 else
-                    "Distribute"
-                )
-            ]
-        ]
 
 
 emptyMessageWhenEmpty : String -> List (Html Msg) -> List (Html Msg)
@@ -512,36 +944,9 @@ emptyMessageWhenEmpty message items =
         items
 
 
-{-| Pretty-print an integer with thousands separators. Used for
-the GM-facing coin counts so "4,200 gp" reads instantly instead
-of "4200gp" — small detail that adds up across a long campaign.
+{-| Local alias for `Util.Number.formatThousands`. Kept around
+as a single-word call site for the inline coin renderers.
 -}
 formatNumber : Int -> String
-formatNumber n =
-    let
-        chars =
-            n |> abs |> String.fromInt |> String.toList
-
-        grouped =
-            chars
-                |> List.reverse
-                |> List.indexedMap
-                    (\i c ->
-                        if i > 0 && modBy 3 i == 0 then
-                            [ c, ',' ]
-
-                        else
-                            [ c ]
-                    )
-                |> List.concat
-                |> List.reverse
-                |> String.fromList
-
-        signed =
-            if n < 0 then
-                "-" ++ grouped
-
-            else
-                grouped
-    in
-    signed
+formatNumber =
+    Util.Number.formatThousands

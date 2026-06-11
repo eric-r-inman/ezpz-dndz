@@ -22,6 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
+import Encounter.Treasure.TableWire
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
 import File exposing (File)
@@ -111,6 +112,7 @@ import Update.Shell
 import Update.Timer
 import Update.Toast
 import Update.Treasure
+import Update.TreasureTable
 import Update.UserSync
 import Url exposing (Url)
 import Util.Keyboard
@@ -145,6 +147,7 @@ import View.Modal.Save
 import View.Modal.SaveCompendium
 import View.Modal.Timer
 import View.Modal.Treasure
+import View.Modal.TreasureTable
 import View.Page.Compendium
 import View.Page.QuickList
 import View.RollPopup
@@ -495,6 +498,7 @@ type alias Flags =
     , localTimerPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
+    , localUserTreasureTable : Maybe Decode.Value
     , bootMs : Int
     }
 
@@ -606,6 +610,12 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault []
+      , userTreasureTable =
+            flags.localUserTreasureTable
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
+                        >> Result.toMaybe
+                    )
       , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -754,6 +764,22 @@ update msg model =
             else
                 Cmd.none
 
+        userTreasureTableCmd =
+            if shouldPersistAfter msg && model.userTreasureTable /= next.userTreasureTable then
+                case ( next.auth, next.userTreasureTable ) of
+                    ( Auth.AuthAuthenticated _, Just table ) ->
+                        Effects.putTreasureTable table
+
+                    ( _, Just table ) ->
+                        Ports.persistLocalUserTreasureTable
+                            (Encounter.Treasure.TableWire.encodeTable table)
+
+                    ( _, Nothing ) ->
+                        Cmd.none
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -802,6 +828,7 @@ update msg model =
         , timerPresetsCmd
         , partyCmd
         , userLoreGroupsCmd
+        , userTreasureTableCmd
         , modalFocusCmd
         ]
     )
@@ -1736,26 +1763,89 @@ updateInner msg model =
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
 
-        TreasureBracketSet raw ->
-            Update.Treasure.bracketSet raw model
-
         TreasureRoll ->
             Update.Treasure.roll model
 
         TreasureRolled treasureRoll ->
             Update.Treasure.rolled treasureRoll model
 
-        TreasureToggleDistributed slug ->
-            Update.Treasure.toggleDistributed slug model
+        TreasureRerollCategory category ->
+            Update.Treasure.rerollCategory category model
 
-        TreasureRerollRequest ->
-            Update.Treasure.rerollRequest model
+        TreasureCategoryRolled category fresh ->
+            Update.Treasure.categoryRolled category fresh model
 
-        TreasureRerollConfirm ->
-            Update.Treasure.rerollConfirm model
+        TreasureContributionsToggle ->
+            Update.Treasure.contributionsToggle model
 
-        TreasureRerollCancel ->
-            Update.Treasure.rerollCancel model
+        TreasureSettingsToggle ->
+            Update.Treasure.settingsToggle model
+
+        TreasureSettingsCountSet itemClass value ->
+            Update.Treasure.settingsCountSet itemClass value model
+
+        TreasureSettingsValueSet itemClass value ->
+            Update.Treasure.settingsValueSet itemClass value model
+
+        TreasureSettingsReset ->
+            Update.Treasure.settingsReset model
+
+        TreasureCoinRemove denomination ->
+            Update.Treasure.coinRemove denomination model
+
+        TreasureGemRemove idx ->
+            Update.Treasure.gemRemove idx model
+
+        TreasureArtRemove idx ->
+            Update.Treasure.artRemove idx model
+
+        TreasureMagicRemove idx ->
+            Update.Treasure.magicRemove idx model
+
+        TreasureTableLoaded result ->
+            Update.UserSync.treasureTableLoaded result model
+
+        TreasureTablePersisted result ->
+            Update.UserSync.treasureTablePersisted result model
+
+        TreasureTableOpen ->
+            Update.TreasureTable.open model
+
+        TreasureTableClose ->
+            Update.TreasureTable.close model
+
+        TreasureTableToggleSection kind key ->
+            Update.TreasureTable.toggleSection kind key model
+
+        TreasureTableGemAdd key ->
+            Update.TreasureTable.gemAdd key model
+
+        TreasureTableGemEdit key idx value ->
+            Update.TreasureTable.gemEdit key idx value model
+
+        TreasureTableGemRemoveItem key idx ->
+            Update.TreasureTable.gemRemove key idx model
+
+        TreasureTableArtAdd key ->
+            Update.TreasureTable.artAdd key model
+
+        TreasureTableArtEdit key idx value ->
+            Update.TreasureTable.artEdit key idx value model
+
+        TreasureTableArtRemoveItem key idx ->
+            Update.TreasureTable.artRemove key idx model
+
+        TreasureTableMagicAdd key ->
+            Update.TreasureTable.magicAdd key model
+
+        TreasureTableMagicEdit key idx value ->
+            Update.TreasureTable.magicEdit key idx value model
+
+        TreasureTableMagicRemoveItem key idx ->
+            Update.TreasureTable.magicRemove key idx model
+
+        TreasureTableResetToBundled ->
+            Update.TreasureTable.resetToBundled model
 
         CardEditorClose ->
             Update.CardEditor.close model
@@ -1933,6 +2023,15 @@ updateInner msg model =
 
         CompendiumEditTagChanged idx text ->
             Update.Compendium.Edit.tagChanged idx text model
+
+        CompendiumEditLootAdd ->
+            Update.Compendium.Edit.lootAdd model
+
+        CompendiumEditLootRemove idx ->
+            Update.Compendium.Edit.lootRemove idx model
+
+        CompendiumEditLootChanged idx text ->
+            Update.Compendium.Edit.lootChanged idx text model
 
         CompendiumEditLegendaryAdd ->
             Update.Compendium.Edit.legendaryAdd model
@@ -2611,6 +2710,7 @@ appShell maybeUser model =
     , View.Modal.CrCalculator.view model
     , View.Modal.RandomEncounter.view model
     , View.Modal.Treasure.view model.modalChrome model
+    , View.Modal.TreasureTable.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model

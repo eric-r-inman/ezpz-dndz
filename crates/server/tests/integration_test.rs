@@ -19,7 +19,7 @@ use axum::{
 };
 use ezpz_dndz_server::{
   card_editor, compendium, condition_presets, config::RuntimePaths, dice,
-  encounters, lore_groups, users, web_base::AppState,
+  encounters, lore_groups, treasure_table, users, web_base::AppState,
 };
 use rust_template_foundation::server::runner::{
   BaseServerState, ServerRunConfig,
@@ -46,6 +46,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     users: temp.path().join("users.json"),
     lore_groups: temp.path().join("lore-groups.json"),
     condition_presets: temp.path().join("condition-presets.json"),
+    treasure_table: temp.path().join("treasure-table.json"),
   };
 
   let run_config = ServerRunConfig {
@@ -92,6 +93,7 @@ fn build_test_router(state: AppState) -> Router {
     .merge(encounters::router())
     .merge(lore_groups::router())
     .merge(condition_presets::router())
+    .merge(treasure_table::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let users_state = state.clone();
@@ -1460,6 +1462,105 @@ async fn test_condition_presets_per_user_isolation() {
     read_body(bob_get).await.trim(),
     "null",
     "Bob must not see Alice's condition presets"
+  );
+}
+
+#[tokio::test]
+async fn test_treasure_table_get_returns_null_when_unset() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(read_body(response).await.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_treasure_table_put_then_get_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let payload = r#"{"individualBrackets":{},"hoardBrackets":{},"gems":{"50gp":["Custom gem"]},"art":{},"magic":{}}"#;
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/treasure-table")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let body = read_body(get).await;
+  assert!(
+    body.contains("Custom gem"),
+    "expected PUT body to round-trip, got: {body}"
+  );
+}
+
+#[tokio::test]
+async fn test_treasure_table_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/treasure-table")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(
+          r#"{"individualBrackets":{},"hoardBrackets":{},"gems":{"50gp":["Alice's gem"]},"art":{},"magic":{}}"#,
+        ))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-table")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    read_body(bob_get).await.trim(),
+    "null",
+    "Bob must not see Alice's treasure table"
   );
 }
 

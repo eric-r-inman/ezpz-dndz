@@ -180,6 +180,27 @@
         }
       } catch (_) {}
 
+      // Singular per-user treasure table.  Anonymous-mode only;
+      // authed sessions pull from /api/treasure-table instead.
+      var localUserTreasureTable = null;
+      try {
+        var treasureRaw = localStorage.getItem("userTreasureTable");
+        if (treasureRaw) {
+          localUserTreasureTable = JSON.parse(treasureRaw);
+        }
+      } catch (_) {}
+
+      // One-time clearance of the obsolete user-tables list from
+      // the prior PR #39 model (a list of named UserTables).  The
+      // new singular-table feature doesn't translate the old shape;
+      // we just drop it so a future reload doesn't accidentally
+      // surface stale data.
+      try {
+        if (localStorage.getItem("userTreasureTables") !== null) {
+          localStorage.removeItem("userTreasureTables");
+        }
+      } catch (_) {}
+
       var app = Elm.Main.init({
         node: document.getElementById("app"),
         flags: {
@@ -195,6 +216,7 @@
           localTimerPresets: localTimerPresets,
           localParty: localParty,
           localUserLoreGroups: localUserLoreGroups,
+          localUserTreasureTable: localUserTreasureTable,
           bootMs: Date.now(),
         },
       });
@@ -337,6 +359,19 @@
           try {
             localStorage.setItem(
               "userLoreGroups",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // Singular per-user treasure table.  Fires on every edit
+      // in the Treasure Table editor modal.
+      if (app.ports && app.ports.persistLocalUserTreasureTable) {
+        app.ports.persistLocalUserTreasureTable.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "userTreasureTable",
               JSON.stringify(value),
             );
           } catch (_) {}

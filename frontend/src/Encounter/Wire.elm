@@ -224,23 +224,68 @@ encodeEncounter enc =
         [ ( "creatures", E.list encodeCreature enc.creatures )
         , ( "activeName", E.string enc.activeName )
         , ( "round", E.int enc.round )
-        , ( "treasure", encodeMaybe encodeTreasureState enc.treasure )
+        , ( "treasure", encodeMaybe encodeTreasureRoll enc.treasure )
+        , ( "treasureSettings", encodeTreasureSettings enc.treasureSettings )
         ]
 
 
-encodeTreasureState : Encounter.TreasureState -> E.Value
-encodeTreasureState state =
+encodeTreasureSettings : Encounter.Treasure.TreasureSettings -> E.Value
+encodeTreasureSettings s =
     E.object
-        [ ( "roll", encodeTreasureRoll state.roll )
-        , ( "distributed", E.list E.string (Set.toList state.distributed) )
+        [ ( "coinsCount", E.string (Encounter.Treasure.countAdjustWire s.coinsCount) )
+        , ( "gemsCount", E.string (Encounter.Treasure.countAdjustWire s.gemsCount) )
+        , ( "gemsValue", E.string (Encounter.Treasure.valueAdjustWire s.gemsValue) )
+        , ( "artCount", E.string (Encounter.Treasure.countAdjustWire s.artCount) )
+        , ( "artValue", E.string (Encounter.Treasure.valueAdjustWire s.artValue) )
+        , ( "magicCount", E.string (Encounter.Treasure.countAdjustWire s.magicCount) )
+        , ( "magicValue", E.string (Encounter.Treasure.valueAdjustWire s.magicValue) )
         ]
 
 
-decodeTreasureState : D.Decoder Encounter.TreasureState
-decodeTreasureState =
-    D.map2 Encounter.TreasureState
-        (D.field "roll" decodeTreasureRoll)
-        (D.field "distributed" (D.list D.string |> D.map Set.fromList))
+decodeTreasureSettings : D.Decoder Encounter.Treasure.TreasureSettings
+decodeTreasureSettings =
+    D.map7 Encounter.Treasure.TreasureSettings
+        (decodeCountField "coinsCount")
+        (decodeCountField "gemsCount")
+        (decodeValueField "gemsValue")
+        (decodeCountField "artCount")
+        (decodeValueField "artValue")
+        (decodeCountField "magicCount")
+        (decodeValueField "magicValue")
+
+
+decodeCountField : String -> D.Decoder Encounter.Treasure.CountAdjust
+decodeCountField name =
+    D.oneOf
+        [ D.field name D.string |> D.map Encounter.Treasure.countAdjustFromWire
+        , D.succeed Encounter.Treasure.CountNormal
+        ]
+
+
+decodeValueField : String -> D.Decoder Encounter.Treasure.ValueAdjust
+decodeValueField name =
+    D.oneOf
+        [ D.field name D.string |> D.map Encounter.Treasure.valueAdjustFromWire
+        , D.succeed Encounter.Treasure.ValueNormal
+        ]
+
+
+{-| Decode the encounter's `treasure` field. Accepts two shapes
+so saved encounters from earlier builds still load:
+
+  - Current: the raw `TreasureRoll` JSON.
+  - Legacy: `{ "roll": TreasureRoll, "recipients": {...} }` or
+    `{ "roll": ..., "distributed": [...] }` — the old wrapper
+    shape from the now-removed party-loot-ledger feature. We
+    just unwrap to the inner `roll` and drop the recipient data.
+
+-}
+decodeTreasureField : D.Decoder Encounter.Treasure.TreasureRoll
+decodeTreasureField =
+    D.oneOf
+        [ D.field "roll" decodeTreasureRoll
+        , decodeTreasureRoll
+        ]
 
 
 encodeTreasureRoll : Encounter.Treasure.TreasureRoll -> E.Value
@@ -252,19 +297,32 @@ encodeTreasureRoll roll =
         , ( "gems", E.list encodeGemItem roll.gems )
         , ( "art", E.list encodeArtItem roll.art )
         , ( "magic", E.list encodeMagicItem roll.magic )
+        , ( "source", encodeMaybe encodeRowSource roll.source )
+        , ( "contributions", E.list encodeContribution roll.contributions )
+        , ( "loot", E.list E.string roll.loot )
         ]
 
 
 decodeTreasureRoll : D.Decoder Encounter.Treasure.TreasureRoll
 decodeTreasureRoll =
-    D.map6
-        (\kind bracket coins gems art magic ->
+    D.map8
+        (\kind bracket coins gems art magic source contributions ->
             { kind = kind
             , bracket = bracket
             , coins = coins
             , gems = gems
             , art = art
             , magic = magic
+            , source = source
+            , contributions = contributions
+
+            -- Placeholder so the record type-checks; the andThen
+            -- below replaces it with the decoded loot list (or
+            -- keeps `[]` if the field is missing on legacy rolls).
+            -- `D.map9` doesn't exist in elm/json so the standard
+            -- workaround is a partial in `D.map8` plus an
+            -- `andThen` to slot in the ninth field.
+            , loot = []
             }
         )
         (D.field "kind" treasureKindDecoder)
@@ -273,6 +331,277 @@ decodeTreasureRoll =
         (D.field "gems" (D.list decodeGemItem))
         (D.field "art" (D.list decodeArtItem))
         (D.field "magic" (D.list decodeMagicItem))
+        -- Pre-source rolls (saved before the row's originating
+        -- formulas were tracked) decode `source = Nothing`; the
+        -- re-roll-category path falls back to picking a fresh
+        -- row in that case.  Legacy "custom" field is just
+        -- ignored.
+        (D.oneOf
+            [ D.field "source" (D.nullable decodeRowSource)
+            , D.succeed Nothing
+            ]
+        )
+        -- Pre-sum rolls (saved before the per-creature
+        -- contributions breakdown landed) decode as `[]`.
+        (D.oneOf
+            [ D.field "contributions" (D.list decodeContribution)
+            , D.succeed []
+            ]
+        )
+        |> D.andThen
+            (\partial ->
+                D.oneOf
+                    [ D.field "loot" (D.list D.string)
+                        |> D.map (\loot -> { partial | loot = loot })
+                    , D.succeed partial
+                    ]
+            )
+
+
+encodeContribution : Encounter.Treasure.CreatureContribution -> E.Value
+encodeContribution c =
+    E.object
+        [ ( "creatureName", E.string c.creatureName )
+        , ( "coins", encodeCoins c.coins )
+        , ( "gems", E.list encodeGemItem c.gems )
+        , ( "loot", E.list E.string c.loot )
+        , ( "bracket", E.string (treasureBracketWire c.bracket) )
+        ]
+
+
+decodeContribution : D.Decoder Encounter.Treasure.CreatureContribution
+decodeContribution =
+    D.map5
+        (\creatureName coins gems loot bracket ->
+            { creatureName = creatureName
+            , coins = coins
+            , gems = gems
+            , loot = loot
+            , bracket = bracket
+            }
+        )
+        (D.field "creatureName" D.string)
+        (D.field "coins" decodeCoins)
+        (D.oneOf
+            [ D.field "gems" (D.list decodeGemItem)
+            , D.succeed []
+            ]
+        )
+        (D.oneOf
+            [ D.field "loot" (D.list D.string)
+            , D.succeed []
+            ]
+        )
+        (D.oneOf
+            [ D.field "bracket" treasureBracketDecoder
+            , D.succeed Encounter.Treasure.B1to4
+            ]
+        )
+
+
+encodeRowSource : Encounter.Treasure.RowSource -> E.Value
+encodeRowSource source =
+    E.object
+        [ ( "coinFormulas", encodeCoinFormulas source.coinFormulas )
+        , ( "gemsSpec", encodeMaybe (encodeSpec gemTierWire) source.gemsSpec )
+        , ( "artSpec", encodeMaybe (encodeSpec artTierWire) source.artSpec )
+        , ( "magicSpec", encodeMaybe (encodeSpec magicTableWire) source.magicSpec )
+        ]
+
+
+decodeRowSource : D.Decoder Encounter.Treasure.RowSource
+decodeRowSource =
+    D.map4
+        (\coinFormulas gemsSpec artSpec magicSpec ->
+            { coinFormulas = coinFormulas
+            , gemsSpec = gemsSpec
+            , artSpec = artSpec
+            , magicSpec = magicSpec
+            }
+        )
+        (D.field "coinFormulas" decodeCoinFormulas)
+        (D.oneOf
+            [ D.field "gemsSpec" (D.nullable (decodeSpec gemTierDecoder))
+            , D.succeed Nothing
+            ]
+        )
+        (D.oneOf
+            [ D.field "artSpec" (D.nullable (decodeSpec artTierDecoder))
+            , D.succeed Nothing
+            ]
+        )
+        (D.oneOf
+            [ D.field "magicSpec" (D.nullable (decodeSpec magicTableDecoder))
+            , D.succeed Nothing
+            ]
+        )
+
+
+encodeCoinFormulas : Encounter.Treasure.CoinFormulas -> E.Value
+encodeCoinFormulas formulas =
+    E.object
+        [ ( "copper", encodeMaybe encodeCoinFormula formulas.copper )
+        , ( "silver", encodeMaybe encodeCoinFormula formulas.silver )
+        , ( "electrum", encodeMaybe encodeCoinFormula formulas.electrum )
+        , ( "gold", encodeMaybe encodeCoinFormula formulas.gold )
+        , ( "platinum", encodeMaybe encodeCoinFormula formulas.platinum )
+        ]
+
+
+decodeCoinFormulas : D.Decoder Encounter.Treasure.CoinFormulas
+decodeCoinFormulas =
+    D.map5
+        (\cp sp ep gp pp ->
+            { copper = cp
+            , silver = sp
+            , electrum = ep
+            , gold = gp
+            , platinum = pp
+            }
+        )
+        (decodeOptionalField "copper" decodeCoinFormula)
+        (decodeOptionalField "silver" decodeCoinFormula)
+        (decodeOptionalField "electrum" decodeCoinFormula)
+        (decodeOptionalField "gold" decodeCoinFormula)
+        (decodeOptionalField "platinum" decodeCoinFormula)
+
+
+decodeOptionalField : String -> D.Decoder a -> D.Decoder (Maybe a)
+decodeOptionalField name inner =
+    D.oneOf
+        [ D.field name (D.nullable inner)
+        , D.succeed Nothing
+        ]
+
+
+encodeCoinFormula : ( Int, Int, Int ) -> E.Value
+encodeCoinFormula ( count, faces, mult ) =
+    E.object
+        [ ( "count", E.int count )
+        , ( "faces", E.int faces )
+        , ( "mult", E.int mult )
+        ]
+
+
+decodeCoinFormula : D.Decoder ( Int, Int, Int )
+decodeCoinFormula =
+    D.map3 (\a b c -> ( a, b, c ))
+        (D.field "count" D.int)
+        (D.field "faces" D.int)
+        (D.field "mult" D.int)
+
+
+encodeSpec : (tier -> String) -> ( Int, Int, tier ) -> E.Value
+encodeSpec tierToWire ( count, faces, tier ) =
+    E.object
+        [ ( "count", E.int count )
+        , ( "faces", E.int faces )
+        , ( "tier", E.string (tierToWire tier) )
+        ]
+
+
+decodeSpec : D.Decoder tier -> D.Decoder ( Int, Int, tier )
+decodeSpec tierDecoder =
+    D.map3 (\a b c -> ( a, b, c ))
+        (D.field "count" D.int)
+        (D.field "faces" D.int)
+        (D.field "tier" tierDecoder)
+
+
+gemTierWire : Encounter.Treasure.Tables.GemTier -> String
+gemTierWire t =
+    case t of
+        Encounter.Treasure.Tables.Gem10gp ->
+            "10gp"
+
+        Encounter.Treasure.Tables.Gem50gp ->
+            "50gp"
+
+        Encounter.Treasure.Tables.Gem100gp ->
+            "100gp"
+
+        Encounter.Treasure.Tables.Gem500gp ->
+            "500gp"
+
+        Encounter.Treasure.Tables.Gem1000gp ->
+            "1000gp"
+
+        Encounter.Treasure.Tables.Gem5000gp ->
+            "5000gp"
+
+
+gemTierDecoder : D.Decoder Encounter.Treasure.Tables.GemTier
+gemTierDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "10gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem10gp
+
+                    "50gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem50gp
+
+                    "100gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem100gp
+
+                    "500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem500gp
+
+                    "1000gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem1000gp
+
+                    "5000gp" ->
+                        D.succeed Encounter.Treasure.Tables.Gem5000gp
+
+                    other ->
+                        D.fail ("Unknown gem tier: " ++ other)
+            )
+
+
+artTierWire : Encounter.Treasure.Tables.ArtTier -> String
+artTierWire t =
+    case t of
+        Encounter.Treasure.Tables.Art25gp ->
+            "25gp"
+
+        Encounter.Treasure.Tables.Art250gp ->
+            "250gp"
+
+        Encounter.Treasure.Tables.Art750gp ->
+            "750gp"
+
+        Encounter.Treasure.Tables.Art2500gp ->
+            "2500gp"
+
+        Encounter.Treasure.Tables.Art7500gp ->
+            "7500gp"
+
+
+artTierDecoder : D.Decoder Encounter.Treasure.Tables.ArtTier
+artTierDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "25gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art25gp
+
+                    "250gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art250gp
+
+                    "750gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art750gp
+
+                    "2500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art2500gp
+
+                    "7500gp" ->
+                        D.succeed Encounter.Treasure.Tables.Art7500gp
+
+                    other ->
+                        D.fail ("Unknown art tier: " ++ other)
+            )
 
 
 treasureKindWire : Encounter.Treasure.Kind -> String
@@ -399,14 +728,92 @@ encodeMagicItem m =
     E.object
         [ ( "name", E.string m.name )
         , ( "rarity", E.string (rarityWire m.rarity) )
+        , ( "table", E.string (magicTableWire m.table) )
         ]
 
 
 decodeMagicItem : D.Decoder Encounter.Treasure.MagicItem
 decodeMagicItem =
-    D.map2 Encounter.Treasure.MagicItem
+    D.map3 Encounter.Treasure.MagicItem
         (D.field "name" D.string)
         (D.field "rarity" rarityDecoder)
+        -- Older treasure rolls (pre-table-letter) decode with a
+        -- TableA fallback.  TableA is "Common consumables" so the
+        -- fallback at least implies the right tier order.
+        (D.oneOf
+            [ D.field "table" magicTableDecoder
+            , D.succeed Encounter.Treasure.Tables.TableA
+            ]
+        )
+
+
+magicTableWire : Encounter.Treasure.Tables.MagicTable -> String
+magicTableWire t =
+    case t of
+        Encounter.Treasure.Tables.TableA ->
+            "A"
+
+        Encounter.Treasure.Tables.TableB ->
+            "B"
+
+        Encounter.Treasure.Tables.TableC ->
+            "C"
+
+        Encounter.Treasure.Tables.TableD ->
+            "D"
+
+        Encounter.Treasure.Tables.TableE ->
+            "E"
+
+        Encounter.Treasure.Tables.TableF ->
+            "F"
+
+        Encounter.Treasure.Tables.TableG ->
+            "G"
+
+        Encounter.Treasure.Tables.TableH ->
+            "H"
+
+        Encounter.Treasure.Tables.TableI ->
+            "I"
+
+
+magicTableDecoder : D.Decoder Encounter.Treasure.Tables.MagicTable
+magicTableDecoder =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "A" ->
+                        D.succeed Encounter.Treasure.Tables.TableA
+
+                    "B" ->
+                        D.succeed Encounter.Treasure.Tables.TableB
+
+                    "C" ->
+                        D.succeed Encounter.Treasure.Tables.TableC
+
+                    "D" ->
+                        D.succeed Encounter.Treasure.Tables.TableD
+
+                    "E" ->
+                        D.succeed Encounter.Treasure.Tables.TableE
+
+                    "F" ->
+                        D.succeed Encounter.Treasure.Tables.TableF
+
+                    "G" ->
+                        D.succeed Encounter.Treasure.Tables.TableG
+
+                    "H" ->
+                        D.succeed Encounter.Treasure.Tables.TableH
+
+                    "I" ->
+                        D.succeed Encounter.Treasure.Tables.TableI
+
+                    other ->
+                        D.fail ("Unknown magic-item table: " ++ other)
+            )
 
 
 rarityWire : Encounter.Treasure.Tables.Rarity -> String
@@ -704,20 +1111,28 @@ boolToLegacyCount b =
 
 decodeEncounter : D.Decoder Encounter
 decodeEncounter =
-    D.map4
-        (\creatures activeName round treasure ->
+    D.map5
+        (\creatures activeName round treasure treasureSettings ->
             { creatures = creatures
             , activeName = activeName
             , round = round
             , treasure = treasure
+            , treasureSettings = treasureSettings
             }
         )
         (D.field "creatures" (D.list decodeCreature))
         (D.field "activeName" D.string)
         (D.field "round" D.int)
         (D.oneOf
-            [ D.field "treasure" (D.nullable decodeTreasureState)
+            [ D.field "treasure" (D.nullable decodeTreasureField)
             , D.succeed Nothing
+            ]
+        )
+        -- Saved encounters from before this commit didn't carry
+        -- roll knobs; default to all-Normal.
+        (D.oneOf
+            [ D.field "treasureSettings" decodeTreasureSettings
+            , D.succeed Encounter.Treasure.defaultSettings
             ]
         )
 

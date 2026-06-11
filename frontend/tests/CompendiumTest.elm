@@ -84,6 +84,7 @@ mkCreature args =
     , habitats = []
     , treasures = []
     , tags = []
+    , loot = []
     , createdAt = args.createdAt
     , updatedAt = args.createdAt
     , isBundled = False
