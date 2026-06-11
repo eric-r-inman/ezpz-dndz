@@ -22,7 +22,7 @@ objects so they stay readable in a database or backup.
 -}
 
 import Dict exposing (Dict)
-import Encounter.Treasure exposing (TreasureTable)
+import Encounter.Treasure exposing (TreasureTable, bundledTable)
 import Encounter.Treasure.Tables
     exposing
         ( ArtTier(..)
@@ -190,32 +190,57 @@ decodeTable =
                             , armorRoll = Tuple.second armor
                         }
                     )
-                    (decodeFlatCategory "mundane")
-                    (decodeFlatCategory "weapons")
-                    (decodeFlatCategory "armor")
+                    (decodeFlatCategory "mundane"
+                        bundledTable.mundane
+                        bundledTable.mundaneRoll
+                    )
+                    (decodeFlatCategory "weapons"
+                        bundledTable.weapons
+                        bundledTable.weaponsRoll
+                    )
+                    (decodeFlatCategory "armor"
+                        bundledTable.armor
+                        bundledTable.armorRoll
+                    )
             )
         |> D.andThen
             (\partial ->
                 D.map (\scrollSpells -> { partial | scrollSpells = scrollSpells })
                     (D.oneOf
                         [ D.field "scrollSpells" (decodeDictList D.string)
-                        , D.succeed Dict.empty
+                        , D.succeed bundledTable.scrollSpells
                         ]
                     )
             )
 
 
-decodeFlatCategory : String -> D.Decoder ( List { name : String, valueGp : Int }, Dict String ( Int, Int ) )
-decodeFlatCategory baseName =
+{-| Decode a flat-category pair (items list + per-bracket roll dice).
+On a save that predates the category, both fields are absent and
+the bundled defaults seed in so the GM doesn't have to hit Reset
+just to populate the new lists. An explicit empty list on the
+save still decodes as empty — that's the GM opting out, distinct
+from "field never written."
+-}
+decodeFlatCategory :
+    String
+    -> List { item | name : String, valueGp : Int }
+    -> Dict String ( Int, Int )
+    -> D.Decoder ( List { name : String, valueGp : Int }, Dict String ( Int, Int ) )
+decodeFlatCategory baseName itemsFallback rollFallback =
+    let
+        boxedFallback : List { name : String, valueGp : Int }
+        boxedFallback =
+            List.map (\it -> { name = it.name, valueGp = it.valueGp }) itemsFallback
+    in
     D.map2 Tuple.pair
         (D.oneOf
             [ D.field baseName (D.list decodeFlatItem)
-            , D.succeed []
+            , D.succeed boxedFallback
             ]
         )
         (D.oneOf
             [ D.field (baseName ++ "Roll") (D.dict decodeBracketSpec)
-            , D.succeed Dict.empty
+            , D.succeed rollFallback
             ]
         )
 
