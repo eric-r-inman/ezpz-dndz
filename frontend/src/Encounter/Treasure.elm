@@ -1360,21 +1360,30 @@ rollMagic settings table mSpec =
 -- ── SETTINGS → SPEC ADJUSTMENTS ─────────────────────────────────────────────
 
 
-{-| Coarse multiplier on dice count: ×0.5 / ×1 / ×1.5 (rounded,
-min 1 so a "Fewer" roll on a 1d-something doesn't end up
-rolling 0 dice).
+{-| Coarse multiplier on dice count.
+
+  - **Fewer** = ⌊n/2⌋ (no clamp). For single-die specs that floors
+    to 0, which produces 0 items of that class on this roll — the
+    only way "Fewer" actually means fewer on a 1d-something
+    spec, given every SRD art / magic row uses 1d-something.
+  - **More** = n + max 1 ⌊n/2⌋. The `max 1` matters for single-die
+    specs: a 1d-something would otherwise round to 1+0 == 1 with
+    no effect, so we bump it to 2 instead. Every SRD magic-item
+    spec uses 1d-something, so without this clamp the Magic
+    Count knob would silently do nothing.
+
 -}
 adjustCount : CountAdjust -> Int -> Int
 adjustCount adj n =
     case adj of
         CountFewer ->
-            max 1 (n // 2)
+            n // 2
 
         CountNormal ->
             n
 
         CountMore ->
-            max 1 (n + n // 2)
+            n + max 1 (n // 2)
 
 
 {-| Shift a gem tier up or down one step. Capped at the
