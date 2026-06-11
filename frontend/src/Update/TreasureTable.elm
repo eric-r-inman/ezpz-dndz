@@ -5,7 +5,7 @@ module Update.TreasureTable exposing
     , artAdd, artEdit, artRemove
     , magicAdd, magicEdit, magicRemove
     , resetToBundled
-    , coinAdd, coinRemove, coinSet, rowAdd, rowRemove, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
+    , coinAdd, coinRemove, coinSet, rowAdd, rowRemove, save, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
     )
 
 {-| Msg handlers for the singular per-user Treasure Table
@@ -56,14 +56,43 @@ import Ui.TreasureTable as Ui
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (Model.ModalTreasureTable Ui.fresh) }
+    let
+        snapshot =
+            Maybe.withDefault Treasure.bundledTable model.userTreasureTable
+    in
+    ( { model | modal = Just (Model.ModalTreasureTable (Ui.fresh snapshot)) }
     , Cmd.none
     )
 
 
+{-| Close the modal without committing. The draft inside the UI
+state is discarded along with the modal itself; the live
+`model.userTreasureTable` is untouched, so nothing persists.
+-}
 close : Model -> ( Model, Cmd Msg )
 close model =
     ( { model | modal = Nothing }, Cmd.none )
+
+
+{-| Commit the in-flight draft to `model.userTreasureTable` and
+close the modal. The standard `userTreasureTableCmd` hook in
+`Main.update` sees `model.userTreasureTable` change and fires
+the right persistence Cmd (server PUT for authed, localStorage
+for anonymous).
+-}
+save : Model -> ( Model, Cmd Msg )
+save model =
+    case model.modal of
+        Just (Model.ModalTreasureTable ui) ->
+            ( { model
+                | modal = Nothing
+                , userTreasureTable = Just ui.draft
+              }
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 toggleSection : String -> String -> Model -> ( Model, Cmd Msg )
@@ -97,18 +126,15 @@ toggleSection kind key model =
 -- ── NAME-LIST EDITS ─────────────────────────────────────────────────────────
 
 
-{-| Apply `fn` to the user's treasure table, using the bundled
-default when the user has nothing saved yet. The result becomes
-the new working copy and triggers the persistence hook.
+{-| Apply `fn` to the editor's in-flight draft. The live
+`model.userTreasureTable` is /not/ touched here — only the
+draft inside the open modal's UI state. `Update.TreasureTable.save`
+is the only path that copies the draft back into the model
+proper, which is what triggers the persistence hook.
 -}
 mutateTable : (TreasureTable -> TreasureTable) -> Model -> ( Model, Cmd Msg )
 mutateTable fn model =
-    let
-        current =
-            model.userTreasureTable
-                |> Maybe.withDefault Treasure.bundledTable
-    in
-    ( { model | userTreasureTable = Just (fn current) }
+    ( Model.mapModal Model.treasureTableLens (Ui.withDraft fn) model
     , Cmd.none
     )
 
@@ -332,11 +358,13 @@ subTierSet bracketKey idx sub raw =
         (mapIndex idx (updateSubTier sub raw))
 
 
+{-| Reset the in-flight draft to the bundled SRD defaults. The
+GM still has to click Save for the change to commit; closing the
+modal without saving leaves their current saved table intact.
+-}
 resetToBundled : Model -> ( Model, Cmd Msg )
-resetToBundled model =
-    ( { model | userTreasureTable = Just Treasure.bundledTable }
-    , Cmd.none
-    )
+resetToBundled =
+    mutateTable (\_ -> Treasure.bundledTable)
 
 
 

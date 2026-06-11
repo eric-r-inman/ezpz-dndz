@@ -64,6 +64,7 @@ import Msg
         , SubKind(..)
         )
 import Set exposing (Set)
+import Ui.TreasureTable as TreasureTableUi
 import View.Modal
 
 
@@ -72,24 +73,31 @@ view model =
     case model.modal of
         Just (ModalTreasureTable ui) ->
             let
-                table =
-                    Maybe.withDefault Treasure.bundledTable model.userTreasureTable
+                dirty =
+                    TreasureTableUi.isDirty ui
+
+                titleSuffix =
+                    if dirty then
+                        " · unsaved changes"
+
+                    else
+                        ""
             in
             View.Modal.view
                 { close = TreasureTableClose
                 , noOp = NoOp
-                , title = "📜 Treasure Table"
+                , title = "📜 Treasure Table" ++ titleSuffix
                 , extraClass = "modal--treasure-table"
                 , chrome = model.modalChrome
-                , body = body table ui.expanded
+                , body = body ui.draft ui.expanded dirty
                 }
 
         _ ->
             text ""
 
 
-body : TreasureTable -> Set String -> List (Html Msg)
-body table expanded =
+body : TreasureTable -> Set String -> Bool -> List (Html Msg)
+body table expanded dirty =
     [ blurb
     , individualGroup table expanded
     , hoardGroup table expanded
@@ -97,6 +105,7 @@ body table expanded =
     , artGroup table expanded
     , magicGroup table expanded
     , resetRow
+    , saveRow dirty
     ]
 
 
@@ -323,7 +332,7 @@ rowHeader kind bracketKey idx weight =
             , attribute "title" "Remove this row"
             , attribute "aria-label" "Remove row"
             ]
-            [ text "✕ Row" ]
+            [ text "🚫 Row" ]
         ]
 
 
@@ -380,7 +389,7 @@ coinColumn kind bracketKey idx ( coin, mFormula ) =
                         , attribute "title" ("Clear " ++ coinLabel coin)
                         , attribute "aria-label" ("Clear " ++ coinLabel coin)
                         ]
-                        [ text "✕" ]
+                        [ text "🚫" ]
                     ]
         ]
 
@@ -503,7 +512,7 @@ subColumn bracketKey idx cfg =
                         , attribute "title" ("Clear " ++ cfg.label)
                         , attribute "aria-label" ("Clear " ++ cfg.label)
                         ]
-                        [ text "✕" ]
+                        [ text "🚫" ]
                     ]
         ]
 
@@ -710,7 +719,7 @@ nameRow key cfg idx name =
             , attribute "aria-label" "Remove this entry"
             , attribute "title" "Remove"
             ]
-            [ text "✕" ]
+            [ text "🚫" ]
         ]
 
 
@@ -887,7 +896,59 @@ resetRow =
             [ class "treasure-table__reset"
             , type_ "button"
             , onClick TreasureTableResetToBundled
-            , attribute "title" "Replace your table with the bundled SRD default"
+            , attribute "title" "Replace the draft with the bundled SRD default (still requires Save to commit)"
             ]
             [ text "↺ Reset to bundled defaults" ]
+        ]
+
+
+
+-- ── SAVE / CANCEL FOOTER ───────────────────────────────────────────────────
+
+
+{-| Footer row with Save + Cancel. Cancel discards the draft;
+Save commits it into `model.userTreasureTable`, which the
+persistence hook in `Main.update` then writes through. The
+Save button is disabled when nothing has changed, which doubles
+as a quick visual cue that the editor is clean.
+-}
+saveRow : Bool -> Html Msg
+saveRow dirty =
+    div [ class "treasure-table__save-row" ]
+        [ span [ class "treasure-table__save-status" ]
+            [ text
+                (if dirty then
+                    "Unsaved changes"
+
+                 else
+                    "No changes"
+                )
+            ]
+        , button
+            [ class "treasure-table__save-cancel"
+            , type_ "button"
+            , onClick TreasureTableClose
+            , attribute "title" "Close without saving"
+            ]
+            [ text "Cancel" ]
+        , button
+            [ class
+                (if dirty then
+                    "treasure-table__save treasure-table__save--ready"
+
+                 else
+                    "treasure-table__save"
+                )
+            , type_ "button"
+            , onClick TreasureTableSave
+            , Attr.disabled (not dirty)
+            , attribute "title"
+                (if dirty then
+                    "Save your changes and close"
+
+                 else
+                    "No changes to save"
+                )
+            ]
+            [ text "Save" ]
         ]

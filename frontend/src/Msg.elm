@@ -1144,9 +1144,13 @@ type Msg
     | TreasureTableSubCountSet String Int SubKind String
     | TreasureTableSubFacesSet String Int SubKind String
     | TreasureTableSubTierSet String Int SubKind String
-      -- Reset the user's table to the bundled SRD default.
-      -- Two-step confirm gating happens in the view layer.
+      -- Reset the in-flight DRAFT (not the saved table) to the
+      -- bundled SRD default.  The user still has to click Save
+      -- for the reset to commit.
     | TreasureTableResetToBundled
+      -- Commit the draft to model.userTreasureTable + close.
+      -- The standard persistence hook in Main.update then fires.
+    | TreasureTableSave
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

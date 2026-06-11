@@ -2760,6 +2760,74 @@ body {
   color: #d63b3b;
 }
 
+/* ── Save / Cancel footer ─────────────────────────────────────────────── */
+
+.treasure-table__save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+}
+
+.treasure-table__save-status {
+  margin-right: auto;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.treasure-table__save-cancel {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.treasure-table__save-cancel:hover,
+.treasure-table__save-cancel:focus-visible {
+  border-color: var(--color-text);
+}
+
+.treasure-table__save {
+  appearance: none;
+  background: var(--color-surface-2, transparent);
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__save:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.treasure-table__save--ready {
+  background: var(--color-accent, #4a90e2);
+  border-color: var(--color-accent, #4a90e2);
+  color: #fff;
+}
+
+.treasure-table__save--ready:hover,
+.treasure-table__save--ready:focus-visible {
+  filter: brightness(1.08);
+}
+
 /* Dark theme overrides for the rarity chips so they read on the
    darker surface without losing their colour identity. */
 [data-theme="dark"] .treasure__rarity--common {

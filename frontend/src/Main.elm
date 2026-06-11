@@ -1877,6 +1877,9 @@ updateInner msg model =
         TreasureTableSubTierSet key idx sub raw ->
             Update.TreasureTable.subTierSet key idx sub raw model
 
+        TreasureTableSave ->
+            Update.TreasureTable.save model
+
         TreasureTableResetToBundled ->
             Update.TreasureTable.resetToBundled model
 
