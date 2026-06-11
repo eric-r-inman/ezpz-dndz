@@ -2110,10 +2110,10 @@ body {
 }
 
 .treasure__settings-body {
-  padding: 8px 12px 10px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .treasure__settings-row {
@@ -2121,6 +2121,7 @@ body {
   grid-template-columns: 60px 1fr 1fr;
   gap: 12px;
   align-items: center;
+  min-height: 28px;
 }
 
 .treasure__settings-row-label {
@@ -2135,6 +2136,8 @@ body {
 }
 
 .treasure__settings-axis {
+  display: inline-block;
+  min-width: 52px;
   font-size: 0.72rem;
   color: var(--color-text-muted);
   margin-right: 4px;
