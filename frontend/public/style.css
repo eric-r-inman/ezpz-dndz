@@ -2241,6 +2241,13 @@ body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  /* Cap the accordion at a viewport-relative max so a 20-enemy
+     encounter doesn't crowd the rolled-loot list off the screen.
+     `display: flex; flex-direction: column` lets the toggle button
+     stay pinned and the list scroll within the cap. */
+  display: flex;
+  flex-direction: column;
+  max-height: 35vh;
 }
 
 .treasure__contributions-toggle {
@@ -2291,6 +2298,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Inner scroll surface when the parent's 35vh cap clips
+     a long enemy list. */
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .treasure__contributions-row {
