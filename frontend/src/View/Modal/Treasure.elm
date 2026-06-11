@@ -84,7 +84,8 @@ view chrome model =
 
 body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> List (Html Msg)
 body ui maybeRoll settings =
-    [ controlRow ui
+    [ helpText
+    , controlRow ui
     , settingsSection ui.settingsExpanded settings
     , case maybeRoll of
         Nothing ->
@@ -483,6 +484,16 @@ editTableLink =
 
 
 -- ── HEADER CONTROLS ──────────────────────────────────────────────────────────
+
+
+{-| One-paragraph orientation under the title bar. Explains the
+two Roll kinds and the post-roll Loot aggregation so first-time
+users don't have to guess at the Kind dropdown.
+-}
+helpText : Html Msg
+helpText =
+    p [ class "treasure__help" ]
+        [ text "'Boss' rolls for highest-CR enemy; 'All' rolls for all enemies. Loot is added after the randomized roll (for enemies with Loot in their stat block; you can add Loot via the Creature editor in the Compendium)." ]
 
 
 controlRow : TreasureUi -> Html Msg
