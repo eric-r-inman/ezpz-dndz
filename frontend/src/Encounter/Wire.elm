@@ -249,6 +249,7 @@ encodeTreasureSettings s =
         , ( "mundaneNone", E.bool s.mundaneNone )
         , ( "weaponsNone", E.bool s.weaponsNone )
         , ( "armorNone", E.bool s.armorNone )
+        , ( "magicScrollChance", E.int s.magicScrollChance )
         ]
 
 
@@ -277,6 +278,7 @@ decodeTreasureSettings =
         |> andMap (decodeBoolField "mundaneNone" True)
         |> andMap (decodeBoolField "weaponsNone" True)
         |> andMap (decodeBoolField "armorNone" True)
+        |> andMap (decodeIntField "magicScrollChance" 15)
 
 
 andMap : D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
@@ -304,6 +306,14 @@ decodeBoolField : String -> Bool -> D.Decoder Bool
 decodeBoolField name fallback =
     D.oneOf
         [ D.field name D.bool
+        , D.succeed fallback
+        ]
+
+
+decodeIntField : String -> Int -> D.Decoder Int
+decodeIntField name fallback =
+    D.oneOf
+        [ D.field name D.int
         , D.succeed fallback
         ]
 

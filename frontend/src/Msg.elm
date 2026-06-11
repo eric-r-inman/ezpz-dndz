@@ -1097,6 +1097,7 @@ type Msg
     | TreasureSettingsCountSet String String
     | TreasureSettingsValueSet String String
     | TreasureSettingsNoneSet String Bool
+    | TreasureSettingsScrollChanceSet String
     | TreasureSettingsReset
       -- Collapse / expand the "Tune your rolls" settings panel
       -- in the Treasure modal.
@@ -1165,6 +1166,12 @@ type Msg
     | TreasureTableFlatNameSet FlatCategory Int String
     | TreasureTableFlatValueSet FlatCategory Int String
     | TreasureTableFlatRemove FlatCategory Int
+      -- Spell-name edits per scroll level.  String key is the
+      -- level wire ("cantrip", "1st", …, "9th"); structurally
+      -- mirrors the gem / art / magic name editors above.
+    | TreasureTableScrollAdd String
+    | TreasureTableScrollEdit String Int String
+    | TreasureTableScrollRemove String Int
       -- Reset the in-flight DRAFT (not the saved table) to the
       -- bundled SRD default.  The user still has to click Save
       -- for the reset to commit.

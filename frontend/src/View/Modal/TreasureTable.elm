@@ -21,6 +21,10 @@ import Encounter.Treasure as Treasure
     exposing
         ( TreasureTable
         )
+import Encounter.Treasure.ScrollSpells as ScrollSpells
+    exposing
+        ( ScrollLevel
+        )
 import Encounter.Treasure.Tables as Tables
     exposing
         ( ArtTier(..)
@@ -112,9 +116,95 @@ body table expanded dirty =
         expanded
     , flatGroup "Weapons" "weapons" FlatWeapons table.weapons expanded
     , flatGroup "Armor" "armor" FlatArmor table.armor expanded
+    , scrollSpellsGroup table expanded
     , resetRow
     , saveRow dirty
     ]
+
+
+{-| Editor for the per-level spell-name lists the scroll
+post-process draws from. One collapsible per spell level
+(cantrip through 9th); each opens a name-only list editor with
+the same shape as the gem / art / magic name editors above.
+-}
+scrollSpellsGroup : TreasureTable -> Set String -> Html Msg
+scrollSpellsGroup table expanded =
+    section [ class "treasure-table__group" ]
+        [ p [ class "treasure-table__group-title" ]
+            [ text "Spell scrolls (by level)" ]
+        , div [ class "treasure-table__sections" ]
+            (List.map (scrollLevelEditor table expanded)
+                ScrollSpells.scrollLevelAll
+            )
+        ]
+
+
+scrollLevelEditor : TreasureTable -> Set String -> ScrollLevel -> Html Msg
+scrollLevelEditor table expanded level =
+    let
+        levelKey =
+            ScrollSpells.scrollLevelWire level
+
+        sectionKey =
+            "scroll:" ++ levelKey
+
+        isOpen =
+            Set.member sectionKey expanded
+
+        names =
+            Treasure.scrollSpellsFor level table
+
+        valueGp =
+            ScrollSpells.scrollLevelValueGp level
+    in
+    collapsible
+        { kind = "scroll"
+        , key = levelKey
+        , label =
+            ScrollSpells.scrollLevelLabel level
+                ++ "  ("
+                ++ String.fromInt valueGp
+                ++ " gp)"
+        , count = String.fromInt (List.length names) ++ " entries"
+        , isOpen = isOpen
+        , content =
+            if isOpen then
+                div [ class "treasure-table__name-editor" ]
+                    [ ul [ class "treasure-table__name-list" ]
+                        (List.indexedMap (scrollNameRow levelKey) names)
+                    , button
+                        [ class "treasure-table__name-add"
+                        , type_ "button"
+                        , onClick (TreasureTableScrollAdd levelKey)
+                        ]
+                        [ text "+ Add spell" ]
+                    ]
+
+            else
+                text ""
+        }
+
+
+scrollNameRow : String -> Int -> String -> Html Msg
+scrollNameRow levelKey idx name =
+    li [ class "treasure-table__name-row" ]
+        [ input
+            [ class "treasure-table__name-input"
+            , type_ "text"
+            , value name
+            , placeholder "Spell name"
+            , onInput (TreasureTableScrollEdit levelKey idx)
+            ]
+            []
+        , button
+            [ class "treasure-table__row-remove"
+            , type_ "button"
+            , onClick (TreasureTableScrollRemove levelKey idx)
+            , attribute "aria-label" "Remove this spell"
+            , attribute "title" "Remove"
+            ]
+            [ text "🚫" ]
+        ]
 
 
 flatGroup :

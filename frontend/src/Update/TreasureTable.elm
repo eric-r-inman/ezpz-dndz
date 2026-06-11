@@ -5,7 +5,7 @@ module Update.TreasureTable exposing
     , artAdd, artEdit, artRemove
     , magicAdd, magicEdit, magicRemove
     , resetToBundled
-    , coinAdd, coinRemove, coinSet, flatAdd, flatNameSet, flatRemove, flatValueSet, rowAdd, rowRemove, save, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
+    , coinAdd, coinRemove, coinSet, flatAdd, flatNameSet, flatRemove, flatValueSet, rowAdd, rowRemove, save, scrollAdd, scrollEdit, scrollRemove, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
     )
 
 {-| Msg handlers for the singular per-user Treasure Table
@@ -418,6 +418,45 @@ mutateFlat cat fn =
 
                 Msg.FlatArmor ->
                     { table | armor = fn table.armor }
+        )
+
+
+
+-- ── SCROLL-SPELL NAME EDITS (per level) ────────────────────────────────────
+
+
+scrollAdd : String -> Model -> ( Model, Cmd Msg )
+scrollAdd levelKey =
+    mutateScroll levelKey (\names -> names ++ [ "" ])
+
+
+scrollEdit : String -> Int -> String -> Model -> ( Model, Cmd Msg )
+scrollEdit levelKey idx name =
+    mutateScroll levelKey
+        (List.indexedMap
+            (\i existing ->
+                if i == idx then
+                    name
+
+                else
+                    existing
+            )
+        )
+
+
+scrollRemove : String -> Int -> Model -> ( Model, Cmd Msg )
+scrollRemove levelKey idx =
+    mutateScroll levelKey (dropIndex idx)
+
+
+mutateScroll : String -> (List String -> List String) -> Model -> ( Model, Cmd Msg )
+mutateScroll levelKey fn =
+    mutateTable
+        (\table ->
+            { table
+                | scrollSpells =
+                    updateDictList levelKey fn table.scrollSpells
+            }
         )
 
 

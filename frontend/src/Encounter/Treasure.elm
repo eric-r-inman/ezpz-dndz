@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , ArmorItem, Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setWeaponsItems, setWeaponsRoll, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
+    , ArmorItem, Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, scrollSpellsFor, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setScrollSpells, setWeaponsItems, setWeaponsRoll, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
     )
 
 {-| Treasure-roll domain.
@@ -47,6 +47,7 @@ The treasure flow:
 
 import Dict exposing (Dict)
 import Encounter.Treasure.MundaneTables as MundaneTables
+import Encounter.Treasure.ScrollSpells as ScrollSpells
 import Encounter.Treasure.Tables as Tables
     exposing
         ( ArtTier
@@ -384,6 +385,14 @@ type alias TreasureSettings =
     , mundaneNone : Bool
     , weaponsNone : Bool
     , armorNone : Bool
+
+    -- Post-process probability (0..100): for each rolled magic
+    -- item, this is the chance the result gets swapped for a
+    -- spell scroll at the same rarity, with a spell name picked
+    -- from the user's scrollSpells list at the appropriate
+    -- level.  0 disables the post-process entirely; defaults to
+    -- 15 so scrolls appear naturally without dominating hoards.
+    , magicScrollChance : Int
     }
 
 
@@ -418,6 +427,7 @@ defaultSettings =
     , mundaneNone = True
     , weaponsNone = True
     , armorNone = True
+    , magicScrollChance = 15
     }
 
 
@@ -700,6 +710,12 @@ type alias TreasureTable =
     , weaponsRoll : Dict String ( Int, Int )
     , armor : List ArmorItem
     , armorRoll : Dict String ( Int, Int )
+
+    -- Spell-name pool per scroll level, keyed by the level wire
+    -- ("cantrip", "1st", "2nd", …, "9th").  The magic-result
+    -- post-process picks uniformly from the list at the level
+    -- matching the rolled rarity.
+    , scrollSpells : Dict String (List String)
     }
 
 
@@ -741,7 +757,37 @@ bundledTable =
     , weaponsRoll = MundaneTables.bundledWeaponsRollByBracket
     , armor = MundaneTables.bundledArmor
     , armorRoll = MundaneTables.bundledArmorRollByBracket
+    , scrollSpells =
+        Dict.fromList
+            (List.map
+                (\l ->
+                    ( ScrollSpells.scrollLevelWire l
+                    , ScrollSpells.bundledScrollSpells l
+                    )
+                )
+                ScrollSpells.scrollLevelAll
+            )
     }
+
+
+{-| Replace one level's spell-name list in the user's table.
+The level wire key must be one of the slugs in
+`ScrollSpells.scrollLevelWire` ("cantrip", "1st", …, "9th");
+unknown keys insert under that key so a no-op call still
+round-trips through the codec.
+-}
+setScrollSpells : ScrollSpells.ScrollLevel -> List String -> TreasureTable -> TreasureTable
+setScrollSpells level names table =
+    { table
+        | scrollSpells =
+            Dict.insert (ScrollSpells.scrollLevelWire level) names table.scrollSpells
+    }
+
+
+scrollSpellsFor : ScrollSpells.ScrollLevel -> TreasureTable -> List String
+scrollSpellsFor level table =
+    Dict.get (ScrollSpells.scrollLevelWire level) table.scrollSpells
+        |> Maybe.withDefault []
 
 
 mundaneItemsFor : TreasureTable -> List MundaneItem
@@ -1664,6 +1710,98 @@ rollMagic settings table mSpec =
 
     else
         rollMagicInner settings table mSpec
+            |> Random.andThen (applyScrollPostProcess settings table)
+
+
+{-| Post-process the magic-item list: for each item, roll d100
+against `magicScrollChance`; if it hits, swap the item for a
+"Spell Scroll (level): name" entry at the same rarity, with the
+spell name drawn from the user's level-keyed scroll-spell list.
+A chance of 0 short-circuits to the unchanged list. Items whose
+spell-list is empty also pass through unchanged so the GM can
+clear the list to opt out per-level.
+-}
+applyScrollPostProcess :
+    TreasureSettings
+    -> TreasureTable
+    -> List MagicItem
+    -> Random.Generator (List MagicItem)
+applyScrollPostProcess settings table items =
+    if settings.magicScrollChance <= 0 then
+        Random.constant items
+
+    else
+        items
+            |> List.map (maybeSwapForScroll settings table)
+            |> sequenceList
+
+
+maybeSwapForScroll :
+    TreasureSettings
+    -> TreasureTable
+    -> MagicItem
+    -> Random.Generator MagicItem
+maybeSwapForScroll settings table item =
+    Random.int 1 100
+        |> Random.andThen
+            (\roll ->
+                if roll > settings.magicScrollChance then
+                    Random.constant item
+
+                else
+                    pickScrollFor item table
+                        |> Random.map (Maybe.withDefault item)
+            )
+
+
+pickScrollFor : MagicItem -> TreasureTable -> Random.Generator (Maybe MagicItem)
+pickScrollFor item table =
+    pickScrollLevelFor item.rarity
+        |> Random.andThen
+            (\level ->
+                case scrollSpellsFor level table of
+                    [] ->
+                        -- GM cleared this level's list — opt-out.
+                        Random.constant Nothing
+
+                    first :: rest ->
+                        Random.uniform first rest
+                            |> Random.map
+                                (\spellName ->
+                                    Just
+                                        { item
+                                            | name =
+                                                "Spell Scroll ("
+                                                    ++ ScrollSpells.scrollLevelLabel level
+                                                    ++ "): "
+                                                    ++ spellName
+                                        }
+                                )
+            )
+
+
+{-| Map an item rarity to a scroll level (or a small distribution
+when the rarity spans more than one level). Mapping mirrors the
+DMG's rarity-to-scroll-level guidance.
+-}
+pickScrollLevelFor : Rarity -> Random.Generator ScrollSpells.ScrollLevel
+pickScrollLevelFor rarity =
+    case rarity of
+        Tables.Common ->
+            Random.uniform ScrollSpells.ScrollCantrip [ ScrollSpells.Scroll1st ]
+
+        Tables.Uncommon ->
+            Random.uniform ScrollSpells.Scroll2nd [ ScrollSpells.Scroll3rd ]
+
+        Tables.Rare ->
+            Random.uniform ScrollSpells.Scroll4th [ ScrollSpells.Scroll5th ]
+
+        Tables.VeryRare ->
+            Random.uniform ScrollSpells.Scroll6th
+                [ ScrollSpells.Scroll7th, ScrollSpells.Scroll8th ]
+
+        Tables.Legendary ->
+            Random.constant ScrollSpells.Scroll9th
 
 
 rollMagicInner : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)

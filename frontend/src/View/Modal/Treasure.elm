@@ -173,6 +173,7 @@ settingsSection expanded settings =
                     (Just settings.magicCount)
                     (Just settings.magicValue)
                     settings.magicNone
+                , scrollChanceRow settings.magicScrollChance settings.magicNone
                 , settingsRow "Mundane"
                     "mundane"
                     (Just settings.mundaneCount)
@@ -307,6 +308,44 @@ valueAdjustLabelSummary v =
 
         Treasure.ValueHigher ->
             "Higher"
+
+
+{-| Spell-scroll post-process chance sits as a sub-row under
+Magic. Disabled (and visually muted) when Magic itself is
+toggled to None, since the post-process only runs on items the
+magic roll produces.
+-}
+scrollChanceRow : Int -> Bool -> Html Msg
+scrollChanceRow current magicNone =
+    div
+        [ class
+            ("treasure__settings-row treasure__settings-row--sub"
+                ++ (if magicNone then
+                        " treasure__settings-row--muted"
+
+                    else
+                        ""
+                   )
+            )
+        ]
+        [ span [ class "treasure__settings-row-label" ] [ text "↳ Scrolls" ]
+        , Html.label [ class "treasure__settings-scroll" ]
+            [ span [ class "treasure__settings-axis" ] [ text "Swap chance" ]
+            , Html.input
+                [ class "treasure__settings-scroll-input"
+                , type_ "number"
+                , Attr.min "0"
+                , Attr.max "100"
+                , value (String.fromInt current)
+                , Attr.disabled magicNone
+                , onInput TreasureSettingsScrollChanceSet
+                ]
+                []
+            , span [ class "treasure__settings-scroll-unit" ] [ text "%" ]
+            ]
+        , span [ class "treasure__settings-row-spacer" ] []
+        , span [ class "treasure__settings-row-spacer" ] []
+        ]
 
 
 settingsRow :

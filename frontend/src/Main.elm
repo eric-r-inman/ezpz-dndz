@@ -1786,6 +1786,9 @@ updateInner msg model =
         TreasureSettingsNoneSet itemClass none ->
             Update.Treasure.settingsNoneSet itemClass none model
 
+        TreasureSettingsScrollChanceSet raw ->
+            Update.Treasure.settingsScrollChanceSet raw model
+
         TreasureSettingsReset ->
             Update.Treasure.settingsReset model
 
@@ -1896,6 +1899,15 @@ updateInner msg model =
 
         TreasureTableFlatRemove cat idx ->
             Update.TreasureTable.flatRemove cat idx model
+
+        TreasureTableScrollAdd levelKey ->
+            Update.TreasureTable.scrollAdd levelKey model
+
+        TreasureTableScrollEdit levelKey idx raw ->
+            Update.TreasureTable.scrollEdit levelKey idx raw model
+
+        TreasureTableScrollRemove levelKey idx ->
+            Update.TreasureTable.scrollRemove levelKey idx model
 
         TreasureTableSave ->
             Update.TreasureTable.save model

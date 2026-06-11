@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsReset, settingsToggle, settingsValueSet, weaponsRemove
+    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -395,6 +395,28 @@ settingsValueSet itemClass valueWire model =
                     settings
     in
     ( updateEncounterSettings next model, Cmd.none )
+
+
+{-| Set the spell-scroll post-process chance from a percent
+input string. Clamps to 0..100 and treats empty / non-numeric
+input as 0 so a half-typed field never leaves an undefined-state
+percentage.
+-}
+settingsScrollChanceSet : String -> Model -> ( Model, Cmd Msg )
+settingsScrollChanceSet raw model =
+    let
+        clamped =
+            String.toInt (String.trim raw)
+                |> Maybe.withDefault 0
+                |> max 0
+                |> min 100
+
+        settings =
+            model.encounter.treasureSettings
+    in
+    ( updateEncounterSettings { settings | magicScrollChance = clamped } model
+    , Cmd.none
+    )
 
 
 settingsReset : Model -> ( Model, Cmd Msg )

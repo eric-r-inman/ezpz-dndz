@@ -53,6 +53,7 @@ encodeTable table =
         , ( "weaponsRoll", encodeBracketSpec table.weaponsRoll )
         , ( "armor", E.list encodeFlatItem table.armor )
         , ( "armorRoll", encodeBracketSpec table.armorRoll )
+        , ( "scrollSpells", encodeDictList E.string table.scrollSpells )
         ]
 
 
@@ -168,6 +169,7 @@ decodeTable =
             , weaponsRoll = Dict.empty
             , armor = []
             , armorRoll = Dict.empty
+            , scrollSpells = Dict.empty
             }
         )
         (D.field "individualBrackets" (decodeDictList decodeIndividualEntry))
@@ -191,6 +193,15 @@ decodeTable =
                     (decodeFlatCategory "mundane")
                     (decodeFlatCategory "weapons")
                     (decodeFlatCategory "armor")
+            )
+        |> D.andThen
+            (\partial ->
+                D.map (\scrollSpells -> { partial | scrollSpells = scrollSpells })
+                    (D.oneOf
+                        [ D.field "scrollSpells" (decodeDictList D.string)
+                        , D.succeed Dict.empty
+                        ]
+                    )
             )
 
 
