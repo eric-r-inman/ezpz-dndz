@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , ArmorItem, Category(..), CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, scrollSpellsFor, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setScrollSpells, setWeaponsItems, setWeaponsRoll, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
+    , ArmorItem, Category(..), CategoryToggles, CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultHoardToggles, defaultIndividualToggles, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, scrollSpellsFor, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setScrollSpells, setWeaponsItems, setWeaponsRoll, togglesFor, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
     )
 
 {-| Treasure-roll domain.
@@ -311,6 +311,11 @@ type alias CreatureContribution =
     { creatureName : String
     , coins : Coins
     , gems : List GemItem
+    , art : List ArtItem
+    , magic : List MagicItem
+    , mundane : List MundaneItem
+    , weapons : List WeaponItem
+    , armor : List ArmorItem
     , loot : List String
     , bracket : Bracket
     }
@@ -361,6 +366,27 @@ rows.
     natural value axis distinct from their amount.
 
 -}
+
+
+
+-- Per-category None toggles.  The two record fields on
+-- `TreasureSettings` carry independent copies — one for Hoard
+-- rolls, one for Individual rolls — so the GM can keep "Hoard
+-- rolls magic; Individual rolls just coins" without re-tuning
+-- every Kind switch.
+
+
+type alias CategoryToggles =
+    { coinsNone : Bool
+    , gemsNone : Bool
+    , artNone : Bool
+    , magicNone : Bool
+    , mundaneNone : Bool
+    , weaponsNone : Bool
+    , armorNone : Bool
+    }
+
+
 type alias TreasureSettings =
     { coinsCount : CountAdjust
     , gemsCount : CountAdjust
@@ -373,18 +399,12 @@ type alias TreasureSettings =
     , weaponsCount : CountAdjust
     , armorCount : CountAdjust
 
-    -- "None" toggles per category — when on, the category is
-    -- skipped at roll time regardless of its Count knob.  Mundane
-    -- / Weapons / Armor default to ON so the opt-in categories
-    -- don't surprise GMs who upgrade and roll without changing
-    -- settings; coins / gems / art / magic default to OFF.
-    , coinsNone : Bool
-    , gemsNone : Bool
-    , artNone : Bool
-    , magicNone : Bool
-    , mundaneNone : Bool
-    , weaponsNone : Bool
-    , armorNone : Bool
+    -- Per-Kind toggle state.  Count + Value knobs above apply
+    -- uniformly to whichever Kind is rolling; only the None
+    -- toggles need Kind-specific defaults (Hoard rolls everything
+    -- by default, Individual rolls just coins by default).
+    , hoardToggles : CategoryToggles
+    , individualToggles : CategoryToggles
 
     -- Post-process probability (0..100): for each rolled magic
     -- item, this is the chance the result gets swapped for a
@@ -394,6 +414,54 @@ type alias TreasureSettings =
     -- 15 so scrolls appear naturally without dominating hoards.
     , magicScrollChance : Int
     }
+
+
+{-| Hoard rolls everything (coins / gems / art / magic) by
+default; the three opt-in flat categories (Mundane / Weapons /
+Armor) stay off unless the GM enables them.
+-}
+defaultHoardToggles : CategoryToggles
+defaultHoardToggles =
+    { coinsNone = False
+    , gemsNone = False
+    , artNone = False
+    , magicNone = False
+    , mundaneNone = True
+    , weaponsNone = True
+    , armorNone = True
+    }
+
+
+{-| Individual rolls only coins by default — the GM uses the
+total to gauge what each enemy is "worth" (pocket coin, bounty,
+salvage). Every non-coin category is opt-in; flipping the
+matching None toggle off makes that category roll for each
+enemy from a hoard-row pick of their bracket.
+-}
+defaultIndividualToggles : CategoryToggles
+defaultIndividualToggles =
+    { coinsNone = False
+    , gemsNone = True
+    , artNone = True
+    , magicNone = True
+    , mundaneNone = True
+    , weaponsNone = True
+    , armorNone = True
+    }
+
+
+{-| Pick the right toggle set out of `TreasureSettings` for the
+chosen roll Kind. Used by both the generator and the settings
+UI so they share one source of truth.
+-}
+togglesFor : Kind -> TreasureSettings -> CategoryToggles
+togglesFor kind settings =
+    case kind of
+        Hoard ->
+            settings.hoardToggles
+
+        Individual ->
+            settings.individualToggles
 
 
 type CountAdjust
@@ -420,13 +488,8 @@ defaultSettings =
     , mundaneCount = CountNormal
     , weaponsCount = CountNormal
     , armorCount = CountNormal
-    , coinsNone = False
-    , gemsNone = False
-    , artNone = False
-    , magicNone = False
-    , mundaneNone = True
-    , weaponsNone = True
-    , armorNone = True
+    , hoardToggles = defaultHoardToggles
+    , individualToggles = defaultIndividualToggles
     , magicScrollChance = 15
     }
 
@@ -1122,33 +1185,37 @@ generateRerollFromSource settings table currentRoll source category =
         scaffold =
             emptyRollFor currentRoll.kind currentRoll.bracket
     in
+    let
+        t =
+            togglesFor currentRoll.kind settings
+    in
     case category of
         CoinsCategory ->
             rollCoinsFromFormulas settings source.coinFormulas
                 |> Random.map (\coins -> { scaffold | coins = coins })
 
         GemsCategory ->
-            rollGems settings table source.gemsSpec
+            rollGems settings t.gemsNone table source.gemsSpec
                 |> Random.map (\gems -> { scaffold | gems = gems })
 
         ArtCategory ->
-            rollArt settings table source.artSpec
+            rollArt settings t.artNone table source.artSpec
                 |> Random.map (\art -> { scaffold | art = art })
 
         MagicCategory ->
-            rollMagic settings table source.magicSpec
+            rollMagic settings t.magicNone table source.magicSpec
                 |> Random.map (\magic -> { scaffold | magic = magic })
 
         MundaneCategory ->
-            rollMundane settings currentRoll.bracket table
+            rollMundane settings t.mundaneNone currentRoll.bracket table
                 |> Random.map (\mundane -> { scaffold | mundane = mundane })
 
         WeaponsCategory ->
-            rollWeapons settings currentRoll.bracket table
+            rollWeapons settings t.weaponsNone currentRoll.bracket table
                 |> Random.map (\weapons -> { scaffold | weapons = weapons })
 
         ArmorCategory ->
-            rollArmor settings currentRoll.bracket table
+            rollArmor settings t.armorNone currentRoll.bracket table
                 |> Random.map (\armor -> { scaffold | armor = armor })
 
 
@@ -1172,9 +1239,15 @@ emptyRollFor kind bracket =
     }
 
 
+{-| Re-roll coins from an already-stashed `CoinFormulas`. Used
+by the re-roll-single-category path; never on a fresh roll, so
+the None toggle would be irrelevant (the user re-rolling coins
+already wanted them). Always rolls.
+-}
 rollCoinsFromFormulas : TreasureSettings -> CoinFormulas -> Random.Generator Coins
 rollCoinsFromFormulas settings formulas =
     rollIndividualCoins settings
+        False
         { weight = 0
         , copper = formulas.copper
         , silver = formulas.silver
@@ -1212,11 +1285,11 @@ generateIndividualSum settings table enemies =
                 , bracket = highestContributionBracket contributions
                 , coins = sumContributions contributions
                 , gems = List.concatMap .gems contributions
-                , art = []
-                , magic = []
-                , mundane = []
-                , weapons = []
-                , armor = []
+                , art = List.concatMap .art contributions
+                , magic = List.concatMap .magic contributions
+                , mundane = List.concatMap .mundane contributions
+                , weapons = List.concatMap .weapons contributions
+                , armor = List.concatMap .armor contributions
                 , source = Nothing
                 , contributions = contributions
                 , loot = List.concatMap .loot contributions
@@ -1224,132 +1297,90 @@ generateIndividualSum settings table enemies =
             )
 
 
+{-| Roll one enemy's contribution.
+
+Coins come from the enemy's bracket on the Individual table
+(same as always). For each non-coin category whose None toggle
+is off (per `settings.individualToggles`), the per-creature
+generator additionally picks a hoard row from the enemy's
+bracket — the picked row's gem / art / magic subroll specs feed
+the same `rollGems` / `rollArt` / `rollMagic` machinery hoard
+rolls use, so tier scaling stays SRD-correct without duplicating
+data. Mundane / Weapons / Armor reuse the per-bracket flat
+dice as for hoards.
+
+The hoard-row pick is independent of the Individual coin roll;
+the row's own coin amounts are discarded. This gives "the
+goblin happened to have a 50 gp gem in his pocket today" without
+turning each creature into a hoard scaled-down.
+
+-}
 rollOneEnemy : TreasureSettings -> TreasureTable -> EnemyInfo -> Random.Generator CreatureContribution
 rollOneEnemy settings table enemy =
     let
-        rows =
+        t =
+            settings.individualToggles
+
+        individualRows =
             individualRowsFor enemy.bracket table
+
+        hoardRows =
+            hoardRowsFor enemy.bracket table
+
+        coinsGen =
+            weightedPick individualRows emptyIndividualRow
+                |> Random.andThen (rollIndividualCoins settings t.coinsNone)
+
+        nonCoinGen =
+            weightedPick hoardRows emptyHoardRow
+                |> Random.andThen
+                    (\hoardRow ->
+                        Random.map5
+                            (\gems art magic mundane weapons ->
+                                { gems = gems
+                                , art = art
+                                , magic = magic
+                                , mundane = mundane
+                                , weapons = weapons
+                                }
+                            )
+                            (rollGems settings t.gemsNone table hoardRow.gems)
+                            (rollArt settings t.artNone table hoardRow.art)
+                            (rollMagic settings t.magicNone table hoardRow.magic)
+                            (rollMundane settings t.mundaneNone enemy.bracket table)
+                            (rollWeapons settings t.weaponsNone enemy.bracket table)
+                            |> Random.andThen
+                                (\partial ->
+                                    rollArmor settings t.armorNone enemy.bracket table
+                                        |> Random.map
+                                            (\armor ->
+                                                { gems = partial.gems
+                                                , art = partial.art
+                                                , magic = partial.magic
+                                                , mundane = partial.mundane
+                                                , weapons = partial.weapons
+                                                , armor = armor
+                                                }
+                                            )
+                                )
+                    )
     in
-    weightedPick rows emptyIndividualRow
-        |> Random.andThen
-            (\row ->
-                rollIndividualCoins settings row
-                    |> Random.andThen (maybeConvertGoldToGem settings table enemy)
-            )
-        |> Random.map (\c -> { c | loot = enemy.loot })
-
-
-{-| Per-creature post-process: with some probability, swap some
-of the rolled gold for a bracket-appropriate gem of equal value.
-Models the SRD-isn't-very-explicit reality that creatures
-carry pocket gems alongside their coin, without inflating the
-encounter's total expected treasure value (the gem replaces gp
-1-for-1).
-
-Conversion only triggers when the creature has enough gold to
-pay for the gem outright, so total value is exactly preserved.
-Probability + tier pool are tuned to keep gems uncommon but
-not vanishingly rare at the bracket's typical loot scale.
-
--}
-maybeConvertGoldToGem :
-    TreasureSettings
-    -> TreasureTable
-    -> EnemyInfo
-    -> Coins
-    -> Random.Generator CreatureContribution
-maybeConvertGoldToGem settings table enemy coins =
-    let
-        affordableTiers =
-            individualGemTiers enemy.bracket
-                |> List.map (shiftGemTier settings.gemsValue)
-                |> List.filter (\t -> coins.gold >= Tables.gemTierValue t)
-
-        baseContribution =
+    Random.map2
+        (\coins rolled ->
             { creatureName = enemy.name
             , coins = coins
-            , gems = []
-            , loot = []
+            , gems = rolled.gems
+            , art = rolled.art
+            , magic = rolled.magic
+            , mundane = rolled.mundane
+            , weapons = rolled.weapons
+            , armor = rolled.armor
+            , loot = enemy.loot
             , bracket = enemy.bracket
             }
-    in
-    case affordableTiers of
-        [] ->
-            Random.constant baseContribution
-
-        first :: rest ->
-            Random.weighted ( 70, False ) [ ( 30, True ) ]
-                |> Random.andThen
-                    (\shouldConvert ->
-                        if shouldConvert then
-                            convertOneGem table baseContribution first rest
-
-                        else
-                            Random.constant baseContribution
-                    )
-
-
-{-| Bracket-appropriate gem tiers for an individual-loot
-conversion. Caps below the bracket's hoard-tier ceilings on
-purpose — pocket gems shouldn't rival the lair stash.
--}
-individualGemTiers : Bracket -> List GemTier
-individualGemTiers bracket =
-    case bracket of
-        B1to4 ->
-            [ Tables.Gem10gp, Tables.Gem50gp ]
-
-        B5to10 ->
-            [ Tables.Gem10gp, Tables.Gem50gp, Tables.Gem100gp ]
-
-        B11to16 ->
-            [ Tables.Gem100gp, Tables.Gem500gp ]
-
-        B17plus ->
-            [ Tables.Gem500gp, Tables.Gem1000gp ]
-
-
-convertOneGem :
-    TreasureTable
-    -> CreatureContribution
-    -> GemTier
-    -> List GemTier
-    -> Random.Generator CreatureContribution
-convertOneGem table contribution firstTier restTiers =
-    Random.uniform firstTier restTiers
-        |> Random.andThen
-            (\tier ->
-                let
-                    tierValue =
-                        Tables.gemTierValue tier
-
-                    names =
-                        gemNamesFor tier table
-                in
-                case names of
-                    [] ->
-                        Random.constant contribution
-
-                    n :: ns ->
-                        Random.uniform n ns
-                            |> Random.map
-                                (\name ->
-                                    let
-                                        gem =
-                                            { name = name, valueGp = tierValue }
-
-                                        coins =
-                                            contribution.coins
-
-                                        reducedCoins =
-                                            { coins | gold = coins.gold - tierValue }
-                                    in
-                                    { contribution
-                                        | coins = reducedCoins
-                                        , gems = [ gem ]
-                                    }
-                                )
-            )
+        )
+        coinsGen
+        nonCoinGen
 
 
 highestContributionBracket : List CreatureContribution -> Bracket
@@ -1412,9 +1443,9 @@ emptyIndividualRow =
     }
 
 
-rollIndividualCoins : TreasureSettings -> IndividualEntry -> Random.Generator Coins
-rollIndividualCoins settings row =
-    if settings.coinsNone then
+rollIndividualCoins : TreasureSettings -> Bool -> IndividualEntry -> Random.Generator Coins
+rollIndividualCoins settings none row =
+    if none then
         Random.constant emptyCoins
 
     else
@@ -1468,6 +1499,10 @@ generateHoard settings bracket table =
                 -- short-circuit to [] when their None toggle is on
                 -- (or when their item list is empty), so this is
                 -- cheap when those toggles are off.
+                let
+                    t =
+                        settings.hoardToggles
+                in
                 Random.map5
                     (\coins gems art magic mundane ->
                         { coins = coins
@@ -1477,11 +1512,11 @@ generateHoard settings bracket table =
                         , mundane = mundane
                         }
                     )
-                    (rollHoardCoins settings row)
-                    (rollGems settings table row.gems)
-                    (rollArt settings table row.art)
-                    (rollMagic settings table row.magic)
-                    (rollMundane settings bracket table)
+                    (rollHoardCoins settings t.coinsNone row)
+                    (rollGems settings t.gemsNone table row.gems)
+                    (rollArt settings t.artNone table row.art)
+                    (rollMagic settings t.magicNone table row.magic)
+                    (rollMundane settings t.mundaneNone bracket table)
                     |> Random.andThen
                         (\rolled ->
                             Random.map2
@@ -1504,8 +1539,8 @@ generateHoard settings bracket table =
                                     , loot = []
                                     }
                                 )
-                                (rollWeapons settings bracket table)
-                                (rollArmor settings bracket table)
+                                (rollWeapons settings t.weaponsNone bracket table)
+                                (rollArmor settings t.armorNone bracket table)
                         )
             )
 
@@ -1524,9 +1559,10 @@ emptyHoardRow =
     }
 
 
-rollHoardCoins : TreasureSettings -> HoardEntry -> Random.Generator Coins
-rollHoardCoins settings row =
+rollHoardCoins : TreasureSettings -> Bool -> HoardEntry -> Random.Generator Coins
+rollHoardCoins settings none row =
     rollIndividualCoins settings
+        none
         { weight = row.weight
         , copper = row.copper
         , silver = row.silver
@@ -1536,9 +1572,9 @@ rollHoardCoins settings row =
         }
 
 
-rollGems : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
-rollGems settings table mSpec =
-    if settings.gemsNone then
+rollGems : TreasureSettings -> Bool -> TreasureTable -> Maybe ( Int, Int, GemTier ) -> Random.Generator (List GemItem)
+rollGems settings none table mSpec =
+    if none then
         Random.constant []
 
     else
@@ -1664,9 +1700,9 @@ rollLowerGems table tier count =
                     )
 
 
-rollArt : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
-rollArt settings table mSpec =
-    if settings.artNone then
+rollArt : TreasureSettings -> Bool -> TreasureTable -> Maybe ( Int, Int, ArtTier ) -> Random.Generator (List ArtItem)
+rollArt settings none table mSpec =
+    if none then
         Random.constant []
 
     else
@@ -1703,9 +1739,9 @@ rollArtInner settings table mSpec =
                     )
 
 
-rollMagic : TreasureSettings -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
-rollMagic settings table mSpec =
-    if settings.magicNone then
+rollMagic : TreasureSettings -> Bool -> TreasureTable -> Maybe ( Int, Int, MagicTable ) -> Random.Generator (List MagicItem)
+rollMagic settings none table mSpec =
+    if none then
         Random.constant []
 
     else
@@ -1858,25 +1894,25 @@ rollFlatCategory none countAdj ( count, faces ) items =
                 )
 
 
-rollMundane : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List MundaneItem)
-rollMundane settings bracket table =
-    rollFlatCategory settings.mundaneNone
+rollMundane : TreasureSettings -> Bool -> Bracket -> TreasureTable -> Random.Generator (List MundaneItem)
+rollMundane settings none bracket table =
+    rollFlatCategory none
         settings.mundaneCount
         (mundaneRollFor bracket table)
         (mundaneItemsFor table)
 
 
-rollWeapons : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List WeaponItem)
-rollWeapons settings bracket table =
-    rollFlatCategory settings.weaponsNone
+rollWeapons : TreasureSettings -> Bool -> Bracket -> TreasureTable -> Random.Generator (List WeaponItem)
+rollWeapons settings none bracket table =
+    rollFlatCategory none
         settings.weaponsCount
         (weaponsRollFor bracket table)
         (weaponsItemsFor table)
 
 
-rollArmor : TreasureSettings -> Bracket -> TreasureTable -> Random.Generator (List ArmorItem)
-rollArmor settings bracket table =
-    rollFlatCategory settings.armorNone
+rollArmor : TreasureSettings -> Bool -> Bracket -> TreasureTable -> Random.Generator (List ArmorItem)
+rollArmor settings none bracket table =
+    rollFlatCategory none
         settings.armorCount
         (armorRollFor bracket table)
         (armorItemsFor table)

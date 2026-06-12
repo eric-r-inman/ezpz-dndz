@@ -1096,7 +1096,7 @@ type Msg
       -- "higher"). Reset returns every knob to Normal.
     | TreasureSettingsCountSet String String
     | TreasureSettingsValueSet String String
-    | TreasureSettingsNoneSet String Bool
+    | TreasureSettingsNoneSet Encounter.Treasure.Kind String Bool
     | TreasureSettingsScrollChanceSet String
     | TreasureSettingsReset
       -- Collapse / expand the "Tune your rolls" settings panel

@@ -1783,8 +1783,8 @@ updateInner msg model =
         TreasureSettingsValueSet itemClass value ->
             Update.Treasure.settingsValueSet itemClass value model
 
-        TreasureSettingsNoneSet itemClass none ->
-            Update.Treasure.settingsNoneSet itemClass none model
+        TreasureSettingsNoneSet kind itemClass none ->
+            Update.Treasure.settingsNoneSet kind itemClass none model
 
         TreasureSettingsScrollChanceSet raw ->
             Update.Treasure.settingsScrollChanceSet raw model

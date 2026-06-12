@@ -86,7 +86,7 @@ body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings ->
 body ui maybeRoll settings =
     [ helpText
     , controlRow ui
-    , settingsSection ui.settingsExpanded settings
+    , settingsSection ui.kind ui.settingsExpanded settings
     , case maybeRoll of
         Nothing ->
             emptyState
@@ -110,11 +110,14 @@ rolls just use Normal — the section header summarises the
 current knobs when not Normal so the GM can see at a glance
 that a roll is tuned.
 -}
-settingsSection : Bool -> Treasure.TreasureSettings -> Html Msg
-settingsSection expanded settings =
+settingsSection : Treasure.Kind -> Bool -> Treasure.TreasureSettings -> Html Msg
+settingsSection kind expanded settings =
     let
+        toggles =
+            Treasure.togglesFor kind settings
+
         nonDefault =
-            settingsDelta settings
+            settingsDelta kind settings
     in
     section [ class "treasure__settings" ]
         [ button
@@ -140,7 +143,7 @@ settingsSection expanded settings =
                     )
                 ]
             , span [ class "treasure__settings-label" ]
-                [ text "Tune your rolls" ]
+                [ text ("Tune your rolls (" ++ Treasure.kindLabel kind ++ ")") ]
             , span [ class "treasure__settings-delta" ]
                 [ text
                     (if String.isEmpty nonDefault then
@@ -153,42 +156,49 @@ settingsSection expanded settings =
             ]
         , if expanded then
             div [ class "treasure__settings-body" ]
-                [ settingsRow "Coins"
+                [ settingsRow kind
+                    "Coins"
                     "coins"
                     (Just settings.coinsCount)
                     Nothing
-                    settings.coinsNone
-                , settingsRow "Gems"
+                    toggles.coinsNone
+                , settingsRow kind
+                    "Gems"
                     "gems"
                     (Just settings.gemsCount)
                     (Just settings.gemsValue)
-                    settings.gemsNone
-                , settingsRow "Art"
+                    toggles.gemsNone
+                , settingsRow kind
+                    "Art"
                     "art"
                     (Just settings.artCount)
                     (Just settings.artValue)
-                    settings.artNone
-                , settingsRow "Magic"
+                    toggles.artNone
+                , settingsRow kind
+                    "Magic"
                     "magic"
                     (Just settings.magicCount)
                     (Just settings.magicValue)
-                    settings.magicNone
-                , scrollChanceRow settings.magicScrollChance settings.magicNone
-                , settingsRow "Mundane"
+                    toggles.magicNone
+                , scrollChanceRow settings.magicScrollChance toggles.magicNone
+                , settingsRow kind
+                    "Mundane"
                     "mundane"
                     (Just settings.mundaneCount)
                     Nothing
-                    settings.mundaneNone
-                , settingsRow "Weapons"
+                    toggles.mundaneNone
+                , settingsRow kind
+                    "Weapons"
                     "weapons"
                     (Just settings.weaponsCount)
                     Nothing
-                    settings.weaponsNone
-                , settingsRow "Armor"
+                    toggles.weaponsNone
+                , settingsRow kind
+                    "Armor"
                     "armor"
                     (Just settings.armorCount)
                     Nothing
-                    settings.armorNone
+                    toggles.armorNone
                 , div [ class "treasure__settings-actions" ]
                     [ button
                         [ class "treasure__settings-reset"
@@ -210,36 +220,49 @@ Empty string when everything is at default; "Gems: More /
 Higher · Mundane: Off" otherwise. The None toggles surface as
 "Off" to keep the chip short.
 -}
-settingsDelta : Treasure.TreasureSettings -> String
-settingsDelta s =
+settingsDelta : Treasure.Kind -> Treasure.TreasureSettings -> String
+settingsDelta kind s =
     let
-        coinsPart =
-            knobPairWithNone "Coins" s.coinsCount Treasure.ValueNormal s.coinsNone
+        t =
+            Treasure.togglesFor kind s
 
-        gemsPart =
-            knobPairWithNone "Gems" s.gemsCount s.gemsValue s.gemsNone
+        defaults =
+            case kind of
+                Treasure.Hoard ->
+                    Treasure.defaultHoardToggles
 
-        artPart =
-            knobPairWithNone "Art" s.artCount s.artValue s.artNone
+                Treasure.Individual ->
+                    Treasure.defaultIndividualToggles
 
-        magicPart =
-            knobPairWithNone "Magic" s.magicCount s.magicValue s.magicNone
+        chip label countN valueN noneOn defaultNoneOn =
+            if noneOn /= defaultNoneOn then
+                -- The toggle differs from this Kind's default —
+                -- surface "On" or "Off" explicitly so the chip
+                -- shows the GM has flipped it.
+                if noneOn then
+                    label ++ ": Off"
 
-        -- Mundane / Weapons / Armor default to None=on, so we
-        -- treat "None=on AND Count=Normal" as the default (no
-        -- delta surfaced).  When the GM toggles None off, even
-        -- a Normal Count chip surfaces — "Mundane: On" — so the
-        -- title-bar chip reflects that the category is active.
-        mundanePart =
-            optInChip "Mundane" s.mundaneCount s.mundaneNone
+                else
+                    label ++ ": On"
 
-        weaponsPart =
-            optInChip "Weapons" s.weaponsCount s.weaponsNone
+            else if noneOn then
+                -- At-default-and-off: silent, even if Count is
+                -- non-Normal (it doesn't apply when None=on).
+                ""
 
-        armorPart =
-            optInChip "Armor" s.armorCount s.armorNone
+            else
+                -- At-default-and-on: only chip when Count / Value
+                -- aren't Normal.
+                knobPair label countN valueN
     in
-    [ coinsPart, gemsPart, artPart, magicPart, mundanePart, weaponsPart, armorPart ]
+    [ chip "Coins" s.coinsCount Treasure.ValueNormal t.coinsNone defaults.coinsNone
+    , chip "Gems" s.gemsCount s.gemsValue t.gemsNone defaults.gemsNone
+    , chip "Art" s.artCount s.artValue t.artNone defaults.artNone
+    , chip "Magic" s.magicCount s.magicValue t.magicNone defaults.magicNone
+    , chip "Mundane" s.mundaneCount Treasure.ValueNormal t.mundaneNone defaults.mundaneNone
+    , chip "Weapons" s.weaponsCount Treasure.ValueNormal t.weaponsNone defaults.weaponsNone
+    , chip "Armor" s.armorCount Treasure.ValueNormal t.armorNone defaults.armorNone
+    ]
         |> List.filter (not << String.isEmpty)
         |> String.join " · "
 
@@ -349,13 +372,14 @@ scrollChanceRow current magicNone =
 
 
 settingsRow :
-    String
+    Treasure.Kind
+    -> String
     -> String
     -> Maybe Treasure.CountAdjust
     -> Maybe Treasure.ValueAdjust
     -> Bool
     -> Html Msg
-settingsRow label_ itemClass maybeCount maybeValue noneOn =
+settingsRow kind label_ itemClass maybeCount maybeValue noneOn =
     div [ class "treasure__settings-row" ]
         [ span [ class "treasure__settings-row-label" ] [ text label_ ]
         , case maybeCount of
@@ -370,7 +394,7 @@ settingsRow label_ itemClass maybeCount maybeValue noneOn =
 
             Nothing ->
                 span [ class "treasure__settings-row-spacer" ] []
-        , noneToggle itemClass noneOn
+        , noneToggle kind itemClass noneOn
         ]
 
 
@@ -378,8 +402,8 @@ settingsRow label_ itemClass maybeCount maybeValue noneOn =
 roll time. Stays at the far right of every row regardless of
 whether the row has Count, Value, or both knobs to its left.
 -}
-noneToggle : String -> Bool -> Html Msg
-noneToggle itemClass current =
+noneToggle : Treasure.Kind -> String -> Bool -> Html Msg
+noneToggle kind itemClass current =
     Html.label
         [ class
             ("treasure__settings-none"
@@ -401,7 +425,7 @@ noneToggle itemClass current =
         [ Html.input
             [ type_ "checkbox"
             , Attr.checked current
-            , onCheck (TreasureSettingsNoneSet itemClass)
+            , onCheck (TreasureSettingsNoneSet kind itemClass)
             ]
             []
         , span [ class "treasure__settings-none-label" ] [ text "None" ]
@@ -582,27 +606,36 @@ contributionRow c =
 
 contributionSummary : CreatureContribution -> String
 contributionSummary c =
-    let
-        gemPart =
-            if List.isEmpty c.gems then
-                ""
-
-            else
-                " + " ++ String.join ", " (List.map gemLabel c.gems)
-
-        lootPart =
-            if List.isEmpty c.loot then
-                ""
-
-            else
-                " + " ++ String.join ", " c.loot
-    in
-    coinSummary c.coins ++ gemPart ++ lootPart
+    [ coinSummary c.coins
+    , joinList (List.map gemLabel c.gems)
+    , joinList (List.map gemLabel c.art)
+    , joinList (List.map .name c.magic)
+    , joinList (List.map flatLabel c.mundane)
+    , joinList (List.map flatLabel c.weapons)
+    , joinList (List.map flatLabel c.armor)
+    , joinList c.loot
+    ]
+        |> List.filter (\part -> part /= "" && part /= "—")
+        |> String.join " + "
 
 
-gemLabel : GemItem -> String
+joinList : List String -> String
+joinList items =
+    if List.isEmpty items then
+        ""
+
+    else
+        String.join ", " items
+
+
+gemLabel : { item | name : String, valueGp : Int } -> String
 gemLabel g =
     g.name ++ " (" ++ String.fromInt g.valueGp ++ " gp)"
+
+
+flatLabel : { item | name : String, valueGp : Int } -> String
+flatLabel item =
+    item.name ++ " (" ++ String.fromInt item.valueGp ++ " gp)"
 
 
 coinSummary : Coins -> String

@@ -242,14 +242,22 @@ encodeTreasureSettings s =
         , ( "mundaneCount", E.string (Encounter.Treasure.countAdjustWire s.mundaneCount) )
         , ( "weaponsCount", E.string (Encounter.Treasure.countAdjustWire s.weaponsCount) )
         , ( "armorCount", E.string (Encounter.Treasure.countAdjustWire s.armorCount) )
-        , ( "coinsNone", E.bool s.coinsNone )
-        , ( "gemsNone", E.bool s.gemsNone )
-        , ( "artNone", E.bool s.artNone )
-        , ( "magicNone", E.bool s.magicNone )
-        , ( "mundaneNone", E.bool s.mundaneNone )
-        , ( "weaponsNone", E.bool s.weaponsNone )
-        , ( "armorNone", E.bool s.armorNone )
+        , ( "hoardToggles", encodeToggles s.hoardToggles )
+        , ( "individualToggles", encodeToggles s.individualToggles )
         , ( "magicScrollChance", E.int s.magicScrollChance )
+        ]
+
+
+encodeToggles : Encounter.Treasure.CategoryToggles -> E.Value
+encodeToggles t =
+    E.object
+        [ ( "coinsNone", E.bool t.coinsNone )
+        , ( "gemsNone", E.bool t.gemsNone )
+        , ( "artNone", E.bool t.artNone )
+        , ( "magicNone", E.bool t.magicNone )
+        , ( "mundaneNone", E.bool t.mundaneNone )
+        , ( "weaponsNone", E.bool t.weaponsNone )
+        , ( "armorNone", E.bool t.armorNone )
         ]
 
 
@@ -271,14 +279,49 @@ decodeTreasureSettings =
         |> andMap (decodeCountField "mundaneCount")
         |> andMap (decodeCountField "weaponsCount")
         |> andMap (decodeCountField "armorCount")
-        |> andMap (decodeBoolField "coinsNone" False)
-        |> andMap (decodeBoolField "gemsNone" False)
-        |> andMap (decodeBoolField "artNone" False)
-        |> andMap (decodeBoolField "magicNone" False)
-        |> andMap (decodeBoolField "mundaneNone" True)
-        |> andMap (decodeBoolField "weaponsNone" True)
-        |> andMap (decodeBoolField "armorNone" True)
+        |> andMap (decodeTogglesField "hoardToggles" decodeLegacyHoardToggles)
+        |> andMap (decodeTogglesField "individualToggles" (D.succeed Encounter.Treasure.defaultIndividualToggles))
         |> andMap (decodeIntField "magicScrollChance" 15)
+
+
+decodeTogglesField :
+    String
+    -> D.Decoder Encounter.Treasure.CategoryToggles
+    -> D.Decoder Encounter.Treasure.CategoryToggles
+decodeTogglesField name fallback =
+    D.oneOf
+        [ D.field name decodeToggles
+        , fallback
+        ]
+
+
+decodeToggles : D.Decoder Encounter.Treasure.CategoryToggles
+decodeToggles =
+    D.map7 Encounter.Treasure.CategoryToggles
+        (decodeBoolField "coinsNone" False)
+        (decodeBoolField "gemsNone" False)
+        (decodeBoolField "artNone" False)
+        (decodeBoolField "magicNone" False)
+        (decodeBoolField "mundaneNone" True)
+        (decodeBoolField "weaponsNone" True)
+        (decodeBoolField "armorNone" True)
+
+
+{-| Read the pre-split flat None fields. Used as the fallback
+decoder for `hoardToggles` so a save written before the
+per-Kind toggle refactor doesn't suddenly forget what the GM
+had on or off — those flat fields were the Hoard knobs.
+-}
+decodeLegacyHoardToggles : D.Decoder Encounter.Treasure.CategoryToggles
+decodeLegacyHoardToggles =
+    D.map7 Encounter.Treasure.CategoryToggles
+        (decodeBoolField "coinsNone" False)
+        (decodeBoolField "gemsNone" False)
+        (decodeBoolField "artNone" False)
+        (decodeBoolField "magicNone" False)
+        (decodeBoolField "mundaneNone" True)
+        (decodeBoolField "weaponsNone" True)
+        (decodeBoolField "armorNone" True)
 
 
 andMap : D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
@@ -451,6 +494,11 @@ encodeContribution c =
         [ ( "creatureName", E.string c.creatureName )
         , ( "coins", encodeCoins c.coins )
         , ( "gems", E.list encodeGemItem c.gems )
+        , ( "art", E.list encodeArtItem c.art )
+        , ( "magic", E.list encodeMagicItem c.magic )
+        , ( "mundane", E.list encodeFlatItem c.mundane )
+        , ( "weapons", E.list encodeFlatItem c.weapons )
+        , ( "armor", E.list encodeFlatItem c.armor )
         , ( "loot", E.list E.string c.loot )
         , ( "bracket", E.string (treasureBracketWire c.bracket) )
         ]
@@ -463,6 +511,15 @@ decodeContribution =
             { creatureName = creatureName
             , coins = coins
             , gems = gems
+
+            -- Filled by the andThen below.  Legacy contributions
+            -- decoded before the non-coin Individual roll feature
+            -- get [] for the new fields.
+            , art = []
+            , magic = []
+            , mundane = []
+            , weapons = []
+            , armor = []
             , loot = loot
             , bracket = bracket
             }
@@ -484,6 +541,34 @@ decodeContribution =
             , D.succeed Encounter.Treasure.B1to4
             ]
         )
+        |> D.andThen
+            (\partial ->
+                D.map5
+                    (\art magic mundane weapons armor ->
+                        { partial
+                            | art = art
+                            , magic = magic
+                            , mundane = mundane
+                            , weapons = weapons
+                            , armor = armor
+                        }
+                    )
+                    (D.oneOf
+                        [ D.field "art" (D.list decodeArtItem), D.succeed [] ]
+                    )
+                    (D.oneOf
+                        [ D.field "magic" (D.list decodeMagicItem), D.succeed [] ]
+                    )
+                    (D.oneOf
+                        [ D.field "mundane" (D.list decodeFlatItem), D.succeed [] ]
+                    )
+                    (D.oneOf
+                        [ D.field "weapons" (D.list decodeFlatItem), D.succeed [] ]
+                    )
+                    (D.oneOf
+                        [ D.field "armor" (D.list decodeFlatItem), D.succeed [] ]
+                    )
+            )
 
 
 encodeRowSource : Encounter.Treasure.RowSource -> E.Value

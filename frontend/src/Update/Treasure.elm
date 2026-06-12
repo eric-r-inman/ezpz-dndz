@@ -331,42 +331,60 @@ settingsCountSet itemClass valueWire model =
     ( updateEncounterSettings next model, Cmd.none )
 
 
-{-| Toggle the per-category "None" switch. When on, the category
-is skipped at roll time regardless of its Count knob. Mundane,
-Weapons, and Armor default to None=on (opt-in); the other four
-default to None=off (the historical behavior).
+{-| Toggle the per-category "None" switch. When on, the
+category is skipped at roll time regardless of its Count knob.
+Toggle state is per-Kind: writing to Hoard doesn't affect
+Individual. Mundane / Weapons / Armor default to None=on
+(opt-in); the four classic categories default to None=off for
+Hoard and None=on for Individual.
 -}
-settingsNoneSet : String -> Bool -> Model -> ( Model, Cmd Msg )
-settingsNoneSet itemClass none model =
+settingsNoneSet :
+    Treasure.Kind
+    -> String
+    -> Bool
+    -> Model
+    -> ( Model, Cmd Msg )
+settingsNoneSet kind itemClass none model =
     let
         settings =
             model.encounter.treasureSettings
 
-        next =
+        toggles =
+            Treasure.togglesFor kind settings
+
+        nextToggles =
             case itemClass of
                 "coins" ->
-                    { settings | coinsNone = none }
+                    { toggles | coinsNone = none }
 
                 "gems" ->
-                    { settings | gemsNone = none }
+                    { toggles | gemsNone = none }
 
                 "art" ->
-                    { settings | artNone = none }
+                    { toggles | artNone = none }
 
                 "magic" ->
-                    { settings | magicNone = none }
+                    { toggles | magicNone = none }
 
                 "mundane" ->
-                    { settings | mundaneNone = none }
+                    { toggles | mundaneNone = none }
 
                 "weapons" ->
-                    { settings | weaponsNone = none }
+                    { toggles | weaponsNone = none }
 
                 "armor" ->
-                    { settings | armorNone = none }
+                    { toggles | armorNone = none }
 
                 _ ->
-                    settings
+                    toggles
+
+        next =
+            case kind of
+                Treasure.Hoard ->
+                    { settings | hoardToggles = nextToggles }
+
+                Treasure.Individual ->
+                    { settings | individualToggles = nextToggles }
     in
     ( updateEncounterSettings next model, Cmd.none )
 
