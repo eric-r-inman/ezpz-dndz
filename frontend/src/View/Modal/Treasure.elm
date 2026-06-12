@@ -22,6 +22,8 @@ whole roll with a fresh draw.
 
 -}
 
+import Compendium
+import Encounter
 import Encounter.Treasure as Treasure
     exposing
         ( ArtItem
@@ -31,6 +33,7 @@ import Encounter.Treasure as Treasure
         , Kind(..)
         , MagicItem
         )
+import Encounter.Treasure.Budget as Budget
 import Encounter.Treasure.Tables as Tables exposing (Rarity)
 import Html
     exposing
@@ -59,6 +62,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
+import Ui.Compendium
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
 import Util.Number
@@ -69,30 +73,102 @@ view : ModalChrome -> Model -> Html Msg
 view chrome model =
     case model.modal of
         Just (Model.ModalTreasure ui) ->
+            let
+                brackets =
+                    enemyBrackets model
+
+                expectedGp =
+                    expectedGpFor ui.kind brackets
+            in
             View.Modal.view
                 { close = TreasureClose
                 , noOp = NoOp
                 , title = "💰 Treasure"
                 , extraClass = "modal--treasure"
                 , chrome = chrome
-                , body = body ui model.encounter.treasure model.encounter.treasureSettings
+                , body =
+                    body ui
+                        model.encounter.treasure
+                        model.encounter.treasureSettings
+                        expectedGp
                 }
 
         _ ->
             text ""
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> List (Html Msg)
-body ui maybeRoll settings =
+{-| The enemies' brackets in the encounter, derived the same way
+the generator does. Used by the budget hint near Roll and the
+wealth-check chip on the rolled result.
+-}
+enemyBrackets : Model -> List Treasure.Bracket
+enemyBrackets model =
+    let
+        db =
+            case model.compendium.db of
+                Ui.Compendium.CompendiumDbLoaded loaded ->
+                    loaded
+
+                _ ->
+                    Compendium.fromList []
+    in
+    model.encounter.creatures
+        |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
+        |> List.map (creatureBracket db)
+
+
+creatureBracket : Compendium.Db -> Encounter.Creature -> Treasure.Bracket
+creatureBracket db c =
+    c.creatureId
+        |> Maybe.andThen (\id -> Compendium.find id db)
+        |> Maybe.map (.challengeRating >> Compendium.crToFloat >> Treasure.bracketFor)
+        |> Maybe.withDefault Treasure.B1to4
+
+
+{-| SRD-baseline expected gp for the upcoming roll.
+
+Hoard rolls use the toughest enemy's bracket once. Individual
+rolls sum the per-creature baseline across every enemy, since
+each rolls its own bracket independently. Returns 0 when there
+are no enemies — the roll itself short-circuits to an empty
+result, so there's no useful baseline to surface.
+
+-}
+expectedGpFor : Kind -> List Treasure.Bracket -> Int
+expectedGpFor kind brackets =
+    case ( kind, brackets ) of
+        ( _, [] ) ->
+            0
+
+        ( Hoard, _ ) ->
+            Budget.expectedGpFor Hoard (List.foldl maxBracket Treasure.B1to4 brackets)
+
+        ( Individual, _ ) ->
+            brackets
+                |> List.map (Budget.expectedGpFor Individual)
+                |> List.sum
+
+
+maxBracket : Treasure.Bracket -> Treasure.Bracket -> Treasure.Bracket
+maxBracket a b =
+    if Treasure.bracketIndex a > Treasure.bracketIndex b then
+        a
+
+    else
+        b
+
+
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> List (Html Msg)
+body ui maybeRoll settings expectedGp =
     [ helpText
-    , controlRow ui
+    , controlRow ui expectedGp
     , settingsSection ui.kind ui.settingsExpanded settings
     , case maybeRoll of
         Nothing ->
             emptyState
 
         Just roll ->
-            resultBlock roll
+            resultBlock roll expectedGp
     , case maybeRoll of
         Just roll ->
             contributionsSection ui.contributionsExpanded roll.contributions
@@ -584,8 +660,8 @@ helpText =
         [ text "'Boss' rolls for highest-CR enemy; 'All' rolls for all enemies. Loot is added after the randomized roll (for enemies with Loot in their stat block; you can add Loot via the Creature editor in the Compendium)." ]
 
 
-controlRow : TreasureUi -> Html Msg
-controlRow ui =
+controlRow : TreasureUi -> Int -> Html Msg
+controlRow ui expectedGp =
     div [ class "treasure__controls" ]
         [ label [ class "treasure__field" ]
             [ span [ class "treasure__field-label" ] [ text "Roll:" ]
@@ -597,7 +673,28 @@ controlRow ui =
             , onClick TreasureRoll
             ]
             [ text "🎲 Roll" ]
+        , budgetHint expectedGp
         ]
+
+
+{-| Inline SRD-baseline hint next to Roll: "Expected ~X gp for
+this encounter." Shown only when the encounter has enemies that
+resolve to a known bracket — silent on empty encounters or when
+all enemies fall through to the B1to4 default (which usually
+means "no compendium hit," not "actually CR 0").
+-}
+budgetHint : Int -> Html Msg
+budgetHint expectedGp =
+    if expectedGp <= 0 then
+        text ""
+
+    else
+        span
+            [ class "treasure__budget-hint"
+            , attribute "title"
+                "SRD-derived baseline coin gp for this encounter — your roll will land near this on default settings."
+            ]
+            [ text ("Expected ≈ " ++ formatNumber expectedGp ++ " gp") ]
 
 
 kindOption : Kind -> Kind -> Html Msg
@@ -625,10 +722,10 @@ emptyState =
         [ text "Pick a kind above and hit Roll." ]
 
 
-resultBlock : Treasure.TreasureRoll -> Html Msg
-resultBlock roll =
+resultBlock : Treasure.TreasureRoll -> Int -> Html Msg
+resultBlock roll expectedGp =
     div [ class "treasure__results" ]
-        [ summaryStrip roll
+        [ summaryStrip roll expectedGp
         , coinsSection roll.coins
         , gemsSection roll.gems
         , artSection roll.art
@@ -679,8 +776,8 @@ armorSection items =
             TreasureArmorRemove
 
 
-summaryStrip : Treasure.TreasureRoll -> Html Msg
-summaryStrip roll =
+summaryStrip : Treasure.TreasureRoll -> Int -> Html Msg
+summaryStrip roll expectedGp =
     let
         coinValue =
             Treasure.totalCoinValueGp roll.coins
@@ -691,24 +788,66 @@ summaryStrip roll =
         artValue =
             Treasure.totalArtValue roll.art
 
+        mundaneValue =
+            Treasure.totalMundaneValue roll.mundane
+
+        weaponsValue =
+            Treasure.totalWeaponsValue roll.weapons
+
+        armorValue =
+            Treasure.totalArmorValue roll.armor
+
         magicCount =
             List.length roll.magic
 
         total =
-            coinValue + gemValue + artValue
+            coinValue + gemValue + artValue + mundaneValue + weaponsValue + armorValue
     in
     div [ class "treasure__summary" ]
         [ span [ class "treasure__summary-chunk" ]
-            [ text ("Coins ≈ " ++ String.fromInt coinValue ++ " gp") ]
+            [ text ("Coins ≈ " ++ formatNumber coinValue ++ " gp") ]
         , span [ class "treasure__summary-chunk" ]
-            [ text ("Gems ≈ " ++ String.fromInt gemValue ++ " gp") ]
+            [ text ("Gems ≈ " ++ formatNumber gemValue ++ " gp") ]
         , span [ class "treasure__summary-chunk" ]
-            [ text ("Art ≈ " ++ String.fromInt artValue ++ " gp") ]
+            [ text ("Art ≈ " ++ formatNumber artValue ++ " gp") ]
         , span [ class "treasure__summary-chunk" ]
             [ text ("Magic items: " ++ String.fromInt magicCount) ]
         , span [ class "treasure__summary-total" ]
-            [ text ("Total value ≈ " ++ String.fromInt total ++ " gp") ]
+            [ text ("Total value ≈ " ++ formatNumber total ++ " gp") ]
+        , wealthChip total expectedGp
         ]
+
+
+wealthChip : Int -> Int -> Html Msg
+wealthChip actual expectedGp =
+    if expectedGp <= 0 then
+        text ""
+
+    else
+        let
+            band =
+                Budget.bandFor actual expectedGp
+
+            cls =
+                case band of
+                    Budget.InBand ->
+                        "treasure__wealth-chip treasure__wealth-chip--in"
+
+                    Budget.Tuned ->
+                        "treasure__wealth-chip treasure__wealth-chip--tuned"
+
+                    Budget.WayOff ->
+                        "treasure__wealth-chip treasure__wealth-chip--off"
+        in
+        span
+            [ class cls
+            , attribute "title"
+                ("SRD-baseline for this encounter ≈ "
+                    ++ formatNumber expectedGp
+                    ++ " gp.  Within ±50% is 'in band'; 0.5×–2× off reads as a tuned roll; 4× or more off is flagged so a slipped knob is hard to miss."
+                )
+            ]
+            [ text (Budget.bandLabel band) ]
 
 
 

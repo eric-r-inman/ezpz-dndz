@@ -1798,6 +1798,42 @@ body {
   color: var(--color-text);
 }
 
+/* SRD baseline / wealth-check display.  The hint sits next to
+   Roll as a flavour chip; the wealth chip sits on the rolled
+   result as a colour-coded verdict. */
+
+.treasure__budget-hint {
+  margin-left: 8px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.treasure__wealth-chip {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.78rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  white-space: nowrap;
+}
+
+.treasure__wealth-chip--in {
+  border-color: var(--color-success, #2f9e44);
+  color: var(--color-success, #2f9e44);
+}
+
+.treasure__wealth-chip--tuned {
+  border-color: var(--color-warning, #b9602a);
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure__wealth-chip--off {
+  border-color: var(--color-danger, #d63b3b);
+  color: var(--color-danger, #d63b3b);
+}
+
 .treasure__section {
   display: flex;
   flex-direction: column;
