@@ -115,9 +115,6 @@ settingsSection kind expanded settings =
     let
         toggles =
             Treasure.togglesFor kind settings
-
-        nonDefault =
-            settingsDelta kind settings
     in
     section [ class "treasure__settings" ]
         [ button
@@ -144,15 +141,6 @@ settingsSection kind expanded settings =
                 ]
             , span [ class "treasure__settings-label" ]
                 [ text ("Tune your rolls (" ++ Treasure.kindLabel kind ++ ")") ]
-            , span [ class "treasure__settings-delta" ]
-                [ text
-                    (if String.isEmpty nonDefault then
-                        "All Normal"
-
-                     else
-                        nonDefault
-                    )
-                ]
             ]
         , if expanded then
             div [ class "treasure__settings-body" ]
@@ -213,124 +201,6 @@ settingsSection kind expanded settings =
           else
             text ""
         ]
-
-
-{-| Brief one-line summary of any knobs that aren't Normal.
-Empty string when everything is at default; "Gems: More /
-Higher · Mundane: Off" otherwise. The None toggles surface as
-"Off" to keep the chip short.
--}
-settingsDelta : Treasure.Kind -> Treasure.TreasureSettings -> String
-settingsDelta kind s =
-    let
-        t =
-            Treasure.togglesFor kind s
-
-        defaults =
-            case kind of
-                Treasure.Hoard ->
-                    Treasure.defaultHoardToggles
-
-                Treasure.Individual ->
-                    Treasure.defaultIndividualToggles
-
-        chip label countN valueN noneOn defaultNoneOn =
-            if noneOn /= defaultNoneOn then
-                -- The toggle differs from this Kind's default —
-                -- surface "On" or "Off" explicitly so the chip
-                -- shows the GM has flipped it.
-                if noneOn then
-                    label ++ ": Off"
-
-                else
-                    label ++ ": On"
-
-            else if noneOn then
-                -- At-default-and-off: silent, even if Count is
-                -- non-Normal (it doesn't apply when None=on).
-                ""
-
-            else
-                -- At-default-and-on: only chip when Count / Value
-                -- aren't Normal.
-                knobPair label countN valueN
-    in
-    [ chip "Coins" s.coinsCount Treasure.ValueNormal t.coinsNone defaults.coinsNone
-    , chip "Gems" s.gemsCount s.gemsValue t.gemsNone defaults.gemsNone
-    , chip "Art" s.artCount s.artValue t.artNone defaults.artNone
-    , chip "Magic" s.magicCount s.magicValue t.magicNone defaults.magicNone
-    , chip "Mundane" s.mundaneCount Treasure.ValueNormal t.mundaneNone defaults.mundaneNone
-    , chip "Weapons" s.weaponsCount Treasure.ValueNormal t.weaponsNone defaults.weaponsNone
-    , chip "Armor" s.armorCount Treasure.ValueNormal t.armorNone defaults.armorNone
-    ]
-        |> List.filter (not << String.isEmpty)
-        |> String.join " · "
-
-
-knobPairWithNone : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> Bool -> String
-knobPairWithNone label count value none =
-    if none then
-        label ++ ": Off"
-
-    else
-        knobPair label count value
-
-
-optInChip : String -> Treasure.CountAdjust -> Bool -> String
-optInChip label count none =
-    if none then
-        ""
-
-    else
-        let
-            countTag =
-                countAdjustLabelSummary count
-        in
-        if String.isEmpty countTag then
-            label ++ ": On"
-
-        else
-            label ++ ": On / " ++ countTag
-
-
-knobPair : String -> Treasure.CountAdjust -> Treasure.ValueAdjust -> String
-knobPair label count value =
-    let
-        parts =
-            [ countAdjustLabelSummary count, valueAdjustLabelSummary value ]
-                |> List.filter (not << String.isEmpty)
-    in
-    if List.isEmpty parts then
-        ""
-
-    else
-        label ++ ": " ++ String.join " / " parts
-
-
-countAdjustLabelSummary : Treasure.CountAdjust -> String
-countAdjustLabelSummary c =
-    case c of
-        Treasure.CountFewer ->
-            "Fewer"
-
-        Treasure.CountNormal ->
-            ""
-
-        Treasure.CountMore ->
-            "More"
-
-
-valueAdjustLabelSummary : Treasure.ValueAdjust -> String
-valueAdjustLabelSummary v =
-    case v of
-        Treasure.ValueLower ->
-            "Lower"
-
-        Treasure.ValueNormal ->
-            ""
-
-        Treasure.ValueHigher ->
-            "Higher"
 
 
 {-| Spell-scroll post-process chance sits as a sub-row under
