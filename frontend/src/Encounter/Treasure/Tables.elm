@@ -392,17 +392,21 @@ hoardEntries bracketIndex =
 hoardBracketOne : List HoardEntry
 hoardBracketOne =
     -- Challenge 0-4.  Coin base for the whole bracket:
-    -- 6d6 cp, 3d6 sp, 2d6 gp (and rarely 1d6 pp).
+    -- 6d6×100 cp, 3d6×100 sp, 2d6×10 gp (and rarely 1d6×10 pp).
+    -- The ×100 / ×100 / ×10 multipliers are straight from the SRD
+    -- 5.1 hoard table; an earlier draft of this table dropped them
+    -- and produced hoards that ran ~16× under the expected coin
+    -- yield for the bracket (avg 12 gp instead of ~196 gp).
     let
         coinBase =
             { emptyHoard
-                | copper = Just ( 6, 6, 1 )
-                , silver = Just ( 3, 6, 1 )
-                , gold = Just ( 2, 6, 1 )
+                | copper = Just ( 6, 6, 100 )
+                , silver = Just ( 3, 6, 100 )
+                , gold = Just ( 2, 6, 10 )
             }
 
         bigCoinBase =
-            { coinBase | platinum = Just ( 1, 6, 1 ) }
+            { coinBase | platinum = Just ( 1, 6, 10 ) }
     in
     -- Mixed gems+art rows: each pair of (gems-only, art-only) rows at a
     -- given magic level donates equal weight to a new row carrying half
