@@ -606,29 +606,56 @@ contributionsSection expanded contributions =
 contributionRow : CreatureContribution -> Html Msg
 contributionRow c =
     li [ class "treasure__contributions-row" ]
-        [ span [ class "treasure__contributions-name" ]
+        [ div [ class "treasure__contributions-name" ]
             [ text c.creatureName
             , span [ class "treasure__contributions-bracket" ]
                 [ text (" — " ++ Treasure.bracketLabel c.bracket) ]
             ]
-        , span [ class "treasure__contributions-coins" ]
-            [ text (contributionSummary c) ]
+        , div [ class "treasure__contributions-lines" ]
+            (contributionLines c)
         ]
 
 
-contributionSummary : CreatureContribution -> String
-contributionSummary c =
-    [ coinSummary c.coins
-    , joinList (List.map gemLabel c.gems)
-    , joinList (List.map gemLabel c.art)
-    , joinList (List.map .name c.magic)
-    , joinList (List.map flatLabel c.mundane)
-    , joinList (List.map flatLabel c.weapons)
-    , joinList (List.map flatLabel c.armor)
-    , joinList c.loot
+{-| Per-creature non-coin breakdown. Each category that's
+present renders as its own labelled line under the creature
+name, so a row reads:
+
+    Goblin — CR 0–4
+      Coins: 12 gp
+      Gems: Bloodstone (50 gp), Quartz (50 gp)
+      Magic: Spell Scroll (1st level): Magic Missile
+
+This is the legible-breakdown landing for #5 in the audit
+report; the prior single-line summary was hard to parse for
+multi-category Individual rolls.
+
+-}
+contributionLines : CreatureContribution -> List (Html Msg)
+contributionLines c =
+    [ ( "Coins", coinSummary c.coins )
+    , ( "Gems", joinList (List.map gemLabel c.gems) )
+    , ( "Art", joinList (List.map gemLabel c.art) )
+    , ( "Magic", joinList (List.map .name c.magic) )
+    , ( "Mundane", joinList (List.map flatLabel c.mundane) )
+    , ( "Weapons", joinList (List.map flatLabel c.weapons) )
+    , ( "Armor", joinList (List.map flatLabel c.armor) )
+    , ( "Loot", joinList c.loot )
     ]
-        |> List.filter (\part -> part /= "" && part /= "—")
-        |> String.join " + "
+        |> List.filterMap
+            (\( label_, body_ ) ->
+                if String.isEmpty body_ || body_ == "—" then
+                    Nothing
+
+                else
+                    Just
+                        (div [ class "treasure__contributions-line" ]
+                            [ span [ class "treasure__contributions-line-label" ]
+                                [ text (label_ ++ ": ") ]
+                            , span [ class "treasure__contributions-line-body" ]
+                                [ text body_ ]
+                            ]
+                        )
+            )
 
 
 joinList : List String -> String
