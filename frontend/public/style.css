@@ -2106,25 +2106,38 @@ body {
 }
 
 .treasure__settings-none {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  font: inherit;
   font-size: 0.78rem;
   color: var(--color-text-muted);
   cursor: pointer;
   user-select: none;
-  padding: 2px 6px;
+  padding: 2px 8px;
+  background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
 }
 
-.treasure__settings-none input[type="checkbox"] {
-  margin: 0;
-  cursor: pointer;
+.treasure__settings-none:hover {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+
+.treasure__settings-none-glyph {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .treasure__settings-none--on {
   border-color: var(--color-warning, #b9602a);
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure__settings-none--on:hover {
+  filter: brightness(1.1);
   color: var(--color-warning, #b9602a);
 }
 

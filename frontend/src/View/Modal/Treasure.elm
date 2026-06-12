@@ -56,7 +56,7 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onCheck, onClick, onInput)
+import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.ModalChrome exposing (ModalChrome)
@@ -398,13 +398,23 @@ settingsRow kind label_ itemClass maybeCount maybeValue noneOn =
         ]
 
 
-{-| Right-edge checkbox that suppresses the whole category at
+{-| Right-edge toggle that suppresses the whole category at
 roll time. Stays at the far right of every row regardless of
 whether the row has Count, Value, or both knobs to its left.
+
+Rendered as a button (not a native `<input type=checkbox>`)
+with a glyph indicator so we can decide the new value
+explicitly from `current`. The native-checkbox version was
+fighting the modal's `stopPropagationOn "click"` listener — the
+NoOp it dispatched on every click in the modal scheduled a
+re-render that raced the browser's checkbox state change, so
+the False → True direction never landed. Driving the toggle
+ourselves dodges the race entirely.
+
 -}
 noneToggle : Treasure.Kind -> String -> Bool -> Html Msg
 noneToggle kind itemClass current =
-    Html.label
+    button
         [ class
             ("treasure__settings-none"
                 ++ (if current then
@@ -414,20 +424,33 @@ noneToggle kind itemClass current =
                         ""
                    )
             )
+        , type_ "button"
+        , onClick (TreasureSettingsNoneSet kind itemClass (not current))
+        , attribute "role" "switch"
+        , attribute "aria-checked"
+            (if current then
+                "true"
+
+             else
+                "false"
+            )
         , attribute "title"
             (if current then
-                "This category is currently skipped — uncheck to roll it"
+                "This category is currently skipped — click to roll it"
 
              else
                 "Skip this category at roll time"
             )
         ]
-        [ Html.input
-            [ type_ "checkbox"
-            , Attr.checked current
-            , onCheck (TreasureSettingsNoneSet kind itemClass)
+        [ span [ class "treasure__settings-none-glyph" ]
+            [ text
+                (if current then
+                    "☑"
+
+                 else
+                    "☐"
+                )
             ]
-            []
         , span [ class "treasure__settings-none-label" ] [ text "None" ]
         ]
 
