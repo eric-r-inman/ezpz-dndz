@@ -1205,15 +1205,22 @@ actionBar creature inEncounter selectedIds =
                     ]
     in
     let
-        -- Bundled (SRD) creatures are read-only: hide Edit and
-        -- Delete, keep Duplicate as the path to a per-user copy.
+        -- Bundled (SRD) creatures are read-only.  The Edit button
+        -- is rendered greyed-out (with an explanatory hover
+        -- tooltip) so the affordance stays in the same place
+        -- across rows; Duplicate is the path to a per-user copy.
         -- Pre-Phase-2 snapshots may load a creature with
         -- `isBundled = False` even when the id happens to belong
         -- to the bundle, but those rows are now flagged correctly
         -- on every fresh fetch.
         editButton =
             if creature.isBundled then
-                text ""
+                button
+                    [ class "action-btn action-btn--blue compendium__edit-btn"
+                    , disabled True
+                    , title "Bundled creatures not editable. Duplicate to edit."
+                    ]
+                    [ text "✏️ Edit" ]
 
             else
                 button
