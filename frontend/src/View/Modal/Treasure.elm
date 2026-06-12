@@ -91,6 +91,7 @@ view chrome model =
                         model.encounter.treasure
                         model.encounter.treasureSettings
                         expectedGp
+                        (List.length brackets)
                 }
 
         _ ->
@@ -158,10 +159,11 @@ maxBracket a b =
         b
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> List (Html Msg)
-body ui maybeRoll settings expectedGp =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> Int -> List (Html Msg)
+body ui maybeRoll settings expectedGp enemyCount =
     [ helpText
     , controlRow ui expectedGp
+    , multiplierNotice ui.kind enemyCount (Treasure.togglesFor ui.kind settings)
     , settingsSection ui.kind ui.settingsExpanded settings
     , case maybeRoll of
         Nothing ->
@@ -699,6 +701,47 @@ helpText : Html Msg
 helpText =
     p [ class "treasure__help" ]
         [ text "'Boss' rolls for highest-CR enemy; 'All' rolls for all enemies. Loot is added after the randomized roll (for enemies with Loot in their stat block; you can add Loot via the Creature editor in the Compendium)." ]
+
+
+{-| Inline notice when the GM is on an Individual roll with
+multiple enemies AND has at least one non-coin category opted
+in. Each creature rolls those categories independently, so a
+5-creature encounter with Gems on produces ~5 hoards' worth of
+gems; the warning prevents accidental party-wealth inflation
+without blocking the roll.
+
+Silent for Hoard (one roll regardless of count) and for
+Individual encounters where all non-coin toggles are off.
+
+-}
+multiplierNotice : Kind -> Int -> Treasure.CategoryToggles -> Html Msg
+multiplierNotice kind enemyCount toggles =
+    let
+        anyNonCoinOn =
+            not toggles.gemsNone
+                || not toggles.artNone
+                || not toggles.magicNone
+                || not toggles.mundaneNone
+                || not toggles.weaponsNone
+                || not toggles.armorNone
+    in
+    if kind == Individual && enemyCount > 3 && anyNonCoinOn then
+        p
+            [ class "treasure__multiplier-notice"
+            , attribute "title"
+                "On Individual rolls each creature rolls the enabled non-coin categories independently from their bracket's hoard table — so 5 creatures means 5× the per-creature drop."
+            ]
+            [ text
+                ("⚠️  Individual rolls with non-coin toggles fire per creature — "
+                    ++ String.fromInt enemyCount
+                    ++ " enemies means each enabled category drops "
+                    ++ String.fromInt enemyCount
+                    ++ "× the per-creature amount."
+                )
+            ]
+
+    else
+        text ""
 
 
 controlRow : TreasureUi -> Int -> Html Msg

@@ -1869,6 +1869,16 @@ body {
   color: var(--color-accent, #4a90e2);
 }
 
+.treasure__multiplier-notice {
+  margin: 6px 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--color-warning, #b9602a);
+  background: var(--color-surface-2, transparent);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+}
+
 .treasure__section {
   display: flex;
   flex-direction: column;
