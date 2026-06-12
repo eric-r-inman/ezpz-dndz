@@ -321,7 +321,7 @@ actionsBar auth ui =
 createGroupButton : Html Msg
 createGroupButton =
     button
-        [ class "action-btn action-btn--green"
+        [ class "action-btn action-btn--condition"
         , onClick CompendiumGroupCreate
         , Tooltips.attr Tooltips.compendiumCreateGroup
         ]
@@ -331,7 +331,7 @@ createGroupButton =
 createGroupFromSelectedButton : CompendiumUi -> Html Msg
 createGroupFromSelectedButton ui =
     button
-        [ class "action-btn action-btn--green"
+        [ class "action-btn action-btn--condition"
         , onClick CompendiumGroupCreateFromSelected
         , Tooltips.attr Tooltips.compendiumCreateGroupFromSelected
         ]
