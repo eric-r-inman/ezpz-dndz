@@ -220,7 +220,8 @@ settingsSection kind expanded settings =
             ]
         , if expanded then
             div [ class "treasure__settings-body" ]
-                [ settingsRow kind
+                [ presetRow
+                , settingsRow kind
                     "Coins"
                     "coins"
                     (Just settings.coinsCount)
@@ -277,6 +278,46 @@ settingsSection kind expanded settings =
           else
             text ""
         ]
+
+
+{-| One-click presets row that lives at the top of the settings
+body. Each chip applies a canned set of toggles to the current
+Kind; see `Update.Treasure.presetFor`. Counts + value adjusts
+always snap back to Normal so a preset reliably overwrites
+previous tuning.
+-}
+presetRow : Html Msg
+presetRow =
+    div [ class "treasure__settings-presets" ]
+        [ span [ class "treasure__settings-presets-label" ]
+            [ text "Presets:" ]
+        , presetChip Msg.PresetCoinsOnly
+            "Coins only"
+            "Just coin yield — pocket money, bounties, salvage."
+        , presetChip Msg.PresetCoinsGems
+            "+ Gems"
+            "Coins plus the encounter's bracket-appropriate gems."
+        , presetChip Msg.PresetSrdDefault
+            "Full SRD"
+            "The classic four — coins, gems, art, magic items."
+        , presetChip Msg.PresetWizardLair
+            "Wizard's lair"
+            "Coins + magic, with a 75% scroll swap so most items land as spell scrolls."
+        , presetChip Msg.PresetBanditCamp
+            "Bandit camp"
+            "Coins + weapons + armor.  No gems, art, or magic."
+        ]
+
+
+presetChip : Msg.TreasurePreset -> String -> String -> Html Msg
+presetChip preset label tooltip =
+    button
+        [ class "treasure__settings-preset-chip"
+        , type_ "button"
+        , attribute "title" tooltip
+        , onClick (TreasureSettingsPresetApply preset)
+        ]
+        [ text label ]
 
 
 {-| Spell-scroll post-process chance sits as a sub-row under

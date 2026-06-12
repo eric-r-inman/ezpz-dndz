@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -358,6 +358,19 @@ type FlatCategory
     = FlatMundane
     | FlatWeapons
     | FlatArmor
+
+
+{-| Named one-click presets in Tune-your-rolls. Each applies a
+canned configuration to the current Kind's toggles + count knobs
+so common DM intents ("coins only", "wizard's lair") don't
+require the GM to toggle six fields by hand every time.
+-}
+type TreasurePreset
+    = PresetCoinsOnly
+    | PresetCoinsGems
+    | PresetSrdDefault
+    | PresetWizardLair
+    | PresetBanditCamp
 
 
 
@@ -1098,6 +1111,7 @@ type Msg
     | TreasureSettingsValueSet String String
     | TreasureSettingsNoneSet Encounter.Treasure.Kind String Bool
     | TreasureSettingsScrollChanceSet String
+    | TreasureSettingsPresetApply TreasurePreset
     | TreasureSettingsReset
       -- Collapse / expand the "Tune your rolls" settings panel
       -- in the Treasure modal.

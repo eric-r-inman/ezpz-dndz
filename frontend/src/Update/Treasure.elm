@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
+    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsPresetApply, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -31,7 +31,7 @@ import Compendium
 import Encounter
 import Encounter.Treasure as Treasure exposing (Bracket, EnemyInfo, RollContext)
 import Model exposing (Model)
-import Msg exposing (Msg(..))
+import Msg exposing (Msg(..), TreasurePreset(..))
 import Random
 import Ui.Compendium
 import Ui.Treasure
@@ -440,6 +440,89 @@ settingsScrollChanceSet raw model =
 settingsReset : Model -> ( Model, Cmd Msg )
 settingsReset model =
     ( updateEncounterSettings Treasure.defaultSettings model, Cmd.none )
+
+
+{-| Apply a one-click preset. Each preset overrides the current
+Kind's toggle bucket + the magicScrollChance knob; the other
+Kind's bucket stays untouched so flipping between Hoard and
+Individual still works the way the GM left it.
+-}
+settingsPresetApply : Msg.TreasurePreset -> Model -> ( Model, Cmd Msg )
+settingsPresetApply preset model =
+    case model.modal of
+        Just (Model.ModalTreasure ui) ->
+            let
+                settings =
+                    model.encounter.treasureSettings
+
+                ( newToggles, newScrollChance ) =
+                    presetFor preset
+
+                next =
+                    case ui.kind of
+                        Treasure.Hoard ->
+                            { settings
+                                | hoardToggles = newToggles
+                                , magicScrollChance = newScrollChance
+                            }
+
+                        Treasure.Individual ->
+                            { settings
+                                | individualToggles = newToggles
+                                , magicScrollChance = newScrollChance
+                            }
+            in
+            ( updateEncounterSettings next model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The canned toggle + scroll-chance configurations. Counts
+and Value adjusts always reset to Normal — presets are about
+"what categories roll", not "how aggressive the dice are."
+-}
+presetFor : Msg.TreasurePreset -> ( Treasure.CategoryToggles, Int )
+presetFor preset =
+    let
+        none =
+            { coinsNone = True
+            , gemsNone = True
+            , artNone = True
+            , magicNone = True
+            , mundaneNone = True
+            , weaponsNone = True
+            , armorNone = True
+            }
+    in
+    case preset of
+        Msg.PresetCoinsOnly ->
+            ( { none | coinsNone = False }, 0 )
+
+        Msg.PresetCoinsGems ->
+            ( { none | coinsNone = False, gemsNone = False }, 0 )
+
+        Msg.PresetSrdDefault ->
+            ( { none
+                | coinsNone = False
+                , gemsNone = False
+                , artNone = False
+                , magicNone = False
+              }
+            , 15
+            )
+
+        Msg.PresetWizardLair ->
+            ( { none | coinsNone = False, magicNone = False }, 75 )
+
+        Msg.PresetBanditCamp ->
+            ( { none
+                | coinsNone = False
+                , weaponsNone = False
+                , armorNone = False
+              }
+            , 0
+            )
 
 
 updateEncounterSettings : Treasure.TreasureSettings -> Model -> Model

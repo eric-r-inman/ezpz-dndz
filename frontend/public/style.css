@@ -1834,6 +1834,41 @@ body {
   color: var(--color-danger, #d63b3b);
 }
 
+/* One-click presets row at the top of Tune-your-rolls. */
+
+.treasure__settings-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--color-border);
+  margin-bottom: 4px;
+}
+
+.treasure__settings-presets-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-right: 4px;
+}
+
+.treasure__settings-preset-chip {
+  appearance: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.treasure__settings-preset-chip:hover {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
 .treasure__section {
   display: flex;
   flex-direction: column;

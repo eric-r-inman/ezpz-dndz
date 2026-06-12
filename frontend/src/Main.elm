@@ -1789,6 +1789,9 @@ updateInner msg model =
         TreasureSettingsScrollChanceSet raw ->
             Update.Treasure.settingsScrollChanceSet raw model
 
+        TreasureSettingsPresetApply preset ->
+            Update.Treasure.settingsPresetApply preset model
+
         TreasureSettingsReset ->
             Update.Treasure.settingsReset model
 
