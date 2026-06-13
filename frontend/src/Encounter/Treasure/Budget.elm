@@ -53,52 +53,52 @@ expectedGpFor kind bracket =
             5000
 
 
-{-| Verdict the wealth chip surfaces after a roll lands. The
-band is decided from the rolled total gp / expected gp ratio:
+{-| Direction-aware verdict the wealth chip surfaces after a
+roll lands. Decided from the rolled total gp / expected gp
+ratio:
 
-  - **InBand** — within ±50% of the SRD baseline (the typical
-    spread the un-tuned generator produces).
-  - **Tuned** — 0.5× to 2× off the baseline, in either direction.
-    Reads as "the GM clearly tuned this."
-  - **WayOff** — 4× or further off the baseline. Sometimes the
-    GM meant to, sometimes a knob slipped — the band gives them
-    a chance to notice.
+  - **BandNormal** — within ±50% of the SRD baseline (the
+    typical spread the un-tuned generator produces).
+  - **BandLow** — half of baseline or less. Usually a None
+    toggle or Fewer knob pulling the roll down.
+  - **BandHigh** — twice baseline or more. Usually More /
+    Higher tuning, or an opt-in category turned on.
 
 -}
 type WealthBand
-    = InBand
-    | Tuned
-    | WayOff
+    = BandLow
+    | BandNormal
+    | BandHigh
 
 
 bandFor : Int -> Int -> WealthBand
 bandFor actual expected =
     if expected <= 0 then
-        InBand
+        BandNormal
 
     else
         let
             ratio =
                 toFloat actual / toFloat expected
         in
-        if ratio >= 0.5 && ratio <= 2 then
-            InBand
+        if ratio < 0.5 then
+            BandLow
 
-        else if ratio >= 0.25 && ratio <= 4 then
-            Tuned
+        else if ratio > 2 then
+            BandHigh
 
         else
-            WayOff
+            BandNormal
 
 
 bandLabel : WealthBand -> String
 bandLabel b =
     case b of
-        InBand ->
-            "🟢 in band"
+        BandLow ->
+            "🟡 Low"
 
-        Tuned ->
-            "🟡 tuned"
+        BandNormal ->
+            "🟢 Normal"
 
-        WayOff ->
-            "🔴 way out of band"
+        BandHigh ->
+            "🟡 High"

@@ -1009,21 +1009,21 @@ wealthChip actual expectedGp =
 
             cls =
                 case band of
-                    Budget.InBand ->
-                        "treasure__wealth-chip treasure__wealth-chip--in"
+                    Budget.BandNormal ->
+                        "treasure__wealth-chip treasure__wealth-chip--normal"
 
-                    Budget.Tuned ->
-                        "treasure__wealth-chip treasure__wealth-chip--tuned"
+                    Budget.BandLow ->
+                        "treasure__wealth-chip treasure__wealth-chip--low"
 
-                    Budget.WayOff ->
-                        "treasure__wealth-chip treasure__wealth-chip--off"
+                    Budget.BandHigh ->
+                        "treasure__wealth-chip treasure__wealth-chip--high"
         in
         span
             [ class cls
             , attribute "title"
                 ("SRD-baseline for this encounter ≈ "
                     ++ formatNumber expectedGp
-                    ++ " gp.  Within ±50% is 'in band'; 0.5×–2× off reads as a tuned roll; 4× or more off is flagged so a slipped knob is hard to miss."
+                    ++ " gp.  Within ±50% is Normal; under half baseline is Low; over twice baseline is High."
                 )
             ]
             [ text (Budget.bandLabel band) ]

@@ -1819,19 +1819,15 @@ body {
   white-space: nowrap;
 }
 
-.treasure__wealth-chip--in {
+.treasure__wealth-chip--normal {
   border-color: var(--color-success, #2f9e44);
   color: var(--color-success, #2f9e44);
 }
 
-.treasure__wealth-chip--tuned {
+.treasure__wealth-chip--low,
+.treasure__wealth-chip--high {
   border-color: var(--color-warning, #b9602a);
   color: var(--color-warning, #b9602a);
-}
-
-.treasure__wealth-chip--off {
-  border-color: var(--color-danger, #d63b3b);
-  color: var(--color-danger, #d63b3b);
 }
 
 /* One-click presets row at the top of Tune-your-rolls. */
