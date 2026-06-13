@@ -173,7 +173,7 @@ body ui maybeRoll settings expectedGp enemyCount profiles profileDraft =
             emptyState
 
         Just roll ->
-            resultBlock roll expectedGp
+            resultBlock roll
     , case maybeRoll of
         Just roll ->
             contributionsSection ui.contributionsExpanded roll.contributions
@@ -901,10 +901,10 @@ emptyState =
         [ text "Pick a kind above and hit Roll." ]
 
 
-resultBlock : Treasure.TreasureRoll -> Int -> Html Msg
-resultBlock roll expectedGp =
+resultBlock : Treasure.TreasureRoll -> Html Msg
+resultBlock roll =
     div [ class "treasure__results" ]
-        [ summaryStrip roll expectedGp
+        [ summaryStrip roll
         , coinsSection roll.coins
         , gemsSection roll.gems
         , artSection roll.art
@@ -955,8 +955,8 @@ armorSection items =
             TreasureArmorRemove
 
 
-summaryStrip : Treasure.TreasureRoll -> Int -> Html Msg
-summaryStrip roll expectedGp =
+summaryStrip : Treasure.TreasureRoll -> Html Msg
+summaryStrip roll =
     let
         coinValue =
             Treasure.totalCoinValueGp roll.coins
@@ -993,40 +993,7 @@ summaryStrip roll expectedGp =
             [ text ("Magic items: " ++ String.fromInt magicCount) ]
         , span [ class "treasure__summary-total" ]
             [ text ("Total value ≈ " ++ formatNumber total ++ " gp") ]
-        , wealthChip total expectedGp
         ]
-
-
-wealthChip : Int -> Int -> Html Msg
-wealthChip actual expectedGp =
-    if expectedGp <= 0 then
-        text ""
-
-    else
-        let
-            band =
-                Budget.bandFor actual expectedGp
-
-            cls =
-                case band of
-                    Budget.BandNormal ->
-                        "treasure__wealth-chip treasure__wealth-chip--normal"
-
-                    Budget.BandLow ->
-                        "treasure__wealth-chip treasure__wealth-chip--low"
-
-                    Budget.BandHigh ->
-                        "treasure__wealth-chip treasure__wealth-chip--high"
-        in
-        span
-            [ class cls
-            , attribute "title"
-                ("SRD-baseline for this encounter ≈ "
-                    ++ formatNumber expectedGp
-                    ++ " gp.  Within ±50% is Normal; under half baseline is Low; over twice baseline is High."
-                )
-            ]
-            [ text (Budget.bandLabel band) ]
 
 
 

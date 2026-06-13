@@ -1809,27 +1809,6 @@ body {
   font-style: italic;
 }
 
-.treasure__wealth-chip {
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 0.78rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  white-space: nowrap;
-}
-
-.treasure__wealth-chip--normal {
-  border-color: var(--color-success, #2f9e44);
-  color: var(--color-success, #2f9e44);
-}
-
-.treasure__wealth-chip--low,
-.treasure__wealth-chip--high {
-  border-color: var(--color-warning, #b9602a);
-  color: var(--color-warning, #b9602a);
-}
-
 /* One-click presets row at the top of Tune-your-rolls. */
 
 .treasure__settings-presets {

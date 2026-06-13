@@ -1,14 +1,8 @@
-module Encounter.Treasure.Budget exposing
-    ( WealthBand(..)
-    , bandFor
-    , bandLabel
-    , expectedGpFor
-    )
+module Encounter.Treasure.Budget exposing (expectedGpFor)
 
 {-| SRD-derived expected total gp per Hoard / Individual roll
 by bracket. Powers the "Expected ~X gp" hint shown near the
-Roll button and the colour-coded wealth chip on the rolled
-result. The numbers are coin-table averages from the SRD 5.1
+Roll button. Numbers are coin-table averages from the SRD 5.1
 treasure tables, rounded to the nearest sensible chunk.
 
 For Individual rolls, the expected gp scales with the number of
@@ -51,54 +45,3 @@ expectedGpFor kind bracket =
 
         ( Individual, B17plus ) ->
             5000
-
-
-{-| Direction-aware verdict the wealth chip surfaces after a
-roll lands. Decided from the rolled total gp / expected gp
-ratio:
-
-  - **BandNormal** — within ±50% of the SRD baseline (the
-    typical spread the un-tuned generator produces).
-  - **BandLow** — half of baseline or less. Usually a None
-    toggle or Fewer knob pulling the roll down.
-  - **BandHigh** — twice baseline or more. Usually More /
-    Higher tuning, or an opt-in category turned on.
-
--}
-type WealthBand
-    = BandLow
-    | BandNormal
-    | BandHigh
-
-
-bandFor : Int -> Int -> WealthBand
-bandFor actual expected =
-    if expected <= 0 then
-        BandNormal
-
-    else
-        let
-            ratio =
-                toFloat actual / toFloat expected
-        in
-        if ratio < 0.5 then
-            BandLow
-
-        else if ratio > 2 then
-            BandHigh
-
-        else
-            BandNormal
-
-
-bandLabel : WealthBand -> String
-bandLabel b =
-    case b of
-        BandLow ->
-            "🟡 Low"
-
-        BandNormal ->
-            "🟢 Normal"
-
-        BandHigh ->
-            "🟡 High"
