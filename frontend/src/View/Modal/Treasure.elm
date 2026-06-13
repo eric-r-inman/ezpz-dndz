@@ -23,6 +23,7 @@ whole roll with a fresh draw.
 -}
 
 import Compendium
+import Dict exposing (Dict)
 import Encounter
 import Encounter.Treasure as Treasure
     exposing
@@ -92,6 +93,8 @@ view chrome model =
                         model.encounter.treasureSettings
                         expectedGp
                         (List.length brackets)
+                        model.userTreasureProfiles
+                        model.userTreasureProfileNameDraft
                 }
 
         _ ->
@@ -159,12 +162,12 @@ maxBracket a b =
         b
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> Int -> List (Html Msg)
-body ui maybeRoll settings expectedGp enemyCount =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> Int -> Dict String Treasure.TreasureSettings -> String -> List (Html Msg)
+body ui maybeRoll settings expectedGp enemyCount profiles profileDraft =
     [ helpText
     , controlRow ui expectedGp
     , multiplierNotice ui.kind enemyCount (Treasure.togglesFor ui.kind settings)
-    , settingsSection ui.kind ui.settingsExpanded settings
+    , settingsSection ui.kind ui.settingsExpanded settings profiles profileDraft
     , case maybeRoll of
         Nothing ->
             emptyState
@@ -188,8 +191,8 @@ rolls just use Normal — the section header summarises the
 current knobs when not Normal so the GM can see at a glance
 that a roll is tuned.
 -}
-settingsSection : Treasure.Kind -> Bool -> Treasure.TreasureSettings -> Html Msg
-settingsSection kind expanded settings =
+settingsSection : Treasure.Kind -> Bool -> Treasure.TreasureSettings -> Dict String Treasure.TreasureSettings -> String -> Html Msg
+settingsSection kind expanded settings profiles profileDraft =
     let
         toggles =
             Treasure.togglesFor kind settings
@@ -266,6 +269,7 @@ settingsSection kind expanded settings =
                     (Just settings.armorCount)
                     Nothing
                     toggles.armorNone
+                , profileRow profiles profileDraft
                 , div [ class "treasure__settings-actions" ]
                     [ button
                         [ class "treasure__settings-reset"
@@ -320,6 +324,70 @@ presetChip preset label tooltip =
         , onClick (TreasureSettingsPresetApply preset)
         ]
         [ text label ]
+
+
+{-| Save / load / delete row for user-named profiles. Lives at
+the bottom of the settings body so the GM tunes the settings
+above it before saving. Profiles persist server-side when
+authed; anonymous sessions get an empty dict (a follow-up could
+mirror userTreasureTable's localStorage path).
+-}
+profileRow : Dict String Treasure.TreasureSettings -> String -> Html Msg
+profileRow profiles draft =
+    let
+        sortedNames =
+            Dict.keys profiles |> List.sort
+    in
+    div [ class "treasure__settings-profile-row" ]
+        [ div [ class "treasure__settings-profile-load" ]
+            [ span [ class "treasure__settings-profile-label" ]
+                [ text "Load profile:" ]
+            , if List.isEmpty sortedNames then
+                span [ class "treasure__settings-profile-empty" ]
+                    [ text "(none saved yet)" ]
+
+              else
+                div [ class "treasure__settings-profile-chips" ]
+                    (List.map profileChip sortedNames)
+            ]
+        , div [ class "treasure__settings-profile-save" ]
+            [ Html.input
+                [ class "treasure__settings-profile-input"
+                , type_ "text"
+                , value draft
+                , Attr.placeholder "Save current as…"
+                , onInput TreasureProfileNameChanged
+                ]
+                []
+            , button
+                [ class "treasure__settings-profile-save-btn"
+                , type_ "button"
+                , onClick TreasureProfileSave
+                , Attr.disabled (String.isEmpty (String.trim draft))
+                ]
+                [ text "Save" ]
+            ]
+        ]
+
+
+profileChip : String -> Html Msg
+profileChip name =
+    span [ class "treasure__settings-profile-chip" ]
+        [ button
+            [ class "treasure__settings-profile-chip-load"
+            , type_ "button"
+            , attribute "title" "Apply this profile to the current settings"
+            , onClick (TreasureProfileLoad name)
+            ]
+            [ text name ]
+        , button
+            [ class "treasure__settings-profile-chip-delete"
+            , type_ "button"
+            , attribute "title" ("Delete profile '" ++ name ++ "'")
+            , onClick (TreasureProfileDelete name)
+            ]
+            [ text "🚫" ]
+        ]
 
 
 {-| Spell-scroll post-process chance sits as a sub-row under

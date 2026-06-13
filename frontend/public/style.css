@@ -1879,6 +1879,118 @@ body {
   border-radius: var(--radius-sm);
 }
 
+/* User-saved named profiles row at the bottom of Tune-your-rolls. */
+
+.treasure__settings-profile-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 4px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.treasure__settings-profile-load {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.treasure__settings-profile-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.treasure__settings-profile-empty {
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.treasure__settings-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.treasure__settings-profile-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: 0.78rem;
+}
+
+.treasure__settings-profile-chip-load {
+  appearance: none;
+  background: var(--color-surface);
+  border: none;
+  padding: 3px 8px;
+  cursor: pointer;
+  color: var(--color-text);
+  font: inherit;
+  font-size: inherit;
+}
+
+.treasure__settings-profile-chip-load:hover {
+  background: var(--color-surface-2);
+}
+
+.treasure__settings-profile-chip-delete {
+  appearance: none;
+  background: var(--color-surface);
+  border: none;
+  border-left: 1px solid var(--color-border);
+  padding: 3px 6px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.treasure__settings-profile-chip-delete:hover {
+  color: var(--color-warning, #b9602a);
+  background: var(--color-surface-2);
+}
+
+.treasure__settings-profile-save {
+  display: flex;
+  gap: 6px;
+}
+
+.treasure__settings-profile-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 0.85rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.treasure__settings-profile-save-btn {
+  appearance: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.treasure__settings-profile-save-btn:hover:not(:disabled) {
+  border-color: var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+}
+
+.treasure__settings-profile-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .treasure__section {
   display: flex;
   flex-direction: column;

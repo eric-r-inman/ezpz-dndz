@@ -590,6 +590,15 @@ type alias Model =
     -- for anonymous sessions).
     , userTreasureTable : Maybe Encounter.Treasure.TreasureTable
 
+    -- Per-user named profiles of "Tune your rolls" settings.
+    -- Empty dict means the user hasn't saved any yet.  Loaded
+    -- from `/api/treasure-profiles` on authed boot; saved back
+    -- via the standard persistence hook in `Main.update`.
+    , userTreasureProfiles : Dict.Dict String Encounter.Treasure.TreasureSettings
+
+    -- Draft text for the "Save current as profile…" input.
+    , userTreasureProfileNameDraft : String
+
     -- JS `Date.now()` captured at boot, used as the timestamp for
     -- all anonymous named-save writes done in this session.  All
     -- saves in one session share this timestamp (cosmetic-only;

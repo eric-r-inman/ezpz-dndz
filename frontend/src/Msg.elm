@@ -1113,6 +1113,15 @@ type Msg
     | TreasureSettingsScrollChanceSet String
     | TreasureSettingsPresetApply TreasurePreset
     | TreasureSettingsReset
+      -- Named per-user profiles for "Tune your rolls" — server-
+      -- backed when signed in.  See the Update.UserSync
+      -- handlers + Update.Treasure.profileSave/Load/Delete.
+    | TreasureProfilesLoaded (Result Http.Error Decode.Value)
+    | TreasureProfilesPersisted (Result Http.Error ())
+    | TreasureProfileNameChanged String
+    | TreasureProfileSave
+    | TreasureProfileLoad String
+    | TreasureProfileDelete String
       -- Collapse / expand the "Tune your rolls" settings panel
       -- in the Treasure modal.
     | TreasureSettingsToggle

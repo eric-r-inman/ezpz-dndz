@@ -10,7 +10,7 @@ use aide::axum::ApiRouter;
 use axum::middleware;
 use ezpz_dndz_server::{
   card_editor, compendium, condition_presets, config::Config, dice, encounters,
-  lore_groups, treasure_table, users, web_base::AppState,
+  lore_groups, treasure_profiles, treasure_table, users, web_base::AppState,
 };
 use rust_template_foundation::main as foundation_main;
 use rust_template_foundation::Server;
@@ -61,6 +61,7 @@ pub async fn main(
     .merge(lore_groups::router())
     .merge(condition_presets::router())
     .merge(treasure_table::router())
+    .merge(treasure_profiles::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let users_state = app_state.clone();

@@ -47,6 +47,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     lore_groups: temp.path().join("lore-groups.json"),
     condition_presets: temp.path().join("condition-presets.json"),
     treasure_table: temp.path().join("treasure-table.json"),
+    treasure_profiles: temp.path().join("treasure-profiles.json"),
   };
 
   let run_config = ServerRunConfig {

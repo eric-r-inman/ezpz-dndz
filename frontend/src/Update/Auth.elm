@@ -133,6 +133,7 @@ meReceived result model =
                 , Effects.fetchLoreGroups
                 , Effects.fetchConditionPresets
                 , Effects.fetchTreasureTable
+                , Effects.fetchTreasureProfiles
                 , encounterMigrationCmd
                 , cardLayoutMigrationCmd
                 , compendiumMigrationCmd

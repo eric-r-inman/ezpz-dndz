@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -504,6 +504,34 @@ putTreasureTable table =
         , body =
             Http.jsonBody (Encounter.Treasure.TableWire.encodeTable table)
         , expect = Http.expectWhatever TreasureTablePersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| GET the caller's saved Treasure-roller settings profiles
+("Tune your rolls" presets) as opaque JSON. The frontend decodes
+the value into a `Dict String TreasureSettings`; null + decode
+failures fall back to an empty dict.
+-}
+fetchTreasureProfiles : Cmd Msg
+fetchTreasureProfiles =
+    Http.get
+        { url = "/api/treasure-profiles"
+        , expect = Http.expectJson TreasureProfilesLoaded Decode.value
+        }
+
+
+{-| PUT the caller's full profile dict back to the server.
+-}
+putTreasureProfiles : Decode.Value -> Cmd Msg
+putTreasureProfiles encoded =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/treasure-profiles"
+        , body = Http.jsonBody encoded
+        , expect = Http.expectWhatever TreasureProfilesPersisted
         , timeout = Nothing
         , tracker = Nothing
         }

@@ -114,6 +114,12 @@ pub struct ExtraCliFields {
   /// `<data_dir>/treasure-table.json`.
   #[arg(long, env = "ezpz_dndz_treasure_table_path")]
   pub treasure_table_path: Option<PathBuf>,
+
+  /// Path to the JSON file backing per-user saved profiles
+  /// (named "Tune your rolls" presets) for the Treasure
+  /// generator.  Defaults to `<data_dir>/treasure-profiles.json`.
+  #[arg(long, env = "ezpz_dndz_treasure_profiles_path")]
+  pub treasure_profiles_path: Option<PathBuf>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -133,6 +139,7 @@ pub struct ExtraFileFields {
   pub lore_groups_path: Option<PathBuf>,
   pub condition_presets_path: Option<PathBuf>,
   pub treasure_table_path: Option<PathBuf>,
+  pub treasure_profiles_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
   pub compendium_claim_user: Option<String>,
 }
@@ -153,6 +160,7 @@ pub struct RuntimePaths {
   pub lore_groups: PathBuf,
   pub condition_presets: PathBuf,
   pub treasure_table: PathBuf,
+  pub treasure_profiles: PathBuf,
 }
 
 #[derive(Debug, Clone, MergeConfig)]
@@ -295,6 +303,11 @@ impl Config {
         cli.extra.treasure_table_path.as_ref(),
         file.extra.treasure_table_path.as_ref(),
         "treasure-table.json",
+      ),
+      treasure_profiles: pick(
+        cli.extra.treasure_profiles_path.as_ref(),
+        file.extra.treasure_profiles_path.as_ref(),
+        "treasure-profiles.json",
       ),
     })
   }

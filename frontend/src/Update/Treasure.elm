@@ -3,7 +3,7 @@ module Update.Treasure exposing
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
-    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, settingsCountSet, settingsNoneSet, settingsPresetApply, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
+    , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, profileDelete, profileLoad, profileNameChanged, profileSave, settingsCountSet, settingsNoneSet, settingsPresetApply, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
     )
 
 {-| Msg handlers for the Treasure modal.
@@ -28,13 +28,16 @@ without anything extra from this module.
 -}
 
 import Compendium
+import Dict
 import Encounter
 import Encounter.Treasure as Treasure exposing (Bracket, EnemyInfo, RollContext)
 import Model exposing (Model)
 import Msg exposing (Msg(..), TreasurePreset(..))
 import Random
 import Ui.Compendium
+import Ui.Toast exposing (ToastKind(..))
 import Ui.Treasure
+import Update.Toast
 
 
 {-| Open the modal. UI state is now bracket-free; the bracket
@@ -523,6 +526,61 @@ presetFor preset =
               }
             , 0
             )
+
+
+
+-- ── NAMED PROFILES ─────────────────────────────────────────────────────────
+
+
+profileNameChanged : String -> Model -> ( Model, Cmd Msg )
+profileNameChanged raw model =
+    ( { model | userTreasureProfileNameDraft = raw }, Cmd.none )
+
+
+{-| Save the current encounter's TreasureSettings as a named
+profile. Trims whitespace; refuses empty names with a toast.
+Overwrites any existing profile by the same name silently —
+that's the GM editing a saved set, not a destructive surprise.
+-}
+profileSave : Model -> ( Model, Cmd Msg )
+profileSave model =
+    let
+        name =
+            String.trim model.userTreasureProfileNameDraft
+    in
+    if String.isEmpty name then
+        Update.Toast.push ToastError "Give the profile a name first." model
+
+    else
+        let
+            next =
+                Dict.insert name
+                    model.encounter.treasureSettings
+                    model.userTreasureProfiles
+        in
+        ( { model
+            | userTreasureProfiles = next
+            , userTreasureProfileNameDraft = ""
+          }
+        , Cmd.none
+        )
+
+
+profileLoad : String -> Model -> ( Model, Cmd Msg )
+profileLoad name model =
+    case Dict.get name model.userTreasureProfiles of
+        Just settings ->
+            ( updateEncounterSettings settings model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+profileDelete : String -> Model -> ( Model, Cmd Msg )
+profileDelete name model =
+    ( { model | userTreasureProfiles = Dict.remove name model.userTreasureProfiles }
+    , Cmd.none
+    )
 
 
 updateEncounterSettings : Treasure.TreasureSettings -> Model -> Model

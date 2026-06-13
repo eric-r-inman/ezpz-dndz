@@ -3,7 +3,7 @@ module Encounter.Wire exposing
     , decodeEncounter, encodeEncounter
     , fetchEncounterCmd, persistEncounterCmd
     , listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
-    , LocalEncounterSave, decodeLocalEncounterSaves, encodeLocalEncounterSaves, localSaveToMeta
+    , LocalEncounterSave, decodeLocalEncounterSaves, decodeTreasureSettings, encodeLocalEncounterSaves, encodeTreasureSettings, localSaveToMeta
     )
 
 {-| JSON encoders / decoders for `Encounter` and its referenced

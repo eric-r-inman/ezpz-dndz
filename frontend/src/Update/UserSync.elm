@@ -1,7 +1,7 @@
 module Update.UserSync exposing
     ( loreGroupsLoaded, loreGroupsPersisted
     , conditionPresetsLoaded, conditionPresetsPersisted
-    , treasureTableLoaded, treasureTablePersisted
+    , treasureProfilesLoaded, treasureProfilesPersisted, treasureTableLoaded, treasureTablePersisted
     )
 
 {-| Msg handlers for the per-user server-stored Lore groups and
@@ -40,6 +40,7 @@ import Dict
 import Effects
 import Encounter.RandomEncounter.Lore as Lore
 import Encounter.Treasure
+import Encounter.Treasure.ProfileWire
 import Http
 import Json.Decode as Decode
 import Model exposing (Model)
@@ -187,4 +188,42 @@ treasureTablePersisted result model =
         Err err ->
             Update.Toast.push ToastError
                 ("Saving your treasure table failed: " ++ Util.Http.errorToString err)
+                model
+
+
+{-| GET /api/treasure-profiles returned. Decodes into the
+profiles dict on the model. Server returns `null` when the
+user has nothing saved; we treat that as an empty dict.
+-}
+treasureProfilesLoaded :
+    Result Http.Error Decode.Value
+    -> Model
+    -> ( Model, Cmd Msg )
+treasureProfilesLoaded result model =
+    case result of
+        Ok raw ->
+            case Decode.decodeValue Encounter.Treasure.ProfileWire.decodeProfiles raw of
+                Ok profiles ->
+                    ( { model | userTreasureProfiles = profiles }, Cmd.none )
+
+                Err _ ->
+                    Update.Toast.push ToastError
+                        "Couldn't decode the treasure-profiles payload from the server."
+                        model
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Couldn't load your treasure profiles: " ++ Util.Http.errorToString err)
+                model
+
+
+treasureProfilesPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
+treasureProfilesPersisted result model =
+    case result of
+        Ok () ->
+            ( model, Cmd.none )
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Saving your treasure profiles failed: " ++ Util.Http.errorToString err)
                 model

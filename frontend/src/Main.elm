@@ -22,6 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
+import Encounter.Treasure.ProfileWire
 import Encounter.Treasure.TableWire
 import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
@@ -612,6 +613,8 @@ init flags url key =
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
+      , userTreasureProfiles = Dict.empty
+      , userTreasureProfileNameDraft = ""
       , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -776,6 +779,21 @@ update msg model =
             else
                 Cmd.none
 
+        userTreasureProfilesCmd =
+            if shouldPersistAfter msg && model.userTreasureProfiles /= next.userTreasureProfiles then
+                case next.auth of
+                    Auth.AuthAuthenticated _ ->
+                        Effects.putTreasureProfiles
+                            (Encounter.Treasure.ProfileWire.encodeProfiles
+                                next.userTreasureProfiles
+                            )
+
+                    _ ->
+                        Cmd.none
+
+            else
+                Cmd.none
+
         -- Modal-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
@@ -825,6 +843,7 @@ update msg model =
         , partyCmd
         , userLoreGroupsCmd
         , userTreasureTableCmd
+        , userTreasureProfilesCmd
         , modalFocusCmd
         ]
     )
@@ -1821,6 +1840,24 @@ updateInner msg model =
 
         TreasureTablePersisted result ->
             Update.UserSync.treasureTablePersisted result model
+
+        TreasureProfilesLoaded result ->
+            Update.UserSync.treasureProfilesLoaded result model
+
+        TreasureProfilesPersisted result ->
+            Update.UserSync.treasureProfilesPersisted result model
+
+        TreasureProfileNameChanged raw ->
+            Update.Treasure.profileNameChanged raw model
+
+        TreasureProfileSave ->
+            Update.Treasure.profileSave model
+
+        TreasureProfileLoad name ->
+            Update.Treasure.profileLoad name model
+
+        TreasureProfileDelete name ->
+            Update.Treasure.profileDelete name model
 
         TreasureTableOpen ->
             Update.TreasureTable.open model

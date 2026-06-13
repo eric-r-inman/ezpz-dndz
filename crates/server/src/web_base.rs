@@ -25,6 +25,9 @@ use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
 use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
+use crate::treasure_profiles::{
+  TreasureProfileStore, TreasureProfileStoreError,
+};
 use crate::treasure_table::{TreasureTableStore, TreasureTableStoreError};
 
 #[derive(Clone)]
@@ -44,6 +47,7 @@ pub struct AppState {
   pub lore_groups: LoreGroupStore,
   pub condition_presets: ConditionPresetStore,
   pub treasure_table: TreasureTableStore,
+  pub treasure_profiles: TreasureProfileStore,
 }
 
 impl_server_state!(AppState, base);
@@ -76,6 +80,9 @@ pub enum AppStateError {
 
   #[error("Failed to load treasure-table store: {0}")]
   TreasureTableStoreLoad(#[source] TreasureTableStoreError),
+
+  #[error("Failed to load treasure-profile store: {0}")]
+  TreasureProfileStoreLoad(#[source] TreasureProfileStoreError),
 }
 
 impl AppState {
@@ -154,6 +161,11 @@ impl AppState {
         .await
         .map_err(AppStateError::TreasureTableStoreLoad)?;
 
+    let treasure_profiles =
+      TreasureProfileStore::load_or_default(paths.treasure_profiles.clone())
+        .await
+        .map_err(AppStateError::TreasureProfileStoreLoad)?;
+
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),
       std::path::Path::to_path_buf,
@@ -185,6 +197,7 @@ impl AppState {
       lore_groups,
       condition_presets,
       treasure_table,
+      treasure_profiles,
     })
   }
 }
