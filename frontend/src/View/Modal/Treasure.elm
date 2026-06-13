@@ -102,8 +102,7 @@ view chrome model =
 
 
 {-| The enemies' brackets in the encounter, derived the same way
-the generator does. Used by the budget hint near Roll and the
-wealth-check chip on the rolled result.
+the generator does. Used by the Average hint near Roll.
 -}
 enemyBrackets : Model -> List Treasure.Bracket
 enemyBrackets model =
@@ -856,7 +855,7 @@ controlRow ui expectedGp =
         ]
 
 
-{-| Inline SRD-baseline hint next to Roll: "Expected ~X gp for
+{-| Inline SRD-baseline hint next to Roll: "Average ≈ X gp for
 this encounter." Shown only when the encounter has enemies that
 resolve to a known bracket — silent on empty encounters or when
 all enemies fall through to the B1to4 default (which usually
@@ -873,7 +872,7 @@ budgetHint expectedGp =
             , attribute "title"
                 "SRD-derived baseline coin gp for this encounter — your roll will land near this on default settings."
             ]
-            [ text ("Expected ≈ " ++ formatNumber expectedGp ++ " gp") ]
+            [ text ("Average ≈ " ++ formatNumber expectedGp ++ " gp") ]
 
 
 kindOption : Kind -> Kind -> Html Msg
