@@ -34,6 +34,7 @@ for anonymous.
 
 -}
 
+import Auth
 import Dict
 import Encounter.Treasure as Treasure exposing (TreasureTable)
 import Encounter.Treasure.Tables as Tables
@@ -53,7 +54,9 @@ import Msg
         , RowKind(..)
         , SubKind(..)
         )
+import Ui.Toast exposing (ToastKind(..))
 import Ui.TreasureTable as Ui
+import Update.Toast
 import Update.Treasure
 
 
@@ -82,18 +85,23 @@ close model =
 
 
 {-| Commit the in-flight draft to `model.userTreasureTable` and
-hand off to the Treasure roller modal. The standard
-`userTreasureTableCmd` hook in `Main.update` sees
-`model.userTreasureTable` change and fires the right persistence
-Cmd (server PUT for authed, localStorage for anonymous); the
-roller then opens against the freshly-saved table.
+hand off to the Treasure roller modal — only available to signed-
+in users, since custom tables are stored server-side under the
+user's account. Anonymous Save clicks fire an explanatory error
+toast and leave the draft untouched so the GM can sign in and
+keep their edits without losing them.
 -}
 save : Model -> ( Model, Cmd Msg )
 save model =
-    case model.modal of
-        Just (Model.ModalTreasureTable ui) ->
+    case ( model.modal, model.auth ) of
+        ( Just (Model.ModalTreasureTable ui), Auth.AuthAuthenticated _ ) ->
             Update.Treasure.open
                 { model | userTreasureTable = Just ui.draft }
+
+        ( Just (Model.ModalTreasureTable _), _ ) ->
+            Update.Toast.push ToastError
+                "You must be signed in to save edits to the treasure tables."
+                model
 
         _ ->
             ( model, Cmd.none )

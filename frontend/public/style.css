@@ -3096,6 +3096,21 @@ body {
   filter: brightness(1.08);
 }
 
+/* Save is dimmed but still clickable when the user is signed-out
+   and has unsaved edits — the click fires an error toast asking
+   them to sign in.  Visually mimics the :disabled state so the
+   "you can't actually save right now" cue carries, but
+   pointer-events stay live so the click handler can run. */
+.treasure-table__save--locked {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.treasure-table__save--locked:hover,
+.treasure-table__save--locked:focus-visible {
+  filter: none;
+}
+
 /* Revert button (right of Save).  Borrows the cancel-button
    chrome for the resting state since it's a destructive-on-purpose
    action — visually understated until the confirm prompt fires. */

@@ -17,6 +17,7 @@ default is the starting point for every new user; a single
 
 -}
 
+import Auth
 import Encounter.Treasure as Treasure
     exposing
         ( TreasureTable
@@ -84,6 +85,9 @@ view model =
                 hasSavedCustom =
                     model.userTreasureTable /= Nothing
 
+                isAuthed =
+                    Auth.isAuthenticated model.auth
+
                 titleSuffix =
                     if dirty then
                         " · unsaved changes"
@@ -103,14 +107,15 @@ view model =
                         dirty
                         hasSavedCustom
                         ui.confirmRevert
+                        isAuthed
                 }
 
         _ ->
             text ""
 
 
-body : TreasureTable -> Set String -> Bool -> Bool -> Bool -> List (Html Msg)
-body table expanded dirty hasSavedCustom confirmRevert =
+body : TreasureTable -> Set String -> Bool -> Bool -> Bool -> Bool -> List (Html Msg)
+body table expanded dirty hasSavedCustom confirmRevert isAuthed =
     [ blurb
     , individualGroup table expanded
     , hoardGroup table expanded
@@ -126,7 +131,7 @@ body table expanded dirty hasSavedCustom confirmRevert =
     , flatGroup "Armor" "armor" FlatArmor table.armor expanded
     , scrollSpellsGroup table expanded
     , resetRow
-    , saveRow dirty hasSavedCustom confirmRevert
+    , saveRow dirty hasSavedCustom confirmRevert isAuthed
     ]
 
 
@@ -1099,9 +1104,39 @@ discards the draft; Save commits it into
 Save — it drops the saved custom table back to the bundled
 defaults — and uses an inline two-step confirmation so it can't
 fire on a mis-click.
+
+Save is grey-locked for signed-out users (custom tables live
+server-side under the account); the button stays clickable in
+that state so a click fires the "must sign in" toast rather
+than silently doing nothing.
+
 -}
-saveRow : Bool -> Bool -> Bool -> Html Msg
-saveRow dirty hasSavedCustom confirmRevert =
+saveRow : Bool -> Bool -> Bool -> Bool -> Html Msg
+saveRow dirty hasSavedCustom confirmRevert isAuthed =
+    let
+        canCommit =
+            dirty && isAuthed
+
+        saveClass =
+            if canCommit then
+                "treasure-table__save treasure-table__save--ready"
+
+            else if dirty && not isAuthed then
+                "treasure-table__save treasure-table__save--locked"
+
+            else
+                "treasure-table__save"
+
+        saveTitle =
+            if not dirty then
+                "No changes to save"
+
+            else if not isAuthed then
+                "You must be signed in to save edits to the treasure tables."
+
+            else
+                "Save your changes and close"
+    in
     div [ class "treasure-table__save-row" ]
         [ span [ class "treasure-table__save-status" ]
             [ text
@@ -1120,23 +1155,11 @@ saveRow dirty hasSavedCustom confirmRevert =
             ]
             [ text "Cancel" ]
         , button
-            [ class
-                (if dirty then
-                    "treasure-table__save treasure-table__save--ready"
-
-                 else
-                    "treasure-table__save"
-                )
+            [ class saveClass
             , type_ "button"
             , onClick TreasureTableSave
             , Attr.disabled (not dirty)
-            , attribute "title"
-                (if dirty then
-                    "Save your changes and close"
-
-                 else
-                    "No changes to save"
-                )
+            , attribute "title" saveTitle
             ]
             [ text "Save" ]
         , revertControl hasSavedCustom confirmRevert
