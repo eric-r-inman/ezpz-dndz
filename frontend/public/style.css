@@ -10351,6 +10351,19 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
 }
 
+/* Wrapper around the disabled Edit button on bundled creatures.
+   Owns the tooltip trigger (the disabled <button> inside swallows
+   mouse events in Chrome), and overrides the default
+   `cursor: not-allowed` so the row reads as inert-but-not-blocked. */
+.compendium__edit-btn-bundled-wrap {
+  display: inline-flex;
+  cursor: default;
+}
+
+.compendium__edit-btn-bundled-wrap > .compendium__edit-btn {
+  pointer-events: none;
+}
+
 .compendium__delete-btn {
   font-size: 1rem;
   padding: 4px 10px;

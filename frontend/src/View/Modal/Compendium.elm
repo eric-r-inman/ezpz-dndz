@@ -1215,12 +1215,23 @@ actionBar creature inEncounter selectedIds =
         -- on every fresh fetch.
         editButton =
             if creature.isBundled then
-                button
-                    [ class "action-btn action-btn--blue compendium__edit-btn"
-                    , disabled True
-                    , title "Bundled creatures not editable. Duplicate to edit."
+                -- Wrapper span carries the fast tooltip because the
+                -- disabled button itself swallows mouse events in
+                -- Chrome (so `data-tooltip` would never fire). The
+                -- wrapper also overrides the default not-allowed
+                -- cursor — the disabled styling alone is enough to
+                -- communicate inertness without the extra "🚫"
+                -- mouse glyph.
+                span
+                    [ class "compendium__edit-btn-bundled-wrap"
+                    , Tooltips.attr Tooltips.compendiumEditBundled
                     ]
-                    [ text "✏️ Edit" ]
+                    [ button
+                        [ class "action-btn action-btn--blue compendium__edit-btn"
+                        , disabled True
+                        ]
+                        [ text "✏️ Edit" ]
+                    ]
 
             else
                 button

@@ -29,6 +29,7 @@ module View.Tooltips exposing
     , compendiumDeleteSelected
     , compendiumDuplicate
     , compendiumEdit
+    , compendiumEditBundled
     , compendiumEditClearUsage
     , compendiumEditDeleteCreature
     , compendiumEditRemoveEntry
@@ -699,6 +700,11 @@ compendiumAddSelected =
 compendiumEdit : String
 compendiumEdit =
     "Edit this creature"
+
+
+compendiumEditBundled : String
+compendiumEditBundled =
+    "Bundled creatures not editable. Duplicate to edit."
 
 
 compendiumDuplicate : String
