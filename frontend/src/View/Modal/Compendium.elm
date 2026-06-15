@@ -640,26 +640,27 @@ twoColumn auth ui userLoreGroups encounterIds =
                     0
     in
     div [ class "compendium__columns" ]
-        [ list ui totalCount visible userLoreGroups encounterIds ui.selectedIds
+        [ list auth ui totalCount visible userLoreGroups encounterIds ui.selectedIds
         , detail auth ui visible userLoreGroups encounterIds
         ]
 
 
 list :
-    CompendiumUi
+    Auth.AuthState
+    -> CompendiumUi
     -> Int
     -> List Compendium.Creature
     -> List Lore.Group
     -> List String
     -> Set String
     -> Html Msg
-list ui totalCount visible userLoreGroups encounterIds selectedIds =
+list auth ui totalCount visible userLoreGroups encounterIds selectedIds =
     let
         groups =
             CompendiumUi.visibleGroups ui
 
         loreRows =
-            loreSection ui userLoreGroups
+            loreSection auth ui userLoreGroups
 
         groupRows =
             List.concatMap (groupListItem ui) groups
@@ -1537,8 +1538,8 @@ Returns a List of rows so the caller can splice them inline
 with the regular group rows + creature rows.
 
 -}
-loreSection : CompendiumUi -> List Lore.Group -> List (Html Msg)
-loreSection ui userLoreGroups =
+loreSection : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List (Html Msg)
+loreSection auth ui userLoreGroups =
     let
         allGroups =
             -- User-authored first so the GM's own groups read
@@ -1547,7 +1548,7 @@ loreSection ui userLoreGroups =
             userLoreGroups ++ Lore.bundled
 
         header =
-            loreSectionHeader ui (List.length allGroups)
+            loreSectionHeader auth ui (List.length allGroups)
 
         rows =
             if ui.loreGroupsExpanded then
@@ -1559,8 +1560,26 @@ loreSection ui userLoreGroups =
     header :: rows
 
 
-loreSectionHeader : CompendiumUi -> Int -> Html Msg
-loreSectionHeader ui totalCount =
+loreSectionHeader : Auth.AuthState -> CompendiumUi -> Int -> Html Msg
+loreSectionHeader auth ui totalCount =
+    let
+        signedOut =
+            not (Auth.isAuthenticated auth)
+
+        newClickMsg =
+            if signedOut then
+                Msg.NavigateToLogin
+
+            else
+                LoreEditOpenNew
+
+        newTitle =
+            if signedOut then
+                "Sign in first"
+
+            else
+                "Create a new Lore grouping"
+    in
     div
         [ class "compendium__row compendium__row--lore-section"
         , onClick CompendiumLoreSectionToggle
@@ -1577,7 +1596,7 @@ loreSectionHeader ui totalCount =
                  else
                     "false"
                 )
-            , attribute "aria-label" "Toggle Lore groups"
+            , attribute "aria-label" "Toggle Lore groupings"
             ]
             [ text
                 (if ui.loreGroupsExpanded then
@@ -1589,15 +1608,23 @@ loreSectionHeader ui totalCount =
             ]
         , div [ class "compendium__row-text" ]
             [ span [ class "compendium__row-name" ]
-                [ text "📖 Lore groups" ]
+                [ text "📖 Lore groupings" ]
             , span [ class "compendium__row-meta" ]
-                [ text (String.fromInt totalCount ++ " groups") ]
+                [ text (String.fromInt totalCount ++ " groupings") ]
             ]
         , button
-            [ class "action-btn action-btn--condition compendium__lore-new"
-            , onClickStopPropagation LoreEditOpenNew
-            , attribute "title" "Create a new Lore group"
-            , attribute "aria-label" "Create a new Lore group"
+            [ class
+                ("action-btn action-btn--condition compendium__lore-new"
+                    ++ (if signedOut then
+                            " compendium__lore-new--locked"
+
+                        else
+                            ""
+                       )
+                )
+            , onClickStopPropagation newClickMsg
+            , attribute "title" newTitle
+            , attribute "aria-label" newTitle
             ]
             [ text "+ New" ]
         ]
@@ -1745,33 +1772,48 @@ loreActionBar auth group =
         bundled =
             group.source == Lore.Bundled
 
+        signedOut =
+            not (Auth.isAuthenticated auth)
+
         editClickMsg =
             if bundled then
                 Msg.NoOp
 
+            else if signedOut then
+                Msg.NavigateToLogin
+
             else
-                AuthGate.clickWhenAuthed auth (LoreEditOpenExisting group.id)
+                LoreEditOpenExisting group.id
 
         deleteClickMsg =
             if bundled then
                 Msg.NoOp
 
+            else if signedOut then
+                Msg.NavigateToLogin
+
             else
-                AuthGate.clickWhenAuthed auth (CompendiumLoreDelete group.id)
+                CompendiumLoreDelete group.id
 
         editTitle =
             if bundled then
-                "Bundled lore groups can't be edited. Duplicate or create a new one to customise."
+                "Bundled Lore groupings can't be edited. Duplicate or create a new one to customise."
+
+            else if signedOut then
+                "Sign in first"
 
             else
-                "Create / Edit lore group"
+                "Create / Edit Lore grouping"
 
         deleteTitle =
             if bundled then
-                "Bundled lore groups can't be deleted."
+                "Bundled Lore groupings can't be deleted."
+
+            else if signedOut then
+                "Sign in first"
 
             else
-                "Delete this lore group"
+                "Delete this Lore grouping"
     in
     div [ class "compendium__action-bar" ]
         [ span [ class "compendium__in-encounter" ]
@@ -1784,14 +1826,17 @@ loreActionBar auth group =
         , button
             [ class "action-btn action-btn--green compendium__add-btn"
             , onClick (CompendiumLoreAdd group.id)
-            , attribute "title" "Roll counts and add this lore group's creatures to the encounter"
+            , attribute "title" "Roll counts and add this Lore grouping's creatures to the encounter"
             ]
-            [ text "➕ Add Group to Encounter" ]
+            [ text "➕ Add Grouping to Encounter" ]
         , button
             [ class
                 ("action-btn action-btn--blue compendium__edit-btn"
                     ++ (if bundled then
                             " compendium__edit-btn--disabled"
+
+                        else if signedOut then
+                            " compendium__edit-btn--locked"
 
                         else
                             ""
@@ -1802,12 +1847,15 @@ loreActionBar auth group =
             , attribute "title" editTitle
             , attribute "aria-label" editTitle
             ]
-            [ text "✏️ Create/Edit Lore group" ]
+            [ text "✏️ Create/Edit Lore grouping" ]
         , button
             [ class
                 ("action-btn action-btn--red compendium__delete-btn"
                     ++ (if bundled then
                             " compendium__delete-btn--disabled"
+
+                        else if signedOut then
+                            " compendium__delete-btn--locked"
 
                         else
                             ""

@@ -69,10 +69,10 @@ view model =
                 title_ =
                     case ui.draft.id of
                         Just _ ->
-                            "📖 Edit Lore Group"
+                            "📖 Edit Lore Grouping"
 
                         Nothing ->
-                            "📖 Create Lore Group"
+                            "📖 Create Lore Grouping"
             in
             View.Modal.view
                 { close = LoreEditClose
@@ -81,8 +81,10 @@ view model =
                 , extraClass = "modal--lore-edit"
                 , chrome = model.modalChrome
                 , body =
-                    [ nameRow ui.draft
+                    [ headerBlurb ui.draft
+                    , nameRow ui.draft
                     , weightRow ui.draft
+                    , weightBlurb
                     , membersEditor ui.draft
                     , addMemberPicker ui.addSearch creatures ui.draft.members
                     , errorBanner ui.submitError
@@ -97,6 +99,51 @@ view model =
 
 
 -- ── FORM ROWS ────────────────────────────────────────────────────────────────
+
+
+{-| Top-of-modal blurb explaining what a Lore grouping does, with
+the current draft's min/max creature totals baked into the
+description so the GM sees the impact of the count ranges they've
+typed.
+-}
+headerBlurb : LoreDraft -> Html Msg
+headerBlurb draft =
+    let
+        ( minTotal, maxTotal ) =
+            countRange draft
+    in
+    p [ class "lore-edit__blurb" ]
+        [ text
+            ("Adding a Lore grouping directly to the encounter will add between "
+                ++ String.fromInt minTotal
+                ++ " and "
+                ++ String.fromInt maxTotal
+                ++ " creatures, drawn from the listed members.  Checking 'Lore-leaning' in the Random Encounter roller will trawl Lore groupings for possibilities."
+            )
+        ]
+
+
+weightBlurb : Html Msg
+weightBlurb =
+    p [ class "lore-edit__blurb lore-edit__blurb--sub" ]
+        [ text "Determines how likely the Random Encounter generator will produce this grouping (if constraints allow)." ]
+
+
+countRange : LoreDraft -> ( Int, Int )
+countRange draft =
+    draft.members
+        |> List.foldl
+            (\m ( accMin, accMax ) ->
+                let
+                    lo =
+                        String.toInt (String.trim m.countMin) |> Maybe.withDefault 0
+
+                    hi =
+                        String.toInt (String.trim m.countMax) |> Maybe.withDefault 0
+                in
+                ( accMin + lo, accMax + hi )
+            )
+            ( 0, 0 )
 
 
 nameRow : LoreDraft -> Html Msg
@@ -140,7 +187,7 @@ membersEditor : LoreDraft -> Html Msg
 membersEditor draft =
     if List.isEmpty draft.members then
         p [ class "group-edit__lore-empty" ]
-            [ text "Add at least one creature to the lore group." ]
+            [ text "Add at least one creature to the Lore grouping." ]
 
     else
         div [ class "group-edit__lore-members-editor" ]
@@ -266,7 +313,7 @@ actionsRow =
             [ class "action-btn group-edit__lore-test"
             , type_ "button"
             , onClick LoreEditTest
-            , attribute "title" "Estimate the generator settings most likely to roll this group"
+            , attribute "title" "Estimate the generator settings most likely to roll this Lore grouping"
             ]
             [ text "Test" ]
         , span [ class "group-edit__lore-actions-spacer" ] []
@@ -275,7 +322,7 @@ actionsRow =
             , type_ "button"
             , onClick LoreEditSave
             ]
-            [ text "Save Lore Group" ]
+            [ text "Save Lore Grouping" ]
         , button
             [ class "action-btn"
             , type_ "button"
@@ -299,7 +346,7 @@ testPanel maybeResult =
             div [ class "group-edit__lore-test-panel" ]
                 (if resolvedSomething then
                     [ p [ class "group-edit__lore-test-title" ]
-                        [ text "Settings most likely to roll this group:" ]
+                        [ text "Settings most likely to roll this Lore grouping:" ]
                     ]
                         ++ testRows s
                         ++ unresolvedBanner s.unresolved

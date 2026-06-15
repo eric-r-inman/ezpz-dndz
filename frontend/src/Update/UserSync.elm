@@ -71,7 +71,7 @@ loreGroupsLoaded result model =
 
         Err err ->
             Update.Toast.push ToastError
-                ("Couldn't load your Lore groups: " ++ Util.Http.errorToString err)
+                ("Couldn't load your Lore groupings: " ++ Util.Http.errorToString err)
                 model
 
 
@@ -83,7 +83,7 @@ loreGroupsPersisted result model =
 
         Err err ->
             Update.Toast.push ToastError
-                ("Saving your Lore groups failed: " ++ Util.Http.errorToString err)
+                ("Saving your Lore groupings failed: " ++ Util.Http.errorToString err)
                 model
 
 

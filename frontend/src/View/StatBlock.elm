@@ -540,7 +540,7 @@ savingThrowsHtmlLine onAbilityClick creatureName saves =
                 (strong [] [ text "Saving Throws " ]
                     :: (saves
                             |> List.map (savingThrowEntry onAbilityClick creatureName)
-                            |> List.intersperse (text ", ")
+                            |> List.intersperse (text " ")
                        )
                 )
             )
@@ -556,20 +556,17 @@ savingThrowEntry onAbilityClick creatureName s =
         label =
             abilityLabel s.ability
     in
-    span [ class "statblock__save" ]
-        [ text (label ++ " ")
-        , Html.button
-            [ class "statblock__save-roll"
-            , Html.Attributes.type_ "button"
-            , Html.Events.on "click"
-                (Decode.map2 (onAbilityClick creatureName label s.bonus)
-                    (Decode.field "clientX" Decode.int)
-                    (Decode.field "clientY" Decode.int)
-                )
-            , Tooltips.attr (Tooltips.statBlockSavingThrow label)
-            ]
-            [ text (signed s.bonus) ]
+    Html.button
+        [ class "statblock__save-roll"
+        , Html.Attributes.type_ "button"
+        , Html.Events.on "click"
+            (Decode.map2 (onAbilityClick creatureName label s.bonus)
+                (Decode.field "clientX" Decode.int)
+                (Decode.field "clientY" Decode.int)
+            )
+        , Tooltips.attr (Tooltips.statBlockSavingThrow label)
         ]
+        [ text (label ++ " " ++ signed s.bonus) ]
 
 
 skillsLine : List SkillBonus -> String

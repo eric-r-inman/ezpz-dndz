@@ -205,10 +205,10 @@ ensuring uniqueness if needed.
 validateLoreDraft : LoreDraft -> Result String Lore.Group
 validateLoreDraft draft =
     if String.isEmpty (String.trim draft.name) then
-        Err "Lore group needs a name."
+        Err "Lore grouping needs a name."
 
     else if List.isEmpty draft.members then
-        Err "Add at least one creature to the lore group."
+        Err "Add at least one creature to the Lore grouping."
 
     else
         validateLoreMembers draft.members

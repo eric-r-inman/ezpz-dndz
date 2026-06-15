@@ -8498,11 +8498,45 @@ button.creature-card__lifecycle--dead:focus-visible {
    creature rows (greyed + default cursor, not the disabled
    not-allowed cursor). */
 
+/* Truly inert — click swallowed, cursor reads "no" so the
+   user doesn't fight the affordance.  Used for bundled lore
+   groupings whose Edit / Delete must never fire. */
 .compendium__edit-btn--disabled,
 .compendium__delete-btn--disabled {
   opacity: 0.45;
   cursor: default;
   pointer-events: none;
+}
+
+/* Clickable-but-locked — visually greyed AND clickable so the
+   GM can click through to the sign-in page.  Cursor stays as
+   pointer because a click DOES do something (navigates to
+   /login); the tooltip explains why. */
+.compendium__edit-btn--locked,
+.compendium__delete-btn--locked,
+.compendium__lore-new--locked {
+  opacity: 0.55;
+}
+
+/* ── Edit Lore Grouping modal: descriptive blurbs ──────────────────── */
+
+.lore-edit__blurb {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
+  border-left: 3px solid var(--color-accent, #4a90e2);
+  border-radius: var(--radius-sm);
+  line-height: 1.45;
+}
+
+.lore-edit__blurb--sub {
+  margin-top: -4px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  border-left-color: var(--color-border);
+  font-style: italic;
 }
 
 .compendium__group-detail {
