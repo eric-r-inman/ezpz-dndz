@@ -8528,27 +8528,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 0.55;
 }
 
-/* ── Edit Lore Grouping modal: descriptive blurbs ──────────────────── */
-
-.lore-edit__blurb {
-  margin: 0 0 12px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
-  border-left: 3px solid var(--color-accent, #4a90e2);
-  border-radius: var(--radius-sm);
-  line-height: 1.45;
-}
-
-.lore-edit__blurb--sub {
-  margin-top: -4px;
-  padding: 6px 12px;
-  font-size: 0.82rem;
-  border-left-color: var(--color-border);
-  font-style: italic;
-}
-
 .compendium__group-detail {
   padding: 16px 18px;
 }

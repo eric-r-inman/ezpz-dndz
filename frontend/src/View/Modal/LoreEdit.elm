@@ -84,7 +84,6 @@ view model =
                     [ headerBlurb ui.draft
                     , nameRow ui.draft
                     , weightRow ui.draft
-                    , weightBlurb
                     , membersEditor ui.draft
                     , addMemberPicker ui.addSearch creatures ui.draft.members
                     , errorBanner ui.submitError
@@ -104,7 +103,8 @@ view model =
 {-| Top-of-modal blurb explaining what a Lore grouping does, with
 the current draft's min/max creature totals baked into the
 description so the GM sees the impact of the count ranges they've
-typed.
+typed. Reuses the Random Encounter modal's blurb style so the
+two screens read as related affordances.
 -}
 headerBlurb : LoreDraft -> Html Msg
 headerBlurb draft =
@@ -112,21 +112,15 @@ headerBlurb draft =
         ( minTotal, maxTotal ) =
             countRange draft
     in
-    p [ class "lore-edit__blurb" ]
+    p [ class "random-encounter__blurb" ]
         [ text
             ("Adding a Lore grouping directly to the encounter will add between "
                 ++ String.fromInt minTotal
                 ++ " and "
                 ++ String.fromInt maxTotal
-                ++ " creatures, drawn from the listed members.  Checking 'Lore-leaning' in the Random Encounter roller will trawl Lore groupings for possibilities."
+                ++ " creatures, drawn from the listed members.  Checking 'Lore-leaning' in the Random Encounter roller will trawl Lore groupings for possibilities.  Weight determines how likely the Random Encounter generator will produce this grouping (if constraints allow)."
             )
         ]
-
-
-weightBlurb : Html Msg
-weightBlurb =
-    p [ class "lore-edit__blurb lore-edit__blurb--sub" ]
-        [ text "Determines how likely the Random Encounter generator will produce this grouping (if constraints allow)." ]
 
 
 countRange : LoreDraft -> ( Int, Int )
