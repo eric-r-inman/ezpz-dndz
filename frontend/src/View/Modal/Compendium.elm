@@ -1820,7 +1820,7 @@ loreActionBar auth group =
         , button
             [ class "action-btn action-btn--green compendium__add-btn"
             , onClick (CompendiumLoreAdd group.id)
-            , attribute "title" "Roll counts and add this Lore grouping's creatures to the encounter"
+            , Tooltips.attr "Roll counts and add this Lore grouping's creatures to the encounter"
             ]
             [ text "➕ Add Grouping to Encounter" ]
         , button
@@ -1838,7 +1838,7 @@ loreActionBar auth group =
                 )
             , onClick editClickMsg
             , Attr.disabled bundled
-            , attribute "title" editTitle
+            , Tooltips.attr editTitle
             , attribute "aria-label" editTitle
             ]
             [ text "✏️ Create/Edit Lore grouping" ]
@@ -1857,7 +1857,7 @@ loreActionBar auth group =
                 )
             , onClick deleteClickMsg
             , Attr.disabled bundled
-            , attribute "title" deleteTitle
+            , Tooltips.attr deleteTitle
             , attribute "aria-label" deleteTitle
             ]
             [ text "🗑" ]
