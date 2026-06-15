@@ -290,11 +290,12 @@ select id model =
             { ui
                 | selectedId = Just id
 
-                -- Selecting a creature clears any group selection
-                -- so the right pane reads as "this creature's
-                -- stat block" rather than "this group's
-                -- contents".
+                -- Selecting a creature clears any group / lore
+                -- selection so the right pane reads as "this
+                -- creature's stat block" rather than carrying a
+                -- stale group / lore-group detail alongside.
                 , selectedGroupId = Nothing
+                , selectedLoreId = Nothing
             }
         )
         model

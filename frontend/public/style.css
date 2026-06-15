@@ -8415,6 +8415,96 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-surface);
 }
 
+/* ── Compendium list: Lore groups section ──────────────────────────── */
+
+.compendium__row--lore-section {
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-warning, #b9602a);
+  font-weight: 600;
+}
+
+.compendium__lore-new {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 2px 10px;
+  font-size: 0.8rem;
+}
+
+.compendium__row--lore {
+  background: var(--color-surface);
+  border-left: 3px solid var(--color-warning, #b9602a);
+  padding-left: 8px;
+}
+
+.compendium__row--lore-bundled {
+  opacity: 0.9;
+  font-style: italic;
+}
+
+.compendium__lore-row-wrap {
+  display: block;
+}
+
+.compendium__lore-members {
+  padding: 6px 0 6px 36px;
+  background: var(--color-surface);
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+.compendium__lore-member {
+  padding: 1px 0;
+}
+
+.compendium__lore-member-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.compendium__lore-member-name {
+  color: var(--color-text);
+}
+
+.compendium__lore-member-role {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Right-pane lore detail ─────────────────────────────────────────── */
+
+.compendium__lore-detail {
+  padding: 12px 16px;
+}
+
+.compendium__lore-detail-name {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.compendium__lore-detail-meta {
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.compendium__lore-detail-members {
+  border-top: 1px solid var(--color-border);
+  padding-top: 8px;
+}
+
+/* Disabled action-bar Edit / Delete on bundled lore groups —
+   visual treatment mirrors the bundled-Edit treatment on
+   creature rows (greyed + default cursor, not the disabled
+   not-allowed cursor). */
+
+.compendium__edit-btn--disabled,
+.compendium__delete-btn--disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
 .compendium__group-detail {
   padding: 16px 18px;
 }

@@ -640,6 +640,16 @@ type Msg
     | CompendiumGroupSelect String
     | CompendiumGroupDelete String
     | CompendiumGroupEditOpenExisting String
+      -- Lore-group browser-list interactions.  The Compendium
+      -- now surfaces lore groups as a peer of regular groups
+      -- in their own section above the user-groups; selection
+      -- drives the right-pane action bar / detail.
+    | CompendiumLoreSectionToggle
+    | CompendiumLoreExpandToggle String
+    | CompendiumLoreSelect String
+    | CompendiumLoreDelete String
+    | CompendiumLoreAdd String
+    | CompendiumLoreAddMaterialise String (List ( Compendium.Creature, Int ))
       -- Group → encounter handoff.  Like CompendiumAddToQueue
       -- but the materialiser is a separate path because it has
       -- to honour the group's initiative mode + per-entry
@@ -711,6 +721,24 @@ type Msg
     | GroupEditLoreDraftCancel
     | GroupEditLoreDraftSubmit
     | GroupEditLoreDraftTest
+      -- Standalone Edit Lore Group modal — the lore-group CRUD
+      -- now lives outside the Create/Edit Group modal so the
+      -- Compendium can surface lore groups as a peer of regular
+      -- groups.  These msgs mirror the GroupEditLore* set but
+      -- target `ModalLoreEdit`.
+    | LoreEditOpenNew
+    | LoreEditOpenExisting String
+    | LoreEditClose
+    | LoreEditSave
+    | LoreEditNameChanged String
+    | LoreEditWeightChanged String
+    | LoreEditAddSearchChanged String
+    | LoreEditMemberAdd String
+    | LoreEditMemberRemove Int
+    | LoreEditMemberRoleSet Int String
+    | LoreEditMemberCountMinChanged Int String
+    | LoreEditMemberCountMaxChanged Int String
+    | LoreEditTest
     | GroupEditLoreDraftNameChanged String
     | GroupEditLoreDraftWeightChanged String
     | GroupEditLoreDraftMemberAdd String

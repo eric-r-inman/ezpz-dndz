@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
     )
 
 {-| The single source of truth for the running app.
@@ -65,6 +65,7 @@ import Ui.Initiative exposing (InitiativeUi)
 import Ui.Load exposing (LoadUi)
 import Ui.LoadCompendium exposing (LoadCompendiumUi)
 import Ui.Login exposing (LoginUi)
+import Ui.LoreEdit exposing (LoreEditUi)
 import Ui.Memo exposing (MemoEditUi)
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
@@ -129,6 +130,7 @@ type Modal
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
     | ModalGroupEdit GroupEditUi
+    | ModalLoreEdit LoreEditUi
     | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
     | ModalRandomEncounter RandomEncounterUi
@@ -203,6 +205,20 @@ groupEditLens =
                 _ ->
                     Nothing
     , wrap = ModalGroupEdit
+    }
+
+
+loreEditLens : ModalLens LoreEditUi
+loreEditLens =
+    { extract =
+        \m ->
+            case m of
+                ModalLoreEdit ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = ModalLoreEdit
     }
 
 

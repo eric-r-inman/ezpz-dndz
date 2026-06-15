@@ -413,8 +413,11 @@ select groupId model =
 
                 -- Selecting a group clears any creature-pane
                 -- selection so the right pane reads as "this
-                -- group's details".
+                -- group's details" — and any lore-group
+                -- selection, since the three axes are mutually
+                -- exclusive.
                 , selectedId = Nothing
+                , selectedLoreId = Nothing
             }
         )
         model

@@ -110,7 +110,6 @@ view model =
                     , entriesSection ui creatures
                     , errorBanner ui
                     , submitRow ui
-                    , loreSection ui model.userLoreGroups creatures
                     ]
                 }
 

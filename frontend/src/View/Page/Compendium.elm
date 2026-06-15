@@ -27,6 +27,7 @@ tabs the same way the dice + encounter ports already do for
 -}
 
 import Auth
+import Encounter.RandomEncounter.Lore as Lore
 import Html exposing (Html, div, section, text)
 import Html.Attributes exposing (class)
 import Msg exposing (Msg)
@@ -34,11 +35,11 @@ import Ui.Compendium exposing (CompendiumUi)
 import View.Modal.Compendium
 
 
-view : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
-view auth ui encounterIds =
+view : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
+view auth ui userLoreGroups encounterIds =
     div [ class "workspace workspace--compendium-page" ]
         [ section [ class "panel panel--compendium-page" ]
             [ div [ class "panel__body compendium-page__body" ]
-                (View.Modal.Compendium.pageBody auth ui encounterIds)
+                (View.Modal.Compendium.pageBody auth ui userLoreGroups encounterIds)
             ]
         ]

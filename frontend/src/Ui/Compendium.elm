@@ -145,6 +145,24 @@ type alias CompendiumUi =
     -- Mutually exclusive with `selectedId` (creature selection);
     -- clicking a group row clears `selectedId` and vice versa.
     , selectedGroupId : Maybe String
+
+    -- Top-level disclosure for the new "Lore groups" section
+    -- that sits above the user-created groups in the list.
+    -- Collapsed by default to keep the list tidy on first
+    -- open — the GM expands when they want to browse / pick.
+    , loreGroupsExpanded : Bool
+
+    -- Per-row member-list expansion state for lore groups —
+    -- mirrors `expandedGroupIds` but addresses lore-group ids
+    -- (bundled or user-curated).
+    , expandedLoreIds : Set String
+
+    -- Selected lore group (drives the right-pane action bar
+    -- and members detail). Mutually exclusive with both
+    -- `selectedId` (creature) and `selectedGroupId` (regular
+    -- group) — at most one selection lives at a time across
+    -- the three axes.
+    , selectedLoreId : Maybe String
     }
 
 
@@ -197,6 +215,9 @@ emptyCompendium =
     , groups = Dict.empty
     , expandedGroupIds = Set.empty
     , selectedGroupId = Nothing
+    , loreGroupsExpanded = False
+    , expandedLoreIds = Set.empty
+    , selectedLoreId = Nothing
     }
 
 

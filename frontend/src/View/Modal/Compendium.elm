@@ -10,6 +10,7 @@ import Auth
 import Compendium
 import Compendium.Group
 import Dict
+import Encounter.RandomEncounter.Lore as Lore
 import Html exposing (Html, button, div, h3, input, label, option, p, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, title, type_, value)
 import Html.Events exposing (onClick, onInput)
@@ -36,8 +37,8 @@ import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : ModalChrome -> Auth.AuthState -> CompendiumUi -> List String -> Html Msg
-view chrome auth ui encounterIds =
+view : ModalChrome -> Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
+view chrome auth ui userLoreGroups encounterIds =
     if not ui.open then
         text ""
 
@@ -48,7 +49,7 @@ view chrome auth ui encounterIds =
             , title = "📚 Compendium"
             , extraClass = "modal--compendium"
             , chrome = chrome
-            , body = pageBody auth ui encounterIds
+            , body = pageBody auth ui userLoreGroups encounterIds
             }
             [ savedAsLabel ui.savedAs
             , button
@@ -85,12 +86,12 @@ Exposed so [`View.Page.Compendium`](View-Page-Compendium) can
 render the same UI as a full standalone page without the
 modal chrome wrapper.
 -}
-pageBody : Auth.AuthState -> CompendiumUi -> List String -> List (Html Msg)
-pageBody auth ui encounterIds =
+pageBody : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> List (Html Msg)
+pageBody auth ui userLoreGroups encounterIds =
     [ filterBar ui
     , actionsBar auth ui
     , bulkBanner ui
-    , body auth ui encounterIds
+    , body auth ui userLoreGroups encounterIds
     ]
 
 
@@ -576,8 +577,8 @@ tagPicker ui =
         (select_ :: clearButton)
 
 
-body : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
-body auth ui encounterIds =
+body : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
+body auth ui userLoreGroups encounterIds =
     case ui.db of
         CompendiumDbLoading ->
             skeleton
@@ -587,7 +588,7 @@ body auth ui encounterIds =
                 [ text "Couldn't load the compendium. Check the server logs." ]
 
         CompendiumDbLoaded _ ->
-            twoColumn auth ui encounterIds
+            twoColumn auth ui userLoreGroups encounterIds
 
 
 skeleton : Html Msg
@@ -612,8 +613,8 @@ skeletonRow =
         ]
 
 
-twoColumn : Auth.AuthState -> CompendiumUi -> List String -> Html Msg
-twoColumn auth ui encounterIds =
+twoColumn : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
+twoColumn auth ui userLoreGroups encounterIds =
     let
         baseVisible =
             CompendiumUi.compendiumVisible ui
@@ -639,8 +640,8 @@ twoColumn auth ui encounterIds =
                     0
     in
     div [ class "compendium__columns" ]
-        [ list ui totalCount visible encounterIds ui.selectedIds
-        , detail auth ui visible encounterIds
+        [ list ui totalCount visible userLoreGroups encounterIds ui.selectedIds
+        , detail auth ui visible userLoreGroups encounterIds
         ]
 
 
@@ -648,13 +649,17 @@ list :
     CompendiumUi
     -> Int
     -> List Compendium.Creature
+    -> List Lore.Group
     -> List String
     -> Set String
     -> Html Msg
-list ui totalCount visible encounterIds selectedIds =
+list ui totalCount visible userLoreGroups encounterIds selectedIds =
     let
         groups =
             CompendiumUi.visibleGroups ui
+
+        loreRows =
+            loreSection ui userLoreGroups
 
         groupRows =
             List.concatMap (groupListItem ui) groups
@@ -698,7 +703,7 @@ list ui totalCount visible encounterIds selectedIds =
 
     else
         div [ class "compendium__list" ]
-            (groupRows ++ creatureRows)
+            (loreRows ++ groupRows ++ creatureRows)
 
 
 {-| Render a group as a header row + (optional) expansion of its
@@ -1034,9 +1039,18 @@ crLabel cr =
         "CR\u{00A0}" ++ cr
 
 
-detail : Auth.AuthState -> CompendiumUi -> List Compendium.Creature -> List String -> Html Msg
-detail auth ui visible encounterIds =
+detail : Auth.AuthState -> CompendiumUi -> List Compendium.Creature -> List Lore.Group -> List String -> Html Msg
+detail auth ui visible userLoreGroups encounterIds =
     let
+        chosenLore =
+            ui.selectedLoreId
+                |> Maybe.andThen
+                    (\id ->
+                        (userLoreGroups ++ Lore.bundled)
+                            |> List.filter (\g -> g.id == id)
+                            |> List.head
+                    )
+
         chosenGroup =
             ui.selectedGroupId
                 |> Maybe.andThen (\id -> Dict.get id ui.groups)
@@ -1045,14 +1059,20 @@ detail auth ui visible encounterIds =
             ui.selectedId
                 |> Maybe.andThen (\id -> List.filter (\c -> c.id == id) visible |> List.head)
     in
-    case ( chosenGroup, chosen ) of
-        ( Just group, _ ) ->
+    case ( chosenLore, chosenGroup, chosen ) of
+        ( Just loreGroup, _, _ ) ->
+            div [ class "compendium__detail" ]
+                [ loreActionBar auth loreGroup
+                , loreDetailBody loreGroup
+                ]
+
+        ( Nothing, Just group, _ ) ->
             div [ class "compendium__detail" ]
                 [ groupActionBar auth group
                 , groupDetailBody ui group
                 ]
 
-        ( Nothing, Just creature ) ->
+        ( Nothing, Nothing, Just creature ) ->
             div [ class "compendium__detail" ]
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
@@ -1060,7 +1080,7 @@ detail auth ui visible encounterIds =
                 , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
                 ]
 
-        ( Nothing, Nothing ) ->
+        ( Nothing, Nothing, Nothing ) ->
             div [ class "compendium__detail compendium__detail--empty" ]
                 [ text "Select a creature or group on the left." ]
 
@@ -1501,3 +1521,325 @@ clearMenu ui =
             , clearSelectedItem
             ]
         }
+
+
+
+-- ── LORE GROUPS SECTION ─────────────────────────────────────────────────────
+
+
+{-| Renders the collapsible Lore groups section at the top of
+the Compendium list. Header shows a "+ New" affordance plus a
+disclosure caret; when expanded, each lore group (bundled +
+user-curated) becomes its own selectable row with an optional
+member-list expansion.
+
+Returns a List of rows so the caller can splice them inline
+with the regular group rows + creature rows.
+
+-}
+loreSection : CompendiumUi -> List Lore.Group -> List (Html Msg)
+loreSection ui userLoreGroups =
+    let
+        allGroups =
+            -- User-authored first so the GM's own groups read
+            -- at the top of the expanded list — bundled trails
+            -- as the SRD fallback set.
+            userLoreGroups ++ Lore.bundled
+
+        header =
+            loreSectionHeader ui (List.length allGroups)
+
+        rows =
+            if ui.loreGroupsExpanded then
+                List.map (loreRow ui) allGroups
+
+            else
+                []
+    in
+    header :: rows
+
+
+loreSectionHeader : CompendiumUi -> Int -> Html Msg
+loreSectionHeader ui totalCount =
+    div
+        [ class "compendium__row compendium__row--lore-section"
+        , onClick CompendiumLoreSectionToggle
+        , attribute "role" "button"
+        , attribute "tabindex" "0"
+        ]
+        [ button
+            [ class "compendium__group-disclosure"
+            , onClickStopPropagation CompendiumLoreSectionToggle
+            , attribute "aria-expanded"
+                (if ui.loreGroupsExpanded then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , attribute "aria-label" "Toggle Lore groups"
+            ]
+            [ text
+                (if ui.loreGroupsExpanded then
+                    "▾"
+
+                 else
+                    "▸"
+                )
+            ]
+        , div [ class "compendium__row-text" ]
+            [ span [ class "compendium__row-name" ]
+                [ text "📖 Lore groups" ]
+            , span [ class "compendium__row-meta" ]
+                [ text (String.fromInt totalCount ++ " groups") ]
+            ]
+        , button
+            [ class "action-btn action-btn--condition compendium__lore-new"
+            , onClickStopPropagation LoreEditOpenNew
+            , attribute "title" "Create a new Lore group"
+            , attribute "aria-label" "Create a new Lore group"
+            ]
+            [ text "+ New" ]
+        ]
+
+
+loreRow : CompendiumUi -> Lore.Group -> Html Msg
+loreRow ui group =
+    let
+        isSelected =
+            ui.selectedLoreId == Just group.id
+
+        isExpanded =
+            Set.member group.id ui.expandedLoreIds
+
+        bundled =
+            group.source == Lore.Bundled
+
+        rowClass =
+            "compendium__row compendium__row--lore"
+                ++ (if isSelected then
+                        " compendium__row--selected"
+
+                    else
+                        ""
+                   )
+                ++ (if bundled then
+                        " compendium__row--lore-bundled"
+
+                    else
+                        ""
+                   )
+
+        memberCount =
+            List.length group.members
+    in
+    div [ class "compendium__lore-row-wrap" ]
+        [ div
+            [ class rowClass
+            , onClick (CompendiumLoreSelect group.id)
+            , attribute "role" "button"
+            , attribute "tabindex" "0"
+            ]
+            [ button
+                [ class "compendium__group-disclosure"
+                , onClickStopPropagation (CompendiumLoreExpandToggle group.id)
+                , attribute "aria-expanded"
+                    (if isExpanded then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                , attribute "aria-label" "Toggle lore group members"
+                ]
+                [ text
+                    (if isExpanded then
+                        "▾"
+
+                     else
+                        "▸"
+                    )
+                ]
+            , div [ class "compendium__row-text" ]
+                [ span [ class "compendium__row-name" ]
+                    [ text
+                        ((if bundled then
+                            "🔒 "
+
+                          else
+                            "📖 "
+                         )
+                            ++ group.name
+                        )
+                    ]
+                , span [ class "compendium__row-meta" ]
+                    [ text
+                        (String.fromInt memberCount
+                            ++ " member"
+                            ++ (if memberCount == 1 then
+                                    ""
+
+                                else
+                                    "s"
+                               )
+                            ++ " · weight "
+                            ++ String.fromInt group.weight
+                        )
+                    ]
+                ]
+            ]
+        , if isExpanded then
+            div [ class "compendium__lore-members" ]
+                (List.map loreMemberRow group.members)
+
+          else
+            text ""
+        ]
+
+
+loreMemberRow : Lore.Slot -> Html Msg
+loreMemberRow slot =
+    let
+        countText =
+            if slot.countMin == slot.countMax then
+                String.fromInt slot.countMin
+
+            else
+                String.fromInt slot.countMin
+                    ++ "–"
+                    ++ String.fromInt slot.countMax
+    in
+    div [ class "compendium__lore-member" ]
+        [ span [ class "compendium__lore-member-count" ]
+            [ text (countText ++ "× ") ]
+        , span [ class "compendium__lore-member-name" ]
+            [ text slot.name ]
+        , span [ class "compendium__lore-member-role" ]
+            [ text (" · " ++ loreRoleLabel slot.role) ]
+        ]
+
+
+loreRoleLabel : Lore.Role -> String
+loreRoleLabel r =
+    case r of
+        Lore.Leader ->
+            "leader"
+
+        Lore.Member ->
+            "member"
+
+        Lore.Minion ->
+            "minion"
+
+        Lore.Pet ->
+            "pet"
+
+
+
+-- ── LORE GROUP RIGHT-PANE DETAIL ────────────────────────────────────────────
+
+
+loreActionBar : Auth.AuthState -> Lore.Group -> Html Msg
+loreActionBar auth group =
+    let
+        bundled =
+            group.source == Lore.Bundled
+
+        editClickMsg =
+            if bundled then
+                Msg.NoOp
+
+            else
+                AuthGate.clickWhenAuthed auth (LoreEditOpenExisting group.id)
+
+        deleteClickMsg =
+            if bundled then
+                Msg.NoOp
+
+            else
+                AuthGate.clickWhenAuthed auth (CompendiumLoreDelete group.id)
+
+        editTitle =
+            if bundled then
+                "Bundled lore groups can't be edited. Duplicate or create a new one to customise."
+
+            else
+                "Create / Edit lore group"
+
+        deleteTitle =
+            if bundled then
+                "Bundled lore groups can't be deleted."
+
+            else
+                "Delete this lore group"
+    in
+    div [ class "compendium__action-bar" ]
+        [ span [ class "compendium__in-encounter" ]
+            [ text
+                (String.fromInt (List.length group.members)
+                    ++ " members · weight "
+                    ++ String.fromInt group.weight
+                )
+            ]
+        , button
+            [ class "action-btn action-btn--green compendium__add-btn"
+            , onClick (CompendiumLoreAdd group.id)
+            , attribute "title" "Roll counts and add this lore group's creatures to the encounter"
+            ]
+            [ text "➕ Add Group to Encounter" ]
+        , button
+            [ class
+                ("action-btn action-btn--blue compendium__edit-btn"
+                    ++ (if bundled then
+                            " compendium__edit-btn--disabled"
+
+                        else
+                            ""
+                       )
+                )
+            , onClick editClickMsg
+            , Attr.disabled bundled
+            , attribute "title" editTitle
+            , attribute "aria-label" editTitle
+            ]
+            [ text "✏️ Create/Edit Lore group" ]
+        , button
+            [ class
+                ("action-btn action-btn--red compendium__delete-btn"
+                    ++ (if bundled then
+                            " compendium__delete-btn--disabled"
+
+                        else
+                            ""
+                       )
+                )
+            , onClick deleteClickMsg
+            , Attr.disabled bundled
+            , attribute "title" deleteTitle
+            , attribute "aria-label" deleteTitle
+            ]
+            [ text "🗑" ]
+        ]
+
+
+loreDetailBody : Lore.Group -> Html Msg
+loreDetailBody group =
+    div [ class "compendium__lore-detail" ]
+        [ h3 [ class "compendium__lore-detail-name" ] [ text group.name ]
+        , p [ class "compendium__lore-detail-meta" ]
+            [ text
+                ("Weight "
+                    ++ String.fromInt group.weight
+                    ++ " · "
+                    ++ (case group.source of
+                            Lore.Bundled ->
+                                "Bundled"
+
+                            Lore.UserCurated ->
+                                "User-curated"
+                       )
+                )
+            ]
+        , div [ class "compendium__lore-detail-members" ]
+            (List.map loreMemberRow group.members)
+        ]

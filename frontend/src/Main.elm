@@ -88,6 +88,7 @@ import Update.Compendium.Browser
 import Update.Compendium.Bulk
 import Update.Compendium.Edit
 import Update.Compendium.Group
+import Update.Compendium.Lore
 import Update.Compendium.Paste
 import Update.Condition
 import Update.CrCalculator
@@ -100,6 +101,7 @@ import Update.Initiative
 import Update.LegendaryPip
 import Update.Load
 import Update.LoadCompendium
+import Update.LoreEdit
 import Update.Memo
 import Update.ModalChrome
 import Update.Note
@@ -140,6 +142,7 @@ import View.Modal.HpChange
 import View.Modal.Initiative
 import View.Modal.Load
 import View.Modal.LoadCompendium
+import View.Modal.LoreEdit
 import View.Modal.Memo
 import View.Modal.Note
 import View.Modal.QuickAdd
@@ -1587,6 +1590,24 @@ updateInner msg model =
         CompendiumGroupAddMaterialise spawns rolls ->
             Update.Compendium.AddGroup.materialise spawns rolls model
 
+        CompendiumLoreSectionToggle ->
+            Update.Compendium.Lore.sectionToggle model
+
+        CompendiumLoreExpandToggle id ->
+            Update.Compendium.Lore.expandToggle id model
+
+        CompendiumLoreSelect id ->
+            Update.Compendium.Lore.select id model
+
+        CompendiumLoreDelete id ->
+            Update.Compendium.Lore.delete id model
+
+        CompendiumLoreAdd id ->
+            Update.Compendium.Lore.add id model
+
+        CompendiumLoreAddMaterialise groupName pairs ->
+            Update.Compendium.Lore.addMaterialise groupName pairs model
+
         GroupEditClose ->
             Update.Compendium.Group.close model
 
@@ -1649,6 +1670,45 @@ updateInner msg model =
 
         GroupEditLoreDraftTest ->
             Update.Compendium.Group.loreDraftTest model
+
+        LoreEditOpenNew ->
+            Update.LoreEdit.openNew model
+
+        LoreEditOpenExisting groupId ->
+            Update.LoreEdit.openExisting groupId model
+
+        LoreEditClose ->
+            Update.LoreEdit.close model
+
+        LoreEditSave ->
+            Update.LoreEdit.save model
+
+        LoreEditNameChanged raw ->
+            Update.LoreEdit.nameChanged raw model
+
+        LoreEditWeightChanged raw ->
+            Update.LoreEdit.weightChanged raw model
+
+        LoreEditAddSearchChanged raw ->
+            Update.LoreEdit.addSearchChanged raw model
+
+        LoreEditMemberAdd creatureName ->
+            Update.LoreEdit.memberAdd creatureName model
+
+        LoreEditMemberRemove idx ->
+            Update.LoreEdit.memberRemove idx model
+
+        LoreEditMemberRoleSet idx role ->
+            Update.LoreEdit.memberRoleSet idx role model
+
+        LoreEditMemberCountMinChanged idx raw ->
+            Update.LoreEdit.memberCountMinChanged idx raw model
+
+        LoreEditMemberCountMaxChanged idx raw ->
+            Update.LoreEdit.memberCountMaxChanged idx raw model
+
+        LoreEditTest ->
+            Update.LoreEdit.test model
 
         GroupEditLoreDraftNameChanged raw ->
             Update.Compendium.Group.loreDraftNameChanged raw model
@@ -2815,6 +2875,7 @@ appShell maybeUser model =
     , View.Modal.Compendium.view model.modalChrome
         model.auth
         model.compendium
+        model.userLoreGroups
         (List.filterMap .creatureId model.encounter.creatures)
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model
@@ -2826,6 +2887,7 @@ appShell maybeUser model =
     , View.Modal.QuickAdd.view model
     , View.Modal.Duplicate.view model
     , View.Modal.GroupEdit.view model
+    , View.Modal.LoreEdit.view model
     , View.Modal.CardEditor.view model
     , View.Modal.CrCalculator.view model
     , View.Modal.RandomEncounter.view model
@@ -2874,6 +2936,7 @@ viewPage model =
         Compendium ->
             View.Page.Compendium.view model.auth
                 model.compendium
+                model.userLoreGroups
                 (List.filterMap .creatureId model.encounter.creatures)
 
         NotFound ->
