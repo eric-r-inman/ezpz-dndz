@@ -794,7 +794,7 @@ users don't have to guess at the Kind dropdown.
 helpText : Html Msg
 helpText =
     p [ class "treasure__help" ]
-        [ text "'Boss' rolls for highest-CR enemy; 'All' rolls for all enemies. Loot is added after the randomized roll (for enemies with Loot in their stat block; you can add Loot via the Creature editor in the Compendium)." ]
+        [ text "Treasure roller for Hoard ('Boss') or Individual ('All') rolls. 'Boss' rolls CR bracket of highest-CR enemy; 'All' rolls for all enemies. Loot is added after the randomized roll (for enemies with Loot in their stat block; you can add Loot via the Creature editor in the Compendium)." ]
 
 
 {-| Inline notice when the GM is on an Individual roll with

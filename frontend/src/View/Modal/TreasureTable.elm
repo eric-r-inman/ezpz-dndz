@@ -298,10 +298,10 @@ blurb : Html Msg
 blurb =
     p [ class "treasure-table__blurb" ]
         [ text
-            ("This is your treasure table — bundled with the full SRD 5.1 "
-                ++ "defaults out of the box.  Editing the gem / art / magic name "
-                ++ "lists below changes what rolls land on; coin formulas and "
-                ++ "weighted-row probabilities are visible but read-only for now."
+            ("The Treasure roller pulls values from the below value "
+                ++ "brackets, with consideration for assigned weights where "
+                ++ "relevant.  Use caution when changing the CR tables, as "
+                ++ "small adjustments can have a large impact."
             )
         ]
 
