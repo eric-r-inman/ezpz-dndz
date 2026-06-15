@@ -108,7 +108,7 @@ view onRoll onAbilityClick tagDisplay c =
          , viewAbilities onAbilityClick c
          , hr [ class "statblock__divider" ] []
          ]
-            ++ viewProperties c
+            ++ viewProperties onAbilityClick c
             ++ [ hr [ class "statblock__divider" ] [] ]
             ++ viewTraits onRoll c
             ++ viewActionGroup onRoll c.name "Actions" c.actions
@@ -477,10 +477,13 @@ signed n =
 -- ── PROPERTIES BLOCK ─────────────────────────────────────────────────────────
 
 
-viewProperties : Creature -> List (Html msg)
-viewProperties c =
+viewProperties :
+    (String -> String -> Int -> Int -> Int -> msg)
+    -> Creature
+    -> List (Html msg)
+viewProperties onAbilityClick c =
     List.filterMap identity
-        [ propLine "Saving Throws" (savingThrowsLine c.savingThrows)
+        [ savingThrowsHtmlLine onAbilityClick c.name c.savingThrows
         , propLine "Skills" (skillsLine c.skills)
         , propLine "Damage Vulnerabilities" (joinList c.damageVulnerabilities)
         , propLine "Damage Resistances" (joinList c.damageResistances)
@@ -515,11 +518,58 @@ viewProperty label value =
         ]
 
 
-savingThrowsLine : List AbilitySave -> String
-savingThrowsLine saves =
-    saves
-        |> List.map (\s -> abilityLabel s.ability ++ " " ++ signed s.bonus)
-        |> String.join ", "
+{-| Saving-Throws property line with per-save click-to-roll
+buttons. Mirrors the ability-cell affordance up top: the bonus
+value `+N` is a real `<button>` that fires the same
+`AbilitySaveOpen` Msg with the save's bonus (instead of the
+flat ability modifier the ability cells default to when the
+creature isn't proficient).
+-}
+savingThrowsHtmlLine :
+    (String -> String -> Int -> Int -> Int -> msg)
+    -> String
+    -> List AbilitySave
+    -> Maybe (Html msg)
+savingThrowsHtmlLine onAbilityClick creatureName saves =
+    if List.isEmpty saves then
+        Nothing
+
+    else
+        Just
+            (p [ class "statblock__prop" ]
+                (strong [] [ text "Saving Throws " ]
+                    :: (saves
+                            |> List.map (savingThrowEntry onAbilityClick creatureName)
+                            |> List.intersperse (text ", ")
+                       )
+                )
+            )
+
+
+savingThrowEntry :
+    (String -> String -> Int -> Int -> Int -> msg)
+    -> String
+    -> AbilitySave
+    -> Html msg
+savingThrowEntry onAbilityClick creatureName s =
+    let
+        label =
+            abilityLabel s.ability
+    in
+    span [ class "statblock__save" ]
+        [ text (label ++ " ")
+        , Html.button
+            [ class "statblock__save-roll"
+            , Html.Attributes.type_ "button"
+            , Html.Events.on "click"
+                (Decode.map2 (onAbilityClick creatureName label s.bonus)
+                    (Decode.field "clientX" Decode.int)
+                    (Decode.field "clientY" Decode.int)
+                )
+            , Tooltips.attr (Tooltips.statBlockSavingThrow label)
+            ]
+            [ text (signed s.bonus) ]
+        ]
 
 
 skillsLine : List SkillBonus -> String

@@ -11270,6 +11270,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   line-height: 1.45;
 }
 
+/* Inline click-to-roll button on each Saving Throws bonus.
+   Reads as flat text in the line, but the hover/focus underline
+   + accent colour signal the affordance — mirrors the ability
+   cell click-to-roll up top, just spelled inline. */
+.statblock__save-roll {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.statblock__save-roll:hover,
+.statblock__save-roll:focus-visible {
+  color: var(--color-accent, #4a90e2);
+  text-decoration: underline;
+  outline: none;
+}
+
 .statblock__section-heading {
   font-weight: 700;
   font-size: 0.95rem;
