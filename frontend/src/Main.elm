@@ -1647,6 +1647,9 @@ updateInner msg model =
         GroupEditLoreDraftSubmit ->
             Update.Compendium.Group.loreDraftSubmit model
 
+        GroupEditLoreDraftTest ->
+            Update.Compendium.Group.loreDraftTest model
+
         GroupEditLoreDraftNameChanged raw ->
             Update.Compendium.Group.loreDraftNameChanged raw model
 

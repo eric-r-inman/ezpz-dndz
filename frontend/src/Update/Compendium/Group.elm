@@ -6,7 +6,7 @@ module Update.Compendium.Group exposing
     , submit, created, updated
     , expandToggle, select, delete, deleteResponse
     , groupsLoaded
-    , loreAddSearchChanged, loreBundledExpandToggle, loreDeleteCancel, loreDeleteConfirm, loreDeleteRequest, loreDraftCancel, loreDraftMemberAdd, loreDraftMemberCountMaxChanged, loreDraftMemberCountMinChanged, loreDraftMemberRemove, loreDraftMemberRoleSet, loreDraftNameChanged, loreDraftSubmit, loreDraftWeightChanged, loreEdit, loreGroupExpandToggle, loreNew, loreUserExpandToggle
+    , loreAddSearchChanged, loreBundledExpandToggle, loreDeleteCancel, loreDeleteConfirm, loreDeleteRequest, loreDraftCancel, loreDraftMemberAdd, loreDraftMemberCountMaxChanged, loreDraftMemberCountMinChanged, loreDraftMemberRemove, loreDraftMemberRoleSet, loreDraftNameChanged, loreDraftSubmit, loreDraftTest, loreDraftWeightChanged, loreEdit, loreGroupExpandToggle, loreNew, loreUserExpandToggle
     )
 
 {-| Update branches for the **Create / Edit Group** modal and the
@@ -29,10 +29,12 @@ and `groupsLoaded` ingests the result.
 -}
 
 import Auth
+import Compendium
 import Compendium.Group as Group exposing (Group, MinionType(..))
 import Compendium.GroupWire as GroupWire
 import Dict exposing (Dict)
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.RandomEncounter.Lore.Suggest as Suggest
 import Http
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
@@ -519,8 +521,55 @@ withLoreDraft fn =
         (\lore ->
             { lore
                 | editing = Maybe.map fn lore.editing
+
+                -- Any edit invalidates a prior Test panel — keep
+                -- the GM from squinting at a stale recommendation
+                -- alongside fresh draft changes.
+                , testResult = Nothing
             }
         )
+
+
+{-| Run the Suggest helper against the live draft and stash the
+recommendation in the editor's `testResult` for the view to
+render below the action row. No-op if the editor isn't open or
+the draft fails validation (the view surfaces submitError
+already, so a Test click on an invalid draft just won't render
+a panel).
+-}
+loreDraftTest : Model -> ( Model, Cmd Msg )
+loreDraftTest model =
+    case Maybe.andThen Model.groupEditLens.extract model.modal of
+        Just ui ->
+            case ui.lore.editing of
+                Just draft ->
+                    case GroupEdit.validateLoreDraft draft of
+                        Ok group ->
+                            let
+                                pool =
+                                    case model.compendium.db of
+                                        CompendiumUi.CompendiumDbLoaded db ->
+                                            Compendium.toList db
+
+                                        _ ->
+                                            []
+                            in
+                            ( withLore
+                                (\l ->
+                                    { l | testResult = Just (Suggest.suggestFor pool group) }
+                                )
+                                model
+                            , Cmd.none
+                            )
+
+                        Err _ ->
+                            ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
 
 
 loreUserExpandToggle : Model -> ( Model, Cmd Msg )

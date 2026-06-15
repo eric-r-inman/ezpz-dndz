@@ -26,6 +26,7 @@ import Compendium.Group as Group
         , MinionType(..)
         )
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.RandomEncounter.Lore.Suggest as Suggest
 import Set exposing (Set)
 
 
@@ -67,6 +68,13 @@ type alias LoreSection =
     , editing : Maybe LoreDraft
     , confirmDelete : Maybe String
     , addSearch : String
+
+    -- Result of the "Test" button at the bottom of the lore
+    -- editor.  Set when the GM clicks Test against the current
+    -- draft so the panel can render below the action row;
+    -- cleared on every edit to the draft so a stale suggestion
+    -- doesn't sit alongside fresh changes.
+    , testResult : Maybe Suggest.Suggestion
     }
 
 
@@ -139,6 +147,7 @@ freshLore =
     , editing = Nothing
     , confirmDelete = Nothing
     , addSearch = ""
+    , testResult = Nothing
     }
 
 

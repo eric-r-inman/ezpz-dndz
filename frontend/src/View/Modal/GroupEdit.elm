@@ -23,7 +23,9 @@ import Compendium.Group as Group
         ( InitiativeMode(..)
         , MinionType(..)
         )
+import Encounter.Difficulty
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.RandomEncounter.Lore.Suggest as Suggest
 import Html
     exposing
         ( Html
@@ -406,7 +408,7 @@ loreContent :
 loreContent ui userGroups creatures =
     case ui.lore.editing of
         Just draft ->
-            [ loreEditor draft creatures ui.lore.addSearch ]
+            [ loreEditor draft creatures ui.lore.addSearch ui.lore.testResult ]
 
         Nothing ->
             [ loreActions ui.lore
@@ -712,8 +714,13 @@ roleLabel r =
 -- ── LORE EDITOR ──────────────────────────────────────────────────────────────
 
 
-loreEditor : LoreDraft -> List Compendium.Creature -> String -> Html Msg
-loreEditor draft creatures addSearch =
+loreEditor :
+    LoreDraft
+    -> List Compendium.Creature
+    -> String
+    -> Maybe Suggest.Suggestion
+    -> Html Msg
+loreEditor draft creatures addSearch testResult =
     div [ class "group-edit__lore-editor" ]
         [ p [ class "group-edit__lore-editor-title" ]
             [ text
@@ -730,6 +737,7 @@ loreEditor draft creatures addSearch =
         , loreMembersEditor draft
         , loreAddMemberPicker addSearch creatures draft.members
         , loreEditorActions
+        , loreTestPanel testResult
         ]
 
 
@@ -916,6 +924,14 @@ loreEditorActions : Html Msg
 loreEditorActions =
     div [ class "group-edit__lore-editor-actions" ]
         [ button
+            [ class "action-btn group-edit__lore-test"
+            , Attr.type_ "button"
+            , onClick GroupEditLoreDraftTest
+            , attribute "title" "Estimate the generator settings most likely to roll this group"
+            ]
+            [ text "Test" ]
+        , span [ class "group-edit__lore-actions-spacer" ] []
+        , button
             [ class "action-btn action-btn--blue"
             , Attr.type_ "button"
             , onClick GroupEditLoreDraftSubmit
@@ -927,4 +943,114 @@ loreEditorActions =
             , onClick GroupEditLoreDraftCancel
             ]
             [ text "Cancel" ]
+        ]
+
+
+{-| Result of clicking the Test button — a recommendation for
+the Random Encounter generator inputs that should reliably pick
+this lore group. Hidden until the GM clicks Test; reset on any
+draft edit so the panel never lags behind the form.
+-}
+loreTestPanel : Maybe Suggest.Suggestion -> Html Msg
+loreTestPanel maybeResult =
+    case maybeResult of
+        Nothing ->
+            text ""
+
+        Just s ->
+            let
+                resolvedSomething =
+                    s.maxXp > 0
+            in
+            div [ class "group-edit__lore-test-panel" ]
+                (if resolvedSomething then
+                    [ p [ class "group-edit__lore-test-title" ]
+                        [ text "Settings most likely to roll this group:" ]
+                    ]
+                        ++ testRows s
+                        ++ unresolvedBanner s.unresolved
+
+                 else
+                    [ p [ class "group-edit__lore-test-title" ]
+                        [ text "Can't compute settings — no members resolved against the compendium." ]
+                    ]
+                        ++ unresolvedBanner s.unresolved
+                )
+
+
+testRows : Suggest.Suggestion -> List (Html Msg)
+testRows s =
+    [ testRow "Lore Leaning" "Enable the toggle (required for any lore group to fire)"
+    , testRow "Habitat" (formatHabitats s.habitats)
+    , testRow "Creature Type" (formatTypes s.creatureTypes)
+    , testRow "Party"
+        (String.fromInt s.partyCount
+            ++ " characters at level "
+            ++ String.fromInt s.partyLevel
+        )
+    , testRow "Difficulty" (formatDifficulty s.difficulty)
+    , testRow "Suggested budget"
+        ("≈ "
+            ++ String.fromInt s.budgetAtSuggestion
+            ++ " XP  (group natural range "
+            ++ String.fromInt s.minXp
+            ++ "–"
+            ++ String.fromInt s.maxXp
+            ++ " XP)"
+        )
+    ]
+
+
+testRow : String -> String -> Html Msg
+testRow label_ value_ =
+    div [ class "group-edit__lore-test-row" ]
+        [ span [ class "group-edit__lore-test-row-label" ] [ text label_ ]
+        , span [ class "group-edit__lore-test-row-value" ] [ text value_ ]
+        ]
+
+
+formatHabitats : List Compendium.Habitat -> String
+formatHabitats habitats =
+    if List.isEmpty habitats then
+        "Any (none of the members carry habitat tags)"
+
+    else
+        String.join ", " (List.map Compendium.habitatLabel habitats)
+
+
+formatTypes : List String -> String
+formatTypes types =
+    if List.isEmpty types then
+        "Any"
+
+    else
+        String.join ", " types
+
+
+formatDifficulty : Encounter.Difficulty.Difficulty -> String
+formatDifficulty d =
+    case d of
+        Encounter.Difficulty.LowDifficulty ->
+            "Low"
+
+        Encounter.Difficulty.HighDifficulty ->
+            "High"
+
+        _ ->
+            "Moderate"
+
+
+unresolvedBanner : List String -> List (Html Msg)
+unresolvedBanner names =
+    if List.isEmpty names then
+        []
+
+    else
+        [ p [ class "group-edit__lore-test-unresolved" ]
+            [ text
+                ("⚠  Couldn't find these members in the compendium: "
+                    ++ String.join ", " names
+                    ++ ".  The generator silently drops unresolved members, so the recommendation above only reflects the rest."
+                )
+            ]
         ]

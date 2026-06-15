@@ -710,6 +710,7 @@ type Msg
     | GroupEditLoreDeleteCancel
     | GroupEditLoreDraftCancel
     | GroupEditLoreDraftSubmit
+    | GroupEditLoreDraftTest
     | GroupEditLoreDraftNameChanged String
     | GroupEditLoreDraftWeightChanged String
     | GroupEditLoreDraftMemberAdd String

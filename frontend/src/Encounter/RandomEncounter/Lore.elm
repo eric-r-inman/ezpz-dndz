@@ -3,6 +3,7 @@ module Encounter.RandomEncounter.Lore exposing
     , bundled
     , materialize
     , groupFits
+    , ResolvedMember, resolveMembers
     )
 
 {-| Bundled "lore-accurate" creature associations for the

@@ -8324,7 +8324,66 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__lore-editor-actions {
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Spacer between the left-justified Test button and the
+   right-side Save / Cancel cluster.  Flex-grow eats the slack
+   so Test stays glued to the left edge of the row. */
+.group-edit__lore-actions-spacer {
+  flex: 1;
+}
+
+.group-edit__lore-test {
+  background: var(--color-surface-2, transparent);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* Result panel rendered below the action row when the GM clicks
+   Test.  Mimics an inline help card — same surface tone as the
+   editor proper but with the accent left-border to read as
+   advisory rather than another input. */
+.group-edit__lore-test-panel {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-accent, #4a90e2);
+  border-radius: var(--radius-sm);
+}
+
+.group-edit__lore-test-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.group-edit__lore-test-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 0.85rem;
+}
+
+.group-edit__lore-test-row-label {
+  flex: 0 0 130px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.group-edit__lore-test-row-value {
+  flex: 1;
+}
+
+.group-edit__lore-test-unresolved {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  color: var(--color-warning, #b9602a);
+  border: 1px dashed var(--color-warning, #b9602a);
+  border-radius: var(--radius-sm);
 }
 
 /* ── Compendium list: group rows ───────────────────────────────────── */
