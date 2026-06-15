@@ -1623,7 +1623,7 @@ loreSectionHeader auth ui totalCount =
                        )
                 )
             , onClickStopPropagation newClickMsg
-            , attribute "title" newTitle
+            , Tooltips.attr newTitle
             , attribute "aria-label" newTitle
             ]
             [ text "+ New" ]
