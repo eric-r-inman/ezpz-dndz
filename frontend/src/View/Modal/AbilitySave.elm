@@ -17,7 +17,7 @@ import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..), RollMode(..))
-import Ui.AbilitySave exposing (AbilitySaveUi)
+import Ui.AbilitySave as AbilitySave exposing (AbilitySaveUi)
 import View.Modal
 
 
@@ -28,7 +28,7 @@ view model =
             View.Modal.view
                 { close = AbilitySaveClose
                 , noOp = NoOp
-                , title = ui.ability ++ " Save — " ++ ui.creatureName
+                , title = ui.ability ++ " " ++ AbilitySave.kindLabel ui.kind ++ " — " ++ ui.creatureName
                 , extraClass = "modal--ability-save"
                 , chrome = model.modalChrome
                 , body =

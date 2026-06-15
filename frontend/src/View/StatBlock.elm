@@ -84,31 +84,36 @@ type TagDisplay
     spawned floating popup anchors to where the user clicked).
     Pass `RollFromStatBlock` from `Main` to get the same
     roll-and-log behavior used elsewhere.
-  - `onAbilityClick` — handler for clicking one of the six
+  - `onAbilityCheck` — handler for clicking one of the six
     ability cells (STR / DEX / CON / INT / WIS / CHA). Receives
     the creature's display name, the ability label (e.g. `"STR"`),
-    and the saving-throw bonus (proficient if the creature has a
-    `savingThrows` entry for this ability, otherwise the flat
-    ability modifier). Pass `AbilitySaveOpen` from `Main` to
-    get the saving-throw modal.
+    and the flat ability modifier (`(score − 10) // 2`). Pass
+    `AbilityCheckOpen` from `Main` to get the ability-check modal.
+  - `onSavingThrow` — handler for clicking one of the inline
+    chips in the Saving Throws property line. Receives the same
+    shape as `onAbilityCheck`, but the bonus is the proficient
+    save bonus straight from the creature's `savingThrows`
+    record. Pass `AbilitySaveOpen` from `Main` to get the
+    saving-throw modal.
 
 -}
 view :
     (String -> Dice.Expression -> Int -> Int -> msg)
     -> (String -> String -> Int -> Int -> Int -> msg)
+    -> (String -> String -> Int -> Int -> Int -> msg)
     -> TagDisplay
     -> Creature
     -> Html msg
-view onRoll onAbilityClick tagDisplay c =
+view onRoll onAbilityCheck onSavingThrow tagDisplay c =
     div [ class "statblock" ]
         ([ viewHead tagDisplay c
          , hr [ class "statblock__divider" ] []
          , viewCoreLine c
          , hr [ class "statblock__divider" ] []
-         , viewAbilities onAbilityClick c
+         , viewAbilities onAbilityCheck c
          , hr [ class "statblock__divider" ] []
          ]
-            ++ viewProperties onAbilityClick c
+            ++ viewProperties onSavingThrow c
             ++ [ hr [ class "statblock__divider" ] [] ]
             ++ viewTraits onRoll c
             ++ viewActionGroup onRoll c.name "Actions" c.actions
@@ -405,10 +410,14 @@ whenPositive n fmt =
 
 
 viewAbilities : (String -> String -> Int -> Int -> Int -> msg) -> Creature -> Html msg
-viewAbilities onAbilityClick c =
+viewAbilities onAbilityCheck c =
     let
-        cell label ability score =
-            viewAbilityCell onAbilityClick c.name label (saveBonus c.savingThrows ability score) score
+        cell label _ score =
+            -- Ability cells fire an *ability check*, so we pass
+            -- the flat modifier (not the proficient save bonus).
+            -- The save bonus has its own dedicated chip in the
+            -- Saving Throws property line.
+            viewAbilityCell onAbilityCheck c.name label (modifier score) score
     in
     div [ class "ability-row" ]
         [ cell "STR" Str c.abilities.str
@@ -420,21 +429,6 @@ viewAbilities onAbilityClick c =
         ]
 
 
-{-| Pull the proficient save bonus from `savingThrows` if the
-creature is proficient in this ability; otherwise fall back to
-the flat ability modifier. This is the bonus the saving-throw
-modal applies to its `1d20`.
--}
-saveBonus : List AbilitySave -> Ability -> Int -> Int
-saveBonus saves ability score =
-    case List.filter (\s -> s.ability == ability) saves of
-        save :: _ ->
-            save.bonus
-
-        [] ->
-            modifier score
-
-
 viewAbilityCell :
     (String -> String -> Int -> Int -> Int -> msg)
     -> String
@@ -442,12 +436,12 @@ viewAbilityCell :
     -> Int
     -> Int
     -> Html msg
-viewAbilityCell onAbilityClick creatureName label bonus score =
+viewAbilityCell onAbilityCheck creatureName label bonus score =
     Html.button
         [ class "ability ability--clickable"
         , Html.Attributes.type_ "button"
         , Html.Events.on "click"
-            (Decode.map2 (onAbilityClick creatureName label bonus)
+            (Decode.map2 (onAbilityCheck creatureName label bonus)
                 (Decode.field "clientX" Decode.int)
                 (Decode.field "clientY" Decode.int)
             )
@@ -481,9 +475,9 @@ viewProperties :
     (String -> String -> Int -> Int -> Int -> msg)
     -> Creature
     -> List (Html msg)
-viewProperties onAbilityClick c =
+viewProperties onSavingThrow c =
     List.filterMap identity
-        [ savingThrowsHtmlLine onAbilityClick c.name c.savingThrows
+        [ savingThrowsHtmlLine onSavingThrow c.name c.savingThrows
         , propLine "Skills" (skillsLine c.skills)
         , propLine "Damage Vulnerabilities" (joinList c.damageVulnerabilities)
         , propLine "Damage Resistances" (joinList c.damageResistances)
@@ -530,7 +524,7 @@ savingThrowsHtmlLine :
     -> String
     -> List AbilitySave
     -> Maybe (Html msg)
-savingThrowsHtmlLine onAbilityClick creatureName saves =
+savingThrowsHtmlLine onSavingThrow creatureName saves =
     if List.isEmpty saves then
         Nothing
 
@@ -539,7 +533,7 @@ savingThrowsHtmlLine onAbilityClick creatureName saves =
             (p [ class "statblock__prop" ]
                 (strong [] [ text "Saving Throws " ]
                     :: (saves
-                            |> List.map (savingThrowEntry onAbilityClick creatureName)
+                            |> List.map (savingThrowEntry onSavingThrow creatureName)
                             |> List.intersperse (text " ")
                        )
                 )
@@ -551,7 +545,7 @@ savingThrowEntry :
     -> String
     -> AbilitySave
     -> Html msg
-savingThrowEntry onAbilityClick creatureName s =
+savingThrowEntry onSavingThrow creatureName s =
     let
         label =
             abilityLabel s.ability
@@ -560,11 +554,11 @@ savingThrowEntry onAbilityClick creatureName s =
         [ class "statblock__save-roll"
         , Html.Attributes.type_ "button"
         , Html.Events.on "click"
-            (Decode.map2 (onAbilityClick creatureName label s.bonus)
+            (Decode.map2 (onSavingThrow creatureName label s.bonus)
                 (Decode.field "clientX" Decode.int)
                 (Decode.field "clientY" Decode.int)
             )
-        , Tooltips.attr (Tooltips.statBlockSavingThrow label)
+        , Tooltips.attr (Tooltips.statBlockSavingThrow label s.bonus)
         ]
         [ text (label ++ " " ++ signed s.bonus) ]
 

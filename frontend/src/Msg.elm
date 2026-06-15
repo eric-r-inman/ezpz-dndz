@@ -953,11 +953,18 @@ type Msg
     | QuickAddSearchChanged String
     | QuickAddPick String
     | QuickAddPickPlaceholder
-      -- Saving-throw modal triggered from compendium ability cells.
-      -- The two `Int`s on `AbilitySaveOpen` are the `clientX` /
-      -- `clientY` of the click on the ability cell; they ride
-      -- through the modal so the floating roll-result popup can
-      -- anchor at the cell when the dice eventually land.
+      -- Ability-check / saving-throw modal triggered from
+      -- compendium stat blocks.  The two `Int`s are the
+      -- `clientX` / `clientY` of the original click — they ride
+      -- through the modal so the floating roll-result popup
+      -- can anchor at the cell when the dice eventually land.
+      -- `AbilityCheckOpen` fires from the six STR/DEX/... cells
+      -- (1d20 + flat modifier).  `AbilitySaveOpen` fires from
+      -- the inline chips in the Saving Throws property line
+      -- (1d20 + proficient save bonus).  Same modal lifecycle,
+      -- different labels.
+    | AbilityCheckOpen String String Int Int Int
+      -- (creatureName, abilityLabel, abilityModifier, clickX, clickY)
     | AbilitySaveOpen String String Int Int Int
       -- (creatureName, abilityLabel, saveBonus, clickX, clickY)
     | AbilitySaveClose

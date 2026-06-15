@@ -14,17 +14,17 @@ import Dice
 import Effects
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..), RollMode(..))
-import Ui.AbilitySave exposing (AbilitySaveUi)
+import Ui.AbilitySave as AbilitySave exposing (AbilitySaveUi, RollKind)
 import Update.Dice
 
 
-open : String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
-open creatureName ability bonus clickX clickY model =
+open : RollKind -> String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
+open kind creatureName ability bonus clickX clickY model =
     ( { model
         | modal =
             Just
                 (ModalAbilitySave
-                    (Ui.AbilitySave.fresh creatureName ability bonus clickX clickY)
+                    (AbilitySave.fresh kind creatureName ability bonus clickX clickY)
                 )
       }
     , Cmd.none
@@ -67,7 +67,7 @@ rollCmd : RollMode -> AbilitySaveUi -> Cmd Msg
 rollCmd mode ui =
     let
         src =
-            { feature = ui.ability ++ " Save"
+            { feature = ui.ability ++ " " ++ AbilitySave.kindWord ui.kind
             , target = Just ui.creatureName
             }
 

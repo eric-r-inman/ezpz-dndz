@@ -57,6 +57,7 @@ import Ports
 import Preferences
 import Route exposing (Route(..))
 import Task
+import Ui.AbilitySave
 import Ui.Account
 import Ui.Compendium as CompendiumUi
     exposing
@@ -2594,8 +2595,11 @@ updateInner msg model =
         QuickAddPickPlaceholder ->
             Update.QuickAdd.pickPlaceholder model
 
+        AbilityCheckOpen creatureName ability bonus x y ->
+            Update.AbilitySave.open Ui.AbilitySave.AbilityCheck creatureName ability bonus x y model
+
         AbilitySaveOpen creatureName ability bonus x y ->
-            Update.AbilitySave.open creatureName ability bonus x y model
+            Update.AbilitySave.open Ui.AbilitySave.SavingThrow creatureName ability bonus x y model
 
         AbilitySaveClose ->
             Update.AbilitySave.close model
@@ -2977,7 +2981,7 @@ viewCompendiumStandalone model id =
                 CompendiumDbLoaded db ->
                     case Compendium.find id db of
                         Just creature ->
-                            View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadges creature
+                            View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadges creature
 
                         Nothing ->
                             p [ class "empty" ]

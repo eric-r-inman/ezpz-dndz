@@ -1076,11 +1076,26 @@ timerRinging phaseWord =
         ++ "-of-turn — click × to dismiss"
 
 
-{-| Stat-block ability cell — clickable to roll a saving throw.
+{-| Stat-block Saving Throws chip — clickable to roll the
+proficient saving throw. Renders as "Click to roll DEX saving
+throw (+2)" so the GM sees the exact bonus before they click.
 -}
-statBlockSavingThrow : String -> String
-statBlockSavingThrow label =
-    label ++ " saving throw — click to roll"
+statBlockSavingThrow : String -> Int -> String
+statBlockSavingThrow label bonus =
+    let
+        sign =
+            if bonus >= 0 then
+                "+"
+
+            else
+                ""
+    in
+    "Click to roll "
+        ++ label
+        ++ " saving throw ("
+        ++ sign
+        ++ String.fromInt bonus
+        ++ ")"
 
 
 {-| Stat-block ability cell — clickable to roll an ability

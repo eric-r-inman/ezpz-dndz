@@ -1078,7 +1078,7 @@ detail auth ui visible userLoreGroups encounterIds =
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
-                , View.StatBlock.view RollFromStatBlock AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
+                , View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
                 ]
 
         ( Nothing, Nothing, Nothing ) ->
