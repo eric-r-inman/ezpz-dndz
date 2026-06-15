@@ -1084,13 +1084,27 @@ statBlockSavingThrow label =
 
 
 {-| Stat-block ability cell — clickable to roll an ability
-check using the ability's flat modifier. Used on the six
+check. Renders as "Click to roll CON (+7)" so the GM sees
+exactly which roll fires at a glance. Used on the six
 STR/DEX/CON/INT/WIS/CHA cells up top; the dedicated save chips
 in the Saving Throws line carry `statBlockSavingThrow` instead.
 -}
-statBlockAbilityCheck : String -> String
-statBlockAbilityCheck label =
-    label ++ " ability check - click to roll"
+statBlockAbilityCheck : String -> Int -> String
+statBlockAbilityCheck label modifier =
+    let
+        sign =
+            if modifier >= 0 then
+                "+"
+
+            else
+                ""
+    in
+    "Click to roll "
+        ++ label
+        ++ " ("
+        ++ sign
+        ++ String.fromInt modifier
+        ++ ")"
 
 
 {-| Inline dice-link button inside a stat block segment.
