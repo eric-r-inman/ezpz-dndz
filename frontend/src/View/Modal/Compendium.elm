@@ -1568,7 +1568,7 @@ loreSectionHeader auth ui totalCount =
 
         newClickMsg =
             if signedOut then
-                Msg.NavigateToLogin
+                Msg.NoOp
 
             else
                 LoreEditOpenNew
@@ -1776,21 +1776,15 @@ loreActionBar auth group =
             not (Auth.isAuthenticated auth)
 
         editClickMsg =
-            if bundled then
+            if bundled || signedOut then
                 Msg.NoOp
-
-            else if signedOut then
-                Msg.NavigateToLogin
 
             else
                 LoreEditOpenExisting group.id
 
         deleteClickMsg =
-            if bundled then
+            if bundled || signedOut then
                 Msg.NoOp
-
-            else if signedOut then
-                Msg.NavigateToLogin
 
             else
                 CompendiumLoreDelete group.id
