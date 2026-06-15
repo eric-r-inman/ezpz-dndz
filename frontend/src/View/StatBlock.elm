@@ -189,7 +189,7 @@ nameRow tagDisplay c =
                 )
 
 
-{-| Small chip rendered next to the kind badge when the creature
+{-| Padlock chip rendered next to the kind badge when the creature
 originates from the read-only SRD bundle. Mirrors the existing
 kind-badge styling pattern so themed colour tokens stay in one
 place; the dedicated `--bundled` modifier lets CSS distinguish
@@ -204,8 +204,11 @@ bundledBadge : Bool -> Html msg
 bundledBadge isBundled =
     if isBundled then
         span
-            [ class "statblock__kind-badge statblock__kind-badge--bundled" ]
-            [ text "Bundled" ]
+            [ class "statblock__kind-badge statblock__kind-badge--bundled"
+            , Html.Attributes.attribute "title" "Bundled (read-only)"
+            , Html.Attributes.attribute "aria-label" "Bundled (read-only)"
+            ]
+            [ text "🔒" ]
 
     else
         text ""

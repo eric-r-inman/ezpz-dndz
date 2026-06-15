@@ -6288,8 +6288,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 .statblock__name-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  /* Badges pack to the right of the name, left-justified, with
+     a comfy gap.  Tags + open-in-tab anchor get pushed to the
+     row's right edge via `margin-left: auto` on their wrapper. */
+  gap: 12px;
 }
 
 .statblock__name {
@@ -6332,13 +6334,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-yellow, #854d0e);
 }
 
-/* Bundled (SRD) creatures: muted neutral chip so the read-only
-   status reads as "static reference" rather than competing with
-   the Player / Enemy / NPC colour vocabulary. */
+/* Bundled (SRD) creatures: muted neutral padlock so the read-
+   only status reads as a small, quiet "🔒" affordance rather
+   than a competing text chip.  Tighter padding than the kind
+   badges so the emoji sits flush. */
 .statblock__kind-badge--bundled {
   background: rgba(120, 120, 120, 0.12);
   border-color: rgba(120, 120, 120, 0.45);
   color: var(--color-muted, #555);
+  padding: 1px 6px;
+  font-size: 0.9rem;
 }
 
 /* Used by `TagIconTooltip` mode in the right-rail Compendium
@@ -6357,6 +6362,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
   gap: 4px;
   justify-content: flex-end;
+  /* Pushes the tag cluster to the right edge of the name row
+     so the kind / padlock badges stay packed left next to the
+     creature name. */
+  margin-left: auto;
 }
 
 /* Wraps tags + the ↗ open-in-new-tab link in the compendium-
@@ -6366,6 +6375,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 /* ↗ open-in-new-tab anchor inline in the stat-block name row.
