@@ -32,7 +32,10 @@ expectedGpFor kind bracket =
             30000
 
         ( Hoard, B17plus ) ->
-            250000
+            -- 12d6×1000 gp avg = 42,000; 8d6×1000 pp avg =
+            -- 28,000 pp = 280,000 gp.  SRD baseline ≈ 322,000;
+            -- round to a clean 320,000.
+            320000
 
         ( Individual, B1to4 ) ->
             25
