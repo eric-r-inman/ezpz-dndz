@@ -3096,6 +3096,76 @@ body {
   filter: brightness(1.08);
 }
 
+/* Revert button (right of Save).  Borrows the cancel-button
+   chrome for the resting state since it's a destructive-on-purpose
+   action — visually understated until the confirm prompt fires. */
+.treasure-table__revert {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.treasure-table__revert:hover,
+.treasure-table__revert:focus-visible {
+  border-color: var(--color-warning, #b9602a);
+  color: var(--color-warning, #b9602a);
+}
+
+.treasure-table__revert-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-warning, #b9602a);
+  border-radius: var(--radius-sm);
+  background: rgba(185, 96, 42, 0.08);
+}
+
+.treasure-table__revert-warn {
+  font-size: 0.85rem;
+  color: var(--color-warning, #b9602a);
+  font-weight: 600;
+}
+
+.treasure-table__revert-cancel,
+.treasure-table__revert-go {
+  appearance: none;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.treasure-table__revert-cancel {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.treasure-table__revert-cancel:hover,
+.treasure-table__revert-cancel:focus-visible {
+  border-color: var(--color-text);
+}
+
+.treasure-table__revert-go {
+  background: var(--color-warning, #b9602a);
+  border: 1px solid var(--color-warning, #b9602a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.treasure-table__revert-go:hover,
+.treasure-table__revert-go:focus-visible {
+  filter: brightness(1.08);
+}
+
 /* Dark theme overrides for the rarity chips so they read on the
    darker surface without losing their colour identity. */
 [data-theme="dark"] .treasure__rarity--common {

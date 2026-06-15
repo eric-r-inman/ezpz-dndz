@@ -81,6 +81,9 @@ view model =
                 dirty =
                     TreasureTableUi.isDirty ui
 
+                hasSavedCustom =
+                    model.userTreasureTable /= Nothing
+
                 titleSuffix =
                     if dirty then
                         " · unsaved changes"
@@ -94,15 +97,20 @@ view model =
                 , title = "📜 Treasure Table" ++ titleSuffix
                 , extraClass = "modal--treasure-table"
                 , chrome = model.modalChrome
-                , body = body ui.draft ui.expanded dirty
+                , body =
+                    body ui.draft
+                        ui.expanded
+                        dirty
+                        hasSavedCustom
+                        ui.confirmRevert
                 }
 
         _ ->
             text ""
 
 
-body : TreasureTable -> Set String -> Bool -> List (Html Msg)
-body table expanded dirty =
+body : TreasureTable -> Set String -> Bool -> Bool -> Bool -> List (Html Msg)
+body table expanded dirty hasSavedCustom confirmRevert =
     [ blurb
     , individualGroup table expanded
     , hoardGroup table expanded
@@ -118,7 +126,7 @@ body table expanded dirty =
     , flatGroup "Armor" "armor" FlatArmor table.armor expanded
     , scrollSpellsGroup table expanded
     , resetRow
-    , saveRow dirty
+    , saveRow dirty hasSavedCustom confirmRevert
     ]
 
 
@@ -1083,14 +1091,17 @@ resetRow =
 -- ── SAVE / CANCEL FOOTER ───────────────────────────────────────────────────
 
 
-{-| Footer row with Save + Cancel. Cancel discards the draft;
-Save commits it into `model.userTreasureTable`, which the
-persistence hook in `Main.update` then writes through. The
-Save button is disabled when nothing has changed, which doubles
-as a quick visual cue that the editor is clean.
+{-| Footer row with Save + Cancel, and a Revert button (right
+of Save) when the user has a persisted custom table. Cancel
+discards the draft; Save commits it into
+`model.userTreasureTable`, which the persistence hook in
+`Main.update` then writes through. Revert is the inverse of
+Save — it drops the saved custom table back to the bundled
+defaults — and uses an inline two-step confirmation so it can't
+fire on a mis-click.
 -}
-saveRow : Bool -> Html Msg
-saveRow dirty =
+saveRow : Bool -> Bool -> Bool -> Html Msg
+saveRow dirty hasSavedCustom confirmRevert =
     div [ class "treasure-table__save-row" ]
         [ span [ class "treasure-table__save-status" ]
             [ text
@@ -1128,4 +1139,44 @@ saveRow dirty =
                 )
             ]
             [ text "Save" ]
+        , revertControl hasSavedCustom confirmRevert
         ]
+
+
+{-| Surfaces only when there's actually a saved custom table to
+revert. First state is a single "Revert" button; clicking it
+swaps the slot for an inline "Revert to bundled? [Cancel][Confirm]" prompt, matching the lore-delete two-step pattern.
+-}
+revertControl : Bool -> Bool -> Html Msg
+revertControl hasSavedCustom confirmRevert =
+    if not hasSavedCustom then
+        text ""
+
+    else if confirmRevert then
+        span [ class "treasure-table__revert-confirm" ]
+            [ span [ class "treasure-table__revert-warn" ]
+                [ text "Revert to bundled?" ]
+            , button
+                [ class "treasure-table__revert-cancel"
+                , type_ "button"
+                , onClick TreasureTableRevertCancel
+                , attribute "title" "Keep your custom table"
+                ]
+                [ text "Cancel" ]
+            , button
+                [ class "treasure-table__revert-go"
+                , type_ "button"
+                , onClick TreasureTableRevertConfirm
+                , attribute "title" "Drop the saved custom table and use bundled defaults"
+                ]
+                [ text "Confirm Revert" ]
+            ]
+
+    else
+        button
+            [ class "treasure-table__revert"
+            , type_ "button"
+            , onClick TreasureTableRevertRequest
+            , attribute "title" "Discard your saved custom table and use bundled defaults"
+            ]
+            [ text "↺ Revert" ]

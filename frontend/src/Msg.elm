@@ -1202,6 +1202,14 @@ type Msg
       -- Commit the draft to model.userTreasureTable + close.
       -- The standard persistence hook in Main.update then fires.
     | TreasureTableSave
+      -- Two-step inline confirmation for "Revert to bundled":
+      -- Request flips the UI flag, Cancel backs out, Confirm
+      -- drops `model.userTreasureTable` to Nothing so the app
+      -- falls back to `Treasure.bundledTable`.  Only surfaced
+      -- when the user actually has a saved custom table.
+    | TreasureTableRevertRequest
+    | TreasureTableRevertCancel
+    | TreasureTableRevertConfirm
       -- Account page (`/me`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit

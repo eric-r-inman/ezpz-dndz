@@ -1955,6 +1955,15 @@ updateInner msg model =
         TreasureTableResetToBundled ->
             Update.TreasureTable.resetToBundled model
 
+        TreasureTableRevertRequest ->
+            Update.TreasureTable.revertRequest model
+
+        TreasureTableRevertCancel ->
+            Update.TreasureTable.revertCancel model
+
+        TreasureTableRevertConfirm ->
+            Update.TreasureTable.revertConfirm model
+
         CardEditorClose ->
             Update.CardEditor.close model
 

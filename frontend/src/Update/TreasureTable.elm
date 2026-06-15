@@ -5,6 +5,7 @@ module Update.TreasureTable exposing
     , artAdd, artEdit, artRemove
     , magicAdd, magicEdit, magicRemove
     , resetToBundled
+    , revertRequest, revertCancel, revertConfirm
     , coinAdd, coinRemove, coinSet, flatAdd, flatNameSet, flatRemove, flatValueSet, rowAdd, rowRemove, save, scrollAdd, scrollEdit, scrollRemove, subAdd, subCountSet, subFacesSet, subRemove, subTierSet, weightSet
     )
 
@@ -29,6 +30,7 @@ for anonymous.
 @docs artAdd, artEdit, artRemove
 @docs magicAdd, magicEdit, magicRemove
 @docs resetToBundled
+@docs revertRequest, revertCancel, revertConfirm
 
 -}
 
@@ -370,6 +372,40 @@ modal without saving leaves their current saved table intact.
 resetToBundled : Model -> ( Model, Cmd Msg )
 resetToBundled =
     mutateTable (\_ -> Treasure.bundledTable)
+
+
+{-| First half of the inline confirmation: flip the UI flag so
+the saveRow swaps to "Revert all custom edits? [Cancel][Confirm]". A second click on Confirm wipes the persisted custom
+table; Cancel just unflips this flag.
+-}
+revertRequest : Model -> ( Model, Cmd Msg )
+revertRequest =
+    setConfirmRevert True
+
+
+revertCancel : Model -> ( Model, Cmd Msg )
+revertCancel =
+    setConfirmRevert False
+
+
+{-| Drop `model.userTreasureTable` back to `Nothing` so the app
+falls through to `Treasure.bundledTable`, then hand off to the
+roller modal like Save does. The standard persistence hook in
+`Main.update` writes the `Nothing` through, deleting the user's
+custom table on the server / in localStorage.
+-}
+revertConfirm : Model -> ( Model, Cmd Msg )
+revertConfirm model =
+    Update.Treasure.open { model | userTreasureTable = Nothing }
+
+
+setConfirmRevert : Bool -> Model -> ( Model, Cmd Msg )
+setConfirmRevert flag model =
+    ( Model.mapModal Model.treasureTableLens
+        (\ui -> { ui | confirmRevert = flag })
+        model
+    , Cmd.none
+    )
 
 
 

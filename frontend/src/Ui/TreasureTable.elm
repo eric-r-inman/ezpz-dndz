@@ -52,6 +52,11 @@ type alias TreasureTableUi =
     { expanded : Set String
     , draft : TreasureTable
     , baseline : TreasureTable
+
+    -- Two-step inline confirmation for the Revert button: first
+    -- click flips this on and the row swaps to a confirm prompt;
+    -- second click drops the saved table back to bundled defaults.
+    , confirmRevert : Bool
     }
 
 
@@ -64,6 +69,7 @@ fresh snapshot =
     { expanded = Set.empty
     , draft = snapshot
     , baseline = snapshot
+    , confirmRevert = False
     }
 
 
