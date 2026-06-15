@@ -11270,24 +11270,36 @@ button.creature-card__lifecycle--dead:focus-visible {
   line-height: 1.45;
 }
 
-/* Inline click-to-roll button on each Saving Throws bonus.
-   Reads as flat text in the line, but the hover/focus underline
-   + accent colour signal the affordance — mirrors the ability
-   cell click-to-roll up top, just spelled inline. */
+/* Chip-styled click-to-roll on each Saving Throws bonus.
+   Reads as a discrete pill alongside its ability label so the
+   roller affordance stands out from the surrounding text — and
+   keeps each chip a single self-contained tap target. */
+.statblock__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 2px;
+}
+
 .statblock__save-roll {
   appearance: none;
-  background: transparent;
-  border: none;
-  padding: 0;
+  display: inline-block;
+  background: var(--color-surface-2, transparent);
+  border: 1px solid var(--color-accent, #4a90e2);
+  color: var(--color-accent, #4a90e2);
+  border-radius: 999px;
+  padding: 1px 8px;
   font: inherit;
-  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
+  line-height: 1.4;
 }
 
 .statblock__save-roll:hover,
 .statblock__save-roll:focus-visible {
-  color: var(--color-accent, #4a90e2);
-  text-decoration: underline;
+  background: var(--color-accent, #4a90e2);
+  color: #fff;
   outline: none;
 }
 

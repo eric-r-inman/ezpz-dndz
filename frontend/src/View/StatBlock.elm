@@ -451,7 +451,7 @@ viewAbilityCell onAbilityClick creatureName label bonus score =
                 (Decode.field "clientX" Decode.int)
                 (Decode.field "clientY" Decode.int)
             )
-        , Tooltips.attr (Tooltips.statBlockSavingThrow label)
+        , Tooltips.attr (Tooltips.statBlockAbilityCheck label)
         ]
         [ div [ class "ability__label" ] [ text label ]
         , div [ class "ability__value" ] [ text (String.fromInt score) ]

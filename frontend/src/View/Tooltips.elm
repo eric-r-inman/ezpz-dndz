@@ -133,6 +133,7 @@ module View.Tooltips exposing
     , showStatBlock
     , sourceFromSaved
     , sourceUnsaved
+    , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
     , statBlockRoll
@@ -1080,6 +1081,16 @@ timerRinging phaseWord =
 statBlockSavingThrow : String -> String
 statBlockSavingThrow label =
     label ++ " saving throw — click to roll"
+
+
+{-| Stat-block ability cell — clickable to roll an ability
+check using the ability's flat modifier. Used on the six
+STR/DEX/CON/INT/WIS/CHA cells up top; the dedicated save chips
+in the Saving Throws line carry `statBlockSavingThrow` instead.
+-}
+statBlockAbilityCheck : String -> String
+statBlockAbilityCheck label =
+    label ++ " ability check - click to roll"
 
 
 {-| Inline dice-link button inside a stat block segment.
