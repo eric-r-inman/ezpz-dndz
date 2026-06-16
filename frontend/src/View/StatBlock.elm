@@ -1141,19 +1141,19 @@ abilityLabel : Ability -> String
 abilityLabel a =
     case a of
         Str ->
-            "Str"
+            "STR"
 
         Dex ->
-            "Dex"
+            "DEX"
 
         Con ->
-            "Con"
+            "CON"
 
         Int_ ->
-            "Int"
+            "INT"
 
         Wis ->
-            "Wis"
+            "WIS"
 
         Cha ->
-            "Cha"
+            "CHA"
