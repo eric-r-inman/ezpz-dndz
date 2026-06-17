@@ -75,10 +75,7 @@ blurb : Html Msg
 blurb =
     p [ class "cr-calc__blurb" ]
         [ text
-            "Compares the encounter's total monster XP against the party's "
-        , text "per-tier XP budgets from the SRD. No 2014-era "
-        , text "monster-count multiplier — a fight is exactly as hard as the "
-        , text "sum of its monsters' XP."
+            "Compares the encounter's total monster XP against the party's per-tier XP budgets from the SRD."
         ]
 
 
