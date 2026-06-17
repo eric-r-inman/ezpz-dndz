@@ -132,6 +132,7 @@ warband =
         ]
     , weight = 5
     , source = Lore.UserCurated
+    , description = ""
     }
 
 
@@ -212,6 +213,7 @@ habitatTypeSuite =
                         , members = [ { name = "Ghost", role = Lore.Leader, countMin = 1, countMax = 1 } ]
                         , weight = 1
                         , source = Lore.UserCurated
+                        , description = ""
                         }
 
                     s =
@@ -270,6 +272,7 @@ partyRecommendationSuite =
                         , members = [ { name = "Big Boss", role = Lore.Leader, countMin = 1, countMax = 1 } ]
                         , weight = 1
                         , source = Lore.UserCurated
+                        , description = ""
                         }
 
                     s =
@@ -297,6 +300,7 @@ unresolvedSuite =
                             ]
                         , weight = 1
                         , source = Lore.UserCurated
+                        , description = ""
                         }
 
                     s =
@@ -313,6 +317,7 @@ unresolvedSuite =
                             [ { name = "Phantom", role = Lore.Leader, countMin = 1, countMax = 1 } ]
                         , weight = 1
                         , source = Lore.UserCurated
+                        , description = ""
                         }
 
                     s =

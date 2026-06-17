@@ -81,6 +81,13 @@ type alias Group =
     , members : List Slot
     , weight : Int
     , source : Source
+
+    -- Optional free-form paragraph the GM can attach to a
+    -- custom grouping — surfaces in the Compendium detail pane
+    -- below the members list.  Empty string for bundled groups
+    -- (they don't carry authored lore today) and for groups
+    -- saved by an older client that didn't know the field.
+    , description : String
     }
 
 
@@ -100,6 +107,7 @@ grp id name weight members_ =
     , members = members_
     , weight = weight
     , source = Bundled
+    , description = ""
     }
 
 

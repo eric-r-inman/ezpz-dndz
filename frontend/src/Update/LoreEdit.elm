@@ -5,6 +5,7 @@ module Update.LoreEdit exposing
     , memberAdd, memberRemove, memberRoleSet
     , memberCountMinChanged, memberCountMaxChanged
     , test
+    , descriptionChanged
     )
 
 {-| Update handlers for the standalone **Edit Lore Group** modal.
@@ -121,6 +122,11 @@ nameChanged : String -> Model -> ( Model, Cmd Msg )
 nameChanged raw =
     mutateDraft
         (\d -> { d | name = String.left GroupEdit.maxNameLength raw })
+
+
+descriptionChanged : String -> Model -> ( Model, Cmd Msg )
+descriptionChanged raw =
+    mutateDraft (\d -> { d | description = raw })
 
 
 weightChanged : String -> Model -> ( Model, Cmd Msg )

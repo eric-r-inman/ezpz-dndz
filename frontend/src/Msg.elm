@@ -731,6 +731,7 @@ type Msg
     | LoreEditClose
     | LoreEditSave
     | LoreEditNameChanged String
+    | LoreEditDescriptionChanged String
     | LoreEditWeightChanged String
     | LoreEditAddSearchChanged String
     | LoreEditMemberAdd String

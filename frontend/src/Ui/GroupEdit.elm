@@ -87,6 +87,7 @@ type alias LoreDraft =
     , name : String
     , weight : Int
     , members : List LoreMemberDraft
+    , description : String
     }
 
 
@@ -160,6 +161,7 @@ freshLoreDraft =
     , name = ""
     , weight = 3
     , members = []
+    , description = ""
     }
 
 
@@ -182,6 +184,7 @@ loreDraftFromGroup g =
                 }
             )
             g.members
+    , description = g.description
     }
 
 
@@ -224,6 +227,7 @@ validateLoreDraft draft =
                     , weight = clamp 1 10 draft.weight
                     , source = Lore.UserCurated
                     , members = members
+                    , description = String.trimRight draft.description
                     }
                 )
 

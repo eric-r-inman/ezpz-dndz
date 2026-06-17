@@ -40,6 +40,7 @@ encodeGroup g =
         , ( "weight", E.int g.weight )
         , ( "source", E.string (encodeSource g.source) )
         , ( "members", E.list encodeSlot g.members )
+        , ( "description", E.string g.description )
         ]
 
 
@@ -86,13 +87,14 @@ decodeGroups =
 
 decodeGroup : D.Decoder Group
 decodeGroup =
-    D.map5
-        (\id name weight source members ->
+    D.map6
+        (\id name weight source members description ->
             { id = id
             , name = name
             , weight = weight
             , source = source
             , members = members
+            , description = description
             }
         )
         (D.field "id" D.string)
@@ -104,6 +106,7 @@ decodeGroup =
             ]
         )
         (D.field "members" (D.list decodeSlot))
+        (D.oneOf [ D.field "description" D.string, D.succeed "" ])
 
 
 decodeSlot : D.Decoder Slot

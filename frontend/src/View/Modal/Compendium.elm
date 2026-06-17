@@ -1884,4 +1884,18 @@ loreDetailBody group =
             ]
         , div [ class "compendium__lore-detail-members" ]
             (List.map loreMemberRow group.members)
+        , loreDescription group.description
         ]
+
+
+loreDescription : String -> Html Msg
+loreDescription desc =
+    if String.isEmpty (String.trim desc) then
+        text ""
+
+    else
+        div [ class "compendium__lore-detail-description" ]
+            (List.map
+                (\para -> p [] [ text para ])
+                (String.split "\n\n" desc)
+            )

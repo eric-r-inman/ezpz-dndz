@@ -8511,6 +8511,38 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-top: 8px;
 }
 
+/* Free-form lore paragraph rendered under the members list in
+   the right pane.  Reads as italic prose so it visually
+   separates from the structured data above. */
+.compendium__lore-detail-description {
+  border-top: 1px solid var(--color-border);
+  margin-top: 8px;
+  padding-top: 8px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  font-style: italic;
+}
+
+.compendium__lore-detail-description p {
+  margin: 0 0 8px;
+}
+
+.compendium__lore-detail-description p:last-child {
+  margin-bottom: 0;
+}
+
+/* Textarea for the optional Lore paragraph in the Edit Lore
+   Grouping modal.  Inherits .group-edit__input styles; adds
+   vertical resize + a comfy minimum height since the input is
+   intentionally a multi-line affordance. */
+.group-edit__textarea {
+  resize: vertical;
+  min-height: 5em;
+  font-family: inherit;
+  line-height: 1.45;
+}
+
 /* Disabled action-bar Edit / Delete on bundled lore groups —
    visual treatment mirrors the bundled-Edit treatment on
    creature rows (greyed + default cursor, not the disabled

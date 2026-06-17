@@ -1687,6 +1687,9 @@ updateInner msg model =
         LoreEditNameChanged raw ->
             Update.LoreEdit.nameChanged raw model
 
+        LoreEditDescriptionChanged raw ->
+            Update.LoreEdit.descriptionChanged raw model
+
         LoreEditWeightChanged raw ->
             Update.LoreEdit.weightChanged raw model
 

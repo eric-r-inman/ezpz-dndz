@@ -30,6 +30,7 @@ import Html
         , select
         , span
         , text
+        , textarea
         , ul
         )
 import Html.Attributes as Attr
@@ -39,6 +40,7 @@ import Html.Attributes as Attr
         , class
         , maxlength
         , placeholder
+        , rows
         , selected
         , step
         , type_
@@ -83,6 +85,7 @@ view model =
                 , body =
                     [ headerBlurb ui.draft
                     , nameRow ui.draft
+                    , descriptionRow ui.draft
                     , weightRow ui.draft
                     , membersEditor ui.draft
                     , addMemberPicker ui.addSearch creatures ui.draft.members
@@ -152,6 +155,21 @@ nameRow draft =
             , placeholder "e.g. Kobold Skirmishers"
             , autofocus True
             , onInput LoreEditNameChanged
+            ]
+            []
+        ]
+
+
+descriptionRow : LoreDraft -> Html Msg
+descriptionRow draft =
+    div [ class "group-edit__row group-edit__row--description" ]
+        [ label [ class "group-edit__label" ] [ text "Lore (optional)" ]
+        , textarea
+            [ class "group-edit__input group-edit__textarea"
+            , value draft.description
+            , rows 4
+            , placeholder "A paragraph the GM can read aloud, or just notes on how this grouping fits the world."
+            , onInput LoreEditDescriptionChanged
             ]
             []
         ]
