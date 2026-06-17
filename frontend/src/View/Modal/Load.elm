@@ -59,7 +59,8 @@ view model =
                 , extraClass = "modal--load"
                 , chrome = model.modalChrome
                 , body =
-                    [ sourceSection model.auth ui
+                    [ overwriteWarning
+                    , sourceSection model.auth ui
                     , confirmBanner ui
                     , errorBanner ui
                     , bodyForSource ui
@@ -69,6 +70,12 @@ view model =
 
         _ ->
             text ""
+
+
+overwriteWarning : Html Msg
+overwriteWarning =
+    p [ class "random-encounter__blurb" ]
+        [ text "This will overwrite your current encounter.  If you want to keep your current encounter, save it first." ]
 
 
 sourceSection : Auth.AuthState -> LoadUi -> Html Msg
