@@ -103,44 +103,17 @@ view model =
 -- ── FORM ROWS ────────────────────────────────────────────────────────────────
 
 
-{-| Top-of-modal blurb explaining what a Lore grouping does, with
-the current draft's min/max creature totals baked into the
-description so the GM sees the impact of the count ranges they've
-typed. Reuses the Random Encounter modal's blurb style so the
+{-| Top-of-modal blurb explaining what a Lore grouping does and
+how the Random Encounter generator's Lore-leaning toggle relates
+to it. Reuses the Random Encounter modal's blurb style so the
 two screens read as related affordances.
 -}
 headerBlurb : LoreDraft -> Html Msg
-headerBlurb draft =
-    let
-        ( minTotal, maxTotal ) =
-            countRange draft
-    in
+headerBlurb _ =
     p [ class "random-encounter__blurb" ]
         [ text
-            ("Adding a Lore grouping directly to the encounter will add between "
-                ++ String.fromInt minTotal
-                ++ " and "
-                ++ String.fromInt maxTotal
-                ++ " creatures, drawn from the listed members.  Checking 'Lore-leaning' in the Random Encounter roller will trawl Lore groupings for possibilities.  Weight determines how likely the Random Encounter generator will produce this grouping (if constraints allow)."
-            )
+            "Adding this Lore grouping directly to the encounter will add the listed creatures; the number of individuals will be rolled within the specified range.  Checking 'Lore-leaning' in the Random Encounter roller will trawl Lore groupings for possibilities.  Weight determines how likely the Random Encounter generator will produce this grouping (if constraints allow)."
         ]
-
-
-countRange : LoreDraft -> ( Int, Int )
-countRange draft =
-    draft.members
-        |> List.foldl
-            (\m ( accMin, accMax ) ->
-                let
-                    lo =
-                        String.toInt (String.trim m.countMin) |> Maybe.withDefault 0
-
-                    hi =
-                        String.toInt (String.trim m.countMax) |> Maybe.withDefault 0
-                in
-                ( accMin + lo, accMax + hi )
-            )
-            ( 0, 0 )
 
 
 nameRow : LoreDraft -> Html Msg
