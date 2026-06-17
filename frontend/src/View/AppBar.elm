@@ -66,7 +66,12 @@ view cfg =
             ]
             [ text "Skip to main content" ]
         , div [ class "app-bar__brand" ]
-            [ div [ class "app-bar__title" ] [ text "eZpZ-dndZ" ]
+            [ a
+                [ class "app-bar__title"
+                , href "/"
+                , attribute "aria-label" "Go to the Encounter page"
+                ]
+                [ text "eZpZ-dndZ" ]
             , signInTagline cfg.user
             ]
         , nav [ class "app-bar__nav" ]

@@ -1163,6 +1163,14 @@ body {
   font-size: 1.05rem;
   letter-spacing: 0.06em;
   color: var(--color-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.app-bar__title:hover,
+.app-bar__title:focus-visible {
+  color: var(--color-accent, #4a90e2);
+  outline: none;
 }
 
 /* Italic "Sign in to save…" prompt sitting to the right of the
