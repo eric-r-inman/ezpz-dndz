@@ -137,14 +137,14 @@ bundled =
         [ member "Goblin Warrior" Member 3 6
         , member "Hobgoblin Warrior" Leader 1 2
         ]
-        |> withLore "Hobgoblin warriors press goblin levies into a rough warband — the goblins serve as scouts and arrow-fodder for the more disciplined elder cousins."
+        |> withLore "Hobgoblin warriors press goblin levies into a respectable warband — the goblins serve as scouts and arrow-fodder for their better-trained elder cousins."
     , grp "goblin-raid"
         "Goblin Raiding Party"
         5
         [ member "Goblin Warrior" Member 3 5
         , member "Bugbear Warrior" Leader 1 2
         ]
-        |> withLore "Goblins follow a bugbear's nose for plunder; the bugbear keeps them in line with violence, and the goblins keep watch while the bugbear sleeps off the wine."
+        |> withLore "Goblins know to follow a bugbear's nose for plunder; in return, the bugbear gets an obedient bodyguard, and a distraction while it maneuvers for the ambush."
     , grp "goblin-bosss-gang"
         "Goblin Boss's Gang"
         4
@@ -152,29 +152,29 @@ bundled =
         , member "Goblin Warrior" Member 3 6
         , member "Goblin Minion" Minion 2 4
         ]
-        |> withLore "A goblin boss holds court over his warriors and a clutch of conscripted minions — their loyalty bought with looted trinkets and brutal example."
+        |> withLore "Through cunning, bribery, or threats, a goblin boss has climbed the ranks to command jealous warriors and fawning minions to do his bidding."
     , grp "hobgoblin-patrol"
         "Hobgoblin Patrol"
         4
         [ member "Hobgoblin Captain" Leader 1 1
         , member "Hobgoblin Warrior" Member 3 6
-        , member "Worg" Pet 1 2
+        , member "Worg" Pet 2 3
         ]
-        |> withLore "A hobgoblin captain marches his warriors in disciplined column, worgs ranging ahead as four-legged scouts under standing hobgoblin orders."
+        |> withLore "A hobgoblin captain marches his warriors towards glory, worgs loping afar to flush out any ambush."
     , grp "bugbear-ambush"
         "Bugbear Ambush"
         3
         [ member "Bugbear Stalker" Leader 2 3
         , member "Goblin Warrior" Member 2 4
         ]
-        |> withLore "Stalker bugbears creep ahead with goblin warriors at their heels — the bugbears spring the trap while the goblins close behind to cut off escape."
+        |> withLore "Goblins distract while the bugbears spring the trap."
     , grp "worg-pack"
         "Worg Pack"
         3
         [ member "Worg" Member 2 4
         , member "Goblin Warrior" Pet 3 5
         ]
-        |> withLore "A worg pack lopes through the wild with goblin riders cinched to their backs — the worgs hunt, the goblins talk, and neither could function alone."
+        |> withLore "A worg pack lopes through the wild with goblin riders cinched to their backs, on the hunt for meat and spoils."
 
     -- ── Dragons & Kobolds ───────────────────────────────────
     , grp "kobold-warband"
@@ -182,21 +182,21 @@ bundled =
         5
         [ member "Kobold Warrior" Member 6 12
         ]
-        |> withLore "Kobolds in numbers — a tunnel-dwelling tribe between dragon allegiances, hunting in small swarms to bring down quarry larger than any one of them could face alone."
+        |> withLore "Kobolds in packs are dangerous indeed, and a special threat to quarry that underestimates them."
     , grp "wyrmlings-court"
         "Young Dragon's Court"
         2
         [ member "Young Red Dragon" Leader 1 1
         , member "Kobold Warrior" Minion 4 8
         ]
-        |> withLore "A young red dragon has gathered a court of kobold worshippers, drawn by the heat of its body and the promise of a share of the hoard once the dragon graduates to greater quarry."
+        |> withLore "A young red dragon has attracted the attention of fawning kobold worshippers; annoying, perhaps, but perhaps useful..."
     , grp "adult-dragon-tribute"
         "Adult Dragon's Tribute"
         1
         [ member "Adult Red Dragon" Leader 1 1
-        , member "Kobold Warrior" Minion 4 8
+        , member "Kobold Warrior" Minion 8 12
         ]
-        |> withLore "An adult red dragon's kobold cultists arrive bearing tribute — the dragon tolerates them because they bring it food and information; they tolerate it because surviving its presence is a religious experience."
+        |> withLore "An adult red dragon's kobold worshippers will defend their lord to the death. Not that their master needs defending, but if their distractions can shorten an inconvenient fight, so much the better."
 
     -- ── Drider & spiders ────────────────────────────────────
     , grp "drider-webs"
@@ -206,7 +206,7 @@ bundled =
         , member "Giant Spider" Member 2 4
         , member "Giant Wolf Spider" Minion 1 3
         ]
-        |> withLore "A drider — cursed scout of the spider-queen — has built a kingdom of giant spiders in some forgotten cavern, with the giant wolf spiders the juvenile spawn it is still raising."
+        |> withLore "If you think you've encountered a lone drider, you're wrong."
 
     -- ── Aquatic aberrations ────────────────────────────────
     , grp "aboleth-throne"
@@ -215,21 +215,21 @@ bundled =
         [ member "Aboleth" Leader 1 1
         , member "Chuul" Member 1 2
         ]
-        |> withLore "An aboleth rules from the bottom of a flooded grotto, the chuul its silent armoured guards — drawn to the aboleth's psychic presence and bound to its will across generations."
+        |> withLore "The aboleth sends it children forth to project its will, and brings them back to defend their creator."
     , grp "sahuagin-raid"
         "Sahuagin Raid"
         4
         [ member "Sahuagin Warrior" Member 3 5
         , member "Hunter Shark" Pet 1 2
         ]
-        |> withLore "Sahuagin hunters strike from deep water, hunter sharks running ahead as living scouts the sahuagin direct with low chants and bloody bait."
+        |> withLore "The sahuagin with its scouts is a fearsome sea raider indeed."
     , grp "merrow-hunters"
         "Merrow Hunters"
         3
         [ member "Merrow" Member 2 4
         , member "Giant Crocodile" Pet 1 1
         ]
-        |> withLore "Merrow have driven a giant crocodile into their pond as a working ally — the merrow feed it scraps, the crocodile drowns anything that tries to escape."
+        |> withLore "The ravenous merrow have many traps of ambush, some living..."
 
     -- ── Gnolls ───────────────────────────────────────────────
     , grp "gnoll-pack"
@@ -239,7 +239,7 @@ bundled =
         , member "Giant Hyena" Pet 1 2
         , member "Hyena" Pet 2 4
         ]
-        |> withLore "A gnoll pack runs with its hyenas — giant matriarchs in the lead, lesser hyenas at the flanks, the gnolls themselves a frenzied middle line that fights as well in retreat as it does in charge."
+        |> withLore "A hunting gnoll pack with its loyal hyenas is all gnashing teeth, slashing spears, and ruinous speed."
 
     -- ── Giants ───────────────────────────────────────────────
     , grp "hill-giant-camp"
@@ -248,14 +248,14 @@ bundled =
         [ member "Hill Giant" Leader 1 2
         , member "Ogre" Member 1 2
         ]
-        |> withLore "Hill giants and an ogre or two have set up a stinking camp — the ogres serve as muscle, the hill giants as a council that decides when to descend on the nearest farmland."
+        |> withLore "One the brains, the other the brawn, and plunder to be had."
     , grp "frost-giant-hunt"
         "Frost Giant Hunt"
         3
         [ member "Frost Giant" Leader 1 2
         , member "Winter Wolf" Pet 2 4
         ]
-        |> withLore "Frost giants run with winter wolves in their hunting parties — the wolves track quarry across the snow, the giants finish the kill."
+        |> withLore "In the frozen wastes, the wolves' noses will pick out the prey; their masters will choose the sport."
     , grp "fire-giant-forge"
         "Fire Giant's Forge"
         2
@@ -263,12 +263,6 @@ bundled =
         , member "Hell Hound" Pet 2 4
         ]
         |> withLore "Fire giants keep hell hounds as forge-watchers and hunting hounds — the hounds' breath does not melt the slag-piles, but it does keep slaves from creeping out the wrong door."
-    , grp "stone-giant-hermits"
-        "Stone Giant Hermits"
-        2
-        [ member "Stone Giant" Member 1 3
-        ]
-        |> withLore "Stone giants are reclusive even by giant standards — a small band here means a contested territory, an obscure shrine, or the simple coincidence of three hermits meeting at a watering-hole."
     , grp "cloud-giant-eyrie"
         "Cloud Giant's Eyrie"
         1
