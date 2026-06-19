@@ -13,7 +13,7 @@ usual heading-size bumps.
 
 -}
 
-import Html exposing (Html, a, div, h1, h2, li, p, section, text, ul)
+import Html exposing (Html, a, div, h1, h2, h3, li, p, section, text, ul)
 import Html.Attributes exposing (class, href, rel, target)
 
 
@@ -38,18 +38,18 @@ view =
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Data persistence" ]
                     , p []
-                        [ text "Anonymous users: your encounters, creature states, dice logs, and compendium data live in your browser's local storage (if your browser allows it), so your data can persist between sessions. You can also save your encounters and compendium to your local device (recommended), which will create a save file that can you can load into the app. Signed-in users: save your encounters and compendiums to the eZpZ-dndZ cloud, keeping your data safe and ready to pick up again in the next session." ]
+                        [ text "Your encounters, creature states, dice logs, and compendium data live in your browser's local storage (if your browser allows it), so your data can persist between sessions. You can also save your encounters and compendium to your local device, or our server for signed-in users, which will create a save file that can you can load anytime." ]
                     ]
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Beta Version" ]
                     , p []
-                        [ text "eZpZ-dndZ is in beta development; use at your own risk. Your saved data could be wiped or rendered unusable without warning. Help me improve eZpZ-dndZ by providing feedback about your experience using the app. I welcome bug reports and ideas for improvement."
+                        [ text "eZpZ-dndZ is in beta development; use at your own risk. Your saved data could be wiped or rendered unusable without warning. Help me improve eZpZ-dndZ by providing feedback about your experience using the service. I welcome bug reports and ideas for improvement."
                         ]
                     ]
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Source & license" ]
                     , p []
-                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property. Do not use this app to enter or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
+                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property. Do not use this app to store or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
                         , a
                             [ href "https://github.com/eric-r-inman/ezpz-dndz"
                             , target "_blank"
@@ -59,6 +59,56 @@ view =
                         , text " for the full code. The app is in beta testing, and may be unreliable at this stage."
                         ]
                     ]
+                , betaFeaturesSection
                 ]
             ]
+        ]
+
+
+betaFeaturesSection : Html msg
+betaFeaturesSection =
+    section [ class "about-page__section" ]
+        [ h2 [] [ text "Beta features" ]
+        , p []
+            [ text "The following features are under development, but working. Results may change as development progresses. Features are SRD 5.2.1 compliant." ]
+        , h3 [] [ text "Encounter Queue" ]
+        , p []
+            [ text "Tracks the round, turn, and important stats for all creatures in the encounter queue. Populate with creatures from the Compendium, or add placeholders (for example, to represent players' positions). Controls are in the upper right Encounter Controls pane. Your encounters can be saved/loaded to/from your local device or the eZpZ-dndZ server." ]
+        , h3 [] [ text "Creature Cards" ]
+        , p []
+            [ text "Information block for creatures in the encounter queue. Easily manage initiative order, hit points, conditions/effects, statuses (such as cover), legendary actions, timers, notes, and more. Hover-text describes what each clickable element does." ]
+        , h3 [] [ text "Treasure Roller" ]
+        , p []
+            [ text "Roll treasure for enemies in the active encounter queue. Optional controls for tweaking the results to your liking: adjust \"Tune your rolls\" first, but for more control \"Edit treasure tables\". Opened via the Treasure button in the status bar of the encounter queue." ]
+        , p []
+            [ text "\"Boss\" rolls work well for enemies with true lair hoards. \"Individual\" rolls make sense for enemies with pockets & pouches (for example, goblins)." ]
+        , h3 [] [ text "Dice Roller" ]
+        , p []
+            [ text "The \"Roll\" button in the Encounter Controls pane title bar opens the standalone dice roller, which accepts formula or manual values. The dice roller also serves as an auto-roller for stat block rolls (ability checks, saving throws, actions). It's wired into creature cards too, for initiative rolls, healing, damage, and falling damage. The last 4 roll results are shown next to the Roll button, and the last 30 rolls are recorded in the dice roller window." ]
+        , h3 [] [ text "Stat Block" ]
+        , p []
+            [ text "The Compendium panel on the Encounter page shows the pinned stat block of the creature you select by clicking its name in a creature card, or by selecting it in the Compendium (see Compendium below). Abilities, saving throws, and actions are clickable for generating an auto-roll using the dice roller." ]
+        , h3 [] [ text "Compendium" ]
+        , p []
+            [ text "The Compendium contains the database of creatures, creature groups, and lore groupings used to build encounters. Open the Compendium by clicking \"Open\" in the lower right Compendium pane." ]
+        , p []
+            [ text "The Compendium comes bundled with all SRD creatures, which cannot be edited or deleted. You'll need to duplicate a bundled creature, import a creature, or create a creature, in order to edit that creature." ]
+        , p [] [ text "Notable Compendium features include:" ]
+        , ul []
+            [ li [] [ text "A parser for importing a pasted-in stat block (tested with raw cut-&-pasted stat blocks from popular websites; results may vary)" ]
+            , li [] [ text "Import/export your Compendium to your local device or the eZpZ-dndZ server" ]
+            , li [] [ text "Creature groups for easy adding to the encounter queue later" ]
+            , li [] [ text "Lore groupings for the random encounter generator" ]
+            , li [] [ text "Sorting options" ]
+            ]
+        , h3 [] [ text "Random Encounter" ]
+        , p []
+            [ text "Tunable encounter generator, using creatures from the Compendium. Opened via the Random Encounter button in the lower right Compendium pane." ]
+        , p []
+            [ text "Setting any of the Random Encounter constraints will drastically reduce the types of creatures that get generated; broaden your parameters if you're not seeing as much creature variety as you're hoping for." ]
+        , p []
+            [ text "The Lore grouping toggle pulls from a table that makes certain creatures more likely to spawn together. You can view the bundled Lore groupings, or create/edit your own (sign in first), via the Compendium." ]
+        , h3 [] [ text "Difficulty Calculator" ]
+        , p []
+            [ text "Uses SRD guidelines to calculate the difficulty of the current encounter. Opened via the Difficulty button in the status bar of the encounter queue." ]
         ]
