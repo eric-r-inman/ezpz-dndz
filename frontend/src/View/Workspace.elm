@@ -202,7 +202,11 @@ specialReactionsEligible c =
         dead =
             Encounter.DeathSaves.isDead c.deathSaves
     in
-    c.hasSpecialReactions && not down && not dead
+    -- Drop the creature from the strip when their reaction has
+    -- been spent (the GM clicked the pip).  Auto-resets at the
+    -- start of their next turn via Lifecycle.applyBeginOfTurn,
+    -- so they re-appear in the strip without further action.
+    c.hasSpecialReactions && not c.reactionUsed && not down && not dead
 
 
 specialReactionsBanner : List Creature -> Html Msg
