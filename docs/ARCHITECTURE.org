@@ -313,16 +313,25 @@ The lifecycle module owns:
    ~DurationUntilTurn AtEnd <name>~ across the encounter; the
    begin-of-turn pass does the same for the ~AtBegin~ phase.
 
-The 5e surprise mechanic was removed in 2026-05; the
-domain layer no longer tracks a per-creature ~surprised~ flag and
-~Encounter.run~ does not filter the queue by it.  GMs handle
-surprise narratively or by toggling each surprised creature out
-of the queue manually.
+The 5e Surprised state was reintroduced in 2026-06 as a per-
+creature ~surprised : Bool~ flag.  Initiative-modal entry
+points ("Disadv. & Surprised" and "Apply & Sort w/Surprised")
+flip the flag on whichever creatures are in scope before the
+roll / apply runs.  Card row 1 and the encounter title-bar
+active-creature summary both render a 😲 badge to the left of
+the name while surprised.  The end-of-turn lifecycle hook
+(~applyEndOfTurn~) clears the flag for the outgoing creature,
+so Surprised burns off after the surprised creature finishes
+their first turn — matching the rule.  Surprised creatures are
+suppressed from the LA-availability reminder strip but not the
+Special Reactions strip (the rule only bars LA use, not
+ordinary reactions).
 
 ** Creature record extensions
 
-~Encounter.Creature~ gained four fields beyond the original combat
-core to support placeholder stubs and stat-block-style metadata:
+~Encounter.Creature~ gained six fields beyond the original combat
+core to support placeholder stubs, stat-block-style metadata,
+and the reintroduced Surprised + Special-Reactions hints:
 
 - ~isPlaceholder : Bool~ — flags stubs spawned via
   ~Encounter.Roster.appendPlaceholder~.  Preserved across
@@ -334,8 +343,20 @@ core to support placeholder stubs and stat-block-style metadata:
 - ~race : String~ — free-form (e.g. ~"Dragon"~), rendered in the
   stat-block meta strip.
 - ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
+- ~surprised : Bool~ — set by the initiative-modal "Disadv. &
+  Surprised" / "Apply & Sort w/Surprised" entry points and
+  cleared by ~applyEndOfTurn~ after the creature's first turn.
+  Drives a 😲 badge on the card + title bar and suppresses the
+  creature from the LA-availability strip.
+- ~hasSpecialReactions : Bool~ — copied from the compendium
+  template at spawn time.  When set, the card's reaction pip
+  drops the lightning glyph for a pulsing bright-blue ~!~ and
+  the creature shows up in the "Special reactions: …" sticky
+  strip beneath the title bar.  Toggleable per-creature via a
+  checkbox in the compendium editor; auto-set on 22 bundled
+  SRD creatures (Hydra, Marilith, Vampire, mephits, …).
 
-=Encounter.Wire= encodes all four; the decoder uses ~optional~ with
+=Encounter.Wire= encodes all six; the decoder uses ~optional~ with
 safe defaults (~False~ / ~""~) so legacy persisted encounters and
 saved snapshots round-trip cleanly.
 
@@ -913,6 +934,34 @@ below has a matching ~localStorage~ key that the
 The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical
 persistence helper.  Every server-side feature with a JSON
 backing file should use it rather than rolling its own.
+
+* Encounter header sticky reminder strips
+
+Two orange strips live in the encounter pane between the
+title bar and the scrolling card grid.  Both are rendered in
+=View.Workspace.panelMain= as siblings of ~panel__body~ (so
+they stay put while the cards scroll, same affordance the
+title bar uses):
+
+- *Legendary Action available* — ~legendaryActionStrip~.
+  Lists every queue member with un-spent legendary-action
+  pips, comma-separated, with the remaining-pip count in
+  parentheses.  Each name is a button that fires
+  ~PanelShowCreature~ to pin the stat block.  Filters: not
+  the currently-active creature (rule: LA fires on OTHER
+  creatures' turn-ends), not Surprised, not down, not dead.
+- *Special reactions* — ~specialReactionsStrip~.  Lists every
+  queue member whose source creature has
+  ~hasSpecialReactions = True~ — Hydra, Marilith, Vampire,
+  mephits, and the named-reaction folks the LA strip doesn't
+  cover.  Same name-button affordance.  Filters: not down,
+  not dead.  Does NOT filter Surprised or the active
+  creature — ordinary reactions can fire on the bearer's own
+  turn and aren't barred by Surprised.
+
+Both strips disappear entirely (~text ""~) when no creature
+qualifies, so vanilla encounters keep their existing
+title-bar / card-grid layout.
 
 * Encounter Controls panel
 
