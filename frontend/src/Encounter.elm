@@ -442,6 +442,16 @@ type alias Creature =
     -- the legendary-action availability banner because the rule
     -- bars LA use while surprised.
     , surprised : Bool
+
+    -- "Special reaction mechanics" hint copied from the
+    -- compendium source.  When True, the card's reaction pip
+    -- swaps its lightning glyph for a bold yellow `!` and the
+    -- hover text points the GM at the stat block — Hydra's
+    -- Reactive Heads, Marilith's Reactive, Vampire's Misty
+    -- Escape, mephit Death Bursts, and assorted notable named
+    -- reactions all need a GM heads-up that the standard
+    -- "one reaction per round" UX doesn't cover.
+    , hasSpecialReactions : Bool
     }
 
 

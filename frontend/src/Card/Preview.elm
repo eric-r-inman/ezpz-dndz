@@ -97,6 +97,7 @@ sampleCreature =
     , race = "Beast"
     , alignment = "Neutral"
     , surprised = False
+    , hasSpecialReactions = False
     }
 
 

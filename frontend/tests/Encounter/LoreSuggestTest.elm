@@ -92,6 +92,7 @@ mkCreature args =
     , createdAt = 0
     , updatedAt = 0
     , isBundled = False
+    , hasSpecialReactions = False
     }
 
 

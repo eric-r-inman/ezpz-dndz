@@ -60,6 +60,7 @@ fixture =
     , race = ""
     , alignment = ""
     , surprised = False
+    , hasSpecialReactions = False
     }
 
 

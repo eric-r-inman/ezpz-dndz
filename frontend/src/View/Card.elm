@@ -1615,15 +1615,22 @@ readiedToggle creature =
 
 
 {-| One-per-round reaction pip. ⚡ when available, gray ⚡ when
-expended. Mirrors the legendary-resistance pip pattern but with a
-single slot. Auto-resets at the start of the creature's next turn
-via `Encounter.Lifecycle.applyBeginOfTurn`; the click is wired
+expended. When the source creature has `hasSpecialReactions =
+True`, the lightning glyph is replaced with a bold yellow `!`
+and the tooltip points the GM at the stat block — the standard
+single-reaction UX can't model Hydra's extra heads, Marilith's
+per-turn reactions, Vampire's Misty Escape, etc.
+
+Mirrors the legendary-resistance pip pattern but with a single
+slot. Auto-resets at the start of the creature's next turn via
+`Encounter.Lifecycle.applyBeginOfTurn`; the click is wired
 manually so the GM can flip it ad-hoc.
+
 -}
 reactionPip : Creature -> Html Msg
 reactionPip creature =
     let
-        ( cls, tooltip ) =
+        ( baseCls, tooltip ) =
             if creature.reactionUsed then
                 ( "action-btn action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
@@ -1633,12 +1640,26 @@ reactionPip creature =
                 ( "action-btn action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
                 )
+
+        cls =
+            if creature.hasSpecialReactions then
+                baseCls ++ " action-btn--reaction-special"
+
+            else
+                baseCls
+
+        ( iconGlyph, iconTooltip ) =
+            if creature.hasSpecialReactions then
+                ( "! ", "Special reaction mechanics (see stat block)" )
+
+            else
+                ( "⚡ ", tooltip )
     in
     button
         [ class cls
         , onClick (ToggleReaction creature.name)
-        , Tooltips.attr tooltip
-        , attribute "aria-label" tooltip
+        , Tooltips.attr iconTooltip
+        , attribute "aria-label" iconTooltip
         , attribute "aria-pressed"
             (if creature.reactionUsed then
                 "true"
@@ -1648,8 +1669,8 @@ reactionPip creature =
             )
         ]
         -- Same icon-prefix split as `readiedToggle` so the
-        -- Accessible theme hides the ⚡ glyph and the word
+        -- Accessible theme hides the glyph and the word
         -- "Reaction" stands on its own.
-        [ span [ class "action-btn__icon-prefix" ] [ text "⚡ " ]
+        [ span [ class "action-btn__icon-prefix" ] [ text iconGlyph ]
         , text "Reaction"
         ]

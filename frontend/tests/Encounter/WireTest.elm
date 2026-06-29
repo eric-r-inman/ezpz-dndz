@@ -161,6 +161,7 @@ fullyPopulatedCreature =
     , race = "Dragon"
     , alignment = "chaotic evil"
     , surprised = True
+    , hasSpecialReactions = False
     }
 
 

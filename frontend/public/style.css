@@ -6042,6 +6042,36 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 1;
 }
 
+/* Reaction pip on a creature with special reaction mechanics
+   (Hydra, Marilith, Vampire, mephits, …).  The icon-prefix
+   glyph reads bold yellow `!` instead of the usual lightning
+   so the GM is reminded to check the stat block before the
+   single-pip UX silently mis-models the rule. */
+.action-btn--reaction-special .action-btn__icon-prefix {
+  color: #f5c842;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .action-btn--reaction-special .action-btn__icon-prefix {
+  color: #fde68a;
+}
+
+/* Editor checkbox row that tags a creature with special-
+   reaction mechanics. */
+.edit-special-reactions {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.9rem;
+}
+
+.edit-special-reactions__hint {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
 .action-btn--blue {
   --btn-bg: var(--btn-blue-bg);
   --btn-fg: var(--btn-blue-fg);

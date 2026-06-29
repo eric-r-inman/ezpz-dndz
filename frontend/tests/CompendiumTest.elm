@@ -88,6 +88,7 @@ mkCreature args =
     , createdAt = args.createdAt
     , updatedAt = args.createdAt
     , isBundled = False
+    , hasSpecialReactions = False
     }
 
 

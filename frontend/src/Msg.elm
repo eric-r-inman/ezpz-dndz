@@ -821,6 +821,11 @@ type Msg
     | CompendiumEditLootAdd
     | CompendiumEditLootRemove Int
     | CompendiumEditLootChanged Int String
+      -- Single GM checkbox: when on, the card's reaction pip
+      -- swaps the lightning glyph for a bold yellow `!` to
+      -- signal "this creature has reaction mechanics worth
+      -- looking up in the stat block."
+    | CompendiumEditSpecialReactionsToggle
       -- Advanced section editors: legendary actions, lair actions,
       -- regional effects, spellcasting.  Each section can be
       -- entirely absent (`Nothing`); the Add / Remove Msgs flip

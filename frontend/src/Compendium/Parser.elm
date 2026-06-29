@@ -228,6 +228,7 @@ initialState name typeLine =
         , createdAt = 0
         , updatedAt = 0
         , isBundled = False
+        , hasSpecialReactions = False
         }
     , section = TraitsSection
     , pending = Nothing

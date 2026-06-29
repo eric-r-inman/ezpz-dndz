@@ -712,6 +712,7 @@ mod tests {
       created_at: 0,
       updated_at: 0,
       is_bundled: false,
+      has_special_reactions: false,
     }
   }
 

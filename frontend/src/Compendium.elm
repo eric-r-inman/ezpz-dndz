@@ -128,6 +128,14 @@ type alias Creature =
     , createdAt : Int
     , updatedAt : Int
     , isBundled : Bool
+
+    -- GM-set flag — when True, the creature has reaction
+    -- mechanics worth a heads-up beyond the standard "one
+    -- reaction per round" UX (Hydra's extra heads, Marilith's
+    -- per-turn reaction, Vampire's Misty Escape, mephit Death
+    -- Bursts, …).  Drives a visual swap on the card's reaction
+    -- pip; toggled via a checkbox in the creature editor.
+    , hasSpecialReactions : Bool
     }
 
 
@@ -905,6 +913,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , race = c.race
     , alignment = c.alignment
     , surprised = False
+    , hasSpecialReactions = c.hasSpecialReactions
     }
 
 

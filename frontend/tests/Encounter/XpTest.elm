@@ -72,6 +72,7 @@ mkInstance args =
     , race = ""
     , alignment = ""
     , surprised = False
+    , hasSpecialReactions = False
     }
 
 
@@ -141,6 +142,7 @@ mkSource args =
     , createdAt = 0
     , updatedAt = 0
     , isBundled = False
+    , hasSpecialReactions = False
     }
 
 
@@ -265,6 +267,7 @@ totalsForSuite =
                         , race = ""
                         , alignment = ""
                         , surprised = False
+                        , hasSpecialReactions = False
                         }
 
                     enc =

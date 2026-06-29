@@ -60,6 +60,7 @@ module Update.Compendium.Edit exposing
     , skillBonusChanged
     , skillNameChanged
     , skillRemove
+    , specialReactionsToggle
     , speedHoverToggle
     , spellcastingAbilitySet
     , spellcastingAdd
@@ -790,6 +791,15 @@ lootChanged : Int -> String -> Model -> ( Model, Cmd Msg )
 lootChanged idx text model =
     ( withCompendiumEdit
         (\ui -> { ui | loot = updateAt idx (\_ -> text) ui.loot })
+        model
+    , Cmd.none
+    )
+
+
+specialReactionsToggle : Model -> ( Model, Cmd Msg )
+specialReactionsToggle model =
+    ( withCompendiumEdit
+        (\ui -> { ui | hasSpecialReactions = not ui.hasSpecialReactions })
         model
     , Cmd.none
     )

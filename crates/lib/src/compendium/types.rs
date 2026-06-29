@@ -115,6 +115,14 @@ pub struct Creature {
   /// set before responding).
   #[serde(default, skip_deserializing)]
   pub is_bundled: bool,
+  /// GM-set flag — when `true`, the creature has reaction
+  /// mechanics worth a heads-up beyond the standard "one
+  /// reaction per round" UX (Hydra's extra heads, Marilith's
+  /// per-turn reaction, Vampire's Misty Escape, mephit Death
+  /// Bursts, …).  Frontend swaps the card's reaction-pip glyph
+  /// to a bold yellow `!` when this is set.
+  #[serde(default)]
+  pub has_special_reactions: bool,
 }
 
 /// What a `CreatureDraft` becomes once the server allocates an
@@ -197,6 +205,9 @@ pub struct CreatureDraft {
   pub tags: Vec<String>,
   #[serde(default)]
   pub loot: Vec<String>,
+  /// See `Creature.has_special_reactions`.
+  #[serde(default)]
+  pub has_special_reactions: bool,
 }
 
 /// 2024 Monster Manual habitat tag.  Material-Plane habitats

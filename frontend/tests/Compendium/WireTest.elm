@@ -287,6 +287,7 @@ fullyPopulatedCreature =
     , createdAt = 1714521600
     , updatedAt = 1714608000
     , isBundled = False
+    , hasSpecialReactions = False
     }
 
 
@@ -341,6 +342,7 @@ minimalCreature =
     , createdAt = 0
     , updatedAt = 0
     , isBundled = False
+    , hasSpecialReactions = False
     }
 
 

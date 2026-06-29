@@ -2229,6 +2229,9 @@ updateInner msg model =
         CompendiumEditLootChanged idx text ->
             Update.Compendium.Edit.lootChanged idx text model
 
+        CompendiumEditSpecialReactionsToggle ->
+            Update.Compendium.Edit.specialReactionsToggle model
+
         CompendiumEditLegendaryAdd ->
             Update.Compendium.Edit.legendaryAdd model
 

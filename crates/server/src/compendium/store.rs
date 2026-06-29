@@ -336,6 +336,7 @@ impl CompendiumStore {
       created_at: now,
       updated_at: now,
       is_bundled: false,
+      has_special_reactions: draft.has_special_reactions,
     };
     let to_return = creature.clone();
     self.inner.mutate(|all| all.push(creature)).await?;

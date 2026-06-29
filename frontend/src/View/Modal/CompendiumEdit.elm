@@ -141,7 +141,9 @@ view model =
                     , editSection "Bonus Actions"
                         (featuresEditor BonusActionsGroup ui.bonusActions)
                     , editSection "Reactions"
-                        (featuresEditor ReactionsGroup ui.reactions)
+                        (featuresEditor ReactionsGroup ui.reactions
+                            ++ specialReactionsToggleRow ui.hasSpecialReactions
+                        )
                     , editSection "Custom Sections"
                         (customSectionsEditor ui.customSections)
                     , editSection "Legendary Actions"
@@ -583,6 +585,29 @@ featuresEditor group rows =
                 ]
                 [ text "+ Add Entry" ]
            ]
+
+
+{-| Single checkbox tagged onto the Reactions section. Flags the
+creature as having reaction mechanics worth a heads-up beyond
+the standard "one reaction per round" UX. Sets a Bool on the
+creature; the card's reaction-pip glyph reads bold yellow `!`
+when the flag is on.
+-}
+specialReactionsToggleRow : Bool -> List (Html Msg)
+specialReactionsToggleRow checked_ =
+    [ Html.label [ class "edit-feature edit-special-reactions" ]
+        [ input
+            [ type_ "checkbox"
+            , checked checked_
+            , onClick CompendiumEditSpecialReactionsToggle
+            ]
+            []
+        , span [ class "edit-special-reactions__label" ]
+            [ text "Special reaction mechanics" ]
+        , span [ class "edit-special-reactions__hint" ]
+            [ text "Card reaction pip shows a yellow ! to remind the GM to consult the stat block." ]
+        ]
+    ]
 
 
 featureRow : FeatureGroup -> Int -> FeatureDraft -> Html Msg

@@ -91,6 +91,7 @@ mkCreature name initiative =
     , race = ""
     , alignment = ""
     , surprised = False
+    , hasSpecialReactions = False
     }
 
 

@@ -239,6 +239,7 @@ impl Monster {
       created_at: now,
       updated_at: now,
       is_bundled: false,
+      has_special_reactions: draft.has_special_reactions,
     }
   }
 }
@@ -331,6 +332,7 @@ impl From<Monster> for CreatureDraft {
       treasures: Vec::new(),
       tags: Vec::new(),
       loot: Vec::new(),
+      has_special_reactions: false,
     }
   }
 }

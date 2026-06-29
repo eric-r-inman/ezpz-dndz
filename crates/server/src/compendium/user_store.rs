@@ -236,6 +236,7 @@ fn creature_from_draft(draft: CreatureDraft, id: String, now: i64) -> Creature {
     created_at: now,
     updated_at: now,
     is_bundled: false,
+    has_special_reactions: draft.has_special_reactions,
   }
 }
 

@@ -577,6 +577,7 @@ freshPlaceholder name =
     , race = ""
     , alignment = ""
     , surprised = False
+    , hasSpecialReactions = False
     }
 
 

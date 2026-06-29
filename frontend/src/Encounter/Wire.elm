@@ -1076,6 +1076,7 @@ encodeCreature c =
         , ( "race", E.string c.race )
         , ( "alignment", E.string c.alignment )
         , ( "surprised", E.bool c.surprised )
+        , ( "hasSpecialReactions", E.bool c.hasSpecialReactions )
         ]
 
 
@@ -1313,7 +1314,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised ->
+        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised hasSpecialReactions ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -1354,6 +1355,7 @@ decodeCreature =
             , race = race
             , alignment = alignment
             , surprised = surprised
+            , hasSpecialReactions = hasSpecialReactions
             }
         )
         |> required "name" D.string
@@ -1408,6 +1410,7 @@ decodeCreature =
         |> optional "race" D.string ""
         |> optional "alignment" D.string ""
         |> optional "surprised" D.bool False
+        |> optional "hasSpecialReactions" D.bool False
 
 
 decodeIntSet : D.Decoder (Set Int)

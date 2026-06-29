@@ -331,6 +331,7 @@ decodeCreature =
         |> optional "created_at" D.int 0
         |> optional "updated_at" D.int 0
         |> optional "is_bundled" D.bool False
+        |> optional "has_special_reactions" D.bool False
 
 
 decodeKind : D.Decoder CreatureKind
@@ -646,6 +647,7 @@ draftFields c =
     , ( "treasures", E.list encodeTreasure c.treasures )
     , ( "tags", E.list E.string c.tags )
     , ( "loot", E.list E.string c.loot )
+    , ( "has_special_reactions", E.bool c.hasSpecialReactions )
     ]
 
 

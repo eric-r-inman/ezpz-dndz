@@ -488,6 +488,12 @@ type alias CompendiumEditUi =
     -- aggregates into Treasure-roller output (one "Loot" row per
     -- item, no gp computed).
     , loot : List String
+
+    -- GM-set checkbox in the editor.  Mirrors
+    -- `Compendium.Creature.hasSpecialReactions` — flipping it
+    -- changes the card's reaction-pip glyph to a bold yellow
+    -- `!` for instances of this creature.
+    , hasSpecialReactions : Bool
     , submitting : Bool
     , submitError : Maybe String
     }
@@ -562,6 +568,7 @@ blankEdit =
     , treasures = []
     , tags = []
     , loot = []
+    , hasSpecialReactions = False
     , submitting = False
     , submitError = Nothing
     }
@@ -631,6 +638,7 @@ editFromCreature c =
     , treasures = c.treasures
     , tags = c.tags
     , loot = c.loot
+    , hasSpecialReactions = c.hasSpecialReactions
     , submitting = False
     , submitError = Nothing
     }
@@ -749,6 +757,7 @@ validateEdit ui =
                     , createdAt = createdAt
                     , updatedAt = 0
                     , isBundled = False
+                    , hasSpecialReactions = ui.hasSpecialReactions
                     }
 
 
