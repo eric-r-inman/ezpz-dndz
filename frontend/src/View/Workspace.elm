@@ -152,15 +152,13 @@ hasAvailableLegendaryAction c =
     total > 0 && Set.size c.legendaryActionsUsed < total
 
 
-{-| Render a creature card followed by a banner for every OTHER
-creature in the queue that still has an un-spent legendary
-action. The banners surface after every card so the GM, having
-just resolved a creature's turn, can see at a glance which
-legendary creatures could now spend an LA on this turn-end.
-The card's own creature is filtered out — a creature can't take
-a legendary action triggered by its own turn ending.
+{-| Render a creature card followed by a single banner listing
+every OTHER queue member that still has an un-spent legendary
+action. Multiple LA-haver names are comma-separated inside the
+one banner; the card's own creature is filtered out — a creature
+can't take a legendary action triggered by its own turn ending.
 
-Returns a list so the encounter-grid can splice card + banners
+Returns a list so the encounter-grid can splice card + banner
 inline without restructuring the layout.
 
 -}
@@ -171,43 +169,50 @@ renderCardWithLaBanners :
     -> List (Html Msg)
 renderCardWithLaBanners renderCard laCreatures c =
     let
-        banners =
-            laCreatures
-                |> List.filter (\la -> la.name /= c.name)
-                |> List.map legendaryActionBanner
+        others =
+            List.filter (\la -> la.name /= c.name) laCreatures
     in
-    renderCard c :: banners
+    if List.isEmpty others then
+        [ renderCard c ]
+
+    else
+        [ renderCard c, legendaryActionBanner others ]
 
 
-legendaryActionBanner : Creature -> Html Msg
-legendaryActionBanner c =
+legendaryActionBanner : List Creature -> Html Msg
+legendaryActionBanner creatures =
     let
-        nameSpan =
-            case c.creatureId of
-                Just creatureId ->
-                    button
-                        [ class "legendary-banner__name"
-                        , type_ "button"
-                        , onClick (PanelShowCreature creatureId c.name)
-                        , attribute "title" ("Pin " ++ c.name ++ "'s stat block to the side panel")
-                        , attribute "aria-label"
-                            ("Show stat block for " ++ c.name)
-                        ]
-                        [ text c.name ]
-
-                Nothing ->
-                    -- Placeholder rows have no compendium id to pin,
-                    -- so the name stays plain text.
-                    span [ class "legendary-banner__name legendary-banner__name--plain" ]
-                        [ text c.name ]
+        nameNodes =
+            creatures
+                |> List.map nameNode
+                |> List.intersperse (text ", ")
     in
     div
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
-        [ text "⚜ Legendary Action available: "
-        , nameSpan
-        ]
+        (text "⚜ Legendary Action available: " :: nameNodes)
+
+
+nameNode : Creature -> Html Msg
+nameNode c =
+    case c.creatureId of
+        Just creatureId ->
+            button
+                [ class "legendary-banner__name"
+                , type_ "button"
+                , onClick (PanelShowCreature creatureId c.name)
+                , attribute "title" ("Pin " ++ c.name ++ "'s stat block to the side panel")
+                , attribute "aria-label"
+                    ("Show stat block for " ++ c.name)
+                ]
+                [ text c.name ]
+
+        Nothing ->
+            -- Placeholder rows have no compendium id to pin, so
+            -- the name stays plain text.
+            span [ class "legendary-banner__name legendary-banner__name--plain" ]
+                [ text c.name ]
 
 
 {-| Full-width "+" row appended below the last creature card in
