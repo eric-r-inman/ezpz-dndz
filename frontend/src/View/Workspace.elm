@@ -130,36 +130,53 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class gridClass ]
-                (List.concatMap (renderCardWithLaBanner renderCard) enc.creatures)
+                (let
+                    laCreatures =
+                        List.filter hasAvailableLegendaryAction enc.creatures
+                 in
+                 List.concatMap
+                    (renderCardWithLaBanners renderCard laCreatures)
+                    enc.creatures
+                )
             , quickAddRow
             ]
         ]
 
 
-{-| Wrap each card render with an optional Legendary-Action
-banner immediately after it. The banner appears whenever the
-creature has at least one un-spent LA pip; clicking the
-creature name in the banner pins the creature's stat block to
-the right-side panel via `PanelShowCreature`.
-
-Returns a list so the encounter-grid can splice the banner
-inline with the cards without rebuilding the layout structure.
-
--}
-renderCardWithLaBanner : (Creature -> Html Msg) -> Creature -> List (Html Msg)
-renderCardWithLaBanner renderCard c =
+hasAvailableLegendaryAction : Creature -> Bool
+hasAvailableLegendaryAction c =
     let
         total =
             c.legendaryActionsCount + c.legendaryActionsLairBonus
-
-        available =
-            total > 0 && Set.size c.legendaryActionsUsed < total
     in
-    if available then
-        [ renderCard c, legendaryActionBanner c ]
+    total > 0 && Set.size c.legendaryActionsUsed < total
 
-    else
-        [ renderCard c ]
+
+{-| Render a creature card followed by a banner for every OTHER
+creature in the queue that still has an un-spent legendary
+action. The banners surface after every card so the GM, having
+just resolved a creature's turn, can see at a glance which
+legendary creatures could now spend an LA on this turn-end.
+The card's own creature is filtered out — a creature can't take
+a legendary action triggered by its own turn ending.
+
+Returns a list so the encounter-grid can splice card + banners
+inline without restructuring the layout.
+
+-}
+renderCardWithLaBanners :
+    (Creature -> Html Msg)
+    -> List Creature
+    -> Creature
+    -> List (Html Msg)
+renderCardWithLaBanners renderCard laCreatures c =
+    let
+        banners =
+            laCreatures
+                |> List.filter (\la -> la.name /= c.name)
+                |> List.map legendaryActionBanner
+    in
+    renderCard c :: banners
 
 
 legendaryActionBanner : Creature -> Html Msg
