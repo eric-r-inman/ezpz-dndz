@@ -75,6 +75,7 @@ import Ui.GroupEdit as GroupEdit
         , LoreSection
         )
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -599,7 +600,7 @@ userGroupRow expandedSet g =
                 [ class "icon-btn group-edit__lore-row-edit"
                 , Attr.type_ "button"
                 , onClick (GroupEditLoreEdit g.id)
-                , Attr.title "Edit this lore group"
+                , Tooltips.attr "Edit this lore group"
                 , attribute "aria-label" ("Edit " ++ g.name)
                 ]
                 [ text "✎" ]
@@ -607,7 +608,7 @@ userGroupRow expandedSet g =
                 [ class "icon-btn icon-btn--danger group-edit__lore-row-delete"
                 , Attr.type_ "button"
                 , onClick (GroupEditLoreDeleteRequest g.id)
-                , Attr.title "Delete this lore group"
+                , Tooltips.attr "Delete this lore group"
                 , attribute "aria-label" ("Delete " ++ g.name)
                 ]
                 [ text "×" ]
@@ -824,7 +825,7 @@ loreMemberEditorRow index m =
             [ class "icon-btn icon-btn--danger"
             , Attr.type_ "button"
             , onClick (GroupEditLoreDraftMemberRemove index)
-            , Attr.title "Remove this member"
+            , Tooltips.attr "Remove this member"
             , attribute "aria-label" "Remove member"
             ]
             [ text "×" ]
@@ -926,7 +927,7 @@ loreEditorActions =
             [ class "action-btn group-edit__lore-test"
             , Attr.type_ "button"
             , onClick GroupEditLoreDraftTest
-            , attribute "title" "Estimate the generator settings most likely to roll this group"
+            , Tooltips.attr "Estimate the generator settings most likely to roll this group"
             ]
             [ text "Test" ]
         , span [ class "group-edit__lore-actions-spacer" ] []

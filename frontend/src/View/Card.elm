@@ -350,7 +350,7 @@ surprisedIcon creature =
     if creature.surprised then
         span
             [ class "creature-card__surprised"
-            , attribute "title" "Surprised — can't take reactions or use legendary actions until the end of their next turn"
+            , Tooltips.attr "Surprised — can't take reactions or use legendary actions until the end of their next turn"
             , attribute "aria-label" "Surprised"
             ]
             [ text "😲" ]

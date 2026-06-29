@@ -72,6 +72,7 @@ import Msg
 import Set exposing (Set)
 import Ui.TreasureTable as TreasureTableUi
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -214,7 +215,7 @@ scrollNameRow levelKey idx name =
             , type_ "button"
             , onClick (TreasureTableScrollRemove levelKey idx)
             , attribute "aria-label" "Remove this spell"
-            , attribute "title" "Remove"
+            , Tooltips.attr "Remove"
             ]
             [ text "🚫" ]
         ]
@@ -283,7 +284,7 @@ flatRow cat idx item =
             , type_ "number"
             , Attr.min "0"
             , value (String.fromInt item.valueGp)
-            , attribute "title" "gp value"
+            , Tooltips.attr "gp value"
             , onInput (TreasureTableFlatValueSet cat idx)
             ]
             []
@@ -293,7 +294,7 @@ flatRow cat idx item =
             , type_ "button"
             , onClick (TreasureTableFlatRemove cat idx)
             , attribute "aria-label" "Remove this entry"
-            , attribute "title" "Remove"
+            , Tooltips.attr "Remove"
             ]
             [ text "🚫" ]
         ]
@@ -504,7 +505,7 @@ rowHeader kind bracketKey idx weight =
             ]
         , span
             [ class "treasure-table__row-hint"
-            , attribute "title"
+            , Tooltips.attr
                 "Higher weight = more often.  The bracket's roll is weighted by these numbers; 0 means the row never rolls."
             ]
             [ text
@@ -519,7 +520,7 @@ rowHeader kind bracketKey idx weight =
             [ class "treasure-table__row-remove-btn"
             , type_ "button"
             , onClick (TreasureTableRowRemove kind bracketKey idx)
-            , attribute "title" "Remove this row"
+            , Tooltips.attr "Remove this row"
             , attribute "aria-label" "Remove row"
             ]
             [ text "🚫 Row" ]
@@ -552,7 +553,7 @@ coinColumn kind bracketKey idx ( coin, mFormula ) =
                     [ class "treasure-table__coin-add"
                     , type_ "button"
                     , onClick (TreasureTableCoinAdd kind bracketKey idx coin)
-                    , attribute "title" ("Add a " ++ coinLabel coin ++ " formula to this row")
+                    , Tooltips.attr ("Add a " ++ coinLabel coin ++ " formula to this row")
                     ]
                     [ text "+" ]
 
@@ -576,7 +577,7 @@ coinColumn kind bracketKey idx ( coin, mFormula ) =
                         [ class "treasure-table__coin-remove"
                         , type_ "button"
                         , onClick (TreasureTableCoinRemove kind bracketKey idx coin)
-                        , attribute "title" ("Clear " ++ coinLabel coin)
+                        , Tooltips.attr ("Clear " ++ coinLabel coin)
                         , attribute "aria-label" ("Clear " ++ coinLabel coin)
                         ]
                         [ text "🚫" ]
@@ -591,7 +592,7 @@ numField title_ current minimum toMsg =
         , type_ "number"
         , Attr.min (String.fromInt minimum)
         , value (String.fromInt current)
-        , attribute "title" title_
+        , Tooltips.attr title_
         , onInput toMsg
         ]
         []
@@ -666,7 +667,7 @@ subColumn bracketKey idx cfg =
                     [ class "treasure-table__coin-add"
                     , type_ "button"
                     , onClick (TreasureTableSubAdd bracketKey idx cfg.kind)
-                    , attribute "title" ("Add a " ++ cfg.label ++ " sub-roll to this row")
+                    , Tooltips.attr ("Add a " ++ cfg.label ++ " sub-roll to this row")
                     ]
                     [ text "+" ]
 
@@ -699,7 +700,7 @@ subColumn bracketKey idx cfg =
                         [ class "treasure-table__coin-remove"
                         , type_ "button"
                         , onClick (TreasureTableSubRemove bracketKey idx cfg.kind)
-                        , attribute "title" ("Clear " ++ cfg.label)
+                        , Tooltips.attr ("Clear " ++ cfg.label)
                         , attribute "aria-label" ("Clear " ++ cfg.label)
                         ]
                         [ text "🚫" ]
@@ -907,7 +908,7 @@ nameRow key cfg idx name =
             , type_ "button"
             , onClick (cfg.removeMsg key idx)
             , attribute "aria-label" "Remove this entry"
-            , attribute "title" "Remove"
+            , Tooltips.attr "Remove"
             ]
             [ text "🚫" ]
         ]
@@ -1086,7 +1087,7 @@ resetRow =
             [ class "treasure-table__reset"
             , type_ "button"
             , onClick TreasureTableResetToBundled
-            , attribute "title" "Replace the draft with the bundled SRD default (still requires Save to commit)"
+            , Tooltips.attr "Replace the draft with the bundled SRD default (still requires Save to commit)"
             ]
             [ text "↺ Reset to bundled defaults" ]
         ]
@@ -1151,7 +1152,7 @@ saveRow dirty hasSavedCustom confirmRevert isAuthed =
             [ class "treasure-table__save-cancel"
             , type_ "button"
             , onClick TreasureTableClose
-            , attribute "title" "Close without saving"
+            , Tooltips.attr "Close without saving"
             ]
             [ text "Cancel" ]
         , button
@@ -1159,7 +1160,7 @@ saveRow dirty hasSavedCustom confirmRevert isAuthed =
             , type_ "button"
             , onClick TreasureTableSave
             , Attr.disabled (not dirty)
-            , attribute "title" saveTitle
+            , Tooltips.attr saveTitle
             ]
             [ text "Save" ]
         , revertControl hasSavedCustom confirmRevert
@@ -1183,14 +1184,14 @@ revertControl hasSavedCustom confirmRevert =
                 [ class "treasure-table__revert-cancel"
                 , type_ "button"
                 , onClick TreasureTableRevertCancel
-                , attribute "title" "Keep your custom table"
+                , Tooltips.attr "Keep your custom table"
                 ]
                 [ text "Cancel" ]
             , button
                 [ class "treasure-table__revert-go"
                 , type_ "button"
                 , onClick TreasureTableRevertConfirm
-                , attribute "title" "Drop the saved custom table and use bundled defaults"
+                , Tooltips.attr "Drop the saved custom table and use bundled defaults"
                 ]
                 [ text "Confirm Revert" ]
             ]
@@ -1200,6 +1201,6 @@ revertControl hasSavedCustom confirmRevert =
             [ class "treasure-table__revert"
             , type_ "button"
             , onClick TreasureTableRevertRequest
-            , attribute "title" "Discard your saved custom table and use bundled defaults"
+            , Tooltips.attr "Discard your saved custom table and use bundled defaults"
             ]
             [ text "↺ Revert" ]

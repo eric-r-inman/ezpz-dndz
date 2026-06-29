@@ -68,6 +68,7 @@ import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
 import Util.Number
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : ModalChrome -> Model -> Html Msg
@@ -274,7 +275,7 @@ settingsSection kind expanded settings profiles profileDraft =
                         [ class "treasure__settings-reset"
                         , type_ "button"
                         , onClick TreasureSettingsReset
-                        , attribute "title" "Return every knob to Normal"
+                        , Tooltips.attr "Return every knob to Normal"
                         ]
                         [ text "↺ Reset to defaults" ]
                     ]
@@ -319,7 +320,7 @@ presetChip preset label tooltip =
     button
         [ class "treasure__settings-preset-chip"
         , type_ "button"
-        , attribute "title" tooltip
+        , Tooltips.attr tooltip
         , onClick (TreasureSettingsPresetApply preset)
         ]
         [ text label ]
@@ -375,14 +376,14 @@ profileChip name =
         [ button
             [ class "treasure__settings-profile-chip-load"
             , type_ "button"
-            , attribute "title" "Apply this profile to the current settings"
+            , Tooltips.attr "Apply this profile to the current settings"
             , onClick (TreasureProfileLoad name)
             ]
             [ text name ]
         , button
             [ class "treasure__settings-profile-chip-delete"
             , type_ "button"
-            , attribute "title" ("Delete profile '" ++ name ++ "'")
+            , Tooltips.attr ("Delete profile '" ++ name ++ "'")
             , onClick (TreasureProfileDelete name)
             ]
             [ text "🚫" ]
@@ -490,7 +491,7 @@ noneToggle kind itemClass current =
              else
                 "false"
             )
-        , attribute "title"
+        , Tooltips.attr
             (if current then
                 "This category is currently skipped — click to roll it"
 
@@ -777,7 +778,7 @@ editTableLink =
             [ class "treasure__edit-table"
             , type_ "button"
             , onClick TreasureTableOpen
-            , attribute "title" "View / edit your treasure table"
+            , Tooltips.attr "View / edit your treasure table"
             ]
             [ text "Edit treasure table…" ]
         ]
@@ -822,7 +823,7 @@ multiplierNotice kind enemyCount toggles =
     if kind == Individual && enemyCount > 3 && anyNonCoinOn then
         p
             [ class "treasure__multiplier-notice"
-            , attribute "title"
+            , Tooltips.attr
                 "On Individual rolls each creature rolls the enabled non-coin categories independently from their bracket's hoard table — so 5 creatures means 5× the per-creature drop."
             ]
             [ text
@@ -869,7 +870,7 @@ budgetHint expectedGp =
     else
         span
             [ class "treasure__budget-hint"
-            , attribute "title"
+            , Tooltips.attr
                 "SRD-derived baseline coin gp for this encounter — your roll will land near this on default settings."
             ]
             [ text ("Average ≈ " ++ formatNumber expectedGp ++ " gp") ]
@@ -1058,7 +1059,7 @@ rowRemoveButton msg =
         , type_ "button"
         , onClick msg
         , attribute "aria-label" "Remove this item"
-        , attribute "title" "Remove"
+        , Tooltips.attr "Remove"
         ]
         [ text "✕" ]
 

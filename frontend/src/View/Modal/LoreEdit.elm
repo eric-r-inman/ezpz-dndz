@@ -53,6 +53,7 @@ import Ui.Compendium as CompendiumUi exposing (CompendiumDb(..))
 import Ui.GroupEdit as GroupEdit exposing (LoreDraft, LoreMemberDraft)
 import Ui.LoreEdit exposing (LoreEditUi)
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -216,7 +217,7 @@ memberRow idx m =
             [ class "icon-btn icon-btn--danger"
             , type_ "button"
             , onClick (LoreEditMemberRemove idx)
-            , attribute "title" "Remove this member"
+            , Tooltips.attr "Remove this member"
             , attribute "aria-label" "Remove member"
             ]
             [ text "×" ]
@@ -298,7 +299,7 @@ actionsRow =
             [ class "action-btn group-edit__lore-test"
             , type_ "button"
             , onClick LoreEditTest
-            , attribute "title" "Estimate the generator settings most likely to roll this Lore grouping"
+            , Tooltips.attr "Estimate the generator settings most likely to roll this Lore grouping"
             ]
             [ text "Test" ]
         , span [ class "group-edit__lore-actions-spacer" ] []

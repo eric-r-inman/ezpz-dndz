@@ -216,6 +216,43 @@ code; see [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full dis
 This split is what lets us add alternate UI layouts (e.g. an upcoming
 "simple view") without rewriting rules.
 
+** Hover text: always use ~Tooltips.attr~
+
+NEVER use the native ~title=~ attribute for hover text — the browser
+adds a ~600ms-plus delay before showing it, while the rest of the app
+uses a custom data-tooltip portal (~public/index.html~) that shows
+at ~300ms.  Mixing the two reads as "this one tooltip is broken."
+
+Always reach for ~View.Tooltips.attr~:
+
+#+begin_src elm :exports code
+import View.Tooltips as Tooltips
+
+button
+    [ class "..."
+    , onClick FooClick
+    , Tooltips.attr "Click to do the thing"  -- fast portal, ~300ms
+    , attribute "aria-label" "Click to do the thing"
+    ]
+    [ text "Foo" ]
+#+end_src
+
+Do NOT write any of:
+
+- ~attribute "title" "..."~
+- ~Attr.title "..."~
+- ~Html.Attributes.attribute "title" "..."~
+- ~Html.Attributes.title "..."~
+
+The one legitimate exception is a ~disabled~ button — Chrome blocks
+mouse events on disabled form controls, so the data-tooltip portal
+won't fire and ~title=~ is the only thing that works.  In that case,
+wrap the disabled button in a parent span carrying ~Tooltips.attr~
+and ~pointer-events: none~ on the inner button (see
+~compendium__edit-btn-bundled-wrap~ for the canonical pattern)
+rather than reaching for ~title=~ — that keeps the affordance fast
+and consistent.
+
 * When adding new features
 
 When adding a new feature to the project, the new code and structure

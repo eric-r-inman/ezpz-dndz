@@ -306,7 +306,7 @@ nameNode c =
                 [ class "legendary-banner__name"
                 , type_ "button"
                 , onClick (PanelShowCreature creatureId c.name)
-                , attribute "title" ("Pin " ++ c.name ++ "'s stat block to the side panel")
+                , Tooltips.attr ("Pin " ++ c.name ++ "'s stat block to the side panel")
                 , attribute "aria-label"
                     ("Show stat block for " ++ c.name)
                 ]

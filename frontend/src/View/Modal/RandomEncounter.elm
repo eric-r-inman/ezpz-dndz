@@ -60,6 +60,7 @@ import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -525,7 +526,7 @@ excludedRow creature =
             , Attr.type_ "button"
             , onClick (RandomEncounterExcludeRemove creature.id)
             , attribute "aria-label" ("Stop excluding " ++ creature.name)
-            , Attr.title "Stop excluding this creature"
+            , Tooltips.attr "Stop excluding this creature"
             ]
             [ text "×" ]
         ]
@@ -550,7 +551,7 @@ pinnedRow ( creature, count ) =
                 , onClick (RandomEncounterPinDecrement creature.id)
                 , disabled (count <= 1)
                 , attribute "aria-label" ("One fewer " ++ creature.name)
-                , Attr.title "Remove one"
+                , Tooltips.attr "Remove one"
                 ]
                 [ text "−" ]
             , span [ class "random-encounter__pinned-count" ]
@@ -559,7 +560,7 @@ pinnedRow ( creature, count ) =
                 [ class "random-encounter__pinned-counter-btn"
                 , onClick (RandomEncounterPinAdd creature.id)
                 , attribute "aria-label" ("One more " ++ creature.name)
-                , Attr.title "Add one"
+                , Tooltips.attr "Add one"
                 ]
                 [ text "+" ]
             ]
@@ -573,7 +574,7 @@ pinnedRow ( creature, count ) =
             [ class "icon-btn icon-btn--danger random-encounter__pinned-remove"
             , onClick (RandomEncounterPinRemove creature.id)
             , attribute "aria-label" ("Remove " ++ creature.name)
-            , Attr.title "Remove this pin"
+            , Tooltips.attr "Remove this pin"
             ]
             [ text "×" ]
         ]
@@ -850,7 +851,7 @@ groupRow pinnedIds minionIds ( creature, count ) =
                 [ class "random-encounter__group-exclude"
                 , Attr.type_ "button"
                 , onClick (RandomEncounterExcludeAdd creature.id)
-                , Attr.title ("Exclude " ++ creature.name ++ " from future rolls")
+                , Tooltips.attr ("Exclude " ++ creature.name ++ " from future rolls")
                 , attribute "aria-label" ("Exclude " ++ creature.name)
                 ]
                 [ text "🚫" ]
@@ -858,7 +859,7 @@ groupRow pinnedIds minionIds ( creature, count ) =
             [ class "random-encounter__group-pin"
             , Attr.type_ "button"
             , onClick (RandomEncounterPinAdd creature.id)
-            , Attr.title
+            , Tooltips.attr
                 (if isPinned then
                     "Add one more " ++ creature.name ++ " to the pinned list"
 

@@ -475,7 +475,7 @@ rowFooterControls ui =
             [ class "action-btn action-btn--blue"
             , onClick CardEditorRowAdd
             , disabled atCap
-            , Attr.title
+            , Tooltips.attr
                 (if atCap then
                     "Maximum of 3 centre rows"
 
@@ -536,7 +536,7 @@ footer ui =
             [ class "action-btn action-btn--blue"
             , onClick CardEditorSave
             , disabled ui.busy
-            , attribute "title"
+            , Tooltips.attr
                 "Apply this layout to the running app (in-memory until you Save by name)."
             ]
             [ text "Apply (no save)" ]

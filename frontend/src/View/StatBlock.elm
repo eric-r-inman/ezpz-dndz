@@ -205,7 +205,7 @@ bundledBadge isBundled =
     if isBundled then
         span
             [ class "statblock__kind-badge statblock__kind-badge--bundled"
-            , Html.Attributes.attribute "title" "Bundled (read-only)"
+            , Tooltips.attr "Bundled (read-only)"
             , Html.Attributes.attribute "aria-label" "Bundled (read-only)"
             ]
             [ text "🔒" ]

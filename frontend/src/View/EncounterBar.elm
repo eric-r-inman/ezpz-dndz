@@ -428,7 +428,7 @@ surprisedMarker active =
             if c.surprised then
                 span
                     [ class "encounter-bar__surprised"
-                    , attribute "title" "Surprised — can't take reactions or use legendary actions until the end of their next turn"
+                    , Tooltips.attr "Surprised — can't take reactions or use legendary actions until the end of their next turn"
                     , attribute "aria-label" "Surprised"
                     ]
                     [ text "😲" ]
