@@ -108,12 +108,12 @@ partyRow : Int -> PartyMember -> Html Msg
 partyRow index member =
     div [ class "cr-calc__party-row" ]
         [ span [ class "cr-calc__party-index" ]
-            [ text ("PC " ++ String.fromInt (index + 1)) ]
+            [ text ("Player " ++ String.fromInt (index + 1)) ]
         , label [ class "cr-calc__party-level-label" ] [ text "Level" ]
         , select
             [ class "cr-calc__party-level"
             , onInput (CrCalculatorPartyLevelSet member.id)
-            , attribute "aria-label" ("Level for PC " ++ String.fromInt (index + 1))
+            , attribute "aria-label" ("Level for Player " ++ String.fromInt (index + 1))
             ]
             (List.range Difficulty.minLevel Difficulty.maxLevel
                 |> List.map (levelOption member.level)
