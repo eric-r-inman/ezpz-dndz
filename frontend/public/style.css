@@ -6103,24 +6103,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   user-select: none;
 }
 
-/* Legendary-action summary at the right edge of the encounter
-   bar's left cluster.  Reads as "⚜ <Name> (N), <Name> (N)"
-   with the count parenthesised in a quieter colour so the names
-   stay scannable. */
-.encounter-bar__la-summary {
-  margin-left: 12px;
-  padding-left: 12px;
-  border-left: 1px solid var(--color-border);
-  font-size: 0.85rem;
-  color: var(--color-text);
-  white-space: nowrap;
-}
-
-.encounter-bar__la-count {
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 .action-btn--readied {
   --btn-bg: var(--color-btn-orange);
   --btn-fg: #fff;
