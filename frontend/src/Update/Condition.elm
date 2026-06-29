@@ -4,10 +4,13 @@ module Update.Condition exposing
     , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
+    , customNameExpandToggle
     , delete
     , durationKindSet
+    , durationOneMinute
     , maxConditionNoteLength
     , noteChanged
+    , noteExpandToggle
     , openEdit
     , openNew
     , pickStandard
@@ -137,7 +140,33 @@ noteChanged text model =
 
 durationKindSet : DurationKind -> Model -> ( Model, Cmd Msg )
 durationKindSet kind model =
-    ( withConditionUi (\u -> { u | durationKind = kind }) model, Cmd.none )
+    ( withConditionUi
+        (\u -> { u | durationKind = kind, useOneMinutePreset = False })
+        model
+    , Cmd.none
+    )
+
+
+{-| 1-Minute preset radio: snap the countdown fields to
+turns=10 / phase=AtEnd and flag the preset so the radio stays
+selected. Underlying durationKind becomes Countdown so the
+existing build / persistence path handles the rest.
+-}
+durationOneMinute : Model -> ( Model, Cmd Msg )
+durationOneMinute model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | durationKind = DurKindCountdown
+                , countdownTurns = 10
+                , countdownTurnsText = "10"
+                , countdownPhase = Encounter.AtEnd
+                , useOneMinutePreset = True
+            }
+        )
+        model
+    , Cmd.none
+    )
 
 
 untilCreatureChanged : String -> Model -> ( Model, Cmd Msg )
@@ -164,6 +193,10 @@ countdownTurnsChanged text model =
                     String.toInt (String.trim text)
                         |> Maybe.map (Basics.max 1 >> Basics.min 99)
                         |> Maybe.withDefault u.countdownTurns
+
+                -- Hand-editing turns means it's no longer the
+                -- 1-Minute preset.
+                , useOneMinutePreset = False
             }
         )
         model
@@ -173,7 +206,27 @@ countdownTurnsChanged text model =
 
 countdownPhaseSet : Encounter.TurnPhase -> Model -> ( Model, Cmd Msg )
 countdownPhaseSet phase model =
-    ( withConditionUi (\u -> { u | countdownPhase = phase }) model, Cmd.none )
+    ( withConditionUi
+        (\u -> { u | countdownPhase = phase, useOneMinutePreset = False })
+        model
+    , Cmd.none
+    )
+
+
+customNameExpandToggle : Model -> ( Model, Cmd Msg )
+customNameExpandToggle model =
+    ( withConditionUi
+        (\u -> { u | customNameExpanded = not u.customNameExpanded })
+        model
+    , Cmd.none
+    )
+
+
+noteExpandToggle : Model -> ( Model, Cmd Msg )
+noteExpandToggle model =
+    ( withConditionUi (\u -> { u | noteExpanded = not u.noteExpanded }) model
+    , Cmd.none
+    )
 
 
 saveToggle : Model -> ( Model, Cmd Msg )

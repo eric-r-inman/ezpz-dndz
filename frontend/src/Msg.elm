@@ -548,6 +548,16 @@ type Msg
     | ConditionCustomNameChanged String
     | ConditionNoteChanged String
     | ConditionDurationKindSet DurationKind
+      -- 1-Minute preset radio that sits alongside Countdown.
+      -- Selecting it sets durationKind=Countdown, turns=10,
+      -- phase=AtEnd, and flags `useOneMinutePreset` so the radio
+      -- stays visually selected even though the underlying
+      -- duration is Countdown.
+    | ConditionDurationOneMinute
+      -- Disclosure toggles for the collapsable Custom Name +
+      -- Note sections.
+    | ConditionCustomNameExpandToggle
+    | ConditionNoteExpandToggle
     | ConditionUntilCreatureChanged String
     | ConditionUntilPhaseSet Encounter.TurnPhase
     | ConditionCountdownTurnsChanged String

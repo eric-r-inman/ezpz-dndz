@@ -149,35 +149,87 @@ standardRadio ui label =
 customSection : ConditionUi -> Html Msg
 customSection ui =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text "Custom Name" ]
-        , input
-            [ class "cond-input"
-            , type_ "text"
-            , value ui.customName
-            , placeholder "e.g. Bardic Inspiration, On fire"
-            , onInput ConditionCustomNameChanged
-            ]
-            []
-        , div [ class "cond-section__caption" ]
-            [ text "Typing here overrides the radio selection above." ]
-        ]
+        (collapsibleHeading
+            { expanded = ui.customNameExpanded
+            , label = "or, Custom Name"
+            , msg = ConditionCustomNameExpandToggle
+            }
+            :: (if ui.customNameExpanded then
+                    [ input
+                        [ class "cond-input"
+                        , type_ "text"
+                        , value ui.customName
+                        , placeholder "e.g. Bardic Inspiration, On fire"
+                        , onInput ConditionCustomNameChanged
+                        ]
+                        []
+                    , div [ class "cond-section__caption" ]
+                        [ text "Typing here overrides the radio selection above." ]
+                    ]
+
+                else
+                    []
+               )
+        )
 
 
 noteSection : ConditionUi -> Html Msg
 noteSection ui =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text ("Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)") ]
-        , input
-            [ class "cond-input"
-            , type_ "text"
-            , value ui.note
-            , maxlength Update.Condition.maxConditionNoteLength
-            , placeholder "e.g. from Lyra"
-            , onInput ConditionNoteChanged
+        (collapsibleHeading
+            { expanded = ui.noteExpanded
+            , label = "Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)"
+            , msg = ConditionNoteExpandToggle
+            }
+            :: (if ui.noteExpanded then
+                    [ input
+                        [ class "cond-input"
+                        , type_ "text"
+                        , value ui.note
+                        , maxlength Update.Condition.maxConditionNoteLength
+                        , placeholder "e.g. from Lyra"
+                        , onInput ConditionNoteChanged
+                        ]
+                        []
+                    ]
+
+                else
+                    []
+               )
+        )
+
+
+{-| Disclosure-style heading used by the collapsable Custom
+Name + Note sections. The carrot (▾ / ▸) sits to the left of
+the label, and the whole row is one clickable button so users
+hit a generous target.
+-}
+collapsibleHeading :
+    { expanded : Bool, label : String, msg : Msg }
+    -> Html Msg
+collapsibleHeading cfg =
+    Html.button
+        [ class "cond-section__heading cond-section__heading--collapsible"
+        , Attr.type_ "button"
+        , onClick cfg.msg
+        , attribute "aria-expanded"
+            (if cfg.expanded then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ span [ class "cond-section__carrot" ]
+            [ text
+                (if cfg.expanded then
+                    "▾"
+
+                 else
+                    "▸"
+                )
             ]
-            []
+        , text cfg.label
         ]
 
 
@@ -188,27 +240,40 @@ durationSection ui model =
             [ text "Duration" ]
         , div [ class "cond-radio-row" ]
             [ durationKindRadio ui DurKindManual "Manual"
-            , durationKindRadio ui DurKindUntilTurn "Until turn"
+            , durationKindRadio ui DurKindUntilTurn "Next turn"
             , durationKindRadio ui DurKindCountdown "Countdown"
+            , oneMinutePresetRadio ui
             ]
-        , case ui.durationKind of
-            DurKindManual ->
-                div [ class "cond-section__caption" ]
-                    [ text "Stays until the GM clicks the chip's × to remove." ]
+        , if ui.useOneMinutePreset then
+            div [ class "cond-section__caption" ]
+                [ text "Lasts 10 turns; expires at the end of the bearer's 10th turn." ]
 
-            DurKindUntilTurn ->
-                durationUntilSubsection ui model
+          else
+            case ui.durationKind of
+                DurKindManual ->
+                    div [ class "cond-section__caption" ]
+                        [ text "Stays until the GM clicks the chip's × to remove." ]
 
-            DurKindCountdown ->
-                durationCountdownSubsection ui
+                DurKindUntilTurn ->
+                    durationUntilSubsection ui model
+
+                DurKindCountdown ->
+                    durationCountdownSubsection ui
         ]
 
 
 durationKindRadio : ConditionUi -> DurationKind -> String -> Html Msg
 durationKindRadio ui kind label =
+    let
+        -- Countdown radio yields its highlight to the 1-Minute
+        -- preset when the preset flag is on (they share the
+        -- underlying DurKindCountdown value).
+        isSelected =
+            ui.durationKind == kind && not ui.useOneMinutePreset
+    in
     Html.label
         [ class
-            (if ui.durationKind == kind then
+            (if isSelected then
                 "cond-radio cond-radio--selected"
 
              else
@@ -218,11 +283,33 @@ durationKindRadio ui kind label =
         [ input
             [ type_ "radio"
             , Attr.name "duration-kind"
-            , checked (ui.durationKind == kind)
+            , checked isSelected
             , onClick (ConditionDurationKindSet kind)
             ]
             []
         , span [ class "cond-radio__label" ] [ text label ]
+        ]
+
+
+oneMinutePresetRadio : ConditionUi -> Html Msg
+oneMinutePresetRadio ui =
+    Html.label
+        [ class
+            (if ui.useOneMinutePreset then
+                "cond-radio cond-radio--selected"
+
+             else
+                "cond-radio"
+            )
+        ]
+        [ input
+            [ type_ "radio"
+            , Attr.name "duration-kind"
+            , checked ui.useOneMinutePreset
+            , onClick ConditionDurationOneMinute
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text "1 Minute" ]
         ]
 
 

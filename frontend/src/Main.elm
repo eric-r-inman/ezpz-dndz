@@ -1374,6 +1374,15 @@ updateInner msg model =
         ConditionDurationKindSet kind ->
             Update.Condition.durationKindSet kind model
 
+        ConditionDurationOneMinute ->
+            Update.Condition.durationOneMinute model
+
+        ConditionCustomNameExpandToggle ->
+            Update.Condition.customNameExpandToggle model
+
+        ConditionNoteExpandToggle ->
+            Update.Condition.noteExpandToggle model
+
         ConditionUntilCreatureChanged name ->
             Update.Condition.untilCreatureChanged name model
 

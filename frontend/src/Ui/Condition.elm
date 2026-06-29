@@ -65,6 +65,22 @@ type alias ConditionUi =
     , pendingSaveCategory : String
     , loadedPresetName : Maybe String
     , expandedCategories : Set String
+
+    -- The "1 Minute" preset radio sits alongside Countdown but
+    -- collapses to the same underlying countdown values (turns=10,
+    -- phase=AtEnd).  This flag tells the view which radio is
+    -- visually selected — without it, Countdown and 1 Minute
+    -- would both highlight when the user has 10/end set, which
+    -- reads as a bug.  Reset to False whenever the user touches
+    -- duration in any other way.
+    , useOneMinutePreset : Bool
+
+    -- Disclosure state for the Custom Name + Note sections.
+    -- Both default to collapsed on open to keep the modal tidy
+    -- for the common-case "pick a standard condition" flow; the
+    -- GM expands them when they actually need to override.
+    , customNameExpanded : Bool
+    , noteExpanded : Bool
     }
 
 
@@ -120,6 +136,9 @@ fresh target =
     , pendingSaveCategory = ""
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
+    , useOneMinutePreset = False
+    , customNameExpanded = False
+    , noteExpanded = False
     }
 
 
@@ -196,6 +215,9 @@ fromCondition target cond =
     , pendingSaveCategory = ""
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
+    , useOneMinutePreset = False
+    , customNameExpanded = False
+    , noteExpanded = False
     }
 
 
