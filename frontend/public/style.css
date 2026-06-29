@@ -6069,7 +6069,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    default produced a barely-visible outline.  Override the
    border and foreground for these four button classes in each
    theme so they read clearly. */
-[data-theme="modern"] .creature-card .action-btn--ready,
 [data-theme="modern"] .creature-card .action-btn--reaction,
 [data-theme="modern"] .creature-card .action-btn--memo-empty,
 [data-theme="modern"] .creature-card .action-btn--timer-empty {
@@ -6077,12 +6076,24 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-fg: var(--color-text);
 }
 
-[data-theme="dark"] .creature-card .action-btn--ready,
 [data-theme="dark"] .creature-card .action-btn--reaction,
 [data-theme="dark"] .creature-card .action-btn--memo-empty,
 [data-theme="dark"] .creature-card .action-btn--timer-empty {
   --btn-bd: #6b7280; /* gray-500 — visible against dark card */
   --btn-fg: var(--color-text);
+}
+
+/* "Ready" reads as a quieter, advisory affordance — light
+   grey instead of the full body text colour so it doesn't
+   compete with the active-state buttons next to it. */
+[data-theme="modern"] .creature-card .action-btn--ready {
+  --btn-bd: #9ca3af;
+  --btn-fg: var(--color-text-muted);
+}
+
+[data-theme="dark"] .creature-card .action-btn--ready {
+  --btn-bd: #6b7280;
+  --btn-fg: var(--color-text-muted);
 }
 
 /* Keep the orange reaction-unspent fg so the GM still reads
