@@ -193,14 +193,48 @@ legendaryActionBanner creatures =
     let
         nameNodes =
             creatures
-                |> List.map nameNode
-                |> List.intersperse (text ", ")
+                |> List.concatMap nameWithCount
+                |> dropTrailingComma
     in
     div
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
         (text "⚜ Legendary Action available: " :: nameNodes)
+
+
+{-| Render `<Name> (N),` where N is the count of un-spent
+legendary-action pips on this creature. The trailing comma /
+space is stripped off the last entry by `dropTrailingComma`
+below so the banner reads cleanly.
+-}
+nameWithCount : Creature -> List (Html Msg)
+nameWithCount c =
+    let
+        total =
+            c.legendaryActionsCount + c.legendaryActionsLairBonus
+
+        available =
+            total - Set.size c.legendaryActionsUsed
+    in
+    [ nameNode c
+    , span [ class "legendary-banner__count" ]
+        [ text (" (" ++ String.fromInt available ++ ")") ]
+    , text ", "
+    ]
+
+
+dropTrailingComma : List (Html msg) -> List (Html msg)
+dropTrailingComma nodes =
+    -- The comma-space text node is the last item produced by
+    -- `nameWithCount`; trim it so the banner doesn't end with
+    -- a dangling separator.
+    case List.reverse nodes of
+        _ :: rest ->
+            List.reverse rest
+
+        [] ->
+            []
 
 
 nameNode : Creature -> Html Msg
