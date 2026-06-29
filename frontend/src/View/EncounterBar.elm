@@ -30,6 +30,7 @@ import Html.Attributes exposing (attribute, class, href, tabindex, target, title
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg(..))
+import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Tooltips as Tooltips
 
@@ -106,8 +107,59 @@ view mode enc savedAs db xpScope xpFilterOpen =
             , noteSpan active
             , stateIcons active
             , conditionsText active
+            , legendaryActionSummary enc.creatures
             ]
         , rightCluster
+        ]
+
+
+{-| Trailing summary that surfaces every legendary-action-
+available creature in the queue with their remaining-pip count
+("⚜ Tiamat (3), Strahd (2)"). Same eligibility rule as the
+inter-card LA banner: total pips > 0, not all used, not
+Surprised. Empty when no creature qualifies.
+-}
+legendaryActionSummary : List Creature -> Html Msg
+legendaryActionSummary creatures =
+    let
+        eligible =
+            List.filter laEligible creatures
+    in
+    if List.isEmpty eligible then
+        text ""
+
+    else
+        span [ class "encounter-bar__la-summary" ]
+            (text "⚜ "
+                :: (eligible
+                        |> List.map laEntry
+                        |> List.intersperse (text ", ")
+                   )
+            )
+
+
+laEligible : Creature -> Bool
+laEligible c =
+    let
+        total =
+            c.legendaryActionsCount + c.legendaryActionsLairBonus
+    in
+    total > 0 && Set.size c.legendaryActionsUsed < total && not c.surprised
+
+
+laEntry : Creature -> Html Msg
+laEntry c =
+    let
+        total =
+            c.legendaryActionsCount + c.legendaryActionsLairBonus
+
+        remaining =
+            total - Set.size c.legendaryActionsUsed
+    in
+    span [ class "encounter-bar__la-entry" ]
+        [ text c.name
+        , span [ class "encounter-bar__la-count" ]
+            [ text (" (" ++ String.fromInt remaining ++ ")") ]
         ]
 
 
