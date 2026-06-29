@@ -576,6 +576,7 @@ freshPlaceholder name =
     , creatureKind = "npc"
     , race = ""
     , alignment = ""
+    , surprised = False
     }
 
 

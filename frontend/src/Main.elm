@@ -1337,6 +1337,15 @@ updateInner msg model =
         InitiativeApplySelected ->
             Update.Initiative.applySelected model
 
+        InitiativeAutoRollSurprised scope ->
+            Update.Initiative.autoRollSurprised scope model
+
+        InitiativeApplyTargetSurprised ->
+            Update.Initiative.applyTargetSurprised model
+
+        InitiativeApplySelectedSurprised ->
+            Update.Initiative.applySelectedSurprised model
+
         InitiativeRollsLanded results ->
             Update.Initiative.rollsLanded results model
 

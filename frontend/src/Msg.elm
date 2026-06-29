@@ -534,6 +534,16 @@ type Msg
     | InitiativeAutoRoll RollScope RollMode
     | InitiativeApplyTarget
     | InitiativeApplySelected
+      -- "Disadv. & Surprised" yellow buttons: roll initiative
+      -- at disadvantage AND flag the affected creatures as
+      -- surprised.  The surprised flag clears at the end of
+      -- that creature's first turn (see Encounter.Lifecycle).
+    | InitiativeAutoRollSurprised RollScope
+      -- Manual-initiative "Apply & Sort w/ Surprised" buttons:
+      -- write the typed value, sort the queue, AND flag the
+      -- affected creatures as surprised.
+    | InitiativeApplyTargetSurprised
+    | InitiativeApplySelectedSurprised
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
     | ActiveCardScrollChecked (Result Browser.Dom.Error ())
       -- Note-edit modal (the row 1 pencil button)

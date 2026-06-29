@@ -59,6 +59,7 @@ fixture =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
+    , surprised = False
     }
 
 

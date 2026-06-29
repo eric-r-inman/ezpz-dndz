@@ -96,6 +96,7 @@ sampleCreature =
     , creatureKind = "enemy"
     , race = "Beast"
     , alignment = "Neutral"
+    , surprised = False
     }
 
 

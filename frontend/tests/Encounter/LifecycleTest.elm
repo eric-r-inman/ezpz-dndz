@@ -68,6 +68,7 @@ mkCreature name initiative =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
+    , surprised = False
     }
 
 

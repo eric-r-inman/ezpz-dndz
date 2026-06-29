@@ -149,7 +149,16 @@ hasAvailableLegendaryAction c =
         total =
             c.legendaryActionsCount + c.legendaryActionsLairBonus
     in
-    total > 0 && Set.size c.legendaryActionsUsed < total
+    -- Surprised creatures are suppressed from the reminder
+    -- banner: 5e bars them from using LA until the surprised
+    -- condition lifts (auto-clears at the end of their first
+    -- turn).  Once the lifecycle clears the flag, they re-appear
+    -- in the banner without any further state change.
+    total
+        > 0
+        && Set.size c.legendaryActionsUsed
+        < total
+        && not c.surprised
 
 
 {-| Render a creature card followed by a single banner listing

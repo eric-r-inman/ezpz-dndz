@@ -434,6 +434,14 @@ type alias Creature =
     , creatureKind : String
     , race : String
     , alignment : String
+
+    -- 5e Surprised: cleared automatically at the end of the
+    -- creature's first turn (handled by Encounter.Lifecycle).
+    -- A surprised creature renders a small icon next to its name
+    -- on the card + active-creature header and is excluded from
+    -- the legendary-action availability banner because the rule
+    -- bars LA use while surprised.
+    , surprised : Bool
     }
 
 

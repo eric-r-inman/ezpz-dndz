@@ -332,11 +332,31 @@ rowTop isActive creature hpEdit renameState =
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
             ]
             [ text (String.fromInt creature.initiative) ]
+        , surprisedIcon creature
         , creatureName creature renameState
         , noteOrPencil creature
         , acReadout creature hpEdit
         , rowTopChipCluster isActive creature
         ]
+
+
+{-| Little surprised-face badge that sits to the left of the
+creature name on row 1 when the creature is flagged Surprised.
+Cleared automatically at the end of the creature's first turn
+by `Encounter.Lifecycle.applyEndOfTurn`.
+-}
+surprisedIcon : Creature -> Html Msg
+surprisedIcon creature =
+    if creature.surprised then
+        span
+            [ class "creature-card__surprised"
+            , attribute "title" "Surprised — can't take reactions or use legendary actions until the end of their next turn"
+            , attribute "aria-label" "Surprised"
+            ]
+            [ text "😲" ]
+
+    else
+        text ""
 
 
 {-| The creature name on row 1 of each card. Three render modes:

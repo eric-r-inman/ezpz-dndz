@@ -1,7 +1,10 @@
 module Update.Initiative exposing
     ( applySelected
+    , applySelectedSurprised
     , applyTarget
+    , applyTargetSurprised
     , autoRoll
+    , autoRollSurprised
     , close
     , customChanged
     , initiativeExpression
@@ -131,6 +134,87 @@ applySelected model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| "Disadv. & Surprised" yellow buttons. Marks each
+in-scope creature surprised before firing the disadvantage
+roll batch — the lifecycle hook clears the flag at the end of
+the surprised creature's next turn.
+-}
+autoRollSurprised : RollScope -> Model -> ( Model, Cmd Msg )
+autoRollSurprised scope model =
+    let
+        creatures =
+            scopeCreatures scope model
+
+        names =
+            List.map .name creatures
+    in
+    autoRoll scope ModeDisadvantage (flagSurprised names model)
+
+
+applyTargetSurprised : Model -> ( Model, Cmd Msg )
+applyTargetSurprised model =
+    case model.modal of
+        Just (ModalInitiative ui) ->
+            ( applyCustomInitiative [ ui.target ]
+                ui
+                (flagSurprised [ ui.target ] model)
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+applySelectedSurprised : Model -> ( Model, Cmd Msg )
+applySelectedSurprised model =
+    case model.modal of
+        Just (ModalInitiative ui) ->
+            let
+                targets =
+                    List.filter .selected model.encounter.creatures
+                        |> List.map .name
+            in
+            ( applyCustomInitiative targets ui (flagSurprised targets model)
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+scopeCreatures : RollScope -> Model -> List Encounter.Creature
+scopeCreatures scope model =
+    case scope of
+        ScopeTarget ->
+            case model.modal of
+                Just (ModalInitiative ui) ->
+                    List.filter (\c -> c.name == ui.target) model.encounter.creatures
+
+                _ ->
+                    []
+
+        ScopeAll ->
+            model.encounter.creatures
+
+        ScopeSelected ->
+            List.filter .selected model.encounter.creatures
+
+
+flagSurprised : List String -> Model -> Model
+flagSurprised names model =
+    { model
+        | encounter =
+            List.foldl
+                (\name enc ->
+                    Encounter.mapCreature name
+                        (\c -> { c | surprised = True })
+                        enc
+                )
+                model.encounter
+                names
+    }
 
 
 {-| Fold each (creature name, roll) pair into a fresh `Model`:

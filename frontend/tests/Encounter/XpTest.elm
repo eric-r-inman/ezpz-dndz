@@ -71,6 +71,7 @@ mkInstance args =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
+    , surprised = False
     }
 
 
@@ -263,6 +264,7 @@ totalsForSuite =
                         , creatureKind = "enemy"
                         , race = ""
                         , alignment = ""
+                        , surprised = False
                         }
 
                     enc =

@@ -97,6 +97,7 @@ view mode enc savedAs db xpScope xpFilterOpen =
             , span [ class "encounter-bar__round" ]
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , span [ class "encounter-bar__sep" ] [ text "|" ]
+            , surprisedMarker active
             , span [ class "encounter-bar__active" ] [ text activeName ]
             , bloodiedMarker active
             , hp active
@@ -412,6 +413,25 @@ bloodiedMarker active =
                     , attribute "aria-label" "Bloodied"
                     ]
                     [ text "🩸" ]
+
+            else
+                text ""
+
+        Nothing ->
+            text ""
+
+
+surprisedMarker : Maybe Creature -> Html Msg
+surprisedMarker active =
+    case active of
+        Just c ->
+            if c.surprised then
+                span
+                    [ class "encounter-bar__surprised"
+                    , attribute "title" "Surprised — can't take reactions or use legendary actions until the end of their next turn"
+                    , attribute "aria-label" "Surprised"
+                    ]
+                    [ text "😲" ]
 
             else
                 text ""

@@ -6075,6 +6075,31 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--btn-orange-bg-hover);
 }
 
+/* Yellow "surprised" variant — reads as a heads-up state that
+   sits visually between Disadvantage (orange) and Advantage
+   (blue) in the Initiative modal's roll grid. */
+.action-btn--yellow {
+  --btn-bg: #f5c842;
+  --btn-fg: #4a3c0a;
+  --btn-bd: #d4a82a;
+}
+
+.action-btn--yellow:hover {
+  background: #f0b820;
+}
+
+/* 😲 emoji badge that sits to the left of a Surprised creature's
+   name on the card row 1 + in the encounter-bar's active-creature
+   summary. */
+.creature-card__surprised,
+.encounter-bar__surprised {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
+}
+
 .action-btn--readied {
   --btn-bg: var(--color-btn-orange);
   --btn-fg: #fff;
@@ -7066,9 +7091,15 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .modal--hp-change,
-.modal--initiative,
 .modal--ability-save {
   --modal-max-w: 480px;
+}
+
+/* Wider than the other small modals so the four-button
+   auto-roll row + "& Surprised" custom-init siblings fit on
+   one line instead of wrapping. */
+.modal--initiative {
+  --modal-max-w: 680px;
 }
 
 .modal--duplicate,
@@ -9503,15 +9534,31 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: auto;
 }
 
-/* Three-row grid for the Auto-roll section: main button | Advantage |
-   Disadvantage.  Column 1 sizes to fit the widest main label so all
-   three "Roll initiative & Sort: …" buttons align flush, with the
-   Advantage / Disadvantage columns at their natural widths. */
+/* Four-column grid for the Auto-roll section: main button |
+   Advantage | Disadvantage | Disadv. & Surprised.  Column 1
+   sizes to fit the widest main label so all three "Roll
+   initiative & Sort: …" buttons align flush, with the
+   right three columns at their natural widths. */
 .init-btn-grid {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 6px;
   align-items: stretch;
+}
+
+/* Custom Initiative apply rows: green primary on the left,
+   yellow "& Surprised" sibling on the right.  Flex row so the
+   two buttons share the row width without the wider yellow
+   label pushing the green one out of alignment. */
+.init-custom-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.init-custom-row .init-btn-block {
+  flex: 1 1 auto;
+  width: auto;
 }
 
 .init-btn-grid .init-btn-block {

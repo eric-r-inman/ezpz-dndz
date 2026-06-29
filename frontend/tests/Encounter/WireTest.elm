@@ -160,6 +160,7 @@ fullyPopulatedCreature =
     , creatureKind = "enemy"
     , race = "Dragon"
     , alignment = "chaotic evil"
+    , surprised = True
     }
 
 

@@ -904,6 +904,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , creatureKind = kindKey c.kind
     , race = c.race
     , alignment = c.alignment
+    , surprised = False
     }
 
 

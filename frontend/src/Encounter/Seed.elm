@@ -77,6 +77,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Brakka, Ogre Brute"
       , kind = "Large giant, chaotic evil"
@@ -124,6 +125,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Captain Vex"
       , kind = "Medium humanoid (human), bandit captain"
@@ -164,6 +166,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Goblin Skirmisher"
       , kind = "Small humanoid, neutral evil"
@@ -204,6 +207,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Goblin Boss"
       , kind = "Small humanoid, neutral evil"
@@ -244,6 +248,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Thornwhip Shaman"
       , kind = "Small humanoid, druid"
@@ -284,6 +289,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Stone Sentinel"
       , kind = "Large construct, unaligned"
@@ -324,6 +330,7 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     , { name = "Shadow Wisp"
       , kind = "Tiny undead, neutral evil"
@@ -364,5 +371,6 @@ seedCreatures =
       , creatureKind = "enemy"
       , race = ""
       , alignment = ""
+      , surprised = False
       }
     ]

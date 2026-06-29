@@ -87,12 +87,12 @@ autoRoll ui selectedCount =
         ]
 
 
-{-| Three buttons of one auto-roll row: the main "& Sort" button on
-the left, the Advantage sister in the middle, and the Disadvantage
-sister on the right. Returned as a flat `List (Html Msg)` so the
-caller can drop them straight into a grid container — this is what
-lines up the main-button widths across all three rows so they all
-match the longest label ("Roll initiative & Sort: Selected").
+{-| Four buttons of one auto-roll row: the main "& Sort" button
+on the left, Advantage (blue), Disadvantage (orange), and the
+"Disadv. & Surprised" yellow button on the right. Returned as a
+flat list so the caller can drop them straight into a four-column
+grid — the main-button widths line up across all three rows so
+the four-column layout reads as a clean grid.
 -}
 autoRollPair : RollScope -> String -> Bool -> String -> List (Html Msg)
 autoRollPair scope label enabled tipOverride =
@@ -118,6 +118,13 @@ autoRollPair scope label enabled tipOverride =
             else
                 tipOverride
 
+        surpriseTitle =
+            if enabled then
+                "Roll initiative at disadvantage and flag as Surprised (clears at the end of their first turn)"
+
+            else
+                tipOverride
+
         ariaDisabled =
             attribute "aria-disabled"
                 (if enabled then
@@ -136,7 +143,7 @@ autoRollPair scope label enabled tipOverride =
         ]
         [ text label ]
     , button
-        [ class "action-btn action-btn--green init-btn-adv"
+        [ class "action-btn action-btn--blue init-btn-adv"
         , onClick (InitiativeAutoRoll scope ModeAdvantage)
         , disabled (not enabled)
         , ariaDisabled
@@ -151,6 +158,14 @@ autoRollPair scope label enabled tipOverride =
         , Tooltips.attr disTitle
         ]
         [ text "Disadvantage" ]
+    , button
+        [ class "action-btn action-btn--yellow init-btn-adv"
+        , onClick (InitiativeAutoRollSurprised scope)
+        , disabled (not enabled)
+        , ariaDisabled
+        , Tooltips.attr surpriseTitle
+        ]
+        [ text "Disadv. & Surprised" ]
     ]
 
 
@@ -174,25 +189,55 @@ custom ui selectedCount =
                 ]
                 []
             ]
-        , button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick InitiativeApplyTarget
+        , div [ class "init-custom-row" ]
+            [ button
+                [ class "action-btn action-btn--green init-btn-block"
+                , onClick InitiativeApplyTarget
+                ]
+                [ text ("Apply & Sort: " ++ ui.target) ]
+            , button
+                [ class "action-btn action-btn--yellow init-btn-block"
+                , onClick InitiativeApplyTargetSurprised
+                , Tooltips.attr "Apply the typed initiative AND flag this creature as Surprised"
+                ]
+                [ text "Apply & Sort w/Surprised" ]
             ]
-            [ text ("Apply & Sort: " ++ ui.target) ]
-        , button
-            [ class "action-btn action-btn--green init-btn-block"
-            , onClick InitiativeApplySelected
-            , disabled (selectedCount == 0)
-            , attribute "aria-disabled"
-                (if selectedCount == 0 then
-                    "true"
+        , div [ class "init-custom-row" ]
+            [ button
+                [ class "action-btn action-btn--green init-btn-block"
+                , onClick InitiativeApplySelected
+                , disabled (selectedCount == 0)
+                , attribute "aria-disabled"
+                    (if selectedCount == 0 then
+                        "true"
 
-                 else
-                    "false"
-                )
-            , Tooltips.attr (selectedTitle selectedCount)
+                     else
+                        "false"
+                    )
+                , Tooltips.attr (selectedTitle selectedCount)
+                ]
+                [ text ("Apply & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
+            , button
+                [ class "action-btn action-btn--yellow init-btn-block"
+                , onClick InitiativeApplySelectedSurprised
+                , disabled (selectedCount == 0)
+                , attribute "aria-disabled"
+                    (if selectedCount == 0 then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                , Tooltips.attr
+                    (if selectedCount == 0 then
+                        Tooltips.initSelectedNone
+
+                     else
+                        "Apply the typed initiative to selected AND flag them as Surprised"
+                    )
+                ]
+                [ text "Apply & Sort w/Surprised" ]
             ]
-            [ text ("Apply & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
         ]
 
 
