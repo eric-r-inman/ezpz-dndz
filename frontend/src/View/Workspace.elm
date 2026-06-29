@@ -13,6 +13,7 @@ import Card.Layout exposing (CardLayout, QueueView(..))
 import Compendium
 import Effects
 import Encounter exposing (Creature, Encounter)
+import Encounter.DeathSaves
 import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, button, div, main_, section, span, text)
 import Html.Attributes exposing (attribute, class, id, type_)
@@ -171,17 +172,29 @@ hasAvailableLegendaryAction c =
     let
         total =
             c.legendaryActionsCount + c.legendaryActionsLairBonus
+
+        down =
+            -- At 0 HP and not actively burning death saves
+            -- (which means the creature is treated as dead for
+            -- non-Player kinds, and as unconscious for Players
+            -- between rolls).  Either state bars LA use.
+            c.currentHp == 0 && not c.acceptingDeathSaves
+
+        dead =
+            Encounter.DeathSaves.isDead c.deathSaves
     in
-    -- Surprised creatures are suppressed from the reminder
-    -- banner: 5e bars them from using LA until the surprised
-    -- condition lifts (auto-clears at the end of their first
-    -- turn).  Once the lifecycle clears the flag, they re-appear
-    -- in the banner without any further state change.
+    -- Surprised, down, or dead creatures are suppressed from
+    -- the reminder banner: 5e bars them from using LA until
+    -- those conditions clear.  Once the lifecycle (or the GM)
+    -- clears the relevant flag, they re-appear in the banner
+    -- without any further state change.
     total
         > 0
         && Set.size c.legendaryActionsUsed
         < total
         && not c.surprised
+        && not down
+        && not dead
 
 
 legendaryActionBanner : List Creature -> Html Msg
