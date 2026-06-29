@@ -4111,23 +4111,26 @@ body {
    one.  The dashed border + muted background read as "drop a
    thing here" without competing with the loud red/green action
    buttons on the cards themselves. */
-/* Inter-card banner announcing an un-spent Legendary Action.
-   Slots between creature cards in the grid; the name span is
-   a button that pins the creature's stat block to the side
-   panel.  Orange surface so the row reads as a heads-up the
-   GM should act on, distinct from the calm card surface. */
+/* Sticky banner sandwiched between the encounter title bar
+   and the scrolling card grid.  Calls out the queue members
+   with un-spent legendary actions; the name spans are
+   buttons that pin each creature's stat block to the side
+   panel.  Orange surface so the strip reads as a heads-up
+   the GM should act on, distinct from the calm card surface.
+   Lives outside `panel__body`, so it stays put while the
+   card grid scrolls. */
 .legendary-banner {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 4px 12px;
-  margin: 2px 0;
   background: rgba(245, 158, 11, 0.18);
+  border-bottom: 1px solid var(--color-border);
   border-left: 3px solid var(--color-warning, #f59e0b);
   color: var(--color-text);
   font-size: 0.85rem;
   font-weight: 500;
-  border-radius: var(--radius-sm);
 }
 
 .legendary-banner__name {

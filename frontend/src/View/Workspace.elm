@@ -125,22 +125,45 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ View.EncounterBar.view View.EncounterBar.FullBar enc savedAs db xpScope xpFilterOpen ]
+        , legendaryActionStrip enc
         , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class gridClass ]
-                (let
-                    laCreatures =
-                        List.filter hasAvailableLegendaryAction enc.creatures
-                 in
-                 List.concatMap
-                    (renderCardWithLaBanners renderCard laCreatures)
-                    enc.creatures
-                )
+                (List.map renderCard enc.creatures)
             , quickAddRow
             ]
         ]
+
+
+{-| Sticky orange strip sandwiched between the encounter title
+bar and the scrolling card grid. Lists every queue member with
+un-spent legendary actions (excluding the currently-active
+creature, since you can't take an LA on your own turn-end, and
+excluding Surprised creatures, since the rule bars LA use while
+surprised). Each name is clickable to pin the creature's stat
+block; the parenthesised count is remaining pips. Empty when
+no creature qualifies, so the panel layout is unchanged for
+vanilla encounters.
+
+Lives outside `panel__body` so it doesn't scroll with the cards
+— same affordance the title bar uses.
+
+-}
+legendaryActionStrip : Encounter -> Html Msg
+legendaryActionStrip enc =
+    let
+        eligible =
+            enc.creatures
+                |> List.filter hasAvailableLegendaryAction
+                |> List.filter (\c -> c.name /= enc.activeName)
+    in
+    if List.isEmpty eligible then
+        text ""
+
+    else
+        legendaryActionBanner eligible
 
 
 hasAvailableLegendaryAction : Creature -> Bool
@@ -159,33 +182,6 @@ hasAvailableLegendaryAction c =
         && Set.size c.legendaryActionsUsed
         < total
         && not c.surprised
-
-
-{-| Render a creature card followed by a single banner listing
-every OTHER queue member that still has an un-spent legendary
-action. Multiple LA-haver names are comma-separated inside the
-one banner; the card's own creature is filtered out — a creature
-can't take a legendary action triggered by its own turn ending.
-
-Returns a list so the encounter-grid can splice card + banner
-inline without restructuring the layout.
-
--}
-renderCardWithLaBanners :
-    (Creature -> Html Msg)
-    -> List Creature
-    -> Creature
-    -> List (Html Msg)
-renderCardWithLaBanners renderCard laCreatures c =
-    let
-        others =
-            List.filter (\la -> la.name /= c.name) laCreatures
-    in
-    if List.isEmpty others then
-        [ renderCard c ]
-
-    else
-        [ renderCard c, legendaryActionBanner others ]
 
 
 legendaryActionBanner : List Creature -> Html Msg
