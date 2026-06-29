@@ -223,6 +223,9 @@ editCommit model =
 
                                 ArmorClassField ->
                                     HpChange.setArmorClass n
+
+                                TempHpField ->
+                                    HpChange.setTempHp n
                     in
                     ( { model
                         | encounter =

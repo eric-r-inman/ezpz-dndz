@@ -994,12 +994,14 @@ acReadout creature hpEdit =
 
 
 {-| Card row 2 HP readout: green current / muted max, plus an
-inline "+N" temp-HP marker when the creature is buffed. Both the
-current and max values are click-to-edit: clicking swaps the span
-for a small `<input>` (autofocus + onBlur commits, Enter commits,
-Esc cancels). The temp HP doesn't get an inline editor — it's
-not a value the GM normally types directly, and the Temp HP modal
-is the canonical write path.
+inline "+N" temp-HP marker when the creature is buffed. All three
+values — current, max, and temp — are click-to-edit: clicking
+swaps the value for a small `<input>` (autofocus + onBlur
+commits, Enter commits, Esc cancels). Temp HP commits to a
+direct GM override (`HpChange.setTempHp`), bypassing the
+replace-if-higher rule that the Temp HP modal applies — that way
+typing `0` here clears the temp pool, which is what a GM
+clicking the chip generally wants.
 -}
 hpDisplay : Creature -> Maybe HpEdit -> Html Msg
 hpDisplay creature hpEdit =
@@ -1007,16 +1009,54 @@ hpDisplay creature hpEdit =
         [ hpEditable creature hpEdit CurrentHpField creature.currentHp "hp-display__current"
         , span [ class "hp-display__sep" ] [ text "/" ]
         , hpEditable creature hpEdit MaxHpField creature.maxHp "hp-display__max"
-        , if creature.tempHp > 0 then
-            span
-                [ class "hp-display__temp"
-                , Tooltips.attr Tooltips.tempHp
-                ]
-                [ text ("+" ++ String.fromInt creature.tempHp) ]
-
-          else
-            text ""
+        , tempHpEditable creature hpEdit
         ]
+
+
+{-| Click-to-edit affordance for the temp-HP chip. Mirrors
+`hpEditable`, but only renders when temp HP is non-zero (zero
+temp is the absence of a buff — no chip in the row), and the
+display reads "+N" instead of the bare integer so the chip
+keeps its established "this is a bonus pool" shape.
+-}
+tempHpEditable : Creature -> Maybe HpEdit -> Html Msg
+tempHpEditable creature hpEdit =
+    let
+        isEditing =
+            case hpEdit of
+                Just e ->
+                    e.target == creature.name && e.field == TempHpField
+
+                Nothing ->
+                    False
+    in
+    if isEditing then
+        input
+            [ class "hp-display__edit hp-display__edit--temp"
+            , type_ "number"
+            , Attr.min "0"
+            , Attr.max "9999"
+            , value (Maybe.withDefault "" (Maybe.map .text hpEdit))
+            , onInput HpEditChange
+            , Html.Events.onBlur HpEditCommit
+            , Html.Events.on "keydown" hpEditKeyDecoder
+            , autofocus True
+            ]
+            []
+
+    else if creature.tempHp > 0 then
+        button
+            [ class "hp-display__temp hp-display__editable"
+            , type_ "button"
+            , onClick (HpEditStart creature.name TempHpField creature.tempHp)
+            , Tooltips.attr Tooltips.tempHp
+            , attribute "aria-label"
+                (hpFieldAriaLabel TempHpField creature.name creature.tempHp)
+            ]
+            [ text ("+" ++ String.fromInt creature.tempHp) ]
+
+    else
+        text ""
 
 
 {-| Render either a clickable value or the active inline-edit
@@ -1085,6 +1125,9 @@ hpFieldAriaLabel field name current =
 
                 ArmorClassField ->
                     "Armor Class"
+
+                TempHpField ->
+                    "Temporary HP"
     in
     fieldName
         ++ " "

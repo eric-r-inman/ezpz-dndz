@@ -1,7 +1,7 @@
 module HpChange exposing
     ( Change(..), DamageSpec
     , apply, describe
-    , setCurrentHp, setMaxHp, setArmorClass
+    , setCurrentHp, setMaxHp, setArmorClass, setTempHp
     , restoreHp
     )
 
@@ -32,7 +32,7 @@ prompts upstream and hand the engine a final integer amount.
 
 # Manual edit helpers
 
-@docs setCurrentHp, setMaxHp, setArmorClass
+@docs setCurrentHp, setMaxHp, setArmorClass, setTempHp
 
 
 # Undo
@@ -184,6 +184,17 @@ clamped to zero.
 applyTempHp : Int -> Creature -> Creature
 applyTempHp n c =
     { c | tempHp = Basics.max c.tempHp (Basics.max 0 n) }
+
+
+{-| Manual GM override: write `tempHp` directly, clamped to ≥ 0.
+Bypasses the replace-if-higher rule of `applyTempHp` — this is
+the "I just want to set it to 7" path (or 0, to clear) from the
+card's inline edit affordance, not the rule-flavoured "buff"
+path.
+-}
+setTempHp : Int -> Creature -> Creature
+setTempHp n c =
+    { c | tempHp = Basics.max 0 n }
 
 
 {-| Manual GM override: write `currentHp` directly, clamped to

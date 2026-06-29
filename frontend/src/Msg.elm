@@ -101,6 +101,7 @@ type HpField
     = CurrentHpField
     | MaxHpField
     | ArmorClassField
+    | TempHpField
 
 
 
