@@ -74,13 +74,6 @@ type alias ConditionUi =
     -- reads as a bug.  Reset to False whenever the user touches
     -- duration in any other way.
     , useOneMinutePreset : Bool
-
-    -- Disclosure state for the Custom Name + Note sections.
-    -- Both default to collapsed on open to keep the modal tidy
-    -- for the common-case "pick a standard condition" flow; the
-    -- GM expands them when they actually need to override.
-    , customNameExpanded : Bool
-    , noteExpanded : Bool
     }
 
 
@@ -137,8 +130,6 @@ fresh target =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
-    , customNameExpanded = False
-    , noteExpanded = False
     }
 
 
@@ -216,8 +207,6 @@ fromCondition target cond =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
-    , customNameExpanded = False
-    , noteExpanded = False
     }
 
 

@@ -554,10 +554,6 @@ type Msg
       -- stays visually selected even though the underlying
       -- duration is Countdown.
     | ConditionDurationOneMinute
-      -- Disclosure toggles for the collapsable Custom Name +
-      -- Note sections.
-    | ConditionCustomNameExpandToggle
-    | ConditionNoteExpandToggle
     | ConditionUntilCreatureChanged String
     | ConditionUntilPhaseSet Encounter.TurnPhase
     | ConditionCountdownTurnsChanged String

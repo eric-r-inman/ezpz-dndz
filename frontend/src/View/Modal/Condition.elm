@@ -149,87 +149,35 @@ standardRadio ui label =
 customSection : ConditionUi -> Html Msg
 customSection ui =
     div [ class "cond-section" ]
-        (collapsibleHeading
-            { expanded = ui.customNameExpanded
-            , label = "or, Custom Name"
-            , msg = ConditionCustomNameExpandToggle
-            }
-            :: (if ui.customNameExpanded then
-                    [ input
-                        [ class "cond-input"
-                        , type_ "text"
-                        , value ui.customName
-                        , placeholder "e.g. Bardic Inspiration, On fire"
-                        , onInput ConditionCustomNameChanged
-                        ]
-                        []
-                    , div [ class "cond-section__caption" ]
-                        [ text "Typing here overrides the radio selection above." ]
-                    ]
-
-                else
-                    []
-               )
-        )
+        [ h3 [ class "cond-section__heading" ]
+            [ text "or, Custom Name" ]
+        , input
+            [ class "cond-input"
+            , type_ "text"
+            , value ui.customName
+            , placeholder "e.g. Bardic Inspiration, On fire"
+            , onInput ConditionCustomNameChanged
+            ]
+            []
+        , div [ class "cond-section__caption" ]
+            [ text "Typing here overrides the radio selection above." ]
+        ]
 
 
 noteSection : ConditionUi -> Html Msg
 noteSection ui =
     div [ class "cond-section" ]
-        (collapsibleHeading
-            { expanded = ui.noteExpanded
-            , label = "Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)"
-            , msg = ConditionNoteExpandToggle
-            }
-            :: (if ui.noteExpanded then
-                    [ input
-                        [ class "cond-input"
-                        , type_ "text"
-                        , value ui.note
-                        , maxlength Update.Condition.maxConditionNoteLength
-                        , placeholder "e.g. from Lyra"
-                        , onInput ConditionNoteChanged
-                        ]
-                        []
-                    ]
-
-                else
-                    []
-               )
-        )
-
-
-{-| Disclosure-style heading used by the collapsable Custom
-Name + Note sections. The carrot (▾ / ▸) sits to the left of
-the label, and the whole row is one clickable button so users
-hit a generous target.
--}
-collapsibleHeading :
-    { expanded : Bool, label : String, msg : Msg }
-    -> Html Msg
-collapsibleHeading cfg =
-    Html.button
-        [ class "cond-section__heading cond-section__heading--collapsible"
-        , Attr.type_ "button"
-        , onClick cfg.msg
-        , attribute "aria-expanded"
-            (if cfg.expanded then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ span [ class "cond-section__carrot" ]
-            [ text
-                (if cfg.expanded then
-                    "▾"
-
-                 else
-                    "▸"
-                )
+        [ h3 [ class "cond-section__heading" ]
+            [ text ("Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)") ]
+        , input
+            [ class "cond-input"
+            , type_ "text"
+            , value ui.note
+            , maxlength Update.Condition.maxConditionNoteLength
+            , placeholder "e.g. from Lyra"
+            , onInput ConditionNoteChanged
             ]
-        , text cfg.label
+            []
         ]
 
 

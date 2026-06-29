@@ -4,13 +4,11 @@ module Update.Condition exposing
     , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
-    , customNameExpandToggle
     , delete
     , durationKindSet
     , durationOneMinute
     , maxConditionNoteLength
     , noteChanged
-    , noteExpandToggle
     , openEdit
     , openNew
     , pickStandard
@@ -209,22 +207,6 @@ countdownPhaseSet phase model =
     ( withConditionUi
         (\u -> { u | countdownPhase = phase, useOneMinutePreset = False })
         model
-    , Cmd.none
-    )
-
-
-customNameExpandToggle : Model -> ( Model, Cmd Msg )
-customNameExpandToggle model =
-    ( withConditionUi
-        (\u -> { u | customNameExpanded = not u.customNameExpanded })
-        model
-    , Cmd.none
-    )
-
-
-noteExpandToggle : Model -> ( Model, Cmd Msg )
-noteExpandToggle model =
-    ( withConditionUi (\u -> { u | noteExpanded = not u.noteExpanded }) model
     , Cmd.none
     )
 
