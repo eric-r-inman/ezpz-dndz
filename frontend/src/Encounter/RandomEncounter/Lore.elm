@@ -269,28 +269,28 @@ bundled =
         [ member "Cloud Giant" Leader 1 1
         , member "Griffon" Pet 1 2
         ]
-        |> withLore "Cloud giants keep griffons as mounts and messengers — the giants and their griffons share territory by altitude, griffons ranging above the clouds, the giant by the mountain peak."
+        |> withLore "Mounts and messengers for the Cloud Giants, Griffons serve, and defend, their masters faithfully."
     , grp "storm-giant-citadel"
         "Storm Giant Citadel"
         1
         [ member "Storm Giant" Leader 1 1
         , member "Wyvern" Pet 1 2
         ]
-        |> withLore "A storm giant — the highest of giant-kind — keeps wyverns as guardians of its cloud-skirted citadel, drawn to the giant's lightning and the constant updraft of its court."
+        |> withLore "A storm giant needs no defenders, but its pets do like to play."
     , grp "ogre-marauders"
         "Ogre Marauders"
         3
         [ member "Ogre" Member 2 3
         , member "Bandit" Minion 2 4
         ]
-        |> withLore "Ogres and bandits make a profitable pairing — the ogres provide muscle the bandits couldn't muster, the bandits handle the talking and the ransom math."
+        |> withLore "Ogres are the brains, bandits bring the muscle... or, was it the other way 'round? No matter, attack!"
     , grp "troll-lair"
         "Troll Lair"
         2
         [ member "Troll" Member 1 2
         , member "Ogre Zombie" Minion 0 2
         ]
-        |> withLore "Trolls in a wretched lair, with the half-eaten remains of an ogre or two raised as zombies for menial defence — the trolls are too lazy to dispose of the kills, and a moving carcass needs no burial."
+        |> withLore "Too rotten even for the Trolls that share the lair, a half-eaten meal festers, and stirs..."
 
     -- ── Undead ───────────────────────────────────────────────
     , grp "mummy-tomb"
@@ -300,15 +300,15 @@ bundled =
         , member "Skeleton" Member 3 6
         , member "Zombie" Member 2 4
         ]
-        |> withLore "A mummy stands eternal guard, with skeletons and zombies as its rank-and-file — the dead of the tomb itself, conscripted by ancient curse into perpetual vigil."
+        |> withLore "The forgotten dead must stand their own vigil."
     , grp "mummy-lord-court"
         "Mummy Lord's Court"
         1
         [ member "Mummy Lord" Leader 1 1
         , member "Mummy" Member 1 2
-        , member "Skeleton" Minion 4 8
+        , member "Skeleton" Minion 6 8
         ]
-        |> withLore "A mummy lord — pharaoh of the tomb — holds court with lesser mummies as advisors and ranks of skeletons as the standing army of an empire forgotten three thousand years."
+        |> withLore "Lord in life, lord in death. Those who pledged their service in life serve now in death."
     , grp "lich-demesne"
         "Lich's Demesne"
         1
@@ -316,7 +316,7 @@ bundled =
         , member "Ghoul" Member 2 4
         , member "Ghast" Member 1 2
         ]
-        |> withLore "A lich's demesne is patrolled by its retinue of ghouls and ghasts — feral undead the lich raised in life and treats now as exotic pets, well-fed on intruders."
+        |> withLore "Stand thy deathless vigil, let none pass who live."
     , grp "vampire-brood"
         "Vampire's Brood"
         2
@@ -324,7 +324,7 @@ bundled =
         , member "Vampire Spawn" Member 2 4
         , member "Vampire Familiar" Pet 1 2
         ]
-        |> withLore "A vampire holds court with its spawn — fledglings still in the first century of unlife, kept on a tight leash — and a familiar (a bat, rat, or wolf) bound by the elder's blood."
+        |> withLore "A vampire and its spawn hold deathly court, while unblinking familiars stand watchful vigil."
     , grp "ghost-haunting"
         "Ghost Haunting"
         3
@@ -332,7 +332,7 @@ bundled =
         , member "Shadow" Member 1 3
         , member "Specter" Member 1 2
         ]
-        |> withLore "A ghost lingers where it died, drawing lesser shades and specters into its orbit — the haunting expands until a banishment or a memorial puts it down."
+        |> withLore "Boo!"
     , grp "skeleton-legion"
         "Skeleton Legion"
         3
@@ -340,21 +340,21 @@ bundled =
         , member "Warhorse Skeleton" Pet 1 3
         , member "Minotaur Skeleton" Leader 0 1
         ]
-        |> withLore "A legion of skeletons raised in bulk for some forgotten war — warhorse skeletons as cavalry, with a minotaur skeleton sometimes among them as a champion or relic of the legion's last commander."
+        |> withLore "Raised long ago for some forgotten war, a forgotten legion still fights a forgotten enemy."
     , grp "zombie-horde"
         "Zombie Horde"
         3
         [ member "Zombie" Member 6 12
         , member "Ogre Zombie" Leader 1 2
         ]
-        |> withLore "A zombie horde shambles in numbers, with an ogre zombie or two as the centerpiece — the work of a necromancer who valued mass over discrimination."
+        |> withLore "If you want to avoid them eating your flesh, I suggest you shoot them in the brain. - Leslie Hall"
     , grp "wraith-host"
         "Wraith Host"
         2
         [ member "Wraith" Leader 1 1
         , member "Specter" Member 2 4
         ]
-        |> withLore "A wraith — the bound spirit of a powerful evil — gathers lesser specters in its wake, feeding on their lingering despair and binding them as drones to its will."
+        |> withLore "A wraith — the bound spirit of a powerful evil — gathers lesser specters in its deathly wake, and feeds on their lingering despair. But its true hunger, only the living can sate."
 
     -- ── Hags ─────────────────────────────────────────────────
     , grp "hag-coven"
@@ -364,29 +364,29 @@ bundled =
         , member "Sea Hag" Member 1 1
         , member "Night Hag" Member 1 1
         ]
-        |> withLore "A coven of three hags — green, sea, and night — who share secrets and curses across the boundaries of their domains; together they are far more dangerous than any one of them apart."
+        |> withLore "'Double, double toil and trouble; Fire burn, and cauldron bubble. By the pricking of my thumbs, something wicked this way comes!'"
     , grp "sea-hag-tide"
         "Sea Hag's Tide"
         2
         [ member "Sea Hag" Leader 1 1
         , member "Sahuagin Warrior" Member 2 4
         ]
-        |> withLore "A sea hag and her sahuagin acolytes — the hag is a goddess to them, the sahuagin her priesthood and her hunting band, drawn into her cave by the smell of fresh bait."
-    , grp "green-hag-grove"
+        |> withLore "While you scan the horizon for pirates, something far more sinister is hunting from below."
+    , grp "green-hags-grove"
         "Green Hag's Grove"
         2
         [ member "Green Hag" Leader 1 1
         , member "Worg" Pet 1 2
         , member "Goblin Warrior" Minion 2 3
         ]
-        |> withLore "A green hag in her shadowed grove keeps worgs as guard-beasts and goblins as servants — the worgs sniff out intruders, the goblins do the chores the hag deems beneath her."
+        |> withLore "'The plump one for me, the rest for thee!'"
     , grp "night-hag-bargain"
         "Night Hag's Bargain"
         1
         [ member "Night Hag" Leader 1 1
         , member "Imp" Pet 1 2
         ]
-        |> withLore "A night hag conducts her soul-bargains in a half-dream, with an imp at her shoulder as scribe and errand-runner — a witness to contracts the buyer thought were spoken in private."
+        |> withLore "Can the Witch of Nightmares ever be surprised, when her messengers have spied your very dreams?"
 
     -- ── Fiends ───────────────────────────────────────────────
     , grp "imp-quasit-servants"
@@ -395,21 +395,21 @@ bundled =
         [ member "Imp" Member 1 2
         , member "Quasit" Member 1 2
         ]
-        |> withLore "Imps and quasits — lowest of devils and demons — sometimes paired as servitors to a more powerful master, or just at large in the world running petty errands."
+        |> withLore "Imps and quasits like a little sport to break up their mundane servitude."
     , grp "devil-patrol"
         "Devil Patrol"
         3
         [ member "Bearded Devil" Member 2 3
         , member "Hell Hound" Pet 1 2
         ]
-        |> withLore "Bearded devils on patrol with hell hounds — disciplined infernal infantry that the lower hierarchy of Hell uses to police its outer marches."
+        |> withLore "Bearded devils and hell hounds form a deadly patrol along the outer rims of their hellish realms."
     , grp "demon-incursion"
         "Demon Incursion"
         2
         [ member "Vrock" Leader 1 2
         , member "Dretch" Minion 4 6
         ]
-        |> withLore "Vrocks lead a swarm of dretches through some torn portal — a demon incursion is mostly a riot, the vrocks barely keeping the dretches pointed in the right direction."
+        |> withLore "Vrocks and their unwilling Dretch recruits swarm forth from their hellish realm in a riot of rage."
     , grp "pit-fiend-retinue"
         "Pit Fiend's Retinue"
         1
