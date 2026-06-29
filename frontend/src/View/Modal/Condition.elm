@@ -114,7 +114,7 @@ standardSection : ConditionUi -> Html Msg
 standardSection ui =
     div [ class "cond-section" ]
         [ h3 [ class "cond-section__heading" ]
-            [ text "Standard 5e Conditions" ]
+            [ text "Select a condition:" ]
         , div [ class "cond-radio-grid" ]
             (List.map (standardRadio ui) Encounter.standardConditions)
         ]
@@ -150,12 +150,12 @@ customSection : ConditionUi -> Html Msg
 customSection ui =
     div [ class "cond-section" ]
         [ h3 [ class "cond-section__heading" ]
-            [ text "or, Custom Name" ]
+            [ text "or, Custom:" ]
         , input
             [ class "cond-input"
             , type_ "text"
             , value ui.customName
-            , placeholder "e.g. Bardic Inspiration, On fire"
+            , placeholder "e.g. Bardic Inspiration, Burning"
             , onInput ConditionCustomNameChanged
             ]
             []
