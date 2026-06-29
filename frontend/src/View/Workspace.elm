@@ -127,6 +127,7 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
         [ div [ class "panel__header panel__header--encounter" ]
             [ View.EncounterBar.view View.EncounterBar.FullBar enc savedAs db xpScope xpFilterOpen ]
         , legendaryActionStrip enc
+        , specialReactionsStrip enc
         , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
@@ -165,6 +166,57 @@ legendaryActionStrip enc =
 
     else
         legendaryActionBanner eligible
+
+
+{-| Sticky orange strip that sits directly under the LA strip.
+Lists every queue member whose compendium source has
+`hasSpecialReactions` flipped on — Hydra, Marilith, Vampire,
+mephits, … — so the GM has a one-line reminder to consult the
+stat block instead of relying on the single-pip UX.
+
+Filters out creatures who literally can't react (down at 0 HP
+or dead). The active creature stays — unlike legendary actions,
+reactions can fire on the creature's own turn (e.g. an OA on
+a fleeing target).
+
+-}
+specialReactionsStrip : Encounter -> Html Msg
+specialReactionsStrip enc =
+    let
+        eligible =
+            List.filter specialReactionsEligible enc.creatures
+    in
+    if List.isEmpty eligible then
+        text ""
+
+    else
+        specialReactionsBanner eligible
+
+
+specialReactionsEligible : Creature -> Bool
+specialReactionsEligible c =
+    let
+        down =
+            c.currentHp == 0 && not c.acceptingDeathSaves
+
+        dead =
+            Encounter.DeathSaves.isDead c.deathSaves
+    in
+    c.hasSpecialReactions && not down && not dead
+
+
+specialReactionsBanner : List Creature -> Html Msg
+specialReactionsBanner creatures =
+    div
+        [ class "legendary-banner legendary-banner--special-reactions"
+        , attribute "role" "note"
+        ]
+        (text "Special reactions: "
+            :: (creatures
+                    |> List.map nameNode
+                    |> List.intersperse (text ", ")
+               )
+        )
 
 
 hasAvailableLegendaryAction : Creature -> Bool
