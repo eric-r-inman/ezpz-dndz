@@ -6052,13 +6052,13 @@ button.creature-card__lifecycle--dead:focus-visible {
      inline <span>s ignore transforms. */
   display: inline-block;
   transform-origin: center;
-  color: #f5c842;
+  color: #2563eb;
   font-weight: 800;
   animation: reaction-special-pulse 1.4s ease-in-out infinite;
 }
 
 [data-theme="dark"] .action-btn--reaction-special .action-btn__icon-prefix {
-  color: #fde68a;
+  color: #7dd3fc;
 }
 
 @keyframes reaction-special-pulse {
