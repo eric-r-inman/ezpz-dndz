@@ -12,13 +12,14 @@ them together with the model fragments each one needs.
 import Card.Layout exposing (CardLayout, QueueView(..))
 import Compendium
 import Effects
-import Encounter exposing (Encounter)
+import Encounter exposing (Creature, Encounter)
 import Encounter.Xp exposing (XpScope)
-import Html exposing (Html, button, div, main_, section, text)
+import Html exposing (Html, button, div, main_, section, span, text)
 import Html.Attributes exposing (attribute, class, id, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
+import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.HpChange exposing (HpEdit)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
@@ -129,9 +130,66 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class gridClass ]
-                (List.map renderCard enc.creatures)
+                (List.concatMap (renderCardWithLaBanner renderCard) enc.creatures)
             , quickAddRow
             ]
+        ]
+
+
+{-| Wrap each card render with an optional Legendary-Action
+banner immediately after it. The banner appears whenever the
+creature has at least one un-spent LA pip; clicking the
+creature name in the banner pins the creature's stat block to
+the right-side panel via `PanelShowCreature`.
+
+Returns a list so the encounter-grid can splice the banner
+inline with the cards without rebuilding the layout structure.
+
+-}
+renderCardWithLaBanner : (Creature -> Html Msg) -> Creature -> List (Html Msg)
+renderCardWithLaBanner renderCard c =
+    let
+        total =
+            c.legendaryActionsCount + c.legendaryActionsLairBonus
+
+        available =
+            total > 0 && Set.size c.legendaryActionsUsed < total
+    in
+    if available then
+        [ renderCard c, legendaryActionBanner c ]
+
+    else
+        [ renderCard c ]
+
+
+legendaryActionBanner : Creature -> Html Msg
+legendaryActionBanner c =
+    let
+        nameSpan =
+            case c.creatureId of
+                Just creatureId ->
+                    button
+                        [ class "legendary-banner__name"
+                        , type_ "button"
+                        , onClick (PanelShowCreature creatureId c.name)
+                        , attribute "title" ("Pin " ++ c.name ++ "'s stat block to the side panel")
+                        , attribute "aria-label"
+                            ("Show stat block for " ++ c.name)
+                        ]
+                        [ text c.name ]
+
+                Nothing ->
+                    -- Placeholder rows have no compendium id to pin,
+                    -- so the name stays plain text.
+                    span [ class "legendary-banner__name legendary-banner__name--plain" ]
+                        [ text c.name ]
+    in
+    div
+        [ class "legendary-banner"
+        , attribute "role" "note"
+        ]
+        [ text "⚜ Legendary Action available: "
+        , nameSpan
         ]
 
 

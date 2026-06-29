@@ -4111,6 +4111,51 @@ body {
    one.  The dashed border + muted background read as "drop a
    thing here" without competing with the loud red/green action
    buttons on the cards themselves. */
+/* Inter-card banner announcing an un-spent Legendary Action.
+   Slots between creature cards in the grid; the name span is
+   a button that pins the creature's stat block to the side
+   panel.  Orange surface so the row reads as a heads-up the
+   GM should act on, distinct from the calm card surface. */
+.legendary-banner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  margin: 2px 0;
+  background: rgba(245, 158, 11, 0.18);
+  border-left: 3px solid var(--color-warning, #f59e0b);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+
+.legendary-banner__name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent, #4a90e2);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legendary-banner__name:hover,
+.legendary-banner__name:focus-visible {
+  filter: brightness(1.1);
+  outline: none;
+}
+
+.legendary-banner__name--plain {
+  color: var(--color-text);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: default;
+}
+
 .add-placeholder-row {
   appearance: none;
   display: flex;
