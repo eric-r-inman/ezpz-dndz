@@ -4271,6 +4271,49 @@ body {
   cursor: default;
 }
 
+/* ── Accessible-theme overrides for the LA + Special reactions strips
+   ─────────────────────────────────────────────────────────────────────
+   The default strip styling assumes Modern's transparent amber surface
+   over a calm card grid.  Under Accessible the muted alpha-orange
+   washes out, the 0.85 rem text shrinks against the 18 px body base,
+   and the medium font weight reads as "decorative" rather than the
+   load-bearing GM heads-up the strip is meant to be.  This block
+   bumps surface contrast, text size + weight, and rail thickness, and
+   gives the Special-reactions strip a distinct blue rail so the two
+   strips remain distinguishable beyond their leading text label
+   (mirrors the bright-blue pulsing `!` pip on creature cards).
+   Dark / Modern themes keep their existing treatment.
+*/
+[data-theme="accessible"] .legendary-banner {
+  /* Solid cream-orange instead of rgba alpha so the surface still
+     reads as warning over Accessible's pure-white body bg.  Black
+     top + bottom borders mirror the heavy-border grouping cues
+     used throughout the Accessible theme; the left rail jumps to
+     5 px to keep the warning-stripe affordance unmissable. */
+  background: #fff4e6;
+  border-top: 1px solid #000000;
+  border-bottom: 1px solid #000000;
+  border-left: 5px solid var(--color-orange-dark, #8a4500);
+  padding: 6px 14px;
+  gap: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+[data-theme="accessible"] .legendary-banner--special-reactions {
+  /* Blue rail (matches the bright-blue special-reaction pip glyph)
+     so the two strips are distinguishable by colour as well as by
+     leading text.  Surface stays cream so the pairing still reads
+     as one "GM heads-up" family. */
+  border-left-color: var(--color-blue, #003c8f);
+}
+
+[data-theme="accessible"] .legendary-banner__name {
+  font-weight: 800;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
 .add-placeholder-row {
   appearance: none;
   display: flex;
