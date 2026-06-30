@@ -72,6 +72,14 @@ view mode enc savedAs db xpScope xpFilterOpen =
                             ]
                             [ text "Difficulty" ]
                         , button
+                            [ class "encounter-bar__icon-btn"
+                            , type_ "button"
+                            , onClick SpellListOpen
+                            , Tooltips.attr Tooltips.encounterBarSpellList
+                            , attribute "aria-label" Tooltips.encounterBarSpellList
+                            ]
+                            [ text "📜" ]
+                        , button
                             [ class "encounter-bar__treasure"
                             , type_ "button"
                             , onClick TreasureOpen

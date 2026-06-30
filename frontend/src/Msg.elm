@@ -1146,6 +1146,11 @@ type Msg
       -- persists with the encounter.
     | TreasureOpen
     | TreasureClose
+      -- 📜 button in the encounter title bar — opens a read-only
+      -- modal listing every queue member's at-will / slot /
+      -- innate spells, grouped by creature.
+    | SpellListOpen
+    | SpellListClose
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

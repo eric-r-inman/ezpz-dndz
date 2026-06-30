@@ -68,6 +68,7 @@ module View.Tooltips exposing
     , diceRollAgain
     , dodging
     , encounterBarDifficulty
+    , encounterBarSpellList
     , encounterBarTreasure
     , fallDamage
     , flyHeightDown
@@ -334,6 +335,11 @@ encounterBarDifficulty =
 encounterBarTreasure : String
 encounterBarTreasure =
     "Roll random treasure for this encounter (SRD individual or hoard tables)"
+
+
+encounterBarSpellList : String
+encounterBarSpellList =
+    "List every spell the creatures in this encounter can cast"
 
 
 halfCover : String

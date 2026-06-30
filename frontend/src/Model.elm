@@ -136,6 +136,11 @@ type Modal
     | ModalRandomEncounter RandomEncounterUi
     | ModalTreasure TreasureUi
     | ModalTreasureTable TreasureTableUi
+      -- Read-only "what spells can these creatures cast?" popup
+      -- triggered by the 📜 button in the encounter title bar.
+      -- No editable state to carry; the view re-renders straight
+      -- from the encounter + compendium on every open.
+    | ModalSpellList
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant

@@ -1703,7 +1703,8 @@ body {
 
 /* ── CR Calculator (encounter-bar entry + modal) ──────────────────────── */
 .encounter-bar__difficulty,
-.encounter-bar__treasure {
+.encounter-bar__treasure,
+.encounter-bar__icon-btn {
   appearance: none;
   background: transparent;
   border: 1px solid var(--color-border);
@@ -1716,10 +1717,20 @@ body {
   cursor: pointer;
 }
 
+.encounter-bar__icon-btn {
+  /* Square-ish icon button (📜) sits next to the text-labelled
+     Difficulty / Treasure buttons; tighter padding keeps the glyph
+     visually centred without inheriting the text-button width. */
+  padding: 2px 8px;
+  line-height: 1.1;
+}
+
 .encounter-bar__difficulty:hover,
 .encounter-bar__difficulty:focus-visible,
 .encounter-bar__treasure:hover,
-.encounter-bar__treasure:focus-visible {
+.encounter-bar__treasure:focus-visible,
+.encounter-bar__icon-btn:hover,
+.encounter-bar__icon-btn:focus-visible {
   border-color: var(--color-accent, #4a90e2);
   color: var(--color-accent, #4a90e2);
 }
@@ -3412,6 +3423,107 @@ body {
 .cr-calc__difficulty--beyond_high {
   border-color: var(--color-danger, #d63b3b);
   background: rgba(214, 59, 59, 0.1);
+}
+
+/* ── Spell List modal ────────────────────────────────────────────────
+   Read-only popup grouping every encounter caster's at-will / per-day /
+   slot spells under their name.  Compact and scannable; the body is
+   the only scrollable region. */
+
+.modal--spell-list {
+  --modal-max-w: 640px;
+}
+
+.spell-list__empty,
+.spell-list__empty-spells {
+  margin: 8px 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.spell-list__caster {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.spell-list__caster:last-child {
+  border-bottom: none;
+}
+
+.spell-list__caster-header {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.spell-list__name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent, #4a90e2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.spell-list__name:hover,
+.spell-list__name:focus-visible {
+  text-decoration: underline;
+}
+
+.spell-list__name--plain {
+  color: var(--color-text);
+}
+
+.spell-list__meta {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.spell-list__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spell-list__group {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) 1fr;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.spell-list__group-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.spell-list__spells {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.spell-list__spell {
+  font-size: 0.9rem;
+}
+
+.spell-list__spell:not(:last-child)::after {
+  content: ",";
+  color: var(--color-text-muted);
 }
 
 /* ── Random Encounter modal ─────────────────────────────────────────

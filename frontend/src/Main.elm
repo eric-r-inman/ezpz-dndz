@@ -113,6 +113,7 @@ import Update.RandomEncounter
 import Update.Save
 import Update.SaveCompendium
 import Update.Shell
+import Update.SpellList
 import Update.Timer
 import Update.Toast
 import Update.Treasure
@@ -150,6 +151,7 @@ import View.Modal.QuickAdd
 import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
+import View.Modal.SpellList
 import View.Modal.Timer
 import View.Modal.Treasure
 import View.Modal.TreasureTable
@@ -1854,6 +1856,12 @@ updateInner msg model =
         TreasureClose ->
             Update.Treasure.close model
 
+        SpellListOpen ->
+            Update.SpellList.open model
+
+        SpellListClose ->
+            Update.SpellList.close model
+
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
 
@@ -2915,6 +2923,7 @@ appShell maybeUser model =
     , View.Modal.RandomEncounter.view model
     , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
+    , View.Modal.SpellList.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
