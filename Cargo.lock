@@ -746,7 +746,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1647,7 +1647,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2046,7 +2046,7 @@ dependencies = [
  "once_cell",
  "socket2 0.6.3",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2324,8 +2324,8 @@ dependencies = [
 
 [[package]]
 name = "rust-template-foundation"
-version = "0.10.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#a4815ecc6b97ff9256d7607f5d86ec792956da14"
+version = "0.21.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#abb6bed0e1be1f9c617f9ba821c037968b875193"
 dependencies = [
  "aide",
  "axum",
@@ -2355,8 +2355,8 @@ dependencies = [
 
 [[package]]
 name = "rust-template-foundation-derive"
-version = "0.10.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#a4815ecc6b97ff9256d7607f5d86ec792956da14"
+version = "0.21.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#abb6bed0e1be1f9c617f9ba821c037968b875193"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2388,7 +2388,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2960,7 +2960,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
