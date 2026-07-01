@@ -11435,12 +11435,12 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* Sub-headings inside an advanced section editor (Legendary
    Options, Spellcasting At Will / Slot-Limited / Innate Per
    Day, etc.).  Smaller and muted so they read as a label, not
-   a section header.  Zero margin lets the parent flex `gap`
-   (8 px) be the sole separator — the previous 6 px `margin-
-   top` stacked on top of the gap and read as "way too much
-   space" between subsections. */
+   a section header.  6 px `margin-top` stacks on the parent
+   flex `gap` (8 px) for a total 14 px of breathing room above
+   — enough that subheadings don't crowd the field / row
+   above them, but not so much that the section looks airy. */
 .edit-subheading {
-  margin: 0;
+  margin: 6px 0 0;
   font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
