@@ -1283,10 +1283,13 @@ spellcastingEditor maybeSc =
                     CompendiumEditSpellcastingAttackBonusChanged
                     (String.fromInt sc.attackBonus)
                 ]
-            , rawTextField "At-Will (comma-separated spells)"
-                CompendiumEditSpellcastingAtWillChanged
-                (String.join ", " sc.atWill)
-            , Html.h4 [ class "edit-subheading" ] [ text "Slot Levels" ]
+            , Html.h4 [ class "edit-subheading" ] [ text "At Will" ]
+            , div [ class "edit-section__list" ]
+                [ rawTextField "Spells (comma-separated)"
+                    CompendiumEditSpellcastingAtWillChanged
+                    (String.join ", " sc.atWill)
+                ]
+            , Html.h4 [ class "edit-subheading" ] [ text "Slot-Limited Spells" ]
             , div [ class "edit-section__list" ]
                 (List.indexedMap spellcastingSlotRow sc.slots)
             , button
