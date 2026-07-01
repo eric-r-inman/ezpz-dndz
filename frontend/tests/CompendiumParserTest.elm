@@ -409,6 +409,88 @@ spellcasting2024ActionSuite =
                             |> Maybe.map .ability
                             |> Expect.equal (Just Compendium.Cha)
                     )
+        , describe "run-on format (no ` - ` bullets, e.g. Death Slaad D&D Beyond paste)"
+            [ let
+                slaadInput =
+                    String.join "\n"
+                        [ "Death Slaad"
+                        , "Medium aberration, chaotic evil"
+                        , "Armor Class 18"
+                        , "Hit Points 170 (20d8 + 80)"
+                        , "Speed 30 ft."
+                        , "STR 18 (+4) DEX 15 (+2) CON 18 (+4) INT 15 (+2) WIS 11 (+0) CHA 15 (+2)"
+                        , "Senses darkvision 60 ft., passive Perception 10"
+                        , "Languages Slaad, telepathy 60 ft."
+                        , "Challenge 10 (5,900 XP)"
+                        , "Actions"
+                        , "Multiattack. The slaad makes three Claw attacks."
+                        , "Spellcasting. The slaad casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 16): At Will: Detect Magic, Detect Thoughts, Invisibility (self only), Mage Hand, Major Image 1/Day Each: Blight (level 8 version), Cloudkill (level 6 version), Fly, Plane Shift, Tongues"
+                        ]
+              in
+              describe "extracts spellcasting from run-on description"
+                [ test "structured spellcasting is populated (not just a text blob)" <|
+                    \_ ->
+                        expectFields slaadInput
+                            (\c ->
+                                case c.spellcasting of
+                                    Just _ ->
+                                        Expect.pass
+
+                                    Nothing ->
+                                        Expect.fail "expected c.spellcasting to be Just, got Nothing"
+                            )
+                , test "at-will spells captured (paren-note preserved)" <|
+                    \_ ->
+                        expectFields slaadInput
+                            (\c ->
+                                c.spellcasting
+                                    |> Maybe.map .atWill
+                                    |> Maybe.withDefault []
+                                    |> Expect.equal
+                                        [ "Detect Magic"
+                                        , "Detect Thoughts"
+                                        , "Invisibility (self only)"
+                                        , "Mage Hand"
+                                        , "Major Image"
+                                        ]
+                            )
+                , test "innate spells captured (`level N version` paren-notes preserved)" <|
+                    \_ ->
+                        expectFields slaadInput
+                            (\c ->
+                                c.spellcasting
+                                    |> Maybe.andThen (List.head << .innatePerDay)
+                                    |> Maybe.map (\g -> ( g.uses, g.spells ))
+                                    |> Expect.equal
+                                        (Just
+                                            ( 1
+                                            , [ "Blight (level 8 version)"
+                                              , "Cloudkill (level 6 version)"
+                                              , "Fly"
+                                              , "Plane Shift"
+                                              , "Tongues"
+                                              ]
+                                            )
+                                        )
+                            )
+                , test "Spellcasting action is consumed off c.actions" <|
+                    \_ ->
+                        expectFields slaadInput
+                            (\c ->
+                                c.actions
+                                    |> List.map .name
+                                    |> Expect.equal [ "Multiattack" ]
+                            )
+                , test "save DC is extracted from surrounding prose" <|
+                    \_ ->
+                        expectFields slaadInput
+                            (\c ->
+                                c.spellcasting
+                                    |> Maybe.map .saveDc
+                                    |> Expect.equal (Just 16)
+                            )
+                ]
+            ]
         ]
 
 
@@ -696,7 +778,7 @@ blueDragonSuite =
                             |> List.map .name
                             |> Expect.equal [ "Legendary Resistance (3/Day, or 4/Day in Lair)" ]
                     )
-        , test "actions: Multiattack, Rend, Lightning Breath, Spellcasting" <|
+        , test "actions: Multiattack, Rend, Lightning Breath (Spellcasting consumed into structured field)" <|
             \_ ->
                 expectFields input
                     (\c ->
@@ -706,8 +788,28 @@ blueDragonSuite =
                                 [ "Multiattack"
                                 , "Rend"
                                 , "Lightning Breath (Recharge 5-6)"
-                                , "Spellcasting"
                                 ]
+                    )
+        , test "Spellcasting action populates structured field with at-will + 1/day spells" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        case c.spellcasting of
+                            Just sc ->
+                                Expect.equal
+                                    { atWill = sc.atWill
+                                    , innatePerDay = List.map (\g -> ( g.uses, g.spells )) sc.innatePerDay
+                                    , saveDc = sc.saveDc
+                                    , ability = sc.ability
+                                    }
+                                    { atWill = [ "Detect Magic", "Invisibility", "Mage Hand", "Shatter" ]
+                                    , innatePerDay = [ ( 1, [ "Scrying", "Sending" ] ) ]
+                                    , saveDc = 18
+                                    , ability = Compendium.Cha
+                                    }
+
+                            Nothing ->
+                                Expect.fail "expected c.spellcasting to be populated by extractSpellcasting"
                     )
         , test "Tail Swipe body does NOT contain the trailing lore prose" <|
             \_ ->

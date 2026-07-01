@@ -3,39 +3,50 @@ module Compendium.SpellcastingText exposing (parse)
 {-| Parse a freeform "Spellcasting" / "Innate Spellcasting"
 description into a structured `Compendium.Spellcasting` record.
 
-The paste-in parser and the encounter-bar spell-list modal both
-need to pull spells out of prose that looks like
+Real-world descriptions arrive in three shapes:
 
-    The djinni casts one of the following spells, using
-    Charisma as the spellcasting ability (spell save DC 17):
+  - **Bulleted, markdown-bold** (2024 MM via 5e-tools):
 
-      - **At Will:** Detect Evil and Good, Detect Magic
-      - **2/Day Each:** Create Food and Water, Tongues
-      - **1/Day Each:** Creation, Gaseous Form
+        ...(spell save DC 17):
 
-or the older 5e slot-based phrasing
+          - **At Will:** Detect Magic
+          - **2/Day Each:** Wind Walk
+          - **1/Day Each:** Plane Shift
 
-    Spellcasting. The archmage is an 18th-level spellcaster.
-    Its spellcasting ability is Intelligence (spell save DC
-    17, +9 to hit with spell attacks). The archmage has the
-    following wizard spells prepared:
+  - **Bulleted, plain text** (older 5e):
 
-      - Cantrips (at will): fire bolt, light, mage hand
-      - 1st level (4 slots): detect magic, magic missile
-      - 2nd level (3 slots): mirror image, misty step
+          - Cantrips (at will): fire bolt, light
+          - 1st level (4 slots): magic missile
+          - 2nd level (3 slots): misty step
 
-The parser strips markdown bold markers (`**`), splits the
-prose on `-` bullets and finds each `Label: spells` chunk,
-then classifies the label as At-Will / N-per-day / cantrip /
-Nth-level slot. Meta (ability, save DC, spell attack bonus)
-is scraped out of whatever prose surrounds the bullets so the
-stat-block header still reads correctly.
+  - **Run-on, no delimiters at all** (some D&D Beyond pastes):
+
+        ...(spell save DC 16): At Will: Detect Magic,
+        Detect Thoughts, Mage Hand, Major Image
+        1/Day Each: Blight, Cloudkill, Fly, Plane Shift
+
+The old bullet-split approach broke on the run-on shape — there
+was no delimiter to split on and everything landed as one blob.
+This module instead **scans the description for label positions
+directly** (`at will:`, `N/day each:`, `Nst level (M slots):`,
+`cantrips (at will):`) and slices the spell text between each
+label's colon and the next label's start. Comma splitting is
+paren-aware so spell notes like `Invisibility (self only)` or
+`Compulsion (concentration, up to 1 minute)` survive intact.
+
+Meta (ability, save DC, spell attack bonus) is scraped out of
+whatever prose sits before the first label so the stat-block
+header still reads correctly.
 
 @docs parse
 
 -}
 
 import Compendium exposing (Ability(..), InnatePerDay, SpellSlotLevel, Spellcasting)
+
+
+
+-- ── Entry ────────────────────────────────────────────────────────
 
 
 {-| Attempt to build a `Spellcasting` record from a description
@@ -51,15 +62,18 @@ parse rawDescription =
                 |> String.replace "\u{000D}" ""
                 |> String.replace "**" ""
 
-        segments =
-            cleaned
-                |> normaliseBullets
-                |> String.split "•SEP•"
-                |> List.map String.trim
-                |> List.filter (not << String.isEmpty)
+        lower =
+            String.toLower cleaned
+
+        hits =
+            allHits lower
+                |> List.sortBy .start
+                |> dedupOverlapping
 
         groups =
-            List.filterMap classifySegment segments
+            hits
+                |> withSpellRanges (String.length cleaned)
+                |> List.filterMap (buildGroup cleaned)
 
         atWill =
             groups |> List.filterMap onlyAtWill |> List.concat
@@ -75,10 +89,10 @@ parse rawDescription =
 
     else
         Just
-            { description = summariseDescription rawDescription
-            , ability = extractAbility rawDescription |> Maybe.withDefault Cha
-            , saveDc = extractSaveDc rawDescription |> Maybe.withDefault 0
-            , attackBonus = extractAttackBonus rawDescription |> Maybe.withDefault 0
+            { description = summariseDescription cleaned (List.head hits |> Maybe.map .start)
+            , ability = extractAbility cleaned |> Maybe.withDefault Cha
+            , saveDc = extractSaveDc cleaned |> Maybe.withDefault 0
+            , attackBonus = extractAttackBonus cleaned |> Maybe.withDefault 0
             , atWill = atWill
             , slots = slots
             , innatePerDay = innate
@@ -86,29 +100,341 @@ parse rawDescription =
 
 
 
--- ── Segment splitting ─────────────────────────────────────────────
+-- ── Label scanning ───────────────────────────────────────────────
 
 
-{-| Replace every bullet-shaped delimiter we know about
-(`-`, `–`, `•`, or the same at line-start) with a stable
-sentinel we can then split on. Bulleted stat blocks arrive
-either newline-separated or (after the paste parser joins body
-lines with spaces) space-separated; either shape produces a
-delimiter we can normalise.
+{-| A recognised spell-group label. `start` is where the label
+text begins in the source string (used to bound the previous
+group's spell range) and `labelEnd` is the position **after**
+the trailing colon (where the spell list starts).
 -}
-normaliseBullets : String -> String
-normaliseBullets s =
-    s
-        |> String.replace "\n- " "•SEP•"
-        |> String.replace "\n– " "•SEP•"
-        |> String.replace "\n• " "•SEP•"
-        |> String.replace " - " "•SEP•"
-        |> String.replace " – " "•SEP•"
-        |> String.replace " • " "•SEP•"
+type alias Hit =
+    { start : Int
+    , labelEnd : Int
+    , kind : LabelKind
+    }
+
+
+type LabelKind
+    = KAtWill
+    | KSlot Int Int
+    | KInnate Int
+
+
+allHits : String -> List Hit
+allHits lower =
+    List.concat
+        [ atWillHits lower
+        , cantripHits lower
+        , slotHits lower
+        , innateHits lower
+        ]
+
+
+{-| Find every `at will:` occurrence — but skip matches that
+sit inside `cantrips (at will):` so we don't emit two hits for
+one label.
+-}
+atWillHits : String -> List Hit
+atWillHits lower =
+    let
+        term =
+            "at will"
+
+        termLen =
+            String.length term
+    in
+    String.indexes term lower
+        |> List.filterMap
+            (\i ->
+                if precededBy "cantrips (" lower i then
+                    Nothing
+
+                else
+                    findColonSkippingSpaces lower (i + termLen)
+                        |> Maybe.map
+                            (\cpos ->
+                                { start = i, labelEnd = cpos + 1, kind = KAtWill }
+                            )
+            )
+
+
+{-| Recognise `Cantrips:` and `Cantrips (at will):` as a
+0th-level slot group so the display path renders them as
+"Cantrips (at will)" uniformly.
+-}
+cantripHits : String -> List Hit
+cantripHits lower =
+    let
+        term =
+            "cantrips"
+
+        termLen =
+            String.length term
+    in
+    String.indexes term lower
+        |> List.filterMap
+            (\i ->
+                let
+                    after =
+                        i + termLen
+                in
+                case cantripLabelEnd lower after of
+                    Just e ->
+                        Just { start = i, labelEnd = e, kind = KSlot 0 0 }
+
+                    Nothing ->
+                        Nothing
+            )
+
+
+cantripLabelEnd : String -> Int -> Maybe Int
+cantripLabelEnd lower pos =
+    case firstColonAt lower pos of
+        Just cpos ->
+            Just (cpos + 1)
+
+        Nothing ->
+            let
+                parenSuffix =
+                    " (at will)"
+            in
+            if String.slice pos (pos + String.length parenSuffix) lower == parenSuffix then
+                case firstColonAt lower (pos + String.length parenSuffix) of
+                    Just cpos ->
+                        Just (cpos + 1)
+
+                    Nothing ->
+                        Nothing
+
+            else
+                Nothing
+
+
+{-| Recognise `Nst level (M slot(s)):` — the classic 5e
+prepared-caster shape. We match on the fixed " level ("
+substring, then walk back for the ordinal + level digits and
+forward for the slot count.
+
+Requires the space before `level` so we don't accidentally match
+`Blight (level 8 version)` in a spell name, where the parenthesis
+sits **before** the word rather than after it.
+
+-}
+slotHits : String -> List Hit
+slotHits lower =
+    let
+        term =
+            " level ("
+    in
+    String.indexes term lower
+        |> List.filterMap (parseSlotHit lower (String.length term))
+
+
+parseSlotHit : String -> Int -> Int -> Maybe Hit
+parseSlotHit lower termLen levelIdx =
+    let
+        ordinalEnd =
+            levelIdx
+
+        ordinalStart =
+            ordinalEnd - 2
+    in
+    if ordinalStart < 1 then
+        Nothing
+
+    else
+        let
+            ordinal =
+                String.slice ordinalStart ordinalEnd lower
+        in
+        if isOrdinalMarker ordinal then
+            let
+                digitEnd =
+                    ordinalStart
+
+                digitStart =
+                    walkBackDigits lower digitEnd
+            in
+            if digitStart == digitEnd then
+                Nothing
+
+            else
+                case String.toInt (String.slice digitStart digitEnd lower) of
+                    Just lv ->
+                        slotBodyAndColon lower (levelIdx + termLen) digitStart lv
+
+                    Nothing ->
+                        Nothing
+
+        else
+            Nothing
+
+
+isOrdinalMarker : String -> Bool
+isOrdinalMarker s =
+    s == "st" || s == "nd" || s == "rd" || s == "th"
+
+
+slotBodyAndColon : String -> Int -> Int -> Int -> Maybe Hit
+slotBodyAndColon lower afterOpenParen labelStart level =
+    let
+        digitEnd =
+            walkForwardDigits lower afterOpenParen
+    in
+    if digitEnd == afterOpenParen then
+        Nothing
+
+    else
+        case String.toInt (String.slice afterOpenParen digitEnd lower) of
+            Just slots ->
+                findFirstIndex ")" lower digitEnd
+                    |> Maybe.andThen (\pcpos -> firstColonAt lower (pcpos + 1))
+                    |> Maybe.map
+                        (\cpos ->
+                            { start = labelStart
+                            , labelEnd = cpos + 1
+                            , kind = KSlot level slots
+                            }
+                        )
+
+            Nothing ->
+                Nothing
+
+
+{-| Recognise `N/day` and `N/day each` — the innate spellcasting
+per-day pool. Both variants map to the same InnatePerDay
+structure since the wire format doesn't distinguish them.
+-}
+innateHits : String -> List Hit
+innateHits lower =
+    let
+        term =
+            "/day"
+
+        termLen =
+            String.length term
+    in
+    String.indexes term lower
+        |> List.filterMap (parseInnateHit lower termLen)
+
+
+parseInnateHit : String -> Int -> Int -> Maybe Hit
+parseInnateHit lower termLen dayIdx =
+    let
+        digitEnd =
+            dayIdx
+
+        digitStart =
+            walkBackDigits lower digitEnd
+    in
+    if digitStart == digitEnd then
+        Nothing
+
+    else
+        case String.toInt (String.slice digitStart digitEnd lower) of
+            Just uses ->
+                let
+                    afterDay =
+                        dayIdx + termLen
+
+                    eachTag =
+                        " each"
+
+                    withEach =
+                        String.slice afterDay (afterDay + String.length eachTag) lower == eachTag
+
+                    afterOptEach =
+                        if withEach then
+                            afterDay + String.length eachTag
+
+                        else
+                            afterDay
+                in
+                firstColonAt lower afterOptEach
+                    |> Maybe.map
+                        (\cpos ->
+                            { start = digitStart
+                            , labelEnd = cpos + 1
+                            , kind = KInnate uses
+                            }
+                        )
+
+            Nothing ->
+                Nothing
 
 
 
--- ── Segment → group classification ────────────────────────────────
+-- ── Post-scan grouping ───────────────────────────────────────────
+
+
+{-| After sorting hits by `.start`, drop any hit whose start
+falls **inside** a previously-kept hit's label range. Guards
+against `at will` matching inside `cantrips (at will):`, and
+against a stray `/day` inside another label's spell body being
+misread as a new group.
+-}
+dedupOverlapping : List Hit -> List Hit
+dedupOverlapping hits =
+    let
+        walk seen remaining =
+            case remaining of
+                [] ->
+                    List.reverse seen
+
+                h :: rest ->
+                    let
+                        overlapsWithSeen =
+                            List.any
+                                (\s ->
+                                    h.start >= s.start && h.start < s.labelEnd
+                                )
+                                seen
+                    in
+                    if overlapsWithSeen then
+                        walk seen rest
+
+                    else
+                        walk (h :: seen) rest
+    in
+    walk [] hits
+
+
+{-| Pair each hit with the position at which its spell list ends
+— which is the next hit's `.start`, or the end of the string
+for the final hit.
+-}
+withSpellRanges : Int -> List Hit -> List ( Hit, Int )
+withSpellRanges totalLen hits =
+    let
+        starts =
+            List.map .start (List.drop 1 hits) ++ [ totalLen ]
+    in
+    List.map2 Tuple.pair hits starts
+
+
+buildGroup : String -> ( Hit, Int ) -> Maybe Group
+buildGroup cleaned ( hit, spellsEnd ) =
+    let
+        rawSpells =
+            String.slice hit.labelEnd spellsEnd cleaned
+
+        spells =
+            parseSpells rawSpells
+    in
+    if List.isEmpty spells then
+        Nothing
+
+    else
+        case hit.kind of
+            KAtWill ->
+                Just (GroupAtWill spells)
+
+            KSlot level slots ->
+                Just (GroupSlot { level = level, slots = slots, spells = spells })
+
+            KInnate uses ->
+                Just (GroupInnate { uses = uses, spells = spells })
 
 
 type Group
@@ -147,138 +473,70 @@ onlySlot g =
             Nothing
 
 
-{-| Parse one bullet segment. Splits on the first `:` (label
-vs. spells) and matches the label against the four known
-patterns — anything else (like the leading prose sentence) is
-skipped by returning `Nothing`.
+
+-- ── Spell list parsing (paren-aware) ─────────────────────────────
+
+
+{-| Split on commas that sit at paren-depth zero, trim, drop
+empties. Trailing bullet markers and terminal punctuation are
+stripped so run-on descriptions ending with "..., Tongues." or
+"..., Fly -" don't leave stray characters on the last spell.
 -}
-classifySegment : String -> Maybe Group
-classifySegment segment =
-    case splitOnFirst ':' segment of
-        Nothing ->
-            Nothing
-
-        Just ( labelRaw, spellsRaw ) ->
-            let
-                label =
-                    labelRaw
-                        |> String.trim
-                        |> String.toLower
-
-                spells =
-                    parseSpells spellsRaw
-            in
-            if List.isEmpty spells then
-                Nothing
-
-            else
-                classifyLabel label spells
-
-
-classifyLabel : String -> List String -> Maybe Group
-classifyLabel label spells =
-    if label == "at will" then
-        Just (GroupAtWill spells)
-
-    else if String.startsWith "cantrips" label then
-        -- "cantrips (at will)" and plain "cantrips" both land here.
-        Just (GroupSlot { level = 0, slots = 0, spells = spells })
-
-    else
-        case parseLevelSlots label of
-            Just ( level, slots ) ->
-                Just (GroupSlot { level = level, slots = slots, spells = spells })
-
-            Nothing ->
-                case parseUsesPerDay label of
-                    Just uses ->
-                        Just (GroupInnate { uses = uses, spells = spells })
-
-                    Nothing ->
-                        Nothing
-
-
-{-| Recognise `Nst level (M slots)` / `Nth level (M slot)` etc.
-Returns `(level, slots)` on match.
--}
-parseLevelSlots : String -> Maybe ( Int, Int )
-parseLevelSlots label =
-    case String.indexes " level" label of
-        [] ->
-            Nothing
-
-        idx :: _ ->
-            let
-                levelPart =
-                    String.left idx label |> String.trim
-
-                level =
-                    readOrdinalPrefix levelPart
-
-                slotsPart =
-                    String.dropLeft (idx + String.length " level") label
-
-                slots =
-                    slotsPart
-                        |> firstIntIn
-                        |> Maybe.withDefault 0
-            in
-            Maybe.map (\l -> ( l, slots )) level
-
-
-{-| Read the leading numeric portion of "1st" / "2nd" / "3rd" /
-"9th" — used to identify the slot level in labels like
-"1st level (4 slots)".
--}
-readOrdinalPrefix : String -> Maybe Int
-readOrdinalPrefix s =
-    s
-        |> String.toList
-        |> takeWhileChars Char.isDigit
-        |> String.fromList
-        |> String.toInt
-
-
-{-| Recognise `N/day` and `N/day each` — returns the count.
-The `each` vs bare form both map to the same InnatePerDay
-structure (there's no separate wire field), but the display
-label in the modal will read "N/day each" so callers preserve
-per-spell semantics visually.
--}
-parseUsesPerDay : String -> Maybe Int
-parseUsesPerDay label =
-    if String.contains "/day" label then
-        firstIntIn label
-
-    else
-        Nothing
-
-
 parseSpells : String -> List String
 parseSpells raw =
     raw
         |> String.replace "*" ""
-        |> String.split ","
+        |> parenAwareCommaSplit
         |> List.map String.trim
-        |> List.map stripTrailingDash
+        |> List.map stripTrailingJunk
         |> List.filter (not << String.isEmpty)
 
 
-{-| Some spell lists have a trailing `-` on the last entry
-because the segment splitter left a stray bullet marker on the
-end. Trim it so we don't render "Plane Shift -".
+{-| Fold across the string tracking parenthesis depth; only
+break on commas that occur at depth zero. Keeps spell notes
+like `Invisibility (self only)` and `Compulsion (concentration,
+up to 1 minute)` intact.
 -}
-stripTrailingDash : String -> String
-stripTrailingDash s =
-    if String.endsWith " -" s then
-        String.dropRight 2 s |> String.trim
+parenAwareCommaSplit : String -> List String
+parenAwareCommaSplit s =
+    let
+        step ch ( depth, current, acc ) =
+            if ch == '(' then
+                ( depth + 1, String.cons ch current, acc )
+
+            else if ch == ')' then
+                ( max 0 (depth - 1), String.cons ch current, acc )
+
+            else if ch == ',' && depth == 0 then
+                ( depth, "", String.reverse current :: acc )
+
+            else
+                ( depth, String.cons ch current, acc )
+
+        ( _, tail, done ) =
+            String.foldl step ( 0, "", [] ) s
+    in
+    List.reverse (String.reverse tail :: done)
+
+
+stripTrailingJunk : String -> String
+stripTrailingJunk s =
+    let
+        stripped =
+            String.trim s
+    in
+    if String.endsWith " -" stripped then
+        stripTrailingJunk (String.dropRight 2 stripped)
+
+    else if String.endsWith "." stripped then
+        stripTrailingJunk (String.dropRight 1 stripped)
 
     else
-        s
+        stripped
 
 
 
--- ── Meta extraction (ability / DC / attack bonus) ─────────────────
+-- ── Meta extraction (ability / DC / attack bonus) ────────────────
 
 
 extractAbility : String -> Maybe Ability
@@ -314,9 +572,6 @@ extractSaveDc src =
     firstIntAfter "save dc" (String.toLower src)
 
 
-{-| Recognise `+N to hit with spell attacks` or `spell attack
-modifier +N` — both phrasings appear in the wild.
--}
 extractAttackBonus : String -> Maybe Int
 extractAttackBonus src =
     let
@@ -331,62 +586,149 @@ extractAttackBonus src =
             firstSignedIntAfter "spell attack modifier" lower
 
 
-{-| Trim the description down to the sentence(s) that come
-before the first bullet — that's the "The X casts... using
-Charisma..." preamble that gives context in the statblock view.
+{-| Trim the description down to the prose that comes **before**
+the first spell label. That leading sentence — "The X casts...
+using Charisma..." — gives the statblock view its context.
 -}
-summariseDescription : String -> String
-summariseDescription raw =
-    let
-        cleaned =
-            raw |> String.replace "\u{000D}" ""
-
-        firstBullet =
-            [ "\n- ", "\n– ", "\n• ", " - ", " – ", " • " ]
-                |> List.filterMap
-                    (\marker ->
-                        case String.indexes marker cleaned of
-                            idx :: _ ->
-                                Just idx
-
-                            [] ->
-                                Nothing
-                    )
-                |> List.minimum
-    in
-    case firstBullet of
+summariseDescription : String -> Maybe Int -> String
+summariseDescription cleaned firstLabelStart =
+    case firstLabelStart of
         Just idx ->
-            String.left idx cleaned |> String.trim
+            String.left idx cleaned
+                |> stripTrailingLabelPreamble
 
         Nothing ->
             String.trim cleaned
+
+
+stripTrailingLabelPreamble : String -> String
+stripTrailingLabelPreamble s =
+    -- Drop the trailing colon + any preceding "as the spellcasting ability
+    -- (spell save DC N):" chunk so the preserved description reads as a
+    -- clean sentence rather than trailing off mid-phrase.
+    s
+        |> String.trim
+        |> chopAtLastOccurrence ":"
+
+
+chopAtLastOccurrence : String -> String -> String
+chopAtLastOccurrence needle haystack =
+    let
+        indexes =
+            String.indexes needle haystack
+    in
+    case List.reverse indexes of
+        idx :: _ ->
+            String.left idx haystack |> String.trim
+
+        [] ->
+            haystack
 
 
 
 -- ── Low-level scanning helpers ───────────────────────────────────
 
 
-splitOnFirst : Char -> String -> Maybe ( String, String )
-splitOnFirst sep s =
-    case String.indexes (String.fromChar sep) s of
-        idx :: _ ->
-            Just
-                ( String.left idx s
-                , String.dropLeft (idx + 1) s
-                )
+{-| Check whether the substring `prefix` ends exactly at
+position `i` in `s`. Used to detect that an `at will` hit is
+inside `cantrips (at will):` and should be skipped.
+-}
+precededBy : String -> String -> Int -> Bool
+precededBy prefix s i =
+    let
+        pstart =
+            i - String.length prefix
+    in
+    pstart >= 0 && String.slice pstart i s == prefix
 
-        [] ->
+
+{-| Find the next `:` starting at `pos`, skipping over any
+zero-or-more space / tab characters. Returns `Nothing` if the
+first non-whitespace char isn't a colon — meaning the label
+we're scanning didn't actually have a colon after it.
+-}
+firstColonAt : String -> Int -> Maybe Int
+firstColonAt s pos =
+    let
+        len =
+            String.length s
+    in
+    if pos >= len then
+        Nothing
+
+    else
+        let
+            c =
+                String.slice pos (pos + 1) s
+        in
+        if c == ":" then
+            Just pos
+
+        else if c == " " || c == "\t" then
+            firstColonAt s (pos + 1)
+
+        else
             Nothing
 
 
-firstIntIn : String -> Maybe Int
-firstIntIn s =
-    s
-        |> String.toList
-        |> dropUntil Char.isDigit
-        |> takeWhileChars Char.isDigit
-        |> String.fromList
-        |> String.toInt
+findColonSkippingSpaces : String -> Int -> Maybe Int
+findColonSkippingSpaces =
+    firstColonAt
+
+
+findFirstIndex : String -> String -> Int -> Maybe Int
+findFirstIndex needle haystack fromPos =
+    String.indexes needle (String.dropLeft fromPos haystack)
+        |> List.head
+        |> Maybe.map (\i -> i + fromPos)
+
+
+walkBackDigits : String -> Int -> Int
+walkBackDigits s end =
+    if end == 0 then
+        0
+
+    else
+        let
+            c =
+                String.slice (end - 1) end s
+        in
+        if isDigitString c then
+            walkBackDigits s (end - 1)
+
+        else
+            end
+
+
+walkForwardDigits : String -> Int -> Int
+walkForwardDigits s start =
+    let
+        len =
+            String.length s
+    in
+    if start >= len then
+        start
+
+    else
+        let
+            c =
+                String.slice start (start + 1) s
+        in
+        if isDigitString c then
+            walkForwardDigits s (start + 1)
+
+        else
+            start
+
+
+isDigitString : String -> Bool
+isDigitString s =
+    case String.uncons s of
+        Just ( ch, _ ) ->
+            Char.isDigit ch
+
+        Nothing ->
+            False
 
 
 firstIntAfter : String -> String -> Maybe Int
@@ -396,8 +738,16 @@ firstIntAfter marker haystack =
             Nothing
 
         idx :: _ ->
-            String.dropLeft (idx + String.length marker) haystack
-                |> firstIntIn
+            let
+                tail =
+                    String.dropLeft (idx + String.length marker) haystack
+            in
+            tail
+                |> String.toList
+                |> dropUntil Char.isDigit
+                |> takeWhileChars Char.isDigit
+                |> String.fromList
+                |> String.toInt
 
 
 firstSignedIntBefore : String -> String -> Maybe Int
