@@ -11454,6 +11454,23 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 6px;
 }
 
+/* At-Will spellcasting subsection: single uppercase heading
+   directly above a bare input.  Merges the previous two-line
+   "AT WILL" heading + "Spells (comma-separated)" field label
+   into one line reading "AT WILL SPELLS (COMMA-SEPARATED)".
+   `margin-top` stacks on the parent flex `gap` so the
+   subsection doesn't crowd the Ability / Save DC row above;
+   negative `margin-bottom` claws back most of the parent gap
+   below so the SLOT-LIMITED SPELLS heading sits close to the
+   input rather than half a line away. */
+.spellcasting-atwill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  margin-bottom: -4px;
+}
+
 /* Two-row legendary-option editor: Name + remove button on the
    top row, indented Description textarea below.  The body
    indent reads the description as a child of the name above it

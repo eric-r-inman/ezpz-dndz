@@ -490,6 +490,41 @@ spellcasting2024ActionSuite =
                                     |> Expect.equal (Just 16)
                             )
                 ]
+            , let
+                -- Bundled Adult Black Dragon description ships with
+                -- literal newlines before the `-` bullet markers:
+                -- "…Acid Arrow\n- **1/Day Each:**…".  The old
+                -- stripTrailingJunk only dropped a `" -"` suffix,
+                -- so the last at-will spell landed as "Acid Arrow\n-"
+                -- and HTML whitespace-collapse displayed it as
+                -- "Acid Arrow -".  Guard against regression.
+                adultBlackDragonInput =
+                    String.join "\n"
+                        [ "Adult Black Dragon"
+                        , "Huge dragon (chromatic), chaotic evil"
+                        , "Armor Class 19"
+                        , "Hit Points 195 (17d12 + 85)"
+                        , "Speed 40 ft."
+                        , "STR 23 (+6) DEX 14 (+2) CON 21 (+5) INT 14 (+2) WIS 13 (+1) CHA 17 (+3)"
+                        , "Senses blindsight 60 ft., darkvision 120 ft., passive Perception 21"
+                        , "Languages Common, Draconic"
+                        , "Challenge 14 (11,500 XP)"
+                        , "Actions"
+                        , "Rend. Melee Attack Roll: +11. Hit: 13 Slashing damage."
+                        , "Spellcasting. The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 17, +9 to hit with spell attacks):\n\n- **At Will:** Detect Magic, Fear, Acid Arrow\n- **1/Day Each:** Speak with Dead, Vitriolic Sphere"
+                        ]
+              in
+              describe "trailing `- ` bullet from following group is stripped off the last spell"
+                [ test "no `Acid Arrow -` (newline-dash tail eaten)" <|
+                    \_ ->
+                        expectFields adultBlackDragonInput
+                            (\c ->
+                                c.spellcasting
+                                    |> Maybe.map .atWill
+                                    |> Expect.equal
+                                        (Just [ "Detect Magic", "Fear", "Acid Arrow" ])
+                            )
+                ]
             ]
         ]
 

@@ -519,20 +519,35 @@ parenAwareCommaSplit s =
     List.reverse (String.reverse tail :: done)
 
 
+{-| Iteratively strip trailing whitespace then trailing `-` or
+`.` off a spell name. Some descriptions leave a bullet-marker
+tail on the last spell of a group ("…, Acid Arrow\\n- **1/Day
+Each:**…"): after slicing, the last entry lands as `Acid
+Arrow\n-`, which HTML whitespace-collapse renders as
+"Acid Arrow -". Trimming right, dropping the trailing `-`,
+and re-trimming eats the newline too so the spell reads
+cleanly as "Acid Arrow".
+
+We only strip `-` and `.` — the two junk characters real
+spells never end with — so a spell name like "1st-level
+Chuck" (hypothetical) isn't over-stripped.
+
+-}
 stripTrailingJunk : String -> String
 stripTrailingJunk s =
     let
         stripped =
-            String.trim s
+            String.trimRight s
     in
-    if String.endsWith " -" stripped then
-        stripTrailingJunk (String.dropRight 2 stripped)
+    case String.right 1 stripped of
+        "-" ->
+            stripTrailingJunk (String.dropRight 1 stripped)
 
-    else if String.endsWith "." stripped then
-        stripTrailingJunk (String.dropRight 1 stripped)
+        "." ->
+            stripTrailingJunk (String.dropRight 1 stripped)
 
-    else
-        stripped
+        _ ->
+            stripped
 
 
 
