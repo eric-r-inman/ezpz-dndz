@@ -43,6 +43,7 @@ nothing is lost — they just don't get structured.
 -}
 
 import Compendium
+import Compendium.SpellcastingText
 
 
 {-| Errors the parser surfaces. The two early-failure cases catch
@@ -72,8 +73,140 @@ parseStatBlock raw =
                 |> walk rest
                 |> commitFeature
                 |> .creature
+                |> extractSpellcasting
                 |> autoFlagSpecialReactions
                 |> Ok
+
+
+{-| Post-process pass: pull any "Spellcasting" / "Innate
+Spellcasting" feature out of the actions / bonus-actions /
+traits list (or the customSections dumping-ground used by the
+old section-header path) and populate the structured
+`.spellcasting` field.
+
+Pasted stat blocks from the 2024 MM print spellcasting as an
+Action whose description carries `**At Will:** …` / `**N/Day
+Each:** …` bullets; older 5e blocks put it under a
+`Spellcasting` section header, which our parser used to dump
+into customSections. Either way, `.spellcasting` stayed
+`Nothing` and the spell-list modal + statblock view had to fall
+back to freeform text. This pass normalises both shapes so
+downstream code can rely on the structured field.
+
+Leaves an existing `.spellcasting` alone (idempotent) and skips
+if no recognised feature is found or the description can't be
+classified into any spell group.
+
+-}
+extractSpellcasting : Compendium.Creature -> Compendium.Creature
+extractSpellcasting c =
+    case c.spellcasting of
+        Just _ ->
+            c
+
+        Nothing ->
+            case findSpellcastingFeature c of
+                Nothing ->
+                    c
+
+                Just source ->
+                    case Compendium.SpellcastingText.parse source.description of
+                        Nothing ->
+                            c
+
+                        Just sc ->
+                            removeSpellcastingSource source
+                                { c | spellcasting = Just sc }
+
+
+type SpellcastingSource
+    = SourceAction String
+    | SourceBonusAction String
+    | SourceTrait String
+    | SourceCustomSection String
+
+
+{-| Bundle of `description` (the text we feed the parser) plus a
+tag identifying which list to strip the source entry from once
+we've extracted the structured spellcasting.
+-}
+type alias SpellcastingSourceRef =
+    { source : SpellcastingSource
+    , description : String
+    }
+
+
+findSpellcastingFeature : Compendium.Creature -> Maybe SpellcastingSourceRef
+findSpellcastingFeature c =
+    let
+        pickFeature tag list =
+            list
+                |> List.filter (\f -> isSpellcastingFeatureName f.name)
+                |> List.head
+                |> Maybe.map
+                    (\f ->
+                        { source = tag f.name
+                        , description = f.description
+                        }
+                    )
+
+        pickCustom =
+            c.customSections
+                |> List.filter (\s -> isSpellcastingSectionName s.name)
+                |> List.head
+                |> Maybe.map
+                    (\s ->
+                        { source = SourceCustomSection s.name
+                        , description = s.body
+                        }
+                    )
+    in
+    -- Priority order matters if a stat block accidentally
+    -- carries both an Action-level "Spellcasting" AND a section
+    -- dump; the Action is the newer 2024 MM shape and wins.
+    pickFeature SourceAction c.actions
+        |> orElseLazy (\() -> pickFeature SourceBonusAction c.bonusActions)
+        |> orElseLazy (\() -> pickFeature SourceTrait c.traits)
+        |> orElseLazy (\() -> pickCustom)
+
+
+isSpellcastingFeatureName : String -> Bool
+isSpellcastingFeatureName name =
+    let
+        n =
+            String.toLower (String.trim name)
+    in
+    -- Match "Spellcasting", "Innate Spellcasting", and variants
+    -- like "Spellcasting (Psionics)" without hard-coding the
+    -- full grammar.  The check is intentionally loose because
+    -- pastes from D&D Beyond / 5e-tools regularly ship slight
+    -- name variations.
+    String.contains "spellcasting" n
+
+
+isSpellcastingSectionName : String -> Bool
+isSpellcastingSectionName name =
+    let
+        n =
+            String.toLower (String.trim name)
+    in
+    String.startsWith "spellcasting" n
+
+
+removeSpellcastingSource : SpellcastingSourceRef -> Compendium.Creature -> Compendium.Creature
+removeSpellcastingSource ref c =
+    case ref.source of
+        SourceAction name ->
+            { c | actions = List.filter (\f -> f.name /= name) c.actions }
+
+        SourceBonusAction name ->
+            { c | bonusActions = List.filter (\f -> f.name /= name) c.bonusActions }
+
+        SourceTrait name ->
+            { c | traits = List.filter (\f -> f.name /= name) c.traits }
+
+        SourceCustomSection name ->
+            { c | customSections = List.filter (\s -> s.name /= name) c.customSections }
 
 
 {-| Post-process pass: scan the parsed creature's traits +

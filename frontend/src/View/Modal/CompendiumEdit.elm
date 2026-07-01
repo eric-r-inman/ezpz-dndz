@@ -138,6 +138,8 @@ view model =
                         (featuresEditor TraitsGroup ui.traits)
                     , editSection "Actions"
                         (featuresEditor ActionsGroup ui.actions)
+                    , editSection "Spellcasting"
+                        (spellcastingEditor ui.spellcasting)
                     , editSection "Bonus Actions"
                         (featuresEditor BonusActionsGroup ui.bonusActions)
                     , editSection "Reactions"
@@ -156,8 +158,6 @@ view model =
                         (lairEditor ui.lairActions)
                     , editSection "Regional Effects"
                         (regionalEditor ui.regionalEffects)
-                    , editSection "Spellcasting"
-                        (spellcastingEditor ui.spellcasting)
                     , editSection "Habitats"
                         [ habitatPicker "Material Plane"
                             (List.filter (not << Compendium.isPlanarHabitat) Compendium.allHabitats)

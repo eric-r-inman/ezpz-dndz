@@ -18,6 +18,7 @@ suite =
         , dragonSuite
         , humanoidNpcSuite
         , spellcasterSuite
+        , spellcasting2024ActionSuite
         , conditionImmunitiesSuite
         , minimalSuite
         , blueDragonSuite
@@ -321,6 +322,92 @@ spellcasterSuite =
                         c.customSections
                             |> List.map .name
                             |> Expect.equal [ "Spellcasting: Cantrips" ]
+                    )
+        ]
+
+
+spellcasting2024ActionSuite : Test
+spellcasting2024ActionSuite =
+    let
+        input =
+            String.join "\n"
+                [ "Djinni"
+                , "Large elemental, chaotic good"
+                , "Armor Class 17"
+                , "Hit Points 218 (19d10 + 114)"
+                , "Speed 30 ft."
+                , "STR 21 (+5) DEX 15 (+2) CON 22 (+6) INT 15 (+2) WIS 16 (+3) CHA 20 (+5)"
+                , "Senses darkvision 120 ft., passive Perception 13"
+                , "Languages Primordial (Auran)"
+                , "Challenge 11 (7,200 XP)"
+                , "Actions"
+                , "Storm Blade. Melee Attack Roll: +9, reach 5 feet. Hit: 12 (2d6 + 5) Slashing damage."
+                , "Spellcasting. The djinni casts one of the following spells, using Charisma as the spellcasting ability (spell save DC 17):"
+                , " - **At Will:** Detect Evil and Good, Detect Magic"
+                , " - **2/Day Each:** Create Food and Water, Tongues, Wind Walk"
+                , " - **1/Day Each:** Creation, Gaseous Form, Invisibility, Major Image, Plane Shift"
+                ]
+    in
+    describe "Djinni (2024 MM Spellcasting action → structured field)"
+        [ test "parses without error" <|
+            \_ -> expectOk input
+        , test "Storm Blade stays as an action" <|
+            \_ ->
+                expectFields input
+                    (\c -> c.actions |> List.map .name |> Expect.equal [ "Storm Blade" ])
+        , test "Spellcasting action is consumed (not left in actions)" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.actions
+                            |> List.any (\a -> a.name == "Spellcasting")
+                            |> Expect.equal False
+                    )
+        , test "spellcasting field is populated" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        case c.spellcasting of
+                            Just _ ->
+                                Expect.pass
+
+                            Nothing ->
+                                Expect.fail "expected c.spellcasting to be Just, got Nothing"
+                    )
+        , test "at-will spells captured" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.spellcasting
+                            |> Maybe.map .atWill
+                            |> Maybe.withDefault []
+                            |> Expect.equal [ "Detect Evil and Good", "Detect Magic" ]
+                    )
+        , test "innate per-day groups captured" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.spellcasting
+                            |> Maybe.map .innatePerDay
+                            |> Maybe.withDefault []
+                            |> List.map (\g -> ( g.uses, List.length g.spells ))
+                            |> Expect.equal [ ( 2, 3 ), ( 1, 5 ) ]
+                    )
+        , test "save DC extracted from prose" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.spellcasting
+                            |> Maybe.map .saveDc
+                            |> Expect.equal (Just 17)
+                    )
+        , test "ability extracted from prose" <|
+            \_ ->
+                expectFields input
+                    (\c ->
+                        c.spellcasting
+                            |> Maybe.map .ability
+                            |> Expect.equal (Just Compendium.Cha)
                     )
         ]
 
