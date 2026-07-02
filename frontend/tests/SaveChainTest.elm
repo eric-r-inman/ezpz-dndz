@@ -43,7 +43,7 @@ emptyDetectorSuite =
                     fail =
                         base.onFail
                 in
-                { base | onFail = { fail | hp = DealDamage 8 } }
+                { base | onFail = { fail | hp = DealDamage "8" } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal False
         , test "false when the fail side applies a condition" <|

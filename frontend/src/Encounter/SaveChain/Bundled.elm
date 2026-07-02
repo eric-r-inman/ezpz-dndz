@@ -23,9 +23,13 @@ build on their own within a session or two:
     only preset that lights up both outcome fields on fail,
     proving the composition works.
 
-Damage numbers are the 5e-stat-block averages (`(N × avg
-per die)`, rounded). GMs who prefer to roll can edit the
-loaded chain in place; the amounts are placeholders.
+Damage amounts are the canonical dice formulas from the
+spell text (`8d6` for Fireball, `1d8` for Sacred Flame,
+etc.). The modal parses each formula at apply time and
+rolls it once, applying the shared total to every selected
+target (5e AoE convention). GMs who prefer flat averages
+can edit the loaded chain in place — a plain integer
+applies directly with no roll.
 
 Seeding fires from `Main.init` when the
 `localSaveChainPresets` boot flag is `Nothing` — the same
@@ -67,7 +71,7 @@ sacredFlame =
     { name = "Sacred Flame (cantrip)"
     , saveAbility = Dex
     , saveDc = Nothing
-    , onFail = damageOnly (DealDamage 4) -- 1d8 radiant avg
+    , onFail = damageOnly (DealDamage "1d8") -- radiant
     , onSuccess = noEffect
     }
 
@@ -77,7 +81,7 @@ poisonSpray =
     { name = "Poison Spray (cantrip)"
     , saveAbility = Con
     , saveDc = Nothing
-    , onFail = damageOnly (DealDamage 6) -- 1d12 poison avg
+    , onFail = damageOnly (DealDamage "1d12") -- poison
     , onSuccess = noEffect
     }
 
@@ -91,7 +95,7 @@ burningHands =
     { name = "Burning Hands (1st)"
     , saveAbility = Dex
     , saveDc = Nothing
-    , onFail = damageOnly (DealDamage 11) -- 3d6 fire avg
+    , onFail = damageOnly (DealDamage "3d6") -- fire
     , onSuccess = damageOnly HalfFailDamage
     }
 
@@ -101,7 +105,7 @@ fireball =
     { name = "Fireball (3rd)"
     , saveAbility = Dex
     , saveDc = Nothing
-    , onFail = damageOnly (DealDamage 28) -- 8d6 fire avg
+    , onFail = damageOnly (DealDamage "8d6") -- fire
     , onSuccess = damageOnly HalfFailDamage
     }
 
@@ -111,7 +115,7 @@ coneOfCold =
     { name = "Cone of Cold (5th)"
     , saveAbility = Con
     , saveDc = Nothing
-    , onFail = damageOnly (DealDamage 36) -- 8d8 cold avg
+    , onFail = damageOnly (DealDamage "8d8") -- cold
     , onSuccess = damageOnly HalfFailDamage
     }
 
@@ -173,7 +177,7 @@ phantasmalKiller =
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
-        { hp = DealDamage 22 -- 4d10 psychic avg
+        { hp = DealDamage "4d10" -- psychic
         , conditionName = "Frightened"
         , conditionNote = "Save at end of turn; on fail, take 4d10 psychic again; on success, spell ends"
         }

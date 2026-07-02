@@ -126,11 +126,11 @@ outcomeToForm o =
     { hpKind = o.hp
     , hpAmountText =
         case o.hp of
-            DealDamage n ->
-                String.fromInt n
+            DealDamage s ->
+                s
 
-            HealFor n ->
-                String.fromInt n
+            HealFor s ->
+                s
 
             _ ->
                 ""
@@ -157,8 +157,8 @@ toChain ui =
 formToOutcome : OutcomeForm -> SaveOutcome
 formToOutcome f =
     let
-        amount =
-            String.toInt (String.trim f.hpAmountText) |> Maybe.withDefault 0
+        raw =
+            String.trim f.hpAmountText
 
         hp =
             case f.hpKind of
@@ -166,10 +166,10 @@ formToOutcome f =
                     NoHpEffect
 
                 DealDamage _ ->
-                    DealDamage amount
+                    DealDamage raw
 
                 HealFor _ ->
-                    HealFor amount
+                    HealFor raw
 
                 HalfFailDamage ->
                     HalfFailDamage

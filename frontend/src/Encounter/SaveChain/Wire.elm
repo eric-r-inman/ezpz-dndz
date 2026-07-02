@@ -111,11 +111,11 @@ encodeHpEffect h =
         NoHpEffect ->
             E.object [ ( "kind", E.string "none" ) ]
 
-        DealDamage n ->
-            E.object [ ( "kind", E.string "damage" ), ( "amount", E.int n ) ]
+        DealDamage s ->
+            E.object [ ( "kind", E.string "damage" ), ( "amount", E.string s ) ]
 
-        HealFor n ->
-            E.object [ ( "kind", E.string "heal" ), ( "amount", E.int n ) ]
+        HealFor s ->
+            E.object [ ( "kind", E.string "heal" ), ( "amount", E.string s ) ]
 
         HalfFailDamage ->
             E.object [ ( "kind", E.string "half_fail" ) ]
@@ -128,10 +128,10 @@ hpEffectDecoder =
             (\kind ->
                 case kind of
                     "damage" ->
-                        D.field "amount" D.int |> D.map DealDamage
+                        D.field "amount" amountDecoder |> D.map DealDamage
 
                     "heal" ->
-                        D.field "amount" D.int |> D.map HealFor
+                        D.field "amount" amountDecoder |> D.map HealFor
 
                     "half_fail" ->
                         D.succeed HalfFailDamage
@@ -139,6 +139,20 @@ hpEffectDecoder =
                     _ ->
                         D.succeed NoHpEffect
             )
+
+
+{-| Accept either a JSON string (`"8d6"`) or a JSON int
+(`28`) for the amount field. The int path keeps
+backward-compat with the previous wire format so any preset
+already in a user's `localStorage.saveChainPresets` still
+loads cleanly after the string-amount migration.
+-}
+amountDecoder : D.Decoder String
+amountDecoder =
+    D.oneOf
+        [ D.string
+        , D.int |> D.map String.fromInt
+        ]
 
 
 

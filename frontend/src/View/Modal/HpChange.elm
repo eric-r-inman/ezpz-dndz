@@ -3,13 +3,16 @@ module View.Modal.HpChange exposing (view)
 {-| Manage HP modal — one entry point handling Damage, Heal,
 Temp HP, and +Max HP.
 
-Previously we had three near-identical modals opened by three
-separate card buttons. Consolidating: the card now has one
-"Manage HP" button that opens this modal, and the four verb-
-buttons in the footer decide which arithmetic to apply. The
-ignoreTemp checkbox stays visible for all verbs (it's only
-consulted when Damage is clicked) so the GM doesn't have to
-switch modes just to pre-set the flag.
+Single smart amount input: type a plain integer (`8`) to
+apply that value directly, or a dice formula (`2d6+3`) to
+roll and apply the total. Parse errors surface inline
+underneath the input. No mode toggle — the input decides
+which path to take when the GM clicks one of the four
+verbs.
+
+The `Ignore temporary HP` checkbox stays visible for all
+verbs (it's only consulted when Damage is clicked) so the
+GM doesn't have to swap modes just to pre-set the flag.
 
 -}
 
@@ -21,8 +24,7 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg
     exposing
-        ( HpInputMode(..)
-        , HpKind(..)
+        ( HpKind(..)
         , Msg(..)
         )
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
@@ -42,8 +44,8 @@ view model =
                 , extraClass = "modal--hp-change"
                 , chrome = model.modalChrome
                 , body =
-                    [ modeToggle ui
-                    , amount ui
+                    [ amount ui
+                    , parseErrorHint ui
                     , ignoreTempToggle ui
                     , applyScope ui model.encounter
                     , actionButtons
@@ -55,84 +57,46 @@ view model =
             text ""
 
 
-modeToggle : HpChangeUi -> Html Msg
-modeToggle ui =
-    div [ class "hp-change__mode" ]
-        [ modeRadio "Manual" (ui.mode == ManualMode) (HpChangeModeSet ManualMode)
-        , modeRadio "Roll dice" (ui.mode == DiceMode) (HpChangeModeSet DiceMode)
-        ]
-
-
-modeRadio : String -> Bool -> Msg -> Html Msg
-modeRadio label isOn msg =
-    button
-        [ class
-            (if isOn then
-                "hp-change__mode-btn hp-change__mode-btn--active"
-
-             else
-                "hp-change__mode-btn"
-            )
-        , onClick msg
-        , attribute "aria-pressed"
-            (if isOn then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ text label ]
-
-
-{-| Amount input — number in manual mode, dice-expression text
-in dice mode. Enter-key press commits as `DamageKind` because
-the modal now has four commit paths; Enter isn't safely
-overloadable across all of them. GMs who want Heal / Temp HP /
-+Max HP click the corresponding footer button instead.
+{-| Single amount input. Enter-key commits as `DamageKind`
+because the modal has four commit paths; Enter isn't safely
+overloadable across all of them. GMs who want Heal / Temp HP
+/ +Max HP click the corresponding footer button. Placeholder
+hint spells out both accepted formats so first-time users
+don't have to guess.
 -}
 amount : HpChangeUi -> Html Msg
 amount ui =
-    case ui.mode of
-        ManualMode ->
-            div [ class "hp-change__row" ]
-                [ Html.label [ for "hp-amount" ] [ text "Amount" ]
-                , input
-                    [ id "hp-amount"
-                    , class "hp-change__input"
-                    , type_ "number"
-                    , Attr.min "0"
-                    , Attr.max "999"
-                    , value ui.amountText
-                    , onInput HpChangeAmountChanged
-                    , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
-                    ]
-                    []
-                ]
+    div [ class "hp-change__row" ]
+        [ Html.label [ for "hp-amount" ] [ text "Amount" ]
+        , input
+            [ id "hp-amount"
+            , class "hp-change__input"
+            , type_ "text"
+            , placeholder "12 or 2d6+3"
+            , value ui.amountText
+            , onInput HpChangeAmountChanged
+            , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
+            ]
+            []
+        , div [ class "hp-change__caption" ]
+            [ text "Enter a number, or a dice formula to roll." ]
+        ]
 
-        DiceMode ->
-            div []
-                [ div [ class "hp-change__row" ]
-                    [ Html.label [ for "hp-expression" ] [ text "Expression" ]
-                    , input
-                        [ id "hp-expression"
-                        , class "hp-change__input"
-                        , type_ "text"
-                        , placeholder "e.g. 2d6+3"
-                        , value ui.expression
-                        , onInput HpChangeExpressionChanged
-                        , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
-                        ]
-                        []
-                    ]
-                , case ui.parseError of
-                    Just (Dice.ParseError raw) ->
-                        div [ class "hp-change__error" ]
-                            [ text ("Couldn't parse: " ++ raw) ]
 
-                    Nothing ->
-                        text ""
-                ]
+{-| Inline parse-error hint. Only rendered when the amount
+input isn't parseable as either an integer or a dice
+expression — matches the previous dice-mode error banner but
+in the single-input form.
+-}
+parseErrorHint : HpChangeUi -> Html Msg
+parseErrorHint ui =
+    case ui.parseError of
+        Just (Dice.ParseError raw) ->
+            div [ class "hp-change__error" ]
+                [ text ("Couldn't parse: " ++ raw) ]
+
+        Nothing ->
+            text ""
 
 
 {-| Ignore-temp-HP toggle. Always visible — GMs pre-checking
@@ -162,11 +126,6 @@ ignoreTempToggle ui =
 creatures are selected — there's no useful "apply to all selected"
 when there's no selection. When at least one is selected, renders
 the toggle plus a count hint so the GM knows the blast radius.
-
-Dice mode comes with an inline note explaining that all selected
-creatures share the same rolled total (the 5e Fireball
-single-roll-per-AOE convention).
-
 -}
 applyScope : HpChangeUi -> Encounter -> Html Msg
 applyScope ui enc =
@@ -192,22 +151,14 @@ applyScope ui enc =
                         ++ ")"
                     )
                 ]
-            , if ui.applyToSelected && ui.mode == DiceMode then
-                div [ class "hp-change__caption" ]
-                    [ text "All selected creatures take the same rolled total (one roll, shared across the AOE)." ]
-
-              else
-                text ""
+            , div [ class "hp-change__caption" ]
+                [ text "Rolled amounts apply the same total to every selected creature (5e AoE convention)." ]
             ]
 
 
-{-| Four action buttons under the amount input — each commits
-the current amount / expression using that verb, then closes.
-No Cancel button; the modal's × in the top-right header
-closes without applying, so the footer stays focused on the
-four verbs. Each verb is colour-coded to match the existing
-damage / heal / temp affordances so the GM's muscle memory
-carries over from the old three-button card row.
+{-| Four action buttons — each commits the current amount
+using that verb, then closes. Each verb is colour-coded to
+match the existing damage / heal / temp affordances.
 -}
 actionButtons : Html Msg
 actionButtons =

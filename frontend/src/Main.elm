@@ -46,7 +46,6 @@ import Msg
         , DurationKind(..)
         , FeatureGroup(..)
         , HpField(..)
-        , HpInputMode(..)
         , HpKind(..)
         , MeInfo
         , MeStatus(..)
@@ -1274,14 +1273,8 @@ updateInner msg model =
         HpChangeClose ->
             Update.HpChange.close model
 
-        HpChangeModeSet mode ->
-            Update.HpChange.modeSet mode model
-
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model
-
-        HpChangeExpressionChanged text ->
-            Update.HpChange.expressionChanged text model
 
         HpChangeIgnoreTempToggle ->
             Update.HpChange.ignoreTempToggle model
@@ -1352,6 +1345,9 @@ updateInner msg model =
 
         SaveChainApplyPass ->
             Update.SaveChain.applyPass model
+
+        SaveChainApplyRollLanded side roll ->
+            Update.SaveChain.applyRollLanded side roll model
 
         HpEditStart name field current ->
             Update.HpChange.editStart name field current model

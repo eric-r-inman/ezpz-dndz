@@ -1,7 +1,8 @@
 module Encounter.SaveChain exposing
     ( SaveChain, SaveOutcome, HpEffect(..)
     , empty, isEffectivelyEmpty
-    , applyOutcome, halfFailDamage
+    , applyResolvedHp, applyCondition, halfFailDamage
+    , rawAmount
     )
 
 {-| Save Chain: a reusable "creature makes a save; something
@@ -17,19 +18,26 @@ damage, heal, or apply a condition — any combination, including
 none-at-all which just marks a "the save happened but nothing
 came of it" beat.
 
-The `HpEffect.HalfFailDamage` variant is a run-time computation
-hint: on the success side, the GM often wants "half of what the
-fail would have dealt". `applyOutcome` resolves it against the
-fail amount at apply time so the preset stays a static recipe.
+Damage / heal amounts are stored as raw text (`String`) so a
+GM can save a preset with either a fixed value (`"28"`) or a
+dice formula (`"8d6"`). The Update layer resolves the text at
+apply time — an integer applies directly, a dice formula rolls
+first and the total lands via `SaveChainApplyRollLanded`.
+
+The `HpEffect.HalfFailDamage` variant is a success-side hint:
+resolve the fail's raw text (rolling if it's a formula), then
+halve the resulting integer. Independent from any prior Fail
+apply so a GM can click Pass without having clicked Fail first.
 
 @docs SaveChain, SaveOutcome, HpEffect
 @docs empty, isEffectivelyEmpty
-@docs applyOutcome, halfFailDamage
+@docs applyResolvedHp, applyCondition, halfFailDamage
+@docs rawAmount
 
 -}
 
 import Compendium exposing (Ability(..))
-import Encounter exposing (Creature)
+import Encounter
 import HpChange
 
 
@@ -68,16 +76,19 @@ type alias SaveOutcome =
 {-| HP side of an outcome. `NoHpEffect` is the default — most
 condition-apply chains don't touch HP at all.
 
-`HalfFailDamage` is a success-side sentinel: the GM sets it on
-the success outcome when the spell reads "half damage on
-success"; `applyOutcome` computes the actual amount from the
-fail's amount at apply time.
+`DealDamage` and `HealFor` carry the raw text the GM typed:
+either a plain integer (`"28"`) applied as-is, or a dice
+formula (`"8d6"`) rolled at apply time.
+
+`HalfFailDamage` is a success-side sentinel — the Update layer
+resolves the fail's raw text (rolling if it's a formula) and
+halves the resulting integer.
 
 -}
 type HpEffect
     = NoHpEffect
-    | DealDamage Int
-    | HealFor Int
+    | DealDamage String
+    | HealFor String
     | HalfFailDamage
 
 
@@ -115,68 +126,88 @@ isEffectivelyEmpty chain =
 
 isOutcomeEmpty : SaveOutcome -> Bool
 isOutcomeEmpty o =
-    o.hp == NoHpEffect && String.isEmpty (String.trim o.conditionName)
+    hpEffectIsEmpty o.hp && String.isEmpty (String.trim o.conditionName)
 
 
-{-| Apply an outcome to a creature. Composes the HP change
-(via the shared `HpChange` engine so bloodied recomputation +
-death-save clearing behave identically to the Manage HP modal)
-with the condition apply.
+hpEffectIsEmpty : HpEffect -> Bool
+hpEffectIsEmpty h =
+    case h of
+        NoHpEffect ->
+            True
 
-`applyOutcome fail failAmount outcome creature` — for the
-success side, pass the fail amount so `HalfFailDamage` can
-compute correctly. For the fail side, `HalfFailDamage` is
-inapplicable (falls through as no-op).
+        DealDamage s ->
+            String.isEmpty (String.trim s)
+
+        HealFor s ->
+            String.isEmpty (String.trim s)
+
+        HalfFailDamage ->
+            False
+
+
+{-| Extract the raw amount text (or `""`) for the parse-and-
+resolve step in the Update layer.
+-}
+rawAmount : HpEffect -> String
+rawAmount h =
+    case h of
+        NoHpEffect ->
+            ""
+
+        DealDamage s ->
+            s
+
+        HealFor s ->
+            s
+
+        HalfFailDamage ->
+            ""
+
+
+{-| Apply an already-resolved HP amount to a target creature.
+The Update layer parses `outcome.hp`'s raw text (rolling if
+it's a dice formula), then hands the resulting integer here.
+Composes through the shared `HpChange` engine so bloodied
+recomputation + death-save clearing behave identically to the
+Manage HP modal.
+
+`NoHpEffect` is a no-op. `HalfFailDamage` is treated the same
+as `DealDamage` (both apply damage); the caller has already
+halved the fail amount by the time it lands here.
 
 -}
-applyOutcome :
-    { failAmount : Int }
-    -> SaveOutcome
-    -> Encounter.Encounter
+applyResolvedHp :
+    HpEffect
+    -> Int
     -> String
     -> Encounter.Encounter
-applyOutcome ctx outcome enc target =
-    enc
-        |> applyHp ctx outcome target
-        |> applyCondition outcome target
-
-
-applyHp : { failAmount : Int } -> SaveOutcome -> String -> Encounter.Encounter -> Encounter.Encounter
-applyHp { failAmount } outcome target enc =
-    case outcome.hp of
+    -> Encounter.Encounter
+applyResolvedHp hp amount target enc =
+    case hp of
         NoHpEffect ->
             enc
 
-        DealDamage n ->
+        HealFor _ ->
             Encounter.mapCreature target
-                (HpChange.apply (HpChange.Damage { amount = n, ignoreTemp = False }))
+                (HpChange.apply (HpChange.Heal amount))
                 enc
 
-        HealFor n ->
+        DealDamage _ ->
             Encounter.mapCreature target
-                (HpChange.apply (HpChange.Heal n))
+                (HpChange.apply (HpChange.Damage { amount = amount, ignoreTemp = False }))
                 enc
 
         HalfFailDamage ->
             Encounter.mapCreature target
-                (HpChange.apply
-                    (HpChange.Damage
-                        { amount = halfFailDamage failAmount
-                        , ignoreTemp = False
-                        }
-                    )
-                )
+                (HpChange.apply (HpChange.Damage { amount = amount, ignoreTemp = False }))
                 enc
 
 
-{-| Compute "half fail damage, rounded down" the same way 5e
-does for save-for-half spells.
+{-| Apply the condition side of an outcome to a target
+creature. A blank condition name is a no-op — the outcome
+carries HP-only effects and this returns the encounter
+unchanged.
 -}
-halfFailDamage : Int -> Int
-halfFailDamage n =
-    Basics.max 0 (n // 2)
-
-
 applyCondition : SaveOutcome -> String -> Encounter.Encounter -> Encounter.Encounter
 applyCondition outcome target enc =
     let
@@ -194,3 +225,11 @@ applyCondition outcome target enc =
             , saveToEnd = Nothing
             }
             enc
+
+
+{-| Compute "half fail damage, rounded down" the same way 5e
+does for save-for-half spells.
+-}
+halfFailDamage : Int -> Int
+halfFailDamage n =
+    Basics.max 0 (n // 2)

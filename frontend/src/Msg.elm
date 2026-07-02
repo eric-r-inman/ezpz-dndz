@@ -1,6 +1,6 @@
 module Msg exposing
     ( Msg(..), MeInfo, MeStatus(..)
-    , HpKind(..), HpInputMode(..), HpField(..)
+    , HpKind(..), HpField(..)
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
@@ -22,7 +22,7 @@ stay in `Main.elm` for now and are scheduled for per-feature
 `Ui.elm` extraction in a follow-up.
 
 @docs Msg, MeInfo, MeStatus
-@docs HpKind, HpInputMode, HpField
+@docs HpKind, HpField
 @docs RollScope, RollMode
 @docs DurationKind
 @docs CompendiumSort, CompendiumField, FeatureGroup
@@ -86,15 +86,6 @@ type HpKind
     | HealKind
     | TempHpKind
     | MaxHpKind
-
-
-{-| Manual integer entry vs. dice expression. The modal toggles
-between the two via radio buttons; submitting in dice mode rolls
-once and applies the total.
--}
-type HpInputMode
-    = ManualMode
-    | DiceMode
 
 
 {-| Which inline numeric value on the card is being edited.
@@ -527,14 +518,15 @@ type Msg
       -- +Max HP), which fires `HpChangeApplyAs kind`.
     | HpChangeOpen String
     | HpChangeClose
-    | HpChangeModeSet HpInputMode
     | HpChangeAmountChanged String
-    | HpChangeExpressionChanged String
     | HpChangeIgnoreTempToggle
     | HpChangeApplyToSelectedToggle
-      -- Commits the modal's current amount / expression as the
-      -- given kind, then closes.  Dice-mode routes through
-      -- `HpChangeRollLanded` first.
+      -- Commits the modal's current amount as the given kind,
+      -- then closes.  The amount text is parsed at commit time:
+      -- an integer applies immediately; a dice formula routes
+      -- through `HpChangeRollLanded` after rolling; a parse
+      -- failure surfaces the error inline and leaves the modal
+      -- open.
     | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
     | HpChangeUndoLatest
@@ -567,6 +559,12 @@ type Msg
       -- Apply
     | SaveChainApplyFail
     | SaveChainApplyPass
+      -- Landing point for a dice roll fired by an apply where
+      -- the amount was a formula (`8d6`, `2d10+3`, …).  The
+      -- side tag routes it back through the resolver so
+      -- `HalfFailDamage` on Success halves the total before
+      -- applying.
+    | SaveChainApplyRollLanded SaveChainSide Dice.Roll
       -- Inline HP edit on the creature card
     | HpEditStart String HpField Int
     | HpEditChange String

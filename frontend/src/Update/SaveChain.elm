@@ -6,6 +6,7 @@ module Update.SaveChain exposing
     , outcomeConditionNameChanged, outcomeConditionNoteChanged
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass
+    , applyRollLanded
     )
 
 {-| Update branches for the Save Chain modal.
@@ -27,9 +28,11 @@ name) and persisted via `Ports.persistLocalSaveChainPresets`.
 -}
 
 import Compendium
+import Dice
 import Dict
+import Effects
 import Encounter
-import Encounter.SaveChain as SaveChain exposing (HpEffect(..))
+import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 import Encounter.SaveChain.Wire
 import Model exposing (Modal(..), Model)
 import Msg
@@ -122,10 +125,10 @@ outcomeHpKindSet side kind model =
                     NoHpEffect
 
                 SaveChainDamage ->
-                    DealDamage 0
+                    DealDamage ""
 
                 SaveChainHeal ->
-                    HealFor 0
+                    HealFor ""
 
                 SaveChainHalfFail ->
                     HalfFailDamage
@@ -301,12 +304,6 @@ reset model =
 -- ── APPLY ───────────────────────────────────────────────────────
 
 
-{-| Apply the fail outcome to the target creature (or, when
-`applyToSelected` is on, every selected creature). Doesn't
-close the modal — the GM often resolves fail + pass in one
-open (fail first for the creatures that missed, pass for the
-survivors).
--}
 applyFail : Model -> ( Model, Cmd Msg )
 applyFail =
     applySide SaveChainFail
@@ -317,6 +314,25 @@ applyPass =
     applySide SaveChainSuccess
 
 
+{-| Apply one side of the chain. Walks the outcome:
+
+  - `NoHpEffect` — no HP work, just apply the condition (if any).
+  - `DealDamage` / `HealFor` — parse the raw text:
+      - integer → apply the HP change immediately, then the condition
+      - dice formula → fire a `Dice.rollCmd`; the roll lands in
+        [`applyRollLanded`](#applyRollLanded), which finishes the
+        apply
+      - parse failure → skip the HP part, still apply the condition
+  - `HalfFailDamage` (success side only) — same routing against the
+    fail's raw text; the resolved integer is halved before applying.
+
+The condition apply always fires synchronously — dice rolling
+never gates it, because conditions don't depend on the rolled
+amount. The Fail / Pass buttons don't close the modal either
+so the GM can run Fail for the misses, then Pass for the
+survivors, on the same open.
+
+-}
 applySide : SaveChainSide -> Model -> ( Model, Cmd Msg )
 applySide side model =
     case model.modal of
@@ -325,52 +341,211 @@ applySide side model =
                 chain =
                     UiSaveChain.toChain ui
 
-                failAmount =
-                    case chain.onFail.hp of
-                        DealDamage n ->
-                            n
-
-                        _ ->
-                            0
-
                 outcome =
-                    case side of
-                        SaveChainFail ->
-                            chain.onFail
-
-                        SaveChainSuccess ->
-                            chain.onSuccess
+                    outcomeFor side chain
 
                 targets =
                     resolveTargets ui model.encounter
 
-                nextEnc =
+                -- Condition apply always fires (no dice needed).
+                withConditions =
                     List.foldl
-                        (SaveChain.applyOutcome
-                            { failAmount = failAmount }
-                            outcome
-                            |> flipEnc
+                        (\name enc ->
+                            SaveChain.applyCondition outcome name enc
                         )
                         model.encounter
                         targets
+
+                modelAfterCond =
+                    { model | encounter = withConditions }
             in
-            ( { model | encounter = nextEnc }, Cmd.none )
+            case rawTextForResolve side chain of
+                RawEmpty ->
+                    ( modelAfterCond, Cmd.none )
+
+                RawInteger n ->
+                    let
+                        resolvedAmount =
+                            case ( side, outcome.hp ) of
+                                ( SaveChainSuccess, HalfFailDamage ) ->
+                                    SaveChain.halfFailDamage n
+
+                                _ ->
+                                    n
+
+                        nextEnc =
+                            List.foldl
+                                (\name enc ->
+                                    SaveChain.applyResolvedHp outcome.hp resolvedAmount name enc
+                                )
+                                withConditions
+                                targets
+                    in
+                    ( { modelAfterCond | encounter = nextEnc }, Cmd.none )
+
+                RawDice expr ->
+                    ( modelAfterCond
+                    , Dice.rollCmd (SaveChainApplyRollLanded side)
+                        (saveChainSource side chain ui model.encounter)
+                        expr
+                    )
+
+                RawUnparseable ->
+                    -- Non-empty text that's neither an integer nor
+                    -- a valid dice expression: apply the condition
+                    -- side (already done above) and leave HP alone
+                    -- rather than crashing the click.
+                    ( modelAfterCond, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
 
 
-{-| Adapter: `SaveChain.applyOutcome` takes `enc -> target ->
-enc`; `List.foldl` wants `target -> enc -> enc`. Flip the
-argument order so the fold composes cleanly.
+{-| Roll from a Save Chain apply landed. Halve if the outcome
+was `HalfFailDamage` (success side); otherwise apply the raw
+total. Recomputes targets from the current model state in case
+the selection shifted while the roll was in flight.
 -}
-flipEnc :
-    (Encounter.Encounter -> String -> Encounter.Encounter)
-    -> String
+applyRollLanded : SaveChainSide -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+applyRollLanded side roll model =
+    let
+        ( logged, flashCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    case logged.modal of
+        Just (ModalSaveChain ui) ->
+            let
+                chain =
+                    UiSaveChain.toChain ui
+
+                outcome =
+                    outcomeFor side chain
+
+                targets =
+                    resolveTargets ui logged.encounter
+
+                resolvedAmount =
+                    case ( side, outcome.hp ) of
+                        ( SaveChainSuccess, HalfFailDamage ) ->
+                            SaveChain.halfFailDamage roll.total
+
+                        _ ->
+                            roll.total
+
+                nextEnc =
+                    List.foldl
+                        (\name enc ->
+                            SaveChain.applyResolvedHp outcome.hp resolvedAmount name enc
+                        )
+                        logged.encounter
+                        targets
+            in
+            ( { logged | encounter = nextEnc }
+            , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+            )
+
+        _ ->
+            ( logged, Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ] )
+
+
+outcomeFor : SaveChainSide -> SaveChain -> SaveOutcome
+outcomeFor side chain =
+    case side of
+        SaveChainFail ->
+            chain.onFail
+
+        SaveChainSuccess ->
+            chain.onSuccess
+
+
+type ResolvedRaw
+    = RawEmpty
+    | RawInteger Int
+    | RawDice Dice.Expression
+    | RawUnparseable
+
+
+{-| Decide what to do with the raw amount text on the outcome
+we're applying. For `HalfFailDamage` on the success side, we
+consult the fail's raw text (that's the amount getting halved).
+Empty text or `NoHpEffect` short-circuits to `RawEmpty`.
+-}
+rawTextForResolve : SaveChainSide -> SaveChain -> ResolvedRaw
+rawTextForResolve side chain =
+    let
+        outcome =
+            outcomeFor side chain
+
+        raw =
+            case ( side, outcome.hp ) of
+                ( SaveChainSuccess, HalfFailDamage ) ->
+                    SaveChain.rawAmount chain.onFail.hp
+
+                _ ->
+                    SaveChain.rawAmount outcome.hp
+
+        trimmed =
+            String.trim raw
+    in
+    if String.isEmpty trimmed then
+        RawEmpty
+
+    else
+        case String.toInt trimmed of
+            Just n ->
+                RawInteger n
+
+            Nothing ->
+                case Dice.parse trimmed of
+                    Ok expr ->
+                        RawDice expr
+
+                    Err _ ->
+                        RawUnparseable
+
+
+{-| Label the dice history entry with a chain-flavoured source
+so a GM scanning the dice history sees "Fireball (fail) →
+Goblin 1, Goblin 2".
+-}
+saveChainSource :
+    SaveChainSide
+    -> SaveChain
+    -> SaveChainUi
     -> Encounter.Encounter
-    -> Encounter.Encounter
-flipEnc fn target enc =
-    fn enc target
+    -> Dice.Source
+saveChainSource side chain ui enc =
+    let
+        chainLabel =
+            if String.isEmpty chain.name then
+                "Save Chain"
+
+            else
+                chain.name
+
+        sideLabel =
+            case side of
+                SaveChainFail ->
+                    "fail"
+
+                SaveChainSuccess ->
+                    "success"
+
+        feature =
+            chainLabel ++ " (" ++ sideLabel ++ ")"
+
+        targetLabel =
+            let
+                names =
+                    resolveTargets ui enc
+            in
+            if List.isEmpty names then
+                ui.target
+
+            else
+                String.join ", " names
+    in
+    { feature = feature, target = Just targetLabel }
 
 
 resolveTargets : SaveChainUi -> Encounter.Encounter -> List String

@@ -12709,13 +12709,19 @@ button.quick-list-card {
 }
 
 .save-chain__amount-input {
-  width: 90px;
+  width: 140px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
+}
+
+.save-chain__amount-cluster {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .save-chain__condition-input {

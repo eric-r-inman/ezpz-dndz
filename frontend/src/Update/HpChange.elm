@@ -7,22 +7,21 @@ module Update.HpChange exposing
     , editChange
     , editCommit
     , editStart
-    , expressionChanged
     , ignoreTempToggle
-    , modeSet
     , open
     , rollLanded
     , undoLatest
     )
 
-{-| Update branches for the HP-change modal (damage / heal / temp HP)
-and the inline HP edit pencil on each creature card.
+{-| Update branches for the HP-change modal (Manage HP) and
+the inline HP edit pencil on each creature card.
 
-The modal converges manual and dice-mode entry on a single
-`applyHpChangeAndClose` step; both paths arrive at the engine with
-an integer amount and a kind, the difference being that dice mode
-takes a detour through `DiceRollLanded` to roll the expression
-first.
+Now uses a single smart amount input: on apply, the raw text
+is either parsed as an integer (applied immediately) or as a
+dice expression (rolled, then the total is applied). Parse
+errors are surfaced next to the input. The previous
+Manual/Roll-dice mode toggle is gone — the parse itself
+decides which path to take.
 
 -}
 
@@ -34,7 +33,6 @@ import Model exposing (Modal(..), Model)
 import Msg
     exposing
         ( HpField(..)
-        , HpInputMode(..)
         , HpKind(..)
         , Msg(..)
         )
@@ -61,38 +59,13 @@ close model =
     ( { model | modal = Nothing }, Cmd.none )
 
 
-modeSet : HpInputMode -> Model -> ( Model, Cmd Msg )
-modeSet mode model =
-    ( withHpChange (\u -> { u | mode = mode, parseError = Nothing }) model
-    , Cmd.none
-    )
-
-
-{-| Mirror the dice-modifier pattern: track raw text for the
-controlled input, only update the parsed integer when the input
-actually parses. Unsigned here — heal and temp-HP can't be
-negative, and damage flips the sign internally via the engine.
+{-| Mirror the raw text for the controlled input. Clears any
+prior parse error on every keystroke so the "invalid formula"
+hint disappears the moment the GM starts fixing it.
 -}
 amountChanged : String -> Model -> ( Model, Cmd Msg )
 amountChanged text model =
-    ( withHpChange
-        (\u ->
-            { u
-                | amountText = text
-                , amount =
-                    String.toInt (String.trim text)
-                        |> Maybe.map (Basics.max 0)
-                        |> Maybe.withDefault u.amount
-            }
-        )
-        model
-    , Cmd.none
-    )
-
-
-expressionChanged : String -> Model -> ( Model, Cmd Msg )
-expressionChanged text model =
-    ( withHpChange (\u -> { u | expression = text, parseError = Nothing }) model
+    ( withHpChange (\u -> { u | amountText = text, parseError = Nothing }) model
     , Cmd.none
     )
 
@@ -111,12 +84,15 @@ applyToSelectedToggle model =
     )
 
 
-{-| Footer action-button click: commit the modal's current
-amount / expression as `kind`. Sets `ui.kind = kind` first
-(so the dice-source label + log entry reflect the chosen kind)
-then routes to the same manual-vs-dice split the old single
-Apply button used. Both paths converge on
-`applyHpChangeAndClose`.
+{-| Footer action-button click: commit the modal's amount text
+as `kind`. Sets `ui.kind = kind` first (so the dice-source
+label + log entry reflect the chosen kind), then routes based
+on what the input looks like:
+
+  - integer → apply immediately with that value
+  - dice formula → roll, land in `rollLanded`, apply the total
+  - parse failure → set `parseError`, leave modal open
+
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
 applyAs kind model =
@@ -128,26 +104,41 @@ applyAs kind model =
 
                 modelWithKind =
                     { model | modal = Just (ModalHpChange withKind) }
+
+                trimmed =
+                    String.trim withKind.amountText
             in
-            case withKind.mode of
-                ManualMode ->
-                    ( applyHpChangeAndClose withKind withKind.amount modelWithKind
+            case String.toInt trimmed of
+                Just n ->
+                    ( applyHpChangeAndClose withKind n modelWithKind
                     , Cmd.none
                     )
 
-                DiceMode ->
-                    case Dice.parse withKind.expression of
-                        Ok expr ->
-                            ( modelWithKind
-                            , Dice.rollCmd HpChangeRollLanded
-                                (hpChangeSource withKind modelWithKind.encounter)
-                                expr
-                            )
+                Nothing ->
+                    if String.isEmpty trimmed then
+                        -- Empty field: treat as 0 so the GM
+                        -- can click Damage on a fresh open
+                        -- without typing to test the target
+                        -- creature reference — the previous
+                        -- behaviour when `amountText = "0"`
+                        -- was the default.
+                        ( applyHpChangeAndClose withKind 0 modelWithKind
+                        , Cmd.none
+                        )
 
-                        Err err ->
-                            ( withHpChange (\u -> { u | parseError = Just err }) modelWithKind
-                            , Cmd.none
-                            )
+                    else
+                        case Dice.parse trimmed of
+                            Ok expr ->
+                                ( modelWithKind
+                                , Dice.rollCmd HpChangeRollLanded
+                                    (hpChangeSource withKind modelWithKind.encounter)
+                                    expr
+                                )
+
+                            Err err ->
+                                ( withHpChange (\u -> { u | parseError = Just err }) modelWithKind
+                                , Cmd.none
+                                )
 
         _ ->
             ( model, Cmd.none )

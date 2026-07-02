@@ -249,18 +249,21 @@ hpRow side form =
 
                 HalfFailDamage ->
                     span [ class "save-chain__caption" ]
-                        [ text "(auto-computed from the Fail amount at apply)" ]
+                        [ text "(rolls / halves the Fail amount at apply)" ]
 
                 _ ->
-                    input
-                        [ type_ "number"
-                        , class "save-chain__amount-input"
-                        , value form.hpAmountText
-                        , Attr.min "0"
-                        , placeholder "0"
-                        , onInput (SaveChainOutcomeHpAmountChanged side)
+                    div [ class "save-chain__amount-cluster" ]
+                        [ input
+                            [ type_ "text"
+                            , class "save-chain__amount-input"
+                            , value form.hpAmountText
+                            , placeholder "12 or 2d6+3"
+                            , onInput (SaveChainOutcomeHpAmountChanged side)
+                            ]
+                            []
+                        , span [ class "save-chain__caption" ]
+                            [ text "number or dice formula" ]
                         ]
-                        []
     in
     div [ class "save-chain__hp-row" ]
         [ span [ class "save-chain__field-label" ] [ text "HP" ]

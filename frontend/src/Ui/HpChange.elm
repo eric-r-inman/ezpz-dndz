@@ -9,17 +9,18 @@ inside this record, so `Encounter.mapCreature` deleting the
 targeted creature can't leave a stale modal pointing at
 something that no longer exists.
 
-`amountText` mirrors the `<input>` characters (same trick as
-`DiceUi.modifierText`) so transient typing states like a bare
-`-` while the user is mid-typing don't get clobbered by the
-controlled input.
+`amountText` mirrors the `<input>` characters so a transient
+mid-typing state (a bare `-` or the `2d` prefix of a formula
+in flight) doesn't get clobbered by the controlled input.
+The single field accepts either a plain integer or a dice
+formula; the apply handler parses it at commit time.
 
 @docs HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
 
 -}
 
 import Dice
-import Msg exposing (HpField(..), HpInputMode(..), HpKind(..))
+import Msg exposing (HpField(..), HpKind(..))
 
 
 type alias HpChangeUi =
@@ -31,10 +32,13 @@ type alias HpChangeUi =
     -- fresh open; only mutates when one of the four footer
     -- action buttons commits.
     , kind : HpKind
-    , mode : HpInputMode
-    , amount : Int
+
+    -- Raw input text — parsed at apply time into either an
+    -- integer (applied directly) or a dice expression
+    -- (rolled, then the total is applied).  See
+    -- `Update.HpChange.applyAs` for the parse-then-apply
+    -- routing.
     , amountText : String
-    , expression : String
     , parseError : Maybe Dice.Error
     , ignoreTemp : Bool
     , applyToSelected : Bool
@@ -90,10 +94,7 @@ fresh : String -> HpChangeUi
 fresh target =
     { target = target
     , kind = DamageKind
-    , mode = ManualMode
-    , amount = 0
-    , amountText = "0"
-    , expression = ""
+    , amountText = ""
     , parseError = Nothing
     , ignoreTemp = False
     , applyToSelected = False
