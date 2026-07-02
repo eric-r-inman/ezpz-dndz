@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -106,6 +106,29 @@ type HpField
     | MaxHpField
     | ArmorClassField
     | TempHpField
+
+
+{-| Which side of a Save Chain outcome a form-field change
+targets — fail or success. Used as a discriminator on the
+shared `SaveChainOutcome*` Msg branches so we don't have to
+double every field's Msg surface.
+-}
+type SaveChainSide
+    = SaveChainFail
+    | SaveChainSuccess
+
+
+{-| HP effect selector radio the Save Chain modal renders on
+each side. Kept separate from `HpKind` (the Manage HP modal's
+verbs) because the Save Chain semantics differ — notably
+`SaveChainHalfFail` is a success-side sentinel that resolves
+at apply-time against whatever the fail side dealt.
+-}
+type SaveChainHpKind
+    = SaveChainNoHp
+    | SaveChainDamage
+    | SaveChainHeal
+    | SaveChainHalfFail
 
 
 
@@ -515,6 +538,35 @@ type Msg
     | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
     | HpChangeUndoLatest
+      -- ── Save Chain modal ─────────────────────────────────
+      -- Opens the reusable "creature makes a save; something
+      -- happens" modal from the card's Save Chain button.  Form
+      -- state is edited here, saved as a named preset in
+      -- `localStorage.saveChainPresets`, and executed via
+      -- `SaveChainApplyFail` / `SaveChainApplyPass`.
+    | SaveChainOpen String
+    | SaveChainClose
+    | SaveChainNameChanged String
+    | SaveChainAbilitySet Compendium.Ability
+    | SaveChainDcChanged String
+    | SaveChainDcOverrideChanged String
+    | SaveChainApplyToSelectedToggle
+      -- OutcomeSide + field for the shared handlers.  The tag
+      -- lets one Msg cover both fail-side and success-side
+      -- fields without doubling the surface.
+    | SaveChainOutcomeHpKindSet SaveChainSide SaveChainHpKind
+    | SaveChainOutcomeHpAmountChanged SaveChainSide String
+    | SaveChainOutcomeConditionNameChanged SaveChainSide String
+    | SaveChainOutcomeConditionNoteChanged SaveChainSide String
+      -- Preset ops
+    | SaveChainPresetPickerChanged String
+    | SaveChainPresetLoad
+    | SaveChainPresetSave
+    | SaveChainPresetDelete
+    | SaveChainReset
+      -- Apply
+    | SaveChainApplyFail
+    | SaveChainApplyPass
       -- Inline HP edit on the creature card
     | HpEditStart String HpField Int
     | HpEditChange String

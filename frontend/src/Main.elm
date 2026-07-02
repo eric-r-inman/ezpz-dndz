@@ -22,6 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
+import Encounter.SaveChain.Wire
 import Encounter.Treasure.ProfileWire
 import Encounter.Treasure.TableWire
 import Encounter.Wire
@@ -111,6 +112,7 @@ import Update.Preferences
 import Update.QuickAdd
 import Update.RandomEncounter
 import Update.Save
+import Update.SaveChain
 import Update.SaveCompendium
 import Update.Shell
 import Update.SpellList
@@ -150,6 +152,7 @@ import View.Modal.Note
 import View.Modal.QuickAdd
 import View.Modal.RandomEncounter
 import View.Modal.Save
+import View.Modal.SaveChain
 import View.Modal.SaveCompendium
 import View.Modal.SpellList
 import View.Modal.Timer
@@ -500,6 +503,7 @@ type alias Flags =
     , localCardLayoutSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
+    , localSaveChainPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
     , localUserTreasureTable : Maybe Decode.Value
@@ -604,6 +608,13 @@ init flags url key =
             flags.localTimerPresets
                 |> Maybe.andThen
                     (Decode.decodeValue Ui.Timer.Wire.decodePresets
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
+      , saveChainPresets =
+            flags.localSaveChainPresets
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.SaveChain.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
@@ -1285,6 +1296,61 @@ updateInner msg model =
 
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model
+
+        -- Save Chain modal
+        SaveChainOpen target ->
+            Update.SaveChain.open target model
+
+        SaveChainClose ->
+            Update.SaveChain.close model
+
+        SaveChainNameChanged text ->
+            Update.SaveChain.nameChanged text model
+
+        SaveChainAbilitySet ability ->
+            Update.SaveChain.abilitySet ability model
+
+        SaveChainDcChanged text ->
+            Update.SaveChain.dcChanged text model
+
+        SaveChainDcOverrideChanged text ->
+            Update.SaveChain.dcOverrideChanged text model
+
+        SaveChainApplyToSelectedToggle ->
+            Update.SaveChain.applyToSelectedToggle model
+
+        SaveChainOutcomeHpKindSet side kind ->
+            Update.SaveChain.outcomeHpKindSet side kind model
+
+        SaveChainOutcomeHpAmountChanged side text ->
+            Update.SaveChain.outcomeHpAmountChanged side text model
+
+        SaveChainOutcomeConditionNameChanged side text ->
+            Update.SaveChain.outcomeConditionNameChanged side text model
+
+        SaveChainOutcomeConditionNoteChanged side text ->
+            Update.SaveChain.outcomeConditionNoteChanged side text model
+
+        SaveChainPresetPickerChanged text ->
+            Update.SaveChain.presetPickerChanged text model
+
+        SaveChainPresetLoad ->
+            Update.SaveChain.presetLoad model
+
+        SaveChainPresetSave ->
+            Update.SaveChain.presetSave model
+
+        SaveChainPresetDelete ->
+            Update.SaveChain.presetDelete model
+
+        SaveChainReset ->
+            Update.SaveChain.reset model
+
+        SaveChainApplyFail ->
+            Update.SaveChain.applyFail model
+
+        SaveChainApplyPass ->
+            Update.SaveChain.applyPass model
 
         HpEditStart name field current ->
             Update.HpChange.editStart name field current model
@@ -2996,6 +3062,7 @@ appShell maybeUser model =
     , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
     , View.Modal.SpellList.view model
+    , View.Modal.SaveChain.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model

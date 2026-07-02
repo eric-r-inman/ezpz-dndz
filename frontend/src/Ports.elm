@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -150,6 +150,14 @@ contract as `persistLocalConditionPresets` but for the
 Timer-setup modal — see `Ui.Timer.Wire.encodePresets`.
 -}
 port persistLocalTimerPresets : E.Value -> Cmd msg
+
+
+{-| Persist the Save Chain presets dict to
+`localStorage.saveChainPresets`. Body shape matches
+`Encounter.SaveChain.Wire.encodePresets` — `{ name → SaveChain }`.
+Fires on every Save / Delete in the Save Chain modal.
+-}
+port persistLocalSaveChainPresets : E.Value -> Cmd msg
 
 
 {-| Persist the party roster — the level-per-character list

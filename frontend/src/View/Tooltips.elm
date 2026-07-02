@@ -124,6 +124,7 @@ module View.Tooltips exposing
     , runEncounter
     , saveButton
     , saveButtonDirty
+    , saveChain
     , saveNoticeDismiss
     , saveRowDelete
     , saveRowOverwrite
@@ -526,6 +527,11 @@ manageHp =
 applyCondition : String
 applyCondition =
     "Apply condition or effect"
+
+
+saveChain : String
+saveChain =
+    "Save Chain — reusable save + effect recipe (damage / heal / apply condition on fail or success)"
 
 
 bloodied : String

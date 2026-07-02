@@ -152,6 +152,18 @@
         }
       } catch (_) {}
 
+      // User-named Save Chain presets — reusable save + effect
+      // recipes edited in the Save Chain modal on each creature
+      // card.  Same shape / persistence model as the other
+      // preset dicts.
+      var localSaveChainPresets = null;
+      try {
+        var saveChainRaw = localStorage.getItem("saveChainPresets");
+        if (saveChainRaw) {
+          localSaveChainPresets = JSON.parse(saveChainRaw);
+        }
+      } catch (_) {}
+
       // Party roster — { members: [...], next_id: N } —
       // shared by the CR Calculator and Random Encounter modals.
       var localParty = null;
@@ -207,6 +219,7 @@
           localCardLayoutSaves: localCardLayoutSaves,
           localConditionPresets: localConditionPresets,
           localTimerPresets: localTimerPresets,
+          localSaveChainPresets: localSaveChainPresets,
           localParty: localParty,
           localUserLoreGroups: localUserLoreGroups,
           localUserTreasureTable: localUserTreasureTable,
@@ -326,6 +339,20 @@
           try {
             localStorage.setItem(
               "timerPresets",
+              JSON.stringify(value),
+            );
+          } catch (_) {}
+        });
+      }
+
+      // Save Chain presets — reusable save + effect recipes
+      // stored keyed by name.  Same shape / write discipline as
+      // the condition and timer preset dicts above.
+      if (app.ports && app.ports.persistLocalSaveChainPresets) {
+        app.ports.persistLocalSaveChainPresets.subscribe(function (value) {
+          try {
+            localStorage.setItem(
+              "saveChainPresets",
               JSON.stringify(value),
             );
           } catch (_) {}

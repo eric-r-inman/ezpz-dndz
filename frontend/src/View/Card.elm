@@ -1446,6 +1446,12 @@ rowBot creature =
             , Tooltips.attr Tooltips.applyCondition
             ]
             [ text "Condition/Effect" ]
+        , button
+            [ class "action-btn action-btn--save-chain"
+            , onClick (SaveChainOpen creature.name)
+            , Tooltips.attr Tooltips.saveChain
+            ]
+            [ text "Save Chain" ]
         , readiedToggle creature
         , reactionPip creature
         , memoSlot creature

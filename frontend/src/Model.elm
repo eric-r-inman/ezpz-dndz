@@ -44,6 +44,7 @@ import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.SaveChain exposing (SaveChain)
 import Encounter.Treasure
 import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
@@ -73,6 +74,7 @@ import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Save exposing (SaveUi)
+import Ui.SaveChain exposing (SaveChainUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
@@ -141,6 +143,12 @@ type Modal
       -- No editable state to carry; the view re-renders straight
       -- from the encounter + compendium on every open.
     | ModalSpellList
+      -- Save Chain modal: reusable "creature makes a save;
+      -- something happens" recipe.  Opened from each card's
+      -- Save Chain button; loads / edits / saves named presets
+      -- from `model.saveChainPresets` and applies fail/success
+      -- outcomes to the target (or the selection).
+    | ModalSaveChain SaveChainUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -594,6 +602,11 @@ type alias Model =
     -- Twin of `conditionPresets` for the Timer-setup modal.
     -- Persisted under `localStorage.timerPresets`.
     , timerPresets : Dict String UiTimer.TimerPreset
+
+    -- Save Chain presets — reusable "creature makes a save;
+    -- something happens" recipes.  Persisted under
+    -- `localStorage.saveChainPresets`.
+    , saveChainPresets : Dict String SaveChain
 
     -- User-authored Lore groupings for the Random Encounter
     -- generator's _Lore-leaning_ toggle.  Bundled groups

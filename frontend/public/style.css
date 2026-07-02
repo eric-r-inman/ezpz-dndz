@@ -703,6 +703,7 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--heal,
 [data-theme="accessible"] .creature-card .action-btn--temp,
 [data-theme="accessible"] .creature-card .action-btn--manage-hp,
+[data-theme="accessible"] .creature-card .action-btn--save-chain,
 [data-theme="accessible"] .creature-card .action-btn--condition,
 [data-theme="accessible"] .creature-card .action-btn--ready,
 [data-theme="accessible"] .creature-card .action-btn--readied,
@@ -6159,6 +6160,18 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .action-btn--condition {
   --btn-bg: var(--color-condition);
+  --btn-fg: var(--card-btn-fg);
+  --btn-bd: transparent;
+}
+
+/* Save Chain card button — sits right of Condition/Effect.
+   Warm purple so it reads as a distinct kind of action from
+   the calm Manage HP (green) / cool Condition (violet-blue)
+   pair to its left.  Same neutral chrome as the other card
+   buttons in Accessible theme via the .creature-card override
+   at the top of the theme block. */
+.action-btn--save-chain {
+  --btn-bg: #7c5ab0;
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
@@ -12557,4 +12570,209 @@ button.quick-list-card {
   color: var(--color-accent);
   border-color: var(--color-accent);
   background: var(--color-accent-soft, transparent);
+}
+
+/* ── Save Chain modal ─────────────────────────────────────────────
+   Reusable save + effect recipe editor.  Two-column-ish layout in
+   the outcome blocks: HP effect radios on one line, condition apply
+   on the next.  Actions row (Fail / Pass) reuses the shared damage
+   / heal button colours from the Manage HP modal so the meaning
+   carries across without a legend. */
+.modal--save-chain {
+  --modal-max-w: 680px;
+}
+
+.save-chain__preset-row,
+.save-chain__row,
+.save-chain__apply-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.save-chain__row--save {
+  gap: 24px;
+}
+
+.save-chain__field-label {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  min-width: 60px;
+}
+
+.save-chain__preset-picker {
+  min-width: 220px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.save-chain__loaded-tag {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.save-chain__name-input {
+  flex: 1 1 200px;
+  min-width: 160px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.save-chain__ability-group,
+.save-chain__dc-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-chain__ability-radios {
+  display: flex;
+  gap: 10px;
+}
+
+.save-chain__ability-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.save-chain__dc-input {
+  width: 200px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+/* Outcome block: a bordered card with a small heading and two
+   rows (HP + condition).  The border groups the two rows so the
+   fail and success blocks read as distinct clusters. */
+.save-chain__outcome {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.save-chain__outcome-heading {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.save-chain__hp-row,
+.save-chain__condition-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.save-chain__hp-radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.save-chain__hp-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.save-chain__amount-input {
+  width: 90px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.save-chain__condition-input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.save-chain__condition-note-input {
+  flex: 1 1 160px;
+  min-width: 100px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.save-chain__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.save-chain__caption {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.save-chain__caption--warn {
+  color: var(--color-warning, #b9602a);
+}
+
+.save-chain__apply-row {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  justify-content: space-between;
+}
+
+.save-chain__apply-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Small variant of the shared action-btn for the preset picker
+   row — the Load / Delete / + New / Save preset row would
+   otherwise overflow the modal with normal-sized buttons. */
+.action-btn--sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
 }
