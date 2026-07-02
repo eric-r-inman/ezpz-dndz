@@ -22,6 +22,7 @@ import Encounter
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore.Wire
 import Encounter.Roster
+import Encounter.SaveChain.Bundled
 import Encounter.SaveChain.Wire
 import Encounter.Treasure.ProfileWire
 import Encounter.Treasure.TableWire
@@ -617,7 +618,7 @@ init flags url key =
                     (Decode.decodeValue Encounter.SaveChain.Wire.decodePresets
                         >> Result.toMaybe
                     )
-                |> Maybe.withDefault Dict.empty
+                |> Maybe.withDefault Encounter.SaveChain.Bundled.defaults
       , userLoreGroups =
             flags.localUserLoreGroups
                 |> Maybe.andThen
