@@ -1,13 +1,20 @@
 module View.Modal.HpChange exposing (view)
 
-{-| HP-change modal (Damage / Heal / Temp HP). Reuses the dice
-modal's backdrop / panel shell — the chrome is the same, only the
-body differs. Closes on backdrop click, ✕, or Cancel.
+{-| Manage HP modal — one entry point handling Damage, Heal,
+Temp HP, and +Max HP.
+
+Previously we had three near-identical modals opened by three
+separate card buttons. Consolidating: the card now has one
+"Manage HP" button that opens this modal, and the four verb-
+buttons in the footer decide which arithmetic to apply. The
+ignoreTemp checkbox stays visible for all verbs (it's only
+consulted when Damage is clicked) so the GM doesn't have to
+switch modes just to pre-set the flag.
+
 -}
 
 import Dice
-import Encounter exposing (Creature, Encounter)
-import HpChange
+import Encounter exposing (Encounter)
 import Html exposing (Html, button, div, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
@@ -28,40 +35,18 @@ view : Model -> Html Msg
 view model =
     case model.modal of
         Just (ModalHpChange ui) ->
-            let
-                target =
-                    List.filter (\c -> c.name == ui.target) model.encounter.creatures
-                        |> List.head
-
-                verb =
-                    case ui.kind of
-                        DamageKind ->
-                            "Damage"
-
-                        HealKind ->
-                            "Heal"
-
-                        TempHpKind ->
-                            "Temp HP"
-            in
             View.Modal.view
                 { close = HpChangeClose
                 , noOp = NoOp
-                , title = verb ++ " — " ++ ui.target
+                , title = "Manage HP — " ++ ui.target
                 , extraClass = "modal--hp-change"
                 , chrome = model.modalChrome
                 , body =
                     [ modeToggle ui
                     , amount ui
-                    , options ui
+                    , ignoreTempToggle ui
                     , applyScope ui model.encounter
-                    , case target of
-                        Just c ->
-                            preview ui c
-
-                        Nothing ->
-                            text ""
-                    , footer
+                    , actionButtons
                     , log model.hpChangeLog
                     ]
                 }
@@ -100,6 +85,12 @@ modeRadio label isOn msg =
         [ text label ]
 
 
+{-| Amount input — number in manual mode, dice-expression text
+in dice mode. Enter-key press commits as `DamageKind` because
+the modal now has four commit paths; Enter isn't safely
+overloadable across all of them. GMs who want Heal / Temp HP /
++Max HP click the corresponding footer button instead.
+-}
 amount : HpChangeUi -> Html Msg
 amount ui =
     case ui.mode of
@@ -114,7 +105,7 @@ amount ui =
                     , Attr.max "999"
                     , value ui.amountText
                     , onInput HpChangeAmountChanged
-                    , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeApply)
+                    , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
                     ]
                     []
                 ]
@@ -130,7 +121,7 @@ amount ui =
                         , placeholder "e.g. 2d6+3"
                         , value ui.expression
                         , onInput HpChangeExpressionChanged
-                        , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeApply)
+                        , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
                         ]
                         []
                     ]
@@ -144,24 +135,27 @@ amount ui =
                 ]
 
 
-options : HpChangeUi -> Html Msg
-options ui =
-    case ui.kind of
-        DamageKind ->
-            div [ class "hp-change__row" ]
-                [ Html.label [ class "hp-change__checkbox" ]
-                    [ input
-                        [ type_ "checkbox"
-                        , checked ui.ignoreTemp
-                        , onClick HpChangeIgnoreTempToggle
-                        ]
-                        []
-                    , text " Ignore temporary HP"
-                    ]
+{-| Ignore-temp-HP toggle. Always visible — GMs pre-checking
+this before clicking Damage was the whole reason for hoisting
+it above the action buttons. A caption spells out that it
+only affects the Damage path, so the checkbox doesn't feel
+like a footgun when the GM ends up clicking Heal or +Max HP.
+-}
+ignoreTempToggle : HpChangeUi -> Html Msg
+ignoreTempToggle ui =
+    div [ class "hp-change__row" ]
+        [ Html.label [ class "hp-change__checkbox" ]
+            [ input
+                [ type_ "checkbox"
+                , checked ui.ignoreTemp
+                , onClick HpChangeIgnoreTempToggle
                 ]
-
-        _ ->
-            text ""
+                []
+            , text " Ignore temporary HP"
+            ]
+        , div [ class "hp-change__caption" ]
+            [ text "(applies to Damage only)" ]
+        ]
 
 
 {-| Multi-target scope checkbox. Hidden entirely when zero
@@ -207,109 +201,46 @@ applyScope ui enc =
             ]
 
 
-{-| Preview of the manual-mode arithmetic: shows what the change
-would do to the target's HP if Apply were clicked right now. In
-dice mode the result depends on the roll, so we show the expression
-that will be rolled instead of a numeric prediction.
+{-| Four action buttons under the amount input — each commits
+the current amount / expression using that verb, then closes.
+Cancel sits on the left; each verb is colour-coded to match the
+existing damage / heal / temp affordances so the GM's muscle
+memory carries over from the old three-button card row.
 -}
-preview : HpChangeUi -> Creature -> Html Msg
-preview ui c =
-    let
-        before =
-            hpBeforeText c
-    in
-    div [ class "hp-change__preview" ]
-        [ div [ class "hp-change__preview-label" ] [ text "Preview" ]
-        , div [ class "hp-change__preview-body" ]
-            (case ui.mode of
-                ManualMode ->
-                    let
-                        change =
-                            buildPreviewChange ui ui.amount
-
-                        after =
-                            HpChange.apply change c
-                    in
-                    [ text before
-                    , span [ class "hp-change__preview-arrow" ] [ text " → " ]
-                    , text (hpAfterText after)
-                    ]
-
-                DiceMode ->
-                    [ text before
-                    , span [ class "hp-change__preview-arrow" ] [ text " → " ]
-                    , span [ class "hp-change__preview-roll" ]
-                        [ text
-                            (if String.isEmpty (String.trim ui.expression) then
-                                "(enter an expression)"
-
-                             else
-                                "roll " ++ String.trim ui.expression
-                            )
-                        ]
-                    ]
-            )
-        ]
-
-
-buildPreviewChange : HpChangeUi -> Int -> HpChange.Change
-buildPreviewChange ui amount_ =
-    case ui.kind of
-        DamageKind ->
-            HpChange.Damage { amount = amount_, ignoreTemp = ui.ignoreTemp }
-
-        HealKind ->
-            HpChange.Heal amount_
-
-        TempHpKind ->
-            HpChange.TempHp amount_
-
-
-hpBeforeText : Creature -> String
-hpBeforeText c =
-    String.fromInt c.currentHp
-        ++ "/"
-        ++ String.fromInt c.maxHp
-        ++ (if c.tempHp > 0 then
-                " (+" ++ String.fromInt c.tempHp ++ " temp)"
-
-            else
-                ""
-           )
-
-
-hpAfterText : Creature -> String
-hpAfterText c =
-    String.fromInt c.currentHp
-        ++ "/"
-        ++ String.fromInt c.maxHp
-        ++ (if c.tempHp > 0 then
-                " (+" ++ String.fromInt c.tempHp ++ " temp)"
-
-            else
-                ""
-           )
-
-
-footer : Html Msg
-footer =
-    div [ class "hp-change__footer" ]
+actionButtons : Html Msg
+actionButtons =
+    div [ class "hp-change__actions" ]
         [ button
             [ class "action-btn"
             , onClick HpChangeClose
             ]
             [ text "Cancel" ]
         , button
-            [ class "action-btn action-btn--green"
-            , onClick HpChangeApply
+            [ class "action-btn action-btn--damage"
+            , onClick (HpChangeApplyAs DamageKind)
             ]
-            [ text "Apply" ]
+            [ text "Damage" ]
+        , button
+            [ class "action-btn action-btn--heal"
+            , onClick (HpChangeApplyAs HealKind)
+            ]
+            [ text "Heal" ]
+        , button
+            [ class "action-btn action-btn--temp"
+            , onClick (HpChangeApplyAs TempHpKind)
+            ]
+            [ text "Temp HP" ]
+        , button
+            [ class "action-btn action-btn--max"
+            , onClick (HpChangeApplyAs MaxHpKind)
+            ]
+            [ text "+Max HP" ]
         ]
 
 
 {-| Last-N HP-change log shown at the bottom of the modal. Includes
-every kind (damage / heal / temp) so the GM can see recent table
-context without flipping between the three modal verbs. Empty
+every kind (damage / heal / temp / +max) so the GM can see recent
+table context without flipping between the modal verbs. Empty
 state shows a small "No HP changes yet" line so the section
 doesn't collapse to nothing on first open.
 -}
@@ -347,6 +278,9 @@ logEntry index entry =
                 TempHpKind ->
                     "Temp HP"
 
+                MaxHpKind ->
+                    "+Max HP"
+
         kindClass =
             case entry.kind of
                 DamageKind ->
@@ -358,11 +292,14 @@ logEntry index entry =
                 TempHpKind ->
                     "hp-change__log-kind hp-change__log-kind--temp"
 
+                MaxHpKind ->
+                    "hp-change__log-kind hp-change__log-kind--max"
+
         beforeStr =
-            hpSnapshot entry.beforeHp entry.beforeTemp
+            hpSnapshot entry.beforeHp entry.beforeTemp entry.beforeMax
 
         afterStr =
-            hpSnapshot entry.afterHp entry.afterTemp
+            hpSnapshot entry.afterHp entry.afterTemp entry.afterMax
     in
     li [ class "hp-change__log-entry" ]
         [ span [ class kindClass ] [ text kindLabel ]
@@ -387,13 +324,20 @@ logEntry index entry =
         ]
 
 
-{-| Render an HP+temp pair for the log: "27/59" or "27/59 +5" when
-temp HP is positive. Reused for both before and after columns.
+{-| Render an HP+temp[+max] slug: "27/59" or "27/59 +5" when temp
+HP is positive. Used for both before and after columns; the
+maxHp is included implicitly via the "current/max" pair, so a
++Max HP row's before → after shift is legible without a
+separate max field.
 -}
-hpSnapshot : Int -> Int -> String
-hpSnapshot hp temp =
+hpSnapshot : Int -> Int -> Int -> String
+hpSnapshot hp temp maxHp =
+    let
+        stem =
+            String.fromInt hp ++ "/" ++ String.fromInt maxHp
+    in
     if temp > 0 then
-        String.fromInt hp ++ " +" ++ String.fromInt temp
+        stem ++ " +" ++ String.fromInt temp
 
     else
-        String.fromInt hp
+        stem

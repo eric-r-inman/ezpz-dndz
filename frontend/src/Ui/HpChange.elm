@@ -19,11 +19,17 @@ controlled input.
 -}
 
 import Dice
-import Msg exposing (HpField(..), HpInputMode(..), HpKind)
+import Msg exposing (HpField(..), HpInputMode(..), HpKind(..))
 
 
 type alias HpChangeUi =
     { target : String
+
+    -- Tracks the last-committed kind so a keyboard-cancelled
+    -- modal can still be reopened at whatever kind the GM
+    -- was last dabbling with.  Starts at `DamageKind` on
+    -- fresh open; only mutates when one of the four footer
+    -- action buttons commits.
     , kind : HpKind
     , mode : HpInputMode
     , amount : Int
@@ -36,10 +42,11 @@ type alias HpChangeUi =
 
 
 {-| One row in the recent-HP-changes log shown at the bottom of
-the Damage / Heal / Temp HP modals. Captures who, what kind,
-the input amount, and the before/after HP+temp snapshots so the
-row can render "27/59 (+0) → 14/59 (+0)" without re-querying
-the encounter state.
+the Manage HP modal. Captures who, what kind, the input amount,
+and the before/after snapshot so the row can render
+"27/59 (+0) → 14/59 (+0)" without re-querying the encounter
+state, and so undo can walk maxHp back too when a `MaxHpKind`
+entry gets reverted.
 -}
 type alias HpChangeEntry =
     { kind : HpKind
@@ -47,8 +54,10 @@ type alias HpChangeEntry =
     , amount : Int
     , beforeHp : Int
     , beforeTemp : Int
+    , beforeMax : Int
     , afterHp : Int
     , afterTemp : Int
+    , afterMax : Int
     }
 
 
@@ -72,14 +81,15 @@ maxHpLogEntries =
     10
 
 
-{-| Initial state for opening the HP-change modal targeted at a
-creature. The kind picks Damage / Heal / Temp HP; the rest
-defaults to a 0-amount manual entry.
+{-| Initial state for opening the Manage HP modal targeted at a
+creature. Kind defaults to `DamageKind` — the most-common
+first action; the four footer buttons let the GM commit as
+whichever kind actually applies without a mid-flow radio pick.
 -}
-fresh : String -> HpKind -> HpChangeUi
-fresh target kind =
+fresh : String -> HpChangeUi
+fresh target =
     { target = target
-    , kind = kind
+    , kind = DamageKind
     , mode = ManualMode
     , amount = 0
     , amountText = "0"

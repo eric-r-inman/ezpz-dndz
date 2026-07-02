@@ -179,7 +179,73 @@ setHpSuite =
         ]
 
 
+maxHpDeltaSuite : Test
+maxHpDeltaSuite =
+    describe "+Max HP (MaxHpDelta)"
+        [ test "raises both maxHp and currentHp by the delta (Aid convention)" <|
+            \_ ->
+                { fixture | currentHp = 40, maxHp = 60 }
+                    |> HpChange.apply (HpChange.MaxHpDelta 5)
+                    |> Expect.all
+                        [ \c -> c.maxHp |> Expect.equal 65
+                        , \c -> c.currentHp |> Expect.equal 45
+                        ]
+        , test "negative delta is clamped to 0 (no accidental shrink)" <|
+            \_ ->
+                { fixture | currentHp = 40, maxHp = 60 }
+                    |> HpChange.apply (HpChange.MaxHpDelta -10)
+                    |> Expect.all
+                        [ \c -> c.maxHp |> Expect.equal 60
+                        , \c -> c.currentHp |> Expect.equal 40
+                        ]
+        , test "recomputes bloodied off the new maxHp" <|
+            \_ ->
+                -- Before: 25/60 → bloodied (25 * 2 <= 60).
+                -- After +Max 40: 65/100 → not bloodied (65 * 2 > 100).
+                { fixture | currentHp = 25, maxHp = 60, bloodied = True }
+                    |> HpChange.apply (HpChange.MaxHpDelta 40)
+                    |> .bloodied
+                    |> Expect.equal False
+        ]
+
+
+restoreSuite : Test
+restoreSuite =
+    describe "restoreHp (undo pathway)"
+        [ test "restores maxHp alongside currentHp + tempHp" <|
+            \_ ->
+                -- Simulate a +Max HP 10 applied and then undone.
+                let
+                    before =
+                        { fixture | currentHp = 40, maxHp = 60, tempHp = 3 }
+
+                    afterBump =
+                        HpChange.apply (HpChange.MaxHpDelta 10) before
+
+                    restored =
+                        HpChange.restoreHp
+                            { hp = before.currentHp
+                            , tempHp = before.tempHp
+                            , maxHp = before.maxHp
+                            }
+                            afterBump
+                in
+                restored
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 40
+                        , \c -> c.maxHp |> Expect.equal 60
+                        , \c -> c.tempHp |> Expect.equal 3
+                        ]
+        ]
+
+
 suite : Test
 suite =
     describe "HpChange (pure HP arithmetic)"
-        [ damageSuite, healSuite, tempHpSuite, setHpSuite ]
+        [ damageSuite
+        , healSuite
+        , tempHpSuite
+        , setHpSuite
+        , maxHpDeltaSuite
+        , restoreSuite
+        ]

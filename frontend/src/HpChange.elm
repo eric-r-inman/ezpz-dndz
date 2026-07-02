@@ -75,6 +75,13 @@ type Change
     = Damage DamageSpec
     | Heal Int
     | TempHp Int
+      -- +Max HP N: raise maxHp by N and also raise currentHp by
+      -- the same amount, matching the 5e Aid-spell convention
+      -- ("hit point maximum and current hit points increase by
+      -- N").  Negative N is clamped to 0 so callers can't
+      -- accidentally shrink a stat block through this path — use
+      -- the inline `MaxHpField` edit for that.
+    | MaxHpDelta Int
 
 
 {-| Damage parameters, broken out so the field names self-document
@@ -116,6 +123,9 @@ apply change c =
 
                 TempHp n ->
                     applyTempHp n c
+
+                MaxHpDelta n ->
+                    applyMaxHpDelta n c
     in
     recomputeBloodied afterChange
 
@@ -186,6 +196,24 @@ applyTempHp n c =
     { c | tempHp = Basics.max c.tempHp (Basics.max 0 n) }
 
 
+{-| +Max HP: raise maxHp by N and add N to currentHp too. Mirrors
+5e Aid ("hit point maximum and current hit points increase by N")
+so the creature actually benefits from the buff without needing a
+separate heal step. Negative inputs are clamped to zero — the
+inline `MaxHpField` edit is the path for shrinking a stat block.
+-}
+applyMaxHpDelta : Int -> Creature -> Creature
+applyMaxHpDelta n c =
+    let
+        delta =
+            Basics.max 0 n
+    in
+    { c
+        | maxHp = c.maxHp + delta
+        , currentHp = c.currentHp + delta
+    }
+
+
 {-| Manual GM override: write `tempHp` directly, clamped to ≥ 0.
 Bypasses the replace-if-higher rule of `applyTempHp` — this is
 the "I just want to set it to 7" path (or 0, to clear) from the
@@ -239,16 +267,24 @@ setArmorClass n c =
     { c | armorClass = Basics.max 0 n }
 
 
-{-| Restore a creature's HP and temp-HP pools from a snapshot.
-Used by the HP-change log's undo button — given the
-`beforeHp` / `beforeTemp` captured at change-application time,
-write them back through `setCurrentHp` (which re-clamps and
-recomputes bloodied) so the creature returns to a known-valid
-pre-change state.
+{-| Restore a creature's HP / temp-HP / max-HP snapshot. Used
+by the HP-change log's undo button — writing all three fields
+back at once covers `+Max HP` changes (which lift both maxHp
+and currentHp) as well as the plain damage / heal / temp
+paths where `maxHp` never moves.
 -}
-restoreHp : { hp : Int, tempHp : Int } -> Creature -> Creature
+restoreHp : { hp : Int, tempHp : Int, maxHp : Int } -> Creature -> Creature
 restoreHp before c =
-    setCurrentHp before.hp { c | tempHp = Basics.max 0 before.tempHp }
+    let
+        newMax =
+            Basics.max 1 before.maxHp
+    in
+    recomputeBloodied
+        { c
+            | maxHp = newMax
+            , currentHp = Basics.max 0 (Basics.min newMax before.hp)
+            , tempHp = Basics.max 0 before.tempHp
+        }
 
 
 {-| Recompute the bloodied flag from current vs. max HP.
@@ -348,3 +384,17 @@ describe change before after =
 
             else
                 before.name ++ " kept existing temp HP (" ++ String.fromInt after.tempHp ++ ")"
+
+        MaxHpDelta _ ->
+            let
+                gained =
+                    after.maxHp - before.maxHp
+            in
+            before.name
+                ++ " max HP +"
+                ++ String.fromInt gained
+                ++ " ("
+                ++ String.fromInt after.currentHp
+                ++ "/"
+                ++ String.fromInt after.maxHp
+                ++ ")"

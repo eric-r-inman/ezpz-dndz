@@ -1256,8 +1256,8 @@ updateInner msg model =
             Update.Dice.lastTotalFlashCleared model
 
         -- HP change modal lifecycle
-        HpChangeOpen target kind ->
-            Update.HpChange.open target kind model
+        HpChangeOpen target ->
+            Update.HpChange.open target model
 
         HpChangeClose ->
             Update.HpChange.close model
@@ -1277,8 +1277,8 @@ updateInner msg model =
         HpChangeApplyToSelectedToggle ->
             Update.HpChange.applyToSelectedToggle model
 
-        HpChangeApply ->
-            Update.HpChange.apply model
+        HpChangeApplyAs kind ->
+            Update.HpChange.applyAs kind model
 
         HpChangeRollLanded roll ->
             Update.HpChange.rollLanded roll model

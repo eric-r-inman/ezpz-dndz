@@ -76,12 +76,16 @@ type MeStatus
 -- ── HP-CHANGE AUX ────────────────────────────────────────────────────────────
 
 
-{-| Damage / Heal / Temp HP — the verb the modal applies.
+{-| Damage / Heal / Temp HP / +Max HP — the verb the modal
+applies. `MaxHpKind` raises the creature's maxHp by the input
+amount and adds the same amount to currentHp, mirroring the
+5e Aid convention.
 -}
 type HpKind
     = DamageKind
     | HealKind
     | TempHpKind
+    | MaxHpKind
 
 
 {-| Manual integer entry vs. dice expression. The modal toggles
@@ -493,15 +497,22 @@ type Msg
       -- (clientX, clientY captured at click, the resolved roll)
     | RollPopupExpired Int
     | DiceLastTotalFlashCleared
-      -- HP change modal
-    | HpChangeOpen String HpKind
+      -- HP change modal (Manage HP button on the card).  Opens
+      -- with the target creature but no committed kind — the
+      -- kind is chosen when the GM clicks one of the four
+      -- footer action buttons (Damage / Heal / Temp HP /
+      -- +Max HP), which fires `HpChangeApplyAs kind`.
+    | HpChangeOpen String
     | HpChangeClose
     | HpChangeModeSet HpInputMode
     | HpChangeAmountChanged String
     | HpChangeExpressionChanged String
     | HpChangeIgnoreTempToggle
     | HpChangeApplyToSelectedToggle
-    | HpChangeApply
+      -- Commits the modal's current amount / expression as the
+      -- given kind, then closes.  Dice-mode routes through
+      -- `HpChangeRollLanded` first.
+    | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
     | HpChangeUndoLatest
       -- Inline HP edit on the creature card

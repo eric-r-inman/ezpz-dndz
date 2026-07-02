@@ -1,6 +1,5 @@
 module View.Tooltips exposing
-    ( addTempHp
-    , appBarAccount
+    ( appBarAccount
     , appBarCardEditor
     , appBarDonate
     , appBarSettings
@@ -54,7 +53,6 @@ module View.Tooltips exposing
     , compendiumRowSelect
     , concentrating
     , coverCycleTip
-    , damage
     , deathBegin
     , deathDead
     , deathRoll
@@ -76,7 +74,6 @@ module View.Tooltips exposing
     , flying
     , fullCover
     , halfCover
-    , heal
     , hiding
     , initRollAdvantage
     , initRollDisadvantage
@@ -93,6 +90,7 @@ module View.Tooltips exposing
     , loadButton
     , loadRowCompendium
     , loadRowEncounter
+    , manageHp
     , memoAdd
     , memoClear
     , memoEdit
@@ -520,19 +518,9 @@ clickToEdit =
     "Click to edit"
 
 
-damage : String
-damage =
-    "Apply damage"
-
-
-heal : String
-heal =
-    "Heal hit points"
-
-
-addTempHp : String
-addTempHp =
-    "Add temporary hit points"
+manageHp : String
+manageHp =
+    "Manage HP — Damage, Heal, Temp HP, or +Max HP"
 
 
 applyCondition : String

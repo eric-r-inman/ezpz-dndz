@@ -702,6 +702,7 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--damage,
 [data-theme="accessible"] .creature-card .action-btn--heal,
 [data-theme="accessible"] .creature-card .action-btn--temp,
+[data-theme="accessible"] .creature-card .action-btn--manage-hp,
 [data-theme="accessible"] .creature-card .action-btn--condition,
 [data-theme="accessible"] .creature-card .action-btn--ready,
 [data-theme="accessible"] .creature-card .action-btn--readied,
@@ -736,6 +737,7 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--damage:hover,
 [data-theme="accessible"] .creature-card .action-btn--heal:hover,
 [data-theme="accessible"] .creature-card .action-btn--temp:hover,
+[data-theme="accessible"] .creature-card .action-btn--manage-hp:hover,
 [data-theme="accessible"] .creature-card .action-btn--condition:hover,
 [data-theme="accessible"] .creature-card .action-btn--ready:hover,
 [data-theme="accessible"] .creature-card .action-btn--readied:hover,
@@ -5586,7 +5588,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .stat__label,
 .ability__label,
 .dice-history__title,
-.hp-change__preview-label,
 .hp-change__log-title,
 .hp-change__log-kind,
 .init-section__heading,
@@ -6158,6 +6159,27 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .action-btn--condition {
   --btn-bg: var(--color-condition);
+  --btn-fg: var(--card-btn-fg);
+  --btn-bd: transparent;
+}
+
+/* Combined "Manage HP" card button — sits where the old
+   Damage / Heal / Temp HP row was, and opens the merged modal
+   with all four actions in its footer.  Uses a neutral surface
+   tone (like the condition button) so it doesn't privilege any
+   of the four verbs it wraps. */
+.action-btn--manage-hp {
+  --btn-bg: var(--color-surface);
+  --btn-fg: var(--color-text);
+  --btn-bd: var(--color-border);
+}
+
+/* +Max HP button in the modal footer.  Distinct from Temp HP
+   (blue) and Heal (green) so the GM doesn't misclick when the
+   verbs sit side-by-side; teal reads as "boost" without
+   competing with either of its neighbours. */
+.action-btn--max {
+  --btn-bg: #14b8a6;
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
@@ -9540,43 +9562,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin: 0;
 }
 
-.hp-change__preview {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+/* Merged-modal action-button row: Cancel + Damage + Heal +
+   Temp HP + +Max HP.  Wraps on narrow modals so the row doesn't
+   overflow the panel edge; small top padding matches the space
+   the old preview block used to leave above the footer. */
+.hp-change__actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.hp-change__preview-label {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
-}
-
-.hp-change__preview-body {
-  font-family: ui-monospace, "Menlo", monospace;
-  font-size: 0.92rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
   flex-wrap: wrap;
-}
-
-.hp-change__preview-arrow {
-  color: var(--color-text-muted);
-  margin: 0 4px;
-}
-
-.hp-change__preview-roll {
-  color: var(--color-accent);
-}
-
-.hp-change__footer {
-  display: flex;
-  justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
 }
@@ -9666,6 +9658,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-kind--temp {
   background: var(--color-temp-blue);
+}
+
+.hp-change__log-kind--max {
+  background: #14b8a6;
 }
 
 .hp-change__log-target {

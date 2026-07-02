@@ -69,7 +69,7 @@ import Html.Attributes as Attr
         , type_
         )
 import Html.Events exposing (onClick)
-import Msg exposing (HpKind(..), Msg(..))
+import Msg exposing (Msg(..))
 import Set
 import Ui.HpChange exposing (HpEdit)
 import View.Card
@@ -393,20 +393,26 @@ renderWidget db creature widget =
                         , span [ class "action-btn__text" ] [ text "Timer" ]
                         ]
 
+        -- Damage / Heal / Temp HP widgets are legacy per-verb
+        -- entry points from before the modal was merged.  They
+        -- now all open the same Manage HP modal — the button
+        -- label still reflects the widget the GM dropped on
+        -- their custom layout, but the modal handles all four
+        -- kinds so the click still lands where they expect.
         WidgetDamageButton ->
             actionBtn "Damage"
                 "action-btn--damage"
-                (HpChangeOpen creature.name DamageKind)
+                (HpChangeOpen creature.name)
 
         WidgetHealButton ->
             actionBtn "Heal"
                 "action-btn--heal"
-                (HpChangeOpen creature.name HealKind)
+                (HpChangeOpen creature.name)
 
         WidgetTempHpButton ->
             actionBtn "Temp HP"
                 "action-btn--temp"
-                (HpChangeOpen creature.name TempHpKind)
+                (HpChangeOpen creature.name)
 
         WidgetConditionButton ->
             actionBtn "Condition"

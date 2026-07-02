@@ -1,6 +1,6 @@
 module Update.HpChange exposing
     ( amountChanged
-    , apply
+    , applyAs
     , applyToSelectedToggle
     , close
     , editCancel
@@ -49,9 +49,9 @@ withHpChange =
     Model.mapModal Model.hpChangeLens
 
 
-open : String -> HpKind -> Model -> ( Model, Cmd Msg )
-open target kind model =
-    ( { model | modal = Just (ModalHpChange (HpChangeUi.fresh target kind)) }
+open : String -> Model -> ( Model, Cmd Msg )
+open target model =
+    ( { model | modal = Just (ModalHpChange (HpChangeUi.fresh target)) }
     , Cmd.none
     )
 
@@ -111,34 +111,41 @@ applyToSelectedToggle model =
     )
 
 
-{-| Manual mode commits ui.amount via the engine straight away.
-Dice mode parses the expression and fires `Dice.rollCmd`; the
-resulting roll comes back via `HpChangeRollLanded` which then
-commits with the rolled total AND logs the roll to the dice
-history. So both paths converge on a single
-`applyHpChangeAndClose` step.
+{-| Footer action-button click: commit the modal's current
+amount / expression as `kind`. Sets `ui.kind = kind` first
+(so the dice-source label + log entry reflect the chosen kind)
+then routes to the same manual-vs-dice split the old single
+Apply button used. Both paths converge on
+`applyHpChangeAndClose`.
 -}
-apply : Model -> ( Model, Cmd Msg )
-apply model =
+applyAs : HpKind -> Model -> ( Model, Cmd Msg )
+applyAs kind model =
     case model.modal of
         Just (ModalHpChange ui) ->
-            case ui.mode of
+            let
+                withKind =
+                    { ui | kind = kind }
+
+                modelWithKind =
+                    { model | modal = Just (ModalHpChange withKind) }
+            in
+            case withKind.mode of
                 ManualMode ->
-                    ( applyHpChangeAndClose ui ui.amount model
+                    ( applyHpChangeAndClose withKind withKind.amount modelWithKind
                     , Cmd.none
                     )
 
                 DiceMode ->
-                    case Dice.parse ui.expression of
+                    case Dice.parse withKind.expression of
                         Ok expr ->
-                            ( model
+                            ( modelWithKind
                             , Dice.rollCmd HpChangeRollLanded
-                                (hpChangeSource ui model.encounter)
+                                (hpChangeSource withKind modelWithKind.encounter)
                                 expr
                             )
 
                         Err err ->
-                            ( withHpChange (\u -> { u | parseError = Just err }) model
+                            ( withHpChange (\u -> { u | parseError = Just err }) modelWithKind
                             , Cmd.none
                             )
 
@@ -264,7 +271,10 @@ undoLatest model =
                 | encounter =
                     Encounter.mapCreature entry.target
                         (HpChange.restoreHp
-                            { hp = entry.beforeHp, tempHp = entry.beforeTemp }
+                            { hp = entry.beforeHp
+                            , tempHp = entry.beforeTemp
+                            , maxHp = entry.beforeMax
+                            }
                         )
                         model.encounter
                 , hpChangeLog = rest
@@ -296,6 +306,9 @@ hpChangeSource ui enc =
 
                 TempHpKind ->
                     "Temp HP"
+
+                MaxHpKind ->
+                    "+Max HP"
 
         targetLabel =
             if ui.applyToSelected then
@@ -355,6 +368,9 @@ applyHpChangeAndClose ui amount model =
                 TempHpKind ->
                     HpChange.TempHp amount
 
+                MaxHpKind ->
+                    HpChange.MaxHpDelta amount
+
         targets =
             hpChangeTargets ui model.encounter
 
@@ -377,8 +393,10 @@ applyHpChangeAndClose ui amount model =
                             , amount = amount
                             , beforeHp = b.currentHp
                             , beforeTemp = b.tempHp
+                            , beforeMax = b.maxHp
                             , afterHp = a.currentHp
                             , afterTemp = a.tempHp
+                            , afterMax = a.maxHp
                             }
                         )
                         before

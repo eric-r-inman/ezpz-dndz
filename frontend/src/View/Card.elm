@@ -34,7 +34,6 @@ import Json.Decode as Decode
 import Msg
     exposing
         ( HpField(..)
-        , HpKind(..)
         , Msg(..)
         )
 import Set exposing (Set)
@@ -1436,23 +1435,11 @@ rowBot : Creature -> Html Msg
 rowBot creature =
     div [ class "creature-card__row creature-card__row--bot" ]
         [ button
-            [ class "action-btn action-btn--damage"
-            , onClick (HpChangeOpen creature.name DamageKind)
-            , Tooltips.attr Tooltips.damage
+            [ class "action-btn action-btn--manage-hp"
+            , onClick (HpChangeOpen creature.name)
+            , Tooltips.attr Tooltips.manageHp
             ]
-            [ text "Damage" ]
-        , button
-            [ class "action-btn action-btn--heal"
-            , onClick (HpChangeOpen creature.name HealKind)
-            , Tooltips.attr Tooltips.heal
-            ]
-            [ text "Heal" ]
-        , button
-            [ class "action-btn action-btn--temp"
-            , onClick (HpChangeOpen creature.name TempHpKind)
-            , Tooltips.attr Tooltips.addTempHp
-            ]
-            [ text "Temp HP" ]
+            [ text "Manage HP" ]
         , button
             [ class "action-btn action-btn--condition"
             , onClick (ConditionOpenNew creature.name)
