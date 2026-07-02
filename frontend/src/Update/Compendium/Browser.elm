@@ -216,7 +216,13 @@ openUpdate maybePinnedId ui =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( withCompendium (\ui -> { ui | open = False }) model, Cmd.none )
+    -- Also clear `searchText` so the next open starts with a
+    -- fresh filter — persisting the query across a close/open
+    -- cycle surprised GMs who assumed the modal reset when they
+    -- clicked away.
+    ( withCompendium (\ui -> { ui | open = False, searchText = "" }) model
+    , Cmd.none
+    )
 
 
 {-| Close the in-page modal AND open (or focus) the standalone
