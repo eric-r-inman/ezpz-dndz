@@ -203,19 +203,16 @@ applyScope ui enc =
 
 {-| Four action buttons under the amount input — each commits
 the current amount / expression using that verb, then closes.
-Cancel sits on the left; each verb is colour-coded to match the
-existing damage / heal / temp affordances so the GM's muscle
-memory carries over from the old three-button card row.
+No Cancel button; the modal's × in the top-right header
+closes without applying, so the footer stays focused on the
+four verbs. Each verb is colour-coded to match the existing
+damage / heal / temp affordances so the GM's muscle memory
+carries over from the old three-button card row.
 -}
 actionButtons : Html Msg
 actionButtons =
     div [ class "hp-change__actions" ]
         [ button
-            [ class "action-btn"
-            , onClick HpChangeClose
-            ]
-            [ text "Cancel" ]
-        , button
             [ class "action-btn action-btn--damage"
             , onClick (HpChangeApplyAs DamageKind)
             ]
@@ -234,7 +231,7 @@ actionButtons =
             [ class "action-btn action-btn--max"
             , onClick (HpChangeApplyAs MaxHpKind)
             ]
-            [ text "+Max HP" ]
+            [ text "Max HP" ]
         ]
 
 

@@ -6165,13 +6165,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Combined "Manage HP" card button — sits where the old
    Damage / Heal / Temp HP row was, and opens the merged modal
-   with all four actions in its footer.  Uses a neutral surface
-   tone (like the condition button) so it doesn't privilege any
-   of the four verbs it wraps. */
+   with all four actions in its footer.  Uses the same green
+   token as the Encounter Controls "Next Turn" button so it
+   reads as the card's primary action affordance. */
 .action-btn--manage-hp {
-  --btn-bg: var(--color-surface);
-  --btn-fg: var(--color-text);
-  --btn-bd: var(--color-border);
+  --btn-bg: var(--color-btn-green);
+  --btn-fg: var(--card-btn-fg);
+  --btn-bd: transparent;
 }
 
 /* +Max HP button in the modal footer.  Distinct from Temp HP
