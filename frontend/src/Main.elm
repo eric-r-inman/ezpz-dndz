@@ -343,6 +343,7 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
+            :: Ports.incomingPanelShow panelShowFromOtherTab
             :: Ports.compendiumTabMissing (\_ -> CompendiumTabMissing)
             :: xpFilterSubs
             ++ settingsSubs
@@ -1063,6 +1064,23 @@ encounterFromOtherTab raw model =
 
         Err _ ->
             ( model, Cmd.none )
+
+
+{-| Decode the panel-show payload broadcast by a QuickList tab.
+Same-build wire format, so a decode failure is dropped
+silently (would only happen if a stale tab from a different
+build survived across a deploy).
+-}
+panelShowFromOtherTab : Decode.Value -> Msg
+panelShowFromOtherTab raw =
+    let
+        decoder =
+            Decode.map2 IncomingPanelShow
+                (Decode.field "id" Decode.string)
+                (Decode.field "name" Decode.string)
+    in
+    Decode.decodeValue decoder raw
+        |> Result.withDefault NoOp
 
 
 updateInner : Msg -> Model -> ( Model, Cmd Msg )
@@ -2390,6 +2408,52 @@ updateInner msg model =
         PanelShowCreature creatureId creatureName ->
             Update.Compendium.Browser.panelShowCreature creatureId creatureName model
 
+        QuickListRowClick creatureId creatureName ->
+            -- Fires from the QuickList tab.  Broadcast the
+            -- (id, name) so the main tab pins the stat block +
+            -- scrolls its card into view, and let the JS side
+            -- of the port also try `window.opener.focus()` so
+            -- the main tab comes to front.  This tab itself
+            -- doesn't need to update — the GM is done with it.
+            ( model
+            , Ports.broadcastPanelShow
+                (Encode.object
+                    [ ( "id", Encode.string creatureId )
+                    , ( "name", Encode.string creatureName )
+                    ]
+                )
+            )
+
+        IncomingPanelShow creatureId creatureName ->
+            -- Fires on the main tab when a QuickList tab
+            -- clicked a row.  Pin the stat block + scroll the
+            -- creature's card into view.  If the main tab is
+            -- currently parked on some other route (Compendium,
+            -- Donate, …), also navigate back to the encounter
+            -- workspace so the pin + scroll actually land
+            -- somewhere the GM sees.
+            let
+                ( pinned, pinCmd ) =
+                    Update.Compendium.Browser.panelShowCreature
+                        creatureId
+                        creatureName
+                        model
+
+                navCmd =
+                    if pinned.route == Home then
+                        Cmd.none
+
+                    else
+                        Nav.pushUrl pinned.key "/"
+            in
+            ( pinned
+            , Cmd.batch
+                [ pinCmd
+                , navCmd
+                , Effects.scrollActiveIntoView creatureName
+                ]
+            )
+
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model
 
@@ -2826,6 +2890,14 @@ documentTitle model =
 
                 _ ->
                     default
+
+        QuickList ->
+            -- Standalone quick-view tab (opened via ↗ from the
+            -- encounter title bar).  Distinct title so a GM
+            -- parking multiple tabs (main workspace + several
+            -- stat-block tabs) can pick this one out at a
+            -- glance without reading the URL.
+            "eZpZ Quick View"
 
         _ ->
             default

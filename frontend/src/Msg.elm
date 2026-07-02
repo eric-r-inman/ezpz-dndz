@@ -885,6 +885,16 @@ type Msg
       -- Pin a compendium creature's stat block in the side panel
     | PanelShowCreature String String
       -- (compendium id, encounter creature display name)
+      -- QuickList (`/quick-list`) row click: fires from the
+      -- standalone quick-view tab.  Broadcasts a panel-show
+      -- request across the BroadcastChannel so the main tab
+      -- pins the stat block + scrolls the card into view, and
+      -- brings itself to front via `window.opener.focus()`.
+    | QuickListRowClick String String
+      -- Payload from the main tab's `incomingPanelShow`
+      -- subscription — a QuickList tab asked us to pin +
+      -- scroll to (id, name).
+    | IncomingPanelShow String String
       -- Legendary action / legendary resistance pip toggles
     | ToggleLegendaryActionPip String Int
     | ToggleLegendaryResistancePip String Int

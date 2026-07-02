@@ -129,7 +129,11 @@ quickListLink =
         [ class "encounter-bar__quick-list"
         , href "/quick-list"
         , target "_blank"
-        , attribute "rel" "noopener"
+
+        -- No `rel="noopener"` here on purpose: the QuickList
+        -- tab needs `window.opener` intact so it can call
+        -- `window.opener.focus()` to bring the main tab back
+        -- to front when the GM clicks a creature row.
         , Tooltips.attr Tooltips.quickListOpen
         , attribute "aria-label" "Open quick-list in new tab"
         ]

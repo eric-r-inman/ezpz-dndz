@@ -29,9 +29,10 @@ uses so it's instantly recognisable as "whose turn it is."
 
 import Encounter exposing (Cover(..), Creature, Encounter, Timer)
 import Encounter.Xp as Xp
-import Html exposing (Html, div, section, span, text)
-import Html.Attributes exposing (attribute, class, classList)
-import Msg exposing (Msg)
+import Html exposing (Html, button, div, section, span, text)
+import Html.Attributes exposing (attribute, class, classList, type_)
+import Html.Events exposing (onClick)
+import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.EncounterBar
 import View.Tooltips as Tooltips
@@ -71,26 +72,47 @@ creatureCard activeName creature =
     let
         isActive =
             creature.name == activeName
-    in
-    div
-        [ classList
-            [ ( "quick-list-card", True )
-            , ( "quick-list-card--active", isActive )
-            , ( "quick-list-card--inactive", creature.inactive )
-            , ( "quick-list-card--bloodied", creature.bloodied )
-            , ( "quick-list-card--down", creature.currentHp == 0 )
-            ]
-        , attribute "aria-current"
-            (if isActive then
-                "true"
 
-             else
-                "false"
-            )
-        ]
-        [ lineOne creature
-        , lineTwo creature
-        ]
+        baseAttrs =
+            [ classList
+                [ ( "quick-list-card", True )
+                , ( "quick-list-card--active", isActive )
+                , ( "quick-list-card--inactive", creature.inactive )
+                , ( "quick-list-card--bloodied", creature.bloodied )
+                , ( "quick-list-card--down", creature.currentHp == 0 )
+                , ( "quick-list-card--clickable", creature.creatureId /= Nothing )
+                ]
+            , attribute "aria-current"
+                (if isActive then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+
+        children =
+            [ lineOne creature
+            , lineTwo creature
+            ]
+    in
+    -- Placeholder rows have no compendium id to pin — render
+    -- them as a static div rather than a button so the empty
+    -- click doesn't try to broadcast a no-op panel-show.
+    case creature.creatureId of
+        Just cid ->
+            button
+                (type_ "button"
+                    :: onClick (QuickListRowClick cid creature.name)
+                    :: attribute "aria-label"
+                        ("Show " ++ creature.name ++ "'s stat block in the main tab")
+                    :: Tooltips.attr "Click to jump to this creature in the main tab (pins stat block + scrolls to card)"
+                    :: baseAttrs
+                )
+                children
+
+        Nothing ->
+            div baseAttrs children
 
 
 lineOne : Creature -> Html Msg

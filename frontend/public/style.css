@@ -12361,6 +12361,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: var(--color-danger, #ef4444);
 }
 
+/* Cards that carry a creatureId render as native <button>s so
+   clicking them broadcasts a panel-show to the main tab.  Reset
+   the button chrome (button-native background + border + text-
+   align) so the clickable variant looks identical to a plain
+   div-rendered row, and layer a subtle hover cue + pointer
+   cursor so the GM knows the row is interactive. */
+button.quick-list-card {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.quick-list-card--clickable:hover,
+.quick-list-card--clickable:focus-visible {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
 .quick-list-card__line {
   display: flex;
   align-items: center;

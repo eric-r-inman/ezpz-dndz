@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -246,3 +246,20 @@ closed by the user, or the main tab was reloaded since
 opening it). Triggers a normal `CompendiumOpen` modal flow.
 -}
 port compendiumTabMissing : (() -> msg) -> Sub msg
+
+
+{-| Cross-tab request from the QuickList (`/quick-list`) tab to
+the main encounter tab: "the GM clicked creature X, please pin
+its stat block + scroll to it in the queue." The JS host
+posts the payload on the `ezpz-dndz-panel-show` BroadcastChannel
+and calls `window.opener.focus()` so the main tab surfaces to
+the front. Payload shape: `{ id: String, name: String }`.
+-}
+port broadcastPanelShow : E.Value -> Cmd msg
+
+
+{-| Subscription the main tab uses to receive panel-show
+requests posted by a QuickList tab. Payload is the same JSON
+`broadcastPanelShow` sends.
+-}
+port incomingPanelShow : (D.Value -> msg) -> Sub msg
