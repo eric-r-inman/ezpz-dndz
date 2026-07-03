@@ -5138,10 +5138,19 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .creature-card__center {
   flex: 1;
-  display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 6px;
   min-width: 0;
+  /* Each of the three rows takes its own content height (top
+     row wraps to two lines when it fills up; mid + bot stay
+     compact).  Previously used `grid-template-rows: repeat(3,
+     1fr)` — the three equal `1fr` tracks meant that when the
+     top row's wrapped content forced its track to grow, the
+     other two tracks grew proportionally to preserve the
+     ratio, which read as extra padding on every row.  Flex
+     column keeps the 6 px gap fixed regardless of individual
+     row height. */
 }
 
 /* Recharge-ability chips on row 1 of the creature card, rendered
