@@ -12762,6 +12762,42 @@ button.quick-list-card {
   margin: 0;
 }
 
+/* An "effect block" wraps the top row (name + note + toggles +
+   remove) and the optional auto-roll sub-row below.  Column
+   layout with a tighter internal gap so the sub-row hugs the
+   parent effect visually. */
+.save-chain__effect-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Auto-roll mode picker: three inline radios that appear
+   beneath an effect when its Save-to-end checkbox is on.
+   Indented + muted so the sub-row reads as configuration
+   for the effect above it, not as a separate row. */
+.save-chain__effect-autoroll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-left: 16px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.save-chain__autoroll-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.save-chain__autoroll-radio input[type="radio"] {
+  accent-color: var(--color-accent);
+  margin: 0;
+}
+
 .save-chain__hp-radios {
   display: flex;
   flex-wrap: wrap;

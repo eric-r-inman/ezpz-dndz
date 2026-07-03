@@ -556,10 +556,17 @@ type Msg
     | SaveChainOutcomeEffectRemove SaveChainSide Int
     | SaveChainOutcomeEffectNameChanged SaveChainSide Int String
     | SaveChainOutcomeEffectNoteChanged SaveChainSide Int String
-      -- Per-effect "save at end of turn to end" toggle.  When
-      -- checked, the applied condition inherits the chain's
-      -- save ability + DC as its save-to-end configuration.
+      -- Per-effect "save-to-end" toggle.  Flips between
+      -- `Nothing` (no re-save) and `Just AutoRollAtEnd` (the
+      -- canonical default).  The applied condition inherits
+      -- the chain's save ability + DC as its save-to-end
+      -- configuration when opted in.
     | SaveChainOutcomeEffectSaveToEndToggle SaveChainSide Int
+      -- Per-effect auto-roll mode picker (Manual / AtBegin /
+      -- AtEnd), only meaningful when `saveToEnd` is `Just _`.
+      -- Mirrors the auto-roll radio group in the standard
+      -- Condition modal.
+    | SaveChainOutcomeEffectAutoRollSet SaveChainSide Int Encounter.AutoRollMode
       -- Preset ops
     | SaveChainPresetPickerChanged String
     | SaveChainPresetLoad

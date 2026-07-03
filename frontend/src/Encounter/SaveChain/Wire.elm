@@ -14,6 +14,7 @@ saved chains survive across reloads. Payload is written to
 
 import Compendium exposing (Ability(..))
 import Dict exposing (Dict)
+import Encounter
 import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
 import Json.Decode as D
 import Json.Encode as E
@@ -124,7 +125,7 @@ legacyEffectsDecoder =
                     []
 
                 else
-                    [ { name = name, note = note, saveToEnd = False } ]
+                    [ { name = name, note = note, saveToEnd = Nothing } ]
             )
 
 
@@ -133,7 +134,14 @@ encodeEffect e =
     E.object
         [ ( "name", E.string e.name )
         , ( "note", E.string e.note )
-        , ( "save_to_end", E.bool e.saveToEnd )
+        , ( "save_to_end"
+          , case e.saveToEnd of
+                Just mode ->
+                    E.string (autoRollString mode)
+
+                Nothing ->
+                    E.null
+          )
         ]
 
 
@@ -142,7 +150,62 @@ effectDecoder =
     D.map3 EffectApply
         (D.field "name" D.string)
         (optionalField "note" D.string "")
-        (optionalField "save_to_end" D.bool False)
+        (optionalField "save_to_end" saveToEndDecoder Nothing)
+
+
+{-| `save_to_end` on the wire accepts three shapes:
+
+  - String enum (`"manual"` / `"at_begin"` / `"at_end"`) —
+    the canonical form, parses to `Just AutoRollMode`.
+  - Bool (`true` / `false`) — the pre-mode wire from the
+    previous refactor. `true` maps to the default
+    `AutoRollAtEnd`; `false` maps to `Nothing`.
+  - Null / absent — same as `false` → `Nothing`.
+
+-}
+saveToEndDecoder : D.Decoder (Maybe Encounter.AutoRollMode)
+saveToEndDecoder =
+    D.oneOf
+        [ D.null Nothing
+        , D.string
+            |> D.andThen
+                (\s ->
+                    case s of
+                        "manual" ->
+                            D.succeed (Just Encounter.AutoRollManual)
+
+                        "at_begin" ->
+                            D.succeed (Just Encounter.AutoRollAtBegin)
+
+                        "at_end" ->
+                            D.succeed (Just Encounter.AutoRollAtEnd)
+
+                        _ ->
+                            D.succeed Nothing
+                )
+        , D.bool
+            |> D.map
+                (\b ->
+                    if b then
+                        Just Encounter.AutoRollAtEnd
+
+                    else
+                        Nothing
+                )
+        ]
+
+
+autoRollString : Encounter.AutoRollMode -> String
+autoRollString mode =
+    case mode of
+        Encounter.AutoRollManual ->
+            "manual"
+
+        Encounter.AutoRollAtBegin ->
+            "at_begin"
+
+        Encounter.AutoRollAtEnd ->
+            "at_end"
 
 
 

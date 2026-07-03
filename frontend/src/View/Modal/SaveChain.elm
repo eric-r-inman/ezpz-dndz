@@ -331,43 +331,95 @@ effectsSection side form =
 
 effectRow : SaveChainSide -> Int -> EffectApply -> Html Msg
 effectRow side idx effect =
-    div [ class "save-chain__effect-row" ]
-        [ input
-            [ type_ "text"
-            , class "save-chain__condition-input"
-            , list "save-chain-condition-list"
-            , value effect.name
-            , placeholder "condition or effect name"
-            , onInput (SaveChainOutcomeEffectNameChanged side idx)
-            ]
-            []
-        , input
-            [ type_ "text"
-            , class "save-chain__condition-note-input"
-            , value effect.note
-            , placeholder "note (optional)"
-            , onInput (SaveChainOutcomeEffectNoteChanged side idx)
-            ]
-            []
-        , Html.label
-            [ class "save-chain__effect-save-to-end"
-            , Tooltips.attr "Save at end of turn to end (inherits the chain's Save ability + DC on the applied condition)"
-            ]
+    div [ class "save-chain__effect-block" ]
+        [ div [ class "save-chain__effect-row" ]
             [ input
-                [ type_ "checkbox"
-                , checked effect.saveToEnd
-                , onClick (SaveChainOutcomeEffectSaveToEndToggle side idx)
+                [ type_ "text"
+                , class "save-chain__condition-input"
+                , list "save-chain-condition-list"
+                , value effect.name
+                , placeholder "condition or effect name"
+                , onInput (SaveChainOutcomeEffectNameChanged side idx)
                 ]
                 []
-            , text " Save EoT"
+            , input
+                [ type_ "text"
+                , class "save-chain__condition-note-input"
+                , value effect.note
+                , placeholder "note (optional)"
+                , onInput (SaveChainOutcomeEffectNoteChanged side idx)
+                ]
+                []
+            , Html.label
+                [ class "save-chain__effect-save-to-end"
+                , Tooltips.attr "Save-to-end: applied condition inherits the chain's Save ability + DC.  Auto-roll options appear below when checked."
+                ]
+                [ input
+                    [ type_ "checkbox"
+                    , checked (effect.saveToEnd /= Nothing)
+                    , onClick (SaveChainOutcomeEffectSaveToEndToggle side idx)
+                    ]
+                    []
+                , text " Save-to-end"
+                ]
+            , button
+                [ class "icon-btn icon-btn--sm save-chain__effect-remove"
+                , type_ "button"
+                , onClick (SaveChainOutcomeEffectRemove side idx)
+                , attribute "aria-label" "Remove effect"
+                ]
+                [ text "×" ]
             ]
-        , button
-            [ class "icon-btn icon-btn--sm save-chain__effect-remove"
-            , type_ "button"
-            , onClick (SaveChainOutcomeEffectRemove side idx)
-            , attribute "aria-label" "Remove effect"
+        , autoRollRow side idx effect
+        ]
+
+
+{-| Auto-roll mode picker. Only rendered when the effect's
+`saveToEnd` is `Just _` — mirrors the same three modes the
+Condition modal offers so the two entry points behave
+identically once the applied condition is on the card.
+-}
+autoRollRow : SaveChainSide -> Int -> EffectApply -> Html Msg
+autoRollRow side idx effect =
+    case effect.saveToEnd of
+        Nothing ->
+            text ""
+
+        Just mode ->
+            div [ class "save-chain__effect-autoroll" ]
+                [ span [ class "save-chain__caption" ] [ text "Auto-roll:" ]
+                , autoRollRadio side idx mode Encounter.AutoRollManual "Manual"
+                , autoRollRadio side idx mode Encounter.AutoRollAtBegin "At begin of turn"
+                , autoRollRadio side idx mode Encounter.AutoRollAtEnd "At end of turn"
+                ]
+
+
+autoRollRadio :
+    SaveChainSide
+    -> Int
+    -> Encounter.AutoRollMode
+    -> Encounter.AutoRollMode
+    -> String
+    -> Html Msg
+autoRollRadio side idx current mode label =
+    let
+        groupName =
+            case side of
+                SaveChainFail ->
+                    "save-chain-autoroll-fail-" ++ String.fromInt idx
+
+                SaveChainSuccess ->
+                    "save-chain-autoroll-success-" ++ String.fromInt idx
+    in
+    Html.label [ class "save-chain__autoroll-radio" ]
+        [ input
+            [ type_ "radio"
+            , name groupName
+            , checked (current == mode)
+            , onClick (SaveChainOutcomeEffectAutoRollSet side idx mode)
             ]
-            [ text "×" ]
+            []
+        , text label
         ]
 
 

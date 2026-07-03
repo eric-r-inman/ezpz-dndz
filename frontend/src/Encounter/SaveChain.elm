@@ -3,7 +3,7 @@ module Encounter.SaveChain exposing
     , empty, isEffectivelyEmpty
     , applyResolvedHp, applyEffects, halfFailDamage
     , rawAmount
-    , EffectApply, emptyEffect
+    , EffectApply, EffectContext, emptyEffect
     )
 
 {-| Save Chain: a reusable "creature makes a save; something
@@ -85,19 +85,25 @@ Curse", etc.) for spells whose in-game effect isn't part of
 the 5e condition list. Note is optional flavour or a
 reminder of the ongoing mechanic.
 
-`saveToEnd` opts this effect into the "save at end of each
-turn to end" mechanic — the applied condition inherits the
-chain's save ability and DC (Hold Person's WIS DC 15, etc.)
-as its save-to-end configuration. Left off for effects
-without an end-of-turn re-save (Hypnotic Pattern's Charmed
-ends on damage, not a save; Web needs a Str check as an
-action, not a save; Suggestion has no re-save at all).
+`saveToEnd` opts this effect into the save-to-end mechanic:
+
+  - `Nothing` — no automatic re-save; the applied condition
+    lives on `DurationManual` until the GM removes it. Used
+    for effects like Hypnotic Pattern's Charmed (ends on
+    damage, not a save) or Suggestion (no re-save at all).
+  - `Just mode` — the applied condition inherits the chain's
+    save ability + DC (Hold Person's WIS DC 15, etc.) and
+    fires per the chosen `AutoRollMode`. The three modes
+    mirror the Condition modal: manual (the GM clicks 🎲
+    on the chip when they want to roll), at-begin (fires
+    at the start of the bearer's turn), or at-end (the
+    canonical 5e "save at end of each turn to end").
 
 -}
 type alias EffectApply =
     { name : String
     , note : String
-    , saveToEnd : Bool
+    , saveToEnd : Maybe Encounter.AutoRollMode
     }
 
 
@@ -147,7 +153,7 @@ effect" button pushes a new row onto an outcome's list.
 -}
 emptyEffect : EffectApply
 emptyEffect =
-    { name = "", note = "", saveToEnd = False }
+    { name = "", note = "", saveToEnd = Nothing }
 
 
 {-| True iff a chain has no effects on either side. Used by
@@ -262,7 +268,7 @@ save-to-end to an effect the GM didn't opt in.
 
 -}
 applyEffects :
-    { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+    EffectContext
     -> SaveOutcome
     -> String
     -> Encounter.Encounter
@@ -271,8 +277,24 @@ applyEffects ctx outcome target enc =
     List.foldl (applyEffect ctx target) enc outcome.effects
 
 
+{-| The update layer's per-apply context supplied to the
+domain: the chain's save ability (as an uppercase string
+matching the Condition modal's `saveToEnd.ability`), an
+optional DC, and a per-target save-bonus resolver. When the
+chain has no DC (`saveDc = Nothing`) the domain refuses to
+build a `SaveToEnd` even if the effect opts in — better to
+skip silently than attach a DC-less save-to-end that would
+never resolve.
+-}
+type alias EffectContext =
+    { saveAbility : String
+    , saveDc : Maybe Int
+    , bonusFor : String -> Int
+    }
+
+
 applyEffect :
-    { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+    EffectContext
     -> String
     -> EffectApply
     -> Encounter.Encounter
@@ -286,21 +308,32 @@ applyEffect ctx target effect enc =
         enc
 
     else
-        let
-            saveToEnd =
-                if effect.saveToEnd then
-                    ctx.saveToEndFor target
-
-                else
-                    Nothing
-        in
         Encounter.addCondition target
             { name = trimmedName
             , note = String.trim effect.note
             , duration = Encounter.DurationManual
-            , saveToEnd = saveToEnd
+            , saveToEnd = resolveSaveToEnd ctx target effect
             }
             enc
+
+
+resolveSaveToEnd :
+    EffectContext
+    -> String
+    -> EffectApply
+    -> Maybe Encounter.SaveToEnd
+resolveSaveToEnd ctx target effect =
+    case ( effect.saveToEnd, ctx.saveDc ) of
+        ( Just mode, Just dc ) ->
+            Just
+                { ability = ctx.saveAbility
+                , dc = dc
+                , bonus = ctx.bonusFor target
+                , autoRoll = mode
+                }
+
+        _ ->
+            Nothing
 
 
 {-| Compute "half fail damage, rounded down" the same way 5e

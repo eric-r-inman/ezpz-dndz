@@ -44,6 +44,7 @@ populated.
 
 import Compendium exposing (Ability(..))
 import Dict exposing (Dict)
+import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 
 
@@ -325,16 +326,18 @@ effectsOnly es =
 
 effect : String -> String -> SaveChain.EffectApply
 effect name note =
-    { name = name, note = note, saveToEnd = False }
+    { name = name, note = note, saveToEnd = Nothing }
 
 
 {-| Convenience for effects whose applied condition should
-inherit the chain's Save + DC as its save-at-end-of-turn.
-Same as `effect` but with `saveToEnd = True` — used for the
-classic "save at end of each turn to end" spells (Paralyzed
-from Hold Person, Frightened from Fear, Slowed, Confused,
-Banished, etc.).
+inherit the chain's Save + DC as its save-to-end, auto-
+rolling at end-of-turn. Used for the classic "save at end
+of each turn to end" spells (Paralyzed from Hold Person,
+Frightened from Fear, Slowed, Confused, Banished, etc.).
+GMs who want manual rolls or beginning-of-turn timing can
+toggle after loading the preset via the auto-roll radio
+group in the modal.
 -}
 effectSvEoT : String -> String -> SaveChain.EffectApply
 effectSvEoT name note =
-    { name = name, note = note, saveToEnd = True }
+    { name = name, note = note, saveToEnd = Just Encounter.AutoRollAtEnd }

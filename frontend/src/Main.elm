@@ -1334,6 +1334,9 @@ updateInner msg model =
         SaveChainOutcomeEffectSaveToEndToggle side idx ->
             Update.SaveChain.outcomeEffectSaveToEndToggle side idx model
 
+        SaveChainOutcomeEffectAutoRollSet side idx mode ->
+            Update.SaveChain.outcomeEffectAutoRollSet side idx mode model
+
         SaveChainPresetPickerChanged text ->
             Update.SaveChain.presetPickerChanged text model
 

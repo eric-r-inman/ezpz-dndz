@@ -8,7 +8,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , outcomeEffectSaveToEndToggle
+    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle
     )
 
 {-| Update branches for the Save Chain modal.
@@ -203,7 +203,40 @@ outcomeEffectSaveToEndToggle side idx model =
                 { o
                     | effects =
                         updateAt idx
-                            (\e -> { e | saveToEnd = not e.saveToEnd })
+                            (\e ->
+                                { e
+                                    | saveToEnd =
+                                        case e.saveToEnd of
+                                            Just _ ->
+                                                Nothing
+
+                                            Nothing ->
+                                                Just Encounter.AutoRollAtEnd
+                                }
+                            )
+                            o.effects
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+outcomeEffectAutoRollSet :
+    SaveChainSide
+    -> Int
+    -> Encounter.AutoRollMode
+    -> Model
+    -> ( Model, Cmd Msg )
+outcomeEffectAutoRollSet side idx mode model =
+    ( withUi
+        (mapSide side
+            (\o ->
+                { o
+                    | effects =
+                        updateAt idx
+                            (\e -> { e | saveToEnd = Just mode })
                             o.effects
                 }
             )
@@ -919,49 +952,27 @@ currentCompendium db =
 
 
 {-| Build the effect-application context that
-`SaveChain.applyEffects` needs. Provides the per-target
-`SaveToEnd` spec keyed by target name:
-
-  - `Nothing` when the chain has no DC (there's nothing to
-    inherit — the effect will fall through as manual)
-  - `Just` with the chain's ability + DC + the target's own
-    save modifier (compendium lookup; 0 if the target
-    isn't in the DB). `AutoRollAtEnd` matches the "save at
-    the end of each of its turns" 5e wording that this
-    checkbox is meant to model.
-
+`SaveChain.applyEffects` needs. Supplies the chain's save
+ability + DC plus a per-target save-bonus resolver
+(compendium lookup — proficient override wins, else raw
+ability mod; 0 if the target isn't in the DB). Effects
+that opt into save-to-end pick their own auto-roll mode;
+the domain reads it off the effect and wires it in when
+building the `SaveToEnd`.
 -}
-buildEffectContext :
-    SaveChain
-    -> Model
-    -> { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+buildEffectContext : SaveChain -> Model -> SaveChain.EffectContext
 buildEffectContext chain model =
     let
         db =
             currentCompendium model.compendium.db
-
-        abilityStr =
-            saveAbilityLabel chain.saveAbility
     in
-    { saveToEndFor =
+    { saveAbility = saveAbilityLabel chain.saveAbility
+    , saveDc = chain.saveDc
+    , bonusFor =
         \targetName ->
-            case chain.saveDc of
-                Nothing ->
-                    Nothing
-
-                Just dc ->
-                    let
-                        bonus =
-                            findCreatureRecord db targetName model.encounter
-                                |> Maybe.map (saveModifier chain.saveAbility)
-                                |> Maybe.withDefault 0
-                    in
-                    Just
-                        { ability = abilityStr
-                        , dc = dc
-                        , bonus = bonus
-                        , autoRoll = Encounter.AutoRollAtEnd
-                        }
+            findCreatureRecord db targetName model.encounter
+                |> Maybe.map (saveModifier chain.saveAbility)
+                |> Maybe.withDefault 0
     }
 
 
