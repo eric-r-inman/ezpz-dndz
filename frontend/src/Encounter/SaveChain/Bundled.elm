@@ -51,61 +51,42 @@ import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveO
 defaults : Dict String SaveChain
 defaults =
     Dict.fromList
-        [ -- Cantrips
-          ( "Acid Splash (cantrip)", acidSplash )
-        , ( "Poison Spray (cantrip)", poisonSpray )
-        , ( "Sacred Flame (cantrip)", sacredFlame )
-        , ( "Toll the Dead (cantrip)", tollTheDead )
-
-        -- Level 1
-        , ( "Bane (1st)", bane )
-        , ( "Burning Hands (1st)", burningHands )
-        , ( "Command (1st)", command )
-        , ( "Thunderwave (1st)", thunderwave )
-
-        -- Level 2
-        , ( "Blindness / Deafness (2nd)", blindnessDeafness )
-        , ( "Hold Person (2nd)", holdPerson )
-        , ( "Shatter (2nd)", shatter )
-        , ( "Suggestion (2nd)", suggestion )
-        , ( "Web (2nd)", web )
-
-        -- Level 3
-        , ( "Fear (3rd)", fear )
-        , ( "Fireball (3rd)", fireball )
-        , ( "Hypnotic Pattern (3rd)", hypnoticPattern )
-        , ( "Lightning Bolt (3rd)", lightningBolt )
-        , ( "Slow (3rd)", slow )
-        , ( "Stinking Cloud (3rd)", stinkingCloud )
-
-        -- Level 4
-        , ( "Banishment (4th)", banishment )
-        , ( "Blight (4th)", blight )
-        , ( "Confusion (4th)", confusion )
-        , ( "Ice Storm (4th)", iceStorm )
-        , ( "Phantasmal Killer (4th)", phantasmalKiller )
-
-        -- Level 5
-        , ( "Cloudkill (5th)", cloudkill )
-        , ( "Cone of Cold (5th)", coneOfCold )
-        , ( "Flame Strike (5th)", flameStrike )
-        , ( "Hold Monster (5th)", holdMonster )
-
-        -- Level 6
-        , ( "Chain Lightning (6th)", chainLightning )
-        , ( "Disintegrate (6th)", disintegrate )
-        , ( "Harm (6th)", harm )
-        , ( "Sunbeam (6th)", sunbeam )
-
-        -- Level 7
-        , ( "Finger of Death (7th)", fingerOfDeath )
-
-        -- Level 8
-        , ( "Feeblemind (8th)", feeblemind )
-
-        -- Level 9
-        , ( "Meteor Swarm (9th)", meteorSwarm )
-        , ( "Weird (9th)", weird )
+        [ ( "Acid Splash", acidSplash )
+        , ( "Poison Spray", poisonSpray )
+        , ( "Sacred Flame", sacredFlame )
+        , ( "Toll the Dead", tollTheDead )
+        , ( "Bane", bane )
+        , ( "Burning Hands", burningHands )
+        , ( "Command", command )
+        , ( "Thunderwave", thunderwave )
+        , ( "Blindness / Deafness", blindnessDeafness )
+        , ( "Hold Person", holdPerson )
+        , ( "Shatter", shatter )
+        , ( "Suggestion", suggestion )
+        , ( "Web", web )
+        , ( "Fear", fear )
+        , ( "Fireball", fireball )
+        , ( "Hypnotic Pattern", hypnoticPattern )
+        , ( "Lightning Bolt", lightningBolt )
+        , ( "Slow", slow )
+        , ( "Stinking Cloud", stinkingCloud )
+        , ( "Banishment", banishment )
+        , ( "Blight", blight )
+        , ( "Confusion", confusion )
+        , ( "Ice Storm", iceStorm )
+        , ( "Phantasmal Killer", phantasmalKiller )
+        , ( "Cloudkill", cloudkill )
+        , ( "Cone of Cold", coneOfCold )
+        , ( "Flame Strike", flameStrike )
+        , ( "Hold Monster", holdMonster )
+        , ( "Chain Lightning", chainLightning )
+        , ( "Disintegrate", disintegrate )
+        , ( "Harm", harm )
+        , ( "Sunbeam", sunbeam )
+        , ( "Finger of Death", fingerOfDeath )
+        , ( "Feeblemind", feeblemind )
+        , ( "Meteor Swarm", meteorSwarm )
+        , ( "Weird", weird )
         ]
 
 
@@ -115,7 +96,7 @@ defaults =
 
 sacredFlame : SaveChain
 sacredFlame =
-    { name = "Sacred Flame (cantrip)"
+    { name = "Sacred Flame"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "1d8") -- radiant
@@ -125,7 +106,7 @@ sacredFlame =
 
 poisonSpray : SaveChain
 poisonSpray =
-    { name = "Poison Spray (cantrip)"
+    { name = "Poison Spray"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "1d12") -- poison
@@ -139,7 +120,7 @@ poisonSpray =
 
 burningHands : SaveChain
 burningHands =
-    { name = "Burning Hands (1st)"
+    { name = "Burning Hands"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "3d6") -- fire
@@ -149,7 +130,7 @@ burningHands =
 
 fireball : SaveChain
 fireball =
-    { name = "Fireball (3rd)"
+    { name = "Fireball"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "8d6") -- fire
@@ -159,7 +140,7 @@ fireball =
 
 coneOfCold : SaveChain
 coneOfCold =
-    { name = "Cone of Cold (5th)"
+    { name = "Cone of Cold"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "8d8") -- cold
@@ -173,7 +154,7 @@ coneOfCold =
 
 blindnessDeafness : SaveChain
 blindnessDeafness =
-    { name = "Blindness / Deafness (2nd)"
+    { name = "Blindness / Deafness"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = effectsOnly [ effectSvEoT "Blinded" "" ]
@@ -183,7 +164,7 @@ blindnessDeafness =
 
 holdPerson : SaveChain
 holdPerson =
-    { name = "Hold Person (2nd)"
+    { name = "Hold Person"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -195,7 +176,7 @@ holdPerson =
 
 web : SaveChain
 web =
-    { name = "Web (2nd)"
+    { name = "Web"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail =
@@ -218,7 +199,7 @@ action might only clear one).
 -}
 hypnoticPattern : SaveChain
 hypnoticPattern =
-    { name = "Hypnotic Pattern (3rd)"
+    { name = "Hypnotic Pattern"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -241,7 +222,7 @@ note carries the compulsion.
 -}
 fear : SaveChain
 fear =
-    { name = "Fear (3rd)"
+    { name = "Fear"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -260,7 +241,7 @@ note.
 -}
 slow : SaveChain
 slow =
-    { name = "Slow (3rd)"
+    { name = "Slow"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -277,7 +258,7 @@ the whole spell.
 -}
 confusion : SaveChain
 confusion =
-    { name = "Confusion (4th)"
+    { name = "Confusion"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -294,7 +275,7 @@ Frightened / Charmed / etc.
 -}
 banishment : SaveChain
 banishment =
-    { name = "Banishment (4th)"
+    { name = "Banishment"
     , saveAbility = Cha
     , saveDc = Nothing
     , onFail =
@@ -311,7 +292,7 @@ the spell text.
 -}
 suggestion : SaveChain
 suggestion =
-    { name = "Suggestion (2nd)"
+    { name = "Suggestion"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -332,7 +313,7 @@ combined shape.
 -}
 phantasmalKiller : SaveChain
 phantasmalKiller =
-    { name = "Phantasmal Killer (4th)"
+    { name = "Phantasmal Killer"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
@@ -399,7 +380,7 @@ effectSvBoT name note =
 
 tollTheDead : SaveChain
 tollTheDead =
-    { name = "Toll the Dead (cantrip)"
+    { name = "Toll the Dead"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "1d8") -- necrotic; 1d12 if wounded
@@ -409,7 +390,7 @@ tollTheDead =
 
 acidSplash : SaveChain
 acidSplash =
-    { name = "Acid Splash (cantrip)"
+    { name = "Acid Splash"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "1d6") -- acid
@@ -427,7 +408,7 @@ re-save; the caster ends it by dropping concentration.
 -}
 bane : SaveChain
 bane =
-    { name = "Bane (1st)"
+    { name = "Bane"
     , saveAbility = Cha
     , saveDc = Nothing
     , onFail = effectsOnly [ effect "Baned" "-1d4 rolls" ]
@@ -442,7 +423,7 @@ target acts.
 -}
 command : SaveChain
 command =
-    { name = "Command (1st)"
+    { name = "Command"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail = effectsOnly [ effect "Commanded" "1 turn" ]
@@ -456,7 +437,7 @@ time repositioning; not modeled as a persistent condition.
 -}
 thunderwave : SaveChain
 thunderwave =
-    { name = "Thunderwave (1st)"
+    { name = "Thunderwave"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "2d8") -- thunder + push 10ft
@@ -475,7 +456,7 @@ mind by rolling saves manually if needed.
 -}
 shatter : SaveChain
 shatter =
-    { name = "Shatter (2nd)"
+    { name = "Shatter"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "3d8") -- thunder
@@ -489,7 +470,7 @@ shatter =
 
 lightningBolt : SaveChain
 lightningBolt =
-    { name = "Lightning Bolt (3rd)"
+    { name = "Lightning Bolt"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "8d6") -- lightning
@@ -505,7 +486,7 @@ creature leaves the cloud.
 -}
 stinkingCloud : SaveChain
 stinkingCloud =
-    { name = "Stinking Cloud (3rd)"
+    { name = "Stinking Cloud"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = effectsOnly [ effectSvBoT "Retching" "wastes act" ]
@@ -519,7 +500,7 @@ stinkingCloud =
 
 blight : SaveChain
 blight =
-    { name = "Blight (4th)"
+    { name = "Blight"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "8d8") -- necrotic
@@ -536,7 +517,7 @@ targets.
 -}
 iceStorm : SaveChain
 iceStorm =
-    { name = "Ice Storm (4th)"
+    { name = "Ice Storm"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "2d8+4d6") -- bludg + cold
@@ -556,7 +537,7 @@ GM removes the tracker when the creature exits.
 -}
 cloudkill : SaveChain
 cloudkill =
-    { name = "Cloudkill (5th)"
+    { name = "Cloudkill"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "5d8") -- poison
@@ -566,7 +547,7 @@ cloudkill =
 
 holdMonster : SaveChain
 holdMonster =
-    { name = "Hold Monster (5th)"
+    { name = "Hold Monster"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail = effectsOnly [ effectSvEoT "Paralyzed" "" ]
@@ -576,7 +557,7 @@ holdMonster =
 
 flameStrike : SaveChain
 flameStrike =
-    { name = "Flame Strike (5th)"
+    { name = "Flame Strike"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "4d6+4d6") -- fire + radiant
@@ -590,7 +571,7 @@ flameStrike =
 
 chainLightning : SaveChain
 chainLightning =
-    { name = "Chain Lightning (6th)"
+    { name = "Chain Lightning"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "10d8") -- lightning
@@ -605,7 +586,7 @@ they save.
 -}
 disintegrate : SaveChain
 disintegrate =
-    { name = "Disintegrate (6th)"
+    { name = "Disintegrate"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "10d6+40") -- force; 0→dust
@@ -620,7 +601,7 @@ HP edit on the card.
 -}
 harm : SaveChain
 harm =
-    { name = "Harm (6th)"
+    { name = "Harm"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "14d6") -- necrotic; max HP debuff
@@ -635,7 +616,7 @@ the short-duration blindness.
 -}
 sunbeam : SaveChain
 sunbeam =
-    { name = "Sunbeam (6th)"
+    { name = "Sunbeam"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail =
@@ -658,7 +639,7 @@ they'd already be at 0 HP.
 -}
 fingerOfDeath : SaveChain
 fingerOfDeath =
-    { name = "Finger of Death (7th)"
+    { name = "Finger of Death"
     , saveAbility = Con
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "7d8+30") -- necrotic; hmn→zombie
@@ -679,7 +660,7 @@ Restoration / Wish.
 -}
 feeblemind : SaveChain
 feeblemind =
-    { name = "Feeblemind (8th)"
+    { name = "Feeblemind"
     , saveAbility = Int_
     , saveDc = Nothing
     , onFail =
@@ -696,7 +677,7 @@ feeblemind =
 
 meteorSwarm : SaveChain
 meteorSwarm =
-    { name = "Meteor Swarm (9th)"
+    { name = "Meteor Swarm"
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail = damageOnly (DealDamage "20d6+20d6") -- fire + bludg
@@ -713,7 +694,7 @@ success but doesn't auto-deal damage.
 -}
 weird : SaveChain
 weird =
-    { name = "Weird (9th)"
+    { name = "Weird"
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail = effectsOnly [ effectSvEoT "Frightened" "+4d10 psy" ]
