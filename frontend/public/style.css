@@ -12867,6 +12867,16 @@ button.quick-list-card {
   color: var(--color-warning, #b9602a);
 }
 
+/* Danger variant of the caption — used for validation
+   errors the GM MUST fix before applying (e.g. Save-to-end
+   is opted in on some effect but the chain has no DC to
+   inherit).  Red so it reads distinctly from the
+   `--warn` orange advisory. */
+.save-chain__caption--danger {
+  color: var(--color-danger, #dc2626);
+  font-weight: 600;
+}
+
 .save-chain__apply-row {
   margin-top: 12px;
   padding-top: 10px;

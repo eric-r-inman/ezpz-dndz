@@ -164,6 +164,26 @@ nameRow ui =
 
 saveRow : SaveChainUi -> Html Msg
 saveRow ui =
+    let
+        anySaveToEnd =
+            List.any (\e -> e.saveToEnd /= Nothing) ui.onFail.effects
+                || List.any (\e -> e.saveToEnd /= Nothing) ui.onSuccess.effects
+
+        dcMissing =
+            case String.toInt (String.trim ui.dcText) of
+                Just _ ->
+                    False
+
+                Nothing ->
+                    True
+
+        dcHintClass =
+            if anySaveToEnd && dcMissing then
+                "save-chain__caption save-chain__caption--danger"
+
+            else
+                "save-chain__caption"
+    in
     div [ class "save-chain__row save-chain__row--save" ]
         [ div [ class "save-chain__ability-group" ]
             [ span [ class "save-chain__field-label" ] [ text "Save" ]
@@ -186,6 +206,8 @@ saveRow ui =
                 , onInput SaveChainDcChanged
                 ]
                 []
+            , span [ class dcHintClass ]
+                [ text "DC required for Save-to-end" ]
             ]
         ]
 
