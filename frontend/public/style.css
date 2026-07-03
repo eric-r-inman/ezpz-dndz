@@ -6015,6 +6015,23 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 0.7;
 }
 
+/* Leading state dot on every row-2 status toggle.  Rendered as
+   its own span in `View.Card.boolToggle` / `coverToggle` so the
+   glyph can be colour-styled independently of the label.  OFF
+   is an empty ○ tinted by the parent's muted colour; ON swaps
+   to a filled ● and pulls the theme's `--color-yellow`, giving
+   the whole row-2 strip a single at-a-glance "which toggles
+   are lit" signal that survives even when the label text is
+   itself busy (e.g. cover's `½` / `¾` / `total`). */
+.status-toggle__dot {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.status-toggle__dot--on {
+  color: var(--color-yellow);
+}
+
 .status-toggles__sep {
   color: var(--color-text-muted);
   user-select: none;

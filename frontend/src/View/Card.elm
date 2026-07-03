@@ -1340,18 +1340,25 @@ The subtler outlined circle reads as "unlit" without shouting
 boolToggle : String -> String -> Bool -> Msg -> Html Msg
 boolToggle _ label isOn msg =
     let
-        ( bodyText, cls, tip ) =
+        ( dotGlyph, dotClass, cls ) =
             if isOn then
-                ( label
+                ( "●"
+                , "status-toggle__dot status-toggle__dot--on"
                 , "status-toggle status-toggle--on"
-                , Tooltips.statusOnTip label
                 )
 
             else
-                ( "○ " ++ label
+                ( "○"
+                , "status-toggle__dot"
                 , "status-toggle"
-                , Tooltips.statusOffTip label
                 )
+
+        tip =
+            if isOn then
+                Tooltips.statusOnTip label
+
+            else
+                Tooltips.statusOffTip label
     in
     button
         [ class cls
@@ -1366,16 +1373,26 @@ boolToggle _ label isOn msg =
                 "false"
             )
         ]
-        [ text bodyText ]
+        [ span [ class dotClass ] [ text dotGlyph ]
+        , text (" " ++ label)
+        ]
 
 
 coverToggle : Creature -> Html Msg
 coverToggle creature =
     let
+        ( dotGlyph, dotClass ) =
+            case creature.cover of
+                NoCover ->
+                    ( "○", "status-toggle__dot" )
+
+                _ ->
+                    ( "●", "status-toggle__dot status-toggle__dot--on" )
+
         ( bodyText, label, modifier ) =
             case creature.cover of
                 NoCover ->
-                    ( "○ cover", "No cover", "status-toggle--off" )
+                    ( "cover", "No cover", "status-toggle--off" )
 
                 HalfCover ->
                     ( "½ cover", "Half cover", "status-toggle--on" )
@@ -1392,7 +1409,9 @@ coverToggle creature =
         , Tooltips.attr (Tooltips.coverCycleTip label)
         , attribute "aria-label" ("Cover: " ++ label)
         ]
-        [ text bodyText ]
+        [ span [ class dotClass ] [ text dotGlyph ]
+        , text (" " ++ bodyText)
+        ]
 
 
 flyHeight : Creature -> Html Msg
