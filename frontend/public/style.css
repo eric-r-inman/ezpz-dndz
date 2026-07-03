@@ -5158,20 +5158,22 @@ button.creature-card__lifecycle--dead:focus-visible {
    inline immediately after the condition / save-notice chips
    (sharing the wrap's flex layout means the recharge chip hugs
    the trailing condition chip instead of getting pushed to the
-   row's far edge by the wrap's flex-grow).  Pill shape mirrors
-   `.condition-chip` exactly — same padding, font size, weight,
-   border radius.  Only the colour palette differs: green when
-   ready, muted-grey with strikethrough when expended. */
+   row's far edge by the wrap's flex-grow).  Pill sizing mirrors
+   `.save-notice` — same padding, font size, weight — so the row
+   of recharge / condition / save-notice pills reads as one
+   unified strip instead of three competing weights.  Only the
+   colour palette differs: green when ready, muted-grey with
+   strikethrough when expended. */
 .recharge-chip {
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 999px;
   font: inherit;
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition:
@@ -5248,7 +5250,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* Tight inner padding so the dice sits visually adjacent to
    the pipe + name rather than looking like a separate widget. */
 .recharge-chip__dice {
-  padding: 2px 1px 2px 8px;
+  padding: 1px 1px 1px 6px;
   font-size: 1.05em;
   line-height: 1;
   /* Blink the die so it draws the GM's eye on turn start.
@@ -5257,7 +5259,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .recharge-chip__name-btn {
-  padding: 2px 8px 2px 4px;
+  padding: 1px 6px 1px 3px;
 }
 
 .recharge-chip__name-btn:hover,
@@ -5844,9 +5846,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* Variant-specific tweaks: color, padding, border. */
 
 .condition-chip {
-  padding: 2px 8px;
-  font-size: 0.92rem;
-  font-weight: 600;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
   background: rgba(245, 200, 66, 0.1);
   /* Chip text matches the Condition/Effect button's background
      token (`--color-condition`) so card chips, title-bar chips,
