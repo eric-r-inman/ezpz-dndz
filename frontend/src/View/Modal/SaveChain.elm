@@ -444,6 +444,9 @@ applyRow ui =
         isEmpty =
             SaveChain.isEffectivelyEmpty chain
 
+        hasDc =
+            chain.saveDc /= Nothing
+
         dcHint =
             case chain.saveDc of
                 Just n ->
@@ -471,6 +474,15 @@ applyRow ui =
                 , disabled isEmpty
                 ]
                 [ text "Pass" ]
+            , button
+                [ class "action-btn action-btn--roll-saves"
+                , type_ "button"
+                , onClick SaveChainRollSaves
+                , disabled (isEmpty || not hasDc)
+                , attribute "aria-label"
+                    "Roll a d20 + save modifier for every target and auto-apply fail / success"
+                ]
+                [ text "🎲 Roll saves" ]
             ]
         ]
 

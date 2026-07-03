@@ -571,6 +571,14 @@ type Msg
       -- `HalfFailDamage` on Success halves the total before
       -- applying.
     | SaveChainApplyRollLanded SaveChainSide Dice.Roll
+      -- "🎲 Roll saves" button — rolls d20 + save-mod for
+      -- every current target and auto-applies fail / success
+      -- outcomes based on each roll vs the DC.  Save mod is
+      -- pulled from the target's compendium record (saving
+      -- throw override, else ability modifier).  Rolls come
+      -- back as a batch through `SaveChainSavesRolled`.
+    | SaveChainRollSaves
+    | SaveChainSavesRolled (List ( String, Dice.Roll ))
       -- Inline HP edit on the creature card
     | HpEditStart String HpField Int
     | HpEditChange String

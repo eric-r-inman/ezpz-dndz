@@ -6,14 +6,14 @@ module Update.SaveChain exposing
     , outcomeEffectAdd, outcomeEffectRemove
     , outcomeEffectNameChanged, outcomeEffectNoteChanged
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
-    , applyFail, applyPass
-    , applyRollLanded
+    , applyFail, applyPass, applyRollLanded
+    , rollSaves, savesRolled
     )
 
 {-| Update branches for the Save Chain modal.
 
 The modal is a form editor plus two apply buttons; the form's
-raw state lives in `Ui.SaveChain.SaveChainUi`, projected back
+raw state lives in `UiSaveChain.SaveChainUi`, projected back
 to `Encounter.SaveChain.SaveChain` at save / apply time.
 Presets are stored in `model.saveChainPresets` (dict keyed by
 name) and persisted via `Ports.persistLocalSaveChainPresets`.
@@ -25,7 +25,8 @@ name) and persisted via `Ports.persistLocalSaveChainPresets`.
 @docs outcomeEffectAdd, outcomeEffectRemove
 @docs outcomeEffectNameChanged, outcomeEffectNoteChanged
 @docs presetPickerChanged, presetLoad, presetSave, presetDelete, reset
-@docs applyFail, applyPass
+@docs applyFail, applyPass, applyRollLanded
+@docs rollSaves, savesRolled
 
 -}
 
@@ -44,6 +45,8 @@ import Msg
         , SaveChainSide(..)
         )
 import Ports
+import Random
+import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.SaveChain as UiSaveChain exposing (OutcomeForm, SaveChainUi)
 
 
@@ -607,3 +610,391 @@ resolveTargets ui enc =
 
     else
         [ ui.target ]
+
+
+
+-- ── ROLL SAVES (auto-apply) ─────────────────────────────────────
+
+
+{-| "🎲 Roll saves" button: for every current target, build a
+`1d20 + save-mod` spec (save-mod pulled from the target's
+compendium record — explicit saving-throw override wins,
+otherwise the ability modifier is used), fire a batch roll,
+and route the results back through `SaveChainSavesRolled`.
+
+Returns silently when the chain has no DC (either fixed or
+overridden) — the modal disables the button visually in that
+case; this guard is defence in depth.
+
+-}
+rollSaves : Model -> ( Model, Cmd Msg )
+rollSaves model =
+    case model.modal of
+        Just (ModalSaveChain ui) ->
+            case resolveDc ui of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just _ ->
+                    let
+                        specs =
+                            buildSaveSpecs ui model
+                    in
+                    if List.isEmpty specs then
+                        ( model, Cmd.none )
+
+                    else
+                        ( model, Dice.batchRollCmd SaveChainSavesRolled specs )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Assemble the per-target `(name, source, generator)` specs
+`Dice.batchRollCmd` wants. Skips a target if we can't find its
+compendium record (placeholder rows, name drift) since we
+have no way to attribute a modifier. The generator itself is
+`1d20 + <save-mod>` — a plain integer follows the sign.
+-}
+buildSaveSpecs :
+    UiSaveChain.SaveChainUi
+    -> Model
+    -> List ( String, Dice.Source, Random.Generator Dice.Roll )
+buildSaveSpecs ui model =
+    let
+        chain =
+            UiSaveChain.toChain ui
+
+        db =
+            currentCompendium model.compendium.db
+
+        targets =
+            resolveTargets ui model.encounter
+
+        abilityLabel =
+            saveAbilityLabel chain.saveAbility
+
+        specFor name =
+            case findCreatureRecord db name model.encounter of
+                Just c ->
+                    let
+                        mod =
+                            saveModifier chain.saveAbility c
+
+                        expressionText =
+                            "1d20" ++ signedInt mod
+                    in
+                    case Dice.parse expressionText of
+                        Ok expr ->
+                            Just
+                                ( name
+                                , { feature = "Save (" ++ abilityLabel ++ ")"
+                                  , target = Just name
+                                  }
+                                , Dice.generator expr
+                                )
+
+                        Err _ ->
+                            Nothing
+
+                Nothing ->
+                    Nothing
+    in
+    List.filterMap specFor targets
+
+
+{-| Batch of `1d20 + mod` rolls landed. For each result,
+compare `roll.total` against the resolved DC: `>= DC` walks
+through the Pass outcome, otherwise the Fail outcome. Roll
+history is pushed and persisted through the shared dice
+plumbing so the GM can see every roll in the dice modal
+afterwards.
+-}
+savesRolled : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
+savesRolled results model =
+    case model.modal of
+        Just (ModalSaveChain ui) ->
+            case resolveDc ui of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just dc ->
+                    let
+                        chain =
+                            UiSaveChain.toChain ui
+
+                        ( failNames, passNames ) =
+                            List.partition
+                                (\( _, roll ) -> roll.total < dc)
+                                results
+                                |> (\( f, p ) ->
+                                        ( List.map Tuple.first f
+                                        , List.map Tuple.first p
+                                        )
+                                   )
+
+                        modelWithHistory =
+                            List.foldl
+                                (\( _, roll ) acc ->
+                                    Effects.pushDiceRoll roll acc
+                                        |> Tuple.first
+                                )
+                                model
+                                results
+
+                        historyCmds =
+                            List.map (\( _, roll ) -> Effects.persistDiceRoll roll)
+                                results
+
+                        failResolvedAmount =
+                            case chain.onFail.hp of
+                                DealDamage s ->
+                                    parseIntOrAverage s
+
+                                _ ->
+                                    0
+
+                        successResolvedAmount =
+                            case ( chain.onSuccess.hp, chain.onFail.hp ) of
+                                ( HalfFailDamage, _ ) ->
+                                    SaveChain.halfFailDamage failResolvedAmount
+
+                                ( DealDamage s, _ ) ->
+                                    parseIntOrAverage s
+
+                                ( HealFor s, _ ) ->
+                                    parseIntOrAverage s
+
+                                _ ->
+                                    0
+
+                        encAfterFail =
+                            List.foldl
+                                (\name enc ->
+                                    enc
+                                        |> SaveChain.applyEffects chain.onFail name
+                                        |> SaveChain.applyResolvedHp chain.onFail.hp failResolvedAmount name
+                                )
+                                modelWithHistory.encounter
+                                failNames
+
+                        encAfterAll =
+                            List.foldl
+                                (\name enc ->
+                                    enc
+                                        |> SaveChain.applyEffects chain.onSuccess name
+                                        |> SaveChain.applyResolvedHp chain.onSuccess.hp successResolvedAmount name
+                                )
+                                encAfterFail
+                                passNames
+                    in
+                    ( { modelWithHistory | encounter = encAfterAll }
+                    , Cmd.batch historyCmds
+                    )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+
+-- ── HELPERS ─────────────────────────────────────────────────────
+
+
+{-| Pick the DC to use: chain's fixed DC wins, else the run-time
+override the modal renders when the chain's DC is blank.
+Returns `Nothing` when neither is available — the button is
+disabled in that state, but the guard is here too.
+-}
+resolveDc : UiSaveChain.SaveChainUi -> Maybe Int
+resolveDc ui =
+    let
+        chain =
+            UiSaveChain.toChain ui
+    in
+    case chain.saveDc of
+        Just n ->
+            Just n
+
+        Nothing ->
+            String.toInt (String.trim ui.dcOverrideText)
+
+
+{-| Resolve the compendium view of a queue creature: prefer the
+`creatureId` link, fall back to the by-name lookup for
+paste-in creatures whose id has drifted.
+-}
+findCreatureRecord :
+    Maybe Compendium.Db
+    -> String
+    -> Encounter.Encounter
+    -> Maybe Compendium.Creature
+findCreatureRecord maybeDb name enc =
+    case maybeDb of
+        Nothing ->
+            Nothing
+
+        Just db ->
+            enc.creatures
+                |> List.filter (\c -> c.name == name)
+                |> List.head
+                |> Maybe.andThen
+                    (\c ->
+                        case c.creatureId of
+                            Just id ->
+                                case Compendium.find id db of
+                                    Just hit ->
+                                        Just hit
+
+                                    Nothing ->
+                                        Compendium.findByName c.name db
+
+                            Nothing ->
+                                Compendium.findByName c.name db
+                    )
+
+
+currentCompendium : CompendiumDb -> Maybe Compendium.Db
+currentCompendium db =
+    case db of
+        CompendiumDbLoaded loaded ->
+            Just loaded
+
+        _ ->
+            Nothing
+
+
+{-| Save modifier for `ability` on a compendium creature.
+Explicit saving-throw override wins (proficient monster);
+otherwise the raw ability modifier is used.
+-}
+saveModifier : Compendium.Ability -> Compendium.Creature -> Int
+saveModifier ability c =
+    case List.filter (\s -> s.ability == ability) c.savingThrows of
+        first :: _ ->
+            first.bonus
+
+        [] ->
+            abilityScoreModifier (abilityScore ability c.abilities)
+
+
+abilityScore : Compendium.Ability -> Compendium.Abilities -> Int
+abilityScore ability abs =
+    case ability of
+        Compendium.Str ->
+            abs.str
+
+        Compendium.Dex ->
+            abs.dex
+
+        Compendium.Con ->
+            abs.con
+
+        Compendium.Int_ ->
+            abs.int
+
+        Compendium.Wis ->
+            abs.wis
+
+        Compendium.Cha ->
+            abs.cha
+
+
+abilityScoreModifier : Int -> Int
+abilityScoreModifier score =
+    let
+        raw =
+            score - 10
+    in
+    -- 5e ability-modifier formula rounds toward negative infinity.
+    -- Integer division `//` in Elm truncates toward zero, so a raw
+    -- -3 divides as -1 rather than -2.  Adjust for odd-negative.
+    if raw < 0 && modBy 2 raw /= 0 then
+        raw // 2 - 1
+
+    else
+        raw // 2
+
+
+signedInt : Int -> String
+signedInt n =
+    if n >= 0 then
+        "+" ++ String.fromInt n
+
+    else
+        String.fromInt n
+
+
+saveAbilityLabel : Compendium.Ability -> String
+saveAbilityLabel a =
+    case a of
+        Compendium.Str ->
+            "STR"
+
+        Compendium.Dex ->
+            "DEX"
+
+        Compendium.Con ->
+            "CON"
+
+        Compendium.Int_ ->
+            "INT"
+
+        Compendium.Wis ->
+            "WIS"
+
+        Compendium.Cha ->
+            "CHA"
+
+
+{-| Parse an integer amount, or if the text is a dice formula,
+fall back to the arithmetic average (rounded down) of the
+expression. Used by the auto-roll path so a chain whose fail
+damage is `8d6` still resolves to a concrete number without a
+second dice roll — the GM sees one grand roll per creature for
+the save; individual damage rolls would explode the click into
+1 + N Cmds.
+-}
+parseIntOrAverage : String -> Int
+parseIntOrAverage raw =
+    let
+        trimmed =
+            String.trim raw
+    in
+    case String.toInt trimmed of
+        Just n ->
+            n
+
+        Nothing ->
+            case Dice.parse trimmed of
+                Ok expr ->
+                    diceAverage expr
+
+                Err _ ->
+                    0
+
+
+diceAverage : Dice.Expression -> Int
+diceAverage expr =
+    -- Ballpark average: sum of (count * (faces+1) / 2) across
+    -- each die group (with the group's sign), plus the flat
+    -- constant.  Rounds down — fine for a GM's auto-apply
+    -- flow; they can undo if the number lands too generous.
+    let
+        groupsAvg =
+            List.foldl
+                (\d acc ->
+                    let
+                        groupAvg =
+                            d.count * (d.faces + 1) // 2
+                    in
+                    case d.sign of
+                        Dice.Positive ->
+                            acc + groupAvg
+
+                        Dice.Negative ->
+                            acc - groupAvg
+                )
+                0
+                expr.dice
+    in
+    groupsAvg + expr.constant

@@ -6206,6 +6206,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
+/* "🎲 Roll saves" button in the Save Chain modal — auto-rolls
+   d20 + save-mod for every target and auto-applies the
+   corresponding outcome.  Warm amber so it reads as
+   "orchestration" — distinct from Fail (red) and Pass
+   (green) but still active-looking. */
+.action-btn--roll-saves {
+  --btn-bg: #d97706;
+  --btn-fg: var(--card-btn-fg);
+  --btn-bd: transparent;
+}
+
 .action-btn--ready {
   --btn-fg: var(--color-text-muted);
 }

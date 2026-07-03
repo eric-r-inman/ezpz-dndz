@@ -1355,6 +1355,12 @@ updateInner msg model =
         SaveChainApplyRollLanded side roll ->
             Update.SaveChain.applyRollLanded side roll model
 
+        SaveChainRollSaves ->
+            Update.SaveChain.rollSaves model
+
+        SaveChainSavesRolled results ->
+            Update.SaveChain.savesRolled results model
+
         HpEditStart name field current ->
             Update.HpChange.editStart name field current model
 
