@@ -119,13 +119,6 @@ presetRow ui presets =
             ]
             options
         , button
-            [ class "action-btn action-btn--sm"
-            , type_ "button"
-            , onClick SaveChainPresetLoad
-            , disabled (String.isEmpty ui.presetPickerSelection)
-            ]
-            [ text "Load" ]
-        , button
             [ class "action-btn action-btn--sm action-btn--red"
             , type_ "button"
             , onClick SaveChainPresetDelete
@@ -188,7 +181,7 @@ saveRow ui =
                 [ type_ "text"
                 , class "save-chain__dc-input"
                 , value ui.dcText
-                , placeholder "(blank = ask at apply)"
+                , placeholder "(blank = input at apply)"
                 , onInput SaveChainDcChanged
                 ]
                 []

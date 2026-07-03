@@ -218,14 +218,44 @@ updateAt idx fn list =
 
 presetPickerChanged : String -> Model -> ( Model, Cmd Msg )
 presetPickerChanged name model =
-    ( withUi (\u -> { u | presetPickerSelection = name }) model
-    , Cmd.none
-    )
+    -- Auto-load: picking a preset from the dropdown loads it
+    -- immediately.  Also handles the placeholder "" option —
+    -- that just resets the picker without touching the form.
+    case model.modal of
+        Just (ModalSaveChain ui) ->
+            let
+                pickedUi =
+                    { ui | presetPickerSelection = name }
+            in
+            if String.isEmpty name then
+                ( { model | modal = Just (ModalSaveChain pickedUi) }
+                , Cmd.none
+                )
+
+            else
+                case Dict.get name model.saveChainPresets of
+                    Just chain ->
+                        ( { model
+                            | modal =
+                                Just (ModalSaveChain (UiSaveChain.fromChain pickedUi chain))
+                          }
+                        , Cmd.none
+                        )
+
+                    Nothing ->
+                        ( { model | modal = Just (ModalSaveChain pickedUi) }
+                        , Cmd.none
+                        )
+
+        _ ->
+            ( model, Cmd.none )
 
 
-{-| Load the currently-picked preset into the form. If the
-picker is blank or the name isn't in the dict, this is a
-no-op.
+{-| Explicit "load selected preset" handler — kept around for
+completeness even though the auto-load in
+`presetPickerChanged` now covers the common case. Useful if a
+future entry point wants to reload the current picker
+selection without cycling through the dropdown.
 -}
 presetLoad : Model -> ( Model, Cmd Msg )
 presetLoad model =

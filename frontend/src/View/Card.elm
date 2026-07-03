@@ -1331,9 +1331,11 @@ deathSavePip kind filled onToggle kindLabel ordinal =
 {-| The `icon` argument is intentionally unused in the card row:
 the GM already sees the toggle's text label and the title-row icon
 (rendered separately in EncounterBar). Hiding the per-toggle icon
-in the card buys horizontal space in row 2. The 🚫 prefix in the
+in the card buys horizontal space in row 2. The `○` prefix in the
 off state replaces the older "not " / "no " wording so the off
 state stays visually distinct without needing an icon glyph.
+The subtler outlined circle reads as "unlit" without shouting
+"prohibited" the way the previous 🚫 emoji did.
 -}
 boolToggle : String -> String -> Bool -> Msg -> Html Msg
 boolToggle _ label isOn msg =
@@ -1346,7 +1348,7 @@ boolToggle _ label isOn msg =
                 )
 
             else
-                ( "🚫 " ++ label
+                ( "○ " ++ label
                 , "status-toggle"
                 , Tooltips.statusOffTip label
                 )
@@ -1373,7 +1375,7 @@ coverToggle creature =
         ( bodyText, label, modifier ) =
             case creature.cover of
                 NoCover ->
-                    ( "🚫 cover", "No cover", "status-toggle--off" )
+                    ( "○ cover", "No cover", "status-toggle--off" )
 
                 HalfCover ->
                     ( "½ cover", "Half cover", "status-toggle--on" )

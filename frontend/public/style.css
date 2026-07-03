@@ -6174,13 +6174,12 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Save Chain card button — sits right of Condition/Effect.
-   Warm purple so it reads as a distinct kind of action from
-   the calm Manage HP (green) / cool Condition (violet-blue)
-   pair to its left.  Same neutral chrome as the other card
-   buttons in Accessible theme via the .creature-card override
-   at the top of the theme block. */
+   Mid-blue so it reads as a distinct kind of action from the
+   calm Manage HP (green) to its left.  Same neutral chrome
+   as the other card buttons in Accessible theme via the
+   .creature-card override at the top of the theme block. */
 .action-btn--save-chain {
-  --btn-bg: #7c5ab0;
+  --btn-bg: #2563eb;
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
