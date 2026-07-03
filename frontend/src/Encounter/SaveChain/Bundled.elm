@@ -147,7 +147,7 @@ holdPerson =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Paralyzed" "Save at end of each turn to end" ]
+            [ effect "Paralyzed" "Sv EoT" ]
     , onSuccess = noEffect
     }
 
@@ -159,7 +159,7 @@ web =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Restrained" "STR check as action to escape" ]
+            [ effect "Restrained" "Str to esc" ]
     , onSuccess = noEffect
     }
 
@@ -182,7 +182,7 @@ hypnoticPattern =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Charmed" "Ends if damaged or if an ally shakes it awake (action)"
+            [ effect "Charmed" "Ends w/dmg"
             , effect "Incapacitated" "Speed 0"
             ]
     , onSuccess = noEffect
@@ -205,7 +205,7 @@ fear =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Frightened" "Drops held items and Dashes away by fastest route each turn; save at end of turn if caster is out of sight"
+            [ effect "Frightened" "Dash away"
             ]
     , onSuccess = noEffect
     }
@@ -224,7 +224,7 @@ slow =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Slowed" "-2 AC, -2 Dex saves, half speed, no reactions, 1 action/turn; 50% chance spells with S/V/M delay one turn. Save at end of turn to end"
+            [ effect "Slowed" "1/2 spd 1a"
             ]
     , onSuccess = noEffect
     }
@@ -241,7 +241,7 @@ confusion =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Confused" "Roll d10 each turn: 1 babble no move; 2-6 no action, move random; 7-8 melee attack random target; 9-10 act normally. Save at end of turn"
+            [ effect "Confused" "Roll d10"
             ]
     , onSuccess = noEffect
     }
@@ -258,7 +258,7 @@ banishment =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Banished" "Native → harmless demiplane, or extraplanar → home plane. Concentration up to 1 min. If held for full min, extraplanar target is banished permanently"
+            [ effect "Banished" "1 min max"
             ]
     , onSuccess = noEffect
     }
@@ -275,7 +275,7 @@ suggestion =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Suggested" "Pursues a reasonable course of action described by the caster (up to 8 hours). Ends if completed or asked to harm self"
+            [ effect "Suggested" "Obey 8 hr"
             ]
     , onSuccess = noEffect
     }
@@ -297,7 +297,7 @@ phantasmalKiller =
     , onFail =
         { hp = DealDamage "4d10" -- psychic
         , effects =
-            [ effect "Frightened" "Save at end of turn; on fail take 4d10 psychic again, on success spell ends"
+            [ effect "Frightened" "Sv +dmg"
             ]
         }
     , onSuccess = noEffect
