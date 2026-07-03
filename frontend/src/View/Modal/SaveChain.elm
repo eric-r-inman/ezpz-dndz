@@ -24,7 +24,7 @@ import Compendium exposing (Ability(..))
 import Dict
 import Encounter exposing (Encounter)
 import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..))
-import Html exposing (Html, button, div, input, option, p, select, span, text)
+import Html exposing (Html, button, div, input, li, option, p, select, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as Decode
@@ -35,7 +35,7 @@ import Msg
         , SaveChainHpKind(..)
         , SaveChainSide(..)
         )
-import Ui.SaveChain exposing (OutcomeForm, SaveChainUi)
+import Ui.SaveChain exposing (OutcomeForm, SaveChainLogEntry, SaveChainUi)
 import View.Modal
 import View.Tooltips as Tooltips
 
@@ -58,6 +58,7 @@ view model =
                     , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
                     , applyScope ui model.encounter
                     , applyRow ui
+                    , log model.saveChainLog
                     ]
                 }
 
@@ -587,3 +588,71 @@ abilityLabel a =
 
         Cha ->
             "CHA"
+
+
+
+-- ── Log ─────────────────────────────────────────────────────────
+
+
+{-| Recent-applies log at the bottom of the modal. Mirrors
+the "Recent HP changes" log's structure: a small title, an
+empty state when nothing's landed yet, and a compact list of
+rows otherwise. Newest entry first — each apply prepends.
+-}
+log : List SaveChainLogEntry -> Html Msg
+log entries =
+    div [ class "save-chain__log" ]
+        [ div [ class "save-chain__log-title" ]
+            [ text
+                ("Recent applies ("
+                    ++ String.fromInt (List.length entries)
+                    ++ ")"
+                )
+            ]
+        , if List.isEmpty entries then
+            div [ class "save-chain__log-empty" ]
+                [ text "No applies yet." ]
+
+          else
+            ul [ class "save-chain__log-list" ]
+                (List.map logEntry entries)
+        ]
+
+
+{-| One row: side badge · target · optional roll note · applied
+summary. When no HP delta and no effects landed, the applied
+column reads "(no effect)" so the row still reads as
+"resolved but nothing to do."
+-}
+logEntry : SaveChainLogEntry -> Html Msg
+logEntry entry =
+    let
+        ( sideCls, sideLabel ) =
+            case entry.side of
+                SaveChainFail ->
+                    ( "save-chain__log-side save-chain__log-side--fail", "FAIL" )
+
+                SaveChainSuccess ->
+                    ( "save-chain__log-side save-chain__log-side--pass", "PASS" )
+
+        appliedText =
+            if List.isEmpty entry.appliedParts then
+                "(no effect)"
+
+            else
+                String.join " · " entry.appliedParts
+
+        rollNode =
+            case entry.rollNote of
+                Just note ->
+                    span [ class "save-chain__log-roll" ] [ text note ]
+
+                Nothing ->
+                    text ""
+    in
+    li [ class "save-chain__log-entry" ]
+        [ span [ class sideCls ] [ text sideLabel ]
+        , span [ class "save-chain__log-target" ] [ text entry.target ]
+        , rollNode
+        , span [ class "save-chain__log-applied" ] [ text appliedText ]
+        ]

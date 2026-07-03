@@ -542,6 +542,7 @@ init flags url key =
       , savedAs = Nothing
       , dice = DiceUi.empty
       , hpChangeLog = []
+      , saveChainLog = []
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
       , modal = Nothing

@@ -2,6 +2,7 @@ module Ui.SaveChain exposing
     ( SaveChainUi, OutcomeForm
     , fresh, fromChain, toChain
     , OutcomeSide(..)
+    , SaveChainLogEntry, maxSaveChainLogEntries
     )
 
 {-| Modal UI state for the Save Chain feature.
@@ -24,6 +25,7 @@ without doubling the Msg surface.
 
 import Compendium exposing (Ability(..))
 import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
+import Msg exposing (SaveChainSide)
 
 
 type alias SaveChainUi =
@@ -189,3 +191,32 @@ parseOptionalInt raw =
 
     else
         String.toInt trimmed
+
+
+
+-- ── Log entries ──────────────────────────────────────────────────
+
+
+{-| One row in the "recent applies" log shown at the bottom
+of the Save Chain modal. Captures the target creature, which
+side of the chain resolved (Fail / Pass), an optional roll
+note (populated by the auto-roll path — `Just "rolled 12 vs
+DC 15"`), and the human-readable list of things that were
+applied — HP change + condition names. Empty
+`appliedParts` renders as "(no effect)" in the view so the
+row still communicates that the save was resolved.
+-}
+type alias SaveChainLogEntry =
+    { target : String
+    , side : SaveChainSide
+    , rollNote : Maybe String
+    , appliedParts : List String
+    }
+
+
+{-| Cap on the log so it doesn't grow unbounded. New entries
+are prepended; anything past this many rolls off the end.
+-}
+maxSaveChainLogEntries : Int
+maxSaveChainLogEntries =
+    15

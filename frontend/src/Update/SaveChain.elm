@@ -499,7 +499,19 @@ applySide side model =
             in
             case rawTextForResolve side chain of
                 RawEmpty ->
-                    ( modelAfterCond, Cmd.none )
+                    let
+                        entries =
+                            List.map
+                                (\name ->
+                                    { target = name
+                                    , side = side
+                                    , rollNote = Nothing
+                                    , appliedParts = appliedParts outcome 0
+                                    }
+                                )
+                                targets
+                    in
+                    ( pushLog entries modelAfterCond, Cmd.none )
 
                 RawInteger n ->
                     let
@@ -518,10 +530,24 @@ applySide side model =
                                 )
                                 withConditions
                                 targets
+
+                        entries =
+                            List.map
+                                (\name ->
+                                    { target = name
+                                    , side = side
+                                    , rollNote = Nothing
+                                    , appliedParts = appliedParts outcome resolvedAmount
+                                    }
+                                )
+                                targets
                     in
-                    ( { modelAfterCond | encounter = nextEnc }, Cmd.none )
+                    ( pushLog entries { modelAfterCond | encounter = nextEnc }, Cmd.none )
 
                 RawDice expr ->
+                    -- Log entries are pushed after the roll lands
+                    -- (see `applyRollLanded`) so the amount reflects
+                    -- the actual dice total, not the mid-flight zero.
                     ( modelAfterCond
                     , Dice.rollCmd (SaveChainApplyRollLanded side)
                         (saveChainSource side chain ui model.encounter)
@@ -533,7 +559,19 @@ applySide side model =
                     -- a valid dice expression: apply the condition
                     -- side (already done above) and leave HP alone
                     -- rather than crashing the click.
-                    ( modelAfterCond, Cmd.none )
+                    let
+                        entries =
+                            List.map
+                                (\name ->
+                                    { target = name
+                                    , side = side
+                                    , rollNote = Nothing
+                                    , appliedParts = appliedParts outcome 0
+                                    }
+                                )
+                                targets
+                    in
+                    ( pushLog entries modelAfterCond, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -577,8 +615,19 @@ applyRollLanded side roll model =
                         )
                         logged.encounter
                         targets
+
+                entries =
+                    List.map
+                        (\name ->
+                            { target = name
+                            , side = side
+                            , rollNote = Nothing
+                            , appliedParts = appliedParts outcome resolvedAmount
+                            }
+                        )
+                        targets
             in
-            ( { logged | encounter = nextEnc }
+            ( pushLog entries { logged | encounter = nextEnc }
             , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
             )
 
@@ -875,8 +924,35 @@ savesRolled results model =
                                 )
                                 encAfterFail
                                 passNames
+
+                        entryFor ( name, roll ) =
+                            let
+                                passed =
+                                    roll.total >= dc
+
+                                ( side, resolvedAmount, outcome ) =
+                                    if passed then
+                                        ( SaveChainSuccess
+                                        , successResolvedAmount
+                                        , chain.onSuccess
+                                        )
+
+                                    else
+                                        ( SaveChainFail
+                                        , failResolvedAmount
+                                        , chain.onFail
+                                        )
+                            in
+                            { target = name
+                            , side = side
+                            , rollNote = Just (rollNote roll.total dc)
+                            , appliedParts = appliedParts outcome resolvedAmount
+                            }
+
+                        entries =
+                            List.map entryFor results
                     in
-                    ( { modelWithHistory | encounter = encAfterAll }
+                    ( pushLog entries { modelWithHistory | encounter = encAfterAll }
                     , Cmd.batch historyCmds
                     )
 
@@ -1111,3 +1187,76 @@ diceAverage expr =
                 expr.dice
     in
     groupsAvg + expr.constant
+
+
+
+-- ── LOG PUSH HELPERS ────────────────────────────────────────────
+
+
+{-| Build the `appliedParts` string list for a log entry:
+which HP delta landed + which effect names got attached.
+Empty list = "(no effect)" — the entry still records that
+the save resolved.
+-}
+appliedParts : SaveOutcome -> Int -> List String
+appliedParts outcome resolvedAmount =
+    let
+        hpPart =
+            case outcome.hp of
+                NoHpEffect ->
+                    []
+
+                DealDamage _ ->
+                    [ String.fromInt resolvedAmount ++ " damage" ]
+
+                HealFor _ ->
+                    [ String.fromInt resolvedAmount ++ " healed" ]
+
+                HalfFailDamage ->
+                    [ String.fromInt resolvedAmount ++ " damage" ]
+
+        effectPart =
+            outcome.effects
+                |> List.filterMap
+                    (\e ->
+                        let
+                            trimmed =
+                                String.trim e.name
+                        in
+                        if String.isEmpty trimmed then
+                            Nothing
+
+                        else
+                            Just trimmed
+                    )
+    in
+    hpPart ++ effectPart
+
+
+{-| Prepend log entries to `model.saveChainLog`, capping at
+`Ui.SaveChain.maxSaveChainLogEntries`. New entries are
+built in target order, then reversed so the last-applied
+target renders newest-first alongside the incoming entries
+from a prior apply.
+-}
+pushLog : List UiSaveChain.SaveChainLogEntry -> Model -> Model
+pushLog entries model =
+    { model
+        | saveChainLog =
+            List.reverse entries
+                ++ List.take
+                    (Basics.max 0
+                        (UiSaveChain.maxSaveChainLogEntries - List.length entries)
+                    )
+                    model.saveChainLog
+    }
+
+
+{-| Format the auto-roll note the roll-saves path attaches.
+`Just "rolled 12 vs DC 15"` on entries built by
+`savesRolled`, `Nothing` for entries built by the manual
+Fail / Pass paths.
+-}
+rollNote : Int -> Int -> String
+rollNote total dc =
+    "rolled " ++ String.fromInt total ++ " vs DC " ++ String.fromInt dc

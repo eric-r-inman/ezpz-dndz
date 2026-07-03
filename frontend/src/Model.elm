@@ -471,6 +471,14 @@ type alias Model =
     , savedAs : Maybe String
     , dice : DiceUi
     , hpChangeLog : List HpChangeEntry
+
+    -- Twin of `hpChangeLog` for the Save Chain modal.  The
+    -- three apply paths (Fail button, Pass button, 🎲 Roll
+    -- saves button) each prepend one entry per target so the
+    -- GM can scan back a few rounds of resolutions without
+    -- flipping between modals.  Capped at
+    -- `Ui.SaveChain.maxSaveChainLogEntries`.
+    , saveChainLog : List Ui.SaveChain.SaveChainLogEntry
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
     , modal : Maybe Modal

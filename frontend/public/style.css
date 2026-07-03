@@ -12877,6 +12877,95 @@ button.quick-list-card {
   font-weight: 600;
 }
 
+/* Recent-applies log at the bottom of the Save Chain modal.
+   Mirrors the HP-change modal's log chrome: bordered card
+   with a small heading, empty state, and a list of rows.
+   Each row is `[SIDE badge] [target] [roll note] [applied]`
+   in one line. */
+.save-chain__log {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.save-chain__log-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.save-chain__log-empty {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.save-chain__log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.save-chain__log-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+/* FAIL / PASS pill badges — same visual language as the
+   HP-change log's kind badge but sized for the Save Chain
+   log's density.  Red for FAIL, green for PASS. */
+.save-chain__log-side {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  min-width: 40px;
+  text-align: center;
+}
+
+.save-chain__log-side--fail {
+  background: #d63b3b;
+}
+
+.save-chain__log-side--pass {
+  background: #3cb455;
+}
+
+.save-chain__log-target {
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.save-chain__log-roll {
+  font-family: ui-monospace, "Menlo", monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.save-chain__log-applied {
+  color: var(--color-text);
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
 .save-chain__apply-row {
   margin-top: 12px;
   padding-top: 10px;
