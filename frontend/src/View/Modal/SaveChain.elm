@@ -140,6 +140,13 @@ presetRow ui presets =
             , Tooltips.attr "Overwrite every bundled-named preset in your local storage with its current bundled definition.  Non-bundled presets are untouched."
             ]
             [ text "🔄 Restore bundled" ]
+        , button
+            [ class "action-btn action-btn--sm"
+            , type_ "button"
+            , onClick SaveChainExportBundled
+            , Tooltips.attr "Copy the currently-open form as an Elm SaveChain literal you can paste into Encounter/SaveChain/Bundled.elm to promote it into the bundled default set."
+            ]
+            [ text "📤 Export as Elm" ]
         , loadedTag
         ]
 

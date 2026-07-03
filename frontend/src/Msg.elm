@@ -590,6 +590,7 @@ type Msg
       -- are stale from before a wire-shape refactor (e.g.
       -- Hold Person without save-to-end from pre-that-feature).
     | SaveChainRestoreBundled
+    | SaveChainExportBundled
       -- Apply
     | SaveChainApplyFail
     | SaveChainApplyPass

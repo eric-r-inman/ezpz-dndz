@@ -1376,6 +1376,9 @@ updateInner msg model =
         SaveChainRestoreBundled ->
             Update.SaveChain.restoreBundled model
 
+        SaveChainExportBundled ->
+            Update.SaveChain.exportBundled model
+
         SaveChainApplyFail ->
             Update.SaveChain.applyFail model
 

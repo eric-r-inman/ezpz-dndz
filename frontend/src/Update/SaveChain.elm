@@ -8,7 +8,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
+    , exportBundled, outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -42,6 +42,7 @@ import Effects
 import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 import Encounter.SaveChain.Bundled
+import Encounter.SaveChain.Export
 import Model exposing (Modal(..), Model)
 import Msg
     exposing
@@ -49,9 +50,12 @@ import Msg
         , SaveChainHpKind(..)
         , SaveChainSide(..)
         )
+import Ports
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.SaveChain as UiSaveChain exposing (OutcomeForm, SaveChainUi)
+import Ui.Toast exposing (ToastKind(..))
+import Update.Toast
 
 
 
@@ -479,6 +483,36 @@ restoreBundled model =
             ( { model | saveChainPresets = next, modal = refreshedModal }
             , Cmd.none
             )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Copy the currently-open Save Chain form to the clipboard as
+an Elm source snippet ready to paste into
+`Encounter.SaveChain.Bundled.elm`. Used to promote a
+user-authored preset into a bundled default without hand-
+translating the wire JSON.
+
+The snippet includes a header comment (where to paste + to
+extend `defaults`). A short "Copied…" toast confirms the
+port fired — the OS clipboard has no observable state we can
+verify from Elm, so this is the only feedback the GM sees.
+
+-}
+exportBundled : Model -> ( Model, Cmd Msg )
+exportBundled model =
+    case model.modal of
+        Just (ModalSaveChain ui) ->
+            let
+                snippet =
+                    Encounter.SaveChain.Export.asElm (UiSaveChain.toChain ui)
+            in
+            Update.Toast.push ToastSuccess
+                "Copied Elm snippet to clipboard — paste into Bundled.elm."
+                model
+                |> Tuple.mapSecond
+                    (\cmd -> Cmd.batch [ cmd, Ports.copyToClipboard snippet ])
 
         _ ->
             ( model, Cmd.none )

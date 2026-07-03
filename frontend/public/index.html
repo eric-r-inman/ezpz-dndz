@@ -359,6 +359,20 @@
         });
       }
 
+      // Copy an arbitrary string to the clipboard.  Fire-and-
+      // forget: Firefox can reject an untrusted write, but
+      // there's nothing the Elm side would do about it — the
+      // button caller shows a toast synchronously.
+      if (app.ports && app.ports.copyToClipboard) {
+        app.ports.copyToClipboard.subscribe(function (value) {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(String(value)).catch(function () {});
+            }
+          } catch (_) {}
+        });
+      }
+
       // Party roster — { members: [...], next_id: N }.
       // Persists across sessions so the CR Calculator and
       // Random Encounter modals don't make the GM re-enter
