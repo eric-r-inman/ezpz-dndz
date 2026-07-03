@@ -5895,7 +5895,24 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* "Saved: <Condition>" notice — posted after a successful auto-
    roll save. Green to signal a positive outcome; auto-clears on
-   the bearer's next end-of-turn, but the × dismisses earlier. */
+   the bearer's next end-of-turn, but the × dismisses earlier.
+   On mount the chip flashes for ~2s (four 0.5s pulses of an
+   outward green glow plus a background boost) so the GM catches
+   the successful save even when their eyes are elsewhere on the
+   table. The animation runs a fixed iteration count and honours
+   the global reduced-motion block. */
+@keyframes save-notice-flash {
+  0%,
+  100% {
+    background: rgba(60, 180, 85, 0.12);
+    box-shadow: 0 0 0 0 rgba(60, 180, 85, 0.85);
+  }
+  50% {
+    background: rgba(60, 180, 85, 0.45);
+    box-shadow: 0 0 0 8px rgba(60, 180, 85, 0);
+  }
+}
+
 .save-notice {
   padding: 1px 6px;
   font-size: 0.78rem;
@@ -5904,6 +5921,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: #3cb455;
   border: 1px solid rgba(60, 180, 85, 0.4);
   border-radius: 999px;
+  animation: save-notice-flash 0.5s ease-in-out 4;
 }
 
 .creature-card__row--mid {
