@@ -543,6 +543,7 @@ freshPlaceholder name =
     , initiativeBonus = 0
     , currentHp = 1
     , maxHp = 1
+    , originalMaxHp = 1
     , tempHp = 0
     , armorClass = 10
     , speed = 30

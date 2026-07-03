@@ -57,6 +57,38 @@ suite =
                     , "\"isPlaceholder\":false"
                     ]
                     |> Expect.equal True
+        , test "encoder emits `originalMaxHp` distinct from `maxHp` when they differ" <|
+            \_ ->
+                let
+                    json =
+                        E.encode 0 (Wire.encodeEncounter singleCreatureEncounter)
+                in
+                (String.contains "\"maxHp\":367" json
+                    && String.contains "\"originalMaxHp\":380" json
+                )
+                    |> Expect.equal True
+        , test "decoder falls back to maxHp when `originalMaxHp` is absent (pre-feature payload)" <|
+            \_ ->
+                let
+                    legacy =
+                        """
+                        { "creatures":
+                            [ { "name": "Legacy Ogre"
+                              , "kind": ""
+                              , "initiative": 10
+                              , "currentHp": 40
+                              , "maxHp": 42
+                              , "armorClass": 12
+                              }
+                            ]
+                        , "activeName": ""
+                        , "round": 1
+                        }
+                        """
+                in
+                D.decodeString Wire.decodeEncounter legacy
+                    |> Result.map (.creatures >> List.head >> Maybe.map .originalMaxHp)
+                    |> Expect.equal (Ok (Just 42))
         ]
 
 
@@ -101,6 +133,7 @@ fullyPopulatedCreature =
     , initiativeBonus = 4
     , currentHp = 256
     , maxHp = 367
+    , originalMaxHp = 380
     , tempHp = 12
     , armorClass = 19
     , speed = 40

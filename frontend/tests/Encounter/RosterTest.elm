@@ -57,6 +57,7 @@ mkCreature name initiative =
     , initiativeBonus = 0
     , currentHp = 10
     , maxHp = 10
+    , originalMaxHp = 10
     , tempHp = 0
     , armorClass = 10
     , speed = 30

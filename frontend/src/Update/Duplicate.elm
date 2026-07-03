@@ -87,7 +87,7 @@ minionHalf =
                 halved =
                     max 1 (c.maxHp // 2)
             in
-            { c | maxHp = halved, currentHp = halved }
+            { c | maxHp = halved, originalMaxHp = halved, currentHp = halved }
         )
 
 
@@ -96,7 +96,7 @@ minionHalf =
 minionOne : Model -> ( Model, Cmd Msg )
 minionOne =
     freshLike MinionName
-        (\c -> { c | maxHp = 1, currentHp = 1 })
+        (\c -> { c | maxHp = 1, originalMaxHp = 1, currentHp = 1 })
 
 
 {-| Pudding split: replace the source with two new instances,
@@ -181,6 +181,7 @@ puddingHalf src =
     { src
         | currentHp = src.currentHp // 2
         , maxHp = src.maxHp // 2
+        , originalMaxHp = src.maxHp // 2
         , tempHp = 0
         , conditions = []
         , saveNotices = []

@@ -381,6 +381,16 @@ type alias Creature =
     , initiativeBonus : Int
     , currentHp : Int
     , maxHp : Int
+
+    -- Snapshot of `maxHp` as it stood the moment this creature
+    -- entered the encounter (compendium promotion, seed data,
+    -- or a duplicate).  Never mutated by the HP-change modal —
+    -- that only touches `maxHp` — so the card view can show
+    -- "current (original)" whenever the two diverge.  On wire
+    -- decode of a payload that predates this field, it falls
+    -- back to `maxHp` so pre-existing encounters read as
+    -- "unchanged".
+    , originalMaxHp : Int
     , tempHp : Int
     , armorClass : Int
     , speed : Int

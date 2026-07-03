@@ -1042,6 +1042,7 @@ encodeCreature c =
         , ( "initiativeBonus", E.int c.initiativeBonus )
         , ( "currentHp", E.int c.currentHp )
         , ( "maxHp", E.int c.maxHp )
+        , ( "originalMaxHp", E.int c.originalMaxHp )
         , ( "tempHp", E.int c.tempHp )
         , ( "armorClass", E.int c.armorClass )
         , ( "speed", E.int c.speed )
@@ -1314,13 +1315,14 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised hasSpecialReactions ->
+        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised hasSpecialReactions ->
             { name = name
             , kind = kind
             , initiative = initiative
             , initiativeBonus = initiativeBonus
             , currentHp = currentHp
             , maxHp = maxHp
+            , originalMaxHp = Maybe.withDefault maxHp originalMaxHpMaybe
             , tempHp = tempHp
             , armorClass = armorClass
             , speed = speed
@@ -1364,6 +1366,7 @@ decodeCreature =
         |> optional "initiativeBonus" D.int 0
         |> required "currentHp" D.int
         |> required "maxHp" D.int
+        |> optional "originalMaxHp" (D.map Just D.int) Nothing
         |> optional "tempHp" D.int 0
         |> required "armorClass" D.int
         |> optional "speed" D.int 30

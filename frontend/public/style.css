@@ -5967,6 +5967,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text-muted);
 }
 
+/* "(N)" hint after Max HP.  Renders only when the current Max
+   HP has been edited from the baseline the creature entered
+   the encounter with (see `View.Card.maxHpOriginal`).  Small
+   italicised muted-text so it reads as a hint hanging off the
+   Max HP value rather than a second data point. */
+.hp-display__max-orig {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.85em;
+  margin-left: 2px;
+}
+
 .bloodied {
   font-size: 0.95rem;
   margin-right: var(--space-2);

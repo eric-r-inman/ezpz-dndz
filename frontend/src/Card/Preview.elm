@@ -63,6 +63,7 @@ sampleCreature =
     , initiativeBonus = 2
     , currentHp = 7
     , maxHp = 12
+    , originalMaxHp = 12
     , tempHp = 3
     , armorClass = 15
     , speed = 30

@@ -1028,8 +1028,31 @@ hpDisplay creature hpEdit =
         [ hpEditable creature hpEdit CurrentHpField creature.currentHp "hp-display__current"
         , span [ class "hp-display__sep" ] [ text "/" ]
         , hpEditable creature hpEdit MaxHpField creature.maxHp "hp-display__max"
+        , maxHpOriginal creature
         , tempHpEditable creature hpEdit
         ]
+
+
+{-| Muted "(N)" hint after Max HP when the current value has
+been changed from the baseline the creature entered the
+encounter with. Nothing renders when the two match — the
+common case for freshly-added compendium instances — so the
+row stays quiet until the GM has actually mutated the pool.
+-}
+maxHpOriginal : Creature -> Html Msg
+maxHpOriginal creature =
+    if creature.originalMaxHp /= creature.maxHp && creature.originalMaxHp > 0 then
+        span
+            [ class "hp-display__max-orig"
+            , Tooltips.attr
+                ("Original max HP when added to the encounter: "
+                    ++ String.fromInt creature.originalMaxHp
+                )
+            ]
+            [ text (" (" ++ String.fromInt creature.originalMaxHp ++ ")") ]
+
+    else
+        text ""
 
 
 {-| Click-to-edit affordance for the temp-HP chip. Mirrors

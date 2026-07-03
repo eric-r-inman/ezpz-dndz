@@ -26,6 +26,7 @@ fixture =
     , initiativeBonus = 0
     , currentHp = 30
     , maxHp = 50
+    , originalMaxHp = 50
     , tempHp = 0
     , armorClass = 12
     , speed = 30

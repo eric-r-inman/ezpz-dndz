@@ -867,6 +867,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , initiativeBonus = c.initiativeBonus
     , currentHp = c.maxHp
     , maxHp = c.maxHp
+    , originalMaxHp = c.maxHp
     , tempHp = 0
     , armorClass = c.armorClass
     , speed = c.speed.walk
