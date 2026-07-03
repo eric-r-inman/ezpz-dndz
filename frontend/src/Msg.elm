@@ -505,6 +505,16 @@ type Msg
       -- before adopting.
     | ConditionPresetsLoaded (Result Http.Error Decode.Value)
     | ConditionPresetsPersisted (Result Http.Error ())
+      -- Save Chain presets: mirror of condition presets — GET on
+      -- authenticated boot, PUT after any mutation while
+      -- authenticated.  Anonymous sessions keep writing to
+      -- localStorage.  Same "opaque `Decode.Value`" reasoning as
+      -- above: the typed `SaveChain` record lives in
+      -- `Encounter.SaveChain`, which would cycle if we referenced
+      -- it here.  Decode via `Encounter.SaveChain.Wire.decodePresets`
+      -- happens in `Update.UserSync`.
+    | SaveChainPresetsLoaded (Result Http.Error Decode.Value)
+    | SaveChainPresetsPersisted (Result Http.Error ())
     | RollFromStatBlock String Dice.Expression Int Int
       -- (creatureName, expression, clientX, clientY at click time)
     | StatBlockRollLanded Int Int Dice.Roll

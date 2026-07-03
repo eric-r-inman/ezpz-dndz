@@ -109,6 +109,12 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_condition_presets_path")]
   pub condition_presets_path: Option<PathBuf>,
 
+  /// Path to the JSON file backing per-user saved presets for
+  /// the Save Chain modal.  Defaults to
+  /// `<data_dir>/save-chain-presets.json`.
+  #[arg(long, env = "ezpz_dndz_save_chain_presets_path")]
+  pub save_chain_presets_path: Option<PathBuf>,
+
   /// Path to the JSON file backing per-user singular treasure
   /// tables for the Treasure generator.  Defaults to
   /// `<data_dir>/treasure-table.json`.
@@ -138,6 +144,7 @@ pub struct ExtraFileFields {
   pub encounter_saves_path: Option<PathBuf>,
   pub lore_groups_path: Option<PathBuf>,
   pub condition_presets_path: Option<PathBuf>,
+  pub save_chain_presets_path: Option<PathBuf>,
   pub treasure_table_path: Option<PathBuf>,
   pub treasure_profiles_path: Option<PathBuf>,
   pub users_path: Option<PathBuf>,
@@ -159,6 +166,7 @@ pub struct RuntimePaths {
   pub users: PathBuf,
   pub lore_groups: PathBuf,
   pub condition_presets: PathBuf,
+  pub save_chain_presets: PathBuf,
   pub treasure_table: PathBuf,
   pub treasure_profiles: PathBuf,
 }
@@ -298,6 +306,11 @@ impl Config {
         cli.extra.condition_presets_path.as_ref(),
         file.extra.condition_presets_path.as_ref(),
         "condition-presets.json",
+      ),
+      save_chain_presets: pick(
+        cli.extra.save_chain_presets_path.as_ref(),
+        file.extra.save_chain_presets_path.as_ref(),
+        "save-chain-presets.json",
       ),
       treasure_table: pick(
         cli.extra.treasure_table_path.as_ref(),

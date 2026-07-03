@@ -19,7 +19,8 @@ use axum::{
 };
 use ezpz_dndz_server::{
   card_editor, compendium, condition_presets, config::RuntimePaths, dice,
-  encounters, lore_groups, treasure_table, users, web_base::AppState,
+  encounters, lore_groups, save_chain_presets, treasure_table, users,
+  web_base::AppState,
 };
 use rust_template_foundation::server::runner::{
   BaseServerState, ServerRunConfig,
@@ -46,6 +47,7 @@ async fn stub_app_state() -> (TempDir, AppState) {
     users: temp.path().join("users.json"),
     lore_groups: temp.path().join("lore-groups.json"),
     condition_presets: temp.path().join("condition-presets.json"),
+    save_chain_presets: temp.path().join("save-chain-presets.json"),
     treasure_table: temp.path().join("treasure-table.json"),
     treasure_profiles: temp.path().join("treasure-profiles.json"),
   };
@@ -94,6 +96,7 @@ fn build_test_router(state: AppState) -> Router {
     .merge(encounters::router())
     .merge(lore_groups::router())
     .merge(condition_presets::router())
+    .merge(save_chain_presets::router())
     .merge(treasure_table::router())
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
@@ -1463,6 +1466,105 @@ async fn test_condition_presets_per_user_isolation() {
     read_body(bob_get).await.trim(),
     "null",
     "Bob must not see Alice's condition presets"
+  );
+}
+
+#[tokio::test]
+async fn test_save_chain_presets_get_returns_null_when_unset() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/save-chain-presets")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(read_body(response).await.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_save_chain_presets_put_then_get_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let payload = r#"{"My Fireball":{"name":"My Fireball","saveAbility":"Dex"}}"#;
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/save-chain-presets")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/save-chain-presets")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let body = read_body(get).await;
+  assert!(
+    body.contains("\"My Fireball\""),
+    "expected PUT body to round-trip, got: {body}"
+  );
+}
+
+#[tokio::test]
+async fn test_save_chain_presets_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/save-chain-presets")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(
+          r#"{"Alice's":{"name":"Alice's","saveAbility":"Wis"}}"#,
+        ))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/save-chain-presets")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    read_body(bob_get).await.trim(),
+    "null",
+    "Bob must not see Alice's save-chain presets"
   );
 }
 

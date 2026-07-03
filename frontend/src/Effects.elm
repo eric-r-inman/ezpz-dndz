@@ -3,7 +3,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -35,6 +35,8 @@ import Dict exposing (Dict)
 import Encounter
 import Encounter.RandomEncounter.Lore
 import Encounter.RandomEncounter.Lore.Wire
+import Encounter.SaveChain
+import Encounter.SaveChain.Wire
 import Encounter.Treasure exposing (TreasureTable)
 import Encounter.Treasure.TableWire
 import Http
@@ -466,6 +468,44 @@ putConditionPresets presets =
         , url = "/api/condition-presets"
         , body = Http.jsonBody (Ui.Condition.Wire.encodePresets presets)
         , expect = Http.expectWhatever ConditionPresetsPersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+
+-- ── /api/save-chain-presets ──────────────────────────────────────────────────
+
+
+{-| GET the caller's saved Save Chain presets. Payload is
+returned as a raw `Decode.Value` for the same reason as
+`fetchConditionPresets` — the typed record lives in
+`Encounter.SaveChain`, which the `Msg` variant would cycle on
+if we tried to name it directly. `Update.UserSync` decodes via
+`Encounter.SaveChain.Wire.decodePresets` before adopting.
+-}
+fetchSaveChainPresets : Cmd Msg
+fetchSaveChainPresets =
+    Http.get
+        { url = "/api/save-chain-presets"
+        , expect = Http.expectJson SaveChainPresetsLoaded Decode.value
+        }
+
+
+{-| PUT the caller's full Save Chain preset map. Bundled +
+user-authored entries are sent together — the server round-trips
+the whole payload verbatim, and this lets the client survive a
+purge of the bundled module without losing the copy the GM has
+been iterating on locally.
+-}
+putSaveChainPresets : Dict String Encounter.SaveChain.SaveChain -> Cmd Msg
+putSaveChainPresets presets =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/save-chain-presets"
+        , body = Http.jsonBody (Encounter.SaveChain.Wire.encodePresets presets)
+        , expect = Http.expectWhatever SaveChainPresetsPersisted
         , timeout = Nothing
         , tracker = Nothing
         }

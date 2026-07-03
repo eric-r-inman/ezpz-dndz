@@ -25,6 +25,9 @@ use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
 use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
+use crate::save_chain_presets::{
+  SaveChainPresetStore, SaveChainPresetStoreError,
+};
 use crate::treasure_profiles::{
   TreasureProfileStore, TreasureProfileStoreError,
 };
@@ -46,6 +49,7 @@ pub struct AppState {
   pub auth_rate_limiter: AuthRateLimiter,
   pub lore_groups: LoreGroupStore,
   pub condition_presets: ConditionPresetStore,
+  pub save_chain_presets: SaveChainPresetStore,
   pub treasure_table: TreasureTableStore,
   pub treasure_profiles: TreasureProfileStore,
 }
@@ -77,6 +81,9 @@ pub enum AppStateError {
 
   #[error("Failed to load condition-preset store: {0}")]
   ConditionPresetStoreLoad(#[source] ConditionPresetStoreError),
+
+  #[error("Failed to load save-chain-preset store: {0}")]
+  SaveChainPresetStoreLoad(#[source] SaveChainPresetStoreError),
 
   #[error("Failed to load treasure-table store: {0}")]
   TreasureTableStoreLoad(#[source] TreasureTableStoreError),
@@ -156,6 +163,11 @@ impl AppState {
         .await
         .map_err(AppStateError::ConditionPresetStoreLoad)?;
 
+    let save_chain_presets =
+      SaveChainPresetStore::load_or_default(paths.save_chain_presets.clone())
+        .await
+        .map_err(AppStateError::SaveChainPresetStoreLoad)?;
+
     let treasure_table =
       TreasureTableStore::load_or_default(paths.treasure_table.clone())
         .await
@@ -196,6 +208,7 @@ impl AppState {
       auth_rate_limiter: AuthRateLimiter::new(),
       lore_groups,
       condition_presets,
+      save_chain_presets,
       treasure_table,
       treasure_profiles,
     })

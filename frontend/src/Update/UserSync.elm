@@ -1,19 +1,22 @@
 module Update.UserSync exposing
     ( loreGroupsLoaded, loreGroupsPersisted
     , conditionPresetsLoaded, conditionPresetsPersisted
+    , saveChainPresetsLoaded, saveChainPresetsPersisted
     , treasureProfilesLoaded, treasureProfilesPersisted, treasureTableLoaded, treasureTablePersisted
     )
 
-{-| Msg handlers for the per-user server-stored Lore groups and
-condition presets.
+{-| Msg handlers for the per-user server-stored Lore groups,
+condition presets, and Save Chain presets.
 
-Both stores follow the same boot+migrate dance:
+All three stores follow the same boot+migrate dance:
 
   - On the authenticated boot path (`Update.Auth.meReceived
-    (Ok _)`), `Effects.fetchLoreGroups` and
-    `Effects.fetchConditionPresets` fire.
-  - When the response lands in [`loreGroupsLoaded`](#loreGroupsLoaded)
-    or [`conditionPresetsLoaded`](#conditionPresetsLoaded), one
+    (Ok _)`), `Effects.fetchLoreGroups`,
+    `Effects.fetchConditionPresets`, and
+    `Effects.fetchSaveChainPresets` fire.
+  - When the response lands in [`loreGroupsLoaded`](#loreGroupsLoaded),
+    [`conditionPresetsLoaded`](#conditionPresetsLoaded), or
+    [`saveChainPresetsLoaded`](#saveChainPresetsLoaded), one
     of three things happens:
     1.  Server returned non-empty → adopt as the live state,
         dropping whatever the boot flag from localStorage had
@@ -33,12 +36,16 @@ old way.
 
 @docs loreGroupsLoaded, loreGroupsPersisted
 @docs conditionPresetsLoaded, conditionPresetsPersisted
+@docs saveChainPresetsLoaded, saveChainPresetsPersisted
 
 -}
 
 import Dict
 import Effects
 import Encounter.RandomEncounter.Lore as Lore
+import Encounter.SaveChain
+import Encounter.SaveChain.Bundled
+import Encounter.SaveChain.Wire
 import Encounter.Treasure
 import Encounter.Treasure.ProfileWire
 import Http
@@ -149,6 +156,91 @@ conditionPresetsPersisted result model =
         Err err ->
             Update.Toast.push ToastError
                 ("Saving your condition presets failed: "
+                    ++ Util.Http.errorToString err
+                )
+                model
+
+
+{-| Handler for `GET /api/save-chain-presets` — mirror of
+`conditionPresetsLoaded`. Save Chain presets are a
+`Dict String SaveChain`; the wire is opaque JSON.
+
+Three-way branch matching the sibling stores:
+
+1.  Non-empty server response → adopt as the live state
+    (drops whatever localStorage seeded at boot). This is how
+    a second device picks up presets authored elsewhere.
+2.  Empty server response BUT the anonymous-boot code loaded
+    user-authored presets from localStorage → migrate up. We
+    send the full local map, bundled defaults included, so
+    the server's copy survives a re-boot without depending on
+    whichever bundled catalogue happens to ship in a future
+    binary.
+3.  Both empty → no-op.
+
+-}
+saveChainPresetsLoaded :
+    Result Http.Error Decode.Value
+    -> Model
+    -> ( Model, Cmd Msg )
+saveChainPresetsLoaded result model =
+    case result of
+        Ok raw ->
+            case Decode.decodeValue Encounter.SaveChain.Wire.decodePresets raw of
+                Ok serverPresets ->
+                    if not (Dict.isEmpty serverPresets) then
+                        ( { model | saveChainPresets = serverPresets }
+                        , Cmd.none
+                        )
+
+                    else if not (Dict.isEmpty (userAuthoredSaveChainOnly model.saveChainPresets)) then
+                        ( model
+                        , Effects.putSaveChainPresets model.saveChainPresets
+                        )
+
+                    else
+                        ( model, Cmd.none )
+
+                Err _ ->
+                    Update.Toast.push ToastError
+                        "Couldn't decode the Save Chain preset payload from the server."
+                        model
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Couldn't load your Save Chain presets: "
+                    ++ Util.Http.errorToString err
+                )
+                model
+
+
+{-| Strip out the bundled Save Chain presets so the migration
+test "do we have anything worth uploading?" only fires on
+user-authored entries. Bundled entries live under the exact
+keys in `Encounter.SaveChain.Bundled.defaults` — anything else
+is user-authored (either freshly created or a bundled preset
+the GM edited under a new name).
+-}
+userAuthoredSaveChainOnly :
+    Dict.Dict String Encounter.SaveChain.SaveChain
+    -> Dict.Dict String Encounter.SaveChain.SaveChain
+userAuthoredSaveChainOnly presets =
+    let
+        bundledKeys =
+            Encounter.SaveChain.Bundled.defaults
+    in
+    Dict.filter (\k _ -> not (Dict.member k bundledKeys)) presets
+
+
+saveChainPresetsPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
+saveChainPresetsPersisted result model =
+    case result of
+        Ok () ->
+            ( model, Cmd.none )
+
+        Err err ->
+            Update.Toast.push ToastError
+                ("Saving your Save Chain presets failed: "
                     ++ Util.Http.errorToString err
                 )
                 model

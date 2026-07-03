@@ -17,7 +17,11 @@ The modal is a form editor plus two apply buttons; the form's
 raw state lives in `UiSaveChain.SaveChainUi`, projected back
 to `Encounter.SaveChain.SaveChain` at save / apply time.
 Presets are stored in `model.saveChainPresets` (dict keyed by
-name) and persisted via `Ports.persistLocalSaveChainPresets`.
+name); the persistence Cmd is fired from `Main.elm`'s model-
+diff pass — `Ports.persistLocalSaveChainPresets` for anonymous
+users, `Effects.putSaveChainPresets` for authenticated ones —
+so update branches here return `Cmd.none` on preset mutations
+and let the diff catch it.
 
 @docs open, close
 @docs nameChanged, abilitySet, dcChanged, dcOverrideChanged
@@ -38,7 +42,6 @@ import Effects
 import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 import Encounter.SaveChain.Bundled
-import Encounter.SaveChain.Wire
 import Model exposing (Modal(..), Model)
 import Msg
     exposing
@@ -46,7 +49,6 @@ import Msg
         , SaveChainHpKind(..)
         , SaveChainSide(..)
         )
-import Ports
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.SaveChain as UiSaveChain exposing (OutcomeForm, SaveChainUi)
@@ -367,9 +369,7 @@ presetSave model =
                                     )
                         }
                 in
-                ( modelWithPreset
-                , Ports.persistLocalSaveChainPresets (Encounter.SaveChain.Wire.encodePresets next)
-                )
+                ( modelWithPreset, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -412,7 +412,7 @@ presetDelete model =
                                 }
                             )
                   }
-                , Ports.persistLocalSaveChainPresets (Encounter.SaveChain.Wire.encodePresets next)
+                , Cmd.none
                 )
 
         _ ->
@@ -477,7 +477,7 @@ restoreBundled model =
                             Just (ModalSaveChain ui)
             in
             ( { model | saveChainPresets = next, modal = refreshedModal }
-            , Ports.persistLocalSaveChainPresets (Encounter.SaveChain.Wire.encodePresets next)
+            , Cmd.none
             )
 
         _ ->

@@ -750,6 +750,19 @@ update msg model =
             else
                 Cmd.none
 
+        saveChainPresetsCmd =
+            if shouldPersistAfter msg && model.saveChainPresets /= next.saveChainPresets then
+                case next.auth of
+                    Auth.AuthAuthenticated _ ->
+                        Effects.putSaveChainPresets next.saveChainPresets
+
+                    _ ->
+                        Ports.persistLocalSaveChainPresets
+                            (Encounter.SaveChain.Wire.encodePresets next.saveChainPresets)
+
+            else
+                Cmd.none
+
         timerPresetsCmd =
             if shouldPersistAfter msg && model.timerPresets /= next.timerPresets then
                 Ports.persistLocalTimerPresets
@@ -858,6 +871,7 @@ update msg model =
         , encounterSavesCmd
         , cardLayoutSavesCmd
         , conditionPresetsCmd
+        , saveChainPresetsCmd
         , timerPresetsCmd
         , partyCmd
         , userLoreGroupsCmd
@@ -1254,6 +1268,12 @@ updateInner msg model =
 
         ConditionPresetsPersisted result ->
             Update.UserSync.conditionPresetsPersisted result model
+
+        SaveChainPresetsLoaded result ->
+            Update.UserSync.saveChainPresetsLoaded result model
+
+        SaveChainPresetsPersisted result ->
+            Update.UserSync.saveChainPresetsPersisted result model
 
         RollFromStatBlock creatureName expr x y ->
             Update.Dice.rollFromStatBlock creatureName expr x y model
