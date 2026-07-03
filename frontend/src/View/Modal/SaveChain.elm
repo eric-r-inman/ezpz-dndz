@@ -23,7 +23,7 @@ Layout, top to bottom:
 import Compendium exposing (Ability(..))
 import Dict
 import Encounter exposing (Encounter)
-import Encounter.SaveChain as SaveChain exposing (HpEffect(..))
+import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..))
 import Html exposing (Html, button, div, input, option, p, select, span, text)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (on, onClick, onInput)
@@ -219,7 +219,7 @@ outcomeBlock heading side form =
     div [ class "save-chain__outcome" ]
         [ div [ class "save-chain__outcome-heading" ] [ text heading ]
         , hpRow side form
-        , conditionRow side form
+        , effectsSection side form
         ]
 
 
@@ -311,28 +311,57 @@ asHpKind h =
             SaveChainHalfFail
 
 
-conditionRow : SaveChainSide -> OutcomeForm -> Html Msg
-conditionRow side form =
-    div [ class "save-chain__condition-row" ]
-        [ span [ class "save-chain__field-label" ] [ text "Condition" ]
-        , input
+{-| Zero-or-more effect rows plus an "+ Add effect" button.
+Each row is a `[name] [note] [×]` triplet. When the list is
+empty, the section is just the button — clicking it pushes a
+first row. Standard 5e condition names are offered as
+datalist suggestions on the name input but the field stays
+free-form so spells like Banishment / Slow / Confusion can
+use custom effect names.
+-}
+effectsSection : SaveChainSide -> OutcomeForm -> Html Msg
+effectsSection side form =
+    div [ class "save-chain__effects" ]
+        [ span [ class "save-chain__field-label" ] [ text "Effects" ]
+        , div [ class "save-chain__effect-list" ]
+            (List.indexedMap (effectRow side) form.effects)
+        , button
+            [ class "action-btn action-btn--sm"
+            , type_ "button"
+            , onClick (SaveChainOutcomeEffectAdd side)
+            ]
+            [ text "+ Add effect" ]
+        , conditionDatalist
+        ]
+
+
+effectRow : SaveChainSide -> Int -> EffectApply -> Html Msg
+effectRow side idx effect =
+    div [ class "save-chain__effect-row" ]
+        [ input
             [ type_ "text"
             , class "save-chain__condition-input"
             , list "save-chain-condition-list"
-            , value form.conditionName
-            , placeholder "(none)"
-            , onInput (SaveChainOutcomeConditionNameChanged side)
+            , value effect.name
+            , placeholder "condition or effect name"
+            , onInput (SaveChainOutcomeEffectNameChanged side idx)
             ]
             []
         , input
             [ type_ "text"
             , class "save-chain__condition-note-input"
-            , value form.conditionNote
+            , value effect.note
             , placeholder "note (optional)"
-            , onInput (SaveChainOutcomeConditionNoteChanged side)
+            , onInput (SaveChainOutcomeEffectNoteChanged side idx)
             ]
             []
-        , conditionDatalist
+        , button
+            [ class "icon-btn icon-btn--sm save-chain__effect-remove"
+            , type_ "button"
+            , onClick (SaveChainOutcomeEffectRemove side idx)
+            , attribute "aria-label" "Remove effect"
+            ]
+            [ text "×" ]
         ]
 
 

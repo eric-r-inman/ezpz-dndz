@@ -3,7 +3,8 @@ module Update.SaveChain exposing
     , nameChanged, abilitySet, dcChanged, dcOverrideChanged
     , applyToSelectedToggle
     , outcomeHpKindSet, outcomeHpAmountChanged
-    , outcomeConditionNameChanged, outcomeConditionNoteChanged
+    , outcomeEffectAdd, outcomeEffectRemove
+    , outcomeEffectNameChanged, outcomeEffectNoteChanged
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass
     , applyRollLanded
@@ -21,7 +22,8 @@ name) and persisted via `Ports.persistLocalSaveChainPresets`.
 @docs nameChanged, abilitySet, dcChanged, dcOverrideChanged
 @docs applyToSelectedToggle
 @docs outcomeHpKindSet, outcomeHpAmountChanged
-@docs outcomeConditionNameChanged, outcomeConditionNoteChanged
+@docs outcomeEffectAdd, outcomeEffectRemove
+@docs outcomeEffectNameChanged, outcomeEffectNoteChanged
 @docs presetPickerChanged, presetLoad, presetSave, presetDelete, reset
 @docs applyFail, applyPass
 
@@ -145,18 +147,66 @@ outcomeHpAmountChanged side text model =
     )
 
 
-outcomeConditionNameChanged : SaveChainSide -> String -> Model -> ( Model, Cmd Msg )
-outcomeConditionNameChanged side text model =
-    ( withUi (mapSide side (\o -> { o | conditionName = text })) model
+outcomeEffectAdd : SaveChainSide -> Model -> ( Model, Cmd Msg )
+outcomeEffectAdd side model =
+    ( withUi
+        (mapSide side
+            (\o -> { o | effects = o.effects ++ [ SaveChain.emptyEffect ] })
+        )
+        model
     , Cmd.none
     )
 
 
-outcomeConditionNoteChanged : SaveChainSide -> String -> Model -> ( Model, Cmd Msg )
-outcomeConditionNoteChanged side text model =
-    ( withUi (mapSide side (\o -> { o | conditionNote = text })) model
+outcomeEffectRemove : SaveChainSide -> Int -> Model -> ( Model, Cmd Msg )
+outcomeEffectRemove side idx model =
+    ( withUi
+        (mapSide side
+            (\o -> { o | effects = removeAt idx o.effects })
+        )
+        model
     , Cmd.none
     )
+
+
+outcomeEffectNameChanged : SaveChainSide -> Int -> String -> Model -> ( Model, Cmd Msg )
+outcomeEffectNameChanged side idx text model =
+    ( withUi
+        (mapSide side
+            (\o -> { o | effects = updateAt idx (\e -> { e | name = text }) o.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+outcomeEffectNoteChanged : SaveChainSide -> Int -> String -> Model -> ( Model, Cmd Msg )
+outcomeEffectNoteChanged side idx text model =
+    ( withUi
+        (mapSide side
+            (\o -> { o | effects = updateAt idx (\e -> { e | note = text }) o.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+removeAt : Int -> List a -> List a
+removeAt idx list =
+    List.take idx list ++ List.drop (idx + 1) list
+
+
+updateAt : Int -> (a -> a) -> List a -> List a
+updateAt idx fn list =
+    List.indexedMap
+        (\i x ->
+            if i == idx then
+                fn x
+
+            else
+                x
+        )
+        list
 
 
 
@@ -347,11 +397,11 @@ applySide side model =
                 targets =
                     resolveTargets ui model.encounter
 
-                -- Condition apply always fires (no dice needed).
+                -- Effect list applies always fire (no dice needed).
                 withConditions =
                     List.foldl
                         (\name enc ->
-                            SaveChain.applyCondition outcome name enc
+                            SaveChain.applyEffects outcome name enc
                         )
                         model.encounter
                         targets

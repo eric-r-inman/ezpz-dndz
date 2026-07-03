@@ -23,7 +23,7 @@ without doubling the Msg surface.
 -}
 
 import Compendium exposing (Ability(..))
-import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
 
 
 type alias SaveChainUi =
@@ -56,8 +56,7 @@ type alias SaveChainUi =
 type alias OutcomeForm =
     { hpKind : HpEffect
     , hpAmountText : String
-    , conditionName : String
-    , conditionNote : String
+    , effects : List EffectApply
     }
 
 
@@ -88,8 +87,7 @@ freshOutcome : OutcomeForm
 freshOutcome =
     { hpKind = NoHpEffect
     , hpAmountText = ""
-    , conditionName = ""
-    , conditionNote = ""
+    , effects = []
     }
 
 
@@ -134,8 +132,7 @@ outcomeToForm o =
 
             _ ->
                 ""
-    , conditionName = o.conditionName
-    , conditionNote = o.conditionNote
+    , effects = o.effects
     }
 
 
@@ -175,8 +172,9 @@ formToOutcome f =
                     HalfFailDamage
     in
     { hp = hp
-    , conditionName = f.conditionName
-    , conditionNote = f.conditionNote
+    , effects =
+        f.effects
+            |> List.filter (\e -> not (String.isEmpty (String.trim e.name)))
     }
 
 

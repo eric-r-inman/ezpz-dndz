@@ -548,8 +548,14 @@ type Msg
       -- fields without doubling the surface.
     | SaveChainOutcomeHpKindSet SaveChainSide SaveChainHpKind
     | SaveChainOutcomeHpAmountChanged SaveChainSide String
-    | SaveChainOutcomeConditionNameChanged SaveChainSide String
-    | SaveChainOutcomeConditionNoteChanged SaveChainSide String
+      -- Effect list ops.  Each outcome side carries zero or
+      -- more `{name, note}` rows, so field-change Msgs are
+      -- indexed by row.  Add pushes a fresh blank row; remove
+      -- drops the row at `idx`.
+    | SaveChainOutcomeEffectAdd SaveChainSide
+    | SaveChainOutcomeEffectRemove SaveChainSide Int
+    | SaveChainOutcomeEffectNameChanged SaveChainSide Int String
+    | SaveChainOutcomeEffectNoteChanged SaveChainSide Int String
       -- Preset ops
     | SaveChainPresetPickerChanged String
     | SaveChainPresetLoad

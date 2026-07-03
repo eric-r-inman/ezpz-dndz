@@ -55,7 +55,7 @@ emptyDetectorSuite =
                     fail =
                         base.onFail
                 in
-                { base | onFail = { fail | conditionName = "Blinded" } }
+                { base | onFail = { fail | effects = [ { name = "Blinded", note = "" } ] } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal False
         , test "false when the success side does something (edge case)" <|
@@ -70,7 +70,7 @@ emptyDetectorSuite =
                 { base | onSuccess = { success | hp = HalfFailDamage } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal False
-        , test "whitespace-only condition name is treated as empty" <|
+        , test "whitespace-only effect name is treated as empty" <|
             \_ ->
                 let
                     base =
@@ -79,9 +79,29 @@ emptyDetectorSuite =
                     fail =
                         base.onFail
                 in
-                { base | onFail = { fail | conditionName = "   " } }
+                { base | onFail = { fail | effects = [ { name = "   ", note = "" } ] } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal True
+        , test "multiple effects on one side flip the detector" <|
+            \_ ->
+                let
+                    base =
+                        SaveChain.empty
+
+                    fail =
+                        base.onFail
+                in
+                { base
+                    | onFail =
+                        { fail
+                            | effects =
+                                [ { name = "Charmed", note = "" }
+                                , { name = "Incapacitated", note = "speed 0" }
+                                ]
+                        }
+                }
+                    |> SaveChain.isEffectivelyEmpty
+                    |> Expect.equal False
         ]
 
 

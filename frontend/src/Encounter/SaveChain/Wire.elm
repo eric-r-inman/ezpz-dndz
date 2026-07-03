@@ -14,7 +14,7 @@ saved chains survive across reloads. Payload is written to
 
 import Compendium exposing (Ability(..))
 import Dict exposing (Dict)
-import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
 import Json.Decode as D
 import Json.Encode as E
 
@@ -88,17 +88,59 @@ encodeOutcome : SaveOutcome -> E.Value
 encodeOutcome o =
     E.object
         [ ( "hp", encodeHpEffect o.hp )
-        , ( "condition_name", E.string o.conditionName )
-        , ( "condition_note", E.string o.conditionNote )
+        , ( "effects", E.list encodeEffect o.effects )
         ]
 
 
+{-| Decode an outcome, falling back to the pre-migration
+`condition_name` / `condition_note` fields when `effects` is
+absent — any preset already in `localStorage.saveChainPresets`
+from before the multi-effect refactor still loads cleanly.
+-}
 outcomeDecoder : D.Decoder SaveOutcome
 outcomeDecoder =
-    D.map3 SaveOutcome
+    D.map2 SaveOutcome
         (optionalField "hp" hpEffectDecoder NoHpEffect)
+        (D.oneOf
+            [ D.field "effects" (D.list effectDecoder)
+            , legacyEffectsDecoder
+            ]
+        )
+
+
+{-| Backward-compat: the pre-multi-effect wire had
+`condition_name` / `condition_note` as top-level outcome
+fields. Repackage them as a one-element effect list, or as
+an empty list when the name was blank.
+-}
+legacyEffectsDecoder : D.Decoder (List EffectApply)
+legacyEffectsDecoder =
+    D.map2 (\n note -> ( n, note ))
         (optionalField "condition_name" D.string "")
         (optionalField "condition_note" D.string "")
+        |> D.map
+            (\( name, note ) ->
+                if String.isEmpty (String.trim name) then
+                    []
+
+                else
+                    [ { name = name, note = note } ]
+            )
+
+
+encodeEffect : EffectApply -> E.Value
+encodeEffect e =
+    E.object
+        [ ( "name", E.string e.name )
+        , ( "note", E.string e.note )
+        ]
+
+
+effectDecoder : D.Decoder EffectApply
+effectDecoder =
+    D.map2 EffectApply
+        (D.field "name" D.string)
+        (optionalField "note" D.string "")
 
 
 

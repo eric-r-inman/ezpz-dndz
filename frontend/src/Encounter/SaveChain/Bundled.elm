@@ -3,41 +3,42 @@ module Encounter.SaveChain.Bundled exposing (defaults)
 {-| Bundled Save Chain presets seeded into a fresh visitor's
 `Model.saveChainPresets` on the very first boot.
 
-Picked to cover the four common chain shapes the GM will
-build on their own within a session or two:
+Covers the four canonical outcome shapes the modal supports —
+plus a set of complex spells whose in-game effect involves
+multiple standard conditions (Hypnotic Pattern) or a bespoke
+effect name that isn't a 5e condition at all (Banishment,
+Slow, Confusion). These use the effect-list model: each
+outcome can carry zero, one, or many named effects.
 
-  - **Cantrip damage** (Sacred Flame, Poison Spray) — single
-    save, small damage on fail, nothing on success.
-  - **AoE damage with half-on-success** (Burning Hands,
-    Fireball, Cone of Cold) — showcases the `HalfFailDamage`
-    success option so a GM sees the pattern once and can
-    replicate it for any other save-for-half spell.
-  - **Condition control** (Blindness/Deafness, Hold Person,
-    Fear, Web) — no HP change, just apply a standard 5e
-    condition. Duration is left as `DurationManual` on the
-    applied condition so the GM can attach a save-to-end
-    after the fact if the spell needs one (Hold Person &
-    Fear both do — the modal for editing the condition
-    handles that end).
-  - **Damage + condition combo** (Phantasmal Killer) — the
-    only preset that lights up both outcome fields on fail,
-    proving the composition works.
+  - **Cantrip damage** — Sacred Flame, Poison Spray.
+  - **AoE damage + half-on-success** — Burning Hands,
+    Fireball, Cone of Cold. Uses `HalfFailDamage` on the
+    success side.
+  - **Single-condition control** — Blindness / Deafness,
+    Hold Person, Web.
+  - **Multi-condition control** — Hypnotic Pattern (Charmed
+      - Incapacitated).
+  - **Custom effect name** — Banishment ("Banished"), Slow
+    ("Slowed"), Confusion ("Confused"), Suggestion, Fear
+    ("Frightened" with a specific note about Dashing away).
+    None of these map to a stock 5e condition; the modal's
+    free-form effect input covers them cleanly.
+  - **Damage + condition combo** — Phantasmal Killer (4d10
+    psychic + Frightened).
 
-Damage amounts are the canonical dice formulas from the
-spell text (`8d6` for Fireball, `1d8` for Sacred Flame,
-etc.). The modal parses each formula at apply time and
-rolls it once, applying the shared total to every selected
-target (5e AoE convention). GMs who prefer flat averages
-can edit the loaded chain in place — a plain integer
-applies directly with no roll.
+Damage amounts are the canonical dice formulas from the spell
+text (`8d6` for Fireball, `1d8` for Sacred Flame, etc.). The
+modal parses each formula at apply time and rolls it once,
+applying the shared total to every selected target (5e AoE
+convention). GMs who prefer flat averages can edit the
+loaded chain in place — a plain integer applies directly
+with no roll.
 
-Seeding fires from `Main.init` when the
-`localSaveChainPresets` boot flag is `Nothing` — the same
-first-boot discipline the condition and timer preset dicts
-use. Once any change writes to `localStorage.saveChainPresets`,
-the flag is `Just _` on subsequent boots and the persisted
-dict wins wholesale. Delete a bundled preset and it stays
-gone.
+Seeding fires from `Main.init` when the boot flag
+`localSaveChainPresets` is `Nothing` — the same first-boot
+discipline the condition and timer preset dicts use. Delete
+a bundled preset and it stays gone once localStorage is
+populated.
 
 -}
 
@@ -55,9 +56,14 @@ defaults =
         , ( "Fireball (3rd)", fireball )
         , ( "Cone of Cold (5th)", coneOfCold )
         , ( "Blindness / Deafness (2nd)", blindnessDeafness )
+        , ( "Web (2nd)", web )
+        , ( "Suggestion (2nd)", suggestion )
         , ( "Hold Person (2nd)", holdPerson )
         , ( "Fear (3rd)", fear )
-        , ( "Web (2nd)", web )
+        , ( "Hypnotic Pattern (3rd)", hypnoticPattern )
+        , ( "Slow (3rd)", slow )
+        , ( "Confusion (4th)", confusion )
+        , ( "Banishment (4th)", banishment )
         , ( "Phantasmal Killer (4th)", phantasmalKiller )
         ]
 
@@ -121,7 +127,7 @@ coneOfCold =
 
 
 
--- ── Condition control ───────────────────────────────────────────
+-- ── Single-condition control ────────────────────────────────────
 
 
 blindnessDeafness : SaveChain
@@ -129,7 +135,7 @@ blindnessDeafness =
     { name = "Blindness / Deafness (2nd)"
     , saveAbility = Con
     , saveDc = Nothing
-    , onFail = conditionOnly "Blinded" ""
+    , onFail = effectsOnly [ effect "Blinded" "" ]
     , onSuccess = noEffect
     }
 
@@ -140,18 +146,8 @@ holdPerson =
     , saveAbility = Wis
     , saveDc = Nothing
     , onFail =
-        conditionOnly "Paralyzed" "Save at end of each turn to end"
-    , onSuccess = noEffect
-    }
-
-
-fear : SaveChain
-fear =
-    { name = "Fear (3rd)"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail =
-        conditionOnly "Frightened" "Must Dash away; save at end of turn when caster out of sight"
+        effectsOnly
+            [ effect "Paralyzed" "Save at end of each turn to end" ]
     , onSuccess = noEffect
     }
 
@@ -162,7 +158,125 @@ web =
     , saveAbility = Dex
     , saveDc = Nothing
     , onFail =
-        conditionOnly "Restrained" "STR check as action to escape"
+        effectsOnly
+            [ effect "Restrained" "STR check as action to escape" ]
+    , onSuccess = noEffect
+    }
+
+
+
+-- ── Multi-condition control ─────────────────────────────────────
+
+
+{-| Hypnotic Pattern — Wisdom save; fail: Charmed +
+Incapacitated + speed 0. Ends if the creature is damaged or
+if an ally uses an action to shake it awake. Two conditions
+apply as separate rows so the GM can end them independently
+(damage clears them both anyway, but a targeted "wake up"
+action might only clear one).
+-}
+hypnoticPattern : SaveChain
+hypnoticPattern =
+    { name = "Hypnotic Pattern (3rd)"
+    , saveAbility = Wis
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Charmed" "Ends if damaged or if an ally shakes it awake (action)"
+            , effect "Incapacitated" "Speed 0"
+            ]
+    , onSuccess = noEffect
+    }
+
+
+
+-- ── Custom effect names ─────────────────────────────────────────
+
+
+{-| Fear — WIS save; fail: Frightened plus a specific ongoing
+mechanic (drop items, Dash away). Uses the standard
+Frightened condition name so the card badge is legible; the
+note carries the compulsion.
+-}
+fear : SaveChain
+fear =
+    { name = "Fear (3rd)"
+    , saveAbility = Wis
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Frightened" "Drops held items and Dashes away by fastest route each turn; save at end of turn if caster is out of sight"
+            ]
+    , onSuccess = noEffect
+    }
+
+
+{-| Slow — WIS save; fail: `-2 AC / -2 Dex saves`, half speed,
+no reactions, only one action per turn, 50% chance any spell
+with S/V/M is delayed by a turn. This isn't any single 5e
+condition — the GM sees "Slowed" on the card and consults the
+note.
+-}
+slow : SaveChain
+slow =
+    { name = "Slow (3rd)"
+    , saveAbility = Wis
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Slowed" "-2 AC, -2 Dex saves, half speed, no reactions, 1 action/turn; 50% chance spells with S/V/M delay one turn. Save at end of turn to end"
+            ]
+    , onSuccess = noEffect
+    }
+
+
+{-| Confusion — WIS save; fail: roll a d10 each turn to
+determine behaviour. Not a standard condition; the note is
+the whole spell.
+-}
+confusion : SaveChain
+confusion =
+    { name = "Confusion (4th)"
+    , saveAbility = Wis
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Confused" "Roll d10 each turn: 1 babble no move; 2-6 no action, move random; 7-8 melee attack random target; 9-10 act normally. Save at end of turn"
+            ]
+    , onSuccess = noEffect
+    }
+
+
+{-| Banishment — CHA save; fail: banished to home / demiplane.
+Custom effect name so the card reads "Banished" rather than
+Frightened / Charmed / etc.
+-}
+banishment : SaveChain
+banishment =
+    { name = "Banishment (4th)"
+    , saveAbility = Cha
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Banished" "Native → harmless demiplane, or extraplanar → home plane. Concentration up to 1 min. If held for full min, extraplanar target is banished permanently"
+            ]
+    , onSuccess = noEffect
+    }
+
+
+{-| Suggestion — WIS save; fail: pursue reasonable suggested
+action up to 8 hours. Not a stock condition; the note carries
+the spell text.
+-}
+suggestion : SaveChain
+suggestion =
+    { name = "Suggestion (2nd)"
+    , saveAbility = Wis
+    , saveDc = Nothing
+    , onFail =
+        effectsOnly
+            [ effect "Suggested" "Pursues a reasonable course of action described by the caster (up to 8 hours). Ends if completed or asked to harm self"
+            ]
     , onSuccess = noEffect
     }
 
@@ -171,6 +285,10 @@ web =
 -- ── Damage + condition combo ─────────────────────────────────────
 
 
+{-| Phantasmal Killer — WIS save; fail: Frightened AND 4d10
+psychic. Both HP and effect fields light up, proving the
+combined shape.
+-}
 phantasmalKiller : SaveChain
 phantasmalKiller =
     { name = "Phantasmal Killer (4th)"
@@ -178,8 +296,9 @@ phantasmalKiller =
     , saveDc = Nothing
     , onFail =
         { hp = DealDamage "4d10" -- psychic
-        , conditionName = "Frightened"
-        , conditionNote = "Save at end of turn; on fail, take 4d10 psychic again; on success, spell ends"
+        , effects =
+            [ effect "Frightened" "Save at end of turn; on fail take 4d10 psychic again, on success spell ends"
+            ]
         }
     , onSuccess = noEffect
     }
@@ -196,15 +315,14 @@ noEffect =
 
 damageOnly : HpEffect -> SaveOutcome
 damageOnly hp =
-    { hp = hp
-    , conditionName = ""
-    , conditionNote = ""
-    }
+    { hp = hp, effects = [] }
 
 
-conditionOnly : String -> String -> SaveOutcome
-conditionOnly name note =
-    { hp = NoHpEffect
-    , conditionName = name
-    , conditionNote = note
-    }
+effectsOnly : List SaveChain.EffectApply -> SaveOutcome
+effectsOnly es =
+    { hp = NoHpEffect, effects = es }
+
+
+effect : String -> String -> SaveChain.EffectApply
+effect name note =
+    { name = name, note = note }

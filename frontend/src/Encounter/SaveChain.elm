@@ -1,8 +1,9 @@
 module Encounter.SaveChain exposing
     ( SaveChain, SaveOutcome, HpEffect(..)
     , empty, isEffectivelyEmpty
-    , applyResolvedHp, applyCondition, halfFailDamage
+    , applyResolvedHp, applyEffects, halfFailDamage
     , rawAmount
+    , EffectApply, emptyEffect
     )
 
 {-| Save Chain: a reusable "creature makes a save; something
@@ -31,7 +32,7 @@ apply so a GM can click Pass without having clicked Fail first.
 
 @docs SaveChain, SaveOutcome, HpEffect
 @docs empty, isEffectivelyEmpty
-@docs applyResolvedHp, applyCondition, halfFailDamage
+@docs applyResolvedHp, applyEffects, halfFailDamage
 @docs rawAmount
 
 -}
@@ -64,12 +65,29 @@ one, or neither.
 type alias SaveOutcome =
     { hp : HpEffect
 
-    -- `""` means no condition applied.  Non-empty is the
-    -- condition name (matched against the standard 5e list in
-    -- the view, or free-form).  `conditionNote` is optional
-    -- flavour text carried onto the applied condition.
-    , conditionName : String
-    , conditionNote : String
+    -- Zero-or-more conditions / effects to apply.  Each has a
+    -- name (matched against the standard 5e list in the view,
+    -- or free-form for spells like Banishment / Slow /
+    -- Confusion whose effects don't map cleanly to a 5e
+    -- condition) and an optional note carried onto the
+    -- applied condition.  Multi-condition spells like
+    -- Hypnotic Pattern (Charmed + Incapacitated) apply as a
+    -- list; single-effect spells are a one-element list;
+    -- damage-only outcomes are `[]`.
+    , effects : List EffectApply
+    }
+
+
+{-| One condition / effect entry. Name may reference a
+standard 5e condition (Blinded, Paralyzed, etc.) or a
+free-form label ("Banished", "Slowed", "Hexed by Bestow
+Curse", etc.) for spells whose in-game effect isn't part of
+the 5e condition list. Note is optional flavour or a
+reminder of the ongoing mechanic.
+-}
+type alias EffectApply =
+    { name : String
+    , note : String
     }
 
 
@@ -110,9 +128,16 @@ empty =
 emptyOutcome : SaveOutcome
 emptyOutcome =
     { hp = NoHpEffect
-    , conditionName = ""
-    , conditionNote = ""
+    , effects = []
     }
+
+
+{-| Bare effect used as the initial value when the "+ Add
+effect" button pushes a new row onto an outcome's list.
+-}
+emptyEffect : EffectApply
+emptyEffect =
+    { name = "", note = "" }
 
 
 {-| True iff a chain has no effects on either side. Used by
@@ -126,7 +151,13 @@ isEffectivelyEmpty chain =
 
 isOutcomeEmpty : SaveOutcome -> Bool
 isOutcomeEmpty o =
-    hpEffectIsEmpty o.hp && String.isEmpty (String.trim o.conditionName)
+    hpEffectIsEmpty o.hp
+        && List.all effectIsBlank o.effects
+
+
+effectIsBlank : EffectApply -> Bool
+effectIsBlank e =
+    String.isEmpty (String.trim e.name)
 
 
 hpEffectIsEmpty : HpEffect -> Bool
@@ -203,16 +234,23 @@ applyResolvedHp hp amount target enc =
                 enc
 
 
-{-| Apply the condition side of an outcome to a target
-creature. A blank condition name is a no-op — the outcome
-carries HP-only effects and this returns the encounter
-unchanged.
+{-| Apply every effect on an outcome to a target creature,
+walking left-to-right through the list. Each non-blank entry
+becomes a fresh `ConditionDraft` with `DurationManual`; the GM
+converts to a save-to-end via the standard condition-edit
+modal for spells that need one. Blank names are skipped so
+an editor row left half-filled doesn't leak in.
 -}
-applyCondition : SaveOutcome -> String -> Encounter.Encounter -> Encounter.Encounter
-applyCondition outcome target enc =
+applyEffects : SaveOutcome -> String -> Encounter.Encounter -> Encounter.Encounter
+applyEffects outcome target enc =
+    List.foldl (applyEffect target) enc outcome.effects
+
+
+applyEffect : String -> EffectApply -> Encounter.Encounter -> Encounter.Encounter
+applyEffect target effect enc =
     let
         trimmedName =
-            String.trim outcome.conditionName
+            String.trim effect.name
     in
     if String.isEmpty trimmedName then
         enc
@@ -220,7 +258,7 @@ applyCondition outcome target enc =
     else
         Encounter.addCondition target
             { name = trimmedName
-            , note = String.trim outcome.conditionNote
+            , note = String.trim effect.note
             , duration = Encounter.DurationManual
             , saveToEnd = Nothing
             }

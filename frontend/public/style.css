@@ -12694,6 +12694,36 @@ button.quick-list-card {
   gap: 10px;
 }
 
+/* Effect list — zero or more `[name] [note] [×]` rows plus an
+   "+ Add effect" button.  Column layout so multi-condition
+   spells (Hypnotic Pattern) stack cleanly; the button sits
+   below the list at flex-start. */
+.save-chain__effects {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.save-chain__effect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.save-chain__effect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.save-chain__effect-remove {
+  font-size: 1rem;
+  padding: 2px 8px;
+}
+
 .save-chain__hp-radios {
   display: flex;
   flex-wrap: wrap;

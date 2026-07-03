@@ -1319,11 +1319,17 @@ updateInner msg model =
         SaveChainOutcomeHpAmountChanged side text ->
             Update.SaveChain.outcomeHpAmountChanged side text model
 
-        SaveChainOutcomeConditionNameChanged side text ->
-            Update.SaveChain.outcomeConditionNameChanged side text model
+        SaveChainOutcomeEffectAdd side ->
+            Update.SaveChain.outcomeEffectAdd side model
 
-        SaveChainOutcomeConditionNoteChanged side text ->
-            Update.SaveChain.outcomeConditionNoteChanged side text model
+        SaveChainOutcomeEffectRemove side idx ->
+            Update.SaveChain.outcomeEffectRemove side idx model
+
+        SaveChainOutcomeEffectNameChanged side idx text ->
+            Update.SaveChain.outcomeEffectNameChanged side idx text model
+
+        SaveChainOutcomeEffectNoteChanged side idx text ->
+            Update.SaveChain.outcomeEffectNoteChanged side idx text model
 
         SaveChainPresetPickerChanged text ->
             Update.SaveChain.presetPickerChanged text model
