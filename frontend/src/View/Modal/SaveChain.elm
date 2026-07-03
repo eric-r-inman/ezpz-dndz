@@ -37,6 +37,7 @@ import Msg
         )
 import Ui.SaveChain exposing (OutcomeForm, SaveChainUi)
 import View.Modal
+import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
@@ -348,6 +349,18 @@ effectRow side idx effect =
             , onInput (SaveChainOutcomeEffectNoteChanged side idx)
             ]
             []
+        , Html.label
+            [ class "save-chain__effect-save-to-end"
+            , Tooltips.attr "Save at end of turn to end (inherits the chain's Save ability + DC on the applied condition)"
+            ]
+            [ input
+                [ type_ "checkbox"
+                , checked effect.saveToEnd
+                , onClick (SaveChainOutcomeEffectSaveToEndToggle side idx)
+                ]
+                []
+            , text " Save EoT"
+            ]
         , button
             [ class "icon-btn icon-btn--sm save-chain__effect-remove"
             , type_ "button"

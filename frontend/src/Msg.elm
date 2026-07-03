@@ -556,6 +556,10 @@ type Msg
     | SaveChainOutcomeEffectRemove SaveChainSide Int
     | SaveChainOutcomeEffectNameChanged SaveChainSide Int String
     | SaveChainOutcomeEffectNoteChanged SaveChainSide Int String
+      -- Per-effect "save at end of turn to end" toggle.  When
+      -- checked, the applied condition inherits the chain's
+      -- save ability + DC as its save-to-end configuration.
+    | SaveChainOutcomeEffectSaveToEndToggle SaveChainSide Int
       -- Preset ops
     | SaveChainPresetPickerChanged String
     | SaveChainPresetLoad

@@ -84,10 +84,20 @@ free-form label ("Banished", "Slowed", "Hexed by Bestow
 Curse", etc.) for spells whose in-game effect isn't part of
 the 5e condition list. Note is optional flavour or a
 reminder of the ongoing mechanic.
+
+`saveToEnd` opts this effect into the "save at end of each
+turn to end" mechanic — the applied condition inherits the
+chain's save ability and DC (Hold Person's WIS DC 15, etc.)
+as its save-to-end configuration. Left off for effects
+without an end-of-turn re-save (Hypnotic Pattern's Charmed
+ends on damage, not a save; Web needs a Str check as an
+action, not a save; Suggestion has no re-save at all).
+
 -}
 type alias EffectApply =
     { name : String
     , note : String
+    , saveToEnd : Bool
     }
 
 
@@ -137,7 +147,7 @@ effect" button pushes a new row onto an outcome's list.
 -}
 emptyEffect : EffectApply
 emptyEffect =
-    { name = "", note = "" }
+    { name = "", note = "", saveToEnd = False }
 
 
 {-| True iff a chain has no effects on either side. Used by
@@ -236,18 +246,38 @@ applyResolvedHp hp amount target enc =
 
 {-| Apply every effect on an outcome to a target creature,
 walking left-to-right through the list. Each non-blank entry
-becomes a fresh `ConditionDraft` with `DurationManual`; the GM
-converts to a save-to-end via the standard condition-edit
-modal for spells that need one. Blank names are skipped so
-an editor row left half-filled doesn't leak in.
+becomes a fresh `ConditionDraft` with `DurationManual`.
+Blank names are skipped so an editor row left half-filled
+doesn't leak in.
+
+The `saveToEndFor` argument is the update layer's way of
+supplying a per-target save-to-end spec (the applied
+condition's `SaveToEnd` needs the target's own save
+modifier, which requires a compendium lookup the domain
+doesn't own). Effects with `saveToEnd = True` on this
+list get the result of `saveToEndFor target`; effects with
+`saveToEnd = False` always get `Nothing` regardless of the
+resolver — so the domain never accidentally attaches a
+save-to-end to an effect the GM didn't opt in.
+
 -}
-applyEffects : SaveOutcome -> String -> Encounter.Encounter -> Encounter.Encounter
-applyEffects outcome target enc =
-    List.foldl (applyEffect target) enc outcome.effects
+applyEffects :
+    { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+    -> SaveOutcome
+    -> String
+    -> Encounter.Encounter
+    -> Encounter.Encounter
+applyEffects ctx outcome target enc =
+    List.foldl (applyEffect ctx target) enc outcome.effects
 
 
-applyEffect : String -> EffectApply -> Encounter.Encounter -> Encounter.Encounter
-applyEffect target effect enc =
+applyEffect :
+    { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+    -> String
+    -> EffectApply
+    -> Encounter.Encounter
+    -> Encounter.Encounter
+applyEffect ctx target effect enc =
     let
         trimmedName =
             String.trim effect.name
@@ -256,11 +286,19 @@ applyEffect target effect enc =
         enc
 
     else
+        let
+            saveToEnd =
+                if effect.saveToEnd then
+                    ctx.saveToEndFor target
+
+                else
+                    Nothing
+        in
         Encounter.addCondition target
             { name = trimmedName
             , note = String.trim effect.note
             , duration = Encounter.DurationManual
-            , saveToEnd = Nothing
+            , saveToEnd = saveToEnd
             }
             enc
 

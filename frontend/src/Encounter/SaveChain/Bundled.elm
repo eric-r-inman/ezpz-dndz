@@ -135,7 +135,7 @@ blindnessDeafness =
     { name = "Blindness / Deafness (2nd)"
     , saveAbility = Con
     , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Blinded" "" ]
+    , onFail = effectsOnly [ effectSvEoT "Blinded" "" ]
     , onSuccess = noEffect
     }
 
@@ -147,7 +147,7 @@ holdPerson =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Paralyzed" "Sv EoT" ]
+            [ effectSvEoT "Paralyzed" "" ]
     , onSuccess = noEffect
     }
 
@@ -205,7 +205,7 @@ fear =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Frightened" "Dash away"
+            [ effectSvEoT "Frightened" "Dash away"
             ]
     , onSuccess = noEffect
     }
@@ -224,7 +224,7 @@ slow =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Slowed" "1/2 spd 1a"
+            [ effectSvEoT "Slowed" "1/2 spd 1a"
             ]
     , onSuccess = noEffect
     }
@@ -241,7 +241,7 @@ confusion =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Confused" "Roll d10"
+            [ effectSvEoT "Confused" "Roll d10"
             ]
     , onSuccess = noEffect
     }
@@ -258,7 +258,7 @@ banishment =
     , saveDc = Nothing
     , onFail =
         effectsOnly
-            [ effect "Banished" "1 min max"
+            [ effectSvEoT "Banished" "1 min max"
             ]
     , onSuccess = noEffect
     }
@@ -297,7 +297,7 @@ phantasmalKiller =
     , onFail =
         { hp = DealDamage "4d10" -- psychic
         , effects =
-            [ effect "Frightened" "Sv +dmg"
+            [ effectSvEoT "Frightened" "Sv +dmg"
             ]
         }
     , onSuccess = noEffect
@@ -325,4 +325,16 @@ effectsOnly es =
 
 effect : String -> String -> SaveChain.EffectApply
 effect name note =
-    { name = name, note = note }
+    { name = name, note = note, saveToEnd = False }
+
+
+{-| Convenience for effects whose applied condition should
+inherit the chain's Save + DC as its save-at-end-of-turn.
+Same as `effect` but with `saveToEnd = True` — used for the
+classic "save at end of each turn to end" spells (Paralyzed
+from Hold Person, Frightened from Fear, Slowed, Confused,
+Banished, etc.).
+-}
+effectSvEoT : String -> String -> SaveChain.EffectApply
+effectSvEoT name note =
+    { name = name, note = note, saveToEnd = True }

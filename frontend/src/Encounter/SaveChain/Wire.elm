@@ -124,7 +124,7 @@ legacyEffectsDecoder =
                     []
 
                 else
-                    [ { name = name, note = note } ]
+                    [ { name = name, note = note, saveToEnd = False } ]
             )
 
 
@@ -133,14 +133,16 @@ encodeEffect e =
     E.object
         [ ( "name", E.string e.name )
         , ( "note", E.string e.note )
+        , ( "save_to_end", E.bool e.saveToEnd )
         ]
 
 
 effectDecoder : D.Decoder EffectApply
 effectDecoder =
-    D.map2 EffectApply
+    D.map3 EffectApply
         (D.field "name" D.string)
         (optionalField "note" D.string "")
+        (optionalField "save_to_end" D.bool False)
 
 
 

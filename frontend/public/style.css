@@ -12743,6 +12743,25 @@ button.quick-list-card {
   padding: 2px 8px;
 }
 
+/* "Save EoT" checkbox on each effect row.  Opts the applied
+   condition into a save-at-end-of-turn using the chain's own
+   Save ability + DC.  Compact so the row still fits on one
+   line for the typical single-effect case. */
+.save-chain__effect-save-to-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.save-chain__effect-save-to-end input[type="checkbox"] {
+  accent-color: var(--color-accent);
+  margin: 0;
+}
+
 .save-chain__hp-radios {
   display: flex;
   flex-wrap: wrap;

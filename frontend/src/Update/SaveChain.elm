@@ -8,6 +8,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
+    , outcomeEffectSaveToEndToggle
     )
 
 {-| Update branches for the Save Chain modal.
@@ -188,6 +189,24 @@ outcomeEffectNoteChanged side idx text model =
     ( withUi
         (mapSide side
             (\o -> { o | effects = updateAt idx (\e -> { e | note = text }) o.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+outcomeEffectSaveToEndToggle : SaveChainSide -> Int -> Model -> ( Model, Cmd Msg )
+outcomeEffectSaveToEndToggle side idx model =
+    ( withUi
+        (mapSide side
+            (\o ->
+                { o
+                    | effects =
+                        updateAt idx
+                            (\e -> { e | saveToEnd = not e.saveToEnd })
+                            o.effects
+                }
+            )
         )
         model
     , Cmd.none
@@ -430,11 +449,14 @@ applySide side model =
                 targets =
                     resolveTargets ui model.encounter
 
+                effectCtx =
+                    buildEffectContext chain model
+
                 -- Effect list applies always fire (no dice needed).
                 withConditions =
                     List.foldl
                         (\name enc ->
-                            SaveChain.applyEffects outcome name enc
+                            SaveChain.applyEffects effectCtx outcome name enc
                         )
                         model.encounter
                         targets
@@ -798,11 +820,14 @@ savesRolled results model =
                                 _ ->
                                     0
 
+                        effectCtx =
+                            buildEffectContext chain model
+
                         encAfterFail =
                             List.foldl
                                 (\name enc ->
                                     enc
-                                        |> SaveChain.applyEffects chain.onFail name
+                                        |> SaveChain.applyEffects effectCtx chain.onFail name
                                         |> SaveChain.applyResolvedHp chain.onFail.hp failResolvedAmount name
                                 )
                                 modelWithHistory.encounter
@@ -812,7 +837,7 @@ savesRolled results model =
                             List.foldl
                                 (\name enc ->
                                     enc
-                                        |> SaveChain.applyEffects chain.onSuccess name
+                                        |> SaveChain.applyEffects effectCtx chain.onSuccess name
                                         |> SaveChain.applyResolvedHp chain.onSuccess.hp successResolvedAmount name
                                 )
                                 encAfterFail
@@ -891,6 +916,53 @@ currentCompendium db =
 
         _ ->
             Nothing
+
+
+{-| Build the effect-application context that
+`SaveChain.applyEffects` needs. Provides the per-target
+`SaveToEnd` spec keyed by target name:
+
+  - `Nothing` when the chain has no DC (there's nothing to
+    inherit — the effect will fall through as manual)
+  - `Just` with the chain's ability + DC + the target's own
+    save modifier (compendium lookup; 0 if the target
+    isn't in the DB). `AutoRollAtEnd` matches the "save at
+    the end of each of its turns" 5e wording that this
+    checkbox is meant to model.
+
+-}
+buildEffectContext :
+    SaveChain
+    -> Model
+    -> { saveToEndFor : String -> Maybe Encounter.SaveToEnd }
+buildEffectContext chain model =
+    let
+        db =
+            currentCompendium model.compendium.db
+
+        abilityStr =
+            saveAbilityLabel chain.saveAbility
+    in
+    { saveToEndFor =
+        \targetName ->
+            case chain.saveDc of
+                Nothing ->
+                    Nothing
+
+                Just dc ->
+                    let
+                        bonus =
+                            findCreatureRecord db targetName model.encounter
+                                |> Maybe.map (saveModifier chain.saveAbility)
+                                |> Maybe.withDefault 0
+                    in
+                    Just
+                        { ability = abilityStr
+                        , dc = dc
+                        , bonus = bonus
+                        , autoRoll = Encounter.AutoRollAtEnd
+                        }
+    }
 
 
 {-| Save modifier for `ability` on a compendium creature.
