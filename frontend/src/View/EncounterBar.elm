@@ -106,7 +106,7 @@ view mode enc savedAs db xpScope xpFilterOpen =
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , span [ class "encounter-bar__sep" ] [ text "|" ]
             , surprisedMarker active
-            , span [ class "encounter-bar__active" ] [ text activeName ]
+            , activeNameLink active activeName
             , bloodiedMarker active
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
@@ -406,6 +406,32 @@ stateIcon glyph label =
         , attribute "aria-label" label
         ]
         [ text glyph ]
+
+
+{-| Active creature's name, rendered as a scroll-to-card
+button when there IS an active creature and a plain "—"
+span otherwise. Fires `ScrollCardIntoView` on click; the
+handler in `Main` delegates to `Effects.scrollActiveIntoView`
+so the workspace panel scrolls the card into view without
+touching the encounter model. Lets the GM jump to the
+active card from the title bar even when the queue is long
+enough to push it out of the viewport.
+-}
+activeNameLink : Maybe Creature -> String -> Html Msg
+activeNameLink active activeName =
+    case active of
+        Just c ->
+            button
+                [ class "encounter-bar__active encounter-bar__active--clickable"
+                , type_ "button"
+                , onClick (ScrollCardIntoView c.name)
+                , Tooltips.attr "Scroll to this creature's card"
+                , attribute "aria-label" ("Scroll to " ++ c.name)
+                ]
+                [ text c.name ]
+
+        Nothing ->
+            span [ class "encounter-bar__active" ] [ text activeName ]
 
 
 {-| Bloodied drop next to the active creature's name. Mirrors

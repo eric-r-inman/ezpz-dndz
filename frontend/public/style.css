@@ -7003,6 +7003,38 @@ button.creature-card__lifecycle--dead:focus-visible {
   max-width: 240px;
 }
 
+/* Clickable-name variant: rendered as a <button> so pressing
+   Enter / Space activates it, but styled as plain text with a
+   subtle underline-on-hover so it reads as a link.  Fires
+   `ScrollCardIntoView`, which scrolls the workspace panel so
+   the active creature's card is visible — handy when the queue
+   is long enough to push the active card off-screen and the
+   GM wants to jump to it from the title bar. */
+.encounter-bar__active--clickable {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.encounter-bar__active--clickable:hover,
+.encounter-bar__active--clickable:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.encounter-bar__active--clickable:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* The numeric HP for the active creature is rendered via the
    shared .hp-display* classes the card row 2 uses, so the colors
    line up automatically. We only need a small size + spacing

@@ -650,6 +650,12 @@ type Msg
     | InitiativeApplySelectedSurprised
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
     | ActiveCardScrollChecked (Result Browser.Dom.Error ())
+      -- Encounter-bar active-name click: scroll the panel body
+      -- so the named creature's card is in view.  Uses the same
+      -- machinery as `NextTurn`'s auto-scroll to a moved active,
+      -- but fired by an explicit user click on the name in the
+      -- info row rather than a queue advance.
+    | ScrollCardIntoView String
       -- Note-edit modal (the row 1 pencil button)
     | NoteEditOpen String String
     | NoteEditChange String

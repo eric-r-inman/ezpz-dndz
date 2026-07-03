@@ -1598,6 +1598,9 @@ updateInner msg model =
             -- way, nothing further to do.
             ( model, Cmd.none )
 
+        ScrollCardIntoView name ->
+            ( model, Effects.scrollActiveIntoView name )
+
         MemoOpen name ->
             Update.Memo.open name model
 
