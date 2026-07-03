@@ -117,7 +117,7 @@ ignoreTempToggle ui =
                 []
             , text " Ignore temporary HP"
             ]
-        , div [ class "hp-change__caption" ]
+        , Html.span [ class "hp-change__caption hp-change__caption--inline" ]
             [ text "(applies to Damage only)" ]
         ]
 
@@ -152,7 +152,7 @@ applyScope ui enc =
                     )
                 ]
             , div [ class "hp-change__caption" ]
-                [ text "Rolled amounts apply the same total to every selected creature (5e AoE convention)." ]
+                [ text "Rolled amounts apply the same total to every selected creature." ]
             ]
 
 
