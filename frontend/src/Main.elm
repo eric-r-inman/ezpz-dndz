@@ -1353,6 +1353,9 @@ updateInner msg model =
         SaveChainReset ->
             Update.SaveChain.reset model
 
+        SaveChainRestoreBundled ->
+            Update.SaveChain.restoreBundled model
+
         SaveChainApplyFail ->
             Update.SaveChain.applyFail model
 

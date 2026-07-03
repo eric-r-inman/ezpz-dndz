@@ -573,6 +573,13 @@ type Msg
     | SaveChainPresetSave
     | SaveChainPresetDelete
     | SaveChainReset
+      -- Overwrite every bundled-named preset in
+      -- `model.saveChainPresets` with the current bundled
+      -- definition, then persist.  Non-bundled presets stay.
+      -- Escape hatch for users whose stored bundled presets
+      -- are stale from before a wire-shape refactor (e.g.
+      -- Hold Person without save-to-end from pre-that-feature).
+    | SaveChainRestoreBundled
       -- Apply
     | SaveChainApplyFail
     | SaveChainApplyPass

@@ -133,6 +133,13 @@ presetRow ui presets =
             , onClick SaveChainReset
             ]
             [ text "+ New" ]
+        , button
+            [ class "action-btn action-btn--sm"
+            , type_ "button"
+            , onClick SaveChainRestoreBundled
+            , Tooltips.attr "Overwrite every bundled-named preset in your local storage with its current bundled definition.  Non-bundled presets are untouched."
+            ]
+            [ text "🔄 Restore bundled" ]
         , loadedTag
         ]
 

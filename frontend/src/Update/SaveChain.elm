@@ -8,7 +8,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle
+    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -37,6 +37,7 @@ import Dict
 import Effects
 import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain.Bundled
 import Encounter.SaveChain.Wire
 import Model exposing (Modal(..), Model)
 import Msg
@@ -429,6 +430,54 @@ reset model =
                     Just (ModalSaveChain (UiSaveChain.fresh ui.target))
               }
             , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Overwrite every bundled-named preset in
+`model.saveChainPresets` with its current bundled definition.
+Non-bundled presets (user-authored ones) are untouched.
+Persists to `localStorage.saveChainPresets` and, if the modal
+has a loaded preset that happens to be a bundled name,
+re-loads its refreshed form so the checkbox / mode radio
+state reflects the freshly-restored data.
+
+Rationale: users who saved anything to the modal before a
+wire-shape refactor (e.g. the pre-`save_to_end` era) have
+stale bundled presets in their localStorage that predate the
+newer fields; loading Hold Person then shows Save-to-end
+unchecked even though the current bundled definition has it
+on. This is the single-click escape hatch.
+
+-}
+restoreBundled : Model -> ( Model, Cmd Msg )
+restoreBundled model =
+    case model.modal of
+        Just (ModalSaveChain ui) ->
+            let
+                bundled =
+                    Encounter.SaveChain.Bundled.defaults
+
+                next =
+                    Dict.foldl Dict.insert model.saveChainPresets bundled
+
+                refreshedModal =
+                    case ui.loadedPresetName of
+                        Just name ->
+                            case Dict.get name bundled of
+                                Just chain ->
+                                    Just (ModalSaveChain (UiSaveChain.fromChain ui chain))
+
+                                Nothing ->
+                                    Just (ModalSaveChain ui)
+
+                        Nothing ->
+                            Just (ModalSaveChain ui)
+            in
+            ( { model | saveChainPresets = next, modal = refreshedModal }
+            , Ports.persistLocalSaveChainPresets (Encounter.SaveChain.Wire.encodePresets next)
             )
 
         _ ->
