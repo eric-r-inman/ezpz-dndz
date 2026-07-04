@@ -441,10 +441,13 @@ reset model =
 
 
 {-| Overwrite every bundled-named preset in
-`model.saveChainPresets` with its current bundled definition.
-Non-bundled presets (user-authored ones) are untouched.
-Persists to `localStorage.saveChainPresets` and, if the modal
-has a loaded preset that happens to be a bundled name,
+`model.saveChainPresets` with its current bundled definition,
+AND prune any stale entries left over from a previous naming
+scheme. Non-bundled (user-authored) presets are untouched.
+
+Persists to `localStorage.saveChainPresets` (or the server,
+when authenticated) via `Main.elm`'s model-diff pass; if the
+modal has a loaded preset that happens to be a bundled name,
 re-loads its refreshed form so the checkbox / mode radio
 state reflects the freshly-restored data.
 
@@ -453,7 +456,17 @@ wire-shape refactor (e.g. the pre-`save_to_end` era) have
 stale bundled presets in their localStorage that predate the
 newer fields; loading Hold Person then shows Save-to-end
 unchecked even though the current bundled definition has it
-on. This is the single-click escape hatch.
+on. Additionally, since the earlier "strip level suffix"
+pass, users see BOTH the pre-rename entry ("Hold Person
+(2nd)") and the fresh one ("Hold Person") in the picker as
+duplicates. Pruning removes the old-suffix entries so the
+picker settles down to one entry per spell.
+
+The prune predicate is deliberately conservative — a key is
+only removed if it matches "<base> (<level suffix>)" AND
+`base` currently exists in `defaults`. A user preset named
+"My Hold Person" or a legitimate free-form preset with a
+parenthesised note is left alone.
 
 -}
 restoreBundled : Model -> ( Model, Cmd Msg )
@@ -464,8 +477,12 @@ restoreBundled model =
                 bundled =
                     Encounter.SaveChain.Bundled.defaults
 
-                next =
+                withRestored =
                     Dict.foldl Dict.insert model.saveChainPresets bundled
+
+                next =
+                    withRestored
+                        |> Dict.filter (\k _ -> not (isRetiredBundledKey bundled k))
 
                 refreshedModal =
                     case ui.loadedPresetName of
@@ -486,6 +503,53 @@ restoreBundled model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| True iff `key` has the shape "<base> (<level suffix>)"
+where `base` is a current bundled key. This matches the
+pre-rename bundled names ("Hold Person (2nd)", "Fireball
+(3rd)", "Sacred Flame (cantrip)", …) so `restoreBundled` can
+prune them without a hand-maintained migration list.
+-}
+isRetiredBundledKey : Dict.Dict String SaveChain -> String -> Bool
+isRetiredBundledKey bundled key =
+    let
+        suffixes =
+            [ " (cantrip)"
+            , " (1st)"
+            , " (2nd)"
+            , " (3rd)"
+            , " (4th)"
+            , " (5th)"
+            , " (6th)"
+            , " (7th)"
+            , " (8th)"
+            , " (9th)"
+            ]
+
+        stripped =
+            List.foldl
+                (\suffix acc ->
+                    case acc of
+                        Just _ ->
+                            acc
+
+                        Nothing ->
+                            if String.endsWith suffix key then
+                                Just (String.dropRight (String.length suffix) key)
+
+                            else
+                                Nothing
+                )
+                Nothing
+                suffixes
+    in
+    case stripped of
+        Just base ->
+            Dict.member base bundled
+
+        Nothing ->
+            False
 
 
 {-| Copy the currently-open Save Chain form to the clipboard as

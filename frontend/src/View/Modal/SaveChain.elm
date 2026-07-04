@@ -137,7 +137,7 @@ presetRow ui presets =
             [ class "action-btn action-btn--sm"
             , type_ "button"
             , onClick SaveChainRestoreBundled
-            , Tooltips.attr "Overwrite every bundled-named preset in your local storage with its current bundled definition.  Non-bundled presets are untouched."
+            , Tooltips.attr "Overwrite every bundled preset with its current definition AND remove stale duplicates left over from earlier naming (e.g. \"Hold Person (2nd)\" is dropped when \"Hold Person\" is the current bundled key).  Your own presets are untouched."
             ]
             [ text "🔄 Restore bundled" ]
         , button
