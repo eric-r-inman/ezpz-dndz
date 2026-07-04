@@ -13056,6 +13056,25 @@ button.quick-list-card {
   min-width: 0;
 }
 
+/* Per-part styling inside the applied summary — damage reads
+   red ("36 damage applied"), healing reads green ("12 healing
+   applied"), effect names stay default text.  The separator
+   span between parts is muted so the semantic colours read
+   as the primary signal. */
+.save-chain__log-applied-part--damage {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.save-chain__log-applied-part--heal {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.save-chain__log-applied-sep {
+  color: var(--color-text-muted);
+}
+
 .save-chain__apply-row {
   margin-top: 12px;
   padding-top: 10px;

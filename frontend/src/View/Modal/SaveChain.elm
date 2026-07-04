@@ -36,7 +36,7 @@ import Msg
         , SaveChainRollMode(..)
         , SaveChainSide(..)
         )
-import Ui.SaveChain exposing (OutcomeForm, SaveChainLogEntry, SaveChainUi)
+import Ui.SaveChain exposing (AppliedPart(..), OutcomeForm, SaveChainLogEntry, SaveChainUi)
 import View.Modal
 import View.Tooltips as Tooltips
 
@@ -619,6 +619,12 @@ log entries =
 summary. When no HP delta and no effects landed, the applied
 column reads "(no effect)" so the row still reads as
 "resolved but nothing to do."
+
+Each `AppliedPart` gets its own span so damage / healing can
+render in their own colour (red / green) while effect names
+stay in the default text colour. Parts are joined by a " · "
+separator span between siblings.
+
 -}
 logEntry : SaveChainLogEntry -> Html Msg
 logEntry entry =
@@ -631,12 +637,17 @@ logEntry entry =
                 SaveChainSuccess ->
                     ( "save-chain__log-side save-chain__log-side--pass", "PASS" )
 
-        appliedText =
+        appliedNode =
             if List.isEmpty entry.appliedParts then
-                "(no effect)"
+                span [ class "save-chain__log-applied" ]
+                    [ text "(no effect)" ]
 
             else
-                String.join " · " entry.appliedParts
+                span [ class "save-chain__log-applied" ]
+                    (List.intersperse
+                        (span [ class "save-chain__log-applied-sep" ] [ text " · " ])
+                        (List.map appliedPartSpan entry.appliedParts)
+                    )
 
         rollNode =
             case entry.rollNote of
@@ -650,5 +661,21 @@ logEntry entry =
         [ span [ class sideCls ] [ text sideLabel ]
         , span [ class "save-chain__log-target" ] [ text entry.target ]
         , rollNode
-        , span [ class "save-chain__log-applied" ] [ text appliedText ]
+        , appliedNode
         ]
+
+
+appliedPartSpan : AppliedPart -> Html Msg
+appliedPartSpan part =
+    case part of
+        DamagePart n ->
+            span [ class "save-chain__log-applied-part save-chain__log-applied-part--damage" ]
+                [ text (String.fromInt n ++ " damage applied") ]
+
+        HealPart n ->
+            span [ class "save-chain__log-applied-part save-chain__log-applied-part--heal" ]
+                [ text (String.fromInt n ++ " healing applied") ]
+
+        EffectPart name ->
+            span [ class "save-chain__log-applied-part save-chain__log-applied-part--effect" ]
+                [ text name ]

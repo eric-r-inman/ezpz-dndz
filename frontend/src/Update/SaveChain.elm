@@ -1376,12 +1376,14 @@ diceAverage expr =
 -- ── LOG PUSH HELPERS ────────────────────────────────────────────
 
 
-{-| Build the `appliedParts` string list for a log entry:
-which HP delta landed + which effect names got attached.
-Empty list = "(no effect)" — the entry still records that
-the save resolved.
+{-| Build the `appliedParts` list for a log entry: which HP
+delta landed + which effect names got attached. Structured
+(not stringified) so the view can colour each part — red
+damage, green healing, plain-text effect names. Empty list =
+"(no effect)" — the entry still records that the save
+resolved.
 -}
-appliedParts : SaveOutcome -> Int -> List String
+appliedParts : SaveOutcome -> Int -> List UiSaveChain.AppliedPart
 appliedParts outcome resolvedAmount =
     let
         hpPart =
@@ -1390,13 +1392,13 @@ appliedParts outcome resolvedAmount =
                     []
 
                 DealDamage _ ->
-                    [ String.fromInt resolvedAmount ++ " damage" ]
+                    [ UiSaveChain.DamagePart resolvedAmount ]
 
                 HealFor _ ->
-                    [ String.fromInt resolvedAmount ++ " healed" ]
+                    [ UiSaveChain.HealPart resolvedAmount ]
 
                 HalfFailDamage ->
-                    [ String.fromInt resolvedAmount ++ " damage" ]
+                    [ UiSaveChain.DamagePart resolvedAmount ]
 
         effectPart =
             outcome.effects
@@ -1410,7 +1412,7 @@ appliedParts outcome resolvedAmount =
                             Nothing
 
                         else
-                            Just trimmed
+                            Just (UiSaveChain.EffectPart trimmed)
                     )
     in
     hpPart ++ effectPart

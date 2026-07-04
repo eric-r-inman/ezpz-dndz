@@ -2,7 +2,7 @@ module Ui.SaveChain exposing
     ( SaveChainUi, OutcomeForm
     , fresh, fromChain, toChain
     , OutcomeSide(..)
-    , SaveChainLogEntry, maxSaveChainLogEntries
+    , AppliedPart(..), SaveChainLogEntry, maxSaveChainLogEntries
     )
 
 {-| Modal UI state for the Save Chain feature.
@@ -197,20 +197,33 @@ parseOptionalInt raw =
 -- ── Log entries ──────────────────────────────────────────────────
 
 
+{-| One structured "thing applied" to a target as part of a
+Save Chain resolution. Kept as a tagged union rather than a
+pre-rendered string so the view can render each part with
+its own colour — red for `DamagePart`, green for `HealPart`,
+default text for `EffectPart` — without a stringly-typed
+prefix / substring parse.
+-}
+type AppliedPart
+    = DamagePart Int
+    | HealPart Int
+    | EffectPart String
+
+
 {-| One row in the "recent applies" log shown at the bottom
 of the Save Chain modal. Captures the target creature, which
 side of the chain resolved (Fail / Pass), an optional roll
 note (populated by the auto-roll path — `Just "rolled 12 vs
-DC 15"`), and the human-readable list of things that were
-applied — HP change + condition names. Empty
-`appliedParts` renders as "(no effect)" in the view so the
-row still communicates that the save was resolved.
+DC 15"`), and the structured list of things that were
+applied — HP change + effect names. Empty `appliedParts`
+renders as "(no effect)" in the view so the row still
+communicates that the save was resolved.
 -}
 type alias SaveChainLogEntry =
     { target : String
     , side : SaveChainSide
     , rollNote : Maybe String
-    , appliedParts : List String
+    , appliedParts : List AppliedPart
     }
 
 
