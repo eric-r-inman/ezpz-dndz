@@ -222,7 +222,7 @@ saveRow ui =
                 ]
                 []
             , span [ class dcHintClass ]
-                [ text "DC required for Save-to-end" ]
+                [ text "DC required for Roll Saves and Save-to-end" ]
             ]
         ]
 
