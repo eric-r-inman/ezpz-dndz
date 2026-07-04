@@ -219,7 +219,7 @@ saveRow ui =
                 ]
                 []
             , span [ class dcHintClass ]
-                [ text "DC required for Roll Saves and Save-to-end" ]
+                [ text "req. for save rolls and Save-to-end" ]
             ]
         ]
 
@@ -289,8 +289,8 @@ hpRow side form =
                             , onInput (SaveChainOutcomeHpAmountChanged side)
                             ]
                             []
-                        , span [ class "save-chain__caption" ]
-                            [ text "number or dice formula" ]
+                        , span [ class "save-chain__caption save-chain__caption--warn" ]
+                            [ text "req. to apply dmg" ]
                         ]
     in
     div [ class "save-chain__hp-row" ]
