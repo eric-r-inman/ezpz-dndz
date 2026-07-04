@@ -33,6 +33,7 @@ import Msg
     exposing
         ( Msg(..)
         , SaveChainHpKind(..)
+        , SaveChainRollMode(..)
         , SaveChainSide(..)
         )
 import Ui.SaveChain exposing (OutcomeForm, SaveChainLogEntry, SaveChainUi)
@@ -180,10 +181,6 @@ nameRow ui =
 saveRow : SaveChainUi -> Html Msg
 saveRow ui =
     let
-        anySaveToEnd =
-            List.any (\e -> e.saveToEnd /= Nothing) ui.onFail.effects
-                || List.any (\e -> e.saveToEnd /= Nothing) ui.onSuccess.effects
-
         dcMissing =
             case String.toInt (String.trim ui.dcText) of
                 Just _ ->
@@ -193,8 +190,8 @@ saveRow ui =
                     True
 
         dcHintClass =
-            if anySaveToEnd && dcMissing then
-                "save-chain__caption save-chain__caption--danger"
+            if dcMissing then
+                "save-chain__caption save-chain__caption--warn"
 
             else
                 "save-chain__caption"
@@ -541,20 +538,9 @@ applyRow ui =
 
         hasDc =
             chain.saveDc /= Nothing
-
-        dcHint =
-            case chain.saveDc of
-                Just n ->
-                    span [ class "save-chain__caption" ]
-                        [ text ("DC " ++ String.fromInt n ++ " · " ++ abilityLabel chain.saveAbility ++ " save") ]
-
-                Nothing ->
-                    span [ class "save-chain__caption save-chain__caption--warn" ]
-                        [ text ("DC blank · " ++ abilityLabel chain.saveAbility ++ " save — enter the DC on the source spell / feature") ]
     in
     div [ class "save-chain__apply-row" ]
-        [ dcHint
-        , div [ class "save-chain__apply-actions" ]
+        [ div [ class "save-chain__apply-actions" ]
             [ button
                 [ class "action-btn action-btn--damage"
                 , type_ "button"
@@ -572,36 +558,32 @@ applyRow ui =
             , button
                 [ class "action-btn action-btn--roll-saves"
                 , type_ "button"
-                , onClick SaveChainRollSaves
+                , onClick (SaveChainRollSaves SaveChainRollNormal)
                 , disabled (isEmpty || not hasDc)
                 , attribute "aria-label"
                     "Roll a d20 + save modifier for every target and auto-apply fail / success"
                 ]
                 [ text "🎲 Roll saves" ]
+            , button
+                [ class "action-btn action-btn--roll-saves"
+                , type_ "button"
+                , onClick (SaveChainRollSaves SaveChainRollAdvantage)
+                , disabled (isEmpty || not hasDc)
+                , attribute "aria-label"
+                    "Roll 2d20 keep-highest + save modifier for every target and auto-apply fail / success"
+                ]
+                [ text "Roll Adv." ]
+            , button
+                [ class "action-btn action-btn--roll-saves"
+                , type_ "button"
+                , onClick (SaveChainRollSaves SaveChainRollDisadvantage)
+                , disabled (isEmpty || not hasDc)
+                , attribute "aria-label"
+                    "Roll 2d20 keep-lowest + save modifier for every target and auto-apply fail / success"
+                ]
+                [ text "Roll Disadv." ]
             ]
         ]
-
-
-abilityLabel : Ability -> String
-abilityLabel a =
-    case a of
-        Str ->
-            "STR"
-
-        Dex ->
-            "DEX"
-
-        Con ->
-            "CON"
-
-        Int_ ->
-            "INT"
-
-        Wis ->
-            "WIS"
-
-        Cha ->
-            "CHA"
 
 
 

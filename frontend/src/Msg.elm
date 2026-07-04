@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -120,6 +120,19 @@ type SaveChainHpKind
     | SaveChainDamage
     | SaveChainHeal
     | SaveChainHalfFail
+
+
+{-| Roll-mode for the "🎲 Roll saves" batch. Straight = one
+`1d20 + mod` per target (5e default). Advantage / Disadvantage
+roll two d20s and keep the higher / lower respectively; each
+target rolls independently under the chosen mode, then the
+per-target totals feed the same fail / pass routing as a
+straight batch.
+-}
+type SaveChainRollMode
+    = SaveChainRollNormal
+    | SaveChainRollAdvantage
+    | SaveChainRollDisadvantage
 
 
 
@@ -605,8 +618,12 @@ type Msg
       -- outcomes based on each roll vs the DC.  Save mod is
       -- pulled from the target's compendium record (saving
       -- throw override, else ability modifier).  Rolls come
-      -- back as a batch through `SaveChainSavesRolled`.
-    | SaveChainRollSaves
+      -- back as a batch through `SaveChainSavesRolled`.  The
+      -- `SaveChainRollMode` param picks straight d20 vs.
+      -- 2d20-keep-highest (advantage) vs. 2d20-keep-lowest
+      -- (disadvantage) so the same batch machinery serves all
+      -- three buttons in the modal.
+    | SaveChainRollSaves SaveChainRollMode
     | SaveChainSavesRolled (List ( String, Dice.Roll ))
       -- Inline HP edit on the creature card
     | HpEditStart String HpField Int

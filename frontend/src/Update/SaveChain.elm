@@ -48,6 +48,7 @@ import Msg
     exposing
         ( Msg(..)
         , SaveChainHpKind(..)
+        , SaveChainRollMode(..)
         , SaveChainSide(..)
         )
 import Ports
@@ -897,19 +898,28 @@ resolveTargets ui enc =
 -- ── ROLL SAVES (auto-apply) ─────────────────────────────────────
 
 
-{-| "🎲 Roll saves" button: for every current target, build a
-`1d20 + save-mod` spec (save-mod pulled from the target's
-compendium record — explicit saving-throw override wins,
-otherwise the ability modifier is used), fire a batch roll,
-and route the results back through `SaveChainSavesRolled`.
+{-| "🎲 Roll saves" / "Roll Adv." / "Roll Disadv." buttons:
+for every current target, build a `d20 + save-mod` spec (save
+mod pulled from the target's compendium record — explicit
+saving-throw override wins, otherwise the ability modifier is
+used), fire a batch roll, and route the results back through
+`SaveChainSavesRolled`.
+
+`mode` picks between straight `1d20 + mod`
+(`SaveChainRollNormal`), 5e advantage
+(`SaveChainRollAdvantage` → 2d20-keep-highest), or 5e
+disadvantage (`SaveChainRollDisadvantage` → 2d20-keep-lowest).
+Each target rolls independently under the chosen mode — the
+downstream fail / pass routing in `savesRolled` cares only
+about `roll.total`.
 
 Returns silently when the chain has no DC (either fixed or
-overridden) — the modal disables the button visually in that
+overridden) — the modal disables the buttons visually in that
 case; this guard is defence in depth.
 
 -}
-rollSaves : Model -> ( Model, Cmd Msg )
-rollSaves model =
+rollSaves : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
+rollSaves mode model =
     case model.modal of
         Just (ModalSaveChain ui) ->
             case resolveDc ui of
@@ -919,7 +929,7 @@ rollSaves model =
                 Just _ ->
                     let
                         specs =
-                            buildSaveSpecs ui model
+                            buildSaveSpecs mode ui model
                     in
                     if List.isEmpty specs then
                         ( model, Cmd.none )
@@ -935,13 +945,18 @@ rollSaves model =
 `Dice.batchRollCmd` wants. Skips a target if we can't find its
 compendium record (placeholder rows, name drift) since we
 have no way to attribute a modifier. The generator itself is
-`1d20 + <save-mod>` — a plain integer follows the sign.
+either `1d20 + <save-mod>`, `2d20-keep-highest + <save-mod>`
+(advantage), or `2d20-keep-lowest + <save-mod>` (disadvantage),
+picked by `mode`. Feature label carries the mode so the dice
+history reads "Save (WIS, Adv)" when the GM rolled with
+advantage.
 -}
 buildSaveSpecs :
-    UiSaveChain.SaveChainUi
+    SaveChainRollMode
+    -> UiSaveChain.SaveChainUi
     -> Model
     -> List ( String, Dice.Source, Random.Generator Dice.Roll )
-buildSaveSpecs ui model =
+buildSaveSpecs mode ui model =
     let
         chain =
             UiSaveChain.toChain ui
@@ -955,27 +970,48 @@ buildSaveSpecs ui model =
         abilityLabel =
             saveAbilityLabel chain.saveAbility
 
+        modeLabel =
+            case mode of
+                SaveChainRollNormal ->
+                    ""
+
+                SaveChainRollAdvantage ->
+                    ", Adv"
+
+                SaveChainRollDisadvantage ->
+                    ", Disadv"
+
+        genForMod modifier =
+            case mode of
+                SaveChainRollNormal ->
+                    let
+                        expressionText =
+                            "1d20" ++ signedInt modifier
+                    in
+                    Dice.parse expressionText
+                        |> Result.map Dice.generator
+                        |> Result.toMaybe
+
+                SaveChainRollAdvantage ->
+                    Just (Dice.advantageGenerator modifier)
+
+                SaveChainRollDisadvantage ->
+                    Just (Dice.disadvantageGenerator modifier)
+
         specFor name =
             case findCreatureRecord db name model.encounter of
                 Just c ->
-                    let
-                        mod =
-                            saveModifier chain.saveAbility c
-
-                        expressionText =
-                            "1d20" ++ signedInt mod
-                    in
-                    case Dice.parse expressionText of
-                        Ok expr ->
+                    case genForMod (saveModifier chain.saveAbility c) of
+                        Just gen ->
                             Just
                                 ( name
-                                , { feature = "Save (" ++ abilityLabel ++ ")"
+                                , { feature = "Save (" ++ abilityLabel ++ modeLabel ++ ")"
                                   , target = Just name
                                   }
-                                , Dice.generator expr
+                                , gen
                                 )
 
-                        Err _ ->
+                        Nothing ->
                             Nothing
 
                 Nothing ->

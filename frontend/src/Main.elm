@@ -1388,8 +1388,8 @@ updateInner msg model =
         SaveChainApplyRollLanded side roll ->
             Update.SaveChain.applyRollLanded side roll model
 
-        SaveChainRollSaves ->
-            Update.SaveChain.rollSaves model
+        SaveChainRollSaves mode ->
+            Update.SaveChain.rollSaves mode model
 
         SaveChainSavesRolled results ->
             Update.SaveChain.savesRolled results model
