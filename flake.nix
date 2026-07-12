@@ -7,8 +7,9 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     crane.url = "github:ipetkov/crane";
     changelog-roller.url = "github:LoganBarnett/changelog-roller";
-    # Shared infrastructure crate + Nix helpers (mkRustPackages,
-    # mkNixosService, mkDarwinService, cargoHuskyHookSnippet).
+    # Shared infrastructure crate + Nix helpers (mkRustPackages, the
+    # cross-compile package sets, mkCiShell, mkNixosService,
+    # mkDarwinService, cargoHuskyHookSnippet).
     foundation.url = "github:LoganBarnett/rust-template";
     foundation.inputs.nixpkgs.follows = "nixpkgs";
     # Formats org-mode documents (treefmt delegates .org files to it).
@@ -49,9 +50,11 @@
       };
       # Workspace crate map.  The 'lib' crate is intentionally absent —
       # it doesn't produce a binary.  The server entry has a
-      # per-crate override at nix/packages/server.nix that bundles
-      # the compiled Elm frontend; mkRustPackages picks it up
-      # automatically by the convention `self + "/nix/packages/<key>.nix"`.
+      # per-crate override at nix/packages/server.nix that hands the
+      # compiled Elm frontend to the crate build for embedding;
+      # mkRustPackages (and the cross-compile helpers below, which
+      # thread the same override) pick it up automatically by the
+      # convention `self + "/nix/packages/<key>.nix"`.
       crates = {
         cli = {
           name = "ezpz-dndz-cli";
@@ -65,74 +68,224 @@
         };
       };
       commonArgs = {
-        src = craneLib.cleanCargoSource self;
+        # cleanCargoSource keeps only Cargo-relevant files (manifests,
+        # lockfile, .rs).  The server crate additionally include_str!'s
+        # the SRD creature bundle at compile time, so extend the filter
+        # to keep that one data file; without it every crate build fails
+        # inside the sandbox with "couldn't read …bundled-creatures.json".
+        src = nixpkgs.lib.cleanSourceWith {
+          src = self;
+          filter = path: type:
+            (craneLib.filterCargoSources path type)
+            || nixpkgs.lib.hasSuffix "bundled-creatures.json" path;
+          name = "source";
+        };
         # Run only unit tests (--lib --bins); integration tests under
         # tests/ may require external services not available in the
         # Nix sandbox.
         cargoTestExtraArgs = "--lib --bins";
       };
-      inherit
-        (foundation.lib.mkRustPackages {
-          inherit self pkgs craneLib crates commonArgs;
-        })
-        packages
-        apps
-        ;
+      rustPackages = foundation.lib.mkRustPackages {
+        inherit self pkgs craneLib crates commonArgs;
+      };
+      # On Linux each binary also gets a statically-linked `<name>-musl`
+      # variant; on other systems mkMuslPackages returns an empty set.  It
+      # threads the same commonArgs, so a project's native dependencies
+      # reach the musl build as they do the native one.
+      muslPackages = foundation.lib.mkMuslPackages {
+        inherit self pkgs system crates crane commonArgs;
+      };
+      # On Linux each binary also gets a portable `<name>-gnu` variant: a
+      # dynamic glibc build that runs off the Nix store (FHS interpreter,
+      # glibc 2.17 floor) and links the host's shared libraries.  Pick
+      # this over musl for a tool that must use a host library with a
+      # runtime plugin/dlopen ecosystem.  Empty on other systems.
+      gnuPortablePackages = foundation.lib.mkGnuPortablePackages {
+        inherit self pkgs system crates crane commonArgs;
+      };
+      # The x86_64-linux build cross-compiles macOS `<key>-<arch>-darwin`
+      # variants via zig so a release needs no macOS runner; empty on
+      # other systems.  Add `appleSdk = pkgs.apple-sdk.src;` here (and set
+      # config.allowUnfree / config.allowUnsupportedSystem on the pkgs
+      # import above) only if a crate links Apple frameworks — see
+      # CONTRIBUTING.org.
+      darwinCrossPackages = foundation.lib.mkDarwinCrossPackages {
+        inherit self pkgs system crates crane commonArgs;
+      };
+      # Native Windows PE variants (`<key>-{x86_64,aarch64}-windows`),
+      # cross-compiled via llvm-mingw for the gnullvm targets — no
+      # Microsoft SDK, no Cygwin/MSYS2 runtime; a pure-Rust binary needs
+      # only the OS Universal CRT (Windows 10+).  Unlike the darwin cross
+      # build this is host-agnostic (llvm-mingw ships a per-host
+      # toolchain), so it builds on Linux CI runners and on a
+      # contributor's Mac alike.  Requires a toolchain ≥ Rust 1.91 for
+      # the aarch64 gnullvm std — see CONTRIBUTING.org.
+      windowsCrossPackages = foundation.lib.mkWindowsCrossPackages {
+        inherit self pkgs system crates crane commonArgs;
+      };
+      # The opt-in MSVC-ABI Windows variant (`<key>-x86_64-windows-msvc`),
+      # for a dependency that requires the MSVC ABI rather than the
+      # default gnullvm path above.  Off unless `"windows-msvc": true` is
+      # set in rust-template.json — that flag hands the helper the
+      # xwin-splatted Microsoft SDK (foundation.lib.xwinSdk), and
+      # evaluating it accepts Microsoft's SDK licence in this project's
+      # own flake.  The SDK is a fixed-output fetch, so there is no
+      # build-time download and no Docker.
+      windowsMsvcEnabled =
+        (builtins.fromJSON (builtins.readFile ./rust-template.json)).windows-msvc
+        or false;
+      windowsMsvcCrossPackages = foundation.lib.mkWindowsMsvcCrossPackages {
+        inherit self pkgs system crates crane commonArgs;
+        xwinSdk =
+          if windowsMsvcEnabled
+          then foundation.lib.xwinSdk {inherit pkgs;}
+          else null;
+      };
+      packages =
+        rustPackages.packages
+        // muslPackages
+        // gnuPortablePackages
+        // darwinCrossPackages
+        // windowsCrossPackages
+        // windowsMsvcCrossPackages
+        // {
+          # Whole-workspace convenience build.  It compiles the server
+          # crate too, whose rust_embed Frontend needs an asset dir at
+          # macro-expansion time; hand it an empty stub since this
+          # package is not the deployable server artifact (that is
+          # `.#server`, which embeds the real compiled frontend via its
+          # per-crate override).
+          default = craneLib.buildPackage (commonArgs
+            // {
+              pname = "ezpz-dndz";
+              RUST_TEMPLATE_FRONTEND_DIR = pkgs.emptyDirectory;
+            });
+        };
+      # The arm64 subset of the darwin cross outputs — the only ones
+      # re-signed (and so the only ones the signature guard below
+      # verifies).  Empty except on x86_64-linux.
+      aarch64DarwinPackages =
+        nixpkgs.lib.filterAttrs
+        (name: _: nixpkgs.lib.hasSuffix "-aarch64-darwin" name)
+        darwinCrossPackages;
+      # The x86_64 subset of the Windows cross outputs, smoke-tested
+      # under wine.  Non-empty on every host (the Windows helper is
+      # host-agnostic), so the wine check below is gated on
+      # `system == "x86_64-linux"` rather than on emptiness: wine runs a
+      # win64 PE reliably only there.
+      windowsX86Packages =
+        nixpkgs.lib.filterAttrs
+        (name: _: nixpkgs.lib.hasSuffix "-x86_64-windows" name)
+        windowsCrossPackages;
     in {
-      inherit packages apps;
-      devShell = pkgs.mkShell {
-        buildInputs = [
-          rust
-          pkgs.cargo-sweep
-          pkgs.jq
-          # Elm toolchain — frontend lives in frontend/ and is not part
-          # of any Cargo build.
-          pkgs.elmPackages.elm
-          pkgs.elmPackages.elm-format
-          pkgs.elmPackages.elm-test
-          pkgs.elm2nix
-          # Unified formatter and friends.
-          pkgs.treefmt
-          pkgs.alejandra
-          pkgs.prettier
-          pkgs.just
-          # Diagram tooling for architecture / data-model visuals
-          # (used by docs in ./docs/diagrams).
-          pkgs.d2
-          # PDF tooling (pdftoppm + pdftotext) — used by Claude's
-          # Read tool to render PDF pages for SRD / rulebook audits.
-          pkgs.poppler-utils
-          changelog-roller.packages.${system}.default
-          # Formats org-mode documents (treefmt delegates .org files to it).
-          org-fmt.packages.${system}.default
-        ];
-        shellHook = ''
-          ${foundation.lib.cargoHuskyHookSnippet pkgs}
-          echo "ezpz-dndz development environment"
-          echo ""
-          echo "Available Cargo packages (use 'cargo build -p <name>'):"
-          cargo metadata --no-deps --format-version 1 2>/dev/null | \
-            jq --raw-output '.packages[].name' | \
-            sort | \
-            sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
+      inherit packages;
+      inherit (rustPackages) apps;
+      # The darwin ad-hoc signature guard runs on x86_64-linux, where the
+      # zig-cross darwin binaries are produced.  mkDarwinCrossPackages
+      # re-signs each arm64 binary after the release profile's
+      # `strip = true` would otherwise invalidate zig's link-time
+      # signature; an arm64 Mach-O with an invalid signature is SIGKILLed
+      # by the kernel with no output, so this check proves the shipped
+      # signature is intact.  Only the arm64 outputs are checked — x86_64
+      # macOS does not enforce signatures, so those binaries ship
+      # unsigned.  Empty (and so absent) on every other system.
+      checks =
+        rustPackages.checks
+        // nixpkgs.lib.optionalAttrs (aarch64DarwinPackages != {}) {
+          darwinSignatures = foundation.lib.mkDarwinSignatureCheck {
+            inherit pkgs;
+            darwinPackages = aarch64DarwinPackages;
+          };
+        }
+        # Run the x86_64 Windows cross binaries under wine to prove they
+        # execute, not merely link.  Gated to x86_64-linux: wine cannot
+        # exec an aarch64 PE and is unreliable on Apple Silicon, so
+        # aarch64 Windows is build-verified only.
+        // nixpkgs.lib.optionalAttrs (system == "x86_64-linux") {
+          windowsSmoke = foundation.lib.mkWindowsSmokeCheck {
+            inherit pkgs;
+            windowsPackages = windowsX86Packages;
+          };
+        };
+      devShells = {
+        default = pkgs.mkShell {
+          buildInputs = [
+            rust
+            pkgs.cargo-sweep
+            pkgs.jq
+            # Elm toolchain — frontend lives in frontend/ and is not part
+            # of any Cargo build.
+            pkgs.elmPackages.elm
+            pkgs.elmPackages.elm-format
+            pkgs.elmPackages.elm-test
+            pkgs.elm2nix
+            # Unified formatter and friends.
+            pkgs.treefmt
+            pkgs.alejandra
+            pkgs.prettier
+            pkgs.just
+            # Diagram tooling for architecture / data-model visuals
+            # (used by docs in ./docs/diagrams).
+            pkgs.d2
+            # PDF tooling (pdftoppm + pdftotext) — used by Claude's
+            # Read tool to render PDF pages for SRD / rulebook audits.
+            pkgs.poppler-utils
+            changelog-roller.packages.${system}.default
+            # Formats org-mode documents (treefmt delegates .org files
+            # to it).
+            org-fmt.packages.${system}.default
+            # ABI baseline check; provided so `cargo semver-checks` can
+            # run locally.  `doCheck = false` skips upstream's
+            # target_feature_* snapshot tests, which assert against
+            # snapshots recorded on x86_64 and therefore fail when
+            # building on aarch64-darwin.  We only ship the binary, so
+            # disabling the check phase does not affect what runs.
+            (pkgs.cargo-semver-checks.overrideAttrs (_: {doCheck = false;}))
+          ];
+          shellHook = ''
+            ${foundation.lib.cargoHuskyHookSnippet pkgs}
+            echo "ezpz-dndz development environment"
+            echo ""
+            echo "Available Cargo packages (use 'cargo build -p <name>'):"
+            cargo metadata --no-deps --format-version 1 2>/dev/null | \
+              jq --raw-output '.packages[].name' | \
+              sort | \
+              sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
 
-          echo ""
-          echo "Elm frontend (frontend/):"
-          echo "  Build:   cd frontend && elm make src/Main.elm --output public/elm.js"
-          echo "  Format:  treefmt"
-          echo "  After changing elm.json dependency versions, regenerate Nix files:"
-          echo "    cd frontend"
-          echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
-          echo "    elm2nix snapshot"
-          echo "    git add elm-srcs.nix registry.dat && git commit"
-        '';
+            echo ""
+            echo "Elm frontend (frontend/):"
+            echo "  Build:   cd frontend && elm make src/Main.elm --output public/elm.js"
+            echo "  Format:  treefmt"
+            echo "  After changing elm.json dependency versions, regenerate Nix files:"
+            echo "    cd frontend"
+            echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
+            echo "    elm2nix snapshot"
+            echo "    git add elm-srcs.nix registry.dat && git commit"
+          '';
+          # A runtime marker identifying this as the project's default
+          # dev shell.  A compliance check reads it back with `nix eval`
+          # to confirm this shell evaluates and carries the marker; the
+          # `ci` shell carries the same marker with the value "ci".
+          RUST_TEMPLATE_SHELL = "default";
+        };
+        # Minimal shell for CI jobs entered via `nix develop .#ci`: the
+        # Rust toolchain plus the release CLIs (changelog-roller,
+        # cargo-semver-checks) from foundation's mkCiShell baseline.  It
+        # omits the interactive dev shell's extras (the Elm toolchain,
+        # the treefmt formatter stack, just), so it is cheaper to
+        # realize; the Elm frontend is a package-build input under
+        # `nix build`, not something a devShell provides.
+        ci = foundation.lib.mkCiShell {
+          inherit pkgs system;
+          toolchain = rust;
+        };
       };
     });
   in {
-    devShells =
-      nixpkgs.lib.mapAttrs (_: p: {default = p.devShell;}) perSystem;
+    devShells = nixpkgs.lib.mapAttrs (_: p: p.devShells) perSystem;
     packages = nixpkgs.lib.mapAttrs (_: p: p.packages) perSystem;
     apps = nixpkgs.lib.mapAttrs (_: p: p.apps) perSystem;
+    checks = nixpkgs.lib.mapAttrs (_: p: p.checks) perSystem;
 
     # =========================================================
     # NIXOS MODULES
