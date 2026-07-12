@@ -16,40 +16,40 @@ frontend/elm-stuff/
 frontend/public/elm.js
 
 # Dice-roller history persistence file (created at runtime by the server;
-# location is configurable via --dice-history-path).
+# lives in the --data-dir).
 dice-history.json
 
 # Live-encounter persistence file (created at runtime by the server;
-# location is configurable via --encounter-path).  Anchored to the
+# lives in the --data-dir).  Anchored to the
 # repo root so it doesn't shadow any same-named file inside the tree.
 /encounter.json
 
 # Named encounter-saves persistence file (created at runtime by the
-# server; location is configurable via --encounter-saves-path).
+# server; lives in the --data-dir).
 /encounter-saves.json
 
 # Named compendium-saves persistence file (created at runtime by the
-# server; location is configurable via --compendium-saves-path).
+# server; lives in the --data-dir).
 /compendium-saves.json
 
 # Per-user compendium-groups persistence file (created at runtime by
-# the server; location is configurable via --compendium-groups-path).
+# the server; lives in the --data-dir).
 /compendium-groups.json
 
 # Per-user card-layouts persistence file (created at runtime by the
-# server; location is configurable via --card-layouts-path).
+# server; lives in the --data-dir).
 /card-layouts.json
 
 # Per-user lore-groups persistence file (created at runtime by the
-# server; location is configurable via --lore-groups-path).
+# server; lives in the --data-dir).
 /lore-groups.json
 
 # Per-user condition-presets persistence file (created at runtime by
-# the server; location is configurable via --condition-presets-path).
+# the server; lives in the --data-dir).
 /condition-presets.json
 
 # Per-user treasure-table persistence file (created at runtime by the
-# server; location is configurable via --treasure-table-path).
+# server; lives in the --data-dir).
 /treasure-table.json
 
 # Per-user treasure-profiles persistence file (created at runtime by
@@ -62,11 +62,11 @@ dice-history.json
 
 # User-account database (created at runtime by the server when the
 # first registration lands; carries Argon2id password hashes — must
-# never end up in git).  Location configurable via --users-path.
+# never end up in git).  Lives in the --data-dir.
 /users.json
 
 # Runtime compendium directory (created at runtime by the server when
-# bootstrapping; location is configurable via --compendium-path).
+# bootstrapping; lives in the --data-dir).
 # Leading slash anchors the rule to repo root so it doesn't shadow
 # the source-side `frontend/src/Compendium/` module directory.
 /compendium/

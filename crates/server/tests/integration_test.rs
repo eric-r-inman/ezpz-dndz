@@ -18,9 +18,8 @@ use axum::{
   middleware, Router,
 };
 use ezpz_dndz_server::{
-  card_editor, compendium, condition_presets, config::RuntimePaths, dice,
-  encounters, lore_groups, save_chain_presets, treasure_table, users,
-  web_base::AppState,
+  card_editor, compendium, config::RuntimePaths, dice, encounters,
+  per_user_store, users, web_base::AppState,
 };
 use rust_template_foundation::server::runner::{
   BaseServerState, ServerRunConfig,
@@ -35,22 +34,7 @@ use tower::ServiceExt;
 /// the caller can keep it alive for the duration of the test.
 async fn stub_app_state() -> (TempDir, AppState) {
   let temp = TempDir::new().expect("tempdir");
-  let paths = RuntimePaths {
-    dice_history: temp.path().join("dice-history.json"),
-    compendium: temp.path().join("compendium.json"),
-    compendium_saves: temp.path().join("compendium-saves.json"),
-    compendium_groups: temp.path().join("compendium-groups.json"),
-    user_creatures: temp.path().join("user-creatures.json"),
-    card_layouts: temp.path().join("card-layouts.json"),
-    encounter: temp.path().join("encounter.json"),
-    encounter_saves: temp.path().join("encounter-saves.json"),
-    users: temp.path().join("users.json"),
-    lore_groups: temp.path().join("lore-groups.json"),
-    condition_presets: temp.path().join("condition-presets.json"),
-    save_chain_presets: temp.path().join("save-chain-presets.json"),
-    treasure_table: temp.path().join("treasure-table.json"),
-    treasure_profiles: temp.path().join("treasure-profiles.json"),
-  };
+  let paths = RuntimePaths::from_data_dir(temp.path());
 
   let run_config = ServerRunConfig {
     app_name: "ezpz-dndz".to_string(),
@@ -92,10 +76,9 @@ fn build_test_router(state: AppState) -> Router {
     .merge(compendium::router())
     .merge(card_editor::router())
     .merge(encounters::router())
-    .merge(lore_groups::router())
-    .merge(condition_presets::router())
-    .merge(save_chain_presets::router())
-    .merge(treasure_table::router())
+    // All five per-user opaque-JSON stores (the old per-feature
+    // routers omitted treasure-profiles here by accident).
+    .merge(per_user_store::routers(&state))
     .layer(middleware::from_fn_with_state(auth_state, users::require_auth));
 
   let users_state = state.clone();
@@ -1662,6 +1645,103 @@ async fn test_treasure_table_per_user_isolation() {
     read_body(bob_get).await.trim(),
     "null",
     "Bob must not see Alice's treasure table"
+  );
+}
+
+#[tokio::test]
+async fn test_treasure_profiles_get_returns_null_when_unset() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let response = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-profiles")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(read_body(response).await.trim(), "null");
+}
+
+#[tokio::test]
+async fn test_treasure_profiles_put_then_get_roundtrip() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let payload = r#"{"Cave hoard":{"gems":2,"art":1}}"#;
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/treasure-profiles")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(payload))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-profiles")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let body = read_body(get).await;
+  assert!(
+    body.contains("\"Cave hoard\""),
+    "expected PUT body to round-trip, got: {body}"
+  );
+}
+
+#[tokio::test]
+async fn test_treasure_profiles_per_user_isolation() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/treasure-profiles")
+        .header("content-type", "application/json")
+        .header("cookie", &alice)
+        .body(Body::from(r#"{"Alice's":{"gems":9}}"#))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+
+  let bob_get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-profiles")
+        .header("cookie", &bob)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(
+    read_body(bob_get).await.trim(),
+    "null",
+    "Bob must not see Alice's treasure profiles"
   );
 }
 

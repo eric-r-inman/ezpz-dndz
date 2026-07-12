@@ -18,20 +18,10 @@ use crate::compendium::{
   migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
   CompendiumStore, MigrationError, SavedCompendiumStore, UserCompendiumStore,
 };
-use crate::condition_presets::{
-  ConditionPresetStore, ConditionPresetStoreError,
-};
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
-use crate::lore_groups::{LoreGroupStore, LoreGroupStoreError};
-use crate::save_chain_presets::{
-  SaveChainPresetStore, SaveChainPresetStoreError,
-};
-use crate::treasure_profiles::{
-  TreasureProfileStore, TreasureProfileStoreError,
-};
-use crate::treasure_table::{TreasureTableStore, TreasureTableStoreError};
+use crate::per_user_store::{PerUserStore, PerUserStoreError};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -47,11 +37,13 @@ pub struct AppState {
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
   pub auth_rate_limiter: AuthRateLimiter,
-  pub lore_groups: LoreGroupStore,
-  pub condition_presets: ConditionPresetStore,
-  pub save_chain_presets: SaveChainPresetStore,
-  pub treasure_table: TreasureTableStore,
-  pub treasure_profiles: TreasureProfileStore,
+  // The five per-user opaque-JSON stores, all served by the shared
+  // GET/PUT routers in `per_user_store::routers`.
+  pub lore_groups: PerUserStore,
+  pub condition_presets: PerUserStore,
+  pub save_chain_presets: PerUserStore,
+  pub treasure_table: PerUserStore,
+  pub treasure_profiles: PerUserStore,
 }
 
 impl_server_state!(AppState, base);
@@ -76,20 +68,11 @@ pub enum AppStateError {
   #[error("Compendium split migration failed: {0}")]
   CompendiumSplitMigration(#[source] MigrationError),
 
-  #[error("Failed to load lore-group store: {0}")]
-  LoreGroupStoreLoad(#[source] LoreGroupStoreError),
-
-  #[error("Failed to load condition-preset store: {0}")]
-  ConditionPresetStoreLoad(#[source] ConditionPresetStoreError),
-
-  #[error("Failed to load save-chain-preset store: {0}")]
-  SaveChainPresetStoreLoad(#[source] SaveChainPresetStoreError),
-
-  #[error("Failed to load treasure-table store: {0}")]
-  TreasureTableStoreLoad(#[source] TreasureTableStoreError),
-
-  #[error("Failed to load treasure-profile store: {0}")]
-  TreasureProfileStoreLoad(#[source] TreasureProfileStoreError),
+  // The inner error's Display names the store ("lore-groups store
+  // persistence failed: …"), so the semantics of the five per-store
+  // variants this replaced are preserved.
+  #[error("Failed to load per-user store: {0}")]
+  PerUserStoreLoad(#[from] PerUserStoreError),
 }
 
 impl AppState {
@@ -154,29 +137,32 @@ impl AppState {
       .map_err(AppStateError::UserStoreLoad)?;
 
     let lore_groups =
-      LoreGroupStore::load_or_default(paths.lore_groups.clone())
-        .await
-        .map_err(AppStateError::LoreGroupStoreLoad)?;
+      PerUserStore::load_or_default("lore-groups", paths.lore_groups.clone())
+        .await?;
 
-    let condition_presets =
-      ConditionPresetStore::load_or_default(paths.condition_presets.clone())
-        .await
-        .map_err(AppStateError::ConditionPresetStoreLoad)?;
+    let condition_presets = PerUserStore::load_or_default(
+      "condition-presets",
+      paths.condition_presets.clone(),
+    )
+    .await?;
 
-    let save_chain_presets =
-      SaveChainPresetStore::load_or_default(paths.save_chain_presets.clone())
-        .await
-        .map_err(AppStateError::SaveChainPresetStoreLoad)?;
+    let save_chain_presets = PerUserStore::load_or_default(
+      "save-chain-presets",
+      paths.save_chain_presets.clone(),
+    )
+    .await?;
 
-    let treasure_table =
-      TreasureTableStore::load_or_default(paths.treasure_table.clone())
-        .await
-        .map_err(AppStateError::TreasureTableStoreLoad)?;
+    let treasure_table = PerUserStore::load_or_default(
+      "treasure-table",
+      paths.treasure_table.clone(),
+    )
+    .await?;
 
-    let treasure_profiles =
-      TreasureProfileStore::load_or_default(paths.treasure_profiles.clone())
-        .await
-        .map_err(AppStateError::TreasureProfileStoreLoad)?;
+    let treasure_profiles = PerUserStore::load_or_default(
+      "treasure-profiles",
+      paths.treasure_profiles.clone(),
+    )
+    .await?;
 
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),
