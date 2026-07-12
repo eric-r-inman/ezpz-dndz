@@ -49,7 +49,6 @@ view :
     { settingsOpen : Bool
     , theme : Theme
     , user : Maybe Auth.User
-    , useCustomCardLayout : Bool
     , route : Route
     }
     -> Html Msg
@@ -81,42 +80,6 @@ view cfg =
               -- into noise.  Settings (⚙) keeps its tooltip
               -- because it's icon-only.
               a [ href "/" ] [ text "Encounter" ]
-
-            -- Customize-card feature hidden for launch.  The
-            -- supporting modules (`Card.Layout`, `View.Card.Custom`,
-            -- `Update.CardEditor`, the modal, the editor UI) are
-            -- still in the codebase but unreachable from the
-            -- AppBar.  To re-enable, restore the two buttons
-            -- below and re-instate the `useCustomCardLayout`
-            -- branch in `View.Workspace.panelMain`.
-            --
-            -- , button
-            --     [ class "app-bar__card-editor"
-            --     , type_ "button"
-            --     , onClick CardEditorOpen
-            --     ]
-            --     [ text "Customize card" ]
-            -- , button
-            --     [ class
-            --         ("app-bar__card-editor"
-            --             ++ (if cfg.useCustomCardLayout then
-            --                     " app-bar__card-editor--active"
-            --
-            --                 else
-            --                     ""
-            --                )
-            --         )
-            --     , type_ "button"
-            --     , onClick CustomCardLayoutToggle
-            --     ]
-            --     [ text
-            --         (if cfg.useCustomCardLayout then
-            --             "Custom: on"
-            --
-            --          else
-            --             "Custom: off"
-            --         )
-            --     ]
             , userLink cfg.user cfg.route
             , a
                 [ class "app-bar__about"

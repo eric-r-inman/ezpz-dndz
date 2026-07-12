@@ -1,7 +1,6 @@
 module Update.Auth exposing
     ( displayNameChanged
     , emailChanged
-    , localCardLayoutMigrated
     , localCompendiumMigrated
     , localEncounterMigrated
     , logout
@@ -28,13 +27,10 @@ the wire shape is identical (both POST a body and get back a
 
 import Auth exposing (AuthState(..), LoginMode(..))
 import Browser.Navigation as Nav
-import Card.Layout
-import Card.Wire as CardWire
 import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dice
-import Dict
 import Effects
 import Encounter
 import Encounter.Wire
@@ -53,16 +49,16 @@ import Update.Toast
 
   - Ok user → switch to authenticated and kick off the
     authenticated data fetches (encounter, compendium creatures,
-    compendium groups, card layouts). The init batch deliberately
-    held these back because we didn't yet know whether to hit the
-    server endpoints or the public bundled fallbacks.
+    compendium groups). The init batch deliberately held these
+    back because we didn't yet know whether to hit the server
+    endpoints or the public bundled fallbacks.
   - Err 401 / other → switch to anonymous, then adopt the local
     encounter snapshot held in `localEncounterRaw` (passed in via
     flags from `index.html`'s `localStorage` read), and fetch the
     public bundled compendium (`/bundled-creatures.json`) so the
-    GM can still browse creatures without an account. Groups +
-    card layouts stay empty until anonymous-CRUD support lands
-    in a later phase.
+    GM can still browse creatures without an account. Groups
+    stay empty until anonymous-CRUD support lands in a later
+    phase.
 
 In both branches we clear `localEncounterRaw` afterwards — it's a
 one-shot bootstrap stash, not ongoing state.
@@ -108,11 +104,6 @@ meReceived result model =
                         model.localEncounterRaw
                         model.migrationDateLabel
 
-                cardLayoutMigrationCmd =
-                    migrateLocalCardLayoutCmd
-                        model.localCardLayoutRaw
-                        model.migrationDateLabel
-
                 compendiumMigrationCmd =
                     migrateLocalCompendiumCmd model.localCompendiumRaw
             in
@@ -120,7 +111,6 @@ meReceived result model =
                 | auth = AuthAuthenticated user
                 , encounter = liveEncounter
                 , localEncounterRaw = Nothing
-                , localCardLayoutRaw = Nothing
                 , localDiceHistoryRaw = Nothing
                 , localCompendiumRaw = Nothing
               }
@@ -128,7 +118,6 @@ meReceived result model =
                 [ fetchOrSeedActiveCmd
                 , Compendium.Wire.fetchAll CompendiumLoaded
                 , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
-                , CardWire.fetchList CardEditorLayoutsLoaded
                 , Effects.fetchDiceHistory
                 , Effects.fetchLoreGroups
                 , Effects.fetchConditionPresets
@@ -136,7 +125,6 @@ meReceived result model =
                 , Effects.fetchTreasureTable
                 , Effects.fetchTreasureProfiles
                 , encounterMigrationCmd
-                , cardLayoutMigrationCmd
                 , compendiumMigrationCmd
                 ]
             )
@@ -149,14 +137,8 @@ meReceived result model =
                         , loginUi = LoginUi.empty
                         , encounter = adoptLocalEncounter model.localEncounterRaw model.encounter
                         , localEncounterRaw = Nothing
-                        , localCardLayoutRaw = Nothing
                         , localDiceHistoryRaw = Nothing
                         , localCompendiumRaw = Nothing
-                        , savedCardLayouts =
-                            model.localCardLayoutSaves
-                                |> Dict.toList
-                                |> List.map CardWire.localSaveToMeta
-                                |> List.sortBy (\m -> -m.updatedAt)
                     }
 
                 withDice =
@@ -165,7 +147,7 @@ meReceived result model =
                 ( withCompendium, compendiumBootCmd ) =
                     applyLocalCompendium model.localCompendiumRaw withDice
             in
-            ( applyLocalCardLayout model.localCardLayoutRaw withCompendium
+            ( withCompendium
             , compendiumBootCmd
             )
 
@@ -220,40 +202,8 @@ adoptLocalEncounter raw fallback =
             fallback
 
 
-{-| Same pattern as `adoptLocalEncounter` for the card-layout
-snapshot. Replaces `cardLayout`, `queueView`, and
-`useCustomCardLayout` on the model when the flag JSON parses,
-leaving them untouched otherwise. Anonymous users with no
-prior session keep the bundled default.
--}
-applyLocalCardLayout : Maybe Decode.Value -> Model -> Model
-applyLocalCardLayout raw model =
-    case raw of
-        Just value ->
-            case Decode.decodeValue CardWire.decodeLocalLayoutSnapshot value of
-                Ok snap ->
-                    { model
-                        | cardLayout =
-                            -- One-shot migration: anonymous users
-                            -- who never customised their card
-                            -- layout get upgraded from the legacy
-                            -- 4-row default to the current
-                            -- everything-included default.  Custom
-                            -- layouts pass through untouched.
-                            Card.Layout.migrateLegacyDefault snap.layout
-                        , queueView = snap.queueView
-                        , useCustomCardLayout = snap.useCustomCardLayout
-                    }
-
-                Err _ ->
-                    model
-
-        Nothing ->
-            model
-
-
 {-| Adopt the locally-stashed dice history into `model.dice.history`.
-Same shape as `applyLocalCardLayout` — decode failures fall
+Same shape as `adoptLocalEncounter` — decode failures fall
 through silently and leave the existing (empty) history.
 -}
 applyLocalDiceHistory : Maybe Decode.Value -> Model -> Model
@@ -438,44 +388,6 @@ migrateLocalCompendiumCmd raw =
             Cmd.none
 
 
-{-| Card-layout analogue of `migrateLocalEncounterCmd`.
-
-Only fires when the anonymous user had `useCustomCardLayout = True`
-— that's the signal they actively used a non-default layout. When
-the bundled default has been showing the whole time we skip the
-migration to avoid creating a useless "Local — <date>" entry in
-the user's saved-layouts list.
-
--}
-migrateLocalCardLayoutCmd : Maybe Decode.Value -> String -> Cmd Msg
-migrateLocalCardLayoutCmd raw dateLabel =
-    case raw of
-        Just value ->
-            case Decode.decodeValue CardWire.decodeLocalLayoutSnapshot value of
-                Ok snap ->
-                    if snap.useCustomCardLayout then
-                        let
-                            name =
-                                "Local — " ++ dateLabel
-                        in
-                        CardWire.save
-                            { name = name
-                            , overwrite = True
-                            , layout = snap.layout
-                            , queueView = snap.queueView
-                            }
-                            (LocalCardLayoutMigrated name)
-
-                    else
-                        Cmd.none
-
-                Err _ ->
-                    Cmd.none
-
-        Nothing ->
-            Cmd.none
-
-
 emailChanged : String -> Model -> ( Model, Cmd Msg )
 emailChanged value model =
     let
@@ -587,38 +499,6 @@ localEncounterMigrated name result model =
                 model
 
 
-{-| Card-layout analogue of `localEncounterMigrated`. Success →
-clear the localStorage card-layout snapshot + toast with the
-slot name + refresh the saved-layouts list so the new entry
-shows up in the Card Editor's "Saved layouts" panel without a
-reload. Failure → toast; the local snapshot stays.
--}
-localCardLayoutMigrated : String -> Result Http.Error CardWire.SavedLayout -> Model -> ( Model, Cmd Msg )
-localCardLayoutMigrated name result model =
-    case result of
-        Ok _ ->
-            let
-                ( withToast, toastCmd ) =
-                    Update.Toast.push
-                        ToastSuccess
-                        ("Saved your pre-sign-in card layout as “" ++ name ++ "”.")
-                        model
-            in
-            ( withToast
-            , Cmd.batch
-                [ toastCmd
-                , Ports.clearLocalCardLayout ()
-                , CardWire.fetchList CardEditorLayoutsLoaded
-                ]
-            )
-
-        Err _ ->
-            Update.Toast.push
-                ToastError
-                "Couldn't archive your pre-sign-in card layout on the server. It's still in this browser."
-                model
-
-
 {-| Compendium analogue of the migration handlers above. On
 success → clear the localStorage compendium snapshot, toast with
 the imported count, and re-fetch the server's list to re-sync
@@ -667,13 +547,13 @@ logoutDone _ model =
     -- means a sign-out from `/me` doesn't leave the URL bar pointing
     -- at the now-inaccessible account page.
     --
-    -- `localStorage.encounter` and `localStorage.cardLayout` are
-    -- deliberately NOT cleared here: a user who had anonymous-mode
-    -- customizations before signing in should get them back on
-    -- logout instead of starting from scratch.  (The encounter
-    -- localStorage was cleared at sign-in IF a successful migration
-    -- archived it to the server, so this only matters when the
-    -- migration didn't fire / hadn't happened yet.)
+    -- `localStorage.encounter` is deliberately NOT cleared here: a
+    -- user who had anonymous-mode customizations before signing in
+    -- should get them back on logout instead of starting from
+    -- scratch.  (The encounter localStorage was cleared at sign-in
+    -- IF a successful migration archived it to the server, so this
+    -- only matters when the migration didn't fire / hadn't happened
+    -- yet.)
     ( { model | auth = AuthAnonymous, loginUi = LoginUi.empty }
     , Nav.load "/"
     )

@@ -36,10 +36,6 @@ dice-history.json
 # the server; lives in the --data-dir).
 /compendium-groups.json
 
-# Per-user card-layouts persistence file (created at runtime by the
-# server; lives in the --data-dir).
-/card-layouts.json
-
 # Per-user lore-groups persistence file (created at runtime by the
 # server; lives in the --data-dir).
 /lore-groups.json

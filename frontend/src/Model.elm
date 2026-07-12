@@ -1,6 +1,6 @@
 module Model exposing
     ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, cardEditorLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
+    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
     )
 
 {-| The single source of truth for the running app.
@@ -38,8 +38,6 @@ user retype the filename.
 
 import Auth exposing (AuthState)
 import Browser.Navigation as Nav
-import Card.Layout exposing (CardLayout, QueueView)
-import Card.Wire as CardWire
 import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
@@ -54,7 +52,6 @@ import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
-import Ui.CardEditor exposing (CardEditorUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
@@ -133,7 +130,6 @@ type Modal
     | ModalDuplicate DuplicateUi
     | ModalGroupEdit GroupEditUi
     | ModalLoreEdit LoreEditUi
-    | ModalCardEditor CardEditorUi
     | ModalCrCalculator CrCalculatorUi
     | ModalRandomEncounter RandomEncounterUi
     | ModalTreasure TreasureUi
@@ -232,20 +228,6 @@ loreEditLens =
                 _ ->
                     Nothing
     , wrap = ModalLoreEdit
-    }
-
-
-cardEditorLens : ModalLens CardEditorUi
-cardEditorLens =
-    { extract =
-        \m ->
-            case m of
-                ModalCardEditor ui ->
-                    Just ui
-
-                _ ->
-                    Nothing
-    , wrap = ModalCardEditor
     }
 
 
@@ -504,25 +486,6 @@ type alias Model =
     , nextRollPopupId : Int
     , preferences : Preferences
 
-    -- Live creature-card layout + queue arrangement.  Bootstraps
-    -- from the bundled default; the boot fetch of `/api/card-layouts`
-    -- populates [`savedCardLayouts`](#Model) but doesn't pick one —
-    -- the user picks which saved layout to load from the editor.
-    , cardLayout : CardLayout
-    , queueView : QueueView
-
-    -- Metadata for the user's server-side saved card layouts,
-    -- fetched on boot via `Card.Wire.fetchList`.  Used by
-    -- the card-editor modal's "Saved layouts" panel.
-    , savedCardLayouts : List CardWire.SavedLayoutMeta
-
-    -- When True, the encounter panel renders cards through
-    -- `View.Card.Custom` (layout-driven).  When False (the
-    -- default), the classic `View.Card` renderer is used so
-    -- inline click-to-edit features keep working.  Toggled by
-    -- the AppBar's "Use custom card layout" button.
-    , useCustomCardLayout : Bool
-
     -- Account page (`/me`) form state.  Independent of the auth
     -- ADT — `auth` holds *who's signed in*; `accountUi` holds
     -- *what the GM has typed into the profile / password forms
@@ -544,12 +507,6 @@ type alias Model =
     -- if authenticated we discard it (the server is the source of
     -- truth, the migration prompt lives in a later phase).
     , localEncounterRaw : Maybe Decode.Value
-
-    -- Same one-shot bootstrap stash for the anonymous card-layout
-    -- snapshot (cardLayout + queueView + useCustomCardLayout).
-    -- Decoded and applied by `Update.Auth.meReceived` on the
-    -- anonymous branch; discarded on the authenticated branch.
-    , localCardLayoutRaw : Maybe Decode.Value
 
     -- Pre-formatted "today" string from the JS host (e.g.
     -- "May 26, 2026"), used to label the named server save slot
@@ -591,11 +548,6 @@ type alias Model =
     -- anonymous sessions mutate this dict and the update-loop
     -- wrapper persists it to `localStorage.encounterSaves`.
     , localEncounterSaves : Dict String EncounterWire.LocalEncounterSave
-
-    -- Anonymous named card-layout saves keyed by name.  Same
-    -- shape and purpose as `localEncounterSaves`.  `CardWire`
-    -- defines the entry type.
-    , localCardLayoutSaves : Dict String CardWire.LocalCardLayoutSave
 
     -- User-named presets for the Add-Condition modal, keyed by
     -- the name the GM gave each save.  Mirrors the pattern of

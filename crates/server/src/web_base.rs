@@ -13,7 +13,6 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::auth_rate_limit::AuthRateLimiter;
-use crate::card_editor::CardLayoutStore;
 use crate::compendium::{
   migrate as compendium_migrate, BundledCompendium, CompendiumGroupStore,
   CompendiumStore, MigrationError, SavedCompendiumStore, UserCompendiumStore,
@@ -32,7 +31,6 @@ pub struct AppState {
   pub compendium_groups: CompendiumGroupStore,
   pub user_compendium: UserCompendiumStore,
   pub bundled_compendium: BundledCompendium,
-  pub card_layouts: CardLayoutStore,
   pub encounter_store: EncounterStore,
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
@@ -55,9 +53,6 @@ pub enum AppStateError {
 
   #[error("Failed to load compendium store: {0}")]
   CompendiumStoreLoad(#[source] crate::compendium::CompendiumStoreError),
-
-  #[error("Failed to load card-layout store: {0}")]
-  CardLayoutStoreLoad(#[source] crate::card_editor::CardLayoutStoreError),
 
   #[error("Failed to load live-encounter store: {0}")]
   EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
@@ -116,11 +111,6 @@ impl AppState {
 
     let bundled_compendium =
       BundledCompendium::load().map_err(AppStateError::CompendiumStoreLoad)?;
-
-    let card_layouts =
-      CardLayoutStore::load_or_default(paths.card_layouts.clone())
-        .await
-        .map_err(AppStateError::CardLayoutStoreLoad)?;
 
     let encounter_store =
       EncounterStore::load_or_default(paths.encounter.clone())
@@ -187,7 +177,6 @@ impl AppState {
       compendium_groups,
       user_compendium,
       bundled_compendium,
-      card_layouts,
       encounter_store,
       encounter_saves,
       user_store: Arc::new(user_store),

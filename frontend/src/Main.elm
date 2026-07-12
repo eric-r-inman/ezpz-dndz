@@ -5,8 +5,6 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation as Nav
-import Card.Layout
-import Card.Wire
 import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
@@ -83,7 +81,6 @@ import Ui.Toast
 import Update.AbilitySave
 import Update.Account
 import Update.Auth
-import Update.CardEditor
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
 import Update.Compendium.Browser
@@ -133,7 +130,6 @@ import View.Footer
 import View.Login
 import View.Modal
 import View.Modal.AbilitySave
-import View.Modal.CardEditor
 import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
@@ -465,10 +461,6 @@ themeFromFlag raw =
     resolves; on `AuthAnonymous` we decode and adopt it, on
     `AuthAuthenticated` we discard it (the server is the source
     of truth, the migration prompt is a later phase).
-  - `localCardLayout` — same one-shot snapshot for the active
-    card layout, queue view, and `useCustomCardLayout` flag.
-    Anonymous edits to the card editor land here so the next
-    reload picks them up without a server round-trip.
   - `migrationDateLabel` — short formatted date string from JS
     (`Date.now()` localized to the user's browser) used as the
     suffix on the named save slot when an anonymous encounter
@@ -486,8 +478,6 @@ themeFromFlag raw =
   - `localEncounterSaves` — anonymous named-encounter-saves
     dict (`{ name → { encounter, created_at, updated_at } }`)
     that the Save / Load modals consult instead of `/api/encounter/saves`.
-  - `localCardLayoutSaves` — same shape for named card-layout
-    saves used by the Card Editor.
   - `bootMs` — `Date.now()` at boot, used as the timestamp on
     every anonymous named-save write done this session.
 
@@ -495,12 +485,10 @@ themeFromFlag raw =
 type alias Flags =
     { theme : String
     , localEncounter : Maybe Decode.Value
-    , localCardLayout : Maybe Decode.Value
     , migrationDateLabel : String
     , localDiceHistory : Maybe Decode.Value
     , localCompendium : Maybe Decode.Value
     , localEncounterSaves : Maybe Decode.Value
-    , localCardLayoutSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
     , localSaveChainPresets : Maybe Decode.Value
@@ -560,15 +548,10 @@ init flags url key =
       , rollPopups = []
       , nextRollPopupId = 0
       , preferences = prefs
-      , cardLayout = Card.Layout.defaultLayout
-      , queueView = Card.Layout.ListView
-      , savedCardLayouts = []
-      , useCustomCardLayout = False
       , accountUi = Ui.Account.empty
       , party = partyFromFlags.members
       , nextPartyMemberId = partyFromFlags.nextId
       , localEncounterRaw = flags.localEncounter
-      , localCardLayoutRaw = flags.localCardLayout
       , migrationDateLabel = flags.migrationDateLabel
       , localDiceHistoryRaw = flags.localDiceHistory
       , localCompendiumRaw = flags.localCompendium
@@ -578,13 +561,6 @@ init flags url key =
             flags.localEncounterSaves
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
-                        >> Result.toMaybe
-                    )
-                |> Maybe.withDefault Dict.empty
-      , localCardLayoutSaves =
-            flags.localCardLayoutSaves
-                |> Maybe.andThen
-                    (Decode.decodeValue Card.Wire.decodeLocalCardLayoutSaves
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
@@ -637,7 +613,7 @@ init flags url key =
       , bootMs = flags.bootMs
       }
       -- The auth-dependent data fetches (encounter, compendium,
-      -- groups, card layouts, dice history) all live in
+      -- groups, dice history) all live in
       -- `Update.Auth.meReceived` because each one's destination —
       -- server route vs. public bundle vs. localStorage — depends
       -- on the cookie probe's result.
@@ -698,13 +674,6 @@ update msg model =
             else
                 Cmd.none
 
-        cardLayoutCmd =
-            if shouldPersistAfter msg && cardLayoutChanged model next then
-                persistCardLayoutFor next
-
-            else
-                Cmd.none
-
         diceHistoryCmd =
             if
                 shouldPersistAfter msg
@@ -726,13 +695,6 @@ update msg model =
         encounterSavesCmd =
             if shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
                 persistEncounterSavesFor next
-
-            else
-                Cmd.none
-
-        cardLayoutSavesCmd =
-            if shouldPersistAfter msg && model.localCardLayoutSaves /= next.localCardLayoutSaves then
-                persistCardLayoutSavesFor next
 
             else
                 Cmd.none
@@ -865,11 +827,9 @@ update msg model =
         [ innerCmd
         , encounterCmd
         , encounterBroadcastCmd
-        , cardLayoutCmd
         , diceHistoryCmd
         , compendiumCmd
         , encounterSavesCmd
-        , cardLayoutSavesCmd
         , conditionPresetsCmd
         , saveChainPresetsCmd
         , timerPresetsCmd
@@ -892,41 +852,6 @@ persistEncounterFor auth encounter =
             Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
         Auth.AuthLoading ->
-            Cmd.none
-
-
-{-| Did any of the three card-layout-bearing fields change?
-We only persist when something the snapshot actually captures
-moved, so theme toggles and modal opens don't drag a duplicate
-write along.
--}
-cardLayoutChanged : Model -> Model -> Bool
-cardLayoutChanged before after =
-    before.cardLayout
-        /= after.cardLayout
-        || before.queueView
-        /= after.queueView
-        || before.useCustomCardLayout
-        /= after.useCustomCardLayout
-
-
-{-| Persist the card-layout snapshot when anonymous; no-op for
-authenticated users (they save named layouts to the server via
-`Card.Wire.save`).
--}
-persistCardLayoutFor : Model -> Cmd Msg
-persistCardLayoutFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            Ports.persistLocalCardLayout
-                (Card.Wire.encodeLocalLayoutSnapshot
-                    { layout = model.cardLayout
-                    , queueView = model.queueView
-                    , useCustomCardLayout = model.useCustomCardLayout
-                    }
-                )
-
-        _ ->
             Cmd.none
 
 
@@ -1011,17 +936,6 @@ persistEncounterSavesFor model =
             Cmd.none
 
 
-persistCardLayoutSavesFor : Model -> Cmd Msg
-persistCardLayoutSavesFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            Ports.persistLocalCardLayoutSaves
-                (Card.Wire.encodeLocalCardLayoutSaves model.localCardLayoutSaves)
-
-        _ ->
-            Cmd.none
-
-
 shouldPersistAfter : Msg -> Bool
 shouldPersistAfter msg =
     case msg of
@@ -1043,9 +957,6 @@ shouldPersistAfter msg =
         -- clear-local port; the encounter itself is untouched, so
         -- there's nothing to persist here either.
         LocalEncounterMigrated _ _ ->
-            False
-
-        LocalCardLayoutMigrated _ _ ->
             False
 
         LocalCompendiumMigrated _ _ ->
@@ -1893,14 +1804,6 @@ updateInner msg model =
         CompendiumGroupDeleted groupId result ->
             Update.Compendium.Group.deleteResponse groupId result model
 
-        CardEditorOpen ->
-            Update.CardEditor.open model
-
-        CustomCardLayoutToggle ->
-            ( { model | useCustomCardLayout = not model.useCustomCardLayout }
-            , Cmd.none
-            )
-
         CrCalculatorOpen ->
             Update.CrCalculator.open model
 
@@ -2179,78 +2082,6 @@ updateInner msg model =
 
         TreasureTableRevertConfirm ->
             Update.TreasureTable.revertConfirm model
-
-        CardEditorClose ->
-            Update.CardEditor.close model
-
-        CardEditorSave ->
-            Update.CardEditor.save model
-
-        CardEditorReset ->
-            Update.CardEditor.reset model
-
-        CardEditorFocusRow idx ->
-            Update.CardEditor.focusRow idx model
-
-        CardEditorRowAdd ->
-            Update.CardEditor.rowAdd model
-
-        CardEditorRowRemove idx ->
-            Update.CardEditor.rowRemove idx model
-
-        CardEditorRowMoveUp idx ->
-            Update.CardEditor.rowMoveUp idx model
-
-        CardEditorRowMoveDown idx ->
-            Update.CardEditor.rowMoveDown idx model
-
-        CardEditorRowAlignmentSet idx key ->
-            Update.CardEditor.rowAlignmentSet idx key model
-
-        CardEditorWidgetAdd idx key ->
-            Update.CardEditor.widgetAdd idx key model
-
-        CardEditorWidgetRemove rowIdx widgetIdx ->
-            Update.CardEditor.widgetRemove rowIdx widgetIdx model
-
-        CardEditorQueueViewSet key ->
-            Update.CardEditor.queueViewSet key model
-
-        CardEditorToggleDeathSaves ->
-            Update.CardEditor.toggleDeathSaves model
-
-        CardEditorToggleLegendary ->
-            Update.CardEditor.toggleLegendary model
-
-        CardEditorLayoutNameChanged raw ->
-            Update.CardEditor.saveNameChanged raw model
-
-        CardEditorSaveAs ->
-            Update.CardEditor.saveAs model
-
-        CardEditorOverwriteConfirm ->
-            Update.CardEditor.overwriteConfirm model
-
-        CardEditorOverwriteCancel ->
-            Update.CardEditor.overwriteCancel model
-
-        CardEditorLoad name ->
-            Update.CardEditor.load name model
-
-        CardEditorDelete name ->
-            Update.CardEditor.delete name model
-
-        CardEditorLayoutsLoaded result ->
-            Update.CardEditor.layoutsLoaded result model
-
-        CardEditorLayoutFetched result ->
-            Update.CardEditor.layoutFetched result model
-
-        CardEditorLayoutSaved result ->
-            Update.CardEditor.layoutSaved result model
-
-        CardEditorLayoutDeleted name result ->
-            Update.CardEditor.layoutDeleted name result model
 
         CompendiumEditNew ->
             Update.Compendium.Edit.new model
@@ -2922,9 +2753,6 @@ updateInner msg model =
         LocalEncounterMigrated name result ->
             Update.Auth.localEncounterMigrated name result model
 
-        LocalCardLayoutMigrated name result ->
-            Update.Auth.localCardLayoutMigrated name result model
-
         LocalCompendiumMigrated count result ->
             Update.Auth.localCompendiumMigrated count result model
 
@@ -3063,7 +2891,6 @@ appShell maybeUser model =
             { settingsOpen = model.settingsOpen
             , theme = model.preferences.theme
             , user = maybeUser
-            , useCustomCardLayout = model.useCustomCardLayout
             , route = model.route
             }
     , -- Suppressed on the second-monitor tabs for the same reason
@@ -3101,7 +2928,6 @@ appShell maybeUser model =
     , View.Modal.Duplicate.view model
     , View.Modal.GroupEdit.view model
     , View.Modal.LoreEdit.view model
-    , View.Modal.CardEditor.view model
     , View.Modal.CrCalculator.view model
     , View.Modal.RandomEncounter.view model
     , View.Modal.Treasure.view model.modalChrome model

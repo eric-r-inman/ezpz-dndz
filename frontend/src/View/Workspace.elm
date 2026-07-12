@@ -9,8 +9,6 @@ them together with the model fragments each one needs.
 
 -}
 
-import Card.Layout exposing (CardLayout, QueueView(..))
-import Compendium
 import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
@@ -21,11 +19,10 @@ import Html.Events exposing (onClick)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Set
-import Ui.Compendium exposing (CompendiumDb(..))
+import Ui.Compendium exposing (CompendiumDb)
 import Ui.HpChange exposing (HpEdit)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import View.Card
-import View.Card.Custom
 import View.EncounterBar
 import View.PanelControls
 import View.PanelDetail
@@ -47,9 +44,6 @@ view model =
             model.compendium.db
             model.xpScope
             model.xpFilterOpen
-            model.useCustomCardLayout
-            model.cardLayout
-            model.queueView
         , View.PanelControls.view
             model.auth
             model.dice
@@ -79,49 +73,11 @@ panelMain :
     -> CompendiumDb
     -> XpScope
     -> Bool
-    -> Bool
-    -> CardLayout
-    -> QueueView
     -> Html Msg
-panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layout queueView =
+panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen =
     let
-        -- Custom-card renderer needs the loaded compendium to
-        -- resolve tag widgets (tags live on the compendium
-        -- source).  Boot-fetch hasn't finished and load-failed
-        -- both produce an empty Db here, so the tag lookup just
-        -- misses and the widget renders nothing.
-        compendiumDb =
-            case db of
-                CompendiumDbLoaded loaded ->
-                    loaded
-
-                _ ->
-                    Compendium.fromList []
-
         renderCard =
-            -- Customize-card feature hidden for launch.  Always
-            -- use the non-custom `View.Card` renderer regardless
-            -- of `model.useCustomCardLayout`.  Restore the
-            -- branch below when the feature is re-enabled:
-            --
-            -- if useCustom then
-            --     View.Card.Custom.view layout enc.activeName hpEdit compendiumDb
-            -- else
-            --     View.Card.view enc.activeName hpEdit renameState
             View.Card.view enc.activeName hpEdit renameState
-
-        -- Queue-view picker (List / Grid) is meaningful only when
-        -- the custom renderer is on; the classic card has fixed
-        -- dimensions and ignores the modifier class.  Either way
-        -- the class lands on `.creature-grid` and the CSS decides
-        -- whether to honour it.
-        gridClass =
-            case queueView of
-                ListView ->
-                    "creature-grid creature-grid--list"
-
-                GridView ->
-                    "creature-grid creature-grid--grid"
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
@@ -132,7 +88,7 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen useCustom layou
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
             ]
-            [ div [ class gridClass ]
+            [ div [ class "creature-grid" ]
                 (List.map renderCard enc.creatures)
             , quickAddRow
             ]

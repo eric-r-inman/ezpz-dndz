@@ -1,5 +1,4 @@
 pub mod auth_rate_limit;
-pub mod card_editor;
 pub mod compendium;
 pub mod config;
 pub mod dice;

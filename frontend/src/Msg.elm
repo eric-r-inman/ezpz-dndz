@@ -32,7 +32,6 @@ stay in `Main.elm` for now and are scheduled for per-feature
 import Auth
 import Browser
 import Browser.Dom
-import Card.Wire
 import Compendium
 import Compendium.Group
 import Compendium.Wire
@@ -809,37 +808,6 @@ type Msg
     | CompendiumGroupCreated (Result Http.Error Compendium.Group.Group)
     | CompendiumGroupUpdated (Result Http.Error Compendium.Group.Group)
     | CompendiumGroupDeleted String (Result Http.Error ())
-      -- Card-editor (creature-card customization) modal lifecycle.
-    | CardEditorOpen
-      -- Switch the encounter panel between the classic hardcoded
-      -- `View.Card` renderer and the layout-driven
-      -- `View.Card.Custom` renderer.
-    | CustomCardLayoutToggle
-    | CardEditorClose
-    | CardEditorSave
-    | CardEditorReset
-    | CardEditorFocusRow Int
-    | CardEditorRowAdd
-    | CardEditorRowRemove Int
-    | CardEditorRowMoveUp Int
-    | CardEditorRowMoveDown Int
-    | CardEditorRowAlignmentSet Int String
-    | CardEditorWidgetAdd Int String
-    | CardEditorWidgetRemove Int Int
-    | CardEditorQueueViewSet String
-    | CardEditorToggleDeathSaves
-    | CardEditorToggleLegendary
-      -- Saved-layout persistence (`/api/card-layouts`).
-    | CardEditorLayoutNameChanged String
-    | CardEditorSaveAs
-    | CardEditorOverwriteConfirm
-    | CardEditorOverwriteCancel
-    | CardEditorLoad String
-    | CardEditorDelete String
-    | CardEditorLayoutsLoaded (Result Http.Error (List Card.Wire.SavedLayoutMeta))
-    | CardEditorLayoutFetched (Result Http.Error Card.Wire.SavedLayout)
-    | CardEditorLayoutSaved (Result Http.Error Card.Wire.SavedLayout)
-    | CardEditorLayoutDeleted String (Result Http.Error ())
       -- Group-edit modal lifecycle.
     | GroupEditClose
     | GroupEditNameChanged String
@@ -1209,8 +1177,6 @@ type Msg
       -- slot.  Carries the save-name so the success-toast can
       -- mention it; clears localStorage.encounter on success.
     | LocalEncounterMigrated String (Result Http.Error ())
-      -- Same shape for the card-layout migration response.
-    | LocalCardLayoutMigrated String (Result Http.Error Card.Wire.SavedLayout)
       -- Compendium migration response.  Int carries the count of
       -- creatures that landed server-side so the toast can be
       -- specific.

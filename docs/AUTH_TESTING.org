@@ -332,7 +332,6 @@ nix develop --command cargo test -p ezpz-dndz-server --test integration_test
 - ~test_compendium_delete_bundled_returns_forbidden~
 - ~test_compendium_duplicate_bundled_creates_per_user_copy~
 - ~test_compendium_groups_per_user_isolation~
-- ~test_card_layouts_per_user_isolation~
 
 Frontend assertions are covered separately by ~elm-test~ (259 tests at HEAD, run
 via ~just test~ or ~nix develop --command elm-test~).

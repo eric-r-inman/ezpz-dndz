@@ -1,6 +1,5 @@
 module View.Tooltips exposing
     ( appBarAccount
-    , appBarCardEditor
     , appBarDonate
     , appBarSettings
     , applyCondition
@@ -208,11 +207,6 @@ attr s =
 appBarSettings : String
 appBarSettings =
     "Set Theme"
-
-
-appBarCardEditor : String
-appBarCardEditor =
-    "Customize the creature card layout (prototype)"
 
 
 appBarAccount : String

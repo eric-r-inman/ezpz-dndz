@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCardLayout, clearLocalCardLayoutSaves, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCardLayout, persistLocalCardLayoutSaves, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -44,16 +44,6 @@ authenticated migration can replay it without translation.
 port persistLocalEncounter : E.Value -> Cmd msg
 
 
-{-| Persist the active card layout, queue view, and
-`useCustomCardLayout` toggle into `localStorage` for anonymous
-sessions. Authenticated users persist saved layouts to the
-server (with a name) via `Card.Wire`; anonymous users get a
-single in-place snapshot that restores their customizations on
-the next reload.
--}
-port persistLocalCardLayout : E.Value -> Cmd msg
-
-
 {-| Remove the locally-persisted encounter from `localStorage`.
 Fired after a successful login-time migration: the anonymous
 encounter has been copied into a named server save so the local
@@ -77,14 +67,6 @@ discarded once the user promotes to an authenticated session
 port persistLocalDiceHistory : E.Value -> Cmd msg
 
 
-{-| Drop the locally-persisted card-layout snapshot from
-`localStorage`. Fired after a successful login-time migration of
-the anonymous card layout into a named server save, mirroring
-`clearLocalEncounter`'s role for the encounter.
--}
-port clearLocalCardLayout : () -> Cmd msg
-
-
 {-| Persist the anonymous compendium snapshot (creatures + groups
 
   - next-local-id counter) into `localStorage` on every CRUD edit
@@ -100,8 +82,7 @@ port persistLocalCompendium : E.Value -> Cmd msg
 
 
 {-| Drop the locally-persisted compendium after a successful
-login-time migration. Same role as `clearLocalEncounter` /
-`clearLocalCardLayout`.
+login-time migration. Same role as `clearLocalEncounter`.
 -}
 port clearLocalCompendium : () -> Cmd msg
 
@@ -119,18 +100,6 @@ after a successful login-time migration that has copied every
 local save into the server.
 -}
 port clearLocalEncounterSaves : () -> Cmd msg
-
-
-{-| Same shape as `persistLocalEncounterSaves` but for named
-card-layout saves
-(`{ name → { body, queue_view, created_at, updated_at } }`).
--}
-port persistLocalCardLayoutSaves : E.Value -> Cmd msg
-
-
-{-| Drop the whole anonymous named-card-layout-saves dict.
--}
-port clearLocalCardLayoutSaves : () -> Cmd msg
 
 
 {-| Persist the user-named condition presets dict to
