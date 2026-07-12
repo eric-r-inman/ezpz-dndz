@@ -66,8 +66,7 @@ dev:
     ( sleep 1.5 && open "{{dev_url}}" ) &
     exec cargo run -p ezpz-dndz-server -- \
         --listen {{listen}} \
-        --base-url {{dev_url}} \
-        --frontend-path frontend/public
+        --base-url {{dev_url}}
 
 # Same as `dev` but skip opening the browser (handy in tmux).
 serve:
@@ -96,8 +95,7 @@ serve:
     ( cd frontend && elm make src/Main.elm --output public/elm.js )
     exec cargo run -p ezpz-dndz-server -- \
         --listen {{listen}} \
-        --base-url {{dev_url}} \
-        --frontend-path frontend/public
+        --base-url {{dev_url}}
 
 # Promote a custom creature from the running dev server into the
 # embedded bundle.  Fetches the creature via the server's REST

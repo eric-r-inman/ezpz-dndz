@@ -22,7 +22,7 @@ repository = "https://github.com/eric-r-inman/ezpz-dndz"
 # auth) shared with rust-template-spawned siblings.  The git pin keeps
 # us synchronised with the template's HEAD; advance it together with
 # rust-template.json's template_sync_hashes during compliance work.
-rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git" }
+rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git", version = ">=0.16" }
 
 # Logging and tracing
 tracing = "0.1"
@@ -69,7 +69,15 @@ axum = "0.8"
 tokio = { version = "1.52", features = ["full"] }
 tokio-listener = { version = "0.5", features = ["axum08"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["trace", "cors", "fs", "set-header"] }
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+
+# Embeds the compiled Elm frontend into the server binary: nix builds
+# hand the asset directory to the server crate's build.rs and release
+# builds bake it in (debug builds read from disk).  `mime-guess` drives
+# the Content-Type the foundation's SPA service returns;
+# `interpolate-folder-path` lets the `#[folder]` attribute expand
+# `$RUST_TEMPLATE_FRONTEND_DIR` (set by the server crate's build.rs).
+rust-embed = { version = "8", features = ["mime-guess", "interpolate-folder-path"] }
 
 # Testing
 tempfile = "3"
@@ -128,6 +136,15 @@ opt-level = 3
 
 [profile.release]
 debug = false
+# These binaries are shipped as release artifacts, so optimize them for
+# the end user rather than for build speed.  lto and a single codegen
+# unit let the optimizer work across crate boundaries (faster runtime,
+# smaller code), and strip removes symbols from the artifact to shrink
+# the download.  opt-level stays at the default 3 — tuned for speed,
+# not size.
+lto = true
+codegen-units = 1
+strip = true
 
 # ============================================================================
 # LINTS

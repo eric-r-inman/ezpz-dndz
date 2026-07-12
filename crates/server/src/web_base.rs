@@ -1,9 +1,9 @@
 //! Application state shared by the HTTP handlers.
 //!
-//! `BaseServerState` (registry, request counter, OIDC client, frontend
-//! path) lives in foundation and is spliced in via `impl_server_state!`.
-//! The custom fields below carry the JSON-backed stores that ezpz-dndz
-//! actually serves.
+//! `BaseServerState` (registry, request counter, OIDC client) lives in
+//! foundation and is spliced in via `impl_server_state!`.  The custom
+//! fields below carry the JSON-backed stores that ezpz-dndz actually
+//! serves.
 
 use ezpz_dndz_lib::users::UserStore;
 use rust_template_foundation::{

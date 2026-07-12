@@ -1,48 +1,49 @@
 #+title:     Deploying ezpz-dndz to a Linux VPS
 #+language:  en
 
-This guide walks through a fresh deployment to a generic Linux box
-with systemd (Ubuntu, Debian, Fedora, NixOS, etc.) — the kind of
-host every major VPS provider ships by default.
+This guide walks through a fresh deployment to a generic Linux box with systemd
+(Ubuntu, Debian, Fedora, NixOS, etc.) — the kind of host every major VPS
+provider ships by default.
 
-The goal: a Caddy-fronted HTTPS service running under a dedicated
-system user, persisting state to a single bind-mounted data dir,
-and snapshotting that dir nightly so a bad write can never lose
-more than 24 hours of data.
+The goal: a Caddy-fronted HTTPS service running under a dedicated system user,
+persisting state to a single bind-mounted data dir, and snapshotting that dir
+nightly so a bad write can never lose more than 24 hours of data.
 
 * Prerequisites
 
-- A Linux server with systemd as PID 1.  Tested on Ubuntu 24.04,
-  Debian 12, and NixOS 24.05; any distro with systemd ≥ 245 works.
+- A Linux server with systemd as PID 1.  Tested on Ubuntu 24.04, Debian 12, and
+  NixOS 24.05; any distro with systemd ≥ 245 works.
 - A DNS A/AAAA record pointing at the server.
 - Root (or sudo) access for the install steps.
-- An OIDC provider account if you want federated login (Google,
-  Auth0, Keycloak, etc.).  Optional — the server runs in
-  implicit-admin mode when OIDC is absent.
+- An OIDC provider account if you want federated login (Google, Auth0, Keycloak,
+  etc.).  Optional — the server runs in implicit-admin mode when OIDC is absent.
 
 * Step 1: build the binary
 
-Build on the same architecture as the deploy target.  On the
-server (or a CI runner of the same arch):
+Build on the same architecture as the deploy target.  On the server (or a CI
+runner of the same arch):
 
 #+begin_src sh :exports code
 git clone https://github.com/eric-r-inman/ezpz-dndz.git
 cd ezpz-dndz
-nix develop --command cargo build --release --workspace
 nix develop --command bash -c "cd frontend && elm make src/Main.elm --output public/elm.js --optimize"
+nix develop --command cargo build --release --workspace
 #+end_src
+
+The Elm build must run /before/ the release cargo build: the server crate's
+=build.rs= embeds =frontend/public/= into the release binary at compile time, so
+the compiled =elm.js= has to exist first.
 
 The release artifacts you need to ship:
 
-- =target/release/ezpz-dndz-server= — the HTTP server binary.
-- =target/release/ezpz-dndz-cli= — the operator CLI (password
-  resets, store inspection).
-- =frontend/public/= — static assets.
+- =target/release/ezpz-dndz-server= — the HTTP server binary, with the frontend
+  embedded (no separate asset directory to deploy).
+- =target/release/ezpz-dndz-cli= — the operator CLI (password resets, store
+  inspection).
 - =scripts/backup.sh= — the backup helper.
 
-Copy them to =/opt/ezpz-dndz/= on the server (or wherever you
-prefer; the systemd unit template uses =/opt/ezpz-dndz/= as
-=INSTALL_DIR=).
+Copy them to =/opt/ezpz-dndz/= on the server (or wherever you prefer; the
+systemd unit template uses =/opt/ezpz-dndz/= as =INSTALL_DIR=).
 
 * Step 2: create the service account and directories
 
@@ -53,16 +54,15 @@ sudo chown -R ezpz-dndz:ezpz-dndz /var/lib/ezpz-dndz
 sudo chmod 750 /var/lib/ezpz-dndz
 #+end_src
 
-The =--data-dir= the server writes to (=/var/lib/ezpz-dndz= in
-this layout) holds every piece of persisted state: users,
-compendium creatures, encounters, groups, card layouts, dice
-history.  Treat it like a database file — back it up, audit
-permissions, and never share write access.
+The =--data-dir= the server writes to (=/var/lib/ezpz-dndz= in this layout)
+holds every piece of persisted state: users, compendium creatures, encounters,
+groups, card layouts, dice history.  Treat it like a database file — back it up,
+audit permissions, and never share write access.
 
 * Step 3: install the OIDC secret (optional)
 
-Skip this step if you're running without OIDC.  The server falls
-back to the local register/login flow when OIDC config is absent.
+Skip this step if you're running without OIDC.  The server falls back to the
+local register/login flow when OIDC config is absent.
 
 #+begin_src sh :exports code
 sudo install -d -m 0700 /etc/credstore
@@ -71,12 +71,11 @@ sudo install -m 0600 -o root -g root \
      /etc/credstore/ezpz-dndz-oidc-secret
 #+end_src
 
-The systemd unit template reads this file via =LoadCredential=
-(not env) so the secret never appears in the process environment
-or in =systemctl show= output.
+The systemd unit template reads this file via =LoadCredential= (not env) so the
+secret never appears in the process environment or in =systemctl show= output.
 
-Set the other two OIDC values either via env in the unit file or
-via the TOML config:
+Set the other two OIDC values either via env in the unit file or via the TOML
+config:
 
 #+begin_src toml :exports code
 oidc_issuer = "https://accounts.google.com"
@@ -84,9 +83,8 @@ oidc_client_id = "your-client-id.apps.googleusercontent.com"
 #+end_src
 
 Configure the OIDC provider's *callback URL* to
-=https://ezpz.example.com/auth/callback= (replace the hostname
-with yours).  This MUST be HTTPS — most providers reject http://
-callbacks outside localhost.
+=https://ezpz.example.com/auth/callback= (replace the hostname with yours).
+This MUST be HTTPS — most providers reject http:// callbacks outside localhost.
 
 * Step 4: install the systemd units
 
@@ -122,8 +120,7 @@ sudo systemctl list-timers ezpz-dndz-backup.timer
 
 * Step 5: install Caddy as the reverse proxy
 
-Caddy provides auto-TLS via Let's Encrypt with zero config
-beyond the hostname.
+Caddy provides auto-TLS via Let's Encrypt with zero config beyond the hostname.
 
 #+begin_src sh :exports code
 sudo apt install -y caddy   # or: nix profile install nixpkgs#caddy
@@ -132,8 +129,8 @@ sudo sed -i 's|ezpz.example.com|YOUR-HOSTNAME-HERE|g' /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 #+end_src
 
-Within a minute or two Caddy will obtain a cert and start
-serving https://YOUR-HOSTNAME-HERE/.  Verify with:
+Within a minute or two Caddy will obtain a cert and start serving
+https://YOUR-HOSTNAME-HERE/.  Verify with:
 
 #+begin_src sh :exports code
 curl -sI https://YOUR-HOSTNAME-HERE/healthz | head
@@ -143,16 +140,15 @@ You should see =HTTP/2 200=.
 
 * Step 6: register the first user
 
-Once the server is up, visit https://YOUR-HOSTNAME-HERE/ and use
-the in-app registration form (the "Sign up" link from the login
-screen).  Anonymous mode also works without registration — the
-distinction is whether data persists across browsers.
+Once the server is up, visit https://YOUR-HOSTNAME-HERE/ and use the in-app
+registration form (the "Sign up" link from the login screen).  Anonymous mode
+also works without registration — the distinction is whether data persists
+across browsers.
 
-If you have data to migrate from a pre-split deployment, register
-your own account FIRST so the migration has a user to claim
-against, then pass =--compendium-claim-user=
-<your-email>= the next time the service starts.  See [[*Per-user
-compendium migration]] below.
+If you have data to migrate from a pre-split deployment, register your own
+account FIRST so the migration has a user to claim against, then pass
+=--compendium-claim-user= <your-email>= the next time the service starts.  See
+[[*Per-user compendium migration]] below.
 
 * Operator runbook
 
@@ -165,18 +161,18 @@ sudo -u ezpz-dndz /opt/ezpz-dndz/ezpz-dndz-cli \
   --data-dir /var/lib/ezpz-dndz
 #+end_src
 
-The CLI prompts twice for the new password (hidden input) and
-writes a fresh Argon2id hash directly to =users.json=.  No
-current-password check — this is operator-only.  The user can
-then log in with the new password and change it from the UI.
+The CLI prompts twice for the new password (hidden input) and writes a fresh
+Argon2id hash directly to =users.json=.  No current-password check — this is
+operator-only.  The user can then log in with the new password and change it
+from the UI.
 
-For scripted resets, pass =--new-password '<value>'= — but be
-aware the value will land in shell history and =ps= output.
+For scripted resets, pass =--new-password '<value>'= — but be aware the value
+will land in shell history and =ps= output.
 
 ** Restore from a backup
 
-Backups live at =/var/lib/ezpz-dndz/backups/ezpz-dndz-<ts>.tar.gz=
-by default.  To roll back:
+Backups live at =/var/lib/ezpz-dndz/backups/ezpz-dndz-<ts>.tar.gz= by default.
+To roll back:
 
 #+begin_src sh :exports code
 sudo systemctl stop ezpz-dndz.service
@@ -186,9 +182,8 @@ sudo -u ezpz-dndz tar -xzf \
 sudo systemctl start ezpz-dndz.service
 #+end_src
 
-The archive contains the data dir's contents (not the dir
-itself), so extracting into =/var/lib/ezpz-dndz/= writes
-=users.json=, =compendium/=, etc. in place.
+The archive contains the data dir's contents (not the dir itself), so extracting
+into =/var/lib/ezpz-dndz/= writes =users.json=, =compendium/=, etc. in place.
 
 ** Trigger an ad-hoc backup
 
@@ -200,26 +195,23 @@ That runs the backup script once, ignoring the timer schedule.
 
 ** Update the bundled creature set
 
-The SRD bundle is embedded in the server binary via
-=include_str!= and served from a symlink at
-=frontend/public/bundled-creatures.json=.  To ship a new
+The SRD bundle is embedded in the server binary via =include_str!= and served
+from a symlink at =frontend/public/bundled-creatures.json=.  To ship a new
 bundle:
 
 1. Edit =crates/lib/data/bundled-creatures.json=.
-2. Bump =BUNDLED_VERSION= in =crates/server/src/compendium/store.rs=
-   and =currentBundledVersion= in
-   =frontend/src/Compendium/Wire.elm=.
-3. Rebuild and redeploy.  Authenticated users' edits to bundled
-   creatures are preserved by the hash-aware merge; anonymous
-   users' localStorage snapshots invalidate the bundled portion
-   on the next boot.
+2. Bump =BUNDLED_VERSION= in =crates/server/src/compendium/store.rs= and
+   =currentBundledVersion= in =frontend/src/Compendium/Wire.elm=.
+3. Rebuild and redeploy.  Authenticated users' edits to bundled creatures are
+   preserved by the hash-aware merge; anonymous users' localStorage snapshots
+   invalidate the bundled portion on the next boot.
 
 * Per-user compendium migration
 
-If you're upgrading from a pre-split deployment (the pre-per-
-user-compendium release), the first boot of the new binary will
-refuse to start when it finds non-bundled creatures in the legacy
-shared store.  Pass the claim-user flag exactly once:
+If you're upgrading from a pre-split deployment (the pre-per- user-compendium
+release), the first boot of the new binary will refuse to start when it finds
+non-bundled creatures in the legacy shared store.  Pass the claim-user flag
+exactly once:
 
 #+begin_src sh :exports code
 sudo systemctl edit ezpz-dndz.service
@@ -233,13 +225,12 @@ ExecStart=
 ExecStart=/opt/ezpz-dndz/ezpz-dndz-server \
   --listen 127.0.0.1:4040 \
   --base-url https://YOUR-HOSTNAME-HERE \
-  --frontend-path /opt/ezpz-dndz/frontend/public \
   --data-dir /var/lib/ezpz-dndz \
   --compendium-claim-user YOUR-EMAIL@example.com
 #+end_example
 
-Restart, watch the journal for the =compendium split migration
-applied= log line, then remove the drop-in:
+Restart, watch the journal for the =compendium split migration applied= log
+line, then remove the drop-in:
 
 #+begin_src sh :exports code
 sudo systemctl restart ezpz-dndz.service
@@ -248,9 +239,8 @@ sudo systemctl revert ezpz-dndz.service
 sudo systemctl restart ezpz-dndz.service
 #+end_src
 
-Subsequent boots skip the migration regardless of the flag,
-thanks to the sidecar marker
-=/var/lib/ezpz-dndz/compendium/.split-v1=.
+Subsequent boots skip the migration regardless of the flag, thanks to the
+sidecar marker =/var/lib/ezpz-dndz/compendium/.split-v1=.
 
 * Verifying the install
 
@@ -267,13 +257,13 @@ A few smoke tests after the first deploy:
 
 * When something goes wrong
 
-- *Server won't start*: =journalctl -u ezpz-dndz.service -n 200=
-  almost always has the answer in the last few lines.  The most
-  common failures are missing data-dir permissions and a
-  malformed OIDC config (set only some of issuer/client_id/secret).
-- *Caddy can't get a cert*: check that port 80 is reachable from
-  the public internet and the DNS record resolves to this
-  server.  =journalctl -u caddy -n 100= shows the ACME exchange.
-- *Login loop after switching to OIDC*: the callback URL in the
-  provider must match exactly what =base_url= resolves to,
-  including HTTPS and trailing-slash treatment.
+- *Server won't start*: =journalctl -u ezpz-dndz.service -n 200= almost always
+  has the answer in the last few lines.  The most common failures are missing
+  data-dir permissions and a malformed OIDC config (set only some of
+  issuer/client_id/secret).
+- *Caddy can't get a cert*: check that port 80 is reachable from the public
+  internet and the DNS record resolves to this server.  =journalctl -u caddy -n
+  100= shows the ACME exchange.
+- *Login loop after switching to OIDC*: the callback URL in the provider must
+  match exactly what =base_url= resolves to, including HTTPS and trailing-slash
+  treatment.

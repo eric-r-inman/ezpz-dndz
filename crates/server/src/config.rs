@@ -193,13 +193,6 @@ pub struct Config {
   )]
   pub listen_address: ListenerAddress,
 
-  /// Path to compiled frontend static assets.
-  #[merge_config(
-    env,
-    default = "std::path::PathBuf::from(\"frontend/public\")"
-  )]
-  pub frontend_path: PathBuf,
-
   /// Root directory for runtime persistence.  All
   /// `--*-path` overrides default into this directory; deployments
   /// only have to bind-mount a single directory.
@@ -427,7 +420,6 @@ impl ServerApp for Config {
       app_name: <Self as rust_template_foundation::CliApp>::app_name()
         .to_string(),
       listen_address: self.listen_address.clone(),
-      frontend_path: Some(self.frontend_path.clone()),
       base_url: self.base_url.clone(),
       oidc: self.oidc.clone(),
     }]

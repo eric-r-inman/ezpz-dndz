@@ -41,6 +41,9 @@ sha2 = { workspace = true }
 # resolvable from this crate's namespace.
 prometheus = { workspace = true }
 openidconnect = { workspace = true }
+# Embeds the compiled Elm frontend (resolved by build.rs) into the
+# binary; foundation's `Server::spa` serves it as the SPA fallback.
+rust-embed = { workspace = true }
 # Used directly by the auth handlers to read/write the session
 # cookie store that foundation's runner sets up.
 tower-sessions = { workspace = true }

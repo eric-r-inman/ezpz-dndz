@@ -10,8 +10,8 @@ use aide::axum::ApiRouter;
 use axum::middleware;
 use ezpz_dndz_server::{
   card_editor, compendium, condition_presets, config::Config, dice, encounters,
-  lore_groups, save_chain_presets, treasure_profiles, treasure_table, users,
-  web_base::AppState,
+  frontend::Frontend, lore_groups, save_chain_presets, treasure_profiles,
+  treasure_table, users, web_base::AppState,
 };
 use rust_template_foundation::main as foundation_main;
 use rust_template_foundation::Server;
@@ -70,7 +70,12 @@ pub async fn main(
   let server = server
     .with_state(move |_base| app_state)
     .merge(users::router(users_state))
-    .merge(protected);
+    .merge(protected)
+    // Serve the embedded Elm frontend as an SPA fallback: anything the
+    // API routers don't claim resolves against the compiled assets, with
+    // index.html covering client-side routes.  Assets are baked into the
+    // binary in release builds and read from disk in debug builds.
+    .spa::<Frontend>();
 
   server.listen().await?;
   Ok(ExitCode::SUCCESS)

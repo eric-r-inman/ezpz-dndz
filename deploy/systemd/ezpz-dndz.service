@@ -31,10 +31,12 @@ Type=notify
 User={{USER}}
 Group={{USER}}
 WorkingDirectory={{INSTALL_DIR}}
+# The compiled Elm frontend is embedded in the release binary, so
+# there is no frontend directory (and no --frontend-path flag) to
+# deploy alongside it.
 ExecStart={{INSTALL_DIR}}/ezpz-dndz-server \
   --listen 127.0.0.1:4040 \
   --base-url https://ezpz.example.com \
-  --frontend-path {{INSTALL_DIR}}/frontend/public \
   --data-dir {{DATA_DIR}}
 
 # systemd-watchdog: foundation's runner calls sd_notify() to

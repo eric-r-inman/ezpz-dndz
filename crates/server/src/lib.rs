@@ -5,6 +5,7 @@ pub mod condition_presets;
 pub mod config;
 pub mod dice;
 pub mod encounters;
+pub mod frontend;
 pub mod lore_groups;
 pub mod prefs;
 pub mod save_chain_presets;

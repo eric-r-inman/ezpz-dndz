@@ -57,7 +57,6 @@ async fn stub_app_state() -> (TempDir, AppState) {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    frontend_path: None,
     base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
@@ -83,7 +82,6 @@ fn build_test_router(state: AppState) -> Router {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    frontend_path: None,
     base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
