@@ -36,6 +36,18 @@
       "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
     },
     {
+      "id": "contributing-changelog-required-per-pr",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "contributing-changelog-ci-enforced",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
+      "id": "contributing-changelog-adopter-impact",
+      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
+    },
+    {
       "id": "ci-uses-reusable-workflows",
       "reason": "CI is intentionally hand-rolled (Elm + treefmt jobs) since foundation's reusable-ci is Rust-only; see ci.yml header comment."
     },
@@ -61,6 +73,10 @@
     },
     {
       "id": "review-gate-hook-reads-marker",
+      "reason": "Review gate disabled — see review-gate-settings rationale."
+    },
+    {
+      "id": "review-gate-hook-matches-agent-tool",
       "reason": "Review gate disabled — see review-gate-settings rationale."
     },
     {

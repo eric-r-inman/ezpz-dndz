@@ -3,17 +3,15 @@
 
 * Note
 
-This document is an *internal* code-style reference for the
-project maintainer (and AI assistants working in the repo).
-External contributions are not currently accepted — the project
-is distributed under [[https://polyformproject.org/licenses/strict/1.0.0][PolyForm Strict License 1.0.0]], which does
-not grant rights to modify or distribute derivative works.  See
-[[file:LICENSE][LICENSE]] for the full terms.
+This document is an *internal* code-style reference for the project maintainer
+(and AI assistants working in the repo).  External contributions are not
+currently accepted — the project is distributed under
+[[https://polyformproject.org/licenses/strict/1.0.0][PolyForm Strict License 1.0.0]], which does not grant rights to modify or
+distribute derivative works.  See [[file:LICENSE][LICENSE]] for the full terms.
 
-The historical "Contributing" framing has been kept (rather than
-moved) because the rules below — error handling, CSS, logging
-discipline — are still the load-bearing conventions for new code
-inside the repo.
+The historical "Contributing" framing has been kept (rather than moved) because
+the rules below — error handling, CSS, logging discipline — are still the
+load-bearing conventions for new code inside the repo.
 
 * Code style
 
@@ -24,8 +22,7 @@ automatically.
 
 ** Linting
 
-Run ~cargo clippy --workspace~ and resolve any warnings before
-committing.
+Run ~cargo clippy --workspace~ and resolve any warnings before committing.
 
 ** Testing
 
@@ -62,21 +59,20 @@ Add the comment as you introduce the dependency, not as a later cleanup pass.
 
 * Error handling
 
-This project uses *semantic error types* with ~thiserror~ rather than
-generic error wrapping with ~anyhow~.
+This project uses *semantic error types* with ~thiserror~ rather than generic
+error wrapping with ~anyhow~.
 
 ** Why not ~anyhow~?
 
-While ~anyhow~ is convenient, it encourages lazy error handling that
-loses important context.  When an error occurs in production you often
-only have logs to work with.  A bare "No such file or directory"
-message with no indication of /which/ file or /what/ operation failed
-is not actionable.
+While ~anyhow~ is convenient, it encourages lazy error handling that loses
+important context.  When an error occurs in production you often only have logs
+to work with.  A bare "No such file or directory" message with no indication of
+/which/ file or /what/ operation failed is not actionable.
 
 ** Core principle: always add context
 
-All errors must include sufficient context to diagnose the problem
-without access to the source code or the running environment.
+All errors must include sufficient context to diagnose the problem without
+access to the source code or the running environment.
 
 Use semantic error types that explain what went wrong and why:
 
@@ -108,15 +104,15 @@ pub enum ConfigError {
 
 ** Guidelines
 
-- Every error variant should explain what operation failed and include
-  relevant data (file paths, addresses, etc.).
+- Every error variant should explain what operation failed and include relevant
+  data (file paths, addresses, etc.).
 - Use ~#[source]~ to preserve the full error chain.
-- For file operations, include the path and (where useful) the current
-  working directory.
+- For file operations, include the path and (where useful) the current working
+  directory.
 - Never log sensitive data (passwords, tokens, connection strings with
   credentials).
-- ~anyhow~ is acceptable only in throwaway prototypes.  Once you know
-  what errors can occur, convert to semantic types.
+- ~anyhow~ is acceptable only in throwaway prototypes.  Once you know what
+  errors can occur, convert to semantic types.
 
 ** Error type hierarchy
 
@@ -132,9 +128,9 @@ Each layer adds context about what the application was trying to do.
 
 ** Flat selectors only
 
-Each selector targets exactly one element type.  No nesting, no
-combinators, no ~>~ or ~+~ chains.  If an element needs unique
-styling, use a class or ID — not a compound selector.
+Each selector targets exactly one element type.  No nesting, no combinators, no
+~>~ or ~+~ chains.  If an element needs unique styling, use a class or ID — not
+a compound selector.
 
 Good:
 
@@ -154,9 +150,9 @@ Bad — nested combinator creates implicit coupling between elements:
 
 ** CSS variables for shared values
 
-Use CSS custom properties (variables) defined on ~:root~ for any
-value shared between selectors.  Never hard-code colours, spacing
-scales, or font stacks directly in a selector.
+Use CSS custom properties (variables) defined on ~:root~ for any value shared
+between selectors.  Never hard-code colours, spacing scales, or font stacks
+directly in a selector.
 
 Good:
 
@@ -188,9 +184,9 @@ h1 {
 
 ** Light and dark mode
 
-Provide light-mode values in ~:root~ and override them inside
-~@media (prefers-color-scheme: dark)~.  Never create separate
-selectors per colour scheme — the variables handle the switch.
+Provide light-mode values in ~:root~ and override them inside ~@media
+(prefers-color-scheme: dark)~.  Never create separate selectors per colour
+scheme — the variables handle the switch.
 
 Good:
 
@@ -226,10 +222,9 @@ body {
 
 ** No inline styles in Elm
 
-All presentation belongs in the stylesheet.  Elm views must not use
-~style~ attributes.  Use semantic HTML elements (~main_~, ~nav~,
-~header~, ~section~) so that element selectors in CSS are sufficient
-and classes are rarely needed.
+All presentation belongs in the stylesheet.  Elm views must not use ~style~
+attributes.  Use semantic HTML elements (~main_~, ~nav~, ~header~, ~section~) so
+that element selectors in CSS are sufficient and classes are rarely needed.
 
 Good:
 
@@ -241,8 +236,8 @@ view model =
         ]
 #+end_src
 
-Bad — inline styles bypass the stylesheet and cannot respond to
-dark mode, media queries, or future design changes:
+Bad — inline styles bypass the stylesheet and cannot respond to dark mode, media
+queries, or future design changes:
 
 #+begin_src elm :results none :exports code
 view model =
@@ -254,9 +249,8 @@ view model =
 
 * Systemd secrets
 
-The NixOS module passes secrets via systemd's ~LoadCredential~.  The
-Rust binary automatically discovers credentials at runtime without
-extra configuration.
+The NixOS module passes secrets via systemd's ~LoadCredential~.  The Rust binary
+automatically discovers credentials at runtime without extra configuration.
 
 See [[file:docs/systemd.org][docs/systemd.org]] for the full pattern and how to add new secrets.
 
@@ -267,3 +261,50 @@ See [[file:docs/systemd.org][docs/systemd.org]] for the full pattern and how to 
 - ~info!~ — important state changes.
 - ~debug!~ — detailed diagnostic information.
 - ~trace!~ — very verbose debugging.
+
+* Release binaries
+
+The flake exposes cross-compiled release variants of the binary crates, all
+built on Linux — macOS binaries via zig (~mkDarwinCrossPackages~, re-signed
+after the cross-link) rather than on a macOS runner.  This is wired in
+~flake.nix~ and needs no per-crate configuration.
+
+Each Linux target has two variants, both runnable off the Nix store.  The
+=-musl= variant is fully static with no runtime library dependency — the right
+choice for a self-contained tool.  The =-gnu= variant (~mkGnuPortablePackages~,
+zig against a glibc 2.17 floor) is a portable dynamic build that links the
+host's shared libraries at runtime.  The plain Nix build is not published: its
+ELF interpreter is a ~/nix/store~ path, so only Nix hosts can run it — and this
+project's homelab target deploys from the flake directly (see [[file:docs/DEPLOY.org][docs/DEPLOY.org]]),
+which is why no GitHub-release publishing pipeline is enabled here.
+
+A crate that links Apple frameworks (anything transitively pulling ~objc2-*~,
+~core-foundation~, ~security-framework~, and similar) needs the unfree Apple SDK
+for the darwin cross build: add ~config.allowUnfree~ /
+~config.allowUnsupportedSystem~ to the nixpkgs import and pass ~appleSdk =
+pkgs.apple-sdk.src~ to ~mkDarwinCrossPackages~.  A pure-libSystem executable
+needs nothing — zig bundles the libSystem stubs.
+
+** Windows binaries
+
+Windows binaries build for both =x86_64= and =aarch64=, also cross-compiled on
+Linux — via ~llvm-mingw~ rather than zig, targeting the ~*-pc-windows-gnullvm~
+triples.  Each result is a native Windows PE that runs on a stock Windows
+install with no Cygwin/MSYS2 layer; a pure-Rust binary depends only on the
+Universal CRT (present on Windows 10 and later).  ~mkWindowsCrossPackages~ is
+wired in ~flake.nix~ and needs no configuration.
+
+Unlike the darwin cross build (which only runs on ~x86_64-linux~), the Windows
+build is host-agnostic: ~nix build .#<crate>-x86_64-windows~ works on a Mac as
+readily as in CI.  Two constraints:
+
+1. the toolchain must be Rust ≥ 1.91 (the floor for the aarch64 gnullvm standard
+   library) — the pinned ~rust-bin.stable.latest~ satisfies this; and
+2. the ~windowsSmoke~ flake check verifies the *x86_64* binary by running it
+   under ~wine~ (gated to ~x86_64-linux~), while the *aarch64* binary is
+   build-verified only — ~wine~ cannot execute an arm64 PE.
+
+An MSVC-ABI variant (~x86_64-pc-windows-msvc~) exists as a template-level opt-in
+(~"windows-msvc": true~ in ~rust-template.json~) for dependencies that genuinely
+require the MSVC ABI.  This project leaves it off: the gnullvm build covers pure
+Rust and everything this workspace compiles.

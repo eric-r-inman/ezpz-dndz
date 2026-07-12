@@ -27,4 +27,5 @@ excludes = ["**/elm.json"]
 
 [formatter.org-fmt]
 command = "org-fmt"
+options = ["--in-place"]
 includes = ["*.org"]
