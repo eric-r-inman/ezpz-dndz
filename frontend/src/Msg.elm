@@ -18,8 +18,7 @@ The non-`Msg` types here are the message-shaped enums (HP-edit
 verb, condition-duration kind, initiative roll scope, etc.) plus
 `MeInfo` / `MeStatus`, which `Msg.GotMe` transports. Larger
 modal-state record types (`HpChangeUi`, `ConditionUi`, etc.)
-stay in `Main.elm` for now and are scheduled for per-feature
-`Ui.elm` extraction in a follow-up.
+live in their per-feature `Ui/*` modules.
 
 @docs Msg, MeInfo, MeStatus
 @docs HpKind, HpField

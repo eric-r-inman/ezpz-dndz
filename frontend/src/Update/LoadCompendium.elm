@@ -25,11 +25,9 @@ on-disk state stays in sync with what the user sees.
 
 import Compendium
 import Compendium.Group
-import Compendium.GroupWire
 import Compendium.Wire
+import Effects
 import Http
-import Json.Decode as Decode
-import Json.Encode as E
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium as CompendiumUi
@@ -142,8 +140,9 @@ confirmConfirm model =
 
 
 {-| Server returned the snapshot's bundle (creatures + groups).
-Push it into the live compendium via `/api/compendium/import`
-with the bundle shape so the server replaces both the shared
+Push it into the live compendium via
+`Effects.importCompendiumBundle` (`POST /api/compendium/import`
+with the bundle shape) so the server replaces both the shared
 bestiary and the caller's groups in one wire call. On success,
 the `importResponse` handler clears the dirty flag + refreshes
 the local creature DB and groups dict.
@@ -166,7 +165,7 @@ serverResponse name result model =
             in
             Update.Toast.pushWith ToastSuccess
                 ("Loaded compendium \"" ++ name ++ "\".")
-                (pushBundle creatures groups)
+                (Effects.importCompendiumBundle creatures groups)
                 next
 
         Err err ->
@@ -180,30 +179,3 @@ serverResponse name result model =
                 model
             , Cmd.none
             )
-
-
-{-| Replace the live compendium with the supplied bundle. Goes
-through `POST /api/compendium/import` with the new
-`{ creatures, groups }` body so the response lands in
-`Update.Compendium.Bulk.importResponse` and refreshes both the
-local `db` + dirty flag AND the local groups dict.
--}
-pushBundle : List Compendium.Creature -> List Compendium.Group.Group -> Cmd Msg
-pushBundle creatures groups =
-    Http.post
-        { url = "/api/compendium/import"
-        , body =
-            Http.jsonBody
-                (E.object
-                    [ ( "creatures"
-                      , E.list Compendium.Wire.encodeCreature creatures
-                      )
-                    , ( "groups"
-                      , E.list Compendium.GroupWire.encodeGroup groups
-                      )
-                    ]
-                )
-        , expect =
-            Http.expectJson CompendiumImportResponse
-                (Decode.field "imported" Decode.int)
-        }

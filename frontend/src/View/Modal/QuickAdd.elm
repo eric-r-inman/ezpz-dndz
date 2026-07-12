@@ -18,7 +18,7 @@ Renders nothing when the modal isn't open.
 
 import Compendium
 import Html exposing (Html, button, div, input, li, p, span, text, ul)
-import Html.Attributes exposing (attribute, class, placeholder, title, type_, value)
+import Html.Attributes exposing (attribute, class, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))

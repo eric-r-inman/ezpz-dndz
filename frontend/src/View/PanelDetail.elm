@@ -26,7 +26,7 @@ The stat-block area has four states (in priority order):
 import Compendium
 import Encounter.Roster
 import Html exposing (Html, a, button, div, p, section, text)
-import Html.Attributes as Attr exposing (attribute, class, href, target, title)
+import Html.Attributes as Attr exposing (attribute, class, href, target)
 import Html.Events exposing (onClick)
 import Model exposing (Model, PanelPin)
 import Msg exposing (Msg(..))

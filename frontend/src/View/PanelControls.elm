@@ -16,7 +16,7 @@ of a Reset / Clear before any state is touched.
 
 import Auth
 import Html exposing (Html, button, div, p, section, span, text)
-import Html.Attributes exposing (attribute, class, title)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Model exposing (PendingControl(..))
 import Msg exposing (ControlMenu(..), Msg(..), SaveDestination(..))

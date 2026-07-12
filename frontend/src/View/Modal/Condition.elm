@@ -10,7 +10,7 @@ and the action footer (Apply / Cancel / Delete-when-editing).
 import Dict exposing (Dict)
 import Encounter exposing (Encounter)
 import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Model exposing (Modal(..), Model)

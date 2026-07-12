@@ -18,7 +18,7 @@ operate on the encounter creature alone.
 
 import Encounter exposing (Creature)
 import Html exposing (Html, li, p, span, text, ul)
-import Html.Attributes exposing (attribute, class, title)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))

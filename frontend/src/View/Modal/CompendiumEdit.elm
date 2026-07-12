@@ -15,7 +15,7 @@ flags that to the GM when the source creature has any populated.
 import Compendium
 import Compendium.Reference
 import Html exposing (Html, button, div, input, label, option, span, text, textarea)
-import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg

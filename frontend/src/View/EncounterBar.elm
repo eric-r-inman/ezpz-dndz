@@ -26,7 +26,7 @@ workspace surfaces.
 import Encounter exposing (Cover(..), Creature, Encounter)
 import Encounter.Xp as Xp exposing (XpScope(..))
 import Html exposing (Html, a, button, div, li, span, text, ul)
-import Html.Attributes exposing (attribute, class, href, tabindex, target, title, type_)
+import Html.Attributes exposing (attribute, class, href, tabindex, target, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg(..))

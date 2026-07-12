@@ -8,7 +8,7 @@ that aren't there.
 -}
 
 import Html exposing (Html, button, div, span, text)
-import Html.Attributes exposing (attribute, class, title)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
 import Ui.Toast exposing (Toast, ToastKind(..))

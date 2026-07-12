@@ -7,7 +7,7 @@ Closes on backdrop click or Cancel.
 -}
 
 import Html exposing (Html, button, div, h3, input, text)
-import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg

@@ -15,7 +15,7 @@ class with modifier classes per use case.
 -}
 
 import Html exposing (Html, button, span, text)
-import Html.Attributes exposing (attribute, class, title)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import View.Tooltips as Tooltips
 

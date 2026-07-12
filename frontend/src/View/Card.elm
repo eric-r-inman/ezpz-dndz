@@ -28,7 +28,7 @@ column appears whenever the creature is at 0 HP.
 import Effects
 import Encounter exposing (Cover(..), Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Msg

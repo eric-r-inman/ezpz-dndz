@@ -12,7 +12,7 @@ import Compendium.Group
 import Dict
 import Encounter.RandomEncounter.Lore as Lore
 import Html exposing (Html, button, div, h3, input, label, option, p, span, text)
-import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
 import Msg

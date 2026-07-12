@@ -101,6 +101,7 @@ handler.
 import Auth
 import Compendium
 import Compendium.Wire
+import Effects
 import Http
 import Model exposing (Modal(..), Model)
 import Msg
@@ -1355,22 +1356,10 @@ submitCreatureCmd : EditMode -> Compendium.Creature -> Cmd Msg
 submitCreatureCmd mode creature =
     case mode of
         CreateMode ->
-            Http.post
-                { url = "/api/compendium/creatures"
-                , body = Http.jsonBody (Compendium.Wire.encodeDraft creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
-                }
+            Effects.postCompendiumCreature creature
 
         EditExisting { id } ->
-            Http.request
-                { method = "PUT"
-                , headers = []
-                , url = "/api/compendium/creatures/" ++ id
-                , body = Http.jsonBody (Compendium.Wire.encodeCreature creature)
-                , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
-                , timeout = Nothing
-                , tracker = Nothing
-                }
+            Effects.putCompendiumCreature id creature
 
 
 {-| Anonymous-mode equivalent of `submitCreatureCmd` +
@@ -1460,15 +1449,7 @@ delete model =
                     case model.auth of
                         Auth.AuthAuthenticated _ ->
                             ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
-                            , Http.request
-                                { method = "DELETE"
-                                , headers = []
-                                , url = "/api/compendium/creatures/" ++ id
-                                , body = Http.emptyBody
-                                , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-                                , timeout = Nothing
-                                , tracker = Nothing
-                                }
+                            , Effects.deleteCompendiumCreature id
                             )
 
                         _ ->

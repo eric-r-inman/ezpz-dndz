@@ -7,7 +7,7 @@ click-out / Esc to close) is delegated to `View.Modal.view`.
 
 import Dice
 import Html exposing (Html, button, div, input, label, li, span, text, ul)
-import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder, title, type_, value)
+import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)

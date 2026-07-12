@@ -3,6 +3,10 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
+    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, persistEncounterSavesFor
+    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+    , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
+    , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
     , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
@@ -25,11 +29,19 @@ way: Update modules → Effects.
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
+@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, persistEncounterSavesFor
+@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+@docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
+@docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
 
 -}
 
 import Auth
 import Browser.Dom
+import Compendium
+import Compendium.Group
+import Compendium.GroupWire
+import Compendium.Wire
 import Dice
 import Dict exposing (Dict)
 import Encounter
@@ -39,6 +51,7 @@ import Encounter.SaveChain
 import Encounter.SaveChain.Wire
 import Encounter.Treasure exposing (TreasureTable)
 import Encounter.Treasure.TableWire
+import Encounter.Wire
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -48,6 +61,7 @@ import Ports
 import Process
 import Route exposing (Route(..))
 import Task
+import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Condition
 import Ui.Condition.Wire
 
@@ -701,3 +715,268 @@ changePassword { currentPassword, newPassword } toMsg =
                 )
         , expect = Http.expectWhatever toMsg
         }
+
+
+
+-- ── /api/compendium/* ────────────────────────────────────────────────────────
+
+
+{-| POST a freshly created creature. The response body is the
+stored creature (with its server-assigned id); it lands in
+`CompendiumEditSubmitResponse`.
+-}
+postCompendiumCreature : Compendium.Creature -> Cmd Msg
+postCompendiumCreature creature =
+    Http.post
+        { url = "/api/compendium/creatures"
+        , body = Http.jsonBody (Compendium.Wire.encodeDraft creature)
+        , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
+        }
+
+
+{-| PUT an edited creature over its existing id. Response lands
+in `CompendiumEditSubmitResponse`, same as the create path.
+-}
+putCompendiumCreature : String -> Compendium.Creature -> Cmd Msg
+putCompendiumCreature id creature =
+    Http.request
+        { method = "PUT"
+        , headers = []
+        , url = "/api/compendium/creatures/" ++ id
+        , body = Http.jsonBody (Compendium.Wire.encodeCreature creature)
+        , expect = Http.expectJson CompendiumEditSubmitResponse Compendium.Wire.decodeCreature
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| DELETE one creature by id. The id rides along in the Msg so
+`CompendiumEditDeleteResponse` can clear it from selections.
+-}
+deleteCompendiumCreature : String -> Cmd Msg
+deleteCompendiumCreature id =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/compendium/creatures/" ++ id
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| POST `/api/compendium/reset` — restore the bundled creature
+set. The response body is the restored list, landing in
+`CompendiumResetResponse`.
+-}
+resetCompendium : Cmd Msg
+resetCompendium =
+    Http.post
+        { url = "/api/compendium/reset"
+        , body = Http.emptyBody
+        , expect =
+            Http.expectJson CompendiumResetResponse
+                (Decode.list Compendium.Wire.decodeCreature)
+        }
+
+
+{-| Import-from-file / load-snapshot path. Sends the **full**
+body shape (`{ creatures, groups }`) so both the shared bestiary
+and the caller's groups get replaced server-side in one wire
+call. The response lands in `CompendiumImportResponse`, which
+clears the dirty flag and refetches both stores.
+-}
+importCompendiumBundle : List Compendium.Creature -> List Compendium.Group.Group -> Cmd Msg
+importCompendiumBundle creatures groups =
+    Http.post
+        { url = "/api/compendium/import"
+        , body =
+            Http.jsonBody
+                (Encode.object
+                    [ ( "creatures"
+                      , Encode.list Compendium.Wire.encodeCreature creatures
+                      )
+                    , ( "groups"
+                      , Encode.list Compendium.GroupWire.encodeGroup groups
+                      )
+                    ]
+                )
+        , expect =
+            Http.expectJson CompendiumImportResponse
+                (Decode.field "imported" Decode.int)
+        }
+
+
+{-| Clear-All / Clear-Selected wire path. Sends the **legacy**
+bare-array body shape so the server's `import_compendium`
+handler keeps groups untouched — a clear is about creatures
+only. The response shape (`{ imported }`) is the same as
+`importCompendiumBundle`, but the Msg is tagged so the frontend
+dirty-flag semantics differ: Clear keeps dirty=True, file-import
+clears it.
+-}
+clearCompendiumCreatures : List Compendium.Creature -> Cmd Msg
+clearCompendiumCreatures creatures =
+    Http.post
+        { url = "/api/compendium/import"
+        , body =
+            Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
+        , expect =
+            Http.expectJson CompendiumClearResponse
+                (Decode.field "imported" Decode.int)
+        }
+
+
+
+-- ── DIFF-AND-PERSIST HELPERS ─────────────────────────────────────────────────
+--
+-- Used by the top-level update wrapper in `Main.elm`, which
+-- diffs the model before / after each Msg and fires the matching
+-- persist Cmd when a persistent slice changed.
+
+
+persistEncounterFor : Auth.AuthState -> Encounter.Encounter -> Cmd Msg
+persistEncounterFor auth encounter =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
+
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+
+        Auth.AuthLoading ->
+            Cmd.none
+
+
+{-| Persist the full dice-history list to `localStorage` when
+anonymous. Authenticated users hit `/api/dice/history` per-roll
+via `Effects.persistDiceRoll` (the server appends + truncates,
+and the response re-syncs the local view).
+-}
+persistDiceHistoryFor : Model -> Cmd Msg
+persistDiceHistoryFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalDiceHistory
+                (Encode.list Dice.encodeRoll model.dice.history.entries)
+
+        _ ->
+            Cmd.none
+
+
+{-| Did the compendium DB change in a way that should be
+persisted? Compare the loaded creature list and the per-user
+groups dict; transient CompendiumDbLoading / CompendiumDbFailed
+transitions don't trigger a write.
+-}
+compendiumChanged : Model -> Model -> Bool
+compendiumChanged before after =
+    loadedCreatures before.compendium.db
+        /= loadedCreatures after.compendium.db
+        || before.compendium.groups
+        /= after.compendium.groups
+
+
+loadedCreatures : CompendiumDb -> List Compendium.Creature
+loadedCreatures db =
+    case db of
+        CompendiumDbLoaded inner ->
+            Compendium.toList inner
+
+        _ ->
+            []
+
+
+{-| Persist the full compendium snapshot (creatures + groups +
+next-local-id counter) to `localStorage` when anonymous.
+Authenticated users persist per-mutation via the existing
+`/api/compendium/*` endpoints.
+-}
+persistCompendiumFor : Model -> Cmd Msg
+persistCompendiumFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            -- Snapshot only carries creatures the user authored or
+            -- imported locally — bundled SRD creatures are always
+            -- refetched from `/bundled-creatures.json` on boot,
+            -- never stored client-side.  Filtering by `isBundled`
+            -- keeps the snapshot small AND ensures stale bundled
+            -- bytes can't shadow a corrected bundle after an app
+            -- update.
+            Ports.persistLocalCompendium
+                (Compendium.Wire.encodeLocalCompendiumSnapshot
+                    { creatures =
+                        loadedCreatures model.compendium.db
+                            |> List.filter (\c -> not c.isBundled)
+                    , groups = Dict.values model.compendium.groups
+                    , nextLocalId = model.nextLocalCreatureId
+                    , bundledVersion = Compendium.Wire.currentBundledVersion
+                    }
+                )
+
+        _ ->
+            Cmd.none
+
+
+persistEncounterSavesFor : Model -> Cmd Msg
+persistEncounterSavesFor model =
+    case model.auth of
+        Auth.AuthAnonymous ->
+            Ports.persistLocalEncounterSaves
+                (Encounter.Wire.encodeLocalEncounterSaves model.localEncounterSaves)
+
+        _ ->
+            Cmd.none
+
+
+shouldPersistAfter : Msg -> Bool
+shouldPersistAfter msg =
+    case msg of
+        EncounterLoaded _ ->
+            False
+
+        EncounterPersisted _ ->
+            False
+
+        -- Auth probe response on an anonymous boot adopts the
+        -- local-storage encounter directly into the model.  The
+        -- diff would trigger a persist back into the same
+        -- localStorage slot — idempotent but wasteful, so we skip
+        -- it.
+        AuthMeReceived _ ->
+            False
+
+        -- Login-time migration response only fires a toast and a
+        -- clear-local port; the encounter itself is untouched, so
+        -- there's nothing to persist here either.
+        LocalEncounterMigrated _ _ ->
+            False
+
+        LocalCompendiumMigrated _ _ ->
+            False
+
+        -- The encounter just arrived from another tab via the
+        -- BroadcastChannel; the originating tab already persisted
+        -- (and already broadcast), so re-doing either from this
+        -- tab would loop.
+        EncounterFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether to fire `broadcastEncounter` after this Msg has been
+processed. Excludes the inbound side of the BroadcastChannel
+(re-broadcasting receives would loop) and the QuickList tab's
+own reception (it's read-only).
+-}
+shouldBroadcastAfter : Msg -> Bool
+shouldBroadcastAfter msg =
+    case msg of
+        EncounterFromOtherTab _ ->
+            False
+
+        _ ->
+            True

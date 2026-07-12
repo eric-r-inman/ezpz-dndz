@@ -26,11 +26,11 @@ import Compendium.Group exposing (Group)
 import Compendium.GroupWire
 import Compendium.Wire
 import Dict
+import Effects
 import File exposing (File)
 import File.Select
 import Http
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Set
@@ -159,7 +159,7 @@ pendingConfirm model =
                     ( withCompendium
                         (\ui -> { ui | bulkBusy = True, pending = Nothing })
                         model
-                    , resetCmd
+                    , Effects.resetCompendium
                     )
 
                 _ ->
@@ -171,7 +171,7 @@ pendingConfirm model =
                     ( withCompendium
                         (\ui -> { ui | bulkBusy = True, pending = Nothing })
                         model
-                    , importCmd creatures groups
+                    , Effects.importCompendiumBundle creatures groups
                     )
 
                 _ ->
@@ -183,7 +183,7 @@ pendingConfirm model =
                     ( withCompendium
                         (\ui -> { ui | bulkBusy = True, pending = Nothing })
                         model
-                    , deleteCmd id
+                    , Effects.deleteCompendiumCreature id
                     )
 
                 _ ->
@@ -294,79 +294,11 @@ applyLocalCompendiumDelete id model =
         |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
-deleteCmd : String -> Cmd Msg
-deleteCmd id =
-    Http.request
-        { method = "DELETE"
-        , headers = []
-        , url = "/api/compendium/creatures/" ++ id
-        , body = Http.emptyBody
-        , expect = Http.expectWhatever (CompendiumEditDeleteResponse id)
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
-resetCmd : Cmd Msg
-resetCmd =
-    Http.post
-        { url = "/api/compendium/reset"
-        , body = Http.emptyBody
-        , expect =
-            Http.expectJson CompendiumResetResponse
-                (Decode.list Compendium.Wire.decodeCreature)
-        }
-
-
-{-| Import-from-file path. Sends the **full** body shape
-(`{ creatures, groups }`) so both the shared bestiary and the
-caller's groups get replaced server-side in one wire call.
--}
-importCmd : List Compendium.Creature -> List Compendium.Group.Group -> Cmd Msg
-importCmd creatures groups =
-    Http.post
-        { url = "/api/compendium/import"
-        , body =
-            Http.jsonBody
-                (Encode.object
-                    [ ( "creatures"
-                      , Encode.list Compendium.Wire.encodeCreature creatures
-                      )
-                    , ( "groups"
-                      , Encode.list Compendium.GroupWire.encodeGroup groups
-                      )
-                    ]
-                )
-        , expect =
-            Http.expectJson CompendiumImportResponse
-                (Decode.field "imported" Decode.int)
-        }
-
-
-{-| Clear-All / Clear-Selected wire path. Sends the **legacy**
-bare-array body shape so the server's `import_compendium`
-handler keeps groups untouched — a clear is about creatures
-only. The response shape (`{ imported }`) is the same as
-`importCmd`, but the Msg is tagged so the frontend dirty-flag
-semantics differ: Clear keeps dirty=True, file-import clears it.
--}
-clearCmd : List Compendium.Creature -> Cmd Msg
-clearCmd creatures =
-    Http.post
-        { url = "/api/compendium/import"
-        , body =
-            Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
-        , expect =
-            Http.expectJson CompendiumClearResponse
-                (Decode.field "imported" Decode.int)
-        }
-
-
 {-| Wholesale-replace the compendium with an empty list.
-Routes through `clearCmd` so the response lands in
-`clearResponse` and keeps the library marked dirty (the GM
-just discarded everything; Export should still flag as having
-unsaved changes).
+Routes through `Effects.clearCompendiumCreatures` so the
+response lands in `clearResponse` and keeps the library marked
+dirty (the GM just discarded everything; Export should still
+flag as having unsaved changes).
 
 Closes the Clear dropdown synchronously; the user shouldn't
 see the dropdown still hovering after the destructive op
@@ -380,7 +312,7 @@ clearAll model =
             ( withCompendium
                 (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
                 model
-            , clearCmd []
+            , Effects.clearCompendiumCreatures []
             )
 
         _ ->
@@ -389,8 +321,8 @@ clearAll model =
 
 {-| Replace the compendium with the kept set — every creature
 NOT in `selectedIds`. Same wire path as `clearAll` (also via
-`clearCmd`). No-op when nothing is selected or the library
-hasn't loaded.
+`Effects.clearCompendiumCreatures`). No-op when nothing is
+selected or the library hasn't loaded.
 -}
 clearSelected : Model -> ( Model, Cmd Msg )
 clearSelected model =
@@ -407,7 +339,7 @@ clearSelected model =
                     ( withCompendium
                         (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
                         model
-                    , clearCmd kept
+                    , Effects.clearCompendiumCreatures kept
                     )
 
                 _ ->
@@ -446,7 +378,7 @@ deleteSelected model =
                             }
                         )
                         model
-                    , clearCmd kept
+                    , Effects.clearCompendiumCreatures kept
                     )
 
                 _ ->
@@ -460,10 +392,12 @@ deleteSelected model =
             )
 
 
-{-| Anonymous-mode equivalent of `clearCmd` + `clearResponse`:
-keep only the supplied creatures (which the caller has already
-filtered down). Library stays marked dirty since the GM just
-discarded creatures.
+{-| Anonymous-mode equivalent of `Effects.clearCompendiumCreatures`
+
+  - `clearResponse`: keep only the supplied creatures (which the
+    caller has already filtered down). Library stays marked dirty
+    since the GM just discarded creatures.
+
 -}
 applyLocalClear : List Compendium.Creature -> Model -> ( Model, Cmd Msg )
 applyLocalClear kept model =
@@ -513,10 +447,10 @@ importResponse result model =
             -- route through `clearResponse` instead, which keeps
             -- dirty=True since the GM just discarded creatures.
             --
-            -- Refetch BOTH creatures AND groups — `importCmd`
-            -- sends the full body shape so the server may have
-            -- replaced the caller's groups along with the
-            -- creatures.
+            -- Refetch BOTH creatures AND groups —
+            -- `Effects.importCompendiumBundle` sends the full
+            -- body shape so the server may have replaced the
+            -- caller's groups along with the creatures.
             withCompendium
                 (\ui ->
                     { ui

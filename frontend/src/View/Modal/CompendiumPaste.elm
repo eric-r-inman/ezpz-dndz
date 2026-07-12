@@ -7,7 +7,7 @@ the parsed creature off to the edit modal pre-filled.
 
 import Compendium.Parser
 import Html exposing (Html, button, div, text)
-import Html.Attributes as Attr exposing (attribute, class, disabled, placeholder, title, value)
+import Html.Attributes as Attr exposing (attribute, class, disabled, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Modal(..), Model)
 import Msg exposing (Msg(..))

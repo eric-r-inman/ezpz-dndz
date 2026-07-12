@@ -8,7 +8,6 @@ import Browser.Navigation as Nav
 import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
-import Dice
 import Dict
 import Effects
 import Encounter
@@ -113,6 +112,7 @@ import Update.SaveChain
 import Update.SaveCompendium
 import Update.Shell
 import Update.SpellList
+import Update.Tabs
 import Update.Timer
 import Update.Toast
 import Update.Treasure
@@ -155,9 +155,12 @@ import View.Modal.Timer
 import View.Modal.Treasure
 import View.Modal.TreasureTable
 import View.Page.Compendium
+import View.Page.CompendiumStandalone
+import View.Page.Donate
+import View.Page.Loading
+import View.Page.NotFound
 import View.Page.QuickList
 import View.RollPopup
-import View.StatBlock
 import View.Toast
 import View.Workspace
 
@@ -342,7 +345,7 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
-            :: Ports.incomingPanelShow panelShowFromOtherTab
+            :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
             :: Ports.compendiumTabMissing (\_ -> CompendiumTabMissing)
             :: xpFilterSubs
             ++ settingsSubs
@@ -654,8 +657,8 @@ update msg model =
             updateInner msg model
 
         encounterCmd =
-            if shouldPersistAfter msg && next.encounter /= model.encounter then
-                persistEncounterFor next.auth next.encounter
+            if Effects.shouldPersistAfter msg && next.encounter /= model.encounter then
+                Effects.persistEncounterFor next.auth next.encounter
 
             else
                 Cmd.none
@@ -668,7 +671,7 @@ update msg model =
         -- actually changed.  The QuickList tab is read-only so
         -- it never triggers this branch anyway.
         encounterBroadcastCmd =
-            if shouldBroadcastAfter msg && next.encounter /= model.encounter then
+            if Effects.shouldBroadcastAfter msg && next.encounter /= model.encounter then
                 Ports.broadcastEncounter (Encounter.Wire.encodeEncounter next.encounter)
 
             else
@@ -676,31 +679,31 @@ update msg model =
 
         diceHistoryCmd =
             if
-                shouldPersistAfter msg
+                Effects.shouldPersistAfter msg
                     && model.dice.history.entries
                     /= next.dice.history.entries
             then
-                persistDiceHistoryFor next
+                Effects.persistDiceHistoryFor next
 
             else
                 Cmd.none
 
         compendiumCmd =
-            if shouldPersistAfter msg && compendiumChanged model next then
-                persistCompendiumFor next
+            if Effects.shouldPersistAfter msg && Effects.compendiumChanged model next then
+                Effects.persistCompendiumFor next
 
             else
                 Cmd.none
 
         encounterSavesCmd =
-            if shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
-                persistEncounterSavesFor next
+            if Effects.shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
+                Effects.persistEncounterSavesFor next
 
             else
                 Cmd.none
 
         conditionPresetsCmd =
-            if shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
+            if Effects.shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
                 case next.auth of
                     Auth.AuthAuthenticated _ ->
                         Effects.putConditionPresets next.conditionPresets
@@ -713,7 +716,7 @@ update msg model =
                 Cmd.none
 
         saveChainPresetsCmd =
-            if shouldPersistAfter msg && model.saveChainPresets /= next.saveChainPresets then
+            if Effects.shouldPersistAfter msg && model.saveChainPresets /= next.saveChainPresets then
                 case next.auth of
                     Auth.AuthAuthenticated _ ->
                         Effects.putSaveChainPresets next.saveChainPresets
@@ -726,7 +729,7 @@ update msg model =
                 Cmd.none
 
         timerPresetsCmd =
-            if shouldPersistAfter msg && model.timerPresets /= next.timerPresets then
+            if Effects.shouldPersistAfter msg && model.timerPresets /= next.timerPresets then
                 Ports.persistLocalTimerPresets
                     (Ui.Timer.Wire.encodePresets next.timerPresets)
 
@@ -735,7 +738,7 @@ update msg model =
 
         partyCmd =
             if
-                shouldPersistAfter msg
+                Effects.shouldPersistAfter msg
                     && (model.party /= next.party || model.nextPartyMemberId /= next.nextPartyMemberId)
             then
                 Ports.persistLocalParty
@@ -745,7 +748,7 @@ update msg model =
                 Cmd.none
 
         userLoreGroupsCmd =
-            if shouldPersistAfter msg && model.userLoreGroups /= next.userLoreGroups then
+            if Effects.shouldPersistAfter msg && model.userLoreGroups /= next.userLoreGroups then
                 case next.auth of
                     Auth.AuthAuthenticated _ ->
                         Effects.putLoreGroups next.userLoreGroups
@@ -758,7 +761,7 @@ update msg model =
                 Cmd.none
 
         userTreasureTableCmd =
-            if shouldPersistAfter msg && model.userTreasureTable /= next.userTreasureTable then
+            if Effects.shouldPersistAfter msg && model.userTreasureTable /= next.userTreasureTable then
                 case ( next.auth, next.userTreasureTable ) of
                     ( Auth.AuthAuthenticated _, Just table ) ->
                         Effects.putTreasureTable table
@@ -774,7 +777,7 @@ update msg model =
                 Cmd.none
 
         userTreasureProfilesCmd =
-            if shouldPersistAfter msg && model.userTreasureProfiles /= next.userTreasureProfiles then
+            if Effects.shouldPersistAfter msg && model.userTreasureProfiles /= next.userTreasureProfiles then
                 case next.auth of
                     Auth.AuthAuthenticated _ ->
                         Effects.putTreasureProfiles
@@ -840,184 +843,6 @@ update msg model =
         , modalFocusCmd
         ]
     )
-
-
-persistEncounterFor : Auth.AuthState -> Encounter -> Cmd Msg
-persistEncounterFor auth encounter =
-    case auth of
-        Auth.AuthAuthenticated _ ->
-            Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
-
-        Auth.AuthAnonymous ->
-            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
-
-        Auth.AuthLoading ->
-            Cmd.none
-
-
-{-| Persist the full dice-history list to `localStorage` when
-anonymous. Authenticated users hit `/api/dice/history` per-roll
-via `Effects.persistDiceRoll` (the server appends + truncates,
-and the response re-syncs the local view).
--}
-persistDiceHistoryFor : Model -> Cmd Msg
-persistDiceHistoryFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            Ports.persistLocalDiceHistory
-                (Encode.list Dice.encodeRoll model.dice.history.entries)
-
-        _ ->
-            Cmd.none
-
-
-{-| Did the compendium DB change in a way that should be
-persisted? Compare the loaded creature list and the per-user
-groups dict; transient CompendiumDbLoading / CompendiumDbFailed
-transitions don't trigger a write.
--}
-compendiumChanged : Model -> Model -> Bool
-compendiumChanged before after =
-    loadedCreatures before.compendium.db
-        /= loadedCreatures after.compendium.db
-        || before.compendium.groups
-        /= after.compendium.groups
-
-
-loadedCreatures : CompendiumDb -> List Compendium.Creature
-loadedCreatures db =
-    case db of
-        CompendiumDbLoaded inner ->
-            Compendium.toList inner
-
-        _ ->
-            []
-
-
-{-| Persist the full compendium snapshot (creatures + groups +
-next-local-id counter) to `localStorage` when anonymous.
-Authenticated users persist per-mutation via the existing
-`/api/compendium/*` endpoints.
--}
-persistCompendiumFor : Model -> Cmd Msg
-persistCompendiumFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            -- Snapshot only carries creatures the user authored or
-            -- imported locally — bundled SRD creatures are always
-            -- refetched from `/bundled-creatures.json` on boot,
-            -- never stored client-side.  Filtering by `isBundled`
-            -- keeps the snapshot small AND ensures stale bundled
-            -- bytes can't shadow a corrected bundle after an app
-            -- update.
-            Ports.persistLocalCompendium
-                (Compendium.Wire.encodeLocalCompendiumSnapshot
-                    { creatures =
-                        loadedCreatures model.compendium.db
-                            |> List.filter (\c -> not c.isBundled)
-                    , groups = Dict.values model.compendium.groups
-                    , nextLocalId = model.nextLocalCreatureId
-                    , bundledVersion = Compendium.Wire.currentBundledVersion
-                    }
-                )
-
-        _ ->
-            Cmd.none
-
-
-persistEncounterSavesFor : Model -> Cmd Msg
-persistEncounterSavesFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            Ports.persistLocalEncounterSaves
-                (Encounter.Wire.encodeLocalEncounterSaves model.localEncounterSaves)
-
-        _ ->
-            Cmd.none
-
-
-shouldPersistAfter : Msg -> Bool
-shouldPersistAfter msg =
-    case msg of
-        EncounterLoaded _ ->
-            False
-
-        EncounterPersisted _ ->
-            False
-
-        -- Auth probe response on an anonymous boot adopts the
-        -- local-storage encounter directly into the model.  The
-        -- diff would trigger a persist back into the same
-        -- localStorage slot — idempotent but wasteful, so we skip
-        -- it.
-        AuthMeReceived _ ->
-            False
-
-        -- Login-time migration response only fires a toast and a
-        -- clear-local port; the encounter itself is untouched, so
-        -- there's nothing to persist here either.
-        LocalEncounterMigrated _ _ ->
-            False
-
-        LocalCompendiumMigrated _ _ ->
-            False
-
-        -- The encounter just arrived from another tab via the
-        -- BroadcastChannel; the originating tab already persisted
-        -- (and already broadcast), so re-doing either from this
-        -- tab would loop.
-        EncounterFromOtherTab _ ->
-            False
-
-        _ ->
-            True
-
-
-{-| Whether to fire `broadcastEncounter` after this Msg has been
-processed. Excludes the inbound side of the BroadcastChannel
-(re-broadcasting receives would loop) and the QuickList tab's
-own reception (it's read-only).
--}
-shouldBroadcastAfter : Msg -> Bool
-shouldBroadcastAfter msg =
-    case msg of
-        EncounterFromOtherTab _ ->
-            False
-
-        _ ->
-            True
-
-
-{-| `EncounterFromOtherTab` handler — drop the broadcast straight
-into `model.encounter`. Decoder failures are silently ignored
-(the payload always comes from another tab running the same
-build, so a mismatch would mean the wire format had diverged).
--}
-encounterFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
-encounterFromOtherTab raw model =
-    case Decode.decodeValue Encounter.Wire.decodeEncounter raw of
-        Ok encounter ->
-            ( { model | encounter = encounter }, Cmd.none )
-
-        Err _ ->
-            ( model, Cmd.none )
-
-
-{-| Decode the panel-show payload broadcast by a QuickList tab.
-Same-build wire format, so a decode failure is dropped
-silently (would only happen if a stale tab from a different
-build survived across a deploy).
--}
-panelShowFromOtherTab : Decode.Value -> Msg
-panelShowFromOtherTab raw =
-    let
-        decoder =
-            Decode.map2 IncomingPanelShow
-                (Decode.field "id" Decode.string)
-                (Decode.field "name" Decode.string)
-    in
-    Decode.decodeValue decoder raw
-        |> Result.withDefault NoOp
 
 
 updateInner : Msg -> Model -> ( Model, Cmd Msg )
@@ -1157,7 +982,7 @@ updateInner msg model =
             Update.Dice.rollFromOtherTab raw model
 
         EncounterFromOtherTab raw ->
-            encounterFromOtherTab raw model
+            Update.Tabs.encounterFromOtherTab raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model
@@ -2367,34 +2192,7 @@ updateInner msg model =
             )
 
         IncomingPanelShow creatureId creatureName ->
-            -- Fires on the main tab when a QuickList tab
-            -- clicked a row.  Pin the stat block + scroll the
-            -- creature's card into view.  If the main tab is
-            -- currently parked on some other route (Compendium,
-            -- Donate, …), also navigate back to the encounter
-            -- workspace so the pin + scroll actually land
-            -- somewhere the GM sees.
-            let
-                ( pinned, pinCmd ) =
-                    Update.Compendium.Browser.panelShowCreature
-                        creatureId
-                        creatureName
-                        model
-
-                navCmd =
-                    if pinned.route == Home then
-                        Cmd.none
-
-                    else
-                        Nav.pushUrl pinned.key "/"
-            in
-            ( pinned
-            , Cmd.batch
-                [ pinCmd
-                , navCmd
-                , Effects.scrollActiveIntoView creatureName
-                ]
-            )
+            Update.Tabs.incomingPanelShow creatureId creatureName model
 
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model
@@ -2852,13 +2650,7 @@ view model =
             ]
             (case model.auth of
                 Auth.AuthLoading ->
-                    [ div [ class "auth-login" ]
-                        [ div [ class "auth-login__panel" ]
-                            [ p [ class "auth-login__tagline" ]
-                                [ text "Loading…" ]
-                            ]
-                        ]
-                    ]
+                    [ View.Page.Loading.view ]
 
                 Auth.AuthAnonymous ->
                     appShell Nothing model
@@ -2954,22 +2746,13 @@ viewPage model =
             View.Account.view model
 
         Donate ->
-            div [ class "workspace" ]
-                [ section [ class "panel panel--main" ]
-                    [ div [ class "panel__header" ]
-                        [ div [ class "panel__title" ] [ text "Donate" ] ]
-                    , div [ class "panel__body" ]
-                        [ p [ class "empty" ]
-                            [ text "This page is under construction. Thanks for thinking about supporting the project!" ]
-                        ]
-                    ]
-                ]
+            View.Page.Donate.view
 
         About ->
             View.About.view
 
         CompendiumCreaturePage id ->
-            viewCompendiumStandalone model id
+            View.Page.CompendiumStandalone.view model.compendium.db id
 
         QuickList ->
             View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
@@ -2981,50 +2764,4 @@ viewPage model =
                 (List.filterMap .creatureId model.encounter.creatures)
 
         NotFound ->
-            div [ class "workspace" ]
-                [ section [ class "panel panel--main" ]
-                    [ div [ class "panel__header" ]
-                        [ div [ class "panel__title" ] [ text "Not Found" ] ]
-                    , div [ class "panel__body" ]
-                        [ p [ class "empty" ]
-                            [ text "The page you requested does not exist." ]
-                        ]
-                    ]
-                ]
-
-
-{-| Standalone single-creature stat-block view at
-`/compendium/creatures/:id`. Used as the deep link for the side
-panel's ↗️ "open in new window" button — gives the GM a clean
-reference page they can keep open in another window or print.
-
-While the compendium fetch is in flight, render a loading
-placeholder. If the fetch completes and the id isn't found,
-render a 404-style message.
-
--}
-viewCompendiumStandalone : Model -> String -> Html Msg
-viewCompendiumStandalone model id =
-    let
-        body =
-            case model.compendium.db of
-                CompendiumDbLoading ->
-                    p [ class "empty" ] [ text "Loading…" ]
-
-                CompendiumDbFailed _ ->
-                    p [ class "empty" ]
-                        [ text "Couldn't load the compendium." ]
-
-                CompendiumDbLoaded db ->
-                    case Compendium.find id db of
-                        Just creature ->
-                            View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadges creature
-
-                        Nothing ->
-                            p [ class "empty" ]
-                                [ text "Creature not found in the compendium." ]
-    in
-    div [ class "workspace workspace--standalone" ]
-        [ section [ class "panel panel--standalone" ]
-            [ div [ class "panel__body" ] [ body ] ]
-        ]
+            View.Page.NotFound.view
