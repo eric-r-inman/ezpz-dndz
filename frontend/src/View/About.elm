@@ -56,7 +56,7 @@ view =
                             , rel "noopener noreferrer"
                             ]
                             [ text "GitHub repository" ]
-                        , text " for the full code. The app is in beta testing, and may be unreliable at this stage."
+                        , text " for the full code. The app is in early beta testing, and may be unreliable at this stage."
                         ]
                     ]
                 , betaFeaturesSection
