@@ -52,6 +52,14 @@ dice-history.json
 # server; location is configurable via --treasure-table-path).
 /treasure-table.json
 
+# Per-user treasure-profiles persistence file (created at runtime by
+# the server; lives in the --data-dir).
+/treasure-profiles.json
+
+# Per-user Save Chain preset persistence file (created at runtime by
+# the server; lives in the --data-dir).
+/save-chain-presets.json
+
 # User-account database (created at runtime by the server when the
 # first registration lands; carries Argon2id password hashes — must
 # never end up in git).  Location configurable via --users-path.
