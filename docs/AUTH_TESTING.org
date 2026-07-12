@@ -1,11 +1,11 @@
 #+title:     Testing user accounts in local dev
 #+language:  en
 
-This file is a quick reference for poking at the user-account feature
-locally — register, log in, watch the session cookie, see per-user
-data isolation in action.  It assumes the backend is already running
-under ~just dev~ or equivalent, and that you have ~curl~ + ~jq~ on
-PATH (both come with the Nix dev shell).
+This file is a quick reference for poking at the user-account feature locally —
+register, log in, watch the session cookie, see per-user data isolation in
+action.  It assumes the backend is already running under ~just dev~ or
+equivalent, and that you have ~curl~ + ~jq~ on PATH (both come with the Nix dev
+shell).
 
 * What's wired up
 
@@ -32,27 +32,23 @@ just dev   # starts the server on http://127.0.0.1:4040
 
 * The browser walkthrough (recommended first run)
 
-1. Open ~http://127.0.0.1:4040~ in a fresh browser window
-   (Cmd-Shift-N for Chrome incognito, etc., so old cookies don't
-   confuse you).
-2. The app boots, the GET /api/auth/me probe returns 401, and the
-   SPA replaces the body with the *eZpZ-dndZ* login panel.
-3. Click *Create one* under the form — switches into register
-   mode and exposes the Display name field.  Email + password +
-   display name, hit *Create account*.  The page reloads
-   authenticated and you land in the regular encounter UI.
-4. Top-right of the AppBar shows your display name + a *Sign out*
-   button.  Click it; the page reloads and the login panel comes
-   back.
+1. Open ~http://127.0.0.1:4040~ in a fresh browser window (Cmd-Shift-N for
+   Chrome incognito, etc., so old cookies don't confuse you).
+2. The app boots, the GET /api/auth/me probe returns 401, and the SPA replaces
+   the body with the *eZpZ-dndZ* login panel.
+3. Click *Create one* under the form — switches into register mode and exposes
+   the Display name field.  Email + password + display name, hit *Create
+   account*.  The page reloads authenticated and you land in the regular
+   encounter UI.
+4. Top-right of the AppBar shows your display name + a *Sign out* button.  Click
+   it; the page reloads and the login panel comes back.
 5. Sign back in with the same credentials to confirm round-trip.
 
-To see per-user isolation, register a second account in a
-different browser (or another incognito window) — your saved
-encounters, saved compendiums, live encounter, and dice history
-are completely separate per user.
+To see per-user isolation, register a second account in a different browser (or
+another incognito window) — your saved encounters, saved compendiums, live
+encounter, and dice history are completely separate per user.
 
-The rest of this guide is the curl-level recipe for poking at
-specific edges.
+The rest of this guide is the curl-level recipe for poking at specific edges.
 
 Or, if you want a clean slate isolated from your usual dev data:
 
@@ -185,13 +181,13 @@ curl -s -b "$BOB" -X PUT "$BASE/api/encounter/saves/Goblin%20Ambush" \
 # 200
 #+end_src
 
-The same isolation applies to compendium-saves
-(=/api/compendium/saves/...=).  Try it with a similar pair.
+The same isolation applies to compendium-saves (=/api/compendium/saves/...=).
+Try it with a similar pair.
 
 * Hit the rate limit deliberately
 
-The auth endpoints carry a per-IP token bucket: 10 attempts per
-IP per 60-second window.  Verify it from a fresh shell:
+The auth endpoints carry a per-IP token bucket: 10 attempts per IP per 60-second
+window.  Verify it from a fresh shell:
 
 #+begin_src sh :exports code
 for i in $(seq 1 11); do
@@ -202,14 +198,12 @@ for i in $(seq 1 11); do
 done
 #+end_src
 
-Expected: the first ten attempts return 401, the eleventh
-returns 429 with a ~Retry-After~ header.  Wait 60 seconds and
-the bucket resets.
+Expected: the first ten attempts return 401, the eleventh returns 429 with a
+~Retry-After~ header.  Wait 60 seconds and the bucket resets.
 
-Behind Caddy / nginx the bucket is keyed on
-~X-Forwarded-For~'s first hop, so each tester gets their own
-quota.  In dev (no proxy) every attempt shares a single fallback
-bucket — annoying if you're hammering it during a test but
+Behind Caddy / nginx the bucket is keyed on ~X-Forwarded-For~'s first hop, so
+each tester gets their own quota.  In dev (no proxy) every attempt shares a
+single fallback bucket — annoying if you're hammering it during a test but
 exactly the intended signal that the limiter is active.
 
 * Inspect the on-disk shape
@@ -220,9 +214,8 @@ The user records:
 jq . /tmp/auth-scratch/users.json
 #+end_src
 
-Each record has =id= (UUID), =email=, =password_hash= (Argon2id PHC
-string — ~$argon2id$v=19$...~), =display_name=, =created_at= (unix
-seconds).
+Each record has =id= (UUID), =email=, =password_hash= (Argon2id PHC string —
+~$argon2id$v=19$...~), =display_name=, =created_at= (unix seconds).
 
 Per-user saves:
 
@@ -251,8 +244,8 @@ Each is keyed by the user's UUID; values are the user's data.
 | duplicate ~email~                    | 409, "Email is already …"      |
 | wrong password on login              | 401, "Invalid email or …"      |
 
-Email comparison is case-insensitive; ~Alice@Example.COM~ collides
-with ~alice@example.com~ on the second registration attempt.
+Email comparison is case-insensitive; ~Alice@Example.COM~ collides with
+~alice@example.com~ on the second registration attempt.
 
 * Resetting accounts
 
@@ -266,24 +259,24 @@ rm -f /tmp/auth-scratch/users.json /tmp/auth-scratch/encounter*.json \
 The server soft-fails on missing files (~JsonFileStore::load_or_default~);
 restart the server and the next register call recreates them.
 
-To delete *one* user, edit =users.json= directly — drop their record
-from the array.  That orphans their saves under their UUID; if you
-also want those gone, edit =encounter*.json= and =compendium-saves.json=
-to drop the entry under their UUID key.
+To delete *one* user, edit =users.json= directly — drop their record from the
+array.  That orphans their saves under their UUID; if you also want those gone,
+edit =encounter*.json= and =compendium-saves.json= to drop the entry under their
+UUID key.
 
 * What's missing
 
 ** Email verification
 
-Email verification on signup is still missing.  Requires an SMTP
-setup the project doesn't have today.  Add once you've decided
-how mail is going to work in your homelab — maybe via a relay
-through ~msmtp~ or whatever your existing setup uses.
+Email verification on signup is still missing.  Requires an SMTP setup the
+project doesn't have today.  Add once you've decided how mail is going to work
+in your homelab — maybe via a relay through ~msmtp~ or whatever your existing
+setup uses.
 
 ** Password reset
 
-Password recovery for the user themselves still requires an email
-flow (same SMTP gap as above).  The *operator* path is wired up:
+Password recovery for the user themselves still requires an email flow (same
+SMTP gap as above).  The *operator* path is wired up:
 
 #+begin_src sh :exports code
 nix develop --command cargo run -p ezpz-dndz-cli -- \
@@ -292,40 +285,35 @@ nix develop --command cargo run -p ezpz-dndz-cli -- \
   --data-dir /tmp/auth-scratch
 #+end_src
 
-The CLI prompts twice for a new password (hidden TTY input), writes
-a fresh Argon2id hash directly to ~users.json~, and prints
-~"Reset password for <display-name> <email>"~ on success.  No
-current-password check — assumes the operator has disk access.
-Useful when a tester forgets their password and you don't want to
-hand-edit JSON.
+The CLI prompts twice for a new password (hidden TTY input), writes a fresh
+Argon2id hash directly to ~users.json~, and prints ~"Reset password for
+<display-name> <email>"~ on success.  No current-password check — assumes the
+operator has disk access.  Useful when a tester forgets their password and you
+don't want to hand-edit JSON.
 
 ** Admin role / user management UI
 
-Anyone who can register can edit the shared compendium (the
-330-creature bestiary).  For a homelab with people you trust,
-that's fine.  If you start onboarding people you only half-trust,
-you'll want a Role enum (Admin / Player) and a ~require_role~
-middleware on the compendium-write routes.  The hooks are there
-in =crates/server/src/users/mod.rs=; the work is small.
+Anyone who can register can edit the shared compendium (the 330-creature
+bestiary).  For a homelab with people you trust, that's fine.  If you start
+onboarding people you only half-trust, you'll want a Role enum (Admin / Player)
+and a ~require_role~ middleware on the compendium-write routes.  The hooks are
+there in =crates/server/src/users/mod.rs=; the work is small.
 
 ** Session persistence across server restarts
 
-Sessions live in ~MemoryStore~ — restarting ~ezpz-dndz-server~
-logs everyone out.  Annoying but not unsafe.  Switching to
-~tower-sessions~' file-backed or sqlite store is a one-line
-change in foundation if it starts mattering.
+Sessions live in ~MemoryStore~ — restarting ~ezpz-dndz-server~ logs everyone
+out.  Annoying but not unsafe.  Switching to ~tower-sessions~' file-backed or
+sqlite store is a one-line change in foundation if it starts mattering.
 
 * Running the test suite
 
-The auth + isolation flows are also covered by the integration
-tests:
+The auth + isolation flows are also covered by the integration tests:
 
 #+begin_src sh :exports code
 nix develop --command cargo test -p ezpz-dndz-server --test integration_test
 #+end_src
 
-26 server tests pass at HEAD, including the auth + isolation
-suite:
+26 server tests pass at HEAD, including the auth + isolation suite:
 
 - ~test_auth_register_then_me_round_trip~
 - ~test_auth_me_without_session_is_unauthorized~
@@ -346,6 +334,5 @@ suite:
 - ~test_compendium_groups_per_user_isolation~
 - ~test_card_layouts_per_user_isolation~
 
-Frontend assertions are covered separately by ~elm-test~
-(259 tests at HEAD, run via ~just test~ or ~nix develop --command
-elm-test~).
+Frontend assertions are covered separately by ~elm-test~ (259 tests at HEAD, run
+via ~just test~ or ~nix develop --command elm-test~).
