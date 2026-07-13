@@ -30,12 +30,17 @@ the load-bearing decisions they captured are folded into this document.
 
 - *Backend* — Rust workspace with three crates: a CLI (~ezpz-dndz-cli~), a
   server (~ezpz-dndz-server~, [[https://docs.rs/axum][axum]] + ~aide~ for OpenAPI), and a shared lib
-  (~ezpz-dndz-lib~) holding the ~Creature~ schema, ~JsonFileStore<T>~, the
+  (~ezpz-dndz-lib~) holding the ~Creature~ schema, the relational ~Db~ core, the
   ~User~ + ~UserStore~ types, and logging-type re-exports.  All three crates
   consume *rust-template-foundation* (a git dep + Nix flake input) for the
   cross-cutting plumbing — config / logging / health / metrics / OIDC
   scaffolding / session machinery / the ~Server~ runner — so this repo only owns
   the application code.
+- *Storage* — a relational database via [[https://docs.rs/sqlx][sqlx]]'s ~Any~ driver: SQLite by default
+  (~sqlite://<data_dir>/ezpz-dndz.db~, zero-ops dev and small deploys) and
+  PostgreSQL via ~--database-url postgres://…~ for hosted scale.  One embedded
+  migration set serves both backends; no JSON / JSONB columns anywhere.  See
+  [[*Persistence][Persistence]].
 - *Frontend* — Elm 0.19 SPA, embedded into the server binary via ~rust_embed~
   (see [[*Frontend serving][Frontend serving]]).  Release builds are a single self-contained binary;
   debug builds read the same assets from disk.  The server falls back to
@@ -57,56 +62,73 @@ Under =crates/=:
   one-liner; configuration is a single ~MergeConfig~ derive that generates
   ~CliRaw~, ~ConfigFileRaw~, and the ~Config::from_cli_and_file~ merge.  The
   ~clap~ subcommand structure rides through ~MergeConfig~'s ~subcommand~ field
-  kind.  Subcommands today: ~compendium {list,count,show,harvest,
-  infer-habitats,promote-to-bundle}~, ~encounter {show,count}~, ~dice
-  {count,tail,clear}~, ~users {reset-password}~ (operator- only — opens the
-  on-disk ~users.json~ directly and writes a fresh Argon2id hash, no server
-  required).
+  kind.  Subcommands today: ~compendium {list,count,show,import,harvest,
+  infer-habitats}~, ~encounter {show,count}~, ~dice {count,tail,clear}~, ~users
+  {reset-password}~ (operator-only — writes a fresh Argon2id hash straight into
+  the database, no server required).  Data subcommands operate on the database
+  through the shared plumbing in =cli/src/db.rs= (per-user scoping via
+  ~--email~); the bundle-authoring pair (~harvest~ / ~infer-habitats~) stays
+  file-based on purpose — it authors bundle content, not runtime state.  See
+  [[*Backend: a new CLI subcommand][Backend: a new CLI subcommand]].
 - =server/src/=
-  - ~main.rs~ — ~#[foundation_main]~ entry point.  Loads the per-user stores,
-    hands them to ~Server::with_state~, layers ~require_auth~ over the ~/api/*~
-    subtree, merges the auth + dice + compendium + encounter + per-user-store
+  - ~main.rs~ — ~#[foundation_main]~ entry point.  Connects the ~Db~ (which runs
+    the embedded migrations), assembles ~AppState~ (which runs the one-shot
+    legacy-JSON import and the compendium split migration), hands it to
+    ~Server::with_state~, layers ~require_auth~ over the ~/api/*~ subtree,
+    merges the auth + dice + compendium + encounter + per-user-preset
     sub-routers, and installs the embedded frontend via ~.spa::<Frontend>()~.
-  - ~lib.rs~ / ~web_base.rs~ — module index + the slimmed ~AppState~ (just app
-    stores; foundation's ~BaseServerState~ rides through
-    ~impl_server_state!(AppState, base)~).
-  - ~config.rs~ — ~MergeConfig~-derived ~Config~ with three skip-field resolvers
-    (~paths~ / ~oidc~ / ~compendium_claim_user~) handling cross-field rules
-    MergeConfig can't model directly.  ~RuntimePaths::from_data_dir~ derives
-    every store path from the single ~--data-dir~ — there are deliberately no
-    per-store path overrides.
+  - ~lib.rs~ / ~web_base.rs~ — module index + the slimmed ~AppState~ (the shared
+    ~Db~ handle plus the app stores built over it; foundation's
+    ~BaseServerState~ rides through ~impl_server_state!(AppState, base)~).
+  - ~config.rs~ — ~MergeConfig~-derived ~Config~ with skip-field resolvers
+    (~paths~ / ~database_url~ / ~oidc~ / ~compendium_claim_user~) handling
+    cross-field rules MergeConfig can't model directly.  ~database_url~ defaults
+    to the SQLite file inside ~--data-dir~; ~RuntimePaths::from_data_dir~
+    derives the *legacy* JSON-file locations from the same directory — those
+    files are one-shot import inputs kept as rollback copies, not live stores.
   - ~frontend.rs~ — the ~rust_embed~-derived ~Frontend~ type holding the
     compiled Elm assets.  See [[*Frontend serving][Frontend serving]].
   - ~users/~ — *real surface*, not a stub: ~/api/auth/{register,
     login,logout,me}~ handlers, ~require_auth~ middleware, ~CurrentUser~
     extension wrapper, ~AuthHttpError~ → status code mapper.
-  - ~dice.rs~ — ~/api/dice/*~ (per-user history; ~UserId~ keys the on-disk map).
-  - ~compendium/~ — ~/api/compendium/*~ (mod / store / error)
-    + ~/api/compendium/saves/*~ (~saves.rs~) + per-user
-      ~/api/compendium/groups/*~ (~groups.rs~, ~CompendiumGroupStore~ —
-      ~HashMap<UserId, Vec<Group>>~).  The shared 330-creature catalogue is
-      global (any logged-in user can read / write); each user's named snapshots
-      and creature-groups live under their own ~UserId~ key.
-  - ~encounters/~ — ~/api/encounter~ (per-user live encounter in ~store.rs~ —
-    ~HashMap<UserId, Value>~) + ~/api/encounter/saves/*~ (~saves.rs~, also keyed
-    by user) with conflict / not-found / name-validation semantic errors.
-  - ~per_user_store.rs~ — the generic per-user opaque-JSON store: a
-    ~PerUserStore~ (a feature label + ~Arc<JsonFileStore<HashMap<UserId,
-    Value>>>~), a shared ~PerUserStoreError~ that carries the label so messages
-    stay semantic, and a ~routers()~ function registering the authenticated
-    GET/PUT pair for all five stores — lore groups, condition presets, Save
-    Chain presets, treasure table, treasure profiles.  Each was born as its own
-    copy-pasted module; the five differed only in label strings and route paths,
-    so they now share this one implementation.
+  - ~dice.rs~ — ~/api/dice/*~ (per-user history, normalized into the
+    ~dice_rolls~ table family; the serde types mirror the Elm encoder in
+    =frontend/src/Dice.elm= field for field).
+  - ~compendium/~ — ~/api/compendium/*~ over the migration-0003 tables: per-user
+    creatures (~user_store.rs~ + the ~creature_rows~ codec), named snapshots
+    (~saves.rs~ + the ~save_body~ node-tree codec), and groups (~groups.rs~).
+    ~bundled.rs~ holds the embedded SRD set; ~store.rs~ + ~json_file_store.rs~
+    are quarantined legacy machinery that only feed the one-shot split migration
+    (~migrate.rs~).
+  - ~encounters/~ — ~/api/encounter~ (per-user live encounter, fully typed
+    through ~wire.rs~ + ~rows.rs~ into the migration-0004 tables) +
+    ~/api/encounter/saves/*~ (~saves.rs~, typed metadata over opaque node-tree
+    bodies in ~save_nodes.rs~) with conflict / not-found / name-validation
+    semantic errors.
+  - ~per_user_store.rs~ — the generic per-user preset router: a ~PerUserFeature~
+    trait (wire codec + the SQL mapping a decoded payload onto the feature's
+    tables, implemented by the five stateless codecs in ~presets/~), a shared
+    error type that carries the feature label so messages stay semantic, and a
+    ~routers()~ function registering the authenticated GET/PUT pair for all five
+    features — lore groups, condition presets, Save Chain presets, treasure
+    table, treasure profiles.
+  - ~presets/~ — the five ~PerUserFeature~ codecs (one module per feature), each
+    mirroring its Elm ~*.Wire~ module including legacy-shape leniency.
+  - ~json_import.rs~ — the one-shot boot import of the legacy JSON stores.  See
+    [[*Persistence][Persistence]].
 - =lib/src/=
-  - ~json_file_store.rs~ — ~JsonFileStore<T>~ (mutex + atomic file writes, the
-    canonical persistence helper).
+  - ~db.rs~ — the ~Db~ handle (a cloneable sqlx ~AnyPool~): installs the runtime
+    drivers, normalizes SQLite URLs (parent-dir creation, create-if-missing,
+    single-connection pool so one writer sidesteps ~SQLITE_BUSY~), and runs the
+    embedded migrations from =crates/lib/migrations/= on connect — sqlx 0.8
+    implements ~Migrate~ for ~AnyConnection~, so one migration set serves both
+    backends.
   - ~compendium/~ — ~Creature~ schema, parser, Open5e import, bundled-creatures
     (=data/bundled-creatures.json= via ~include_str!~), plus ~group.rs~ (~Group~
     / ~GroupDraft~ / ~GroupEntry~ / ~InitiativeMode~ / ~MinionType~) for the
     compendium-groups feature.
-  - ~users/~ — ~User~ / ~UserId~ / ~UserPublic~ types, ~UserStore~ (Argon2id
-    hashing, email-uniqueness check, validation rules).
+  - ~users/~ — ~User~ / ~UserId~ / ~UserPublic~ types, ~UserStore~ (SQL-backed
+    over ~Db~; Argon2id hashing, email-uniqueness check, validation rules).
   - ~logging.rs~ — re-exports of foundation's ~LogLevel~ / ~LogFormat~ so
     existing =use ezpz_dndz_lib::{LogLevel, LogFormat};= imports keep resolving.
   - ~cr_calc/~ — challenge-rating estimator used by the paste- block path.
@@ -486,8 +508,9 @@ local data to the user's account.  See [[*Anonymous mode][Anonymous mode]] for t
 
 ~User~ records carry a stable UUID id, a case-insensitively- unique email, an
 Argon2id PHC password hash, a free-form display name, and a unix-epoch
-~created_at~.  Storage is a flat ~Vec<User>~ in =users.json= via
-~JsonFileStore~.
+~created_at~.  Storage is the relational ~users~ table (migration 0001) via
+~UserStore~ over the shared ~Db~ handle; the duplicate-email conflict the
+register route returns maps straight off the insert.
 
 Email + password is the only auth mechanism today.  The foundation crate also
 ships an OIDC flow (login / callback / logout handlers, ~require_auth~
@@ -522,21 +545,36 @@ their other inputs.  No session, no user → 401 with a JSON body.
 
 ** Per-user data shapes
 
-| Store                            | Disk shape                                | Notes                                                              |
-|----------------------------------+-------------------------------------------+--------------------------------------------------------------------|
-| =users.json=                     | ~Vec<User>~                               | Single global list; uniqueness enforced on email.                  |
-| =encounter.json=                 | ~HashMap<UserId, Value>~                  | Each user has their own live encounter; absent key reads as ~null~. |
-| =encounter-saves.json=           | ~HashMap<UserId, Vec<SavedEncounter>>~    | Save-name uniqueness is per-user; Alice + Bob can both have a "Goblin Ambush". |
-| =compendium-saves.json=          | ~HashMap<UserId, Vec<SavedCompendium>>~   | Same per-user keying.                                              |
-| =compendium-groups.json=         | ~HashMap<UserId, Vec<Group>>~             | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
-| =compendium/user-creatures.json= | ~HashMap<UserId, Vec<Creature>>~          | Per-user creature edits + creations + duplicates of bundled.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
-| =lore-groups.json=, =condition-presets.json=, =save-chain-presets.json=, =treasure-table.json=, =treasure-profiles.json= | ~HashMap<UserId, Value>~ | The five ~PerUserStore~ files — opaque JSON payloads whose schema the Elm side owns; the server just round-trips them through a shared GET/PUT pair. |
-| =dice-history.json=              | ~HashMap<UserId, Vec<Value>>~             | 30-entry cap is per-user.                                          |
-| =compendium/creatures.json=      | ~Vec<Creature>~                           | *Legacy* — pre-split shared store; read once at boot by the migration, then unused.  Safe to delete after the migration writes ~.split-v1~. |
+Every store is a family of relational tables keyed by ~user_id~ (with ~ON DELETE
+CASCADE~ back to ~users~), defined across the four migrations under
+=crates/lib/migrations/=:
 
-The bundled SRD set is *not* on disk for the server — it lives in the binary via
-~include_str!~ and is merged into every read at request time.  See
-[[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]] for the full split and migration story.
+| Table family                     | Migration | Notes                                                              |
+|----------------------------------+-----------+--------------------------------------------------------------------|
+| ~users~                          | 0001      | One row per account; uniqueness enforced case-insensitively on email. |
+| ~dice_rolls~ (+ ~_expression_dice~ / ~_groups~ / ~_faces~ / ~_extras~ children) | 0001 | Fully normalized roll log; 30-entry cap is per-user.  Unknown top-level scalar fields round-trip via ~dice_roll_extras~. |
+| ~lore_group_sets~ → ~lore_groups~ → ~lore_group_members~ | 0002 | One of the five preset families; the ~_sets~ row is the presence parent (see below). |
+| ~condition_preset_sets~ → ~condition_presets~ | 0002 | Saved Add-Condition forms.                                        |
+| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002 | Save Chain preset recipes.                                        |
+| ~treasure_table_sets~ → brackets / individual rows / hoard rows / name entries / flat items / roll specs | 0002 | The user's singular treasure table. |
+| ~treasure_profile_sets~ → ~treasure_profiles~ | 0002 | Named "Tune your rolls" presets.                                  |
+| ~user_creatures~ (+ 10 children: saving throws, skills, damage relations, string lists, features, legendary options, custom sections, spell levels, innate groups, spell names) | 0003 | Per-user creature edits + creations + duplicates of bundled.  Every ~Creature~ scalar is a column; the four Option packs (legendary / lair / regional / spellcasting) flatten as all-null-together groups.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
+| ~compendium_groups~ → ~compendium_group_entries~ | 0003 | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
+| ~compendium_saves~ → ~compendium_save_nodes~ | 0003 | Named compendium snapshots: typed metadata (name + timestamps) over a contractually opaque body stored as a relational JSON node tree — one row per node, numbers kept as their canonical serde token so int/float fidelity survives.  Save-name uniqueness is per-user. |
+| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
+| ~encounter_saves~ → ~encounter_save_nodes~ | 0004 | Named encounter saves; same metadata-over-node-tree shape as compendium saves.  Alice + Bob can both have a "Goblin Ambush". |
+
+The five preset families share a *presence-parent* pattern: ~GET~ returns ~null~
+when the user has never persisted the feature (no ~_sets~ row) and the canonical
+re-encoding otherwise — persisted-but-empty included.  The frontend's
+=Update.UserSync= boot / migrate branching depends on exactly that tri-state
+distinction; ~PUT~ is a transactional swap (cascade-delete the parent, insert
+the decoded replacement).
+
+The bundled SRD set is *not* in the database — it is content, not state.  It
+lives in the binary via ~include_str!~ and is merged into every read at request
+time.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]] for the full split and migration
+story.
 
 ** Compendium: bundled vs per-user
 
@@ -548,8 +586,8 @@ The compendium has two layers that the server merges at request time:
   ~contains(id)~ check.  Updates only ship via a binary rebuild +
   ~BUNDLED_VERSION~ bump in ~crates/server/src/compendium/store.rs~.
 - *Per-user creatures* (custom creations, edits, duplicates) live in
-  ~UserCompendiumStore~ at =<data_dir>/compendium/user-creatures.json= keyed by
-  ~UserId~.
+  ~UserCompendiumStore~ over the ~user_creatures~ table family (migration 0003),
+  keyed by ~user_id~.
 
 Every ~Creature~ that crosses the wire carries an ~is_bundled : bool~ field that
 the server computes from ~BundledCompendium::contains(id)~ on the way out.  The
@@ -598,7 +636,11 @@ automatically.  See ~Update.Auth.applyLocalCompendium~.
 Pre-split deployments had a single shared =<data_dir>/compendium/creatures.json=
 that mixed bundled + user-edited + user-created rows.  The one-shot migration at
 ~crates/server/src/compendium/migrate.rs~ runs on boot when the sidecar marker
-=<compendium_dir>/.split-v1= is absent:
+=<compendium_dir>/.split-v1= is absent.  It reads the legacy shared file through
+the quarantined JSON-file store (=compendium/json_file_store.rs=, the last
+surviving copy of the old persistence helper — legacy-import machinery only) and
+writes into the relational per-user store; it runs after the boot JSON import so
+the claim user's account already exists.  The steps:
 
 1. Walks the legacy store and partitions rows into:
    - *Canonical bundled* (id matches the bundle byte-for-byte) → dropped.
@@ -615,9 +657,10 @@ that mixed bundled + user-edited + user-created rows.  The one-shot migration at
 3. Writes the marker file recording version, timestamp, claimed user, and
    counts.  Subsequent boots see the marker and skip.
 
-Existing dev-mode JSON of an older flat shape will fail to deserialize and
-~JsonFileStore::load_or_default~ falls back to an empty map (logged at WARN).
-Fine for dev.
+Existing dev-mode legacy JSON of an older flat shape fails to deserialize and
+the loader falls back to an empty store (logged at WARN).  Fine for dev; the
+one-shot boot import applies the same warn-and-skip discipline per file and per
+user (see [[*Persistence][Persistence]]).
 
 ** Login-only rate limit
 
@@ -658,10 +701,10 @@ auth states (server vs.  localStorage adopt vs. public bundled JSON).
   and the five per-user-store fetches — lore groups, condition presets, Save
   Chain presets, treasure table, treasure profiles), plus the optional encounter
   + compendium migration Cmds for any ~localStorage~ data the anonymous session
-  left behind (see [[*Anonymous mode][Anonymous mode]]).  The per-user-store responses land in
-  =Update/UserSync.elm=, which adopts a non-empty server payload or, when the
-  server is empty and the anonymous session had local data, PUTs the local
-  snapshot up as a one-shot migration.
+    left behind (see [[*Anonymous mode][Anonymous mode]]).  The per-user-store responses land in
+    =Update/UserSync.elm=, which adopts a non-empty server payload or, when the
+    server is empty and the anonymous session had local data, PUTs the local
+    snapshot up as a one-shot migration.
 - ~Err _~ — adopts every ~localStorage~ snapshot into ~Model~ (encounter, dice
   history, compendium creatures + groups, named encounter saves, presets, party,
   lore groups, treasure table) and falls back to ~/bundled-creatures.json~ for
@@ -886,27 +929,62 @@ then routes through =Update.Save= / =Update.Load='s auth-branched mutators.
 
 * Persistence
 
-The server-side persisted JSON files all live under ~--data-dir~ (default ~./~).
-Each is read at boot and atomically rewritten on every mutation through
-~JsonFileStore<T>~ from =crates/lib/=.  For the parallel ~localStorage~ shapes
-used by anonymous sessions, see [[*Anonymous mode][Anonymous mode]] — every server-backed surface
-below has a matching ~localStorage~ key that the ~Main.update~-wrapper
-diff-and-write pipeline maintains.
+All runtime state lives in a relational database served by sqlx's ~Any~ driver
+through the one ~Db~ handle in =crates/lib/src/db.rs=: SQLite by default
+(~sqlite://<data_dir>/ezpz-dndz.db~ — zero-ops dev and small deploys need no
+flags) and PostgreSQL via ~--database-url postgres://…~ for hosted scale.  Four
+embedded migrations under =crates/lib/migrations/= run on boot against either
+backend; the DDL is portable by construction (TEXT UUID keys, BIGINT integers /
+timestamps, 0/1 booleans, ~$n~ placeholders, which SQLite accepts natively) and
+contains no JSON / JSONB columns anywhere — the Elm wire formats are normalized
+into real tables.  For the parallel ~localStorage~ shapes used by anonymous
+sessions, see [[*Anonymous mode][Anonymous mode]] — every server-backed surface below has a matching
+~localStorage~ key that the ~Main.update~-wrapper diff-and-write pipeline
+maintains.
 
-| Path                          | Endpoint                          | Per-user? | Notes                                                                                                                                              |
-|-------------------------------+-----------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
-| =users.json=                  | ~/api/auth/{register,login,me}~   | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
-| =encounter.json=              | ~/api/encounter~ GET / PUT        | yes       | Live encounter state; auto-saved on every mutation                                                                                                 |
-| =encounter-saves.json=        | ~/api/encounter/saves(/:name)*~   | yes       | User-named encounter saves (Save / Load modal).  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
-| =compendium/creatures.json=   | ~/api/compendium/*~               | no        | Shared bestiary; bundled-creatures merge on boot.                                                                                                  |
-| =compendium-saves.json=       | ~/api/compendium/saves(/:name)*~  | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
-| =compendium-groups.json=      | ~/api/compendium/groups(/:id)*~   | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
-| =lore-groups.json= / =condition-presets.json= / =save-chain-presets.json= / =treasure-table.json= / =treasure-profiles.json= | ~/api/{lore-groups,condition-presets,save-chain-presets,treasure-table,treasure-profiles}~ GET / PUT | yes | The five ~PerUserStore~ files — opaque per-user JSON round-tripped by the shared GET/PUT pair in =per_user_store.rs=; GET returns ~null~ until the user first persists. |
-| =dice-history.json=           | ~/api/dice/history~               | yes       | Bounded persistent dice-roll log (30-entry cap, per user).                                                                                         |
+| Endpoint                          | Table family                                          | Per-user? | Notes                                                                                                                                              |
+|-----------------------------------+-------------------------------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
+| ~/api/auth/{register,login,me}~   | ~users~                                               | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
+| ~/api/encounter~ GET / PUT        | ~encounters~ + children                               | yes       | Live encounter state, fully typed; auto-saved on every mutation.  GET returns ~null~ before the first PUT; a body that fails the wire decoder 400s. |
+| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (Save / Load modal).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| ~/api/compendium/*~               | ~user_creatures~ + children                           | yes       | Per-user creatures; the bundled bestiary merges in at request time from the binary.                                                               |
+| ~/api/compendium/saves(/:name)*~  | ~compendium_saves~ + ~compendium_save_nodes~          | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
+| ~/api/compendium/groups(/:id)*~   | ~compendium_groups~ + ~compendium_group_entries~      | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
+| ~/api/{lore-groups,condition-presets,save-chain-presets,treasure-table,treasure-profiles}~ GET / PUT | the five preset families (presence parent + children) | yes | Served by the shared GET/PUT pair in =per_user_store.rs=; GET returns ~null~ until the user first persists (the tri-state contract). |
+| ~/api/dice/history~               | ~dice_rolls~ + children                               | yes       | Bounded persistent dice-roll log (30-entry cap, per user).                                                                                         |
 
-The ~JsonFileStore<T>~ pattern in =crates/lib/= is the canonical persistence
-helper.  Every server-side feature with a JSON backing file should use it rather
-than rolling its own.
+The server-side codecs (=presets/*=, =compendium/creature_rows.rs=,
+=encounters/wire.rs=, the =dice.rs= serde types) mirror the Elm ~*.Wire~ modules
+field for field — including their legacy-shape leniency, which the one-shot boot
+import needs because historical payloads were written by any frontend version.
+HTTP response shapes are byte-compatible with the JSON-file era.  The accepted
+tradeoff (recorded in =tasks.org=): the server previously round-tripped most
+payloads as opaque JSON, so the frontend owned those schemas outright;
+normalization means a future Elm wire change to a persisted shape needs a
+matching server migration.  The two contractually opaque surfaces — named
+encounter and compendium save bodies — keep their any-shape / exact-echo
+contract via the relational JSON node trees instead.
+
+** One-shot legacy import
+
+On boot, =crates/server/src/json_import.rs= replays the pre-migration JSON files
+from the data dir into the database exactly once, under four ~schema_meta~
+markers (~json_import_users_dice~, ~json_import_presets~,
+~json_import_compendium~, ~json_import_encounters~).  A user entry that fails to
+decode is logged and skipped rather than aborting the import; the two encounter
+files additionally tolerate a whole-file parse failure (warn-and-skip), matching
+the legacy loader they replace.  The JSON files are left in place as the
+rollback copy — ~RuntimePaths~ in =config.rs= exists solely to locate these
+import inputs, not live stores.
+
+** Backups
+
+=scripts/backup.sh= archives the data dir; the live SQLite file is never copied
+raw — it is snapshotted consistently through sqlite3's online-backup API
+(~.backup~, falling back to ~VACUUM INTO~), with the ~-wal~ / ~-shm~ sidecars
+excluded, alongside the legacy JSON rollback copies.  PostgreSQL deployments
+keep no database file in the data dir; back those up with ~pg_dump~ on its own
+schedule.
 
 * Encounter header sticky reminder strips
 
@@ -1404,7 +1482,7 @@ For a modal =Foo= the pieces are:
 10. *Persistence wrapper* — one ~fooPresetsCmd~ branch in the =Main.update=
     diff-and-write wrapper, encoded through ~Ui.Foo.Wire.encodePresets~.
     Condition presets (and the later Save Chain presets) auth-split here:
-    authenticated sessions PUT the encoded dict to the matching ~PerUserStore~
+    authenticated sessions PUT the encoded dict to the matching per-user preset
     endpoint, anonymous sessions write ~localStorage~ through the port.  Timer
     presets remain ~localStorage~-only in both modes — the codec is reusable as
     the wire body if a server store is ever registered for them.
@@ -1601,8 +1679,8 @@ Wire status today:
     ~Ports.savePreferences~ → JS writes ~localStorage.theme~ + mirrors to ~<html
     data-theme>~ so the pre-Elm FOUC script picks the same theme on next reload.
     Same code path runs anonymous + authenticated; per-account preferences would
-    slot into the generic per-user store the day they need to roam (one
-    ~routers()~ entry — see [[*Backend: a new feature][Backend: a new feature]]).
+    slot into the generic per-user preset router the day they need to roam (a
+    ~PerUserFeature~ impl + migration — see [[*Backend: a new feature][Backend: a new feature]]).
 - ~autoScrollActiveCard~ is consulted by =Update.Encounter.nextTurn= when the
   turn advances.
 - The remaining fields (density, sound, auto-roll initiative, default compendium
@@ -1718,15 +1796,17 @@ Same idea, narrower:
 
 ** Backend: a new feature
 
-1. *Persistence* — use =JsonFileStore<T>= from =crates/lib/=.  Don't roll a
-   one-off file store.  The dice store, encounter store, and compendium store
-   all use it; new features should match.  If the data is per-user, the
-   canonical shape is ~JsonFileStore<HashMap<UserId, T>>~ with operations taking
-   a leading ~&UserId~ parameter — see =saves.rs= / =encounters/store.rs= for
-   the templates.  If the payload is opaque per-user JSON that only needs an
-   authenticated GET/PUT pair, don't write a module at all: adding a sixth store
-   to =per_user_store.rs= is one ~routers()~ entry, one ~PerUserStore~ field on
-   ~AppState~, and one line in ~RuntimePaths::from_data_dir~.
+1. *Persistence* — relational tables through the shared ~Db~ handle.  Add a
+   numbered =.sql= migration under =crates/lib/migrations/= following the
+   portable-DDL rules documented there (TEXT UUID keys, BIGINT integers /
+   timestamps, 0/1 booleans, ~$n~ placeholders, no JSON columns), then a store
+   module that issues its queries over ~Db~ — the dice, compendium, and
+   encounter stores are the templates.  Per-user data keys every table on
+   ~user_id~ with ~ON DELETE CASCADE~.  If the payload is a per-user preset that
+   only needs an authenticated GET/PUT pair, don't write a router: implement
+   ~PerUserFeature~ in =crates/server/src/presets/= (wire codec mirroring the
+   Elm ~*.Wire~ module + the SQL mapping, with a presence-parent table for the
+   tri-state GET contract) and add one ~routers()~ entry in =per_user_store.rs=.
 2. *HTTP routes* — register through ~aide::ApiRouter~ in the relevant module's
    ~router()~ function.  Hand-rolling an =axum::Router= is a miss; OpenAPI stays
    complete only when every route flows through ~ApiRouter~.  When a route's
@@ -1747,13 +1827,14 @@ Same idea, narrower:
 5. *Config* — add fields to the ~Config~ struct in =server/src/config.rs= via
    ~MergeConfig~.  Field-level attributes drive CLI-flag generation and env-var
    derivation (env var = ~ezpz_dndz_<field>~, lowercase per POSIX §8.1).
-   Cross-field defaults that depend on ~--data-dir~ flow through ~RuntimePaths~
-   + ~Config::resolve_paths~ — every store file is a fixed name inside the data
-     dir, and there are deliberately no per-store path overrides.  If the value
-     isn't a primitive that ~MergeConfig~ knows about, use the ~extra_cli~ /
-     ~extra_file~ / ~skip~ + ~resolve_<field>~ escape hatches — see the OIDC
-     pattern in =config.rs= (~ExtraCliFields~ / ~ExtraFileFields~ carry only the
-     OIDC trio + ~compendium_claim_user~).
+   Cross-field defaults that depend on ~--data-dir~ have precedent: the database
+   URL defaults to the SQLite file inside the data dir via a ~resolve_~
+   function, and ~RuntimePaths~ derives the legacy-import file locations the
+   same way (deliberately no per-file overrides).  If the value isn't a
+   primitive that ~MergeConfig~ knows about, use the ~extra_cli~ / ~extra_file~
+   / ~skip~ + ~resolve_<field>~ escape hatches — see the OIDC pattern in
+   =config.rs= (~ExtraCliFields~ / ~ExtraFileFields~ carry only the OIDC trio +
+   ~compendium_claim_user~).
 6. *AppState* — if the feature needs state, add a field to ~AppState~ in
    =web_base.rs= and load it in ~AppState::assemble~.  ~AppState~ keeps
    app-specific stores only; foundation's ~BaseServerState~ is spliced in via
@@ -1769,9 +1850,17 @@ Each subcommand goes in its own =crates/cli/src/foo.rs=:
 - Register the variant in =config.rs='s ~Command~ enum and =main.rs='s ~run~
   dispatch.
 
-Subcommands operate file-direct (read and write JSON synchronously) so the CLI
-keeps working when the server isn't running.  The =compendium= / =encounter= /
-=dice= modules are the templates.
+Data subcommands operate on the database directly (no running server needed)
+through the shared plumbing in =crates/cli/src/db.rs=: a ~DbArgs~ clap group
+(~--database-url~ / ~--data-dir~, resolving exactly like the server, env vars
+included), a ~block_on~ helper that scopes a single-thread tokio runtime to the
+subcommand, and a user-by-email lookup for the ~--email~ scoping flags.  Opening
+the database runs the embedded migrations, so pointing the CLI at a fresh data
+dir is safe.  The =compendium= / =encounter= / =dice= modules are the templates;
+the cli crate consumes the server crate's lib target so both binaries share the
+same store code.  Bundle-authoring subcommands (~compendium harvest~ /
+~infer-habitats~) stay file-based on purpose — they read and write bundle JSON,
+not runtime state.
 
 ** Cross-cutting
 

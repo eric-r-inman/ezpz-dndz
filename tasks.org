@@ -5,7 +5,7 @@ The project's backlog.  Record plans and work items here as ~* TODO~ entries —
 see the "Capturing plans" guidance in =llms.org= — cross-linking related entries
 and marking finished work ~* DONE~.
 
-* TODO Relational storage migration (SQLite + Postgres, no JSON stores)
+* DONE Relational storage migration (SQLite + Postgres, no JSON stores)
 
 Replace every =JsonFileStore=-backed store with a fully relational schema served
 by sqlx over two interchangeable backends: SQLite (default, at
