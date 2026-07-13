@@ -1,9 +1,7 @@
-//! Generic per-user opaque-JSON store and its GET/PUT router.
+//! Generic per-user preset router over the relational store.
 //!
-//! Five features persist one JSON payload per user and expose it
-//! through an identical authenticated GET/PUT pair — the payload's
-//! schema is owned entirely by the Elm side, and the server just
-//! round-trips it:
+//! Five features persist one payload per user and expose it through
+//! an identical authenticated GET/PUT pair:
 //!
 //! - **Lore groups** — themed clusters of compendium creatures the GM
 //!   curates ("Goblin warband") so the random-encounter roller has
@@ -17,18 +15,23 @@
 //! - **Treasure profiles** — named "Tune your rolls" presets for the
 //!   Treasure generator.
 //!
-//! Each was born as its own module with a copy-pasted store struct,
-//! error enum, handler pair, and router; the five differed only in
-//! label strings and route paths, so they now share this one
-//! implementation.  [`routers`](routers) is the single registration
-//! point — adding a sixth store is one line there plus an
-//! [`AppState`](crate::web_base::AppState) field.
+//! Historically each payload was an opaque JSON blob in a
+//! `JsonFileStore`; it is now normalized into real tables (migration
+//! 0002) through the per-feature codecs in [`crate::presets`], which
+//! mirror the Elm `*.Wire` modules — including their legacy-shape
+//! leniency, since the one-shot boot import feeds them payloads
+//! written by any historical frontend version.  A payload that fails
+//! its wire decoder is rejected with a 400 (unreachable from the
+//! current frontend; it protects the schema).
 //!
-//! Disk shape: `HashMap<UserId, Value>` where the value is an opaque
-//! JSON payload (whatever the frontend serializes).  `GET` returns
-//! `Value::Null` when the user hasn't persisted anything yet — the
-//! frontend treats that as "use the default" (empty, or the bundled
-//! catalog, depending on the feature).
+//! The HTTP contract is tri-state and unchanged from the JSON era:
+//! `GET` returns `null` when the user has never persisted the feature
+//! (no presence-parent row), and the canonical re-encoding of the
+//! persisted structure otherwise — including a persisted-but-empty
+//! collection.  The frontend's `Update.UserSync` migration pipeline
+//! depends on that distinction.  `PUT` is a full transactional swap:
+//! delete the presence row (children cascade), insert the decoded
+//! replacement.
 //!
 //! Anonymous users persist to localStorage instead; on sign-in the
 //! migration pipeline in the frontend's `Update.UserSync` PUTs the
@@ -46,112 +49,203 @@ use axum::{
   response::{IntoResponse, Response},
   Extension, Json,
 };
-use ezpz_dndz_lib::{json_file_store::JsonFileStore, users::UserId};
+use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::Value;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use sqlx::AnyConnection;
+use std::future::Future;
 use thiserror::Error;
 use tracing::warn;
 
+use crate::presets::{
+  condition_presets::ConditionPresets, lore_groups::LoreGroups,
+  save_chains::SaveChains, treasure_profiles::TreasureProfiles,
+  treasure_table::TreasureTable,
+};
 use crate::users::CurrentUser;
 use crate::web_base::AppState;
 
-/// One per-user opaque-JSON store.  `label` names the owning feature
-/// in errors and logs ("save-chain-preset store persistence failed:
-/// …"), so the shared error type stays semantic.
-#[derive(Clone)]
-pub struct PerUserStore {
-  label: &'static str,
-  inner: Arc<JsonFileStore<HashMap<UserId, Value>>>,
-}
+/// One per-user preset feature: the wire codec (mirroring the Elm
+/// `*.Wire` module) plus the SQL that maps the decoded value onto the
+/// feature's tables.  Implementations are stateless unit structs; the
+/// generic [`read_payload`] / [`replace_payload`] pair and the shared
+/// router are the only callers besides the one-shot JSON import.
+pub trait PerUserFeature: 'static {
+  /// Feature name for errors and logs ("save-chain-presets payload
+  /// does not match …").
+  const LABEL: &'static str;
 
-impl PerUserStore {
-  pub async fn load_or_default(
-    label: &'static str,
-    path: PathBuf,
-  ) -> Result<Self, PerUserStoreError> {
-    let inner = JsonFileStore::<HashMap<UserId, Value>>::load_or_default(path)
-      .await
-      .map_err(|source| PerUserStoreError { label, source })?;
-    Ok(Self {
-      label,
-      inner: Arc::new(inner),
-    })
-  }
+  /// The presence-parent table.  Deleting a user's row here cascades
+  /// to every child table, which is how `replace` swaps the whole
+  /// structure atomically.
+  const PARENT_TABLE: &'static str;
 
-  /// Return the user's saved payload, or `Value::Null` when they
-  /// haven't persisted one yet.  The frontend reads null as "use the
-  /// default" — no migration step needed.
-  pub async fn read(&self, user_id: &UserId) -> Value {
-    self
-      .inner
-      .read()
-      .await
-      .get(user_id)
-      .cloned()
-      .unwrap_or(Value::Null)
-  }
+  /// The decoded, validated payload.
+  type Data: Send + Sync;
 
-  pub async fn replace(
-    &self,
+  /// Decode the wire payload, exactly as leniently as the Elm
+  /// decoder (plus any documented server-side extras).  The error is
+  /// a human-readable description of the first mismatch.
+  fn decode(payload: &Value) -> Result<Self::Data, String>;
+
+  /// Re-encode in the canonical current wire shape, exactly as the
+  /// Elm encoder would emit it.
+  fn encode(data: &Self::Data) -> Value;
+
+  /// Insert the presence-parent row and all children.  Takes a bare
+  /// connection so callers control the transaction — `replace` pairs
+  /// it with the cascade delete, and the one-shot JSON import replays
+  /// a whole legacy store inside a single transaction.
+  fn insert(
+    conn: &mut AnyConnection,
     user_id: &UserId,
-    next: Value,
-  ) -> Result<(), PerUserStoreError> {
-    let user_id_owned = user_id.clone();
-    self
-      .inner
-      .mutate(move |all| {
-        all.insert(user_id_owned, next);
-      })
-      .await
-      .map_err(|source| PerUserStoreError {
-        label: self.label,
-        source,
-      })?;
-    Ok(())
-  }
+    data: &Self::Data,
+  ) -> impl Future<Output = Result<(), sqlx::Error>> + Send;
+
+  /// Reassemble the user's persisted structure from the tables, or
+  /// `None` when the user has never persisted one (no parent row).
+  fn fetch(
+    db: &Db,
+    user_id: &UserId,
+  ) -> impl Future<Output = Result<Option<Self::Data>, sqlx::Error>> + Send;
 }
 
-/// Persistence failure in one of the per-user stores.  `label` names
-/// the feature so the message stays as semantic as the per-store
-/// error enums this type replaced.
+/// Semantic errors from the per-user preset stores.  Every variant
+/// carries the feature label so the messages stay as pointed as the
+/// per-store error enums this module replaced.
 #[derive(Debug, Error)]
-#[error("{label} store persistence failed: {source}")]
-pub struct PerUserStoreError {
-  pub label: &'static str,
-  #[source]
-  pub source: ezpz_dndz_lib::json_file_store::JsonFileStoreError,
+pub enum PerUserStoreError {
+  #[error("{label} payload does not match the {label} wire schema: {detail}")]
+  PayloadDecode { label: &'static str, detail: String },
+
+  #[error("Failed to read the {label} store: {source}")]
+  Read {
+    label: &'static str,
+    source: sqlx::Error,
+  },
+
+  #[error("Failed to replace the {label} store contents: {source}")]
+  Replace {
+    label: &'static str,
+    source: sqlx::Error,
+  },
+
+  #[error("Failed to begin a {label} store transaction: {source}")]
+  TransactionBegin {
+    label: &'static str,
+    source: sqlx::Error,
+  },
+
+  #[error("Failed to commit a {label} store transaction: {source}")]
+  TransactionCommit {
+    label: &'static str,
+    source: sqlx::Error,
+  },
 }
 
 impl IntoResponse for PerUserStoreError {
   fn into_response(self) -> Response {
-    warn!(error = %self, store = self.label, "per-user store error");
-    (
-      axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-      Json(serde_json::json!({ "error": self.to_string() })),
-    )
+    warn!(error = %self, "per-user store error");
+    let status = match &self {
+      Self::PayloadDecode { .. } => axum::http::StatusCode::BAD_REQUEST,
+      _ => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    (status, Json(serde_json::json!({ "error": self.to_string() })))
       .into_response()
   }
 }
 
+/// The user's saved payload in canonical wire form, or `Value::Null`
+/// when they have never persisted one.  The frontend reads null as
+/// "use the default" (empty, or the bundled catalog, depending on the
+/// feature).
+pub async fn read_payload<F: PerUserFeature>(
+  db: &Db,
+  user_id: &UserId,
+) -> Result<Value, PerUserStoreError> {
+  F::fetch(db, user_id)
+    .await
+    .map(|data| data.as_ref().map_or(Value::Null, F::encode))
+    .map_err(|source| PerUserStoreError::Read {
+      label: F::LABEL,
+      source,
+    })
+}
+
+/// Replace the user's persisted structure with `payload`: decode (400
+/// on a wire-schema mismatch), then swap the rows in one transaction
+/// (cascade-delete the presence row, insert the replacement).
+/// Returns the canonical re-encoding, which the PUT handler echoes.
+pub async fn replace_payload<F: PerUserFeature>(
+  db: &Db,
+  user_id: &UserId,
+  payload: &Value,
+) -> Result<Value, PerUserStoreError> {
+  let data =
+    F::decode(payload).map_err(|detail| PerUserStoreError::PayloadDecode {
+      label: F::LABEL,
+      detail,
+    })?;
+
+  let mut tx = db.pool().begin().await.map_err(|source| {
+    PerUserStoreError::TransactionBegin {
+      label: F::LABEL,
+      source,
+    }
+  })?;
+
+  // PARENT_TABLE is a compile-time constant, so the format! is not
+  // an injection surface; sqlx's Any driver has no placeholder for
+  // identifiers.
+  sqlx::query(&format!("DELETE FROM {} WHERE user_id = $1", F::PARENT_TABLE))
+    .bind(user_id.as_str())
+    .execute(&mut *tx)
+    .await
+    .map_err(|source| PerUserStoreError::Replace {
+      label: F::LABEL,
+      source,
+    })?;
+
+  F::insert(&mut tx, user_id, &data).await.map_err(|source| {
+    PerUserStoreError::Replace {
+      label: F::LABEL,
+      source,
+    }
+  })?;
+
+  tx.commit()
+    .await
+    .map_err(|source| PerUserStoreError::TransactionCommit {
+      label: F::LABEL,
+      source,
+    })?;
+
+  Ok(F::encode(&data))
+}
+
 // ── routers ──────────────────────────────────────────────────────────────────
 
-/// The authenticated GET/PUT pair for one store, mounted at `path`.
-/// The handlers capture their `PerUserStore` clone directly, so no
-/// state extraction or per-store handler code is needed.
-fn router(
+/// The authenticated GET/PUT pair for one feature, mounted at `path`.
+/// The handlers capture a `Db` clone directly, so no state extraction
+/// or per-feature handler code is needed.
+fn router<F: PerUserFeature>(
   path: &'static str,
-  store: PerUserStore,
+  db: Db,
   get_description: &'static str,
   put_description: &'static str,
 ) -> ApiRouter<AppState> {
-  let read_store = store.clone();
+  let read_db = db.clone();
   ApiRouter::new()
     .api_route(
       path,
       get_with(
         move |Extension(CurrentUser(user)): Extension<CurrentUser>| {
-          let store = read_store.clone();
-          async move { Json(store.read(&user.id).await).into_response() }
+          let db = read_db.clone();
+          async move {
+            match read_payload::<F>(&db, &user.id).await {
+              Ok(payload) => Json(payload).into_response(),
+              Err(e) => e.into_response(),
+            }
+          }
         },
         move |op: TransformOperation| op.description(get_description),
       ),
@@ -161,10 +255,10 @@ fn router(
       put_with(
         move |Extension(CurrentUser(user)): Extension<CurrentUser>,
               Json(body): Json<Value>| {
-          let store = store.clone();
+          let db = db.clone();
           async move {
-            match store.replace(&user.id, body.clone()).await {
-              Ok(()) => Json(body).into_response(),
+            match replace_payload::<F>(&db, &user.id, &body).await {
+              Ok(canonical) => Json(canonical).into_response(),
               Err(e) => e.into_response(),
             }
           }
@@ -174,52 +268,53 @@ fn router(
     )
 }
 
-/// Every per-user store route, in one place.  Payloads are opaque to
-/// the server throughout — the frontend defines each shape.
+/// Every per-user preset route, in one place.  Adding a sixth store
+/// is one `.merge` here plus a `PerUserFeature` impl in
+/// [`crate::presets`].
 pub fn routers(state: &AppState) -> ApiRouter<AppState> {
   ApiRouter::new()
-    .merge(router(
+    .merge(router::<LoreGroups>(
       "/api/lore-groups",
-      state.lore_groups.clone(),
-      "Return the caller's saved user-authored Lore groups as opaque \
-       JSON.  Returns `null` when the user hasn't saved any groups \
-       yet — the frontend treats that as the empty default.",
+      state.db.clone(),
+      "Return the caller's saved user-authored Lore groups.  Returns \
+       `null` when the user hasn't saved any groups yet — the \
+       frontend treats that as the empty default.",
       "Replace the caller's saved Lore groups with the supplied JSON.",
     ))
-    .merge(router(
+    .merge(router::<ConditionPresets>(
       "/api/condition-presets",
-      state.condition_presets.clone(),
-      "Return the caller's saved condition presets as opaque JSON.  \
-       Returns `null` when the user hasn't saved any presets yet — \
-       the frontend treats that as the empty default.",
+      state.db.clone(),
+      "Return the caller's saved condition presets.  Returns `null` \
+       when the user hasn't saved any presets yet — the frontend \
+       treats that as the empty default.",
       "Replace the caller's saved condition presets with the supplied \
        JSON.",
     ))
-    .merge(router(
+    .merge(router::<SaveChains>(
       "/api/save-chain-presets",
-      state.save_chain_presets.clone(),
-      "Return the caller's saved Save Chain presets as opaque JSON.  \
-       Returns `null` when the user hasn't saved any presets yet — \
-       the frontend treats that as the empty default and falls back \
-       to the bundled Save Chain catalog.",
+      state.db.clone(),
+      "Return the caller's saved Save Chain presets.  Returns `null` \
+       when the user hasn't saved any presets yet — the frontend \
+       treats that as the empty default and falls back to the bundled \
+       Save Chain catalog.",
       "Replace the caller's saved Save Chain presets with the \
        supplied JSON.",
     ))
-    .merge(router(
+    .merge(router::<TreasureTable>(
       "/api/treasure-table",
-      state.treasure_table.clone(),
-      "Return the caller's saved singular treasure table as opaque \
-       JSON.  Returns `null` when the user hasn't saved one yet — \
-       the frontend then falls back to the bundled SRD default.",
+      state.db.clone(),
+      "Return the caller's saved singular treasure table.  Returns \
+       `null` when the user hasn't saved one yet — the frontend then \
+       falls back to the bundled SRD default.",
       "Replace the caller's saved treasure table with the supplied \
        JSON.",
     ))
-    .merge(router(
+    .merge(router::<TreasureProfiles>(
       "/api/treasure-profiles",
-      state.treasure_profiles.clone(),
-      "Return the caller's saved treasure profiles as opaque JSON.  \
-       Returns `null` when the user hasn't saved any profiles yet — \
-       the frontend treats that as the empty default.",
+      state.db.clone(),
+      "Return the caller's saved treasure profiles.  Returns `null` \
+       when the user hasn't saved any profiles yet — the frontend \
+       treats that as the empty default.",
       "Replace the caller's saved treasure profiles with the supplied \
        JSON.",
     ))

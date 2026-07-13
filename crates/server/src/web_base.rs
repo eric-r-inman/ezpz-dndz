@@ -22,11 +22,16 @@ use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
 use crate::json_import;
-use crate::per_user_store::{PerUserStore, PerUserStoreError};
 
 #[derive(Clone)]
 pub struct AppState {
   pub base: BaseServerState,
+  // The shared database handle.  The five per-user preset stores
+  // (lore groups, condition presets, Save Chain presets, treasure
+  // table, treasure profiles) issue their SQL through this via the
+  // codecs in `crate::presets`; `per_user_store::routers` is their
+  // single registration point.
+  pub db: Db,
   pub dice_store: DiceStore,
   pub compendium_store: CompendiumStore,
   pub compendium_saves: SavedCompendiumStore,
@@ -37,13 +42,6 @@ pub struct AppState {
   pub encounter_saves: SavedEncounterStore,
   pub user_store: Arc<UserStore>,
   pub auth_rate_limiter: AuthRateLimiter,
-  // The five per-user opaque-JSON stores, all served by the shared
-  // GET/PUT routers in `per_user_store::routers`.
-  pub lore_groups: PerUserStore,
-  pub condition_presets: PerUserStore,
-  pub save_chain_presets: PerUserStore,
-  pub treasure_table: PerUserStore,
-  pub treasure_profiles: PerUserStore,
 }
 
 impl_server_state!(AppState, base);
@@ -61,12 +59,6 @@ pub enum AppStateError {
 
   #[error("Compendium split migration failed: {0}")]
   CompendiumSplitMigration(#[source] MigrationError),
-
-  // The inner error's Display names the store ("lore-groups store
-  // persistence failed: …"), so the semantics of the five per-store
-  // variants this replaced are preserved.
-  #[error("Failed to load per-user store: {0}")]
-  PerUserStoreLoad(#[from] PerUserStoreError),
 }
 
 impl AppState {
@@ -132,34 +124,6 @@ impl AppState {
         .await
         .map_err(AppStateError::EncounterStoreLoad)?;
 
-    let lore_groups =
-      PerUserStore::load_or_default("lore-groups", paths.lore_groups.clone())
-        .await?;
-
-    let condition_presets = PerUserStore::load_or_default(
-      "condition-presets",
-      paths.condition_presets.clone(),
-    )
-    .await?;
-
-    let save_chain_presets = PerUserStore::load_or_default(
-      "save-chain-presets",
-      paths.save_chain_presets.clone(),
-    )
-    .await?;
-
-    let treasure_table = PerUserStore::load_or_default(
-      "treasure-table",
-      paths.treasure_table.clone(),
-    )
-    .await?;
-
-    let treasure_profiles = PerUserStore::load_or_default(
-      "treasure-profiles",
-      paths.treasure_profiles.clone(),
-    )
-    .await?;
-
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),
       std::path::Path::to_path_buf,
@@ -177,6 +141,7 @@ impl AppState {
 
     Ok(Self {
       base,
+      db,
       dice_store,
       compendium_store,
       compendium_saves,
@@ -187,11 +152,6 @@ impl AppState {
       encounter_saves,
       user_store: Arc::new(user_store),
       auth_rate_limiter: AuthRateLimiter::new(),
-      lore_groups,
-      condition_presets,
-      save_chain_presets,
-      treasure_table,
-      treasure_profiles,
     })
   }
 }
