@@ -97,6 +97,60 @@ pub enum CompendiumStoreError {
     "Path id {path_id} does not match body id {body_id} on compendium group update"
   )]
   GroupIdMismatchError { path_id: String, body_id: String },
+
+  /// Reading the per-user creature tables failed at the SQL layer.
+  #[error("Failed to read the per-user compendium creature rows: {source}")]
+  CreatureRowsRead { source: sqlx::Error },
+
+  /// Writing the per-user creature tables failed at the SQL layer.
+  #[error("Failed to write the per-user compendium creature rows: {source}")]
+  CreatureRowsWrite { source: sqlx::Error },
+
+  /// A persisted creature row didn't decode back into a `Creature`.
+  /// The rows are only ever written by the codec in
+  /// `creature_rows.rs`, so this indicates schema corruption.
+  #[error("Corrupt per-user compendium creature row: {detail}")]
+  CreatureRowDecode { detail: String },
+
+  /// Reading the compendium group tables failed at the SQL layer.
+  #[error("Failed to read the compendium group rows: {source}")]
+  GroupRowsRead { source: sqlx::Error },
+
+  /// Writing the compendium group tables failed at the SQL layer.
+  #[error("Failed to write the compendium group rows: {source}")]
+  GroupRowsWrite { source: sqlx::Error },
+
+  /// A persisted group row didn't decode back into a `Group`.
+  #[error("Corrupt compendium group row: {detail}")]
+  GroupRowDecode { detail: String },
+
+  /// Reading the compendium-save tables failed at the SQL layer.
+  #[error("Failed to read the saved-compendium rows: {source}")]
+  SaveRowsRead { source: sqlx::Error },
+
+  /// Writing the compendium-save tables failed at the SQL layer.
+  #[error("Failed to write the saved-compendium rows: {source}")]
+  SaveRowsWrite { source: sqlx::Error },
+
+  /// A persisted snapshot-body node didn't reassemble into JSON.
+  /// The node tree is only ever written by `save_body.rs`, so this
+  /// indicates schema corruption.
+  #[error("Corrupt saved-compendium body row: {detail}")]
+  SaveRowDecode { detail: String },
+
+  /// Beginning a compendium store transaction failed.
+  #[error("Failed to begin a compendium {store} transaction: {source}")]
+  TransactionBegin {
+    store: &'static str,
+    source: sqlx::Error,
+  },
+
+  /// Committing a compendium store transaction failed.
+  #[error("Failed to commit a compendium {store} transaction: {source}")]
+  TransactionCommit {
+    store: &'static str,
+    source: sqlx::Error,
+  },
 }
 
 impl IntoResponse for CompendiumStoreError {
@@ -115,7 +169,18 @@ impl IntoResponse for CompendiumStoreError {
       Self::StoreError(_)
       | Self::BundledParseError { .. }
       | Self::BundleSeedWriteError { .. }
-      | Self::BundleSeedParseError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+      | Self::BundleSeedParseError { .. }
+      | Self::CreatureRowsRead { .. }
+      | Self::CreatureRowsWrite { .. }
+      | Self::CreatureRowDecode { .. }
+      | Self::GroupRowsRead { .. }
+      | Self::GroupRowsWrite { .. }
+      | Self::GroupRowDecode { .. }
+      | Self::SaveRowsRead { .. }
+      | Self::SaveRowsWrite { .. }
+      | Self::SaveRowDecode { .. }
+      | Self::TransactionBegin { .. }
+      | Self::TransactionCommit { .. } => StatusCode::INTERNAL_SERVER_ERROR,
     };
     if status == StatusCode::INTERNAL_SERVER_ERROR {
       warn!(error = %self, "compendium operation failed");

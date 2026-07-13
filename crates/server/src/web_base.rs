@@ -33,6 +33,8 @@ pub struct AppState {
   // single registration point.
   pub db: Db,
   pub dice_store: DiceStore,
+  // The legacy shared compendium.  Post-split it is only input to
+  // the one-shot split migration below; no route reads it.
   pub compendium_store: CompendiumStore,
   pub compendium_saves: SavedCompendiumStore,
   pub compendium_groups: CompendiumGroupStore,
@@ -96,20 +98,12 @@ impl AppState {
         .await
         .map_err(AppStateError::CompendiumStoreLoad)?;
 
-    let compendium_saves =
-      SavedCompendiumStore::load_or_default(paths.compendium_saves.clone())
-        .await
-        .map_err(AppStateError::CompendiumStoreLoad)?;
-
-    let compendium_groups =
-      CompendiumGroupStore::load_or_default(paths.compendium_groups.clone())
-        .await
-        .map_err(AppStateError::CompendiumStoreLoad)?;
-
-    let user_compendium =
-      UserCompendiumStore::load_or_default(paths.user_creatures.clone())
-        .await
-        .map_err(AppStateError::CompendiumStoreLoad)?;
+    // The three per-user compendium stores are relational (migration
+    // 0003); their legacy JSON files are only read by the one-shot
+    // import above.
+    let compendium_saves = SavedCompendiumStore::new(db.clone());
+    let compendium_groups = CompendiumGroupStore::new(db.clone());
+    let user_compendium = UserCompendiumStore::new(db.clone());
 
     let bundled_compendium =
       BundledCompendium::load().map_err(AppStateError::CompendiumStoreLoad)?;

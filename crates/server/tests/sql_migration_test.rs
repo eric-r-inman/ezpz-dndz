@@ -9,6 +9,9 @@
 // `#[test]` / `#[cfg(test)]`, but the helpers below sit at crate
 // scope.  Test failure via panic is the desired signal here.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
+// The maximal-creature fixture is one deeply nested `json!` literal;
+// the macro's internal recursion outgrows the default limit of 128.
+#![recursion_limit = "256"]
 
 use aide::axum::ApiRouter;
 use argon2::{
@@ -1100,6 +1103,561 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
   // The legacy files are left in place as the rollback copy.
   assert!(dir.path().join("save-chain-presets.json").exists());
   assert!(dir.path().join("lore-groups.json").exists());
+}
+
+// ── per-user compendium stores (phase 3) ────────────────────────────────────
+//
+// The compendium stores are normalized into real tables (migration
+// 0003): typed creature/group tables plus the relational JSON-node
+// tree for the opaque snapshot bodies.  The tests below pin:
+//
+// (a) a MAXIMAL creature (every optional field, multiple features
+//     per group, every Usage variant) round-trips exactly through
+//     POST → GET → PUT → GET, and survives a server restart;
+// (b) groups and named saves round-trip exactly and survive a
+//     restart (the save body being deliberately non-Creature-shaped
+//     JSON, pinning the opaque contract);
+// (c) the one-shot boot import replays user-creatures.json,
+//     compendium-groups.json, and compendium-saves.json, skipping
+//     (not aborting on) undecodable and unattributable entries, and
+//     never runs twice.
+
+async fn login_cookie(app: &Router, email: &str) -> String {
+  let login = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/auth/login")
+        .header("content-type", "application/json")
+        .body(Body::from(format!(
+          r#"{{"email":"{email}","password":"hunter2hunter"}}"#
+        )))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(login.status(), StatusCode::OK);
+  extract_session_cookie(&login).expect("login cookie")
+}
+
+async fn post_json(
+  app: &Router,
+  cookie: &str,
+  path: &str,
+  payload: &Value,
+) -> (StatusCode, Value) {
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri(path)
+        .header("content-type", "application/json")
+        .header("cookie", cookie)
+        .body(Body::from(payload.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let status = response.status();
+  let body: Value =
+    serde_json::from_str(&read_body(response).await).expect("POST body JSON");
+  (status, body)
+}
+
+/// A `CreatureDraft` with every optional field populated: multiple
+/// features per group covering all five `Usage` variants plus a
+/// null usage, all four Option sub-records, every string list, and
+/// non-default scalars throughout.
+fn maximal_creature_draft() -> Value {
+  json!({
+    "name": "Ancient Test Wyrm",
+    "kind": "enemy",
+    "size": "gargantuan",
+    "race": "Dragon",
+    "subrace": "Chromatic",
+    "alignment": "chaotic evil",
+    "source": "Phase 3 Test Manual",
+    "description": "A maximal creature exercising every column.",
+    "armor_class": 22,
+    "armor_class_note": "natural armor",
+    "max_hp": 546,
+    "hp_formula": "28d20+252",
+    "initiative_bonus": 1,
+    "speed": { "walk": 40, "fly": 80, "swim": 40, "climb": 20,
+               "burrow": 30, "hover": true },
+    "abilities": { "str": 30, "dex": 10, "con": 29, "int": 18,
+                   "wis": 15, "cha": 23 },
+    "saving_throws": [
+      { "ability": "dex", "bonus": 7 },
+      { "ability": "con", "bonus": 16 },
+      { "ability": "wis", "bonus": 9 }
+    ],
+    "skills": [
+      { "name": "Perception", "bonus": 16 },
+      { "name": "Stealth", "bonus": 7 }
+    ],
+    "damage_vulnerabilities": ["cold"],
+    "damage_resistances": ["bludgeoning", "piercing"],
+    "damage_immunities": ["fire", "poison"],
+    "condition_immunities": ["poisoned", "frightened"],
+    "senses": { "blindsight": 60, "darkvision": 120, "tremorsense": 30,
+                "truesight": 10, "passive_perception": 26 },
+    "languages": ["Common", "Draconic"],
+    "challenge_rating": "24",
+    "xp": 62000,
+    "xp_in_lair": 75000,
+    "proficiency_bonus": 7,
+    "traits": [
+      { "name": "Legendary Resistance",
+        "description": "If the dragon fails a save, it may succeed instead.",
+        "usage": { "kind": "per_day", "uses": 3 } },
+      { "name": "Unusual Nature",
+        "description": "No usage object at all.",
+        "usage": null }
+    ],
+    "actions": [
+      { "name": "Fire Breath",
+        "description": "Exhales fire in a 90-foot cone.",
+        "usage": { "kind": "recharge", "low": 5, "high": 6 } },
+      { "name": "Bite",
+        "description": "Melee weapon attack, at will.",
+        "usage": { "kind": "at_will" } }
+    ],
+    "bonus_actions": [
+      { "name": "Quick Snap",
+        "description": "A hasty bite.",
+        "usage": { "kind": "per_short_rest", "uses": 2 } }
+    ],
+    "reactions": [
+      { "name": "Tail Riposte",
+        "description": "Swings its tail at a missed attacker.",
+        "usage": { "kind": "per_long_rest", "uses": 1 } }
+    ],
+    "legendary_actions": {
+      "description": "The dragon can take 3 legendary actions.",
+      "uses": 3,
+      "uses_in_lair": 4,
+      "options": [
+        { "name": "Detect", "cost": 1,
+          "description": "Makes a Wisdom (Perception) check." },
+        { "name": "Wing Attack", "cost": 2,
+          "description": "Beats its wings." }
+      ]
+    },
+    "lair_actions": {
+      "initiative": 20,
+      "description": "On initiative count 20, the lair acts.",
+      "options": [
+        { "name": "Magma Eruption",
+          "description": "Magma erupts from a point on the ground.",
+          "usage": { "kind": "recharge", "low": 6, "high": 6 } }
+      ]
+    },
+    "regional_effects": {
+      "description": "The region warps around the lair.",
+      "effects": [
+        { "name": "Scorched Earth",
+          "description": "Open flames within 1 mile burn brighter.",
+          "usage": null },
+        { "name": "Ashfall",
+          "description": "A fine ash falls perpetually.",
+          "usage": { "kind": "at_will" } }
+      ],
+      "fade_after": "1d10 days"
+    },
+    "spellcasting": {
+      "description": "The dragon casts spells requiring no components.",
+      "ability": "cha",
+      "save_dc": 21,
+      "attack_bonus": 13,
+      "at_will": ["Detect Magic", "Command"],
+      "slots": [
+        { "level": 1, "slots": 4, "spells": ["Shield", "Magic Missile"] },
+        { "level": 3, "slots": 2, "spells": ["Fireball"] }
+      ],
+      "innate_per_day": [
+        { "uses": 2, "spells": ["Scrying", "Suggestion"] },
+        { "uses": 1, "spells": ["Dominate Person"] }
+      ]
+    },
+    "custom_sections": [
+      { "name": "Tactics", "body": "Opens with Fire Breath." }
+    ],
+    "habitats": ["mountain", "astral-plane", "elemental-plane-of-fire"],
+    "treasures": ["arcana", "relics"],
+    "tags": ["boss", "phase3_test"],
+    "loot": ["Wyrm scale", "Charred signet ring"],
+    "has_special_reactions": true
+  })
+}
+
+#[tokio::test]
+async fn test_compendium_maximal_creature_round_trips_exactly() {
+  let dir = TempDir::new().expect("tempdir");
+  let state = app_state_for_dir(&dir).await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let (status, created) = post_json(
+    &app,
+    &cookie,
+    "/api/compendium/creatures",
+    &maximal_creature_draft(),
+  )
+  .await;
+  assert_eq!(status, StatusCode::CREATED);
+  let id = created["id"].as_str().expect("created id").to_string();
+
+  // GET must return the POST response byte-shape-identically
+  // (same serde emission, same values).
+  let fetched =
+    get_json(&app, &cookie, &format!("/api/compendium/creatures/{id}")).await;
+  assert_eq!(
+    fetched, created,
+    "GET must return exactly the creature POST materialised"
+  );
+
+  // PUT an edit: created_at is preserved, updated_at bumps, and the
+  // full shape (including every nested optional) still round-trips.
+  let mut edited = created.clone();
+  edited["name"] = json!("Ancient Test Wyrm, Renamed");
+  edited["created_at"] = json!(0);
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri(format!("/api/compendium/creatures/{id}"))
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(edited.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+  let updated: Value =
+    serde_json::from_str(&read_body(put).await).expect("PUT body");
+  assert_eq!(updated["name"], "Ancient Test Wyrm, Renamed");
+  assert_eq!(
+    updated["created_at"], created["created_at"],
+    "server must preserve created_at on update"
+  );
+  let refetched =
+    get_json(&app, &cookie, &format!("/api/compendium/creatures/{id}")).await;
+  assert_eq!(refetched, updated);
+
+  // Restart: a fresh AppState over the same database serves the
+  // identical creature.
+  let app2 = build_test_router(app_state_for_dir(&dir).await);
+  let cookie2 = login_cookie(&app2, "alice@example.com").await;
+  let after_restart =
+    get_json(&app2, &cookie2, &format!("/api/compendium/creatures/{id}")).await;
+  assert_eq!(
+    after_restart, updated,
+    "the creature must survive a restart unchanged"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_group_full_round_trip_survives_restart() {
+  let dir = TempDir::new().expect("tempdir");
+  let state = app_state_for_dir(&dir).await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let draft = json!({
+    "name": "Wyrm Cult",
+    "initiative_mode": { "type": "shared_manual", "value": 17 },
+    "entries": [
+      { "creature_id": "cultist-uuid", "count": 6, "minion_type": "half" },
+      { "creature_id": "fanatic-uuid", "count": 2, "minion_type": "one" },
+      { "creature_id": "wyrmling-uuid", "count": 1, "minion_type": "none" }
+    ]
+  });
+  let (status, created) =
+    post_json(&app, &cookie, "/api/compendium/groups", &draft).await;
+  assert_eq!(status, StatusCode::CREATED);
+  let id = created["id"].as_str().expect("group id").to_string();
+
+  let fetched =
+    get_json(&app, &cookie, &format!("/api/compendium/groups/{id}")).await;
+  assert_eq!(fetched, created);
+  assert_eq!(
+    get_json(&app, &cookie, "/api/compendium/groups").await,
+    json!([created]),
+    "the listing must carry the exact same record"
+  );
+
+  let app2 = build_test_router(app_state_for_dir(&dir).await);
+  let cookie2 = login_cookie(&app2, "alice@example.com").await;
+  assert_eq!(
+    get_json(&app2, &cookie2, &format!("/api/compendium/groups/{id}")).await,
+    created,
+    "the group must survive a restart unchanged"
+  );
+}
+
+#[tokio::test]
+async fn test_compendium_save_opaque_body_round_trips_exactly() {
+  let dir = TempDir::new().expect("tempdir");
+  let state = app_state_for_dir(&dir).await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  // Deliberately NOT Creature-shaped: the snapshot body is an
+  // opaque value on the wire, and mixed number forms (int, float,
+  // negative, zero-fraction float), null, unicode, empty containers
+  // and deep nesting all have to survive the node-tree codec.
+  let body = json!([
+    { "id": "abc", "name": "Göblin ☂", "cr": "1/4",
+      "weights": [1, 2.5, -3, 4.0, 0.125],
+      "meta": { "flag": true, "note": null,
+                "nested": { "deep": [[], {}, "end"] } } },
+    "bare string entry",
+    42,
+    null
+  ]);
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/compendium/saves/Opaque%20Save")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+  let record: Value =
+    serde_json::from_str(&read_body(put).await).expect("PUT body");
+  assert_eq!(record["creatures"], body, "PUT must echo the body");
+
+  let fetched =
+    get_json(&app, &cookie, "/api/compendium/saves/Opaque%20Save").await;
+  assert_eq!(fetched, record, "GET must return the snapshot exactly");
+
+  let app2 = build_test_router(app_state_for_dir(&dir).await);
+  let cookie2 = login_cookie(&app2, "alice@example.com").await;
+  assert_eq!(
+    get_json(&app2, &cookie2, "/api/compendium/saves/Opaque%20Save").await,
+    record,
+    "the snapshot must survive a restart unchanged"
+  );
+}
+
+/// Write the three legacy per-user compendium fixtures: a full
+/// creature + a group + a snapshot for the known user, a creature
+/// entry for an unknown user (skipped), and an undecodable creature
+/// list for a second known user (skipped without aborting).
+fn write_legacy_compendium_fixtures(
+  dir: &TempDir,
+  user_id: &str,
+  broken_user_id: &str,
+) {
+  let creature = json!({
+    "id": "11111111-2222-4333-a444-555555555555",
+    "name": "Legacy Wolf",
+    "kind": "enemy",
+    "size": "medium",
+    "race": "Beast",
+    "subrace": "",
+    "alignment": "unaligned",
+    "source": "Legacy import",
+    "description": "",
+    "armor_class": 13,
+    "armor_class_note": "",
+    "max_hp": 11,
+    "hp_formula": "2d8+2",
+    "initiative_bonus": 0,
+    "speed": { "walk": 40, "fly": 0, "swim": 0, "climb": 0,
+               "burrow": 0, "hover": false },
+    "abilities": { "str": 12, "dex": 15, "con": 12, "int": 3,
+                   "wis": 12, "cha": 6 },
+    "senses": { "blindsight": 0, "darkvision": 0, "tremorsense": 0,
+                "truesight": 0, "passive_perception": 13 },
+    "challenge_rating": "1/4",
+    "xp": 50,
+    "proficiency_bonus": 2,
+    "tags": ["legacy_tag"],
+    "created_at": 1700000001000i64,
+    "updated_at": 1700000002000i64
+  });
+  let creatures = json!({
+    user_id: [creature],
+    // Missing `kind`: the whole entry is undecodable and skipped.
+    broken_user_id: [ { "name": "Broken Creature" } ],
+    "0000dead-0000-0000-0000-000000000000": [
+      { "name": "Orphaned" }
+    ]
+  });
+  let groups = json!({
+    user_id: [
+      {
+        "id": "aaaa1111-bbbb-4ccc-8ddd-eeee22223333",
+        "name": "Legacy Pack",
+        "initiative_mode": { "type": "shared_manual", "value": 9 },
+        "entries": [
+          { "creature_id": "11111111-2222-4333-a444-555555555555",
+            "count": 3, "minion_type": "half" }
+        ],
+        "created_at": 1700000003000i64,
+        "updated_at": 1700000004000i64
+      }
+    ]
+  });
+  let saves = json!({
+    user_id: [
+      {
+        "name": "Legacy Save",
+        "creatures": [ { "id": "abc", "cr": "1/4" } ],
+        "created_at": 1700000005000i64,
+        "updated_at": 1700000006000i64
+      }
+    ]
+  });
+
+  for (name, payload) in [
+    ("compendium/user-creatures.json", &creatures),
+    ("compendium-groups.json", &groups),
+    ("compendium-saves.json", &saves),
+  ] {
+    let path = dir.path().join(name);
+    if let Some(parent) = path.parent() {
+      std::fs::create_dir_all(parent).expect("fixture dir");
+    }
+    std::fs::write(
+      path,
+      serde_json::to_vec_pretty(payload).expect("encode compendium fixture"),
+    )
+    .expect("write compendium fixture");
+  }
+}
+
+/// Two-user variant of `write_legacy_fixtures`, so the compendium
+/// import test has a second known account whose entry is
+/// deliberately undecodable.
+fn write_two_user_fixture(dir: &TempDir, user_id: &str, broken_user_id: &str) {
+  let users = json!([
+    {
+      "id": user_id,
+      "email": "legacy@example.com",
+      "password_hash": argon2id_hash("hunter2hunter"),
+      "display_name": "Legacy",
+      "created_at": 1700000000u64
+    },
+    {
+      "id": broken_user_id,
+      "email": "broken@example.com",
+      "password_hash": argon2id_hash("hunter2hunter"),
+      "display_name": "Broken",
+      "created_at": 1700000000u64
+    }
+  ]);
+  std::fs::write(
+    dir.path().join("users.json"),
+    serde_json::to_vec_pretty(&users).expect("encode users fixture"),
+  )
+  .expect("write users.json");
+}
+
+#[tokio::test]
+async fn test_compendium_import_replays_legacy_files_once() {
+  let dir = TempDir::new().expect("tempdir");
+  let user_id = "57d6a89a-9bb3-4b1b-87ef-6a12d6ce157c";
+  let broken_user_id = "67d6a89a-9bb3-4b1b-87ef-6a12d6ce157c";
+  write_two_user_fixture(&dir, user_id, broken_user_id);
+  write_legacy_compendium_fixtures(&dir, user_id, broken_user_id);
+
+  let state = app_state_for_dir(&dir).await;
+  let app = build_test_router(state);
+  let cookie = login_cookie(&app, "legacy@example.com").await;
+
+  // The imported creature reads back with its id, list fields, and
+  // timestamps intact, overlaid on the bundled set.
+  let creatures = get_json(&app, &cookie, "/api/compendium/creatures").await;
+  let wolf = creatures
+    .as_array()
+    .expect("creature list")
+    .iter()
+    .find(|c| c["name"] == "Legacy Wolf")
+    .expect("imported creature present")
+    .clone();
+  assert_eq!(wolf["id"], "11111111-2222-4333-a444-555555555555");
+  assert_eq!(wolf["tags"], json!(["legacy_tag"]));
+  assert_eq!(wolf["created_at"], 1700000001000i64);
+  assert_eq!(wolf["updated_at"], 1700000002000i64);
+  assert_eq!(wolf["is_bundled"], false);
+
+  // The imported group reads back exactly (serde emits the full
+  // Group shape).
+  assert_eq!(
+    get_json(&app, &cookie, "/api/compendium/groups").await,
+    json!([
+      {
+        "id": "aaaa1111-bbbb-4ccc-8ddd-eeee22223333",
+        "name": "Legacy Pack",
+        "initiative_mode": { "type": "shared_manual", "value": 9 },
+        "entries": [
+          { "creature_id": "11111111-2222-4333-a444-555555555555",
+            "count": 3, "minion_type": "half" }
+        ],
+        "created_at": 1700000003000i64,
+        "updated_at": 1700000004000i64
+      }
+    ])
+  );
+
+  // The imported snapshot preserves its opaque body + timestamps.
+  assert_eq!(
+    get_json(&app, &cookie, "/api/compendium/saves/Legacy%20Save").await,
+    json!({
+      "name": "Legacy Save",
+      "creatures": [ { "id": "abc", "cr": "1/4" } ],
+      "created_at": 1700000005000i64,
+      "updated_at": 1700000006000i64
+    })
+  );
+
+  // The undecodable entry was skipped without aborting the boot:
+  // the broken user has only the bundled overlay, nothing personal.
+  let broken_cookie = login_cookie(&app, "broken@example.com").await;
+  let broken_names: Vec<String> =
+    get_json(&app, &broken_cookie, "/api/compendium/creatures")
+      .await
+      .as_array()
+      .expect("list")
+      .iter()
+      .filter(|c| c["is_bundled"] == false)
+      .filter_map(|c| c["name"].as_str().map(str::to_string))
+      .collect();
+  assert_eq!(
+    broken_names,
+    Vec::<String>::new(),
+    "the undecodable creature list must have been skipped"
+  );
+
+  // The legacy files are left in place as the rollback copy.
+  assert!(dir.path().join("compendium/user-creatures.json").exists());
+  assert!(dir.path().join("compendium-groups.json").exists());
+  assert!(dir.path().join("compendium-saves.json").exists());
+
+  // Second boot: the marker suppresses a re-import (no duplicates).
+  let app2 = build_test_router(app_state_for_dir(&dir).await);
+  let cookie2 = login_cookie(&app2, "legacy@example.com").await;
+  let wolves = get_json(&app2, &cookie2, "/api/compendium/creatures")
+    .await
+    .as_array()
+    .expect("list")
+    .iter()
+    .filter(|c| c["name"] == "Legacy Wolf")
+    .count();
+  assert_eq!(wolves, 1, "re-boot must not duplicate imported creatures");
 }
 
 #[tokio::test]

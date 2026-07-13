@@ -1,4 +1,4 @@
-//! Per-user compendium **creature** store.
+//! Per-user compendium **creature** store, relational edition.
 //!
 //! Each authenticated user owns their own set of compendium
 //! creatures — anything they create, import, or duplicate from a
@@ -7,62 +7,78 @@
 //! across users; this store handles the mutable per-user layer
 //! that overlays them.
 //!
-//! Disk shape is `HashMap<UserId, Vec<Creature>>` in a single
-//! JSON file backed by [`JsonFileStore`].  Mirrors
-//! [`CompendiumGroupStore`](super::groups::CompendiumGroupStore)
-//! in disk layout and locking discipline; the difference is just
-//! the body type (creatures vs groups).
+//! Storage is the `user_creatures` table family (migration 0003)
+//! through the row codec in [`super::creature_rows`]; the legacy
+//! `HashMap<UserId, Vec<Creature>>` JSON file is now only read by
+//! the one-shot boot import.  List order round-trips through the
+//! per-user `position` column, and the legacy Vec semantics are
+//! preserved deliberately: duplicate wire ids within a user are
+//! tolerated (`get`/`update` address the first by position, `remove`
+//! drops them all), matching what the JSON store did with
+//! `find` / `retain`.
 
-use std::{
-  collections::HashMap,
-  path::PathBuf,
-  sync::Arc,
-  time::{SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use ezpz_dndz_lib::{
   compendium::{Creature, CreatureDraft},
-  json_file_store::JsonFileStore,
+  db::Db,
   users::UserId,
 };
 use uuid::Uuid;
 
+use super::creature_rows::{fetch_creatures, insert_creature, CreatureRow};
 use super::error::CompendiumStoreError;
 
 #[derive(Clone)]
 pub struct UserCompendiumStore {
-  inner: Arc<JsonFileStore<HashMap<UserId, Vec<Creature>>>>,
+  db: Db,
 }
 
 impl UserCompendiumStore {
-  pub async fn load_or_default(
-    path: PathBuf,
-  ) -> Result<Self, CompendiumStoreError> {
-    let inner =
-      JsonFileStore::<HashMap<UserId, Vec<Creature>>>::load_or_default(path)
-        .await?;
-    Ok(Self {
-      inner: Arc::new(inner),
-    })
+  pub fn new(db: Db) -> Self {
+    Self { db }
   }
 
-  pub async fn list(&self, user_id: &UserId) -> Vec<Creature> {
-    self
-      .inner
-      .read()
+  async fn rows(
+    &self,
+    user_id: &UserId,
+  ) -> Result<Vec<CreatureRow>, CompendiumStoreError> {
+    let mut conn = self
+      .db
+      .pool()
+      .acquire()
       .await
-      .get(user_id)
-      .cloned()
-      .unwrap_or_default()
+      .map_err(|source| CompendiumStoreError::CreatureRowsRead { source })?;
+    fetch_creatures(&mut conn, user_id.as_str()).await
   }
 
-  pub async fn get(&self, user_id: &UserId, id: &str) -> Option<Creature> {
-    self
-      .inner
-      .read()
-      .await
-      .get(user_id)
-      .and_then(|cs| cs.iter().find(|c| c.id == id).cloned())
+  pub async fn list(
+    &self,
+    user_id: &UserId,
+  ) -> Result<Vec<Creature>, CompendiumStoreError> {
+    Ok(
+      self
+        .rows(user_id)
+        .await?
+        .into_iter()
+        .map(|r| r.creature)
+        .collect(),
+    )
+  }
+
+  pub async fn get(
+    &self,
+    user_id: &UserId,
+    id: &str,
+  ) -> Result<Option<Creature>, CompendiumStoreError> {
+    Ok(
+      self
+        .rows(user_id)
+        .await?
+        .into_iter()
+        .find(|r| r.creature.id == id)
+        .map(|r| r.creature),
+    )
   }
 
   /// Allocate a fresh UUIDv4 id + timestamps, append to this user's
@@ -75,35 +91,34 @@ impl UserCompendiumStore {
   ) -> Result<Creature, CompendiumStoreError> {
     let now = epoch_millis();
     let creature = creature_from_draft(draft, Uuid::new_v4().to_string(), now);
-    let user_id_owned = user_id.clone();
-    let to_return = creature.clone();
-    self
-      .inner
-      .mutate(move |all| {
-        all.entry(user_id_owned).or_default().push(creature);
-      })
-      .await?;
-    Ok(to_return)
+    self.insert_raw(user_id, creature.clone()).await?;
+    Ok(creature)
   }
 
   /// Insert a fully-materialised creature (id already chosen,
-  /// timestamps already stamped).  Used by the migration path that
-  /// moves legacy shared-store creatures into a designated user's
-  /// per-user list.  Plain CRUD callers should use
-  /// [`Self::insert`].
+  /// timestamps already stamped).  Used by the duplicate endpoint
+  /// and by the split migration that moves legacy shared-store
+  /// creatures into a designated user's list.  Plain CRUD callers
+  /// should use [`Self::insert`].
   pub async fn insert_raw(
     &self,
     user_id: &UserId,
     creature: Creature,
   ) -> Result<(), CompendiumStoreError> {
-    let user_id_owned = user_id.clone();
-    self
-      .inner
-      .mutate(move |all| {
-        all.entry(user_id_owned).or_default().push(creature);
-      })
-      .await?;
-    Ok(())
+    let mut tx = self.db.pool().begin().await.map_err(|source| {
+      CompendiumStoreError::TransactionBegin {
+        store: "creature",
+        source,
+      }
+    })?;
+    let position = next_position(&mut tx, user_id).await?;
+    insert_creature(&mut tx, user_id.as_str(), position, &creature).await?;
+    tx.commit().await.map_err(|source| {
+      CompendiumStoreError::TransactionCommit {
+        store: "creature",
+        source,
+      }
+    })
   }
 
   /// Replace the user's creature at `id` with the supplied record.
@@ -127,23 +142,43 @@ impl UserCompendiumStore {
       });
     }
     creature.updated_at = epoch_millis();
-    let id_owned = id.to_string();
-    let user_id_owned = user_id.clone();
-    let outcome = self
-      .inner
-      .mutate(move |all| {
-        let list = all.entry(user_id_owned).or_default();
-        list.iter_mut().find(|c| c.id == id_owned).map(|slot| {
-          let preserved_created_at = slot.created_at;
-          *slot = creature;
-          slot.created_at = preserved_created_at;
-          slot.clone()
-        })
-      })
+
+    let mut tx = self.db.pool().begin().await.map_err(|source| {
+      CompendiumStoreError::TransactionBegin {
+        store: "creature",
+        source,
+      }
+    })?;
+
+    // The first row (by position) with this wire id, mirroring the
+    // legacy Vec's `find`.  Delete-and-reinsert lets the whole child
+    // family swap atomically while keeping the row's list slot and
+    // original created_at.
+    let existing = fetch_creatures(&mut tx, user_id.as_str())
+      .await?
+      .into_iter()
+      .find(|r| r.creature.id == id)
+      .ok_or_else(|| CompendiumStoreError::CreatureIdNotFoundError {
+        id: id.to_string(),
+      })?;
+
+    creature.created_at = existing.creature.created_at;
+
+    sqlx::query("DELETE FROM user_creatures WHERE row_id = $1")
+      .bind(&existing.row_id)
+      .execute(&mut *tx)
+      .await
+      .map_err(|source| CompendiumStoreError::CreatureRowsWrite { source })?;
+    insert_creature(&mut tx, user_id.as_str(), existing.position, &creature)
       .await?;
-    outcome.ok_or_else(|| CompendiumStoreError::CreatureIdNotFoundError {
-      id: id.to_string(),
-    })
+
+    tx.commit().await.map_err(|source| {
+      CompendiumStoreError::TransactionCommit {
+        store: "creature",
+        source,
+      }
+    })?;
+    Ok(creature)
   }
 
   pub async fn remove(
@@ -151,18 +186,15 @@ impl UserCompendiumStore {
     user_id: &UserId,
     id: &str,
   ) -> Result<(), CompendiumStoreError> {
-    let id_owned = id.to_string();
-    let user_id_owned = user_id.clone();
-    let removed = self
-      .inner
-      .mutate(move |all| {
-        let list = all.entry(user_id_owned).or_default();
-        let before = list.len();
-        list.retain(|c| c.id != id_owned);
-        before != list.len()
-      })
-      .await?;
-    if removed {
+    let result = sqlx::query(
+      "DELETE FROM user_creatures WHERE user_id = $1 AND creature_id = $2",
+    )
+    .bind(user_id.as_str())
+    .bind(id)
+    .execute(self.db.pool())
+    .await
+    .map_err(|source| CompendiumStoreError::CreatureRowsWrite { source })?;
+    if result.rows_affected() > 0 {
       Ok(())
     } else {
       Err(CompendiumStoreError::CreatureIdNotFoundError { id: id.to_string() })
@@ -172,22 +204,50 @@ impl UserCompendiumStore {
   /// Replace this user's entire creature list with `creatures`.
   /// Used by the reset-to-bundled path (empty `creatures`) and by
   /// full-compendium import (the user uploaded a JSON export).
-  /// Server preserves nothing — what you send is what's on disk
+  /// Server preserves nothing — what you send is what's persisted
   /// for this user.
   pub async fn replace_for_user(
     &self,
     user_id: &UserId,
     creatures: Vec<Creature>,
   ) -> Result<(), CompendiumStoreError> {
-    let user_id_owned = user_id.clone();
-    self
-      .inner
-      .mutate(move |all| {
-        all.insert(user_id_owned, creatures);
-      })
-      .await?;
-    Ok(())
+    let mut tx = self.db.pool().begin().await.map_err(|source| {
+      CompendiumStoreError::TransactionBegin {
+        store: "creature",
+        source,
+      }
+    })?;
+    sqlx::query("DELETE FROM user_creatures WHERE user_id = $1")
+      .bind(user_id.as_str())
+      .execute(&mut *tx)
+      .await
+      .map_err(|source| CompendiumStoreError::CreatureRowsWrite { source })?;
+    for (i, creature) in creatures.iter().enumerate() {
+      insert_creature(&mut tx, user_id.as_str(), i as i64, creature).await?;
+    }
+    tx.commit().await.map_err(|source| {
+      CompendiumStoreError::TransactionCommit {
+        store: "creature",
+        source,
+      }
+    })
   }
+}
+
+/// The next free list slot for this user (appends go at the end,
+/// like the legacy Vec push).
+async fn next_position(
+  conn: &mut sqlx::AnyConnection,
+  user_id: &UserId,
+) -> Result<i64, CompendiumStoreError> {
+  sqlx::query_scalar::<_, i64>(
+    "SELECT COALESCE(MAX(position) + 1, 0) FROM user_creatures \
+     WHERE user_id = $1",
+  )
+  .bind(user_id.as_str())
+  .fetch_one(&mut *conn)
+  .await
+  .map_err(|source| CompendiumStoreError::CreatureRowsRead { source })
 }
 
 fn creature_from_draft(draft: CreatureDraft, id: String, now: i64) -> Creature {

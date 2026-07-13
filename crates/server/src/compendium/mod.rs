@@ -1,20 +1,23 @@
-//! Compendium HTTP routes + file-backed store.
+//! Compendium HTTP routes + stores.
 //!
-//! - Storage: a single JSON file at
-//!   `<data_dir>/compendium/creatures.json` via the shared
-//!   `JsonFileStore<Vec<Creature>>` from the lib crate.
+//! - Storage: the relational per-user tables from migration 0003
+//!   (`user_creatures`, `compendium_groups`, `compendium_saves` and
+//!   their children) through the codecs in [`creature_rows`] and
+//!   [`save_body`].  The bundled SRD set stays embedded in the
+//!   binary ([`bundled`]); the legacy shared JSON file survives
+//!   only as input to the one-shot split migration ([`migrate`]).
 //! - Routes: REST CRUD on `/api/compendium/creatures[/:id]` plus
-//!   bulk `import` / `export` / `reset` endpoints.
-//! - Bootstrap: on first launch, the bundled creatures
-//!   (embedded via `include_str!`) are written to disk so the
-//!   user has something to browse immediately.
+//!   bulk `import` / `export` / `reset` endpoints, per-user groups,
+//!   and named snapshot saves.
 //! - Errors: semantic `CompendiumStoreError` with descriptive
 //!   variants per the project's CLAUDE.md conventions.
 
 pub mod bundled;
+pub mod creature_rows;
 pub mod error;
 pub mod groups;
 pub mod migrate;
+pub mod save_body;
 pub mod saves;
 pub mod store;
 pub mod user_store;
@@ -76,17 +79,18 @@ async fn list_creatures(
       c.is_bundled = true;
       c
     });
-  let user_owned =
-    state
-      .user_compendium
-      .list(&user.id)
-      .await
-      .into_iter()
-      .map(|mut c| {
-        c.is_bundled = false;
-        c
-      });
-  Json(bundled.chain(user_owned).collect::<Vec<_>>()).into_response()
+  match state.user_compendium.list(&user.id).await {
+    Ok(user_owned) => Json(
+      bundled
+        .chain(user_owned.into_iter().map(|mut c| {
+          c.is_bundled = false;
+          c
+        }))
+        .collect::<Vec<_>>(),
+    )
+    .into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn get_creature(
@@ -99,13 +103,14 @@ async fn get_creature(
     copy.is_bundled = true;
     return Json(copy).into_response();
   }
-  state.user_compendium.get(&user.id, &id).await.map_or_else(
-    || StatusCode::NOT_FOUND.into_response(),
-    |mut c| {
+  match state.user_compendium.get(&user.id, &id).await {
+    Ok(Some(mut c)) => {
       c.is_bundled = false;
       Json(c).into_response()
-    },
-  )
+    }
+    Ok(None) => StatusCode::NOT_FOUND.into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn create_creature(
@@ -176,11 +181,12 @@ async fn duplicate_creature(
     c.clone()
   } else {
     match state.user_compendium.get(&user.id, &id).await {
-      Some(c) => c,
-      None => {
+      Ok(Some(c)) => c,
+      Ok(None) => {
         return CompendiumStoreError::CreatureIdNotFoundError { id }
           .into_response()
       }
+      Err(e) => return e.into_response(),
     }
   };
 
@@ -219,13 +225,18 @@ async fn export_compendium(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  let creatures = state.user_compendium.list(&user.id).await;
-  let groups = state.compendium_groups.list(&user.id).await;
-  Json(serde_json::json!({
-    "creatures": creatures,
-    "groups": groups,
-  }))
-  .into_response()
+  let creatures = match state.user_compendium.list(&user.id).await {
+    Ok(creatures) => creatures,
+    Err(e) => return e.into_response(),
+  };
+  match state.compendium_groups.list(&user.id).await {
+    Ok(groups) => Json(serde_json::json!({
+      "creatures": creatures,
+      "groups": groups,
+    }))
+    .into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 /// Import a compendium into the caller's per-user store.  Accepts
@@ -367,7 +378,10 @@ async fn list_compendium_saves(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  Json(state.compendium_saves.list(&user.id).await).into_response()
+  match state.compendium_saves.list(&user.id).await {
+    Ok(metas) => Json(metas).into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn get_compendium_save(
@@ -375,14 +389,11 @@ async fn get_compendium_save(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  state
-    .compendium_saves
-    .get(&user.id, &name)
-    .await
-    .map_or_else(
-      || CompendiumStoreError::SaveNotFound.into_response(),
-      |record| Json(record).into_response(),
-    )
+  match state.compendium_saves.get(&user.id, &name).await {
+    Ok(Some(record)) => Json(record).into_response(),
+    Ok(None) => CompendiumStoreError::SaveNotFound.into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -470,7 +481,10 @@ async fn list_groups(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  Json(state.compendium_groups.list(&user.id).await).into_response()
+  match state.compendium_groups.list(&user.id).await {
+    Ok(groups) => Json(groups).into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn get_group(
@@ -478,14 +492,13 @@ async fn get_group(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(id): Path<String>,
 ) -> Response {
-  state
-    .compendium_groups
-    .get(&user.id, &id)
-    .await
-    .map_or_else(
-      || CompendiumStoreError::GroupIdNotFoundError { id }.into_response(),
-      |g| Json(g).into_response(),
-    )
+  match state.compendium_groups.get(&user.id, &id).await {
+    Ok(Some(g)) => Json(g).into_response(),
+    Ok(None) => {
+      CompendiumStoreError::GroupIdNotFoundError { id }.into_response()
+    }
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn create_group(

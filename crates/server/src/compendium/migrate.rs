@@ -13,6 +13,20 @@
 //! marker file at `<compendium_dir>/.split-v1`; subsequent boots
 //! see the marker and skip immediately.
 //!
+//! Phase 3 of the relational migration left this module's mechanics
+//! alone on purpose: the legacy shared store stays a JSON file
+//! (`compendium/creatures.json` + its bundle-seed hash sidecar) and
+//! gets no tables, because post-split it is exclusively input to
+//! this migration — nothing serves it at runtime.  Reading the file
+//! directly is simpler than re-plumbing the split through imported
+//! tables, and it keeps the marker semantics byte-identical.  The
+//! destination changed underneath, though: `insert_raw` now lands
+//! claimed creatures in the relational per-user store.  Ordering in
+//! `AppState::assemble` guarantees the one-shot JSON import (users
+//! and the per-user compendium files) has already run, so the
+//! claim-user lookup and the already-imported per-user rows are in
+//! place before this fires.
+//!
 //! ### What runs
 //!
 //! 1. Read the legacy shared compendium (every Creature on disk).
