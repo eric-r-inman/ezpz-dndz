@@ -17,6 +17,7 @@ use axum::{
   http::{Request, StatusCode},
   middleware, Router,
 };
+use ezpz_dndz_lib::db::{default_sqlite_url, Db};
 use ezpz_dndz_server::{
   compendium, config::RuntimePaths, dice, encounters, per_user_store, users,
   web_base::AppState,
@@ -29,9 +30,10 @@ use tempfile::TempDir;
 use tokio_listener::ListenerAddress;
 use tower::ServiceExt;
 
-/// Build an `AppState` backed by fresh temp-dir paths and an
-/// OIDC-less `BaseServerState`.  Returns the temp dir alongside so
-/// the caller can keep it alive for the duration of the test.
+/// Build an `AppState` backed by fresh temp-dir paths, a temp-file
+/// SQLite database, and an OIDC-less `BaseServerState`.  Returns the
+/// temp dir alongside so the caller can keep it alive for the
+/// duration of the test.
 async fn stub_app_state() -> (TempDir, AppState) {
   let temp = TempDir::new().expect("tempdir");
   let paths = RuntimePaths::from_data_dir(temp.path());
@@ -49,7 +51,11 @@ async fn stub_app_state() -> (TempDir, AppState) {
     .await
     .expect("base server state");
 
-  let state = AppState::assemble(base, &paths, None)
+  let db = Db::connect(&default_sqlite_url(temp.path()))
+    .await
+    .expect("test database");
+
+  let state = AppState::assemble(base, db, &paths, None)
     .await
     .expect("app state assemble");
 

@@ -101,11 +101,13 @@ pub async fn run(
     user_created: user_created.len(),
   })?;
 
-  let user = user_store.find_by_email(email).await.ok_or_else(|| {
-    MigrationError::ClaimUserNotFound {
+  let user = user_store
+    .find_by_email(email)
+    .await
+    .map_err(MigrationError::ClaimUserLookup)?
+    .ok_or_else(|| MigrationError::ClaimUserNotFound {
       email: email.to_string(),
-    }
-  })?;
+    })?;
 
   let claim_user_id = user.id.clone();
   let claim_user_id_str = claim_user_id.as_str().to_string();
@@ -245,6 +247,9 @@ pub enum MigrationError {
      register the account first or pass a different email"
   )]
   ClaimUserNotFound { email: String },
+
+  #[error("failed to look up the compendium claim user: {0}")]
+  ClaimUserLookup(#[source] ezpz_dndz_lib::users::UserStoreError),
 
   #[error("failed to append migrated creature to per-user store: {0}")]
   Insert(#[source] CompendiumStoreError),

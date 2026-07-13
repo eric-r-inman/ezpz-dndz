@@ -34,7 +34,7 @@ pub enum Command {
     command: DiceCommand,
   },
 
-  /// Admin operations against the file-backed user store
+  /// Admin operations against the SQL-backed user store
   /// (password reset, etc.).  Intended for the operator running
   /// the binary on the same host as the data dir.
   Users {

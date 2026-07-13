@@ -21,6 +21,10 @@ tokio = { workspace = true }
 uuid = { workspace = true }
 schemars = { workspace = true }
 argon2 = { workspace = true }
+# Relational storage core: the `Db` newtype over `AnyPool`, the
+# embedded migrations, and the SQL-backed user store all live in
+# this crate.
+sqlx = { workspace = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

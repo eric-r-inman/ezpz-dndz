@@ -5,6 +5,7 @@
 //! fields below carry the JSON-backed stores that ezpz-dndz actually
 //! serves.
 
+use ezpz_dndz_lib::db::Db;
 use ezpz_dndz_lib::users::UserStore;
 use rust_template_foundation::{
   impl_server_state, server::runner::BaseServerState,
@@ -20,6 +21,7 @@ use crate::compendium::{
 use crate::config::RuntimePaths;
 use crate::dice::DiceStore;
 use crate::encounters::{EncounterStore, SavedEncounterStore};
+use crate::json_import;
 use crate::per_user_store::{PerUserStore, PerUserStoreError};
 
 #[derive(Clone)]
@@ -48,17 +50,14 @@ impl_server_state!(AppState, base);
 
 #[derive(Debug, Error)]
 pub enum AppStateError {
-  #[error("Failed to load dice history store: {0}")]
-  DiceStoreLoad(#[source] crate::dice::DiceHistoryError),
-
   #[error("Failed to load compendium store: {0}")]
   CompendiumStoreLoad(#[source] crate::compendium::CompendiumStoreError),
 
   #[error("Failed to load live-encounter store: {0}")]
   EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
 
-  #[error("Failed to load user store: {0}")]
-  UserStoreLoad(#[source] ezpz_dndz_lib::users::UserStoreError),
+  #[error("Legacy JSON import failed: {0}")]
+  JsonImport(#[source] json_import::JsonImportError),
 
   #[error("Compendium split migration failed: {0}")]
   CompendiumSplitMigration(#[source] MigrationError),
@@ -71,8 +70,12 @@ pub enum AppStateError {
 }
 
 impl AppState {
-  /// Build the app-specific portion of state from `RuntimePaths`,
-  /// then wrap it around the foundation-built `BaseServerState`.
+  /// Build the app-specific portion of state from the database
+  /// handle plus `RuntimePaths`, then wrap it around the
+  /// foundation-built `BaseServerState`.  `db` arrives already
+  /// migrated (see `Db::connect`); the legacy JSON files referenced
+  /// by `paths` are only consulted by the one-shot import and by the
+  /// stores that later phases haven't ported yet.
   ///
   /// `compendium_claim_user` is the email address passed via
   /// `--compendium-claim-user` (or the equivalent config-file
@@ -82,12 +85,19 @@ impl AppState {
   /// shared store; ignored on every other boot.
   pub async fn assemble(
     base: BaseServerState,
+    db: Db,
     paths: &RuntimePaths,
     compendium_claim_user: Option<&str>,
   ) -> Result<Self, AppStateError> {
-    let dice_store = DiceStore::load_or_default(paths.dice_history.clone())
+    let dice_store = DiceStore::new(db.clone());
+    let user_store = UserStore::new(db.clone());
+
+    // Replay users.json + dice-history.json into the fresh database
+    // exactly once.  Must run before the compendium split migration
+    // below, whose claim-user lookup expects the imported accounts.
+    json_import::run(&db, paths)
       .await
-      .map_err(AppStateError::DiceStoreLoad)?;
+      .map_err(AppStateError::JsonImport)?;
 
     let compendium_store =
       CompendiumStore::load_or_bootstrap(paths.compendium.clone())
@@ -121,10 +131,6 @@ impl AppState {
       SavedEncounterStore::load_or_default(paths.encounter_saves.clone())
         .await
         .map_err(AppStateError::EncounterStoreLoad)?;
-
-    let user_store = UserStore::load_or_default(paths.users.clone())
-      .await
-      .map_err(AppStateError::UserStoreLoad)?;
 
     let lore_groups =
       PerUserStore::load_or_default("lore-groups", paths.lore_groups.clone())

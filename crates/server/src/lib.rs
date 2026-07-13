@@ -4,6 +4,7 @@ pub mod config;
 pub mod dice;
 pub mod encounters;
 pub mod frontend;
+pub mod json_import;
 pub mod per_user_store;
 pub mod users;
 pub mod web_base;

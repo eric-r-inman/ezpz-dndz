@@ -23,6 +23,11 @@ log_format = "text"  # Options: text, json
 # <data_dir>/dice-history.json.
 # dice_history_path = "/var/lib/ezpz-dndz/dice-history.json"
 
+# Database connection URL. Defaults to a SQLite file inside
+# data_dir; point at PostgreSQL for hosted deployments.
+# database_url = "sqlite:///var/lib/ezpz-dndz/ezpz-dndz.db"
+# database_url = "postgres://ezpz:secret@localhost/ezpz_dndz"
+
 # OIDC (single-sign-on). Leave commented to run unauthenticated.
 # Production deployments behind Authelia / Keycloak / similar set
 # all three fields. See docs/ARCHITECTURE.md for the deployment

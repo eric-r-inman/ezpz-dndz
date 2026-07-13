@@ -1,22 +1,23 @@
-//! `users` CLI subcommand — admin operations against the
-//! file-backed user store.
+//! `users` CLI subcommand — admin operations against the user store.
 //!
 //! Currently a single operation: `users reset-password
 //! --email <email>` resets a forgotten password by writing a fresh
-//! Argon2id hash into `users.json`.  No current-password check —
+//! Argon2id hash into the database.  No current-password check —
 //! this is an operator tool, intended for the case where a friend
-//! lost their password and you have direct disk access to the
-//! data dir.
+//! lost their password and you have direct access to the data dir.
 //!
-//! Lives in the CLI crate (not the server) so it can run while
-//! the server is stopped — the same file-backed `UserStore` the
-//! server uses is opened directly off disk.  The CLI does **not**
-//! go through the HTTP API, so this still works when the server
-//! is down.
+//! Lives in the CLI crate (not the server) so it can run while the
+//! server is stopped — the same SQL-backed `UserStore` the server
+//! uses is opened directly against the database.  The CLI does
+//! **not** go through the HTTP API, so this still works when the
+//! server is down.  The database is resolved exactly like the
+//! server's: `--database-url` wins, otherwise
+//! `sqlite://<data_dir>/ezpz-dndz.db`.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::Subcommand;
+use ezpz_dndz_lib::db::{default_sqlite_url, Db, DbError};
 use ezpz_dndz_lib::users::{UserStore, UserStoreError};
 use thiserror::Error;
 use tracing::info;
@@ -24,8 +25,8 @@ use tracing::info;
 #[derive(Debug, Clone, Subcommand)]
 pub enum UsersCommand {
   /// Reset a user's password without knowing the current one.
-  /// Operator-only — assumes you have local disk access to the
-  /// data dir.  The new password is read from the controlling
+  /// Operator-only — assumes you have local access to the
+  /// database.  The new password is read from the controlling
   /// TTY by default so it never lands in `ps` output or shell
   /// history; pass `--new-password` to script the reset against
   /// a piped value instead.
@@ -45,15 +46,15 @@ pub enum UsersCommand {
     #[arg(long)]
     new_password: Option<String>,
 
-    /// Path to the users.json file.  Defaults to
-    /// `<data_dir>/users.json` resolved from `--data-dir` or the
-    /// `ezpz_dndz_data_dir` env var.  Pass explicitly if the
-    /// file lives somewhere non-standard.
-    #[arg(long, env = "ezpz_dndz_users_path")]
-    users_path: Option<PathBuf>,
+    /// Database connection URL (`sqlite:…` or `postgres:…`).
+    /// Defaults to `sqlite://<data_dir>/ezpz-dndz.db` resolved
+    /// from `--data-dir` or the `ezpz_dndz_data_dir` env var —
+    /// the same rule the server applies.
+    #[arg(long, env = "ezpz_dndz_database_url")]
+    database_url: Option<String>,
 
     /// Root of the runtime data dir.  Used only when
-    /// `--users-path` is absent; mirrors the server's
+    /// `--database-url` is absent; mirrors the server's
     /// `--data-dir` flag so a single env-var setup covers both
     /// binaries.
     #[arg(long, env = "ezpz_dndz_data_dir", default_value = ".")]
@@ -63,11 +64,11 @@ pub enum UsersCommand {
 
 #[derive(Debug, Error)]
 pub enum UsersCliError {
-  #[error("Failed to load the user store at {path}: {source}")]
-  StoreLoad {
-    path: PathBuf,
+  #[error("Failed to open the database at {url}: {source}")]
+  DbOpen {
+    url: String,
     #[source]
-    source: UserStoreError,
+    source: DbError,
   },
 
   #[error("Failed to reset the password: {0}")]
@@ -89,11 +90,10 @@ impl UsersCommand {
       Self::ResetPassword {
         email,
         new_password,
-        users_path,
+        database_url,
         data_dir,
       } => {
-        let resolved_path =
-          users_path.unwrap_or_else(|| data_dir.join("users.json"));
+        let url = database_url.unwrap_or_else(|| default_sqlite_url(&data_dir));
         let password = match new_password {
           Some(p) => p,
           None => prompt_for_password()?,
@@ -101,7 +101,7 @@ impl UsersCommand {
         if password.is_empty() {
           return Err(UsersCliError::EmptyPassword);
         }
-        run_reset(&resolved_path, &email, &password)
+        run_reset(&url, &email, &password)
       }
     }
   }
@@ -122,11 +122,11 @@ fn prompt_for_password() -> Result<String, UsersCliError> {
 }
 
 /// Spin up a single-thread tokio runtime just for this command.
-/// The CLI is otherwise blocking; only the file-backed store
-/// needs async.  Keeping the runtime local to the subcommand
-/// avoids forcing `#[tokio::main]` on every other path.
+/// The CLI is otherwise blocking; only the database access needs
+/// async.  Keeping the runtime local to the subcommand avoids
+/// forcing `#[tokio::main]` on every other path.
 fn run_reset(
-  users_path: &Path,
+  url: &str,
   email: &str,
   new_password: &str,
 ) -> Result<(), UsersCliError> {
@@ -136,13 +136,14 @@ fn run_reset(
     .map_err(UsersCliError::Prompt)?;
 
   rt.block_on(async {
-    let store = UserStore::load_or_default(users_path.to_path_buf())
-      .await
-      .map_err(|source| UsersCliError::StoreLoad {
-        path: users_path.to_path_buf(),
-        source,
-      })?;
-    let user = store
+    let db =
+      Db::connect(url)
+        .await
+        .map_err(|source| UsersCliError::DbOpen {
+          url: url.to_string(),
+          source,
+        })?;
+    let user = UserStore::new(db)
       .admin_reset_password(email, new_password)
       .await
       .map_err(UsersCliError::Reset)?;

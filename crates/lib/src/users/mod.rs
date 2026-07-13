@@ -6,8 +6,9 @@
 //! password is the only auth mechanism today; OIDC-via-foundation is
 //! left disabled for the homelab-friendly self-service flow.
 //!
-//! Storage shape on disk is a flat list of `User` records — see
-//! `UserStore` for the serialization layer.
+//! Storage lives in the relational `users` table — see `UserStore`
+//! for the SQL layer.  The legacy `users.json` flat list is only
+//! read once by the server's one-shot boot import.
 
 mod store;
 
@@ -15,7 +16,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub use store::{UserStore, UserStoreError};
+pub use store::{insert_user, UserStore, UserStoreError};
 
 /// Stable identifier for a user account.  The wire format is the
 /// hyphenated UUID string; storing as a String keeps `JsonSchema`

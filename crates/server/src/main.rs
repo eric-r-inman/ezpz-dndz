@@ -8,6 +8,7 @@
 
 use aide::axum::ApiRouter;
 use axum::middleware;
+use ezpz_dndz_lib::db::Db;
 use ezpz_dndz_server::{
   compendium, config::Config, dice, encounters, frontend::Frontend,
   per_user_store, users, web_base::AppState,
@@ -20,6 +21,9 @@ use tracing::info;
 
 #[derive(Debug, Error)]
 enum AppError {
+  #[error("Failed to open the database: {0}")]
+  Db(#[from] ezpz_dndz_lib::db::DbError),
+
   #[error("Failed to initialize application state: {0}")]
   StateInit(#[from] ezpz_dndz_server::web_base::AppStateError),
 
@@ -38,9 +42,15 @@ pub async fn main(
   // takes a synchronous closure, so AppState has to be assembled
   // before the closure runs.  The closure just hands the pre-built
   // state back.
+  // Connect + migrate first: every store hangs off the one Db
+  // handle, and `Db::connect` brings the schema up to date before
+  // any query runs.
+  let db = Db::connect(&config.database_url).await?;
+
   let base = server.base_state().clone();
   let app_state = AppState::assemble(
     base,
+    db,
     &config.paths,
     config.compendium_claim_user.as_deref(),
   )

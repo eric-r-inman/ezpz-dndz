@@ -209,7 +209,7 @@ async fn me_handler(
     let user = state
       .user_store
       .find_by_id(&UserId(id))
-      .await
+      .await?
       .ok_or(AuthHttpError::Unauthorized)?;
     Ok(Json(UserPublic::from(&user)))
   }
@@ -245,8 +245,10 @@ pub async fn require_auth(
     return AuthHttpError::Unauthorized.into_response();
   };
 
-  let Some(user) = state.user_store.find_by_id(&UserId(id)).await else {
-    return AuthHttpError::Unauthorized.into_response();
+  let user = match state.user_store.find_by_id(&UserId(id)).await {
+    Ok(Some(user)) => user,
+    Ok(None) => return AuthHttpError::Unauthorized.into_response(),
+    Err(e) => return AuthHttpError::from(e).into_response(),
   };
 
   request.extensions_mut().insert(CurrentUser(user));
@@ -307,7 +309,7 @@ impl From<UserStoreError> for AuthHttpError {
       UserStoreError::PasswordTooShort => Self::PasswordTooShort,
       UserStoreError::EmailInvalid => Self::EmailInvalid,
       UserStoreError::DisplayNameEmpty => Self::DisplayNameEmpty,
-      UserStoreError::StoreLoad(e) | UserStoreError::StorePersist(e) => {
+      UserStoreError::Query(e) | UserStoreError::Persist(e) => {
         Self::Internal(e.to_string())
       }
       UserStoreError::Hash(s) => Self::Internal(s),

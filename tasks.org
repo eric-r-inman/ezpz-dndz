@@ -4,3 +4,32 @@
 The project's backlog.  Record plans and work items here as ~* TODO~ entries —
 see the "Capturing plans" guidance in =llms.org= — cross-linking related entries
 and marking finished work ~* DONE~.
+
+* TODO Relational storage migration (SQLite + Postgres, no JSON stores)
+
+Replace every =JsonFileStore=-backed store with a fully relational schema served
+by sqlx over two interchangeable backends: SQLite (default, at
+=<data_dir>/ezpz-dndz.db= — zero-ops dev and small deploys) and PostgreSQL
+(=--database-url postgres://…= for hosted scale to hundreds of users).  No
+document stores: no JSON/JSONB columns anywhere; the Elm wire formats are
+normalized into real tables, with the server-side codecs mirroring the Elm
+=*.Wire= modules (including their legacy-shape leniency, which the one-shot
+import needs).
+
+Constraints: the HTTP API shapes stay byte-compatible (the Elm frontend is
+untouched; existing integration tests pass unmodified); storage primitives live
+in the lib crate; semantic thiserror errors; portable DDL (TEXT ids, INTEGER
+timestamps, =$n= placeholders, which SQLite also accepts).  On first boot
+against an empty database the server imports the legacy JSON files from the data
+dir one-shot (marker table suppresses re-runs); the JSON files are left in place
+as the rollback copy.
+
+Phases: (1) db core + users + dice history, (2) the five per-user preset stores,
+(3) compendium (user creatures, groups, saves), (4) encounters (live
++ named saves, shared schema keyed by slot), (5) retire JsonFileStore + CLI port
+  + backup script + docs, (6) live Postgres verification.
+
+Accepted tradeoff, noted for the record: the server previously round-tripped
+most payloads as opaque JSON so the frontend owned those schemas outright;
+normalization means future Elm wire changes to persisted shapes need a matching
+server migration.

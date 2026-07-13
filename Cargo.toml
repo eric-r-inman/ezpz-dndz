@@ -107,6 +107,14 @@ openidconnect = { version = "3", features = ["reqwest"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots"] }
 tower-sessions = { version = "0.15", features = ["memory-store"] }
 
+# Relational storage.  One `Db` handle (an `AnyPool`) serves two
+# interchangeable backends: SQLite for zero-ops dev / small deploys
+# and PostgreSQL for hosted scale.  `migrate` embeds the shared
+# portable .sql migrations into the lib crate; `tls-rustls` keeps the
+# Postgres path OpenSSL-free like the rest of the workspace.  The
+# bundled libsqlite3-sys C build rides on the dev shell's cc.
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
+
 # Shared library
 ezpz-dndz-lib = { path = "crates/lib" }
 

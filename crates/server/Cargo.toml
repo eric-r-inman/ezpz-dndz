@@ -34,6 +34,10 @@ aide = { workspace = true }
 schemars = { workspace = true }
 uuid = { workspace = true }
 sha2 = { workspace = true }
+# Dice-history persistence issues its SQL through the lib crate's
+# `Db` handle; the queries live here because the roll schema mirrors
+# the Elm frontend's encoder, which is application-level knowledge.
+sqlx = { workspace = true }
 
 # Required by foundation's `impl_server_state!` — the macro emits
 # `FromRef` impls that name `::prometheus::Registry` and
@@ -53,6 +57,9 @@ prometheus = { workspace = true }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true }
+# The JSON-import integration test writes a legacy users.json
+# fixture, which needs a genuine Argon2id hash for the login check.
+argon2 = { workspace = true }
 
 [lints]
 workspace = true

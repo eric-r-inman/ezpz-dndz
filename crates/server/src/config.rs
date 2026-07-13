@@ -52,6 +52,12 @@ pub struct ExtraCliFields {
   /// that suppresses re-runs.
   #[arg(long, env = "ezpz_dndz_compendium_claim_user")]
   pub compendium_claim_user: Option<String>,
+
+  /// Database connection URL: `sqlite:…` or `postgres:…`.
+  /// Defaults to `sqlite://<data_dir>/ezpz-dndz.db` so small
+  /// deployments need no configuration at all.
+  #[arg(long, env = "ezpz_dndz_database_url")]
+  pub database_url: Option<String>,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -61,6 +67,7 @@ pub struct ExtraFileFields {
   pub oidc_client_id: Option<String>,
   pub oidc_client_secret_file: Option<PathBuf>,
   pub compendium_claim_user: Option<String>,
+  pub database_url: Option<String>,
 }
 
 /// Concrete on-disk locations for the per-store JSON files.  Every
@@ -144,6 +151,12 @@ pub struct Config {
   #[merge_config(skip)]
   pub paths: RuntimePaths,
 
+  /// Resolved database connection URL.  CLI flag wins over the
+  /// config file; when neither is set, the database is a SQLite
+  /// file inside `data_dir`.
+  #[merge_config(skip)]
+  pub database_url: String,
+
   /// Resolved OIDC client config, or `None` if OIDC is disabled.
   #[merge_config(skip)]
   pub oidc: Option<OidcConfig>,
@@ -157,16 +170,43 @@ pub struct Config {
 }
 
 impl Config {
+  /// The single cross-field rule shared by `resolve_paths` and
+  /// `resolve_database_url`: CLI beats config file beats the
+  /// current directory.
+  fn resolved_data_dir(cli: &CliRaw, file: &ConfigFileRaw) -> PathBuf {
+    cli
+      .data_dir
+      .clone()
+      .or_else(|| file.data_dir.clone())
+      .unwrap_or_else(|| PathBuf::from("."))
+  }
+
   fn resolve_paths(
     cli: &CliRaw,
     file: &ConfigFileRaw,
   ) -> Result<RuntimePaths, ConfigError> {
-    let data_dir = cli
-      .data_dir
-      .clone()
-      .or_else(|| file.data_dir.clone())
-      .unwrap_or_else(|| PathBuf::from("."));
-    Ok(RuntimePaths::from_data_dir(&data_dir))
+    Ok(RuntimePaths::from_data_dir(&Self::resolved_data_dir(cli, file)))
+  }
+
+  /// Database URL: explicit `--database-url` / config-file value,
+  /// falling back to a SQLite file inside the data directory so
+  /// zero-config deployments keep working.
+  fn resolve_database_url(
+    cli: &CliRaw,
+    file: &ConfigFileRaw,
+  ) -> Result<String, ConfigError> {
+    Ok(
+      cli
+        .extra
+        .database_url
+        .clone()
+        .or_else(|| file.extra.database_url.clone())
+        .unwrap_or_else(|| {
+          ezpz_dndz_lib::db::default_sqlite_url(&Self::resolved_data_dir(
+            cli, file,
+          ))
+        }),
+    )
   }
 
   /// One-shot input for the per-user-compendium split migration.
