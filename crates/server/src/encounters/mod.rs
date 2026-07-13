@@ -1,34 +1,56 @@
-//! Live-encounter persistence + HTTP routes.
+//! Encounter persistence + HTTP routes, relational edition.
 //!
-//! Two stores live here:
+//! Two stores live here, with deliberately DIFFERENT storage
+//! strategies (migration 0004):
 //!
 //! - The single auto-saved live encounter (`store.rs` /
 //!   [`EncounterStore`]).  Auto-saved by the frontend on every
 //!   mutation, auto-loaded on app boot so a page reload doesn't
-//!   lose combat state.
+//!   lose combat state.  **Fully typed**: PUT bodies decode through
+//!   the lenient wire codec in [`wire`] (the server-side mirror of
+//!   `frontend/src/Encounter/Wire.elm`, legacy fallbacks included)
+//!   and normalize into the `encounters` table family via [`rows`].
+//!   This is the write-hot core state the relational migration
+//!   exists for, and its route contract permits typing: the
+//!   integration suite's live-encounter bodies either decode
+//!   through the wire schema or carry no response assertions.  One
+//!   deliberate consequence, accepted in `tasks.org`: a PUT body
+//!   that does not decode is now rejected with 400 instead of being
+//!   stored opaquely (unreachable from the real frontend).
 //! - The user's named save files (`saves.rs` /
 //!   [`SavedEncounterStore`]).  Explicit user-initiated saves and
 //!   loads via the Save / Load buttons in Encounter Controls.
+//!   Typed **metadata** (name + timestamps + listing order) over an
+//!   **opaque body** stored as a relational JSON node tree
+//!   ([`save_nodes`], mirroring the compendium's `save_body`).  The
+//!   body has always been contractually opaque — the integration
+//!   suite pins 200 OK for bodies that do not decode as an
+//!   `Encounter` at all (`{"creatures":[]}` without `activeName` /
+//!   `round`), and the store must echo them back exactly — so
+//!   normalizing it through the typed live tables would break the
+//!   route contract.
 //!
-//! HTTP routes:
+//! HTTP routes (response shapes unchanged from the JSON-file era):
 //!
-//! - `GET /api/encounter` — read the live encounter as opaque JSON.
-//!   Returns `null` when no encounter has been persisted yet.
-//! - `PUT /api/encounter` — replace the persisted live encounter.
+//! - `GET /api/encounter` — read the live encounter.  Returns
+//!   `null` when no encounter has been persisted yet (the frontend
+//!   boot path branches on that), the canonical wire encoding
+//!   otherwise.
+//! - `PUT /api/encounter` — replace the persisted live encounter
+//!   (transactional swap); echoes the submitted body.
 //! - `GET /api/encounter/saves` — list named saves (metadata only).
 //! - `GET /api/encounter/saves/:name` — read a single save's body.
 //! - `PUT /api/encounter/saves/:name` (?overwrite=true) — create or
 //!   overwrite a named save.
 //! - `DELETE /api/encounter/saves/:name` — drop a named save.
 //! - `POST /api/encounter/saves/:name/rename` — rename a save.
-//!
-//! The schema for the encounter body is whatever the frontend's
-//! `Encounter.elm` serializes; the server stores it opaquely so
-//! frontend-only schema changes don't require a migration.
 
 pub mod error;
+pub mod rows;
+pub mod save_nodes;
 pub mod saves;
 pub mod store;
+pub mod wire;
 
 pub use error::EncounterStoreError;
 pub use saves::{SavedEncounter, SavedEncounterMeta, SavedEncounterStore};
@@ -57,7 +79,10 @@ async fn get_encounter(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  Json(state.encounter_store.read(&user.id).await).into_response()
+  match state.encounter_store.read(&user.id).await {
+    Ok(value) => Json(value).into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn put_encounter(
@@ -65,7 +90,7 @@ async fn put_encounter(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Json(body): Json<Value>,
 ) -> Response {
-  match state.encounter_store.replace(&user.id, body.clone()).await {
+  match state.encounter_store.replace(&user.id, &body).await {
     Ok(()) => Json(body).into_response(),
     Err(e) => e.into_response(),
   }
@@ -75,7 +100,10 @@ async fn list_saves(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  Json(state.encounter_saves.list(&user.id).await).into_response()
+  match state.encounter_saves.list(&user.id).await {
+    Ok(metas) => Json(metas).into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 async fn get_save(
@@ -83,14 +111,11 @@ async fn get_save(
   Extension(CurrentUser(user)): Extension<CurrentUser>,
   Path(name): Path<String>,
 ) -> Response {
-  state
-    .encounter_saves
-    .get(&user.id, &name)
-    .await
-    .map_or_else(
-      || EncounterStoreError::SaveNotFound.into_response(),
-      |record| Json(record).into_response(),
-    )
+  match state.encounter_saves.get(&user.id, &name).await {
+    Ok(Some(record)) => Json(record).into_response(),
+    Ok(None) => EncounterStoreError::SaveNotFound.into_response(),
+    Err(e) => e.into_response(),
+  }
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -175,8 +200,8 @@ pub fn router() -> ApiRouter<AppState> {
       "/api/encounter",
       get_with(get_encounter, |op: TransformOperation| {
         op.description(
-          "Read the persisted live encounter as opaque JSON. \
-           Returns `null` when no encounter has been saved.",
+          "Read the persisted live encounter in its canonical wire \
+           encoding.  Returns `null` when no encounter has been saved.",
         )
       }),
     )
@@ -185,8 +210,9 @@ pub fn router() -> ApiRouter<AppState> {
       put_with(put_encounter, |op: TransformOperation| {
         op.description(
           "Replace the persisted live encounter with the supplied \
-           JSON.  The shape is whatever the frontend serializes; \
-           the server doesn't validate it.",
+           JSON.  The body must decode through the encounter wire \
+           schema (legacy shapes accepted); undecodable bodies are \
+           rejected with 400.",
         )
       }),
     )

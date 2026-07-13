@@ -1,65 +1,87 @@
-//! Live-encounter persistence, scoped per user.
+//! Live-encounter persistence, relational edition.
 //!
-//! Stores each user's single active combat queue + active marker +
-//! round counter as opaque JSON, keyed by `UserId`.  Mirrors the
-//! `Encounter` shape on the Elm side; the server doesn't re-model
-//! the schema because the frontend is the source of truth for
-//! combat semantics.
+//! Stores each user's single active combat (queue + active marker +
+//! round counter + treasure state) fully typed: PUT bodies decode
+//! through the lenient wire codec in [`super::wire`] (the mirror of
+//! `frontend/src/Encounter/Wire.elm`) and normalize into the
+//! `encounters` table family (migration 0004) via the row codec in
+//! [`super::rows`].  The live encounter is the write-hot core state
+//! the relational migration exists for, so it gets the typed-rows
+//! treatment rather than the opaque node tree the named saves use —
+//! see `encounters/mod.rs` and migration 0004 for the store-by-store
+//! rationale.
 //!
-//! Disk shape is `HashMap<UserId, Value>`.  Two users running
-//! simultaneous combats don't trample each other; a user with no
-//! persisted encounter yet reads as `Value::Null`, which the
-//! frontend treats as "use the empty default".
+//! GET semantics are unchanged from the JSON era: a user who has
+//! never persisted an encounter reads as `Value::Null` (no parent
+//! row), which the frontend's boot path treats as "use the empty
+//! default".  Everyone else reads the canonical re-encoding of the
+//! persisted structure.  PUT is a transactional swap: delete the
+//! parent row (children cascade), insert the decoded replacement,
+//! commit.
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
-
-use ezpz_dndz_lib::{json_file_store::JsonFileStore, users::UserId};
+use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::Value;
 
 use super::error::EncounterStoreError;
+use super::{rows, wire};
 
 #[derive(Clone)]
 pub struct EncounterStore {
-  inner: Arc<JsonFileStore<HashMap<UserId, Value>>>,
+  db: Db,
 }
 
 impl EncounterStore {
-  /// Open the store at `path`.  No bootstrap — an absent file is an
-  /// empty map; users without an entry read `Value::Null`.
-  pub async fn load_or_default(
-    path: PathBuf,
-  ) -> Result<Self, EncounterStoreError> {
-    let inner =
-      JsonFileStore::<HashMap<UserId, Value>>::load_or_default(path).await?;
-    Ok(Self {
-      inner: Arc::new(inner),
-    })
+  pub fn new(db: Db) -> Self {
+    Self { db }
   }
 
   /// Return the given user's encounter, or `Value::Null` when they
   /// haven't auto-saved one yet.
-  pub async fn read(&self, user_id: &UserId) -> Value {
-    self
-      .inner
-      .read()
+  pub async fn read(
+    &self,
+    user_id: &UserId,
+  ) -> Result<Value, EncounterStoreError> {
+    let mut conn = self
+      .db
+      .pool()
+      .acquire()
       .await
-      .get(user_id)
-      .cloned()
-      .unwrap_or(Value::Null)
+      .map_err(|source| EncounterStoreError::LiveRowsRead { source })?;
+    Ok(
+      rows::fetch_encounter(&mut conn, user_id.as_str())
+        .await?
+        .map_or(Value::Null, |enc| wire::encode_encounter(&enc)),
+    )
   }
 
+  /// Replace the persisted live encounter with `next`.  The body
+  /// must decode through the wire codec; a body that doesn't is
+  /// rejected with a 400-mapped error before anything is written.
   pub async fn replace(
     &self,
     user_id: &UserId,
-    next: Value,
+    next: &Value,
   ) -> Result<(), EncounterStoreError> {
-    let user_id_owned = user_id.clone();
-    self
-      .inner
-      .mutate(move |all| {
-        all.insert(user_id_owned, next);
+    let encounter = wire::decode_encounter(next)
+      .map_err(|detail| EncounterStoreError::LiveEncounterDecode { detail })?;
+
+    let mut tx = self.db.pool().begin().await.map_err(|source| {
+      EncounterStoreError::TransactionBegin {
+        store: "live-encounter",
+        source,
+      }
+    })?;
+    sqlx::query("DELETE FROM encounters WHERE user_id = $1")
+      .bind(user_id.as_str())
+      .execute(&mut *tx)
+      .await
+      .map_err(|source| EncounterStoreError::LiveRowsWrite { source })?;
+    rows::insert_encounter(&mut tx, user_id.as_str(), &encounter).await?;
+    tx.commit()
+      .await
+      .map_err(|source| EncounterStoreError::TransactionCommit {
+        store: "live-encounter",
+        source,
       })
-      .await?;
-    Ok(())
   }
 }

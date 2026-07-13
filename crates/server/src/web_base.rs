@@ -53,9 +53,6 @@ pub enum AppStateError {
   #[error("Failed to load compendium store: {0}")]
   CompendiumStoreLoad(#[source] crate::compendium::CompendiumStoreError),
 
-  #[error("Failed to load live-encounter store: {0}")]
-  EncounterStoreLoad(#[source] crate::encounters::EncounterStoreError),
-
   #[error("Legacy JSON import failed: {0}")]
   JsonImport(#[source] json_import::JsonImportError),
 
@@ -108,15 +105,10 @@ impl AppState {
     let bundled_compendium =
       BundledCompendium::load().map_err(AppStateError::CompendiumStoreLoad)?;
 
-    let encounter_store =
-      EncounterStore::load_or_default(paths.encounter.clone())
-        .await
-        .map_err(AppStateError::EncounterStoreLoad)?;
-
-    let encounter_saves =
-      SavedEncounterStore::load_or_default(paths.encounter_saves.clone())
-        .await
-        .map_err(AppStateError::EncounterStoreLoad)?;
+    // The encounter stores are relational (migration 0004); their
+    // legacy JSON files are only read by the one-shot import above.
+    let encounter_store = EncounterStore::new(db.clone());
+    let encounter_saves = SavedEncounterStore::new(db.clone());
 
     let compendium_dir = paths.compendium.parent().map_or_else(
       || std::path::PathBuf::from("."),

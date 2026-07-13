@@ -36,7 +36,15 @@ use tower::ServiceExt;
 /// duration of the test.
 async fn stub_app_state() -> (TempDir, AppState) {
   let temp = TempDir::new().expect("tempdir");
-  let paths = RuntimePaths::from_data_dir(temp.path());
+  let state = stub_app_state_at(temp.path()).await;
+  (temp, state)
+}
+
+/// Like [`stub_app_state`] but against a caller-owned data dir, so
+/// restart-shaped tests can assemble a second state over the same
+/// database file (and import tests can pre-seed legacy JSON files).
+async fn stub_app_state_at(data_dir: &std::path::Path) -> AppState {
+  let paths = RuntimePaths::from_data_dir(data_dir);
 
   let run_config = ServerRunConfig {
     app_name: "ezpz-dndz".to_string(),
@@ -51,15 +59,13 @@ async fn stub_app_state() -> (TempDir, AppState) {
     .await
     .expect("base server state");
 
-  let db = Db::connect(&default_sqlite_url(temp.path()))
+  let db = Db::connect(&default_sqlite_url(data_dir))
     .await
     .expect("test database");
 
-  let state = AppState::assemble(base, db, &paths, None)
+  AppState::assemble(base, db, &paths, None)
     .await
-    .expect("app state assemble");
-
-  (temp, state)
+    .expect("app state assemble")
 }
 
 /// Build the test router used by every app-route test.
@@ -1852,4 +1858,466 @@ async fn test_compendium_groups_per_user_isolation() {
     .await
     .unwrap();
   assert_eq!(read_body(bob_list).await.trim(), "[]");
+}
+
+// ── encounter: relational round-trips + legacy import ───────────────────────
+//
+// Phase-4 coverage: the live encounter is fully typed (migration
+// 0004), so a canonical wire payload must round-trip through
+// PUT → tables → GET without losing a single field, and must
+// survive a server restart (fresh AppState over the same SQLite
+// file).  Named-save bodies are contractually opaque and must echo
+// arbitrary JSON exactly.  The one-shot boot import replays the
+// legacy JSON files through the lenient wire decoder.
+
+/// A canonical encounter exactly as the current Elm encoder writes
+/// it, exercising every optional block: all three condition
+/// duration kinds + saveToEnd, death saves, recharge abilities,
+/// legendary action/resistance pips with lair bonuses, timer, memo,
+/// surprised/readied/inactive flags, originalMaxHp, and a full
+/// treasure payload (all six item categories, loot, row source,
+/// contributions) plus non-default treasure settings.
+const MAXIMAL_ENCOUNTER: &str = r#"{
+  "creatures": [{
+    "name": "Adult Red Dragon",
+    "kind": "dragon",
+    "initiative": 17,
+    "initiativeBonus": 2,
+    "currentHp": 212,
+    "maxHp": 256,
+    "originalMaxHp": 256,
+    "tempHp": 10,
+    "armorClass": 19,
+    "speed": 40,
+    "conditions": [
+      {
+        "id": 1,
+        "name": "Restrained",
+        "note": "net",
+        "duration": { "kind": "manual" },
+        "saveToEnd": { "ability": "STR", "dc": 15, "bonus": 4, "autoRoll": "atEnd" }
+      },
+      {
+        "id": 2,
+        "name": "Blessed",
+        "note": "",
+        "duration": { "kind": "untilTurn", "phase": "atBegin", "target": "next", "name": "Cleric" },
+        "saveToEnd": null
+      },
+      {
+        "id": 3,
+        "name": "Burning",
+        "note": "",
+        "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 3, "skipNextTick": true },
+        "saveToEnd": null
+      }
+    ],
+    "saveNotices": [
+      { "id": 9, "conditionName": "Restrained", "turnsRemaining": 2 }
+    ],
+    "selected": true,
+    "cover": "threeQuarters",
+    "concentrating": true,
+    "hiding": false,
+    "dodging": true,
+    "flying": true,
+    "flyHeight": 30,
+    "bloodied": true,
+    "deathSaves": { "successes": 1, "failures": 2 },
+    "acceptingDeathSaves": true,
+    "reactionUsed": true,
+    "rechargeAbilities": [
+      { "name": "Fire Breath", "low": 5, "high": 6, "ready": false, "awaitingRoll": true }
+    ],
+    "readied": true,
+    "inactive": false,
+    "note": "angry",
+    "memo": "hoards gold",
+    "timer": { "remaining": 4, "phase": "atEnd", "ringing": false, "note": "lair" },
+    "creatureId": "dragon-uuid",
+    "legendaryActionsCount": 3,
+    "legendaryActionsLairBonus": 1,
+    "legendaryActionsUsed": [1, 3],
+    "legendaryResistanceCount": 3,
+    "legendaryResistanceLairBonus": 0,
+    "legendaryResistanceUsed": [2],
+    "isPlaceholder": false,
+    "creatureKind": "enemy",
+    "race": "Dragon",
+    "alignment": "chaotic evil",
+    "surprised": true,
+    "hasSpecialReactions": true
+  }, {
+    "name": "Squire",
+    "kind": "",
+    "initiative": 4,
+    "initiativeBonus": 0,
+    "currentHp": 9,
+    "maxHp": 9,
+    "originalMaxHp": 9,
+    "tempHp": 0,
+    "armorClass": 14,
+    "speed": 30,
+    "conditions": [],
+    "saveNotices": [],
+    "selected": false,
+    "cover": "none",
+    "concentrating": false,
+    "hiding": false,
+    "dodging": false,
+    "flying": false,
+    "flyHeight": 0,
+    "bloodied": false,
+    "deathSaves": { "successes": 0, "failures": 0 },
+    "acceptingDeathSaves": false,
+    "reactionUsed": false,
+    "rechargeAbilities": [],
+    "readied": false,
+    "inactive": true,
+    "note": "",
+    "memo": "",
+    "timer": null,
+    "creatureId": null,
+    "legendaryActionsCount": 0,
+    "legendaryActionsLairBonus": 0,
+    "legendaryActionsUsed": [],
+    "legendaryResistanceCount": 0,
+    "legendaryResistanceLairBonus": 0,
+    "legendaryResistanceUsed": [],
+    "isPlaceholder": false,
+    "creatureKind": "player",
+    "race": "Human",
+    "alignment": "neutral good",
+    "surprised": false,
+    "hasSpecialReactions": false
+  }],
+  "activeName": "Adult Red Dragon",
+  "round": 7,
+  "treasure": {
+    "kind": "hoard",
+    "bracket": "17plus",
+    "coins": { "copper": 0, "silver": 100, "electrum": 0, "gold": 12000, "platinum": 800 },
+    "gems": [{ "name": "Ruby", "valueGp": 5000 }],
+    "art": [{ "name": "Gold cup", "valueGp": 750 }],
+    "magic": [{ "name": "Vorpal Sword", "rarity": "legendary", "table": "I" }],
+    "mundane": [{ "name": "Rope", "valueGp": 1 }],
+    "weapons": [{ "name": "Longsword", "valueGp": 15 }],
+    "armor": [{ "name": "Chain mail", "valueGp": 75 }],
+    "source": {
+      "coinFormulas": {
+        "copper": null,
+        "silver": { "count": 2, "faces": 6, "mult": 100 },
+        "electrum": null,
+        "gold": { "count": 12, "faces": 6, "mult": 1000 },
+        "platinum": { "count": 8, "faces": 6, "mult": 100 }
+      },
+      "gemsSpec": { "count": 3, "faces": 6, "tier": "5000gp" },
+      "artSpec": null,
+      "magicSpec": { "count": 1, "faces": 4, "tier": "I" }
+    },
+    "contributions": [{
+      "creatureName": "Adult Red Dragon",
+      "coins": { "copper": 0, "silver": 100, "electrum": 0, "gold": 12000, "platinum": 800 },
+      "gems": [{ "name": "Ruby", "valueGp": 5000 }],
+      "art": [],
+      "magic": [{ "name": "Vorpal Sword", "rarity": "legendary", "table": "I" }],
+      "mundane": [],
+      "weapons": [],
+      "armor": [],
+      "loot": ["Dragon scale"],
+      "bracket": "17plus"
+    }],
+    "loot": ["Dragon scale"]
+  },
+  "treasureSettings": {
+    "coinsCount": "more",
+    "gemsCount": "normal",
+    "gemsValue": "higher",
+    "artCount": "fewer",
+    "artValue": "normal",
+    "magicCount": "normal",
+    "magicValue": "lower",
+    "mundaneCount": "normal",
+    "weaponsCount": "normal",
+    "armorCount": "normal",
+    "hoardToggles": {
+      "coinsNone": false, "gemsNone": false, "artNone": false,
+      "magicNone": false, "mundaneNone": false, "weaponsNone": true,
+      "armorNone": true
+    },
+    "individualToggles": {
+      "coinsNone": false, "gemsNone": true, "artNone": true,
+      "magicNone": true, "mundaneNone": true, "weaponsNone": true,
+      "armorNone": true
+    },
+    "magicScrollChance": 25
+  }
+}"#;
+
+async fn get_encounter_value(app: &Router, cookie: &str) -> serde_json::Value {
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .header("cookie", cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  serde_json::from_str(&read_body(response).await).expect("GET body is JSON")
+}
+
+#[tokio::test]
+async fn test_encounter_maximal_roundtrip_survives_restart() {
+  let temp = TempDir::new().expect("tempdir");
+  let fixture: serde_json::Value =
+    serde_json::from_str(MAXIMAL_ENCOUNTER).expect("fixture parses");
+
+  {
+    let state = stub_app_state_at(temp.path()).await;
+    let app = build_test_router(state);
+    let cookie = register_and_get_cookie(&app).await;
+
+    // GET before the first PUT is literal `null` — the frontend
+    // boot path branches on it.
+    assert_eq!(
+      get_encounter_value(&app, &cookie).await,
+      serde_json::Value::Null
+    );
+
+    let put = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .method("PUT")
+          .uri("/api/encounter")
+          .header("content-type", "application/json")
+          .header("cookie", &cookie)
+          .body(Body::from(MAXIMAL_ENCOUNTER))
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(put.status(), StatusCode::OK);
+    let echoed: serde_json::Value =
+      serde_json::from_str(&read_body(put).await).expect("PUT echo is JSON");
+    assert_eq!(echoed, fixture, "PUT must echo the submitted body");
+
+    assert_eq!(
+      get_encounter_value(&app, &cookie).await,
+      fixture,
+      "canonical payload must round-trip through the typed tables exactly"
+    );
+  }
+
+  // "Restart": a fresh AppState over the same data dir / SQLite
+  // file.  Sessions need not survive, so log in again.
+  {
+    let state = stub_app_state_at(temp.path()).await;
+    let app = build_test_router(state);
+    let login = app
+      .clone()
+      .oneshot(
+        Request::builder()
+          .method("POST")
+          .uri("/api/auth/login")
+          .header("content-type", "application/json")
+          .body(Body::from(
+            r#"{"email":"alice@example.com","password":"hunter2hunter"}"#,
+          ))
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(login.status(), StatusCode::OK);
+    let cookie = extract_session_cookie(&login).expect("login cookie");
+
+    assert_eq!(
+      get_encounter_value(&app, &cookie).await,
+      fixture,
+      "the persisted encounter must survive a restart byte-for-byte"
+    );
+  }
+}
+
+#[tokio::test]
+async fn test_encounter_save_body_roundtrips_opaquely() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  // Deliberately NOT a decodable Encounter: the named-save body is
+  // contractually opaque and must echo back exactly, including the
+  // int/float distinction and deep nesting.
+  let body = r#"{"creatures":[],"weird":{"deep":[1,2.5,null,true,"s"],"empty":{}},"round":"not-an-int"}"#;
+  let expected: serde_json::Value =
+    serde_json::from_str(body).expect("save fixture parses");
+
+  let put = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("PUT")
+        .uri("/api/encounter/saves/Weird%20One")
+        .header("content-type", "application/json")
+        .header("cookie", &cookie)
+        .body(Body::from(body))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Weird%20One")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(get.status(), StatusCode::OK);
+  let record: serde_json::Value =
+    serde_json::from_str(&read_body(get).await).expect("save record");
+  assert_eq!(record["name"], "Weird One");
+  assert_eq!(
+    record["encounter"], expected,
+    "opaque save body must echo back exactly"
+  );
+  assert!(record["created_at"].as_i64().is_some());
+  assert!(record["updated_at"].as_i64().is_some());
+
+  let list = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let metas: serde_json::Value =
+    serde_json::from_str(&read_body(list).await).expect("listing");
+  assert_eq!(metas[0]["name"], "Weird One");
+  assert!(
+    metas[0].get("encounter").is_none(),
+    "listing must stay metadata-only"
+  );
+}
+
+#[tokio::test]
+async fn test_encounter_legacy_json_import() {
+  let temp = TempDir::new().expect("tempdir");
+
+  // A pre-relational data dir: an account in users.json plus
+  // encounter files exercising Wire.elm's legacy fallbacks —
+  // `holding` (pre-`readied`), the pre-count
+  // `hasLegendaryActions` bool, a condition without a note, a
+  // magic item without a table letter, and the removed
+  // party-loot-ledger `{ "roll": … }` treasure wrapper.
+  std::fs::write(
+    temp.path().join("users.json"),
+    r#"[{"id":"legacy-user-1","email":"legacy@example.com","password_hash":"$argon2id$fake","display_name":"Legacy","created_at":0}]"#,
+  )
+  .expect("write users.json");
+  std::fs::write(
+    temp.path().join("encounter.json"),
+    r#"{"legacy-user-1":{
+      "creatures":[{
+        "name":"Old Ghoul",
+        "initiative":12,
+        "currentHp":22,
+        "maxHp":22,
+        "armorClass":12,
+        "holding":true,
+        "hasLegendaryActions":true,
+        "conditions":[{"id":1,"name":"Paralyzed","duration":{"kind":"manual"}}]
+      }],
+      "activeName":"Old Ghoul",
+      "round":2,
+      "treasure":{
+        "roll":{
+          "kind":"individual",
+          "bracket":"1to4",
+          "coins":{"copper":10,"silver":0,"electrum":0,"gold":2,"platinum":0},
+          "gems":[],
+          "art":[],
+          "magic":[{"name":"Potion of Healing","rarity":"common"}]
+        },
+        "recipients":{"ignored":true}
+      }
+    }}"#,
+  )
+  .expect("write encounter.json");
+  std::fs::write(
+    temp.path().join("encounter-saves.json"),
+    r#"{"legacy-user-1":[{"name":"Old","encounter":{"creatures":[]},"created_at":1,"updated_at":2}]}"#,
+  )
+  .expect("write encounter-saves.json");
+
+  let state = stub_app_state_at(temp.path()).await;
+  let user_id = ezpz_dndz_lib::users::UserId("legacy-user-1".to_string());
+
+  let live = state
+    .encounter_store
+    .read(&user_id)
+    .await
+    .expect("read imported encounter");
+  let creature = &live["creatures"][0];
+  assert_eq!(creature["readied"], true, "legacy `holding` imports");
+  assert_eq!(
+    creature["legendaryActionsCount"], 3,
+    "legacy hasLegendaryActions bool imports as 3 pips"
+  );
+  assert_eq!(creature["conditions"][0]["note"], "", "missing note defaults");
+  assert_eq!(
+    live["treasure"]["kind"], "individual",
+    "legacy roll wrapper unwraps"
+  );
+  assert_eq!(
+    live["treasure"]["magic"][0]["table"], "A",
+    "missing magic table defaults to A"
+  );
+  assert_eq!(live["round"], 2);
+  assert_eq!(live["treasureSettings"]["magicScrollChance"], 15);
+
+  let save = state
+    .encounter_saves
+    .get(&user_id, "Old")
+    .await
+    .expect("read imported save")
+    .expect("imported save present");
+  assert_eq!(save.encounter, serde_json::json!({ "creatures": [] }));
+  assert_eq!(save.created_at, 1);
+  assert_eq!(save.updated_at, 2);
+
+  assert_eq!(
+    state
+      .db
+      .schema_meta("json_import_encounters")
+      .await
+      .expect("marker read"),
+    Some("done".to_string()),
+    "import marker must be recorded"
+  );
+
+  // A second boot over the same dir must be a no-op (marker), not a
+  // duplicate import — and the files stay on disk as the rollback
+  // copy.
+  let state2 = stub_app_state_at(temp.path()).await;
+  let live2 = state2
+    .encounter_store
+    .read(&user_id)
+    .await
+    .expect("read after second boot");
+  assert_eq!(live2, live);
+  assert!(temp.path().join("encounter.json").exists());
+  assert!(temp.path().join("encounter-saves.json").exists());
 }
