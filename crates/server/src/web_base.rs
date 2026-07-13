@@ -2,8 +2,9 @@
 //!
 //! `BaseServerState` (registry, request counter, OIDC client) lives in
 //! foundation and is spliced in via `impl_server_state!`.  The custom
-//! fields below carry the JSON-backed stores that ezpz-dndz actually
-//! serves.
+//! fields below carry the relational stores that ezpz-dndz actually
+//! serves, plus the legacy shared compendium that only feeds the
+//! one-shot split migration.
 
 use ezpz_dndz_lib::db::Db;
 use ezpz_dndz_lib::users::UserStore;
@@ -65,8 +66,8 @@ impl AppState {
   /// handle plus `RuntimePaths`, then wrap it around the
   /// foundation-built `BaseServerState`.  `db` arrives already
   /// migrated (see `Db::connect`); the legacy JSON files referenced
-  /// by `paths` are only consulted by the one-shot import and by the
-  /// stores that later phases haven't ported yet.
+  /// by `paths` are only consulted by the one-shot import and the
+  /// compendium split migration below — no live store reads them.
   ///
   /// `compendium_claim_user` is the email address passed via
   /// `--compendium-claim-user` (or the equivalent config-file

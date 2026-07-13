@@ -1,17 +1,18 @@
 //! Semantic errors for the compendium subsystem.
 
+use super::json_file_store::JsonFileStoreError;
 use axum::{
   http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
-use ezpz_dndz_lib::json_file_store::JsonFileStoreError;
 use thiserror::Error;
 use tracing::warn;
 
 #[derive(Debug, Error)]
 pub enum CompendiumStoreError {
-  /// Underlying file IO / serde failure from the shared store.
+  /// Underlying file IO / serde failure from the legacy shared
+  /// store, which survives only as split-migration input.
   #[error("Compendium persistence failed: {0}")]
   StoreError(#[from] JsonFileStoreError),
 

@@ -20,7 +20,10 @@
 #
 # The script defaults `BACKUP_DIR` to `<DATA_DIR>/backups` and
 # `RETENTION_DAYS` to 14; override either via the environment
-# block below.
+# block below.  When the default SQLite database is present, the
+# script snapshots it consistently through the `sqlite3` CLI, so
+# that binary must be installed on the host.  PostgreSQL
+# deployments back up with pg_dump outside this unit.
 
 [Unit]
 Description=ezpz-dndz daily backup

@@ -4,12 +4,14 @@
 //! `CliRaw`, `ConfigFileRaw`, the `Config::from_cli_and_file` merge,
 //! and the `CliApp` impl that `#[foundation_main]` wires up.
 //!
-//! Two pieces of resolution sit in `skip` fields:
+//! Three pieces of resolution sit in `skip` fields:
 //!
-//! - `paths`: every per-store JSON file lives at a fixed name inside
+//! - `paths`: the legacy JSON files live at fixed names inside
 //!   `data_dir`, which is a cross-field rule MergeConfig can't model
-//!   directly.  There are deliberately no per-store path overrides —
-//!   deployments bind-mount one directory and every store follows.
+//!   directly.  These are import inputs, not live stores — see
+//!   [`RuntimePaths`].
+//! - `database_url`: explicit CLI / file value, defaulting to a
+//!   SQLite file inside `data_dir` (the same directory rule).
 //! - `oidc`: assembled from three CLI / file fields plus the systemd
 //!   `LoadCredential` directory; partial configurations error out.
 //!
@@ -70,9 +72,15 @@ pub struct ExtraFileFields {
   pub database_url: Option<String>,
 }
 
-/// Concrete on-disk locations for the per-store JSON files.  Every
-/// path is a fixed name inside `data_dir` — see
-/// [`RuntimePaths::from_data_dir`].
+/// Concrete on-disk locations of the **legacy** JSON stores.  All
+/// live state is relational now (`database_url`); these paths are
+/// consulted only as inputs to the one-shot boot import of an old
+/// deployment's data (`crate::json_import`) and by the legacy
+/// shared compendium + its split-migration sidecar
+/// (`crate::compendium::store` / `crate::compendium::migrate`).
+/// Every path is a fixed name inside `data_dir` — see
+/// [`RuntimePaths::from_data_dir`] — and the files are left in
+/// place after import as the rollback copy.
 #[derive(Debug, Clone)]
 pub struct RuntimePaths {
   pub dice_history: PathBuf,
@@ -91,10 +99,10 @@ pub struct RuntimePaths {
 }
 
 impl RuntimePaths {
-  /// Derive every store location from the single data directory.
-  /// The two compendium stores live in a `compendium/` subdirectory
-  /// (the split migration's sidecar marker lands there too); every
-  /// other store is a flat JSON file.
+  /// Derive every legacy-file location from the single data
+  /// directory.  The two compendium files live in a `compendium/`
+  /// subdirectory (the split migration's sidecar marker lands there
+  /// too); every other legacy store is a flat JSON file.
   pub fn from_data_dir(data_dir: &Path) -> Self {
     Self {
       dice_history: data_dir.join("dice-history.json"),
@@ -136,9 +144,10 @@ pub struct Config {
   )]
   pub listen_address: ListenerAddress,
 
-  /// Root directory for runtime persistence.  Every store file
-  /// lives at a fixed name inside this directory, so deployments
-  /// only have to bind-mount a single directory.
+  /// Root directory for runtime persistence.  The default SQLite
+  /// database, the legacy JSON import inputs, and the backups all
+  /// live at fixed names inside this directory, so deployments only
+  /// have to bind-mount a single directory.
   #[merge_config(env, default = "std::path::PathBuf::from(\".\")")]
   pub data_dir: PathBuf,
 
@@ -147,7 +156,8 @@ pub struct Config {
   #[merge_config(env, default = "\"http://localhost:3000\".to_string()")]
   pub base_url: String,
 
-  /// Resolved on-disk locations for the per-store JSON files.
+  /// Resolved on-disk locations of the legacy JSON files — inputs
+  /// to the one-shot boot import, not live stores.
   #[merge_config(skip)]
   pub paths: RuntimePaths,
 

@@ -14,6 +14,15 @@ path = "src/main.rs"
 [dependencies]
 rust-template-foundation = { workspace = true, features = ["cli"] }
 ezpz-dndz-lib = { workspace = true }
+# The relational stores the data subcommands operate on (dice
+# history, per-user compendium creatures, live encounters) live in
+# the server crate next to their wire codecs; reusing them keeps the
+# CLI byte-compatible with what the server persists and serves.
+ezpz-dndz-server = { workspace = true }
+# Admin-wide aggregate queries (e.g. `dice count` across all users)
+# have no store API on purpose; the CLI issues them directly through
+# the shared `Db` pool.
+sqlx = { workspace = true }
 clap = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
@@ -28,8 +37,8 @@ uuid = { workspace = true }
 # pulls open-licensed monster JSON from Open5e in a one-shot
 # fashion.  No tokio runtime needed; blocking is fine for CLI use.
 reqwest = { workspace = true, features = ["blocking", "json"] }
-# Mutating UserStore (password reset) requires the same tokio
-# runtime the server uses — the file-backed store is async.
+# The SQL-backed stores are async, so each database subcommand spins
+# up a local single-thread runtime for the duration of the call.
 tokio = { workspace = true }
 # Hidden password prompt for the `users reset-password` subcommand
 # so the new value never lands in shell history or `ps` output.

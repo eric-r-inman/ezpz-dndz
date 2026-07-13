@@ -55,9 +55,30 @@ sudo chmod 750 /var/lib/ezpz-dndz
 #+end_src
 
 The =--data-dir= the server writes to (=/var/lib/ezpz-dndz= in this layout)
-holds every piece of persisted state: users, compendium creatures, encounters,
-groups, card layouts, dice history.  Treat it like a database file — back it up,
-audit permissions, and never share write access.
+holds every piece of persisted state.  With the default backend that state is
+one SQLite database at =<data_dir>/ezpz-dndz.db= — users, compendium creatures,
+encounters, groups, presets, dice history — plus any legacy JSON files an older
+deployment left behind.  Treat the directory like a database — back it up, audit
+permissions, and never share write access.
+
+** Database backends
+
+The server creates and migrates its schema on every boot, so neither backend
+needs manual schema management:
+
+- *SQLite (default)* — zero configuration.  The database file lives at
+  =<data_dir>/ezpz-dndz.db= and is covered by the backup timer below (the backup
+  script snapshots it consistently via =sqlite3=, so install the =sqlite3= CLI
+  on the host).
+- *PostgreSQL* — pass =--database-url postgres://user:secret@host/dbname= (or
+  set =database_url= in the TOML config / the =ezpz_dndz_database_url= env var).
+  Postgres holds no state in the data dir; back it up with =pg_dump= on its own
+  schedule — the bundled backup script does not cover it.
+
+Upgrading a pre-relational deployment needs no manual export: on the first boot
+against an *empty* database the server imports the legacy JSON stores it finds
+in the data dir exactly once (a marker in the database suppresses re-runs) and
+leaves the JSON files in place as the rollback copy.
 
 * Step 3: install the OIDC secret (optional)
 
@@ -162,9 +183,10 @@ sudo -u ezpz-dndz /opt/ezpz-dndz/ezpz-dndz-cli \
 #+end_src
 
 The CLI prompts twice for the new password (hidden input) and writes a fresh
-Argon2id hash directly to =users.json=.  No current-password check — this is
-operator-only.  The user can then log in with the new password and change it
-from the UI.
+Argon2id hash directly into the database (resolved from =--data-dir= exactly
+like the server does; pass =--database-url= instead for Postgres).  No
+current-password check — this is operator-only.  The user can then log in with
+the new password and change it from the UI.
 
 For scripted resets, pass =--new-password '<value>'= — but be aware the value
 will land in shell history and =ps= output.
@@ -183,7 +205,11 @@ sudo systemctl start ezpz-dndz.service
 #+end_src
 
 The archive contains the data dir's contents (not the dir itself), so extracting
-into =/var/lib/ezpz-dndz/= writes =users.json=, =compendium/=, etc. in place.
+into =/var/lib/ezpz-dndz/= writes =ezpz-dndz.db=, =compendium/=, etc. in place.
+The =ezpz-dndz.db= in the archive is a consistent snapshot taken through
+sqlite3's online-backup API at backup time — restoring it while the service is
+stopped is all a SQLite rollback takes.  Postgres deployments restore with
+=pg_restore= / =psql= instead; this archive only carries the data-dir files.
 
 ** Trigger an ad-hoc backup
 

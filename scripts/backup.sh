@@ -2,12 +2,20 @@
 #
 # backup.sh — snapshot ezpz-dndz state to a compressed archive.
 #
-# The whole runtime persistence layer lives as plain JSON files under
-# the data dir.  This script snapshots that directory to a single
-# `.tar.gz` per run, named after the current UTC timestamp so the
-# archive list sorts chronologically.  Designed to be invoked by a
-# systemd timer (Linux) or launchd job (macOS) on a daily cadence,
-# but safe to run by hand from any shell.
+# Runtime state lives under the data dir: the SQLite database
+# (`ezpz-dndz.db`, the default backend) plus the legacy JSON files
+# kept as import inputs / rollback copies.  This script snapshots
+# that directory to a single `.tar.gz` per run, named after the
+# current UTC timestamp so the archive list sorts chronologically.
+# The live SQLite file is never copied raw — it is snapshotted
+# consistently through sqlite3's online-backup API first, and the
+# snapshot goes into the archive in its place.  Designed to be
+# invoked by a systemd timer (Linux) or launchd job (macOS) on a
+# daily cadence, but safe to run by hand from any shell.
+#
+# PostgreSQL deployments (`--database-url postgres://…`) keep no
+# database file in the data dir; back those up with pg_dump on its
+# own schedule — that is out of scope for this script.
 #
 # Usage:
 #   backup.sh                         # uses defaults
@@ -36,6 +44,8 @@
 #   1  Argument or configuration error.
 #   2  Source directory missing or unreadable.
 #   3  Archive creation failed (the partial file is removed).
+#   4  SQLite snapshot failed (a database file exists but could
+#      not be snapshotted consistently; nothing is archived).
 
 set -euo pipefail
 
@@ -60,7 +70,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -h|--help)
-      sed -n '4,40p' "$0"
+      sed -n '4,50p' "$0"
       exit 0
       ;;
     *)
@@ -88,11 +98,16 @@ mkdir -p "$BACKUP_DIR"
 TS="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
 DEST="$BACKUP_DIR/ezpz-dndz-$TS.tar.gz"
 TMP="$DEST.partial"
+TMP_TAR="$DEST.partial.tar"
+STAGING=""
 
-# Trap unfinished writes — atomic rename only happens on success.
+# Trap unfinished writes — the atomic rename onto $DEST only happens
+# on success, and the database-snapshot staging dir never outlives
+# the run.
 cleanup() {
-  if [[ -e "$TMP" ]]; then
-    rm -f "$TMP"
+  rm -f "$TMP" "$TMP_TAR"
+  if [[ -n "$STAGING" && -d "$STAGING" ]]; then
+    rm -rf "$STAGING"
   fi
 }
 trap cleanup EXIT
@@ -105,28 +120,71 @@ trap cleanup EXIT
 # user pointed at a relative or absolute --data-dir.
 DATA_ABS="$(cd "$DATA_DIR" && pwd)"
 BACKUP_ABS="$(cd "$BACKUP_DIR" && pwd)"
-EXCLUDE_REL=""
+EXCLUDES=()
 if [[ "$BACKUP_ABS" == "$DATA_ABS"/* ]]; then
-  EXCLUDE_REL="${BACKUP_ABS#$DATA_ABS/}"
+  EXCLUDES+=(--exclude="./${BACKUP_ABS#"$DATA_ABS"/}")
 fi
 
-if [[ -n "$EXCLUDE_REL" ]]; then
-  tar --exclude="./$EXCLUDE_REL" \
-      -czf "$TMP" \
-      -C "$DATA_DIR" \
-      . || {
-    echo "backup.sh: tar failed" >&2
-    exit 3
-  }
-else
-  tar -czf "$TMP" -C "$DATA_DIR" . || {
-    echo "backup.sh: tar failed" >&2
+# ── SQLite snapshot ─────────────────────────────────────────────────
+# A live SQLite file must never be plain-copied — a copy taken while
+# the server is mid-write is torn.  Snapshot it consistently into a
+# staging dir via sqlite3's online-backup API (`.backup`), falling
+# back to `VACUUM INTO` for sqlite3 builds without the dot-command,
+# then archive the snapshot in place of the raw file.  The raw file
+# and its -wal/-shm/-journal sidecars are excluded from the tar.
+DB_NAME="ezpz-dndz.db"
+DB_FILE="$DATA_ABS/$DB_NAME"
+if [[ -f "$DB_FILE" ]]; then
+  if ! command -v sqlite3 >/dev/null 2>&1; then
+    echo "backup.sh: $DB_FILE exists but sqlite3 is not installed;" \
+         "refusing to plain-copy a live database" >&2
+    exit 4
+  fi
+  STAGING="$(mktemp -d "${TMPDIR:-/tmp}/ezpz-dndz-backup.XXXXXX")"
+  if ! sqlite3 "$DB_FILE" ".backup '$STAGING/$DB_NAME'"; then
+    echo "backup.sh: sqlite3 .backup failed; retrying with VACUUM INTO" >&2
+    rm -f "$STAGING/$DB_NAME"
+    if ! sqlite3 "$DB_FILE" "VACUUM INTO '$STAGING/$DB_NAME'"; then
+      echo "backup.sh: SQLite snapshot failed" >&2
+      exit 4
+    fi
+  fi
+  EXCLUDES+=(
+    --exclude="./$DB_NAME"
+    --exclude="./$DB_NAME-wal"
+    --exclude="./$DB_NAME-shm"
+    --exclude="./$DB_NAME-journal"
+  )
+fi
+
+# Create uncompressed first, append the database snapshot in a
+# second invocation, then compress.  The append can't ride on the
+# create call: tar's exclude patterns normalize the `./` prefix, so
+# `--exclude=./ezpz-dndz.db` (needed to keep the raw live file out)
+# would also swallow the staged snapshot entry of the same name.
+# The `${arr[@]+…}` expansion keeps `set -u` happy on bash 3.2
+# (macOS), where expanding an empty array is an unbound-variable
+# error.
+tar ${EXCLUDES[@]+"${EXCLUDES[@]}"} \
+    -cf "$TMP_TAR" \
+    -C "$DATA_ABS" \
+    . || {
+  echo "backup.sh: tar failed" >&2
+  exit 3
+}
+if [[ -n "$STAGING" ]]; then
+  tar -rf "$TMP_TAR" -C "$STAGING" "$DB_NAME" || {
+    echo "backup.sh: tar append of the database snapshot failed" >&2
     exit 3
   }
 fi
+gzip -c "$TMP_TAR" > "$TMP" || {
+  echo "backup.sh: gzip failed" >&2
+  exit 3
+}
+rm -f "$TMP_TAR"
 
 mv "$TMP" "$DEST"
-trap - EXIT
 
 SIZE="$(wc -c <"$DEST" | tr -d '[:space:]')"
 echo "backup.sh: wrote $DEST ($SIZE bytes)"

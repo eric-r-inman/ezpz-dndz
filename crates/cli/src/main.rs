@@ -1,15 +1,22 @@
-//! ezpz-dndz-cli — command-line application for working with
-//! the project's data files (compendium, encounters, dice
-//! history) outside the running server.
+//! ezpz-dndz-cli — command-line application for operating on the
+//! project's persisted data (compendium, encounters, dice history,
+//! users) outside the running server.
 //!
-//! Subcommands are dispatched via clap.  All operate file-direct:
-//! they read and write the on-disk JSON directly without going
-//! through the server's HTTP API.  That keeps the CLI useful when
-//! the server isn't running (e.g. inspecting a backup).
+//! Subcommands are dispatched via clap.  The data subcommands open
+//! the same database the server uses — resolved via the shared
+//! `--database-url` / `--data-dir` rules — through the server
+//! crate's store code, without going through the HTTP API.  That
+//! keeps the CLI useful when the server isn't running (e.g.
+//! inspecting a restored backup).  The `compendium harvest` /
+//! `infer-habitats` pair stays file-based: it authors the bundled
+//! creature JSON, which is data, not runtime state.
 //!
-//! - `compendium {list, count, show}` — inspect creatures.json.
-//! - `encounter {show, count}` — inspect the live encounter file.
-//! - `dice {count, tail, clear}` — inspect / wipe the roll log.
+//! - `compendium {list, count, show, import}` — per-user creatures
+//!   plus the bundled set; `{harvest, infer-habitats}` — bundle
+//!   authoring.
+//! - `encounter {show, count}` — a user's live encounter.
+//! - `dice {count, tail, clear}` — a user's roll log.
+//! - `users {reset-password}` — operator account admin.
 //!
 //! `#[foundation_main]` handles CLI parsing, config-file resolution
 //! (XDG-aware), and logging init; this file only owns the
@@ -17,6 +24,7 @@
 
 mod compendium;
 mod config;
+mod db;
 mod dice;
 mod encounter;
 mod habitats;

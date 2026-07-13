@@ -118,6 +118,12 @@ sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio",
 # Shared library
 ezpz-dndz-lib = { path = "crates/lib" }
 
+# The server crate consumed as a library.  The relational stores and
+# their wire codecs (dice history, per-user compendium, encounters)
+# live there next to the HTTP routes they serve; the CLI reuses them
+# to operate on the same database while the server is stopped.
+ezpz-dndz-server = { path = "crates/server" }
+
 # ============================================================================
 # BUILD PROFILES
 # ============================================================================

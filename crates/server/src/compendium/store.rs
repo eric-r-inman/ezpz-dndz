@@ -1,7 +1,15 @@
-//! File-backed compendium store.
+//! File-backed **legacy** shared compendium store.
+//!
+//! Every live compendium read and write is relational now (see
+//! [`super::user_store`] and [`super::bundled`]); this store
+//! survives solely as input to the one-shot per-user split
+//! migration in [`super::migrate`], plus the bundle-seed
+//! bookkeeping the migration's edit-detection depends on.  Do not
+//! wire new features to it.
 //!
 //! Thin wrapper around [`JsonFileStore<Vec<Creature>>`] from the
-//! lib crate.  Adds compendium-specific concerns:
+//! sibling `json_file_store` module.  Adds compendium-specific
+//! concerns:
 //!
 //! - **Bootstrap**: on first launch (file absent) we seed the
 //!   store with the bundled creatures embedded via `include_str!`.
@@ -26,11 +34,6 @@
 //!     the warning log.
 //!   - **User-created creatures** (id not in the bundle) → never
 //!     touched.
-//! - **Id allocation**: server-side UUIDv4 on insert; stable
-//!   hand-picked UUIDs on bundled creatures so the version-merge
-//!   logic can reliably match across versions.
-//! - **Timestamps**: `created_at` / `updated_at` set / advanced
-//!   server-side so clients can't lie about them.
 //! - **Reset**: restore the bundled set, discarding user edits.
 //!   Also bumps the seed file (version + fresh hashes) so the
 //!   next merge starts from a known clean baseline.
@@ -39,23 +42,15 @@ use std::{
   collections::HashMap,
   path::{Path, PathBuf},
   sync::Arc,
-  time::SystemTime,
 };
 
-use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
-use ezpz_dndz_lib::json_file_store::JsonFileStore;
+use ezpz_dndz_lib::compendium::Creature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{info, warn};
-use uuid::Uuid;
 
 use super::error::CompendiumStoreError;
-
-/// Generate a fresh UUIDv4 as a string.  Centralized so any
-/// future format change (e.g. ULIDs) only touches one site.
-fn fresh_id() -> String {
-  Uuid::new_v4().to_string()
-}
+use super::json_file_store::JsonFileStore;
 
 /// Bundled creatures shipped with the binary.  Parsed once at
 /// store-construction time; baked into the binary via
@@ -282,125 +277,6 @@ impl CompendiumStore {
     self.inner.read().await
   }
 
-  pub async fn get(&self, id: &str) -> Option<Creature> {
-    self.inner.read().await.into_iter().find(|c| c.id == id)
-  }
-
-  pub async fn insert(
-    &self,
-    draft: CreatureDraft,
-  ) -> Result<Creature, CompendiumStoreError> {
-    let now = epoch_millis();
-    let creature = Creature {
-      id: fresh_id(),
-      name: draft.name,
-      kind: draft.kind,
-      size: draft.size,
-      race: draft.race,
-      subrace: draft.subrace,
-      alignment: draft.alignment,
-      source: draft.source,
-      description: draft.description,
-      armor_class: draft.armor_class,
-      armor_class_note: draft.armor_class_note,
-      max_hp: draft.max_hp,
-      hp_formula: draft.hp_formula,
-      initiative_bonus: draft.initiative_bonus,
-      speed: draft.speed,
-      abilities: draft.abilities,
-      saving_throws: draft.saving_throws,
-      skills: draft.skills,
-      damage_vulnerabilities: draft.damage_vulnerabilities,
-      damage_resistances: draft.damage_resistances,
-      damage_immunities: draft.damage_immunities,
-      condition_immunities: draft.condition_immunities,
-      senses: draft.senses,
-      languages: draft.languages,
-      challenge_rating: draft.challenge_rating,
-      xp: draft.xp,
-      xp_in_lair: draft.xp_in_lair,
-      proficiency_bonus: draft.proficiency_bonus,
-      traits: draft.traits,
-      actions: draft.actions,
-      bonus_actions: draft.bonus_actions,
-      reactions: draft.reactions,
-      legendary_actions: draft.legendary_actions,
-      lair_actions: draft.lair_actions,
-      regional_effects: draft.regional_effects,
-      spellcasting: draft.spellcasting,
-      custom_sections: draft.custom_sections,
-      habitats: draft.habitats,
-      treasures: draft.treasures,
-      tags: draft.tags,
-      loot: draft.loot,
-      created_at: now,
-      updated_at: now,
-      is_bundled: false,
-      has_special_reactions: draft.has_special_reactions,
-    };
-    let to_return = creature.clone();
-    self.inner.mutate(|all| all.push(creature)).await?;
-    Ok(to_return)
-  }
-
-  pub async fn update(
-    &self,
-    id: &str,
-    mut creature: Creature,
-  ) -> Result<Creature, CompendiumStoreError> {
-    if creature.id != id {
-      return Err(CompendiumStoreError::CreatureIdMismatchError {
-        path_id: id.to_string(),
-        body_id: creature.id.clone(),
-      });
-    }
-    creature.updated_at = epoch_millis();
-    let id_owned = id.to_string();
-    let result_creature = creature.clone();
-    let updated = self
-      .inner
-      .mutate(move |all| {
-        all
-          .iter_mut()
-          .find(|c| c.id == id_owned)
-          .is_some_and(|slot| {
-            *slot = creature;
-            true
-          })
-      })
-      .await?;
-    if updated {
-      Ok(result_creature)
-    } else {
-      Err(CompendiumStoreError::CreatureIdNotFoundError { id: id.to_string() })
-    }
-  }
-
-  pub async fn remove(&self, id: &str) -> Result<(), CompendiumStoreError> {
-    let id_owned = id.to_string();
-    let removed = self
-      .inner
-      .mutate(move |all| {
-        let before = all.len();
-        all.retain(|c| c.id != id_owned);
-        before != all.len()
-      })
-      .await?;
-    if removed {
-      Ok(())
-    } else {
-      Err(CompendiumStoreError::CreatureIdNotFoundError { id: id.to_string() })
-    }
-  }
-
-  pub async fn replace_all(
-    &self,
-    creatures: Vec<Creature>,
-  ) -> Result<(), CompendiumStoreError> {
-    self.inner.replace(creatures).await?;
-    Ok(())
-  }
-
   pub async fn reset_to_bundled(
     &self,
   ) -> Result<Vec<Creature>, CompendiumStoreError> {
@@ -447,13 +323,6 @@ fn bundle_seed_path(creatures_path: &Path) -> PathBuf {
 fn parse_bundled() -> Result<Vec<Creature>, CompendiumStoreError> {
   serde_json::from_str(BUNDLED_JSON)
     .map_err(|source| CompendiumStoreError::BundledParseError { source })
-}
-
-fn epoch_millis() -> i64 {
-  SystemTime::now()
-    .duration_since(SystemTime::UNIX_EPOCH)
-    .map(|d| d.as_millis() as i64)
-    .unwrap_or(0)
 }
 
 /// SHA-256 hex digest of a creature's serialized form.  Used by

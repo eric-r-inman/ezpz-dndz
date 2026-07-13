@@ -16,6 +16,10 @@ pub mod bundled;
 pub mod creature_rows;
 pub mod error;
 pub mod groups;
+// Legacy-import machinery: the JSON file store only survives to
+// back the legacy shared compendium below, which in turn only
+// feeds the one-shot split migration.
+pub mod json_file_store;
 pub mod migrate;
 pub mod save_body;
 pub mod saves;

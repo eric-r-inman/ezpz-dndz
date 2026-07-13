@@ -16,19 +16,21 @@ use rust_template_foundation::MergeConfig;
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum Command {
-  /// Inspect or maintain a compendium JSON file.
+  /// Inspect or maintain the compendium — per-user creatures in
+  /// the database plus the bundled set — and author bundle JSON
+  /// (harvest / infer-habitats).
   Compendium {
     #[command(subcommand)]
     command: CompendiumCommand,
   },
 
-  /// Inspect the live encounter JSON.
+  /// Inspect a user's live encounter in the database.
   Encounter {
     #[command(subcommand)]
     command: EncounterCommand,
   },
 
-  /// Inspect or clear the dice-history JSON file.
+  /// Inspect or clear a user's dice-roll history in the database.
   Dice {
     #[command(subcommand)]
     command: DiceCommand,

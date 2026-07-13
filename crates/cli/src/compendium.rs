@@ -1,49 +1,65 @@
 //! Compendium subcommands for the CLI.
 //!
-//! Operations are file-direct — we read and write
-//! `compendium/creatures.json` synchronously without going
-//! through the server's HTTP API.  That keeps the CLI useful
-//! when the server isn't running (e.g. inspecting a backup) and
-//! avoids having to spin up a tokio runtime for what is
-//! conceptually one-shot work.
+//! Two families live here:
+//!
+//! - **Database operations** (`list`, `count`, `show`, `import`) —
+//!   the compendium proper is relational and per-user: the
+//!   read-only bundled SRD set ships inside the binary and each
+//!   user's own creatures live in the `user_creatures` table
+//!   family.  These subcommands open the same database the server
+//!   uses (shared `--database-url` / `--data-dir` resolution) and
+//!   go through the server crate's stores, so they work while the
+//!   server is stopped — e.g. against a restored backup.
+//! - **File operations** (`harvest`, `infer-habitats`) — data
+//!   authoring for the bundled set.  These read and write plain
+//!   `Creature` JSON files (harvest output, the canonical
+//!   `crates/lib/data/bundled-creatures.json`) and never touch the
+//!   database.
 //!
 //! The schema is shared with the server via
 //! `ezpz_dndz_lib::compendium::Creature`.
 
+use crate::db::{self, DbArgs, DbCliError};
 use crate::habitats::infer_habitats;
 use clap::Subcommand;
 use ezpz_dndz_lib::compendium::open5e::Page as Open5ePage;
 use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
+use ezpz_dndz_server::compendium::{
+  BundledCompendium, CompendiumStoreError, UserCompendiumStore,
+};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
-use tracing::{info, warn};
+use tracing::info;
 
 /// Errors raised by the compendium subcommands.
 #[derive(Debug, Error)]
 pub enum CompendiumCliError {
-  #[error("Failed to read compendium file at {path}: {source}")]
+  #[error("Failed to read creatures file at {path}: {source}")]
   ReadError {
     path: PathBuf,
     source: std::io::Error,
   },
 
-  #[error("Failed to parse compendium JSON at {path}: {source}")]
+  #[error("Failed to parse creatures JSON at {path}: {source}")]
   ParseError {
     path: PathBuf,
     source: serde_json::Error,
   },
 
-  #[error("Creature with id {id} not found in compendium at {path}")]
-  CreatureNotFound { id: String, path: PathBuf },
+  #[error(
+    "Creature with id {id} not found in the bundled set or the \
+     searched per-user compendium"
+  )]
+  CreatureNotFound { id: String },
 
-  #[error("Failed to write compendium file at {path}: {source}")]
+  #[error("Failed to write creatures file at {path}: {source}")]
   WriteError {
     path: PathBuf,
     source: std::io::Error,
   },
 
-  #[error("Failed to serialize compendium to JSON: {0}")]
+  #[error("Failed to serialize creatures to JSON: {0}")]
   SerializeError(#[source] serde_json::Error),
 
   #[error("Open5e fetch failed: {0}")]
@@ -51,38 +67,84 @@ pub enum CompendiumCliError {
 
   #[error("Open5e response could not be decoded: {0}")]
   HarvestDecodeError(#[source] reqwest::Error),
+
+  #[error("Database access failed: {0}")]
+  Db(#[from] DbCliError),
+
+  #[error("Failed to load the bundled creature set: {0}")]
+  BundledLoad(#[source] CompendiumStoreError),
+
+  #[error("Failed to read the per-user compendium: {0}")]
+  UserCreaturesRead(#[source] CompendiumStoreError),
+
+  #[error("Failed to write the per-user compendium: {0}")]
+  UserCreaturesWrite(#[source] CompendiumStoreError),
+
+  #[error("Failed to list the creature-owning users: {0}")]
+  OwnersQuery(#[source] sqlx::Error),
+
+  #[error("Failed to look up the owner of user creatures: {0}")]
+  OwnerLookup(#[source] ezpz_dndz_lib::users::UserStoreError),
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli compendium <...>`.
 #[derive(Debug, Clone, Subcommand)]
 pub enum CompendiumCommand {
-  /// Print a table of creatures (name / kind / CR) from the
-  /// given JSON file.
+  /// Print a table of the user-owned creatures in the database
+  /// (name / kind / size / CR / owner).  Scope to one user with
+  /// `--email`; add the read-only bundled SRD set with
+  /// `--bundled`.
   List {
-    /// Path to the compendium JSON file.  Defaults to
-    /// `compendium/creatures.json` relative to the current
-    /// directory.
-    #[arg(long, default_value = "compendium/creatures.json")]
-    path: PathBuf,
+    #[command(flatten)]
+    db: DbArgs,
+
+    /// Email of the user whose creatures to list
+    /// (case-insensitive).  Without it every user's creatures are
+    /// listed, labelled by owner.
+    #[arg(long)]
+    email: Option<String>,
+
+    /// Also list the bundled SRD set that ships inside the binary.
+    #[arg(long, default_value_t = false)]
+    bundled: bool,
   },
 
-  /// Count the creatures in the file.
+  /// Count the user-owned creatures in the database.  Scope to one
+  /// user with `--email`; add the bundled set with `--bundled`.
   Count {
-    #[arg(long, default_value = "compendium/creatures.json")]
-    path: PathBuf,
+    #[command(flatten)]
+    db: DbArgs,
+
+    /// Email of the user whose creatures to count
+    /// (case-insensitive).  Without it every user's creatures are
+    /// counted together.
+    #[arg(long)]
+    email: Option<String>,
+
+    /// Also count the bundled SRD set that ships inside the binary.
+    #[arg(long, default_value_t = false)]
+    bundled: bool,
   },
 
-  /// Print one creature's full stat block (as JSON) by id.
+  /// Print one creature's full stat block (as JSON) by id.  The
+  /// bundled set is searched first, then the per-user creatures
+  /// (one user's with `--email`, every user's without).
   Show {
-    #[arg(long, default_value = "compendium/creatures.json")]
-    path: PathBuf,
+    #[command(flatten)]
+    db: DbArgs,
 
     /// The creature's UUID.
     id: String,
+
+    /// Email of the user whose per-user compendium to search after
+    /// the bundled set (case-insensitive).
+    #[arg(long)]
+    email: Option<String>,
   },
 
   /// Harvest open-licensed creatures from the Open5e API and
-  /// write them as a `Creature` JSON file ready for import.
+  /// write them as a `Creature` JSON file — data authoring for the
+  /// bundled set, not a database operation.
   ///
   /// Defaults to the 2024 SRD (`document__key=srd-2024`), which
   /// is licensed under Creative Commons CC-BY 4.0 and freely
@@ -99,8 +161,8 @@ pub enum CompendiumCommand {
     document: String,
 
     /// Output path for the harvested JSON.  Defaults to
-    /// `compendium/harvested.json` so it doesn't clobber the
-    /// live `creatures.json` by accident.
+    /// `compendium/harvested.json` so it doesn't clobber anything
+    /// by accident.
     #[arg(long, default_value = "compendium/harvested.json")]
     out: PathBuf,
 
@@ -111,12 +173,15 @@ pub enum CompendiumCommand {
     limit: Option<usize>,
   },
 
-  /// Fill in empty `habitats` fields on bundled creatures using
-  /// deterministic name-and-race rules.  Creatures that already
+  /// Fill in empty `habitats` fields on the creatures in a JSON
+  /// file using deterministic name-and-race rules — data authoring
+  /// for the bundled set (point `--path` at
+  /// `crates/lib/data/bundled-creatures.json` or a harvest
+  /// output), not a database operation.  Creatures that already
   /// have habitats are left alone.  Pass `--dry-run` to print a
   /// coverage summary without mutating the file.
   InferHabitats {
-    /// Path to the compendium JSON file to mutate in place.
+    /// Path to the creatures JSON file to mutate in place.
     #[arg(long, default_value = "compendium/creatures.json")]
     path: PathBuf,
 
@@ -125,23 +190,30 @@ pub enum CompendiumCommand {
     dry_run: bool,
   },
 
-  /// Merge a JSON file of `Creature` records into the
-  /// compendium store, allocating fresh ids and timestamps for
+  /// Merge a JSON file of `Creature` records into one user's
+  /// per-user compendium, allocating fresh ids and timestamps for
   /// any draft entries (entries without `id` / `created_at`).
-  /// Existing creatures in the destination are preserved unless
-  /// `--replace` is set.
+  /// Creatures whose ids collide with the bundled set are skipped
+  /// (the bundle is read-only), and a re-import of the same file
+  /// is idempotent.  The user's existing creatures are preserved
+  /// unless `--replace` is set.
   Import {
-    /// Source JSON file — typically the output of `harvest`.
-    /// May contain either `Creature` records (with id +
-    /// timestamps) or `CreatureDraft` records (without).
+    /// Source JSON file — typically the output of `harvest` or a
+    /// compendium export.  May contain either `Creature` records
+    /// (with id + timestamps) or `CreatureDraft` records
+    /// (without).
     src: PathBuf,
 
-    /// Destination compendium file.
-    #[arg(long, default_value = "compendium/creatures.json")]
-    dst: PathBuf,
+    #[command(flatten)]
+    db: DbArgs,
 
-    /// Replace the destination contents instead of merging.
-    /// Implies "wipe everything that was there".
+    /// Email of the user whose compendium receives the creatures
+    /// (case-insensitive).
+    #[arg(long)]
+    email: String,
+
+    /// Replace the user's existing creatures instead of merging.
+    /// Implies "wipe everything they had".
     #[arg(long, default_value_t = false)]
     replace: bool,
   },
@@ -150,9 +222,15 @@ pub enum CompendiumCommand {
 impl CompendiumCommand {
   pub fn run(&self) -> Result<(), CompendiumCliError> {
     match self {
-      CompendiumCommand::List { path } => list(path),
-      CompendiumCommand::Count { path } => count(path),
-      CompendiumCommand::Show { path, id } => show(path, id),
+      CompendiumCommand::List { db, email, bundled } => {
+        db::block_on(list(db, email.as_deref(), *bundled))
+      }
+      CompendiumCommand::Count { db, email, bundled } => {
+        db::block_on(count(db, email.as_deref(), *bundled))
+      }
+      CompendiumCommand::Show { db, id, email } => {
+        db::block_on(show(db, id, email.as_deref()))
+      }
       CompendiumCommand::Harvest {
         document,
         out,
@@ -161,9 +239,12 @@ impl CompendiumCommand {
       CompendiumCommand::InferHabitats { path, dry_run } => {
         infer_habitats_cmd(path, *dry_run)
       }
-      CompendiumCommand::Import { src, dst, replace } => {
-        import(src, dst, *replace)
-      }
+      CompendiumCommand::Import {
+        src,
+        db,
+        email,
+        replace,
+      } => db::block_on(import(src, db, email, *replace)),
     }
   }
 }
@@ -182,45 +263,129 @@ fn read_creatures(path: &Path) -> Result<Vec<Creature>, CompendiumCliError> {
   })
 }
 
-fn list(path: &Path) -> Result<(), CompendiumCliError> {
-  let creatures = read_creatures(path)?;
+/// One user's creatures, labelled with their owner's email for the
+/// listing table.
+async fn user_rows(
+  store: &UserCompendiumStore,
+  owner: &ezpz_dndz_lib::users::User,
+) -> Result<Vec<(String, Creature)>, CompendiumCliError> {
+  Ok(
+    store
+      .list(&owner.id)
+      .await
+      .map_err(CompendiumCliError::UserCreaturesRead)?
+      .into_iter()
+      .map(|c| (owner.email.clone(), c))
+      .collect(),
+  )
+}
+
+/// The operator view of the compendium: user-owned creatures from
+/// the database — one user's with `email`, every user's without —
+/// optionally prefixed by the read-only bundled set that ships in
+/// the binary.  Each creature is paired with an origin label
+/// (`bundled` or the owner's email) for the listing table.
+async fn gather(
+  args: &DbArgs,
+  email: Option<&str>,
+  include_bundled: bool,
+) -> Result<Vec<(String, Creature)>, CompendiumCliError> {
+  let mut rows: Vec<(String, Creature)> = if include_bundled {
+    BundledCompendium::load()
+      .map_err(CompendiumCliError::BundledLoad)?
+      .list()
+      .iter()
+      .cloned()
+      .map(|c| ("bundled".to_string(), c))
+      .collect()
+  } else {
+    Vec::new()
+  };
+
+  let db = db::connect(args).await?;
+  let store = UserCompendiumStore::new(db.clone());
+  if let Some(email) = email {
+    let user = db::user_by_email(&db, email).await?;
+    rows.extend(user_rows(&store, &user).await?);
+  } else {
+    // Every owner in the database.  There is deliberately no
+    // cross-user store API on the server (handlers are always
+    // user-scoped), so the CLI asks the parent table who owns
+    // rows and then reads each owner through the store.
+    let owner_ids: Vec<String> = sqlx::query_scalar(
+      "SELECT DISTINCT user_id FROM user_creatures ORDER BY user_id",
+    )
+    .fetch_all(db.pool())
+    .await
+    .map_err(CompendiumCliError::OwnersQuery)?;
+    let users = ezpz_dndz_lib::users::UserStore::new(db.clone());
+    for owner_id in owner_ids {
+      let owner = users
+        .find_by_id(&ezpz_dndz_lib::users::UserId(owner_id))
+        .await
+        .map_err(CompendiumCliError::OwnerLookup)?;
+      // A missing account would mean a broken foreign key; the
+      // filter keeps the listing best-effort either way.
+      if let Some(owner) = owner {
+        rows.extend(user_rows(&store, &owner).await?);
+      }
+    }
+  }
+  Ok(rows)
+}
+
+async fn list(
+  args: &DbArgs,
+  email: Option<&str>,
+  include_bundled: bool,
+) -> Result<(), CompendiumCliError> {
+  let creatures = gather(args, email, include_bundled).await?;
   info!(count = creatures.len(), "Read compendium");
 
-  println!("{:<40}  {:<8}  {:<8}  {:>4}", "Name", "Kind", "Size", "CR");
-  println!("{}", "-".repeat(64));
-  for c in &creatures {
+  println!("{:<40}  {:<8}  {:<8}  {:>4}  Owner", "Name", "Kind", "Size", "CR");
+  println!("{}", "-".repeat(73));
+  for (owner, c) in &creatures {
     println!(
-      "{:<40}  {:<8?}  {:<8?}  {:>4}",
+      "{:<40}  {:<8?}  {:<8?}  {:>4}  {}",
       truncate(&c.name, 40),
       c.kind,
       c.size,
-      c.challenge_rating
+      c.challenge_rating,
+      owner
     );
   }
   Ok(())
 }
 
-fn count(path: &Path) -> Result<(), CompendiumCliError> {
-  let creatures = read_creatures(path)?;
+async fn count(
+  args: &DbArgs,
+  email: Option<&str>,
+  include_bundled: bool,
+) -> Result<(), CompendiumCliError> {
+  let creatures = gather(args, email, include_bundled).await?;
   println!("{}", creatures.len());
   Ok(())
 }
 
-fn show(path: &Path, id: &str) -> Result<(), CompendiumCliError> {
-  let creatures = read_creatures(path)?;
-  let found = creatures.iter().find(|c| c.id == id);
+async fn show(
+  args: &DbArgs,
+  id: &str,
+  email: Option<&str>,
+) -> Result<(), CompendiumCliError> {
+  let found = gather(args, email, true)
+    .await?
+    .into_iter()
+    .map(|(_, c)| c)
+    .find(|c| c.id == id);
 
   match found {
     Some(creature) => {
-      let pretty = serde_json::to_string_pretty(creature)
+      let pretty = serde_json::to_string_pretty(&creature)
         .map_err(CompendiumCliError::SerializeError)?;
       println!("{pretty}");
       Ok(())
     }
-    None => Err(CompendiumCliError::CreatureNotFound {
-      id: id.to_string(),
-      path: path.to_path_buf(),
-    }),
+    None => Err(CompendiumCliError::CreatureNotFound { id: id.to_string() }),
   }
 }
 
@@ -247,9 +412,10 @@ fn truncate(s: &str, max: usize) -> String {
 /// re-harvest can ship as a new version without duplicating
 /// existing creatures.
 ///
-/// The output is a valid `creatures.json` file — drop it into
-/// `crates/lib/data/bundled-creatures.json` or merge via
-/// `compendium import` without an extra promotion step.
+/// The output is a valid creatures JSON file — drop it into
+/// `crates/lib/data/bundled-creatures.json` or merge into a user's
+/// compendium via `compendium import` without an extra promotion
+/// step.
 fn harvest(
   document: &str,
   out: &Path,
@@ -390,7 +556,7 @@ fn epoch_millis() -> i64 {
 
 // ── INFER HABITATS ─────────────────────────────────────────────
 
-/// Read the compendium, run `infer_habitats` against every
+/// Read the creatures file, run `infer_habitats` against every
 /// creature whose `habitats` is empty, write the result back.
 /// Creatures with pre-existing habitats are skipped entirely so
 /// authored data (whether by a future bundle bump or by user
@@ -429,7 +595,7 @@ fn infer_habitats_cmd(
     }
   }
 
-  println!("Compendium: {}", path.display());
+  println!("Creatures file: {}", path.display());
   println!("  total creatures:       {}", creatures.len());
   println!("  already had habitats:  {skipped_had_habitat}");
   println!("  filled by rules:       {filled}");
@@ -481,18 +647,21 @@ fn infer_habitats_cmd(
 
 // ── IMPORT ─────────────────────────────────────────────────────
 
-/// Merge a JSON file of `Creature` records into the destination
-/// compendium.  Source records that look like full `Creature`
-/// entries (have `id` + timestamps) pass through; entries that
-/// look like `CreatureDraft` (no id) get promoted via
-/// `draft_to_creature`.
+/// Merge a JSON file of `Creature` records into one user's
+/// per-user compendium.  Source records that look like full
+/// `Creature` entries (have `id` + timestamps) pass through;
+/// entries that look like `CreatureDraft` (no id) get promoted via
+/// `draft_to_creature`.  Ids that collide with the bundled set are
+/// skipped — the bundle is read-only and shipped in the binary,
+/// mirroring what `POST /api/compendium/import` does.
 ///
-/// `--replace` swaps the file contents wholesale; otherwise the
-/// import is additive (de-duplicated by `id` so a re-import of
+/// `--replace` swaps the user's creature list wholesale; otherwise
+/// the import is additive (de-duplicated by `id` so a re-import of
 /// the same file is idempotent).
-fn import(
+async fn import(
   src: &Path,
-  dst: &Path,
+  args: &DbArgs,
+  email: &str,
   replace: bool,
 ) -> Result<(), CompendiumCliError> {
   let raw = std::fs::read_to_string(src).map_err(|source| {
@@ -522,52 +691,55 @@ fn import(
         .collect()
     };
 
-  let mut merged: Vec<Creature> = if replace {
-    Vec::new()
+  let bundled =
+    BundledCompendium::load().map_err(CompendiumCliError::BundledLoad)?;
+  let before_bundled_filter = incoming.len();
+  let incoming: Vec<Creature> = incoming
+    .into_iter()
+    .filter(|c| !bundled.contains(&c.id))
+    .collect();
+  let skipped_bundled = before_bundled_filter - incoming.len();
+
+  let db = db::connect(args).await?;
+  let user = db::user_by_email(&db, email).await?;
+  let store = UserCompendiumStore::new(db);
+
+  let (added, total) = if replace {
+    let added = incoming.len();
+    store
+      .replace_for_user(&user.id, incoming)
+      .await
+      .map_err(CompendiumCliError::UserCreaturesWrite)?;
+    (added, added)
   } else {
-    match read_creatures(dst) {
-      Ok(existing) => existing,
-      Err(CompendiumCliError::ReadError { .. }) => {
-        warn!(path = %dst.display(), "Destination missing — creating");
-        Vec::new()
+    let existing = store
+      .list(&user.id)
+      .await
+      .map_err(CompendiumCliError::UserCreaturesRead)?;
+    let mut added = 0usize;
+    for creature in incoming {
+      if existing.iter().any(|e| e.id == creature.id) {
+        // Idempotent re-import — skip.
+        continue;
       }
-      Err(e) => return Err(e),
+      store
+        .insert_raw(&user.id, creature)
+        .await
+        .map_err(CompendiumCliError::UserCreaturesWrite)?;
+      added += 1;
     }
+    (added, existing.len() + added)
   };
 
-  let mut added = 0usize;
-  for c in incoming {
-    if merged.iter().any(|existing| existing.id == c.id) {
-      // Idempotent re-import — skip.
-      continue;
-    }
-    merged.push(c);
-    added += 1;
+  if skipped_bundled > 0 {
+    println!(
+      "Skipped {skipped_bundled} creatures whose ids belong to the \
+       read-only bundled set."
+    );
   }
-
-  if let Some(parent) = dst.parent() {
-    std::fs::create_dir_all(parent).map_err(|source| {
-      CompendiumCliError::WriteError {
-        path: parent.to_path_buf(),
-        source,
-      }
-    })?;
-  }
-
-  let json = serde_json::to_string_pretty(&merged)
-    .map_err(CompendiumCliError::SerializeError)?;
-  std::fs::write(dst, json).map_err(|source| {
-    CompendiumCliError::WriteError {
-      path: dst.to_path_buf(),
-      source,
-    }
-  })?;
-
   println!(
-    "Imported {} creatures into {} (now {} total)",
-    added,
-    dst.display(),
-    merged.len()
+    "Imported {added} creatures into the compendium of {email} \
+     (now {total} user-owned total)"
   );
   Ok(())
 }

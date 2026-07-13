@@ -5,9 +5,8 @@
 //! definitions.
 //!
 //! Persistence and HTTP routes are not in this crate; they live
-//! in `crates/server/src/compendium.rs` on top of the shared
-//! `JsonFileStore<Vec<Creature>>` from this crate's
-//! `json_file_store` module.
+//! in `crates/server/src/compendium/` on top of the relational
+//! [`Db`](crate::db::Db) handle from this crate's `db` module.
 
 pub mod group;
 pub mod open5e;

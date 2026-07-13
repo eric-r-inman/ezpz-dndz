@@ -9,10 +9,13 @@
 #   {{USER}}        — service account that owns the data dir.
 #                     Typically a dedicated `ezpz-dndz` system user.
 #   {{INSTALL_DIR}} — path containing the `ezpz-dndz-server`
-#                     binary plus the `frontend/public/` static
-#                     asset tree.
-#   {{DATA_DIR}}    — runtime persistence root.  All JSON stores
-#                     and the backups/ subdirectory live here.
+#                     binary (the compiled frontend is embedded
+#                     in it; nothing else to deploy).
+#   {{DATA_DIR}}    — runtime persistence root.  The SQLite
+#                     database (the default backend), the legacy
+#                     JSON files imported one-shot on the first
+#                     boot of a pre-relational deployment, and the
+#                     backups/ subdirectory all live here.
 #
 # Secrets pattern: the OIDC client secret is passed via systemd's
 # `LoadCredential=` rather than env, so it never appears in the
@@ -34,6 +37,11 @@ WorkingDirectory={{INSTALL_DIR}}
 # The compiled Elm frontend is embedded in the release binary, so
 # there is no frontend directory (and no --frontend-path flag) to
 # deploy alongside it.
+# The database defaults to sqlite://{{DATA_DIR}}/ezpz-dndz.db (the
+# backup timer covers it); append `--database-url postgres://…` to
+# run against PostgreSQL instead.  Either way the server creates
+# and migrates its schema on boot, and against an empty database it
+# imports any legacy JSON stores found in the data dir exactly once.
 ExecStart={{INSTALL_DIR}}/ezpz-dndz-server \
   --listen 127.0.0.1:4040 \
   --base-url https://ezpz.example.com \

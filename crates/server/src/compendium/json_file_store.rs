@@ -1,16 +1,16 @@
 //! Generic JSON-file-backed value store with atomic writes and
-//! async-mutex serialization.
+//! async-mutex serialization.  **Legacy-import machinery only.**
 //!
-//! Lifted out of the dice-history persistence path so the upcoming
-//! compendium store (and any future per-user encounter store, etc.)
-//! can share the same correctness primitives without re-implementing
-//! atomic-rename writes and the read-modify-write mutex pattern.
+//! Every live store is relational now (see the lib crate's `db`
+//! module); the sole remaining consumer of this type is the legacy
+//! shared [`CompendiumStore`](super::store::CompendiumStore), which
+//! exists purely as input to the one-shot per-user split migration
+//! ([`super::migrate`]) and its bundle-seed bookkeeping.  The module
+//! therefore lives here, next to that consumer, instead of in the
+//! lib crate — new features must not reach for it.
 //!
 //! The stored value `T` is treated as a single document — load on
-//! demand, mutate via a closure, persist as a whole.  This shape fits
-//! "small bounded collection in one file" use cases well; for
-//! large datasets or cross-document transactions, swap the
-//! implementation behind the same surface.
+//! demand, mutate via a closure, persist as a whole.
 //!
 //! # Concurrency model
 //!
@@ -78,7 +78,7 @@ pub enum JsonFileStoreError {
 /// A JSON-file-backed value store.
 ///
 /// `T` must be both `Serialize` and `DeserializeOwned`; in practice
-/// it's a small collection like `Vec<Roll>` or `HashMap<UserId, Encounter>`.
+/// it is the legacy shared compendium's `Vec<Creature>`.
 ///
 /// The cache is loaded eagerly on construction (via
 /// [`load_or_default`](Self::load_or_default)) so the first read
@@ -97,9 +97,8 @@ where
   /// cache is initialized to `T::default()` and the file is created
   /// on the first mutation.  If the file exists but contains
   /// malformed JSON, the corruption is logged at WARN and the cache
-  /// is initialized to `T::default()` — this matches the dice-history
-  /// "soft-fail to empty" behavior so a single corrupt file doesn't
-  /// brick the whole server.
+  /// is initialized to `T::default()` — a "soft-fail to empty" so a
+  /// single corrupt file doesn't brick the whole server.
   pub async fn load_or_default(
     path: PathBuf,
   ) -> Result<Self, JsonFileStoreError> {
@@ -147,18 +146,12 @@ where
     Ok(result)
   }
 
-  /// Replace the entire cached value and persist.  Useful for bulk
-  /// import endpoints that overwrite the collection wholesale.
+  /// Replace the entire cached value and persist.  Used by the
+  /// legacy store's reset-to-bundled path.
   pub async fn replace(&self, value: T) -> Result<(), JsonFileStoreError> {
     let mut guard = self.cache.lock().await;
     *guard = value;
     write_file(&self.path, &*guard).await
-  }
-
-  /// Borrow the path the store is backed by.  Only useful for log
-  /// lines and tests that want to point at the underlying file.
-  pub fn path(&self) -> &PathBuf {
-    &self.path
   }
 }
 

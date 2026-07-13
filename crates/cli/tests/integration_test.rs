@@ -112,20 +112,19 @@ fn test_basic_execution() {
 
 #[test]
 fn test_compendium_count_against_tempfile() {
-  // Write a small fixture compendium so the command has
-  // something to count.  The tempfile shape matches the JSON
-  // the server writes to `<data_dir>/compendium/creatures.json`.
+  // Point the command at a scratch data dir so it opens (and
+  // migrates) a fresh SQLite database there — the same resolution
+  // rule the server applies to `--data-dir`.  An empty database
+  // holds no user-owned creatures, so the count is 0.
   let dir = std::env::temp_dir().join("ezpz-dndz-cli-test");
   std::fs::create_dir_all(&dir).expect("create temp dir");
-  let path = dir.join("creatures.json");
-  std::fs::write(&path, "[]").expect("write empty fixture");
 
   let output = Command::new(get_binary_path())
     .args([
       "compendium",
       "count",
-      "--path",
-      path.to_str().expect("path utf8"),
+      "--data-dir",
+      dir.to_str().expect("path utf8"),
     ])
     .output()
     .expect("run cli");
