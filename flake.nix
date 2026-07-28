@@ -261,6 +261,22 @@
             echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
             echo "    elm2nix snapshot"
             echo "    git add elm-srcs.nix registry.dat && git commit"
+
+            # Nudge when the build cache is overdue for a sweep.
+            # Cargo never garbage-collects superseded artifacts, so
+            # target/ grows without bound (8.5 GB after three
+            # months here, 97% of it stale duplicates).  This only
+            # stats a marker file — measuring the tree would add
+            # seconds to every direnv-triggered shell entry — and
+            # never deletes anything on its own; `just sweep` is
+            # always the explicit action.
+            if [ -d target ]; then
+              if [ ! -e target/.last-sweep ] \
+                || [ -n "$(find target/.last-sweep -mtime +14 2>/dev/null)" ]; then
+                echo ""
+                echo "  ⚠ Build cache not swept in over 14 days — run 'just sweep'."
+              fi
+            fi
           '';
           # A runtime marker identifying this as the project's default
           # dev shell.  A compliance check reads it back with `nix eval`

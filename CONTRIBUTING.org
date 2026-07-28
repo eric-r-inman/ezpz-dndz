@@ -34,6 +34,26 @@ cargo test --workspace
 
 Tests and test scripts must exit with a proper error code.
 
+** Build cache
+
+Cargo names each build artifact after a hash of its inputs and never deletes the
+superseded ones, so ~target/~ grows without bound — this project accumulated 8.5
+GB (97% of it stale duplicates, some dating to the first commit) before anyone
+swept it.  A fully-built workspace legitimately costs a bit over 1 GB; anything
+far past that is garbage.
+
+Reclaim it with:
+
+#+begin_src sh :results none :exports code
+just sweep
+#+end_src
+
+That runs ~cargo sweep --time 14~, which keeps every artifact a build has
+touched in the last two weeks — the current working set survives and nothing
+needs an immediate rebuild.  The dev shell prints a nudge on entry once the last
+sweep is more than fourteen days old; it only stats a marker file
+(~target/.last-sweep~) and never deletes anything on its own.
+
 ** Dependencies
 
 Every dependency in a ~Cargo.toml~ — whether a workspace

@@ -114,3 +114,19 @@ promote-to-bundle id:
 # Requires direnv to be installed (`brew install direnv`) and hooked into your shell.
 setup-direnv:
     direnv allow
+
+# Reclaim disk from stale build artifacts.
+#
+# Cargo names every artifact after a hash of its inputs and never
+# deletes superseded ones, so target/ grows without bound — this
+# project reached 8.5 GB (97% of it garbage) after three months
+# before the first sweep.  `--time 14` keeps anything a build has
+# touched in the last two weeks, so the current working set
+# survives and nothing needs an immediate rebuild.
+#
+# The devshell nudges when the marker below goes stale; run this
+# whenever it does, or any time target/ feels heavy.
+sweep:
+    cargo sweep --time 14
+    @mkdir -p target && touch target/.last-sweep
+    @du -sh target
