@@ -113,7 +113,18 @@ tower-sessions = { version = "0.15", features = ["memory-store"] }
 # portable .sql migrations into the lib crate; `tls-rustls` keeps the
 # Postgres path OpenSSL-free like the rest of the workspace.  The
 # bundled libsqlite3-sys C build rides on the dev shell's cc.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
+#
+# The TLS feature names the crypto provider and root store explicitly
+# rather than going through the `tls-rustls` alias.  That alias points
+# at ring today (`tls-rustls = ["tls-rustls-ring"]` in 0.8.6), but an
+# alias is free to move, and the daily dependency-bump flow will
+# advance this crate unattended: landing on aws-lc-rs would drag in
+# aws-lc-sys, whose C build panics under zig cross-compilation to
+# darwin — exactly the breakage foundation removed from its own auth
+# stack.  `-native-roots` (over the alias's webpki default) also puts
+# Postgres TLS on the OS trust store, matching foundation's reqwest,
+# so a self-hosted CA is trusted by both halves of the process.
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
 
 # Shared library
 ezpz-dndz-lib = { path = "crates/lib" }
