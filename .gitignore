@@ -61,6 +61,17 @@ dice-history.json
 # never end up in git).  Lives in the --data-dir.
 /users.json
 
+# The SQLite database — the live store for every runtime table
+# (users with their Argon2id password hashes, encounters, the
+# compendium, presets, dice history).  Created on first boot in the
+# --data-dir; the -wal/-shm siblings appear while it is open.  This
+# is the successor to the per-store JSON files ignored above and
+# carries the same absolute prohibition: it must never end up in git.
+# A Postgres deployment writes none of these.
+/ezpz-dndz.db
+/ezpz-dndz.db-wal
+/ezpz-dndz.db-shm
+
 # Runtime compendium directory (created at runtime by the server when
 # bootstrapping; lives in the --data-dir).
 # Leading slash anchors the rule to repo root so it doesn't shadow
