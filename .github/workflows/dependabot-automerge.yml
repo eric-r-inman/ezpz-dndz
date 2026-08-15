@@ -17,9 +17,12 @@ permissions:
 
 jobs:
   automerge:
-    if: >-
-      github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.actor == 'dependabot[bot]'
+    # The event / conclusion guard that used to live here is now owned
+    # by the reusable workflow.  Keeping the local copy would filter
+    # out the changelog re-dispatch pass (a workflow_dispatch run is
+    # neither a pull_request event nor, at that point, a concluded
+    # one), stalling the merge.  The dependabot-actor guard stays: it
+    # is this project's own restriction, not the superseded one.
+    if: github.actor == 'dependabot[bot]'
     uses: LoganBarnett/rust-template/.github/workflows/reusable-dependabot-automerge.yml@main
     secrets: inherit

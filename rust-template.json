@@ -1,11 +1,13 @@
 {
+  "apple-frameworks": true,
   "template_sync_hashes": [
     "51239f878d85679a0bb7197f27ddbb22a0ebda8d",
     "992414005ea1ce92fa18f826e2e2c2407745ddd8",
     "6d65d3d880890eed337cde7556b8c38ad02d0896",
     "e50e9335034f7787c8fbdb33a67f9ec1ae13a047",
     "2e4cdac079954e9e6b6fd817379c9cbfd2291485",
-    "0da0b1f8e81d8b53bbdf4c0125fafb70f17cb993"
+    "0da0b1f8e81d8b53bbdf4c0125fafb70f17cb993",
+    "291df3a85bd6c54f0747d595db7993ecc71eef05"
   ],
   "compliance-ignores": [
     {

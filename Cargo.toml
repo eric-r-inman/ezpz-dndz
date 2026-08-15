@@ -124,6 +124,16 @@ ezpz-dndz-lib = { path = "crates/lib" }
 # to operate on the same database while the server is stopped.
 ezpz-dndz-server = { path = "crates/server" }
 
+# Policy for the scheduled dependency-bump flow (the daily `cargo update`
+# that replaces Dependabot; see .github/workflows/dependency-bump.yml).
+# Each hold names a lockfile package the bump must not advance and the
+# reason a human needs before lifting it; every run reports the held set,
+# so a hold cannot rot silently.  Example:
+#   { package = "foo", reason = "waiting on owner/repo#123 to ship in a tag" }
+[workspace.metadata.dependency-bump]
+hold = [
+]
+
 # ============================================================================
 # BUILD PROFILES
 # ============================================================================

@@ -34,9 +34,13 @@
     forAllSystems =
       nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
     perSystem = forAllSystems (system: let
+      # Hoisted so the quarantined `pkgsUnfreeFor` instance below (used
+      # only because this project links Apple frameworks) stays
+      # overlay-consistent with this build `pkgs` — both see the same
+      # overlay set.
+      overlays = [(import rust-overlay)];
       pkgs = import nixpkgs {
-        inherit system;
-        overlays = [(import rust-overlay)];
+        inherit system overlays;
       };
       craneLib =
         (crane.mkLib pkgs).overrideToolchain
@@ -105,12 +109,25 @@
       };
       # The x86_64-linux build cross-compiles macOS `<key>-<arch>-darwin`
       # variants via zig so a release needs no macOS runner; empty on
-      # other systems.  Add `appleSdk = pkgs.apple-sdk.src;` here (and set
-      # config.allowUnfree / config.allowUnsupportedSystem on the pkgs
-      # import above) only if a crate links Apple frameworks — see
+      # other systems.  This project links Apple frameworks — the OIDC
+      # stack pulls security-framework through reqwest's
+      # rustls-tls-native-roots — so the darwin cross build needs the
+      # Apple SDK's headers and link stubs.  `"apple-frameworks": true`
+      # in rust-template.json turns that on (the same flag shape as
+      # `windows-msvc` below); the SDK comes from a quarantined unfree
+      # nixpkgs so this build `pkgs` graph stays licence-free, and
+      # evaluating it accepts the darwin-gated Apple SDK licence here in
+      # the project's own flake — the visible consent.  See
       # CONTRIBUTING.org.
+      appleFrameworksEnabled =
+        (builtins.fromJSON (builtins.readFile ./rust-template.json)).apple-frameworks
+        or false;
       darwinCrossPackages = foundation.lib.mkDarwinCrossPackages {
         inherit self pkgs system crates crane commonArgs;
+        appleSdk =
+          if appleFrameworksEnabled
+          then (foundation.lib.pkgsUnfreeFor {inherit nixpkgs system overlays;}).apple-sdk.src
+          else null;
       };
       # Native Windows PE variants (`<key>-{x86_64,aarch64}-windows`),
       # cross-compiled via llvm-mingw for the gnullvm targets — no
@@ -234,6 +251,16 @@
             # Formats org-mode documents (treefmt delegates .org files
             # to it).
             org-fmt.packages.${system}.default
+            # One-shot Dependabot-backlog combiner, provided by the
+            # rust-template (foundation) flake rather than copied in, so
+            # it stays current with the template.  Run as
+            # `just dependabot-combine`.
+            foundation.packages.${system}.dependabot-combine
+            # The daily dependency bumper the scheduled dependency-bump
+            # workflow runs; also from the foundation flake.  Run
+            # locally as `just dependency-bump` to bump and compose
+            # changelog entries in the working tree for review.
+            foundation.packages.${system}.dependency-bump
             # ABI baseline check; provided so `cargo semver-checks` can
             # run locally.  `doCheck = false` skips upstream's
             # target_feature_* snapshot tests, which assert against

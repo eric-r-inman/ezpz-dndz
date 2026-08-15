@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Dispatchable so the dependabot-automerge flow can re-run the
+  # required checks against the changelog commit it adds after the
+  # squash-merge; without this the re-dispatch has nothing to call
+  # and the required contexts never report on that commit.
+  workflow_dispatch:
 
 # Cancel superseded runs on the same PR / branch so the queue
 # doesn't pile up when force-pushing during review.
