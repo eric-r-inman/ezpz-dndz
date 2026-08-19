@@ -7631,6 +7631,22 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* ── Compendium list: Lore groups section ──────────────────────────── */
 
+/* Pins the Lore groupings section to the top of the scrolling
+   creature list.  Capped at half the list height with its own
+   scrollbar so a long expanded grouping list can't crowd the
+   creatures out of view; the opaque background keeps rows from
+   showing through as they scroll underneath. */
+.compendium__lore-pane {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  max-height: 50%;
+  overflow-y: auto;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .compendium__row--lore-section {
   background: var(--color-surface-2);
   border-left: 3px solid var(--color-warning, #b9602a);
@@ -10709,6 +10725,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-right: 2px;
 }
 
+/* New line under the "Saving Throws" heading.  The 2px row gap
+   keeps wrapped badge rows from touching in a narrow panel. */
+.statblock__save-roll-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 2px;
+}
+
 .statblock__save-roll {
   appearance: none;
   display: inline-block;
@@ -11665,11 +11690,16 @@ button.quick-list-card {
   cursor: pointer;
 }
 
+/* Yellow highlight so the amount box pops under both outcome
+   headings — it only renders once Damage or Heal is picked, and
+   an amount is required before the chain can apply, so the cue
+   points the GM at the one field still waiting on input. */
 .save-chain__amount-input {
   width: 140px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-yellow);
+  box-shadow: 0 0 0 1px var(--color-yellow);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;

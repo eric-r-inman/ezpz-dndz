@@ -49,7 +49,7 @@ view =
                 , section [ class "about-page__section" ]
                     [ h2 [] [ text "Source & license" ]
                     , p []
-                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property. Do not use this app to store or upload copyrighted content that you are not licensed to use. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
+                        [ text "This website is a personal project based on SRD 5.2.1 rules. I have no relationship with WoTC or any associated corporation, and I make no claims to any of their intellectual property. Do not use this app to store or upload copyrighted content that you are not licensed to use in this way. If you'd like to run your own local version of eZpZ-dndZ, the full source is available under PolyForm Strict 1.0.0 where applicable. See the "
                         , a
                             [ href "https://github.com/eric-r-inman/ezpz-dndz"
                             , target "_blank"
@@ -60,7 +60,20 @@ view =
                         ]
                     ]
                 , betaFeaturesSection
+                , upcomingSection
                 ]
+            ]
+        ]
+
+
+upcomingSection : Html msg
+upcomingSection =
+    section [ class "about-page__section" ]
+        [ h2 [] [ text "Next major features/updates" ]
+        , ul []
+            [ li [] [ text "Hotkey mapping for quick navigation and most-used buttons." ]
+            , li [] [ text "\"Hide\" controls for less-used features and buttons." ]
+            , li [] [ text "UI re-do (not a huge priority while I'm still nailing down the features)." ]
             ]
         ]
 

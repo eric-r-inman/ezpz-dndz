@@ -501,7 +501,7 @@ propLine label value =
     else
         Just
             (p [ class "statblock__prop" ]
-                [ strong [] [ text (label ++ " ") ]
+                [ strong [] [ text (label ++ ": ") ]
                 , text value
                 ]
             )
@@ -521,6 +521,11 @@ value `+N` is a real `<button>` that fires the same
 `AbilitySaveOpen` Msg with the save's bonus (instead of the
 flat ability modifier the ability cells default to when the
 creature isn't proficient).
+
+The badges sit in their own wrapping flex row beneath the
+heading rather than inline after it, so a narrow panel wraps
+them cleanly with a small gap between rows.
+
 -}
 savingThrowsHtmlLine :
     (String -> String -> Int -> Int -> Int -> msg)
@@ -534,12 +539,10 @@ savingThrowsHtmlLine onSavingThrow creatureName saves =
     else
         Just
             (p [ class "statblock__prop" ]
-                (strong [] [ text "Saving Throws " ]
-                    :: (saves
-                            |> List.map (savingThrowEntry onSavingThrow creatureName)
-                            |> List.intersperse (text " ")
-                       )
-                )
+                [ strong [] [ text "Saving Throws:" ]
+                , span [ class "statblock__save-roll-row" ]
+                    (List.map (savingThrowEntry onSavingThrow creatureName) saves)
+                ]
             )
 
 
@@ -683,7 +686,7 @@ habitatPropLine value =
                 [ class "statblock__prop"
                 , Tooltips.attr Tooltips.statBlockHabitat
                 ]
-                [ strong [] [ text "Habitat " ]
+                [ strong [] [ text "Habitat: " ]
                 , text value
                 ]
             )
@@ -924,7 +927,7 @@ spellcastingMeta sc =
 
     else
         [ p [ class "statblock__prop" ]
-            [ strong [] [ text "Spellcasting ability " ]
+            [ strong [] [ text "Spellcasting ability: " ]
             , text (abilityLabel sc.ability ++ " (" ++ String.join ", " bits ++ ")")
             ]
         ]

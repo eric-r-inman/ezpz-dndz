@@ -704,7 +704,10 @@ list auth ui totalCount visible userLoreGroups encounterIds selectedIds =
 
     else
         div [ class "compendium__list" ]
-            (loreRows ++ groupRows ++ creatureRows)
+            (div [ class "compendium__lore-pane" ] loreRows
+                :: groupRows
+                ++ creatureRows
+            )
 
 
 {-| Render a group as a header row + (optional) expansion of its
@@ -1534,8 +1537,9 @@ disclosure caret; when expanded, each lore group (bundled +
 user-curated) becomes its own selectable row with an optional
 member-list expansion.
 
-Returns a List of rows so the caller can splice them inline
-with the regular group rows + creature rows.
+Returns a List of rows; the caller wraps them in the sticky
+`compendium__lore-pane` container so the section stays pinned
+at the top of the list while the creature rows scroll under it.
 
 -}
 loreSection : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List (Html Msg)
