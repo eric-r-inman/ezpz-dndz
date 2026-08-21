@@ -78,9 +78,12 @@ dice-history.json
 # the source-side `frontend/src/Compendium/` module directory.
 /compendium/
 
-# direnv's local evaluation cache for the Nix dev shell (created by
-# `direnv allow`; machine-specific store paths, never shareable).
-.direnv/
+# Claude Code project config (Stop hook, compliance subagent, shared settings)
+# is part of the project and must be checked in.  A user-global or system-wide
+# ignore (e.g. /etc/gitignore) often excludes .claude/ wholesale; re-include
+# it.  Personal overrides go in .claude/settings.local.json, which Claude Code
+# itself treats as the local-only file — that one stays ignored below.
+!.claude/
 
 # Per-user Claude Code overrides (the shared .claude/settings.json IS checked in).
 .claude/settings.local.json

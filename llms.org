@@ -1,13 +1,65 @@
 #+title:     LLMs
 #+language:  en
 
-* Read CONTRIBUTING.org before contributing
+* Imports
+
+@README.org
+
+@CONTRIBUTING.org
+
+* Working with imports
+
+The =Imports= section collects this project's Claude Code /imports/, which are
+not org links.  Claude Code inlines each named file into the session context
+before the first turn, so those documents are already read: there is no separate
+step to perform, and no judgment call to make about whether a given document is
+relevant enough to open.  The section is a heading of its own so that compliance
+can assert the list against a named scope rather than against a position in the
+file.
 
 This file covers how to write code.  ~CONTRIBUTING.org~ covers how to land a
-change: commit messages, dependency comments, and the other conventions every
-change must follow.  Read it before making a change, not after a compliance
-check rejects one — the conventions are enforced, and rediscovering them from a
-failed check wastes a round trip.
+change: changelog entries, commit messages, dependency comments, and the other
+conventions every pull request must follow.  Those conventions are enforced, so
+rediscovering them from a failed compliance check wastes a round trip.
+~README.org~ covers what this project is for; a change that contradicts it is
+wrong even when it compiles.
+
+** Rules for editing the import list
+
+Do not replace an import with an ~[[file:...][=name=]]~ org link.  A link is an invitation the
+agent may decline; an import is not.  Links remain correct for supporting
+material — the imports are reserved for documents that every change in this
+project must be measured against.
+
+Some mechanics worth knowing before adding an entry:
+
+- Paths resolve relative to the file doing the importing, and imports recurse,
+  so an imported document brings in its own imports too.
+- A file reached by more than one path is inlined once, so a redundant entry
+  costs nothing.
+- Position is irrelevant to the mechanism.  Claude Code honors an import
+  wherever it sits, and the imported text reaches the session before this file
+  is read at all, so there is no rule about the section coming first — the
+  heading carries the meaning, not the placement.
+- An import is a line that is exactly ~@~ followed by the path — nothing before
+  it, nothing after it.  The runner matches whole lines, not org syntax, so
+  anything else — however valid as org-mode — is not an import to it: an
+  indented path, a path with trailing text, a path inside a sentence.  The
+  converse hazard is a line that merely /begins/ with ~@~, such as a CSS at-rule
+  in an example: the runner cannot tell it from an import, even inside a
+  ~#+begin_src~ block, which is why the CSS examples in ~CONTRIBUTING.org~ guard
+  their at-rules with a leading empty comment.  To write an import path in prose
+  without importing it, keep it inside a sentence or wrap it in org verbatim
+  markers.
+- Each import is a paragraph of its own: a blank line before it and a blank line
+  after it.  Two imports on adjacent lines are one org paragraph — that is how
+  ~org-fmt~ reads them, and how the compliance check reads them — so the blank
+  line between them is not optional.
+- Order is meaningful, because the order the documents arrive in is the order
+  they are read.  ~README.org~ comes first — what the project /is/ frames
+  everything after it — and ~CONTRIBUTING.org~ second.  A project may add its
+  own imports before, between, or after those two; the two keep their relative
+  order.
 
 * Server crate: role and scope
 
@@ -46,7 +98,7 @@ actually run anything.
 
 No file lists in documentation.
 
-** Comments
+** Authoring Comments and Documentation
 
 *** Formatting and punctuation
 
@@ -57,6 +109,117 @@ punctuation.
 
 Only comment non-obvious intent, invariants, tradeoffs, or historical
 constraints; no restating of control flow.
+
+These rules apply to comments and documentation roughly the same.
+
+**** Anti Pattern: Historical / Tombstone Verbiage
+
+Historical verbiage are such as "We used to do X, but now we do Y".  We should
+only provide such prose in the _surprising_ case.  These would be better thought
+of as "One would typically reach for X, but it fails because of Y, so instead we
+do Z".  This is the only case in which we use historical prose that refers to
+prior code that no longer exists.
+
+The easy test for this is "If you would have gotten this right on the first
+pass, would this have still needed this prose?".  If the answer is no, then do
+not leave historical prose.
+
+**** Anti Pattern: Obvious Intent
+
+Commenting intent that is obvious "This assigns foo to bar" or "This
+run_workflow function runs the workflow" are simple anti patterns.  We only
+comment on code that needs to be called out.  Assume the reader knows how to
+write software.  If the code is self documenting, obvious code should never need
+comments.
+
+The only exception is special documentation comments on the headers of things
+like functions, which then later get aggregated by a tool or auto-complete
+systems.  Even then, these comments should only refer to abstract outcomes and
+not implementation detail unless there is something specifically important about
+that implementation.  Stating what algorithm a sort uses is fine.  Stating in
+the doc comment that you used a ~loop~ over a combinator is not appropriate.
+
+**** Anti Pattern: Inventory
+
+Taking inventory in prose ("this does X, Y, and Z") just means you now have
+extra places to account for a change.  The moment you stop doing Y, all prose
+that takes inventory must be updated.  Same goes if you add a W activity.  The
+simple answer is to not write this prose at all.  If you find yourself writing
+these remarks, they are virtually always wrong, and instead an even briefer
+summary must be written instead, or the comment must be removed entirely.
+
+** Version Control
+*** Commit Messages
+
+A commit message logs a change that is suitable for a reviewer.  Generally
+speaking, we want to submit one commit per pull request.  Multiple commits can
+be presented in a pull request if somehow the changes are completely different
+yet required in order for the pull request to be considered complete.  Many git
+forge sites default the one-and-only-one commit as both a pull request title and
+description (from the commit summary and body).  We want to leverage that as
+much as we can.
+
+For the commit message content itself, the summary should be present tense with
+no prefixes and no "Conventional Commit" tagging.  Just tell us what happens if
+we apply the commit.  You can imagine a sentence starting with "Applying this
+commit will ..." an the commit message summary completes the sentence.  No
+punctuation at the end (this is our one and only one exception to the
+punctuation rule).
+
+Good:
+
+#+begin_example
+clarify documentation re: ritual summoning
+#+end_example
+
+#+begin_example
+simplify approach of detecting tachyons
+#+end_example
+
+#+begin_example
+add flux capacitor to front-end
+#+end_example
+
+Bad:
+
+#+begin_example
+(feat) Add a flux capacitor to the front-end in main.elm
+#+end_example
+
+The commit body is your opportunity to document the motivation for the changes
+(e.g. to fix a bug, to optimize a workflow, to add a new feature, and so on).
+This is the "why" part.  Why did were these changes necessary?  In addition,
+provide context for the change.  Does the bug fix come at some cost to
+performance?  Were other considerations made as part of the changes, and then
+discarded?  Is this the first commit in a series of similar refactors?
+
+A commit body that contains line numbers, file names, and symbol names (e.g.
+functions, variables, etc.) is a high scoring smell and should be avoided.
+
+One thing to be mindful of when crafting a commit is that whoever is viewing the
+commit _can always see what changed for themselves_.
+
+If you find yourself including critical information in the commit whose value
+extends outside of the commit (e.g. that this is a workaround or some surprising
+change), that should exist as a code comment.  It can be worth calling out such
+workarounds in the commit as well, but you don't need to specifically locate
+them (no line numbers, function names, and so on).
+
+Another reason not to include line numbers is that code formatters will change
+this as part of making the commit.
+
+*** History Hygiene
+
+We want to avoid commits that are essentially "I accomplished a task" and then
+later a "jk here's the rest of the task done".  When this happens, we should
+perform a fixup assuming the commits are unpublished.
+
+This tends to come up especially when you have a mega-commit for a bunch of
+unrelated work.  In these cases, the right thing to do is break up the work
+assuming the work can survive independently.
+
+In the event that you can't resolve these notions, halt and ask the operator for
+direction.
 
 ** Code
 
@@ -461,9 +624,104 @@ that steer toward the least-powerful construct (see "Rule of least power") while
 the change is still in hand, rather than after the fact.
 
 The template pairs this with a Stop hook that runs the same gate automatically
-for Claude Code agents; this project has that review gate disabled (see
-~rust-template.json~'s ~compliance-ignores~), so the instruction above applies
-to every contributor and agent here without exception.
+for Claude Code agents; this project has that review gate enabled
+(~.claude/hooks/review-stop.sh~, wired in ~.claude/settings.json~), and the
+instruction above applies to every contributor and agent here without exception.
+
+* Frontend layering
+
+The Elm frontend has a strict separation between domain logic and view code; see
+[[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full discussion.
+
+- ~frontend/src/Encounter.elm~ owns all D&D rules: types (=Creature=, =Cover=,
+  =Encounter=), seed data, and pure functions like =nextTurn= and =mapCreature=.
+  It must not import =Html=, =Browser=, =Url=, or any rendering primitive.
+- ~frontend/src/Main.elm~ is the application shell: =Browser.application=,
+  =main= / =subscriptions= / =init= / =update= dispatch table / =view=
+  composition / =viewPage= route dispatcher.  It must NOT grow inline view
+  trees, helper functions, or update logic — those live in =View/*= and
+  =Update/*= modules.
+- A =Msg= branch in =updateInner= must be a one-liner that delegates to
+  ~Update.Foo.bar~.  If the branch starts walking the queue, comparing
+  initiative, or doing HP arithmetic, the work belongs in =Encounter= or
+  =HpChange=.
+
+This split is what lets us add alternate UI layouts (e.g. an upcoming "simple
+view") without rewriting rules.
+
+** Hover text: always use ~Tooltips.attr~
+
+NEVER use the native ~title=~ attribute for hover text — the browser adds a
+~600ms-plus delay before showing it, while the rest of the app uses a custom
+data-tooltip portal (~public/index.html~) that shows at ~300ms.  Mixing the two
+reads as "this one tooltip is broken."
+
+Always reach for ~View.Tooltips.attr~:
+
+#+begin_src elm :exports code
+import View.Tooltips as Tooltips
+
+button
+    [ class "..."
+    , onClick FooClick
+    , Tooltips.attr "Click to do the thing"  -- fast portal, ~300ms
+    , attribute "aria-label" "Click to do the thing"
+    ]
+    [ text "Foo" ]
+#+end_src
+
+Do NOT write any of:
+
+- ~attribute "title" "..."~
+- ~Attr.title "..."~
+- ~Html.Attributes.attribute "title" "..."~
+- ~Html.Attributes.title "..."~
+
+The one legitimate exception is a ~disabled~ button — Chrome blocks mouse events
+on disabled form controls, so the data-tooltip portal won't fire and ~title=~ is
+the only thing that works.  In that case, wrap the disabled button in a parent
+span carrying ~Tooltips.attr~ and ~pointer-events: none~ on the inner button
+(see ~compendium__edit-btn-bundled-wrap~ for the canonical pattern) rather than
+reaching for ~title=~ — that keeps the affordance fast and consistent.
+
+* When adding new features
+
+When adding a new feature to the project, the new code and structure *follow the
+architectural structure* — or, if a clean fit doesn't exist yet, embrace the
+*ideals* of the structure.  The shape is already there; extend it, don't
+recreate it.
+
+For a new modal feature, the canonical layout is:
+
+  - Domain rules → =Foo.elm= or =Encounter/Foo.elm= (pure; no =Html=).
+  - UI substate → =Ui/Foo.elm= (record alias + ~fresh~ constructor).
+  - Update branches → =Update/Foo.elm= (one function per Msg branch,
+    pattern-matching on the ~Modal~ ADT).
+  - Modal ADT → add ~ModalFoo FooUi~ to ~Modal~ in =Model.elm=; do NOT add a
+    separate ~Maybe FooUi~ field on ~Model~.
+  - View → =View/Modal/Foo.elm= (entry point pattern-matches on ~model.modal~).
+  - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
+    ~import Http~ directly.
+  - Wire the dispatch as one-liners in =Main=' s =view= and =updateInner=.
+
+For a new backend feature: =JsonFileStore<T>= for persistence, =aide::ApiRouter=
+for routes, semantic ~thiserror~ variants naming the operation.  CLI subcommands
+each go in =crates/cli/src/foo.rs=.
+
+See [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full pattern with examples.
+
+The honest version: if you're tempted to write a one-off helper inline in
+=Main.elm=, stop — find the right home first.  The structure isn't decoration;
+it's load-bearing for swappable UI layouts and for the modal-state invariants
+the type system enforces.
+
+* Where to look for context
+
+For project status / structure, consult [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] — the load-bearing
+decisions live there.  Live planning docs that ARE current:
+[[file:docs/AUTH_TESTING.org][docs/AUTH_TESTING.org]] (local-dev account flows) and [[file:docs/systemd.org][docs/systemd.org]]
+(LoadCredential / secret passing).
+
 
 * Template compliance
 

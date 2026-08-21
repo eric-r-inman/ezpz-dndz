@@ -1,5 +1,17 @@
 {
   "apple-frameworks": true,
+  "windows-msvc": false,
+  "workspaces": {
+    "lib": {
+      "release-binary": false
+    },
+    "cli": {
+      "release-binary": true
+    },
+    "server": {
+      "release-binary": true
+    }
+  },
   "template_sync_hashes": [
     "51239f878d85679a0bb7197f27ddbb22a0ebda8d",
     "992414005ea1ce92fa18f826e2e2c2407745ddd8",
@@ -7,88 +19,8 @@
     "e50e9335034f7787c8fbdb33a67f9ec1ae13a047",
     "2e4cdac079954e9e6b6fd817379c9cbfd2291485",
     "0da0b1f8e81d8b53bbdf4c0125fafb70f17cb993",
-    "291df3a85bd6c54f0747d595db7993ecc71eef05"
+    "291df3a85bd6c54f0747d595db7993ecc71eef05",
+    "bcaffcaa3032f3e419e6cf3fdfd11a94f2bd9279"
   ],
-  "compliance-ignores": [
-    {
-      "id": "required-file-changelog",
-      "reason": "Project policy (see CLAUDE.md): the git log and ARCHITECTURE.org are the canonical record; no CHANGELOG.org is maintained."
-    },
-    {
-      "id": "changelog-upcoming-section",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "changelog-upcoming-added",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "changelog-upcoming-fixes",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "changelog-upcoming-breaking",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "contributing-changelog-conventions-section",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "contributing-changelog-numbered-list",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "contributing-changelog-required-per-pr",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "contributing-changelog-ci-enforced",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "contributing-changelog-adopter-impact",
-      "reason": "No CHANGELOG.org maintained — see required-file-changelog rationale."
-    },
-    {
-      "id": "ci-uses-reusable-workflows",
-      "reason": "CI is intentionally hand-rolled (Elm + treefmt jobs) since foundation's reusable-ci is Rust-only; see ci.yml header comment."
-    },
-    {
-      "id": "ci-workflow-uses-reusable",
-      "reason": "CI is intentionally hand-rolled (Elm + treefmt jobs) since foundation's reusable-ci is Rust-only; see ci.yml header comment."
-    },
-    {
-      "id": "no-stale-rust-template-literals",
-      "reason": "Remaining occurrences are legitimate references (foundation crate name, project comments, and personal allowlist paths in .claude/settings.local.json)."
-    },
-    {
-      "id": "review-gate-settings",
-      "reason": "Solo vibe-coded project; per-turn subagent review is not worth the Pro-plan token cost. Manual review happens at commit time and the structural checker covers the mechanical drift."
-    },
-    {
-      "id": "review-gate-settings-wires-hook",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    },
-    {
-      "id": "review-gate-hook",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    },
-    {
-      "id": "review-gate-hook-reads-marker",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    },
-    {
-      "id": "review-gate-hook-matches-agent-tool",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    },
-    {
-      "id": "review-gate-agent",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    },
-    {
-      "id": "review-gate-agent-emits-marker",
-      "reason": "Review gate disabled — see review-gate-settings rationale."
-    }
-  ]
+  "compliance-ignores": []
 }
