@@ -1,0 +1,12 @@
+#+title:     Changelog
+#+language:  en
+
+* Upcoming
+** Added
+** Fixes
+1. Brings the repository back into ~rust-template~ compliance, and drops the
+   exemptions it shouldn't have had in the first place.  No action needed.
+** Breaking
+1. macOS service logs move from ~/var/log/ezpz-dndz/~ to
+   ~/var/log/ezpz-dndz-{stdout,stderr}.log~ on the next deploy; repoint anything
+   tailing them and delete the stale directory.

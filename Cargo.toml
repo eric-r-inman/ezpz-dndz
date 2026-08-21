@@ -19,7 +19,7 @@ repository = "https://github.com/eric-r-inman/ezpz-dndz"
 
 [workspace.dependencies]
 # Foundation infrastructure crate (config, logging, health, metrics,
-# auth) shared with rust-template-spawned siblings.  The git pin keeps
+# auth) shared with template-spawned siblings.  The git pin keeps
 # us synchronised with the template's HEAD; advance it together with
 # rust-template.json's template_sync_hashes during compliance work.
 rust-template-foundation = { git = "https://github.com/LoganBarnett/rust-template.git", version = ">=0.16" }

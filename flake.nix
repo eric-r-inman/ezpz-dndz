@@ -252,8 +252,8 @@
             # to it).
             org-fmt.packages.${system}.default
             # One-shot Dependabot-backlog combiner, provided by the
-            # rust-template (foundation) flake rather than copied in, so
-            # it stays current with the template.  Run as
+            # foundation flake rather than copied in, so it stays
+            # current with the template.  Run as
             # `just dependabot-combine`.
             foundation.packages.${system}.dependabot-combine
             # The daily dependency bumper the scheduled dependency-bump
@@ -261,6 +261,9 @@
             # locally as `just dependency-bump` to bump and compose
             # changelog entries in the working tree for review.
             foundation.packages.${system}.dependency-bump
+            # Blocks a Claude Code turn from ending on un-reviewed changes
+            # until the template-compliance review passes.
+            foundation.packages.${system}.review-stop
             # ABI baseline check; provided so `cargo semver-checks` can
             # run locally.  `doCheck = false` skips upstream's
             # target_feature_* snapshot tests, which assert against
