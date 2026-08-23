@@ -5,6 +5,9 @@
 ** Added
 ** Fixes
 ** Breaking
+** Maintenance
+1. build(deps): bump clap from 4.6.1 to 4.6.6
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/84)
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the
