@@ -4,6 +4,9 @@
 * Upcoming
 ** Added
 ** Fixes
+** Breaking
+* v0.2.0
+** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the
    exemptions it shouldn't have had in the first place.  No action needed.
 ** Breaking

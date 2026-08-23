@@ -914,7 +914,7 @@ dependencies = [
 
 [[package]]
 name = "ezpz-dndz-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "ezpz-dndz-lib",
@@ -934,7 +934,7 @@ dependencies = [
 
 [[package]]
 name = "ezpz-dndz-lib"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argon2",
  "cargo-husky",
@@ -953,7 +953,7 @@ dependencies = [
 
 [[package]]
 name = "ezpz-dndz-server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aide",
  "argon2",
