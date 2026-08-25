@@ -3,6 +3,11 @@ module View.Modal.Dice exposing (view)
 {-| Dice roller modal. Renders nothing while closed, the full
 overlay while open. Surface chrome (backdrop, header, ✕ button,
 click-out / Esc to close) is delegated to `View.Modal.view`.
+
+Also hosts the full recent-HP-changes log: the Manage-HP surface
+moved onto the creature card, where only the newest entry fits,
+so the roller — the future dice panel — carries the history.
+
 -}
 
 import Dice
@@ -11,14 +16,16 @@ import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder,
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
+import Ui.HpChange exposing (HpChangeEntry)
 import Ui.ModalChrome exposing (ModalChrome)
 import Util.Keyboard
+import View.HpLog
 import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : ModalChrome -> DiceUi -> Html Msg
-view chrome ui =
+view : ModalChrome -> List HpChangeEntry -> DiceUi -> Html Msg
+view chrome hpChangeLog ui =
     if ui.open then
         View.Modal.view
             { close = CloseDice
@@ -31,6 +38,7 @@ view chrome ui =
                 , faceButtons
                 , specialButtons
                 , history ui
+                , View.HpLog.list hpChangeLog
                 ]
             }
 

@@ -1,4 +1,4 @@
-module View.Card exposing (deathSaveColumn, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
+module View.Card exposing (Context, deathSaveColumn, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
@@ -25,28 +25,59 @@ column appears whenever the creature is at 0 HP.
 
 -}
 
+import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Cover(..), Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, type_, value)
+import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
+import Model exposing (Surface(..))
 import Msg
     exposing
         ( HpField(..)
         , Msg(..)
         )
 import Set exposing (Set)
-import Ui.HpChange exposing (HpEdit)
+import Ui.Condition exposing (ConditionPreset)
+import Ui.HpChange exposing (HpChangeEntry, HpEdit)
+import Ui.Memo as MemoUi
+import Ui.Note as NoteUi
 import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
+import View.Inline.Condition
+import View.Inline.HpChange
 import View.Tooltips as Tooltips
 
 
-view : String -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Creature -> Html Msg
-view activeName hpEdit renameState creature =
+{-| The model fragments a card render needs beyond its own
+`Creature`. `surface` powers the inline surfaces: when the open
+surface targets this card's creature, the card renders it — as
+an expansion under row 3 (HP change, condition) or as an
+in-place input where the memo pill / note pencil sits.
+-}
+type alias Context =
+    { activeName : String
+    , hpEdit : Maybe HpEdit
+    , renameState : Maybe PlaceholderRenameState
+    , surface : Maybe Surface
+    , selectedCount : Int
+    , conditionPresets : Dict String ConditionPreset
+    , creatureNames : List String
+    , hpChangeLog : List HpChangeEntry
+    }
+
+
+view : Context -> Creature -> Html Msg
+view ctx creature =
     let
+        hpEdit =
+            ctx.hpEdit
+
+        renameState =
+            ctx.renameState
+
         isActive =
-            creature.name == activeName
+            creature.name == ctx.activeName
 
         cardClass =
             String.join " " ("creature-card" :: lifecycleClasses isActive creature)
@@ -90,9 +121,10 @@ view activeName hpEdit renameState creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop isActive creature hpEdit renameState
+            [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature)
             , rowMid creature hpEdit
-            , rowBot creature
+            , rowBot creature (surfaceFor ctx creature)
+            , inlineSurface ctx creature
             ]
         , deathSaveColumn creature
         , legendaryColumns creature
@@ -156,6 +188,68 @@ view activeName hpEdit renameState creature =
                 ]
             ]
         ]
+
+
+{-| The open surface, but only when it targets this card's
+creature — every inline mount point matches on the result, so
+the "which card owns the open surface" question is answered
+once.
+-}
+surfaceFor : Context -> Creature -> Maybe Surface
+surfaceFor ctx creature =
+    case ctx.surface of
+        Just (SurfaceHpChange ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
+        Just (SurfaceCondition ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
+        Just (SurfaceMemoEdit ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
+        Just (SurfaceNoteEdit ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
+
+
+{-| The expansion section under row 3 for the two form-sized
+inline surfaces. Memo and note don't render here — they swap
+in-place inputs into their row slots instead.
+-}
+inlineSurface : Context -> Creature -> Html Msg
+inlineSurface ctx creature =
+    case surfaceFor ctx creature of
+        Just (SurfaceHpChange ui) ->
+            View.Inline.HpChange.view ctx.selectedCount ctx.hpChangeLog ui
+
+        Just (SurfaceCondition ui) ->
+            View.Inline.Condition.view
+                { creatureNames = ctx.creatureNames
+                , selectedCount = ctx.selectedCount
+                , presets = ctx.conditionPresets
+                }
+                ui
+
+        _ ->
+            text ""
 
 
 {-| Lifecycle modifier classes (active / dead / unconscious /
@@ -320,8 +414,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Html Msg
-rowTop isActive creature hpEdit renameState =
+rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> Html Msg
+rowTop isActive creature hpEdit renameState surface =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -333,7 +427,7 @@ rowTop isActive creature hpEdit renameState =
             [ text (String.fromInt creature.initiative) ]
         , surprisedIcon creature
         , creatureName creature renameState
-        , noteOrPencil creature
+        , noteOrPencil creature surface
         , acReadout creature hpEdit
         , rowTopChipCluster isActive creature
         ]
@@ -463,35 +557,77 @@ renameKeyDecoder =
 
 Empty note: just the pencil ✏️ button as an "add a note" affordance.
 
-Non-empty note: the note itself (clickable, opens the same edit
-modal so the user can rename or clear it) followed by a pipe
-separator before the AC readout. The pencil is intentionally
+Non-empty note: the note itself (clickable, starts the same
+in-place edit so the user can rename or clear it) followed by a
+pipe separator before the AC readout. The pencil is intentionally
 hidden in this state — the note is now the click target, and
 showing both would make the user wonder which one to use.
 
--}
-noteOrPencil : Creature -> Html Msg
-noteOrPencil creature =
-    if String.isEmpty creature.note then
-        button
-            [ class "icon-btn icon-btn--sm"
-            , onClick (NoteEditOpen creature.name creature.note)
-            , Tooltips.attr Tooltips.noteAdd
-            , attribute "aria-label" "Add note"
-            ]
-            [ text "✏️" ]
+While the note-edit surface targets this creature, the whole
+sliver swaps to an in-place input — Enter commits, Escape
+cancels, blur commits, matching the AC / max-HP inline-edit
+idiom.
 
-    else
-        span [ class "creature-note-wrap" ]
-            [ button
-                [ class "creature-note creature-note--clickable"
-                , onClick (NoteEditOpen creature.name creature.note)
-                , Tooltips.attr Tooltips.noteEdit
-                , attribute "aria-label" ("Edit note: " ++ creature.note)
+-}
+noteOrPencil : Creature -> Maybe Surface -> Html Msg
+noteOrPencil creature surface =
+    case surface of
+        Just (SurfaceNoteEdit ui) ->
+            input
+                [ class "note-edit__input note-edit__input--in-place"
+                , type_ "text"
+                , value ui.text
+                , maxlength NoteUi.maxNoteLength
+                , Attr.placeholder "e.g. boss, summoned, ally"
+                , autofocus True
+                , onInput NoteEditChange
+                , onBlur NoteEditCommit
+                , on "keydown" (commitCancelKeyDecoder NoteEditCommit NoteEditCancel)
+                , attribute "aria-label" ("Edit note for " ++ creature.name)
                 ]
-                [ text creature.note ]
-            , span [ class "creature-note__sep" ] [ text "|" ]
-            ]
+                []
+
+        _ ->
+            if String.isEmpty creature.note then
+                button
+                    [ class "icon-btn icon-btn--sm"
+                    , onClick (NoteEditOpen creature.name creature.note)
+                    , Tooltips.attr Tooltips.noteAdd
+                    , attribute "aria-label" "Add note"
+                    ]
+                    [ text "✏️" ]
+
+            else
+                span [ class "creature-note-wrap" ]
+                    [ button
+                        [ class "creature-note creature-note--clickable"
+                        , onClick (NoteEditOpen creature.name creature.note)
+                        , Tooltips.attr Tooltips.noteEdit
+                        , attribute "aria-label" ("Edit note: " ++ creature.note)
+                        ]
+                        [ text creature.note ]
+                    , span [ class "creature-note__sep" ] [ text "|" ]
+                    ]
+
+
+{-| Enter commits, Escape cancels — the keyboard contract every
+in-place card input shares.
+-}
+commitCancelKeyDecoder : Msg -> Msg -> Decode.Decoder Msg
+commitCancelKeyDecoder commitMsg cancelMsg =
+    Decode.field "key" Decode.string
+        |> Decode.andThen
+            (\key ->
+                case key of
+                    "Enter" ->
+                        Decode.succeed commitMsg
+
+                    "Escape" ->
+                        Decode.succeed cancelMsg
+
+                    _ ->
+                        Decode.fail "ignored key"
+            )
 
 
 
@@ -1475,8 +1611,8 @@ flyHeight creature =
 -- ── ROW 3 ───────────────────────────────────────────────────────────────
 
 
-rowBot : Creature -> Html Msg
-rowBot creature =
+rowBot : Creature -> Maybe Surface -> Html Msg
+rowBot creature surface =
     div [ class "creature-card__row creature-card__row--bot" ]
         [ button
             [ class "action-btn action-btn--manage-hp"
@@ -1498,47 +1634,67 @@ rowBot creature =
             [ text "Save Chain" ]
         , readiedToggle creature
         , reactionPip creature
-        , memoSlot creature
+        , memoSlot creature surface
         , timerSlot creature
         ]
 
 
-{-| Row 3 memo slot. Empty memo → 📝 button that opens the
-memo-edit modal. Non-empty memo → white-text inline display with
+{-| Row 3 memo slot. Empty memo → 📝 button that starts the
+in-place edit. Non-empty memo → white-text inline display with
 an × dismiss button (clearing the memo restores the icon).
+While the memo-edit surface targets this creature, the slot
+swaps to an in-place input — Enter commits, Escape cancels,
+blur commits.
 -}
-memoSlot : Creature -> Html Msg
-memoSlot creature =
-    if String.isEmpty creature.memo then
-        button
-            [ class "action-btn action-btn--icon action-btn--memo-empty"
-            , onClick (MemoOpen creature.name)
-            , Tooltips.attr Tooltips.memoAdd
-            , attribute "aria-label" "Add memo"
-            ]
-            [ span [ class "action-btn__icon" ] [ text "📝" ]
-            , span [ class "action-btn__text" ] [ text "Memo" ]
-            ]
+memoSlot : Creature -> Maybe Surface -> Html Msg
+memoSlot creature surface =
+    case surface of
+        Just (SurfaceMemoEdit ui) ->
+            input
+                [ class "note-edit__input note-edit__input--in-place"
+                , type_ "text"
+                , value ui.text
+                , maxlength MemoUi.maxMemoLength
+                , Attr.placeholder "e.g. legendary res used"
+                , autofocus True
+                , onInput MemoChange
+                , onBlur MemoCommit
+                , on "keydown" (commitCancelKeyDecoder MemoCommit MemoCancel)
+                , attribute "aria-label" ("Edit memo for " ++ creature.name)
+                ]
+                []
 
-    else
-        span
-            [ class "memo-pill"
-            , Tooltips.attr creature.memo
-            ]
-            [ button
-                [ class "memo-pill__text"
-                , onClick (MemoOpen creature.name)
-                , Tooltips.attr Tooltips.memoEdit
-                ]
-                [ text creature.memo ]
-            , button
-                [ class "memo-pill__dismiss"
-                , onClick (MemoClear creature.name)
-                , Tooltips.attr Tooltips.memoClear
-                , attribute "aria-label" "Clear memo"
-                ]
-                [ text "×" ]
-            ]
+        _ ->
+            if String.isEmpty creature.memo then
+                button
+                    [ class "action-btn action-btn--icon action-btn--memo-empty"
+                    , onClick (MemoOpen creature.name)
+                    , Tooltips.attr Tooltips.memoAdd
+                    , attribute "aria-label" "Add memo"
+                    ]
+                    [ span [ class "action-btn__icon" ] [ text "📝" ]
+                    , span [ class "action-btn__text" ] [ text "Memo" ]
+                    ]
+
+            else
+                span
+                    [ class "memo-pill"
+                    , Tooltips.attr creature.memo
+                    ]
+                    [ button
+                        [ class "memo-pill__text"
+                        , onClick (MemoOpen creature.name)
+                        , Tooltips.attr Tooltips.memoEdit
+                        ]
+                        [ text creature.memo ]
+                    , button
+                        [ class "memo-pill__dismiss"
+                        , onClick (MemoClear creature.name)
+                        , Tooltips.attr Tooltips.memoClear
+                        , attribute "aria-label" "Clear memo"
+                        ]
+                        [ text "×" ]
+                    ]
 
 
 {-| Row 3 timer slot. Three states:

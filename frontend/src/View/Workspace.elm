@@ -12,16 +12,12 @@ them together with the model fragments each one needs.
 import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
-import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, button, div, main_, section, span, text)
 import Html.Attributes exposing (attribute, class, id, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Set
-import Ui.Compendium exposing (CompendiumDb)
-import Ui.HpChange exposing (HpEdit)
-import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import View.Card
 import View.EncounterBar
 import View.PanelControls
@@ -36,14 +32,7 @@ view model =
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ panelMain
-            model.encounter
-            model.hpEdit
-            model.placeholderRename
-            model.savedAs
-            model.compendium.db
-            model.xpScope
-            model.xpFilterOpen
+        [ panelMain model
         , View.PanelControls.view
             model.auth
             model.dice
@@ -55,33 +44,35 @@ view model =
         ]
 
 
-{-| The encounter pane. `hpEdit` is threaded through so any open
-inline-edit input (current/max HP) renders on the right card.
-`savedAs` lights up the title-bar info icon with the source
-filename when the encounter was loaded from / saved to a name.
-The compendium DB + XP scope let the title bar's right cluster
-compute the real XP total; `xpFilterOpen` controls the
-hand-rolled XP-scope dropdown's visibility so the global
-Esc / click-outside handlers in `Main.subscriptions` can close
-it without touching DOM state.
+{-| The encounter pane. Builds the card context each card render
+needs: the inline-edit and rename states, plus the open surface
+and the model fragments the inline surfaces consume (selected
+count, condition presets, queue names, HP log). `savedAs` lights
+up the title-bar info icon with the source filename; the
+compendium DB + XP scope let the title bar's right cluster
+compute the real XP total.
 -}
-panelMain :
-    Encounter
-    -> Maybe HpEdit
-    -> Maybe PlaceholderRenameState
-    -> Maybe String
-    -> CompendiumDb
-    -> XpScope
-    -> Bool
-    -> Html Msg
-panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen =
+panelMain : Model -> Html Msg
+panelMain model =
     let
-        renderCard =
-            View.Card.view enc.activeName hpEdit renameState
+        enc =
+            model.encounter
+
+        cardContext =
+            { activeName = enc.activeName
+            , hpEdit = model.hpEdit
+            , renameState = model.placeholderRename
+            , surface = model.surface
+            , selectedCount =
+                List.length (List.filter .selected enc.creatures)
+            , conditionPresets = model.conditionPresets
+            , creatureNames = List.map .name enc.creatures
+            , hpChangeLog = model.hpChangeLog
+            }
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view View.EncounterBar.FullBar enc savedAs db xpScope xpFilterOpen ]
+            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
         , legendaryActionStrip enc
         , specialReactionsStrip enc
         , div
@@ -89,7 +80,7 @@ panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen =
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class "creature-grid" ]
-                (List.map renderCard enc.creatures)
+                (List.map (View.Card.view cardContext) enc.creatures)
             , quickAddRow
             ]
         ]

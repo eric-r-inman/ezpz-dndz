@@ -1,92 +1,99 @@
-module View.Modal.Condition exposing (view)
+module View.Inline.Condition exposing (Context, view)
 
-{-| Condition / effect modal. Sections, top to bottom:
-standard-condition radios, custom name input, note input, duration
-choice (Manual / Until turn / Countdown) with the relevant
-sub-controls, optional save-to-end block, multi-target apply scope,
-and the action footer (Apply / Cancel / Delete-when-editing).
+{-| Condition / effect editor as an inline card expansion.
+Sections, top to bottom: standard-condition radios, custom name
+input, note input, duration choice (Manual / Until turn /
+Countdown) with the relevant sub-controls, optional save-to-end
+block, multi-target apply scope, and the action footer (Apply /
+Cancel / Delete-when-editing, plus the preset Save / Load
+controls).
+
+The body is the retired Condition modal's, re-homed under the
+target creature's card so the queue stays visible while the GM
+fills it in.
+
 -}
 
 import Dict exposing (Dict)
-import Encounter exposing (Encounter)
+import Encounter
 import Html exposing (Html, button, div, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
-import Model exposing (Model, Surface(..))
-import Msg
-    exposing
-        ( DurationKind(..)
-        , Msg(..)
-        )
+import Msg exposing (DurationKind(..), Msg(..))
 import Set
 import Ui.Condition exposing (ConditionPreset, ConditionUi, SaveToEndUi)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
-import View.Modal
 import View.PhaseToggle
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
-    case model.surface of
-        Just (SurfaceCondition ui) ->
-            let
-                presetSuffix =
-                    case ui.loadedPresetName of
-                        Just name ->
-                            "  (loaded: " ++ name ++ ")"
-
-                        Nothing ->
-                            ""
-
-                modalTitle =
-                    (if ui.editingId == Nothing then
-                        "Add Condition — "
-
-                     else
-                        "Edit Condition — "
-                    )
-                        ++ ui.target
-                        ++ presetSuffix
-            in
-            View.Modal.view
-                { close = ConditionClose
-                , noOp = NoOp
-                , title = modalTitle
-                , extraClass = "modal--condition"
-                , chrome = model.modalChrome
-                , body =
-                    [ standardSection ui
-                    , customSection ui
-                    , noteSection ui
-                    , durationSection ui model
-                    , saveSection ui
-                    , applyScope ui model.encounter
-                    , footer ui model.conditionPresets
-                    ]
-                }
-
-        _ ->
-            text ""
-
-
-{-| Multi-target scope checkbox for the condition modal. Same
-shape as the HP-change apply scope: hidden when no creatures are
-selected, otherwise a toggle that splatters a fresh copy of the
-new condition onto every selected creature (each gets its own id).
-
-Hidden entirely when editing an existing condition — you're
-modifying one specific row, not creating new ones in bulk.
-
+{-| The model fragments the expansion consumes beyond its own
+Ui record: the queue's creature names feed the "until X's turn"
+select, the selected count drives the apply-to-selected scope,
+and the presets dict backs the footer's Save / Load controls.
 -}
-applyScope : ConditionUi -> Encounter -> Html Msg
-applyScope ui enc =
+type alias Context =
+    { creatureNames : List String
+    , selectedCount : Int
+    , presets : Dict String ConditionPreset
+    }
+
+
+view : Context -> ConditionUi -> Html Msg
+view ctx ui =
+    div [ class "creature-card__inline" ]
+        [ header ui
+        , standardSection ui
+        , customSection ui
+        , noteSection ui
+        , durationSection ui ctx.creatureNames
+        , saveSection ui
+        , applyScope ctx.selectedCount ui
+        , footer ui ctx.presets
+        ]
+
+
+header : ConditionUi -> Html Msg
+header ui =
     let
-        selectedCount =
-            List.length (List.filter .selected enc.creatures)
+        presetSuffix =
+            case ui.loadedPresetName of
+                Just name ->
+                    "  (loaded: " ++ name ++ ")"
+
+                Nothing ->
+                    ""
+
+        title =
+            (if ui.editingId == Nothing then
+                "Add Condition — "
+
+             else
+                "Edit Condition — "
+            )
+                ++ ui.target
+                ++ presetSuffix
     in
+    div [ class "creature-card__inline-header" ]
+        [ div [ class "creature-card__inline-title" ] [ text title ]
+        , button
+            [ class "icon-btn icon-btn--sm creature-card__inline-close"
+            , onClick ConditionClose
+            , attribute "aria-label" "Close condition editor"
+            ]
+            [ text "×" ]
+        ]
+
+
+{-| Multi-target scope checkbox. Hidden when no creatures are
+selected, and hidden entirely when editing an existing condition
+— you're modifying one specific row, not creating new ones in
+bulk.
+-}
+applyScope : Int -> ConditionUi -> Html Msg
+applyScope selectedCount ui =
     if ui.editingId /= Nothing || selectedCount == 0 then
         text ""
 
@@ -181,8 +188,8 @@ noteSection ui =
         ]
 
 
-durationSection : ConditionUi -> Model -> Html Msg
-durationSection ui model =
+durationSection : ConditionUi -> List String -> Html Msg
+durationSection ui creatureNames =
     div [ class "cond-section" ]
         [ h3 [ class "cond-section__heading" ]
             [ text "Duration" ]
@@ -203,7 +210,7 @@ durationSection ui model =
                         [ text "Stays until the GM clicks the chip's × to remove." ]
 
                 DurKindUntilTurn ->
-                    durationUntilSubsection ui model
+                    durationUntilSubsection ui creatureNames
 
                 DurKindCountdown ->
                     durationCountdownSubsection ui
@@ -262,13 +269,10 @@ oneMinutePresetRadio ui =
 
 
 {-| The "until ..." duration row. Reads as a sentence:
-"At [begin|end] of [Creature]'s next turn". Always "next turn"
-— the previous current/next selector was removed in favor of
-context-aware resolution at submit time
-(=Update.Condition.nextTurnTarget=).
+"At [begin|end] of [Creature]'s next turn".
 -}
-durationUntilSubsection : ConditionUi -> Model -> Html Msg
-durationUntilSubsection ui model =
+durationUntilSubsection : ConditionUi -> List String -> Html Msg
+durationUntilSubsection ui creatureNames =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
             [ Html.label [] [ text "At" ]
@@ -279,14 +283,14 @@ durationUntilSubsection ui model =
                 , onInput ConditionUntilCreatureChanged
                 ]
                 (List.map
-                    (\c ->
+                    (\name ->
                         Html.option
-                            [ value c.name
-                            , Attr.selected (c.name == ui.untilCreature)
+                            [ value name
+                            , Attr.selected (name == ui.untilCreature)
                             ]
-                            [ text c.name ]
+                            [ text name ]
                     )
-                    model.encounter.creatures
+                    creatureNames
                 )
             , Html.label [] [ text "'s next turn" ]
             ]
@@ -406,9 +410,6 @@ saveSubsection s =
         ]
 
 
-{-| One radio button in the auto-roll mode group. Shares the
-.cond-radio chrome with the other radio groups in the modal.
--}
 autoRollRadio : SaveToEndUi -> Encounter.AutoRollMode -> String -> Html Msg
 autoRollRadio s mode label =
     let
@@ -435,10 +436,6 @@ autoRollRadio s mode label =
         ]
 
 
-{-| Caption text under the auto-roll radio group describing what
-will actually happen in play. Updates live with the selection so
-the GM can see the consequence without clicking submit.
--}
 autoRollCaption : Encounter.AutoRollMode -> String
 autoRollCaption mode =
     case mode of
@@ -513,15 +510,7 @@ footer ui presets =
 
 {-| Save button + inline name prompt. When `pendingSaveName` is
 `Nothing` the button reads "Save"; clicking it reveals the name
-input and switches the buttons to `[name][Save][Cancel]`. The
-Save submit is disabled until the typed name is non-empty (after
-trim) AND the underlying form has a condition name set (no point
-saving an empty preset).
-
-The name input gets `autofocus` and an Enter keydown handler so a
-quick GM workflow is: click Save → type "Stun" → press Enter →
-preset stored.
-
+input and switches the buttons to `[name][Save][Cancel]`.
 -}
 presetSaveControl : ConditionUi -> Bool -> Html Msg
 presetSaveControl ui canSubmit =
@@ -633,26 +622,9 @@ enterKeyDecoder msg =
 
 
 {-| Load button + dropdown menu. Button stays disabled when the
-presets dict is empty (nothing to load) and the menu's
-`stopPropagationOn "mousedown"` keeps internal clicks from
-bubbling to the document-level click-outside handler in
-`Main.subscriptions`.
-
-Menu layout:
-
-  - The user's own presets (`category == ""`) render as a flat
-    list at the top, alphabetical, no section header.
-  - Below that, the four bundled categories from
-    `Ui.Condition.Bundled.categories` render in fixed order,
-    each as a collapsible section that starts collapsed. The
-    section header shows a disclosure triangle, the category
-    label, and the count of presets inside.
-
-Each preset row is a `[name button][× delete]` pair. Clicking
-the name fires `ConditionPresetLoad`; the × fires
-`ConditionPresetDelete` and is `stopPropagationOn`'d so a misclick
-on the × inside an otherwise-load row doesn't double-fire.
-
+presets dict is empty and the menu's `stopPropagationOn
+"mousedown"` keeps internal clicks from bubbling to the
+document-level click-outside handler in `Main.subscriptions`.
 -}
 presetLoadControl : ConditionUi -> Dict String ConditionPreset -> Html Msg
 presetLoadControl ui userPresets =
@@ -660,11 +632,7 @@ presetLoadControl ui userPresets =
         -- Bundled SRD defaults are always available as a
         -- read-only layer underneath the user's own dict.  User
         -- entries override bundled ones with the same name
-        -- (`Dict.union` keeps left-hand keys on collision).  That
-        -- way the four collapsible category sections always
-        -- render even when the user has saved nothing of their
-        -- own — which fixes the "Load greyed out" case when
-        -- `localStorage.conditionPresets` exists but is `{}`.
+        -- (`Dict.union` keeps left-hand keys on collision).
         displayPresets =
             Dict.union userPresets Bundled.defaults
 
@@ -674,9 +642,7 @@ presetLoadControl ui userPresets =
         userNames =
             -- Legacy: presets saved before the required-category
             -- pass landed with `category = ""` and surface in a
-            -- flat list above the categorized sections.  Newly
-            -- saved presets always carry a category and land in
-            -- their group instead.
+            -- flat list above the categorized sections.
             userPresets
                 |> Dict.filter (\_ p -> p.category == "")
                 |> Dict.keys
@@ -770,9 +736,7 @@ categorySection ui userPresets displayPresets category =
 
 {-| One menu row. `isDeletable` controls whether the trailing ×
 button renders — only user-saved presets can be deleted; bundled
-SRD defaults are read-only and the × is omitted on those rows so
-the only way to "remove" a bundled is to override it by saving
-a user preset with the same name.
+SRD defaults are read-only.
 -}
 presetMenuItem : Bool -> String -> Html Msg
 presetMenuItem isDeletable name =

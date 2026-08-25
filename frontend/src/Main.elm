@@ -133,18 +133,14 @@ import View.Modal.AbilitySave
 import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
-import View.Modal.Condition
 import View.Modal.CrCalculator
 import View.Modal.Dice
 import View.Modal.Duplicate
 import View.Modal.GroupEdit
-import View.Modal.HpChange
 import View.Modal.Initiative
 import View.Modal.Load
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
-import View.Modal.Memo
-import View.Modal.Note
 import View.Modal.QuickAdd
 import View.Modal.RandomEncounter
 import View.Modal.Save
@@ -312,6 +308,24 @@ subscriptions model =
 
                     Just (SurfaceNoteEdit _) ->
                         Browser.Events.onKeyDown (escKey NoteEditCancel)
+
+                    Just (SurfaceHpChange _) ->
+                        Browser.Events.onKeyDown (escKey HpChangeClose)
+
+                    Just (SurfaceMemoEdit _) ->
+                        Browser.Events.onKeyDown (escKey MemoCancel)
+
+                    Just (SurfaceCondition ui) ->
+                        -- While the preset Load menu is open, Esc
+                        -- belongs to `conditionPresetLoadMenuSubs`
+                        -- (closing just the menu); claiming it here
+                        -- too would collapse the whole editor on
+                        -- the same keypress.
+                        if ui.loadMenuOpen then
+                            Sub.none
+
+                        else
+                            Browser.Events.onKeyDown (escKey ConditionClose)
 
                     Just (SurfaceSave _) ->
                         Browser.Events.onKeyDown (escKey SaveClose)
@@ -2697,12 +2711,8 @@ appShell maybeUser model =
             , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
-    , View.Modal.Dice.view model.modalChrome model.dice
-    , View.Modal.HpChange.view model
+    , View.Modal.Dice.view model.modalChrome model.hpChangeLog model.dice
     , View.Modal.Initiative.view model
-    , View.Modal.Note.view model
-    , View.Modal.Condition.view model
-    , View.Modal.Memo.view model
     , View.Modal.Timer.view model
     , View.Modal.Compendium.view model.modalChrome
         model.auth

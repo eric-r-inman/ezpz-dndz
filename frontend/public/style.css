@@ -862,23 +862,27 @@ html:has(.app-shell[data-theme="accessible"]) {
   color: #c4c4cc;
 }
 
-/* Add-Condition modal — the condition picker grid uses a fixed
-   120px column minimum, which clips longer labels ("Incapacitated",
-   "Concentration", etc.) once the Accessible modal-body bump
-   pushes the label font to 1.1rem.  Widen the columns and the
-   badge padding so every condition name reads in full.  Also
-   widen the modal frame itself so the bigger grid fits without
-   forcing a horizontal scroll. */
-[data-theme="accessible"] .modal--condition {
-  --modal-max-w: 780px;
+/* Card inline surfaces (Manage HP, condition editor) get the
+   same body-text bump the modals above receive, so moving a
+   surface onto the card doesn't shrink it for low-vision GMs. */
+[data-theme="accessible"] .creature-card__inline,
+[data-theme="accessible"]
+  .creature-card__inline
+  *:not(.action-btn):not(.action-btn *) {
+  font-size: 1.1rem;
 }
 
-[data-theme="accessible"] .modal--condition .cond-radio-grid {
+/* Condition editor — the condition picker grid uses a fixed
+   120px column minimum, which clips longer labels ("Incapacitated",
+   "Concentration", etc.) once the Accessible body bump pushes
+   the label font to 1.1rem.  Widen the columns and the badge
+   padding so every condition name reads in full. */
+[data-theme="accessible"] .cond-radio-grid {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 6px;
 }
 
-[data-theme="accessible"] .modal--condition .cond-radio {
+[data-theme="accessible"] .cond-radio {
   padding: 6px 12px;
 }
 
@@ -5881,6 +5885,54 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
+/* ── Card inline surfaces ─────────────────────────────────────────── */
+
+/* Expansion section under card row 3 hosting the Manage-HP and
+   condition editors.  Reuses the retired modals' form classes
+   (.hp-change__*, .cond-*) so the controls keep their look; this
+   block only supplies the in-card frame around them. */
+.creature-card__inline {
+  margin-top: 6px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.creature-card__inline-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.creature-card__inline-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.creature-card__inline-close {
+  margin-left: auto;
+}
+
+/* The in-place memo / name-note input that swaps into the pill
+   or pencil slot while its surface is open.  Sized to sit inside
+   a card row rather than a modal body. */
+.note-edit__input--in-place {
+  width: 160px;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+}
+
+/* Newest-entry-only variant rendered in the card expansion —
+   the full list keeps its own spacing in the dice roller. */
+.hp-change__log-list--latest {
+  margin: 0;
+  padding: 0;
+}
+
 .action-btn--ready {
   --btn-fg: var(--color-text-muted);
 }
@@ -7048,11 +7100,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    `--modal-max-w`; the structural rule above consumes it.  Modals
    that need extra height / width handling (compendium / paste
    /condition) layer those overrides in their own block below. */
-.modal--note-edit {
-  --modal-max-w: 420px;
-}
-
-.modal--hp-change,
 .modal--ability-save {
   --modal-max-w: 480px;
 }
@@ -7072,10 +7119,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .modal--save,
 .modal--load {
   --modal-max-w: 560px;
-}
-
-.modal--condition {
-  --modal-max-w: 480px;
 }
 
 .modal--compendium-edit {

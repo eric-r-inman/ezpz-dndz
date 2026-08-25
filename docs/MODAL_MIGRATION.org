@@ -1,10 +1,11 @@
 #+title:     Modal migration plan
 #+language:  en
 
-Status: proposal, not yet scheduled.  This document records the plan for moving
-the frontend away from modal dialogs, prompted by external review feedback.
-Nothing here is implemented; when work begins, each phase should land as its own
-change set.
+Status: in progress on the =modal-migration-inline= branch.  This document
+records the plan for moving the frontend away from modal dialogs, prompted by
+external review feedback.  The foundation rename and the inline tier are being
+implemented there; =main= is untouched until the branch is reviewed and merged.
+Each phase lands as its own change set.
 
 * Why step away from modals
 
@@ -137,3 +138,75 @@ The =Update/*= modules barely change throughout: this is almost entirely
 =View/*= and ~Model.modal~ plumbing, which is what the frontend layering (see
 [[file:ARCHITECTURE.org][ARCHITECTURE.org]]) was built to absorb.  The panel-based layout is also
 effectively the second UI layout the domain/view split was designed to enable.
+
+* Engineering plan
+
+How the phases above translate into concrete changes.  Rollback strategy: all
+work lands on the =modal-migration-inline= branch, pushed to GitHub, so
+switching between the old and new UI is a =git switch= (plus =just dev= to
+rebuild) in either direction.
+
+** Foundation: the Surface rename
+
+A mechanical, behavior-preserving rename, verified entirely by the compiler:
+
+- ~type Modal~ becomes ~type Surface~, and each ~ModalX~ constructor becomes
+  ~SurfaceX~.
+- ~Model.modal~ becomes ~Model.surface~; ~ModalLens~ / ~mapModal~ become
+  ~SurfaceLens~ / ~mapSurface~.
+
+Three things deliberately keep their names.  ~Ui.ModalChrome~ and the =.modal*=
+CSS classes describe the floating-window chrome, which remains real for every
+surface still rendered as an overlay.  The =View.Modal.*= module namespace
+shrinks one module at a time as features convert — each conversion moves its
+view to the namespace matching its new pattern (=View/Inline/*=, later
+=View/Popover/*= and =View/Panel/*=), so the module path always tells the truth
+about how the surface renders.
+
+The tier a variant belongs to is expressed by where its view is mounted (the
+overlay stack in =Main.appShell=, a card expansion, a rail panel, a route), not
+by a reified kind enum — a ~kindOf~ function would be a second copy of the
+mapping in this document, drifting the moment a variant converts.
+
+** Inline tier mechanics
+
+The four inline conversions keep their Ui records, Msg families, and Update
+modules byte-identical; only the rendering moves.
+
+- *State threading.* =View.Card.view= gains a context record (built in
+  =View.Workspace=) carrying the open surface, the selected-creature count, the
+  condition presets, the queue's creature names, and the newest HP-log entry —
+  the model fragments the transplanted bodies already consumed.
+- *Expansion slot.* When the open surface targets a card's creature, the card
+  renders a =.creature-card__inline= section under row 3 with the transplanted
+  form body (HP change, condition) and a header close button.  The
+  one-open-at-a-time invariant carries over unchanged: opening any surface
+  replaces the previous one, so at most one card is ever expanded.
+- *In-place inputs.* Memo and note skip the expansion entirely: while the
+  surface targets the creature, the memo slot / name-note slot renders an input
+  where the pill or pencil was — Enter commits, Escape cancels, blur commits,
+  mirroring the existing AC / max-HP inline-edit idiom.
+- *Escape coverage.* The subscription table in =Main= gains cases for the three
+  converted surfaces that previously had no Esc handling (HP change, condition,
+  memo), closing an inconsistency the modal era left behind.
+- *The HP log.* The card expansion shows only the newest entry with its undo
+  button.  The full ten-entry list moves to the dice modal (the future dice
+  panel) through a shared =View/HpLog= module, so the rendering exists once.
+
+** Later tiers, briefly
+
+- *Popovers* get a shared anchored-container helper (=View/Popover=) that
+  positions against the triggering control; =AbilitySave= converts first since
+  it already carries click coordinates.
+- *Panels* add a tool slot to the right rail beside the pinned stat block;
+  =Dice= converts first (its substate already survives close), then =SaveChain=.
+- *Routes* extend =Route= with the compendium family and =/saves=; the existing
+  standalone-page pattern (=View/Page/*=) is the template.
+- *Toast + undo* replaces the =PendingControl= confirmations last.
+
+** Verification
+
+Every step must pass ~elm make~ and ~elm-test~ before it lands; behavioral
+phases also get a manual =just dev= pass.  The four inline features have no
+view-layer tests today — their domain logic (=HpChange=, condition durations) is
+covered by the existing pure suites, which must stay green untouched.
