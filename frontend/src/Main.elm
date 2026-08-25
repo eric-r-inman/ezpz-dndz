@@ -144,7 +144,6 @@ import View.Modal.LoreEdit
 import View.Modal.QuickAdd
 import View.Modal.RandomEncounter
 import View.Modal.Save
-import View.Modal.SaveChain
 import View.Modal.SaveCompendium
 import View.Modal.SpellList
 import View.Modal.Treasure
@@ -334,6 +333,9 @@ subscriptions model =
 
                         else
                             Browser.Events.onKeyDown (escKey TimerSetupCancel)
+
+                    Just (SurfaceSaveChain _) ->
+                        Browser.Events.onKeyDown (escKey SaveChainClose)
 
                     Just (SurfaceSave _) ->
                         Browser.Events.onKeyDown (escKey SaveClose)
@@ -2742,7 +2744,6 @@ appShell maybeUser model =
     , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
     , View.Modal.SpellList.view model
-    , View.Modal.SaveChain.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model

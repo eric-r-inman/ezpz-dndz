@@ -67,6 +67,8 @@ panelMain model =
                 List.length (List.filter .selected enc.creatures)
             , conditionPresets = model.conditionPresets
             , timerPresets = model.timerPresets
+            , saveChainPresets = model.saveChainPresets
+            , saveChainLog = model.saveChainLog
             , creatureNames = List.map .name enc.creatures
             , hpChangeLog = model.hpChangeLog
             }

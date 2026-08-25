@@ -6,11 +6,12 @@
 1. The docs gain a plan for migrating the UI away from modal dialogs
    (=docs/MODAL_MIGRATION.org=); nothing in the app changes yet.  No action
    needed.
-2. Damage/heal, conditions, timers, memos, and name notes are now edited
-   directly on the creature card instead of in pop-up dialogs, so the encounter
-   queue stays visible during combat bookkeeping; re-clicking an editor's button
-   closes it unchanged, the full recent-HP-changes list moved into the dice
-   roller, and Escape now closes each of these editors.  No action needed.
+2. Damage/heal, conditions, timers, save chains, memos, and name notes are now
+   edited directly on the creature card instead of in pop-up dialogs, so the
+   encounter queue stays visible during combat bookkeeping; the open editor's
+   button carries a white ring, re-clicking it closes the editor unchanged, the
+   full recent-HP-changes list moved into the dice roller, and Escape now closes
+   each of these editors.  No action needed.
 ** Fixes
 ** Breaking
 * v0.2.0

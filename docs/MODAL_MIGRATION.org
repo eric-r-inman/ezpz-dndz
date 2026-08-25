@@ -66,6 +66,9 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =Timer= :: Originally mapped as a popover, but converted with this group so
   every card-button editor shares one UX; it may still shrink to a popover once
   that tier's anchored container exists.
+- =SaveChain= :: Originally mapped as a right-rail panel, but converted with
+  this group for the same one-UX reason.  The expansion is large; whether it
+  moves to the rail once the panel tier exists is an open call.
 
 ** Popover anchored to the trigger
 
@@ -83,9 +86,6 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 
 - =Dice= :: The strongest panel candidate — a GM plausibly wants it persistently
   open.  Dock it in the right rail below (or tabbed with) the stat block.
-- =SaveChain= :: Operates on selected creatures across the queue, so
-  inline-on-one-card is wrong and hiding the queue is worse.  A right-rail panel
-  lets fail/pass results land visibly on the cards.
 - =Treasure= (the roller) :: Rolls against the current queue's enemies; a drawer
   keeps them visible while results generate.
 - =CrCalculator= :: Reads the live queue by design; as a panel, the difficulty

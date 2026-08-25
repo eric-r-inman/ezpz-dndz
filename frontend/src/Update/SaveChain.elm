@@ -63,9 +63,21 @@ import Update.Toast
 -- ── OPEN / CLOSE ────────────────────────────────────────────────
 
 
+{-| Opening is a toggle: clicking the card's Save Chain button
+while its own editor is already expanded closes it (a cancel).
+-}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
+    ( case model.surface of
+        Just (SurfaceSaveChain ui) ->
+            if ui.target == target then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
+
+        _ ->
+            { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
     , Cmd.none
     )
 

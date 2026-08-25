@@ -28,6 +28,7 @@ column appears whenever the creature is at 0 HP.
 import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Cover(..), Creature)
+import Encounter.SaveChain
 import Html exposing (Html, article, button, div, input, p, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
@@ -44,9 +45,11 @@ import Ui.HpChange exposing (HpChangeEntry, HpEdit)
 import Ui.Memo as MemoUi
 import Ui.Note as NoteUi
 import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
+import Ui.SaveChain
 import Ui.Timer exposing (TimerPreset)
 import View.Inline.Condition
 import View.Inline.HpChange
+import View.Inline.SaveChain
 import View.Inline.Timer
 import View.Tooltips as Tooltips
 
@@ -65,6 +68,8 @@ type alias Context =
     , selectedCount : Int
     , conditionPresets : Dict String ConditionPreset
     , timerPresets : Dict String TimerPreset
+    , saveChainPresets : Dict String Encounter.SaveChain.SaveChain
+    , saveChainLog : List Ui.SaveChain.SaveChainLogEntry
     , creatureNames : List String
     , hpChangeLog : List HpChangeEntry
     }
@@ -236,6 +241,13 @@ surfaceFor ctx creature =
             else
                 Nothing
 
+        Just (SurfaceSaveChain ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
         _ ->
             Nothing
 
@@ -260,6 +272,14 @@ inlineSurface ctx creature =
 
         Just (SurfaceTimerSetup ui) ->
             View.Inline.Timer.view ctx.timerPresets ui
+
+        Just (SurfaceSaveChain ui) ->
+            View.Inline.SaveChain.view
+                { presets = ctx.saveChainPresets
+                , selectedCount = ctx.selectedCount
+                , log = ctx.saveChainLog
+                }
+                ui
 
         Just (SurfaceMemoEdit ui) ->
             compactEditor
@@ -619,13 +639,7 @@ noteOrPencil creature surface =
     in
     if String.isEmpty creature.note then
         button
-            [ class
-                (if editing then
-                    "icon-btn icon-btn--sm icon-btn--toggled"
-
-                 else
-                    "icon-btn icon-btn--sm"
-                )
+            [ class (editorTriggerClass "icon-btn icon-btn--sm" editing)
             , onClick (NoteEditOpen creature.name creature.note)
             , Tooltips.attr
                 (if editing then
@@ -642,7 +656,7 @@ noteOrPencil creature surface =
     else
         span [ class "creature-note-wrap" ]
             [ button
-                [ class "creature-note creature-note--clickable"
+                [ class (editorTriggerClass "creature-note creature-note--clickable" editing)
                 , onClick (NoteEditOpen creature.name creature.note)
                 , Tooltips.attr
                     (if editing then
@@ -692,10 +706,11 @@ commitCancelKeyDecoder commitMsg cancelMsg =
 
 {-| Compact editor strip for the memo and name-note surfaces,
 rendered below the card rows so neither row reflows around an
-input. Enter or the ✓ commit; Escape or re-clicking the trigger
-cancels. Deliberately no blur-commit (unlike the AC / max-HP
-edits): committing on blur would fire before a cancel click on
-the trigger could land, turning every cancel into a commit.
+input. Enter or the Add button commits; Escape or re-clicking
+the trigger cancels. Deliberately no blur-commit (unlike the
+AC / max-HP edits): committing on blur would fire before a
+cancel click on the trigger could land, turning every cancel
+into a commit.
 -}
 compactEditor :
     { title : String
@@ -724,12 +739,10 @@ compactEditor cfg =
             ]
             []
         , button
-            [ class "icon-btn icon-btn--sm card-inline-edit__commit"
+            [ class "action-btn action-btn--green"
             , onClick cfg.commit
-            , Tooltips.attr "Save"
-            , attribute "aria-label" "Save"
             ]
-            [ text "✓" ]
+            [ text "Add" ]
         ]
 
 
@@ -1716,30 +1729,89 @@ flyHeight creature =
 
 rowBot : Creature -> Maybe Surface -> Html Msg
 rowBot creature surface =
+    let
+        hpEditing =
+            case surface of
+                Just (SurfaceHpChange _) ->
+                    True
+
+                _ ->
+                    False
+
+        conditionEditing =
+            case surface of
+                Just (SurfaceCondition _) ->
+                    True
+
+                _ ->
+                    False
+
+        saveChainEditing =
+            case surface of
+                Just (SurfaceSaveChain _) ->
+                    True
+
+                _ ->
+                    False
+    in
     div [ class "creature-card__row creature-card__row--bot" ]
         [ button
-            [ class "action-btn action-btn--manage-hp"
+            [ class (editorTriggerClass "action-btn action-btn--manage-hp" hpEditing)
             , onClick (HpChangeOpen creature.name)
-            , Tooltips.attr Tooltips.manageHp
+            , Tooltips.attr
+                (if hpEditing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.manageHp
+                )
+            , ariaExpanded hpEditing
             ]
             [ text "Manage HP" ]
         , button
-            [ class "action-btn action-btn--condition"
+            [ class (editorTriggerClass "action-btn action-btn--condition" conditionEditing)
             , onClick (ConditionOpenNew creature.name)
-            , Tooltips.attr Tooltips.applyCondition
+            , Tooltips.attr
+                (if conditionEditing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.applyCondition
+                )
+            , ariaExpanded conditionEditing
             ]
             [ text "Condition/Effect" ]
         , button
-            [ class "action-btn action-btn--save-chain"
+            [ class (editorTriggerClass "action-btn action-btn--save-chain" saveChainEditing)
             , onClick (SaveChainOpen creature.name)
-            , Tooltips.attr Tooltips.saveChain
+            , Tooltips.attr
+                (if saveChainEditing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.saveChain
+                )
+            , ariaExpanded saveChainEditing
             ]
             [ text "Save Chain" ]
         , readiedToggle creature
         , reactionPip creature
         , memoSlot creature surface
-        , timerSlot creature
+        , timerSlot creature surface
         ]
+
+
+{-| Append the open-editor highlight to a trigger's class list
+while its own editor is expanded, so the GM can spot which
+editor is open even after scrolling away and back.
+-}
+editorTriggerClass : String -> Bool -> String
+editorTriggerClass base editing =
+    if editing then
+        base ++ " card-editor-open"
+
+    else
+        base
 
 
 {-| Row 3 memo slot. Empty memo → 📝 button that starts the
@@ -1765,13 +1837,7 @@ memoSlot creature surface =
     in
     if String.isEmpty creature.memo then
         button
-            [ class
-                (if editing then
-                    "action-btn action-btn--icon action-btn--memo-empty action-btn--editing"
-
-                 else
-                    "action-btn action-btn--icon action-btn--memo-empty"
-                )
+            [ class (editorTriggerClass "action-btn action-btn--icon action-btn--memo-empty" editing)
             , onClick (MemoOpen creature.name)
             , Tooltips.attr
                 (if editing then
@@ -1794,7 +1860,7 @@ memoSlot creature surface =
 memoPill : Creature -> Bool -> Html Msg
 memoPill creature editing =
     span
-        [ class "memo-pill"
+        [ class (editorTriggerClass "memo-pill" editing)
         , Tooltips.attr creature.memo
         ]
         [ button
@@ -1829,15 +1895,31 @@ memoPill creature editing =
     page-level `<audio>` element mounted by `View.Audio.ringer`.
 
 -}
-timerSlot : Creature -> Html Msg
-timerSlot creature =
+timerSlot : Creature -> Maybe Surface -> Html Msg
+timerSlot creature surface =
+    let
+        editing =
+            case surface of
+                Just (SurfaceTimerSetup _) ->
+                    True
+
+                _ ->
+                    False
+    in
     case creature.timer of
         Nothing ->
             button
-                [ class "action-btn action-btn--icon action-btn--timer-empty"
+                [ class (editorTriggerClass "action-btn action-btn--icon action-btn--timer-empty" editing)
                 , onClick (TimerOpen creature.name)
-                , Tooltips.attr Tooltips.timerSet
+                , Tooltips.attr
+                    (if editing then
+                        Tooltips.inlineEditCancel
+
+                     else
+                        Tooltips.timerSet
+                    )
                 , attribute "aria-label" "Set timer"
+                , ariaExpanded editing
                 ]
                 [ span [ class "action-btn__icon" ] [ text "⏱️" ]
                 , span [ class "action-btn__text" ] [ text "Timer" ]

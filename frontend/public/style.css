@@ -43,6 +43,12 @@
   /* Borders + dividers — hairline, low contrast */
   --color-border: #e4e4e7;
 
+  /* Ring around a card button whose inline editor is open.
+     Deliberately white in every theme — the point is maximum
+     contrast against the card so the open editor's trigger is
+     findable after scrolling away and back. */
+  --color-editor-open: #ffffff;
+
   /* Accent — indigo (Linear-style) */
   --color-link: #5b5bd6;
   --color-accent: #5b5bd6;
@@ -5932,14 +5938,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
 }
 
-.card-inline-edit__commit {
-  color: var(--color-heal, #16a34a);
-}
-
-/* Highlight on an action-button trigger whose inline editor is
-   currently open — mirrors .icon-btn--toggled for icon buttons. */
-.action-btn--editing {
-  outline: 1px solid var(--color-accent, #4a90e2);
+/* Ring on any trigger (button, pill, note text) whose inline
+   editor is currently open — the "which editor is open" marker
+   that survives scrolling away and back. */
+.card-editor-open {
+  outline: 1px solid var(--color-editor-open);
+  outline-offset: 1px;
 }
 
 /* Newest-entry-only variant rendered in the card expansion —

@@ -1,7 +1,8 @@
-module View.Modal.SaveChain exposing (view)
+module View.Inline.SaveChain exposing (Context, view)
 
-{-| Save Chain modal — reusable "creature makes a save;
-something happens" recipe editor plus a two-button apply row.
+{-| Save Chain as an inline card expansion — reusable "creature
+makes a save; something happens" recipe editor plus a two-button
+apply row.
 
 Layout, top to bottom:
 
@@ -14,7 +15,7 @@ Layout, top to bottom:
   - Apply-to-selected toggle (only visible when the selection
     is non-empty)
   - Two action buttons: Fail applies the fail outcome; Pass
-    applies the success outcome. Neither closes the modal —
+    applies the success outcome. Neither closes the editor —
     the GM often runs Fail + Pass on the same open (fail for
     the creatures that missed, pass for the survivors).
 
@@ -22,13 +23,12 @@ Layout, top to bottom:
 
 import Compendium exposing (Ability(..))
 import Dict
-import Encounter exposing (Encounter)
+import Encounter
 import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..))
 import Html exposing (Html, button, div, input, li, option, p, select, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as Decode
-import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -37,42 +37,52 @@ import Msg
         , SaveChainSide(..)
         )
 import Ui.SaveChain exposing (AppliedPart(..), OutcomeForm, SaveChainLogEntry, SaveChainUi)
-import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
-    case model.surface of
-        Just (SurfaceSaveChain ui) ->
-            View.Modal.view
-                { close = SaveChainClose
-                , noOp = NoOp
-                , title = title ui model.encounter
-                , extraClass = "modal--save-chain"
-                , chrome = model.modalChrome
-                , body =
-                    [ presetRow ui model.saveChainPresets
-                    , nameRow ui
-                    , saveRow ui
-                    , outcomeBlock "On failed save" SaveChainFail ui.onFail
-                    , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
-                    , applyScope ui model.encounter
-                    , applyRow ui
-                    , log model.saveChainLog
-                    ]
-                }
-
-        _ ->
-            text ""
+{-| The model fragments the expansion consumes beyond its own
+Ui record: the presets dict backs the picker row, the selected
+count drives the apply-to-selected scope and the header title,
+and the log renders the recent resolutions.
+-}
+type alias Context =
+    { presets : Dict.Dict String SaveChain.SaveChain
+    , selectedCount : Int
+    , log : List SaveChainLogEntry
+    }
 
 
-title : SaveChainUi -> Encounter -> String
-title ui enc =
-    let
-        selectedCount =
-            List.length (List.filter .selected enc.creatures)
-    in
+view : Context -> SaveChainUi -> Html Msg
+view ctx ui =
+    div [ class "creature-card__inline" ]
+        [ header ctx.selectedCount ui
+        , presetRow ui ctx.presets
+        , nameRow ui
+        , saveRow ui
+        , outcomeBlock "On failed save" SaveChainFail ui.onFail
+        , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
+        , applyScope ctx.selectedCount ui
+        , applyRow ui
+        , log ctx.log
+        ]
+
+
+header : Int -> SaveChainUi -> Html Msg
+header selectedCount ui =
+    div [ class "creature-card__inline-header" ]
+        [ div [ class "creature-card__inline-title" ]
+            [ text (title selectedCount ui) ]
+        , button
+            [ class "icon-btn icon-btn--sm creature-card__inline-close"
+            , onClick SaveChainClose
+            , attribute "aria-label" "Close Save Chain"
+            ]
+            [ text "×" ]
+        ]
+
+
+title : Int -> SaveChainUi -> String
+title selectedCount ui =
     if ui.applyToSelected && selectedCount > 0 then
         "Save Chain — " ++ String.fromInt selectedCount ++ " selected"
 
@@ -500,12 +510,8 @@ commonConditions =
 -- ── Apply scope + action buttons ────────────────────────────────
 
 
-applyScope : SaveChainUi -> Encounter -> Html Msg
-applyScope ui enc =
-    let
-        selectedCount =
-            List.length (List.filter .selected enc.creatures)
-    in
+applyScope : Int -> SaveChainUi -> Html Msg
+applyScope selectedCount ui =
     if selectedCount == 0 then
         text ""
 
