@@ -117,9 +117,12 @@ view ctx creature =
                     , attribute "aria-label" "Move down in queue"
                     ]
                     [ text "↓" ]
-                ]
-            , div [ class "creature-card__rail-group" ]
-                [ button
+
+                -- Same group as the movers: an open inline editor
+                -- makes the card tall, and the rail's space-evenly
+                -- distribution would otherwise float this away
+                -- from the buttons it belongs with.
+                , button
                     [ class "icon-btn icon-btn--accent"
                     , onClick (SetActive creature.name)
                     , Tooltips.attr Tooltips.queueMakeActive

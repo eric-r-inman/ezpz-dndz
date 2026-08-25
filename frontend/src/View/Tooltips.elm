@@ -407,7 +407,7 @@ queueMoveDown =
 
 queueMakeActive : String
 queueMakeActive =
-    "Set as active creature active"
+    "Set as active creature"
 
 
 queueRemove : String

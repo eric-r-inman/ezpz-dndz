@@ -4700,6 +4700,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 36px;
 }
 
+/* The left rail is one group (select, movers, make-active) and
+   pins to the top: an open inline editor makes the card tall,
+   and space-evenly would drift the cluster to mid-card, away
+   from the row content it operates on. */
+.creature-card__rail--left {
+  justify-content: flex-start;
+}
+
 .creature-card__rail-group {
   display: flex;
   flex-direction: column;
