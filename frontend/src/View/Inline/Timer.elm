@@ -2,7 +2,8 @@ module View.Inline.Timer exposing (view)
 
 {-| Timer setup as an inline card expansion. The GM picks a turn
 count (1..99) and a phase (begin/end of bearer's turn). Start
-Timer writes the timer; Cancel discards.
+Timer writes the timer; Escape or re-clicking the trigger
+discards.
 
 Mirrors the per-surface preset pattern from
 `View.Inline.Condition`: a footer Save/Load row backed by
@@ -25,10 +26,9 @@ import View.Tooltips as Tooltips
 view : Dict String TimerPreset -> TimerSetupUi -> Html Msg
 view presets ui =
     div [ class "creature-card__inline" ]
-        [ header ui
-        , div [ class "cond-row" ]
+        [ div [ class "cond-row" ]
             [ Html.label [ for "timer-turns-input" ]
-                [ text "Lasts" ]
+                [ text "Timer lasts" ]
             , input
                 [ id "timer-turns-input"
                 , class "cond-input cond-input--narrow"
@@ -66,29 +66,6 @@ view presets ui =
         ]
 
 
-header : TimerSetupUi -> Html Msg
-header ui =
-    let
-        presetSuffix =
-            case ui.loadedPresetName of
-                Just name ->
-                    "  (loaded: " ++ name ++ ")"
-
-                Nothing ->
-                    ""
-    in
-    div [ class "creature-card__inline-header" ]
-        [ div [ class "creature-card__inline-title" ]
-            [ text ("Timer — " ++ ui.target ++ presetSuffix) ]
-        , button
-            [ class "icon-btn icon-btn--sm creature-card__inline-close"
-            , onClick TimerSetupCancel
-            , attribute "aria-label" "Close timer setup"
-            ]
-            [ text "×" ]
-        ]
-
-
 footer : TimerSetupUi -> Dict String TimerPreset -> Html Msg
 footer ui presets =
     div [ class "cond-footer" ]
@@ -103,8 +80,8 @@ footer ui presets =
                 ]
                 [ text "Start Timer" ]
 
-            -- No Cancel button: the header ×, Escape, and
-            -- re-clicking the ⏱ button all cancel.
+            -- No Cancel button: Escape and re-clicking the
+            -- ⏱ button both cancel.
             ]
         ]
 

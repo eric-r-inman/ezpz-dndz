@@ -55,8 +55,7 @@ type alias Context =
 view : Context -> SaveChainUi -> Html Msg
 view ctx ui =
     div [ class "creature-card__inline" ]
-        [ header ctx.selectedCount ui
-        , presetRow ui ctx.presets
+        [ presetRow ui ctx.presets
         , nameRow ui
         , saveRow ui
         , outcomeBlock "On failed save" SaveChainFail ui.onFail
@@ -65,29 +64,6 @@ view ctx ui =
         , applyRow ui
         , log ctx.log
         ]
-
-
-header : Int -> SaveChainUi -> Html Msg
-header selectedCount ui =
-    div [ class "creature-card__inline-header" ]
-        [ div [ class "creature-card__inline-title" ]
-            [ text (title selectedCount ui) ]
-        , button
-            [ class "icon-btn icon-btn--sm creature-card__inline-close"
-            , onClick SaveChainClose
-            , attribute "aria-label" "Close Save Chain"
-            ]
-            [ text "×" ]
-        ]
-
-
-title : Int -> SaveChainUi -> String
-title selectedCount ui =
-    if ui.applyToSelected && selectedCount > 0 then
-        "Save Chain — " ++ String.fromInt selectedCount ++ " selected"
-
-    else
-        "Save Chain — " ++ ui.target
 
 
 

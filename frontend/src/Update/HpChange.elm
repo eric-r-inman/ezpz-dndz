@@ -7,6 +7,8 @@ module Update.HpChange exposing
     , editChange
     , editCommit
     , editStart
+    , freshRollLanded
+    , freshRollToggle
     , ignoreTempToggle
     , open
     , rollLanded
@@ -98,6 +100,13 @@ applyToSelectedToggle model =
     )
 
 
+freshRollToggle : Model -> ( Model, Cmd Msg )
+freshRollToggle model =
+    ( withHpChange (\u -> { u | freshRollPerTarget = not u.freshRollPerTarget }) model
+    , Cmd.none
+    )
+
+
 {-| Footer action-button click: commit the modal's amount text
 as `kind`. Sets `ui.kind = kind` first (so the dice-source
 label + log entry reflect the chosen kind), then routes based
@@ -143,11 +152,29 @@ applyAs kind model =
                     else
                         case Dice.parse trimmed of
                             Ok expr ->
-                                ( modelWithKind
-                                , Dice.rollCmd HpChangeRollLanded
-                                    (hpChangeSource withKind modelWithKind.encounter)
-                                    expr
-                                )
+                                if withKind.applyToSelected && withKind.freshRollPerTarget then
+                                    -- One independent roll per selected
+                                    -- creature.  The editor closes now;
+                                    -- each landing carries everything it
+                                    -- needs to apply on its own.
+                                    ( { modelWithKind | surface = Nothing }
+                                    , hpChangeTargets withKind modelWithKind.encounter
+                                        |> List.map
+                                            (\name ->
+                                                Dice.rollCmd
+                                                    (HpChangeFreshRollLanded kind withKind.ignoreTemp name)
+                                                    { feature = kindLabel kind, target = Just name }
+                                                    expr
+                                            )
+                                        |> Cmd.batch
+                                    )
+
+                                else
+                                    ( modelWithKind
+                                    , Dice.rollCmd HpChangeRollLanded
+                                        (hpChangeSource withKind modelWithKind.encounter)
+                                        expr
+                                    )
 
                             Err err ->
                                 ( withHpChange (\u -> { u | parseError = Just err }) modelWithKind
@@ -180,6 +207,22 @@ rollLanded roll model =
                     logged
     in
     ( committed
+    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    )
+
+
+{-| One landing of a fresh-per-creature roll batch. The editor
+is already closed, so everything needed to commit rides in the
+message itself; each landing applies, logs, and persists its
+own roll independently of its siblings.
+-}
+freshRollLanded : HpKind -> Bool -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+freshRollLanded kind ignoreTemp target roll model =
+    let
+        ( logged, flashCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged
     , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
     )
 
@@ -301,20 +344,6 @@ history reads "Damage → Brakka" or "Heal → Aria, Brakka".
 hpChangeSource : HpChangeUi -> Encounter -> Dice.Source
 hpChangeSource ui enc =
     let
-        feature =
-            case ui.kind of
-                DamageKind ->
-                    "Damage"
-
-                HealKind ->
-                    "Heal"
-
-                TempHpKind ->
-                    "Temp HP"
-
-                MaxHpKind ->
-                    "+Max HP"
-
         targetLabel =
             if ui.applyToSelected then
                 let
@@ -330,7 +359,23 @@ hpChangeSource ui enc =
             else
                 ui.target
     in
-    { feature = feature, target = Just targetLabel }
+    { feature = kindLabel ui.kind, target = Just targetLabel }
+
+
+kindLabel : HpKind -> String
+kindLabel kind =
+    case kind of
+        DamageKind ->
+            "Damage"
+
+        HealKind ->
+            "Heal"
+
+        TempHpKind ->
+            "Temp HP"
+
+        MaxHpKind ->
+            "+Max HP"
 
 
 {-| Resolve the modal's kind + flags into an `HpChange.Change`,
@@ -359,12 +404,34 @@ multi-target toggle.
 applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
 applyHpChangeAndClose ui amount model =
     let
+        applied =
+            applyAmountTo ui.kind
+                ui.ignoreTemp
+                (hpChangeTargets ui model.encounter)
+                amount
+                model
+    in
+    { applied | surface = Nothing }
+
+
+{-| The commit core shared by every apply path: resolve the kind
+
+  - ignore-temp flag into an `HpChange.Change`, write it through
+    `Encounter.mapCreature` for each target, and push log entries
+    capturing the before/after snapshots. Does not touch the
+    surface — the shared-roll path closes it here-abouts, the
+    fresh-per-creature path already closed it at dispatch.
+
+-}
+applyAmountTo : HpKind -> Bool -> List String -> Int -> Model -> Model
+applyAmountTo kind ignoreTemp targets amount model =
+    let
         change =
-            case ui.kind of
+            case kind of
                 DamageKind ->
                     HpChange.Damage
                         { amount = amount
-                        , ignoreTemp = ui.ignoreTemp
+                        , ignoreTemp = ignoreTemp
                         }
 
                 HealKind ->
@@ -375,9 +442,6 @@ applyHpChangeAndClose ui amount model =
 
                 MaxHpKind ->
                     HpChange.MaxHpDelta amount
-
-        targets =
-            hpChangeTargets ui model.encounter
 
         applyOne name acc =
             let
@@ -393,7 +457,7 @@ applyHpChangeAndClose ui amount model =
                 entry =
                     Maybe.map2
                         (\b a ->
-                            { kind = ui.kind
+                            { kind = kind
                             , target = name
                             , amount = amount
                             , beforeHp = b.currentHp
@@ -422,7 +486,6 @@ applyHpChangeAndClose ui amount model =
     in
     { model
         | encounter = result.encounter
-        , surface = Nothing
         , hpChangeLog =
             List.reverse result.log
                 ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog

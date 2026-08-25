@@ -550,6 +550,12 @@ type Msg
       -- open.
     | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
+    | HpChangeFreshRollToggle
+      -- One fresh-per-creature roll landing.  Carries the kind,
+      -- the ignore-temp flag, and the target name because the
+      -- editor closes when the roll batch is dispatched — the
+      -- landing must not depend on surface state that is gone.
+    | HpChangeFreshRollLanded HpKind Bool String Dice.Roll
     | HpChangeUndoLatest
       -- ── Save Chain modal ─────────────────────────────────
       -- Opens the reusable "creature makes a save; something

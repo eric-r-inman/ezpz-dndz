@@ -5916,19 +5916,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 8px;
 }
 
-.creature-card__inline-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .creature-card__inline-title {
   font-weight: 600;
   font-size: 0.9rem;
 }
 
-.creature-card__inline-close {
-  margin-left: auto;
+/* Indent under the parent apply-to-selected checkbox — the
+   fresh-roll-per-creature option only modifies that choice. */
+.hp-change__checkbox--nested {
+  margin-left: 22px;
 }
 
 /* Compact single-row variant of the expansion strip, used by the

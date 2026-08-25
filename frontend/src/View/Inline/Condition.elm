@@ -4,9 +4,8 @@ module View.Inline.Condition exposing (Context, view)
 Sections, top to bottom: standard-condition radios, custom name
 input, note input, duration choice (Manual / Until turn /
 Countdown) with the relevant sub-controls, optional save-to-end
-block, multi-target apply scope, and the action footer (Apply /
-Cancel / Delete-when-editing, plus the preset Save / Load
-controls).
+block, multi-target apply scope, and the action footer (Apply,
+Delete-when-editing, plus the preset Save / Load controls).
 
 The body is the retired Condition modal's, re-homed under the
 target creature's card so the queue stays visible while the GM
@@ -44,46 +43,13 @@ type alias Context =
 view : Context -> ConditionUi -> Html Msg
 view ctx ui =
     div [ class "creature-card__inline" ]
-        [ header ui
-        , standardSection ui
+        [ standardSection ui
         , customSection ui
         , noteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
         , applyScope ctx.selectedCount ui
         , footer ui ctx.presets
-        ]
-
-
-header : ConditionUi -> Html Msg
-header ui =
-    let
-        presetSuffix =
-            case ui.loadedPresetName of
-                Just name ->
-                    "  (loaded: " ++ name ++ ")"
-
-                Nothing ->
-                    ""
-
-        title =
-            (if ui.editingId == Nothing then
-                "Add Condition — "
-
-             else
-                "Edit Condition — "
-            )
-                ++ ui.target
-                ++ presetSuffix
-    in
-    div [ class "creature-card__inline-header" ]
-        [ div [ class "creature-card__inline-title" ] [ text title ]
-        , button
-            [ class "icon-btn icon-btn--sm creature-card__inline-close"
-            , onClick ConditionClose
-            , attribute "aria-label" "Close condition editor"
-            ]
-            [ text "×" ]
         ]
 
 
@@ -480,8 +446,8 @@ footer ui presets =
                 Nothing ->
                     text ""
 
-            -- No Cancel button: the header ×, Escape, and
-            -- re-clicking the Condition/Effect button all cancel.
+            -- No Cancel button: Escape and re-clicking the
+            -- Condition/Effect button both cancel.
             , button
                 [ class "action-btn action-btn--green"
                 , onClick ConditionSubmit

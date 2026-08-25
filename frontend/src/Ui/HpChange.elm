@@ -42,6 +42,12 @@ type alias HpChangeUi =
     , parseError : Maybe Dice.Error
     , ignoreTemp : Bool
     , applyToSelected : Bool
+
+    -- When applying a dice formula to a selection, roll fresh
+    -- per creature instead of one shared total.  Only consulted
+    -- on the formula path with `applyToSelected` set; the
+    -- default False keeps 5e's single-roll AOE convention.
+    , freshRollPerTarget : Bool
     }
 
 
@@ -98,4 +104,5 @@ fresh target =
     , parseError = Nothing
     , ignoreTemp = False
     , applyToSelected = False
+    , freshRollPerTarget = False
     }

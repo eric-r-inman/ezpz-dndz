@@ -27,32 +27,12 @@ import View.HpLog
 view : Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
 view selectedCount log ui =
     div [ class "creature-card__inline" ]
-        [ header ui
-        , amount ui
+        [ amount ui
         , parseErrorHint ui
         , ignoreTempToggle ui
         , applyScope selectedCount ui
         , actionButtons
         , View.HpLog.latest log
-        ]
-
-
-{-| Expansion header: a small title plus the collapse button.
-The title repeats the target name so the expansion still reads
-correctly if the GM has scrolled the card's name row out of
-view.
--}
-header : HpChangeUi -> Html Msg
-header ui =
-    div [ class "creature-card__inline-header" ]
-        [ div [ class "creature-card__inline-title" ]
-            [ text ("Manage HP — " ++ ui.target) ]
-        , button
-            [ class "icon-btn icon-btn--sm creature-card__inline-close"
-            , onClick HpChangeClose
-            , attribute "aria-label" "Close Manage HP"
-            ]
-            [ text "×" ]
         ]
 
 
@@ -64,20 +44,18 @@ overloadable across all of them. GMs who want Heal / Temp HP
 amount : HpChangeUi -> Html Msg
 amount ui =
     div [ class "hp-change__row" ]
-        [ Html.label [ for "hp-amount" ] [ text "Amount" ]
+        [ Html.label [ for "hp-amount" ] [ text "HP amount:" ]
         , input
             [ id "hp-amount"
             , class "hp-change__input"
             , type_ "text"
-            , placeholder "12 or 2d6+3"
+            , placeholder "12 or 2d6+3 (integer or formula)"
             , value ui.amountText
             , autofocus True
             , onInput HpChangeAmountChanged
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]
             []
-        , div [ class "hp-change__caption" ]
-            [ text "Enter a number, or a dice formula to roll." ]
         ]
 
 
@@ -115,7 +93,10 @@ ignoreTempToggle ui =
 
 {-| Multi-target scope checkbox. Hidden entirely when zero
 creatures are selected — there's no useful "apply to all
-selected" when there's no selection.
+selected" when there's no selection. When the amount reads as
+a dice formula, a nested checkbox offers a fresh roll per
+creature instead of one shared total; an integer amount hides
+it, since there is nothing to reroll.
 -}
 applyScope : Int -> HpChangeUi -> Html Msg
 applyScope selectedCount ui =
@@ -124,7 +105,7 @@ applyScope selectedCount ui =
 
     else
         div [ class "hp-change__row" ]
-            [ Html.label [ class "hp-change__checkbox" ]
+            ([ Html.label [ class "hp-change__checkbox" ]
                 [ input
                     [ type_ "checkbox"
                     , checked ui.applyToSelected
@@ -137,9 +118,43 @@ applyScope selectedCount ui =
                         ++ ")"
                     )
                 ]
-            , div [ class "hp-change__caption" ]
-                [ text "Rolled amounts apply the same total to every selected creature." ]
-            ]
+             ]
+                ++ (if isFormula ui.amountText then
+                        [ Html.label [ class "hp-change__checkbox hp-change__checkbox--nested" ]
+                            [ input
+                                [ type_ "checkbox"
+                                , checked ui.freshRollPerTarget
+                                , onClick HpChangeFreshRollToggle
+                                ]
+                                []
+                            , text " New roll for each creature"
+                            ]
+                        ]
+
+                    else
+                        []
+                   )
+            )
+
+
+{-| True when the amount text parses as a dice formula rather
+than a plain integer.
+-}
+isFormula : String -> Bool
+isFormula raw =
+    let
+        trimmed =
+            String.trim raw
+    in
+    not (String.isEmpty trimmed)
+        && (String.toInt trimmed == Nothing)
+        && (case Dice.parse trimmed of
+                Ok _ ->
+                    True
+
+                Err _ ->
+                    False
+           )
 
 
 {-| Four action buttons — each commits the current amount using

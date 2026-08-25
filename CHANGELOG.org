@@ -12,6 +12,9 @@
    button carries a white ring, re-clicking it closes the editor unchanged, the
    full recent-HP-changes list moved into the dice roller, and Escape now closes
    each of these editors.  No action needed.
+3. When applying a dice-formula HP change to a selection, a new "New roll for
+   each creature" option rolls independently per creature instead of applying
+   one shared total.  No action needed.
 ** Fixes
 ** Breaking
 * v0.2.0

@@ -1069,6 +1069,12 @@ updateInner msg model =
         HpChangeRollLanded roll ->
             Update.HpChange.rollLanded roll model
 
+        HpChangeFreshRollToggle ->
+            Update.HpChange.freshRollToggle model
+
+        HpChangeFreshRollLanded kind ignoreTemp target roll ->
+            Update.HpChange.freshRollLanded kind ignoreTemp target roll model
+
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model
 
