@@ -33,7 +33,7 @@ import Html.Attributes
         , type_
         )
 import Html.Events exposing (onClick)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (LoadSource(..), Msg(..))
 import Ui.LoadCompendium as LoadCompendiumUi
     exposing
@@ -47,8 +47,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalLoadCompendium ui) ->
+    case model.surface of
+        Just (SurfaceLoadCompendium ui) ->
             View.Modal.view
                 { close = LoadCompendiumClose
                 , noOp = NoOp

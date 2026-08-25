@@ -5,7 +5,7 @@ module Ui.SaveChain exposing
     , AppliedPart(..), SaveChainLogEntry, maxSaveChainLogEntries
     )
 
-{-| Modal UI state for the Save Chain feature.
+{-| Surface UI state for the Save Chain feature.
 
 Mirrors `Encounter.SaveChain` closely but keeps the input
 values as raw text (`dcText`, `hpAmountText`) so a

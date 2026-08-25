@@ -52,7 +52,7 @@ searchId =
 
 {-| Flat lens over `model.compendium`. The browser substate is
 always present (no `Maybe`), so this is a direct field update
-rather than a `Model.mapModal` call.
+rather than a `Model.mapSurface` call.
 -}
 withCompendium : (CompendiumUi -> CompendiumUi) -> Model -> Model
 withCompendium fn model =

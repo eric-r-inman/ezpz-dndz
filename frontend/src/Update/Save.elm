@@ -42,7 +42,7 @@ import Encounter.Wire
 import File.Download
 import Http
 import Json.Encode as E
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.Save as SaveUi exposing (ConfirmAction(..), SaveListState(..), SaveUi)
 import Ui.Toast exposing (ToastKind(..))
@@ -50,12 +50,12 @@ import Update.Toast
 import Util.Http
 
 
-{-| Lens over the SaveUi inside `model.modal`. Other update
+{-| Lens over the SaveUi inside `model.surface`. Other update
 modules don't touch save modal state.
 -}
 withSaveUi : (SaveUi -> SaveUi) -> Model -> Model
 withSaveUi =
-    Model.mapModal Model.saveLens
+    Model.mapSurface Model.saveLens
 
 
 open : SaveDestination -> Model -> ( Model, Cmd Msg )
@@ -80,7 +80,7 @@ open destination model =
             { baseUi | saves = saves }
     in
     ( { model
-        | modal = Just (ModalSave primedUi)
+        | surface = Just (SurfaceSave primedUi)
         , controlMenu = Nothing
       }
     , listCmd
@@ -101,7 +101,7 @@ localSavesMetas model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
@@ -151,8 +151,8 @@ immediately and closes the modal.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalSave ui) ->
+    case model.surface of
+        Just (SurfaceSave ui) ->
             let
                 trimmed =
                     String.trim ui.filename
@@ -182,7 +182,7 @@ submit model =
                                 applyLocalEncounterSave trimmed False model
 
                     SaveDestinationDevice ->
-                        ( { model | modal = Nothing }
+                        ( { model | surface = Nothing }
                         , downloadEncounter trimmed model.encounter
                         )
 
@@ -239,7 +239,7 @@ applyLocalEncounterSave name overwrite model =
                             Dict.insert name entry model.localEncounterSaves
                         , savedSnapshot = Just model.encounter
                         , savedAs = Just name
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess ("Saved \"" ++ name ++ "\".") next
@@ -279,7 +279,7 @@ persistResponse name result model =
                     { model
                         | savedSnapshot = Just model.encounter
                         , savedAs = Just name
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
@@ -343,8 +343,8 @@ confirmCancel model =
 -}
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.modal of
-        Just (ModalSave ui) ->
+    case model.surface of
+        Just (SurfaceSave ui) ->
             case ui.confirm of
                 Just (ConfirmOverwrite name) ->
                     case model.auth of
@@ -491,8 +491,8 @@ renameChange text model =
 
 renameSubmit : Model -> ( Model, Cmd Msg )
 renameSubmit model =
-    case model.modal of
-        Just (ModalSave ui) ->
+    case model.surface of
+        Just (SurfaceSave ui) ->
             case ui.renaming of
                 Just { original, draft } ->
                     let

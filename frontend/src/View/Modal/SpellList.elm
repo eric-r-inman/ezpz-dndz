@@ -32,7 +32,7 @@ import Encounter exposing (Creature)
 import Html exposing (Html, button, div, h3, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Modal
@@ -41,8 +41,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just ModalSpellList ->
+    case model.surface of
+        Just SurfaceSpellList ->
             View.Modal.view
                 { close = SpellListClose
                 , noOp = NoOp

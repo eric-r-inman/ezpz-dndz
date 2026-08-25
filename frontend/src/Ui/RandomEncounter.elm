@@ -3,7 +3,7 @@ module Ui.RandomEncounter exposing
     , fresh
     )
 
-{-| Modal-local UI state for the Random Encounter generator.
+{-| Surface-local UI state for the Random Encounter generator.
 
 The party (`model.party`) is shared with the CR Calculator and
 lives on `Model` so the GM doesn't have to re-enter it. What's

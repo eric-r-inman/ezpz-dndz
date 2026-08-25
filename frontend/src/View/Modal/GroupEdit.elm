@@ -61,7 +61,7 @@ import Html.Attributes as Attr
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -80,8 +80,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalGroupEdit ui) ->
+    case model.surface of
+        Just (SurfaceGroupEdit ui) ->
             let
                 creatures =
                     case model.compendium.db of

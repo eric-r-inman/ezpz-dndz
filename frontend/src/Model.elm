@@ -1,6 +1,6 @@
 module Model exposing
-    ( Modal(..), Model
-    , ModalLens, PanelPin, PendingControl(..), RollPopup, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapModal, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
+    ( Surface(..), Model
+    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapSurface, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
     )
 
 {-| The single source of truth for the running app.
@@ -11,7 +11,7 @@ modal-state plumbing. The discipline mirrors the larger
 layering rule: domain state goes through `Encounter`,
 everything else stays here.
 
-The `modal` field is a `Maybe Modal` ADT — the constructor
+The `modal` field is a `Maybe Surface` ADT — the constructor
 identifies which modal is open and carries its UI state.
 `Nothing` means no modal is open. This shape replaces the
 older "one `Maybe XxxUi` field per modal" scheme and bakes
@@ -32,7 +32,7 @@ counter to 1. `savedAs` parallels it, recording the name the
 encounter was last saved under so re-saving doesn't make the
 user retype the filename.
 
-@docs Modal, Model
+@docs Surface, Model
 
 -}
 
@@ -108,336 +108,336 @@ type PendingControl
 {-| One constructor per modal kind, each carrying its UI state.
 
 The "only one modal open at a time" invariant is type-enforced:
-opening modal X assigns `Just (ModalX uiX)` to `model.modal`,
+opening modal X assigns `Just (ModalX uiX)` to `model.surface`,
 which by construction wipes out whatever was open before.
 
 -}
-type Modal
-    = ModalHpChange HpChangeUi
-    | ModalInitiative InitiativeUi
-    | ModalNoteEdit NoteEditUi
-    | ModalCondition ConditionUi
-    | ModalMemoEdit MemoEditUi
-    | ModalTimerSetup TimerSetupUi
-    | ModalCompendiumEdit CompendiumEditUi
-    | ModalCompendiumPaste CompendiumPasteUi
-    | ModalSave SaveUi
-    | ModalLoad LoadUi
-    | ModalSaveCompendium SaveCompendiumUi
-    | ModalLoadCompendium LoadCompendiumUi
-    | ModalAbilitySave AbilitySaveUi
-    | ModalQuickAdd QuickAddUi
-    | ModalDuplicate DuplicateUi
-    | ModalGroupEdit GroupEditUi
-    | ModalLoreEdit LoreEditUi
-    | ModalCrCalculator CrCalculatorUi
-    | ModalRandomEncounter RandomEncounterUi
-    | ModalTreasure TreasureUi
-    | ModalTreasureTable TreasureTableUi
+type Surface
+    = SurfaceHpChange HpChangeUi
+    | SurfaceInitiative InitiativeUi
+    | SurfaceNoteEdit NoteEditUi
+    | SurfaceCondition ConditionUi
+    | SurfaceMemoEdit MemoEditUi
+    | SurfaceTimerSetup TimerSetupUi
+    | SurfaceCompendiumEdit CompendiumEditUi
+    | SurfaceCompendiumPaste CompendiumPasteUi
+    | SurfaceSave SaveUi
+    | SurfaceLoad LoadUi
+    | SurfaceSaveCompendium SaveCompendiumUi
+    | SurfaceLoadCompendium LoadCompendiumUi
+    | SurfaceAbilitySave AbilitySaveUi
+    | SurfaceQuickAdd QuickAddUi
+    | SurfaceDuplicate DuplicateUi
+    | SurfaceGroupEdit GroupEditUi
+    | SurfaceLoreEdit LoreEditUi
+    | SurfaceCrCalculator CrCalculatorUi
+    | SurfaceRandomEncounter RandomEncounterUi
+    | SurfaceTreasure TreasureUi
+    | SurfaceTreasureTable TreasureTableUi
       -- Read-only "what spells can these creatures cast?" popup
       -- triggered by the 📜 button in the encounter title bar.
       -- No editable state to carry; the view re-renders straight
       -- from the encounter + compendium on every open.
-    | ModalSpellList
+    | SurfaceSpellList
       -- Save Chain modal: reusable "creature makes a save;
       -- something happens" recipe.  Opened from each card's
       -- Save Chain button; loads / edits / saves named presets
       -- from `model.saveChainPresets` and applies fail/success
       -- outcomes to the target (or the selection).
-    | ModalSaveChain SaveChainUi
+    | SurfaceSaveChain SaveChainUi
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
-of the `Modal` ADT. Lets `mapModal` be a single generic helper
+of the `Surface` ADT. Lets `mapSurface` be a single generic helper
 shared by every Update module instead of each rolling its own
-`withFooUi`. See `mapModal` and the per-variant `*Lens` values.
+`withFooUi`. See `mapSurface` and the per-variant `*Lens` values.
 -}
-type alias ModalLens a =
-    { extract : Modal -> Maybe a
-    , wrap : a -> Modal
+type alias SurfaceLens a =
+    { extract : Surface -> Maybe a
+    , wrap : a -> Surface
     }
 
 
 {-| Apply `fn` to the modal's UI substate, but only if the modal
-matching `lens` is currently open. No-op when `model.modal` is
+matching `lens` is currently open. No-op when `model.surface` is
 `Nothing` or holds a different variant.
 
 Replaces the per-Update-module `with*Ui` helpers.
 
 -}
-mapModal : ModalLens a -> (a -> a) -> Model -> Model
-mapModal lens fn model =
-    case Maybe.andThen lens.extract model.modal of
+mapSurface : SurfaceLens a -> (a -> a) -> Model -> Model
+mapSurface lens fn model =
+    case Maybe.andThen lens.extract model.surface of
         Just ui ->
-            { model | modal = Just (lens.wrap (fn ui)) }
+            { model | surface = Just (lens.wrap (fn ui)) }
 
         Nothing ->
             model
 
 
-compendiumEditLens : ModalLens CompendiumEditUi
+compendiumEditLens : SurfaceLens CompendiumEditUi
 compendiumEditLens =
     { extract =
         \m ->
             case m of
-                ModalCompendiumEdit ui ->
+                SurfaceCompendiumEdit ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalCompendiumEdit
+    , wrap = SurfaceCompendiumEdit
     }
 
 
-duplicateLens : ModalLens DuplicateUi
+duplicateLens : SurfaceLens DuplicateUi
 duplicateLens =
     { extract =
         \m ->
             case m of
-                ModalDuplicate ui ->
+                SurfaceDuplicate ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalDuplicate
+    , wrap = SurfaceDuplicate
     }
 
 
-groupEditLens : ModalLens GroupEditUi
+groupEditLens : SurfaceLens GroupEditUi
 groupEditLens =
     { extract =
         \m ->
             case m of
-                ModalGroupEdit ui ->
+                SurfaceGroupEdit ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalGroupEdit
+    , wrap = SurfaceGroupEdit
     }
 
 
-loreEditLens : ModalLens LoreEditUi
+loreEditLens : SurfaceLens LoreEditUi
 loreEditLens =
     { extract =
         \m ->
             case m of
-                ModalLoreEdit ui ->
+                SurfaceLoreEdit ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalLoreEdit
+    , wrap = SurfaceLoreEdit
     }
 
 
-crCalculatorLens : ModalLens CrCalculatorUi
+crCalculatorLens : SurfaceLens CrCalculatorUi
 crCalculatorLens =
     { extract =
         \m ->
             case m of
-                ModalCrCalculator ui ->
+                SurfaceCrCalculator ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalCrCalculator
+    , wrap = SurfaceCrCalculator
     }
 
 
-randomEncounterLens : ModalLens RandomEncounterUi
+randomEncounterLens : SurfaceLens RandomEncounterUi
 randomEncounterLens =
     { extract =
         \m ->
             case m of
-                ModalRandomEncounter ui ->
+                SurfaceRandomEncounter ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalRandomEncounter
+    , wrap = SurfaceRandomEncounter
     }
 
 
-treasureLens : ModalLens TreasureUi
+treasureLens : SurfaceLens TreasureUi
 treasureLens =
     { extract =
         \m ->
             case m of
-                ModalTreasure ui ->
+                SurfaceTreasure ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalTreasure
+    , wrap = SurfaceTreasure
     }
 
 
-treasureTableLens : ModalLens TreasureTableUi
+treasureTableLens : SurfaceLens TreasureTableUi
 treasureTableLens =
     { extract =
         \m ->
             case m of
-                ModalTreasureTable ui ->
+                SurfaceTreasureTable ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalTreasureTable
+    , wrap = SurfaceTreasureTable
     }
 
 
-conditionLens : ModalLens ConditionUi
+conditionLens : SurfaceLens ConditionUi
 conditionLens =
     { extract =
         \m ->
             case m of
-                ModalCondition ui ->
+                SurfaceCondition ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalCondition
+    , wrap = SurfaceCondition
     }
 
 
-hpChangeLens : ModalLens HpChangeUi
+hpChangeLens : SurfaceLens HpChangeUi
 hpChangeLens =
     { extract =
         \m ->
             case m of
-                ModalHpChange ui ->
+                SurfaceHpChange ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalHpChange
+    , wrap = SurfaceHpChange
     }
 
 
-initiativeLens : ModalLens InitiativeUi
+initiativeLens : SurfaceLens InitiativeUi
 initiativeLens =
     { extract =
         \m ->
             case m of
-                ModalInitiative ui ->
+                SurfaceInitiative ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalInitiative
+    , wrap = SurfaceInitiative
     }
 
 
-loadLens : ModalLens LoadUi
+loadLens : SurfaceLens LoadUi
 loadLens =
     { extract =
         \m ->
             case m of
-                ModalLoad ui ->
+                SurfaceLoad ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalLoad
+    , wrap = SurfaceLoad
     }
 
 
-memoLens : ModalLens MemoEditUi
+memoLens : SurfaceLens MemoEditUi
 memoLens =
     { extract =
         \m ->
             case m of
-                ModalMemoEdit ui ->
+                SurfaceMemoEdit ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalMemoEdit
+    , wrap = SurfaceMemoEdit
     }
 
 
-noteLens : ModalLens NoteEditUi
+noteLens : SurfaceLens NoteEditUi
 noteLens =
     { extract =
         \m ->
             case m of
-                ModalNoteEdit ui ->
+                SurfaceNoteEdit ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalNoteEdit
+    , wrap = SurfaceNoteEdit
     }
 
 
-quickAddLens : ModalLens QuickAddUi
+quickAddLens : SurfaceLens QuickAddUi
 quickAddLens =
     { extract =
         \m ->
             case m of
-                ModalQuickAdd ui ->
+                SurfaceQuickAdd ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalQuickAdd
+    , wrap = SurfaceQuickAdd
     }
 
 
-saveLens : ModalLens SaveUi
+saveLens : SurfaceLens SaveUi
 saveLens =
     { extract =
         \m ->
             case m of
-                ModalSave ui ->
+                SurfaceSave ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalSave
+    , wrap = SurfaceSave
     }
 
 
-timerLens : ModalLens TimerSetupUi
+timerLens : SurfaceLens TimerSetupUi
 timerLens =
     { extract =
         \m ->
             case m of
-                ModalTimerSetup ui ->
+                SurfaceTimerSetup ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalTimerSetup
+    , wrap = SurfaceTimerSetup
     }
 
 
-saveCompendiumLens : ModalLens SaveCompendiumUi
+saveCompendiumLens : SurfaceLens SaveCompendiumUi
 saveCompendiumLens =
     { extract =
         \m ->
             case m of
-                ModalSaveCompendium ui ->
+                SurfaceSaveCompendium ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalSaveCompendium
+    , wrap = SurfaceSaveCompendium
     }
 
 
-loadCompendiumLens : ModalLens LoadCompendiumUi
+loadCompendiumLens : SurfaceLens LoadCompendiumUi
 loadCompendiumLens =
     { extract =
         \m ->
             case m of
-                ModalLoadCompendium ui ->
+                SurfaceLoadCompendium ui ->
                     Just ui
 
                 _ ->
                     Nothing
-    , wrap = ModalLoadCompendium
+    , wrap = SurfaceLoadCompendium
     }
 
 
@@ -463,7 +463,7 @@ type alias Model =
     , saveChainLog : List Ui.SaveChain.SaveChainLogEntry
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
-    , modal : Maybe Modal
+    , surface : Maybe Surface
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
     , panelCreaturePin : Maybe PanelPin

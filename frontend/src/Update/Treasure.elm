@@ -46,19 +46,19 @@ modal opens straight into the Kind picker.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (Model.ModalTreasure Ui.Treasure.fresh) }
+    ( { model | surface = Just (Model.SurfaceTreasure Ui.Treasure.fresh) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 contributionsToggle : Model -> ( Model, Cmd Msg )
 contributionsToggle model =
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | contributionsExpanded = not ui.contributionsExpanded })
         model
     , Cmd.none
@@ -67,7 +67,7 @@ contributionsToggle model =
 
 settingsToggle : Model -> ( Model, Cmd Msg )
 settingsToggle model =
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | settingsExpanded = not ui.settingsExpanded })
         model
     , Cmd.none
@@ -98,7 +98,7 @@ kindSet wire model =
                 _ ->
                     Treasure.Hoard
     in
-    ( Model.mapModal Model.treasureLens (\ui -> { ui | kind = kind }) model
+    ( Model.mapSurface Model.treasureLens (\ui -> { ui | kind = kind }) model
     , Cmd.none
     )
 
@@ -109,8 +109,8 @@ standard `Random.generate` glue.
 -}
 roll : Model -> ( Model, Cmd Msg )
 roll model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case model.surface of
+        Just (Model.SurfaceTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
                 (Treasure.generate
@@ -245,7 +245,7 @@ rolled treasureRoll model =
         withRoll =
             { model | encounter = { encounter | treasure = Just treasureRoll } }
     in
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | contributionsExpanded = False })
         withRoll
     , Cmd.none
@@ -452,8 +452,8 @@ Individual still works the way the GM left it.
 -}
 settingsPresetApply : Msg.TreasurePreset -> Model -> ( Model, Cmd Msg )
 settingsPresetApply preset model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case model.surface of
+        Just (Model.SurfaceTreasure ui) ->
             let
                 settings =
                     model.encounter.treasureSettings

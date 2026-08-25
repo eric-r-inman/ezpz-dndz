@@ -17,7 +17,7 @@ import Compendium.Reference
 import Html exposing (Html, button, div, input, label, option, span, text, textarea)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
@@ -38,8 +38,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalCompendiumEdit ui) ->
+    case model.surface of
+        Just (SurfaceCompendiumEdit ui) ->
             View.Modal.view
                 { close = CompendiumEditCancel
                 , noOp = NoOp

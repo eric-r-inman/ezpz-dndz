@@ -8,7 +8,7 @@ module Ui.Account exposing
 
 The Account page is a _route_, not a modal, so its UI substate
 lives on `Model` directly (like `loginUi`) rather than inside the
-`Modal` ADT. Two independent form sections:
+`Surface` ADT. Two independent form sections:
 
   - **Profile** — read-only email + member-since, editable display
     name. Save dispatches `PUT /api/auth/me`.

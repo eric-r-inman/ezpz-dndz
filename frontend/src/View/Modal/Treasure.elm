@@ -73,8 +73,8 @@ import View.Tooltips as Tooltips
 
 view : ModalChrome -> Model -> Html Msg
 view chrome model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case model.surface of
+        Just (Model.SurfaceTreasure ui) ->
             let
                 brackets =
                     enemyBrackets model

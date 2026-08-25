@@ -9,7 +9,7 @@ as the row 1 note-edit modal but writes to a different field on
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes exposing (autofocus, class, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Memo as MemoUi
 import Util.Keyboard
@@ -18,8 +18,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalMemoEdit ui) ->
+    case model.surface of
+        Just (SurfaceMemoEdit ui) ->
             View.Modal.view
                 { close = MemoCancel
                 , noOp = NoOp

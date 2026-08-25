@@ -15,7 +15,7 @@ Three sections, top to bottom:
     per-tier budgets, the resulting difficulty bucket, and a
     short GM-facing description of what that bucket means.
 
-Renders nothing when `model.modal` isn't `Just ModalCrCalculator`.
+Renders nothing when `model.surface` isn't `Just SurfaceCrCalculator`.
 
 -}
 
@@ -42,7 +42,7 @@ import Html.Attributes as Attr
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.CrCalculator exposing (CrCalculatorUi)
@@ -51,8 +51,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalCrCalculator ui) ->
+    case model.surface of
+        Just (SurfaceCrCalculator ui) ->
             View.Modal.view
                 { close = CrCalculatorClose
                 , noOp = NoOp

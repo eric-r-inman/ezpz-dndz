@@ -35,7 +35,7 @@ import Compendium.Wire
 import File.Download
 import Http
 import Json.Encode as E
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.Compendium as CompendiumUi
 import Ui.SaveCompendium as SaveCompendiumUi
@@ -49,11 +49,11 @@ import Update.Toast
 import Util.Http
 
 
-{-| Lens over the SaveCompendiumUi inside `model.modal`.
+{-| Lens over the SaveCompendiumUi inside `model.surface`.
 -}
 withSaveUi : (SaveCompendiumUi -> SaveCompendiumUi) -> Model -> Model
 withSaveUi =
-    Model.mapModal Model.saveCompendiumLens
+    Model.mapSurface Model.saveCompendiumLens
 
 
 open : SaveDestination -> Model -> ( Model, Cmd Msg )
@@ -63,9 +63,9 @@ open destination model =
             model.compendium.savedAs
     in
     ( { model
-        | modal =
+        | surface =
             Just
-                (ModalSaveCompendium
+                (SurfaceSaveCompendium
                     (SaveCompendiumUi.fresh destination suggested)
                 )
         , compendium =
@@ -77,7 +77,7 @@ open destination model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
@@ -123,8 +123,8 @@ listLoaded result model =
 
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalSaveCompendium ui) ->
+    case model.surface of
+        Just (SurfaceSaveCompendium ui) ->
             let
                 trimmed =
                     String.trim ui.filename
@@ -150,7 +150,7 @@ submit model =
                         )
 
                     SaveDestinationDevice ->
-                        ( { model | modal = Nothing }
+                        ( { model | surface = Nothing }
                         , downloadCompendium trimmed
                             (CompendiumUi.currentCreatures model.compendium)
                             (CompendiumUi.groupsList model.compendium)
@@ -203,7 +203,7 @@ persistResponse name result model =
                     { model
                         | compendium =
                             CompendiumUi.markSaved name model.compendium
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
@@ -257,8 +257,8 @@ confirmCancel model =
 
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.modal of
-        Just (ModalSaveCompendium ui) ->
+    case model.surface of
+        Just (SurfaceSaveCompendium ui) ->
             case ui.confirm of
                 Just (ConfirmOverwrite name) ->
                     ( withSaveUi

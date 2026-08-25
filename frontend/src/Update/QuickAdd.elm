@@ -14,7 +14,7 @@ back-to-back.
 
 import Compendium
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
@@ -22,7 +22,7 @@ import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalQuickAdd QuickAddUi.fresh) }, Cmd.none )
+    ( { model | surface = Just (SurfaceQuickAdd QuickAddUi.fresh) }, Cmd.none )
 
 
 {-| Open the Quick Add modal in "replace this creature" mode.
@@ -31,14 +31,14 @@ than appending — see `pick` / `pickPlaceholder` below.
 -}
 openForReplace : String -> Model -> ( Model, Cmd Msg )
 openForReplace oldName model =
-    ( { model | modal = Just (ModalQuickAdd (QuickAddUi.freshForReplace oldName)) }
+    ( { model | surface = Just (SurfaceQuickAdd (QuickAddUi.freshForReplace oldName)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 sortToggle : Model -> ( Model, Cmd Msg )
@@ -53,7 +53,7 @@ searchChanged text model =
 
 withQuickAddUi : (QuickAddUi -> QuickAddUi) -> Model -> Model
 withQuickAddUi =
-    Model.mapModal Model.quickAddLens
+    Model.mapSurface Model.quickAddLens
 
 
 {-| One-click placeholder: append a stub combatant via
@@ -78,7 +78,7 @@ pickPlaceholder model =
                 Nothing ->
                     Encounter.Roster.appendPlaceholder model.encounter
     in
-    ( { model | modal = Nothing, encounter = nextEncounter }, Cmd.none )
+    ( { model | surface = Nothing, encounter = nextEncounter }, Cmd.none )
 
 
 {-| Add one instance of the chosen creature to the encounter.
@@ -108,10 +108,10 @@ pick creatureId model =
                             appendAtZero source model
 
                 Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( { model | surface = Nothing }, Cmd.none )
 
         _ ->
-            ( { model | modal = Nothing }, Cmd.none )
+            ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Synchronous swap path — used by both `pick` and
@@ -136,7 +136,7 @@ replaceInPlace oldName source model =
                 source
     in
     ( { model
-        | modal = Nothing
+        | surface = Nothing
         , encounter =
             Encounter.Roster.replaceCreature oldName newCreature model.encounter
       }
@@ -159,7 +159,7 @@ appendAtZero source model =
                 source
     in
     ( { model
-        | modal = Nothing
+        | surface = Nothing
         , encounter =
             Encounter.Roster.appendCreatures [ newCreature ] model.encounter
       }
@@ -172,8 +172,8 @@ only when the modal was opened via `QuickAddOpenForReplace`.
 -}
 currentReplaceTarget : Model -> Maybe String
 currentReplaceTarget model =
-    case model.modal of
-        Just (ModalQuickAdd ui) ->
+    case model.surface of
+        Just (SurfaceQuickAdd ui) ->
             ui.replaceTarget
 
         _ ->

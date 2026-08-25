@@ -32,7 +32,7 @@ import Html.Attributes
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.Save as SaveUi
     exposing
@@ -47,8 +47,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalSave ui) ->
+    case model.surface of
+        Just (SurfaceSave ui) ->
             View.Modal.view
                 { close = SaveClose
                 , noOp = NoOp

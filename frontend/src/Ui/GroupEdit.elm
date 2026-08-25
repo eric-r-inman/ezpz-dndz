@@ -5,7 +5,7 @@ module Ui.GroupEdit exposing
     , LoreDraft, LoreMemberDraft, LoreSection, freshLoreDraft, loreDraftFromGroup, validateLoreDraft
     )
 
-{-| Modal state for the **Create / Edit Group** modal.
+{-| Surface state for the **Create / Edit Group** modal.
 
 The form mirrors [`Compendium.Group.Group`](Compendium-Group)
 field-for-field, but with string-typed numeric inputs (count,

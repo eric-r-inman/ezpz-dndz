@@ -48,7 +48,7 @@ import Dice
 import Dict
 import Effects
 import Encounter
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( DurationKind(..)
@@ -69,12 +69,12 @@ maxConditionNoteLength =
 
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
 withConditionUi =
-    Model.mapModal Model.conditionLens
+    Model.mapSurface Model.conditionLens
 
 
 openNew : String -> Model -> ( Model, Cmd Msg )
 openNew name model =
-    ( { model | modal = Just (ModalCondition (ConditionUi.fresh name)) }
+    ( { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
     , Cmd.none
     )
 
@@ -83,7 +83,7 @@ openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
     ( case Encounter.findCondition name id model.encounter of
         Just ( _, cond ) ->
-            { model | modal = Just (ModalCondition (ConditionUi.fromCondition name cond)) }
+            { model | surface = Just (SurfaceCondition (ConditionUi.fromCondition name cond)) }
 
         Nothing ->
             model
@@ -93,7 +93,7 @@ openEdit name id model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -329,8 +329,8 @@ presetSaveStart model =
         -- canonical category.  Falls back to "" when no preset is
         -- loaded.
         prefillCategory =
-            case model.modal of
-                Just (ModalCondition ui) ->
+            case model.surface of
+                Just (SurfaceCondition ui) ->
                     ui.loadedPresetName
                         |> Maybe.andThen (\name -> lookupPreset name model)
                         |> Maybe.map .category
@@ -388,8 +388,8 @@ so the title bar shows it immediately, mirroring the load flow.
 -}
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case model.surface of
+        Just (SurfaceCondition ui) ->
             let
                 trimmed =
                     Maybe.withDefault "" ui.pendingSaveName
@@ -542,14 +542,14 @@ insert (creating) or update (editing).
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case model.surface of
+        Just (SurfaceCondition ui) ->
             let
                 name =
                     String.trim ui.name
             in
             if String.isEmpty name then
-                ( { model | modal = Nothing }, Cmd.none )
+                ( { model | surface = Nothing }, Cmd.none )
 
             else
                 ( commitCondition ui name model, Cmd.none )
@@ -562,19 +562,19 @@ submit model =
 -}
 delete : Model -> ( Model, Cmd Msg )
 delete model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case model.surface of
+        Just (SurfaceCondition ui) ->
             case ui.editingId of
                 Just id ->
                     ( { model
                         | encounter = Encounter.removeCondition ui.target id model.encounter
-                        , modal = Nothing
+                        , surface = Nothing
                       }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( { model | surface = Nothing }, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -743,7 +743,7 @@ commitCondition ui name model =
                             }
                         )
                         model.encounter
-                , modal = Nothing
+                , surface = Nothing
             }
 
         Nothing ->
@@ -756,7 +756,7 @@ commitCondition ui name model =
             in
             { model
                 | encounter = List.foldl addOne model.encounter targets
-                , modal = Nothing
+                , surface = Nothing
             }
 
 

@@ -47,7 +47,7 @@ import Html.Attributes as Attr
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium as CompendiumUi exposing (CompendiumDb(..))
 import Ui.GroupEdit as GroupEdit exposing (LoreDraft, LoreMemberDraft)
@@ -58,8 +58,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalLoreEdit ui) ->
+    case model.surface of
+        Just (SurfaceLoreEdit ui) ->
             let
                 creatures =
                     case model.compendium.db of

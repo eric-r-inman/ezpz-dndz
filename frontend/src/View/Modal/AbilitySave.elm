@@ -15,7 +15,7 @@ Renders nothing when the modal isn't open.
 import Html exposing (Html, button, div, p, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), RollMode(..))
 import Ui.AbilitySave as AbilitySave exposing (AbilitySaveUi)
 import View.Modal
@@ -23,8 +23,8 @@ import View.Modal
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalAbilitySave ui) ->
+    case model.surface of
+        Just (SurfaceAbilitySave ui) ->
             View.Modal.view
                 { close = AbilitySaveClose
                 , noOp = NoOp

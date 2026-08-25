@@ -43,7 +43,7 @@ import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 import Encounter.SaveChain.Bundled
 import Encounter.SaveChain.Export
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -65,14 +65,14 @@ import Update.Toast
 
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | modal = Just (ModalSaveChain (UiSaveChain.fresh target)) }
+    ( { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 
@@ -81,9 +81,9 @@ close model =
 
 withUi : (SaveChainUi -> SaveChainUi) -> Model -> Model
 withUi fn model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
-            { model | modal = Just (ModalSaveChain (fn ui)) }
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
+            { model | surface = Just (SurfaceSaveChain (fn ui)) }
 
         _ ->
             model
@@ -281,14 +281,14 @@ presetPickerChanged name model =
     -- Auto-load: picking a preset from the dropdown loads it
     -- immediately.  Also handles the placeholder "" option —
     -- that just resets the picker without touching the form.
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 pickedUi =
                     { ui | presetPickerSelection = name }
             in
             if String.isEmpty name then
-                ( { model | modal = Just (ModalSaveChain pickedUi) }
+                ( { model | surface = Just (SurfaceSaveChain pickedUi) }
                 , Cmd.none
                 )
 
@@ -296,14 +296,14 @@ presetPickerChanged name model =
                 case Dict.get name model.saveChainPresets of
                     Just chain ->
                         ( { model
-                            | modal =
-                                Just (ModalSaveChain (UiSaveChain.fromChain pickedUi chain))
+                            | surface =
+                                Just (SurfaceSaveChain (UiSaveChain.fromChain pickedUi chain))
                           }
                         , Cmd.none
                         )
 
                     Nothing ->
-                        ( { model | modal = Just (ModalSaveChain pickedUi) }
+                        ( { model | surface = Just (SurfaceSaveChain pickedUi) }
                         , Cmd.none
                         )
 
@@ -319,13 +319,13 @@ selection without cycling through the dropdown.
 -}
 presetLoad : Model -> ( Model, Cmd Msg )
 presetLoad model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             case Dict.get ui.presetPickerSelection model.saveChainPresets of
                 Just chain ->
                     ( { model
-                        | modal =
-                            Just (ModalSaveChain (UiSaveChain.fromChain ui chain))
+                        | surface =
+                            Just (SurfaceSaveChain (UiSaveChain.fromChain ui chain))
                       }
                     , Cmd.none
                     )
@@ -344,8 +344,8 @@ the dict with a `""` key.
 -}
 presetSave : Model -> ( Model, Cmd Msg )
 presetSave model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 chain =
                     UiSaveChain.toChain ui
@@ -364,9 +364,9 @@ presetSave model =
                     modelWithPreset =
                         { model
                             | saveChainPresets = next
-                            , modal =
+                            , surface =
                                 Just
-                                    (ModalSaveChain
+                                    (SurfaceSaveChain
                                         { ui
                                             | loadedPresetName = Just trimmed
                                             , presetPickerSelection = trimmed
@@ -387,8 +387,8 @@ without loading it first.
 -}
 presetDelete : Model -> ( Model, Cmd Msg )
 presetDelete model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 targetName =
                     case ui.loadedPresetName of
@@ -408,9 +408,9 @@ presetDelete model =
                 in
                 ( { model
                     | saveChainPresets = next
-                    , modal =
+                    , surface =
                         Just
-                            (ModalSaveChain
+                            (SurfaceSaveChain
                                 { ui
                                     | loadedPresetName = Nothing
                                     , presetPickerSelection = ""
@@ -428,11 +428,11 @@ presetDelete model =
 -}
 reset : Model -> ( Model, Cmd Msg )
 reset model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             ( { model
-                | modal =
-                    Just (ModalSaveChain (UiSaveChain.fresh ui.target))
+                | surface =
+                    Just (SurfaceSaveChain (UiSaveChain.fresh ui.target))
               }
             , Cmd.none
             )
@@ -472,8 +472,8 @@ parenthesised note is left alone.
 -}
 restoreBundled : Model -> ( Model, Cmd Msg )
 restoreBundled model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 bundled =
                     Encounter.SaveChain.Bundled.defaults
@@ -490,15 +490,15 @@ restoreBundled model =
                         Just name ->
                             case Dict.get name bundled of
                                 Just chain ->
-                                    Just (ModalSaveChain (UiSaveChain.fromChain ui chain))
+                                    Just (SurfaceSaveChain (UiSaveChain.fromChain ui chain))
 
                                 Nothing ->
-                                    Just (ModalSaveChain ui)
+                                    Just (SurfaceSaveChain ui)
 
                         Nothing ->
-                            Just (ModalSaveChain ui)
+                            Just (SurfaceSaveChain ui)
             in
-            ( { model | saveChainPresets = next, modal = refreshedModal }
+            ( { model | saveChainPresets = next, surface = refreshedModal }
             , Cmd.none
             )
 
@@ -567,8 +567,8 @@ verify from Elm, so this is the only feedback the GM sees.
 -}
 exportBundled : Model -> ( Model, Cmd Msg )
 exportBundled model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 snippet =
                     Encounter.SaveChain.Export.asElm (UiSaveChain.toChain ui)
@@ -618,8 +618,8 @@ survivors, on the same open.
 -}
 applySide : SaveChainSide -> Model -> ( Model, Cmd Msg )
 applySide side model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 chain =
                     UiSaveChain.toChain ui
@@ -736,8 +736,8 @@ applyRollLanded side roll model =
         ( logged, flashCmd ) =
             Effects.pushDiceRoll roll model
     in
-    case logged.modal of
-        Just (ModalSaveChain ui) ->
+    case logged.surface of
+        Just (SurfaceSaveChain ui) ->
             let
                 chain =
                     UiSaveChain.toChain ui
@@ -920,8 +920,8 @@ case; this guard is defence in depth.
 -}
 rollSaves : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
 rollSaves mode model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             case resolveDc ui of
                 Nothing ->
                     ( model, Cmd.none )
@@ -1029,8 +1029,8 @@ afterwards.
 -}
 savesRolled : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 savesRolled results model =
-    case model.modal of
-        Just (ModalSaveChain ui) ->
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
             case resolveDc ui of
                 Nothing ->
                     ( model, Cmd.none )

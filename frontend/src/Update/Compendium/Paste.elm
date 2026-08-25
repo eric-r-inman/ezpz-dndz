@@ -12,29 +12,29 @@ short Msg branches, no Cmds beyond the modal swap on Apply.
 -}
 
 import Compendium.Parser
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Ui.Compendium as CompendiumUi exposing (EditMode(..))
 
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalCompendiumPaste CompendiumUi.emptyPaste) }
+    ( { model | surface = Just (SurfaceCompendiumPaste CompendiumUi.emptyPaste) }
     , Cmd.none
     )
 
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 textChanged : String -> Model -> ( Model, Cmd Msg )
 textChanged text model =
     ( { model
-        | modal =
+        | surface =
             Just
-                (ModalCompendiumPaste
+                (SurfaceCompendiumPaste
                     { text = text
                     , parseResult = Compendium.Parser.parseStatBlock text
                     }
@@ -52,8 +52,8 @@ provenance is preserved through save.
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.modal of
-        Just (ModalCompendiumPaste { parseResult }) ->
+    case model.surface of
+        Just (SurfaceCompendiumPaste { parseResult }) ->
             case parseResult of
                 Ok creature ->
                     let
@@ -63,7 +63,7 @@ apply model =
                         recreated =
                             { editUi | mode = CreateMode }
                     in
-                    ( { model | modal = Just (ModalCompendiumEdit recreated) }
+                    ( { model | surface = Just (SurfaceCompendiumEdit recreated) }
                     , Cmd.none
                     )
 

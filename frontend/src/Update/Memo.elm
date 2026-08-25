@@ -6,14 +6,14 @@ from the long-lived `note` annotation in `Update.Note`.
 -}
 
 import Encounter
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Ui.Memo as MemoUi exposing (MemoEditUi)
 
 
 withMemoEdit : (MemoEditUi -> MemoEditUi) -> Model -> Model
 withMemoEdit =
-    Model.mapModal Model.memoLens
+    Model.mapSurface Model.memoLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )
@@ -26,7 +26,7 @@ open name model =
                 |> Maybe.map .memo
                 |> Maybe.withDefault ""
     in
-    ( { model | modal = Just (ModalMemoEdit (MemoUi.fresh name current)) }
+    ( { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
     , Cmd.none
     )
 
@@ -40,8 +40,8 @@ change text model =
 
 commit : Model -> ( Model, Cmd Msg )
 commit model =
-    case model.modal of
-        Just (ModalMemoEdit ui) ->
+    case model.surface of
+        Just (SurfaceMemoEdit ui) ->
             let
                 trimmed =
                     String.trim ui.text
@@ -51,7 +51,7 @@ commit model =
                     Encounter.mapCreature ui.target
                         (\c -> { c | memo = trimmed })
                         model.encounter
-                , modal = Nothing
+                , surface = Nothing
               }
             , Cmd.none
             )
@@ -62,7 +62,7 @@ commit model =
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Drop the memo from the named creature (the inline ✕ on the

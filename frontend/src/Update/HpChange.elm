@@ -29,7 +29,7 @@ import Dice
 import Effects
 import Encounter exposing (Creature, Encounter)
 import HpChange
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( HpField(..)
@@ -44,19 +44,19 @@ is closed (or a different modal is open).
 -}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
 withHpChange =
-    Model.mapModal Model.hpChangeLens
+    Model.mapSurface Model.hpChangeLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | modal = Just (ModalHpChange (HpChangeUi.fresh target)) }
+    ( { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Mirror the raw text for the controlled input. Clears any
@@ -96,14 +96,14 @@ on what the input looks like:
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
 applyAs kind model =
-    case model.modal of
-        Just (ModalHpChange ui) ->
+    case model.surface of
+        Just (SurfaceHpChange ui) ->
             let
                 withKind =
                     { ui | kind = kind }
 
                 modelWithKind =
-                    { model | modal = Just (ModalHpChange withKind) }
+                    { model | surface = Just (SurfaceHpChange withKind) }
 
                 trimmed =
                     String.trim withKind.amountText
@@ -158,8 +158,8 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
 
         committed =
-            case logged.modal of
-                Just (ModalHpChange ui) ->
+            case logged.surface of
+                Just (SurfaceHpChange ui) ->
                     applyHpChangeAndClose ui roll.total logged
 
                 _ ->
@@ -408,7 +408,7 @@ applyHpChangeAndClose ui amount model =
     in
     { model
         | encounter = result.encounter
-        , modal = Nothing
+        , surface = Nothing
         , hpChangeLog =
             List.reverse result.log
                 ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog

@@ -31,7 +31,7 @@ import Compendium exposing (Creature)
 import Encounter
 import Encounter.RandomEncounter as RE exposing (Scale(..), TargetDifficulty(..))
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -59,14 +59,14 @@ open model =
             else
                 model
     in
-    ( { seeded | modal = Just (ModalRandomEncounter Ui.fresh) }
+    ( { seeded | surface = Just (SurfaceRandomEncounter Ui.fresh) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 
@@ -102,7 +102,7 @@ difficultySet raw model =
     in
     case decoded of
         Just d ->
-            ( Model.mapModal Model.randomEncounterLens
+            ( Model.mapSurface Model.randomEncounterLens
                 (\ui -> { ui | difficulty = d, roll = RollIdle })
                 model
             , Cmd.none
@@ -127,7 +127,7 @@ habitatSet raw model =
             else
                 Compendium.habitatFromWire raw
     in
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui -> { ui | habitat = habitat, roll = RollIdle })
         model
     , Cmd.none
@@ -141,7 +141,7 @@ scaleSet : String -> Model -> ( Model, Cmd Msg )
 scaleSet raw model =
     case RE.scaleFromWire raw of
         Just s ->
-            ( Model.mapModal Model.randomEncounterLens
+            ( Model.mapSurface Model.randomEncounterLens
                 (\ui -> { ui | scale = s, roll = RollIdle })
                 model
             , Cmd.none
@@ -168,7 +168,7 @@ the "add another" picker.
 -}
 creatureTypeAt : Int -> String -> Model -> ( Model, Cmd Msg )
 creatureTypeAt index raw model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | creatureTypes = updateTypeSlot index raw ui.creatureTypes
@@ -218,7 +218,7 @@ discipline as the other param setters.
 -}
 minionsToggle : Model -> ( Model, Cmd Msg )
 minionsToggle model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | includeMinions = not ui.includeMinions
@@ -236,7 +236,7 @@ as before. Same reset-roll discipline.
 -}
 loreToggle : Model -> ( Model, Cmd Msg )
 loreToggle model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | loreLeaning = not ui.loreLeaning
@@ -259,7 +259,7 @@ field on close so the next open starts fresh.
 -}
 pinPickerToggle : Model -> ( Model, Cmd Msg )
 pinPickerToggle model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             let
                 opening =
@@ -299,7 +299,7 @@ or removing a pin does.
 -}
 pinSearchChanged : String -> Model -> ( Model, Cmd Msg )
 pinSearchChanged raw model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui -> { ui | pinSearch = raw })
         model
     , Cmd.none
@@ -321,7 +321,7 @@ pinAdd id model =
         CompendiumDbLoaded db ->
             case Compendium.find id db of
                 Just creature ->
-                    ( Model.mapModal Model.randomEncounterLens
+                    ( Model.mapSurface Model.randomEncounterLens
                         (\ui ->
                             { ui
                                 | pinned = bumpPin creature ui.pinned
@@ -372,7 +372,7 @@ surprise "row disappeared" jump.
 -}
 pinDecrement : String -> Model -> ( Model, Cmd Msg )
 pinDecrement id model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | pinned =
@@ -397,7 +397,7 @@ pinDecrement id model =
 -}
 pinRemove : String -> Model -> ( Model, Cmd Msg )
 pinRemove id model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | pinned = List.filter (\( c, _ ) -> c.id /= id) ui.pinned
@@ -418,7 +418,7 @@ with the pin picker — opening this one closes the pin picker.
 -}
 excludePickerToggle : Model -> ( Model, Cmd Msg )
 excludePickerToggle model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             let
                 opening =
@@ -453,7 +453,7 @@ excludePickerToggle model =
 
 excludeSearchChanged : String -> Model -> ( Model, Cmd Msg )
 excludeSearchChanged raw model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui -> { ui | excludeSearch = raw })
         model
     , Cmd.none
@@ -470,7 +470,7 @@ excludeAdd id model =
         CompendiumDbLoaded db ->
             case Compendium.find id db of
                 Just creature ->
-                    ( Model.mapModal Model.randomEncounterLens
+                    ( Model.mapSurface Model.randomEncounterLens
                         (\ui ->
                             { ui
                                 | excluded =
@@ -496,7 +496,7 @@ excludeAdd id model =
 
 excludeRemove : String -> Model -> ( Model, Cmd Msg )
 excludeRemove id model =
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui ->
             { ui
                 | excluded = List.filter (\c -> c.id /= id) ui.excluded
@@ -520,8 +520,8 @@ this is defensive belt-and-suspenders.
 -}
 generate : Model -> ( Model, Cmd Msg )
 generate model =
-    case ( model.modal, model.compendium.db ) of
-        ( Just (ModalRandomEncounter ui), CompendiumDbLoaded db ) ->
+    case ( model.surface, model.compendium.db ) of
+        ( Just (SurfaceRandomEncounter ui), CompendiumDbLoaded db ) ->
             let
                 budget =
                     RE.budgetFor model.party ui.difficulty
@@ -565,7 +565,7 @@ rolled groups minionIds model =
             else
                 RollOk groups minionIds
     in
-    ( Model.mapModal Model.randomEncounterLens
+    ( Model.mapSurface Model.randomEncounterLens
         (\ui -> { ui | roll = next })
         model
     , Cmd.none
@@ -591,8 +591,8 @@ The modal closes after adding; a toast confirms the count.
 -}
 addToEncounter : Model -> ( Model, Cmd Msg )
 addToEncounter model =
-    case model.modal of
-        Just (ModalRandomEncounter ui) ->
+    case model.surface of
+        Just (SurfaceRandomEncounter ui) ->
             case ui.roll of
                 RollOk groups _ ->
                     let
@@ -608,7 +608,7 @@ addToEncounter model =
                                     Encounter.Roster.appendCreatures
                                         instances
                                         model.encounter
-                                , modal = Nothing
+                                , surface = Nothing
                             }
                     in
                     if count == 0 then

@@ -19,7 +19,7 @@ local because it's a transient view-of-the-day decision.
 
 import Encounter.Difficulty as Difficulty
 import Encounter.Xp as Xp
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.CrCalculator as CrCalc
 
@@ -52,14 +52,14 @@ open model =
             else
                 model
     in
-    ( { seeded | modal = Just (ModalCrCalculator CrCalc.fresh) }
+    ( { seeded | surface = Just (SurfaceCrCalculator CrCalc.fresh) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 
@@ -68,7 +68,7 @@ close model =
 
 scopeSet : Xp.XpScope -> Model -> ( Model, Cmd Msg )
 scopeSet scope model =
-    ( Model.mapModal Model.crCalculatorLens
+    ( Model.mapSurface Model.crCalculatorLens
         (\ui -> { ui | scope = scope })
         model
     , Cmd.none

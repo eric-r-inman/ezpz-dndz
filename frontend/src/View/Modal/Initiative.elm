@@ -9,7 +9,7 @@ Closes on backdrop click or Cancel.
 import Html exposing (Html, button, div, h3, input, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -24,8 +24,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
             let
                 selectedCount =
                     List.length (List.filter .selected model.encounter.creatures)

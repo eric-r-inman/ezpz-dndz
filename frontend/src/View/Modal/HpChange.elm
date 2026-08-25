@@ -21,7 +21,7 @@ import Encounter exposing (Encounter)
 import Html exposing (Html, button, div, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( HpKind(..)
@@ -35,8 +35,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalHpChange ui) ->
+    case model.surface of
+        Just (SurfaceHpChange ui) ->
             View.Modal.view
                 { close = HpChangeClose
                 , noOp = NoOp

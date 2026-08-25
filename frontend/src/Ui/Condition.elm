@@ -34,7 +34,7 @@ import Msg exposing (DurationKind(..))
 import Set exposing (Set)
 
 
-{-| Modal state for the Add / Edit Condition dialog.
+{-| Surface state for the Add / Edit Condition dialog.
 
 The "until turn" duration shape no longer carries an explicit
 "current vs next" choice — every condition expires when the

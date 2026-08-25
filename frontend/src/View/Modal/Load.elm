@@ -35,7 +35,7 @@ import Html.Attributes
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (LoadSource(..), Msg(..))
 import Ui.Load as LoadUi
     exposing
@@ -50,8 +50,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalLoad ui) ->
+    case model.surface of
+        Just (SurfaceLoad ui) ->
             View.Modal.view
                 { close = LoadClose
                 , noOp = NoOp

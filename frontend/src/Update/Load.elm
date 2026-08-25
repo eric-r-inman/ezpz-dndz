@@ -42,7 +42,7 @@ import File exposing (File)
 import File.Select
 import Http
 import Json.Decode as Decode
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Task
 import Ui.Load as LoadUi exposing (ConfirmAction(..), LoadListState(..), LoadUi)
@@ -53,7 +53,7 @@ import Util.Http
 
 withLoadUi : (LoadUi -> LoadUi) -> Model -> Model
 withLoadUi =
-    Model.mapModal Model.loadLens
+    Model.mapSurface Model.loadLens
 
 
 open : Model -> ( Model, Cmd Msg )
@@ -73,7 +73,7 @@ open model =
         primedUi =
             { baseUi | saves = saves }
     in
-    ( { model | modal = Just (ModalLoad primedUi), controlMenu = Nothing }
+    ( { model | surface = Just (SurfaceLoad primedUi), controlMenu = Nothing }
     , listCmd
     )
 
@@ -88,7 +88,7 @@ localSavesMetas model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Flip the source radio between Server / Device. Clears any
@@ -136,8 +136,8 @@ confirmCancel model =
 
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.modal of
-        Just (ModalLoad ui) ->
+    case model.surface of
+        Just (SurfaceLoad ui) ->
             case ui.confirm of
                 Just (ConfirmLoad name) ->
                     case model.auth of
@@ -208,7 +208,7 @@ applyLocalLoad name model =
                         | encounter = fresh
                         , savedSnapshot = Just fresh
                         , savedAs = Just name
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
@@ -282,7 +282,7 @@ serverResponse name result model =
                         | encounter = fresh
                         , savedSnapshot = Just fresh
                         , savedAs = Just name
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
@@ -373,8 +373,8 @@ renameChange text model =
 
 renameSubmit : Model -> ( Model, Cmd Msg )
 renameSubmit model =
-    case model.modal of
-        Just (ModalLoad ui) ->
+    case model.surface of
+        Just (SurfaceLoad ui) ->
             case ui.renaming of
                 Just { original, draft } ->
                     let
@@ -532,7 +532,7 @@ fromDeviceFileRead raw model =
                         | encounter = fresh
                         , savedSnapshot = Just fresh
                         , savedAs = Nothing
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess "Loaded encounter from file." next

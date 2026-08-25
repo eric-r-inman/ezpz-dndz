@@ -10,15 +10,15 @@ these handlers just flip the modal slot.
 
 -}
 
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just ModalSpellList }, Cmd.none )
+    ( { model | surface = Just SurfaceSpellList }, Cmd.none )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )

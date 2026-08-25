@@ -836,7 +836,7 @@ type Msg
       -- now lives outside the Create/Edit Group modal so the
       -- Compendium can surface lore groups as a peer of regular
       -- groups.  These msgs mirror the GroupEditLore* set but
-      -- target `ModalLoreEdit`.
+      -- target `SurfaceLoreEdit`.
     | LoreEditOpenNew
     | LoreEditOpenExisting String
     | LoreEditClose
@@ -1385,7 +1385,7 @@ type Msg
     | AccountConfirmPasswordChanged String
     | AccountPasswordSubmit
     | AccountPasswordChanged (Result Http.Error ())
-      -- Modal chrome (drag-to-move, edge-resize).  The chrome
+      -- Surface chrome (drag-to-move, edge-resize).  The chrome
       -- state lives on `model.modalChrome`; subscriptions
       -- listen for mousemove / mouseup while a gesture is in
       -- flight.  See Update.ModalChrome + Ui.ModalChrome.

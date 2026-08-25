@@ -18,8 +18,8 @@ Sections, top to bottom:
     a friendly "no matches" notice instead of a stale prior
     roll.
 
-Renders nothing when `model.modal` isn't
-`Just ModalRandomEncounter`.
+Renders nothing when `model.surface` isn't
+`Just SurfaceRandomEncounter`.
 
 -}
 
@@ -55,7 +55,7 @@ import Html.Attributes as Attr
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
@@ -65,8 +65,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalRandomEncounter ui) ->
+    case model.surface of
+        Just (SurfaceRandomEncounter ui) ->
             View.Modal.view
                 { close = RandomEncounterClose
                 , noOp = NoOp

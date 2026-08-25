@@ -32,7 +32,7 @@ to a stale modal).
 import Compendium
 import Encounter exposing (Creature)
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -41,14 +41,14 @@ import Ui.Duplicate as DuplicateUi
 
 open : String -> Model -> ( Model, Cmd Msg )
 open creatureName model =
-    ( { model | modal = Just (ModalDuplicate (DuplicateUi.fresh creatureName)) }
+    ( { model | surface = Just (SurfaceDuplicate (DuplicateUi.fresh creatureName)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Exact mode: full clone via the existing Roster helper.
@@ -59,14 +59,14 @@ exact model =
     case sourceName model of
         Just name ->
             ( { model
-                | modal = Nothing
+                | surface = Nothing
                 , encounter = Encounter.Roster.duplicateCreature name model.encounter
               }
             , Cmd.none
             )
 
         Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+            ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Fresh mode: build from compendium with unmodified state.
@@ -114,12 +114,12 @@ pudding : Model -> ( Model, Cmd Msg )
 pudding model =
     case sourceName model of
         Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+            ( { model | surface = Nothing }, Cmd.none )
 
         Just name ->
             case findCreature name model.encounter.creatures of
                 Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( { model | surface = Nothing }, Cmd.none )
 
                 Just src ->
                     let
@@ -135,7 +135,7 @@ pudding model =
                         finalEnc =
                             Encounter.Roster.removeCreature name afterSecond
                     in
-                    ( { model | modal = Nothing, encounter = finalEnc }
+                    ( { model | surface = Nothing, encounter = finalEnc }
                     , Cmd.none
                     )
 
@@ -228,7 +228,7 @@ freshLike : NameMode -> (Creature -> Creature) -> Model -> ( Model, Cmd Msg )
 freshLike nameMode tweak model =
     case sourceName model of
         Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+            ( { model | surface = Nothing }, Cmd.none )
 
         Just name ->
             case ( findCreature name model.encounter.creatures, compendiumDb model ) of
@@ -260,7 +260,7 @@ freshLike nameMode tweak model =
                                         |> tweak
                             in
                             ( { model
-                                | modal = Nothing
+                                | surface = Nothing
                                 , encounter =
                                     Encounter.Roster.insertCopyAfter name copy model.encounter
                               }
@@ -276,13 +276,13 @@ freshLike nameMode tweak model =
                     exactInline name model
 
                 _ ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( { model | surface = Nothing }, Cmd.none )
 
 
 exactInline : String -> Model -> ( Model, Cmd Msg )
 exactInline name model =
     ( { model
-        | modal = Nothing
+        | surface = Nothing
         , encounter = Encounter.Roster.duplicateCreature name model.encounter
       }
     , Cmd.none
@@ -291,8 +291,8 @@ exactInline name model =
 
 sourceName : Model -> Maybe String
 sourceName model =
-    case model.modal of
-        Just (ModalDuplicate ui) ->
+    case model.surface of
+        Just (SurfaceDuplicate ui) ->
             Just ui.creatureName
 
         _ ->

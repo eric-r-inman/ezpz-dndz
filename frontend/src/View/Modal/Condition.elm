@@ -13,7 +13,7 @@ import Html exposing (Html, button, div, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( DurationKind(..)
@@ -30,8 +30,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case model.surface of
+        Just (SurfaceCondition ui) ->
             let
                 presetSuffix =
                     case ui.loadedPresetName of

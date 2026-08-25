@@ -59,7 +59,7 @@ import Html.Attributes as Attr
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CoinField(..)
@@ -77,8 +77,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalTreasureTable ui) ->
+    case model.surface of
+        Just (SurfaceTreasureTable ui) ->
             let
                 dirty =
                     TreasureTableUi.isDirty ui

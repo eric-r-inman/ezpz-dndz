@@ -12,7 +12,7 @@ so the result lands in the dice modal alongside everything else.
 
 import Dice
 import Effects
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), RollMode(..))
 import Ui.AbilitySave as AbilitySave exposing (AbilitySaveUi, RollKind)
 import Update.Dice
@@ -21,9 +21,9 @@ import Update.Dice
 open : RollKind -> String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
 open kind creatureName ability bonus clickX clickY model =
     ( { model
-        | modal =
+        | surface =
             Just
-                (ModalAbilitySave
+                (SurfaceAbilitySave
                     (AbilitySave.fresh kind creatureName ability bonus clickX clickY)
                 )
       }
@@ -33,7 +33,7 @@ open kind creatureName ability bonus clickX clickY model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Fire a save roll in the requested mode and close the modal.
@@ -42,9 +42,9 @@ shared dice history just like any other source.
 -}
 roll : RollMode -> Model -> ( Model, Cmd Msg )
 roll mode model =
-    case model.modal of
-        Just (ModalAbilitySave ui) ->
-            ( { model | modal = Nothing }
+    case model.surface of
+        Just (SurfaceAbilitySave ui) ->
+            ( { model | surface = Nothing }
             , rollCmd mode ui
             )
 

@@ -25,7 +25,7 @@ import Dice
 import Effects
 import Encounter exposing (Creature)
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -41,19 +41,19 @@ the modal is closed (or a different modal is open).
 -}
 withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
 withInitiative =
-    Model.mapModal Model.initiativeLens
+    Model.mapSurface Model.initiativeLens
 
 
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | modal = Just (ModalInitiative (InitiativeUi.fresh target)) }
+    ( { model | surface = Just (SurfaceInitiative (InitiativeUi.fresh target)) }
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )
@@ -67,7 +67,7 @@ quickSort : Model -> ( Model, Cmd Msg )
 quickSort model =
     ( { model
         | encounter = Encounter.Roster.sortByInitiative model.encounter
-        , modal = Nothing
+        , surface = Nothing
       }
     , Cmd.none
     )
@@ -85,8 +85,8 @@ autoRoll scope mode model =
         creatures =
             case scope of
                 ScopeTarget ->
-                    case model.modal of
-                        Just (ModalInitiative ui) ->
+                    case model.surface of
+                        Just (SurfaceInitiative ui) ->
                             List.filter
                                 (\c -> c.name == ui.target)
                                 model.encounter.creatures
@@ -109,8 +109,8 @@ not the value parsed; an unparsable input gets silently discarded
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
 applyTarget model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
             ( applyCustomInitiative [ ui.target ] ui model
             , Cmd.none
             )
@@ -121,8 +121,8 @@ applyTarget model =
 
 applySelected : Model -> ( Model, Cmd Msg )
 applySelected model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
             let
                 targets =
                     List.filter .selected model.encounter.creatures
@@ -155,8 +155,8 @@ autoRollSurprised scope model =
 
 applyTargetSurprised : Model -> ( Model, Cmd Msg )
 applyTargetSurprised model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
             ( applyCustomInitiative [ ui.target ]
                 ui
                 (flagSurprised [ ui.target ] model)
@@ -169,8 +169,8 @@ applyTargetSurprised model =
 
 applySelectedSurprised : Model -> ( Model, Cmd Msg )
 applySelectedSurprised model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
             let
                 targets =
                     List.filter .selected model.encounter.creatures
@@ -188,8 +188,8 @@ scopeCreatures : RollScope -> Model -> List Encounter.Creature
 scopeCreatures scope model =
     case scope of
         ScopeTarget ->
-            case model.modal of
-                Just (ModalInitiative ui) ->
+            case model.surface of
+                Just (SurfaceInitiative ui) ->
                     List.filter (\c -> c.name == ui.target) model.encounter.creatures
 
                 _ ->
@@ -249,7 +249,7 @@ rollsLanded results model =
     in
     ( { m1
         | encounter = Encounter.Roster.sortByInitiative m1.encounter
-        , modal = Nothing
+        , surface = Nothing
       }
     , Cmd.batch
         (List.map Effects.persistDiceRoll rolls ++ flashCmds)
@@ -349,8 +349,8 @@ applyCustomInitiative names ui model =
             in
             { m1
                 | encounter = Encounter.Roster.sortByInitiative m1.encounter
-                , modal = Nothing
+                , surface = Nothing
             }
 
         Nothing ->
-            { model | modal = Nothing }
+            { model | surface = Nothing }

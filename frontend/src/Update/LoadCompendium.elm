@@ -28,7 +28,7 @@ import Compendium.Group
 import Compendium.Wire
 import Effects
 import Http
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium as CompendiumUi
 import Ui.LoadCompendium as LoadCompendiumUi
@@ -44,13 +44,13 @@ import Util.Http
 
 withLoadUi : (LoadCompendiumUi -> LoadCompendiumUi) -> Model -> Model
 withLoadUi =
-    Model.mapModal Model.loadCompendiumLens
+    Model.mapSurface Model.loadCompendiumLens
 
 
 open : Model -> ( Model, Cmd Msg )
 open model =
     ( { model
-        | modal = Just (ModalLoadCompendium LoadCompendiumUi.fresh)
+        | surface = Just (SurfaceLoadCompendium LoadCompendiumUi.fresh)
         , compendium = CompendiumUi.closeMenus model.compendium
       }
     , Compendium.Wire.listCompendiumSavesCmd LoadCompendiumListLoaded
@@ -59,7 +59,7 @@ open model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Flip the source radio between Server and Device. Clears
@@ -106,8 +106,8 @@ confirmCancel model =
 
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.modal of
-        Just (ModalLoadCompendium ui) ->
+    case model.surface of
+        Just (SurfaceLoadCompendium ui) ->
             case ui.confirm of
                 Just (ConfirmLoad name) ->
                     ( withLoadUi
@@ -158,7 +158,7 @@ serverResponse name result model =
             let
                 next =
                     { model
-                        | modal = Nothing
+                        | surface = Nothing
                         , compendium =
                             CompendiumUi.markSaved name model.compendium
                     }

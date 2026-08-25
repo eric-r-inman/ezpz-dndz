@@ -17,7 +17,7 @@ a focus-management contract:
 
   - `closeBtnId` — stable id for the modal `×` button. `Main`
     wraps `update` to fire `focusInitial` whenever
-    `model.modal` transitions from `Nothing` to `Just _`, so
+    `model.surface` transitions from `Nothing` to `Just _`, so
     keyboard / SR users land inside the dialog the moment it
     appears.
   - A focus sentinel `<div class="modal__focus-sentinel">` at
@@ -88,7 +88,7 @@ and accidentally close the dialog.
     no-Cmd-needed side effect from the caller's POV; see the
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
-  - `extraClass` — extra class on the inner `.modal` div, used
+  - `extraClass` — extra class on the inner `.surface` div, used
     for per-modal sizing (`"modal--initiative"`,
     `"modal--condition"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
@@ -217,7 +217,7 @@ and cursors live in CSS (`.modal__resize-*`).
 
 The handle's mousedown decoder reads `currentTarget.parentElement.
 offsetWidth / offsetHeight` to capture the LIVE rendered size of
-the parent `.modal` element. Doing it this way (instead of
+the parent `.surface` element. Doing it this way (instead of
 passing a guess from the Elm side) is what keeps the modal from
 snapping to a fallback size the moment the user clicks a handle
 on a freshly-opened modal — `chrome.size` is `Nothing` until the
@@ -264,7 +264,7 @@ position, and the modal's LIVE rendered size (read from the DOM
 via `currentTarget.parentElement.offsetWidth / offsetHeight`).
 
 The parent-element walk depends on the markup contract that
-each `.modal__resize` handle is a direct child of the `.modal`
+each `.modal__resize` handle is a direct child of the `.surface`
 div (see `resizeHandles`). `offsetWidth / offsetHeight` give the
 rounded integer pixel size including padding+border, which is
 what the resize math wants.

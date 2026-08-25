@@ -20,7 +20,7 @@ import Encounter exposing (Creature)
 import Html exposing (Html, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Duplicate exposing (DuplicateUi)
@@ -30,8 +30,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalDuplicate ui) ->
+    case model.surface of
+        Just (SurfaceDuplicate ui) ->
             View.Modal.view
                 { close = DuplicateClose
                 , noOp = NoOp

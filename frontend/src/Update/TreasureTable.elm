@@ -66,7 +66,7 @@ open model =
         snapshot =
             Maybe.withDefault Treasure.bundledTable model.userTreasureTable
     in
-    ( { model | modal = Just (Model.ModalTreasureTable (Ui.fresh snapshot)) }
+    ( { model | surface = Just (Model.SurfaceTreasureTable (Ui.fresh snapshot)) }
     , Cmd.none
     )
 
@@ -93,12 +93,12 @@ keep their edits without losing them.
 -}
 save : Model -> ( Model, Cmd Msg )
 save model =
-    case ( model.modal, model.auth ) of
-        ( Just (Model.ModalTreasureTable ui), Auth.AuthAuthenticated _ ) ->
+    case ( model.surface, model.auth ) of
+        ( Just (Model.SurfaceTreasureTable ui), Auth.AuthAuthenticated _ ) ->
             Update.Treasure.open
                 { model | userTreasureTable = Just ui.draft }
 
-        ( Just (Model.ModalTreasureTable _), _ ) ->
+        ( Just (Model.SurfaceTreasureTable _), _ ) ->
             Update.Toast.push ToastError
                 "You must be signed in to save edits to the treasure tables."
                 model
@@ -130,7 +130,7 @@ toggleSection kind key model =
                 _ ->
                     Ui.FlatSection kind key
     in
-    ( Model.mapModal Model.treasureTableLens
+    ( Model.mapSurface Model.treasureTableLens
         (Ui.toggleSection section)
         model
     , Cmd.none
@@ -149,7 +149,7 @@ proper, which is what triggers the persistence hook.
 -}
 mutateTable : (TreasureTable -> TreasureTable) -> Model -> ( Model, Cmd Msg )
 mutateTable fn model =
-    ( Model.mapModal Model.treasureTableLens (Ui.withDraft fn) model
+    ( Model.mapSurface Model.treasureTableLens (Ui.withDraft fn) model
     , Cmd.none
     )
 
@@ -409,7 +409,7 @@ revertConfirm model =
 
 setConfirmRevert : Bool -> Model -> ( Model, Cmd Msg )
 setConfirmRevert flag model =
-    ( Model.mapModal Model.treasureTableLens
+    ( Model.mapSurface Model.treasureTableLens
         (\ui -> { ui | confirmRevert = flag })
         model
     , Cmd.none

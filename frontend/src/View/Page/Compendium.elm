@@ -7,7 +7,7 @@ Compendium modal header. The GM parks this on a second monitor
 so they can search / browse / edit the library without
 covering the encounter grid in the main tab.
 
-The render uses [`View.Modal.Compendium.pageBody`](View-Modal-Compendium#pageBody)
+The render uses [`View.Modal.Compendium.pageBody`](View-Surface-Compendium#pageBody)
 so this page and the modal share the same interactive surface
 (search, sort, filters, paste, edit) — only the wrapper
 differs. The AppBar is suppressed on this route, matching

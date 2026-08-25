@@ -36,7 +36,7 @@ import Dict exposing (Dict)
 import Encounter.RandomEncounter.Lore as Lore
 import Encounter.RandomEncounter.Lore.Suggest as Suggest
 import Http
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Set
 import Ui.Compendium as CompendiumUi
@@ -59,7 +59,7 @@ import Util.Http
 
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalGroupEdit GroupEdit.fresh) }
+    ( { model | surface = Just (SurfaceGroupEdit GroupEdit.fresh) }
     , Cmd.none
     )
 
@@ -73,7 +73,7 @@ openFromSelected model =
         ui =
             GroupEdit.freshFromSelected selected
     in
-    ( { model | modal = Just (ModalGroupEdit ui) }
+    ( { model | surface = Just (SurfaceGroupEdit ui) }
     , Cmd.none
     )
 
@@ -82,7 +82,7 @@ openExisting : String -> Model -> ( Model, Cmd Msg )
 openExisting groupId model =
     case Dict.get groupId model.compendium.groups of
         Just group ->
-            ( { model | modal = Just (ModalGroupEdit (GroupEdit.fromGroup group)) }
+            ( { model | surface = Just (SurfaceGroupEdit (GroupEdit.fromGroup group)) }
             , Cmd.none
             )
 
@@ -92,7 +92,7 @@ openExisting groupId model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 
@@ -226,7 +226,7 @@ fields intact so the GM can correct the issue.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case Maybe.andThen Model.groupEditLens.extract model.modal of
+    case Maybe.andThen Model.groupEditLens.extract model.surface of
         Nothing ->
             ( model, Cmd.none )
 
@@ -288,7 +288,7 @@ applyLocalGroupSubmit mode validated model =
                     ( validated, model )
 
         next =
-            { withId | modal = Nothing }
+            { withId | surface = Nothing }
                 |> withCompendium (CompendiumUi.addGroup finalGroup)
     in
     Update.Toast.push ToastSuccess
@@ -323,7 +323,7 @@ created result model =
             )
 
         Ok group ->
-            { model | modal = Nothing }
+            { model | surface = Nothing }
                 |> withCompendium (CompendiumUi.addGroup group)
                 |> Update.Toast.push ToastSuccess
                     ("Group \"" ++ group.name ++ "\" created.")
@@ -348,7 +348,7 @@ updated result model =
             )
 
         Ok group ->
-            { model | modal = Nothing }
+            { model | surface = Nothing }
                 |> withCompendium (CompendiumUi.addGroup group)
                 |> Update.Toast.push ToastSuccess
                     ("Group \"" ++ group.name ++ "\" saved.")
@@ -480,7 +480,7 @@ deleteResponse groupId result model =
 
 withGroupEdit : (GroupEdit.GroupEditUi -> GroupEdit.GroupEditUi) -> Model -> Model
 withGroupEdit fn model =
-    Model.mapModal Model.groupEditLens fn model
+    Model.mapSurface Model.groupEditLens fn model
 
 
 removeAt : Int -> List a -> List a
@@ -542,7 +542,7 @@ a panel).
 -}
 loreDraftTest : Model -> ( Model, Cmd Msg )
 loreDraftTest model =
-    case Maybe.andThen Model.groupEditLens.extract model.modal of
+    case Maybe.andThen Model.groupEditLens.extract model.surface of
         Just ui ->
             case ui.lore.editing of
                 Just draft ->
@@ -661,7 +661,7 @@ otherwise) and close the draft.
 -}
 loreDraftSubmit : Model -> ( Model, Cmd Msg )
 loreDraftSubmit model =
-    case Maybe.andThen Model.groupEditLens.extract model.modal of
+    case Maybe.andThen Model.groupEditLens.extract model.surface of
         Just ui ->
             case ui.lore.editing of
                 Just draft ->
@@ -719,7 +719,7 @@ loreDeleteCancel model =
 
 loreDeleteConfirm : Model -> ( Model, Cmd Msg )
 loreDeleteConfirm model =
-    case Maybe.andThen Model.groupEditLens.extract model.modal of
+    case Maybe.andThen Model.groupEditLens.extract model.surface of
         Just ui ->
             case ui.lore.confirmDelete of
                 Just id ->

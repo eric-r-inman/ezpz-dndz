@@ -31,7 +31,7 @@ import Html.Attributes
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.SaveCompendium as SaveCompendiumUi
     exposing
@@ -46,8 +46,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalSaveCompendium ui) ->
+    case model.surface of
+        Just (SurfaceSaveCompendium ui) ->
             View.Modal.view
                 { close = SaveCompendiumClose
                 , noOp = NoOp

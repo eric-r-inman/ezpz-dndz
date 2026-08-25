@@ -9,7 +9,7 @@ import Compendium.Parser
 import Html exposing (Html, button, div, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, placeholder, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumPasteUi)
 import View.Modal
@@ -19,8 +19,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalCompendiumPaste ui) ->
+    case model.surface of
+        Just (SurfaceCompendiumPaste ui) ->
             View.Modal.view
                 { close = CompendiumPasteCancel
                 , noOp = NoOp

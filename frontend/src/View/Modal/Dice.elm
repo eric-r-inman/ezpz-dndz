@@ -1,7 +1,7 @@
 module View.Modal.Dice exposing (view)
 
 {-| Dice roller modal. Renders nothing while closed, the full
-overlay while open. Modal chrome (backdrop, header, ✕ button,
+overlay while open. Surface chrome (backdrop, header, ✕ button,
 click-out / Esc to close) is delegated to `View.Modal.view`.
 -}
 

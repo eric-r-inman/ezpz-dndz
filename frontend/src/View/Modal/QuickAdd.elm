@@ -20,7 +20,7 @@ import Compendium
 import Html exposing (Html, button, div, input, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddSort(..), QuickAddUi)
@@ -30,8 +30,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalQuickAdd ui) ->
+    case model.surface of
+        Just (SurfaceQuickAdd ui) ->
             let
                 title =
                     case ui.replaceTarget of

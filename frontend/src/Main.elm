@@ -34,7 +34,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
@@ -241,8 +241,8 @@ subscriptions model =
                     []
 
         conditionPresetLoadMenuSubs =
-            case model.modal of
-                Just (ModalCondition ui) ->
+            case model.surface of
+                Just (SurfaceCondition ui) ->
                     if ui.loadMenuOpen then
                         [ Browser.Events.onKeyDown (escKey ConditionPresetLoadMenuClose)
                         , Browser.Events.onMouseDown (Decode.succeed ConditionPresetLoadMenuClose)
@@ -255,8 +255,8 @@ subscriptions model =
                     []
 
         timerPresetLoadMenuSubs =
-            case model.modal of
-                Just (ModalTimerSetup ui) ->
+            case model.surface of
+                Just (SurfaceTimerSetup ui) ->
                     if ui.loadMenuOpen then
                         [ Browser.Events.onKeyDown (escKey TimerPresetLoadMenuClose)
                         , Browser.Events.onMouseDown (Decode.succeed TimerPresetLoadMenuClose)
@@ -279,7 +279,7 @@ subscriptions model =
             else
                 []
 
-        -- Modal chrome drag / resize subscriptions.  Only active
+        -- Surface chrome drag / resize subscriptions.  Only active
         -- while a gesture is in flight — the rest of the time
         -- mousemove / mouseup go through the browser's default
         -- handling.
@@ -303,35 +303,35 @@ subscriptions model =
                 Browser.Events.onKeyDown (escKey CloseDice)
 
             else
-                case model.modal of
-                    Just (ModalCompendiumPaste _) ->
+                case model.surface of
+                    Just (SurfaceCompendiumPaste _) ->
                         Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
 
-                    Just (ModalCompendiumEdit _) ->
+                    Just (SurfaceCompendiumEdit _) ->
                         Browser.Events.onKeyDown (escKey CompendiumEditCancel)
 
-                    Just (ModalNoteEdit _) ->
+                    Just (SurfaceNoteEdit _) ->
                         Browser.Events.onKeyDown (escKey NoteEditCancel)
 
-                    Just (ModalSave _) ->
+                    Just (SurfaceSave _) ->
                         Browser.Events.onKeyDown (escKey SaveClose)
 
-                    Just (ModalLoad _) ->
+                    Just (SurfaceLoad _) ->
                         Browser.Events.onKeyDown (escKey LoadClose)
 
-                    Just (ModalSaveCompendium _) ->
+                    Just (SurfaceSaveCompendium _) ->
                         Browser.Events.onKeyDown (escKey SaveCompendiumClose)
 
-                    Just (ModalLoadCompendium _) ->
+                    Just (SurfaceLoadCompendium _) ->
                         Browser.Events.onKeyDown (escKey LoadCompendiumClose)
 
-                    Just (ModalAbilitySave _) ->
+                    Just (SurfaceAbilitySave _) ->
                         Browser.Events.onKeyDown (escKey AbilitySaveClose)
 
-                    Just (ModalQuickAdd _) ->
+                    Just (SurfaceQuickAdd _) ->
                         Browser.Events.onKeyDown (escKey QuickAddClose)
 
-                    Just (ModalDuplicate _) ->
+                    Just (SurfaceDuplicate _) ->
                         Browser.Events.onKeyDown (escKey DuplicateClose)
 
                     _ ->
@@ -536,7 +536,7 @@ init flags url key =
       , saveChainLog = []
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
-      , modal = Nothing
+      , surface = Nothing
       , modalChrome = Ui.ModalChrome.fresh
       , placeholderRename = Nothing
       , panelCreaturePin = Nothing
@@ -791,7 +791,7 @@ update msg model =
             else
                 Cmd.none
 
-        -- Modal-open focus management.  When the active modal
+        -- Surface-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
         -- so keyboard / SR users land on the modal close button
@@ -800,7 +800,7 @@ update msg model =
         -- so we don't have to plumb the focus Cmd through ~20
         -- modal Update modules.
         modalFocusCmd =
-            if model.modal == Nothing && next.modal /= Nothing then
+            if model.surface == Nothing && next.surface /= Nothing then
                 View.Modal.focusInitial (\_ -> NoOp)
 
             else
@@ -812,11 +812,11 @@ update msg model =
         -- default size.  Without this, a user who drags or
         -- resizes one modal would inherit that geometry for the
         -- next modal they open.  Three modal-open surfaces are
-        -- covered: the unified `model.modal` ADT, plus the Dice
+        -- covered: the unified `model.surface` ADT, plus the Dice
         -- Roller and Compendium Browser which carry their own
         -- `open : Bool` flags outside the ADT.
         anyModalOpen m =
-            m.modal /= Nothing || m.dice.open || m.compendium.open
+            m.surface /= Nothing || m.dice.open || m.compendium.open
 
         nextWithChromeReset =
             if not (anyModalOpen model) && anyModalOpen next then
