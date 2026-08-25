@@ -33,3 +33,9 @@ Accepted tradeoff, noted for the record: the server previously round-tripped
 most payloads as opaque JSON so the frontend owned those schemas outright;
 normalization means future Elm wire changes to persisted shapes need a matching
 server migration.
+
+* TODO Migrate the frontend off modal dialogs
+
+External review asked for a UI that never hides the encounter queue behind a
+modal.  The analysis and migration plan live in [[file:docs/MODAL_MIGRATION.org][docs/MODAL_MIGRATION.org]].
+Unscheduled: recorded for planning; no implementation has begun.

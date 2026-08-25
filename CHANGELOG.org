@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. The docs gain a plan for migrating the UI away from modal dialogs
+   (=docs/MODAL_MIGRATION.org=); nothing in the app changes yet.  No action
+   needed.
 ** Fixes
 ** Breaking
 * v0.2.0
