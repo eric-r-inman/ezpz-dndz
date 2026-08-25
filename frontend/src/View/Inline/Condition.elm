@@ -479,11 +479,9 @@ footer ui presets =
 
                 Nothing ->
                     text ""
-            , button
-                [ class "action-btn"
-                , onClick ConditionClose
-                ]
-                [ text "Cancel" ]
+
+            -- No Cancel button: the header ×, Escape, and
+            -- re-clicking the Condition/Effect button all cancel.
             , button
                 [ class "action-btn action-btn--green"
                 , onClick ConditionSubmit

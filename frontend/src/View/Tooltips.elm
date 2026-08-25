@@ -81,6 +81,7 @@ module View.Tooltips exposing
     , initSelectedNone
     , initSelectedOne
     , initiativeManager
+    , inlineEditCancel
     , lastRollTotal
     , legendaryActionColumn
     , legendaryResistanceColumn
@@ -593,6 +594,14 @@ saveNoticeDismiss =
 
 
 -- ── CREATURE CARD MEMO / TIMER ───────────────────────────────────────────────
+
+
+{-| Shown on any inline-editor trigger while its own editor is
+open — the trigger doubles as the cancel toggle.
+-}
+inlineEditCancel : String
+inlineEditCancel =
+    "Cancel (closes without saving)"
 
 
 memoAdd : String

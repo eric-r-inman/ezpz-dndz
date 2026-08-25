@@ -5917,18 +5917,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-left: auto;
 }
 
-/* The in-place memo / name-note editor that swaps into the pill
-   or pencil slot while its surface is open: a short input flanked
-   by explicit ✓ / × buttons.  Sized to sit inside a card row
-   rather than a modal body. */
-.card-inline-edit {
-  display: inline-flex;
+/* Compact single-row variant of the expansion strip, used by the
+   memo / name-note editors: title, short input, ✓ save.  The
+   trigger button stays in its row (highlighted) and doubles as
+   the cancel toggle, so the strip needs no buttons beyond ✓. */
+.creature-card__inline--compact {
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
 }
 
 .note-edit__input--in-place {
-  width: 120px;
+  width: 160px;
   padding: 2px 6px;
   font-size: 0.85rem;
 }
@@ -5937,8 +5936,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-heal, #16a34a);
 }
 
-.card-inline-edit__cancel {
-  color: var(--color-text-muted);
+/* Highlight on an action-button trigger whose inline editor is
+   currently open — mirrors .icon-btn--toggled for icon buttons. */
+.action-btn--editing {
+  outline: 1px solid var(--color-accent, #4a90e2);
 }
 
 /* Newest-entry-only variant rendered in the card expansion —

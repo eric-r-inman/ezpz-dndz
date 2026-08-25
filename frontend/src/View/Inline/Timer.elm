@@ -102,11 +102,9 @@ footer ui presets =
                 , onClick TimerSetupApply
                 ]
                 [ text "Start Timer" ]
-            , button
-                [ class "action-btn"
-                , onClick TimerSetupCancel
-                ]
-                [ text "Cancel" ]
+
+            -- No Cancel button: the header ×, Escape, and
+            -- re-clicking the ⏱ button all cancel.
             ]
         ]
 

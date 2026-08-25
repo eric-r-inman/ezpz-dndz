@@ -183,14 +183,17 @@ modules byte-identical; only the rendering moves.
   form body (HP change, condition) and a header close button.  The
   one-open-at-a-time invariant carries over unchanged: opening any surface
   replaces the previous one, so at most one card is ever expanded.
-- *In-place inputs.* Memo and note skip the expansion entirely: while the
-  surface targets the creature, the memo slot / name-note slot renders an input
-  where the pill or pencil was — flanked by explicit ✓ / × buttons, with Enter
-  and blur committing and Escape cancelling, mirroring the existing AC / max-HP
-  inline-edit idiom.
+- *Compact editors.* Memo and note get a one-row strip below the card rows
+  (title, short input, ✓ save) instead of the full expansion.  Their triggers
+  stay exactly where they are, highlighted while the editor is open — a row must
+  never reflow around an editor, and the visible trigger is what makes the
+  cancel toggle reachable.  Enter or ✓ commits; Escape or the trigger cancels.
+  Deliberately no blur-commit (unlike the AC / max-HP edits): committing on blur
+  would fire before a cancel click could land.
 - *Toggle-to-close.* The button that opened an inline editor closes it again
   unchanged — once the editor lives on the card, its trigger reads as a toggle,
-  and re-clicking it is the natural cancel gesture.
+  and re-clicking it is the natural cancel gesture.  This replaces the footer
+  Cancel buttons, which the editors therefore drop.
 - *Escape coverage.* The subscription table in =Main= gains cases for the three
   converted surfaces that previously had no Esc handling (HP change, condition,
   memo), closing an inconsistency the modal era left behind.

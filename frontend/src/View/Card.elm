@@ -261,6 +261,30 @@ inlineSurface ctx creature =
         Just (SurfaceTimerSetup ui) ->
             View.Inline.Timer.view ctx.timerPresets ui
 
+        Just (SurfaceMemoEdit ui) ->
+            compactEditor
+                { title = "Memo"
+                , inputValue = ui.text
+                , maxLength = MemoUi.maxMemoLength
+                , placeholder = "e.g. legendary res used"
+                , ariaLabel = "Edit memo for " ++ creature.name
+                , onChange = MemoChange
+                , commit = MemoCommit
+                , cancel = MemoCancel
+                }
+
+        Just (SurfaceNoteEdit ui) ->
+            compactEditor
+                { title = "Note"
+                , inputValue = ui.text
+                , maxLength = NoteUi.maxNoteLength
+                , placeholder = "e.g. boss, summoned, ally"
+                , ariaLabel = "Edit note for " ++ creature.name
+                , onChange = NoteEditChange
+                , commit = NoteEditCommit
+                , cancel = NoteEditCancel
+                }
+
         _ ->
             text ""
 
@@ -570,53 +594,80 @@ renameKeyDecoder =
 
 Empty note: just the pencil ✏️ button as an "add a note" affordance.
 
-Non-empty note: the note itself (clickable, starts the same
-in-place edit so the user can rename or clear it) followed by a
-pipe separator before the AC readout. The pencil is intentionally
-hidden in this state — the note is now the click target, and
-showing both would make the user wonder which one to use.
+Non-empty note: the note itself (clickable, starts the edit)
+followed by a pipe separator before the AC readout. The pencil is
+intentionally hidden in this state — the note is now the click
+target, and showing both would make the user wonder which one to
+use.
 
-While the note-edit surface targets this creature, the whole
-sliver swaps to an in-place input — Enter commits, Escape
-cancels, blur commits, matching the AC / max-HP inline-edit
-idiom.
+While the note-edit surface targets this creature, the trigger
+stays exactly where it is (highlighted, so re-clicking it cancels)
+and the input itself renders in a compact strip below the card
+rows — the row never reflows around an editor.
 
 -}
 noteOrPencil : Creature -> Maybe Surface -> Html Msg
 noteOrPencil creature surface =
-    case surface of
-        Just (SurfaceNoteEdit ui) ->
-            inPlaceEdit
-                { inputValue = ui.text
-                , maxLength = NoteUi.maxNoteLength
-                , placeholder = "e.g. boss, summoned, ally"
-                , ariaLabel = "Edit note for " ++ creature.name
-                , onChange = NoteEditChange
-                , commit = NoteEditCommit
-                , cancel = NoteEditCancel
-                }
+    let
+        editing =
+            case surface of
+                Just (SurfaceNoteEdit _) ->
+                    True
 
-        _ ->
-            if String.isEmpty creature.note then
-                button
-                    [ class "icon-btn icon-btn--sm"
-                    , onClick (NoteEditOpen creature.name creature.note)
-                    , Tooltips.attr Tooltips.noteAdd
-                    , attribute "aria-label" "Add note"
-                    ]
-                    [ text "✏️" ]
+                _ ->
+                    False
+    in
+    if String.isEmpty creature.note then
+        button
+            [ class
+                (if editing then
+                    "icon-btn icon-btn--sm icon-btn--toggled"
 
-            else
-                span [ class "creature-note-wrap" ]
-                    [ button
-                        [ class "creature-note creature-note--clickable"
-                        , onClick (NoteEditOpen creature.name creature.note)
-                        , Tooltips.attr Tooltips.noteEdit
-                        , attribute "aria-label" ("Edit note: " ++ creature.note)
-                        ]
-                        [ text creature.note ]
-                    , span [ class "creature-note__sep" ] [ text "|" ]
-                    ]
+                 else
+                    "icon-btn icon-btn--sm"
+                )
+            , onClick (NoteEditOpen creature.name creature.note)
+            , Tooltips.attr
+                (if editing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.noteAdd
+                )
+            , attribute "aria-label" "Add note"
+            , ariaExpanded editing
+            ]
+            [ text "✏️" ]
+
+    else
+        span [ class "creature-note-wrap" ]
+            [ button
+                [ class "creature-note creature-note--clickable"
+                , onClick (NoteEditOpen creature.name creature.note)
+                , Tooltips.attr
+                    (if editing then
+                        Tooltips.inlineEditCancel
+
+                     else
+                        Tooltips.noteEdit
+                    )
+                , attribute "aria-label" ("Edit note: " ++ creature.note)
+                , ariaExpanded editing
+                ]
+                [ text creature.note ]
+            , span [ class "creature-note__sep" ] [ text "|" ]
+            ]
+
+
+ariaExpanded : Bool -> Html.Attribute Msg
+ariaExpanded expanded =
+    attribute "aria-expanded"
+        (if expanded then
+            "true"
+
+         else
+            "false"
+        )
 
 
 {-| Enter commits, Escape cancels — the keyboard contract every
@@ -639,15 +690,16 @@ commitCancelKeyDecoder commitMsg cancelMsg =
             )
 
 
-{-| Shared in-place editor for the memo and name-note slots: a
-short input flanked by explicit ✓ / × buttons. Enter and blur
-commit; Escape cancels. The two buttons act on `mousedown`
-(with the default prevented) rather than click — a click would
-be preceded by the input's blur, which commits and unmounts the
-button before the click could land, making Cancel impossible.
+{-| Compact editor strip for the memo and name-note surfaces,
+rendered below the card rows so neither row reflows around an
+input. Enter or the ✓ commit; Escape or re-clicking the trigger
+cancels. Deliberately no blur-commit (unlike the AC / max-HP
+edits): committing on blur would fire before a cancel click on
+the trigger could land, turning every cancel into a commit.
 -}
-inPlaceEdit :
-    { inputValue : String
+compactEditor :
+    { title : String
+    , inputValue : String
     , maxLength : Int
     , placeholder : String
     , ariaLabel : String
@@ -656,9 +708,10 @@ inPlaceEdit :
     , cancel : Msg
     }
     -> Html Msg
-inPlaceEdit cfg =
-    span [ class "card-inline-edit" ]
-        [ input
+compactEditor cfg =
+    div [ class "creature-card__inline creature-card__inline--compact" ]
+        [ span [ class "creature-card__inline-title" ] [ text cfg.title ]
+        , input
             [ class "note-edit__input note-edit__input--in-place"
             , type_ "text"
             , value cfg.inputValue
@@ -666,25 +719,17 @@ inPlaceEdit cfg =
             , Attr.placeholder cfg.placeholder
             , autofocus True
             , onInput cfg.onChange
-            , onBlur cfg.commit
             , on "keydown" (commitCancelKeyDecoder cfg.commit cfg.cancel)
             , attribute "aria-label" cfg.ariaLabel
             ]
             []
         , button
             [ class "icon-btn icon-btn--sm card-inline-edit__commit"
-            , preventDefaultOn "mousedown" (Decode.succeed ( cfg.commit, True ))
+            , onClick cfg.commit
             , Tooltips.attr "Save"
             , attribute "aria-label" "Save"
             ]
             [ text "✓" ]
-        , button
-            [ class "icon-btn icon-btn--sm card-inline-edit__cancel"
-            , preventDefaultOn "mousedown" (Decode.succeed ( cfg.cancel, True ))
-            , Tooltips.attr "Cancel"
-            , attribute "aria-label" "Cancel"
-            ]
-            [ text "×" ]
         ]
 
 
@@ -1698,57 +1743,81 @@ rowBot creature surface =
 
 
 {-| Row 3 memo slot. Empty memo → 📝 button that starts the
-in-place edit. Non-empty memo → white-text inline display with
-an × dismiss button (clearing the memo restores the icon).
+edit. Non-empty memo → white-text inline display with an ×
+dismiss button (clearing the memo restores the icon).
+
 While the memo-edit surface targets this creature, the slot
-swaps to an in-place input — Enter commits, Escape cancels,
-blur commits.
+stays exactly where it is (highlighted, so re-clicking it
+cancels) and the input renders in a compact strip below the
+card rows — the button row never reflows around an editor.
+
 -}
 memoSlot : Creature -> Maybe Surface -> Html Msg
 memoSlot creature surface =
-    case surface of
-        Just (SurfaceMemoEdit ui) ->
-            inPlaceEdit
-                { inputValue = ui.text
-                , maxLength = MemoUi.maxMemoLength
-                , placeholder = "e.g. legendary res used"
-                , ariaLabel = "Edit memo for " ++ creature.name
-                , onChange = MemoChange
-                , commit = MemoCommit
-                , cancel = MemoCancel
-                }
+    let
+        editing =
+            case surface of
+                Just (SurfaceMemoEdit _) ->
+                    True
 
-        _ ->
-            if String.isEmpty creature.memo then
-                button
-                    [ class "action-btn action-btn--icon action-btn--memo-empty"
-                    , onClick (MemoOpen creature.name)
-                    , Tooltips.attr Tooltips.memoAdd
-                    , attribute "aria-label" "Add memo"
-                    ]
-                    [ span [ class "action-btn__icon" ] [ text "📝" ]
-                    , span [ class "action-btn__text" ] [ text "Memo" ]
-                    ]
+                _ ->
+                    False
+    in
+    if String.isEmpty creature.memo then
+        button
+            [ class
+                (if editing then
+                    "action-btn action-btn--icon action-btn--memo-empty action-btn--editing"
 
-            else
-                span
-                    [ class "memo-pill"
-                    , Tooltips.attr creature.memo
-                    ]
-                    [ button
-                        [ class "memo-pill__text"
-                        , onClick (MemoOpen creature.name)
-                        , Tooltips.attr Tooltips.memoEdit
-                        ]
-                        [ text creature.memo ]
-                    , button
-                        [ class "memo-pill__dismiss"
-                        , onClick (MemoClear creature.name)
-                        , Tooltips.attr Tooltips.memoClear
-                        , attribute "aria-label" "Clear memo"
-                        ]
-                        [ text "×" ]
-                    ]
+                 else
+                    "action-btn action-btn--icon action-btn--memo-empty"
+                )
+            , onClick (MemoOpen creature.name)
+            , Tooltips.attr
+                (if editing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.memoAdd
+                )
+            , attribute "aria-label" "Add memo"
+            , ariaExpanded editing
+            ]
+            [ span [ class "action-btn__icon" ] [ text "📝" ]
+            , span [ class "action-btn__text" ] [ text "Memo" ]
+            ]
+
+    else
+        memoPill creature editing
+
+
+memoPill : Creature -> Bool -> Html Msg
+memoPill creature editing =
+    span
+        [ class "memo-pill"
+        , Tooltips.attr creature.memo
+        ]
+        [ button
+            [ class "memo-pill__text"
+            , onClick (MemoOpen creature.name)
+            , Tooltips.attr
+                (if editing then
+                    Tooltips.inlineEditCancel
+
+                 else
+                    Tooltips.memoEdit
+                )
+            , ariaExpanded editing
+            ]
+            [ text creature.memo ]
+        , button
+            [ class "memo-pill__dismiss"
+            , onClick (MemoClear creature.name)
+            , Tooltips.attr Tooltips.memoClear
+            , attribute "aria-label" "Clear memo"
+            ]
+            [ text "×" ]
+        ]
 
 
 {-| Row 3 timer slot. Three states:
