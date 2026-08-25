@@ -72,23 +72,55 @@ withConditionUi =
     Model.mapSurface Model.conditionLens
 
 
+{-| Opening is a toggle: clicking the card's Condition/Effect
+button while its own add-new editor is already expanded closes
+it (a cancel). While _editing_ an existing condition, the
+button instead switches to a fresh add-new form — the two
+modes are different intents, not the same surface twice.
+-}
 openNew : String -> Model -> ( Model, Cmd Msg )
 openNew name model =
-    ( { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
+    ( case model.surface of
+        Just (SurfaceCondition ui) ->
+            if ui.target == name && ui.editingId == Nothing then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
+
+        _ ->
+            { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
     , Cmd.none
     )
 
 
+{-| Chip clicks toggle the same way: re-clicking the chip whose
+edit form is already open closes it unchanged.
+-}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
-    ( case Encounter.findCondition name id model.encounter of
+    ( case model.surface of
+        Just (SurfaceCondition ui) ->
+            if ui.target == name && ui.editingId == Just id then
+                { model | surface = Nothing }
+
+            else
+                openEditFresh name id model
+
+        _ ->
+            openEditFresh name id model
+    , Cmd.none
+    )
+
+
+openEditFresh : String -> Int -> Model -> Model
+openEditFresh name id model =
+    case Encounter.findCondition name id model.encounter of
         Just ( _, cond ) ->
             { model | surface = Just (SurfaceCondition (ConditionUi.fromCondition name cond)) }
 
         Nothing ->
             model
-    , Cmd.none
-    )
 
 
 close : Model -> ( Model, Cmd Msg )

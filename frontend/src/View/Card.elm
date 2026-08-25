@@ -44,8 +44,10 @@ import Ui.HpChange exposing (HpChangeEntry, HpEdit)
 import Ui.Memo as MemoUi
 import Ui.Note as NoteUi
 import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
+import Ui.Timer exposing (TimerPreset)
 import View.Inline.Condition
 import View.Inline.HpChange
+import View.Inline.Timer
 import View.Tooltips as Tooltips
 
 
@@ -62,6 +64,7 @@ type alias Context =
     , surface : Maybe Surface
     , selectedCount : Int
     , conditionPresets : Dict String ConditionPreset
+    , timerPresets : Dict String TimerPreset
     , creatureNames : List String
     , hpChangeLog : List HpChangeEntry
     }
@@ -226,6 +229,13 @@ surfaceFor ctx creature =
             else
                 Nothing
 
+        Just (SurfaceTimerSetup ui) ->
+            if ui.target == creature.name then
+                ctx.surface
+
+            else
+                Nothing
+
         _ ->
             Nothing
 
@@ -247,6 +257,9 @@ inlineSurface ctx creature =
                 , presets = ctx.conditionPresets
                 }
                 ui
+
+        Just (SurfaceTimerSetup ui) ->
+            View.Inline.Timer.view ctx.timerPresets ui
 
         _ ->
             text ""
@@ -573,19 +586,15 @@ noteOrPencil : Creature -> Maybe Surface -> Html Msg
 noteOrPencil creature surface =
     case surface of
         Just (SurfaceNoteEdit ui) ->
-            input
-                [ class "note-edit__input note-edit__input--in-place"
-                , type_ "text"
-                , value ui.text
-                , maxlength NoteUi.maxNoteLength
-                , Attr.placeholder "e.g. boss, summoned, ally"
-                , autofocus True
-                , onInput NoteEditChange
-                , onBlur NoteEditCommit
-                , on "keydown" (commitCancelKeyDecoder NoteEditCommit NoteEditCancel)
-                , attribute "aria-label" ("Edit note for " ++ creature.name)
-                ]
-                []
+            inPlaceEdit
+                { inputValue = ui.text
+                , maxLength = NoteUi.maxNoteLength
+                , placeholder = "e.g. boss, summoned, ally"
+                , ariaLabel = "Edit note for " ++ creature.name
+                , onChange = NoteEditChange
+                , commit = NoteEditCommit
+                , cancel = NoteEditCancel
+                }
 
         _ ->
             if String.isEmpty creature.note then
@@ -628,6 +637,55 @@ commitCancelKeyDecoder commitMsg cancelMsg =
                     _ ->
                         Decode.fail "ignored key"
             )
+
+
+{-| Shared in-place editor for the memo and name-note slots: a
+short input flanked by explicit ✓ / × buttons. Enter and blur
+commit; Escape cancels. The two buttons act on `mousedown`
+(with the default prevented) rather than click — a click would
+be preceded by the input's blur, which commits and unmounts the
+button before the click could land, making Cancel impossible.
+-}
+inPlaceEdit :
+    { inputValue : String
+    , maxLength : Int
+    , placeholder : String
+    , ariaLabel : String
+    , onChange : String -> Msg
+    , commit : Msg
+    , cancel : Msg
+    }
+    -> Html Msg
+inPlaceEdit cfg =
+    span [ class "card-inline-edit" ]
+        [ input
+            [ class "note-edit__input note-edit__input--in-place"
+            , type_ "text"
+            , value cfg.inputValue
+            , maxlength cfg.maxLength
+            , Attr.placeholder cfg.placeholder
+            , autofocus True
+            , onInput cfg.onChange
+            , onBlur cfg.commit
+            , on "keydown" (commitCancelKeyDecoder cfg.commit cfg.cancel)
+            , attribute "aria-label" cfg.ariaLabel
+            ]
+            []
+        , button
+            [ class "icon-btn icon-btn--sm card-inline-edit__commit"
+            , preventDefaultOn "mousedown" (Decode.succeed ( cfg.commit, True ))
+            , Tooltips.attr "Save"
+            , attribute "aria-label" "Save"
+            ]
+            [ text "✓" ]
+        , button
+            [ class "icon-btn icon-btn--sm card-inline-edit__cancel"
+            , preventDefaultOn "mousedown" (Decode.succeed ( cfg.cancel, True ))
+            , Tooltips.attr "Cancel"
+            , attribute "aria-label" "Cancel"
+            ]
+            [ text "×" ]
+        ]
 
 
 
@@ -1650,19 +1708,15 @@ memoSlot : Creature -> Maybe Surface -> Html Msg
 memoSlot creature surface =
     case surface of
         Just (SurfaceMemoEdit ui) ->
-            input
-                [ class "note-edit__input note-edit__input--in-place"
-                , type_ "text"
-                , value ui.text
-                , maxlength MemoUi.maxMemoLength
-                , Attr.placeholder "e.g. legendary res used"
-                , autofocus True
-                , onInput MemoChange
-                , onBlur MemoCommit
-                , on "keydown" (commitCancelKeyDecoder MemoCommit MemoCancel)
-                , attribute "aria-label" ("Edit memo for " ++ creature.name)
-                ]
-                []
+            inPlaceEdit
+                { inputValue = ui.text
+                , maxLength = MemoUi.maxMemoLength
+                , placeholder = "e.g. legendary res used"
+                , ariaLabel = "Edit memo for " ++ creature.name
+                , onChange = MemoChange
+                , commit = MemoCommit
+                , cancel = MemoCancel
+                }
 
         _ ->
             if String.isEmpty creature.memo then

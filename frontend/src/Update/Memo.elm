@@ -16,6 +16,9 @@ withMemoEdit =
     Model.mapSurface Model.memoLens
 
 
+{-| Opening is a toggle: clicking the memo affordance while its
+own in-place input is already showing closes it (a cancel).
+-}
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
     let
@@ -26,7 +29,16 @@ open name model =
                 |> Maybe.map .memo
                 |> Maybe.withDefault ""
     in
-    ( { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
+    ( case model.surface of
+        Just (SurfaceMemoEdit ui) ->
+            if ui.target == name then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
+
+        _ ->
+            { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
     , Cmd.none
     )
 

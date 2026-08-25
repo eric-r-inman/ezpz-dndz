@@ -5917,13 +5917,28 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-left: auto;
 }
 
-/* The in-place memo / name-note input that swaps into the pill
-   or pencil slot while its surface is open.  Sized to sit inside
-   a card row rather than a modal body. */
+/* The in-place memo / name-note editor that swaps into the pill
+   or pencil slot while its surface is open: a short input flanked
+   by explicit ✓ / × buttons.  Sized to sit inside a card row
+   rather than a modal body. */
+.card-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .note-edit__input--in-place {
-  width: 160px;
+  width: 120px;
   padding: 2px 6px;
   font-size: 0.85rem;
+}
+
+.card-inline-edit__commit {
+  color: var(--color-heal, #16a34a);
+}
+
+.card-inline-edit__cancel {
+  color: var(--color-text-muted);
 }
 
 /* Newest-entry-only variant rendered in the card expansion —

@@ -47,9 +47,23 @@ withHpChange =
     Model.mapSurface Model.hpChangeLens
 
 
+{-| Opening is a toggle: clicking the card's Manage HP button
+while its own editor is already expanded closes it (a cancel),
+matching how the button reads once the editor sits inline on
+the card rather than in an overlay.
+-}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
+    ( case model.surface of
+        Just (SurfaceHpChange ui) ->
+            if ui.target == target then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
+
+        _ ->
+            { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
     , Cmd.none
     )
 

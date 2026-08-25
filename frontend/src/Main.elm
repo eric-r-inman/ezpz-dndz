@@ -147,7 +147,6 @@ import View.Modal.Save
 import View.Modal.SaveChain
 import View.Modal.SaveCompendium
 import View.Modal.SpellList
-import View.Modal.Timer
 import View.Modal.Treasure
 import View.Modal.TreasureTable
 import View.Page.Compendium
@@ -326,6 +325,15 @@ subscriptions model =
 
                         else
                             Browser.Events.onKeyDown (escKey ConditionClose)
+
+                    Just (SurfaceTimerSetup ui) ->
+                        -- Same menu-first Esc split as the condition
+                        -- editor above.
+                        if ui.loadMenuOpen then
+                            Sub.none
+
+                        else
+                            Browser.Events.onKeyDown (escKey TimerSetupCancel)
 
                     Just (SurfaceSave _) ->
                         Browser.Events.onKeyDown (escKey SaveClose)
@@ -2713,7 +2721,6 @@ appShell maybeUser model =
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.hpChangeLog model.dice
     , View.Modal.Initiative.view model
-    , View.Modal.Timer.view model
     , View.Modal.Compendium.view model.modalChrome
         model.auth
         model.compendium

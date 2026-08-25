@@ -63,6 +63,9 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   input; no surface at all.
 - =Note= (the name note) :: Identical treatment, completing the existing
   inline-edit idiom.
+- =Timer= :: Originally mapped as a popover, but converted with this group so
+  every card-button editor shares one UX; it may still shrink to a popover once
+  that tier's anchored container exists.
 
 ** Popover anchored to the trigger
 
@@ -75,8 +78,6 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =Initiative= :: Popover anchored to the clicked initiative badge; the
   roll-and-sort buttons and manual entry are one-shot actions that do not
   justify a full-screen interrupt.
-- =Timer= :: Small anchored popover at the clock icon; two fields and a radio
-  group.
 
 ** Docked panel / drawer
 
@@ -184,8 +185,12 @@ modules byte-identical; only the rendering moves.
   replaces the previous one, so at most one card is ever expanded.
 - *In-place inputs.* Memo and note skip the expansion entirely: while the
   surface targets the creature, the memo slot / name-note slot renders an input
-  where the pill or pencil was — Enter commits, Escape cancels, blur commits,
-  mirroring the existing AC / max-HP inline-edit idiom.
+  where the pill or pencil was — flanked by explicit ✓ / × buttons, with Enter
+  and blur committing and Escape cancelling, mirroring the existing AC / max-HP
+  inline-edit idiom.
+- *Toggle-to-close.* The button that opened an inline editor closes it again
+  unchanged — once the editor lives on the card, its trigger reads as a toggle,
+  and re-clicking it is the natural cancel gesture.
 - *Escape coverage.* The subscription table in =Main= gains cases for the three
   converted surfaces that previously had no Esc handling (HP change, condition,
   memo), closing an inconsistency the modal era left behind.

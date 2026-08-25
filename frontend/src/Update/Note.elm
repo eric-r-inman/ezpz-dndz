@@ -17,9 +17,21 @@ withNoteEdit =
     Model.mapSurface Model.noteLens
 
 
+{-| Opening is a toggle: clicking the note affordance while its
+own in-place input is already showing closes it (a cancel).
+-}
 open : String -> String -> Model -> ( Model, Cmd Msg )
 open name current model =
-    ( { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
+    ( case model.surface of
+        Just (SurfaceNoteEdit ui) ->
+            if ui.target == name then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
+
+        _ ->
+            { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
     , Cmd.none
     )
 

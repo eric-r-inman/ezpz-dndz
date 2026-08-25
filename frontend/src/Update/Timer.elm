@@ -34,9 +34,21 @@ withTimerSetup =
     Model.mapSurface Model.timerLens
 
 
+{-| Opening is a toggle: clicking the card's ⏱ button while its
+own timer setup is already expanded closes it (a cancel).
+-}
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
-    ( { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
+    ( case model.surface of
+        Just (SurfaceTimerSetup ui) ->
+            if ui.target == name then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
+
+        _ ->
+            { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
     , Cmd.none
     )
 

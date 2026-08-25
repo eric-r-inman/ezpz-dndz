@@ -66,6 +66,7 @@ panelMain model =
             , selectedCount =
                 List.length (List.filter .selected enc.creatures)
             , conditionPresets = model.conditionPresets
+            , timerPresets = model.timerPresets
             , creatureNames = List.map .name enc.creatures
             , hpChangeLog = model.hpChangeLog
             }

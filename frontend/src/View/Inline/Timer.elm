@@ -1,12 +1,12 @@
-module View.Modal.Timer exposing (view)
+module View.Inline.Timer exposing (view)
 
-{-| Card row 3 timer-setup modal. The GM picks a turn count
-(1..99) and a phase (begin/end of bearer's turn). Apply writes
-the timer; Cancel discards.
+{-| Timer setup as an inline card expansion. The GM picks a turn
+count (1..99) and a phase (begin/end of bearer's turn). Start
+Timer writes the timer; Cancel discards.
 
-Mirrors the per-modal preset pattern from `View.Modal.Condition`:
-a footer Save/Load row backed by `Model.timerPresets`. See that
-module for the shared semantics.
+Mirrors the per-surface preset pattern from
+`View.Inline.Condition`: a footer Save/Load row backed by
+`Model.timerPresets`.
 
 -}
 
@@ -15,80 +15,78 @@ import Html exposing (Html, button, div, input, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
-import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Timer exposing (TimerPreset, TimerSetupUi)
 import Util.Keyboard
-import View.Modal
 import View.PhaseToggle
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
-    case model.surface of
-        Just (SurfaceTimerSetup ui) ->
-            let
-                presetSuffix =
-                    case ui.loadedPresetName of
-                        Just name ->
-                            "  (loaded: " ++ name ++ ")"
+view : Dict String TimerPreset -> TimerSetupUi -> Html Msg
+view presets ui =
+    div [ class "creature-card__inline" ]
+        [ header ui
+        , div [ class "cond-row" ]
+            [ Html.label [ for "timer-turns-input" ]
+                [ text "Lasts" ]
+            , input
+                [ id "timer-turns-input"
+                , class "cond-input cond-input--narrow"
+                , type_ "number"
+                , Attr.min "1"
+                , Attr.max "99"
+                , value ui.turnsText
+                , autofocus True
+                , onInput TimerSetupTurnsChanged
+                , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
+                ]
+                []
+            , Html.label [] [ text "turns, ticking at" ]
+            , View.PhaseToggle.view "timer-phase" ui.phase TimerSetupPhaseSet
+            , Html.label [] [ text "of the bearer's turn" ]
+            ]
+        , div [ class "cond-row" ]
+            [ Html.label [ for "timer-note-input" ]
+                [ text "Label" ]
+            , input
+                [ id "timer-note-input"
+                , class "cond-input"
+                , type_ "text"
+                , Attr.maxlength 10
+                , Attr.placeholder "optional (10 chars)"
+                , value ui.note
+                , onInput TimerSetupNoteChanged
+                , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
+                ]
+                []
+            ]
+        , div [ class "cond-section__caption" ]
+            [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
+        , footer ui presets
+        ]
 
-                        Nothing ->
-                            ""
 
-                modalTitle =
-                    "Timer — " ++ ui.target ++ presetSuffix
-            in
-            View.Modal.view
-                { close = TimerSetupCancel
-                , noOp = NoOp
-                , title = modalTitle
-                , extraClass = "modal--timer"
-                , chrome = model.modalChrome
-                , body =
-                    [ div [ class "cond-row" ]
-                        [ Html.label [ for "timer-turns-input" ]
-                            [ text "Lasts" ]
-                        , input
-                            [ id "timer-turns-input"
-                            , class "cond-input cond-input--narrow"
-                            , type_ "number"
-                            , Attr.min "1"
-                            , Attr.max "99"
-                            , value ui.turnsText
-                            , autofocus True
-                            , onInput TimerSetupTurnsChanged
-                            , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
-                            ]
-                            []
-                        , Html.label [] [ text "turns, ticking at" ]
-                        , View.PhaseToggle.view "timer-phase" ui.phase TimerSetupPhaseSet
-                        , Html.label [] [ text "of the bearer's turn" ]
-                        ]
-                    , div [ class "cond-row" ]
-                        [ Html.label [ for "timer-note-input" ]
-                            [ text "Label" ]
-                        , input
-                            [ id "timer-note-input"
-                            , class "cond-input"
-                            , type_ "text"
-                            , Attr.maxlength 10
-                            , Attr.placeholder "optional (10 chars)"
-                            , value ui.note
-                            , onInput TimerSetupNoteChanged
-                            , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
-                            ]
-                            []
-                        ]
-                    , div [ class "cond-section__caption" ]
-                        [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
-                    , footer ui model.timerPresets
-                    ]
-                }
+header : TimerSetupUi -> Html Msg
+header ui =
+    let
+        presetSuffix =
+            case ui.loadedPresetName of
+                Just name ->
+                    "  (loaded: " ++ name ++ ")"
 
-        _ ->
-            text ""
+                Nothing ->
+                    ""
+    in
+    div [ class "creature-card__inline-header" ]
+        [ div [ class "creature-card__inline-title" ]
+            [ text ("Timer — " ++ ui.target ++ presetSuffix) ]
+        , button
+            [ class "icon-btn icon-btn--sm creature-card__inline-close"
+            , onClick TimerSetupCancel
+            , attribute "aria-label" "Close timer setup"
+            ]
+            [ text "×" ]
+        ]
 
 
 footer : TimerSetupUi -> Dict String TimerPreset -> Html Msg
