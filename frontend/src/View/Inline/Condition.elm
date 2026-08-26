@@ -78,8 +78,6 @@ applyScope selectedCount ui =
                         ++ ")"
                     )
                 ]
-            , div [ class "cond-section__caption" ]
-                [ text "Each selected creature gets its own copy of the condition (separate ids, independent durations)." ]
             ]
 
 
@@ -119,38 +117,46 @@ standardRadio ui label =
         ]
 
 
+{-| Free-text condition name. Hidden while a standard-condition
+radio is selected — the radio owns the name then, and re-clicking
+the selected radio clears it to bring this field back.
+-}
 customSection : ConditionUi -> Html Msg
 customSection ui =
-    div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text "or, Custom:" ]
-        , input
-            [ class "cond-input"
-            , type_ "text"
-            , value ui.customName
-            , placeholder "e.g. Bardic Inspiration, Burning"
-            , onInput ConditionCustomNameChanged
+    if String.isEmpty ui.customName && not (String.isEmpty ui.name) then
+        text ""
+
+    else
+        div [ class "cond-section" ]
+            [ div [ class "cond-row" ]
+                [ Html.label [] [ text "Custom:" ]
+                , input
+                    [ class "cond-input"
+                    , type_ "text"
+                    , value ui.customName
+                    , placeholder "e.g. Bardic Inspiration, Burning"
+                    , onInput ConditionCustomNameChanged
+                    ]
+                    []
+                ]
             ]
-            []
-        , div [ class "cond-section__caption" ]
-            [ text "Typing here overrides the radio selection above." ]
-        ]
 
 
 noteSection : ConditionUi -> Html Msg
 noteSection ui =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text ("Note (max " ++ String.fromInt Update.Condition.maxConditionNoteLength ++ " chars)") ]
-        , input
-            [ class "cond-input"
-            , type_ "text"
-            , value ui.note
-            , maxlength Update.Condition.maxConditionNoteLength
-            , placeholder "e.g. from Lyra"
-            , onInput ConditionNoteChanged
+        [ div [ class "cond-row" ]
+            [ Html.label [] [ text "Note:" ]
+            , input
+                [ class "cond-input"
+                , type_ "text"
+                , value ui.note
+                , maxlength Update.Condition.maxConditionNoteLength
+                , placeholder "Max 10 chars (e.g. from Lyra)"
+                , onInput ConditionNoteChanged
+                ]
+                []
             ]
-            []
         ]
 
 
@@ -173,7 +179,7 @@ durationSection ui creatureNames =
             case ui.durationKind of
                 DurKindManual ->
                     div [ class "cond-section__caption" ]
-                        [ text "Stays until the GM clicks the chip's × to remove." ]
+                        [ text "You must click \"x\" to remove." ]
 
                 DurKindUntilTurn ->
                     durationUntilSubsection ui creatureNames
@@ -304,13 +310,12 @@ saveSection ui =
                     , onClick ConditionSaveToggle
                     ]
                     []
-                , text " Save-to-end"
+                , text " Saving throw to end"
                 ]
             ]
         , case ui.saveToEnd of
             Nothing ->
-                div [ class "cond-section__caption" ]
-                    [ text "Optional: condition can end on a successful saving throw." ]
+                text ""
 
             Just s ->
                 saveSubsection s

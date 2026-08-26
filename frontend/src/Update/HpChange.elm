@@ -114,7 +114,10 @@ on what the input looks like:
 
   - integer → apply immediately with that value
   - dice formula → roll, land in `rollLanded`, apply the total
-  - parse failure → set `parseError`, leave modal open
+  - parse failure → set `parseError`
+
+The editor stays open after every path so the GM can keep
+applying; the trigger toggle and Escape close it.
 
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
@@ -133,7 +136,7 @@ applyAs kind model =
             in
             case String.toInt trimmed of
                 Just n ->
-                    ( applyHpChangeAndClose withKind n modelWithKind
+                    ( applyHpChange withKind n modelWithKind
                     , Cmd.none
                     )
 
@@ -145,7 +148,7 @@ applyAs kind model =
                         -- creature reference — the previous
                         -- behaviour when `amountText = "0"`
                         -- was the default.
-                        ( applyHpChangeAndClose withKind 0 modelWithKind
+                        ( applyHpChange withKind 0 modelWithKind
                         , Cmd.none
                         )
 
@@ -154,10 +157,11 @@ applyAs kind model =
                             Ok expr ->
                                 if withKind.applyToSelected && withKind.freshRollPerTarget then
                                     -- One independent roll per selected
-                                    -- creature.  The editor closes now;
-                                    -- each landing carries everything it
-                                    -- needs to apply on its own.
-                                    ( { modelWithKind | surface = Nothing }
+                                    -- creature.  Each landing carries
+                                    -- everything it needs to apply on
+                                    -- its own, so the editor is free to
+                                    -- close (or not) in the meantime.
+                                    ( modelWithKind
                                     , hpChangeTargets withKind modelWithKind.encounter
                                         |> List.map
                                             (\name ->
@@ -201,7 +205,7 @@ rollLanded roll model =
         committed =
             case logged.surface of
                 Just (SurfaceHpChange ui) ->
-                    applyHpChangeAndClose ui roll.total logged
+                    applyHpChange ui roll.total logged
 
                 _ ->
                     logged
@@ -211,10 +215,11 @@ rollLanded roll model =
     )
 
 
-{-| One landing of a fresh-per-creature roll batch. The editor
-is already closed, so everything needed to commit rides in the
-message itself; each landing applies, logs, and persists its
-own roll independently of its siblings.
+{-| One landing of a fresh-per-creature roll batch. Everything
+needed to commit rides in the message itself — the editor may
+have been closed between dispatch and landing — so each landing
+applies, logs, and persists its own roll independently of its
+siblings.
 -}
 freshRollLanded : HpKind -> Bool -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 freshRollLanded kind ignoreTemp target roll model =
@@ -401,17 +406,13 @@ without applying to anyone — better than silently falling back to
 multi-target toggle.
 
 -}
-applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
-applyHpChangeAndClose ui amount model =
-    let
-        applied =
-            applyAmountTo ui.kind
-                ui.ignoreTemp
-                (hpChangeTargets ui model.encounter)
-                amount
-                model
-    in
-    { applied | surface = Nothing }
+applyHpChange : HpChangeUi -> Int -> Model -> Model
+applyHpChange ui amount model =
+    applyAmountTo ui.kind
+        ui.ignoreTemp
+        (hpChangeTargets ui model.encounter)
+        amount
+        model
 
 
 {-| The commit core shared by every apply path: resolve the kind

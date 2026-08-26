@@ -49,7 +49,7 @@ amount ui =
             [ id "hp-amount"
             , class "hp-change__input"
             , type_ "text"
-            , placeholder "12 or 2d6+3 (integer or formula)"
+            , placeholder "Number (12) or Formula (2d6+3)"
             , value ui.amountText
             , autofocus True
             , onInput HpChangeAmountChanged
@@ -158,9 +158,10 @@ isFormula raw =
 
 
 {-| Four action buttons — each commits the current amount using
-that verb, then collapses the expansion. Each verb is
-colour-coded to match the existing damage / heal / temp
-affordances.
+that verb. The editor stays open afterwards so the GM can keep
+applying; the ringed trigger, Escape, or the header-less toggle
+close it. Each verb is colour-coded to match the existing
+damage / heal / temp affordances.
 -}
 actionButtons : Html Msg
 actionButtons =

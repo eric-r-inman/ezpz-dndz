@@ -104,7 +104,6 @@ apply model =
                     Encounter.mapCreature ui.target
                         (\c -> { c | timer = Just newTimer })
                         model.encounter
-                , surface = Nothing
               }
             , Cmd.none
             )

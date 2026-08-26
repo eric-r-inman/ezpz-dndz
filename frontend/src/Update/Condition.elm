@@ -775,7 +775,6 @@ commitCondition ui name model =
                             }
                         )
                         model.encounter
-                , surface = Nothing
             }
 
         Nothing ->
@@ -788,7 +787,6 @@ commitCondition ui name model =
             in
             { model
                 | encounter = List.foldl addOne model.encounter targets
-                , surface = Nothing
             }
 
 
