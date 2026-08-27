@@ -204,10 +204,13 @@ One scoped exception: theme-override blocks.  A rule that retargets an existing
 component under a theme attribute — ~[data-theme="accessible"] .cond-radio~ and
 its siblings — cannot be expressed flat, because the theme attribute lives on
 the app shell while the component lives beneath it.  Those selectors stay
-two-deep (theme scope plus one class) and live grouped in the theme blocks;
-everywhere else the flat rule holds.  The legacy stylesheet predates this rule
-and still carries other combinators — sweeping those is tracked in ~tasks.org~,
-and new rules must not add to them.
+two-deep (theme scope plus one class), with one deeper shape also sanctioned:
+the Accessible theme's body-text bump, ~[data-theme="accessible"] .container
+*:not(.action-btn):not(.action-btn *)~, which rescales every descendant of a
+container at once and has no two-deep equivalent.  Both live grouped in the
+theme blocks; everywhere else the flat rule holds.  The legacy stylesheet
+predates this rule and still carries other combinators — sweeping those is
+tracked in ~tasks.org~, and new rules must not add to them.
 
 Good:
 
