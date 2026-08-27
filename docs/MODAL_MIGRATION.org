@@ -150,7 +150,9 @@ effectively the second UI layout the domain/view split was designed to enable.
 How the phases above translate into concrete changes.  Rollback strategy: all
 work lands on the =modal-migration-inline= branch, pushed to GitHub, so
 switching between the old and new UI is a =git switch= (plus =just dev= to
-rebuild) in either direction.
+rebuild) in either direction.  The branch merges to =main= via squash — its
+published polish-chain history collapses to the one-commit-per-PR shape the
+conventions ask for.
 
 ** Foundation: the Surface rename
 

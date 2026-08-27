@@ -200,6 +200,15 @@ Each selector targets exactly one element type.  No nesting, no combinators, no
 ~>~ or ~+~ chains.  If an element needs unique styling, use a class or ID — not
 a compound selector.
 
+One scoped exception: theme-override blocks.  A rule that retargets an existing
+component under a theme attribute — ~[data-theme="accessible"] .cond-radio~ and
+its siblings — cannot be expressed flat, because the theme attribute lives on
+the app shell while the component lives beneath it.  Those selectors stay
+two-deep (theme scope plus one class) and live grouped in the theme blocks;
+everywhere else the flat rule holds.  The legacy stylesheet predates this rule
+and still carries other combinators — sweeping those is tracked in ~tasks.org~,
+and new rules must not add to them.
+
 Good:
 
 #+begin_src css :results none :exports code

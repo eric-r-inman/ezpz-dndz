@@ -41,3 +41,10 @@ modal.  The analysis and migration plan live in [[file:docs/MODAL_MIGRATION.org]
 progress on the =modal-migration-inline= branch: the Surface rename and the
 inline/toolbar tiers are implemented; popover, panel, route, and toast-plus-undo
 tiers remain.
+
+* TODO Sweep style.css to the flat-selector convention
+
+The stylesheet predates CONTRIBUTING.org's "Flat selectors only" rule and
+carries many descendant and compound selectors outside the sanctioned
+theme-override exception.  Replace them with single-class rules (adding view
+classes where needed), block by block, without visual regressions.

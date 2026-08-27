@@ -5578,12 +5578,39 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-right: var(--space-2);
 }
 
-.hp-display__current,
-.hp-display__editable.hp-display__current {
-  /* Compound selector beats the later `.hp-display__editable
-     { color: inherit }` rule in the cascade — without it the
-     click-to-edit `<button>` would inherit the row's white
-     text and clobber the green/muted split. */
+/* Click-to-edit affordance on the current/max HP values. The hover
+   ring is faint until you mouse over so it doesn't look like a
+   permanent input. */
+.hp-display__editable {
+  /* Reset native button chrome so the click-to-edit trigger
+     looks like inline text — the underlying element was promoted
+     from `<span>` to `<button>` for keyboard a11y, but the visual
+     should still read as "tap-the-number." */
+  appearance: none;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: text;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition:
+    background 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.hp-display__editable:hover {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+/* The editable reset above precedes the per-slot colours, so the
+   flat single-class rules below win on source order — no compound
+   selectors needed for the click-to-edit buttons to keep their
+   colours. */
+.hp-display__current {
   color: var(--color-success);
 }
 
@@ -5592,8 +5619,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 400;
 }
 
-.hp-display__max,
-.hp-display__editable.hp-display__max {
+.hp-display__max {
   color: var(--color-text-muted);
 }
 
@@ -8846,44 +8872,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   outline-offset: 2px;
 }
 
-.hp-display__temp,
-.hp-display__editable.hp-display__temp {
-  /* Compound selector beats the `.hp-display__editable { color:
-     inherit }` rule, mirroring the __current pair above — the
-     card's click-to-edit temp button must stay the same blue as
-     the plain span in the encounter title bar. */
-  margin-left: 4px;
+.hp-display__temp {
+  margin-left: 0;
   color: var(--color-temp-blue);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-/* Click-to-edit affordance on the current/max HP values. The hover
-   ring is faint until you mouse over so it doesn't look like a
-   permanent input. */
-.hp-display__editable {
-  /* Reset native button chrome so the click-to-edit trigger
-     looks like inline text — the underlying element was promoted
-     from `<span>` to `<button>` for keyboard a11y, but the visual
-     should still read as "tap-the-number." */
-  appearance: none;
-  background: none;
-  border: none;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
-  cursor: text;
-  border-radius: 3px;
-  padding: 0 2px;
-  transition:
-    background 0.1s ease,
-    box-shadow 0.1s ease;
-}
-
-.hp-display__editable:hover {
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .hp-display__edit {
