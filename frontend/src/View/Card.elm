@@ -1370,60 +1370,57 @@ hpEditKeyDecoder =
             )
 
 
-{-| Read-only icons for the statuses the toolbar's Status
-editor applies. Icons only — changing them happens in the
-editor; the card just answers "what is this creature doing?"
-at a glance.
+{-| Read-only labels for the statuses the toolbar's Status
+editor applies. Full names, not icons — changing them happens
+in the editor; the card just answers "what is this creature
+doing?" at a glance.
 -}
 statusIcons : Creature -> Html Msg
 statusIcons creature =
     let
-        coverIcon =
+        coverLabel =
             case creature.cover of
                 Encounter.NoCover ->
                     Nothing
 
                 Encounter.HalfCover ->
-                    Just ( "◐", "Half cover" )
+                    Just "½ cover"
 
                 Encounter.ThreeQuartersCover ->
-                    Just ( "◕", "Three-quarters cover" )
+                    Just "¾ cover"
 
                 Encounter.FullCover ->
-                    Just ( "●", "Total cover" )
+                    Just "total cover"
 
-        flag isOn glyph label =
+        flag isOn label =
             if isOn then
-                Just ( glyph, label )
+                Just label
 
             else
                 Nothing
 
-        flyingLabel =
-            "Flying (" ++ String.fromInt creature.flyHeight ++ " ft)"
-
-        icons =
+        labels =
             List.filterMap identity
-                [ coverIcon
-                , flag creature.concentrating "🧠" "Concentrating"
-                , flag creature.hiding "👤" "Hiding"
-                , flag creature.dodging "🤸" "Dodging"
-                , flag creature.flying "🪽" flyingLabel
+                [ coverLabel
+                , flag creature.concentrating "concentrating"
+                , flag creature.hiding "hiding"
+                , flag creature.dodging "dodging"
+                , flag creature.flying
+                    ("flying (" ++ String.fromInt creature.flyHeight ++ " ft)")
                 ]
 
-        icon ( glyph, label ) =
-            span
-                [ class "status-icon"
-                , Tooltips.attr label
-                , attribute "aria-label" label
-                ]
-                [ text glyph ]
+        labelSpan name =
+            span [ class "status-icon" ] [ text name ]
     in
-    if List.isEmpty icons then
+    if List.isEmpty labels then
         text ""
 
     else
-        span [ class "status-icons" ] (List.map icon icons)
+        span [ class "status-icons" ]
+            (labels
+                |> List.map labelSpan
+                |> List.intersperse (span [ class "status-toggles__sep" ] [ text "|" ])
+            )
 
 
 bloodied : Creature -> Html Msg

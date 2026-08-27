@@ -5645,15 +5645,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: help;
 }
 
-/* Read-only posture icons mirroring what the Status editor
+/* Read-only posture labels mirroring what the Status editor
    applied, sitting to the right of the vitals. */
 .status-icons {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--color-text);
   line-height: 1;
-  cursor: help;
 }
 
 .status-toggle {
