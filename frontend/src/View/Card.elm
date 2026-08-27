@@ -1921,7 +1921,10 @@ manually so the GM can flip it ad-hoc.
 reactionPip : Creature -> Html Msg
 reactionPip creature =
     let
-        ( baseCls, tooltip ) =
+        -- Deliberately identical for every creature — special
+        -- reaction mechanics are announced by the banner strip
+        -- above the queue, not by restyling this toggle.
+        ( cls, tooltip ) =
             if creature.reactionUsed then
                 ( "action-btn action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
@@ -1931,26 +1934,12 @@ reactionPip creature =
                 ( "action-btn action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
                 )
-
-        cls =
-            if creature.hasSpecialReactions then
-                baseCls ++ " action-btn--reaction-special"
-
-            else
-                baseCls
-
-        ( iconGlyph, iconTooltip ) =
-            if creature.hasSpecialReactions then
-                ( "! ", "Special reaction mechanics (see stat block)" )
-
-            else
-                ( "⚡ ", tooltip )
     in
     button
         [ class cls
         , onClick (ToggleReaction creature.name)
-        , Tooltips.attr iconTooltip
-        , attribute "aria-label" iconTooltip
+        , Tooltips.attr tooltip
+        , attribute "aria-label" tooltip
         , attribute "aria-pressed"
             (if creature.reactionUsed then
                 "true"
@@ -1962,6 +1951,6 @@ reactionPip creature =
         -- Same icon-prefix split as `readiedToggle` so the
         -- Accessible theme hides the glyph and the word
         -- "Reaction" stands on its own.
-        [ span [ class "action-btn__icon-prefix" ] [ text iconGlyph ]
+        [ span [ class "action-btn__icon-prefix" ] [ text "⚡ " ]
         , text "Reaction"
         ]

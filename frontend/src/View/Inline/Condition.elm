@@ -15,7 +15,7 @@ fills it in.
 
 import Dict exposing (Dict)
 import Encounter
-import Html exposing (Html, button, div, h3, input, span, text)
+import Html exposing (Html, button, div, em, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
@@ -44,8 +44,7 @@ view : Context -> ConditionUi -> Html Msg
 view ctx ui =
     div [ class "creature-card__inline" ]
         [ standardSection ui
-        , customSection ui
-        , noteSection ui
+        , customAndNoteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
         , applyScope ctx.selectedCount ui
@@ -64,19 +63,25 @@ applyScope selectedCount ui =
         text ""
 
     else
+        -- Mirrors the save-to-end section's heading-wrapped
+        -- checkbox so the two boxes share a left edge.
         div [ class "cond-section" ]
-            [ Html.label [ class "hp-change__checkbox" ]
-                [ input
-                    [ type_ "checkbox"
-                    , checked ui.applyToSelected
-                    , onClick ConditionApplyToSelectedToggle
+            [ h3 [ class "cond-section__heading" ]
+                [ Html.label []
+                    [ input
+                        [ type_ "checkbox"
+                        , checked ui.applyToSelected
+                        , onClick ConditionApplyToSelectedToggle
+                        ]
+                        []
+                    , text " Apply "
+                    , em [] [ text "only" ]
+                    , text
+                        (" to selected creatures ("
+                            ++ String.fromInt selectedCount
+                            ++ ")"
+                        )
                     ]
-                    []
-                , text
-                    (" Apply to all selected creatures ("
-                        ++ String.fromInt selectedCount
-                        ++ ")"
-                    )
                 ]
             ]
 
@@ -84,9 +89,7 @@ applyScope selectedCount ui =
 standardSection : ConditionUi -> Html Msg
 standardSection ui =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text "Select a condition:" ]
-        , div [ class "cond-radio-grid" ]
+        [ div [ class "cond-radio-grid" ]
             (List.map (standardRadio ui) Encounter.standardConditions)
         ]
 
@@ -117,56 +120,55 @@ standardRadio ui label =
         ]
 
 
-{-| Free-text condition name. Hidden while a standard-condition
-radio is selected — the radio owns the name then, and re-clicking
-the selected radio clears it to bring this field back.
+{-| Free-text condition name and note, sharing one labelled row
+(the inputs wrap under the label when the editor is narrow).
+The custom input hides while a standard-condition radio is
+selected — the radio owns the name then, and re-clicking the
+selected radio clears it to bring the field back.
 -}
-customSection : ConditionUi -> Html Msg
-customSection ui =
-    if String.isEmpty ui.customName && not (String.isEmpty ui.name) then
-        text ""
-
-    else
-        div [ class "cond-section" ]
-            [ div [ class "cond-row" ]
-                [ Html.label [] [ text "Custom:" ]
-                , input
-                    [ class "cond-input"
-                    , type_ "text"
-                    , value ui.customName
-                    , placeholder "e.g. Bardic Inspiration, Burning"
-                    , onInput ConditionCustomNameChanged
-                    ]
-                    []
-                ]
-            ]
-
-
-noteSection : ConditionUi -> Html Msg
-noteSection ui =
+customAndNoteSection : ConditionUi -> Html Msg
+customAndNoteSection ui =
+    let
+        customHidden =
+            String.isEmpty ui.customName && not (String.isEmpty ui.name)
+    in
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [] [ text "Note (max 10 characters):" ]
-            , input
-                [ class "cond-input"
-                , type_ "text"
-                , value ui.note
-                , maxlength Update.Condition.maxConditionNoteLength
-                , placeholder "e.g. from Lyra"
-                , onInput ConditionNoteChanged
-                ]
-                []
-            ]
+            ([ Html.label [] [ text "Custom and Note (max 20 characters):" ] ]
+                ++ (if customHidden then
+                        []
+
+                    else
+                        [ input
+                            [ class "cond-input"
+                            , type_ "text"
+                            , value ui.customName
+                            , placeholder "e.g. Bardic Inspiration, Burning"
+                            , onInput ConditionCustomNameChanged
+                            ]
+                            []
+                        ]
+                   )
+                ++ [ input
+                        [ class "cond-input"
+                        , type_ "text"
+                        , value ui.note
+                        , maxlength Update.Condition.maxConditionNoteLength
+                        , placeholder "e.g. from Lyra"
+                        , onInput ConditionNoteChanged
+                        ]
+                        []
+                   ]
+            )
         ]
 
 
 durationSection : ConditionUi -> List String -> Html Msg
 durationSection ui creatureNames =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ]
-            [ text "Duration" ]
-        , div [ class "cond-radio-row" ]
-            [ durationKindRadio ui DurKindManual "Manual"
+        [ div [ class "cond-row" ]
+            [ Html.label [] [ text "Duration:" ]
+            , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
             , durationKindRadio ui DurKindCountdown "Countdown"
             , oneMinutePresetRadio ui
@@ -437,22 +439,12 @@ footer ui presets =
         [ div [ class "cond-footer__presets" ]
             [ presetSaveControl ui canSubmit
             , presetLoadControl ui presets
-            ]
-        , div [ class "cond-footer__actions" ]
-            [ case ui.editingId of
-                Just _ ->
-                    button
-                        [ class "action-btn action-btn--damage"
-                        , onClick ConditionDelete
-                        , Tooltips.attr Tooltips.chipRemoveModalRow
-                        ]
-                        [ text "Delete" ]
 
-                Nothing ->
-                    text ""
-
-            -- No Cancel button: Escape and re-clicking the
-            -- Condition/Effect button both cancel.
+            -- Apply sits with Save / Load rather than alone on
+            -- the right — the far edge of a full-width docked
+            -- editor is a long reach from the fields.  No Cancel
+            -- button: Escape and re-clicking the Condition/Effect
+            -- button both cancel.
             , button
                 [ class "action-btn action-btn--green"
                 , onClick ConditionSubmit
@@ -473,6 +465,19 @@ footer ui presets =
                     )
                 ]
                 [ text applyLabel ]
+            ]
+        , div [ class "cond-footer__actions" ]
+            [ case ui.editingId of
+                Just _ ->
+                    button
+                        [ class "action-btn action-btn--damage"
+                        , onClick ConditionDelete
+                        , Tooltips.attr Tooltips.chipRemoveModalRow
+                        ]
+                        [ text "Delete" ]
+
+                Nothing ->
+                    text ""
             ]
         ]
 

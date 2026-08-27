@@ -59,12 +59,12 @@ import Ui.Condition as ConditionUi exposing (ConditionUi)
 import Ui.Condition.Bundled as Bundled
 
 
-{-| Hard cap on the chip-note text. Ten characters keeps the chip
-small and prevents wrap-overflow on the card row 1.
+{-| Hard cap on the chip-note text, keeping the chip compact
+enough that card row 1 doesn't wrap-overflow.
 -}
 maxConditionNoteLength : Int
 maxConditionNoteLength =
-    10
+    20
 
 
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
