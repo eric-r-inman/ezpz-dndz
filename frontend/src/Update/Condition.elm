@@ -32,6 +32,7 @@ module Update.Condition exposing
     , saveNoticeDismiss
     , saveToggle
     , submit
+    , undoLatest
     , untilCreatureChanged
     , untilPhaseSet
     )
@@ -67,9 +68,14 @@ maxConditionNoteLength =
     20
 
 
+{-| Every form mutation routes through here, so the
+applied-and-untouched flag clears itself the moment the GM edits
+anything.
+-}
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
-withConditionUi =
+withConditionUi fn =
     Model.mapSurface Model.conditionLens
+        (fn >> (\u -> { u | applied = False }))
 
 
 {-| Opening is a toggle: clicking the card's Condition/Effect
@@ -83,15 +89,63 @@ openNew name model =
     ( case model.surface of
         Just (SurfaceCondition ui) ->
             if ui.target == name && ui.editingId == Nothing then
-                { model | surface = Nothing }
+                stashAndClose ui model
 
             else
-                { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
+                { model | surface = Just (SurfaceCondition (reopened name model)) }
 
         _ ->
-            { model | surface = Just (SurfaceCondition (ConditionUi.fresh name)) }
+            { model | surface = Just (SurfaceCondition (reopened name model)) }
     , Cmd.none
     )
+
+
+{-| A fresh add-mode open restores the stashed draft when the
+last close left un-applied settings. The draft's target (and an
+until-turn reference that pointed at it) re-aim at the newly
+opened creature; a reference to some third creature survives.
+-}
+reopened : String -> Model -> ConditionUi
+reopened name model =
+    case model.conditionDraft of
+        Just draft ->
+            { draft
+                | target = name
+                , editingId = Nothing
+                , untilCreature =
+                    if draft.untilCreature == draft.target then
+                        name
+
+                    else
+                        draft.untilCreature
+                , loadMenuOpen = False
+                , pendingSaveName = Nothing
+                , applied = False
+            }
+
+        Nothing ->
+            ConditionUi.fresh name
+
+
+{-| Closing keeps un-applied add-mode settings as the draft the
+next open restores; an applied (and untouched) editor resets
+instead, and closing an edit-mode form never disturbs the
+remembered add-mode draft.
+-}
+stashAndClose : ConditionUi -> Model -> Model
+stashAndClose ui model =
+    { model
+        | surface = Nothing
+        , conditionDraft =
+            if ui.editingId /= Nothing then
+                model.conditionDraft
+
+            else if ui.applied then
+                Nothing
+
+            else
+                Just ui
+    }
 
 
 {-| Chip clicks toggle the same way: re-clicking the chip whose
@@ -125,7 +179,14 @@ openEditFresh name id model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( case model.surface of
+        Just (SurfaceCondition ui) ->
+            stashAndClose ui model
+
+        _ ->
+            { model | surface = Nothing }
+    , Cmd.none
+    )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -154,7 +215,11 @@ user last touched).
 -}
 customNameChanged : String -> Model -> ( Model, Cmd Msg )
 customNameChanged text model =
-    ( withConditionUi (\u -> { u | name = text, customName = text }) model
+    let
+        clamped =
+            String.left maxConditionNoteLength text
+    in
+    ( withConditionUi (\u -> { u | name = clamped, customName = clamped }) model
     , Cmd.none
     )
 
@@ -584,9 +649,67 @@ submit model =
                 ( { model | surface = Nothing }, Cmd.none )
 
             else
-                ( commitCondition ui name model, Cmd.none )
+                let
+                    ( committed, logEntry ) =
+                        commitCondition ui name model
+
+                    withLog =
+                        case logEntry of
+                            Just entry ->
+                                { committed
+                                    | conditionLog =
+                                        entry
+                                            :: List.take
+                                                (ConditionUi.maxConditionLogEntries - 1)
+                                                committed.conditionLog
+                                }
+
+                            Nothing ->
+                                committed
+                in
+                ( markApplied withLog, Cmd.none )
 
         _ ->
+            ( model, Cmd.none )
+
+
+{-| Applying marks the open editor so a subsequent close resets
+rather than stashes, and drops any stale draft.
+-}
+markApplied : Model -> Model
+markApplied model =
+    case model.surface of
+        Just (SurfaceCondition ui) ->
+            { model
+                | surface = Just (SurfaceCondition { ui | applied = True })
+                , conditionDraft = Nothing
+            }
+
+        _ ->
+            { model | conditionDraft = Nothing }
+
+
+{-| Undo the newest condition application: remove every condition
+instance that application created (by the ids captured at add
+time), then drop the entry so the next undo chains backwards.
+Instances the GM already removed by hand no-op harmlessly.
+-}
+undoLatest : Model -> ( Model, Cmd Msg )
+undoLatest model =
+    case model.conditionLog of
+        entry :: rest ->
+            ( { model
+                | encounter =
+                    List.foldl
+                        (\t enc -> Encounter.removeCondition t.name t.conditionId enc)
+                        model.encounter
+                        entry.targets
+                , conditionLog = rest
+              }
+            , Cmd.none
+            )
+
+        [] ->
             ( model, Cmd.none )
 
 
@@ -736,7 +859,7 @@ the existing condition's fields (when editing). The "skip first
 end-of-turn tick" rule is applied here for AtEnd countdowns
 created on the currently-active creature.
 -}
-commitCondition : ConditionUi -> String -> Model -> Model
+commitCondition : ConditionUi -> String -> Model -> ( Model, Maybe ConditionUi.ConditionLogEntry )
 commitCondition ui name model =
     let
         duration =
@@ -762,7 +885,7 @@ commitCondition ui name model =
     in
     case ui.editingId of
         Just id ->
-            { model
+            ( { model
                 | encounter =
                     Encounter.updateCondition ui.target
                         id
@@ -775,19 +898,38 @@ commitCondition ui name model =
                             }
                         )
                         model.encounter
-            }
+              }
+            , Nothing
+            )
 
         Nothing ->
             let
                 targets =
                     conditionTargets ui model.encounter
 
-                addOne tgt enc =
-                    Encounter.addCondition tgt draft enc
+                addOne tgt acc =
+                    let
+                        ( withAdded, newId ) =
+                            Encounter.addConditionWithId tgt draft acc.encounter
+                    in
+                    { encounter = withAdded
+                    , applied = { name = tgt, conditionId = newId } :: acc.applied
+                    }
+
+                result =
+                    List.foldl addOne { encounter = model.encounter, applied = [] } targets
             in
-            { model
-                | encounter = List.foldl addOne model.encounter targets
-            }
+            ( { model | encounter = result.encounter }
+            , if List.isEmpty result.applied then
+                Nothing
+
+              else
+                Just
+                    { conditionName = draft.name
+                    , note = draft.note
+                    , targets = List.reverse result.applied
+                    }
+            )
 
 
 {-| Resolve which creatures a new condition applies to. When

@@ -204,6 +204,7 @@ dockedEditor model =
                     { creatureNames = List.map .name model.encounter.creatures
                     , selectedCount = selectedCount
                     , presets = model.conditionPresets
+                    , log = model.conditionLog
                     }
                     ui
                 )

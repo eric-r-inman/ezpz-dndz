@@ -561,6 +561,10 @@ init flags url key =
       , hpEdit = Nothing
       , compendium = CompendiumUi.emptyCompendium
       , surface = Nothing
+      , hpChangeDraft = Nothing
+      , conditionDraft = Nothing
+      , saveChainDraft = Nothing
+      , conditionLog = []
       , modalChrome = Ui.ModalChrome.fresh
       , placeholderRename = Nothing
       , panelCreaturePin = Nothing
@@ -1354,6 +1358,9 @@ updateInner msg model =
 
         ConditionSaveLanded name id dc wasAutoRoll roll ->
             Update.Condition.saveLanded name id dc wasAutoRoll roll model
+
+        ConditionUndoLatest ->
+            Update.Condition.undoLatest model
 
         SaveNoticeDismiss name id ->
             Update.Condition.saveNoticeDismiss name id model

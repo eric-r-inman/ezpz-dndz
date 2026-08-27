@@ -15,13 +15,13 @@ fills it in.
 
 import Dict exposing (Dict)
 import Encounter
-import Html exposing (Html, button, div, em, h3, input, span, text)
+import Html exposing (Html, button, div, em, h3, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (DurationKind(..), Msg(..))
 import Set
-import Ui.Condition exposing (ConditionPreset, ConditionUi, SaveToEndUi)
+import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
 import View.PhaseToggle
@@ -37,6 +37,7 @@ type alias Context =
     { creatureNames : List String
     , selectedCount : Int
     , presets : Dict String ConditionPreset
+    , log : List ConditionLogEntry
     }
 
 
@@ -49,7 +50,50 @@ view ctx ui =
         , saveSection ui
         , applyScope ctx.selectedCount ui
         , footer ui ctx.presets
+        , latestLog ctx.log
         ]
+
+
+{-| Newest condition application, in the HP editor's log row
+style, with the undo that removes exactly the instances that
+application created.
+-}
+latestLog : List ConditionLogEntry -> Html Msg
+latestLog entries =
+    case entries of
+        newest :: _ ->
+            let
+                names =
+                    String.join ", " (List.map .name newest.targets)
+            in
+            ul [ class "hp-change__log-list hp-change__log-list--latest" ]
+                [ li [ class "hp-change__log-entry" ]
+                    [ span [ class "hp-change__log-kind hp-change__log-kind--cond" ]
+                        [ text "Condition" ]
+                    , span [ class "hp-change__log-target" ] [ text names ]
+                    , span [ class "hp-change__log-trans" ]
+                        [ text
+                            (newest.conditionName
+                                ++ (if String.isEmpty newest.note then
+                                        ""
+
+                                    else
+                                        " (" ++ newest.note ++ ")"
+                                   )
+                            )
+                        ]
+                    , button
+                        [ class "icon-btn icon-btn--sm hp-change__log-undo"
+                        , onClick ConditionUndoLatest
+                        , Tooltips.attr ("Undo: remove " ++ newest.conditionName ++ " from " ++ names)
+                        , attribute "aria-label" ("Undo " ++ newest.conditionName ++ " on " ++ names)
+                        ]
+                        [ text "↩" ]
+                    ]
+                ]
+
+        [] ->
+            text ""
 
 
 {-| Multi-target scope checkbox. Hidden when no creatures are
@@ -120,11 +164,11 @@ standardRadio ui label =
         ]
 
 
-{-| Free-text condition name and note, sharing one labelled row
-(the inputs wrap under the label when the editor is narrow).
-The custom input hides while a standard-condition radio is
+{-| Free-text condition name and note, each on its own labelled
+row (an input wraps under its label when the editor is narrow).
+The custom row hides while a standard-condition radio is
 selected — the radio owns the name then, and re-clicking the
-selected radio clears it to bring the field back.
+selected radio clears it to bring the row back.
 -}
 customAndNoteSection : ConditionUi -> Html Msg
 customAndNoteSection ui =
@@ -133,24 +177,28 @@ customAndNoteSection ui =
             String.isEmpty ui.customName && not (String.isEmpty ui.name)
     in
     div [ class "cond-section" ]
-        [ div [ class "cond-row" ]
-            ([ Html.label [] [ text "Custom and Note (max 20 characters):" ] ]
-                ++ (if customHidden then
-                        []
+        ((if customHidden then
+            []
 
-                    else
-                        [ input
-                            [ class "cond-input"
-                            , type_ "text"
-                            , value ui.customName
-                            , placeholder "e.g. Bardic Inspiration, Burning"
-                            , onInput ConditionCustomNameChanged
-                            ]
-                            []
-                        ]
-                   )
-                ++ [ input
-                        [ class "cond-input"
+          else
+            [ div [ class "cond-row" ]
+                [ Html.label [] [ text "Custom (Max 20 characters):" ]
+                , input
+                    [ class "cond-input cond-input--w20"
+                    , type_ "text"
+                    , value ui.customName
+                    , maxlength Update.Condition.maxConditionNoteLength
+                    , placeholder "e.g. Burning"
+                    , onInput ConditionCustomNameChanged
+                    ]
+                    []
+                ]
+            ]
+         )
+            ++ [ div [ class "cond-row" ]
+                    [ Html.label [] [ text "Note (max 20 characters):" ]
+                    , input
+                        [ class "cond-input cond-input--w20"
                         , type_ "text"
                         , value ui.note
                         , maxlength Update.Condition.maxConditionNoteLength
@@ -158,9 +206,9 @@ customAndNoteSection ui =
                         , onInput ConditionNoteChanged
                         ]
                         []
-                   ]
-            )
-        ]
+                    ]
+               ]
+        )
 
 
 durationSection : ConditionUi -> List String -> Html Msg

@@ -1,6 +1,6 @@
 module Ui.Condition exposing
     ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
-    , ConditionPreset, applyPreset, toPreset
+    , ConditionLogEntry, ConditionPreset, applyPreset, maxConditionLogEntries, toPreset
     )
 
 {-| Condition / effect modal state.
@@ -74,7 +74,31 @@ type alias ConditionUi =
     -- reads as a bug.  Reset to False whenever the user touches
     -- duration in any other way.
     , useOneMinutePreset : Bool
+
+    -- True once the current settings have been applied and not
+    -- edited since.  Closing an applied editor resets it;
+    -- closing an un-applied add-mode editor stashes the settings
+    -- as the draft the next open restores.
+    , applied : Bool
     }
+
+
+{-| One row of the condition editor's recent-applies log: the
+condition that was added, and each creature-plus-condition-id it
+landed on so undo can remove exactly those instances.
+-}
+type alias ConditionLogEntry =
+    { conditionName : String
+    , note : String
+    , targets : List { name : String, conditionId : Int }
+    }
+
+
+{-| Cap on the condition log, matching the HP log's depth.
+-}
+maxConditionLogEntries : Int
+maxConditionLogEntries =
+    10
 
 
 type alias SaveToEndUi =
@@ -130,6 +154,7 @@ fresh target =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
+    , applied = False
     }
 
 
@@ -207,6 +232,7 @@ fromCondition target cond =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
+    , applied = False
     }
 
 

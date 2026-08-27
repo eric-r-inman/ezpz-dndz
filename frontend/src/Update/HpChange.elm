@@ -42,37 +42,91 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeUi)
 
 
 {-| Apply `fn` to the open HP-change modal. No-op when the modal
-is closed (or a different modal is open).
+is closed (or a different modal is open). Every form mutation
+routes through here, so the applied-and-untouched flag clears
+itself the moment the GM edits anything.
 -}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
-withHpChange =
+withHpChange fn =
     Model.mapSurface Model.hpChangeLens
+        (fn >> (\u -> { u | applied = False }))
 
 
 {-| Opening is a toggle: clicking the card's Manage HP button
 while its own editor is already expanded closes it (a cancel),
 matching how the button reads once the editor sits inline on
-the card rather than in an overlay.
+the card rather than in an overlay. A fresh open restores the
+stashed draft when the last close left un-applied settings.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
     ( case model.surface of
         Just (SurfaceHpChange ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                stashAndClose ui model
 
             else
-                { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
+                { model | surface = Just (SurfaceHpChange (reopened target model)) }
 
         _ ->
-            { model | surface = Just (SurfaceHpChange (HpChangeUi.fresh target)) }
+            { model | surface = Just (SurfaceHpChange (reopened target model)) }
     , Cmd.none
     )
 
 
+reopened : String -> Model -> HpChangeUi
+reopened target model =
+    case model.hpChangeDraft of
+        Just draft ->
+            { draft | target = target, parseError = Nothing, applied = False }
+
+        Nothing ->
+            HpChangeUi.fresh target
+
+
+{-| Closing keeps un-applied settings as the draft the next open
+restores; once the settings were applied (and untouched since),
+closing resets to defaults instead.
+-}
+stashAndClose : HpChangeUi -> Model -> Model
+stashAndClose ui model =
+    { model
+        | surface = Nothing
+        , hpChangeDraft =
+            if ui.applied then
+                Nothing
+
+            else
+                Just ui
+    }
+
+
+{-| Applying marks the open editor so a subsequent close resets
+rather than stashes, and drops any stale draft.
+-}
+markApplied : Model -> Model
+markApplied model =
+    case model.surface of
+        Just (SurfaceHpChange ui) ->
+            { model
+                | surface = Just (SurfaceHpChange { ui | applied = True })
+                , hpChangeDraft = Nothing
+            }
+
+        _ ->
+            { model | hpChangeDraft = Nothing }
+
+
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( case model.surface of
+        Just (SurfaceHpChange ui) ->
+            stashAndClose ui model
+
+        _ ->
+            { model | surface = Nothing }
+    , Cmd.none
+    )
 
 
 {-| Mirror the raw text for the controlled input. Clears any
@@ -136,7 +190,7 @@ applyAs kind model =
             in
             case String.toInt trimmed of
                 Just n ->
-                    ( applyHpChange withKind n modelWithKind
+                    ( applyHpChange withKind n modelWithKind |> markApplied
                     , Cmd.none
                     )
 
@@ -148,7 +202,7 @@ applyAs kind model =
                         -- creature reference — the previous
                         -- behaviour when `amountText = "0"`
                         -- was the default.
-                        ( applyHpChange withKind 0 modelWithKind
+                        ( applyHpChange withKind 0 modelWithKind |> markApplied
                         , Cmd.none
                         )
 
@@ -205,7 +259,7 @@ rollLanded roll model =
         committed =
             case logged.surface of
                 Just (SurfaceHpChange ui) ->
-                    applyHpChange ui roll.total logged
+                    applyHpChange ui roll.total logged |> markApplied
 
                 _ ->
                     logged
@@ -227,7 +281,7 @@ freshRollLanded kind ignoreTemp target roll model =
         ( logged, flashCmd ) =
             Effects.pushDiceRoll roll model
     in
-    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged
+    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged |> markApplied
     , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
     )
 

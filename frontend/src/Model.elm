@@ -464,6 +464,20 @@ type alias Model =
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
     , surface : Maybe Surface
+
+    -- Remembered editor settings, restored on the next open of
+    -- the matching surface.  Stashed when an editor closes with
+    -- un-applied settings; cleared when it closes after applying
+    -- (see each Update module's close).
+    , hpChangeDraft : Maybe HpChangeUi
+    , conditionDraft : Maybe ConditionUi
+    , saveChainDraft : Maybe SaveChainUi
+
+    -- Recent condition applications, newest first — the
+    -- condition editor's counterpart to `hpChangeLog`, carrying
+    -- the created condition ids so undo can remove exactly the
+    -- instances one application added.
+    , conditionLog : List UiCondition.ConditionLogEntry
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
     , panelCreaturePin : Maybe PanelPin

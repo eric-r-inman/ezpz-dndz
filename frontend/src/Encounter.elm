@@ -11,7 +11,7 @@ module Encounter exposing
     , mapCreature, nextCover
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
-    , addCondition, updateCondition, removeCondition, findCondition
+    , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
     , RechargeAbility, rosterDirty
@@ -78,7 +78,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # Conditions / effects
 
-@docs addCondition, updateCondition, removeCondition, findCondition
+@docs addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
 @docs describeDuration
 
 
@@ -708,6 +708,15 @@ the contract of [`mapCreature`](#mapCreature)).
 -}
 addCondition : String -> ConditionDraft -> Encounter -> Encounter
 addCondition target draft enc =
+    Tuple.first (addConditionWithId target draft enc)
+
+
+{-| `addCondition`, also handing back the id the new condition
+was assigned — for callers that must reference the instance
+later (the condition log's undo removes by id).
+-}
+addConditionWithId : String -> ConditionDraft -> Encounter -> ( Encounter, Int )
+addConditionWithId target draft enc =
     let
         nextId =
             allConditionIds enc
@@ -723,7 +732,9 @@ addCondition target draft enc =
             , saveToEnd = draft.saveToEnd
             }
     in
-    mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
+    ( mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
+    , nextId
+    )
 
 
 {-| Apply `fn` to one specific condition, identified by its id, on

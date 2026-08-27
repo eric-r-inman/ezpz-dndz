@@ -727,6 +727,9 @@ type Msg
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Bool Dice.Roll
+      -- Undo the newest condition application (the ↩ on the
+      -- condition editor's log row).
+    | ConditionUndoLatest
       -- (creature, condition id, dc, wasAutoRoll, roll)
     | SaveNoticeDismiss String Int
       -- Card row 3 memo

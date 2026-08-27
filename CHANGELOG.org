@@ -17,6 +17,10 @@
 3. When applying a dice-formula HP change to a selection, a new "New roll for
    each creature" option rolls independently per creature instead of applying
    one shared total.  No action needed.
+4. The HP, condition, and save-chain editors remember un-applied settings when
+   closed and restore them on the next open (applying and closing resets), and
+   the condition editor gains a recent-applies log with an undo that removes
+   exactly the instances one application added.  No action needed.
 ** Fixes
 ** Breaking
 * v0.2.0

@@ -51,6 +51,12 @@ type alias HpChangeUi =
     -- on the formula path with `applyToSelected` set; the
     -- default False keeps 5e's single-roll AOE convention.
     , freshRollPerTarget : Bool
+
+    -- True once the current settings have been applied and not
+    -- edited since.  Closing an applied editor resets it;
+    -- closing an un-applied one stashes the settings as the
+    -- draft the next open restores.
+    , applied : Bool
     }
 
 
@@ -120,4 +126,5 @@ fresh target =
     , ignoreTemp = False
     , applyToSelected = False
     , freshRollPerTarget = False
+    , applied = False
     }

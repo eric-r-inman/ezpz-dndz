@@ -71,31 +71,89 @@ open target model =
     ( case model.surface of
         Just (SurfaceSaveChain ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                stashAndClose ui model
 
             else
-                { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
+                { model | surface = Just (SurfaceSaveChain (reopened target model)) }
 
         _ ->
-            { model | surface = Just (SurfaceSaveChain (UiSaveChain.fresh target)) }
+            { model | surface = Just (SurfaceSaveChain (reopened target model)) }
     , Cmd.none
     )
 
 
+{-| A fresh open restores the stashed draft when the last close
+left un-applied settings.
+-}
+reopened : String -> Model -> SaveChainUi
+reopened target model =
+    case model.saveChainDraft of
+        Just draft ->
+            { draft | target = target, applied = False }
+
+        Nothing ->
+            UiSaveChain.fresh target
+
+
+{-| Closing keeps un-applied settings as the draft the next open
+restores; once the settings were applied (and untouched since),
+closing resets to defaults instead.
+-}
+stashAndClose : SaveChainUi -> Model -> Model
+stashAndClose ui model =
+    { model
+        | surface = Nothing
+        , saveChainDraft =
+            if ui.applied then
+                Nothing
+
+            else
+                Just ui
+    }
+
+
+{-| Applying (Fail / Pass / Roll Saves) marks the open editor so
+a subsequent close resets rather than stashes, and drops any
+stale draft.
+-}
+markApplied : Model -> Model
+markApplied model =
+    case model.surface of
+        Just (SurfaceSaveChain ui) ->
+            { model
+                | surface = Just (SurfaceSaveChain { ui | applied = True })
+                , saveChainDraft = Nothing
+            }
+
+        _ ->
+            { model | saveChainDraft = Nothing }
+
+
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( case model.surface of
+        Just (SurfaceSaveChain ui) ->
+            stashAndClose ui model
+
+        _ ->
+            { model | surface = Nothing }
+    , Cmd.none
+    )
 
 
 
 -- ── FORM FIELD SETTERS ──────────────────────────────────────────
 
 
+{-| Every form mutation routes through here, so the
+applied-and-untouched flag clears itself the moment the GM edits
+anything.
+-}
 withUi : (SaveChainUi -> SaveChainUi) -> Model -> Model
 withUi fn model =
     case model.surface of
         Just (SurfaceSaveChain ui) ->
-            { model | surface = Just (SurfaceSaveChain (fn ui)) }
+            { model | surface = Just (SurfaceSaveChain ((fn >> (\u -> { u | applied = False })) ui)) }
 
         _ ->
             model
@@ -600,13 +658,15 @@ exportBundled model =
 
 
 applyFail : Model -> ( Model, Cmd Msg )
-applyFail =
-    applySide SaveChainFail
+applyFail model =
+    applySide SaveChainFail model
+        |> Tuple.mapFirst markApplied
 
 
 applyPass : Model -> ( Model, Cmd Msg )
-applyPass =
-    applySide SaveChainSuccess
+applyPass model =
+    applySide SaveChainSuccess model
+        |> Tuple.mapFirst markApplied
 
 
 {-| Apply one side of the chain. Walks the outcome:
@@ -932,6 +992,12 @@ case; this guard is defence in depth.
 -}
 rollSaves : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
 rollSaves mode model =
+    rollSavesInner mode model
+        |> Tuple.mapFirst markApplied
+
+
+rollSavesInner : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
+rollSavesInner mode model =
     case model.surface of
         Just (SurfaceSaveChain ui) ->
             case resolveDc ui of
