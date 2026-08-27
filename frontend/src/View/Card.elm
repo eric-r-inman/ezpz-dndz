@@ -1161,9 +1161,11 @@ rowMid : Creature -> Maybe HpEdit -> Html Msg
 rowMid creature hpEdit =
     div [ class "creature-card__row creature-card__row--mid" ]
         -- The posture toggles moved to the toolbar's Status
-        -- editor; the row keeps the at-a-glance vitals.
+        -- editor; the row keeps the at-a-glance vitals plus
+        -- read-only icons for whatever that editor applied.
         [ hpDisplay creature hpEdit
         , bloodied creature
+        , statusIcons creature
         ]
 
 
@@ -1366,6 +1368,62 @@ hpEditKeyDecoder =
                     _ ->
                         Decode.fail "ignore"
             )
+
+
+{-| Read-only icons for the statuses the toolbar's Status
+editor applies. Icons only — changing them happens in the
+editor; the card just answers "what is this creature doing?"
+at a glance.
+-}
+statusIcons : Creature -> Html Msg
+statusIcons creature =
+    let
+        coverIcon =
+            case creature.cover of
+                Encounter.NoCover ->
+                    Nothing
+
+                Encounter.HalfCover ->
+                    Just ( "◐", "Half cover" )
+
+                Encounter.ThreeQuartersCover ->
+                    Just ( "◕", "Three-quarters cover" )
+
+                Encounter.FullCover ->
+                    Just ( "●", "Total cover" )
+
+        flag isOn glyph label =
+            if isOn then
+                Just ( glyph, label )
+
+            else
+                Nothing
+
+        flyingLabel =
+            "Flying (" ++ String.fromInt creature.flyHeight ++ " ft)"
+
+        icons =
+            List.filterMap identity
+                [ coverIcon
+                , flag creature.concentrating "🧠" "Concentrating"
+                , flag creature.hiding "👤" "Hiding"
+                , flag creature.dodging "🤸" "Dodging"
+                , flag creature.flying "🪽" flyingLabel
+                ]
+
+        icon ( glyph, label ) =
+            span
+                [ class "status-icon"
+                , Tooltips.attr label
+                , attribute "aria-label" label
+                ]
+                [ text glyph ]
+    in
+    if List.isEmpty icons then
+        text ""
+
+    else
+        span [ class "status-icons" ] (List.map icon icons)
 
 
 bloodied : Creature -> Html Msg

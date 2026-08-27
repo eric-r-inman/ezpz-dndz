@@ -5638,6 +5638,20 @@ button.creature-card__lifecycle--dead:focus-visible {
 .bloodied {
   font-size: 0.95rem;
   margin-right: var(--space-2);
+  /* Pull against the HP display's right margin so the droplet
+     reads as part of the vitals cluster. */
+  margin-left: calc(var(--space-2) * -1 + 2px);
+  line-height: 1;
+  cursor: help;
+}
+
+/* Read-only posture icons mirroring what the Status editor
+   applied, sitting to the right of the vitals. */
+.status-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
   line-height: 1;
   cursor: help;
 }
