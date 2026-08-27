@@ -107,6 +107,7 @@ import Update.PlaceholderRename
 import Update.Preferences
 import Update.QuickAdd
 import Update.RandomEncounter
+import Update.Replace
 import Update.Save
 import Update.SaveChain
 import Update.SaveCompendium
@@ -135,7 +136,6 @@ import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
 import View.Modal.CrCalculator
 import View.Modal.Dice
-import View.Modal.Duplicate
 import View.Modal.GroupEdit
 import View.Modal.Initiative
 import View.Modal.Load
@@ -358,6 +358,9 @@ subscriptions model =
                     Just (SurfaceDuplicate _) ->
                         Browser.Events.onKeyDown (escKey DuplicateClose)
 
+                    Just (SurfaceReplace _) ->
+                        Browser.Events.onKeyDown (escKey ReplaceClose)
+
                     _ ->
                         if model.compendium.open then
                             Browser.Events.onKeyDown compendiumKeyDecoder
@@ -565,6 +568,8 @@ init flags url key =
       , conditionDraft = Nothing
       , saveChainDraft = Nothing
       , conditionLog = []
+      , duplicateLog = []
+      , replaceLog = []
       , modalChrome = Ui.ModalChrome.fresh
       , placeholderRename = Nothing
       , panelCreaturePin = Nothing
@@ -1198,20 +1203,32 @@ updateInner msg model =
         DuplicateClose ->
             Update.Duplicate.close model
 
-        DuplicateExact ->
-            Update.Duplicate.exact model
+        DuplicateModeSet mode ->
+            Update.Duplicate.modeSet mode model
 
-        DuplicateFresh ->
-            Update.Duplicate.fresh model
+        DuplicateApplyToSelectedToggle ->
+            Update.Duplicate.applyToSelectedToggle model
 
-        DuplicateMinionHalf ->
-            Update.Duplicate.minionHalf model
+        DuplicateApply ->
+            Update.Duplicate.apply model
 
-        DuplicateMinionOne ->
-            Update.Duplicate.minionOne model
+        ReplaceOpen name ->
+            Update.Replace.open name model
 
-        DuplicatePudding ->
-            Update.Duplicate.pudding model
+        ReplaceClose ->
+            Update.Replace.close model
+
+        ReplaceSearchChanged text ->
+            Update.Replace.searchChanged text model
+
+        ReplacePick creatureId ->
+            Update.Replace.pick creatureId model
+
+        ReplaceApplyToSelectedToggle ->
+            Update.Replace.applyToSelectedToggle model
+
+        ReplaceApply ->
+            Update.Replace.apply model
 
         -- Initiative manager
         InitiativeOpen target ->
@@ -2749,7 +2766,6 @@ appShell maybeUser model =
     , View.Modal.LoadCompendium.view model
     , View.Modal.AbilitySave.view model
     , View.Modal.QuickAdd.view model
-    , View.Modal.Duplicate.view model
     , View.Modal.GroupEdit.view model
     , View.Modal.LoreEdit.view model
     , View.Modal.CrCalculator.view model

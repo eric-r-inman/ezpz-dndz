@@ -21,7 +21,9 @@ import Set
 import View.Card
 import View.EncounterBar
 import View.Inline.Condition
+import View.Inline.Duplicate
 import View.Inline.HpChange
+import View.Inline.Replace
 import View.Inline.SaveChain
 import View.PanelControls
 import View.PanelDetail
@@ -135,6 +137,22 @@ actionToolbar model =
                 _ ->
                     False
 
+        replaceEditing =
+            case model.surface of
+                Just (SurfaceReplace _) ->
+                    True
+
+                _ ->
+                    False
+
+        duplicateEditing =
+            case model.surface of
+                Just (SurfaceDuplicate _) ->
+                    True
+
+                _ ->
+                    False
+
         trigger baseClass editing openMsg openTip label =
             button
                 [ class (View.Card.editorTriggerClass baseClass editing)
@@ -155,12 +173,25 @@ actionToolbar model =
                         "false"
                     )
                 ]
-                [ text label ]
+                -- The triangle doubles as the open/closed cue:
+                -- ▾ invites expansion, ▴ says "click to fold".
+                [ text
+                    (label
+                        ++ (if editing then
+                                " ▴"
+
+                            else
+                                " ▾"
+                           )
+                    )
+                ]
     in
     div [ class "encounter-toolbar" ]
         [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
         , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
         , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
+        , trigger "action-btn action-btn--blue" replaceEditing (ReplaceOpen target) "Swap this creature for a compendium pick (keeps position and initiative)" "Replace"
+        , trigger "action-btn action-btn--blue" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
         ]
 
 
@@ -218,6 +249,18 @@ dockedEditor model =
                     }
                     ui
                 )
+
+        Just (SurfaceReplace ui) ->
+            docked (targetLabel ui.target ui.applyToSelected)
+                (View.Inline.Replace.view model.compendium.db
+                    selectedCount
+                    model.replaceLog
+                    ui
+                )
+
+        Just (SurfaceDuplicate ui) ->
+            docked (targetLabel ui.target ui.applyToSelected)
+                (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
         _ ->
             text ""
@@ -295,7 +338,7 @@ specialReactionsBanner creatures =
         [ class "legendary-banner legendary-banner--special-reactions"
         , attribute "role" "note"
         ]
-        (text "Special reactions: "
+        (text "⚡ Special reactions: "
             :: (creatures
                     |> List.map nameNode
                     |> List.intersperse (text ", ")

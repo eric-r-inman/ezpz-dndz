@@ -168,24 +168,10 @@ view ctx creature =
                     ]
                     [ text "∅" ]
                 ]
-            , div [ class "creature-card__rail-group" ]
-                [ button
-                    [ class "icon-btn"
-                    , onClick (QuickAddOpenForReplace creature.name)
-                    , Tooltips.attr "Replace creature"
-                    , attribute "aria-label" "Replace creature"
-                    ]
-                    [ text "⇄" ]
-                ]
-            , div [ class "creature-card__rail-group" ]
-                [ button
-                    [ class "icon-btn"
-                    , onClick (DuplicateOpen creature.name)
-                    , Tooltips.attr Tooltips.queueDuplicate
-                    , attribute "aria-label" "Duplicate"
-                    ]
-                    [ text "⧉" ]
-                ]
+
+            -- Replace and Duplicate moved to the encounter
+            -- toolbar's docked editors; the rail keeps only the
+            -- remove and skip toggles.
             ]
         ]
 

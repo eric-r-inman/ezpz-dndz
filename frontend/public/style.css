@@ -5933,6 +5933,23 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 8px 0 0;
 }
 
+/* Replace editor's compendium picker — the Quick Add list
+   restyled for the docked editor: capped height with its own
+   scroll, and a picked-row highlight since selection here is a
+   two-step pick-then-Apply rather than click-to-add. */
+.quick-add__list--docked {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.quick-add__row--picked {
+  outline: 1px solid var(--color-accent, #4a90e2);
+  outline-offset: -1px;
+  background: var(--color-surface-2);
+}
+
 /* ── Card inline surfaces ─────────────────────────────────────────── */
 
 /* Expansion section under card row 3 hosting the Manage-HP and
@@ -8671,6 +8688,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-kind--cond {
   color: var(--color-condition);
+}
+
+/* Log rows whose first column is a real name (a condition, a
+   duplicate flavor) rather than a fixed-width verb — let the
+   column size to its text while keeping the shared 8px gap. */
+.hp-change__log-entry--wide {
+  grid-template-columns: auto 1fr auto auto;
 }
 
 .hp-change__log-target {

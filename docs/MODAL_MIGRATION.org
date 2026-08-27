@@ -77,7 +77,10 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =AbilitySave= :: Already receives click coordinates and behaves like a popup;
   formalize it as an anchored popover (roll / advantage / disadvantage) outside
   the modal ADT.
-- =Duplicate= :: Already a dropdown menu; reclassify it out of the modal system.
+- =Duplicate= :: First reclassified as its existing dropdown menu, then promoted
+  to a toolbar-docked editor beside =Replace= (the Quick Add picker's replace
+  mode, given its own surface) — both with apply-to-selected scopes and
+  recent-applies logs.
 - =QuickAdd= :: Anchored popover under the button with a search box and a
   capped-height scroll; the alpha/CR toggle stays in its header.
 - =Initiative= :: Popover anchored to the clicked initiative badge; the

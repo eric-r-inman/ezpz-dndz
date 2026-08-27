@@ -70,6 +70,7 @@ import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
+import Ui.Replace exposing (ReplaceUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveChain exposing (SaveChainUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
@@ -128,6 +129,7 @@ type Surface
     | SurfaceAbilitySave AbilitySaveUi
     | SurfaceQuickAdd QuickAddUi
     | SurfaceDuplicate DuplicateUi
+    | SurfaceReplace ReplaceUi
     | SurfaceGroupEdit GroupEditUi
     | SurfaceLoreEdit LoreEditUi
     | SurfaceCrCalculator CrCalculatorUi
@@ -478,6 +480,11 @@ type alias Model =
     -- the created condition ids so undo can remove exactly the
     -- instances one application added.
     , conditionLog : List UiCondition.ConditionLogEntry
+
+    -- Same pattern for the toolbar's Duplicate and Replace
+    -- editors: newest first, capped in their Update modules.
+    , duplicateLog : List Ui.Duplicate.DuplicateLogEntry
+    , replaceLog : List Ui.Replace.ReplaceLogEntry
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
     , panelCreaturePin : Maybe PanelPin

@@ -67,19 +67,17 @@ latestLog entries =
                     String.join ", " (List.map .name newest.targets)
             in
             ul [ class "hp-change__log-list hp-change__log-list--latest" ]
-                [ li [ class "hp-change__log-entry" ]
+                [ li [ class "hp-change__log-entry hp-change__log-entry--wide" ]
                     [ span [ class "hp-change__log-kind hp-change__log-kind--cond" ]
-                        [ text "Condition" ]
+                        [ text newest.conditionName ]
                     , span [ class "hp-change__log-target" ] [ text names ]
                     , span [ class "hp-change__log-trans" ]
                         [ text
-                            (newest.conditionName
-                                ++ (if String.isEmpty newest.note then
-                                        ""
+                            (if String.isEmpty newest.note then
+                                ""
 
-                                    else
-                                        " (" ++ newest.note ++ ")"
-                                   )
+                             else
+                                "(" ++ newest.note ++ ")"
                             )
                         ]
                     , button
@@ -182,7 +180,7 @@ customAndNoteSection ui =
 
           else
             [ div [ class "cond-row" ]
-                [ Html.label [] [ text "Custom (Max 20 characters):" ]
+                [ Html.label [] [ text "Custom:" ]
                 , input
                     [ class "cond-input cond-input--w20"
                     , type_ "text"
@@ -196,7 +194,7 @@ customAndNoteSection ui =
             ]
          )
             ++ [ div [ class "cond-row" ]
-                    [ Html.label [] [ text "Note (max 20 characters):" ]
+                    [ Html.label [] [ text "Note:" ]
                     , input
                         [ class "cond-input cond-input--w20"
                         , type_ "text"

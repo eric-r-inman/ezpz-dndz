@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -84,6 +84,18 @@ type HpKind
     | HealKind
     | TempHpKind
     | MaxHpKind
+
+
+{-| Which flavor of duplicate the Duplicate editor applies.
+Lives here beside `HpKind` / `DurationKind` so the Ui substate
+module can reference it without an import cycle.
+-}
+type DuplicateMode
+    = DupExact
+    | DupFresh
+    | DupMinionHalf
+    | DupMinionOne
+    | DupPudding
 
 
 {-| Which inline numeric value on the card is being edited.
@@ -642,15 +654,22 @@ type Msg
     | MoveCreatureDown String
       -- Roster mutation (right rail × / ⧉ buttons)
     | RemoveCreature String
-      -- Duplicate picker modal: open from the card's ⧉ button,
-      -- pick one of four flavors (exact / fresh / two minion variants).
+      -- Duplicate editor (encounter toolbar): pick a flavor,
+      -- choose the target scope, Apply.
     | DuplicateOpen String
     | DuplicateClose
-    | DuplicateExact
-    | DuplicateFresh
-    | DuplicateMinionHalf
-    | DuplicateMinionOne
-    | DuplicatePudding
+    | DuplicateModeSet DuplicateMode
+    | DuplicateApplyToSelectedToggle
+    | DuplicateApply
+      -- Replace editor (encounter toolbar): search the
+      -- compendium, pick the replacement, choose the scope,
+      -- Apply.  Swaps preserve queue position and initiative.
+    | ReplaceOpen String
+    | ReplaceClose
+    | ReplaceSearchChanged String
+    | ReplacePick String
+    | ReplaceApplyToSelectedToggle
+    | ReplaceApply
       -- Initiative manager modal
     | InitiativeOpen String
     | InitiativeClose

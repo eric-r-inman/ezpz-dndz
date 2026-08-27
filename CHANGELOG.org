@@ -21,6 +21,10 @@
    closed and restore them on the next open (applying and closing resets), and
    the condition editor gains a recent-applies log with an undo that removes
    exactly the instances one application added.  No action needed.
+5. Replace and Duplicate move off the creature card's side rail into the
+   encounter toolbar as docked editors with an apply-to-selected scope and a
+   recent-applies log, the toolbar buttons show open/closed triangles, and the
+   condition log names the applied condition itself.  No action needed.
 ** Fixes
 ** Breaking
 * v0.2.0
