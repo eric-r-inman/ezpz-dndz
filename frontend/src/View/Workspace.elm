@@ -13,13 +13,16 @@ import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
 import Html exposing (Html, button, div, main_, section, span, text)
-import Html.Attributes exposing (attribute, class, id, type_)
+import Html.Attributes exposing (attribute, class, disabled, id, type_)
 import Html.Events exposing (onClick)
-import Model exposing (Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Set
 import View.Card
 import View.EncounterBar
+import View.Inline.Condition
+import View.Inline.HpChange
+import View.Inline.SaveChain
 import View.PanelControls
 import View.PanelDetail
 import View.Tooltips as Tooltips
@@ -45,12 +48,12 @@ view model =
 
 
 {-| The encounter pane. Builds the card context each card render
-needs: the inline-edit and rename states, plus the open surface
-and the model fragments the inline surfaces consume (selected
-count, condition presets, queue names, HP log). `savedAs` lights
-up the title-bar info icon with the source filename; the
-compendium DB + XP scope let the title bar's right cluster
-compute the real XP total.
+needs (inline-edit and rename states, the open surface, timer
+presets), then stacks the stationary strips — title bar, the two
+reminder banners, the action toolbar, and any docked editor —
+above the scrolling card grid. `savedAs` lights up the title-bar
+info icon with the source filename; the compendium DB + XP scope
+let the title bar's right cluster compute the real XP total.
 -}
 panelMain : Model -> Html Msg
 panelMain model =
@@ -63,14 +66,7 @@ panelMain model =
             , hpEdit = model.hpEdit
             , renameState = model.placeholderRename
             , surface = model.surface
-            , selectedCount =
-                List.length (List.filter .selected enc.creatures)
-            , conditionPresets = model.conditionPresets
             , timerPresets = model.timerPresets
-            , saveChainPresets = model.saveChainPresets
-            , saveChainLog = model.saveChainLog
-            , creatureNames = List.map .name enc.creatures
-            , hpChangeLog = model.hpChangeLog
             }
     in
     section [ class "panel panel--main" ]
@@ -78,6 +74,8 @@ panelMain model =
             [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
         , legendaryActionStrip enc
         , specialReactionsStrip enc
+        , actionToolbar model
+        , dockedEditor model
         , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
@@ -87,6 +85,131 @@ panelMain model =
             , quickAddRow
             ]
         ]
+
+
+{-| Stationary action toolbar under the reminder banners: the
+Manage HP, Condition/Effect, and Save Chain triggers that used
+to sit on every creature card. Each targets the active creature
+(falling back to the top of the queue before combat starts);
+the editors' own "apply to all selected" scope covers
+multi-creature use. Disabled with an empty queue — there is
+nothing to target.
+-}
+actionToolbar : Model -> Html Msg
+actionToolbar model =
+    let
+        target =
+            if String.isEmpty model.encounter.activeName then
+                model.encounter.creatures
+                    |> List.head
+                    |> Maybe.map .name
+                    |> Maybe.withDefault ""
+
+            else
+                model.encounter.activeName
+
+        noTargets =
+            String.isEmpty target
+
+        hpEditing =
+            case model.surface of
+                Just (SurfaceHpChange _) ->
+                    True
+
+                _ ->
+                    False
+
+        conditionEditing =
+            case model.surface of
+                Just (SurfaceCondition _) ->
+                    True
+
+                _ ->
+                    False
+
+        saveChainEditing =
+            case model.surface of
+                Just (SurfaceSaveChain _) ->
+                    True
+
+                _ ->
+                    False
+
+        trigger baseClass editing openMsg openTip label =
+            button
+                [ class (View.Card.editorTriggerClass baseClass editing)
+                , onClick openMsg
+                , disabled noTargets
+                , Tooltips.attr
+                    (if editing then
+                        Tooltips.inlineEditCancel
+
+                     else
+                        openTip
+                    )
+                , attribute "aria-expanded"
+                    (if editing then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ text label ]
+    in
+    div [ class "encounter-toolbar" ]
+        [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
+        , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
+        , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
+        ]
+
+
+{-| The docked editor area directly under the toolbar. Because
+the editor no longer sits on the creature it targets, a slim
+strip names the target; the editors themselves are unchanged.
+Scrolls internally past 60% of the viewport so a tall condition
+form can't push the queue off screen.
+-}
+dockedEditor : Model -> Html Msg
+dockedEditor model =
+    let
+        selectedCount =
+            List.length (List.filter .selected model.encounter.creatures)
+
+        docked target body =
+            div [ class "encounter-toolbar__editor" ]
+                [ div [ class "encounter-toolbar__target" ]
+                    [ text ("Target: " ++ target) ]
+                , body
+                ]
+    in
+    case model.surface of
+        Just (SurfaceHpChange ui) ->
+            docked ui.target
+                (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
+
+        Just (SurfaceCondition ui) ->
+            docked ui.target
+                (View.Inline.Condition.view
+                    { creatureNames = List.map .name model.encounter.creatures
+                    , selectedCount = selectedCount
+                    , presets = model.conditionPresets
+                    }
+                    ui
+                )
+
+        Just (SurfaceSaveChain ui) ->
+            docked ui.target
+                (View.Inline.SaveChain.view
+                    { presets = model.saveChainPresets
+                    , selectedCount = selectedCount
+                    , log = model.saveChainLog
+                    }
+                    ui
+                )
+
+        _ ->
+            text ""
 
 
 {-| Sticky orange strip sandwiched between the encounter title

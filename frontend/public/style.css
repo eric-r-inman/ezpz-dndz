@@ -5891,6 +5891,43 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
+/* ── Encounter action toolbar ─────────────────────────────────────── */
+
+/* Stationary strip under the reminder banners holding the
+   Manage HP / Condition / Save Chain triggers.  Like the
+   banners, it lives outside .panel__body so it stays put while
+   the card grid scrolls. */
+.encounter-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Docked editor area directly under the toolbar — same
+   stationary treatment, with its own scrollbar so a tall
+   condition form can't push the queue off screen. */
+.encounter-toolbar__editor {
+  flex: 0 0 auto;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 12px 10px;
+}
+
+.encounter-toolbar__target {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 0 0;
+}
+
 /* ── Card inline surfaces ─────────────────────────────────────────── */
 
 /* Expansion section under card row 3 hosting the Manage-HP and

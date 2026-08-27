@@ -1,4 +1,4 @@
-module View.Card exposing (Context, deathSaveColumn, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
+module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
@@ -10,8 +10,9 @@ Three rows + two side rails + an optional legendary-pip column:
   - Row 2 (mid): HP display (click-to-edit), bloodied marker,
     cover toggle, concentration / hiding / dodging / flying
     toggles, fly-height.
-  - Row 3 (bot): Damage / Heal / Temp HP / Condition action
-    buttons, ready/readied toggle, memo slot, timer slot.
+  - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
+    timer slot. The HP / condition / save-chain triggers live
+    in the encounter panel's stationary action toolbar.
 
 The two side rails carry the queue-mutation buttons (select,
 move up/down on the left; remove, duplicate on the right) and
@@ -28,7 +29,6 @@ column appears whenever the creature is at 0 HP.
 import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Cover(..), Creature)
-import Encounter.SaveChain
 import Html exposing (Html, article, button, div, input, p, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
@@ -40,38 +40,27 @@ import Msg
         , Msg(..)
         )
 import Set exposing (Set)
-import Ui.Condition exposing (ConditionPreset)
-import Ui.HpChange exposing (HpChangeEntry, HpEdit)
+import Ui.HpChange exposing (HpEdit)
 import Ui.Memo as MemoUi
 import Ui.Note as NoteUi
 import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
-import Ui.SaveChain
 import Ui.Timer exposing (TimerPreset)
-import View.Inline.Condition
-import View.Inline.HpChange
-import View.Inline.SaveChain
 import View.Inline.Timer
 import View.Tooltips as Tooltips
 
 
 {-| The model fragments a card render needs beyond its own
-`Creature`. `surface` powers the inline surfaces: when the open
-surface targets this card's creature, the card renders it — as
-an expansion under row 3 (HP change, condition) or as an
-in-place input where the memo pill / note pencil sits.
+`Creature`. `surface` powers the card-owned inline surfaces:
+when the open surface targets this card's creature, the card
+renders it — the timer form under row 3, or an in-place strip
+where the memo pill / note pencil sits.
 -}
 type alias Context =
     { activeName : String
     , hpEdit : Maybe HpEdit
     , renameState : Maybe PlaceholderRenameState
     , surface : Maybe Surface
-    , selectedCount : Int
-    , conditionPresets : Dict String ConditionPreset
     , timerPresets : Dict String TimerPreset
-    , saveChainPresets : Dict String Encounter.SaveChain.SaveChain
-    , saveChainLog : List Ui.SaveChain.SaveChainLogEntry
-    , creatureNames : List String
-    , hpChangeLog : List HpChangeEntry
     }
 
 
@@ -209,20 +198,6 @@ once.
 surfaceFor : Context -> Creature -> Maybe Surface
 surfaceFor ctx creature =
     case ctx.surface of
-        Just (SurfaceHpChange ui) ->
-            if ui.target == creature.name then
-                ctx.surface
-
-            else
-                Nothing
-
-        Just (SurfaceCondition ui) ->
-            if ui.target == creature.name then
-                ctx.surface
-
-            else
-                Nothing
-
         Just (SurfaceMemoEdit ui) ->
             if ui.target == creature.name then
                 ctx.surface
@@ -244,45 +219,20 @@ surfaceFor ctx creature =
             else
                 Nothing
 
-        Just (SurfaceSaveChain ui) ->
-            if ui.target == creature.name then
-                ctx.surface
-
-            else
-                Nothing
-
         _ ->
             Nothing
 
 
-{-| The expansion section under row 3 for the two form-sized
-inline surfaces. Memo and note don't render here — they swap
-in-place inputs into their row slots instead.
+{-| The expansion section under row 3 for the card-owned inline
+surfaces (the timer form, and the memo / note strips). The HP,
+condition, and save-chain editors dock under the encounter
+panel's action toolbar instead — see `View.Workspace`.
 -}
 inlineSurface : Context -> Creature -> Html Msg
 inlineSurface ctx creature =
     case surfaceFor ctx creature of
-        Just (SurfaceHpChange ui) ->
-            View.Inline.HpChange.view ctx.selectedCount ctx.hpChangeLog ui
-
-        Just (SurfaceCondition ui) ->
-            View.Inline.Condition.view
-                { creatureNames = ctx.creatureNames
-                , selectedCount = ctx.selectedCount
-                , presets = ctx.conditionPresets
-                }
-                ui
-
         Just (SurfaceTimerSetup ui) ->
             View.Inline.Timer.view ctx.timerPresets ui
-
-        Just (SurfaceSaveChain ui) ->
-            View.Inline.SaveChain.view
-                { presets = ctx.saveChainPresets
-                , selectedCount = ctx.selectedCount
-                , log = ctx.saveChainLog
-                }
-                ui
 
         Just (SurfaceMemoEdit ui) ->
             compactEditor
@@ -1732,72 +1682,12 @@ flyHeight creature =
 
 rowBot : Creature -> Maybe Surface -> Html Msg
 rowBot creature surface =
-    let
-        hpEditing =
-            case surface of
-                Just (SurfaceHpChange _) ->
-                    True
-
-                _ ->
-                    False
-
-        conditionEditing =
-            case surface of
-                Just (SurfaceCondition _) ->
-                    True
-
-                _ ->
-                    False
-
-        saveChainEditing =
-            case surface of
-                Just (SurfaceSaveChain _) ->
-                    True
-
-                _ ->
-                    False
-    in
+    -- The HP / condition / save-chain triggers moved to the
+    -- encounter panel's stationary action toolbar (see
+    -- `View.Workspace`), which targets the active creature; the
+    -- slots that remain here are the genuinely per-card ones.
     div [ class "creature-card__row creature-card__row--bot" ]
-        [ button
-            [ class (editorTriggerClass "action-btn action-btn--manage-hp" hpEditing)
-            , onClick (HpChangeOpen creature.name)
-            , Tooltips.attr
-                (if hpEditing then
-                    Tooltips.inlineEditCancel
-
-                 else
-                    Tooltips.manageHp
-                )
-            , ariaExpanded hpEditing
-            ]
-            [ text "Manage HP" ]
-        , button
-            [ class (editorTriggerClass "action-btn action-btn--condition" conditionEditing)
-            , onClick (ConditionOpenNew creature.name)
-            , Tooltips.attr
-                (if conditionEditing then
-                    Tooltips.inlineEditCancel
-
-                 else
-                    Tooltips.applyCondition
-                )
-            , ariaExpanded conditionEditing
-            ]
-            [ text "Condition/Effect" ]
-        , button
-            [ class (editorTriggerClass "action-btn action-btn--save-chain" saveChainEditing)
-            , onClick (SaveChainOpen creature.name)
-            , Tooltips.attr
-                (if saveChainEditing then
-                    Tooltips.inlineEditCancel
-
-                 else
-                    Tooltips.saveChain
-                )
-            , ariaExpanded saveChainEditing
-            ]
-            [ text "Save Chain" ]
-        , readiedToggle creature
+        [ readiedToggle creature
         , reactionPip creature
         , memoSlot creature surface
         , timerSlot creature surface

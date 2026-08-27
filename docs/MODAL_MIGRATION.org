@@ -52,13 +52,14 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 
 ** Inline on the creature card
 
-- =HpChange= (Damage / Heal / Temp HP) :: The card expands an input row in
-  place, so the queue stays visible while typing.  The ten-entry log shrinks to
-  "last change + undo" on the card; the full log lives in the dice panel.
-- =Condition= :: The same expansion: condition grid, duration, and save-to-end
-  controls in an expanded card section, with "apply to selected" as a checkbox.
-  The biggest inline candidate and the biggest payoff: conditions get set while
-  watching the fight.
+- =HpChange= (Damage / Heal / Temp HP) :: Converted as a card expansion, then
+  re-homed: its trigger sits in the encounter panel's stationary action toolbar
+  and the editor docks beneath it, targeting the active creature.  The ten-entry
+  log shrinks to "last change + undo" in the editor; the full log lives in the
+  dice panel.
+- =Condition= :: Same journey as =HpChange= — toolbar trigger, docked editor,
+  active-creature default, with "apply to selected" as a checkbox.  The biggest
+  payoff of the migration: conditions get set while watching the fight.
 - =Memo= (the row-three note) :: Clicking the icon becomes an in-place text
   input; no surface at all.
 - =Note= (the name note) :: Identical treatment, completing the existing
@@ -66,9 +67,10 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =Timer= :: Originally mapped as a popover, but converted with this group so
   every card-button editor shares one UX; it may still shrink to a popover once
   that tier's anchored container exists.
-- =SaveChain= :: Originally mapped as a right-rail panel, but converted with
-  this group for the same one-UX reason.  The expansion is large; whether it
-  moves to the rail once the panel tier exists is an open call.
+- =SaveChain= :: Originally mapped as a right-rail panel; it now shares the
+  toolbar-plus-docked-editor home of =HpChange= and =Condition=, which is that
+  panel in a top-docked form.  Whether it moves to the rail once the panel tier
+  exists is an open call.
 
 ** Popover anchored to the trigger
 
