@@ -146,13 +146,13 @@ noteSection : ConditionUi -> Html Msg
 noteSection ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [] [ text "Note:" ]
+            [ Html.label [] [ text "Note (max 10 characters):" ]
             , input
                 [ class "cond-input"
                 , type_ "text"
                 , value ui.note
                 , maxlength Update.Condition.maxConditionNoteLength
-                , placeholder "Max 10 chars (e.g. from Lyra)"
+                , placeholder "e.g. from Lyra"
                 , onInput ConditionNoteChanged
                 ]
                 []
@@ -179,7 +179,7 @@ durationSection ui creatureNames =
             case ui.durationKind of
                 DurKindManual ->
                     div [ class "cond-section__caption" ]
-                        [ text "You must click \"x\" to remove." ]
+                        [ text "Click \"x\" on badge to remove" ]
 
                 DurKindUntilTurn ->
                     durationUntilSubsection ui creatureNames

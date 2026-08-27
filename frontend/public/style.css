@@ -5915,7 +5915,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   max-height: 60vh;
   overflow-y: auto;
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  /* Thicker and brighter than the banner separators, so the
+     boundary between the docked editor and the scrolling cards
+     underneath reads unmistakably. */
+  border-bottom: 2px solid var(--color-text-muted);
   padding: 0 12px 10px;
 }
 
@@ -8501,6 +8504,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 .hp-change__input {
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
+  /* Sized to its example text rather than stretching to the
+     docked editor's full width. */
+  flex: 0 0 auto;
+  width: 20ch;
 }
 
 .hp-change__error {

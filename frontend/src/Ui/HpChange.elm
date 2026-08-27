@@ -1,4 +1,7 @@
-module Ui.HpChange exposing (HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh)
+module Ui.HpChange exposing
+    ( HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
+    , HpChangeTargetSnapshot
+    )
 
 {-| HP-change modal state plus the inline-HP edit and the
 recent-changes log entries.
@@ -60,8 +63,20 @@ entry gets reverted.
 -}
 type alias HpChangeEntry =
     { kind : HpKind
-    , target : String
     , amount : Int
+
+    -- One snapshot per creature the application touched, in
+    -- application order.  A multi-target apply is one entry, so
+    -- the log reads "Damage  A, B, C  8" and undo reverts the
+    -- whole application rather than one creature of it.
+    , targets : List HpChangeTargetSnapshot
+    }
+
+
+{-| Per-creature before/after capture inside one log entry.
+-}
+type alias HpChangeTargetSnapshot =
+    { name : String
     , beforeHp : Int
     , beforeTemp : Int
     , beforeMax : Int

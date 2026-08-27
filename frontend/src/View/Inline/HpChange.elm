@@ -15,7 +15,7 @@ the full list lives in the dice roller via `View.HpLog`.
 -}
 
 import Dice
-import Html exposing (Html, button, div, input, text)
+import Html exposing (Html, button, div, em, input, text)
 import Html.Attributes exposing (attribute, autofocus, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpKind(..), Msg(..))
@@ -49,7 +49,7 @@ amount ui =
             [ id "hp-amount"
             , class "hp-change__input"
             , type_ "text"
-            , placeholder "Number (12) or Formula (2d6+3)"
+            , placeholder "e.g. 12, or 2d6+3"
             , value ui.amountText
             , autofocus True
             , onInput HpChangeAmountChanged
@@ -112,8 +112,10 @@ applyScope selectedCount ui =
                     , onClick HpChangeApplyToSelectedToggle
                     ]
                     []
+                , text " Apply "
+                , em [] [ text "only" ]
                 , text
-                    (" Apply to all selected creatures ("
+                    (" to selected creatures ("
                         ++ String.fromInt selectedCount
                         ++ ")"
                     )

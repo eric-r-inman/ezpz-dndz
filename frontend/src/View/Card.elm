@@ -112,7 +112,7 @@ view ctx creature =
                 -- distribution would otherwise float this away
                 -- from the buttons it belongs with.
                 , button
-                    [ class "icon-btn icon-btn--accent"
+                    [ class "icon-btn"
                     , onClick (SetActive creature.name)
                     , Tooltips.attr Tooltips.queueMakeActive
                     , attribute "aria-label" "Make active"

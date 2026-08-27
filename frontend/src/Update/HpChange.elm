@@ -320,16 +320,20 @@ undoLatest : Model -> ( Model, Cmd Msg )
 undoLatest model =
     case model.hpChangeLog of
         entry :: rest ->
-            ( { model
-                | encounter =
-                    Encounter.mapCreature entry.target
+            let
+                restoreOne snapshot enc =
+                    Encounter.mapCreature snapshot.name
                         (HpChange.restoreHp
-                            { hp = entry.beforeHp
-                            , tempHp = entry.beforeTemp
-                            , maxHp = entry.beforeMax
+                            { hp = snapshot.beforeHp
+                            , tempHp = snapshot.beforeTemp
+                            , maxHp = snapshot.beforeMax
                             }
                         )
-                        model.encounter
+                        enc
+            in
+            ( { model
+                | encounter =
+                    List.foldl restoreOne model.encounter entry.targets
                 , hpChangeLog = rest
               }
             , Cmd.none
@@ -455,12 +459,10 @@ applyAmountTo kind ignoreTemp targets amount model =
                 after =
                     findCreature name newEnc
 
-                entry =
+                snapshot =
                     Maybe.map2
                         (\b a ->
-                            { kind = kind
-                            , target = name
-                            , amount = amount
+                            { name = name
                             , beforeHp = b.currentHp
                             , beforeTemp = b.tempHp
                             , beforeMax = b.maxHp
@@ -473,23 +475,32 @@ applyAmountTo kind ignoreTemp targets amount model =
                         after
             in
             { encounter = newEnc
-            , log =
-                case entry of
-                    Just e ->
-                        e :: acc.log
+            , snapshots =
+                case snapshot of
+                    Just s ->
+                        s :: acc.snapshots
 
                     Nothing ->
-                        acc.log
+                        acc.snapshots
             }
 
         result =
-            List.foldl applyOne { encounter = model.encounter, log = [] } targets
+            List.foldl applyOne { encounter = model.encounter, snapshots = [] } targets
     in
     { model
         | encounter = result.encounter
         , hpChangeLog =
-            List.reverse result.log
-                ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog
+            -- One entry per application, however many creatures it
+            -- touched; nothing is logged when no target resolved.
+            if List.isEmpty result.snapshots then
+                model.hpChangeLog
+
+            else
+                { kind = kind
+                , amount = amount
+                , targets = List.reverse result.snapshots
+                }
+                    :: List.take (HpChangeUi.maxHpLogEntries - 1) model.hpChangeLog
     }
 
 

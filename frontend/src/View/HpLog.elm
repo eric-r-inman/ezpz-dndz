@@ -89,27 +89,36 @@ entry index e =
                 MaxHpKind ->
                     "hp-change__log-kind hp-change__log-kind--max"
 
-        beforeStr =
-            hpSnapshot e.beforeHp e.beforeTemp e.beforeMax
+        names =
+            String.join ", " (List.map .name e.targets)
 
-        afterStr =
-            hpSnapshot e.afterHp e.afterTemp e.afterMax
+        -- The before → after slug only reads cleanly for a single
+        -- creature; a multi-target entry names everyone instead
+        -- and leaves the per-creature arithmetic to the cards.
+        transition =
+            case e.targets of
+                [ only ] ->
+                    hpSnapshot only.beforeHp only.beforeTemp only.beforeMax
+                        ++ " → "
+                        ++ hpSnapshot only.afterHp only.afterTemp only.afterMax
+
+                _ ->
+                    ""
     in
     li [ class "hp-change__log-entry" ]
         [ span [ class kindClass ] [ text kindLabel ]
-        , span [ class "hp-change__log-target" ] [ text e.target ]
+        , span [ class "hp-change__log-target" ] [ text names ]
         , span [ class "hp-change__log-amount" ]
             [ text (String.fromInt e.amount) ]
-        , span [ class "hp-change__log-trans" ]
-            [ text (beforeStr ++ " → " ++ afterStr) ]
+        , span [ class "hp-change__log-trans" ] [ text transition ]
         , if index == 0 then
             button
                 [ class "icon-btn icon-btn--sm hp-change__log-undo"
                 , onClick HpChangeUndoLatest
                 , Tooltips.attr
-                    ("Undo: revert " ++ e.target ++ " to " ++ beforeStr)
+                    ("Undo: revert " ++ names ++ " to previous HP")
                 , attribute "aria-label"
-                    ("Undo " ++ kindLabel ++ " on " ++ e.target)
+                    ("Undo " ++ kindLabel ++ " on " ++ names)
                 ]
                 [ text "↩" ]
 

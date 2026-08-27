@@ -176,20 +176,30 @@ dockedEditor model =
         selectedCount =
             List.length (List.filter .selected model.encounter.creatures)
 
-        docked target body =
+        -- The strip names whoever the apply will actually hit:
+        -- the single target, or the selection once the editor's
+        -- apply-only-to-selected scope is checked.
+        targetLabel targetName applyToSelected =
+            if applyToSelected && selectedCount > 0 then
+                "Target: Selected (" ++ String.fromInt selectedCount ++ ")"
+
+            else
+                "Target: " ++ targetName
+
+        docked label body =
             div [ class "encounter-toolbar__editor" ]
                 [ div [ class "encounter-toolbar__target" ]
-                    [ text ("Target: " ++ target) ]
+                    [ text label ]
                 , body
                 ]
     in
     case model.surface of
         Just (SurfaceHpChange ui) ->
-            docked ui.target
+            docked (targetLabel ui.target ui.applyToSelected)
                 (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
 
         Just (SurfaceCondition ui) ->
-            docked ui.target
+            docked (targetLabel ui.target (ui.applyToSelected && ui.editingId == Nothing))
                 (View.Inline.Condition.view
                     { creatureNames = List.map .name model.encounter.creatures
                     , selectedCount = selectedCount
@@ -199,7 +209,7 @@ dockedEditor model =
                 )
 
         Just (SurfaceSaveChain ui) ->
-            docked ui.target
+            docked (targetLabel ui.target ui.applyToSelected)
                 (View.Inline.SaveChain.view
                     { presets = model.saveChainPresets
                     , selectedCount = selectedCount
