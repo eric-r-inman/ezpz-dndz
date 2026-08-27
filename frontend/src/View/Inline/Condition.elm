@@ -1,16 +1,7 @@
 module View.Inline.Condition exposing (Context, view)
 
-{-| Condition / effect editor as an inline card expansion.
-Sections, top to bottom: standard-condition radios, custom name
-input, note input, duration choice (Manual / Until turn /
-Countdown) with the relevant sub-controls, optional save-to-end
-block, multi-target apply scope, and the action footer (Apply,
-Delete-when-editing, plus the preset Save / Load controls).
-
-The body is the retired Condition modal's, re-homed under the
-target creature's card so the queue stays visible while the GM
-fills it in.
-
+{-| Condition / effect editor, docked under the encounter
+toolbar so the queue stays visible while the GM fills it in.
 -}
 
 import Dict exposing (Dict)

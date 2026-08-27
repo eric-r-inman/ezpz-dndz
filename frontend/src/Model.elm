@@ -11,7 +11,7 @@ modal-state plumbing. The discipline mirrors the larger
 layering rule: domain state goes through `Encounter`,
 everything else stays here.
 
-The `modal` field is a `Maybe Surface` ADT — the constructor
+The `surface` field is a `Maybe Surface` ADT — the constructor
 identifies which modal is open and carries its UI state.
 `Nothing` means no modal is open. This shape replaces the
 older "one `Maybe XxxUi` field per modal" scheme and bakes
@@ -22,7 +22,10 @@ The exceptions — `dice` and `compendium` — sit outside the
 ADT because their substate has to survive a modal close
 (dice history, compendium browser cache + filter selection).
 Their `open : Bool` field on the substate signals whether the
-modal is showing.
+modal is showing. The `*Draft` fields are the same exception
+in another form: they hold the settings of editors that are
+CLOSED, which by definition cannot live inside the ADT that
+models what is open.
 
 `savedSnapshot` is the last-known persisted state of the
 encounter — the result of the user's most recent Save (or
@@ -109,7 +112,7 @@ type PendingControl
 {-| One constructor per modal kind, each carrying its UI state.
 
 The "only one modal open at a time" invariant is type-enforced:
-opening modal X assigns `Just (ModalX uiX)` to `model.surface`,
+opening surface X assigns `Just (SurfaceX uiX)` to `model.surface`,
 which by construction wipes out whatever was open before.
 
 -}

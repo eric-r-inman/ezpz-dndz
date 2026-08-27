@@ -113,6 +113,7 @@
      single "primary CTA" accent on top of the earth-tone field. */
   --color-damage: #9a3412; /* rust  — orange-800 */
   --color-heal: #3f6212; /* olive — lime-800 */
+  --color-maxhp: #0f766e; /* teal-700 */
   --color-temp: #155e75; /* teal  — cyan-800 */
   --color-condition: #854d0e; /* amber — yellow-800 */
   --color-btn-blue: #155e75; /* teal — same as Temp HP */
@@ -194,6 +195,7 @@
   --active-creature-weight: 800;
   --color-damage: #9a3412;
   --color-heal: #3f6212;
+  --color-maxhp: #0f766e;
   --color-temp: #155e75;
   --color-condition: #854d0e;
   --color-btn-blue: #155e75;
@@ -292,6 +294,7 @@
      theme had before the light-theme overhaul. */
   --color-damage: #d63b3b;
   --color-heal: #3cb455;
+  --color-maxhp: #14b8a6;
   --color-temp: #2589e0;
   --color-condition: #9355e0;
   --color-btn-blue: #1976d2;
@@ -381,6 +384,7 @@
      against white when used as button fill with white text. */
   --color-damage: #a30000;
   --color-heal: #006b3c;
+  --color-maxhp: #0f766e;
   --color-temp: #003c8f;
   --color-condition: #5b21b6;
   --color-btn-blue: #003c8f;
@@ -5945,7 +5949,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .quick-add__row--picked {
-  outline: 1px solid var(--color-accent, #4a90e2);
+  outline: 1px solid var(--color-accent);
   outline-offset: -1px;
   background: var(--color-surface-2);
 }
@@ -8671,11 +8675,11 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .hp-change__log-kind--damage {
-  color: #d63b3b;
+  color: var(--color-damage);
 }
 
 .hp-change__log-kind--heal {
-  color: #3cb455;
+  color: var(--color-heal);
 }
 
 .hp-change__log-kind--temp {
@@ -8683,7 +8687,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .hp-change__log-kind--max {
-  color: #14b8a6;
+  color: var(--color-maxhp);
 }
 
 .hp-change__log-kind--cond {

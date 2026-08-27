@@ -3,29 +3,20 @@
 
 * Upcoming
 ** Added
-1. The docs gain a plan for migrating the UI away from modal dialogs
-   (=docs/MODAL_MIGRATION.org=); nothing in the app changes yet.  No action
-   needed.
-2. Combat bookkeeping left the pop-up dialogs: HP, condition, and save-chain
-   editing now lives in a stationary toolbar at the top of the encounter queue
-   (targeting the active creature, with an apply-to-selected scope), while
-   timers, memos, and name notes are edited directly on the creature card; the
-   open editor's button carries a white ring, re-clicking it closes the editor
-   unchanged, applying a change leaves the editor open for the next one, the
-   full recent-HP-changes list moved into the dice roller, and Escape closes
-   each of these editors.  No action needed.
-3. When applying a dice-formula HP change to a selection, a new "New roll for
-   each creature" option rolls independently per creature instead of applying
-   one shared total.  No action needed.
-4. The HP, condition, and save-chain editors remember un-applied settings when
-   closed and restore them on the next open (applying and closing resets), and
-   the condition editor gains a recent-applies log with an undo that removes
-   exactly the instances one application added.  No action needed.
-5. Replace and Duplicate move off the creature card's side rail into the
-   encounter toolbar as docked editors with an apply-to-selected scope and a
-   recent-applies log, the toolbar buttons show open/closed triangles, and the
-   condition log names the applied condition itself.  No action needed.
+1. Combat bookkeeping moved out of pop-up dialogs: HP, conditions, save chains,
+   replacing, and duplicating live in a stationary toolbar whose editors dock
+   above the always-visible encounter queue, while timers, memos, and name notes
+   are edited directly on the creature card (per the plan in
+   =docs/MODAL_MIGRATION.org=).  No action needed.
+2. The docked editors target the active creature or, via a checkbox, only the
+   selected creatures; they stay open after applying, remember un-applied
+   settings when closed, and keep recent-applies logs (undo-able for HP and
+   conditions).  No action needed.
+3. When applying a dice-formula HP change to a selection, a "New roll for each
+   creature" option rolls independently per creature.  No action needed.
 ** Fixes
+1. The make-active arrow's hover text no longer repeats the word "active".  No
+   action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

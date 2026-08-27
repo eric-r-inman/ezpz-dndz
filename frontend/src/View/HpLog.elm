@@ -1,13 +1,9 @@
 module View.HpLog exposing (latest, list)
 
 {-| Recent-HP-changes log rendering, shared between the dice
-modal (the full capped list) and the creature card's inline
-Manage-HP expansion (newest entry only, with its undo button).
-
-Extracted from the retired Manage-HP modal so the row markup
-exists once — both mounts must agree on what an entry looks
-like or the "same log, two homes" story falls apart.
-
+modal (the full capped list) and the Manage-HP editor (newest
+entry only, with its undo button) — the row markup exists once
+so the two mounts can't drift apart.
 -}
 
 import Html exposing (Html, button, div, li, span, text, ul)
