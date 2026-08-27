@@ -113,6 +113,7 @@ import Update.SaveChain
 import Update.SaveCompendium
 import Update.Shell
 import Update.SpellList
+import Update.Status
 import Update.Tabs
 import Update.Timer
 import Update.Toast
@@ -360,6 +361,9 @@ subscriptions model =
 
                     Just (SurfaceReplace _) ->
                         Browser.Events.onKeyDown (escKey ReplaceClose)
+
+                    Just (SurfaceStatus _) ->
+                        Browser.Events.onKeyDown (escKey StatusClose)
 
                     _ ->
                         if model.compendium.open then
@@ -1185,8 +1189,8 @@ updateInner msg model =
         ToggleSelected name ->
             Update.Encounter.toggleSelected name model
 
-        ShiftToggleSelected ->
-            Update.Encounter.shiftToggleSelected model
+        ShiftToggleSelected name ->
+            Update.Encounter.shiftToggleSelected name model
 
         MoveCreatureUp name ->
             Update.Encounter.moveCreatureUp name model
@@ -1229,6 +1233,27 @@ updateInner msg model =
 
         ReplaceApply ->
             Update.Replace.apply model
+
+        StatusOpen name ->
+            Update.Status.open name model
+
+        StatusClose ->
+            Update.Status.close model
+
+        StatusCoverCycle ->
+            Update.Status.coverCycle model
+
+        StatusToggle flag ->
+            Update.Status.toggleFlag flag model
+
+        StatusFlyHeightAdjust delta ->
+            Update.Status.flyHeightAdjust delta model
+
+        StatusApplyActive ->
+            Update.Status.applyActive model
+
+        StatusApplySelected ->
+            Update.Status.applySelected model
 
         -- Initiative manager
         InitiativeOpen target ->

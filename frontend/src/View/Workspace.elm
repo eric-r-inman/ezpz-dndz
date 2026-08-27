@@ -25,6 +25,7 @@ import View.Inline.Duplicate
 import View.Inline.HpChange
 import View.Inline.Replace
 import View.Inline.SaveChain
+import View.Inline.Status
 import View.PanelControls
 import View.PanelDetail
 import View.Tooltips as Tooltips
@@ -129,6 +130,14 @@ actionToolbar model =
                 _ ->
                     False
 
+        statusEditing =
+            case model.surface of
+                Just (SurfaceStatus _) ->
+                    True
+
+                _ ->
+                    False
+
         saveChainEditing =
             case model.surface of
                 Just (SurfaceSaveChain _) ->
@@ -189,9 +198,10 @@ actionToolbar model =
     in
     div [ class "encounter-toolbar" ]
         [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
+        , trigger "action-btn action-btn--blue" statusEditing (StatusOpen target) Tooltips.statusEditor "Status"
         , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
         , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
-        , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) "Swap this creature for a compendium pick (keeps position and initiative)" "Replace"
+        , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) Tooltips.queueReplace "Replace"
         , trigger "action-btn action-btn--orange" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
         ]
 
@@ -250,6 +260,10 @@ dockedEditor model =
                     }
                     ui
                 )
+
+        Just (SurfaceStatus ui) ->
+            docked ("Target: " ++ ui.target)
+                (View.Inline.Status.view selectedCount ui)
 
         Just (SurfaceReplace ui) ->
             docked (targetLabel ui.target ui.applyToSelected)

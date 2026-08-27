@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -84,6 +84,15 @@ type HpKind
     | HealKind
     | TempHpKind
     | MaxHpKind
+
+
+{-| Which boolean posture toggle a Status-editor click flips.
+-}
+type StatusFlag
+    = FlagConcentrating
+    | FlagHiding
+    | FlagDodging
+    | FlagFlying
 
 
 {-| Which flavor of duplicate the Duplicate editor applies.
@@ -648,7 +657,7 @@ type Msg
     | HpEditCancel
       -- Selection
     | ToggleSelected String
-    | ShiftToggleSelected
+    | ShiftToggleSelected String
       -- Manual queue reordering
     | MoveCreatureUp String
     | MoveCreatureDown String
@@ -670,6 +679,16 @@ type Msg
     | ReplacePick String
     | ReplaceApplyToSelectedToggle
     | ReplaceApply
+      -- Status editor (encounter toolbar): posture toggles edit
+      -- a draft; the Apply buttons stamp it onto the active
+      -- creature or the selection.
+    | StatusOpen String
+    | StatusClose
+    | StatusCoverCycle
+    | StatusToggle StatusFlag
+    | StatusFlyHeightAdjust Int
+    | StatusApplyActive
+    | StatusApplySelected
       -- Initiative manager modal
     | InitiativeOpen String
     | InitiativeClose

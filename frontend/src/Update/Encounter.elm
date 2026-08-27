@@ -317,18 +317,23 @@ toggleSelected name model =
     )
 
 
-{-| Bulk: if every creature is already selected, deselect all;
-otherwise select all. The clicked creature ends up in the resulting
-bulk state regardless of where it started.
+{-| Bulk: shift-clicking a selected creature's box clears the
+whole selection; shift-clicking an unselected one selects
+everyone. The clicked box's own state decides the direction, so
+the gesture always inverts what the GM is pointing at.
 -}
-shiftToggleSelected : Model -> ( Model, Cmd Msg )
-shiftToggleSelected model =
+shiftToggleSelected : String -> Model -> ( Model, Cmd Msg )
+shiftToggleSelected name model =
     let
-        allSelected =
-            List.all .selected model.encounter.creatures
+        clickedSelected =
+            model.encounter.creatures
+                |> List.filter (\c -> c.name == name)
+                |> List.head
+                |> Maybe.map .selected
+                |> Maybe.withDefault False
 
         newValue =
-            not allSelected
+            not clickedSelected
     in
     ( withEncounter
         (\enc ->

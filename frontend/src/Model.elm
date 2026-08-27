@@ -77,6 +77,7 @@ import Ui.Replace exposing (ReplaceUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveChain exposing (SaveChainUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
+import Ui.Status exposing (StatusUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
 import Ui.Treasure exposing (TreasureUi)
@@ -133,6 +134,7 @@ type Surface
     | SurfaceQuickAdd QuickAddUi
     | SurfaceDuplicate DuplicateUi
     | SurfaceReplace ReplaceUi
+    | SurfaceStatus StatusUi
     | SurfaceGroupEdit GroupEditUi
     | SurfaceLoreEdit LoreEditUi
     | SurfaceCrCalculator CrCalculatorUi

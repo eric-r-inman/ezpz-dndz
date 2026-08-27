@@ -108,6 +108,7 @@ module View.Tooltips exposing
     , queueMoveUp
     , queueReactivate
     , queueRemove
+    , queueReplace
     , queueSelectShiftClick
     , quickAddButton
     , quickAddCreatureRow
@@ -138,6 +139,7 @@ module View.Tooltips exposing
     , statBlockHabitat
     , statBlockRoll
     , statBlockSavingThrow
+    , statusEditor
     , statusOffTip
     , statusOnTip
     , tempHp
@@ -413,6 +415,11 @@ queueMakeActive =
 queueRemove : String
 queueRemove =
     "Remove from encounter"
+
+
+queueReplace : String
+queueReplace =
+    "Swap for a compendium pick (keeps position and initiative)"
 
 
 queueDuplicate : String
@@ -987,9 +994,16 @@ sourceFromSaved name =
     "from file: " ++ name
 
 
-{-| Card row 2 status toggle (concentrate / hide / dodge etc.) —
-on-state hover label. `label` is the human name of the state
-(e.g. "Concentrating").
+{-| Toolbar Status button — opens the posture-toggle editor.
+-}
+statusEditor : String
+statusEditor =
+    "Set cover, concentration, hiding, dodging, and flying"
+
+
+{-| Status-editor posture toggle (concentrate / hide / dodge
+etc.) — on-state hover label. `label` is the human name of the
+state (e.g. "Concentrating").
 -}
 statusOnTip : String -> String
 statusOnTip label =

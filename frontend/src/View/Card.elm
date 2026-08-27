@@ -28,7 +28,7 @@ column appears whenever the creature is at 0 HP.
 
 import Dict exposing (Dict)
 import Effects
-import Encounter exposing (Cover(..), Creature)
+import Encounter exposing (Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
@@ -398,7 +398,7 @@ selectionClickHandler name_ =
             |> Decode.map
                 (\shift ->
                     if shift then
-                        ( ShiftToggleSelected, True )
+                        ( ShiftToggleSelected name_, True )
 
                     else
                         ( ToggleSelected name_, True )
@@ -1160,32 +1160,10 @@ formatBonus n =
 rowMid : Creature -> Maybe HpEdit -> Html Msg
 rowMid creature hpEdit =
     div [ class "creature-card__row creature-card__row--mid" ]
+        -- The posture toggles moved to the toolbar's Status
+        -- editor; the row keeps the at-a-glance vitals.
         [ hpDisplay creature hpEdit
         , bloodied creature
-        , coverToggle creature
-        , span [ class "status-toggles__sep" ] [ text "|" ]
-        , boolToggle "🧠"
-            "concentrating"
-            creature.concentrating
-            (ToggleConcentration creature.name)
-        , span [ class "status-toggles__sep" ] [ text "|" ]
-        , boolToggle "👤"
-            "hiding"
-            creature.hiding
-            (ToggleHiding creature.name)
-        , span [ class "status-toggles__sep" ] [ text "|" ]
-        , boolToggle "🤸"
-            "dodging"
-            creature.dodging
-            (ToggleDodging creature.name)
-        , span [ class "status-toggles__sep" ] [ text "|" ]
-        , span [ class "flying-group" ]
-            [ boolToggle "🪽"
-                "flying"
-                creature.flying
-                (ToggleFlying creature.name)
-            , flyHeight creature
-            ]
         ]
 
 
@@ -1540,126 +1518,6 @@ deathSavePip kind filled onToggle kindLabel ordinal =
             )
         ]
         []
-
-
-{-| The `icon` argument is intentionally unused in the card row:
-the GM already sees the toggle's text label and the title-row icon
-(rendered separately in EncounterBar). Hiding the per-toggle icon
-in the card buys horizontal space in row 2. The `○` prefix in the
-off state replaces the older "not " / "no " wording so the off
-state stays visually distinct without needing an icon glyph.
-The subtler outlined circle reads as "unlit" without shouting
-"prohibited" the way the previous 🚫 emoji did.
--}
-boolToggle : String -> String -> Bool -> Msg -> Html Msg
-boolToggle _ label isOn msg =
-    let
-        ( dotGlyph, dotClass, cls ) =
-            if isOn then
-                ( "●"
-                , "status-toggle__dot status-toggle__dot--on"
-                , "status-toggle status-toggle--on"
-                )
-
-            else
-                ( "○"
-                , "status-toggle__dot"
-                , "status-toggle"
-                )
-
-        tip =
-            if isOn then
-                Tooltips.statusOnTip label
-
-            else
-                Tooltips.statusOffTip label
-    in
-    button
-        [ class cls
-        , onClick msg
-        , Tooltips.attr tip
-        , attribute "aria-label" label
-        , attribute "aria-pressed"
-            (if isOn then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ span [ class dotClass ] [ text dotGlyph ]
-        , text (" " ++ label)
-        ]
-
-
-coverToggle : Creature -> Html Msg
-coverToggle creature =
-    let
-        ( dotGlyph, dotClass ) =
-            case creature.cover of
-                NoCover ->
-                    ( "○", "status-toggle__dot" )
-
-                _ ->
-                    ( "●", "status-toggle__dot status-toggle__dot--on" )
-
-        ( bodyText, label, modifier ) =
-            case creature.cover of
-                NoCover ->
-                    ( "cover", "No cover", "status-toggle--off" )
-
-                HalfCover ->
-                    ( "½ cover", "Half cover", "status-toggle--on" )
-
-                ThreeQuartersCover ->
-                    ( "¾ cover", "Three-quarters cover", "status-toggle--on" )
-
-                FullCover ->
-                    ( "total cover", "Total cover", "status-toggle--on" )
-    in
-    button
-        [ class ("status-toggle " ++ modifier)
-        , onClick (CycleCover creature.name)
-        , Tooltips.attr (Tooltips.coverCycleTip label)
-        , attribute "aria-label" ("Cover: " ++ label)
-        ]
-        [ span [ class dotClass ] [ text dotGlyph ]
-        , text (" " ++ bodyText)
-        ]
-
-
-flyHeight : Creature -> Html Msg
-flyHeight creature =
-    if creature.flying then
-        span [ class "fly-height" ]
-            [ button
-                [ class "fly-height__btn"
-                , onClick (AdjustFlyHeight creature.name 5)
-                , Tooltips.attr Tooltips.flyHeightUp
-                , attribute "aria-label" "Increase flight height by 5 feet"
-                ]
-                [ text "▲" ]
-            , span [ class "fly-height__value" ]
-                [ text (String.fromInt creature.flyHeight) ]
-            , button
-                [ class "fly-height__btn"
-                , onClick (AdjustFlyHeight creature.name -5)
-                , Tooltips.attr Tooltips.flyHeightDown
-                , attribute "aria-label" "Decrease flight height by 5 feet"
-                ]
-                [ text "▼" ]
-            , span [ class "fly-height__unit" ] [ text "ft" ]
-            , button
-                [ class "icon-btn icon-btn--sm fly-height__fall"
-                , onClick (RollFallDamage creature.name)
-                , Tooltips.attr Tooltips.fallDamage
-                , attribute "aria-label" "Roll falling damage"
-                ]
-                [ text "↯" ]
-            ]
-
-    else
-        text ""
 
 
 
