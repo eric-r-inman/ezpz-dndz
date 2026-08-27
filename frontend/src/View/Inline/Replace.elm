@@ -21,7 +21,7 @@ view db selectedCount log ui =
         [ searchRow ui
         , pickerList db ui
         , applyScope selectedCount ui
-        , div [ class "note-edit__buttons" ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ button
                 [ class "action-btn action-btn--green"
                 , onClick ReplaceApply
@@ -45,7 +45,7 @@ searchRow ui =
     div [ class "cond-row" ]
         [ Html.label [] [ text "Replace with:" ]
         , input
-            [ class "cond-input"
+            [ class "cond-input cond-input--search"
             , type_ "text"
             , value ui.searchText
             , placeholder "Search the compendium"

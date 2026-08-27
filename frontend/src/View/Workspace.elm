@@ -175,23 +175,24 @@ actionToolbar model =
                 ]
                 -- The triangle doubles as the open/closed cue:
                 -- ▾ invites expansion, ▴ says "click to fold".
-                [ text
-                    (label
-                        ++ (if editing then
-                                " ▴"
+                [ text label
+                , span [ class "encounter-toolbar__caret" ]
+                    [ text
+                        (if editing then
+                            "▲"
 
-                            else
-                                " ▾"
-                           )
-                    )
+                         else
+                            "▼"
+                        )
+                    ]
                 ]
     in
     div [ class "encounter-toolbar" ]
         [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
         , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
         , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
-        , trigger "action-btn action-btn--blue" replaceEditing (ReplaceOpen target) "Swap this creature for a compendium pick (keeps position and initiative)" "Replace"
-        , trigger "action-btn action-btn--blue" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
+        , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) "Swap this creature for a compendium pick (keeps position and initiative)" "Replace"
+        , trigger "action-btn action-btn--orange" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
         ]
 
 

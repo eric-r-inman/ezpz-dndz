@@ -4351,11 +4351,11 @@ body {
   display: flex;
   align-items: stretch;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  min-height: 132px;
+  min-height: 116px;
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -4770,7 +4770,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
   /* Each of the three rows takes its own content height (top
      row wraps to two lines when it fills up; mid + bot stay
@@ -5929,6 +5929,14 @@ button.creature-card__lifecycle--dead:focus-visible {
    Manage HP / Condition / Save Chain triggers.  Like the
    banners, it lives outside .panel__body so it stays put while
    the card grid scrolls. */
+/* Open/closed caret inside the toolbar trigger buttons — the
+   bare glyph renders too small to notice at button font size. */
+.encounter-toolbar__caret {
+  font-size: 0.9em;
+  margin-left: 6px;
+  line-height: 1;
+}
+
 .encounter-toolbar {
   flex: 0 0 auto;
   display: flex;
@@ -5968,7 +5976,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    scroll, and a picked-row highlight since selection here is a
    two-step pick-then-Apply rather than click-to-add. */
 .quick-add__list--docked {
-  max-height: 200px;
+  /* Five rows (8px vertical padding + one text line each). */
+  max-height: 180px;
   overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -8996,6 +9005,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-top: 12px;
 }
 
+.note-edit__buttons--start {
+  justify-content: flex-start;
+}
+
 /* Condition / effect modal — same .modal-backdrop / .modal /
    .modal__header chrome as the others. The body holds five
    sections (standard radios, custom name, note, duration,
@@ -9119,6 +9132,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-input--w20 {
   flex: 0 0 auto;
   width: 22ch;
+}
+
+/* The Replace editor's compendium search, sized to sit beside
+   its label instead of stretching to the row's full width. */
+.cond-input--search {
+  flex: 0 1 auto;
+  width: 26ch;
 }
 
 .cond-input--narrow {

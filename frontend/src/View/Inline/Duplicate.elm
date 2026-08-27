@@ -16,7 +16,7 @@ view selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ modeSection ui
         , applyScope selectedCount ui
-        , div [ class "note-edit__buttons" ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ button
                 [ class "action-btn action-btn--green"
                 , onClick DuplicateApply
