@@ -32,6 +32,11 @@
    icon.  No action needed.
 10. Notes render in italic parentheses on both the creature card and the
     encounter title bar.  No action needed.
+11. Card HP values no longer edit in place: clicking one opens the Manage HP
+    editor aimed at that creature, whose new Manual section sets the pools
+    directly.  No action needed.
+12. A creature card's special-reaction badges toggle spent, clearing at the
+    start of that creature's turn.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

@@ -74,6 +74,7 @@ mkInstance args =
     , alignment = ""
     , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 
@@ -270,6 +271,7 @@ totalsForSuite =
                         , alignment = ""
                         , surprised = False
                         , hasSpecialReactions = False
+                        , specialReactionsUsed = Set.empty
                         }
 
                     enc =

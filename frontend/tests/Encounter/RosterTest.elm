@@ -93,6 +93,7 @@ mkCreature name initiative =
     , alignment = ""
     , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

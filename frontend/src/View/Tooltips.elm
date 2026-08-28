@@ -74,6 +74,7 @@ module View.Tooltips exposing
     , fullCover
     , halfCover
     , hiding
+    , hpOpenManage
     , initRollAdvantage
     , initRollDisadvantage
     , initRollStandard
@@ -136,6 +137,7 @@ module View.Tooltips exposing
     , sourceFromSaved
     , sourceUnsaved
     , specialReactionBadge
+    , specialReactionSpent
     , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
@@ -461,6 +463,11 @@ legendaryPipLocked =
     "Legendary actions can't be used on the creature's own turn"
 
 
+specialReactionSpent : String
+specialReactionSpent =
+    "Spent — click to hand it back (clears at the start of their turn)"
+
+
 specialReactionBadge : String
 specialReactionBadge =
     "Special reactions — this creature's reactions go beyond one per round; see the stat block"
@@ -532,6 +539,11 @@ reactionSpent =
 clickToEdit : String
 clickToEdit =
     "Click to edit"
+
+
+hpOpenManage : String
+hpOpenManage =
+    "Open Manage HP for this creature"
 
 
 manageHp : String

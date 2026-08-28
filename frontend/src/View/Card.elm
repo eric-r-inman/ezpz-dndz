@@ -124,7 +124,7 @@ view ctx creature =
             ]
         , div [ class "creature-card__center" ]
             [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
-            , rowMid creature hpEdit
+            , rowMid creature
             , rowBot creature (surfaceFor ctx creature)
             , inlineSurface ctx creature
             ]
@@ -798,15 +798,44 @@ specialReactionBadges ctx creature =
                 else
                     names
         in
-        List.map srBadge shown
+        List.map (srBadge creature) shown
 
 
-srBadge : String -> Html Msg
-srBadge name =
-    span
-        [ class "sr-badge"
-        , Tooltips.attr Tooltips.specialReactionBadge
+{-| One badge, clickable to mark its reaction spent and back
+again — the same bookkeeping the legendary pips carry, and
+cleared at the creature's begin-of-turn the same way.
+-}
+srBadge : Creature -> String -> Html Msg
+srBadge creature name =
+    let
+        used =
+            Set.member name creature.specialReactionsUsed
+    in
+    button
+        [ class
+            (if used then
+                "sr-badge sr-badge--used"
+
+             else
+                "sr-badge"
+            )
+        , type_ "button"
+        , onClick (ToggleSpecialReaction creature.name name)
+        , Tooltips.attr
+            (if used then
+                Tooltips.specialReactionSpent
+
+             else
+                Tooltips.specialReactionBadge
+            )
         , attribute "aria-label" ("Special reaction: " ++ name)
+        , attribute "aria-pressed"
+            (if used then
+                "true"
+
+             else
+                "false"
+            )
         ]
         [ text name ]
 
@@ -1223,23 +1252,20 @@ formatBonus n =
 -- ── ROW 2 ───────────────────────────────────────────────────────────────
 
 
-rowMid : Creature -> Maybe HpEdit -> Html Msg
-rowMid creature hpEdit =
+rowMid : Creature -> Html Msg
+rowMid creature =
     div [ class "creature-card__row creature-card__row--mid" ]
-        -- The posture toggles moved to the toolbar's Status
-        -- editor; the row keeps the at-a-glance vitals plus
-        -- read-only icons for whatever that editor applied.
-        [ hpDisplay creature hpEdit
+        [ hpDisplay creature
         , statusIcons creature
         , conditionCluster creature
         ]
 
 
-{-| Click-to-edit AC readout on row 1. Same inline-edit machinery
-as the HP fields — clicking the number swaps it for an `<input>`
-that commits on blur / Enter and cancels on Esc. Lets the GM
-patch a single creature's AC (e.g. for a temporary Shield-spell
-bonus) without touching the compendium template.
+{-| Click-to-edit AC readout on row 1: clicking the number swaps
+it for an `<input>` that commits on blur / Enter and cancels on
+Esc. Lets the GM patch a single creature's AC (e.g. for a
+temporary Shield-spell bonus) without touching the compendium
+template.
 -}
 acReadout : Creature -> Maybe HpEdit -> Html Msg
 acReadout creature hpEdit =
@@ -1249,34 +1275,59 @@ acReadout creature hpEdit =
         ]
 
 
-{-| Card row 2 HP readout: green current / muted max, plus an
-inline "+N" temp-HP marker when the creature is buffed. All three
-values — current, max, and temp — are click-to-edit: clicking
-swaps the value for a small `<input>` (autofocus + onBlur
-commits, Enter commits, Esc cancels). Temp HP commits to a
-direct GM override (`HpChange.setTempHp`), bypassing the
-replace-if-higher rule that the Temp HP modal applies — that way
-typing `0` here clears the temp pool, which is what a GM
-clicking the chip generally wants.
+{-| Card row 2 HP readout: green current / muted max, plus a
+"+N" temp-HP marker when the creature is buffed. Every value
+opens the Manage HP editor, which owns the changes.
 -}
-hpDisplay : Creature -> Maybe HpEdit -> Html Msg
-hpDisplay creature hpEdit =
+hpDisplay : Creature -> Html Msg
+hpDisplay creature =
     span [ class "hp-display" ]
-        [ hpEditable creature
-            hpEdit
-            CurrentHpField
-            creature.currentHp
+        [ hpOpener creature
+            (String.fromInt creature.currentHp)
             (if creature.bloodied then
                 "hp-display__current hp-display__current--bloodied"
 
              else
                 "hp-display__current"
             )
+            ("Current HP for " ++ creature.name)
         , span [ class "hp-display__sep" ] [ text "/" ]
-        , hpEditable creature hpEdit MaxHpField creature.maxHp "hp-display__max"
+        , hpOpener creature (String.fromInt creature.maxHp) "hp-display__max" ("Max HP for " ++ creature.name)
         , maxHpOriginal creature
-        , tempHpEditable creature hpEdit
+        , tempHpOpener creature
         ]
+
+
+{-| One HP value on the card. Clicking any of them opens the
+Manage HP editor aimed at this creature, which owns every way of
+changing the pools — the card just shows what they hold.
+-}
+hpOpener : Creature -> String -> String -> String -> Html Msg
+hpOpener creature shown cls label =
+    button
+        [ class (cls ++ " hp-display__editable")
+        , type_ "button"
+        , onClick (HpChangeOpenFor creature.name)
+        , Tooltips.attr Tooltips.hpOpenManage
+        , attribute "aria-label" label
+        ]
+        [ text shown ]
+
+
+{-| The temp-HP chip, present only while the creature holds a
+temp pool. Reads "+N" so the chip keeps its "this is a bonus
+pool" shape.
+-}
+tempHpOpener : Creature -> Html Msg
+tempHpOpener creature =
+    if creature.tempHp > 0 then
+        hpOpener creature
+            ("+" ++ String.fromInt creature.tempHp)
+            "hp-display__temp"
+            ("Temp HP for " ++ creature.name)
+
+    else
+        text ""
 
 
 {-| Muted "(N)" hint after Max HP when the current value has
@@ -1296,53 +1347,6 @@ maxHpOriginal creature =
                 )
             ]
             [ text (" (" ++ String.fromInt creature.originalMaxHp ++ ")") ]
-
-    else
-        text ""
-
-
-{-| Click-to-edit affordance for the temp-HP chip. Mirrors
-`hpEditable`, but only renders when temp HP is non-zero (zero
-temp is the absence of a buff — no chip in the row), and the
-display reads "+N" instead of the bare integer so the chip
-keeps its established "this is a bonus pool" shape.
--}
-tempHpEditable : Creature -> Maybe HpEdit -> Html Msg
-tempHpEditable creature hpEdit =
-    let
-        isEditing =
-            case hpEdit of
-                Just e ->
-                    e.target == creature.name && e.field == TempHpField
-
-                Nothing ->
-                    False
-    in
-    if isEditing then
-        input
-            [ class "hp-display__edit hp-display__edit--temp"
-            , type_ "number"
-            , Attr.min "0"
-            , Attr.max "9999"
-            , value (Maybe.withDefault "" (Maybe.map .text hpEdit))
-            , onInput HpEditChange
-            , Html.Events.onBlur HpEditCommit
-            , Html.Events.on "keydown" hpEditKeyDecoder
-            , keepMouseDownInside
-            , autofocus True
-            ]
-            []
-
-    else if creature.tempHp > 0 then
-        button
-            [ class "hp-display__temp hp-display__editable"
-            , type_ "button"
-            , onClick (HpEditStart creature.name TempHpField creature.tempHp)
-            , Tooltips.attr Tooltips.tempHp
-            , attribute "aria-label"
-                (hpFieldAriaLabel TempHpField creature.name creature.tempHp)
-            ]
-            [ text ("+" ++ String.fromInt creature.tempHp) ]
 
     else
         text ""
@@ -1392,7 +1396,7 @@ hpEditable creature hpEdit field current cls =
             , onClick (HpEditStart creature.name field current)
             , Tooltips.attr Tooltips.clickToEdit
             , attribute "aria-label"
-                (hpFieldAriaLabel field creature.name current)
+                (acFieldAriaLabel creature.name current)
             ]
             [ text (String.fromInt current) ]
 
@@ -1406,30 +1410,13 @@ keepMouseDownInside =
     stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
 
 
-{-| Screen-reader label for the inline HP / AC edit trigger.
-SR users hear the field role + current value + creature name
-when focus lands on the trigger, so they know what they're about
-to edit.
+{-| Screen-reader label for the inline AC edit trigger. SR users
+hear the field role + current value + creature name when focus
+lands on the trigger, so they know what they're about to edit.
 -}
-hpFieldAriaLabel : HpField -> String -> Int -> String
-hpFieldAriaLabel field name current =
-    let
-        fieldName =
-            case field of
-                CurrentHpField ->
-                    "Current HP"
-
-                MaxHpField ->
-                    "Max HP"
-
-                ArmorClassField ->
-                    "Armor Class"
-
-                TempHpField ->
-                    "Temporary HP"
-    in
-    fieldName
-        ++ " "
+acFieldAriaLabel : String -> Int -> String
+acFieldAriaLabel name current =
+    "Armor Class "
         ++ String.fromInt current
         ++ " for "
         ++ name

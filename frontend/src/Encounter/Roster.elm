@@ -579,6 +579,7 @@ freshPlaceholder name =
     , alignment = ""
     , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

@@ -553,12 +553,17 @@ type Msg
       -- (clientX, clientY captured at click, the resolved roll)
     | RollPopupExpired Int
     | DiceLastTotalFlashCleared
-      -- HP change modal (Manage HP button on the card).  Opens
-      -- with the target creature but no committed kind — the
-      -- kind is chosen when the GM clicks one of the four
-      -- footer action buttons (Damage / Heal / Temp HP /
-      -- +Max HP), which fires `HpChangeApplyAs kind`.
+      -- Manage HP editor.  Opens with the target creature but
+      -- no committed kind — the verb buttons fire
+      -- `HpChangeApplyAs kind` to choose one.
     | HpChangeOpen String
+      -- The toolbar trigger folds the editor away; a card's HP
+      -- value re-aims it at that card's creature.
+    | HpChangeOpenFor String
+      -- The Manual section writes typed pools, no verb involved.
+    | HpChangeManualChanged HpField String
+    | HpChangeManualApplyTarget
+    | HpChangeManualApplySelected
     | HpChangeClose
     | HpChangeAmountChanged String
     | HpChangeIgnoreTempToggle
@@ -1042,9 +1047,11 @@ type Msg
       -- subscription — a QuickList tab asked us to pin +
       -- scroll to (id, name).
     | IncomingPanelShow String String
-      -- Legendary action / legendary resistance pip toggles
+      -- Legendary action / legendary resistance pip toggles,
+      -- and the card's special-reaction badges
     | ToggleLegendaryActionPip String Int
     | ToggleLegendaryResistancePip String Int
+    | ToggleSpecialReaction String String
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())

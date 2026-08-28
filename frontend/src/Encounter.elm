@@ -462,6 +462,11 @@ type alias Creature =
     -- reactions all need a GM heads-up that the standard
     -- "one reaction per round" UX doesn't cover.
     , hasSpecialReactions : Bool
+
+    -- Names of the special reactions the GM has marked spent,
+    -- struck through on the card's badges.  Cleared at the
+    -- creature's begin-of-turn like the single reaction pip.
+    , specialReactionsUsed : Set String
     }
 
 

@@ -138,6 +138,9 @@
      queue's strips. */
   --docked-panel-pad-bottom: 10px;
 
+  /* Rule struck through a spent affordance. */
+  --strike-thickness: 1.5px;
+
   /* Amber warning pair shared by the queue's legendary-actions
      banner and the card's special-reaction badges, so the two
      read as one visual family.  Deliberately NOT named
@@ -146,6 +149,12 @@
      it here would silently recolour them all. */
   --banner-warn-bg: rgba(245, 158, 11, 0.18);
   --banner-warn-bd: #f59e0b;
+  /* Lighter rule for the card badges, whose ring sits inches
+     from the card border rather than spanning the pane. */
+  --banner-warn-bd-soft: rgba(245, 158, 11, 0.45);
+  /* Medium orange, dark enough to read on the badge's own
+     wash in every theme. */
+  --color-sr-badge-fg: #c2620c;
 
   --card-btn-fg: #ffffff;
 
@@ -5060,16 +5069,32 @@ button.creature-card__lifecycle--dead:focus-visible {
    family's shape but wearing the legendary-actions banner's
    amber wash so the two reaction cues read identically. */
 .sr-badge {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   background: var(--banner-warn-bg);
-  color: var(--color-text);
-  border: 1px solid var(--banner-warn-bd);
+  color: var(--color-sr-badge-fg);
+  border: 1px solid var(--banner-warn-bd-soft);
   border-radius: 999px;
   padding: 1px 6px;
+  font: inherit;
   font-size: 0.78rem;
   font-weight: 500;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Spent, in the same struck-through muted shape the reaction
+   pip uses; cleared at the bearer's begin-of-turn. */
+.sr-badge--used {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: var(--strike-thickness);
+  opacity: 0.75;
+}
+
+.sr-badge--used:hover {
+  opacity: 1;
 }
 
 .legendary-col__pip:hover {
@@ -8178,6 +8203,14 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-row {
   gap: 6px;
+}
+
+/* One label-plus-input pair in the Manage HP editor's manual
+   row, so the three pairs stay glued when the row wraps. */
+.hp-change__manual-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 /* Hairline between the Custom and Note rows of the condition

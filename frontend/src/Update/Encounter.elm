@@ -478,6 +478,7 @@ resetCreatureState c =
         , timer = Nothing
         , legendaryActionsUsed = Set.empty
         , legendaryResistanceUsed = Set.empty
+        , specialReactionsUsed = Set.empty
     }
 
 

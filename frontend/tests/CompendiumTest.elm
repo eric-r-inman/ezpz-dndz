@@ -6,6 +6,7 @@ sort) plus the `crToFloat` helper that drives the CR sort.
 
 import Compendium
 import Expect
+import Set
 import Test exposing (Test, describe, test)
 
 

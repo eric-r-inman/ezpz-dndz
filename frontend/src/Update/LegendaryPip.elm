@@ -1,13 +1,16 @@
-module Update.LegendaryPip exposing (toggleAction, toggleResistance)
+module Update.LegendaryPip exposing (toggleAction, toggleResistance, toggleSpecialReaction)
 
 {-| Update branches for the legendary-action and legendary-resistance
-pip strips on creature cards.
+pip strips on creature cards, plus the special-reaction badges
+beside them.
 
-The 5e rule that LA refresh at the start of the creature's turn is
-enforced separately by `Encounter.Lifecycle.applyBeginOfTurn`,
-which clears `legendaryActionsUsed` when the creature becomes
-active. LR deliberately doesn't auto-reset (it's per long rest in
-the rules, not per turn — the GM clears these manually).
+The 5e rule that LA and reactions refresh at the start of the
+creature's turn is enforced separately by
+`Encounter.Lifecycle.applyBeginOfTurn`, which clears
+`legendaryActionsUsed` and `specialReactionsUsed` when the
+creature becomes active. LR deliberately doesn't auto-reset (it's
+per long rest in the rules, not per turn — the GM clears these
+manually).
 
 -}
 
@@ -48,10 +51,27 @@ toggleResistance name idx model =
     )
 
 
-toggleSetMember : Int -> Set Int -> Set Int
-toggleSetMember idx set =
-    if Set.member idx set then
-        Set.remove idx set
+{-| Mark one of a creature's special reactions spent, or hand it
+back. Keyed by the reaction's name, since the badges come from
+the compendium source rather than a fixed-size strip.
+-}
+toggleSpecialReaction : String -> String -> Model -> ( Model, Cmd Msg )
+toggleSpecialReaction name reaction model =
+    ( withEncounter
+        (Encounter.mapCreature name
+            (\c ->
+                { c | specialReactionsUsed = toggleSetMember reaction c.specialReactionsUsed }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+toggleSetMember : comparable -> Set comparable -> Set comparable
+toggleSetMember member set =
+    if Set.member member set then
+        Set.remove member set
 
     else
-        Set.insert idx set
+        Set.insert member set

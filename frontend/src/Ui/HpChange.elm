@@ -52,6 +52,13 @@ type alias HpChangeUi =
     -- default False keeps 5e's single-roll AOE convention.
     , freshRollPerTarget : Bool
 
+    -- Direct pool overrides, typed rather than computed from a
+    -- verb.  Each is applied only when it parses, so a blank
+    -- field leaves its pool alone.
+    , manualHpText : String
+    , manualMaxHpText : String
+    , manualTempHpText : String
+
     -- True once the current settings have been applied and not
     -- edited since.  Closing an applied editor resets it;
     -- closing an un-applied one stashes the settings as the
@@ -126,5 +133,8 @@ fresh target =
     , ignoreTemp = False
     , applyToSelected = False
     , freshRollPerTarget = False
+    , manualHpText = ""
+    , manualMaxHpText = ""
+    , manualTempHpText = ""
     , applied = False
     }

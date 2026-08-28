@@ -62,6 +62,7 @@ fixture =
     , alignment = ""
     , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

@@ -195,6 +195,7 @@ fullyPopulatedCreature =
     , alignment = "chaotic evil"
     , surprised = True
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

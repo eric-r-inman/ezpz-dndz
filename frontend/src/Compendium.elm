@@ -915,6 +915,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , alignment = c.alignment
     , surprised = False
     , hasSpecialReactions = c.hasSpecialReactions
+    , specialReactionsUsed = Set.empty
     }
 
 

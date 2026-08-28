@@ -34,7 +34,7 @@ Rather than a flat ban, each surface uses the least disruptive pattern that fits
 it:
 
 1. *Inline* on the creature card — for high-frequency, per-creature actions.
-   Extends the existing inline-edit idiom (AC, max HP).
+   Extends the existing inline-edit idiom (the AC readout).
 2. *Popover* anchored to the triggering control — for small, pick-one
    interactions.
 3. *Docked panel / drawer* in the right rail — for combat tools that need real
@@ -197,8 +197,8 @@ modules byte-identical; only the rendering moves.
   stay exactly where they are, highlighted while the editor is open — a row must
   never reflow around an editor, and the visible trigger is what makes the
   cancel toggle reachable.  Enter or ✓ commits; Escape or the trigger cancels.
-  Deliberately no blur-commit (unlike the AC / max-HP edits): committing on blur
-  would fire before a cancel click could land.
+  Deliberately no blur-commit (unlike the AC edit): committing on blur would
+  fire before a cancel click could land.
 - *Toggle-to-close.* The button that opened an inline editor closes it again
   unchanged — once the editor lives on the card, its trigger reads as a toggle,
   and re-clicking it is the natural cancel gesture.  This replaces the footer

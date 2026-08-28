@@ -1077,6 +1077,18 @@ updateInner msg model =
             Update.Dice.lastTotalFlashCleared model
 
         -- HP change modal lifecycle
+        HpChangeOpenFor target ->
+            Update.HpChange.openFor target model
+
+        HpChangeManualChanged field text ->
+            Update.HpChange.manualChanged field text model
+
+        HpChangeManualApplyTarget ->
+            Update.HpChange.manualApplyTarget model
+
+        HpChangeManualApplySelected ->
+            Update.HpChange.manualApplySelected model
+
         HpChangeOpen target ->
             Update.HpChange.open target model
 
@@ -2294,6 +2306,9 @@ updateInner msg model =
 
         IncomingPanelShow creatureId creatureName ->
             Update.Tabs.incomingPanelShow creatureId creatureName model
+
+        ToggleSpecialReaction name reaction ->
+            Update.LegendaryPip.toggleSpecialReaction name reaction model
 
         ToggleLegendaryActionPip name idx ->
             Update.LegendaryPip.toggleAction name idx model

@@ -355,7 +355,7 @@ only bars LA use, not ordinary reactions).
 
 ** Creature record extensions
 
-~Encounter.Creature~ gained six fields beyond the original combat core to
+~Encounter.Creature~ gained several fields beyond the original combat core to
 support placeholder stubs, stat-block-style metadata, and the reintroduced
 Surprised + Special-Reactions hints:
 
@@ -378,10 +378,13 @@ Surprised + Special-Reactions hints:
   …" sticky strip beneath the title bar.  Toggleable per-creature via a checkbox
   in the compendium editor; auto-set on 22 bundled SRD creatures (Hydra,
   Marilith, Vampire, mephits, …).
+- ~specialReactionsUsed : Set String~ — names of the reactions the GM has struck
+  through on the card's badges.  Cleared at the bearer's begin-of-turn, the way
+  the single reaction pip is.
 
-=Encounter.Wire= encodes all six; the decoder uses ~optional~ with safe defaults
-(~False~ / ~""~) so legacy persisted encounters and saved snapshots round-trip
-cleanly.
+=Encounter.Wire= encodes them all; the decoder uses ~optional~ with safe
+defaults (~False~ / ~""~) so legacy persisted encounters and saved snapshots
+round-trip cleanly.
 
 The auto-roll save path lives in =Update/Encounter.elm=: when ~nextTurn~ fires,
 the outgoing name is captured before the lifecycle hooks run, then
@@ -1634,10 +1637,10 @@ Creature~ entry point so the arithmetic doesn't drift between code paths.
 the row 2 🩸 chip stays honest without anyone touching it manually.
 
 The engine also exposes ~setCurrentHp~ / ~setMaxHp~ / ~setArmorClass~ that skip
-the rule-flavored side effects.  The inline click-to-edit on row 1 (AC) and row
-2 (current / max HP) of each card all flow through these via the shared ~HpEdit~
-/ ~HpField~ / ~HpEditStart~ machinery — same Msg constructors, different field
-discriminator.
+the rule-flavored side effects.  Row 1's AC reaches them through the inline
+click-to-edit machinery (~HpEdit~ / ~HpField~ / ~HpEditStart~); row 2's HP
+values open the Manage HP editor instead, whose Manual section calls the same
+setters.
 
 The recent-HP-changes log on the Damage / Heal / Temp HP modal keeps a snapshot
 per entry (target, kind, amount, before-/after- HP, before-/after-tempHP) so the

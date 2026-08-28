@@ -10,20 +10,24 @@ module Update.HpChange exposing
     , freshRollLanded
     , freshRollToggle
     , ignoreTempToggle
+    , manualApplySelected
+    , manualApplyTarget
+    , manualChanged
     , open
+    , openFor
     , rollLanded
     , undoLatest
     )
 
-{-| Update branches for the HP-change modal (Manage HP) and
-the inline HP edit pencil on each creature card.
+{-| Update branches for the Manage HP editor and the inline AC
+edit on each creature card.
 
-Now uses a single smart amount input: on apply, the raw text
-is either parsed as an integer (applied immediately) or as a
-dice expression (rolled, then the total is applied). Parse
-errors are surfaced next to the input. The previous
-Manual/Roll-dice mode toggle is gone — the parse itself
-decides which path to take.
+The verb buttons share one smart amount input: on apply, the raw
+text is either parsed as an integer (applied immediately) or as
+a dice expression (rolled, then the total is applied), so the
+parse itself decides the path. Parse errors are surfaced next to
+the input. The Manual section bypasses the verbs entirely and
+writes the typed pools straight onto its targets.
 
 -}
 
@@ -52,14 +56,123 @@ withHpChange fn =
         (fn >> (\u -> { u | applied = False }))
 
 
-{-| Opening is a toggle: clicking the card's Manage HP button
-while its own editor is already expanded closes it (a cancel),
-matching how the button reads once the editor sits inline on
-the card rather than in an overlay. A fresh open restores the
-stashed draft when the last close left un-applied settings.
+{-| Type into one of the three manual pool fields. `HpField`
+names which; the card's inline AC edit reuses the same
+discriminator, and `ArmorClassField` has no manual row here.
+-}
+manualChanged : HpField -> String -> Model -> ( Model, Cmd Msg )
+manualChanged field text model =
+    ( withHpChange
+        (\u ->
+            case field of
+                CurrentHpField ->
+                    { u | manualHpText = text }
+
+                MaxHpField ->
+                    { u | manualMaxHpText = text }
+
+                TempHpField ->
+                    { u | manualTempHpText = text }
+
+                ArmorClassField ->
+                    u
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Write the typed pools onto the editor's own target.
+-}
+manualApplyTarget : Model -> ( Model, Cmd Msg )
+manualApplyTarget model =
+    ( case model.surface of
+        Just (SurfaceHpChange ui) ->
+            manualApplyTo [ ui.target ] ui model
+
+        _ ->
+            model
+    , Cmd.none
+    )
+
+
+{-| Write the typed pools onto every selected creature.
+-}
+manualApplySelected : Model -> ( Model, Cmd Msg )
+manualApplySelected model =
+    ( case model.surface of
+        Just (SurfaceHpChange ui) ->
+            manualApplyTo
+                (model.encounter.creatures
+                    |> List.filter .selected
+                    |> List.map .name
+                )
+                ui
+                model
+
+        _ ->
+            model
+    , Cmd.none
+    )
+
+
+{-| Stamp whichever pools parsed onto each named creature. A
+blank or unparseable field leaves its pool untouched, so the GM
+can set one pool without restating the other two.
+-}
+manualApplyTo : List String -> HpChangeUi -> Model -> Model
+manualApplyTo names ui model =
+    let
+        step parsed setter enc =
+            case parsed of
+                Just n ->
+                    List.foldl
+                        (\name acc -> Encounter.mapCreature name (setter n) acc)
+                        enc
+                        names
+
+                Nothing ->
+                    enc
+
+        parse =
+            String.toInt << String.trim
+    in
+    markApplied
+        { model
+            | encounter =
+                model.encounter
+                    |> step (parse ui.manualMaxHpText) HpChange.setMaxHp
+                    |> step (parse ui.manualHpText) HpChange.setCurrentHp
+                    |> step (parse ui.manualTempHpText) HpChange.setTempHp
+        }
+
+
+{-| The toolbar trigger: clicking it while any Manage HP editor
+is expanded closes it — the button shows the fold caret and
+Cancel hover text whenever the editor is open, so it must close
+regardless of which creature a card's HP value aimed it at. A
+fresh open restores the stashed draft when the last close left
+un-applied settings.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
+    ( case model.surface of
+        Just (SurfaceHpChange ui) ->
+            stashAndClose ui model
+
+        _ ->
+            { model | surface = Just (SurfaceHpChange (reopened target model)) }
+    , Cmd.none
+    )
+
+
+{-| A card's HP value: it aims the editor at its own creature,
+so an editor already open for someone else re-aims rather than
+closing. Re-clicking a value on the creature being edited folds
+the editor away, matching the toolbar trigger's toggle.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
     ( case model.surface of
         Just (SurfaceHpChange ui) ->
             if ui.target == target then

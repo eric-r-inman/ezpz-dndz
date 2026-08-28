@@ -183,6 +183,7 @@ applyBeginOfTurn name enc =
         |> expireUntilTurn AtBegin name
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
+        |> resetSpecialReactionsFor name
         |> markSpentRechargesPendingFor name
 
 
@@ -197,6 +198,13 @@ resetReactionFor : String -> Encounter -> Encounter
 resetReactionFor name enc =
     Encounter.mapCreature name
         (\c -> { c | reactionUsed = False })
+        enc
+
+
+resetSpecialReactionsFor : String -> Encounter -> Encounter
+resetSpecialReactionsFor name enc =
+    Encounter.mapCreature name
+        (\c -> { c | specialReactionsUsed = Set.empty })
         enc
 
 

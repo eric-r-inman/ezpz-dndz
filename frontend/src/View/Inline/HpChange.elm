@@ -1,13 +1,14 @@
 module View.Inline.HpChange exposing (view)
 
-{-| Manage HP as an inline card expansion — one surface handling
-Damage, Heal, Temp HP, and +Max HP without covering the queue.
+{-| Manage HP as a docked editor — every way of changing a
+creature's pools on one surface, without covering the queue.
 
-Single smart amount input: type a plain integer (`8`) to apply
-that value directly, or a dice formula (`2d6+3`) to roll and
-apply the total. Parse errors surface inline underneath the
-input. No mode toggle — the input decides which path to take
-when the GM clicks one of the four verbs.
+The verb buttons share a smart amount input: type a plain
+integer (`8`) to apply that value directly, or a dice formula
+(`2d6+3`) to roll and apply the total. Parse errors surface
+inline underneath the input, and the input decides which path a
+verb takes. Below them, the Manual section sets the pools to
+typed values instead.
 
 Only the newest log entry renders here (with its undo button);
 the full list lives in the dice roller via `View.HpLog`.
@@ -15,13 +16,14 @@ the full list lives in the dice roller via `View.HpLog`.
 -}
 
 import Dice
-import Html exposing (Html, button, div, em, input, text)
-import Html.Attributes exposing (attribute, autofocus, checked, class, for, id, placeholder, type_, value)
+import Html exposing (Html, button, div, em, h3, input, span, text)
+import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Msg exposing (HpKind(..), Msg(..))
+import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.HpLog
+import View.Inline.ApplyButton as ApplyButton
 
 
 view : Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
@@ -32,7 +34,66 @@ view selectedCount log ui =
         , ignoreTempToggle ui
         , applyScope selectedCount ui
         , actionButtons
+        , div [ class "cond-divider" ] []
+        , manualSection selectedCount ui
         , View.HpLog.latest log
+        ]
+
+
+{-| Direct pool entry, for the times the GM knows the number
+rather than the change: type into any of the three, then apply
+to the target or the selection. Blank fields are left alone, so
+one pool can be set without restating the others.
+-}
+manualSection : Int -> HpChangeUi -> Html Msg
+manualSection selectedCount ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ] [ text "Manual:" ]
+        , div [ class "cond-row" ]
+            [ manualField "manual-hp" "HP:" ui.manualHpText CurrentHpField
+            , manualField "manual-max-hp" "Max HP:" ui.manualMaxHpText MaxHpField
+            , manualField "manual-temp-hp" "Temp HP:" ui.manualTempHpText TempHpField
+            ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ ApplyButton.view
+                { enabled = True
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = HpChangeManualApplyTarget
+                , tip = "Set the typed pools on the target creature"
+                , label = "Apply to Target"
+                }
+            , ApplyButton.view
+                { enabled = selectedCount > 0
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = HpChangeManualApplySelected
+                , tip =
+                    if selectedCount == 0 then
+                        "Select creatures first"
+
+                    else
+                        "Set the typed pools on every selected creature"
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
+            ]
+        ]
+
+
+manualField : String -> String -> String -> HpField -> Html Msg
+manualField fieldId label current field =
+    span [ class "hp-change__manual-field" ]
+        [ Html.label [ for fieldId ] [ text label ]
+        , input
+            [ id fieldId
+            , class "cond-input cond-input--w20"
+            , type_ "number"
+            , Attr.min "0"
+            , Attr.max "9999"
+            , value current
+            , onInput (HpChangeManualChanged field)
+            ]
+            []
         ]
 
 

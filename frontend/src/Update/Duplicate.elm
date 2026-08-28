@@ -276,6 +276,7 @@ puddingHalf src =
         , selected = False
         , legendaryActionsUsed = Set.empty
         , legendaryResistanceUsed = Set.empty
+        , specialReactionsUsed = Set.empty
     }
 
 

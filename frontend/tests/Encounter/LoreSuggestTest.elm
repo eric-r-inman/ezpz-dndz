@@ -18,6 +18,7 @@ import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
 import Encounter.RandomEncounter.Lore.Suggest as Suggest
 import Expect
+import Set
 import Test exposing (Test, describe, test)
 
 
