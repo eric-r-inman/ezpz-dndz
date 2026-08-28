@@ -3522,17 +3522,16 @@ body {
   color: var(--color-text-muted);
 }
 
+/* One grid per caster, holding every group's heading and spells
+   as cells, so the spells hug their headings and the headings
+   still line up.  The indent hangs the block under the creature
+   name. */
 .spell-list__groups {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.spell-list__group {
   display: grid;
-  grid-template-columns: minmax(140px, 180px) 1fr;
-  gap: 12px;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2);
   align-items: baseline;
+  padding-left: var(--space-4);
 }
 
 .spell-list__group-label {

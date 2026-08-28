@@ -121,19 +121,22 @@ spellGroupList groups =
             [ text "(no spell list parsed for this creature)" ]
 
     else
-        div [ class "spell-list__groups" ] (List.map renderGroup groups)
+        div [ class "spell-list__groups" ] (List.concatMap renderGroup groups)
 
 
-renderGroup : SpellGroup -> Html Msg
+{-| A group contributes its heading and its spells as two cells
+of the caster's shared grid rather than nesting its own, so
+every heading in that caster's block ends at one column edge.
+-}
+renderGroup : SpellGroup -> List (Html Msg)
 renderGroup g =
-    div [ class "spell-list__group" ]
-        [ div [ class "spell-list__group-label" ] [ text g.label ]
-        , ul [ class "spell-list__spells" ]
-            (List.map
-                (\s -> li [ class "spell-list__spell" ] [ text s ])
-                g.spells
-            )
-        ]
+    [ div [ class "spell-list__group-label" ] [ text g.label ]
+    , ul [ class "spell-list__spells" ]
+        (List.map
+            (\s -> li [ class "spell-list__spell" ] [ text s ])
+            g.spells
+        )
+    ]
 
 
 type alias SpellGroup =
