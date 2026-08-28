@@ -16,7 +16,6 @@ type alias ReplaceUi =
     -- and the id of the creature clicked as the replacement.
     , searchText : String
     , pickedId : Maybe String
-    , applyToSelected : Bool
     }
 
 
@@ -41,5 +40,4 @@ fresh target =
     { target = target
     , searchText = ""
     , pickedId = Nothing
-    , applyToSelected = False
     }

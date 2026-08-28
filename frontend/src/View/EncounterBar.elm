@@ -72,14 +72,6 @@ view mode enc savedAs db xpScope xpFilterOpen =
                             ]
                             [ text "Difficulty" ]
                         , button
-                            [ class "encounter-bar__icon-btn"
-                            , type_ "button"
-                            , onClick SpellListOpen
-                            , Tooltips.attr Tooltips.encounterBarSpellList
-                            , attribute "aria-label" Tooltips.encounterBarSpellList
-                            ]
-                            [ text "📜" ]
-                        , button
                             [ class "encounter-bar__treasure"
                             , type_ "button"
                             , onClick TreasureOpen
@@ -107,11 +99,10 @@ view mode enc savedAs db xpScope xpFilterOpen =
             , span [ class "encounter-bar__sep" ] [ text "|" ]
             , surprisedMarker active
             , activeNameLink active activeName
-            , bloodiedMarker active
+            , noteSpan active
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
             , ac active
-            , noteSpan active
             , stateIcons active
             , conditionsText active
             ]
@@ -199,7 +190,22 @@ hp active =
     case active of
         Just c ->
             span [ class "hp-display" ]
-                [ span [ class "hp-display__current" ]
+                [ span
+                    [ class
+                        (if c.bloodied then
+                            "hp-display__current hp-display__current--bloodied"
+
+                         else
+                            "hp-display__current"
+                        )
+                    , Tooltips.attr
+                        (if c.bloodied then
+                            Tooltips.bloodied
+
+                         else
+                            ""
+                        )
+                    ]
                     [ text (String.fromInt c.currentHp) ]
                 , span [ class "hp-display__sep" ] [ text "/" ]
                 , span [ class "hp-display__max" ]
@@ -434,31 +440,6 @@ activeNameLink active activeName =
             span [ class "encounter-bar__active" ] [ text activeName ]
 
 
-{-| Bloodied drop next to the active creature's name. Mirrors
-the row-2 `.bloodied` marker on the card so the GM can see the
-"below half HP" signal in the title bar without finding the
-card in the queue. Hidden when nothing is active, or when the
-active creature isn't bloodied.
--}
-bloodiedMarker : Maybe Creature -> Html Msg
-bloodiedMarker active =
-    case active of
-        Just c ->
-            if c.bloodied then
-                span
-                    [ class "encounter-bar__bloodied"
-                    , Tooltips.attr Tooltips.bloodied
-                    , attribute "aria-label" "Bloodied"
-                    ]
-                    [ text "🩸" ]
-
-            else
-                text ""
-
-        Nothing ->
-            text ""
-
-
 surprisedMarker : Maybe Creature -> Html Msg
 surprisedMarker active =
     case active of
@@ -478,13 +459,9 @@ surprisedMarker active =
             text ""
 
 
-{-| Active-creature short-note slot in the title bar. Mirrors
-the inline note on the card's top row, surfaced here so the GM
-can read it without finding the card in the queue. Prefixed
-with a flashing red `!` (text, not icon) because the title bar
-already implies "active creature" — the marker emphasises that
-the note belongs to whoever's acting right now. Hidden when
-the note is empty.
+{-| Active-creature short-note slot in the title bar, sitting
+right of the name in the same parenthesised italics the card
+uses. Hidden when the note is empty.
 -}
 noteSpan : Maybe Creature -> Html Msg
 noteSpan active =
@@ -495,9 +472,7 @@ noteSpan active =
 
             else
                 span [ class "encounter-bar__note" ]
-                    [ span [ class "encounter-bar__note-bang" ] [ text "!" ]
-                    , text c.note
-                    ]
+                    [ text ("(" ++ String.trim c.note ++ ")") ]
 
         Nothing ->
             text ""

@@ -7,8 +7,8 @@ Three rows + two side rails + an optional legendary-pip column:
   - Row 1 (top): initiative circle, name (with optional
     compendium link), note pencil / inline note, AC readout,
     recharge chips, special-reaction badges.
-  - Row 2 (mid): HP display (click-to-edit), bloodied marker,
-    status readout, condition / save-notice chips.
+  - Row 2 (mid): HP display (click-to-edit), status readout,
+    condition / save-notice chips.
   - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
     timer slot. The HP / condition / save-chain triggers live
     in the encounter panel's stationary action toolbar.
@@ -609,7 +609,7 @@ noteOrPencil creature surface =
                 , attribute "aria-label" ("Edit note: " ++ creature.note)
                 , ariaExpanded editing
                 ]
-                [ text creature.note ]
+                [ text ("(" ++ creature.note ++ ")") ]
             , span [ class "creature-note__sep" ] [ text "|" ]
             ]
 
@@ -1230,7 +1230,6 @@ rowMid creature hpEdit =
         -- editor; the row keeps the at-a-glance vitals plus
         -- read-only icons for whatever that editor applied.
         [ hpDisplay creature hpEdit
-        , bloodied creature
         , statusIcons creature
         , conditionCluster creature
         ]
@@ -1263,7 +1262,16 @@ clicking the chip generally wants.
 hpDisplay : Creature -> Maybe HpEdit -> Html Msg
 hpDisplay creature hpEdit =
     span [ class "hp-display" ]
-        [ hpEditable creature hpEdit CurrentHpField creature.currentHp "hp-display__current"
+        [ hpEditable creature
+            hpEdit
+            CurrentHpField
+            creature.currentHp
+            (if creature.bloodied then
+                "hp-display__current hp-display__current--bloodied"
+
+             else
+                "hp-display__current"
+            )
         , span [ class "hp-display__sep" ] [ text "/" ]
         , hpEditable creature hpEdit MaxHpField creature.maxHp "hp-display__max"
         , maxHpOriginal creature
@@ -1508,20 +1516,6 @@ statusIcons creature =
                 |> List.map labelButton
                 |> List.intersperse (span [ class "status-toggles__sep" ] [ text "|" ])
             )
-
-
-bloodied : Creature -> Html Msg
-bloodied creature =
-    if creature.bloodied then
-        span
-            [ class "bloodied"
-            , Tooltips.attr Tooltips.bloodied
-            , attribute "aria-label" "Bloodied"
-            ]
-            [ text "🩸" ]
-
-    else
-        text ""
 
 
 {-| The 5e death-save tracker, rendered as a side-by-side pair of

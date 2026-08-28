@@ -1224,8 +1224,8 @@ updateInner msg model =
         DuplicateModeSet mode ->
             Update.Duplicate.modeSet mode model
 
-        DuplicateApplyToSelectedToggle ->
-            Update.Duplicate.applyToSelectedToggle model
+        DuplicateApplySelected ->
+            Update.Duplicate.applySelected model
 
         DuplicateApply ->
             Update.Duplicate.apply model
@@ -1242,8 +1242,8 @@ updateInner msg model =
         ReplacePick creatureId ->
             Update.Replace.pick creatureId model
 
-        ReplaceApplyToSelectedToggle ->
-            Update.Replace.applyToSelectedToggle model
+        ReplaceApplySelected ->
+            Update.Replace.applySelected model
 
         ReplaceApply ->
             Update.Replace.apply model
@@ -1266,8 +1266,8 @@ updateInner msg model =
         StatusFlyHeightAdjust delta ->
             Update.Status.flyHeightAdjust delta model
 
-        StatusApplyActive ->
-            Update.Status.applyActive model
+        StatusApplyTarget ->
+            Update.Status.applyTarget model
 
         StatusApplySelected ->
             Update.Status.applySelected model
@@ -1373,8 +1373,8 @@ updateInner msg model =
         ConditionSaveAutoRollSet mode ->
             Update.Condition.saveAutoRollSet mode model
 
-        ConditionApplyToSelectedToggle ->
-            Update.Condition.applyToSelectedToggle model
+        ConditionSubmitSelected ->
+            Update.Condition.submitSelected model
 
         ConditionSubmit ->
             Update.Condition.submit model

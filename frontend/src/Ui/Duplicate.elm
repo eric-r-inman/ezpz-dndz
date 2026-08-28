@@ -25,7 +25,6 @@ import Msg exposing (DuplicateMode(..))
 type alias DuplicateUi =
     { target : String
     , mode : DuplicateMode
-    , applyToSelected : Bool
     }
 
 
@@ -54,5 +53,4 @@ fresh : String -> DuplicateUi
 fresh target =
     { target = target
     , mode = DupExact
-    , applyToSelected = False
     }

@@ -2,32 +2,19 @@ module View.Modal.SpellList exposing (view)
 
 {-| Read-only "what spells are in this encounter?" popup.
 
-Triggered by the 📜 icon in the encounter title bar. Walks the
-encounter queue, looks each creature up in the compendium, and
-prints every caster's at-will / per-day / slot spells in one
-scannable list grouped by creature.
-
-Two sources of spell data are consumed:
-
-  - The structured `Spellcasting` field on the compendium
-    creature. The paste-in parser now populates this via
-    `Compendium.SpellcastingText`, so freshly-pasted 2024 MM
-    creatures land here directly.
-  - As a fallback for older bundled data that was captured
-    before the extraction pass existed, any action / bonus-
-    action / trait whose name contains "Spellcasting" is
-    parsed on the fly through the same shared module.
-
-Creatures with no spells from either source are skipped. When
-no caster is in the queue at all, an empty-state line tells
-the GM so they don't think the modal is broken.
+Triggered by the 📜 icon in the queue's spellcaster strip. Walks
+the encounter queue through `Compendium.Casters` and prints
+every caster's at-will / per-day / slot spells in one scannable
+list grouped by creature. When no caster is in the queue at all,
+an empty-state line tells the GM so they don't think the modal
+is broken.
 
 @docs view
 
 -}
 
 import Compendium exposing (Ability(..), Spellcasting)
-import Compendium.SpellcastingText
+import Compendium.Casters as Casters exposing (CasterSummary)
 import Encounter exposing (Creature)
 import Html exposing (Html, button, div, h3, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class, type_)
@@ -63,7 +50,7 @@ body model =
             let
                 casters =
                     model.encounter.creatures
-                        |> List.filterMap (resolveCaster db)
+                        |> List.filterMap (Casters.resolve db)
             in
             if List.isEmpty casters then
                 [ p [ class "spell-list__empty" ]
@@ -80,73 +67,6 @@ body model =
             [ p [ class "spell-list__empty" ]
                 [ text "Couldn't load the compendium — spells unavailable." ]
             ]
-
-
-
--- ── Resolution / extraction ───────────────────────────────────────
-
-
-type alias CasterSummary =
-    { creature : Creature
-    , spellcasting : Spellcasting
-    }
-
-
-resolveCaster : Compendium.Db -> Creature -> Maybe CasterSummary
-resolveCaster db c =
-    let
-        lookup =
-            case c.creatureId of
-                Just id ->
-                    case Compendium.find id db of
-                        Just hit ->
-                            Just hit
-
-                        Nothing ->
-                            Compendium.findByName c.name db
-
-                Nothing ->
-                    Compendium.findByName c.name db
-    in
-    case lookup of
-        Nothing ->
-            Nothing
-
-        Just compendiumC ->
-            case spellcastingFor compendiumC of
-                Just sc ->
-                    Just { creature = c, spellcasting = sc }
-
-                Nothing ->
-                    Nothing
-
-
-{-| Prefer the structured field; fall back to parsing any
-Spellcasting-named feature on the fly for older bundled data
-that predates the parser's extraction pass.
--}
-spellcastingFor : Compendium.Creature -> Maybe Spellcasting
-spellcastingFor c =
-    case c.spellcasting of
-        Just sc ->
-            Just sc
-
-        Nothing ->
-            spellcastingFeatureDescription c
-                |> Maybe.andThen Compendium.SpellcastingText.parse
-
-
-spellcastingFeatureDescription : Compendium.Creature -> Maybe String
-spellcastingFeatureDescription c =
-    (c.actions ++ c.bonusActions ++ c.traits)
-        |> List.filter (\f -> nameLooksLikeSpellcasting f.name)
-        |> List.head
-        |> Maybe.map .description
-
-
-nameLooksLikeSpellcasting : String -> Bool
-nameLooksLikeSpellcasting name =
-    String.contains "spellcasting" (String.toLower name)
 
 
 

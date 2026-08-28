@@ -3,15 +3,16 @@ module View.Inline.Status exposing (view)
 {-| Status editor as a docked toolbar expansion: the posture
 toggles (cover, concentrating, hiding, dodging, flying + flight
 height) editing a draft, with two Apply buttons writing it to
-the active creature or the selection.
+the target creature or the selection.
 -}
 
 import Encounter exposing (Cover(..))
 import Html exposing (Html, button, div, span, text)
-import Html.Attributes exposing (attribute, class, disabled)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..), StatusFlag(..))
 import Ui.Status exposing (StatusUi)
+import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
 
 
@@ -33,25 +34,27 @@ view selectedCount ui =
                 ]
             ]
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
-            [ button
-                [ class "action-btn action-btn--green"
-                , onClick StatusApplyActive
-                , Tooltips.attr "Write these statuses onto the active creature"
-                ]
-                [ text "Apply to Active" ]
-            , button
-                [ class "action-btn action-btn--green"
-                , onClick StatusApplySelected
-                , disabled (selectedCount == 0)
-                , Tooltips.attr
-                    (if selectedCount == 0 then
+            [ ApplyButton.view
+                { enabled = True
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = StatusApplyTarget
+                , tip = "Write these statuses onto the target creature"
+                , label = "Apply to Target"
+                }
+            , ApplyButton.view
+                { enabled = selectedCount > 0
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = StatusApplySelected
+                , tip =
+                    if selectedCount == 0 then
                         "Select creatures first"
 
-                     else
+                    else
                         "Write these statuses onto every selected creature"
-                    )
-                ]
-                [ text ("Apply to Selected (" ++ String.fromInt selectedCount ++ ")") ]
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
             ]
         ]
 

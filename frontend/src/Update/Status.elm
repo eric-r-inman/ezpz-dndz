@@ -1,4 +1,4 @@
-module Update.Status exposing (applyActive, applySelected, close, coverCycle, flyHeightAdjust, open, openFor, toggleFlag)
+module Update.Status exposing (applySelected, applyTarget, close, coverCycle, flyHeightAdjust, open, openFor, toggleFlag)
 
 {-| Update branches for the encounter toolbar's Status editor.
 The toggles edit a draft; the two Apply buttons write the whole
@@ -111,23 +111,20 @@ flyHeightAdjust delta model =
     )
 
 
-{-| Write the draft onto the active creature (top of the queue
-before combat starts, matching the toolbar's target fallback).
+{-| Write the draft onto the creature the editor is aimed at —
+the one the target strip names, which is not always the active
+creature since a card's status label can re-aim the editor.
 -}
-applyActive : Model -> ( Model, Cmd Msg )
-applyActive model =
-    let
-        target =
-            if String.isEmpty model.encounter.activeName then
-                model.encounter.creatures
-                    |> List.head
-                    |> Maybe.map .name
-                    |> Maybe.withDefault ""
+applyTarget : Model -> ( Model, Cmd Msg )
+applyTarget model =
+    ( case model.surface of
+        Just (SurfaceStatus ui) ->
+            applyTo [ ui.target ] model
 
-            else
-                model.encounter.activeName
-    in
-    ( applyTo [ target ] model, Cmd.none )
+        _ ->
+            model
+    , Cmd.none
+    )
 
 
 applySelected : Model -> ( Model, Cmd Msg )

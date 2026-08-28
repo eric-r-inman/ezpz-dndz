@@ -42,12 +42,12 @@ progress on the =modal-migration-inline= branch: the Surface rename and the
 inline/toolbar tiers are implemented; popover, panel, route, and toast-plus-undo
 tiers remain.
 
-* TODO Give the Status editor's disabled Apply button a reachable tooltip
+* DONE Give the Status editor's disabled Apply button a reachable tooltip
 
 Chrome swallows mouse events on a disabled control, so the hover text explaining
-why "Apply to Selected" is unavailable never appears.  The initiative editor's
-=scopeButton= solves this by hanging the tooltip on a wrapper span; apply the
-same shape there.
+why "Apply to Selected" is unavailable never appeared.  Every docked editor's
+apply button now routes through =View.Inline.ApplyButton=, which hangs the
+tooltip on a wrapper span when the button is unavailable.
 
 * TODO Sweep style.css to the flat-selector convention
 

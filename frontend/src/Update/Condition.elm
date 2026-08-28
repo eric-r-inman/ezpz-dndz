@@ -1,6 +1,5 @@
 module Update.Condition exposing
-    ( applyToSelectedToggle
-    , close
+    ( close
     , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
@@ -32,6 +31,7 @@ module Update.Condition exposing
     , saveNoticeDismiss
     , saveToggle
     , submit
+    , submitSelected
     , undoLatest
     , untilCreatureChanged
     , untilPhaseSet
@@ -393,13 +393,6 @@ saveAutoRollSet mode model =
     )
 
 
-applyToSelectedToggle : Model -> ( Model, Cmd Msg )
-applyToSelectedToggle model =
-    ( withConditionUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
-    , Cmd.none
-    )
-
-
 
 -- ── PRESETS ──────────────────────────────────────────────────────────────
 
@@ -547,9 +540,9 @@ presetLoadMenuClose model =
 
 {-| Pick a preset from the load menu. Overlay its body onto the
 current form state via `ConditionUi.applyPreset`, which preserves
-target / editingId / applyToSelected and re-aims `untilCreature`
-at the current target. No-op when the name isn't in the dict
-(stale click after a delete, for example).
+target / editingId and re-aims `untilCreature` at the current
+target. No-op when the name isn't in the dict (stale click after
+a delete, for example).
 -}
 presetLoad : String -> Model -> ( Model, Cmd Msg )
 presetLoad name model =
@@ -629,12 +622,37 @@ presetCategoryToggle category model =
     )
 
 
-{-| Validate that there's a name; empty-name conditions are
-silently dropped (close the modal). Build a draft, then either
-insert (creating) or update (editing).
+{-| Apply the form to the editor's own target.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
+    case model.surface of
+        Just (SurfaceCondition ui) ->
+            submitTo [ ui.target ] model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Apply the form to every selected creature; each one gets its
+own copy of the condition.
+-}
+submitSelected : Model -> ( Model, Cmd Msg )
+submitSelected model =
+    submitTo
+        (model.encounter.creatures
+            |> List.filter .selected
+            |> List.map .name
+        )
+        model
+
+
+{-| Validate that there's a name; empty-name conditions are
+silently dropped. Build a draft, then either insert it (creating)
+or update the edited condition.
+-}
+submitTo : List String -> Model -> ( Model, Cmd Msg )
+submitTo targets model =
     case model.surface of
         Just (SurfaceCondition ui) ->
             let
@@ -647,7 +665,7 @@ submit model =
             else
                 let
                     ( committed, logEntry ) =
-                        commitCondition ui name model
+                        commitCondition targets ui name model
 
                     withLog =
                         case logEntry of
@@ -855,8 +873,8 @@ the existing condition's fields (when editing). The "skip first
 end-of-turn tick" rule is applied here for AtEnd countdowns
 created on the currently-active creature.
 -}
-commitCondition : ConditionUi -> String -> Model -> ( Model, Maybe ConditionUi.ConditionLogEntry )
-commitCondition ui name model =
+commitCondition : List String -> ConditionUi -> String -> Model -> ( Model, Maybe ConditionUi.ConditionLogEntry )
+commitCondition targets ui name model =
     let
         duration =
             buildDuration ui model
@@ -900,9 +918,6 @@ commitCondition ui name model =
 
         Nothing ->
             let
-                targets =
-                    conditionTargets ui model.encounter
-
                 addOne tgt acc =
                     let
                         ( withAdded, newId ) =
@@ -926,22 +941,6 @@ commitCondition ui name model =
                     , targets = List.reverse result.applied
                     }
             )
-
-
-{-| Resolve which creatures a new condition applies to. When
-`applyToSelected` is True, every creature with `selected = True`
-gets a fresh copy (each gets its own id via `addCondition`).
-Otherwise just the modal's `target`.
--}
-conditionTargets : ConditionUi -> Encounter.Encounter -> List String
-conditionTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
-
-    else
-        [ ui.target ]
 
 
 {-| Build the domain `Duration` from the UI's three sub-states.

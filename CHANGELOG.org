@@ -7,10 +7,9 @@
    stationary toolbar whose editors dock above the always-visible queue, while
    timers, memos, and name notes are edited directly on the creature card (per
    the plan in =docs/MODAL_MIGRATION.org=).  No action needed.
-2. The docked editors target the active creature or, via a checkbox, only the
-   selected creatures; they stay open after applying, remember un-applied
-   settings when closed, and keep recent-applies logs (undo-able for HP and
-   conditions).  No action needed.
+2. The docked editors target the active creature or the current selection; they
+   stay open after applying, remember un-applied settings when closed, and keep
+   recent-applies logs (undo-able for HP and conditions).  No action needed.
 3. When applying a dice-formula HP change to a selection, a "New roll for each
    creature" option rolls independently per creature.  No action needed.
 4. Creature cards name each special reaction in an orange badge on the card's
@@ -22,6 +21,16 @@
 6. The initiative manager is one of those docked editors now, opened by the
    toolbar's Initiative button or by a card's initiative circle.  No action
    needed.
+7. The status, condition, replace, and duplicate editors choose their scope with
+   a pair of buttons — "Apply to Target" and "Apply to Selected (N)" — rather
+   than an apply-scope checkbox.  No action needed.
+8. The encounter queue lists its spellcasters in a reminder strip alongside the
+   legendary-action and special-reaction ones, and the spell-list button moved
+   into it.  No action needed.
+9. A creature reads as bloodied through red current HP rather than a droplet
+   icon.  No action needed.
+10. Notes render in italic parentheses on both the creature card and the
+    encounter title bar.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

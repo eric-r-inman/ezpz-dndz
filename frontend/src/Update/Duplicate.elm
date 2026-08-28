@@ -1,4 +1,4 @@
-module Update.Duplicate exposing (apply, applyToSelectedToggle, close, modeSet, open)
+module Update.Duplicate exposing (apply, applySelected, close, modeSet, open)
 
 {-| Update branches for the encounter toolbar's Duplicate editor.
 
@@ -64,31 +64,39 @@ modeSet mode model =
     ( withUi (\u -> { u | mode = mode }) model, Cmd.none )
 
 
-applyToSelectedToggle : Model -> ( Model, Cmd Msg )
-applyToSelectedToggle model =
-    ( withUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
-    , Cmd.none
-    )
-
-
-{-| Apply the chosen flavor to every resolved target, log one
-entry naming the copies that appeared, and leave the editor open
-for the next application.
+{-| Apply the chosen flavor to the editor's target.
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
     case model.surface of
         Just (SurfaceDuplicate ui) ->
+            applyTo [ ui.target ] model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Apply the chosen flavor to every selected creature.
+-}
+applySelected : Model -> ( Model, Cmd Msg )
+applySelected model =
+    applyTo
+        (model.encounter.creatures
+            |> List.filter .selected
+            |> List.map .name
+        )
+        model
+
+
+{-| Apply the chosen flavor to every named target, log one entry
+naming the copies that appeared, and leave the editor open for
+the next application.
+-}
+applyTo : List String -> Model -> ( Model, Cmd Msg )
+applyTo targets model =
+    case model.surface of
+        Just (SurfaceDuplicate ui) ->
             let
-                targets =
-                    if ui.applyToSelected then
-                        model.encounter.creatures
-                            |> List.filter .selected
-                            |> List.map .name
-
-                    else
-                        [ ui.target ]
-
                 before =
                     Set.fromList (List.map .name model.encounter.creatures)
 

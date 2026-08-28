@@ -1,4 +1,4 @@
-module Update.Replace exposing (apply, applyToSelectedToggle, close, open, pick, searchChanged)
+module Update.Replace exposing (apply, applySelected, close, open, pick, searchChanged)
 
 {-| Update branches for the encounter toolbar's Replace editor:
 pick a compendium creature, then swap it in for the active
@@ -75,33 +75,41 @@ pick creatureId model =
     )
 
 
-applyToSelectedToggle : Model -> ( Model, Cmd Msg )
-applyToSelectedToggle model =
-    ( withUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
-    , Cmd.none
-    )
-
-
-{-| Swap the picked compendium creature in for every resolved
-target, one at a time so instance names stay unique, log one
-entry, and leave the editor open.
+{-| Swap the picked creature in for the editor's target.
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
+    case model.surface of
+        Just (SurfaceReplace ui) ->
+            applyTo [ ui.target ] model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Swap the picked creature in for every selected creature.
+-}
+applySelected : Model -> ( Model, Cmd Msg )
+applySelected model =
+    applyTo
+        (model.encounter.creatures
+            |> List.filter .selected
+            |> List.map .name
+        )
+        model
+
+
+{-| Swap the picked compendium creature in for every named
+target, one at a time so instance names stay unique, log one
+entry, and leave the editor open.
+-}
+applyTo : List String -> Model -> ( Model, Cmd Msg )
+applyTo targets model =
     case ( model.surface, model.compendium.db ) of
         ( Just (SurfaceReplace ui), CompendiumDbLoaded db ) ->
             case Maybe.andThen (\id -> Compendium.find id db) ui.pickedId of
                 Just source ->
                     let
-                        targets =
-                            if ui.applyToSelected then
-                                model.encounter.creatures
-                                    |> List.filter .selected
-                                    |> List.map .name
-
-                            else
-                                [ ui.target ]
-
                         result =
                             List.foldl (replaceOne source)
                                 { model = model, news = [] }

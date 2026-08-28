@@ -668,8 +668,8 @@ type Msg
     | DuplicateOpen String
     | DuplicateClose
     | DuplicateModeSet DuplicateMode
-    | DuplicateApplyToSelectedToggle
     | DuplicateApply
+    | DuplicateApplySelected
       -- Replace editor (encounter toolbar): search the
       -- compendium, pick the replacement, choose the scope,
       -- Apply.  Swaps preserve queue position and initiative.
@@ -677,8 +677,8 @@ type Msg
     | ReplaceClose
     | ReplaceSearchChanged String
     | ReplacePick String
-    | ReplaceApplyToSelectedToggle
     | ReplaceApply
+    | ReplaceApplySelected
       -- Status editor (encounter toolbar): posture toggles edit
       -- a draft; the Apply buttons stamp it onto the active
       -- creature or the selection.  The toolbar trigger folds
@@ -690,7 +690,7 @@ type Msg
     | StatusCoverCycle
     | StatusToggle StatusFlag
     | StatusFlyHeightAdjust Int
-    | StatusApplyActive
+    | StatusApplyTarget
     | StatusApplySelected
       -- Initiative editor (encounter toolbar).  The toolbar
       -- trigger folds the editor away, while a card's init
@@ -749,8 +749,8 @@ type Msg
     | ConditionSaveDcChanged String
     | ConditionSaveBonusChanged String
     | ConditionSaveAutoRollSet Encounter.AutoRollMode
-    | ConditionApplyToSelectedToggle
     | ConditionSubmit
+    | ConditionSubmitSelected
     | ConditionDelete
       -- Save/Load presets for the Add-Condition modal.  The GM
       -- captures a fully-configured form under a user-given name

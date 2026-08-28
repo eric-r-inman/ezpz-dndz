@@ -572,16 +572,10 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.1rem;
 }
 
-/* Inline-pill displays the GM consults mid-combat: notes,
-   conditions / save-notices, memo, and timer.  Each shipped
-   with a small absolute rem size; bump under Accessible so the
-   text reads at low vision.  Covers the per-card row-1 note
-   text, the row-2 / row-3 condition chips + auto-roll save
-   notices, the row-3 memo and timer pills, AND the title-bar
-   note text mirror (`encounter-bar__note-text`) so the same
-   note reads larger in both places. */
-[data-theme="accessible"] .creature-note,
-[data-theme="accessible"] .encounter-bar__note-text {
+/* Each inline-pill display the GM consults mid-combat ships a
+   small absolute rem size, so each needs its own Accessible bump
+   to read at low vision. */
+[data-theme="accessible"] .creature-note {
   font-size: 1.05rem;
 }
 
@@ -662,11 +656,8 @@ html:has(.app-shell[data-theme="accessible"]) {
   height: 34px;
 }
 
-/* Row-2 absolute-rem children: HP display is the headline number
-   in this row; status toggles, bloodied marker, fly-height, and
-   the AC readout all sit alongside it.  Each gets its own
-   explicit bump because their absolute rem sizes ignore the
-   row-level base. */
+/* Row-2 children carry absolute rem sizes, which ignore the
+   row-level base, so each one needs its own Accessible bump. */
 [data-theme="accessible"] .creature-card__row--mid .hp-display {
   font-size: 1.2rem;
 }
@@ -675,7 +666,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-[data-theme="accessible"] .creature-card__row--mid .bloodied,
 [data-theme="accessible"] .creature-card__row--mid .fly-height,
 [data-theme="accessible"] .creature-card__row--mid .ac-readout {
   font-size: 1.05rem;
@@ -688,12 +678,10 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-weight: 800;
 }
 
-/* Title-bar note + condition-chip mirror.  Earlier Accessible
-   bumps put these at 1.05rem (note) and 0.95rem (chip) for
-   row-1 / card-side use; the title-bar copies of the same
-   widgets need a touch more so the at-a-glance status reads
-   across the bar. */
-[data-theme="accessible"] .encounter-bar .encounter-bar__note-text {
+/* Title-bar note + condition-chip mirror.  The title-bar copies
+   run a touch larger than their card-side counterparts so the
+   at-a-glance status reads across the bar. */
+[data-theme="accessible"] .encounter-bar__note {
   font-size: 1.15rem;
 }
 
@@ -4263,6 +4251,23 @@ body {
   font-weight: 500;
 }
 
+/* The spell-list button, sitting between the strip's label and
+   its creature names.  Chrome reset so it reads as part of the
+   sentence, not a control bolted onto it. */
+.legendary-banner__spell-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.legendary-banner__spell-btn:hover {
+  filter: brightness(1.15);
+}
+
 .legendary-banner__name {
   appearance: none;
   background: transparent;
@@ -4297,9 +4302,8 @@ body {
    and the medium font weight reads as "decorative" rather than the
    load-bearing GM heads-up the strip is meant to be.  This block
    bumps surface contrast, text size + weight, and rail thickness, and
-   gives the Special-reactions strip a distinct blue rail so the two
-   strips remain distinguishable beyond their leading text label
-   (mirrors the bright-blue pulsing `!` pip on creature cards).
+   gives each strip a distinct rail colour so they remain
+   distinguishable beyond their leading text label.
    Dark / Modern themes keep their existing treatment.
 */
 [data-theme="accessible"] .legendary-banner {
@@ -4324,6 +4328,13 @@ body {
      leading text.  Surface stays cream so the pairing still reads
      as one "GM heads-up" family. */
   border-left-color: var(--color-blue, #003c8f);
+}
+
+[data-theme="accessible"] .legendary-banner--spells {
+  /* Purple rail, distinct from the other strips' rails, so the
+     reminders stay separable at low vision without reading their
+     leading labels. */
+  border-left-color: var(--color-condition);
 }
 
 [data-theme="accessible"] .legendary-banner__name {
@@ -5664,6 +5675,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-success);
 }
 
+/* Below half HP.  Sits after the base rule so the flat pair
+   resolves by source order. */
+.hp-display__current--bloodied {
+  color: var(--color-danger);
+}
+
 .hp-display__sep {
   color: var(--color-text-muted);
   font-weight: 400;
@@ -5683,16 +5700,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: italic;
   font-size: 0.85em;
   margin-left: 2px;
-}
-
-.bloodied {
-  font-size: 0.95rem;
-  margin-right: var(--space-2);
-  /* Pull against the HP display's right margin so the droplet
-     reads as part of the vitals cluster. */
-  margin-left: calc(var(--space-2) * -1 + 2px);
-  line-height: 1;
-  cursor: help;
 }
 
 /* Posture labels mirroring what the Status editor applied,
@@ -6832,18 +6839,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   letter-spacing: 0.02em;
 }
 
-/* Active-creature bloodied marker — mirrors the row-2 `.bloodied`
-   drop on the card.  Inline-flex baseline so the glyph sits on
-   the same line as the active creature name; small margin so it
-   doesn't crowd the name on the left or the HP readout on the
-   right. */
-.encounter-bar__bloodied {
-  font-size: 0.95rem;
-  line-height: 1;
-  margin: 0 2px 0 4px;
-  cursor: help;
-}
-
 .encounter-bar__sep {
   color: var(--color-border);
   user-select: none;
@@ -6931,11 +6926,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
-/* Active creature's note, echoed up into the title bar to the
-   right of AC.  The leading `!` is a text character (not an
-   icon glyph) per the design request, animated with a 1 s
-   opacity pulse to draw the eye.  The note body itself stays
-   solid so the text remains readable. */
+/* Active creature's note, echoed up into the title bar beside
+   the name in the same parenthesised italics the card uses. */
 .encounter-bar__note {
   display: inline-flex;
   align-items: baseline;
@@ -6947,27 +6939,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.encounter-bar__note-bang {
-  color: var(--color-danger, #c92a2a);
-  font-weight: 800;
-  animation: encounter-bar-bang-pulse 1s ease-in-out infinite;
-}
-
-.encounter-bar__note-text {
   font-style: italic;
   opacity: 0.9;
-}
-
-@keyframes encounter-bar-bang-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
 }
 
 .encounter-bar__states {
@@ -6979,16 +6952,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .encounter-bar__state {
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border-radius: 6px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
   cursor: default;
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
@@ -8927,17 +8894,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-right: 12px;
 }
 
-/* Wrapper around an initiative button whose scope is empty.  It
+/* Wrapper around a docked editor's unavailable Apply button.  It
    owns the tooltip trigger, since the disabled button inside
    swallows mouse events in Chrome, and takes the button's place
-   as the grid / flex item. */
-.init-btn-wrap {
-  display: flex;
-  flex: 1 1 auto;
+   as the grid / flex item.  The --grow variant is for rows whose
+   buttons share the width. */
+.inline-btn-wrap {
+  display: inline-flex;
   cursor: default;
 }
 
-.init-btn-inert {
+.inline-btn-wrap--grow {
+  flex: 1 1 auto;
+}
+
+.inline-btn-inert {
   pointer-events: none;
 }
 
@@ -9363,27 +9334,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 0.85;
 }
 
-/* Active-creature note read in the encounter title bar.  Slot
-   sits between AC and the state icons.  The leading "!" is
-   styled separately as a red, flashing attention mark — the
-   note body itself stays the regular title-bar text colour. */
+/* Title-bar note slot: italics matching the card's note. */
 .encounter-bar__note {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   margin-left: 6px;
-}
-
-.encounter-bar__note-bang {
-  color: var(--color-danger);
-  font-weight: 800;
-  animation: encounter-bar-note-blink 0.8s steps(1, end) infinite;
-}
-
-@keyframes encounter-bar-note-blink {
-  50% {
-    opacity: 0.15;
-  }
+  font-style: italic;
 }
 
 .timer-pill--ringing {

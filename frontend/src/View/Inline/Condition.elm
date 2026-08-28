@@ -6,7 +6,7 @@ toolbar so the queue stays visible while the GM fills it in.
 
 import Dict exposing (Dict)
 import Encounter
-import Html exposing (Html, button, div, em, h3, input, li, span, text, ul)
+import Html exposing (Html, button, div, h3, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
@@ -15,6 +15,7 @@ import Set
 import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
+import View.Inline.ApplyButton as ApplyButton
 import View.PhaseToggle
 import View.Tooltips as Tooltips
 
@@ -39,8 +40,7 @@ view ctx ui =
         , customAndNoteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
-        , applyScope ctx.selectedCount ui
-        , footer ui ctx.presets
+        , footer ui ctx.presets ctx.selectedCount
         , latestLog ctx.log
         ]
 
@@ -83,40 +83,6 @@ latestLog entries =
 
         [] ->
             text ""
-
-
-{-| Multi-target scope checkbox. Hidden when no creatures are
-selected, and hidden entirely when editing an existing condition
-— you're modifying one specific row, not creating new ones in
-bulk.
--}
-applyScope : Int -> ConditionUi -> Html Msg
-applyScope selectedCount ui =
-    if ui.editingId /= Nothing || selectedCount == 0 then
-        text ""
-
-    else
-        -- Mirrors the save-to-end section's heading-wrapped
-        -- checkbox so the two boxes share a left edge.
-        div [ class "cond-section" ]
-            [ h3 [ class "cond-section__heading" ]
-                [ Html.label []
-                    [ input
-                        [ type_ "checkbox"
-                        , checked ui.applyToSelected
-                        , onClick ConditionApplyToSelectedToggle
-                        ]
-                        []
-                    , text " Apply "
-                    , em [] [ text "only" ]
-                    , text
-                        (" to selected creatures ("
-                            ++ String.fromInt selectedCount
-                            ++ ")"
-                        )
-                    ]
-                ]
-            ]
 
 
 standardSection : ConditionUi -> Html Msg
@@ -460,15 +426,15 @@ autoRollCaption mode =
             "Save fires at the end of the bearer's turn; success removes the condition."
 
 
-footer : ConditionUi -> Dict String ConditionPreset -> Html Msg
-footer ui presets =
+footer : ConditionUi -> Dict String ConditionPreset -> Int -> Html Msg
+footer ui presets selectedCount =
     let
         canSubmit =
             not (String.isEmpty (String.trim ui.name))
 
         applyLabel =
             if ui.editingId == Nothing then
-                "Apply"
+                "Apply to Target"
 
             else
                 "Save Changes"
@@ -483,26 +449,20 @@ footer ui presets =
             -- editor is a long reach from the fields.  No Cancel
             -- button: Escape and re-clicking the Condition/Effect
             -- button both cancel.
-            , button
-                [ class "action-btn action-btn--green"
-                , onClick ConditionSubmit
-                , disabled (not canSubmit)
-                , attribute "aria-disabled"
-                    (if canSubmit then
-                        "false"
-
-                     else
-                        "true"
-                    )
-                , Tooltips.attr
-                    (if canSubmit then
+            , ApplyButton.view
+                { enabled = canSubmit
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = ConditionSubmit
+                , tip =
+                    if canSubmit then
                         applyLabel
 
-                     else
+                    else
                         "Pick a condition or type a custom name first"
-                    )
-                ]
-                [ text applyLabel ]
+                , label = applyLabel
+                }
+            , applySelectedButton ui canSubmit selectedCount
             ]
         , div [ class "cond-footer__actions" ]
             [ case ui.editingId of
@@ -518,6 +478,34 @@ footer ui presets =
                     text ""
             ]
         ]
+
+
+{-| The multi-target apply. Editing an existing condition is a
+one-row operation, so the button is absent in that mode rather
+than disabled — there is nothing a selection could mean there.
+-}
+applySelectedButton : ConditionUi -> Bool -> Int -> Html Msg
+applySelectedButton ui canSubmit selectedCount =
+    if ui.editingId /= Nothing then
+        text ""
+
+    else
+        ApplyButton.view
+            { enabled = canSubmit && selectedCount > 0
+            , grow = False
+            , cls = "action-btn action-btn--green"
+            , msg = ConditionSubmitSelected
+            , tip =
+                if not canSubmit then
+                    "Pick a condition or type a custom name first"
+
+                else if selectedCount == 0 then
+                    "Select creatures first"
+
+                else
+                    "Give every selected creature its own copy"
+            , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+            }
 
 
 {-| Save button + inline name prompt. When `pendingSaveName` is

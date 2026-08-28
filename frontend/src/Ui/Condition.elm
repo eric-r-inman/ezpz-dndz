@@ -59,7 +59,6 @@ type alias ConditionUi =
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
-    , applyToSelected : Bool
     , loadMenuOpen : Bool
     , pendingSaveName : Maybe String
     , pendingSaveCategory : String
@@ -147,7 +146,6 @@ fresh target =
     , countdownTurns = 1
     , countdownPhase = Encounter.AtEnd
     , saveToEnd = Nothing
-    , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -225,7 +223,6 @@ fromCondition target cond =
     , countdownTurns = durFields.countdownTurns
     , countdownPhase = durFields.countdownPhase
     , saveToEnd = saveUi
-    , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -242,7 +239,7 @@ same condition shape (DM uses Stun a lot? save the whole config).
 
 Excludes everything that's context-specific to one application:
 
-  - `target` / `editingId` / `applyToSelected` — per-creature.
+  - `target` / `editingId` — per-creature.
   - `untilCreature` — references a specific name; on load the
     handler defaults it to the current target so "Until self's
     next turn" comes through correctly.
@@ -287,11 +284,11 @@ toPreset ui =
 
 
 {-| Overlay a saved preset on the current form state. Keeps the
-form's per-application context (`target`, `editingId`,
-`applyToSelected`) and reuses the current target as the
-`untilCreature` default — that's the natural fit for self-effect
-presets like "Until self's next turn", which is what Stun and
-many other 5e conditions look like in practice.
+form's per-application context (`target`, `editingId`) and reuses
+the current target as the `untilCreature` default — that's the
+natural fit for self-effect presets like "Until self's next
+turn", which is what Stun and many other 5e conditions look like
+in practice.
 
 Stashes the preset name in `loadedPresetName` so the title bar
 shows "(loaded: Stun)". Closes any open load menu and clears the

@@ -1,18 +1,19 @@
 module View.Inline.Replace exposing (view)
 
 {-| Replace editor as a docked toolbar expansion: a compendium
-search + picker list (the Quick Add row styling), the apply
-scope, Apply, and the newest log row. The swap preserves each
+search + picker list (the Quick Add row styling), the two apply
+buttons, and the newest log row. The swap preserves each
 replaced creature's queue position and initiative.
 -}
 
 import Compendium
-import Html exposing (Html, button, div, em, h3, input, li, span, text, ul)
-import Html.Attributes as Attr exposing (attribute, checked, class, disabled, placeholder, type_, value)
+import Html exposing (Html, div, input, li, span, text, ul)
+import Html.Attributes as Attr exposing (attribute, class, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Replace exposing (ReplaceLogEntry, ReplaceUi)
+import View.Inline.ApplyButton as ApplyButton
 
 
 view : CompendiumDb -> Int -> List ReplaceLogEntry -> ReplaceUi -> Html Msg
@@ -20,21 +21,36 @@ view db selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ searchRow ui
         , pickerList db ui
-        , applyScope selectedCount ui
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
-            [ button
-                [ class "action-btn action-btn--green"
-                , onClick ReplaceApply
-                , disabled (ui.pickedId == Nothing)
-                , attribute "aria-disabled"
-                    (if ui.pickedId == Nothing then
-                        "true"
+            [ ApplyButton.view
+                { enabled = ui.pickedId /= Nothing
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = ReplaceApply
+                , tip =
+                    if ui.pickedId == Nothing then
+                        "Pick a replacement creature first"
 
-                     else
-                        "false"
-                    )
-                ]
-                [ text "Apply" ]
+                    else
+                        "Swap in the picked creature for the target"
+                , label = "Apply to Target"
+                }
+            , ApplyButton.view
+                { enabled = ui.pickedId /= Nothing && selectedCount > 0
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = ReplaceApplySelected
+                , tip =
+                    if ui.pickedId == Nothing then
+                        "Pick a replacement creature first"
+
+                    else if selectedCount == 0 then
+                        "Select creatures first"
+
+                    else
+                        "Swap in the picked creature for every selected creature"
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
             ]
         , latestLog log
         ]
@@ -115,33 +131,6 @@ crLabel raw =
 
     else
         "CR " ++ String.trim raw
-
-
-applyScope : Int -> ReplaceUi -> Html Msg
-applyScope selectedCount ui =
-    if selectedCount == 0 then
-        text ""
-
-    else
-        div [ class "cond-section" ]
-            [ h3 [ class "cond-section__heading" ]
-                [ Html.label []
-                    [ input
-                        [ type_ "checkbox"
-                        , checked ui.applyToSelected
-                        , onClick ReplaceApplyToSelectedToggle
-                        ]
-                        []
-                    , text " Apply "
-                    , em [] [ text "only" ]
-                    , text
-                        (" to selected creatures ("
-                            ++ String.fromInt selectedCount
-                            ++ ")"
-                        )
-                    ]
-                ]
-            ]
 
 
 latestLog : List ReplaceLogEntry -> Html Msg

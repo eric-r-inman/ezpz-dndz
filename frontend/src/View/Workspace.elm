@@ -9,6 +9,7 @@ them together with the model fragments each one needs.
 
 -}
 
+import Compendium.Casters as Casters
 import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
@@ -18,6 +19,7 @@ import Html.Events exposing (onClick)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Set
+import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
 import View.EncounterBar
 import View.Inline.Condition
@@ -53,7 +55,7 @@ view model =
 
 {-| The encounter pane. Builds the card context each card render
 needs (inline-edit and rename states, the open surface, timer
-presets), then stacks the stationary strips — title bar, the two
+presets), then stacks the stationary strips — title bar,
 reminder banners, the action toolbar, and any docked editor —
 above the scrolling card grid. `savedAs` lights up the title-bar
 info icon with the source filename; the compendium DB + XP scope
@@ -79,6 +81,7 @@ panelMain model =
             [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
         , legendaryActionStrip enc
         , specialReactionsStrip enc
+        , spellcasterStrip enc model.compendium.db
         , actionToolbar model
         , dockedEditor model
         , div
@@ -92,13 +95,11 @@ panelMain model =
         ]
 
 
-{-| Stationary action toolbar under the reminder banners: the
-Manage HP, Condition/Effect, and Save Chain triggers that used
-to sit on every creature card. Each targets the active creature
-(falling back to the top of the queue before combat starts);
-the editors' own "apply to all selected" scope covers
-multi-creature use. Disabled with an empty queue — there is
-nothing to target.
+{-| Stationary action toolbar under the reminder banners. Each
+trigger targets the active creature, falling back to the top of
+the queue before combat starts; the editors' own "apply to
+selected" buttons cover multi-creature use. Disabled with an
+empty queue — there is nothing to target.
 -}
 actionToolbar : Model -> Html Msg
 actionToolbar model =
@@ -229,10 +230,11 @@ dockedEditor model =
         selectedCount =
             List.length (List.filter .selected model.encounter.creatures)
 
-        -- The strip names whoever the apply will actually hit:
-        -- the single target, or the selection once the editor's
-        -- apply-only-to-selected scope is checked.
-        targetLabel targetName applyToSelected =
+        -- Manage HP and Save Chain still choose their scope with
+        -- a checkbox, so their strip has to name the selection
+        -- when it is ticked; the button-scoped editors always
+        -- name their own target.
+        scopedLabel targetName applyToSelected =
             if applyToSelected && selectedCount > 0 then
                 "Target: Selected (" ++ String.fromInt selectedCount ++ ")"
 
@@ -248,11 +250,11 @@ dockedEditor model =
     in
     case model.surface of
         Just (SurfaceHpChange ui) ->
-            docked (targetLabel ui.target ui.applyToSelected)
+            docked (scopedLabel ui.target ui.applyToSelected)
                 (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
 
         Just (SurfaceCondition ui) ->
-            docked (targetLabel ui.target (ui.applyToSelected && ui.editingId == Nothing))
+            docked ("Target: " ++ ui.target)
                 (View.Inline.Condition.view
                     { creatureNames = List.map .name model.encounter.creatures
                     , selectedCount = selectedCount
@@ -263,7 +265,7 @@ dockedEditor model =
                 )
 
         Just (SurfaceSaveChain ui) ->
-            docked (targetLabel ui.target ui.applyToSelected)
+            docked (scopedLabel ui.target ui.applyToSelected)
                 (View.Inline.SaveChain.view
                     { presets = model.saveChainPresets
                     , selectedCount = selectedCount
@@ -281,7 +283,7 @@ dockedEditor model =
                 (View.Inline.Initiative.view selectedCount ui)
 
         Just (SurfaceReplace ui) ->
-            docked (targetLabel ui.target ui.applyToSelected)
+            docked ("Target: " ++ ui.target)
                 (View.Inline.Replace.view model.compendium.db
                     selectedCount
                     model.replaceLog
@@ -289,7 +291,7 @@ dockedEditor model =
                 )
 
         Just (SurfaceDuplicate ui) ->
-            docked (targetLabel ui.target ui.applyToSelected)
+            docked ("Target: " ++ ui.target)
                 (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
         _ ->
@@ -348,6 +350,55 @@ specialReactionsStrip enc =
 
     else
         specialReactionsBanner eligible
+
+
+{-| Sticky orange strip under the special-reactions one, naming
+every queue member whose source can cast. The spell-list button
+sits inside the strip rather than in the title bar, so the
+reminder and the reference it opens read as one affordance.
+Counts stay out of it — the compendium pane has the detail once
+the GM clicks a name.
+-}
+spellcasterStrip : Encounter -> CompendiumDb -> Html Msg
+spellcasterStrip enc db =
+    case db of
+        CompendiumDbLoaded loaded ->
+            let
+                casters =
+                    enc.creatures
+                        |> List.filterMap (Casters.resolve loaded)
+                        |> List.map .creature
+            in
+            if List.isEmpty casters then
+                text ""
+
+            else
+                div
+                    [ class "legendary-banner legendary-banner--spells"
+                    , attribute "role" "note"
+                    ]
+                    (text "Spells: "
+                        :: spellListButton
+                        :: (casters
+                                |> List.map nameNode
+                                |> List.intersperse (text ", ")
+                           )
+                    )
+
+        _ ->
+            text ""
+
+
+spellListButton : Html Msg
+spellListButton =
+    button
+        [ class "legendary-banner__spell-btn"
+        , type_ "button"
+        , onClick SpellListOpen
+        , Tooltips.attr Tooltips.encounterBarSpellList
+        , attribute "aria-label" Tooltips.encounterBarSpellList
+        ]
+        [ text "📜" ]
 
 
 specialReactionsEligible : Creature -> Bool

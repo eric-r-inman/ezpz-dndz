@@ -1,27 +1,43 @@
 module View.Inline.Duplicate exposing (view)
 
 {-| Duplicate editor as a docked toolbar expansion: flavor
-radios, apply scope, Apply, and the newest log row.
+radios, the two apply buttons, and the newest log row.
 -}
 
-import Html exposing (Html, button, div, em, h3, input, li, span, text, ul)
-import Html.Attributes as Attr exposing (attribute, checked, class, type_)
+import Html exposing (Html, div, input, li, span, text, ul)
+import Html.Attributes as Attr exposing (checked, class, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (DuplicateMode(..), Msg(..))
 import Ui.Duplicate exposing (DuplicateLogEntry, DuplicateUi)
+import View.Inline.ApplyButton as ApplyButton
 
 
 view : Int -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
 view selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ modeSection ui
-        , applyScope selectedCount ui
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
-            [ button
-                [ class "action-btn action-btn--green"
-                , onClick DuplicateApply
-                ]
-                [ text "Apply" ]
+            [ ApplyButton.view
+                { enabled = True
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = DuplicateApply
+                , tip = "Copy the target creature"
+                , label = "Apply to Target"
+                }
+            , ApplyButton.view
+                { enabled = selectedCount > 0
+                , grow = False
+                , cls = "action-btn action-btn--green"
+                , msg = DuplicateApplySelected
+                , tip =
+                    if selectedCount == 0 then
+                        "Select creatures first"
+
+                    else
+                        "Copy every selected creature"
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
             ]
         , latestLog log
         ]
@@ -82,33 +98,6 @@ modeCaption mode =
 
         DupPudding ->
             "Splits into two half-HP copies and removes the original."
-
-
-applyScope : Int -> DuplicateUi -> Html Msg
-applyScope selectedCount ui =
-    if selectedCount == 0 then
-        text ""
-
-    else
-        div [ class "cond-section" ]
-            [ h3 [ class "cond-section__heading" ]
-                [ Html.label []
-                    [ input
-                        [ type_ "checkbox"
-                        , checked ui.applyToSelected
-                        , onClick DuplicateApplyToSelectedToggle
-                        ]
-                        []
-                    , text " Apply "
-                    , em [] [ text "only" ]
-                    , text
-                        (" to selected creatures ("
-                            ++ String.fromInt selectedCount
-                            ++ ")"
-                        )
-                    ]
-                ]
-            ]
 
 
 latestLog : List DuplicateLogEntry -> Html Msg

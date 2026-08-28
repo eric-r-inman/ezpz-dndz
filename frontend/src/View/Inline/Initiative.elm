@@ -6,8 +6,8 @@ target / all / selected), and a custom value with its own apply
 buttons.
 -}
 
-import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, type_, value)
+import Html exposing (Html, button, div, h3, input, text)
+import Html.Attributes as Attr exposing (class, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg
     exposing
@@ -17,6 +17,7 @@ import Msg
         )
 import Ui.Initiative exposing (InitiativeUi)
 import Util.Keyboard
+import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
 
 
@@ -87,8 +88,9 @@ autoRollPair scope label enabled tipOverride =
             else
                 tipOverride
     in
-    [ scopeButton
+    [ ApplyButton.view
         { enabled = enabled
+        , grow = True
         , cls = "action-btn action-btn--green init-btn-block"
         , msg = InitiativeAutoRoll scope ModeStandard
         , tip =
@@ -99,22 +101,25 @@ autoRollPair scope label enabled tipOverride =
                 tipOverride
         , label = label
         }
-    , scopeButton
+    , ApplyButton.view
         { enabled = enabled
+        , grow = True
         , cls = "action-btn action-btn--blue init-btn-adv"
         , msg = InitiativeAutoRoll scope ModeAdvantage
         , tip = tipFor Tooltips.initRollAdvantage
         , label = "Advantage"
         }
-    , scopeButton
+    , ApplyButton.view
         { enabled = enabled
+        , grow = True
         , cls = "action-btn action-btn--orange init-btn-adv"
         , msg = InitiativeAutoRoll scope ModeDisadvantage
         , tip = tipFor Tooltips.initRollDisadvantage
         , label = "Disadvantage"
         }
-    , scopeButton
+    , ApplyButton.view
         { enabled = enabled
+        , grow = True
         , cls = "action-btn action-btn--yellow init-btn-adv"
         , msg = InitiativeAutoRollSurprised scope
         , tip =
@@ -122,43 +127,6 @@ autoRollPair scope label enabled tipOverride =
         , label = "Disadv. & Surprised"
         }
     ]
-
-
-{-| A button whose scope may be empty. Chrome swallows mouse
-events on a disabled control, so the unavailable state hangs its
-tooltip on a wrapper span and opts the button out of pointer
-events — otherwise the hover text explaining why the button is
-dead could never appear.
--}
-scopeButton :
-    { enabled : Bool
-    , cls : String
-    , msg : Msg
-    , tip : String
-    , label : String
-    }
-    -> Html Msg
-scopeButton cfg =
-    if cfg.enabled then
-        button
-            [ class cfg.cls
-            , onClick cfg.msg
-            , Tooltips.attr cfg.tip
-            ]
-            [ text cfg.label ]
-
-    else
-        span
-            [ class "init-btn-wrap"
-            , Tooltips.attr cfg.tip
-            ]
-            [ button
-                [ class (cfg.cls ++ " init-btn-inert")
-                , disabled True
-                , attribute "aria-disabled" "true"
-                ]
-                [ text cfg.label ]
-            ]
 
 
 custom : InitiativeUi -> Int -> Html Msg
@@ -195,15 +163,17 @@ custom ui selectedCount =
                 [ text "Apply & Sort w/Surprised" ]
             ]
         , div [ class "init-custom-row" ]
-            [ scopeButton
+            [ ApplyButton.view
                 { enabled = selectedCount > 0
+                , grow = True
                 , cls = "action-btn action-btn--green init-btn-block"
                 , msg = InitiativeApplySelected
                 , tip = selectedTitle selectedCount
                 , label = "Apply & Sort: Selected" ++ selectedCountSuffix selectedCount
                 }
-            , scopeButton
+            , ApplyButton.view
                 { enabled = selectedCount > 0
+                , grow = True
                 , cls = "action-btn action-btn--yellow init-btn-block"
                 , msg = InitiativeApplySelectedSurprised
                 , tip =
