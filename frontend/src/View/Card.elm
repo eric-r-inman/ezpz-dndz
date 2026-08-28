@@ -19,14 +19,15 @@ the "make active" arrow.
 
 The legendary-pip column lives between the center column and
 the right rail, and is only present when the creature's
-compendium source declared `legendary_actions`, has a
-"Legendary Resistance" trait, or flags special reaction
-mechanics (which add a ⚡ "SR" badge at the column's right
-edge). To its left, a death-save column appears whenever the
-creature is at 0 HP.
+compendium source declared `legendary_actions` or has a
+"Legendary Resistance" trait. A creature flagged for special
+reaction mechanics gets orange name badges to the column's
+right. To the column's left, a death-save column appears
+whenever the creature is at 0 HP.
 
 -}
 
+import Compendium
 import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Creature)
@@ -41,6 +42,7 @@ import Msg
         , Msg(..)
         )
 import Set exposing (Set)
+import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.HpChange exposing (HpEdit)
 import Ui.Memo as MemoUi
 import Ui.Note as NoteUi
@@ -62,6 +64,7 @@ type alias Context =
     , renameState : Maybe PlaceholderRenameState
     , surface : Maybe Surface
     , timerPresets : Dict String TimerPreset
+    , compendium : CompendiumDb
     }
 
 
@@ -129,6 +132,7 @@ view ctx creature =
             ]
         , deathSaveColumn creature
         , legendaryColumns isActive creature
+        , specialReactionBadges ctx creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -715,12 +719,8 @@ in 5e, not per turn). While the creature is the active one, the
 LA pips render locked (greyed, unclickable) — 5e bars a creature
 from using legendary actions on its own turn.
 
-A creature whose source flags special reaction mechanics gets a
-⚡ "SR" badge to the right of the pip columns, mirroring the
-reminder banner above the queue at the per-card level.
-
-When the creature has none of the three features, returns
-`text ""` so the card flex row stays compact.
+When the creature has neither feature, returns `text ""` so the
+card flex row stays compact.
 
 -}
 legendaryColumns : Bool -> Creature -> Html Msg
@@ -732,7 +732,7 @@ legendaryColumns isActive creature =
         hasLR =
             creature.legendaryResistanceCount > 0
     in
-    if not hasLA && not hasLR && not creature.hasSpecialReactions then
+    if not hasLA && not hasLR then
         text ""
 
     else
@@ -765,30 +765,54 @@ legendaryColumns isActive creature =
 
               else
                 text ""
-            , specialReactionBadge creature
             ]
 
 
-{-| Non-interactive "SR" badge in the pip-column rail for
-creatures with special reaction mechanics. The single-pip
-Reaction toggle on row 3 can't model these (Hydra's heads,
-Marilith's per-turn reactions, …), so the badge points the GM
-at the stat block instead of pretending to count them.
+{-| Orange name badges to the right of the pip columns, one per
+special-reaction feature on the creature's compendium source
+("Redirect Attack", "Misty Escape", …). The single-pip Reaction
+toggle on row 3 can't model these, so the badges name what to
+look up in the stat block instead of pretending to count them.
+Falls back to a single "Special Reaction" badge when the flag is
+set but no source feature can be named (a manual editor toggle,
+or a creature with no compendium link).
 -}
-specialReactionBadge : Creature -> Html Msg
-specialReactionBadge creature =
-    if creature.hasSpecialReactions then
-        div
-            [ class "legendary-col legendary-col--sr"
-            , Tooltips.attr Tooltips.specialReactionBadge
-            , attribute "aria-label" "Special reactions — see stat block"
-            ]
-            [ div [ class "legendary-col__header legendary-col__header--sr" ] [ text "SR" ]
-            , span [ class "legendary-col__sr-glyph" ] [ text "⚡" ]
-            ]
+specialReactionBadges : Context -> Creature -> Html Msg
+specialReactionBadges ctx creature =
+    if not creature.hasSpecialReactions then
+        text ""
 
     else
-        text ""
+        let
+            names =
+                case ( creature.creatureId, ctx.compendium ) of
+                    ( Just id_, CompendiumDbLoaded db ) ->
+                        Compendium.find id_ db
+                            |> Maybe.map Compendium.specialReactionNames
+                            |> Maybe.withDefault []
+
+                    _ ->
+                        []
+
+            shown =
+                if List.isEmpty names then
+                    [ "Special Reaction" ]
+
+                else
+                    names
+        in
+        div [ class "creature-card__sr-badges" ]
+            (List.map srBadge shown)
+
+
+srBadge : String -> Html Msg
+srBadge name =
+    span
+        [ class "sr-badge"
+        , Tooltips.attr Tooltips.specialReactionBadge
+        , attribute "aria-label" ("Special reaction: " ++ name)
+        ]
+        [ text name ]
 
 
 {-| One recharge-ability pill, sized to match the condition-chip

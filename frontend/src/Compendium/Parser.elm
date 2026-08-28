@@ -209,22 +209,10 @@ removeSpellcastingSource ref c =
             { c | customSections = List.filter (\s -> s.name /= name) c.customSections }
 
 
-{-| Post-process pass: scan the parsed creature's traits +
-reactions and auto-flag `hasSpecialReactions` when it looks
-like the stat block carries reaction mechanics worth a heads-
-up beyond the standard "one reaction per round" UX.
-
-Three signals trigger the flag:
-
-1.  A trait whose name matches one of the known "extra
-    reaction" / "on-death" / "Misty Escape" patterns.
-2.  A trait whose description references taking an extra
-    reaction or firing on zero HP.
-3.  A reaction entry whose name isn't in the trivial-reaction
-    whitelist (Parry, Protective Magic) — Parry-style
-    defensive AC bumps are predictable and don't warrant the
-    yellow `!`, but anything else (Ink Cloud, Whirlwind of
-    Sand, Reactive, …) does.
+{-| Post-process pass: auto-flag `hasSpecialReactions` when the
+stat block carries reaction mechanics worth a heads-up beyond
+the standard "one reaction per round" UX. The qualifying
+signals live with `Compendium.specialReactionNames`.
 
 User can always toggle the flag off in the editor if a false
 positive slips through; toggling it on covers the (probably
@@ -239,57 +227,10 @@ autoFlagSpecialReactions c =
         c
 
     else
-        { c | hasSpecialReactions = looksSpecial c }
-
-
-looksSpecial : Compendium.Creature -> Bool
-looksSpecial c =
-    List.any (\t -> traitNameIsSpecial t.name) c.traits
-        || List.any (\t -> traitDescriptionIsSpecial t.description) c.traits
-        || List.any (\r -> reactionNameIsSpecial r.name) c.reactions
-
-
-traitNameIsSpecial : String -> Bool
-traitNameIsSpecial name =
-    let
-        n =
-            String.toLower (String.trim name)
-    in
-    List.any (\needle -> String.contains needle n)
-        [ "reactive"
-        , "misty escape"
-        , "death throes"
-        , "death burst"
-        ]
-
-
-traitDescriptionIsSpecial : String -> Bool
-traitDescriptionIsSpecial desc =
-    let
-        d =
-            String.toLower desc
-    in
-    List.any (\needle -> String.contains needle d)
-        [ "extra reaction"
-        , "one reaction on every"
-        , "explodes when it dies"
-        , "reduced to 0 hit points"
-        ]
-
-
-reactionNameIsSpecial : String -> Bool
-reactionNameIsSpecial name =
-    let
-        n =
-            String.toLower (String.trim name)
-
-        boring =
-            -- Predictable defensive AC bumps + the spellcaster
-            -- "Shield + Counterspell" reaction.  These don't
-            -- need the yellow `!`; anything else does.
-            [ "parry", "protective magic", "shield" ]
-    in
-    not (List.member n boring) && not (String.isEmpty n)
+        { c
+            | hasSpecialReactions =
+                not (List.isEmpty (Compendium.specialReactionNames c))
+        }
 
 
 nonEmptyLines : String -> List String

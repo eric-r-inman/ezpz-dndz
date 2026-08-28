@@ -14,7 +14,7 @@
    conditions).  No action needed.
 3. When applying a dice-formula HP change to a selection, a "New roll for each
    creature" option rolls independently per creature.  No action needed.
-4. Creature cards flag special-reaction creatures with an "SR" badge beside the
+4. Creature cards name each special reaction in an orange badge beside the
    legendary pips, and grey out legendary-action pips during the creature's own
    turn (5e bars using them then).  No action needed.
 ** Fixes

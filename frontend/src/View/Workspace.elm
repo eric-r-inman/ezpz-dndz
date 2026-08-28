@@ -70,6 +70,7 @@ panelMain model =
             , renameState = model.placeholderRename
             , surface = model.surface
             , timerPresets = model.timerPresets
+            , compendium = model.compendium.db
             }
     in
     section [ class "panel panel--main" ]

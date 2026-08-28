@@ -122,6 +122,13 @@
   --color-btn-orange: #854d0e; /* same as condition */
   --color-dirty-outline: #fde68a;
 
+  /* Special-reaction badge pair: light orange field, dark
+     orange text.  The pill carries both colours itself, so the
+     same pair reads correctly on every theme and needs no dark
+     override. */
+  --color-sr-badge-bg: #ffedd5; /* orange-100 */
+  --color-sr-badge-fg: #9a3412; /* orange-800 */
+
   --card-btn-fg: #ffffff;
 
   --btn-blue-bg: var(--color-btn-blue);
@@ -5006,16 +5013,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-width: 1px;
 }
 
-/* "SR" badge column: same yellow as the LR header (lightning
-   reads yellow), with the glyph sized to sit level with the
-   neighbouring pips. */
-.legendary-col__header--sr {
-  color: var(--color-lr);
+/* Special-reaction name badges: a vertical stack to the right
+   of the pip columns, one pill per qualifying feature on the
+   creature's source stat block. */
+.creature-card__sr-badges {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 4px 2px;
 }
 
-.legendary-col__sr-glyph {
-  font-size: 0.9rem;
-  line-height: 1;
+.sr-badge {
+  background: var(--color-sr-badge-bg);
+  color: var(--color-sr-badge-fg);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .legendary-col__sep {
