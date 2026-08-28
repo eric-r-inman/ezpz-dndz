@@ -23,6 +23,7 @@ import View.EncounterBar
 import View.Inline.Condition
 import View.Inline.Duplicate
 import View.Inline.HpChange
+import View.Inline.Initiative
 import View.Inline.Replace
 import View.Inline.SaveChain
 import View.Inline.Status
@@ -147,6 +148,14 @@ actionToolbar model =
                 _ ->
                     False
 
+        initiativeEditing =
+            case model.surface of
+                Just (SurfaceInitiative _) ->
+                    True
+
+                _ ->
+                    False
+
         replaceEditing =
             case model.surface of
                 Just (SurfaceReplace _) ->
@@ -202,6 +211,7 @@ actionToolbar model =
         , trigger "action-btn action-btn--blue" statusEditing (StatusOpen target) Tooltips.statusEditor "Status"
         , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
         , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
+        , trigger "action-btn action-btn--blue" initiativeEditing (InitiativeOpen target) Tooltips.initiativeManager "Initiative"
         , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) Tooltips.queueReplace "Replace"
         , trigger "action-btn action-btn--orange" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
         ]
@@ -265,6 +275,10 @@ dockedEditor model =
         Just (SurfaceStatus ui) ->
             docked ("Target: " ++ ui.target)
                 (View.Inline.Status.view selectedCount ui)
+
+        Just (SurfaceInitiative ui) ->
+            docked ("Target: " ++ ui.target)
+                (View.Inline.Initiative.view selectedCount ui)
 
         Just (SurfaceReplace ui) ->
             docked (targetLabel ui.target ui.applyToSelected)

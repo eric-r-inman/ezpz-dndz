@@ -417,7 +417,7 @@ rowTop isActive creature hpEdit renameState surface srBadges =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
-            , onClick (InitiativeOpen creature.name)
+            , onClick (InitiativeOpenFor creature.name)
             , Tooltips.attr Tooltips.initiativeManager
             , attribute "aria-label"
                 ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")

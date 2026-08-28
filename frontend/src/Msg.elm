@@ -692,8 +692,11 @@ type Msg
     | StatusFlyHeightAdjust Int
     | StatusApplyActive
     | StatusApplySelected
-      -- Initiative manager modal
+      -- Initiative editor (encounter toolbar).  The toolbar
+      -- trigger folds the editor away, while a card's init
+      -- circle aims it at that card's creature.
     | InitiativeOpen String
+    | InitiativeOpenFor String
     | InitiativeClose
     | InitiativeCustomChanged String
     | InitiativeQuickSort

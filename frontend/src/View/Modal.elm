@@ -89,8 +89,8 @@ and accidentally close the dialog.
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
   - `extraClass` — extra class on the inner `.surface` div, used
-    for per-modal sizing (`"modal--initiative"`,
-    `"modal--condition"`, etc.).
+    for per-modal sizing (`"modal--save"`, `"modal--quick-add"`,
+    etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
   - `chrome` — drag / resize state. Use `Ui.ModalChrome.fresh`
     or the model's `modalChrome` field. The view applies the

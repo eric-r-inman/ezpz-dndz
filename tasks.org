@@ -42,6 +42,13 @@ progress on the =modal-migration-inline= branch: the Surface rename and the
 inline/toolbar tiers are implemented; popover, panel, route, and toast-plus-undo
 tiers remain.
 
+* TODO Give the Status editor's disabled Apply button a reachable tooltip
+
+Chrome swallows mouse events on a disabled control, so the hover text explaining
+why "Apply to Selected" is unavailable never appears.  The initiative editor's
+=scopeButton= solves this by hanging the tooltip on a wrapper span; apply the
+same shape there.
+
 * TODO Sweep style.css to the flat-selector convention
 
 The stylesheet predates CONTRIBUTING.org's "Flat selectors only" rule and

@@ -1,15 +1,14 @@
-module View.Modal.Initiative exposing (view)
+module View.Inline.Initiative exposing (view)
 
-{-| Initiative manager modal. Three stacked sections: a single-button
-quick sort, an auto-roll batch (one button each for target / all /
-selected), and a custom value entry with target / selected apply.
-Closes on backdrop click or Cancel.
+{-| Initiative editor as a docked toolbar expansion: a
+single-button queue sort, an auto-roll batch (one row each for
+target / all / selected), and a custom value with its own apply
+buttons.
 -}
 
-import Html exposing (Html, button, div, h3, input, text)
+import Html exposing (Html, button, div, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -18,34 +17,16 @@ import Msg
         )
 import Ui.Initiative exposing (InitiativeUi)
 import Util.Keyboard
-import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
-    case model.surface of
-        Just (SurfaceInitiative ui) ->
-            let
-                selectedCount =
-                    List.length (List.filter .selected model.encounter.creatures)
-            in
-            View.Modal.view
-                { close = InitiativeClose
-                , noOp = NoOp
-                , title = "Initiative — " ++ ui.target
-                , extraClass = "modal--initiative"
-                , chrome = model.modalChrome
-                , body =
-                    [ quickSort
-                    , autoRoll ui selectedCount
-                    , custom ui selectedCount
-                    , footer
-                    ]
-                }
-
-        _ ->
-            text ""
+view : Int -> InitiativeUi -> Html Msg
+view selectedCount ui =
+    div [ class "creature-card__inline" ]
+        [ quickSort
+        , autoRoll ui selectedCount
+        , custom ui selectedCount
+        ]
 
 
 quickSort : Html Msg
@@ -97,76 +78,87 @@ the four-column layout reads as a clean grid.
 autoRollPair : RollScope -> String -> Bool -> String -> List (Html Msg)
 autoRollPair scope label enabled tipOverride =
     let
-        mainTitle =
+        -- An unavailable row explains itself through the caller's
+        -- override rather than the usual per-button hover text.
+        tipFor standard =
+            if enabled then
+                standard
+
+            else
+                tipOverride
+    in
+    [ scopeButton
+        { enabled = enabled
+        , cls = "action-btn action-btn--green init-btn-block"
+        , msg = InitiativeAutoRoll scope ModeStandard
+        , tip =
             if String.isEmpty tipOverride then
                 Tooltips.initRollStandard
 
             else
                 tipOverride
-
-        advTitle =
-            if enabled then
-                Tooltips.initRollAdvantage
-
-            else
-                tipOverride
-
-        disTitle =
-            if enabled then
-                Tooltips.initRollDisadvantage
-
-            else
-                tipOverride
-
-        surpriseTitle =
-            if enabled then
-                "Roll initiative at disadvantage and flag as Surprised (clears at the end of their first turn)"
-
-            else
-                tipOverride
-
-        ariaDisabled =
-            attribute "aria-disabled"
-                (if enabled then
-                    "false"
-
-                 else
-                    "true"
-                )
-    in
-    [ button
-        [ class "action-btn action-btn--green init-btn-block"
-        , onClick (InitiativeAutoRoll scope ModeStandard)
-        , disabled (not enabled)
-        , ariaDisabled
-        , Tooltips.attr mainTitle
-        ]
-        [ text label ]
-    , button
-        [ class "action-btn action-btn--blue init-btn-adv"
-        , onClick (InitiativeAutoRoll scope ModeAdvantage)
-        , disabled (not enabled)
-        , ariaDisabled
-        , Tooltips.attr advTitle
-        ]
-        [ text "Advantage" ]
-    , button
-        [ class "action-btn action-btn--orange init-btn-adv"
-        , onClick (InitiativeAutoRoll scope ModeDisadvantage)
-        , disabled (not enabled)
-        , ariaDisabled
-        , Tooltips.attr disTitle
-        ]
-        [ text "Disadvantage" ]
-    , button
-        [ class "action-btn action-btn--yellow init-btn-adv"
-        , onClick (InitiativeAutoRollSurprised scope)
-        , disabled (not enabled)
-        , ariaDisabled
-        , Tooltips.attr surpriseTitle
-        ]
-        [ text "Disadv. & Surprised" ]
+        , label = label
+        }
+    , scopeButton
+        { enabled = enabled
+        , cls = "action-btn action-btn--blue init-btn-adv"
+        , msg = InitiativeAutoRoll scope ModeAdvantage
+        , tip = tipFor Tooltips.initRollAdvantage
+        , label = "Advantage"
+        }
+    , scopeButton
+        { enabled = enabled
+        , cls = "action-btn action-btn--orange init-btn-adv"
+        , msg = InitiativeAutoRoll scope ModeDisadvantage
+        , tip = tipFor Tooltips.initRollDisadvantage
+        , label = "Disadvantage"
+        }
+    , scopeButton
+        { enabled = enabled
+        , cls = "action-btn action-btn--yellow init-btn-adv"
+        , msg = InitiativeAutoRollSurprised scope
+        , tip =
+            tipFor "Roll initiative at disadvantage and flag as Surprised (clears at the end of their first turn)"
+        , label = "Disadv. & Surprised"
+        }
     ]
+
+
+{-| A button whose scope may be empty. Chrome swallows mouse
+events on a disabled control, so the unavailable state hangs its
+tooltip on a wrapper span and opts the button out of pointer
+events — otherwise the hover text explaining why the button is
+dead could never appear.
+-}
+scopeButton :
+    { enabled : Bool
+    , cls : String
+    , msg : Msg
+    , tip : String
+    , label : String
+    }
+    -> Html Msg
+scopeButton cfg =
+    if cfg.enabled then
+        button
+            [ class cfg.cls
+            , onClick cfg.msg
+            , Tooltips.attr cfg.tip
+            ]
+            [ text cfg.label ]
+
+    else
+        span
+            [ class "init-btn-wrap"
+            , Tooltips.attr cfg.tip
+            ]
+            [ button
+                [ class (cfg.cls ++ " init-btn-inert")
+                , disabled True
+                , attribute "aria-disabled" "true"
+                ]
+                [ text cfg.label ]
+            ]
 
 
 custom : InitiativeUi -> Int -> Html Msg
@@ -203,40 +195,25 @@ custom ui selectedCount =
                 [ text "Apply & Sort w/Surprised" ]
             ]
         , div [ class "init-custom-row" ]
-            [ button
-                [ class "action-btn action-btn--green init-btn-block"
-                , onClick InitiativeApplySelected
-                , disabled (selectedCount == 0)
-                , attribute "aria-disabled"
-                    (if selectedCount == 0 then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                , Tooltips.attr (selectedTitle selectedCount)
-                ]
-                [ text ("Apply & Sort: Selected" ++ selectedCountSuffix selectedCount) ]
-            , button
-                [ class "action-btn action-btn--yellow init-btn-block"
-                , onClick InitiativeApplySelectedSurprised
-                , disabled (selectedCount == 0)
-                , attribute "aria-disabled"
-                    (if selectedCount == 0 then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                , Tooltips.attr
-                    (if selectedCount == 0 then
+            [ scopeButton
+                { enabled = selectedCount > 0
+                , cls = "action-btn action-btn--green init-btn-block"
+                , msg = InitiativeApplySelected
+                , tip = selectedTitle selectedCount
+                , label = "Apply & Sort: Selected" ++ selectedCountSuffix selectedCount
+                }
+            , scopeButton
+                { enabled = selectedCount > 0
+                , cls = "action-btn action-btn--yellow init-btn-block"
+                , msg = InitiativeApplySelectedSurprised
+                , tip =
+                    if selectedCount == 0 then
                         Tooltips.initSelectedNone
 
-                     else
+                    else
                         "Apply the typed initiative to selected AND flag them as Surprised"
-                    )
-                ]
-                [ text "Apply & Sort w/Surprised" ]
+                , label = "Apply & Sort w/Surprised"
+                }
             ]
         ]
 
@@ -265,14 +242,3 @@ selectedCountSuffix n =
 
     else
         ""
-
-
-footer : Html Msg
-footer =
-    div [ class "init-footer" ]
-        [ button
-            [ class "action-btn"
-            , onClick InitiativeClose
-            ]
-            [ text "Close" ]
-        ]

@@ -3,11 +3,10 @@
 
 * Upcoming
 ** Added
-1. Combat bookkeeping moved out of pop-up dialogs: HP, conditions, save chains,
-   replacing, and duplicating live in a stationary toolbar whose editors dock
-   above the always-visible encounter queue, while timers, memos, and name notes
-   are edited directly on the creature card (per the plan in
-   =docs/MODAL_MIGRATION.org=).  No action needed.
+1. Combat bookkeeping moved out of pop-up dialogs: the encounter panel gains a
+   stationary toolbar whose editors dock above the always-visible queue, while
+   timers, memos, and name notes are edited directly on the creature card (per
+   the plan in =docs/MODAL_MIGRATION.org=).  No action needed.
 2. The docked editors target the active creature or, via a checkbox, only the
    selected creatures; they stay open after applying, remember un-applied
    settings when closed, and keep recent-applies logs (undo-able for HP and
@@ -20,6 +19,9 @@
 5. A creature card's status labels open the Status editor targeting that
    creature, while the toolbar's Status button folds the editor away whoever it
    is aimed at.  No action needed.
+6. The initiative manager is one of those docked editors now, opened by the
+   toolbar's Initiative button or by a card's initiative circle.  No action
+   needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

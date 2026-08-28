@@ -71,6 +71,10 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   toolbar-plus-docked-editor home of =HpChange= and =Condition=, which is that
   panel in a top-docked form.  Whether it moves to the rail once the panel tier
   exists is an open call.
+- =Initiative= :: Originally mapped as a popover anchored to the clicked
+  initiative badge; it took the toolbar-plus-docked-editor treatment instead,
+  since its roll-and-sort batch is too wide for an anchored container.  The
+  card's init circle still aims the editor at its own creature.
 
 ** Popover anchored to the trigger
 
@@ -83,9 +87,6 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   recent-applies logs.
 - =QuickAdd= :: Anchored popover under the button with a search box and a
   capped-height scroll; the alpha/CR toggle stays in its header.
-- =Initiative= :: Popover anchored to the clicked initiative badge; the
-  roll-and-sort buttons and manual entry are one-shot actions that do not
-  justify a full-screen interrupt.
 
 ** Docked panel / drawer
 

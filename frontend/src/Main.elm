@@ -138,7 +138,6 @@ import View.Modal.CompendiumPaste
 import View.Modal.CrCalculator
 import View.Modal.Dice
 import View.Modal.GroupEdit
-import View.Modal.Initiative
 import View.Modal.Load
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
@@ -375,6 +374,9 @@ subscriptions model =
 
                     Just (SurfaceStatus _) ->
                         Browser.Events.onKeyDown (escKey StatusClose)
+
+                    Just (SurfaceInitiative _) ->
+                        Browser.Events.onKeyDown (escKey InitiativeClose)
 
                     _ ->
                         if model.compendium.open then
@@ -1273,6 +1275,9 @@ updateInner msg model =
         -- Initiative manager
         InitiativeOpen target ->
             Update.Initiative.open target model
+
+        InitiativeOpenFor name ->
+            Update.Initiative.openFor name model
 
         InitiativeClose ->
             Update.Initiative.close model
@@ -2792,7 +2797,6 @@ appShell maybeUser model =
             }
     , viewPage model
     , View.Modal.Dice.view model.modalChrome model.hpChangeLog model.dice
-    , View.Modal.Initiative.view model
     , View.Modal.Compendium.view model.modalChrome
         model.auth
         model.compendium

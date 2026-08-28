@@ -7293,13 +7293,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   --modal-max-w: 480px;
 }
 
-/* Wider than the other small modals so the four-button
-   auto-roll row + "& Surprised" custom-init siblings fit on
-   one line instead of wrapping. */
-.modal--initiative {
-  --modal-max-w: 680px;
-}
-
 .modal--duplicate,
 .modal--quick-add {
   --modal-max-w: 520px;
@@ -8934,10 +8927,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-right: 12px;
 }
 
-.init-footer {
+/* Wrapper around an initiative button whose scope is empty.  It
+   owns the tooltip trigger, since the disabled button inside
+   swallows mouse events in Chrome, and takes the button's place
+   as the grid / flex item. */
+.init-btn-wrap {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 4px;
+  flex: 1 1 auto;
+  cursor: default;
+}
+
+.init-btn-inert {
+  pointer-events: none;
 }
 
 /* Make the init-circle look interactive (pointer + subtle hover). */
