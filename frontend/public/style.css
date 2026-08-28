@@ -632,7 +632,7 @@ html:has(.app-shell[data-theme="accessible"]) {
 }
 
 [data-theme="accessible"] .creature-card__row--top .init-circle,
-[data-theme="accessible"] .creature-card__row--top .condition-chip {
+[data-theme="accessible"] .condition-chip {
   font-size: 1rem;
 }
 
@@ -5006,6 +5006,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-width: 1px;
 }
 
+/* "SR" badge column: same yellow as the LR header (lightning
+   reads yellow), with the glyph sized to sit level with the
+   neighbouring pips. */
+.legendary-col__header--sr {
+  color: var(--color-lr);
+}
+
+.legendary-col__sr-glyph {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
 .legendary-col__sep {
   width: 14px;
   height: 1px;
@@ -5028,6 +5040,21 @@ button.creature-card__lifecycle--dead:focus-visible {
 .legendary-col__pip:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+/* LA pips while the bearer is the active creature: 5e bars
+   legendary actions on the creature's own turn, so the pips go
+   inert (they are spans, not buttons, in this state).  Sits
+   after the base :hover rule so the no-highlight override wins
+   the cascade at equal specificity. */
+.legendary-col__pip--locked {
+  display: inline-block;
+  opacity: 0.35;
+  cursor: default;
+}
+
+.legendary-col__pip--locked:hover {
+  box-shadow: none;
 }
 
 /* Death-save tracker — two side-by-side vertical columns (✓ / ✗)
@@ -5295,13 +5322,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  /* Transparent fill with a dark outline.  `var(--color-text)`
-     resolves to near-black on Modern and near-white on Dark,
-     so the outline reads as crisp in both themes.  Mirrors the
-     "outlined chip" idiom used in modern dashboards. */
-  background: transparent;
-  border: 1.5px solid var(--color-text);
-  color: var(--color-text);
+  /* Filled with the toolbar's Status-button blue so the circle
+     reads as part of the same control family in every theme. */
+  background: var(--btn-blue-bg);
+  border: 1.5px solid var(--btn-blue-bg);
+  color: var(--btn-blue-fg);
   display: inline-grid;
   place-items: center;
   font-weight: 700;
@@ -5990,14 +6015,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    restyled for the docked editor: capped height with its own
    scroll, and a picked-row highlight since selection here is a
    two-step pick-then-Apply rather than click-to-add. */
-.quick-add__list--docked {
-  /* Five rows (8px vertical padding + one text line each). */
-  max-height: 180px;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
 .quick-add__row--picked {
   outline: 1px solid var(--color-accent);
   outline-offset: -1px;
@@ -8149,6 +8166,14 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-row {
   gap: 6px;
+}
+
+/* Hairline between the Custom and Note rows of the condition
+   editor, so the two free-text fields don't read as one. */
+.cond-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
 }
 
 .dice-form__row label,
@@ -11170,6 +11195,18 @@ button.creature-card__lifecycle--dead:focus-visible {
      list (Duplicate) is fixed-size so it doesn't need this. */
   max-height: 60vh;
   overflow-y: auto;
+}
+
+/* The Replace editor's docked copy of the list: five rows (8px
+   vertical padding + ~19px text line + 1px border each, plus the
+   2px flex gaps), so the editor's Apply button stays a short
+   scroll away.  Must sit after the base rule above — at equal
+   specificity, the base 60vh cap would win the cascade
+   otherwise. */
+.quick-add__list--docked {
+  max-height: 188px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .duplicate__row,

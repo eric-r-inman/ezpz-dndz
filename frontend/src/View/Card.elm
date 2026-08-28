@@ -6,10 +6,9 @@ Three rows + two side rails + an optional legendary-pip column:
 
   - Row 1 (top): initiative circle, name (with optional
     compendium link), note pencil / inline note, AC readout,
-    condition / save-notice chips.
+    recharge chips.
   - Row 2 (mid): HP display (click-to-edit), bloodied marker,
-    cover toggle, concentration / hiding / dodging / flying
-    toggles, fly-height.
+    status readout, condition / save-notice chips.
   - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
     timer slot. The HP / condition / save-chain triggers live
     in the encounter panel's stationary action toolbar.
@@ -20,9 +19,11 @@ the "make active" arrow.
 
 The legendary-pip column lives between the center column and
 the right rail, and is only present when the creature's
-compendium source declared `legendary_actions` or has a
-"Legendary Resistance" trait. To its left, a death-save
-column appears whenever the creature is at 0 HP.
+compendium source declared `legendary_actions`, has a
+"Legendary Resistance" trait, or flags special reaction
+mechanics (which add a ⚡ "SR" badge at the column's right
+edge). To its left, a death-save column appears whenever the
+creature is at 0 HP.
 
 -}
 
@@ -127,7 +128,7 @@ view ctx creature =
             , inlineSurface ctx creature
             ]
         , deathSaveColumn creature
-        , legendaryColumns creature
+        , legendaryColumns isActive creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -710,14 +711,20 @@ The LA pips reset to "all available" at the start of the
 creature's turn — `Encounter.applyBeginOfTurn` clears the
 `legendaryActionsUsed` set as part of the begin-of-turn hook.
 LR pips do NOT auto-reset (legendary resistance is per long rest
-in 5e, not per turn).
+in 5e, not per turn). While the creature is the active one, the
+LA pips render locked (greyed, unclickable) — 5e bars a creature
+from using legendary actions on its own turn.
 
-When the creature has neither feature, returns `text ""` so the
-card flex row stays compact.
+A creature whose source flags special reaction mechanics gets a
+⚡ "SR" badge to the right of the pip columns, mirroring the
+reminder banner above the queue at the per-card level.
+
+When the creature has none of the three features, returns
+`text ""` so the card flex row stays compact.
 
 -}
-legendaryColumns : Creature -> Html Msg
-legendaryColumns creature =
+legendaryColumns : Bool -> Creature -> Html Msg
+legendaryColumns isActive creature =
     let
         hasLA =
             creature.legendaryActionsCount > 0
@@ -725,7 +732,7 @@ legendaryColumns creature =
         hasLR =
             creature.legendaryResistanceCount > 0
     in
-    if not hasLA && not hasLR then
+    if not hasLA && not hasLR && not creature.hasSpecialReactions then
         text ""
 
     else
@@ -739,6 +746,7 @@ legendaryColumns creature =
                     , lairBonus = creature.legendaryActionsLairBonus
                     , used = creature.legendaryActionsUsed
                     , onToggle = ToggleLegendaryActionPip creature.name
+                    , locked = isActive
                     }
 
               else
@@ -752,11 +760,35 @@ legendaryColumns creature =
                     , lairBonus = creature.legendaryResistanceLairBonus
                     , used = creature.legendaryResistanceUsed
                     , onToggle = ToggleLegendaryResistancePip creature.name
+                    , locked = False
                     }
 
               else
                 text ""
+            , specialReactionBadge creature
             ]
+
+
+{-| Non-interactive "SR" badge in the pip-column rail for
+creatures with special reaction mechanics. The single-pip
+Reaction toggle on row 3 can't model these (Hydra's heads,
+Marilith's per-turn reactions, …), so the badge points the GM
+at the stat block instead of pretending to count them.
+-}
+specialReactionBadge : Creature -> Html Msg
+specialReactionBadge creature =
+    if creature.hasSpecialReactions then
+        div
+            [ class "legendary-col legendary-col--sr"
+            , Tooltips.attr Tooltips.specialReactionBadge
+            , attribute "aria-label" "Special reactions — see stat block"
+            ]
+            [ div [ class "legendary-col__header legendary-col__header--sr" ] [ text "SR" ]
+            , span [ class "legendary-col__sr-glyph" ] [ text "⚡" ]
+            ]
+
+    else
+        text ""
 
 
 {-| One recharge-ability pill, sized to match the condition-chip
@@ -884,10 +916,41 @@ legendaryColumn :
     , lairBonus : Int
     , used : Set Int
     , onToggle : Int -> Msg
+    , locked : Bool
     }
     -> Html Msg
 legendaryColumn cfg =
     let
+        pipClass { filled, isLair } =
+            "legendary-col__pip"
+                ++ (if filled then
+                        " legendary-col__pip--filled"
+
+                    else
+                        ""
+                   )
+                ++ (if isLair then
+                        " legendary-col__pip--lair"
+
+                    else
+                        ""
+                   )
+
+        ariaLabel idx isLair =
+            cfg.label
+                ++ " pip "
+                ++ String.fromInt (idx + 1)
+                ++ (if isLair then
+                        " (lair bonus)"
+
+                    else
+                        ""
+                   )
+
+        -- Locked pips (LA during the bearer's own turn) render as
+        -- inert spans rather than disabled buttons: Chrome blocks
+        -- mouse events on disabled form controls, which would keep
+        -- the tooltip portal from explaining WHY the pip is dead.
         pip { idx, isLair } =
             let
                 filled =
@@ -900,55 +963,41 @@ legendaryColumn cfg =
                     else
                         ""
             in
-            button
-                [ class
-                    ("legendary-col__pip"
-                        ++ (if filled then
-                                " legendary-col__pip--filled"
+            if cfg.locked then
+                span
+                    [ class (pipClass { filled = filled, isLair = isLair } ++ " legendary-col__pip--locked")
+                    , Tooltips.attr Tooltips.legendaryPipLocked
+                    , attribute "aria-label" (ariaLabel idx isLair ++ " (unavailable on own turn)")
+                    , attribute "aria-disabled" "true"
+                    ]
+                    []
 
-                            else
-                                ""
-                           )
-                        ++ (if isLair then
-                                " legendary-col__pip--lair"
+            else
+                button
+                    [ class (pipClass { filled = filled, isLair = isLair })
+                    , onClick (cfg.onToggle idx)
+                    , Tooltips.attr
+                        (cfg.label
+                            ++ " pip "
+                            ++ String.fromInt (idx + 1)
+                            ++ lairTip
+                            ++ (if filled then
+                                    " (used)"
 
-                            else
-                                ""
-                           )
-                    )
-                , onClick (cfg.onToggle idx)
-                , Tooltips.attr
-                    (cfg.label
-                        ++ " pip "
-                        ++ String.fromInt (idx + 1)
-                        ++ lairTip
-                        ++ (if filled then
-                                " (used)"
+                                else
+                                    " (available)"
+                               )
+                        )
+                    , attribute "aria-label" (ariaLabel idx isLair)
+                    , attribute "aria-pressed"
+                        (if filled then
+                            "true"
 
-                            else
-                                " (available)"
-                           )
-                    )
-                , attribute "aria-label"
-                    (cfg.label
-                        ++ " pip "
-                        ++ String.fromInt (idx + 1)
-                        ++ (if isLair then
-                                " (lair bonus)"
-
-                            else
-                                ""
-                           )
-                    )
-                , attribute "aria-pressed"
-                    (if filled then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                ]
-                []
+                         else
+                            "false"
+                        )
+                    ]
+                    []
 
         basePips =
             List.range 0 (cfg.baseCount - 1)
@@ -1003,34 +1052,38 @@ headerTooltipFor label =
 -- ── CONDITION CHIPS ─────────────────────────────────────────────────────
 
 
-{-| Row 1 chip cluster: a single `flex: 1 1 auto` container that
-holds the condition / save-notice chips followed immediately by
-the recharge chips, separated by a leading pipe. Combining them
-into one wrap (rather than two siblings) keeps the recharge chip
-hugged to the right of the condition chips instead of getting
-pushed to the row's far edge by the wrap's flex-grow.
-
-Renders nothing if the creature has neither conditions nor save
-notices nor recharge abilities, so the row collapses cleanly for
-PCs and most NPCs.
-
+{-| Row 1 chip cluster: the recharge-ability chips behind a
+leading pipe, keeping row 1 about the creature's identity and
+abilities (the condition / save-notice chips render in
+`conditionCluster` on row 2). Renders nothing if the creature
+has no recharge abilities, so the row collapses cleanly for PCs
+and most NPCs.
 -}
 rowTopChipCluster : Bool -> Creature -> Html Msg
 rowTopChipCluster isActive creature =
-    let
-        hasAnyChip =
-            not (List.isEmpty creature.conditions)
-                || not (List.isEmpty creature.saveNotices)
-                || not (List.isEmpty creature.rechargeAbilities)
-    in
-    if not hasAnyChip then
+    if List.isEmpty creature.rechargeAbilities then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
                 :: List.map (rechargeChip isActive creature.name) creature.rechargeAbilities
-                ++ List.map (conditionChip creature.name) creature.conditions
+            )
+
+
+{-| Row 2 chip cluster: the condition / save-notice chips behind
+a leading pipe, sitting to the right of the status readout so
+everything "happening to" the creature reads off one row.
+-}
+conditionCluster : Creature -> Html Msg
+conditionCluster creature =
+    if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
+        text ""
+
+    else
+        span [ class "condition-chips-wrap" ]
+            (span [ class "row-top__sep" ] [ text "|" ]
+                :: List.map (conditionChip creature.name) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )
 
@@ -1166,6 +1219,7 @@ rowMid creature hpEdit =
         [ hpDisplay creature hpEdit
         , bloodied creature
         , statusIcons creature
+        , conditionCluster creature
         ]
 
 

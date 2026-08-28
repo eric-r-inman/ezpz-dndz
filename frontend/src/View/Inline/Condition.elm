@@ -182,6 +182,7 @@ customAndNoteSection ui =
                     ]
                     []
                 ]
+            , div [ class "cond-divider" ] []
             ]
          )
             ++ [ div [ class "cond-row" ]

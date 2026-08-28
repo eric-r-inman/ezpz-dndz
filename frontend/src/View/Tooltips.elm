@@ -84,6 +84,7 @@ module View.Tooltips exposing
     , inlineEditCancel
     , lastRollTotal
     , legendaryActionColumn
+    , legendaryPipLocked
     , legendaryResistanceColumn
     , lifecycleDeadToDown
     , lifecycleDownToDead
@@ -134,6 +135,7 @@ module View.Tooltips exposing
     , showStatBlock
     , sourceFromSaved
     , sourceUnsaved
+    , specialReactionBadge
     , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
@@ -451,6 +453,16 @@ legendaryActionColumn =
 legendaryResistanceColumn : String
 legendaryResistanceColumn =
     "Legendary Resistance (3, +1 Lair)"
+
+
+legendaryPipLocked : String
+legendaryPipLocked =
+    "Legendary actions can't be used on the creature's own turn"
+
+
+specialReactionBadge : String
+specialReactionBadge =
+    "Special reactions — this creature's reactions go beyond one per round; see the stat block"
 
 
 
