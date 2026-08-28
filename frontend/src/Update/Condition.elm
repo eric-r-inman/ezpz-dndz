@@ -78,21 +78,17 @@ withConditionUi fn =
         (fn >> (\u -> { u | applied = False }))
 
 
-{-| Opening is a toggle: clicking the card's Condition/Effect
-button while its own add-new editor is already expanded closes
-it (a cancel). While _editing_ an existing condition, the
-button instead switches to a fresh add-new form — the two
-modes are different intents, not the same surface twice.
+{-| Opening is a toggle: clicking the toolbar's Condition/Effect
+button while any condition editor is expanded closes it — the
+button shows the fold caret and Cancel hover text whenever the
+editor is open, so it must close regardless of which target or
+mode (add vs. chip-edit) opened it.
 -}
 openNew : String -> Model -> ( Model, Cmd Msg )
 openNew name model =
     ( case model.surface of
         Just (SurfaceCondition ui) ->
-            if ui.target == name && ui.editingId == Nothing then
-                stashAndClose ui model
-
-            else
-                { model | surface = Just (SurfaceCondition (reopened name model)) }
+            stashAndClose ui model
 
         _ ->
             { model | surface = Just (SurfaceCondition (reopened name model)) }

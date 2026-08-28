@@ -17,6 +17,8 @@
 4. Creature cards name each special reaction in an orange badge on the card's
    top row, and grey out legendary-action pips during the creature's own turn
    (5e bars using them then).  No action needed.
+5. A creature card's status labels are links that open the Status editor
+   targeting that creature.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

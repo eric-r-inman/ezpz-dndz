@@ -1446,10 +1446,11 @@ hpEditKeyDecoder =
             )
 
 
-{-| Read-only labels for the statuses the toolbar's Status
-editor applies. Full names, not icons — changing them happens
-in the editor; the card just answers "what is this creature
-doing?" at a glance.
+{-| Posture labels for the statuses the toolbar's Status editor
+applies. Full names, not icons, and each label is a link that
+opens the Status editor targeting this creature — the card
+answers "what is this creature doing?" and hands off the
+editing.
 -}
 statusIcons : Creature -> Html Msg
 statusIcons creature =
@@ -1485,8 +1486,16 @@ statusIcons creature =
                     ("flying (" ++ String.fromInt creature.flyHeight ++ " ft)")
                 ]
 
-        labelSpan name =
-            span [ class "status-icon" ] [ text name ]
+        labelButton name =
+            button
+                [ class "status-icon"
+                , type_ "button"
+                , onClick (StatusOpen creature.name)
+                , Tooltips.attr Tooltips.statusBadgeEdit
+                , attribute "aria-label"
+                    ("Edit " ++ creature.name ++ "'s statuses (" ++ name ++ ")")
+                ]
+                [ text name ]
     in
     if List.isEmpty labels then
         text ""
@@ -1494,7 +1503,7 @@ statusIcons creature =
     else
         span [ class "status-icons" ]
             (labels
-                |> List.map labelSpan
+                |> List.map labelButton
                 |> List.intersperse (span [ class "status-toggles__sep" ] [ text "|" ])
             )
 

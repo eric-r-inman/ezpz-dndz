@@ -122,6 +122,13 @@
   --color-btn-orange: #854d0e; /* same as condition */
   --color-dirty-outline: #fde68a;
 
+  /* Card-row vertical padding: outer rows (top / bot) share one
+     value and the mid row takes a smaller one, which keeps the
+     two inter-row gaps equal while pulling the mid row up
+     toward the top row. */
+  --card-row-pad-outer: 3px;
+  --card-row-pad-mid: 2px;
+
   /* Special-reaction badge pair, derived from the Replace /
      Duplicate button orange: a light tint of that hue for the
      pill field, a darker shade of it for the text.  Relative
@@ -4394,8 +4401,14 @@ body {
    buttons, drawing the GM's eye to whose turn it is.  Hover
    restores full opacity so the dimmed buttons still feel
    responsive when targeted directly.  Applies to both themes
-   because it works on the structural class, not theme tokens. */
-.creature-card:not(.creature-card--active) .action-btn {
+   because it works on the structural class, not theme tokens.
+   The Ready and Reaction toggles are exempt — their state
+   (readied, reaction spent) is information the GM reads across
+   the whole queue, not just on the active card. */
+.creature-card:not(.creature-card--active)
+  .action-btn:not(.action-btn--ready):not(.action-btn--readied):not(
+    .action-btn--reaction-ready
+  ):not(.action-btn--reaction-spent) {
   opacity: 0.65;
 }
 
@@ -5332,15 +5345,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: normal;
   letter-spacing: 0;
   color: var(--color-text);
-  padding: 4px 0;
+  padding: var(--card-row-pad-outer) 0;
   font-size: 0.85rem;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .init-circle {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   /* Filled with the toolbar's Status-button blue so the circle
      reads as part of the same control family in every theme. */
@@ -5351,7 +5364,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   place-items: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
   flex: 0 0 auto;
   line-height: 1;
 }
@@ -5607,7 +5620,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: normal;
   letter-spacing: 0;
   color: var(--color-text);
-  padding: 4px 0;
+  padding: var(--card-row-pad-mid) 0;
   font-size: 0.85rem;
   gap: 6px;
   flex-wrap: wrap;
@@ -5690,8 +5703,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: help;
 }
 
-/* Read-only posture labels mirroring what the Status editor
-   applied, sitting to the right of the vitals. */
+/* Posture labels mirroring what the Status editor applied,
+   sitting to the right of the vitals. */
 .status-icons {
   display: inline-flex;
   align-items: center;
@@ -5700,6 +5713,24 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 400;
   color: var(--color-text);
   line-height: 1;
+}
+
+/* Each label is a button that opens the Status editor targeting
+   its creature.  Native chrome is reset so the row reads as
+   plain text until hovered. */
+.status-icon {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.status-icon:hover {
+  text-decoration: underline;
 }
 
 .status-toggle {
@@ -5822,7 +5853,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: none;
   font-style: normal;
   letter-spacing: 0;
-  padding: 4px 0;
+  padding: var(--card-row-pad-outer) 0;
   font-size: 0.85rem;
   color: var(--color-text);
   gap: 6px;
@@ -9327,6 +9358,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .timer-pill__count {
   min-width: 1.2em;
   text-align: center;
+  color: var(--color-yellow);
 }
 
 /* Optional 10-char label set in the timer modal.  Renders to
@@ -9369,6 +9401,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .timer-pill--ringing .timer-pill__count {
   animation: timer-flash 0.6s steps(1, end) infinite;
+  /* The count's resting yellow would otherwise out-rank the
+     pill-level alarm colour. */
+  color: var(--color-danger);
 }
 
 @keyframes timer-flash {

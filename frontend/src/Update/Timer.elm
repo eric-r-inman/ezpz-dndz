@@ -99,11 +99,15 @@ apply model =
                     , note = String.trim ui.note
                     }
             in
+            -- Starting the timer also closes the editor — unlike
+            -- the toolbar editors, there's nothing left to tweak
+            -- once the countdown is running.
             ( { model
                 | encounter =
                     Encounter.mapCreature ui.target
                         (\c -> { c | timer = Just newTimer })
                         model.encounter
+                , surface = Nothing
               }
             , Cmd.none
             )

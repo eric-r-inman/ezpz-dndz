@@ -141,6 +141,7 @@ module View.Tooltips exposing
     , statBlockHabitat
     , statBlockRoll
     , statBlockSavingThrow
+    , statusBadgeEdit
     , statusEditor
     , statusOffTip
     , statusOnTip
@@ -1004,6 +1005,14 @@ toastDismiss =
 sourceFromSaved : String -> String
 sourceFromSaved name =
     "from file: " ++ name
+
+
+{-| Card status label — opens the Status editor targeting the
+label's creature.
+-}
+statusBadgeEdit : String
+statusBadgeEdit =
+    "Click to edit this creature's statuses"
 
 
 {-| Toolbar Status button — opens the posture-toggle editor.
