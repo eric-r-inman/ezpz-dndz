@@ -1,4 +1,4 @@
-module Update.Status exposing (applyActive, applySelected, close, coverCycle, flyHeightAdjust, open, toggleFlag)
+module Update.Status exposing (applyActive, applySelected, close, coverCycle, flyHeightAdjust, open, openFor, toggleFlag)
 
 {-| Update branches for the encounter toolbar's Status editor.
 The toggles edit a draft; the two Apply buttons write the whole
@@ -11,12 +11,32 @@ import Msg exposing (Msg, StatusFlag(..))
 import Ui.Status as StatusUi exposing (StatusUi)
 
 
-{-| Opening is a toggle: clicking the toolbar's Status button
-while the editor is already open for the same target closes it.
-A fresh open prefills the draft from the target creature.
+{-| The toolbar trigger: clicking it while any Status editor is
+expanded closes it — the button shows the fold caret and Cancel
+hover text whenever the editor is open, so it must close
+regardless of which creature a card status label aimed it at. A
+fresh open prefills the draft from the target creature.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
+    ( case model.surface of
+        Just (SurfaceStatus _) ->
+            { model | surface = Nothing }
+
+        _ ->
+            { model | surface = Just (SurfaceStatus (prefilled target model)) }
+    , Cmd.none
+    )
+
+
+{-| A card's status label: it aims the editor at its own
+creature, so an editor already open for someone else re-aims
+rather than closing. Re-clicking the label of the creature
+being edited folds the editor away, matching the toolbar
+trigger's toggle.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
     ( case model.surface of
         Just (SurfaceStatus ui) ->
             if ui.target == target then

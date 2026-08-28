@@ -263,6 +263,17 @@ subscriptions model =
                 _ ->
                     []
 
+        -- A card's inline numeric field closes on a mousedown
+        -- anywhere outside it.  A blur handler alone would miss
+        -- clicks that never move focus.
+        hpEditSubs =
+            case model.hpEdit of
+                Just _ ->
+                    [ Browser.Events.onMouseDown (Decode.succeed HpEditCommit) ]
+
+                Nothing ->
+                    []
+
         -- Esc on the Login route cancels back to the encounter
         -- page.  Scoped to the route so it doesn't intercept Esc
         -- on the main app (where the existing modal handlers want
@@ -386,6 +397,7 @@ subscriptions model =
             ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
             ++ chromeSubs
+            ++ hpEditSubs
         )
 
 
@@ -1236,6 +1248,9 @@ updateInner msg model =
 
         StatusOpen name ->
             Update.Status.open name model
+
+        StatusOpenFor name ->
+            Update.Status.openFor name model
 
         StatusClose ->
             Update.Status.close model

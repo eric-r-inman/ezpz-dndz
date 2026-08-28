@@ -681,8 +681,11 @@ type Msg
     | ReplaceApply
       -- Status editor (encounter toolbar): posture toggles edit
       -- a draft; the Apply buttons stamp it onto the active
-      -- creature or the selection.
+      -- creature or the selection.  The toolbar trigger folds
+      -- the editor away, while a card's status label aims it at
+      -- that card's creature.
     | StatusOpen String
+    | StatusOpenFor String
     | StatusClose
     | StatusCoverCycle
     | StatusToggle StatusFlag

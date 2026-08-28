@@ -1320,6 +1320,7 @@ tempHpEditable creature hpEdit =
             , onInput HpEditChange
             , Html.Events.onBlur HpEditCommit
             , Html.Events.on "keydown" hpEditKeyDecoder
+            , keepMouseDownInside
             , autofocus True
             ]
             []
@@ -1366,6 +1367,7 @@ hpEditable creature hpEdit field current cls =
             , onInput HpEditChange
             , Html.Events.onBlur HpEditCommit
             , Html.Events.on "keydown" hpEditKeyDecoder
+            , keepMouseDownInside
             , autofocus True
             ]
             []
@@ -1385,6 +1387,15 @@ hpEditable creature hpEdit field current cls =
                 (hpFieldAriaLabel field creature.name current)
             ]
             [ text (String.fromInt current) ]
+
+
+{-| Keep a mousedown inside an inline HP field from reaching the
+document listener that closes the field on an outside click, so
+clicking into the input to place the cursor doesn't commit it.
+-}
+keepMouseDownInside : Html.Attribute Msg
+keepMouseDownInside =
+    stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
 
 
 {-| Screen-reader label for the inline HP / AC edit trigger.
@@ -1481,7 +1492,7 @@ statusIcons creature =
             button
                 [ class "status-icon"
                 , type_ "button"
-                , onClick (StatusOpen creature.name)
+                , onClick (StatusOpenFor creature.name)
                 , Tooltips.attr Tooltips.statusBadgeEdit
                 , attribute "aria-label"
                     ("Edit " ++ creature.name ++ "'s statuses (" ++ name ++ ")")
