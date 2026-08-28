@@ -58,8 +58,8 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   log shrinks to "last change + undo" in the editor; the full log lives in the
   dice panel.
 - =Condition= :: Same journey as =HpChange= — toolbar trigger, docked editor,
-  active-creature default, with "apply to selected" as a checkbox.  The biggest
-  payoff of the migration: conditions get set while watching the fight.
+  active-creature default, with a second button applying to the selection.  The
+  biggest payoff of the migration: conditions get set while watching the fight.
 - =Memo= (the row-three note) :: Clicking the icon becomes an in-place text
   input; no surface at all.
 - =Note= (the name note) :: Identical treatment, completing the existing
@@ -98,8 +98,9 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   updates visibly as creatures are added or removed.
 - =RandomEncounter= :: Its entire output is creatures appearing in the queue; a
   drawer means seeing them land.
-- =SpellList= :: Reference material consulted mid-combat; a drawer or a tab in
-  the tool panel beats either a modal or a separate page.
+- =SpellList= :: Mapped as a right-rail drawer, landed as a drop-down under the
+  queue's spellcaster strip, so the reminder naming the casters and the
+  reference listing their spells are one affordance.
 - =Save= :: Split.  A one-click quick-save button in Encounter Controls (toast
   confirmation) covers the common case; the "save as" form becomes a small
   drawer; full file management moves to the =/saves= route below.

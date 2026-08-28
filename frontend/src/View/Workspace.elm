@@ -28,6 +28,7 @@ import View.Inline.HpChange
 import View.Inline.Initiative
 import View.Inline.Replace
 import View.Inline.SaveChain
+import View.Inline.SpellList
 import View.Inline.Status
 import View.PanelControls
 import View.PanelDetail
@@ -81,7 +82,8 @@ panelMain model =
             [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
         , legendaryActionStrip enc
         , specialReactionsStrip enc
-        , spellcasterStrip enc model.compendium.db
+        , spellcasterStrip enc model.compendium.db (model.surface == Just SurfaceSpellList)
+        , spellListPanel model
         , actionToolbar model
         , dockedEditor model
         , div
@@ -359,8 +361,8 @@ reminder and the reference it opens read as one affordance.
 Counts stay out of it — the compendium pane has the detail once
 the GM clicks a name.
 -}
-spellcasterStrip : Encounter -> CompendiumDb -> Html Msg
-spellcasterStrip enc db =
+spellcasterStrip : Encounter -> CompendiumDb -> Bool -> Html Msg
+spellcasterStrip enc db listOpen =
     case db of
         CompendiumDbLoaded loaded ->
             let
@@ -378,7 +380,7 @@ spellcasterStrip enc db =
                     , attribute "role" "note"
                     ]
                     (text "Spells: "
-                        :: spellListButton
+                        :: spellListButton listOpen
                         :: (casters
                                 |> List.map nameNode
                                 |> List.intersperse (text ", ")
@@ -389,16 +391,42 @@ spellcasterStrip enc db =
             text ""
 
 
-spellListButton : Html Msg
-spellListButton =
+spellListButton : Bool -> Html Msg
+spellListButton open =
     button
-        [ class "legendary-banner__spell-btn"
+        [ class (View.Card.editorTriggerClass "legendary-banner__spell-btn" open)
         , type_ "button"
         , onClick SpellListOpen
-        , Tooltips.attr Tooltips.encounterBarSpellList
+        , Tooltips.attr
+            (if open then
+                Tooltips.inlineEditCancel
+
+             else
+                Tooltips.encounterBarSpellList
+            )
         , attribute "aria-label" Tooltips.encounterBarSpellList
+        , attribute "aria-expanded"
+            (if open then
+                "true"
+
+             else
+                "false"
+            )
         ]
         [ text "📜" ]
+
+
+{-| The spell list itself, dropping down under the strip that
+opens it rather than covering the queue.
+-}
+spellListPanel : Model -> Html Msg
+spellListPanel model =
+    case model.surface of
+        Just SurfaceSpellList ->
+            View.Inline.SpellList.view model.encounter model.compendium.db
+
+        _ ->
+            text ""
 
 
 specialReactionsEligible : Creature -> Bool

@@ -25,8 +25,9 @@
    a pair of buttons — "Apply to Target" and "Apply to Selected (N)" — rather
    than an apply-scope checkbox.  No action needed.
 8. The encounter queue lists its spellcasters in a reminder strip alongside the
-   legendary-action and special-reaction ones, and the spell-list button moved
-   into it.  No action needed.
+   legendary-action and special-reaction ones, and its scroll button drops the
+   spell list down beneath that strip instead of opening a dialog.  No action
+   needed.
 9. A creature reads as bloodied through red current HP rather than a droplet
    icon.  No action needed.
 10. Notes render in italic parentheses on both the creature card and the

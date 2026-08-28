@@ -1,13 +1,13 @@
-module View.Modal.SpellList exposing (view)
+module View.Inline.SpellList exposing (view)
 
-{-| Read-only "what spells are in this encounter?" popup.
+{-| Read-only "what spells are in this encounter?" panel, docked
+under the queue's spellcaster strip.
 
-Triggered by the 📜 icon in the queue's spellcaster strip. Walks
-the encounter queue through `Compendium.Casters` and prints
-every caster's at-will / per-day / slot spells in one scannable
-list grouped by creature. When no caster is in the queue at all,
-an empty-state line tells the GM so they don't think the modal
-is broken.
+Walks the encounter queue through `Compendium.Casters` and
+prints every caster's at-will / per-day / slot spells in one
+scannable list grouped by creature. When no caster is in the
+queue at all, an empty-state line tells the GM so they don't
+think the panel is broken.
 
 @docs view
 
@@ -15,41 +15,27 @@ is broken.
 
 import Compendium exposing (Ability(..), Spellcasting)
 import Compendium.Casters as Casters exposing (CasterSummary)
-import Encounter exposing (Creature)
+import Encounter exposing (Creature, Encounter)
 import Html exposing (Html, button, div, h3, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
-import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
-import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
-    case model.surface of
-        Just SurfaceSpellList ->
-            View.Modal.view
-                { close = SpellListClose
-                , noOp = NoOp
-                , title = "Spells in encounter"
-                , extraClass = "modal--spell-list"
-                , chrome = model.modalChrome
-                , body = body model
-                }
-
-        _ ->
-            text ""
+view : Encounter -> CompendiumDb -> Html Msg
+view enc compendiumDb =
+    div [ class "spell-list-panel" ] (body enc compendiumDb)
 
 
-body : Model -> List (Html Msg)
-body model =
-    case model.compendium.db of
+body : Encounter -> CompendiumDb -> List (Html Msg)
+body enc compendiumDb =
+    case compendiumDb of
         CompendiumDbLoaded db ->
             let
                 casters =
-                    model.encounter.creatures
+                    enc.creatures
                         |> List.filterMap (Casters.resolve db)
             in
             if List.isEmpty casters then

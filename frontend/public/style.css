@@ -134,6 +134,10 @@
   --card-row-pad-outer: 3px;
   --card-row-pad-mid: 2px;
 
+  /* Bottom padding shared by the surfaces that dock under the
+     queue's strips. */
+  --docked-panel-pad-bottom: 10px;
+
   /* Amber warning pair shared by the queue's legendary-actions
      banner and the card's special-reaction badges, so the two
      read as one visual family.  Deliberately NOT named
@@ -3450,13 +3454,19 @@ body {
   background: rgba(214, 59, 59, 0.1);
 }
 
-/* ── Spell List modal ────────────────────────────────────────────────
-   Read-only popup grouping every encounter caster's at-will / per-day /
-   slot spells under their name.  Compact and scannable; the body is
-   the only scrollable region. */
+/* ── Spell list panel ────────────────────────────────────────────────
+   Read-only drop-down under the queue's spellcaster strip, grouping
+   every encounter caster's at-will / per-day / slot spells under
+   their name.  Compact and scannable, and capped so a party of
+   casters cannot push the queue off screen. */
 
-.modal--spell-list {
-  --modal-max-w: 640px;
+.spell-list-panel {
+  flex: 0 0 auto;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-text-muted);
+  padding: 0 var(--space-3) var(--docked-panel-pad-bottom);
 }
 
 .spell-list__empty,
@@ -6049,7 +6059,7 @@ button.creature-card__lifecycle--dead:focus-visible {
      boundary between the docked editor and the scrolling cards
      underneath reads unmistakably. */
   border-bottom: 2px solid var(--color-text-muted);
-  padding: 0 12px 10px;
+  padding: 0 var(--space-3) var(--docked-panel-pad-bottom);
 }
 
 .encounter-toolbar__target {

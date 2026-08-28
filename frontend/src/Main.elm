@@ -145,7 +145,6 @@ import View.Modal.QuickAdd
 import View.Modal.RandomEncounter
 import View.Modal.Save
 import View.Modal.SaveCompendium
-import View.Modal.SpellList
 import View.Modal.Treasure
 import View.Modal.TreasureTable
 import View.Page.Compendium
@@ -377,6 +376,9 @@ subscriptions model =
 
                     Just (SurfaceInitiative _) ->
                         Browser.Events.onKeyDown (escKey InitiativeClose)
+
+                    Just SurfaceSpellList ->
+                        Browser.Events.onKeyDown (escKey SpellListClose)
 
                     _ ->
                         if model.compendium.open then
@@ -2816,7 +2818,6 @@ appShell maybeUser model =
     , View.Modal.RandomEncounter.view model
     , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
-    , View.Modal.SpellList.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
