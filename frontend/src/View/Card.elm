@@ -6,7 +6,7 @@ Three rows + two side rails + an optional legendary-pip column:
 
   - Row 1 (top): initiative circle, name (with optional
     compendium link), note pencil / inline note, AC readout,
-    recharge chips.
+    recharge chips, special-reaction badges.
   - Row 2 (mid): HP display (click-to-edit), bloodied marker,
     status readout, condition / save-notice chips.
   - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
@@ -20,10 +20,8 @@ the "make active" arrow.
 The legendary-pip column lives between the center column and
 the right rail, and is only present when the creature's
 compendium source declared `legendary_actions` or has a
-"Legendary Resistance" trait. A creature flagged for special
-reaction mechanics gets orange name badges to the column's
-right. To the column's left, a death-save column appears
-whenever the creature is at 0 HP.
+"Legendary Resistance" trait. To its left, a death-save
+column appears whenever the creature is at 0 HP.
 
 -}
 
@@ -125,14 +123,13 @@ view ctx creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature)
+            [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
             , rowMid creature hpEdit
             , rowBot creature (surfaceFor ctx creature)
             , inlineSurface ctx creature
             ]
         , deathSaveColumn creature
         , legendaryColumns isActive creature
-        , specialReactionBadges ctx creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -415,8 +412,8 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> Html Msg
-rowTop isActive creature hpEdit renameState surface =
+rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> Html Msg -> Html Msg
+rowTop isActive creature hpEdit renameState surface srBadges =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
             [ class "init-circle init-circle--clickable"
@@ -431,6 +428,7 @@ rowTop isActive creature hpEdit renameState surface =
         , noteOrPencil creature surface
         , acReadout creature hpEdit
         , rowTopChipCluster isActive creature
+        , srBadges
         ]
 
 
@@ -768,7 +766,7 @@ legendaryColumns isActive creature =
             ]
 
 
-{-| Orange name badges to the right of the pip columns, one per
+{-| Orange name badges at the right end of row 1, one per
 special-reaction feature on the creature's compendium source
 ("Redirect Attack", "Misty Escape", …). The single-pip Reaction
 toggle on row 3 can't model these, so the badges name what to

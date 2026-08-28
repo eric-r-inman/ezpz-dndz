@@ -122,12 +122,14 @@
   --color-btn-orange: #854d0e; /* same as condition */
   --color-dirty-outline: #fde68a;
 
-  /* Special-reaction badge pair: light orange field, dark
-     orange text.  The pill carries both colours itself, so the
-     same pair reads correctly on every theme and needs no dark
-     override. */
-  --color-sr-badge-bg: #ffedd5; /* orange-100 */
-  --color-sr-badge-fg: #9a3412; /* orange-800 */
+  /* Special-reaction badge pair, derived from the Replace /
+     Duplicate button orange: a light tint of that hue for the
+     pill field, a darker shade of it for the text.  Relative
+     oklch keeps the pair tracking each theme's
+     `--color-btn-orange`, since the theme attribute lands on
+     this same root element — no per-theme overrides needed. */
+  --color-sr-badge-bg: oklch(from var(--color-btn-orange) 0.93 0.07 h);
+  --color-sr-badge-fg: oklch(from var(--color-btn-orange) 0.36 c h);
 
   --card-btn-fg: #ffffff;
 
@@ -5013,16 +5015,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-width: 1px;
 }
 
-/* Special-reaction name badges: a vertical stack to the right
-   of the pip columns, one pill per qualifying feature on the
-   creature's source stat block. */
+/* Special-reaction name badges at the right end of card row 1,
+   one pill per qualifying feature on the creature's source stat
+   block.  `margin-left: auto` keeps them right-aligned even when
+   the recharge-chip cluster (the row's only flex-grow child) is
+   absent. */
 .creature-card__sr-badges {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
-  padding: 4px 2px;
+  margin-left: auto;
 }
 
 .sr-badge {
