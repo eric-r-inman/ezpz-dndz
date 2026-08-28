@@ -133,15 +133,14 @@
   --card-row-pad-outer: 3px;
   --card-row-pad-mid: 2px;
 
-  /* Special-reaction badge pair, derived from the Replace /
-     Duplicate button orange: a light tint of that hue for the
-     pill field, a darker shade of it for the text.  Relative
-     oklch keeps the pair tracking each theme's
-     `--color-btn-orange`, since the theme attribute lands on
-     this same root element — no per-theme overrides needed. */
-  --color-sr-badge-bg: oklch(from var(--color-btn-orange) 0.93 0.07 h);
-  --color-sr-badge-fg: oklch(from var(--color-btn-orange) 0.36 c h);
-  --color-sr-badge-bd: oklch(from var(--color-btn-orange) 0.6 c h / 0.4);
+  /* Amber warning pair shared by the queue's legendary-actions
+     banner and the card's special-reaction badges, so the two
+     read as one visual family.  Deliberately NOT named
+     `--color-warning`: two dozen legacy declarations reference
+     that name with a different `#b9602a` fallback, so defining
+     it here would silently recolour them all. */
+  --banner-warn-bg: rgba(245, 158, 11, 0.18);
+  --banner-warn-bd: #f59e0b;
 
   --card-btn-fg: #ffffff;
 
@@ -4255,9 +4254,9 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 12px;
-  background: rgba(245, 158, 11, 0.18);
+  background: var(--banner-warn-bg);
   border-bottom: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-warning, #f59e0b);
+  border-left: 3px solid var(--banner-warn-bd);
   color: var(--color-text);
   font-size: 0.85rem;
   font-weight: 500;
@@ -5034,15 +5033,15 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Special-reaction name badges, one pill per qualifying feature
    on the creature's source stat block.  They flow inline after
-   the recharge chips in row 1's chip cluster and share the
-   recharge / condition chip shape so the row reads as one badge
-   family. */
+   the recharge chips in row 1's chip cluster, in the chip
+   family's shape but wearing the legendary-actions banner's
+   amber wash so the two reaction cues read identically. */
 .sr-badge {
   display: inline-flex;
   align-items: center;
-  background: var(--color-sr-badge-bg);
-  color: var(--color-sr-badge-fg);
-  border: 1px solid var(--color-sr-badge-bd);
+  background: var(--banner-warn-bg);
+  color: var(--color-text);
+  border: 1px solid var(--banner-warn-bd);
   border-radius: 999px;
   padding: 1px 6px;
   font-size: 0.78rem;
