@@ -116,6 +116,10 @@
   --color-maxhp: #0f766e; /* teal-700 */
   --color-temp: #155e75; /* teal  — cyan-800 */
   --color-condition: #854d0e; /* amber — yellow-800 */
+  /* Chip text on cards; sits a shade brighter than the button
+     token where the theme's condition colour is dark, so the
+     small chip text stays legible. */
+  --color-condition-chip: #854d0e;
   --color-btn-blue: #155e75; /* teal — same as Temp HP */
   --color-btn-green: #3f6212; /* same as heal */
   --color-btn-red: #9a3412; /* same as damage */
@@ -137,6 +141,7 @@
      this same root element — no per-theme overrides needed. */
   --color-sr-badge-bg: oklch(from var(--color-btn-orange) 0.93 0.07 h);
   --color-sr-badge-fg: oklch(from var(--color-btn-orange) 0.36 c h);
+  --color-sr-badge-bd: oklch(from var(--color-btn-orange) 0.6 c h / 0.4);
 
   --card-btn-fg: #ffffff;
 
@@ -214,6 +219,7 @@
   --color-maxhp: #0f766e;
   --color-temp: #155e75;
   --color-condition: #854d0e;
+  --color-condition-chip: #854d0e;
   --color-btn-blue: #155e75;
   --color-btn-green: #3f6212;
   --color-btn-red: #9a3412;
@@ -313,6 +319,7 @@
   --color-maxhp: #14b8a6;
   --color-temp: #2589e0;
   --color-condition: #9355e0;
+  --color-condition-chip: #a26bee;
   --color-btn-blue: #1976d2;
   --color-btn-green: #2f9e44;
   --color-btn-red: #c62828;
@@ -403,6 +410,7 @@
   --color-maxhp: #0f766e;
   --color-temp: #003c8f;
   --color-condition: #5b21b6;
+  --color-condition-chip: #6d28d9;
   --color-btn-blue: #003c8f;
   --color-btn-green: #006b3c;
   --color-btn-red: #a30000;
@@ -606,10 +614,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   width: 20px;
   height: 20px;
   border-width: 2.5px;
-}
-
-[data-theme="accessible"] .legendary-col__sep {
-  width: 20px;
 }
 
 /* Stat-block text (every renderer — compendium modal, pinned
@@ -4367,11 +4371,13 @@ body {
   display: flex;
   align-items: stretch;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  /* The pip columns stop short of the card's bottom edge, so
+     the bottom padding runs slimmer than the top. */
+  padding: var(--space-2) var(--space-3) 4px;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  min-height: 116px;
+  min-height: 110px;
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -5020,43 +5026,28 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* The 4th pip in each column is the "lair" pip: only used when
    the creature is in its lair (5e gives a bonus legendary action
-   and an extra legendary-resistance use in-lair).  Render with a
-   thinner border, and precede it with a faint horizontal divider
-   so the lair pip reads as visually separate from the regular
-   per-turn pips. */
+   and an extra legendary-resistance use in-lair).  A thinner
+   border marks it as the optional one. */
 .legendary-col__pip--lair {
   border-width: 1px;
 }
 
-/* Special-reaction name badges at the right end of card row 1,
-   one pill per qualifying feature on the creature's source stat
-   block.  `margin-left: auto` keeps them right-aligned even when
-   the recharge-chip cluster (the row's only flex-grow child) is
-   absent. */
-.creature-card__sr-badges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
+/* Special-reaction name badges, one pill per qualifying feature
+   on the creature's source stat block.  They flow inline after
+   the recharge chips in row 1's chip cluster and share the
+   recharge / condition chip shape so the row reads as one badge
+   family. */
 .sr-badge {
+  display: inline-flex;
+  align-items: center;
   background: var(--color-sr-badge-bg);
   color: var(--color-sr-badge-fg);
+  border: 1px solid var(--color-sr-badge-bd);
   border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.4;
+  padding: 1px 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
   white-space: nowrap;
-}
-
-.legendary-col__sep {
-  width: 14px;
-  height: 1px;
-  background: var(--color-border);
-  opacity: 0.6;
-  margin: 1px 0;
 }
 
 .legendary-col__pip:hover {
@@ -5538,12 +5529,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.78rem;
   font-weight: 500;
   background: rgba(245, 200, 66, 0.1);
-  /* Chip text matches the Condition/Effect button's background
-     token (`--color-condition`) so card chips, title-bar chips,
-     and the rail button all read as one visual family. Each
-     theme already defines `--color-condition`, so this rule
-     follows the palette without per-theme overrides. */
-  color: var(--color-condition);
+  /* Chip text follows the condition palette via its own token
+     (`--color-condition-chip`), which each theme sets a shade
+     brighter than the button colour where that colour runs
+     dark, so the small chip text stays legible. */
+  color: var(--color-condition-chip);
   border: 1px solid rgba(245, 200, 66, 0.35);
   border-radius: 999px;
   max-width: 220px;

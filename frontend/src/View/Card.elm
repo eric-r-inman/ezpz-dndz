@@ -412,7 +412,7 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> Html Msg -> Html Msg
+rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> List (Html Msg) -> Html Msg
 rowTop isActive creature hpEdit renameState surface srBadges =
     div [ class "creature-card__row creature-card__row--top" ]
         [ button
@@ -427,8 +427,7 @@ rowTop isActive creature hpEdit renameState surface srBadges =
         , creatureName creature renameState
         , noteOrPencil creature surface
         , acReadout creature hpEdit
-        , rowTopChipCluster isActive creature
-        , srBadges
+        , rowTopChipCluster isActive creature srBadges
         ]
 
 
@@ -696,7 +695,7 @@ compactEditor cfg =
 between the center column and the right rail. Each column has a
 bold header letter ("LA" / "LR") followed by 4 toggleable circular
 pips. The 4th pip is the in-lair bonus and renders with a thinner
-border (and a faint divider above it) to mark it as optional.
+border to mark it as optional.
 
 Conditional rendering — both columns spawn only when the
 creature's compendium source has the matching feature, and the
@@ -766,7 +765,7 @@ legendaryColumns isActive creature =
             ]
 
 
-{-| Orange name badges at the right end of row 1, one per
+{-| Orange name badges for row 1's chip cluster, one per
 special-reaction feature on the creature's compendium source
 ("Redirect Attack", "Misty Escape", …). The single-pip Reaction
 toggle on row 3 can't model these, so the badges name what to
@@ -775,10 +774,10 @@ Falls back to a single "Special Reaction" badge when the flag is
 set but no source feature can be named (a manual editor toggle,
 or a creature with no compendium link).
 -}
-specialReactionBadges : Context -> Creature -> Html Msg
+specialReactionBadges : Context -> Creature -> List (Html Msg)
 specialReactionBadges ctx creature =
     if not creature.hasSpecialReactions then
-        text ""
+        []
 
     else
         let
@@ -799,8 +798,7 @@ specialReactionBadges ctx creature =
                 else
                     names
         in
-        div [ class "creature-card__sr-badges" ]
-            (List.map srBadge shown)
+        List.map srBadge shown
 
 
 srBadge : String -> Html Msg
@@ -1032,13 +1030,6 @@ legendaryColumn cfg =
 
             else
                 []
-
-        separator =
-            if cfg.lairBonus > 0 then
-                [ div [ class "legendary-col__sep" ] [] ]
-
-            else
-                []
     in
     div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
         (div
@@ -1047,7 +1038,6 @@ legendaryColumn cfg =
             ]
             [ text cfg.label ]
             :: basePips
-            ++ separator
             ++ lairPips
         )
 
@@ -1074,22 +1064,23 @@ headerTooltipFor label =
 -- ── CONDITION CHIPS ─────────────────────────────────────────────────────
 
 
-{-| Row 1 chip cluster: the recharge-ability chips behind a
-leading pipe, keeping row 1 about the creature's identity and
-abilities (the condition / save-notice chips render in
-`conditionCluster` on row 2). Renders nothing if the creature
-has no recharge abilities, so the row collapses cleanly for PCs
-and most NPCs.
+{-| Row 1 chip cluster: the recharge-ability chips and the
+special-reaction badges behind a leading pipe, keeping row 1
+about the creature's identity and abilities (the condition /
+save-notice chips render in `conditionCluster` on row 2).
+Renders nothing when the creature has neither, so the row
+collapses cleanly for PCs and most NPCs.
 -}
-rowTopChipCluster : Bool -> Creature -> Html Msg
-rowTopChipCluster isActive creature =
-    if List.isEmpty creature.rechargeAbilities then
+rowTopChipCluster : Bool -> Creature -> List (Html Msg) -> Html Msg
+rowTopChipCluster isActive creature srBadges =
+    if List.isEmpty creature.rechargeAbilities && List.isEmpty srBadges then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
                 :: List.map (rechargeChip isActive creature.name) creature.rechargeAbilities
+                ++ srBadges
             )
 
 

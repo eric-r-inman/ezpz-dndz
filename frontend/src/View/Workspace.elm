@@ -354,7 +354,7 @@ specialReactionsBanner creatures =
         [ class "legendary-banner legendary-banner--special-reactions"
         , attribute "role" "note"
         ]
-        (text "⚡ Special reactions: "
+        (text "Special reactions: "
             :: (creatures
                     |> List.map nameNode
                     |> List.intersperse (text ", ")
@@ -404,7 +404,7 @@ legendaryActionBanner creatures =
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
-        (text "⚜ Legendary Action available: " :: nameNodes)
+        (text "Legendary actions: " :: nameNodes)
 
 
 {-| Render `<Name> (N),` where N is the count of un-spent
