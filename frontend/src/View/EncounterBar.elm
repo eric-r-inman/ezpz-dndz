@@ -96,14 +96,18 @@ view mode enc savedAs db xpScope xpFilterOpen =
                 [ text "ⓘ" ]
             , span [ class "encounter-bar__round" ]
                 [ text ("Round " ++ String.fromInt enc.round) ]
-            , span [ class "encounter-bar__sep" ] [ text "|" ]
+            , sectionSep
             , surprisedMarker active
             , activeNameLink active activeName
             , noteSpan active
+            , sectionSep
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
+            , sectionSep
             , ac active
+            , sectionSepBefore (hasStates active)
             , stateIcons active
+            , sectionSepBefore (hasConditions active)
             , conditionsText active
             ]
         , rightCluster
@@ -440,6 +444,44 @@ activeNameLink active activeName =
             span [ class "encounter-bar__active" ] [ text activeName ]
 
 
+{-| The gray pipe that divides the bar's readouts. The two that
+precede optional sections render only when their section does,
+so the row never ends on a dangling divider.
+-}
+sectionSep : Html Msg
+sectionSep =
+    span [ class "encounter-bar__sep" ] [ text "|" ]
+
+
+sectionSepBefore : Bool -> Html Msg
+sectionSepBefore present =
+    if present then
+        sectionSep
+
+    else
+        text ""
+
+
+hasStates : Maybe Creature -> Bool
+hasStates active =
+    case active of
+        Just c ->
+            c.cover /= NoCover || c.concentrating || c.hiding || c.dodging || c.flying
+
+        Nothing ->
+            False
+
+
+hasConditions : Maybe Creature -> Bool
+hasConditions active =
+    case active of
+        Just c ->
+            not (List.isEmpty c.conditions)
+
+        Nothing ->
+            False
+
+
 surprisedMarker : Maybe Creature -> Html Msg
 surprisedMarker active =
     case active of
@@ -478,10 +520,10 @@ noteSpan active =
             text ""
 
 
-{-| Active-creature conditions slot in the title bar. Plain
-purple text separated by " | ", not chips — the GM uses this as
-a glanceable summary; the editable chips are on the card itself.
-Hidden when there are no conditions.
+{-| Active-creature conditions slot in the title bar: a
+comma-separated list rather than chips, since the GM reads this
+as a glanceable summary and edits on the card itself. Hidden
+when there are no conditions.
 -}
 conditionsText : Maybe Creature -> Html Msg
 conditionsText active =
@@ -492,16 +534,7 @@ conditionsText active =
 
             else
                 span [ class "encounter-bar__conditions" ]
-                    (List.intersperse
-                        (span [ class "encounter-bar__cond-sep" ] [ text "|" ])
-                        (List.map
-                            (\cond ->
-                                span [ class "encounter-bar__cond" ]
-                                    [ text cond.name ]
-                            )
-                            c.conditions
-                        )
-                    )
+                    [ text (String.join ", " (List.map .name c.conditions)) ]
 
         Nothing ->
             text ""

@@ -26,7 +26,7 @@ import View.Tooltips as Tooltips
 
 view : Encounter -> CompendiumDb -> Html Msg
 view enc compendiumDb =
-    div [ class "spell-list-panel" ] (body enc compendiumDb)
+    div [ class "queue-panel" ] (body enc compendiumDb)
 
 
 body : Encounter -> CompendiumDb -> List (Html Msg)

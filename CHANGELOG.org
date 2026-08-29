@@ -25,8 +25,8 @@
    a pair of buttons — "Apply to Target" and "Apply to Selected (N)" — rather
    than an apply-scope checkbox.  No action needed.
 8. The encounter queue lists its spellcasters in a reminder strip alongside the
-   legendary-action and special-reaction ones, and its scroll button drops the
-   spell list down beneath that strip instead of opening a dialog.  No action
+   legendary-action and special-reaction ones, and each strip's icon drops down
+   a panel detailing what those actions, reactions, or spells do.  No action
    needed.
 9. A creature reads as bloodied through red current HP rather than a droplet
    icon.  No action needed.
@@ -37,6 +37,8 @@
     directly.  No action needed.
 12. A creature card's special-reaction badges toggle spent, clearing at the
     start of that creature's turn.  No action needed.
+13. The encounter title bar divides its readouts with separators and lists
+    conditions inline, comma-separated.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

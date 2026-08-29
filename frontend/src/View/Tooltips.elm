@@ -85,6 +85,7 @@ module View.Tooltips exposing
     , inlineEditCancel
     , lastRollTotal
     , legendaryActionColumn
+    , legendaryActionsPanel
     , legendaryPipLocked
     , legendaryResistanceColumn
     , lifecycleDeadToDown
@@ -138,6 +139,7 @@ module View.Tooltips exposing
     , sourceUnsaved
     , specialReactionBadge
     , specialReactionSpent
+    , specialReactionsPanel
     , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
@@ -446,6 +448,16 @@ queueInactive =
 queueReactivate : String
 queueReactivate =
     "Make active (returns creature to queue)"
+
+
+legendaryActionsPanel : String
+legendaryActionsPanel =
+    "Show what each creature's legendary actions do"
+
+
+specialReactionsPanel : String
+specialReactionsPanel =
+    "Show what each creature's special reactions do"
 
 
 legendaryActionColumn : String

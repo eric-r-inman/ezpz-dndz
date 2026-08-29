@@ -71,6 +71,7 @@ import Ui.Memo exposing (MemoEditUi)
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
+import Ui.QueuePanels exposing (QueuePanels)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Replace exposing (ReplaceUi)
@@ -141,11 +142,6 @@ type Surface
     | SurfaceRandomEncounter RandomEncounterUi
     | SurfaceTreasure TreasureUi
     | SurfaceTreasureTable TreasureTableUi
-      -- Read-only "what spells can these creatures cast?" popup
-      -- triggered by the 📜 button in the encounter title bar.
-      -- No editable state to carry; the view re-renders straight
-      -- from the encounter + compendium on every open.
-    | SurfaceSpellList
       -- Save Chain modal: reusable "creature makes a save;
       -- something happens" recipe.  Opened from each card's
       -- Save Chain button; loads / edits / saves named presets
@@ -497,6 +493,10 @@ type alias Model =
     , xpScope : XpScope
     , xpFilterOpen : Bool
     , settingsOpen : Bool
+
+    -- Read-only drop-downs under the queue's reminder strips.
+    -- Independent of `surface`: several can be open at once.
+    , queuePanels : QueuePanels
 
     -- Dismissed-the-anonymous-banner flag.  When `True`, the
     -- "you're browsing as a guest" strip at the top of the

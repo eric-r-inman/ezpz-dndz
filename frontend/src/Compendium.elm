@@ -11,7 +11,7 @@ module Compendium exposing
     , crToFloat
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
-    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionNames, syncLegendaryFields
+    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionNames, specialReactions, syncLegendaryFields
     )
 
 {-| Pure domain layer for the compendium.
@@ -1043,8 +1043,16 @@ findLegendaryResistanceTrait c =
         |> List.head
 
 
-{-| Names of the features behind the special-reaction flag.
-Three signals qualify a feature:
+{-| Names of the features behind the special-reaction flag, for
+the surfaces that only label them.
+-}
+specialReactionNames : Creature -> List String
+specialReactionNames =
+    List.map .name << specialReactions
+
+
+{-| The features behind the special-reaction flag. Three signals
+qualify one:
 
 1.  A trait whose name matches one of the known "extra
     reaction" / "on-death" / "Misty Escape" patterns.
@@ -1060,17 +1068,15 @@ definition of "special". Can be empty for a flagged creature —
 the flag is also a manual toggle in the compendium editor.
 
 -}
-specialReactionNames : Creature -> List String
-specialReactionNames c =
-    List.map .name
-        (List.filter (\r -> reactionNameIsSpecial r.name) c.reactions
-            ++ List.filter
-                (\t ->
-                    traitNameIsSpecial t.name
-                        || traitDescriptionIsSpecial t.description
-                )
-                c.traits
-        )
+specialReactions : Creature -> List Feature
+specialReactions c =
+    List.filter (\r -> reactionNameIsSpecial r.name) c.reactions
+        ++ List.filter
+            (\t ->
+                traitNameIsSpecial t.name
+                    || traitDescriptionIsSpecial t.description
+            )
+            c.traits
 
 
 traitNameIsSpecial : String -> Bool

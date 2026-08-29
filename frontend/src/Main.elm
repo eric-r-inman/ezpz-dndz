@@ -75,6 +75,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
+import Ui.QueuePanels
 import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
@@ -105,6 +106,7 @@ import Update.ModalChrome
 import Update.Note
 import Update.PlaceholderRename
 import Update.Preferences
+import Update.QueuePanels
 import Update.QuickAdd
 import Update.RandomEncounter
 import Update.Replace
@@ -112,7 +114,6 @@ import Update.Save
 import Update.SaveChain
 import Update.SaveCompendium
 import Update.Shell
-import Update.SpellList
 import Update.Status
 import Update.Tabs
 import Update.Timer
@@ -377,9 +378,6 @@ subscriptions model =
                     Just (SurfaceInitiative _) ->
                         Browser.Events.onKeyDown (escKey InitiativeClose)
 
-                    Just SurfaceSpellList ->
-                        Browser.Events.onKeyDown (escKey SpellListClose)
-
                     _ ->
                         if model.compendium.open then
                             Browser.Events.onKeyDown compendiumKeyDecoder
@@ -596,6 +594,7 @@ init flags url key =
       , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
+      , queuePanels = Ui.QueuePanels.fresh
       , settingsOpen = False
       , anonymousBannerDismissed = False
       , controlMenu = Nothing
@@ -1826,11 +1825,8 @@ updateInner msg model =
         TreasureClose ->
             Update.Treasure.close model
 
-        SpellListOpen ->
-            Update.SpellList.open model
-
-        SpellListClose ->
-            Update.SpellList.close model
+        QueuePanelToggle panel ->
+            Update.QueuePanels.toggle panel model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model

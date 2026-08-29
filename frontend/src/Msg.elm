@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -84,6 +84,15 @@ type HpKind
     | HealKind
     | TempHpKind
     | MaxHpKind
+
+
+{-| Which of the queue's reference drop-downs a strip icon
+toggles.
+-}
+type QueuePanel
+    = LegendaryActionsPanel
+    | SpecialReactionsPanel
+    | SpellsPanel
 
 
 {-| Which boolean posture toggle a Status-editor click flips.
@@ -1308,11 +1317,9 @@ type Msg
       -- persists with the encounter.
     | TreasureOpen
     | TreasureClose
-      -- 📜 button in the encounter title bar — opens a read-only
-      -- modal listing every queue member's at-will / slot /
-      -- innate spells, grouped by creature.
-    | SpellListOpen
-    | SpellListClose
+      -- Icon on one of the queue's reminder strips, folding its
+      -- read-only drop-down open or shut.
+    | QueuePanelToggle QueuePanel
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

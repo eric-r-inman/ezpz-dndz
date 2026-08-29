@@ -848,13 +848,11 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-/* Title-bar conditions list — the plain `.encounter-bar__cond`
-   spans (one per active condition, pipe-separated) get bold
-   weight under Accessible so the at-a-glance status reads
-   clearly alongside the other bumped bar text.  Colour stays
-   on the bar-wide `var(--color-text)` (pure black for
-   Accessible) per the rule near line 588. */
-[data-theme="accessible"] .encounter-bar__cond {
+/* Title-bar conditions list gets bold weight under Accessible so
+   the at-a-glance status reads clearly alongside the other
+   bumped bar text.  Colour stays on the bar-wide
+   `var(--color-text)` (pure black for Accessible). */
+[data-theme="accessible"] .encounter-bar__conditions {
   font-weight: 700;
 }
 
@@ -915,20 +913,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 
 [data-theme="accessible"] .cond-radio {
   padding: 6px 12px;
-}
-
-/* Dark theme — card row 1 condition chip text matches the
-   brighter purple-400 used by `.encounter-bar__cond` in the
-   title bar (see View/EncounterBar.elm:conditionsText) so the
-   card chip and the title-bar mirror read as the same colour.
-   The base `.condition-chip` rule resolves to `--color-condition`
-   (`#9355e0`, purple-600) which reads as flat on dark surfaces;
-   `#c084fc` pops against the dark card background the way the
-   title-bar text does against the bar.  Scoped to `data-theme=
-   "dark"` only — Modern keeps its own `--color-condition`
-   resolution. */
-[data-theme="dark"] .creature-card__row--top .condition-chip {
-  color: #c084fc;
 }
 
 /* Readied-action flash.  When a creature has readied an action,
@@ -3463,13 +3447,13 @@ body {
   background: rgba(214, 59, 59, 0.1);
 }
 
-/* ── Spell list panel ────────────────────────────────────────────────
-   Read-only drop-down under the queue's spellcaster strip, grouping
-   every encounter caster's at-will / per-day / slot spells under
-   their name.  Compact and scannable, and capped so a party of
+/* ── Queue reference panels ──────────────────────────────────────────
+   Read-only drop-downs under the queue's reminder strips: what each
+   creature's legendary actions, special reactions, or spells
+   actually do.  Compact and scannable, and capped so a party of
    casters cannot push the queue off screen. */
 
-.spell-list-panel {
+.queue-panel {
   flex: 0 0 auto;
   max-height: 50vh;
   overflow-y: auto;
@@ -3478,6 +3462,69 @@ body {
   padding: 0 var(--space-3) var(--docked-panel-pad-bottom);
 }
 
+.queue-panel__entry {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.queue-panel__entry:last-child {
+  border-bottom: none;
+}
+
+.queue-panel__header {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.queue-panel__name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.queue-panel__name:hover,
+.queue-panel__name:focus-visible {
+  text-decoration: underline;
+}
+
+.queue-panel__name--plain {
+  color: var(--color-text);
+}
+
+.queue-panel__meta {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.queue-panel__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+}
+
+.queue-panel__item-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-right: var(--space-2);
+}
+
+.queue-panel__item-body {
+  font-size: 0.9rem;
+}
+
+.queue-panel__empty,
 .spell-list__empty,
 .spell-list__empty-spells {
   margin: 8px 0;
@@ -4269,10 +4316,10 @@ body {
   font-weight: 500;
 }
 
-/* The spell-list button, sitting between the strip's label and
-   its creature names.  Chrome reset so it reads as part of the
+/* A strip's drop-down toggle, sitting between its label and its
+   creature names.  Chrome reset so it reads as part of the
    sentence, not a control bolted onto it. */
-.legendary-banner__spell-btn {
+.legendary-banner__panel-btn {
   appearance: none;
   background: transparent;
   border: none;
@@ -4282,7 +4329,7 @@ body {
   cursor: pointer;
 }
 
-.legendary-banner__spell-btn:hover {
+.legendary-banner__panel-btn:hover {
   filter: brightness(1.15);
 }
 
@@ -6961,12 +7008,14 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Active creature's note, echoed up into the title bar beside
-   the name in the same parenthesised italics the card uses. */
+   the name in the same parenthesised italics the card uses, and
+   close enough to it to read as its note rather than a
+   neighbouring field. */
 .encounter-bar__note {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  margin-left: 10px;
+  margin-left: var(--space-0);
   font-size: 0.88rem;
   color: var(--color-text);
   max-width: 22ch;
@@ -6979,7 +7028,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .encounter-bar__states {
   display: flex;
-  gap: 4px;
+  gap: var(--space-2);
   font-size: 0.95rem;
   line-height: 1;
   margin-left: var(--space-2);
@@ -7013,24 +7062,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 .encounter-bar__conditions {
   display: inline-flex;
   align-items: center;
-  margin-left: var(--space-2);
+  color: var(--color-condition-chip);
   font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-}
-
-.encounter-bar__cond {
-  color: #c084fc;
-}
-
-.encounter-bar__cond-sep {
-  color: var(--color-text-muted);
-  opacity: 0.6;
-  user-select: none;
-  padding: 0 10px;
 }
 
 .encounter-bar__xp-group {
@@ -9374,15 +9412,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-left: 6px;
   font-weight: 500;
   opacity: 0.85;
-}
-
-/* Title-bar note slot: italics matching the card's note. */
-.encounter-bar__note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-  font-style: italic;
 }
 
 .timer-pill--ringing {

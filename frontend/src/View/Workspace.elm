@@ -17,7 +17,7 @@ import Html exposing (Html, button, div, main_, section, span, text)
 import Html.Attributes exposing (attribute, class, disabled, id, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model, Surface(..))
-import Msg exposing (Msg(..))
+import Msg exposing (Msg(..), QueuePanel(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
@@ -26,6 +26,7 @@ import View.Inline.Condition
 import View.Inline.Duplicate
 import View.Inline.HpChange
 import View.Inline.Initiative
+import View.Inline.QueueReference
 import View.Inline.Replace
 import View.Inline.SaveChain
 import View.Inline.SpellList
@@ -80,10 +81,15 @@ panelMain model =
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
             [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
-        , legendaryActionStrip enc
-        , specialReactionsStrip enc
-        , spellcasterStrip enc model.compendium.db (model.surface == Just SurfaceSpellList)
-        , spellListPanel model
+        , legendaryActionStrip enc model.queuePanels.legendaryActions
+        , specialReactionsStrip enc model.queuePanels.specialReactions
+        , spellcasterStrip enc model.compendium.db model.queuePanels.spells
+        , panelIf model.queuePanels.legendaryActions
+            (View.Inline.QueueReference.legendaryActions enc model.compendium.db)
+        , panelIf model.queuePanels.specialReactions
+            (View.Inline.QueueReference.specialReactions enc model.compendium.db)
+        , panelIf model.queuePanels.spells
+            (View.Inline.SpellList.view enc model.compendium.db)
         , actionToolbar model
         , dockedEditor model
         , div
@@ -314,8 +320,8 @@ Lives outside `panel__body` so it doesn't scroll with the cards
 — same affordance the title bar uses.
 
 -}
-legendaryActionStrip : Encounter -> Html Msg
-legendaryActionStrip enc =
+legendaryActionStrip : Encounter -> Bool -> Html Msg
+legendaryActionStrip enc panelOpen =
     let
         eligible =
             enc.creatures
@@ -326,7 +332,7 @@ legendaryActionStrip enc =
         text ""
 
     else
-        legendaryActionBanner eligible
+        legendaryActionBanner eligible panelOpen
 
 
 {-| Sticky orange strip that sits directly under the LA strip.
@@ -341,8 +347,8 @@ reactions can fire on the creature's own turn (e.g. an OA on
 a fleeing target).
 
 -}
-specialReactionsStrip : Encounter -> Html Msg
-specialReactionsStrip enc =
+specialReactionsStrip : Encounter -> Bool -> Html Msg
+specialReactionsStrip enc panelOpen =
     let
         eligible =
             List.filter specialReactionsEligible enc.creatures
@@ -351,7 +357,7 @@ specialReactionsStrip enc =
         text ""
 
     else
-        specialReactionsBanner eligible
+        specialReactionsBanner eligible panelOpen
 
 
 {-| Sticky orange strip under the special-reactions one, naming
@@ -380,7 +386,7 @@ spellcasterStrip enc db listOpen =
                     , attribute "role" "note"
                     ]
                     (text "Spells: "
-                        :: spellListButton listOpen
+                        :: stripButton SpellsPanel listOpen "📜" Tooltips.encounterBarSpellList
                         :: (casters
                                 |> List.map nameNode
                                 |> List.intersperse (text ", ")
@@ -391,20 +397,24 @@ spellcasterStrip enc db listOpen =
             text ""
 
 
-spellListButton : Bool -> Html Msg
-spellListButton open =
+{-| One strip's drop-down toggle, sitting between the strip's
+label and its creature names. Wears the shared open-editor ring
+so an open panel is as visible as an open editor.
+-}
+stripButton : QueuePanel -> Bool -> String -> String -> Html Msg
+stripButton panel open glyph openTip =
     button
-        [ class (View.Card.editorTriggerClass "legendary-banner__spell-btn" open)
+        [ class (View.Card.editorTriggerClass "legendary-banner__panel-btn" open)
         , type_ "button"
-        , onClick SpellListOpen
+        , onClick (QueuePanelToggle panel)
         , Tooltips.attr
             (if open then
                 Tooltips.inlineEditCancel
 
              else
-                Tooltips.encounterBarSpellList
+                openTip
             )
-        , attribute "aria-label" Tooltips.encounterBarSpellList
+        , attribute "aria-label" openTip
         , attribute "aria-expanded"
             (if open then
                 "true"
@@ -413,20 +423,20 @@ spellListButton open =
                 "false"
             )
         ]
-        [ text "📜" ]
+        [ text glyph ]
 
 
-{-| The spell list itself, dropping down under the strip that
-opens it rather than covering the queue.
+{-| The reference drop-downs render below every strip, so the
+strips stay together, and in the strips' own order when more
+than one is open.
 -}
-spellListPanel : Model -> Html Msg
-spellListPanel model =
-    case model.surface of
-        Just SurfaceSpellList ->
-            View.Inline.SpellList.view model.encounter model.compendium.db
+panelIf : Bool -> Html Msg -> Html Msg
+panelIf open panel =
+    if open then
+        panel
 
-        _ ->
-            text ""
+    else
+        text ""
 
 
 specialReactionsEligible : Creature -> Bool
@@ -441,13 +451,14 @@ specialReactionsEligible c =
     c.hasSpecialReactions && not down && not dead
 
 
-specialReactionsBanner : List Creature -> Html Msg
-specialReactionsBanner creatures =
+specialReactionsBanner : List Creature -> Bool -> Html Msg
+specialReactionsBanner creatures panelOpen =
     div
         [ class "legendary-banner legendary-banner--special-reactions"
         , attribute "role" "note"
         ]
         (text "Special reactions: "
+            :: stripButton SpecialReactionsPanel panelOpen "⚡" Tooltips.specialReactionsPanel
             :: (creatures
                     |> List.map nameNode
                     |> List.intersperse (text ", ")
@@ -485,8 +496,8 @@ hasAvailableLegendaryAction c =
         && not dead
 
 
-legendaryActionBanner : List Creature -> Html Msg
-legendaryActionBanner creatures =
+legendaryActionBanner : List Creature -> Bool -> Html Msg
+legendaryActionBanner creatures panelOpen =
     let
         nameNodes =
             creatures
@@ -497,7 +508,10 @@ legendaryActionBanner creatures =
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
-        (text "Legendary actions: " :: nameNodes)
+        (text "Legendary actions: "
+            :: stripButton LegendaryActionsPanel panelOpen "⚜" Tooltips.legendaryActionsPanel
+            :: nameNodes
+        )
 
 
 {-| Render `<Name> (N),` where N is the count of un-spent
