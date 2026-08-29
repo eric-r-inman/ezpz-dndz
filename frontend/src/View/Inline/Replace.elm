@@ -24,7 +24,6 @@ view db selectedCount log ui =
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ ApplyButton.view
                 { enabled = ui.pickedId /= Nothing
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = ReplaceApply
                 , tip =
@@ -37,7 +36,6 @@ view db selectedCount log ui =
                 }
             , ApplyButton.view
                 { enabled = ui.pickedId /= Nothing && selectedCount > 0
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = ReplaceApplySelected
                 , tip =

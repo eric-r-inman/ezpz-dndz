@@ -451,7 +451,6 @@ footer ui presets selectedCount =
             -- button both cancel.
             , ApplyButton.view
                 { enabled = canSubmit
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = ConditionSubmit
                 , tip =
@@ -492,7 +491,6 @@ applySelectedButton ui canSubmit selectedCount =
     else
         ApplyButton.view
             { enabled = canSubmit && selectedCount > 0
-            , grow = False
             , cls = "action-btn action-btn--green"
             , msg = ConditionSubmitSelected
             , tip =

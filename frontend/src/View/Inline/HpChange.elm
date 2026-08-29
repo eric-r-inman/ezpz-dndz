@@ -57,7 +57,6 @@ manualSection selectedCount ui =
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ ApplyButton.view
                 { enabled = True
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = HpChangeManualApplyTarget
                 , tip = "Set the typed pools on the target creature"
@@ -65,7 +64,6 @@ manualSection selectedCount ui =
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = HpChangeManualApplySelected
                 , tip =

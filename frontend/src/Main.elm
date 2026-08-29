@@ -1301,23 +1301,20 @@ updateInner msg model =
         InitiativeQuickSort ->
             Update.Initiative.quickSort model
 
-        InitiativeAutoRoll scope mode ->
-            Update.Initiative.autoRoll scope mode model
+        InitiativeAutoRoll scope ->
+            Update.Initiative.autoRoll scope model
+
+        InitiativeRollModeSet mode ->
+            Update.Initiative.rollModeSet mode model
+
+        InitiativeSurprisedToggle ->
+            Update.Initiative.surprisedToggle model
 
         InitiativeApplyTarget ->
             Update.Initiative.applyTarget model
 
         InitiativeApplySelected ->
             Update.Initiative.applySelected model
-
-        InitiativeAutoRollSurprised scope ->
-            Update.Initiative.autoRollSurprised scope model
-
-        InitiativeApplyTargetSurprised ->
-            Update.Initiative.applyTargetSurprised model
-
-        InitiativeApplySelectedSurprised ->
-            Update.Initiative.applySelectedSurprised model
 
         InitiativeRollsLanded results ->
             Update.Initiative.rollsLanded results model

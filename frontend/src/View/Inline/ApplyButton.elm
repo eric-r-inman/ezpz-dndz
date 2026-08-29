@@ -8,10 +8,6 @@ the button out of pointer events — otherwise the hover text
 explaining why the button is dead could never appear, which is
 the one message a dead button owes the reader.
 
-`grow` marks the callers whose button fills its share of a flex
-row; the wrapper has to carry that, since it stands in for the
-button as the row's item.
-
 -}
 
 import Html exposing (Html, button, span, text)
@@ -23,7 +19,6 @@ import View.Tooltips as Tooltips
 
 view :
     { enabled : Bool
-    , grow : Bool
     , cls : String
     , msg : Msg
     , tip : String
@@ -41,13 +36,7 @@ view cfg =
 
     else
         span
-            [ class
-                (if cfg.grow then
-                    "inline-btn-wrap inline-btn-wrap--grow"
-
-                 else
-                    "inline-btn-wrap"
-                )
+            [ class "inline-btn-wrap"
             , Tooltips.attr cfg.tip
             ]
             [ button

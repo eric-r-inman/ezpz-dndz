@@ -1,13 +1,14 @@
 module View.Inline.Initiative exposing (view)
 
-{-| Initiative editor as a docked toolbar expansion: a
-single-button queue sort, an auto-roll batch (one row each for
-target / all / selected), and a custom value with its own apply
-buttons.
+{-| Initiative editor as a docked toolbar expansion.
+
+How to roll is a setting the action buttons read, so picking a
+mode and picking who it applies to stay separate choices.
+
 -}
 
-import Html exposing (Html, button, div, h3, input, text)
-import Html.Attributes as Attr exposing (class, for, id, type_, value)
+import Html exposing (Html, div, h3, input, span, text)
+import Html.Attributes as Attr exposing (checked, class, for, id, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg
     exposing
@@ -24,122 +25,66 @@ import View.Tooltips as Tooltips
 view : Int -> InitiativeUi -> Html Msg
 view selectedCount ui =
     div [ class "creature-card__inline" ]
-        [ quickSort
-        , autoRoll ui selectedCount
-        , custom ui selectedCount
+        [ rollSection selectedCount ui
+        , div [ class "cond-divider" ] []
+        , manualSection selectedCount ui
+        , div [ class "cond-divider" ] []
+        , sortSection
         ]
 
 
-quickSort : Html Msg
-quickSort =
-    div [ class "init-section" ]
-        [ button
-            [ class "action-btn action-btn--blue init-btn-block"
-            , onClick InitiativeQuickSort
+rollSection : Int -> InitiativeUi -> Html Msg
+rollSection selectedCount ui =
+    div [ class "cond-section" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [] [ text "Roll:" ]
+            , modeRadio ui ModeStandard "Standard"
+            , modeRadio ui ModeAdvantage "Advantage"
+            , modeRadio ui ModeDisadvantage "Disadvantage"
+            , surprisedToggle ui
             ]
-            [ text "🔄 Quick Sort Encounter" ]
-        , div [ class "init-section__caption" ]
-            [ text "Sort all creatures by their current initiative values" ]
+        , div [ class "cond-section__caption" ]
+            [ text "Rolls 1d20 plus the creature's initiative bonus, then sorts the queue." ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeAutoRoll ScopeTarget
+                , tip = "Roll for " ++ ui.target
+                , label = "Roll for Target"
+                }
+            , ApplyButton.view
+                { enabled = selectedCount > 0
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeAutoRoll ScopeSelected
+                , tip =
+                    if selectedCount == 0 then
+                        Tooltips.initSelectedNone
+
+                    else
+                        "Roll for every selected creature"
+                , label = "Roll for Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
+            , ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeAutoRoll ScopeAll
+                , tip = "Roll for the whole queue"
+                , label = "Roll for All"
+                }
+            ]
         ]
 
 
-autoRoll : InitiativeUi -> Int -> Html Msg
-autoRoll ui selectedCount =
-    div [ class "init-section" ]
-        [ h3 [ class "init-section__heading" ]
-            [ text "Auto-roll Initiative" ]
-        , div [ class "init-btn-grid" ]
-            (List.concat
-                [ autoRollPair ScopeTarget
-                    "Roll initiative & Sort: This"
-                    True
-                    ("Roll for " ++ ui.target)
-                , autoRollPair ScopeAll
-                    "Roll initiative & Sort: All"
-                    True
-                    ""
-                , autoRollPair ScopeSelected
-                    "Roll initiative & Sort: Selected"
-                    (selectedCount > 0)
-                    (selectedTitle selectedCount)
-                ]
-            )
-        , div [ class "init-section__caption" ]
-            [ text "Rolls 1d20 + creature's initiative bonus from stat block" ]
-        ]
-
-
-{-| Four buttons of one auto-roll row: the main "& Sort" button
-on the left, Advantage (blue), Disadvantage (orange), and the
-"Disadv. & Surprised" yellow button on the right. Returned as a
-flat list so the caller can drop them straight into a four-column
-grid — the main-button widths line up across all three rows so
-the four-column layout reads as a clean grid.
--}
-autoRollPair : RollScope -> String -> Bool -> String -> List (Html Msg)
-autoRollPair scope label enabled tipOverride =
-    let
-        -- An unavailable row explains itself through the caller's
-        -- override rather than the usual per-button hover text.
-        tipFor standard =
-            if enabled then
-                standard
-
-            else
-                tipOverride
-    in
-    [ ApplyButton.view
-        { enabled = enabled
-        , grow = True
-        , cls = "action-btn action-btn--green init-btn-block"
-        , msg = InitiativeAutoRoll scope ModeStandard
-        , tip =
-            if String.isEmpty tipOverride then
-                Tooltips.initRollStandard
-
-            else
-                tipOverride
-        , label = label
-        }
-    , ApplyButton.view
-        { enabled = enabled
-        , grow = True
-        , cls = "action-btn action-btn--blue init-btn-adv"
-        , msg = InitiativeAutoRoll scope ModeAdvantage
-        , tip = tipFor Tooltips.initRollAdvantage
-        , label = "Advantage"
-        }
-    , ApplyButton.view
-        { enabled = enabled
-        , grow = True
-        , cls = "action-btn action-btn--orange init-btn-adv"
-        , msg = InitiativeAutoRoll scope ModeDisadvantage
-        , tip = tipFor Tooltips.initRollDisadvantage
-        , label = "Disadvantage"
-        }
-    , ApplyButton.view
-        { enabled = enabled
-        , grow = True
-        , cls = "action-btn action-btn--yellow init-btn-adv"
-        , msg = InitiativeAutoRollSurprised scope
-        , tip =
-            tipFor "Roll initiative at disadvantage and flag as Surprised (clears at the end of their first turn)"
-        , label = "Disadv. & Surprised"
-        }
-    ]
-
-
-custom : InitiativeUi -> Int -> Html Msg
-custom ui selectedCount =
-    div [ class "init-section" ]
-        [ h3 [ class "init-section__heading" ]
-            [ text "Custom Initiative" ]
-        , div [ class "init-section__row" ]
-            [ Html.label [ for "init-custom-value" ]
-                [ text "Initiative Value:" ]
+manualSection : Int -> InitiativeUi -> Html Msg
+manualSection selectedCount ui =
+    div [ class "cond-section" ]
+        [ h3 [ class "cond-section__heading" ] [ text "Set to:" ]
+        , div [ class "cond-row" ]
+            [ Html.label [ for "init-custom-value" ] [ text "Initiative:" ]
             , input
                 [ id "init-custom-value"
-                , class "init-section__input"
+                , class "cond-input cond-input--w20"
                 , type_ "number"
                 , Attr.min "-99"
                 , Attr.max "99"
@@ -149,66 +94,98 @@ custom ui selectedCount =
                 ]
                 []
             ]
-        , div [ class "init-custom-row" ]
-            [ button
-                [ class "action-btn action-btn--green init-btn-block"
-                , onClick InitiativeApplyTarget
-                ]
-                [ text ("Apply & Sort: " ++ ui.target) ]
-            , button
-                [ class "action-btn action-btn--yellow init-btn-block"
-                , onClick InitiativeApplyTargetSurprised
-                , Tooltips.attr "Apply the typed initiative AND flag this creature as Surprised"
-                ]
-                [ text "Apply & Sort w/Surprised" ]
-            ]
-        , div [ class "init-custom-row" ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ ApplyButton.view
-                { enabled = selectedCount > 0
-                , grow = True
-                , cls = "action-btn action-btn--green init-btn-block"
-                , msg = InitiativeApplySelected
-                , tip = selectedTitle selectedCount
-                , label = "Apply & Sort: Selected" ++ selectedCountSuffix selectedCount
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeApplyTarget
+                , tip = "Set " ++ ui.target ++ "'s initiative to the typed value"
+                , label = "Apply to Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
-                , grow = True
-                , cls = "action-btn action-btn--yellow init-btn-block"
-                , msg = InitiativeApplySelectedSurprised
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeApplySelected
                 , tip =
                     if selectedCount == 0 then
                         Tooltips.initSelectedNone
 
                     else
-                        "Apply the typed initiative to selected AND flag them as Surprised"
-                , label = "Apply & Sort w/Surprised"
+                        "Set every selected creature to the typed value"
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         ]
 
 
-{-| Tooltip for "Selected" buttons: explains why they're disabled
-when no creatures are checked, and confirms the count when at least
-one is. Saves the GM a click to figure out why nothing happens.
+sortSection : Html Msg
+sortSection =
+    div [ class "cond-section" ]
+        [ div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--blue"
+                , msg = InitiativeQuickSort
+                , tip = "Sort the queue by the initiatives it already has"
+                , label = "🔄 Quick Sort Encounter"
+                }
+            ]
+        ]
+
+
+modeRadio : InitiativeUi -> RollMode -> String -> Html Msg
+modeRadio ui mode label =
+    let
+        isSelected =
+            ui.rollMode == mode
+    in
+    Html.label
+        [ class
+            (if isSelected then
+                "cond-radio cond-radio--selected"
+
+             else
+                "cond-radio"
+            )
+        ]
+        [ input
+            [ type_ "radio"
+            , Attr.name "initiative-roll-mode"
+            , checked isSelected
+            , onClick (InitiativeRollModeSet mode)
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text label ]
+        ]
+
+
+{-| Rides with whichever action the GM clicks, rolled or typed,
+so Surprised does not need its own copy of every button.
 -}
-selectedTitle : Int -> String
-selectedTitle n =
-    case n of
-        0 ->
-            Tooltips.initSelectedNone
+surprisedToggle : InitiativeUi -> Html Msg
+surprisedToggle ui =
+    Html.label
+        [ class
+            (if ui.markSurprised then
+                "cond-radio cond-radio--selected"
 
-        1 ->
-            Tooltips.initSelectedOne
+             else
+                "cond-radio"
+            )
+        , Tooltips.attr "Also flag whoever this applies to as Surprised"
+        ]
+        [ input
+            [ type_ "checkbox"
+            , class
+                (if ui.markSurprised then
+                    "cond-check cond-check--on"
 
-        _ ->
-            Tooltips.initSelectedMany n
-
-
-selectedCountSuffix : Int -> String
-selectedCountSuffix n =
-    if n > 0 then
-        " (" ++ String.fromInt n ++ ")"
-
-    else
-        ""
+                 else
+                    "cond-check"
+                )
+            , checked ui.markSurprised
+            , onClick InitiativeSurprisedToggle
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text "+ Surprised" ]
+        ]

@@ -1,18 +1,17 @@
 module Update.Initiative exposing
     ( applySelected
-    , applySelectedSurprised
     , applyTarget
-    , applyTargetSurprised
     , autoRoll
-    , autoRollSurprised
     , close
     , customChanged
     , initiativeExpression
     , open
     , openFor
     , quickSort
+    , rollModeSet
     , rollsLanded
     , source
+    , surprisedToggle
     )
 
 {-| Update branches for the toolbar's initiative editor: opening
@@ -103,113 +102,87 @@ quickSort model =
     )
 
 
-{-| Resolve which creatures the scope picks out and fire one
-batched roll Cmd. Mode picks the per-creature generator
-(standard 1d20+bonus vs. 2d20-keep-high+bonus). The handler
+{-| Resolve which creatures the scope picks out, flag them
+Surprised when the editor's toggle is set, and fire one batched
+roll Cmd in the editor's chosen mode. The handler
 (`InitiativeRollsLanded`) is shape-agnostic — it works for
-1-element or N-element batches and for either roll mode.
+1-element or N-element batches and for any roll mode.
 -}
-autoRoll : RollScope -> RollMode -> Model -> ( Model, Cmd Msg )
-autoRoll scope mode model =
-    let
-        creatures =
-            case scope of
-                ScopeTarget ->
-                    case model.surface of
-                        Just (SurfaceInitiative ui) ->
-                            List.filter
-                                (\c -> c.name == ui.target)
-                                model.encounter.creatures
+autoRoll : RollScope -> Model -> ( Model, Cmd Msg )
+autoRoll scope model =
+    case model.surface of
+        Just (SurfaceInitiative ui) ->
+            let
+                creatures =
+                    scopeCreatures scope model
+            in
+            ( surprisedIfAsked (List.map .name creatures) ui model
+            , initiativeRollCmd ui.rollMode creatures
+            )
 
-                        _ ->
-                            []
-
-                ScopeAll ->
-                    model.encounter.creatures
-
-                ScopeSelected ->
-                    List.filter .selected model.encounter.creatures
-    in
-    ( model, initiativeRollCmd mode creatures )
+        _ ->
+            ( model, Cmd.none )
 
 
-{-| Manual override for one creature.
+{-| Manual override for the editor's own target.
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
 applyTarget model =
-    case model.surface of
-        Just (SurfaceInitiative ui) ->
-            ( applyCustomInitiative [ ui.target ] ui model
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+    ( applyCustomTo (\ui -> [ ui.target ]) model, Cmd.none )
 
 
+{-| Manual override for every selected creature.
+-}
 applySelected : Model -> ( Model, Cmd Msg )
 applySelected model =
+    ( applyCustomTo
+        (\_ ->
+            model.encounter.creatures
+                |> List.filter .selected
+                |> List.map .name
+        )
+        model
+    , Cmd.none
+    )
+
+
+applyCustomTo : (InitiativeUi -> List String) -> Model -> Model
+applyCustomTo targetsFor model =
     case model.surface of
         Just (SurfaceInitiative ui) ->
             let
                 targets =
-                    List.filter .selected model.encounter.creatures
-                        |> List.map .name
+                    targetsFor ui
             in
-            ( applyCustomInitiative targets ui model
-            , Cmd.none
-            )
+            applyCustomInitiative targets ui (surprisedIfAsked targets ui model)
 
         _ ->
-            ( model, Cmd.none )
+            model
 
 
-{-| "Disadv. & Surprised" yellow buttons. Marks each
-in-scope creature surprised before firing the disadvantage
-roll batch — the lifecycle hook clears the flag at the end of
-the surprised creature's next turn.
+{-| The editor's Surprised toggle rides along with whichever
+action the GM clicks; the lifecycle hook clears the flag at the
+end of the surprised creature's next turn.
 -}
-autoRollSurprised : RollScope -> Model -> ( Model, Cmd Msg )
-autoRollSurprised scope model =
-    let
-        creatures =
-            scopeCreatures scope model
+surprisedIfAsked : List String -> InitiativeUi -> Model -> Model
+surprisedIfAsked names ui model =
+    if ui.markSurprised then
+        flagSurprised names model
 
-        names =
-            List.map .name creatures
-    in
-    autoRoll scope ModeDisadvantage (flagSurprised names model)
+    else
+        model
 
 
-applyTargetSurprised : Model -> ( Model, Cmd Msg )
-applyTargetSurprised model =
-    case model.surface of
-        Just (SurfaceInitiative ui) ->
-            ( applyCustomInitiative [ ui.target ]
-                ui
-                (flagSurprised [ ui.target ] model)
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+rollModeSet : RollMode -> Model -> ( Model, Cmd Msg )
+rollModeSet mode model =
+    ( withInitiative (\u -> { u | rollMode = mode }) model, Cmd.none )
 
 
-applySelectedSurprised : Model -> ( Model, Cmd Msg )
-applySelectedSurprised model =
-    case model.surface of
-        Just (SurfaceInitiative ui) ->
-            let
-                targets =
-                    List.filter .selected model.encounter.creatures
-                        |> List.map .name
-            in
-            ( applyCustomInitiative targets ui (flagSurprised targets model)
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+surprisedToggle : Model -> ( Model, Cmd Msg )
+surprisedToggle model =
+    ( withInitiative (\u -> { u | markSurprised = not u.markSurprised }) model
+    , Cmd.none
+    )
 
 
 scopeCreatures : RollScope -> Model -> List Encounter.Creature

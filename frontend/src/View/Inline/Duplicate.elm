@@ -19,7 +19,6 @@ view selectedCount log ui =
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ ApplyButton.view
                 { enabled = True
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = DuplicateApply
                 , tip = "Copy the target creature"
@@ -27,7 +26,6 @@ view selectedCount log ui =
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
-                , grow = False
                 , cls = "action-btn action-btn--green"
                 , msg = DuplicateApplySelected
                 , tip =

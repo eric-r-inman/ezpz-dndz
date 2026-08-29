@@ -5377,7 +5377,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .dice-history__title,
 .hp-change__log-title,
 .hp-change__log-kind,
-.init-section__heading,
 .encounter-bar__hp-label,
 .encounter-bar__ac-label {
   text-transform: uppercase;
@@ -8221,13 +8220,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Shared form-row pattern: a wrapping flex row with a leading
-   label.  Used by the dice / HP-change / initiative modals (with
-   slightly different gap + label widths) and the condition modal
-   (no label child, smaller gap).  Per-feature class blocks below
-   only set the gap + label-width overrides. */
+   label.  Per-feature class blocks below set only their own gap
+   and label-width overrides. */
 .dice-form__row,
 .hp-change__row,
-.init-section__row,
 .cond-row {
   display: flex;
   align-items: center;
@@ -8260,8 +8256,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .dice-form__row label,
-.hp-change__row label,
-.init-section__row label {
+.hp-change__row label {
   color: var(--color-text-muted);
   font-size: 0.85rem;
   min-width: 100px;
@@ -8272,22 +8267,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.82rem;
 }
 
-.init-section__row label {
-  min-width: 130px;
-}
-
 .dice-form__row-spacer {
   margin-left: 12px;
 }
 
 /* Shared form-input chrome used by .dice-form__input,
-   .hp-change__input, .init-section__input.  These three are
-   structurally identical (the sole behavior diff is font-size /
-   tabular-nums for the numeric variants).  Each individual class
-   below adds only its size / numeric-formatting overrides. */
+   .hp-change__input.  The two are structurally identical (the
+   sole behavior diff is font-size / tabular-nums for the numeric
+   variant).  Each individual class below adds only its size /
+   numeric-formatting overrides. */
 .dice-form__input,
-.hp-change__input,
-.init-section__input {
+.hp-change__input {
   flex: 1 1 auto;
   padding: 6px 10px;
   border: 1px solid var(--color-border);
@@ -8299,8 +8289,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .dice-form__input:focus,
-.hp-change__input:focus,
-.init-section__input:focus {
+.hp-change__input:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -8881,111 +8870,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
 }
 
-/* Initiative manager modal — same .modal chrome as the others, with
-   per-section blocks separated by orange section headings, and
-   block-level button rows (each row a full-width action-btn). */
-
-.init-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.init-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.init-section__heading {
-  margin: 4px 0 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--color-orange-dark);
-}
-
-.init-section__caption {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.init-section__input {
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Stretch action-btns inside the modal to fill the row width. */
-.init-btn-block {
-  width: 100%;
-  justify-content: center;
-}
-
-/* Paired "<main button> + Advantage" row in the Auto-roll section.
-   Main button takes whatever space it needs, Advantage sits to the
-   right at its natural width. */
-.init-btn-row {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
-}
-
-.init-btn-row .init-btn-block {
-  flex: 1 1 auto;
-  width: auto;
-}
-
-/* Four-column grid for the Auto-roll section: main button |
-   Advantage | Disadvantage | Disadv. & Surprised.  Column 1
-   sizes to fit the widest main label so all three "Roll
-   initiative & Sort: …" buttons align flush, with the
-   right three columns at their natural widths. */
-.init-btn-grid {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 6px;
-  align-items: stretch;
-}
-
-/* Custom Initiative apply rows: green primary on the left,
-   yellow "& Surprised" sibling on the right.  Flex row so the
-   two buttons share the row width without the wider yellow
-   label pushing the green one out of alignment. */
-.init-custom-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.init-custom-row .init-btn-block {
-  flex: 1 1 auto;
-  width: auto;
-}
-
-.init-btn-grid .init-btn-block {
-  width: auto;
-}
-
-.init-btn-adv {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
 /* Wrapper around a docked editor's unavailable Apply button.  It
    owns the tooltip trigger, since the disabled button inside
    swallows mouse events in Chrome, and takes the button's place
-   as the grid / flex item.  The --grow variant is for rows whose
-   buttons share the width. */
+   as the flex item. */
 .inline-btn-wrap {
   display: inline-flex;
   cursor: default;
-}
-
-.inline-btn-wrap--grow {
-  flex: 1 1 auto;
 }
 
 .inline-btn-inert {
@@ -9225,6 +9116,22 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-radio--selected input[type="radio"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* A pill holding a checkbox is an independent toggle, so its
+   indicator is square where the one-of-many radios are round. */
+.cond-check {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--color-text-muted);
+  margin: 0;
+}
+
+.cond-check--on {
   background: var(--color-accent);
   border-color: var(--color-accent);
 }

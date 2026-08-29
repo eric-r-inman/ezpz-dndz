@@ -75,12 +75,7 @@ module View.Tooltips exposing
     , halfCover
     , hiding
     , hpOpenManage
-    , initRollAdvantage
-    , initRollDisadvantage
-    , initRollStandard
-    , initSelectedMany
     , initSelectedNone
-    , initSelectedOne
     , initiativeManager
     , inlineEditCancel
     , lastRollTotal
@@ -963,32 +958,12 @@ diceRollAgain =
 
 
 
--- ── INITIATIVE MODAL ─────────────────────────────────────────────────────────
-
-
-initRollStandard : String
-initRollStandard =
-    "Roll 1d20 + initiative bonus"
-
-
-initRollAdvantage : String
-initRollAdvantage =
-    "Roll 2d20, keep highest, + initiative bonus"
-
-
-initRollDisadvantage : String
-initRollDisadvantage =
-    "Roll 2d20, keep lowest, + initiative bonus"
+-- ── INITIATIVE EDITOR ────────────────────────────────────────────────────────
 
 
 initSelectedNone : String
 initSelectedNone =
     "No creatures are selected — tick the checkbox for the creatures you want first"
-
-
-initSelectedOne : String
-initSelectedOne =
-    "1 creature selected"
 
 
 
@@ -1213,15 +1188,6 @@ statBlockAttack shown mod =
 quickAddCreatureRow : String -> String
 quickAddCreatureRow creatureName =
     "Add " ++ creatureName ++ " to encounter"
-
-
-{-| Initiative modal "Apply & Sort: Selected" button — title
-varies by selection count. See `initSelectedNone` and
-`initSelectedOne` for the special-cased zero / one strings.
--}
-initSelectedMany : Int -> String
-initSelectedMany n =
-    String.fromInt n ++ " creatures selected"
 
 
 {-| Dice modal main face button (d4 / d6 / d8 / …).

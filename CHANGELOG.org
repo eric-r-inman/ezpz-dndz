@@ -39,6 +39,8 @@
     start of that creature's turn.  No action needed.
 13. The encounter title bar divides its readouts with separators and lists
     conditions inline, comma-separated.  No action needed.
+14. The initiative editor picks how to roll and who to roll for separately,
+    replacing its grid of one button per combination.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

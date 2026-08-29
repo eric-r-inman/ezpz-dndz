@@ -343,15 +343,15 @@ module owns:
    begin-of-turn pass does the same for the ~AtBegin~ phase.
 
 The 5e Surprised state was reintroduced in 2026-06 as a per- creature ~surprised
-: Bool~ flag.  Initiative-modal entry points ("Disadv. & Surprised" and "Apply &
-Sort w/Surprised") flip the flag on whichever creatures are in scope before the
-roll / apply runs.  Card row 1 and the encounter title-bar active-creature
-summary both render a 😲 badge to the left of the name while surprised.  The
-end-of-turn lifecycle hook (~applyEndOfTurn~) clears the flag for the outgoing
-creature, so Surprised burns off after the surprised creature finishes their
-first turn — matching the rule.  Surprised creatures are suppressed from the
-LA-availability reminder strip but not the Special Reactions strip (the rule
-only bars LA use, not ordinary reactions).
+: Bool~ flag.  The initiative editor's Surprised toggle flips the flag on
+whichever creatures are in scope before the roll / apply runs.  Card row 1 and
+the encounter title-bar active-creature summary both render a 😲 badge to the
+left of the name while surprised.  The end-of-turn lifecycle hook
+(~applyEndOfTurn~) clears the flag for the outgoing creature, so Surprised burns
+off after the surprised creature finishes their first turn — matching the rule.
+Surprised creatures are suppressed from the LA-availability reminder strip but
+not the Special Reactions strip (the rule only bars LA use, not ordinary
+reactions).
 
 ** Creature record extensions
 
@@ -368,10 +368,10 @@ Surprised + Special-Reactions hints:
 - ~race : String~ — free-form (e.g. ~"Dragon"~), rendered in the stat-block meta
   strip.
 - ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
-- ~surprised : Bool~ — set by the initiative-modal "Disadv. & Surprised" /
-  "Apply & Sort w/Surprised" entry points and cleared by ~applyEndOfTurn~ after
-  the creature's first turn.  Drives a 😲 badge on the card + title bar and
-  suppresses the creature from the LA-availability strip.
+- ~surprised : Bool~ — set by the initiative editor's Surprised toggle riding
+  along with whichever roll or apply the GM clicks, and cleared by
+  ~applyEndOfTurn~ after the creature's first turn.  Drives a 😲 badge on the
+  card + title bar and suppresses the creature from the LA-availability strip.
 - ~hasSpecialReactions : Bool~ — copied from the compendium template at spawn
   time.  When set, the card's reaction pip drops the lightning glyph for a
   pulsing bright-blue ~!~ and the creature shows up in the "Special reactions:
