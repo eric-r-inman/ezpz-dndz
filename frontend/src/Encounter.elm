@@ -8,7 +8,7 @@ module Encounter exposing
     , empty
     , run
     , setActive, activeCreature
-    , mapCreature, nextCover, toggleSpecialReaction
+    , mapCreature, nextCover, toggleReaction, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
@@ -67,7 +67,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # State helpers
 
-@docs mapCreature, nextCover, toggleSpecialReaction
+@docs mapCreature, nextCover, toggleReaction, toggleSpecialReaction
 
 
 # Death saves
@@ -635,11 +635,11 @@ mapCreature name fn enc =
 
 
 {-| Mark one of a creature's special reactions spent, or hand it
-back. Spending one also spends the creature's reaction for the
-round, since that is what it costs; handing one back does not
-return the pip, which may be recording an ordinary reaction the
-GM marked by hand. `Encounter.Lifecycle.applyBeginOfTurn` clears
-both at the start of the creature's turn.
+back. A special reaction costs the creature's reaction for the
+round, so the two track each other: the reaction reads as spent
+while any special one is, and handing the last one back returns
+it. `Encounter.Lifecycle.applyBeginOfTurn` clears both at the
+start of the creature's turn.
 -}
 toggleSpecialReaction : String -> Creature -> Creature
 toggleSpecialReaction reaction c =
@@ -653,8 +653,22 @@ toggleSpecialReaction reaction c =
     in
     { c
         | specialReactionsUsed = used
-        , reactionUsed = c.reactionUsed || Set.member reaction used
+        , reactionUsed = not (Set.isEmpty used)
     }
+
+
+{-| Flip the creature's one-per-round reaction, carrying its
+special reactions with it — spending the reaction spends them,
+and handing it back returns them. `names` is what the card's
+badges show, since the set only holds the ones marked spent.
+-}
+toggleReaction : List String -> Creature -> Creature
+toggleReaction names c =
+    if c.reactionUsed then
+        { c | reactionUsed = False, specialReactionsUsed = Set.empty }
+
+    else
+        { c | reactionUsed = True, specialReactionsUsed = Set.fromList names }
 
 
 {-| Look a creature up by name. Returns `Nothing` if absent.

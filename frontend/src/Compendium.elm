@@ -11,7 +11,7 @@ module Compendium exposing
     , crToFloat
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
-    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionNames, specialReactions, syncLegendaryFields
+    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionLabels, specialReactionNames, specialReactions, syncLegendaryFields
     )
 
 {-| Pure domain layer for the compendium.
@@ -1049,6 +1049,41 @@ the surfaces that only label them.
 specialReactionNames : Creature -> List String
 specialReactionNames =
     List.map .name << specialReactions
+
+
+{-| What a queue creature's special-reaction badges are called.
+
+The labels double as the keys of the creature's spent set, so
+the card and the reaction pip have to agree on them; a flagged
+creature whose source names nothing still gets one generic
+badge to mark.
+
+-}
+specialReactionLabels : Db -> Encounter.Creature -> List String
+specialReactionLabels db c =
+    if not c.hasSpecialReactions then
+        []
+
+    else
+        c.creatureId
+            |> Maybe.andThen (\id -> find id db)
+            |> Maybe.map specialReactionNames
+            |> Maybe.withDefault []
+            |> orGenericLabel
+
+
+orGenericLabel : List String -> List String
+orGenericLabel names =
+    if List.isEmpty names then
+        [ genericSpecialReactionLabel ]
+
+    else
+        names
+
+
+genericSpecialReactionLabel : String
+genericSpecialReactionLabel =
+    "Special Reaction"
 
 
 {-| The features behind the special-reaction flag. Three signals

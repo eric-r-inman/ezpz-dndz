@@ -767,12 +767,8 @@ legendaryColumns isActive creature =
 
 {-| Orange name badges for row 1's chip cluster, one per
 special-reaction feature on the creature's compendium source
-("Redirect Attack", "Misty Escape", …). The single-pip Reaction
-toggle on row 3 can't model these, so the badges name what to
-look up in the stat block instead of pretending to count them.
-Falls back to a single "Special Reaction" badge when the flag is
-set but no source feature can be named (a manual editor toggle,
-or a creature with no compendium link).
+("Redirect Attack", "Misty Escape", …), so the GM can see which
+one to look up rather than just that there is one.
 -}
 specialReactionBadges : Context -> Creature -> List (Html Msg)
 specialReactionBadges ctx creature =
@@ -780,25 +776,13 @@ specialReactionBadges ctx creature =
         []
 
     else
-        let
-            names =
-                case ( creature.creatureId, ctx.compendium ) of
-                    ( Just id_, CompendiumDbLoaded db ) ->
-                        Compendium.find id_ db
-                            |> Maybe.map Compendium.specialReactionNames
-                            |> Maybe.withDefault []
+        case ctx.compendium of
+            CompendiumDbLoaded db ->
+                List.map (srBadge creature)
+                    (Compendium.specialReactionLabels db creature)
 
-                    _ ->
-                        []
-
-            shown =
-                if List.isEmpty names then
-                    [ "Special Reaction" ]
-
-                else
-                    names
-        in
-        List.map (srBadge creature) shown
+            _ ->
+                []
 
 
 {-| One badge, clickable to mark its reaction spent and back

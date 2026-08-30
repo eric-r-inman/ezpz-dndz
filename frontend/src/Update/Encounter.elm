@@ -40,6 +40,7 @@ already moved into `Encounter.Lifecycle.nextTurn`, leaving only the
 
 -}
 
+import Compendium
 import Dice
 import Effects
 import Encounter exposing (Encounter)
@@ -48,6 +49,7 @@ import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
 import Set
+import Ui.Compendium exposing (CompendiumDb(..))
 
 
 {-| Local lens for `model.encounter`. Kept private to this module —
@@ -168,18 +170,30 @@ toggleReadied name model =
     )
 
 
-{-| Toggle the per-creature reaction pip. Every creature gets one
-reaction per round in 5e (opportunity attack, Counterspell,
-Shield, Hellish Rebuke…); the pip flips back to "available"
-automatically at the start of the creature's next turn — see
-`Encounter.Lifecycle.applyBeginOfTurn` for the reset. Click is
-also wired manually so the GM can adjust if they need to undo
-or pre-spend.
+{-| Toggle the per-creature reaction pip. The badge labels come
+from the compendium so the pip marks exactly what the card
+shows. Every creature gets one reaction per round in 5e
+(opportunity attack, Counterspell, Shield, Hellish Rebuke…); the
+pip flips back to "available" automatically at the start of the
+creature's next turn — see `Encounter.Lifecycle.applyBeginOfTurn`
+for the reset. Click is also wired manually so the GM can adjust
+if they need to undo or pre-spend.
 -}
 toggleReaction : String -> Model -> ( Model, Cmd Msg )
 toggleReaction name model =
+    let
+        labels c =
+            case model.compendium.db of
+                CompendiumDbLoaded db ->
+                    Compendium.specialReactionLabels db c
+
+                _ ->
+                    []
+    in
     ( withEncounter
-        (Encounter.mapCreature name (\c -> { c | reactionUsed = not c.reactionUsed }))
+        (Encounter.mapCreature name
+            (\c -> Encounter.toggleReaction (labels c) c)
+        )
         model
     , Cmd.none
     )
