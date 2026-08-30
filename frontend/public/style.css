@@ -6111,6 +6111,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  /* Wraps to a second row on a narrow window; the triggers must
+     stay reachable rather than overflow the pane. */
+  flex-wrap: wrap;
   gap: 8px;
   padding: 6px 12px;
   background: var(--color-surface-2);
@@ -6920,7 +6923,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .encounter-bar__sep {
-  color: var(--color-border);
+  color: var(--color-text-muted);
   user-select: none;
 }
 

@@ -8,7 +8,7 @@ module Encounter exposing
     , empty
     , run
     , setActive, activeCreature
-    , mapCreature, nextCover
+    , mapCreature, nextCover, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
@@ -67,7 +67,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # State helpers
 
-@docs mapCreature, nextCover
+@docs mapCreature, nextCover, toggleSpecialReaction
 
 
 # Death saves
@@ -632,6 +632,29 @@ mapCreature name fn enc =
                 c
     in
     { enc | creatures = List.map apply enc.creatures }
+
+
+{-| Mark one of a creature's special reactions spent, or hand it
+back. Spending one also spends the creature's reaction for the
+round, since that is what it costs; handing one back does not
+return the pip, which may be recording an ordinary reaction the
+GM marked by hand. `Encounter.Lifecycle.applyBeginOfTurn` clears
+both at the start of the creature's turn.
+-}
+toggleSpecialReaction : String -> Creature -> Creature
+toggleSpecialReaction reaction c =
+    let
+        used =
+            if Set.member reaction c.specialReactionsUsed then
+                Set.remove reaction c.specialReactionsUsed
+
+            else
+                Set.insert reaction c.specialReactionsUsed
+    in
+    { c
+        | specialReactionsUsed = used
+        , reactionUsed = c.reactionUsed || Set.member reaction used
+    }
 
 
 {-| Look a creature up by name. Returns `Nothing` if absent.

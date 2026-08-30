@@ -35,8 +35,9 @@
 11. Card HP values no longer edit in place: clicking one opens the Manage HP
     editor aimed at that creature, whose new Manual section sets the pools
     directly.  No action needed.
-12. A creature card's special-reaction badges toggle spent, clearing at the
-    start of that creature's turn.  No action needed.
+12. A creature card's special-reaction badges toggle spent — which also spends
+    the creature's reaction — and clear at the start of that creature's turn.
+    No action needed.
 13. The encounter title bar divides its readouts with separators and lists
     conditions inline, comma-separated.  No action needed.
 14. The initiative editor picks how to roll and who to roll for separately,

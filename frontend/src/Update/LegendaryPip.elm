@@ -51,24 +51,16 @@ toggleResistance name idx model =
     )
 
 
-{-| Mark one of a creature's special reactions spent, or hand it
-back. Keyed by the reaction's name, since the badges come from
-the compendium source rather than a fixed-size strip.
--}
 toggleSpecialReaction : String -> String -> Model -> ( Model, Cmd Msg )
 toggleSpecialReaction name reaction model =
     ( withEncounter
-        (Encounter.mapCreature name
-            (\c ->
-                { c | specialReactionsUsed = toggleSetMember reaction c.specialReactionsUsed }
-            )
-        )
+        (Encounter.mapCreature name (Encounter.toggleSpecialReaction reaction))
         model
     , Cmd.none
     )
 
 
-toggleSetMember : comparable -> Set comparable -> Set comparable
+toggleSetMember : Int -> Set Int -> Set Int
 toggleSetMember member set =
     if Set.member member set then
         Set.remove member set
