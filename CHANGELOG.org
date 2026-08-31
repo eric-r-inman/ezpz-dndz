@@ -45,7 +45,7 @@
 15. The encounter title bar's flying readout punctuates its height, so the
     number reads as the wing icon's rather than a neighbouring value.  No action
     needed.
-16. A far-left Actions pane gathers the encounter's triggers and controls into a
+16. A far-left Actions pane gathers the encounter and compendium triggers into a
     single scrolling column, though its buttons do nothing yet.  No action
     needed.
 17. The Condition/Effect trigger is now labelled Condition.  No action needed.

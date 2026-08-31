@@ -49,11 +49,11 @@ why "Apply to Selected" is unavailable never appeared.  Every docked editor's
 apply button now routes through =View.Inline.ApplyButton=, which hangs the
 tooltip on a wrapper span when the button is unavailable.
 
-* TODO Decide where the encounter's triggers live
+* TODO Decide where the workspace's triggers live
 
-The far-left Actions pane duplicates the encounter's editor triggers and its
-controls as a single column, with no handlers on them, so the placements can be
-judged side by side.  Wire whichever wins and drop the other.  Part of
+The far-left Actions pane duplicates the triggers the other panes carry as a
+single column, with no handlers on them, so the placements can be judged side by
+side.  Wire whichever wins and drop the other.  Part of
 [[*Migrate the frontend off modal dialogs]].
 
 * TODO Sweep the "modal" wording out of the migrated editors
@@ -61,6 +61,15 @@ judged side by side.  Wire whichever wins and drop the other.  Part of
 Doc comments across the Ui and Update modules still describe surfaces that now
 dock inline as modals, so a reader meets a widget the UI no longer has.
 Retarget them file by file.  Part of [[*Migrate the frontend off modal dialogs]].
+
+* TODO Tokenise the stylesheet's type scale
+
+CONTRIBUTING.org's "CSS variables for shared values" rule covers every shared
+value, but the stylesheet's font sizes and weights are still written as literals
+in dozens of rules apiece.  ~--font-size-label~ and ~--font-weight-label~ cover
+the group-label shape; define the rest of the scale on ~:root~ and point the
+existing rules at it.  Same shape of work as
+[[*Sweep style.css to the flat-selector convention]].
 
 * TODO Sweep style.css to the flat-selector convention
 

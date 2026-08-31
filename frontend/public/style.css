@@ -80,6 +80,12 @@
   --space-5: 24px;
   --header-height: 56px;
 
+  /* Type for the muted group label.  Most rules wearing that
+     shape still spell the values out; converting them is
+     tracked in `tasks.org`. */
+  --font-size-label: 0.78rem;
+  --font-weight-label: 600;
+
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
   --color-yellow: #ca8a04;
@@ -4237,6 +4243,17 @@ body {
   flex-direction: column;
   align-items: stretch;
   gap: var(--space-2);
+}
+
+/* Group label within the action column.  The space above it does
+   the separating; a rule line would have to compete with the
+   borders every button already carries. */
+.panel-actions__heading {
+  flex: 0 0 auto;
+  margin: var(--space-3) 0 0 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
 }
 
 .panel-actions__btn {

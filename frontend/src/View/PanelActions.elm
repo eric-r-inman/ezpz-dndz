@@ -1,6 +1,6 @@
 module View.PanelActions exposing (view)
 
-{-| Far-left pane: a single column of the encounter's triggers.
+{-| Far-left pane: a single column of the workspace's triggers.
 
 The buttons carry no handlers — the column is a proposal,
 weighed against today's placements before the winner is wired
@@ -8,7 +8,7 @@ and the loser dropped (see =tasks.org=).
 
 -}
 
-import Html exposing (Html, button, div, section, text)
+import Html exposing (Html, button, div, h3, section, text)
 import Html.Attributes exposing (class, type_)
 
 
@@ -42,8 +42,16 @@ view =
             , trigger "action-btn action-btn--orange" "⟲ Reset"
             , trigger "action-btn action-btn--red" "🗑 Clear"
             , trigger "action-btn action-btn--green" "🎲 Roll"
+            , heading "Compendium"
+            , trigger "action-btn action-btn--blue" "📖 Open"
+            , trigger "action-btn action-btn--blue" "🎲 Random"
             ]
         ]
+
+
+heading : String -> Html msg
+heading label =
+    h3 [ class "panel-actions__heading" ] [ text label ]
 
 
 trigger : String -> String -> Html msg
