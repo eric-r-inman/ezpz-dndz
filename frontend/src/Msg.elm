@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , ActionsDrawerTarget(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -93,6 +93,33 @@ type QueuePanel
     = LegendaryActionsPanel
     | SpecialReactionsPanel
     | SpellsPanel
+
+
+{-| Which of the Actions column's buttons opened the drawer.
+The drawer holds one of these rather than the button's face, so
+a button whose label tracks live state still keeps a fixed
+identity.
+-}
+type ActionsDrawerTarget
+    = DrawerManageHp
+    | DrawerStatus
+    | DrawerCondition
+    | DrawerSaveChain
+    | DrawerInitiative
+    | DrawerReplace
+    | DrawerDuplicate
+    | DrawerDifficulty
+    | DrawerTreasure
+    | DrawerXp
+    | DrawerQuickAdd
+    | DrawerSave
+    | DrawerLoad
+    | DrawerNextTurn
+    | DrawerReset
+    | DrawerClear
+    | DrawerRoll
+    | DrawerCompendiumOpen
+    | DrawerCompendiumRandom
 
 
 {-| Which boolean posture toggle a Status-editor click flips.
@@ -1312,6 +1339,9 @@ type Msg
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
+      -- Button in the far-left Actions column, sliding its panel
+      -- open over the queue.
+    | ActionsDrawerToggle ActionsDrawerTarget
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

@@ -64,6 +64,7 @@ module View.Tooltips exposing
     , diceReset
     , diceRollAgain
     , dodging
+    , drawerClose
     , encounterBarDifficulty
     , encounterBarSpellList
     , encounterBarTreasure
@@ -982,6 +983,11 @@ quickAddSortToCr =
 
 
 -- ── MODAL CHROME / TOAST ─────────────────────────────────────────────────────
+
+
+drawerClose : String
+drawerClose =
+    "Close this panel"
 
 
 modalClose : String

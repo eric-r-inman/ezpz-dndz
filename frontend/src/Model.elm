@@ -55,6 +55,7 @@ import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
+import Ui.ActionsDrawer exposing (ActionsDrawerUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
@@ -497,6 +498,11 @@ type alias Model =
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.
     , queuePanels : QueuePanels
+
+    -- The panel the Actions column slides open over the queue.
+    -- Also independent of `surface`, because it is the frame the
+    -- surfaces are being moved into.
+    , actionsDrawer : Maybe ActionsDrawerUi
 
     -- Dismissed-the-anonymous-banner flag.  When `True`, the
     -- "you're browsing as a guest" strip at the top of the

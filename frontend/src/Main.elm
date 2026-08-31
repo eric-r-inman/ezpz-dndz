@@ -80,6 +80,7 @@ import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
+import Update.ActionsDrawer
 import Update.Auth
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
@@ -595,6 +596,7 @@ init flags url key =
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
       , queuePanels = Ui.QueuePanels.fresh
+      , actionsDrawer = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
       , controlMenu = Nothing
@@ -1824,6 +1826,9 @@ updateInner msg model =
 
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
+
+        ActionsDrawerToggle target ->
+            Update.ActionsDrawer.toggle target model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model

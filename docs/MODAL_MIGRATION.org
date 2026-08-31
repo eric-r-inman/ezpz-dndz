@@ -105,6 +105,11 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   confirmation) covers the common case; the "save as" form becomes a small
   drawer; full file management moves to the =/saves= route below.
 
+The far-left Actions column now slides an empty panel of its own over the queue,
+wearing the compendium pane's chrome.  It is the proposed home for the entries
+above — one frame reached from one column, rather than a drawer per tier — and
+stays unwired until the placement question in ~tasks.org~ is settled.
+
 ** Route / full page
 
 - =Compendium= (browser) :: The flagship conversion: a =/compendium= section.

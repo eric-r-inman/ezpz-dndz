@@ -52,8 +52,16 @@ tooltip on a wrapper span when the button is unavailable.
 * TODO Decide where the workspace's triggers live
 
 The far-left Actions pane duplicates the triggers the other panes carry as a
-single column, with no handlers on them, so the placements can be judged side by
-side.  Wire whichever wins and drop the other.  Part of
+single column, none of them reaching their destination, so the placements can be
+judged side by side.  Wire whichever wins and drop the other.  Part of
+[[*Migrate the frontend off modal dialogs]].
+
+* TODO Fill the Actions drawer
+
+Every button in the Actions column slides the same empty panel open, so the
+frame can be seen before anything is moved into it.  Give each button its
+destination — the compendium and the editors named in [[file:docs/MODAL_MIGRATION.org][docs/MODAL_MIGRATION.org]] —
+once [[*Decide where the workspace's triggers live]] is settled.  Part of
 [[*Migrate the frontend off modal dialogs]].
 
 * TODO Sweep the "modal" wording out of the migrated editors

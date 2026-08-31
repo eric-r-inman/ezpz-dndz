@@ -86,6 +86,10 @@
   --font-size-label: 0.78rem;
   --font-weight-label: 600;
 
+  /* Roughly what the compendium pane gets at a full-width window,
+     so the drawer reads as that panel moved rather than resized. */
+  --drawer-width: 400px;
+
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
   --color-yellow: #ca8a04;
@@ -4271,6 +4275,48 @@ body {
   grid-row: 1 / span 2;
 }
 
+/* The Actions column's panel shares the queue's grid area rather
+   than taking a column of its own: the queue keeps its width and
+   stays scrollable while the panel covers its left edge.  The
+   opaque surface `.panel` already carries is what makes the
+   overlap read as a panel on top rather than a transparency. */
+.panel--drawer {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: start;
+  width: min(var(--drawer-width), 100%);
+  z-index: 10;
+  animation: drawer-slide-in 0.16s ease-out;
+}
+
+@keyframes drawer-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.panel-drawer__close {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+}
+
+.panel-drawer__close:hover {
+  color: var(--color-text);
+}
+
 /* A page whose workspace holds this panel alone: it spans the
    grid rather than sitting in the queue's column, which would
    leave the action column's gap hanging to its left. */
@@ -7233,21 +7279,32 @@ button.creature-card__lifecycle--dead:focus-visible {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
   }
+  /* Stacked, the panes fall in source order, which lets the
+     drawer take a row of its own when it is open and leave no
+     empty one behind when it is not.  It stops overlapping here:
+     a fixed-width panel covering part of a full-width queue
+     would read as a rendering fault rather than a drawer. */
   .panel--actions {
     grid-column: 1;
-    grid-row: 1;
+    grid-row: auto;
   }
   .panel--main {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: auto;
+  }
+  .panel--drawer {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: stretch;
+    width: auto;
   }
   .panel--controls {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: auto;
   }
   .panel--detail {
     grid-column: 1;
-    grid-row: 4;
+    grid-row: auto;
   }
 }
 

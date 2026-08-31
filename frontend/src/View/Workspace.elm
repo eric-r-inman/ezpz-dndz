@@ -19,6 +19,7 @@ import Html.Events exposing (onClick)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), QueuePanel(..))
 import Set
+import Ui.ActionsDrawer exposing (ActionsDrawerUi)
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
 import View.EncounterBar
@@ -34,6 +35,7 @@ import View.Inline.Status
 import View.PanelActions
 import View.PanelControls
 import View.PanelDetail
+import View.PanelDrawer
 import View.Tooltips as Tooltips
 
 
@@ -44,7 +46,11 @@ view model =
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ View.PanelActions.view model.encounter model.compendium.db model.xpScope
+        [ View.PanelActions.view model.encounter
+            model.compendium.db
+            model.xpScope
+            model.actionsDrawer
+        , actionsDrawer model.actionsDrawer
         , panelMain model
         , View.PanelControls.view
             model.auth
@@ -55,6 +61,23 @@ view model =
             model.controlMenu
         , View.PanelDetail.view model
         ]
+
+
+{-| The Actions column's panel. It shares the queue's grid area
+rather than claiming a column of its own, which is what lets the
+queue keep its width — and keep scrolling — while the panel
+covers part of it. Paint order comes from the stylesheet, so it
+sits ahead of the queue here, where the reading order and the
+tab order both want it once it's open.
+-}
+actionsDrawer : Maybe ActionsDrawerUi -> Html Msg
+actionsDrawer drawer =
+    case drawer of
+        Just ui ->
+            View.PanelDrawer.view ui
+
+        Nothing ->
+            text ""
 
 
 {-| The encounter pane. Builds the card context each card render
