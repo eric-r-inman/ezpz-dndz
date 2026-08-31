@@ -2,18 +2,22 @@ module View.PanelActions exposing (view)
 
 {-| Far-left pane: a single column of the workspace's triggers.
 
-The buttons carry no handlers — the column is a proposal,
-weighed against today's placements before the winner is wired
-and the loser dropped (see =tasks.org=).
+Every button is handler-less, the XP one included; it differs
+only in that its label reads live state. The column is a
+proposal, weighed against today's placements before the winner
+is wired and the loser dropped (see =tasks.org=).
 
 -}
 
+import Encounter exposing (Encounter)
+import Encounter.Xp as Xp exposing (XpScope)
 import Html exposing (Html, button, div, h3, section, text)
 import Html.Attributes exposing (class, type_)
+import Ui.Compendium exposing (CompendiumDb(..))
 
 
-view : Html msg
-view =
+view : Encounter -> CompendiumDb -> XpScope -> Html msg
+view enc db xpScope =
     section [ class "panel panel--actions" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Actions" ] ]
@@ -31,6 +35,7 @@ view =
             -- and glyph it wears where it lives now.
             , trigger "action-btn" "Difficulty"
             , trigger "action-btn" "Treasure"
+            , trigger "action-btn" (xpLabel enc db xpScope)
             , trigger "action-btn action-btn--blue" "➕ Quick Add"
             , trigger "action-btn action-btn--blue" "💾 Save"
             , trigger "action-btn action-btn--blue" "📁 Load"
@@ -47,6 +52,20 @@ view =
             , trigger "action-btn action-btn--blue" "🎲 Random"
             ]
         ]
+
+
+{-| The title bar's XP total, restated on the column's own face.
+The scope comes from the selector that stays up there, so the
+two readouts can't disagree.
+-}
+xpLabel : Encounter -> CompendiumDb -> XpScope -> String
+xpLabel enc db scope =
+    case db of
+        CompendiumDbLoaded loaded ->
+            Xp.formatThousands (Xp.totalsFor scope enc loaded).total ++ " XP"
+
+        _ ->
+            "— XP"
 
 
 heading : String -> Html msg

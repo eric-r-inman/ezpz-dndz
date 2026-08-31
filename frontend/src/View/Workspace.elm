@@ -44,7 +44,7 @@ view model =
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ View.PanelActions.view
+        [ View.PanelActions.view model.encounter model.compendium.db model.xpScope
         , panelMain model
         , View.PanelControls.view
             model.auth
