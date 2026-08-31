@@ -51,9 +51,9 @@ tooltip on a wrapper span when the button is unavailable.
 
 * TODO Decide where the editor triggers live
 
-The far-left Actions pane duplicates the encounter toolbar's seven triggers as a
-single column, with no handlers on them, so the two placements can be judged
-side by side.  Wire whichever wins and drop the other.  Part of
+The far-left Actions pane duplicates the encounter's editor triggers as a single
+column, with no handlers on them, so the two placements can be judged side by
+side.  Wire whichever wins and drop the other.  Part of
 [[*Migrate the frontend off modal dialogs]].
 
 * TODO Sweep the "modal" wording out of the migrated editors

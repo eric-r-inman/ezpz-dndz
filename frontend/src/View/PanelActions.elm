@@ -1,7 +1,7 @@
 module View.PanelActions exposing (view)
 
-{-| Far-left pane: a single column of the encounter toolbar's
-editor triggers.
+{-| Far-left pane: a single column of the encounter's editor
+triggers.
 
 The buttons carry no handlers — the column is here to be judged
 against the toolbar before either is wired (see =tasks.org=).
@@ -25,6 +25,11 @@ view =
             , trigger "action-btn action-btn--blue" "Initiative"
             , trigger "action-btn action-btn--orange" "Replace"
             , trigger "action-btn action-btn--orange" "Duplicate"
+
+            -- These are encounter-level tools rather than
+            -- per-creature editors, so they take the neutral face.
+            , trigger "action-btn" "Difficulty"
+            , trigger "action-btn" "Treasure"
             ]
         ]
 
