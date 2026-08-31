@@ -401,7 +401,7 @@ flyingIcon c =
                 , Tooltips.attr (Tooltips.flying c.flyHeight)
                 , attribute "aria-label" "Flying"
                 ]
-                [ text ("🪽 " ++ String.fromInt c.flyHeight) ]
+                [ text ("🪽; " ++ String.fromInt c.flyHeight) ]
             )
 
     else

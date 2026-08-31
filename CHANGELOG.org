@@ -42,6 +42,9 @@
     conditions inline, comma-separated.  No action needed.
 14. The initiative editor picks how to roll and who to roll for separately,
     replacing its grid of one button per combination.  No action needed.
+15. The encounter title bar's flying readout punctuates its height, so the
+    number reads as the wing icon's rather than a neighbouring value.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

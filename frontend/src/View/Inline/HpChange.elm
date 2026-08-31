@@ -103,7 +103,8 @@ overloadable across all of them. GMs who want Heal / Temp HP
 amount : HpChangeUi -> Html Msg
 amount ui =
     div [ class "hp-change__row" ]
-        [ Html.label [ for "hp-amount" ] [ text "HP amount:" ]
+        [ Html.label [ class "hp-change__label", for "hp-amount" ]
+            [ text "HP amount:" ]
         , input
             [ id "hp-amount"
             , class "hp-change__input"

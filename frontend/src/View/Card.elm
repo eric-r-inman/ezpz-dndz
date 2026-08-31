@@ -1289,7 +1289,7 @@ changing the pools — the card just shows what they hold.
 hpOpener : Creature -> String -> String -> String -> Html Msg
 hpOpener creature shown cls label =
     button
-        [ class (cls ++ " hp-display__editable")
+        [ class (cls ++ " hp-display__editable hp-display__opener")
         , type_ "button"
         , onClick (HpChangeOpenFor creature.name)
         , Tooltips.attr Tooltips.hpOpenManage

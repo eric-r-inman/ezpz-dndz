@@ -5719,9 +5719,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-right: var(--space-2);
 }
 
-/* Click-to-edit affordance on the current/max HP values. The hover
-   ring is faint until you mouse over so it doesn't look like a
-   permanent input. */
+/* Shared reset for the HP row's triggers.  The hover ring stays
+   faint so none of them reads as a permanent input. */
 .hp-display__editable {
   /* Reset native button chrome so the click-to-edit trigger
      looks like inline text — the underlying element was promoted
@@ -5740,6 +5739,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   transition:
     background 0.1s ease,
     box-shadow 0.1s ease;
+}
+
+/* An HP value opens the Manage HP editor rather than an input in
+   place, so it takes the hand the rest of the app's links use;
+   the AC readout beside it keeps the caret it earns. */
+.hp-display__opener {
+  cursor: pointer;
 }
 
 .hp-display__editable:hover {
@@ -8258,16 +8264,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin: 4px 0;
 }
 
-.dice-form__row label,
-.hp-change__row label {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  min-width: 100px;
-}
-
 .dice-form__row label {
+  color: var(--color-text-muted);
   min-width: 72px;
   font-size: 0.82rem;
+}
+
+.hp-change__label {
+  color: var(--color-text);
+  font-size: 0.85rem;
 }
 
 .dice-form__row-spacer {
@@ -8719,19 +8724,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
-/* Checkbox label inside an .hp-change__row.  The row-label
-   selector (`.hp-change__row label`) sets `min-width: 100px` on
-   plain text labels; this rule's higher specificity overrides
-   that for the checkbox label specifically — no !important
-   needed. */
-.hp-change__row label.hp-change__checkbox {
+.hp-change__checkbox {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
   color: var(--color-text);
   cursor: pointer;
-  min-width: 0;
 }
 
 .hp-change__checkbox input[type="checkbox"] {
