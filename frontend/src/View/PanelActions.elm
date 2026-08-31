@@ -1,10 +1,10 @@
 module View.PanelActions exposing (view)
 
-{-| Far-left pane: a single column of the encounter's editor
-triggers.
+{-| Far-left pane: a single column of the encounter's triggers.
 
-The buttons carry no handlers — the column is here to be judged
-against the toolbar before either is wired (see =tasks.org=).
+The buttons carry no handlers — the column is a proposal,
+weighed against today's placements before the winner is wired
+and the loser dropped (see =tasks.org=).
 
 -}
 
@@ -26,10 +26,22 @@ view =
             , trigger "action-btn action-btn--orange" "Replace"
             , trigger "action-btn action-btn--orange" "Duplicate"
 
-            -- These are encounter-level tools rather than
-            -- per-creature editors, so they take the neutral face.
+            -- A trigger with no button of its own elsewhere takes
+            -- the neutral face; every other one keeps the colour
+            -- and glyph it wears where it lives now.
             , trigger "action-btn" "Difficulty"
             , trigger "action-btn" "Treasure"
+            , trigger "action-btn action-btn--blue" "➕ Quick Add"
+            , trigger "action-btn action-btn--blue" "💾 Save"
+            , trigger "action-btn action-btn--blue" "📁 Load"
+
+            -- Before combat starts this button reads "Run
+            -- Encounter" instead; an unwired column has no round
+            -- to read, so it shows the in-combat face.
+            , trigger "action-btn action-btn--green" "⏭ Next Turn"
+            , trigger "action-btn action-btn--orange" "⟲ Reset"
+            , trigger "action-btn action-btn--red" "🗑 Clear"
+            , trigger "action-btn action-btn--green" "🎲 Roll"
             ]
         ]
 

@@ -45,8 +45,9 @@
 15. The encounter title bar's flying readout punctuates its height, so the
     number reads as the wing icon's rather than a neighbouring value.  No action
     needed.
-16. A far-left Actions pane lists the encounter's editor triggers as a single
-    column, though its buttons do nothing yet.  No action needed.
+16. A far-left Actions pane gathers the encounter's triggers and controls into a
+    single scrolling column, though its buttons do nothing yet.  No action
+    needed.
 17. The Condition/Effect trigger is now labelled Condition.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No

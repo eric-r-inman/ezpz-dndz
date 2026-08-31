@@ -4242,6 +4242,11 @@ body {
 .panel-actions__btn {
   justify-content: center;
   white-space: nowrap;
+  /* `.action-btn` carries a fixed height, which a flex item is
+     otherwise free to shrink below: without this the column
+     squashes its buttons flat instead of letting the panel body
+     scroll once they outrun the viewport. */
+  flex: 0 0 auto;
 }
 
 .panel--main {
@@ -7199,7 +7204,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 @media (max-width: 1100px) {
   .workspace {
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: auto 1.6fr 1fr;
   }
   .btn-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
