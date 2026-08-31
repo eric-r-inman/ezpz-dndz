@@ -49,6 +49,19 @@ why "Apply to Selected" is unavailable never appeared.  Every docked editor's
 apply button now routes through =View.Inline.ApplyButton=, which hangs the
 tooltip on a wrapper span when the button is unavailable.
 
+* TODO Decide where the editor triggers live
+
+The far-left Actions pane duplicates the encounter toolbar's seven triggers as a
+single column, with no handlers on them, so the two placements can be judged
+side by side.  Wire whichever wins and drop the other.  Part of
+[[*Migrate the frontend off modal dialogs]].
+
+* TODO Sweep the "modal" wording out of the migrated editors
+
+Doc comments across the Ui and Update modules still describe surfaces that now
+dock inline as modals, so a reader meets a widget the UI no longer has.
+Retarget them file by file.  Part of [[*Migrate the frontend off modal dialogs]].
+
 * TODO Sweep style.css to the flat-selector convention
 
 The stylesheet predates CONTRIBUTING.org's "Flat selectors only" rule and

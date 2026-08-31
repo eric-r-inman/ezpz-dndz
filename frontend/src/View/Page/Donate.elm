@@ -17,7 +17,7 @@ import Html.Attributes exposing (class)
 view : Html msg
 view =
     div [ class "workspace" ]
-        [ section [ class "panel panel--main" ]
+        [ section [ class "panel panel--main panel--solo" ]
             [ div [ class "panel__header" ]
                 [ div [ class "panel__title" ] [ text "Donate" ] ]
             , div [ class "panel__body" ]

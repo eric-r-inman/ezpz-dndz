@@ -447,7 +447,7 @@ footer ui presets selectedCount =
             -- Apply sits with Save / Load rather than alone on
             -- the right — the far edge of a full-width docked
             -- editor is a long reach from the fields.  No Cancel
-            -- button: Escape and re-clicking the Condition/Effect
+            -- button: Escape and re-clicking the Condition
             -- button both cancel.
             , ApplyButton.view
                 { enabled = canSubmit

@@ -3,12 +3,12 @@ module Ui.Condition exposing
     , ConditionLogEntry, ConditionPreset, applyPreset, maxConditionLogEntries, toPreset
     )
 
-{-| Condition / effect modal state.
+{-| Condition / effect editor state.
 
-`target` is the creature whose Condition/Effect button (or chip)
+`target` is the creature whose Condition button (or chip)
 was clicked. `editingId` is `Nothing` when creating a new
 condition and `Just id` when editing an existing one — the
-latter unlocks a "Delete" button in the modal footer.
+latter unlocks a "Delete" button in the editor footer.
 
 The remaining fields mirror the rendered form. We track raw
 text inputs alongside parsed integers (the same trick as the
@@ -127,7 +127,7 @@ freshSaveToEnd =
     }
 
 
-{-| Fresh condition-modal state for creating a new condition on
+{-| Fresh condition-editor state for creating a new condition on
 `target`. The "until X's turn" reference defaults to the target
 itself — common for self-effects like "Concentrating until end
 of my next turn".
@@ -156,7 +156,7 @@ fresh target =
     }
 
 
-{-| Pre-fill the modal's form fields from an existing condition
+{-| Pre-fill the editor's form fields from an existing condition
 so the GM can edit it. Reverse of the form-→-domain projection
 the update layer does on submit: break a stored Condition apart
 into the raw text states the form needs.
@@ -175,7 +175,7 @@ fromCondition target cond =
                     }
 
                 Encounter.DurationUntilTurn phase _ ref ->
-                    -- Discard the saved TurnTarget; the modal no longer
+                    -- Discard the saved TurnTarget; the editor no longer
                     -- exposes the current/next choice and `buildDuration`
                     -- recomputes it from current encounter state on submit.
                     { kind = DurKindUntilTurn

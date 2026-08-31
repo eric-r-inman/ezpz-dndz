@@ -31,6 +31,7 @@ import View.Inline.Replace
 import View.Inline.SaveChain
 import View.Inline.SpellList
 import View.Inline.Status
+import View.PanelActions
 import View.PanelControls
 import View.PanelDetail
 import View.Tooltips as Tooltips
@@ -43,7 +44,8 @@ view model =
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ panelMain model
+        [ View.PanelActions.view
+        , panelMain model
         , View.PanelControls.view
             model.auth
             model.dice
@@ -218,7 +220,7 @@ actionToolbar model =
     div [ class "encounter-toolbar" ]
         [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
         , trigger "action-btn action-btn--blue" statusEditing (StatusOpen target) Tooltips.statusEditor "Status"
-        , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition/Effect"
+        , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition"
         , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
         , trigger "action-btn action-btn--blue" initiativeEditing (InitiativeOpen target) Tooltips.initiativeManager "Initiative"
         , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) Tooltips.queueReplace "Replace"
