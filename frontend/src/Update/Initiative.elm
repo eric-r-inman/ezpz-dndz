@@ -37,6 +37,15 @@ import Random
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.initiativeLens model
+        |> Maybe.map SurfaceInitiative
+
+
 {-| Apply `fn` to the open initiative editor. No-op when it is
 closed (or a different surface is open).
 -}
@@ -52,12 +61,12 @@ regardless of which creature a card's init circle aimed it at.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceInitiative _) ->
-            { model | surface = Nothing }
+            Model.closeDrawer Model.initiativeLens model
 
         _ ->
-            { model | surface = Just (SurfaceInitiative (InitiativeUi.fresh target)) }
+            Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
     , Cmd.none
     )
 
@@ -69,23 +78,23 @@ folds the editor away, matching the column trigger's toggle.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceInitiative ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                Model.closeDrawer Model.initiativeLens model
 
             else
-                { model | surface = Just (SurfaceInitiative (InitiativeUi.fresh target)) }
+                Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
 
         _ ->
-            { model | surface = Just (SurfaceInitiative (InitiativeUi.fresh target)) }
+            Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.initiativeLens model, Cmd.none )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )
@@ -110,7 +119,7 @@ roll Cmd in the editor's chosen mode. The handler
 -}
 autoRoll : RollScope -> Model -> ( Model, Cmd Msg )
 autoRoll scope model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceInitiative ui) ->
             let
                 creatures =
@@ -148,7 +157,7 @@ applySelected model =
 
 applyCustomTo : (InitiativeUi -> List String) -> Model -> Model
 applyCustomTo targetsFor model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceInitiative ui) ->
             let
                 targets =
@@ -189,7 +198,7 @@ scopeCreatures : RollScope -> Model -> List Encounter.Creature
 scopeCreatures scope model =
     case scope of
         ScopeTarget ->
-            case model.surface of
+            case drawerSurface model of
                 Just (SurfaceInitiative ui) ->
                     List.filter (\c -> c.name == ui.target) model.encounter.creatures
 

@@ -11,6 +11,15 @@ import Msg exposing (Msg, StatusFlag(..))
 import Ui.Status as StatusUi exposing (StatusUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.statusLens model
+        |> Maybe.map SurfaceStatus
+
+
 {-| The column trigger: clicking it while any Status editor is
 expanded closes it — the button wears the open ring and Cancel
 hover text whenever the editor is open, so it must close
@@ -19,12 +28,12 @@ fresh open prefills the draft from the target creature.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceStatus _) ->
-            { model | surface = Nothing }
+            Model.closeDrawer Model.statusLens model
 
         _ ->
-            { model | surface = Just (SurfaceStatus (prefilled target model)) }
+            Model.openDrawer Model.statusLens (prefilled target model) model
     , Cmd.none
     )
 
@@ -37,16 +46,16 @@ trigger's toggle.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceStatus ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                Model.closeDrawer Model.statusLens model
 
             else
-                { model | surface = Just (SurfaceStatus (prefilled target model)) }
+                Model.openDrawer Model.statusLens (prefilled target model) model
 
         _ ->
-            { model | surface = Just (SurfaceStatus (prefilled target model)) }
+            Model.openDrawer Model.statusLens (prefilled target model) model
     , Cmd.none
     )
 
@@ -62,17 +71,12 @@ prefilled target model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.statusLens model, Cmd.none )
 
 
 withUi : (StatusUi -> StatusUi) -> Model -> Model
-withUi fn model =
-    case model.surface of
-        Just (SurfaceStatus ui) ->
-            { model | surface = Just (SurfaceStatus (fn ui)) }
-
-        _ ->
-            model
+withUi =
+    Model.mapDrawer Model.statusLens
 
 
 coverCycle : Model -> ( Model, Cmd Msg )
@@ -117,7 +121,7 @@ creature since a card's status label can re-aim the editor.
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
 applyTarget model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceStatus ui) ->
             applyTo [ ui.target ] model
 
@@ -145,7 +149,7 @@ matching the card toggles' old behaviour.
 -}
 applyTo : List String -> Model -> Model
 applyTo names model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceStatus ui) ->
             let
                 stamp c =

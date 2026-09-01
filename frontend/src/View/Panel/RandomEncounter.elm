@@ -18,8 +18,7 @@ Sections, top to bottom:
     a friendly "no matches" notice instead of a stale prior
     roll.
 
-Renders nothing when `model.surface` isn't
-`Just SurfaceRandomEncounter`.
+Renders nothing while the panel isn't in the drawer stack.
 
 -}
 
@@ -65,8 +64,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.surface of
-        Just (SurfaceRandomEncounter ui) ->
+    case Model.drawerGet Model.randomEncounterLens model of
+        Just ui ->
             View.Panel.view
                 { close = RandomEncounterClose
                 , title = "Random Encounter"

@@ -1,10 +1,11 @@
 module Ui.Dice exposing (DiceUi, empty)
 
-{-| Dice-roller modal state. Holds presentation-only fields
-(open/closed, current text input, count/modifier sliders) plus
-the persisted-this-session roll history. The actual rules and
+{-| Dice-roller panel state: presentation-only fields plus the
+persisted-this-session roll history. The actual rules and
 random-roll logic live in `Dice`; this record exists in the UI
 layer so it stays adjacent to the view code that consumes it.
+Openness isn't here — it is the `SurfaceDice` marker's presence
+in the drawer stack.
 
 The parsed `modifier` is what generators consume; `modifierText`
 mirrors the literal characters in the `<input>`. The two
@@ -22,8 +23,7 @@ import Dice
 
 
 type alias DiceUi =
-    { open : Bool
-    , input : String
+    { input : String
     , inputError : Maybe Dice.Error
     , count : Int
     , modifier : Int
@@ -48,8 +48,7 @@ type alias DiceUi =
 
 empty : DiceUi
 empty =
-    { open = False
-    , input = ""
+    { input = ""
     , inputError = Nothing
     , count = 1
     , modifier = 0

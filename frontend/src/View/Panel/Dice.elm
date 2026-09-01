@@ -1,7 +1,7 @@
 module View.Panel.Dice exposing (view)
 
-{-| Dice roller. Renders nothing while closed, the drawer's
-whole column while open; the chrome comes from `View.Panel`.
+{-| Dice roller panel; the chrome comes from `View.Panel`.
+Rendered only while `SurfaceDice` sits in the drawer stack.
 
 Also hosts the full recent-HP-changes log: the Manage-HP editor
 shows only its newest entry, so the roller carries the history.
@@ -23,24 +23,20 @@ import View.Tooltips as Tooltips
 
 view : List HpChangeEntry -> DiceUi -> Html Msg
 view hpChangeLog ui =
-    if ui.open then
-        View.Panel.view
-            { close = CloseDice
-            , title = "🎲 Dice Roller"
-            , titleLead = Nothing
-            , subtitle = Nothing
-            , extraClass = "panel-drawer--dice"
-            , body =
-                [ form ui
-                , faceButtons
-                , specialButtons
-                , history ui
-                , View.HpLog.list hpChangeLog
-                ]
-            }
-
-    else
-        text ""
+    View.Panel.view
+        { close = CloseDice
+        , title = "🎲 Dice Roller"
+        , titleLead = Nothing
+        , subtitle = Nothing
+        , extraClass = "panel-drawer--dice"
+        , body =
+            [ form ui
+            , faceButtons
+            , specialButtons
+            , history ui
+            , View.HpLog.list hpChangeLog
+            ]
+        }
 
 
 form : DiceUi -> Html Msg

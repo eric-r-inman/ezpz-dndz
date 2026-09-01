@@ -30,28 +30,37 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Duplicate as DuplicateUi exposing (DuplicateUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.duplicateLens model
+        |> Maybe.map SurfaceDuplicate
+
+
 {-| Opening is a toggle: clicking the column's Duplicate button
 while the editor is already open for the same target closes it.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceDuplicate ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                Model.closeDrawer Model.duplicateLens model
 
             else
-                { model | surface = Just (SurfaceDuplicate (DuplicateUi.fresh target)) }
+                Model.openDrawer Model.duplicateLens (DuplicateUi.fresh target) model
 
         _ ->
-            { model | surface = Just (SurfaceDuplicate (DuplicateUi.fresh target)) }
+            Model.openDrawer Model.duplicateLens (DuplicateUi.fresh target) model
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.duplicateLens model, Cmd.none )
 
 
 withUi : (DuplicateUi -> DuplicateUi) -> Model -> Model
@@ -68,7 +77,7 @@ modeSet mode model =
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceDuplicate ui) ->
             applyTo [ ui.target ] model
 
@@ -94,7 +103,7 @@ the next application.
 -}
 applyTo : List String -> Model -> ( Model, Cmd Msg )
 applyTo targets model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceDuplicate ui) ->
             let
                 before =

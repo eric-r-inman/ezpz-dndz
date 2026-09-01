@@ -30,8 +30,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.surface of
-        Just (SurfaceQuickAdd ui) ->
+    case Model.drawerGet Model.quickAddLens model of
+        Just ui ->
             let
                 title =
                     case ui.replaceTarget of

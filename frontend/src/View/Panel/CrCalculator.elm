@@ -51,8 +51,8 @@ import View.Panel
 
 view : Model -> Html Msg
 view model =
-    case model.surface of
-        Just (SurfaceCrCalculator ui) ->
+    case Model.drawerGet Model.crCalculatorLens model of
+        Just ui ->
             View.Panel.view
                 { close = CrCalculatorClose
                 , title = "Encounter Difficulty"

@@ -40,6 +40,15 @@ import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.randomEncounterLens model
+        |> Maybe.map SurfaceRandomEncounter
+
+
 
 -- ── OPEN / CLOSE ─────────────────────────────────────────────────────────────
 
@@ -59,14 +68,14 @@ open model =
             else
                 model
     in
-    ( { seeded | surface = Just (SurfaceRandomEncounter Ui.fresh) }
+    ( Model.toggleDrawer Model.randomEncounterLens Ui.fresh seeded
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.randomEncounterLens model, Cmd.none )
 
 
 
@@ -520,8 +529,8 @@ this is defensive belt-and-suspenders.
 -}
 generate : Model -> ( Model, Cmd Msg )
 generate model =
-    case ( model.surface, model.compendium.db ) of
-        ( Just (SurfaceRandomEncounter ui), CompendiumDbLoaded db ) ->
+    case ( Model.drawerGet Model.randomEncounterLens model, model.compendium.db ) of
+        ( Just ui, CompendiumDbLoaded db ) ->
             let
                 budget =
                     RE.budgetFor model.party ui.difficulty
@@ -591,7 +600,7 @@ The modal closes after adding; a toast confirms the count.
 -}
 addToEncounter : Model -> ( Model, Cmd Msg )
 addToEncounter model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceRandomEncounter ui) ->
             case ui.roll of
                 RollOk groups _ ->

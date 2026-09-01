@@ -52,6 +52,10 @@
 19. The stat-block panel's title carries a 📖 button that hands the creature off
     to the Compendium tab, opened with that creature selected and scrolled into
     view.  No action needed.
+20. Drawer panels stack: opening an editor no longer closes the one already up —
+    each new panel opens below it, and Esc closes the newest.  No action needed.
+21. A trigger whose panel is open closes it when clicked again, whichever panel
+    it is.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

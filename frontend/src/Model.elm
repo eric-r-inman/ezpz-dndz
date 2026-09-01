@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, isDrawerSurface, loadCompendiumLens, loadLens, loreEditLens, mapSurface, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
+    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, confirmLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -87,7 +87,8 @@ import Ui.TreasureTable exposing (TreasureTableUi)
 import Url exposing (Url)
 
 
-{-| The creature pinned in the Actions column's panel. Carries
+{-| The creature pinned in the drawer's stat-block panel
+(`SurfaceStatBlock`). Carries
 both the compendium `id` (for the canonical UUID lookup) and
 the encounter creature's display `name` (so we can fall back to
 a name match when an old saved encounter's `creatureId` no
@@ -101,22 +102,24 @@ type alias PanelPin =
     }
 
 
-{-| Two-step confirmation state for the destructive Encounter
-Controls actions (Reset and Clear). When `Just`, the control
-panel renders an inline confirmation banner in place of the
-button grid so a mis-click can't drop combat state. Cleared by
-the user picking Confirm or Cancel.
+{-| Which destructive action the drawer's confirmation panel
+(`SurfaceConfirm`) is staging, so a mis-click on Reset or Clear
+can't drop combat state. Cleared by the user picking Confirm or
+Cancel.
 -}
 type PendingControl
     = PendingReset
     | PendingClear
 
 
-{-| One constructor per modal kind, each carrying its UI state.
+{-| One constructor per surface, each carrying its UI state.
 
-The "only one modal open at a time" invariant is type-enforced:
-opening surface X assigns `Just (SurfaceX uiX)` to `model.surface`,
-which by construction wipes out whatever was open before.
+A surface lives in one of two homes. Modal and card-inline
+variants occupy `model.surface`, where "only one open at a
+time" is type-enforced: opening surface X assigns
+`Just (SurfaceX uiX)`, which by construction wipes out whatever
+was open before. Drawer variants live in the `model.drawer`
+stack instead, where coexisting is the point.
 
 -}
 type Surface
@@ -143,71 +146,89 @@ type Surface
     | SurfaceRandomEncounter RandomEncounterUi
     | SurfaceTreasure TreasureUi
     | SurfaceTreasureTable TreasureTableUi
-      -- Save Chain modal: reusable "creature makes a save;
+      -- Save Chain editor: reusable "creature makes a save;
       -- something happens" recipe.  Opened from each card's
       -- Save Chain button; loads / edits / saves named presets
       -- from `model.saveChainPresets` and applies fail/success
       -- outcomes to the target (or the selection).
     | SurfaceSaveChain SaveChainUi
+      -- The dice roller.  A marker: the roller's substate has to
+      -- outlive a close (history, unread flag), so it stays on
+      -- `model.dice` and this variant only records openness and
+      -- stack position.
+    | SurfaceDice
+      -- The XP-scope picker.  Also a marker — the scope itself is
+      -- read by the title bar whether or not the panel is open,
+      -- so it lives on `model.xpScope`.
+    | SurfaceXp
+      -- The pinned creature's stat block.
+    | SurfaceStatBlock PanelPin
+      -- The Reset / Clear confirmation.
+    | SurfaceConfirm PendingControl
 
 
-{-| Whether this surface belongs in the Actions column's
-drawer, as opposed to the modal layer or a creature card.
-
-The drawer shows one panel at a time, and the update wrapper
-uses this to decide whether an opening surface should displace
-whatever else the drawer was showing — a card's note editor
-must not, the Manage HP editor must.
-
-Answers `True` for exactly the variants `View.PanelDrawer`
-renders; the two lists have to move together, and can't be one
-list because that module may not be imported from here.
-
+{-| The open drawer panel matching `lens`, if any.
 -}
-isDrawerSurface : Surface -> Bool
-isDrawerSurface surface =
-    case surface of
-        SurfaceHpChange _ ->
-            True
+drawerGet : SurfaceLens a -> Model -> Maybe a
+drawerGet lens model =
+    model.drawer
+        |> List.filterMap lens.extract
+        |> List.head
 
-        SurfaceInitiative _ ->
-            True
 
-        SurfaceCondition _ ->
-            True
+drawerHas : SurfaceLens a -> Model -> Bool
+drawerHas lens model =
+    drawerGet lens model /= Nothing
 
-        SurfaceSaveChain _ ->
-            True
 
-        SurfaceStatus _ ->
-            True
+{-| Apply `fn` to the matching drawer panel's substate, leaving
+its stack position alone. No-op when that panel isn't open.
+-}
+mapDrawer : SurfaceLens a -> (a -> a) -> Model -> Model
+mapDrawer lens fn model =
+    { model
+        | drawer =
+            List.map
+                (\surface ->
+                    lens.extract surface
+                        |> Maybe.map (fn >> lens.wrap)
+                        |> Maybe.withDefault surface
+                )
+                model.drawer
+    }
 
-        SurfaceReplace _ ->
-            True
 
-        SurfaceDuplicate _ ->
-            True
+{-| Open a drawer panel with the given substate. A panel already
+open keeps its stack position and takes the new substate (the
+re-aim case); otherwise the panel joins the bottom of the stack.
+-}
+openDrawer : SurfaceLens a -> a -> Model -> Model
+openDrawer lens ui model =
+    if drawerHas lens model then
+        mapDrawer lens (\_ -> ui) model
 
-        SurfaceQuickAdd _ ->
-            True
+    else
+        { model | drawer = model.drawer ++ [ lens.wrap ui ] }
 
-        SurfaceSave _ ->
-            True
 
-        SurfaceLoad _ ->
-            True
+closeDrawer : SurfaceLens a -> Model -> Model
+closeDrawer lens model =
+    { model
+        | drawer =
+            List.filter (\s -> lens.extract s == Nothing) model.drawer
+    }
 
-        SurfaceCrCalculator _ ->
-            True
 
-        SurfaceRandomEncounter _ ->
-            True
+{-| The column-trigger gesture: close the panel if it is open,
+open it with the given substate if not.
+-}
+toggleDrawer : SurfaceLens a -> a -> Model -> Model
+toggleDrawer lens ui model =
+    if drawerHas lens model then
+        closeDrawer lens model
 
-        SurfaceTreasure _ ->
-            True
-
-        _ ->
-            False
+    else
+        openDrawer lens ui model
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -221,9 +242,9 @@ type alias SurfaceLens a =
     }
 
 
-{-| Apply `fn` to the modal's UI substate, but only if the modal
-matching `lens` is currently open. No-op when `model.surface` is
-`Nothing` or holds a different variant.
+{-| Apply `fn` to the matching surface's substate wherever it
+lives — the `model.surface` slot or the drawer stack. No-op when
+neither holds it.
 
 Replaces the per-Update-module `with*Ui` helpers.
 
@@ -235,7 +256,7 @@ mapSurface lens fn model =
             { model | surface = Just (lens.wrap (fn ui)) }
 
         Nothing ->
-            model
+            mapDrawer lens fn model
 
 
 compendiumEditLens : SurfaceLens CompendiumEditUi
@@ -249,6 +270,104 @@ compendiumEditLens =
                 _ ->
                     Nothing
     , wrap = SurfaceCompendiumEdit
+    }
+
+
+statusLens : SurfaceLens StatusUi
+statusLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceStatus ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceStatus
+    }
+
+
+saveChainLens : SurfaceLens SaveChainUi
+saveChainLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceSaveChain ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceSaveChain
+    }
+
+
+replaceLens : SurfaceLens ReplaceUi
+replaceLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceReplace ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceReplace
+    }
+
+
+diceLens : SurfaceLens ()
+diceLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceDice ->
+                    Just ()
+
+                _ ->
+                    Nothing
+    , wrap = \() -> SurfaceDice
+    }
+
+
+xpLens : SurfaceLens ()
+xpLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceXp ->
+                    Just ()
+
+                _ ->
+                    Nothing
+    , wrap = \() -> SurfaceXp
+    }
+
+
+statBlockLens : SurfaceLens PanelPin
+statBlockLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceStatBlock pin ->
+                    Just pin
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceStatBlock
+    }
+
+
+confirmLens : SurfaceLens PendingControl
+confirmLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceConfirm pending ->
+                    Just pending
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceConfirm
     }
 
 
@@ -548,11 +667,16 @@ type alias Model =
     , replaceLog : List Ui.Replace.ReplaceLogEntry
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
-    , panelCreaturePin : Maybe PanelPin
-    , pendingControl : Maybe PendingControl
     , xpScope : XpScope
-    , xpFilterOpen : Bool
     , settingsOpen : Bool
+
+    -- The Actions column's drawer: every open panel, oldest
+    -- first, rendered top to bottom.  A stack rather than a
+    -- single slot — drawer panels deliberately coexist, so the
+    -- one-at-a-time invariant `surface` enforces stops at the
+    -- drawer's edge.  Only drawer-eligible variants belong here;
+    -- their Update modules are the only writers.
+    , drawer : List Surface
 
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.

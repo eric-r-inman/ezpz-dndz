@@ -4211,9 +4211,22 @@ body {
   grid-row: 1;
 }
 
-.panel--drawer {
+/* The drawer's scrolling stack of open panels: the grid track
+   belongs to the stack, and each panel takes its natural height
+   inside it, so a newly opened panel lands below the ones
+   already up. */
+.drawer-stack {
   grid-column: 2;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.panel--drawer {
+  flex: 0 0 auto;
   animation: drawer-slide-in 0.16s ease-out;
 }
 
@@ -7103,7 +7116,7 @@ button.creature-card__lifecycle--dead:focus-visible {
     grid-column: 1;
     grid-row: auto;
   }
-  .panel--drawer {
+  .drawer-stack {
     grid-column: 1;
     grid-row: auto;
   }

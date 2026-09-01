@@ -50,8 +50,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.surface of
-        Just (SurfaceLoad ui) ->
+    case Model.drawerGet Model.loadLens model of
+        Just ui ->
             View.Panel.view
                 { close = LoadClose
                 , title = "Load Encounter"

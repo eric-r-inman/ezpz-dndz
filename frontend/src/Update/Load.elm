@@ -51,6 +51,15 @@ import Update.Toast
 import Util.Http
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.loadLens model
+        |> Maybe.map SurfaceLoad
+
+
 withLoadUi : (LoadUi -> LoadUi) -> Model -> Model
 withLoadUi =
     Model.mapSurface Model.loadLens
@@ -73,7 +82,7 @@ open model =
         primedUi =
             { baseUi | saves = saves }
     in
-    ( { model | surface = Just (SurfaceLoad primedUi) }
+    ( Model.toggleDrawer Model.loadLens primedUi model
     , listCmd
     )
 
@@ -88,7 +97,7 @@ localSavesMetas model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.loadLens model, Cmd.none )
 
 
 {-| Flip the source radio between Server / Device. Clears any
@@ -136,7 +145,7 @@ confirmCancel model =
 
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceLoad ui) ->
             case ui.confirm of
                 Just (ConfirmLoad name) ->
@@ -373,7 +382,7 @@ renameChange text model =
 
 renameSubmit : Model -> ( Model, Cmd Msg )
 renameSubmit model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceLoad ui) ->
             case ui.renaming of
                 Just { original, draft } ->

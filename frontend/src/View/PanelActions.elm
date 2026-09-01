@@ -18,7 +18,6 @@ import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
 import View.Card
 import View.Panel.Xp
-import View.PanelDrawer as Drawer exposing (Panel(..))
 import View.Tooltips as Tooltips
 
 
@@ -41,45 +40,45 @@ view model =
             else
                 enc.activeName
 
-        showing panel =
-            Drawer.current model == panel
+        showing lens =
+            Model.drawerHas lens model
     in
     section [ class "panel panel--actions" ]
         [ div [ class "panel__header" ]
             [ div [ class "panel__title" ] [ text "Actions" ] ]
         , div [ class "panel__body panel__body--actions" ]
             [ trigger "action-btn action-btn--manage-hp"
-                (showing PanelHpChange)
+                (showing Model.hpChangeLens)
                 (HpChangeOpen target)
                 Tooltips.manageHp
                 "Manage HP"
             , trigger "action-btn action-btn--blue"
-                (showing PanelStatus)
+                (showing Model.statusLens)
                 (StatusOpen target)
                 Tooltips.statusEditor
                 "Status"
             , trigger "action-btn action-btn--condition"
-                (showing PanelCondition)
+                (showing Model.conditionLens)
                 (ConditionOpenNew target)
                 Tooltips.applyCondition
                 "Condition"
             , trigger "action-btn action-btn--save-chain"
-                (showing PanelSaveChain)
+                (showing Model.saveChainLens)
                 (SaveChainOpen target)
                 Tooltips.saveChain
                 "Save Chain"
             , trigger "action-btn action-btn--blue"
-                (showing PanelInitiative)
+                (showing Model.initiativeLens)
                 (InitiativeOpen target)
                 Tooltips.initiativeManager
                 "Initiative"
             , trigger "action-btn action-btn--orange"
-                (showing PanelReplace)
+                (showing Model.replaceLens)
                 (ReplaceOpen target)
                 Tooltips.queueReplace
                 "Replace"
             , trigger "action-btn action-btn--orange"
-                (showing PanelDuplicate)
+                (showing Model.duplicateLens)
                 (DuplicateOpen target)
                 Tooltips.queueDuplicate
                 "Duplicate"
@@ -88,47 +87,47 @@ view model =
             -- per-creature editors above and the file operations
             -- below each keep a colour of their own.
             , trigger "action-btn"
-                (showing PanelDifficulty)
+                (showing Model.crCalculatorLens)
                 CrCalculatorOpen
                 Tooltips.encounterBarDifficulty
                 "Difficulty"
             , trigger "action-btn"
-                (showing PanelTreasure)
+                (showing Model.treasureLens)
                 TreasureOpen
                 Tooltips.encounterBarTreasure
                 "Treasure"
             , trigger "action-btn"
-                (showing PanelXp)
+                (showing Model.xpLens)
                 XpFilterToggle
                 Tooltips.xpFilter
                 (View.Panel.Xp.label enc model.compendium.db model.xpScope)
             , trigger "action-btn action-btn--blue"
-                (showing PanelQuickAdd)
+                (showing Model.quickAddLens)
                 QuickAddOpen
                 Tooltips.quickAddButton
                 "➕ Quick Add"
             , trigger (saveClass model)
-                (showing PanelSave)
+                (showing Model.saveLens)
                 (SaveOpen SaveDestinationServer)
                 (saveTip model)
                 "💾 Save"
             , trigger "action-btn action-btn--blue"
-                (showing PanelLoad)
+                (showing Model.loadLens)
                 LoadOpen
                 Tooltips.loadButton
                 "📁 Load"
             , turnTrigger enc.round
             , trigger "action-btn action-btn--orange"
-                (model.pendingControl == Just PendingReset)
+                (Model.drawerGet Model.confirmLens model == Just PendingReset)
                 EncounterReset
                 Tooltips.reset
                 "⟲ Reset"
             , trigger "action-btn action-btn--red"
-                (model.pendingControl == Just PendingClear)
+                (Model.drawerGet Model.confirmLens model == Just PendingClear)
                 EncounterClear
                 Tooltips.clear
                 "🗑 Clear"
-            , rollTrigger model.dice
+            , rollTrigger (Model.drawerHas Model.diceLens model) model.dice
             , diceTotals model.dice
             , heading "Compendium"
             , trigger "action-btn action-btn--blue"
@@ -137,7 +136,7 @@ view model =
                 Tooltips.panelOpenCompendium
                 "📖 Open"
             , trigger "action-btn action-btn--blue"
-                (showing PanelRandomEncounter)
+                (showing Model.randomEncounterLens)
                 RandomEncounterOpen
                 Tooltips.panelRandomEncounter
                 "🎲 Random"
@@ -166,8 +165,8 @@ turnTrigger round =
             "⏭ Next Turn"
 
 
-rollTrigger : DiceUi -> Html Msg
-rollTrigger dice =
+rollTrigger : Bool -> DiceUi -> Html Msg
+rollTrigger open dice =
     trigger
         (if dice.unread then
             "action-btn action-btn--green dice-roll-btn dice-roll-btn--unread"
@@ -175,8 +174,8 @@ rollTrigger dice =
          else
             "action-btn action-btn--green"
         )
-        dice.open
-        (if dice.open then
+        open
+        (if open then
             CloseDice
 
          else

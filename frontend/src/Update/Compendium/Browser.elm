@@ -372,9 +372,8 @@ focusSearch model =
 
 panelShowCreature : String -> String -> Model -> ( Model, Cmd Msg )
 panelShowCreature creatureId creatureName model =
-    ( { model
-        | panelCreaturePin =
-            Just { id = creatureId, name = creatureName }
-      }
+    ( Model.openDrawer Model.statBlockLens
+        { id = creatureId, name = creatureName }
+        model
     , Cmd.none
     )

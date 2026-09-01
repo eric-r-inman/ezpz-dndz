@@ -45,6 +45,15 @@ import Msg
 import Ui.HpChange as HpChangeUi exposing (HpChangeUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.hpChangeLens model
+        |> Maybe.map SurfaceHpChange
+
+
 {-| Apply `fn` to the open HP-change modal. No-op when the modal
 is closed (or a different modal is open). Every form mutation
 routes through here, so the applied-and-untouched flag clears
@@ -86,7 +95,7 @@ manualChanged field text model =
 -}
 manualApplyTarget : Model -> ( Model, Cmd Msg )
 manualApplyTarget model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             manualApplyTo [ ui.target ] ui model
 
@@ -100,7 +109,7 @@ manualApplyTarget model =
 -}
 manualApplySelected : Model -> ( Model, Cmd Msg )
 manualApplySelected model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             manualApplyTo
                 (model.encounter.creatures
@@ -156,12 +165,12 @@ un-applied settings.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             stashAndClose ui model
 
         _ ->
-            { model | surface = Just (SurfaceHpChange (reopened target model)) }
+            Model.openDrawer Model.hpChangeLens (reopened target model) model
     , Cmd.none
     )
 
@@ -173,16 +182,16 @@ the editor away, matching the column trigger's toggle.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             if ui.target == target then
                 stashAndClose ui model
 
             else
-                { model | surface = Just (SurfaceHpChange (reopened target model)) }
+                Model.openDrawer Model.hpChangeLens (reopened target model) model
 
         _ ->
-            { model | surface = Just (SurfaceHpChange (reopened target model)) }
+            Model.openDrawer Model.hpChangeLens (reopened target model) model
     , Cmd.none
     )
 
@@ -203,15 +212,15 @@ closing resets to defaults instead.
 -}
 stashAndClose : HpChangeUi -> Model -> Model
 stashAndClose ui model =
-    { model
-        | surface = Nothing
-        , hpChangeDraft =
-            if ui.applied then
-                Nothing
+    Model.closeDrawer Model.hpChangeLens
+        { model
+            | hpChangeDraft =
+                if ui.applied then
+                    Nothing
 
-            else
-                Just ui
-    }
+                else
+                    Just ui
+        }
 
 
 {-| Applying marks the open editor so a subsequent close resets
@@ -219,12 +228,11 @@ rather than stashes, and drops any stale draft.
 -}
 markApplied : Model -> Model
 markApplied model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceHpChange ui) ->
-            { model
-                | surface = Just (SurfaceHpChange { ui | applied = True })
-                , hpChangeDraft = Nothing
-            }
+            Model.mapDrawer Model.hpChangeLens
+                (\u -> { u | applied = True })
+                { model | hpChangeDraft = Nothing }
 
         _ ->
             { model | hpChangeDraft = Nothing }
@@ -232,12 +240,12 @@ markApplied model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             stashAndClose ui model
 
         _ ->
-            { model | surface = Nothing }
+            Model.closeDrawer Model.hpChangeLens model
     , Cmd.none
     )
 
@@ -289,14 +297,14 @@ applying; the trigger toggle and Escape close it.
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
 applyAs kind model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             let
                 withKind =
                     { ui | kind = kind }
 
                 modelWithKind =
-                    { model | surface = Just (SurfaceHpChange withKind) }
+                    Model.openDrawer Model.hpChangeLens withKind model
 
                 trimmed =
                     String.trim withKind.amountText

@@ -90,8 +90,7 @@ Every modal the app started with, and its target pattern.
 
 - =Dice= :: The strongest panel candidate — a GM plausibly wants it persistently
   open.  Mapped as a right-rail dock beside the stat block; landed in the
-  Actions column's drawer with it, which means the two take turns rather than
-  sitting side by side.
+  Actions column's drawer with it, stacked in whatever order the GM opened them.
 - =Treasure= (the roller) :: Rolls against the current queue's enemies; a drawer
   keeps them visible while results generate.
 - =CrCalculator= :: Reads the live queue by design; as a panel, the difficulty

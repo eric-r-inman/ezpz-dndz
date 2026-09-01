@@ -60,6 +60,15 @@ import Ui.Condition as ConditionUi exposing (ConditionUi)
 import Ui.Condition.Bundled as Bundled
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.conditionLens model
+        |> Maybe.map SurfaceCondition
+
+
 {-| Hard cap on the chip-note text, keeping the chip compact
 enough that card row 1 doesn't wrap-overflow.
 -}
@@ -86,12 +95,12 @@ mode (add vs. chip-edit) opened it.
 -}
 openNew : String -> Model -> ( Model, Cmd Msg )
 openNew name model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceCondition ui) ->
             stashAndClose ui model
 
         _ ->
-            { model | surface = Just (SurfaceCondition (reopened name model)) }
+            Model.openDrawer Model.conditionLens (reopened name model) model
     , Cmd.none
     )
 
@@ -130,18 +139,18 @@ remembered add-mode draft.
 -}
 stashAndClose : ConditionUi -> Model -> Model
 stashAndClose ui model =
-    { model
-        | surface = Nothing
-        , conditionDraft =
-            if ui.editingId /= Nothing then
-                model.conditionDraft
+    Model.closeDrawer Model.conditionLens
+        { model
+            | conditionDraft =
+                if ui.editingId /= Nothing then
+                    model.conditionDraft
 
-            else if ui.applied then
-                Nothing
+                else if ui.applied then
+                    Nothing
 
-            else
-                Just ui
-    }
+                else
+                    Just ui
+        }
 
 
 {-| Chip clicks toggle the same way: re-clicking the chip whose
@@ -149,10 +158,10 @@ edit form is already open closes it unchanged.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceCondition ui) ->
             if ui.target == name && ui.editingId == Just id then
-                { model | surface = Nothing }
+                Model.closeDrawer Model.conditionLens model
 
             else
                 openEditFresh name id model
@@ -167,7 +176,7 @@ openEditFresh : String -> Int -> Model -> Model
 openEditFresh name id model =
     case Encounter.findCondition name id model.encounter of
         Just ( _, cond ) ->
-            { model | surface = Just (SurfaceCondition (ConditionUi.fromCondition name cond)) }
+            Model.openDrawer Model.conditionLens (ConditionUi.fromCondition name cond) model
 
         Nothing ->
             model
@@ -175,12 +184,12 @@ openEditFresh name id model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceCondition ui) ->
             stashAndClose ui model
 
         _ ->
-            { model | surface = Nothing }
+            Model.closeDrawer Model.conditionLens model
     , Cmd.none
     )
 
@@ -415,7 +424,7 @@ presetSaveStart model =
         -- canonical category.  Falls back to "" when no preset is
         -- loaded.
         prefillCategory =
-            case model.surface of
+            case drawerSurface model of
                 Just (SurfaceCondition ui) ->
                     ui.loadedPresetName
                         |> Maybe.andThen (\name -> lookupPreset name model)
@@ -474,7 +483,7 @@ so the title bar shows it immediately, mirroring the load flow.
 -}
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
             let
                 trimmed =
@@ -626,7 +635,7 @@ presetCategoryToggle category model =
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
             submitTo [ ui.target ] model
 
@@ -653,14 +662,14 @@ or update the edited condition.
 -}
 submitTo : List String -> Model -> ( Model, Cmd Msg )
 submitTo targets model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
             let
                 name =
                     String.trim ui.name
             in
             if String.isEmpty name then
-                ( { model | surface = Nothing }, Cmd.none )
+                ( Model.closeDrawer Model.conditionLens model, Cmd.none )
 
             else
                 let
@@ -692,12 +701,11 @@ rather than stashes, and drops any stale draft.
 -}
 markApplied : Model -> Model
 markApplied model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
-            { model
-                | surface = Just (SurfaceCondition { ui | applied = True })
-                , conditionDraft = Nothing
-            }
+            Model.mapDrawer Model.conditionLens
+                (\u -> { u | applied = True })
+                { model | conditionDraft = Nothing }
 
         _ ->
             { model | conditionDraft = Nothing }
@@ -731,7 +739,7 @@ undoLatest model =
 -}
 delete : Model -> ( Model, Cmd Msg )
 delete model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
             case ui.editingId of
                 Just id ->
@@ -743,7 +751,7 @@ delete model =
                     )
 
                 Nothing ->
-                    ( { model | surface = Nothing }, Cmd.none )
+                    ( Model.closeDrawer Model.conditionLens model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

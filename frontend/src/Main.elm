@@ -184,16 +184,6 @@ can close it. Other routes don't need any subscriptions yet.
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
-        -- Esc only: the scope list is a drawer panel, and a
-        -- click-outside close would fire on every click landing
-        -- in the queue beside it.
-        xpFilterSubs =
-            if model.xpFilterOpen then
-                [ Browser.Events.onKeyDown (escKey XpFilterClose) ]
-
-            else
-                []
-
         settingsSubs =
             if model.settingsOpen then
                 [ Browser.Events.onKeyDown (escKey SettingsClose)
@@ -213,8 +203,8 @@ subscriptions model =
                 []
 
         conditionPresetLoadMenuSubs =
-            case model.surface of
-                Just (SurfaceCondition ui) ->
+            case Model.drawerGet Model.conditionLens model of
+                Just ui ->
                     if ui.loadMenuOpen then
                         [ Browser.Events.onKeyDown (escKey ConditionPresetLoadMenuClose)
                         , Browser.Events.onMouseDown (Decode.succeed ConditionPresetLoadMenuClose)
@@ -282,94 +272,55 @@ subscriptions model =
                     []
 
         primary =
-            if model.dice.open then
-                Browser.Events.onKeyDown (escKey CloseDice)
+            case model.surface of
+                Just (SurfaceCompendiumPaste _) ->
+                    Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
 
-            else
-                case model.surface of
-                    Just (SurfaceCompendiumPaste _) ->
-                        Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
+                Just (SurfaceCompendiumEdit _) ->
+                    Browser.Events.onKeyDown (escKey CompendiumEditCancel)
 
-                    Just (SurfaceCompendiumEdit _) ->
-                        Browser.Events.onKeyDown (escKey CompendiumEditCancel)
+                Just (SurfaceNoteEdit _) ->
+                    Browser.Events.onKeyDown (escKey NoteEditCancel)
 
-                    Just (SurfaceNoteEdit _) ->
-                        Browser.Events.onKeyDown (escKey NoteEditCancel)
+                Just (SurfaceMemoEdit _) ->
+                    Browser.Events.onKeyDown (escKey MemoCancel)
 
-                    Just (SurfaceHpChange _) ->
-                        Browser.Events.onKeyDown (escKey HpChangeClose)
+                Just (SurfaceTimerSetup ui) ->
+                    -- Same menu-first Esc split as `drawerEscSub`'s
+                    -- condition arm.
+                    if ui.loadMenuOpen then
+                        Sub.none
 
-                    Just (SurfaceMemoEdit _) ->
-                        Browser.Events.onKeyDown (escKey MemoCancel)
+                    else
+                        Browser.Events.onKeyDown (escKey TimerSetupCancel)
 
-                    Just (SurfaceCondition ui) ->
-                        -- While the preset Load menu is open, Esc
-                        -- belongs to `conditionPresetLoadMenuSubs`
-                        -- (closing just the menu); claiming it here
-                        -- too would collapse the whole editor on
-                        -- the same keypress.
-                        if ui.loadMenuOpen then
-                            Sub.none
+                Just (SurfaceSaveCompendium _) ->
+                    Browser.Events.onKeyDown (escKey SaveCompendiumClose)
 
-                        else
-                            Browser.Events.onKeyDown (escKey ConditionClose)
+                Just (SurfaceLoadCompendium _) ->
+                    Browser.Events.onKeyDown (escKey LoadCompendiumClose)
 
-                    Just (SurfaceTimerSetup ui) ->
-                        -- Same menu-first Esc split as the condition
-                        -- editor above.
-                        if ui.loadMenuOpen then
-                            Sub.none
+                Just (SurfaceAbilitySave _) ->
+                    Browser.Events.onKeyDown (escKey AbilitySaveClose)
 
-                        else
-                            Browser.Events.onKeyDown (escKey TimerSetupCancel)
+                _ ->
+                    case List.head (List.reverse model.drawer) of
+                        Just newest ->
+                            drawerEscSub newest
 
-                    Just (SurfaceSaveChain _) ->
-                        Browser.Events.onKeyDown (escKey SaveChainClose)
+                        Nothing ->
+                            if model.route == Compendium then
+                                Browser.Events.onKeyDown compendiumKeyDecoder
 
-                    Just (SurfaceSave _) ->
-                        Browser.Events.onKeyDown (escKey SaveClose)
-
-                    Just (SurfaceLoad _) ->
-                        Browser.Events.onKeyDown (escKey LoadClose)
-
-                    Just (SurfaceSaveCompendium _) ->
-                        Browser.Events.onKeyDown (escKey SaveCompendiumClose)
-
-                    Just (SurfaceLoadCompendium _) ->
-                        Browser.Events.onKeyDown (escKey LoadCompendiumClose)
-
-                    Just (SurfaceAbilitySave _) ->
-                        Browser.Events.onKeyDown (escKey AbilitySaveClose)
-
-                    Just (SurfaceQuickAdd _) ->
-                        Browser.Events.onKeyDown (escKey QuickAddClose)
-
-                    Just (SurfaceDuplicate _) ->
-                        Browser.Events.onKeyDown (escKey DuplicateClose)
-
-                    Just (SurfaceReplace _) ->
-                        Browser.Events.onKeyDown (escKey ReplaceClose)
-
-                    Just (SurfaceStatus _) ->
-                        Browser.Events.onKeyDown (escKey StatusClose)
-
-                    Just (SurfaceInitiative _) ->
-                        Browser.Events.onKeyDown (escKey InitiativeClose)
-
-                    _ ->
-                        if model.route == Compendium then
-                            Browser.Events.onKeyDown compendiumKeyDecoder
-
-                        else
-                            Sub.none
+                            else
+                                Sub.none
     in
     Sub.batch
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
             :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
-            :: xpFilterSubs
-            ++ settingsSubs
+            :: settingsSubs
             ++ clearMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
@@ -377,6 +328,76 @@ subscriptions model =
             ++ chromeSubs
             ++ hpEditSubs
         )
+
+
+{-| Esc closes the newest open drawer panel — the one at the
+bottom of the stack, which is the one the GM opened last.
+-}
+drawerEscSub : Surface -> Sub Msg
+drawerEscSub newest =
+    case newest of
+        SurfaceHpChange _ ->
+            Browser.Events.onKeyDown (escKey HpChangeClose)
+
+        SurfaceCondition ui ->
+            -- While the preset Load menu is open, Esc belongs to
+            -- `conditionPresetLoadMenuSubs` (closing just the
+            -- menu); claiming it here too would collapse the
+            -- whole editor on the same keypress.
+            if ui.loadMenuOpen then
+                Sub.none
+
+            else
+                Browser.Events.onKeyDown (escKey ConditionClose)
+
+        SurfaceStatus _ ->
+            Browser.Events.onKeyDown (escKey StatusClose)
+
+        SurfaceSaveChain _ ->
+            Browser.Events.onKeyDown (escKey SaveChainClose)
+
+        SurfaceInitiative _ ->
+            Browser.Events.onKeyDown (escKey InitiativeClose)
+
+        SurfaceReplace _ ->
+            Browser.Events.onKeyDown (escKey ReplaceClose)
+
+        SurfaceDuplicate _ ->
+            Browser.Events.onKeyDown (escKey DuplicateClose)
+
+        SurfaceQuickAdd _ ->
+            Browser.Events.onKeyDown (escKey QuickAddClose)
+
+        SurfaceSave _ ->
+            Browser.Events.onKeyDown (escKey SaveClose)
+
+        SurfaceLoad _ ->
+            Browser.Events.onKeyDown (escKey LoadClose)
+
+        SurfaceCrCalculator _ ->
+            Browser.Events.onKeyDown (escKey CrCalculatorClose)
+
+        SurfaceRandomEncounter _ ->
+            Browser.Events.onKeyDown (escKey RandomEncounterClose)
+
+        SurfaceTreasure _ ->
+            Browser.Events.onKeyDown (escKey TreasureClose)
+
+        SurfaceDice ->
+            Browser.Events.onKeyDown (escKey CloseDice)
+
+        SurfaceXp ->
+            Browser.Events.onKeyDown (escKey XpFilterClose)
+
+        SurfaceStatBlock _ ->
+            Browser.Events.onKeyDown (escKey PanelClearCreature)
+
+        SurfaceConfirm _ ->
+            Browser.Events.onKeyDown (escKey EncounterControlCancel)
+
+        -- Modal and card-inline variants never enter the stack.
+        _ ->
+            Sub.none
 
 
 {-| Compendium-page keyboard decoder: `/` focuses the search
@@ -576,11 +597,9 @@ init flags url key =
       , replaceLog = []
       , modalChrome = Ui.ModalChrome.fresh
       , placeholderRename = Nothing
-      , panelCreaturePin = Nothing
-      , pendingControl = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
-      , xpFilterOpen = False
       , queuePanels = Ui.QueuePanels.fresh
+      , drawer = []
       , settingsOpen = False
       , anonymousBannerDismissed = False
       , toasts = []
@@ -848,11 +867,10 @@ update msg model =
         -- freshly opened modal starts centered and at its CSS
         -- default size.  Without this, a user who drags or
         -- resizes one modal would inherit that geometry for the
-        -- next modal they open.  Covers the unified
-        -- `model.surface` ADT plus the dice roller, which keeps
-        -- its own `open : Bool` flag outside it.
+        -- next modal they open.  Drawer panels carry no chrome,
+        -- so only `model.surface` counts.
         anyModalOpen m =
-            m.surface /= Nothing || m.dice.open
+            m.surface /= Nothing
 
         nextWithChromeReset =
             if not (anyModalOpen model) && anyModalOpen next then
@@ -861,7 +879,7 @@ update msg model =
             else
                 next
     in
-    ( Update.PanelDrawer.soleOpen model nextWithChromeReset
+    ( nextWithChromeReset
     , Cmd.batch
         [ innerCmd
         , encounterCmd

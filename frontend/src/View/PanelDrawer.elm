@@ -1,23 +1,19 @@
-module View.PanelDrawer exposing (Panel(..), current, isOpen, view)
+module View.PanelDrawer exposing (isOpen, view)
 
-{-| The Actions column's panel: a second workspace column
-holding whatever the column last opened.
+{-| The Actions column's drawer: a second workspace column
+holding every open panel, stacked oldest-first so a newly
+opened panel appears below the ones already up.
 
-One panel shows at a time. Its candidates are spread across
-several model fields, so `current` spells the precedence out
-rather than letting it fall out of whichever field happened to
-be set; `Update.PanelDrawer.soleOpen` keeps them from being set
-at once, and this order decides what shows if they ever are.
+Each drawer variant renders through `panelFor`; adding a panel
+means a lens in `Model`, an arm here, and an Esc mapping in
+`Main.subscriptions`.
 
-`current` is also what the Actions column rings its open button
-against, so the ring can't disagree with what the drawer is
-rendering.
-
-@docs Panel, current, isOpen, view
+@docs isOpen, view
 
 -}
 
-import Html exposing (Html, text)
+import Html exposing (Html, div, text)
+import Html.Attributes exposing (class)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import View.Inline.Condition
@@ -40,109 +36,28 @@ import View.Panel.Treasure
 import View.Panel.Xp
 
 
-type Panel
-    = PanelHpChange
-    | PanelStatus
-    | PanelCondition
-    | PanelSaveChain
-    | PanelInitiative
-    | PanelReplace
-    | PanelDuplicate
-    | PanelDifficulty
-    | PanelTreasure
-    | PanelXp
-    | PanelQuickAdd
-    | PanelSave
-    | PanelLoad
-    | PanelDice
-    | PanelRandomEncounter
-    | PanelConfirm
-    | PanelStatBlock
-    | PanelNone
-
-
-current : Model -> Panel
-current model =
-    case ( model.pendingControl, Maybe.andThen surfacePanel model.surface ) of
-        ( Just _, _ ) ->
-            PanelConfirm
-
-        ( Nothing, Just panel ) ->
-            panel
-
-        ( Nothing, Nothing ) ->
-            if model.dice.open then
-                PanelDice
-
-            else if model.xpFilterOpen then
-                PanelXp
-
-            else if model.panelCreaturePin /= Nothing then
-                PanelStatBlock
-
-            else
-                PanelNone
-
-
-{-| Card-inline editors and the surfaces still wearing modal
-chrome answer `Nothing`, so they leave the drawer showing
-whatever it had. The variants answered here are the ones
-`Model.isDrawerSurface` accepts — the two lists have to move
-together.
+{-| Whether the column has anything to show. Also drives the
+workspace's grid template, which carries no drawer track while
+the stack is empty.
 -}
-surfacePanel : Surface -> Maybe Panel
-surfacePanel surface =
-    case surface of
-        SurfaceHpChange _ ->
-            Just PanelHpChange
-
-        SurfaceStatus _ ->
-            Just PanelStatus
-
-        SurfaceCondition _ ->
-            Just PanelCondition
-
-        SurfaceSaveChain _ ->
-            Just PanelSaveChain
-
-        SurfaceInitiative _ ->
-            Just PanelInitiative
-
-        SurfaceReplace _ ->
-            Just PanelReplace
-
-        SurfaceDuplicate _ ->
-            Just PanelDuplicate
-
-        SurfaceCrCalculator _ ->
-            Just PanelDifficulty
-
-        SurfaceTreasure _ ->
-            Just PanelTreasure
-
-        SurfaceQuickAdd _ ->
-            Just PanelQuickAdd
-
-        SurfaceSave _ ->
-            Just PanelSave
-
-        SurfaceLoad _ ->
-            Just PanelLoad
-
-        SurfaceRandomEncounter _ ->
-            Just PanelRandomEncounter
-
-        _ ->
-            Nothing
-
-
 isOpen : Model -> Bool
 isOpen model =
-    current model /= PanelNone
+    not (List.isEmpty model.drawer)
 
 
 view : Model -> Html Msg
 view model =
+    case model.drawer of
+        [] ->
+            text ""
+
+        panels ->
+            div [ class "drawer-stack" ]
+                (List.map (panelFor model) panels)
+
+
+panelFor : Model -> Surface -> Html Msg
+panelFor model surface =
     let
         selectedCount =
             List.length (List.filter .selected model.encounter.creatures)
@@ -168,28 +83,20 @@ view model =
                 , body = [ body ]
                 }
     in
-    case ( current model, model.surface ) of
-        ( PanelConfirm, _ ) ->
-            case model.pendingControl of
-                Just pending ->
-                    View.Panel.Confirm.view pending
-
-                Nothing ->
-                    text ""
-
-        ( PanelHpChange, Just (SurfaceHpChange ui) ) ->
+    case surface of
+        SurfaceHpChange ui ->
             editor "Manage HP"
                 (scopedLabel ui.target ui.applyToSelected)
                 HpChangeClose
                 (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
 
-        ( PanelStatus, Just (SurfaceStatus ui) ) ->
+        SurfaceStatus ui ->
             editor "Status"
                 ("Target: " ++ ui.target)
                 StatusClose
                 (View.Inline.Status.view selectedCount ui)
 
-        ( PanelCondition, Just (SurfaceCondition ui) ) ->
+        SurfaceCondition ui ->
             editor "Condition"
                 ("Target: " ++ ui.target)
                 ConditionClose
@@ -202,7 +109,7 @@ view model =
                     ui
                 )
 
-        ( PanelSaveChain, Just (SurfaceSaveChain ui) ) ->
+        SurfaceSaveChain ui ->
             editor "Save Chain"
                 (scopedLabel ui.target ui.applyToSelected)
                 SaveChainClose
@@ -214,13 +121,13 @@ view model =
                     ui
                 )
 
-        ( PanelInitiative, Just (SurfaceInitiative ui) ) ->
+        SurfaceInitiative ui ->
             editor "Initiative"
                 ("Target: " ++ ui.target)
                 InitiativeClose
                 (View.Inline.Initiative.view selectedCount ui)
 
-        ( PanelReplace, Just (SurfaceReplace ui) ) ->
+        SurfaceReplace ui ->
             editor "Replace"
                 ("Target: " ++ ui.target)
                 ReplaceClose
@@ -230,49 +137,45 @@ view model =
                     ui
                 )
 
-        ( PanelDuplicate, Just (SurfaceDuplicate ui) ) ->
+        SurfaceDuplicate ui ->
             editor "Duplicate"
                 ("Target: " ++ ui.target)
                 DuplicateClose
                 (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
-        ( PanelDifficulty, _ ) ->
+        SurfaceCrCalculator _ ->
             View.Panel.CrCalculator.view model
 
-        ( PanelTreasure, _ ) ->
+        SurfaceTreasure _ ->
             View.Panel.Treasure.view model
 
-        ( PanelQuickAdd, _ ) ->
+        SurfaceQuickAdd _ ->
             View.Panel.QuickAdd.view model
 
-        ( PanelSave, _ ) ->
+        SurfaceSave _ ->
             View.Panel.Save.view model
 
-        ( PanelLoad, _ ) ->
+        SurfaceLoad _ ->
             View.Panel.Load.view model
 
-        ( PanelRandomEncounter, _ ) ->
+        SurfaceRandomEncounter _ ->
             View.Panel.RandomEncounter.view model
 
-        ( PanelDice, _ ) ->
+        SurfaceDice ->
             View.Panel.Dice.view model.hpChangeLog model.dice
 
-        ( PanelXp, _ ) ->
+        SurfaceXp ->
             View.Panel.Xp.view model.encounter model.compendium.db model.xpScope
 
-        ( PanelStatBlock, _ ) ->
-            case model.panelCreaturePin of
-                Just pin ->
-                    View.Panel.StatBlock.view model.compendium.db pin
+        SurfaceStatBlock pin ->
+            View.Panel.StatBlock.view model.compendium.db pin
 
-                Nothing ->
-                    text ""
+        SurfaceConfirm pending ->
+            View.Panel.Confirm.view pending
 
-        ( PanelNone, _ ) ->
-            text ""
-
-        -- `current` and the surface agree by construction; this
-        -- arm exists only because the compiler pairs them
-        -- independently.
+        -- Modal and card-inline variants never enter the stack —
+        -- their Update modules write `model.surface`, and the
+        -- drawer's own Update modules are the stack's only
+        -- writers.
         _ ->
             text ""

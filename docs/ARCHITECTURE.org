@@ -279,13 +279,12 @@ scoped to the workspace shell rather than to a single feature:
   (Loading / Anonymous / Authenticated) and the login / register form's typing
   state.  See [[*Authentication and per-user storage][Authentication and per-user storage]] for the boot flow.
 
-Two surfaces — the dice roller and the compendium browser — sit *outside* the
-ADT because their substate has to survive a close (dice history, compendium
+Two surfaces — the dice roller and the compendium browser — keep their substate
+*outside* the ADT because it has to survive a close (dice history, compendium
 cache + filter).  They live as =Model.dice : DiceUi= / =Model.compendium :
-CompendiumUi=; the roller carries its own ~open : Bool~, while the browser
-renders as the standalone =/compendium= tab and so has no open flag at all.  The
-roller being outside is what =Update.PanelDrawer.soleOpen= exists to reconcile —
-see the ~tasks.org~ entry on folding the drawer's stragglers into the ADT.
+CompendiumUi=; the roller's openness is the ~SurfaceDice~ marker's presence in
+the drawer stack, while the browser renders as the standalone =/compendium= tab
+and so has no open state at all.
 
 The compendium UI substate also carries ~savedAs : Maybe String~
 + ~compendiumDirty : Bool~ — last saved-snapshot name, and "library has unsaved
@@ -1766,15 +1765,15 @@ dependency order:
    page.  Entry point is ~view : Model -> Html Msg~ that pattern-matches
    ~model.surface~ and falls through to ~text ""~; the chrome comes from
    =View.Panel.view= or =View.Modal.view=, whose shared fields line up.
-8. *Drawer registration* — a panel also needs its variant in
-   ~Model.isDrawerSurface~ and in ~View.PanelDrawer.surfacePanel~.  Those two
-   lists move together; the second is what actually renders it.  A panel whose
-   state has to outlive a close stays off the ADT instead, branched in
-   ~View.PanelDrawer.current~ and reconciled by ~Update.PanelDrawer.soleOpen~ —
-   see the straggler entry in ~tasks.org~ before adding to that set.  A
-   per-creature editor takes a third shape: its body lives in
-   =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper supplies the
-   chrome, so every editor's target strip and close behaviour stay identical.
+8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
+   render arm in ~View.PanelDrawer.panelFor~, and an Esc mapping in
+   ~Main.drawerEscSub~; those three move together.  Panels live in the
+   ~model.drawer~ stack — many open at once, newest at the bottom — and their
+   Update modules open, close, and edit them through ~Model.openDrawer~ /
+   ~closeDrawer~ / ~toggleDrawer~ / ~mapDrawer~.  A per-creature editor takes a
+   narrower shape: its body lives in =View/Inline/Foo.elm= and
+   =View.PanelDrawer='s ~editor~ helper supplies the chrome, so every editor's
+   target strip and close behaviour stay identical.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.

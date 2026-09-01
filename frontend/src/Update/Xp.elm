@@ -5,7 +5,8 @@ the panel that picks is open.
 
 The scope itself is not panel state — the title bar's readout
 reads it whether or not the panel is showing — so it lives on
-the model beside the open flag rather than inside it.
+the model, and the panel's presence in the drawer stack is all
+the open state there is.
 
 @docs filterClose, filterToggle, scopeSet
 
@@ -27,9 +28,9 @@ scopeSet scope model =
 
 filterToggle : Model -> ( Model, Cmd Msg )
 filterToggle model =
-    ( { model | xpFilterOpen = not model.xpFilterOpen }, Cmd.none )
+    ( Model.toggleDrawer Model.xpLens () model, Cmd.none )
 
 
 filterClose : Model -> ( Model, Cmd Msg )
 filterClose model =
-    ( { model | xpFilterOpen = False }, Cmd.none )
+    ( Model.closeDrawer Model.xpLens model, Cmd.none )

@@ -50,8 +50,17 @@ import Update.Toast
 import Util.Http
 
 
-{-| Lens over the SaveUi inside `model.surface`. Other update
-modules don't touch save modal state.
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.saveLens model
+        |> Maybe.map SurfaceSave
+
+
+{-| Lens over the SaveUi in the drawer stack. Other update
+modules don't touch the save panel's state.
 -}
 withSaveUi : (SaveUi -> SaveUi) -> Model -> Model
 withSaveUi =
@@ -79,7 +88,7 @@ open destination model =
         primedUi =
             { baseUi | saves = saves }
     in
-    ( { model | surface = Just (SurfaceSave primedUi) }
+    ( Model.toggleDrawer Model.saveLens primedUi model
     , listCmd
     )
 
@@ -98,7 +107,7 @@ localSavesMetas model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.saveLens model, Cmd.none )
 
 
 destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
@@ -148,7 +157,7 @@ immediately and closes the modal.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSave ui) ->
             let
                 trimmed =
@@ -179,7 +188,7 @@ submit model =
                                 applyLocalEncounterSave trimmed False model
 
                     SaveDestinationDevice ->
-                        ( { model | surface = Nothing }
+                        ( Model.closeDrawer Model.saveLens model
                         , downloadEncounter trimmed model.encounter
                         )
 
@@ -340,7 +349,7 @@ confirmCancel model =
 -}
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSave ui) ->
             case ui.confirm of
                 Just (ConfirmOverwrite name) ->
@@ -488,7 +497,7 @@ renameChange text model =
 
 renameSubmit : Model -> ( Model, Cmd Msg )
 renameSubmit model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSave ui) ->
             case ui.renaming of
                 Just { original, draft } ->

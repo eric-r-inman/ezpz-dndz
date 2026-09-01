@@ -65,14 +65,12 @@ scope, and the Reset / Clear confirmations went with them, which is what let the
 two right-hand panes go — and left the loose ends in
 [[*Fold the drawer's stragglers into the Surface ADT]].
 
-* TODO Fold the drawer's stragglers into the Surface ADT
+* DONE Fold the drawer's stragglers into the Surface ADT
 
-Two of the drawer's panels — the pinned stat block and the XP scope picker —
-keep their state in their own ~Model~ fields, so =Update.PanelDrawer.soleOpen=
-has to reconcile at runtime what the ADT would have made a type property.  Give
-each a ~Surface~ variant and that reconciler shrinks to the dice roller, whose
-substate genuinely has to outlive a close.  Part of
-[[*Migrate the frontend off modal dialogs]].
+Superseded by the drawer becoming a stack: every drawer panel — the pinned stat
+block, the XP scope picker, the Reset / Clear confirmation, and a marker for the
+dice roller — is a ~Surface~ variant in ~model.drawer~ now, and the runtime
+reconciler is gone with the one-panel-at-a-time invariant it enforced.
 
 * TODO Sweep the "modal" wording out of the migrated editors
 

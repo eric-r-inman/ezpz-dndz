@@ -20,9 +20,18 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.quickAddLens model
+        |> Maybe.map SurfaceQuickAdd
+
+
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | surface = Just (SurfaceQuickAdd QuickAddUi.fresh) }, Cmd.none )
+    ( Model.toggleDrawer Model.quickAddLens QuickAddUi.fresh model, Cmd.none )
 
 
 {-| Open the Quick Add modal in "replace this creature" mode.
@@ -31,14 +40,14 @@ than appending — see `pick` / `pickPlaceholder` below.
 -}
 openForReplace : String -> Model -> ( Model, Cmd Msg )
 openForReplace oldName model =
-    ( { model | surface = Just (SurfaceQuickAdd (QuickAddUi.freshForReplace oldName)) }
+    ( Model.openDrawer Model.quickAddLens (QuickAddUi.freshForReplace oldName) model
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.quickAddLens model, Cmd.none )
 
 
 sortToggle : Model -> ( Model, Cmd Msg )
@@ -78,7 +87,7 @@ pickPlaceholder model =
                 Nothing ->
                     Encounter.Roster.appendPlaceholder model.encounter
     in
-    ( { model | surface = Nothing, encounter = nextEncounter }, Cmd.none )
+    ( Model.closeDrawer Model.quickAddLens { model | encounter = nextEncounter }, Cmd.none )
 
 
 {-| Add one instance of the chosen creature to the encounter.
@@ -108,10 +117,10 @@ pick creatureId model =
                             appendAtZero source model
 
                 Nothing ->
-                    ( { model | surface = Nothing }, Cmd.none )
+                    ( Model.closeDrawer Model.quickAddLens model, Cmd.none )
 
         _ ->
-            ( { model | surface = Nothing }, Cmd.none )
+            ( Model.closeDrawer Model.quickAddLens model, Cmd.none )
 
 
 {-| Synchronous swap path — used by both `pick` and
@@ -135,11 +144,11 @@ replaceInPlace oldName source model =
                 { displayName = provisionalName, initiativeRoll = 0 }
                 source
     in
-    ( { model
-        | surface = Nothing
-        , encounter =
-            Encounter.Roster.replaceCreature oldName newCreature model.encounter
-      }
+    ( Model.closeDrawer Model.quickAddLens
+        { model
+            | encounter =
+                Encounter.Roster.replaceCreature oldName newCreature model.encounter
+        }
     , Cmd.none
     )
 
@@ -158,11 +167,11 @@ appendAtZero source model =
                 { displayName = name, initiativeRoll = 0 }
                 source
     in
-    ( { model
-        | surface = Nothing
-        , encounter =
-            Encounter.Roster.appendCreatures [ newCreature ] model.encounter
-      }
+    ( Model.closeDrawer Model.quickAddLens
+        { model
+            | encounter =
+                Encounter.Roster.appendCreatures [ newCreature ] model.encounter
+        }
     , Cmd.none
     )
 
@@ -172,7 +181,7 @@ only when the modal was opened via `QuickAddOpenForReplace`.
 -}
 currentReplaceTarget : Model -> Maybe String
 currentReplaceTarget model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceQuickAdd ui) ->
             ui.replaceTarget
 

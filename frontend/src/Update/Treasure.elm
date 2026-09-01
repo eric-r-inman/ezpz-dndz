@@ -40,20 +40,30 @@ import Ui.Treasure
 import Update.Toast
 
 
-{-| Open the modal. UI state is now bracket-free; the bracket
-each enemy uses falls out of their own CR at roll time, so the
-modal opens straight into the Kind picker.
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Model.Surface
+drawerSurface model =
+    Model.drawerGet Model.treasureLens model
+        |> Maybe.map Model.SurfaceTreasure
+
+
+{-| Open the panel, or fold it away if it is already up. UI
+state is bracket-free; the bracket each enemy uses falls out of
+their own CR at roll time, so the panel opens straight into the
+Kind picker.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | surface = Just (Model.SurfaceTreasure Ui.Treasure.fresh) }
+    ( Model.toggleDrawer Model.treasureLens Ui.Treasure.fresh model
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.treasureLens model, Cmd.none )
 
 
 contributionsToggle : Model -> ( Model, Cmd Msg )
@@ -109,7 +119,7 @@ standard `Random.generate` glue.
 -}
 roll : Model -> ( Model, Cmd Msg )
 roll model =
-    case model.surface of
+    case drawerSurface model of
         Just (Model.SurfaceTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
@@ -452,7 +462,7 @@ Individual still works the way the GM left it.
 -}
 settingsPresetApply : Msg.TreasurePreset -> Model -> ( Model, Cmd Msg )
 settingsPresetApply preset model =
-    case model.surface of
+    case drawerSurface model of
         Just (Model.SurfaceTreasure ui) ->
             let
                 settings =

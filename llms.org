@@ -704,11 +704,12 @@ For a new feature that opens a surface, the canonical layout is:
     genuinely has to cover the page.  The two shells share their shell fields,
     so moving a surface between the tiers is mostly a matter of swapping the
     wrapper.
-  - A drawer panel also needs its variant in ~Model.isDrawerSurface~ and in
-    ~View.PanelDrawer.surfacePanel~; those two lists move together.  A panel
-    whose state has to outlive a close stays off the ADT instead, branched in
-    ~View.PanelDrawer.current~ and reconciled by ~Update.PanelDrawer.soleOpen~ —
-    see the straggler entry in ~tasks.org~ before adding to that set.
+  - A drawer panel also needs a ~SurfaceLens~ in =Model.elm=, a render arm in
+    ~View.PanelDrawer.panelFor~, and an Esc mapping in ~Main.drawerEscSub~;
+    those three move together.  Panels live in the ~model.drawer~ stack — many
+    open at once, newest at the bottom — and their Update modules open, close,
+    and edit them through the ~Model.openDrawer~ / ~closeDrawer~ /
+    ~toggleDrawer~ / ~mapDrawer~ helpers.
   - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
     ~import Http~ directly.
   - Wire the dispatch as one-liners in =Main='s =updateInner=, and the trigger

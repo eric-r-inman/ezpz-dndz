@@ -72,8 +72,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.surface of
-        Just (Model.SurfaceTreasure ui) ->
+    case Model.drawerGet Model.treasureLens model of
+        Just ui ->
             let
                 brackets =
                     enemyBrackets model

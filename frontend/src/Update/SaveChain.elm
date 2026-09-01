@@ -59,6 +59,15 @@ import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.saveChainLens model
+        |> Maybe.map SurfaceSaveChain
+
+
 
 -- ── OPEN / CLOSE ────────────────────────────────────────────────
 
@@ -68,16 +77,16 @@ while its own editor is already expanded closes it (a cancel).
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             if ui.target == target then
                 stashAndClose ui model
 
             else
-                { model | surface = Just (SurfaceSaveChain (reopened target model)) }
+                Model.openDrawer Model.saveChainLens (reopened target model) model
 
         _ ->
-            { model | surface = Just (SurfaceSaveChain (reopened target model)) }
+            Model.openDrawer Model.saveChainLens (reopened target model) model
     , Cmd.none
     )
 
@@ -101,15 +110,15 @@ closing resets to defaults instead.
 -}
 stashAndClose : SaveChainUi -> Model -> Model
 stashAndClose ui model =
-    { model
-        | surface = Nothing
-        , saveChainDraft =
-            if ui.applied then
-                Nothing
+    Model.closeDrawer Model.saveChainLens
+        { model
+            | saveChainDraft =
+                if ui.applied then
+                    Nothing
 
-            else
-                Just ui
-    }
+                else
+                    Just ui
+        }
 
 
 {-| Applying (Fail / Pass / Roll Saves) marks the open editor so
@@ -118,12 +127,11 @@ stale draft.
 -}
 markApplied : Model -> Model
 markApplied model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
-            { model
-                | surface = Just (SurfaceSaveChain { ui | applied = True })
-                , saveChainDraft = Nothing
-            }
+            Model.mapDrawer Model.saveChainLens
+                (\u -> { u | applied = True })
+                { model | saveChainDraft = Nothing }
 
         _ ->
             { model | saveChainDraft = Nothing }
@@ -131,12 +139,12 @@ markApplied model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             stashAndClose ui model
 
         _ ->
-            { model | surface = Nothing }
+            Model.closeDrawer Model.saveChainLens model
     , Cmd.none
     )
 
@@ -150,13 +158,9 @@ applied-and-untouched flag clears itself the moment the GM edits
 anything.
 -}
 withUi : (SaveChainUi -> SaveChainUi) -> Model -> Model
-withUi fn model =
-    case model.surface of
-        Just (SurfaceSaveChain ui) ->
-            { model | surface = Just (SurfaceSaveChain ((fn >> (\u -> { u | applied = False })) ui)) }
-
-        _ ->
-            model
+withUi fn =
+    Model.mapDrawer Model.saveChainLens
+        (fn >> (\u -> { u | applied = False }))
 
 
 nameChanged : String -> Model -> ( Model, Cmd Msg )
@@ -351,29 +355,28 @@ presetPickerChanged name model =
     -- Auto-load: picking a preset from the dropdown loads it
     -- immediately.  Also handles the placeholder "" option —
     -- that just resets the picker without touching the form.
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 pickedUi =
                     { ui | presetPickerSelection = name }
             in
             if String.isEmpty name then
-                ( { model | surface = Just (SurfaceSaveChain pickedUi) }
+                ( Model.openDrawer Model.saveChainLens pickedUi model
                 , Cmd.none
                 )
 
             else
                 case Dict.get name model.saveChainPresets of
                     Just chain ->
-                        ( { model
-                            | surface =
-                                Just (SurfaceSaveChain (UiSaveChain.fromChain pickedUi chain))
-                          }
+                        ( Model.openDrawer Model.saveChainLens
+                            (UiSaveChain.fromChain pickedUi chain)
+                            model
                         , Cmd.none
                         )
 
                     Nothing ->
-                        ( { model | surface = Just (SurfaceSaveChain pickedUi) }
+                        ( Model.openDrawer Model.saveChainLens pickedUi model
                         , Cmd.none
                         )
 
@@ -389,14 +392,13 @@ selection without cycling through the dropdown.
 -}
 presetLoad : Model -> ( Model, Cmd Msg )
 presetLoad model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             case Dict.get ui.presetPickerSelection model.saveChainPresets of
                 Just chain ->
-                    ( { model
-                        | surface =
-                            Just (SurfaceSaveChain (UiSaveChain.fromChain ui chain))
-                      }
+                    ( Model.openDrawer Model.saveChainLens
+                        (UiSaveChain.fromChain ui chain)
+                        model
                     , Cmd.none
                     )
 
@@ -414,7 +416,7 @@ the dict with a `""` key.
 -}
 presetSave : Model -> ( Model, Cmd Msg )
 presetSave model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 chain =
@@ -457,7 +459,7 @@ without loading it first.
 -}
 presetDelete : Model -> ( Model, Cmd Msg )
 presetDelete model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 targetName =
@@ -498,12 +500,11 @@ presetDelete model =
 -}
 reset : Model -> ( Model, Cmd Msg )
 reset model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
-            ( { model
-                | surface =
-                    Just (SurfaceSaveChain (UiSaveChain.fresh ui.target))
-              }
+            ( Model.openDrawer Model.saveChainLens
+                (UiSaveChain.fresh ui.target)
+                model
             , Cmd.none
             )
 
@@ -542,7 +543,7 @@ parenthesised note is left alone.
 -}
 restoreBundled : Model -> ( Model, Cmd Msg )
 restoreBundled model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 bundled =
@@ -637,7 +638,7 @@ verify from Elm, so this is the only feedback the GM sees.
 -}
 exportBundled : Model -> ( Model, Cmd Msg )
 exportBundled model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 snippet =
@@ -690,7 +691,7 @@ survivors, on the same open.
 -}
 applySide : SaveChainSide -> Model -> ( Model, Cmd Msg )
 applySide side model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             let
                 chain =
@@ -998,7 +999,7 @@ rollSaves mode model =
 
 rollSavesInner : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
 rollSavesInner mode model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             case resolveDc ui of
                 Nothing ->
@@ -1107,7 +1108,7 @@ afterwards.
 -}
 savesRolled : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 savesRolled results model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             case resolveDc ui of
                 Nothing ->

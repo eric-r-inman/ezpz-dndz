@@ -389,7 +389,7 @@ pushIncomingDiceRoll roll model =
             { d
                 | history = Dice.push roll d.history
                 , unread =
-                    if d.open then
+                    if Model.drawerHas Model.diceLens model then
                         d.unread
 
                     else

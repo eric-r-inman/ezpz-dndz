@@ -15,38 +15,42 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Replace as ReplaceUi exposing (ReplaceUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.replaceLens model
+        |> Maybe.map SurfaceReplace
+
+
 {-| Opening is a toggle: clicking the column's Replace button
 while the editor is already open for the same target closes it.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open target model =
-    ( case model.surface of
+    ( case drawerSurface model of
         Just (SurfaceReplace ui) ->
             if ui.target == target then
-                { model | surface = Nothing }
+                Model.closeDrawer Model.replaceLens model
 
             else
-                { model | surface = Just (SurfaceReplace (ReplaceUi.fresh target)) }
+                Model.openDrawer Model.replaceLens (ReplaceUi.fresh target) model
 
         _ ->
-            { model | surface = Just (SurfaceReplace (ReplaceUi.fresh target)) }
+            Model.openDrawer Model.replaceLens (ReplaceUi.fresh target) model
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.replaceLens model, Cmd.none )
 
 
 withUi : (ReplaceUi -> ReplaceUi) -> Model -> Model
-withUi fn model =
-    case model.surface of
-        Just (SurfaceReplace ui) ->
-            { model | surface = Just (SurfaceReplace (fn ui)) }
-
-        _ ->
-            model
+withUi =
+    Model.mapDrawer Model.replaceLens
 
 
 searchChanged : String -> Model -> ( Model, Cmd Msg )
@@ -79,7 +83,7 @@ pick creatureId model =
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.surface of
+    case drawerSurface model of
         Just (SurfaceReplace ui) ->
             applyTo [ ui.target ] model
 
@@ -105,8 +109,8 @@ entry, and leave the editor open.
 -}
 applyTo : List String -> Model -> ( Model, Cmd Msg )
 applyTo targets model =
-    case ( model.surface, model.compendium.db ) of
-        ( Just (SurfaceReplace ui), CompendiumDbLoaded db ) ->
+    case ( Model.drawerGet Model.replaceLens model, model.compendium.db ) of
+        ( Just ui, CompendiumDbLoaded db ) ->
             case Maybe.andThen (\id -> Compendium.find id db) ui.pickedId of
                 Just source ->
                     let

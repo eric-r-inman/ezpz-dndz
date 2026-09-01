@@ -52,14 +52,14 @@ open model =
             else
                 model
     in
-    ( { seeded | surface = Just (SurfaceCrCalculator CrCalc.fresh) }
+    ( Model.toggleDrawer Model.crCalculatorLens CrCalc.fresh seeded
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.crCalculatorLens model, Cmd.none )
 
 
 

@@ -64,14 +64,17 @@ caught up.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( withDice (\d -> { d | open = True, inputError = Nothing, unread = False }) model
+    ( Model.openDrawer Model.diceLens
+        ()
+        (withDice (\d -> { d | inputError = Nothing, unread = False }) model)
     , Cmd.none
     )
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( withDice (\d -> { d | open = False, inputError = Nothing }) model
+    ( Model.closeDrawer Model.diceLens
+        (withDice (\d -> { d | inputError = Nothing }) model)
     , Cmd.none
     )
 

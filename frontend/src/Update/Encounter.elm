@@ -396,7 +396,20 @@ about asking "are you sure?" before touching the encounter.
 -}
 requestReset : Model -> ( Model, Cmd Msg )
 requestReset model =
-    ( { model | pendingControl = Just PendingReset }, Cmd.none )
+    ( stage PendingReset model, Cmd.none )
+
+
+{-| Stage the action in the drawer's confirmation panel.
+Re-clicking the staging button un-stages it; clicking the other
+one re-aims the open confirmation instead of stacking a second.
+-}
+stage : PendingControl -> Model -> Model
+stage pending model =
+    if Model.drawerGet Model.confirmLens model == Just pending then
+        Model.closeDrawer Model.confirmLens model
+
+    else
+        Model.openDrawer Model.confirmLens pending model
 
 
 {-| First click of Clear — see [`requestReset`](#requestReset);
@@ -404,7 +417,7 @@ the only difference is the pending tag.
 -}
 requestClear : Model -> ( Model, Cmd Msg )
 requestClear model =
-    ( { model | pendingControl = Just PendingClear }, Cmd.none )
+    ( stage PendingClear model, Cmd.none )
 
 
 {-| Apply whichever destructive action is currently staged.
@@ -427,7 +440,7 @@ to its normal button grid.
 -}
 controlConfirm : Model -> ( Model, Cmd Msg )
 controlConfirm model =
-    case model.pendingControl of
+    case Model.drawerGet Model.confirmLens model of
         Just PendingReset ->
             let
                 enc =
@@ -440,15 +453,14 @@ controlConfirm model =
                         , activeName = ""
                     }
             in
-            ( { model | encounter = resetEnc, pendingControl = Nothing }
+            ( Model.closeDrawer Model.confirmLens
+                { model | encounter = resetEnc }
             , Cmd.none
             )
 
         Just PendingClear ->
-            ( { model
-                | encounter = Encounter.empty
-                , pendingControl = Nothing
-              }
+            ( Model.closeDrawer Model.confirmLens
+                { model | encounter = Encounter.empty }
             , Cmd.none
             )
 
@@ -599,4 +611,4 @@ run model =
 -}
 controlCancel : Model -> ( Model, Cmd Msg )
 controlCancel model =
-    ( { model | pendingControl = Nothing }, Cmd.none )
+    ( Model.closeDrawer Model.confirmLens model, Cmd.none )
