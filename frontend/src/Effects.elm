@@ -1,5 +1,5 @@
 module Effects exposing
-    ( cardId, scrollActiveIntoView
+    ( cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -7,7 +7,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , changePassword, compendiumListId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -25,7 +25,7 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, scrollActiveIntoView
+@docs cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -103,6 +103,47 @@ div.
 encounterPanelBodyId : String
 encounterPanelBodyId =
     "encounter-panel-body"
+
+
+{-| DOM id of the compendium page's scrollable creature list.
+-}
+compendiumListId : String
+compendiumListId =
+    "compendium-list"
+
+
+{-| Stable HTML id for one compendium list row, keyed by the
+creature's compendium id.
+-}
+compendiumRowId : String -> String
+compendiumRowId id =
+    "compendium-row-" ++ id
+
+
+{-| Scroll a compendium list row to the top region of the list.
+Fired once, after the library loads in a tab whose URL names a
+creature — an alphabetically late creature would otherwise be
+selected but out of sight. Failure means the row isn't in the
+DOM (filtered out, or an unknown id), which is benign.
+-}
+scrollCompendiumRowIntoView : String -> Cmd Msg
+scrollCompendiumRowIntoView creatureId =
+    Task.map3
+        (\containerElement rowElement containerVp ->
+            Browser.Dom.setViewportOf
+                compendiumListId
+                containerVp.viewport.x
+                (containerVp.viewport.y
+                    + rowElement.element.y
+                    - containerElement.element.y
+                    - 16
+                )
+        )
+        (Browser.Dom.getElement compendiumListId)
+        (Browser.Dom.getElement (compendiumRowId creatureId))
+        (Browser.Dom.getViewportOf compendiumListId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
 
 
 {-| Scroll the named creature card into view if it sits outside

@@ -27,6 +27,7 @@ view hpChangeLog ui =
         View.Panel.view
             { close = CloseDice
             , title = "🎲 Dice Roller"
+            , titleLead = Nothing
             , subtitle = Nothing
             , extraClass = "panel-drawer--dice"
             , body =

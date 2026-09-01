@@ -70,6 +70,7 @@ view model =
             View.Panel.view
                 { close = RandomEncounterClose
                 , title = "Random Encounter"
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--random-encounter"
                 , body =

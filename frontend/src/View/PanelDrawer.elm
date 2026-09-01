@@ -162,6 +162,7 @@ view model =
             View.Panel.view
                 { close = close
                 , title = title
+                , titleLead = Nothing
                 , subtitle = Just subtitle
                 , extraClass = "panel-drawer--editor"
                 , body = [ body ]

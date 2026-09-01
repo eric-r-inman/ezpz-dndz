@@ -2,7 +2,7 @@ module Update.Compendium.Browser exposing
     ( addedToggle, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, tagFilterChanged
+    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, showCreature, tagFilterChanged
     )
 
 {-| Update branches for the compendium browser's list-side
@@ -22,6 +22,7 @@ surface lens.
 
 import Browser.Dom
 import Compendium
+import Effects
 import Http
 import Model exposing (Model)
 import Msg
@@ -30,6 +31,7 @@ import Msg
         , Msg(..)
         )
 import Ports
+import Route
 import Set
 import Task
 import Ui.Compendium as CompendiumUi
@@ -66,7 +68,16 @@ loaded result model =
     ( { model | pendingBundleMerge = False }
         |> withCompendium (loadedUpdate effectiveResult)
         |> syncEncounterFromCompendium effectiveResult
-    , Cmd.none
+      -- A tab opened on a specific creature (the URL's
+      -- ?creature= seed) can only scroll to its row once the
+      -- library has landed and the rows exist.
+    , if model.route == Route.Compendium then
+        model.compendium.selectedId
+            |> Maybe.map Effects.scrollCompendiumRowIntoView
+            |> Maybe.withDefault Cmd.none
+
+      else
+        Cmd.none
     )
 
 
@@ -174,7 +185,16 @@ own selection — nothing is highlighted on the GM's behalf.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( model, Ports.openCompendiumTab () )
+    ( model, Ports.openCompendiumTab Nothing )
+
+
+{-| Open the /compendium browser tab on a specific creature —
+the drawer's stat-block panel hands off to the full browser
+with its creature already selected.
+-}
+showCreature : String -> Model -> ( Model, Cmd Msg )
+showCreature id model =
+    ( model, Ports.openCompendiumTab (Just id) )
 
 
 searchChanged : String -> Model -> ( Model, Cmd Msg )

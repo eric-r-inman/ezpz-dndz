@@ -479,13 +479,18 @@ if (
 var compendiumWindow = null;
 
 if (app.ports && app.ports.openCompendiumTab) {
-  app.ports.openCompendiumTab.subscribe(function () {
+  app.ports.openCompendiumTab.subscribe(function (creatureId) {
     try {
-      if (compendiumWindow && !compendiumWindow.closed) {
+      // A requested creature rides the URL, so an existing tab
+      // is re-navigated (its Elm app reboots on the new query);
+      // a plain open just focuses whatever is already there.
+      if (compendiumWindow && !compendiumWindow.closed && !creatureId) {
         compendiumWindow.focus();
       } else {
         compendiumWindow = window.open(
-          "/compendium",
+          creatureId
+            ? "/compendium?creature=" + encodeURIComponent(creatureId)
+            : "/compendium",
           "ezpz-dndz-compendium",
         );
         if (compendiumWindow) {

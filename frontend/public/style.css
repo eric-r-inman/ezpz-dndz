@@ -4258,6 +4258,19 @@ body {
   margin-bottom: var(--space-3);
 }
 
+/* Control rendered just before a drawer panel's title — the
+   stat-block panel's 📖 jump to the full compendium. */
+.panel-drawer__title-lead {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1) 0 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+}
+
 .panel-drawer__close {
   appearance: none;
   background: none;

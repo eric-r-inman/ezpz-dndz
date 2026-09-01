@@ -801,6 +801,10 @@ type Msg
       -- Opens the standalone /compendium browser tab, or
       -- focuses it if it is already open.
     | CompendiumOpen
+      -- Same tab, opened on a specific creature — the payload
+      -- rides the tab's URL as ?creature=<id> so the page boots
+      -- with that row selected.
+    | CompendiumShowCreature String
     | CompendiumSearchChanged String
     | CompendiumKindToggled Compendium.CreatureKind
     | CompendiumSortChanged CompendiumSort

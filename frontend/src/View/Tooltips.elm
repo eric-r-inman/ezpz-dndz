@@ -141,6 +141,7 @@ module View.Tooltips exposing
     , statBlockHabitat
     , statBlockRoll
     , statBlockSavingThrow
+    , statBlockShowInCompendium
     , statusBadgeEdit
     , statusEditor
     , statusOffTip
@@ -684,6 +685,11 @@ timerCancel =
 panelStatBlockNewWindow : String
 panelStatBlockNewWindow =
     "Open stat block in new tab"
+
+
+statBlockShowInCompendium : String
+statBlockShowInCompendium =
+    "Show this creature in the Compendium tab"
 
 
 statBlockHabitat : String

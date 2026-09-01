@@ -84,6 +84,7 @@ view model =
             View.Panel.view
                 { close = TreasureClose
                 , title = "💰 Treasure"
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--treasure"
                 , body =

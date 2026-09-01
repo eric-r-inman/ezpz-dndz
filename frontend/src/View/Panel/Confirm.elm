@@ -37,6 +37,7 @@ view pending =
     View.Panel.view
         { close = EncounterControlCancel
         , title = confirmLabel
+        , titleLead = Nothing
         , subtitle = Nothing
         , extraClass = "panel-drawer--confirm"
         , body =

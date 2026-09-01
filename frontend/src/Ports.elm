@@ -214,10 +214,13 @@ port incomingEncounter : (D.Value -> msg) -> Sub msg
 {-| Ask the JS host to open the standalone `/compendium` route
 in a named browser window. If a window with that name already
 exists, the call brings it to focus instead of opening a new
-one (browser-defined for tabs vs popups). Fired by the Actions
-column's Compendium Open trigger.
+one (browser-defined for tabs vs popups). A `Just` payload
+names a creature to open selected, carried on the tab's URL as
+`?creature=<id>` — which navigates an existing tab, since its
+selection can't be reached from here. Fired by the Actions
+column's Compendium Open trigger and the stat-block panel's 📖.
 -}
-port openCompendiumTab : () -> Cmd msg
+port openCompendiumTab : Maybe String -> Cmd msg
 
 
 {-| Cross-tab request from the QuickList (`/quick-list`) tab to

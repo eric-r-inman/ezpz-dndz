@@ -23,6 +23,7 @@ view enc db current =
     View.Panel.view
         { close = XpFilterToggle
         , title = "XP"
+        , titleLead = Nothing
         , subtitle = Nothing
         , extraClass = "panel-drawer--xp"
         , body =

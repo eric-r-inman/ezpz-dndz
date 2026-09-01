@@ -19,8 +19,9 @@ Three states, in priority order:
 
 import Compendium
 import Encounter.Roster
-import Html exposing (Html, a, div, p, text)
+import Html exposing (Html, a, button, div, p, text)
 import Html.Attributes as Attr exposing (attribute, class, href, target)
+import Html.Events exposing (onClick)
 import Model exposing (PanelPin)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -34,6 +35,7 @@ view db pin =
     View.Panel.view
         { close = PanelClearCreature
         , title = pin.name
+        , titleLead = Just (compendiumJump pin)
         , subtitle = Nothing
         , extraClass = "panel-drawer--statblock"
         , body =
@@ -42,6 +44,21 @@ view db pin =
                 |> Maybe.withDefault (notFound pin db)
             ]
         }
+
+
+{-| Hand the creature off to the full browser: opens the
+/compendium tab with this creature selected.
+-}
+compendiumJump : PanelPin -> Html Msg
+compendiumJump pin =
+    button
+        [ class "panel-drawer__title-lead"
+        , Attr.type_ "button"
+        , onClick (CompendiumShowCreature pin.id)
+        , Tooltips.attr Tooltips.statBlockShowInCompendium
+        , attribute "aria-label" Tooltips.statBlockShowInCompendium
+        ]
+        [ text "📖" ]
 
 
 resolvePin : PanelPin -> CompendiumDb -> Maybe Compendium.Creature

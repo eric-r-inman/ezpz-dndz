@@ -24,6 +24,7 @@ import Auth
 import Compendium
 import Compendium.Group
 import Dict
+import Effects
 import Encounter.RandomEncounter.Lore as Lore
 import Html exposing (Html, button, div, h3, input, label, option, p, section, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, type_, value)
@@ -564,7 +565,7 @@ body auth ui userLoreGroups encounterIds =
 skeleton : Html Msg
 skeleton =
     div [ class "compendium__columns" ]
-        [ div [ class "compendium__list" ]
+        [ div [ class "compendium__list", Attr.id Effects.compendiumListId ]
             (List.repeat 8 skeletonRow)
         , div [ class "compendium__detail compendium__detail--skeleton" ]
             [ div [ class "skeleton-block skeleton-block--title" ] []
@@ -927,6 +928,7 @@ listItem selectedId selectedIds encounterIds c =
     in
     div
         [ class rowClass
+        , Attr.id (Effects.compendiumRowId c.id)
         , onClick (CompendiumSelect c.id)
         , attribute "role" "button"
         , attribute "tabindex" "0"

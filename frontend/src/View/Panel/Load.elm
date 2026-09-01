@@ -55,6 +55,7 @@ view model =
             View.Panel.view
                 { close = LoadClose
                 , title = "Load Encounter"
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--load"
                 , body =

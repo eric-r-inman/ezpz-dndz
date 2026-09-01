@@ -52,6 +52,7 @@ view model =
             View.Panel.view
                 { close = SaveClose
                 , title = "Save Encounter"
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--save"
                 , body =

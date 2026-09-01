@@ -49,6 +49,9 @@
 18. The Compendium always opens in its own browser tab now, with no creature
     pre-selected; the in-page dialog it used to fall back to is gone, and its
     title-bar "From file" tag went with it.  No action needed.
+19. The stat-block panel's title carries a 📖 button that hands the creature off
+    to the Compendium tab, opened with that creature selected and scrolled into
+    view.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

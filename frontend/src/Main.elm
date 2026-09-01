@@ -520,6 +520,19 @@ type alias Flags =
     }
 
 
+{-| The compendium UI, seeded with the creature named in the
+tab's URL so the page opens with that row selected. Every other
+route parses no creature and boots the compendium unselected.
+-}
+compendiumFromUrl : Url -> CompendiumUi.CompendiumUi
+compendiumFromUrl url =
+    let
+        ui =
+            CompendiumUi.emptyCompendium
+    in
+    { ui | selectedId = Route.compendiumCreatureQuery url }
+
+
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
@@ -553,7 +566,7 @@ init flags url key =
       , hpChangeLog = []
       , saveChainLog = []
       , hpEdit = Nothing
-      , compendium = CompendiumUi.emptyCompendium
+      , compendium = compendiumFromUrl url
       , surface = Nothing
       , hpChangeDraft = Nothing
       , conditionDraft = Nothing
@@ -1482,6 +1495,9 @@ updateInner msg model =
 
         CompendiumOpen ->
             Update.Compendium.Browser.open model
+
+        CompendiumShowCreature id ->
+            Update.Compendium.Browser.showCreature id model
 
         CompendiumSearchChanged text ->
             Update.Compendium.Browser.searchChanged text model

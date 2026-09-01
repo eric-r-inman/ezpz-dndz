@@ -56,6 +56,7 @@ view model =
             View.Panel.view
                 { close = CrCalculatorClose
                 , title = "Encounter Difficulty"
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--cr-calculator"
                 , body =

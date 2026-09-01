@@ -44,6 +44,7 @@ view model =
             View.Panel.view
                 { close = QuickAddClose
                 , title = title
+                , titleLead = Nothing
                 , subtitle = Nothing
                 , extraClass = "panel-drawer--quick-add"
                 , body =

@@ -7,8 +7,9 @@ fields line up, so a surface moves between the two tiers by
 swapping the wrapper it calls. The signatures carry the
 difference.
 
-`subtitle` names the creature an editor is aimed at. The
-encounter-level panels leave it empty.
+`subtitle` names the creature an editor is aimed at, and
+`titleLead` is a control rendered just before the title — the
+encounter-level panels leave both empty.
 
 -}
 
@@ -22,6 +23,7 @@ import View.Tooltips as Tooltips
 view :
     { close : Msg
     , title : String
+    , titleLead : Maybe (Html Msg)
     , subtitle : Maybe String
     , extraClass : String
     , body : List (Html Msg)
@@ -30,7 +32,10 @@ view :
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
         [ div [ class "panel__header" ]
-            [ div [ class "panel__title" ] [ text config.title ]
+            [ div [ class "panel__title" ]
+                (Maybe.withDefault (text "") config.titleLead
+                    :: [ text config.title ]
+                )
             , button
                 [ class "panel-drawer__close"
                 , type_ "button"
