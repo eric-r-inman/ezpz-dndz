@@ -798,17 +798,9 @@ type Msg
     | TimerPresetDelete String
       -- Compendium browser
     | CompendiumLoaded (Result Http.Error (List Compendium.Creature))
+      -- Opens the standalone /compendium browser tab, or
+      -- focuses it if it is already open.
     | CompendiumOpen
-    | CompendiumClose
-      -- ↗ button in the Compendium modal header: opens the
-      -- standalone /compendium tab (or focuses it if already
-      -- open) and closes the modal.
-    | CompendiumOpenInTab
-      -- Continuation from the JS port: the named compendium
-      -- tab couldn't be focused (never opened, or was closed
-      -- by the user), so the main page should fall back to
-      -- opening the modal locally.
-    | CompendiumTabMissing
     | CompendiumSearchChanged String
     | CompendiumKindToggled Compendium.CreatureKind
     | CompendiumSortChanged CompendiumSort

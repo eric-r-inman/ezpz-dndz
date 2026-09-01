@@ -475,8 +475,7 @@ if (
 // single window reference; opening twice from the same main
 // tab refocuses the existing window rather than spawning a
 // duplicate.  When the user closes that tab, the next click
-// notices `closed === true` and falls back to opening the
-// modal in place.
+// opens a fresh one.
 var compendiumWindow = null;
 
 if (app.ports && app.ports.openCompendiumTab) {
@@ -495,26 +494,6 @@ if (app.ports && app.ports.openCompendiumTab) {
       }
     } catch (_) {
       compendiumWindow = null;
-    }
-  });
-}
-
-if (
-  app.ports &&
-  app.ports.tryFocusCompendiumTab &&
-  app.ports.compendiumTabMissing
-) {
-  app.ports.tryFocusCompendiumTab.subscribe(function () {
-    try {
-      if (compendiumWindow && !compendiumWindow.closed) {
-        compendiumWindow.focus();
-      } else {
-        compendiumWindow = null;
-        app.ports.compendiumTabMissing.send(null);
-      }
-    } catch (_) {
-      compendiumWindow = null;
-      app.ports.compendiumTabMissing.send(null);
     }
   });
 }

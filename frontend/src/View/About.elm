@@ -103,7 +103,7 @@ betaFeaturesSection =
             [ text "Clicking a creature's name in a creature card — or selecting it in the Compendium (see Compendium below) — pins its stat block in the Actions column's panel. Abilities, saving throws, and actions are clickable for generating an auto-roll using the dice roller." ]
         , h3 [] [ text "Compendium" ]
         , p []
-            [ text "The Compendium contains the database of creatures, creature groups, and lore groupings used to build encounters. Open the Compendium by clicking \"Open\" under Compendium in the Actions column." ]
+            [ text "The Compendium contains the database of creatures, creature groups, and lore groupings used to build encounters. Open the Compendium by clicking \"Open\" under Compendium in the Actions column; it opens in its own browser tab, handy for a second monitor." ]
         , p []
             [ text "The Compendium comes bundled with all SRD creatures, which cannot be edited or deleted. You'll need to duplicate a bundled creature, import a creature, or create a creature, in order to edit that creature." ]
         , p [] [ text "Notable Compendium features include:" ]

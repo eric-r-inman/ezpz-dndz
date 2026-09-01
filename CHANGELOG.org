@@ -46,6 +46,9 @@
 17. The Encounter Controls and Compendium panes are gone — everything they held,
     down to the dice roller and the pinned stat block, is reached from the
     Actions column on the far left instead.  No action needed.
+18. The Compendium always opens in its own browser tab now, with no creature
+    pre-selected; the in-page dialog it used to fall back to is gone, and its
+    title-bar "From file" tag went with it.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

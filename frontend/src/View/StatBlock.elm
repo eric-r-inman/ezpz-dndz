@@ -5,7 +5,7 @@ module View.StatBlock exposing
 
 {-| Read-only stat-block renderer for `Compendium.Creature`.
 
-Shared between the Compendium browser modal (Phase 3) and the
+Shared between the Compendium browser page and the
 per-card Quick View (Phase 7). The renderer is purely
 presentational — it has no Msgs of its own — but inline dice
 notation in feature descriptions is wired to a caller-supplied
@@ -58,7 +58,7 @@ rendered in the stat-block header.
     paste-preview creatures don't have a server id yet).
   - `TagBadgesOpenInNewTab` is the same plus an ↗ anchor at the
     far right of the name row that opens the standalone view in
-    a new tab. Used by the compendium modal.
+    a new tab. Used by the compendium page.
   - `TagIconTooltip` collapses tags to a single 🏷 icon next to
     the name, with the full list in a hover tooltip. Used by
     the pinned right-rail panel — which renders its own ↗ link
@@ -151,7 +151,7 @@ viewHead tagDisplay c =
 {-| Name row layout depends on the `TagDisplay` choice.
 
   - `TagBadges`: name on the left, badge strip right-justified
-    in a flex row — the compendium modal has room for both.
+    in a flex row — the compendium page has room for both.
   - `TagIconTooltip`: name and 🏷 icon sit inline together (no
     flex spacing), so the icon reads as "this creature has tags"
     immediately to the right of the name in the cramped right-rail

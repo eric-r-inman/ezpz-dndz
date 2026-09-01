@@ -19,10 +19,11 @@ the "only one modal open at a time" invariant into the type
 system rather than leaving it as a convention.
 
 The exceptions — `dice` and `compendium` — sit outside the
-ADT because their substate has to survive a modal close
-(dice history, compendium browser cache + filter selection).
-Their `open : Bool` field on the substate signals whether the
-modal is showing. The `*Draft` fields are the same exception
+ADT because their substate has to survive a close (dice
+history, compendium cache + filter selection). The dice
+substate carries its own `open : Bool`; the compendium browser
+renders as the standalone /compendium tab, so it has no open
+flag at all. The `*Draft` fields are the same exception
 in another form: they hold the settings of editors that are
 CLOSED, which by definition cannot live inside the ADT that
 models what is open.

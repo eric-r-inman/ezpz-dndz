@@ -12,7 +12,7 @@ changes shape based on which is picked.
     surfaces.
   - **Device** — a file-picker button that kicks off the
     existing `CompendiumImportClick` parse → confirm → replace
-    flow inside the parent Compendium modal.
+    flow on the compendium page.
 
 The destructive replace-the-library step still goes through
 the inline confirmation banner; that hasn't changed.

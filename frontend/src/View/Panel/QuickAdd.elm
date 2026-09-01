@@ -8,8 +8,8 @@ Rating). Bottom: a scrollable list of every compendium creature
 with `<name> ··· <CR>`. Clicking any row dispatches
 `QuickAddPick id` and closes the panel.
 
-The compendium's full-featured browser modal (search, filter,
-edit, count) lives at `View.Modal.Compendium`; this is the
+The compendium's full-featured browser (search, filter, edit,
+count) lives at `View.Page.Compendium`; this is the
 lightweight sibling for the common case.
 
 Renders nothing when the panel isn't open.

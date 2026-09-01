@@ -636,7 +636,7 @@ html:has(.app-shell[data-theme="accessible"]) {
   border-width: 2.5px;
 }
 
-/* Stat-block text (every renderer — compendium modal, pinned
+/* Stat-block text (every renderer — compendium page, pinned
    panel, standalone single-creature page, paste preview).  Each
    `.statblock__*` class that ships with an absolute `rem` size
    gets an Accessible override so the description / property
@@ -859,23 +859,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 
 [data-theme="accessible"] .modal__title {
   font-size: 1.25rem;
-}
-
-/* Accessible mode keeps a near-black on white palette; the
-   default medium-grey title-meta colour reads too light against
-   that contrast.  Drop it to a darker grey while staying off
-   pure black so the line still parses as metadata rather than
-   competing with the bold title to its left. */
-[data-theme="accessible"] .modal__title-meta {
-  color: #2a2a2a;
-}
-
-/* Dark mode does the opposite — the same default grey vanishes
-   against the dark surface.  Lift the value so the "From file:"
-   tag reads at a glance while still ranking below the title in
-   the visual hierarchy. */
-[data-theme="dark"] .modal__title-meta {
-  color: #c4c4cc;
 }
 
 /* Card inline surfaces (Manage HP, condition editor) get the
@@ -7269,11 +7252,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   max-height: calc(100vh - 32px);
 }
 
-.modal--compendium {
-  --modal-max-w: 1100px;
-  height: calc(100vh - 32px);
-}
-
 .modal--group-edit {
   --modal-max-w: 680px;
 }
@@ -8013,37 +7991,15 @@ button.creature-card__lifecycle--dead:focus-visible {
      to <h2> is for screen-reader heading hierarchy; the visual
      appearance stays unchanged.
 
-     `flex: 0 0 auto` keeps the title intrinsic-width so the
-     `modal__title-meta` sibling (e.g. the Compendium's "From
-     file: …" tag) can sit immediately to its right.  The
-     remaining slack is absorbed by `modal__title-meta`'s own
-     `flex: 1`, which still pushes the button cluster (× close +
-     any `viewWithExtras` siblings) all the way to the right
-     edge. */
+     `flex: 0 0 auto` keeps the title intrinsic-width, so the
+     close button is pushed to the right edge rather than the
+     title stretching to meet it. */
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
   font-weight: 700;
   font-size: 1rem;
   letter-spacing: 0.04em;
-}
-
-/* Secondary label rendered to the immediate right of the modal
-   title.  Used by the Compendium modal to display "From file:
-   <save name>" so the GM can see at a glance which snapshot the
-   current library was loaded from.  Visually muted (smaller,
-   lighter) so it reads as metadata next to the heading rather
-   than competing with it. */
-.modal__title-meta {
-  flex: 1 1 auto;
-  margin-left: 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--color-muted, #6b6b6b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Focus-trap sentinel at the END of each modal.  Invisible
@@ -8071,32 +8027,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .modal__close:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-/* Sibling of .modal__close — extra header buttons (currently
-   the Compendium modal's ↗ "open in new tab" affordance) get
-   the same hit area + hover treatment so they read as a pair
-   to the left of the × close button. */
-.modal__open-in-tab {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 1.05rem;
-  color: var(--color-text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: inline-grid;
-  place-items: center;
-  line-height: 1;
-  margin-right: 4px;
-}
-
-.modal__open-in-tab:hover {
   background: var(--color-surface);
   color: var(--color-text);
 }
@@ -9511,21 +9441,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   box-shadow:
     0 0 0 2px var(--color-yellow),
     0 0 12px rgba(245, 200, 66, 0.45);
-}
-
-/* Compendium browser modal — the only modal that's wide and
-   tall enough to host a two-column body. Filter bar across the
-   top, list + detail below.
-
-   `height` (not `max-height`) is fixed so the modal doesn't
-   shrink down around a small creature's stat block — that
-   height-jump made the UI feel jumpy when switching between
-   creatures with very different stat-block lengths. The detail
-   pane internally has `overflow-y: auto`, so taller stat blocks
-   scroll within the fixed-size frame. */
-.modal--compendium .modal__body {
-  padding: 0;
-  gap: 0;
 }
 
 .compendium__filter-bar {

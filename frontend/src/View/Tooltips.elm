@@ -46,7 +46,6 @@ module View.Tooltips exposing
     , compendiumInEncounter
     , compendiumInstanceCount
     , compendiumNewCreature
-    , compendiumOpenInTab
     , compendiumPasteStatBlock
     , compendiumReset
     , compendiumRowSelect
@@ -181,7 +180,7 @@ Layout:
 
 If you're reviewing or rewording: the section comments group
 tooltips by where they appear in the UI (App bar, Actions
-column, Card rows, Compendium modal, etc.).
+column, Card rows, Compendium page, etc.).
 
 -}
 
@@ -240,7 +239,7 @@ xpFilter =
 
 panelOpenCompendium : String
 panelOpenCompendium =
-    "Open Creature Compendium"
+    "Open the Creature Compendium in its own browser tab"
 
 
 panelRandomEncounter : String
@@ -702,7 +701,7 @@ quickListOpen =
 --
 -- See helpers `statBlockSavingThrow` and `statBlockRoll` for the
 -- per-ability / per-die-expression dynamic forms.
--- ── COMPENDIUM BROWSER MODAL ─────────────────────────────────────────────────
+-- ── COMPENDIUM BROWSER PAGE ──────────────────────────────────────────────────
 
 
 compendiumInEncounter : String
@@ -803,11 +802,6 @@ compendiumGroupDelete =
 compendiumNewCreature : String
 compendiumNewCreature =
     "Create a new creature"
-
-
-compendiumOpenInTab : String
-compendiumOpenInTab =
-    "Open compendium in a new tab"
 
 
 compendiumPasteStatBlock : String

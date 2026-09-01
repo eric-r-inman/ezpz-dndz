@@ -1,22 +1,20 @@
 module Update.Compendium.Browser exposing
-    ( addedToggle, close, focusSearch, kindToggled, loaded
+    ( addedToggle, focusSearch, kindToggled, loaded
     , open, panelShowCreature, searchChanged, searchId, select
     , sortChanged, withCompendium
-    , bulkMenuClose, bulkMenuToggle, exportClick, openInTab, rowToggle, tagFilterChanged
+    , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, tagFilterChanged
     )
 
-{-| Update branches for the compendium browser modal: load, open /
-close, search, kind filter, sort, select, the add-count input,
-and the right-pane "Show in Compendium" pinning from a creature
-card.
+{-| Update branches for the compendium browser's list-side
+interactions, plus the "Show in Compendium" pinning from a
+creature card.
 
-The browser owns the persistent `model.compendium` UI state
-(visible whether or not the modal is open — its filters and
-selection survive a close so the next open returns the GM
-to where they were). `withCompendium` is therefore a flat
-field lens, not a modal lens.
+The browser owns the persistent `model.compendium` UI state —
+permanent rather than surface-scoped, since the browser is its
+own tab. `withCompendium` is therefore a flat field lens, not a
+surface lens.
 
-@docs addedToggle, close, focusSearch, kindToggled, loaded
+@docs addedToggle, focusSearch, kindToggled, loaded
 @docs open, panelShowCreature, searchChanged, searchId, select
 @docs sortChanged, withCompendium
 
@@ -170,74 +168,13 @@ syncEncounterFromCompendium result model =
             { model | encounter = synced }
 
 
+{-| Open the standalone /compendium browser tab via the JS
+port, or focus it if it is already open. The tab decides its
+own selection — nothing is highlighted on the GM's behalf.
+-}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( withCompendium (openUpdate (Maybe.map .id model.panelCreaturePin)) model
-    , Cmd.none
-    )
-
-
-{-| Open the modal and pick a sensible default selection so the
-right pane isn't blank on first open.
-
-If the right-rail Compendium Panel has a creature pinned, open
-to that creature — the GM's expectation is "I'm reading this
-stat block, take me there in the full browser." The pinned id
-overrides any previously-set `selectedId` from a prior open.
-
-Otherwise, fall through to the existing behaviour: keep an
-existing selection if one exists, else pick the first row of the
-filter+sort-applied list.
-
--}
-openUpdate : Maybe String -> CompendiumUi -> CompendiumUi
-openUpdate maybePinnedId ui =
-    let
-        opened =
-            { ui | open = True }
-    in
-    case maybePinnedId of
-        Just id ->
-            { opened | selectedId = Just id }
-
-        Nothing ->
-            case ui.selectedId of
-                Just _ ->
-                    opened
-
-                Nothing ->
-                    { opened
-                        | selectedId =
-                            CompendiumUi.compendiumVisible opened
-                                |> List.head
-                                |> Maybe.map .id
-                    }
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    -- Also clear `searchText` so the next open starts with a
-    -- fresh filter — persisting the query across a close/open
-    -- cycle surprised GMs who assumed the modal reset when they
-    -- clicked away.
-    ( withCompendium (\ui -> { ui | open = False, searchText = "" }) model
-    , Cmd.none
-    )
-
-
-{-| Close the in-page modal AND open (or focus) the standalone
-compendium window via the JS port. The GM is moving the work
-into a dedicated browser tab. Fires both the modal-close state
-mutation and the `openCompendiumTab` port in one Cmd batch so
-`Main.updateInner` stays a single-line delegation.
--}
-openInTab : Model -> ( Model, Cmd Msg )
-openInTab model =
-    let
-        ( closed, closeCmd ) =
-            close model
-    in
-    ( closed, Cmd.batch [ closeCmd, Ports.openCompendiumTab () ] )
+    ( model, Ports.openCompendiumTab () )
 
 
 searchChanged : String -> Model -> ( Model, Cmd Msg )

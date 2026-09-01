@@ -32,7 +32,7 @@ import Update.Toast
 
 {-| Single-creature add from the compendium browser. Materialises
 the creature at initiative 0 and appends it to the encounter
-queue; the browser modal stays open so the GM can queue several
+queue; the browser page stays put so the GM can queue several
 different creatures back-to-back.
 -}
 addToQueue : String -> Model -> ( Model, Cmd Msg )

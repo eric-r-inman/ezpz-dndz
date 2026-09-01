@@ -119,7 +119,9 @@ a feature between the two is mostly a matter of swapping the wrapper.
 
 - =Compendium= (browser) :: The flagship conversion: a =/compendium= section.
   It is a database UI, not an interruption, and its selection-plus-detail layout
-  wants the space.
+  wants the space.  Landed: the browser lives only in its own tab now, opened
+  with nothing selected, and the in-page modal that used to be its fallback is
+  gone.
 - =CompendiumEdit= :: =/compendium/edit/:id=.  The deepest form in the app; a
   page gives it room and normal browser behavior (back button, refresh-safe).
 - =CompendiumPaste= :: A step under the compendium route; paste → parse preview

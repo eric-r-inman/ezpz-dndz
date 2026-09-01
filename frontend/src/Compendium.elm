@@ -22,7 +22,7 @@ client-side search / filter / sort helpers. No `Html`,
 `Browser`, or `Url` imports — this is the rules-engine layer
 matching the discipline of `Encounter`, `Dice`, and `HpChange`.
 
-Display logic (the browser modal, the stat-block renderer, etc.)
+Display logic (the browser page, the stat-block renderer, etc.)
 lives in `View/` modules and consumes this domain.
 
 @docs Creature, CreatureKind, Size

@@ -1,7 +1,4 @@
-module View.Modal exposing
-    ( view, closeBtnId, focusInitial
-    , viewWithExtras
-    )
+module View.Modal exposing (view, closeBtnId, focusInitial)
 
 {-| Shared modal chrome.
 
@@ -89,8 +86,8 @@ and accidentally close the dialog.
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
   - `extraClass` — extra class on the inner `.surface` div, used
-    for per-modal sizing (`"modal--compendium"`,
-    `"modal--group-edit"`, etc.).
+    for per-modal sizing (`"modal--group-edit"`,
+    `"modal--compendium-edit"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
   - `chrome` — drag / resize state. Use `Ui.ModalChrome.fresh`
     or the model's `modalChrome` field. The view applies the
@@ -108,25 +105,6 @@ view :
     }
     -> Html Msg
 view config =
-    viewWithExtras config []
-
-
-{-| Like `view`, but accepts extra header buttons that render
-to the left of the × close button. The Compendium modal uses
-this to slot a ↗ "open in new tab" button without every other
-modal having to grow a new config field.
--}
-viewWithExtras :
-    { close : Msg
-    , noOp : Msg
-    , title : String
-    , extraClass : String
-    , body : List (Html Msg)
-    , chrome : ModalChrome
-    }
-    -> List (Html Msg)
-    -> Html Msg
-viewWithExtras config headerExtras =
     div
         [ class "modal-backdrop"
         , onClick config.close
@@ -151,7 +129,6 @@ viewWithExtras config headerExtras =
                             ]
                             [ text config.title ]
                          ]
-                            ++ headerExtras
                             ++ [ button
                                     [ class "modal__close"
                                     , id closeBtnId

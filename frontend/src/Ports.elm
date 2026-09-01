@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -214,27 +214,10 @@ port incomingEncounter : (D.Value -> msg) -> Sub msg
 {-| Ask the JS host to open the standalone `/compendium` route
 in a named browser window. If a window with that name already
 exists, the call brings it to focus instead of opening a new
-one (browser-defined for tabs vs popups). Fired by the ↗
-button in the Compendium modal header.
+one (browser-defined for tabs vs popups). Fired by the Actions
+column's Compendium Open trigger.
 -}
 port openCompendiumTab : () -> Cmd msg
-
-
-{-| Ask the JS host to focus the standalone compendium window
-if it's already open. JS uses its retained `window.open`
-reference to check `.closed`; if there's no live reference,
-it fires [`compendiumTabMissing`](#compendiumTabMissing) so
-the main tab can fall back to opening the modal in place.
--}
-port tryFocusCompendiumTab : () -> Cmd msg
-
-
-{-| Subscription that fires after `tryFocusCompendiumTab`
-when JS has no live reference (the tab was never opened, was
-closed by the user, or the main tab was reloaded since
-opening it). Triggers a normal `CompendiumOpen` modal flow.
--}
-port compendiumTabMissing : (() -> msg) -> Sub msg
 
 
 {-| Cross-tab request from the QuickList (`/quick-list`) tab to

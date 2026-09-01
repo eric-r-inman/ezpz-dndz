@@ -134,7 +134,6 @@ import View.Footer
 import View.Login
 import View.Modal
 import View.Modal.AbilitySave
-import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
 import View.Modal.GroupEdit
@@ -358,7 +357,7 @@ subscriptions model =
                         Browser.Events.onKeyDown (escKey InitiativeClose)
 
                     _ ->
-                        if model.compendium.open then
+                        if model.route == Compendium then
                             Browser.Events.onKeyDown compendiumKeyDecoder
 
                         else
@@ -369,7 +368,6 @@ subscriptions model =
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
             :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
-            :: Ports.compendiumTabMissing (\_ -> CompendiumTabMissing)
             :: xpFilterSubs
             ++ settingsSubs
             ++ clearMenuSubs
@@ -381,10 +379,10 @@ subscriptions model =
         )
 
 
-{-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
-the search input. Both shortcuts ignore events whose target is
-already an input/textarea so the GM doesn't trip them while
-typing in the search box, the count input, or anywhere else.
+{-| Compendium-page keyboard decoder: `/` focuses the search
+input. Ignores events whose target is already an input/textarea
+so the GM doesn't trip it while typing in the search box, the
+count input, or anywhere else.
 -}
 compendiumKeyDecoder : Decode.Decoder Msg
 compendiumKeyDecoder =
@@ -394,9 +392,6 @@ compendiumKeyDecoder =
         |> Decode.andThen
             (\( key, tagName ) ->
                 case ( key, isFormTag tagName ) of
-                    ( "Escape", _ ) ->
-                        Decode.succeed CompendiumClose
-
                     ( "/", False ) ->
                         Decode.succeed CompendiumFocusSearch
 
@@ -840,12 +835,11 @@ update msg model =
         -- freshly opened modal starts centered and at its CSS
         -- default size.  Without this, a user who drags or
         -- resizes one modal would inherit that geometry for the
-        -- next modal they open.  Three modal-open surfaces are
-        -- covered: the unified `model.surface` ADT, plus the Dice
-        -- Roller and Compendium Browser which carry their own
-        -- `open : Bool` flags outside the ADT.
+        -- next modal they open.  Covers the unified
+        -- `model.surface` ADT plus the dice roller, which keeps
+        -- its own `open : Bool` flag outside it.
         anyModalOpen m =
-            m.surface /= Nothing || m.dice.open || m.compendium.open
+            m.surface /= Nothing || m.dice.open
 
         nextWithChromeReset =
             if not (anyModalOpen model) && anyModalOpen next then
@@ -1487,19 +1481,7 @@ updateInner msg model =
             Update.Compendium.Browser.loaded result model
 
         CompendiumOpen ->
-            -- If the standalone /compendium tab is open, focus
-            -- it; otherwise JS calls back via
-            -- `compendiumTabMissing` and the modal opens.
-            ( model, Ports.tryFocusCompendiumTab () )
-
-        CompendiumTabMissing ->
             Update.Compendium.Browser.open model
-
-        CompendiumOpenInTab ->
-            Update.Compendium.Browser.openInTab model
-
-        CompendiumClose ->
-            Update.Compendium.Browser.close model
 
         CompendiumSearchChanged text ->
             Update.Compendium.Browser.searchChanged text model
@@ -2780,11 +2762,6 @@ appShell maybeUser model =
             , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
-    , View.Modal.Compendium.view model.modalChrome
-        model.auth
-        model.compendium
-        model.userLoreGroups
-        (List.filterMap .creatureId model.encounter.creatures)
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model
     , View.Modal.SaveCompendium.view model

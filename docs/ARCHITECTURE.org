@@ -281,10 +281,11 @@ scoped to the workspace shell rather than to a single feature:
 
 Two surfaces — the dice roller and the compendium browser — sit *outside* the
 ADT because their substate has to survive a close (dice history, compendium
-browser cache + filter).  They expose ~open : Bool~ on their own substate and
-live as =Model.dice : DiceUi= / =Model.compendium : CompendiumUi=.  The roller
-being outside is what =Update.PanelDrawer.soleOpen= exists to reconcile — see
-the ~tasks.org~ entry on folding the drawer's stragglers into the ADT.
+cache + filter).  They live as =Model.dice : DiceUi= / =Model.compendium :
+CompendiumUi=; the roller carries its own ~open : Bool~, while the browser
+renders as the standalone =/compendium= tab and so has no open flag at all.  The
+roller being outside is what =Update.PanelDrawer.soleOpen= exists to reconcile —
+see the ~tasks.org~ entry on folding the drawer's stragglers into the ADT.
 
 The compendium UI substate also carries ~savedAs : Maybe String~
 + ~compendiumDirty : Bool~ — last saved-snapshot name, and "library has unsaved
@@ -1068,7 +1069,7 @@ deleted.
 
 ~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges
 | TagIconTooltip~) because the same renderer needs to behave
-differently in two contexts.  In the compendium modal and the standalone view,
+differently in two contexts.  In the compendium page and the standalone view,
 where there's room on the name row, user tags render as a right-justified strip
 of small badges (=.statblock__tag-badge=).  In the pinned right-rail panel,
 where vertical space is at a premium, the same tags collapse to a single 🏷 icon
@@ -1084,7 +1085,7 @@ mirrors the printed book format.
 
 * Compendium browser bulk actions
 
-The Compendium modal's toolbar is split into two rows.
+The Compendium page's toolbar is split into two rows.
 
 *Top row (filters):* search box, kind chips (Player / Enemy / NPC / Groups), the
 Sort picker, and the Tag picker.  The Groups chip toggles
@@ -1212,7 +1213,7 @@ body id), serde / IO failures → 500.
 
 - *Compendium list rendering* — groups render at the top of the list as
   expandable rows (~▸~/~▾~ disclosure) above the creature rows.
-  =View.Modal.Compendium.groupListItem= produces a header + an optional list of
+  =View.Page.Compendium.groupListItem= produces a header + an optional list of
   child entry rows (read-only — to edit contents the GM re-opens the Edit
   modal).  The Groups filter chip on the toolbar hides them entirely.  Groups
   don't carry bulk-selection checkboxes; the group is the unit.
@@ -1342,10 +1343,10 @@ view-side — the underlying ~bloodied~ flag is recomputed on every
 ** Stat-block kind badge
 
 =View.StatBlock.kindBadge= renders a small coloured chip (Player / Enemy / NPC)
-next to the creature name in every ~TagDisplay~ mode (compendium modal, pinned
-right rail, standalone view).  CSS variants in =style.css= colour them blue
-(Player), red (Enemy), and yellow (NPC) so the GM can pick a creature out of the
-queue at a glance.
+next to the creature name in every ~TagDisplay~ mode (compendium page, pinned
+stat-block panel, standalone view).  CSS variants in =style.css= colour them
+blue (Player), red (Enemy), and yellow (NPC) so the GM can pick a creature out
+of the queue at a glance.
 
 * Quick Add panel
 

@@ -24,12 +24,11 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
     block, opened via the ↗ link in the Actions panel.
-  - `Compendium` — standalone full-page compendium browser,
-    opened via the ↗ button in the Compendium modal header.
-    Same interactive surface as the modal body (search, sort,
-    filters, paste, edit) but laid out as a full page so the
-    GM can park it on a second monitor. The AppBar is
-    suppressed on this route, matching `QuickList`.
+  - `Compendium` — the full-page compendium browser, opened
+    from the Actions column's Compendium Open trigger and laid
+    out as a full page so the GM can park it on a second
+    monitor. The AppBar is suppressed on this route, matching
+    `QuickList`.
   - `QuickList` — standalone read-only condensed view of the
     combat queue, opened via the ↗ button in the encounter
     title bar. Cross-tab synced through the
