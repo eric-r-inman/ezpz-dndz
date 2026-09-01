@@ -91,7 +91,7 @@
 
   /* Wide enough for a stat block's two-column header without
      crowding the queue beside it. */
-  --drawer-width: 400px;
+  --drawer-width: 360px;
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
