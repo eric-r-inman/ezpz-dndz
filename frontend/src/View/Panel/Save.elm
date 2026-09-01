@@ -1,6 +1,6 @@
-module View.Modal.Save exposing (view)
+module View.Panel.Save exposing (view)
 
-{-| Save-encounter modal.
+{-| Save-encounter panel.
 
 Top: destination toggle (Server / Device), filename input,
 submit button.
@@ -10,7 +10,7 @@ offering rename / overwrite / delete affordances. Inline
 confirmation banner appears for destructive actions; inline
 rename row appears when the user clicks ✎.
 
-Renders nothing when the modal isn't open.
+Renders nothing when the panel isn't open.
 
 -}
 
@@ -41,7 +41,7 @@ import Ui.Save as SaveUi
         , SaveUi
         )
 import Util.Keyboard
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
@@ -49,12 +49,11 @@ view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceSave ui) ->
-            View.Modal.view
+            View.Panel.view
                 { close = SaveClose
-                , noOp = NoOp
                 , title = "Save Encounter"
-                , extraClass = "modal--save"
-                , chrome = model.modalChrome
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--save"
                 , body =
                     [ destinationSection model.auth ui
                     , filenameSection ui
@@ -302,8 +301,8 @@ submitRow ui =
             ]
             -- Single "Save" label across both destinations
             -- matches the Compendium modal pattern and reads
-            -- consistently with the Encounter-Controls "Save"
-            -- button that opened the modal.
+            -- consistently with the Actions column's "Save"
+            -- button that opened this panel.
             [ text "Save" ]
         , button
             [ class "action-btn"

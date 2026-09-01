@@ -3,9 +3,9 @@
 
 Status: in progress on the =modal-migration-inline= branch.  This document
 records the plan for moving the frontend away from modal dialogs, prompted by
-external review feedback.  The foundation rename and the inline tier are being
-implemented there; =main= is untouched until the branch is reviewed and merged.
-Each phase lands as its own change set.
+external review feedback.  The foundation rename and the inline and panel tiers
+are implemented there; =main= is untouched until the branch is reviewed and
+merged.  Each phase lands as its own change set.
 
 * Why step away from modals
 
@@ -37,7 +37,7 @@ it:
    Extends the existing inline-edit idiom (the AC readout).
 2. *Popover* anchored to the triggering control — for small, pick-one
    interactions.
-3. *Docked panel / drawer* in the right rail — for combat tools that need real
+3. *Docked panel / drawer* beside the queue — for combat tools that need real
    estate but must not hide the queue.
 4. *Route / full page* — for destinations: prep-time surfaces that do not need
    the encounter on screen at all.
@@ -48,16 +48,15 @@ interruption, and the toast + undo pattern should eliminate most of those.
 
 * Mapping
 
-Every entry in =frontend/src/View/Modal/= and its target pattern.
+Every modal the app started with, and its target pattern.
 
 ** Inline on the creature card
 
 - =HpChange= (Damage / Heal / Temp HP) :: Converted as a card expansion, then
-  re-homed: its trigger sits in the encounter panel's stationary action toolbar
-  and the editor docks beneath it, targeting the active creature.  The ten-entry
-  log shrinks to "last change + undo" in the editor; the full log lives in the
-  dice panel.
-- =Condition= :: Same journey as =HpChange= — toolbar trigger, docked editor,
+  re-homed twice: its trigger is in the Actions column and the editor opens in
+  the drawer, targeting the active creature.  The ten-entry log shrinks to "last
+  change + undo" in the editor; the full log lives in the dice panel.
+- =Condition= :: Same journey as =HpChange= — column trigger, drawer panel,
   active-creature default, with a second button applying to the selection.  The
   biggest payoff of the migration: conditions get set while watching the fight.
 - =Memo= (the row-three note) :: Clicking the icon becomes an in-place text
@@ -67,14 +66,13 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =Timer= :: Originally mapped as a popover, but converted with this group so
   every card-button editor shares one UX; it may still shrink to a popover once
   that tier's anchored container exists.
-- =SaveChain= :: Originally mapped as a right-rail panel; it now shares the
-  toolbar-plus-docked-editor home of =HpChange= and =Condition=, which is that
-  panel in a top-docked form.  Whether it moves to the rail once the panel tier
-  exists is an open call.
+- =SaveChain= :: Originally mapped as a right-rail panel; it shares the
+  column-plus-drawer home of =HpChange= and =Condition=, which is that panel on
+  the other side of the queue.
 - =Initiative= :: Originally mapped as a popover anchored to the clicked
-  initiative badge; it took the toolbar-plus-docked-editor treatment instead,
-  since its roll-and-sort batch is too wide for an anchored container.  The
-  card's init circle still aims the editor at its own creature.
+  initiative badge; it took the column-plus-drawer treatment instead, since its
+  roll-and-sort batch is too wide for an anchored container.  The card's init
+  circle still aims the editor at its own creature.
 
 ** Popover anchored to the trigger
 
@@ -82,16 +80,18 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
   formalize it as an anchored popover (roll / advantage / disadvantage) outside
   the modal ADT.
 - =Duplicate= :: First reclassified as its existing dropdown menu, then promoted
-  to a toolbar-docked editor beside =Replace= (the Quick Add picker's replace
-  mode, given its own surface) — both with apply-to-selected scopes and
-  recent-applies logs.
-- =QuickAdd= :: Anchored popover under the button with a search box and a
-  capped-height scroll; the alpha/CR toggle stays in its header.
+  to a drawer panel beside =Replace= (the Quick Add picker's replace mode, given
+  its own surface) — both with apply-to-selected scopes and recent-applies logs.
+- =QuickAdd= :: Mapped as an anchored popover under the button; landed as a
+  drawer panel with the same search box and capped-height scroll, since it would
+  have been the tier's only member.
 
 ** Docked panel / drawer
 
 - =Dice= :: The strongest panel candidate — a GM plausibly wants it persistently
-  open.  Dock it in the right rail below (or tabbed with) the stat block.
+  open.  Mapped as a right-rail dock beside the stat block; landed in the
+  Actions column's drawer with it, which means the two take turns rather than
+  sitting side by side.
 - =Treasure= (the roller) :: Rolls against the current queue's enemies; a drawer
   keeps them visible while results generate.
 - =CrCalculator= :: Reads the live queue by design; as a panel, the difficulty
@@ -101,14 +101,19 @@ Every entry in =frontend/src/View/Modal/= and its target pattern.
 - =SpellList= :: Mapped as a right-rail drawer, landed as a drop-down under the
   queue's spellcaster strip, so the reminder naming the casters and the
   reference listing their spells are one affordance.
-- =Save= :: Split.  A one-click quick-save button in Encounter Controls (toast
-  confirmation) covers the common case; the "save as" form becomes a small
-  drawer; full file management moves to the =/saves= route below.
+- =Save= :: Mapped as a three-way split — a one-click quick-save button with a
+  toast, a small "save as" drawer, and a =/saves= management route.  Only the
+  drawer landed, carrying the whole form; the quick-save button and the route
+  are still ahead.
 
-The far-left Actions column now slides an empty panel of its own over the queue,
-wearing the compendium pane's chrome.  It is the proposed home for the entries
-above — one frame reached from one column, rather than a drawer per tier — and
-stays unwired until the placement question in ~tasks.org~ is settled.
+All of these landed in one frame rather than a drawer per tier: the far-left
+Actions column gathers the encounter-scoped triggers, and the panel beside it
+shows whichever was pressed.  =QuickAdd= went there too — the popover the tier
+above mapped it to would have been the only one of its kind — and so did the
+pinned stat block, the XP scope, and the Reset / Clear confirmations, which is
+what let the two right-hand panes go away entirely.  =View.Panel= carries the
+shared chrome, with its shell fields lined up against =View.Modal='s, so moving
+a feature between the two is mostly a matter of swapping the wrapper.
 
 ** Route / full page
 
@@ -123,8 +128,10 @@ stays unwired until the placement question in ~tasks.org~ is settled.
 - =LoreEdit= :: Nested compendium route.
 - =TreasureTable= (the table editor, distinct from the roller) :: Prep-time
   editing of reference data; the roller drawer links to it.
-- =Load= :: A =/saves= management page (rename, delete, server/local), with a
-  lightweight "recent saves" popover on the Load button for the common case.
+- =Load= :: Mapped as a =/saves= management page (rename, delete, server/local)
+  with a "recent saves" popover for the common case; landed as a drawer panel
+  beside =Save=, since the two share a shape and splitting them across tiers
+  would have been the odder half of the pair.
 - =SaveCompendium= / =LoadCompendium= :: Fold both into the compendium route as
   its import/export screen; they share the file-management shape of encounter
   save/load.
@@ -212,16 +219,14 @@ modules byte-identical; only the rendering moves.
   converted surfaces that previously had no Esc handling (HP change, condition,
   memo), closing an inconsistency the modal era left behind.
 - *The HP log.* The card expansion shows only the newest entry with its undo
-  button.  The full ten-entry list moves to the dice modal (the future dice
-  panel) through a shared =View/HpLog= module, so the rendering exists once.
+  button.  The full ten-entry list moves to the dice panel through a shared
+  =View/HpLog= module, so the rendering exists once.
 
 ** Later tiers, briefly
 
 - *Popovers* get a shared anchored-container helper (=View/Popover=) that
-  positions against the triggering control; =AbilitySave= converts first since
-  it already carries click coordinates.
-- *Panels* add a tool slot to the right rail beside the pinned stat block;
-  =Dice= converts first (its substate already survives close), then =SaveChain=.
+  positions against the triggering control.  =AbilitySave= is the tier's only
+  remaining member, and already carries click coordinates.
 - *Routes* extend =Route= with the compendium family and =/saves=; the existing
   standalone-page pattern (=View/Page/*=) is the template.
 - *Toast + undo* replaces the =PendingControl= confirmations last.

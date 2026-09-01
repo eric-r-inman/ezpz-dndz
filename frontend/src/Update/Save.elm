@@ -79,10 +79,7 @@ open destination model =
         primedUi =
             { baseUi | saves = saves }
     in
-    ( { model
-        | surface = Just (SurfaceSave primedUi)
-        , controlMenu = Nothing
-      }
+    ( { model | surface = Just (SurfaceSave primedUi) }
     , listCmd
     )
 

@@ -3,7 +3,7 @@ module Ui.Initiative exposing (InitiativeUi, fresh)
 {-| Initiative editor state.
 
 `target` identifies the creature the editor is aimed at — the
-active one when the toolbar opened it, or the creature whose
+active one when the column opened it, or the creature whose
 blue init-circle was clicked. The target-scoped buttons act on
 it.
 

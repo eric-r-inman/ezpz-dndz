@@ -1,9 +1,9 @@
 module View.Inline.Status exposing (view)
 
-{-| Status editor as a docked toolbar expansion: the posture
-toggles (cover, concentrating, hiding, dodging, flying + flight
-height) editing a draft, with two Apply buttons writing it to
-the target creature or the selection.
+{-| Status editor body: the posture toggles (cover,
+concentrating, hiding, dodging, flying + flight height) editing
+a draft, with two Apply buttons writing it to the target
+creature or the selection.
 -}
 
 import Encounter exposing (Cover(..))

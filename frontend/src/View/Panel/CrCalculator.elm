@@ -1,16 +1,16 @@
-module View.Modal.CrCalculator exposing (view)
+module View.Panel.CrCalculator exposing (view)
 
-{-| **CR Calculator** modal — encounter-difficulty calculator
+{-| **CR Calculator** panel — encounter-difficulty calculator
 based on the D&D 2024 XP Budget per Character system.
 
 Three sections, top to bottom:
 
   - **Party** — one row per character (level dropdown + remove).
     "+ Add character" appends a fresh level-1 row. The roster
-    lives on `Model.party` so edits persist across modal opens.
+    lives on `Model.party` so edits persist across panel opens.
   - **Scope** — which creatures count toward the encounter XP.
     Reuses `Encounter.Xp.XpScope` so the toggle reads exactly the
-    same as the title-bar XP filter.
+    same as the XP panel's scope.
   - **Result** — encounter XP for the chosen scope, the party's
     per-tier budgets, the resulting difficulty bucket, and a
     short GM-facing description of what that bucket means.
@@ -46,19 +46,18 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.CrCalculator exposing (CrCalculatorUi)
-import View.Modal
+import View.Panel
 
 
 view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceCrCalculator ui) ->
-            View.Modal.view
+            View.Panel.view
                 { close = CrCalculatorClose
-                , noOp = NoOp
-                , title = "Encounter Difficulty Calculator"
-                , extraClass = "modal--cr-calculator"
-                , chrome = model.modalChrome
+                , title = "Encounter Difficulty"
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--cr-calculator"
                 , body =
                     [ blurb
                     , partySection model.party

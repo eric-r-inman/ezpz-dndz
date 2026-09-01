@@ -14,12 +14,12 @@ module Update.Initiative exposing
     , surprisedToggle
     )
 
-{-| Update branches for the toolbar's initiative editor: opening
-for a specific creature, custom-value entry, the "sort by current
-initiative" shortcut, the auto-roll batch (target / all / selected),
-and the result handler that stamps rolled values onto creatures and
-re-sorts the queue. Applying leaves the editor open, as the other
-docked editors do.
+{-| Update branches for the initiative editor: opening for a
+specific creature, custom-value entry, the "sort by current
+initiative" shortcut, the auto-roll batch (target / all /
+selected), and the result handler that stamps rolled values onto
+creatures and re-sorts the queue. Applying leaves the editor
+open, as the other drawer editors do.
 -}
 
 import Dice
@@ -45,8 +45,8 @@ withInitiative =
     Model.mapSurface Model.initiativeLens
 
 
-{-| The toolbar trigger: clicking it while any Initiative editor
-is expanded closes it — the button shows the fold caret and
+{-| The column trigger: clicking it while any Initiative editor
+is expanded closes it — the button wears the open ring and
 Cancel hover text whenever the editor is open, so it must close
 regardless of which creature a card's init circle aimed it at.
 -}
@@ -65,7 +65,7 @@ open target model =
 {-| A card's init circle: it aims the editor at its own creature,
 so an editor already open for someone else re-aims rather than
 closing. Re-clicking the circle of the creature being edited
-folds the editor away, matching the toolbar trigger's toggle.
+folds the editor away, matching the column trigger's toggle.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =

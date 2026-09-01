@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapSurface, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
+    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, compendiumEditLens, conditionLens, crCalculatorLens, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, isDrawerSurface, loadCompendiumLens, loadLens, loreEditLens, mapSurface, memoLens, noteLens, quickAddLens, randomEncounterLens, saveCompendiumLens, saveLens, timerLens, treasureLens, treasureTableLens
     )
 
 {-| The single source of truth for the running app.
@@ -50,12 +50,11 @@ import Encounter.Treasure
 import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
-import Msg exposing (ControlMenu, MeStatus)
+import Msg exposing (MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
-import Ui.ActionsDrawer exposing (ActionsDrawerUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
@@ -87,7 +86,7 @@ import Ui.TreasureTable exposing (TreasureTableUi)
 import Url exposing (Url)
 
 
-{-| The right-side Compendium pane's pinned creature. Carries
+{-| The creature pinned in the Actions column's panel. Carries
 both the compendium `id` (for the canonical UUID lookup) and
 the encounter creature's display `name` (so we can fall back to
 a name match when an old saved encounter's `creatureId` no
@@ -149,6 +148,65 @@ type Surface
       -- from `model.saveChainPresets` and applies fail/success
       -- outcomes to the target (or the selection).
     | SurfaceSaveChain SaveChainUi
+
+
+{-| Whether this surface belongs in the Actions column's
+drawer, as opposed to the modal layer or a creature card.
+
+The drawer shows one panel at a time, and the update wrapper
+uses this to decide whether an opening surface should displace
+whatever else the drawer was showing — a card's note editor
+must not, the Manage HP editor must.
+
+Answers `True` for exactly the variants `View.PanelDrawer`
+renders; the two lists have to move together, and can't be one
+list because that module may not be imported from here.
+
+-}
+isDrawerSurface : Surface -> Bool
+isDrawerSurface surface =
+    case surface of
+        SurfaceHpChange _ ->
+            True
+
+        SurfaceInitiative _ ->
+            True
+
+        SurfaceCondition _ ->
+            True
+
+        SurfaceSaveChain _ ->
+            True
+
+        SurfaceStatus _ ->
+            True
+
+        SurfaceReplace _ ->
+            True
+
+        SurfaceDuplicate _ ->
+            True
+
+        SurfaceQuickAdd _ ->
+            True
+
+        SurfaceSave _ ->
+            True
+
+        SurfaceLoad _ ->
+            True
+
+        SurfaceCrCalculator _ ->
+            True
+
+        SurfaceRandomEncounter _ ->
+            True
+
+        SurfaceTreasure _ ->
+            True
+
+        _ ->
+            False
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -483,8 +541,8 @@ type alias Model =
     -- instances one application added.
     , conditionLog : List UiCondition.ConditionLogEntry
 
-    -- Same pattern for the toolbar's Duplicate and Replace
-    -- editors: newest first, capped in their Update modules.
+    -- Same pattern for the Duplicate and Replace editors:
+    -- newest first, capped in their Update modules.
     , duplicateLog : List Ui.Duplicate.DuplicateLogEntry
     , replaceLog : List Ui.Replace.ReplaceLogEntry
     , modalChrome : ModalChrome
@@ -499,11 +557,6 @@ type alias Model =
     -- Independent of `surface`: several can be open at once.
     , queuePanels : QueuePanels
 
-    -- The panel the Actions column slides open over the queue.
-    -- Also independent of `surface`, because it is the frame the
-    -- surfaces are being moved into.
-    , actionsDrawer : Maybe ActionsDrawerUi
-
     -- Dismissed-the-anonymous-banner flag.  When `True`, the
     -- "you're browsing as a guest" strip at the top of the
     -- workspace stays hidden for the rest of the session.
@@ -511,7 +564,6 @@ type alias Model =
     -- because forgetting that anonymous data is local-only is
     -- exactly the failure mode the banner exists to prevent.
     , anonymousBannerDismissed : Bool
-    , controlMenu : Maybe ControlMenu
     , toasts : List Toast
     , nextToastId : Int
     , rollPopups : List RollPopup

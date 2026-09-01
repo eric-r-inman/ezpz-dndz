@@ -302,13 +302,13 @@ saveExpression bonus =
 
 
 {-| Land one roll into the dice history. Single chokepoint so
-the "unread" indicator on the encounter-controls Roll button
+the "unread" indicator on the Actions column's Roll button
 stays in sync — every Cmd that returns a Roll funnels through
 here.
 
-`unread = True` only when the modal is closed at land time.
-When the modal is already open, the user can already see the
-roll, so no indicator is needed.
+`unread = True` only when the roller is closed at land time.
+When it is already open, the user can see the roll, so no
+indicator is needed.
 
 Also broadcasts the roll to peer tabs via the dice
 BroadcastChannel so a stat block opened in its own tab and the

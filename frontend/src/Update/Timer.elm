@@ -100,7 +100,7 @@ apply model =
                     }
             in
             -- Starting the timer also closes the editor — unlike
-            -- the toolbar editors, there's nothing left to tweak
+            -- the drawer editors, there's nothing left to tweak
             -- once the countdown is running.
             ( { model
                 | encounter =

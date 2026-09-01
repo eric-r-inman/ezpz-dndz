@@ -1,6 +1,6 @@
 module View.Inline.HpChange exposing (view)
 
-{-| Manage HP as a docked editor — every way of changing a
+{-| Manage HP as a drawer panel — every way of changing a
 creature's pools on one surface, without covering the queue.
 
 The verb buttons share a smart amount input: type a plain

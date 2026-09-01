@@ -1,18 +1,18 @@
-module View.Modal.QuickAdd exposing (view)
+module View.Panel.QuickAdd exposing (view)
 
-{-| Quick Add modal — one-click "drop a creature into the
+{-| Quick Add panel — one-click "drop a creature into the
 encounter" picker.
 
 Top: a single sort-toggle button (Alphabetical ↔ Challenge
 Rating). Bottom: a scrollable list of every compendium creature
 with `<name> ··· <CR>`. Clicking any row dispatches
-`QuickAddPick id` and closes the modal.
+`QuickAddPick id` and closes the panel.
 
 The compendium's full-featured browser modal (search, filter,
 edit, count) lives at `View.Modal.Compendium`; this is the
 lightweight sibling for the common case.
 
-Renders nothing when the modal isn't open.
+Renders nothing when the panel isn't open.
 
 -}
 
@@ -24,7 +24,7 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddSort(..), QuickAddUi)
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
@@ -41,12 +41,11 @@ view model =
                         Nothing ->
                             "Quick Add"
             in
-            View.Modal.view
+            View.Panel.view
                 { close = QuickAddClose
-                , noOp = NoOp
                 , title = title
-                , extraClass = "modal--quick-add"
-                , chrome = model.modalChrome
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--quick-add"
                 , body =
                     [ controlsRow ui
                     , listSection ui model
@@ -57,7 +56,7 @@ view model =
             text ""
 
 
-{-| Top row of the Quick Add modal: name-search input on the
+{-| Top row of the Quick Add panel: name-search input on the
 left, sort toggle on the right. The search input filters the
 list in real time via `Compendium.search`, which already powers
 the full Compendium browser, so the matching surface is

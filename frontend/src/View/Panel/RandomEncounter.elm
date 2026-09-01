@@ -1,6 +1,6 @@
-module View.Modal.RandomEncounter exposing (view)
+module View.Panel.RandomEncounter exposing (view)
 
-{-| **Random Encounter** modal — generator for "what walks out
+{-| **Random Encounter** panel — generator for "what walks out
 of the woods" rolls.
 
 Sections, top to bottom:
@@ -59,7 +59,7 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
@@ -67,12 +67,11 @@ view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceRandomEncounter ui) ->
-            View.Modal.view
+            View.Panel.view
                 { close = RandomEncounterClose
-                , noOp = NoOp
                 , title = "Random Encounter"
-                , extraClass = "modal--random-encounter"
-                , chrome = model.modalChrome
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--random-encounter"
                 , body =
                     [ blurb
                     , partySection model.party

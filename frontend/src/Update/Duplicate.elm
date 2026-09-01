@@ -1,6 +1,6 @@
 module Update.Duplicate exposing (apply, applySelected, close, modeSet, open)
 
-{-| Update branches for the encounter toolbar's Duplicate editor.
+{-| Update branches for the Duplicate editor.
 
 Five flavors, applied to the active creature or the selection:
 
@@ -30,7 +30,7 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Duplicate as DuplicateUi exposing (DuplicateUi)
 
 
-{-| Opening is a toggle: clicking the toolbar's Duplicate button
+{-| Opening is a toggle: clicking the column's Duplicate button
 while the editor is already open for the same target closes it.
 -}
 open : String -> Model -> ( Model, Cmd Msg )

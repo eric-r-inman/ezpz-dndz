@@ -23,7 +23,7 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
   - `About` — static "about this app" page, linked from the
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
-    block, opened via the ↗ link in the side panel.
+    block, opened via the ↗ link in the Actions panel.
   - `Compendium` — standalone full-page compendium browser,
     opened via the ↗ button in the Compendium modal header.
     Same interactive surface as the modal body (search, sort,

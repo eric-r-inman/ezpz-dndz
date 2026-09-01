@@ -147,8 +147,8 @@ manualApplyTo names ui model =
         }
 
 
-{-| The toolbar trigger: clicking it while any Manage HP editor
-is expanded closes it — the button shows the fold caret and
+{-| The column trigger: clicking it while any Manage HP editor
+is expanded closes it — the button wears the open ring and
 Cancel hover text whenever the editor is open, so it must close
 regardless of which creature a card's HP value aimed it at. A
 fresh open restores the stashed draft when the last close left
@@ -169,7 +169,7 @@ open target model =
 {-| A card's HP value: it aims the editor at its own creature,
 so an editor already open for someone else re-aims rather than
 closing. Re-clicking a value on the creature being edited folds
-the editor away, matching the toolbar trigger's toggle.
+the editor away, matching the column trigger's toggle.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =

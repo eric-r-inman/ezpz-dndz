@@ -1,9 +1,9 @@
 module Ui.Status exposing (StatusUi, fromCreature, fresh)
 
-{-| Status editor state — the encounter toolbar's docked editor
-for the posture toggles (cover, concentrating, hiding, dodging,
-flying + flight height). The editor edits this draft; the Apply
-buttons write it onto the active creature or the selection.
+{-| Status editor state — the drawer panel for the posture
+toggles (cover, concentrating, hiding, dodging, flying + flight
+height). The editor edits this draft; the Apply buttons write it
+onto the active creature or the selection.
 
 @docs StatusUi, fromCreature, fresh
 

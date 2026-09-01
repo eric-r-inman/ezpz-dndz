@@ -2,7 +2,7 @@ module View.Modal.SaveCompendium exposing (view)
 
 {-| Save-compendium modal.
 
-Mirrors `View.Modal.Save` but for the creature library: the
+Mirrors `View.Panel.Save` but for the creature library: the
 top half picks destination + filename; the bottom half lists
 existing server-side snapshots so the user can pick one to
 overwrite.

@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , ActionsDrawerTarget(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), ControlMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -93,33 +93,6 @@ type QueuePanel
     = LegendaryActionsPanel
     | SpecialReactionsPanel
     | SpellsPanel
-
-
-{-| Which of the Actions column's buttons opened the drawer.
-The drawer holds one of these rather than the button's face, so
-a button whose label tracks live state still keeps a fixed
-identity.
--}
-type ActionsDrawerTarget
-    = DrawerManageHp
-    | DrawerStatus
-    | DrawerCondition
-    | DrawerSaveChain
-    | DrawerInitiative
-    | DrawerReplace
-    | DrawerDuplicate
-    | DrawerDifficulty
-    | DrawerTreasure
-    | DrawerXp
-    | DrawerQuickAdd
-    | DrawerSave
-    | DrawerLoad
-    | DrawerNextTurn
-    | DrawerReset
-    | DrawerClear
-    | DrawerRoll
-    | DrawerCompendiumOpen
-    | DrawerCompendiumRandom
 
 
 {-| Which boolean posture toggle a Status-editor click flips.
@@ -372,17 +345,6 @@ type LoadSource
     | LoadSourceDevice
 
 
-{-| Which Encounter-Controls split-button dropdown is open.
-The SaveMenu / LoadMenu options pick destination (Server vs.
-Device) before the Save / Load Msg fires. Mediated by a
-`Maybe ControlMenu` on `Model` so only one can be open at a
-time.
--}
-type ControlMenu
-    = SaveControlMenu
-    | LoadControlMenu
-
-
 {-| Which compendium-modal split-button dropdown is currently
 showing its menu. Mediated by a `Maybe CompendiumBulkMenu` field
 on the compendium UI substate so only one is open at a time.
@@ -593,7 +555,7 @@ type Msg
       -- no committed kind — the verb buttons fire
       -- `HpChangeApplyAs kind` to choose one.
     | HpChangeOpen String
-      -- The toolbar trigger folds the editor away; a card's HP
+      -- The column trigger folds the editor away; a card's HP
       -- value re-aims it at that card's creature.
     | HpChangeOpenFor String
       -- The Manual section writes typed pools, no verb involved.
@@ -704,27 +666,27 @@ type Msg
     | MoveCreatureDown String
       -- Roster mutation (right rail × / ⧉ buttons)
     | RemoveCreature String
-      -- Duplicate editor (encounter toolbar): pick a flavor,
-      -- choose the target scope, Apply.
+      -- Duplicate editor: pick a flavor, choose the target
+      -- scope, Apply.
     | DuplicateOpen String
     | DuplicateClose
     | DuplicateModeSet DuplicateMode
     | DuplicateApply
     | DuplicateApplySelected
-      -- Replace editor (encounter toolbar): search the
-      -- compendium, pick the replacement, choose the scope,
-      -- Apply.  Swaps preserve queue position and initiative.
+      -- Replace editor: search the compendium, pick the
+      -- replacement, choose the scope, Apply.  Swaps preserve
+      -- queue position and initiative.
     | ReplaceOpen String
     | ReplaceClose
     | ReplaceSearchChanged String
     | ReplacePick String
     | ReplaceApply
     | ReplaceApplySelected
-      -- Status editor (encounter toolbar): posture toggles edit
-      -- a draft; the Apply buttons stamp it onto the active
-      -- creature or the selection.  The toolbar trigger folds
-      -- the editor away, while a card's status label aims it at
-      -- that card's creature.
+      -- Status editor: posture toggles edit a draft; the Apply
+      -- buttons stamp it onto the active creature or the
+      -- selection.  The column trigger folds the editor away,
+      -- while a card's status label aims it at that card's
+      -- creature.
     | StatusOpen String
     | StatusOpenFor String
     | StatusClose
@@ -733,9 +695,9 @@ type Msg
     | StatusFlyHeightAdjust Int
     | StatusApplyTarget
     | StatusApplySelected
-      -- Initiative editor (encounter toolbar).  The toolbar
-      -- trigger folds the editor away, while a card's init
-      -- circle aims it at that card's creature.
+      -- Initiative editor.  The column trigger folds the editor
+      -- away, while a card's init circle aims it at that card's
+      -- creature.
     | InitiativeOpen String
     | InitiativeOpenFor String
     | InitiativeClose
@@ -1062,9 +1024,12 @@ type Msg
     | CompendiumPasteCancel
     | CompendiumPasteTextChanged String
     | CompendiumPasteApply
-      -- Pin a compendium creature's stat block in the side panel
+      -- Pin a compendium creature's stat block in the drawer.
     | PanelShowCreature String String
       -- (compendium id, encounter creature display name)
+      --
+      -- Unpin it again, closing the drawer's stat block.
+    | PanelClearCreature
       -- QuickList (`/quick-list`) row click: fires from the
       -- standalone quick-view tab.  Broadcasts a panel-show
       -- request across the BroadcastChannel so the main tab
@@ -1083,7 +1048,7 @@ type Msg
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
-      -- Encounter Controls: Save / Load / Reset / Clear
+      -- Encounter-level controls: Save / Load / Reset / Clear
     | SaveOpen SaveDestination
     | SaveClose
     | SaveDestinationSet SaveDestination
@@ -1142,10 +1107,6 @@ type Msg
     | LoadCompendiumConfirmCancel
     | LoadCompendiumConfirmConfirm
     | LoadCompendiumServerResponse String (Result Http.Error ( List Compendium.Creature, List Compendium.Group.Group ))
-      -- Encounter Controls panel: which (if any) of the
-      -- Save / Load split-button dropdowns is currently open.
-    | ControlMenuToggle ControlMenu
-    | ControlMenuClose
     | EncounterReset
     | EncounterClear
     | EncounterAddPlaceholder
@@ -1339,9 +1300,6 @@ type Msg
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
-      -- Button in the far-left Actions column, sliding its panel
-      -- open over the queue.
-    | ActionsDrawerToggle ActionsDrawerTarget
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

@@ -100,6 +100,7 @@ module View.Tooltips exposing
     , panelOpenCompendium
     , panelRandomEncounter
     , panelStatBlockNewWindow
+    , pinStatBlock
     , queueDuplicate
     , queueInactive
     , queueMakeActive
@@ -179,10 +180,8 @@ Layout:
     up by combinators.
 
 If you're reviewing or rewording: the section comments group
-tooltips by where they appear in the UI (App bar, Encounter
-Controls panel, Card rows, Compendium modal, etc.); see
-`docs/TOOLTIPS.org` for each tooltip's user-visible context and
-back-links to the call site.
+tooltips by where they appear in the UI (App bar, Actions
+column, Card rows, Compendium modal, etc.).
 
 -}
 
@@ -226,7 +225,7 @@ appBarDonate =
 
 
 
--- ── ENCOUNTER CONTROLS PANEL (right pane, top) ───────────────────────────────
+-- ── ACTIONS COLUMN ───────────────────────────────────────────────────────────
 
 
 quickAddButton : String
@@ -234,8 +233,23 @@ quickAddButton =
     "Quick-add a creature from the Compendium"
 
 
-{-| Save split-button trigger when there are no unsaved roster
-changes. See `saveButtonDirty` for the dirty variant.
+xpFilter : String
+xpFilter =
+    "Choose which creatures the XP total counts"
+
+
+panelOpenCompendium : String
+panelOpenCompendium =
+    "Open Creature Compendium"
+
+
+panelRandomEncounter : String
+panelRandomEncounter =
+    "Choose parameters & generate encounter"
+
+
+{-| Save trigger when there are no unsaved roster changes. See
+`saveButtonDirty` for the dirty variant.
 -}
 saveButton : String
 saveButton =
@@ -319,11 +333,6 @@ xpScopeSelectedOnly =
 xpLairTotal : String
 xpLairTotal =
     "Total XP if creature(s) fought in lair"
-
-
-xpFilter : String
-xpFilter =
-    "Filter XP total"
 
 
 encounterBarDifficulty : String
@@ -670,17 +679,7 @@ timerCancel =
 
 
 
--- ── SIDE DETAIL PANEL ────────────────────────────────────────────────────────
-
-
-panelOpenCompendium : String
-panelOpenCompendium =
-    "Open Creature Compendium"
-
-
-panelRandomEncounter : String
-panelRandomEncounter =
-    "Choose parameters & generate encounter"
+-- ── STAT-BLOCK PANEL ─────────────────────────────────────────────────────────
 
 
 panelStatBlockNewWindow : String
@@ -699,7 +698,7 @@ quickListOpen =
 
 
 
--- ── STAT BLOCK (right pane + popouts) ────────────────────────────────────────
+-- ── STAT BLOCK (drawer panel + popouts) ──────────────────────────────────────
 --
 -- See helpers `statBlockSavingThrow` and `statBlockRoll` for the
 -- per-ability / per-die-expression dynamic forms.
@@ -925,7 +924,7 @@ loadRowCompendium =
 
 
 
--- ── DICE MODAL ───────────────────────────────────────────────────────────────
+-- ── DICE PANEL ───────────────────────────────────────────────────────────────
 
 
 diceReset : String
@@ -968,7 +967,7 @@ initSelectedNone =
 
 
 
--- ── QUICK ADD MODAL ──────────────────────────────────────────────────────────
+-- ── QUICK ADD PANEL ──────────────────────────────────────────────────────────
 
 
 quickAddSortToAlpha : String
@@ -1007,6 +1006,13 @@ toastDismiss =
 -- survey above isn't broken up by template logic.
 
 
+{-| Names the creature whose stat block a click will pin.
+-}
+pinStatBlock : String -> String
+pinStatBlock name =
+    "Pin " ++ name ++ "'s stat block in the Actions panel"
+
+
 sourceFromSaved : String -> String
 sourceFromSaved name =
     "from file: " ++ name
@@ -1020,7 +1026,7 @@ statusBadgeEdit =
     "Click to edit this creature's statuses"
 
 
-{-| Toolbar Status button — opens the posture-toggle editor.
+{-| The Actions column's Status button — opens the posture-toggle editor.
 -}
 statusEditor : String
 statusEditor =

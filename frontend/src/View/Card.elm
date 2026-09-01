@@ -10,8 +10,8 @@ Three rows + two side rails + an optional legendary-pip column:
   - Row 2 (mid): HP display (click-to-edit), status readout,
     condition / save-notice chips.
   - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
-    timer slot. The HP / condition / save-chain triggers live
-    in the encounter panel's stationary action toolbar.
+    timer slot. The HP / condition / save-chain triggers are
+    encounter-scoped and live in the Actions column.
 
 The two side rails carry the queue-mutation buttons (select,
 move up/down on the left; remove, duplicate on the right) and
@@ -171,9 +171,9 @@ view ctx creature =
                     [ text "∅" ]
                 ]
 
-            -- Replace and Duplicate moved to the encounter
-            -- toolbar's docked editors; the rail keeps only the
-            -- remove and skip toggles.
+            -- The rail carries only the queue-mutation
+            -- toggles; Replace and Duplicate are editors, and
+            -- editors live in the Actions column.
             ]
         ]
 
@@ -213,8 +213,8 @@ surfaceFor ctx creature =
 
 {-| The expansion section under row 3 for the card-owned inline
 surfaces (the timer form, and the memo / note strips). The HP,
-condition, and save-chain editors dock under the encounter
-panel's action toolbar instead — see `View.Workspace`.
+condition, and save-chain editors open in the Actions column's
+drawer instead — see `View.PanelDrawer`.
 -}
 inlineSurface : Context -> Creature -> Html Msg
 inlineSurface ctx creature =
@@ -453,7 +453,7 @@ surprisedIcon creature =
 {-| The creature name on row 1 of each card. Three render modes:
 
   - Compendium-linked: a `<button>` that pins the source stat
-    block in the side panel.
+    block in the Actions panel.
   - Placeholder (name matches `Placeholder N` and no
     compendium link): a clickable `<button>` that opens the
     inline rename — OR, when this creature is currently being
@@ -468,7 +468,7 @@ creatureName creature renameState =
     case creature.creatureId of
         Just id_ ->
             -- Clickable name (pins the compendium stat block in
-            -- the side panel) is a real `<button>` so keyboard
+            -- the Actions panel) is a real `<button>` so keyboard
             -- users can Tab to it and press Enter/Space.  Native
             -- button chrome is reset by the existing
             -- `.creature-name--linked` styling.
@@ -478,7 +478,7 @@ creatureName creature renameState =
                 , onClick (PanelShowCreature id_ creature.name)
                 , Tooltips.attr Tooltips.showStatBlock
                 , attribute "aria-label"
-                    ("Pin " ++ creature.name ++ "'s stat block to the side panel")
+                    (Tooltips.pinStatBlock creature.name)
                 ]
                 [ text creature.name ]
 
@@ -1427,11 +1427,10 @@ hpEditKeyDecoder =
             )
 
 
-{-| Posture labels for the statuses the toolbar's Status editor
-applies. Full names, not icons, and each label is a link that
-opens the Status editor targeting this creature — the card
-answers "what is this creature doing?" and hands off the
-editing.
+{-| Posture labels for the statuses the Status editor applies.
+Full names, not icons, and each label is a link that opens the
+Status editor targeting this creature — the card answers "what
+is this creature doing?" and hands off the editing.
 -}
 statusIcons : Creature -> Html Msg
 statusIcons creature =
@@ -1633,10 +1632,9 @@ deathSavePip kind filled onToggle kindLabel ordinal =
 
 rowBot : Creature -> Maybe Surface -> Html Msg
 rowBot creature surface =
-    -- The HP / condition / save-chain triggers moved to the
-    -- encounter panel's stationary action toolbar (see
-    -- `View.Workspace`), which targets the active creature; the
-    -- slots that remain here are the genuinely per-card ones.
+    -- Only the genuinely per-card slots live here; the HP /
+    -- condition / save-chain triggers are encounter-scoped and
+    -- belong to the Actions column.
     div [ class "creature-card__row creature-card__row--bot" ]
         [ readiedToggle creature
         , reactionPip creature

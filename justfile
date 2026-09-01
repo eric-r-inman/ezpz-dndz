@@ -102,8 +102,8 @@ serve:
 # API, rewrites it with a stable bundle UUID, appends to
 # bundled-creatures.json, and bumps BUNDLED_VERSION.  Run while
 # the dev server is up (`just dev` in another shell) and pass the
-# creature's UUID — easiest way to find that is the side panel's ↗
-# button (URL ends with the UUID), or click into the creature in
+# creature's UUID — easiest way to find that is the stat-block
+# panel's ↗ button (URL ends with the UUID), or click into it in
 # the browser modal and inspect the network tab.
 #
 #   just promote-to-bundle <uuid>

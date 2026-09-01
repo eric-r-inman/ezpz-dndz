@@ -5,9 +5,9 @@ module View.Modal exposing
 
 {-| Shared modal chrome.
 
-Every modal in the app — dice, HP change, initiative, note, memo,
-timer, condition — wraps its body in the same backdrop / dialog
-shell with a header bar carrying a title and a close button.
+Every modal in the app wraps its body in the same backdrop /
+dialog shell with a header bar carrying a title and a close
+button.
 This helper extracts that shell so per-modal view code only
 declares the body content.
 
@@ -37,7 +37,7 @@ along the perimeter). Drag and resize state lives on
 transform / inline width / height. The chrome-Msg constructors
 are imported directly from `Msg` rather than threaded through
 the config record because every modal needs the same handlers —
-threading them through 20 call sites would be pure noise.
+threading them through every call site would be pure noise.
 
 @docs view, closeBtnId, focusInitial
 
@@ -89,8 +89,8 @@ and accidentally close the dialog.
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
   - `extraClass` — extra class on the inner `.surface` div, used
-    for per-modal sizing (`"modal--save"`, `"modal--quick-add"`,
-    etc.).
+    for per-modal sizing (`"modal--compendium"`,
+    `"modal--group-edit"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
   - `chrome` — drag / resize state. Use `Ui.ModalChrome.fresh`
     or the model's `modalChrome` field. The view applies the

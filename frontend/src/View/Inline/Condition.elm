@@ -1,7 +1,8 @@
 module View.Inline.Condition exposing (Context, view)
 
-{-| Condition / effect editor, docked under the encounter
-toolbar so the queue stays visible while the GM fills it in.
+{-| Condition / effect editor body. It opens in the Actions
+column's drawer, so the queue stays visible while the GM fills
+it in.
 -}
 
 import Dict exposing (Dict)
@@ -445,10 +446,9 @@ footer ui presets selectedCount =
             , presetLoadControl ui presets
 
             -- Apply sits with Save / Load rather than alone on
-            -- the right — the far edge of a full-width docked
-            -- editor is a long reach from the fields.  No Cancel
-            -- button: Escape and re-clicking the Condition
-            -- button both cancel.
+            -- the right, so the three controls read as one row.
+            -- No Cancel button: Escape and re-clicking the
+            -- Condition button both cancel.
             , ApplyButton.view
                 { enabled = canSubmit
                 , cls = "action-btn action-btn--green"

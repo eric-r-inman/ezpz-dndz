@@ -39,7 +39,6 @@ import Msg
     exposing
         ( CompendiumField(..)
         , CompendiumSort(..)
-        , ControlMenu(..)
         , DurationKind(..)
         , FeatureGroup(..)
         , HpField(..)
@@ -80,7 +79,6 @@ import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
-import Update.ActionsDrawer
 import Update.Auth
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
@@ -105,6 +103,7 @@ import Update.LoreEdit
 import Update.Memo
 import Update.ModalChrome
 import Update.Note
+import Update.PanelDrawer
 import Update.PlaceholderRename
 import Update.Preferences
 import Update.QueuePanels
@@ -122,6 +121,7 @@ import Update.Toast
 import Update.Treasure
 import Update.TreasureTable
 import Update.UserSync
+import Update.Xp
 import Url exposing (Url)
 import Util.Keyboard
 import View.About
@@ -137,17 +137,10 @@ import View.Modal.AbilitySave
 import View.Modal.Compendium
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
-import View.Modal.CrCalculator
-import View.Modal.Dice
 import View.Modal.GroupEdit
-import View.Modal.Load
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
-import View.Modal.QuickAdd
-import View.Modal.RandomEncounter
-import View.Modal.Save
 import View.Modal.SaveCompendium
-import View.Modal.Treasure
 import View.Modal.TreasureTable
 import View.Page.Compendium
 import View.Page.CompendiumStandalone
@@ -186,23 +179,18 @@ main =
         }
 
 
-{-| Subscribe to keyboard events while the dice modal is open so Esc
+{-| Subscribe to keyboard events while a surface is open so Esc
 can close it. Other routes don't need any subscriptions yet.
-
-The XP-filter dropdown overlays whatever else is on the page;
-when it's open we layer in two extra subscriptions on top of the
-modal-stack handlers — Esc closes it, and any document-level click
-that isn't stopped by the dropdown internals also closes it.
-
 -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
+        -- Esc only: the scope list is a drawer panel, and a
+        -- click-outside close would fire on every click landing
+        -- in the queue beside it.
         xpFilterSubs =
             if model.xpFilterOpen then
-                [ Browser.Events.onKeyDown (escKey XpFilterClose)
-                , Browser.Events.onMouseDown (Decode.succeed XpFilterClose)
-                ]
+                [ Browser.Events.onKeyDown (escKey XpFilterClose) ]
 
             else
                 []
@@ -224,16 +212,6 @@ subscriptions model =
 
             else
                 []
-
-        controlMenuSubs =
-            case model.controlMenu of
-                Just _ ->
-                    [ Browser.Events.onKeyDown (escKey ControlMenuClose)
-                    , Browser.Events.onMouseDown (Decode.succeed ControlMenuClose)
-                    ]
-
-                Nothing ->
-                    []
 
         conditionPresetLoadMenuSubs =
             case model.surface of
@@ -395,7 +373,6 @@ subscriptions model =
             :: xpFilterSubs
             ++ settingsSubs
             ++ clearMenuSubs
-            ++ controlMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
@@ -596,10 +573,8 @@ init flags url key =
       , xpScope = ScopeXpEnemiesAndNpcs
       , xpFilterOpen = False
       , queuePanels = Ui.QueuePanels.fresh
-      , actionsDrawer = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
-      , controlMenu = Nothing
       , toasts = []
       , nextToastId = 0
       , rollPopups = []
@@ -879,7 +854,7 @@ update msg model =
             else
                 next
     in
-    ( nextWithChromeReset
+    ( Update.PanelDrawer.soleOpen model nextWithChromeReset
     , Cmd.batch
         [ innerCmd
         , encounterCmd
@@ -1827,9 +1802,6 @@ updateInner msg model =
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
 
-        ActionsDrawerToggle target ->
-            Update.ActionsDrawer.toggle target model
-
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
 
@@ -2286,6 +2258,9 @@ updateInner msg model =
         PanelShowCreature creatureId creatureName ->
             Update.Compendium.Browser.panelShowCreature creatureId creatureName model
 
+        PanelClearCreature ->
+            Update.PanelDrawer.clearCreature model
+
         QuickListRowClick creatureId creatureName ->
             -- Fires from the QuickList tab.  Broadcast the
             -- (id, name) so the main tab pins the stat block +
@@ -2510,13 +2485,13 @@ updateInner msg model =
             Update.Encounter.run model
 
         XpScopeSet scope ->
-            ( { model | xpScope = scope, xpFilterOpen = False }, Cmd.none )
+            Update.Xp.scopeSet scope model
 
         XpFilterToggle ->
-            ( { model | xpFilterOpen = not model.xpFilterOpen }, Cmd.none )
+            Update.Xp.filterToggle model
 
         XpFilterClose ->
-            ( { model | xpFilterOpen = False }, Cmd.none )
+            Update.Xp.filterClose model
 
         QuickAddOpen ->
             Update.QuickAdd.open model
@@ -2619,12 +2594,6 @@ updateInner msg model =
 
         AnonymousBannerDismiss ->
             Update.Shell.anonymousBannerDismiss model
-
-        ControlMenuToggle which ->
-            Update.Shell.controlMenuToggle which model
-
-        ControlMenuClose ->
-            Update.Shell.controlMenuClose model
 
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model
@@ -2811,7 +2780,6 @@ appShell maybeUser model =
             , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
-    , View.Modal.Dice.view model.modalChrome model.hpChangeLog model.dice
     , View.Modal.Compendium.view model.modalChrome
         model.auth
         model.compendium
@@ -2819,17 +2787,11 @@ appShell maybeUser model =
         (List.filterMap .creatureId model.encounter.creatures)
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model
-    , View.Modal.Save.view model
-    , View.Modal.Load.view model
     , View.Modal.SaveCompendium.view model
     , View.Modal.LoadCompendium.view model
     , View.Modal.AbilitySave.view model
-    , View.Modal.QuickAdd.view model
     , View.Modal.GroupEdit.view model
     , View.Modal.LoreEdit.view model
-    , View.Modal.CrCalculator.view model
-    , View.Modal.RandomEncounter.view model
-    , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups

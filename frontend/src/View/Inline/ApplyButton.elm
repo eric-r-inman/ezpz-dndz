@@ -1,6 +1,6 @@
 module View.Inline.ApplyButton exposing (view)
 
-{-| One docked editor's Apply button.
+{-| One editor's Apply button.
 
 Chrome swallows mouse events on a disabled control, so the
 unavailable state hangs its tooltip on a wrapper span and opts

@@ -1,11 +1,12 @@
 module View.Workspace exposing (view)
 
-{-| Three-pane workspace layout for the Home route: encounter pane
-on the left (creature cards under the encounter title bar), control
-buttons in the middle, compendium / detail pane on the right.
+{-| Workspace layout for the Home route: the Actions column, the
+panel it opens, and the encounter queue.
 
 Each pane is a separate `View/` module — this module just wires
-them together with the model fragments each one needs.
+them together with the model fragments each one needs. The
+drawer's column only exists while it has something to show,
+which is why the grid template is conditional.
 
 -}
 
@@ -14,27 +15,17 @@ import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
 import Html exposing (Html, button, div, main_, section, span, text)
-import Html.Attributes exposing (attribute, class, disabled, id, type_)
+import Html.Attributes exposing (attribute, class, id, type_)
 import Html.Events exposing (onClick)
-import Model exposing (Model, Surface(..))
+import Model exposing (Model)
 import Msg exposing (Msg(..), QueuePanel(..))
 import Set
-import Ui.ActionsDrawer exposing (ActionsDrawerUi)
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
 import View.EncounterBar
-import View.Inline.Condition
-import View.Inline.Duplicate
-import View.Inline.HpChange
-import View.Inline.Initiative
 import View.Inline.QueueReference
-import View.Inline.Replace
-import View.Inline.SaveChain
 import View.Inline.SpellList
-import View.Inline.Status
 import View.PanelActions
-import View.PanelControls
-import View.PanelDetail
 import View.PanelDrawer
 import View.Tooltips as Tooltips
 
@@ -42,51 +33,28 @@ import View.Tooltips as Tooltips
 view : Model -> Html Msg
 view model =
     main_
-        [ class "workspace"
+        [ class
+            (if View.PanelDrawer.isOpen model then
+                "workspace workspace--drawer"
+
+             else
+                "workspace"
+            )
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ View.PanelActions.view model.encounter
-            model.compendium.db
-            model.xpScope
-            model.actionsDrawer
-        , actionsDrawer model.actionsDrawer
+        [ View.PanelActions.view model
+        , View.PanelDrawer.view model
         , panelMain model
-        , View.PanelControls.view
-            model.auth
-            model.dice
-            model.pendingControl
-            model.encounter.round
-            (Encounter.rosterDirty model.encounter model.savedSnapshot)
-            model.controlMenu
-        , View.PanelDetail.view model
         ]
-
-
-{-| The Actions column's panel. It shares the queue's grid area
-rather than claiming a column of its own, which is what lets the
-queue keep its width — and keep scrolling — while the panel
-covers part of it. Paint order comes from the stylesheet, so it
-sits ahead of the queue here, where the reading order and the
-tab order both want it once it's open.
--}
-actionsDrawer : Maybe ActionsDrawerUi -> Html Msg
-actionsDrawer drawer =
-    case drawer of
-        Just ui ->
-            View.PanelDrawer.view ui
-
-        Nothing ->
-            text ""
 
 
 {-| The encounter pane. Builds the card context each card render
 needs (inline-edit and rename states, the open surface, timer
-presets), then stacks the stationary strips — title bar,
-reminder banners, the action toolbar, and any docked editor —
-above the scrolling card grid. `savedAs` lights up the title-bar
-info icon with the source filename; the compendium DB + XP scope
-let the title bar's right cluster compute the real XP total.
+presets), then stacks the stationary strips above the scrolling
+card grid. `savedAs` lights up the title-bar info icon with the
+source filename; the compendium DB + XP scope let the title
+bar's right cluster compute the real XP total.
 -}
 panelMain : Model -> Html Msg
 panelMain model =
@@ -105,7 +73,7 @@ panelMain model =
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope model.xpFilterOpen ]
+            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope ]
         , legendaryActionStrip enc model.queuePanels.legendaryActions
         , specialReactionsStrip enc model.queuePanels.specialReactions
         , spellcasterStrip enc model.compendium.db model.queuePanels.spells
@@ -115,8 +83,6 @@ panelMain model =
             (View.Inline.QueueReference.specialReactions enc model.compendium.db)
         , panelIf model.queuePanels.spells
             (View.Inline.SpellList.view enc model.compendium.db)
-        , actionToolbar model
-        , dockedEditor model
         , div
             [ class "panel__body"
             , id Effects.encounterPanelBodyId
@@ -126,209 +92,6 @@ panelMain model =
             , quickAddRow
             ]
         ]
-
-
-{-| Stationary action toolbar under the reminder banners. Each
-trigger targets the active creature, falling back to the top of
-the queue before combat starts; the editors' own "apply to
-selected" buttons cover multi-creature use. Disabled with an
-empty queue — there is nothing to target.
--}
-actionToolbar : Model -> Html Msg
-actionToolbar model =
-    let
-        target =
-            if String.isEmpty model.encounter.activeName then
-                model.encounter.creatures
-                    |> List.head
-                    |> Maybe.map .name
-                    |> Maybe.withDefault ""
-
-            else
-                model.encounter.activeName
-
-        noTargets =
-            String.isEmpty target
-
-        hpEditing =
-            case model.surface of
-                Just (SurfaceHpChange _) ->
-                    True
-
-                _ ->
-                    False
-
-        conditionEditing =
-            case model.surface of
-                Just (SurfaceCondition _) ->
-                    True
-
-                _ ->
-                    False
-
-        statusEditing =
-            case model.surface of
-                Just (SurfaceStatus _) ->
-                    True
-
-                _ ->
-                    False
-
-        saveChainEditing =
-            case model.surface of
-                Just (SurfaceSaveChain _) ->
-                    True
-
-                _ ->
-                    False
-
-        initiativeEditing =
-            case model.surface of
-                Just (SurfaceInitiative _) ->
-                    True
-
-                _ ->
-                    False
-
-        replaceEditing =
-            case model.surface of
-                Just (SurfaceReplace _) ->
-                    True
-
-                _ ->
-                    False
-
-        duplicateEditing =
-            case model.surface of
-                Just (SurfaceDuplicate _) ->
-                    True
-
-                _ ->
-                    False
-
-        trigger baseClass editing openMsg openTip label =
-            button
-                [ class (View.Card.editorTriggerClass baseClass editing)
-                , onClick openMsg
-                , disabled noTargets
-                , Tooltips.attr
-                    (if editing then
-                        Tooltips.inlineEditCancel
-
-                     else
-                        openTip
-                    )
-                , attribute "aria-expanded"
-                    (if editing then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                ]
-                -- The triangle doubles as the open/closed cue:
-                -- ▾ invites expansion, ▴ says "click to fold".
-                [ text label
-                , span [ class "encounter-toolbar__caret" ]
-                    [ text
-                        (if editing then
-                            "▲"
-
-                         else
-                            "▼"
-                        )
-                    ]
-                ]
-    in
-    div [ class "encounter-toolbar" ]
-        [ trigger "action-btn action-btn--manage-hp" hpEditing (HpChangeOpen target) Tooltips.manageHp "Manage HP"
-        , trigger "action-btn action-btn--blue" statusEditing (StatusOpen target) Tooltips.statusEditor "Status"
-        , trigger "action-btn action-btn--condition" conditionEditing (ConditionOpenNew target) Tooltips.applyCondition "Condition"
-        , trigger "action-btn action-btn--save-chain" saveChainEditing (SaveChainOpen target) Tooltips.saveChain "Save Chain"
-        , trigger "action-btn action-btn--blue" initiativeEditing (InitiativeOpen target) Tooltips.initiativeManager "Initiative"
-        , trigger "action-btn action-btn--orange" replaceEditing (ReplaceOpen target) Tooltips.queueReplace "Replace"
-        , trigger "action-btn action-btn--orange" duplicateEditing (DuplicateOpen target) Tooltips.queueDuplicate "Duplicate"
-        ]
-
-
-{-| The docked editor area directly under the toolbar. Because
-the editor no longer sits on the creature it targets, a slim
-strip names the target; the editors themselves are unchanged.
-Scrolls internally past 60% of the viewport so a tall condition
-form can't push the queue off screen.
--}
-dockedEditor : Model -> Html Msg
-dockedEditor model =
-    let
-        selectedCount =
-            List.length (List.filter .selected model.encounter.creatures)
-
-        -- Manage HP and Save Chain still choose their scope with
-        -- a checkbox, so their strip has to name the selection
-        -- when it is ticked; the button-scoped editors always
-        -- name their own target.
-        scopedLabel targetName applyToSelected =
-            if applyToSelected && selectedCount > 0 then
-                "Target: Selected (" ++ String.fromInt selectedCount ++ ")"
-
-            else
-                "Target: " ++ targetName
-
-        docked label body =
-            div [ class "encounter-toolbar__editor" ]
-                [ div [ class "encounter-toolbar__target" ]
-                    [ text label ]
-                , body
-                ]
-    in
-    case model.surface of
-        Just (SurfaceHpChange ui) ->
-            docked (scopedLabel ui.target ui.applyToSelected)
-                (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
-
-        Just (SurfaceCondition ui) ->
-            docked ("Target: " ++ ui.target)
-                (View.Inline.Condition.view
-                    { creatureNames = List.map .name model.encounter.creatures
-                    , selectedCount = selectedCount
-                    , presets = model.conditionPresets
-                    , log = model.conditionLog
-                    }
-                    ui
-                )
-
-        Just (SurfaceSaveChain ui) ->
-            docked (scopedLabel ui.target ui.applyToSelected)
-                (View.Inline.SaveChain.view
-                    { presets = model.saveChainPresets
-                    , selectedCount = selectedCount
-                    , log = model.saveChainLog
-                    }
-                    ui
-                )
-
-        Just (SurfaceStatus ui) ->
-            docked ("Target: " ++ ui.target)
-                (View.Inline.Status.view selectedCount ui)
-
-        Just (SurfaceInitiative ui) ->
-            docked ("Target: " ++ ui.target)
-                (View.Inline.Initiative.view selectedCount ui)
-
-        Just (SurfaceReplace ui) ->
-            docked ("Target: " ++ ui.target)
-                (View.Inline.Replace.view model.compendium.db
-                    selectedCount
-                    model.replaceLog
-                    ui
-                )
-
-        Just (SurfaceDuplicate ui) ->
-            docked ("Target: " ++ ui.target)
-                (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
-
-        _ ->
-            text ""
 
 
 {-| Sticky orange strip sandwiched between the encounter title
@@ -581,7 +344,7 @@ nameNode c =
                 [ class "legendary-banner__name"
                 , type_ "button"
                 , onClick (PanelShowCreature creatureId c.name)
-                , Tooltips.attr ("Pin " ++ c.name ++ "'s stat block to the side panel")
+                , Tooltips.attr (Tooltips.pinStatBlock c.name)
                 , attribute "aria-label"
                     ("Show stat block for " ++ c.name)
                 ]
@@ -595,11 +358,10 @@ nameNode c =
 
 
 {-| Full-width "+" row appended below the last creature card in
-the queue. Opens the Quick Add modal — same affordance as the
-"+ Quick Add" button in the encounter-controls panel, surfaced
-inside the queue itself so the GM doesn't have to track across to
-the middle column to add another creature. Hover text doubles as
-the aria-label so screen-reader users hear the intent rather than
+the queue. Opens the same Quick Add panel the Actions column
+does, surfaced inside the queue itself so the GM doesn't have to
+track across to add another creature. Hover text doubles as the
+aria-label so screen-reader users hear the intent rather than
 just "+".
 -}
 quickAddRow : Html Msg

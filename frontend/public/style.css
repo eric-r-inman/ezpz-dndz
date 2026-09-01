@@ -86,8 +86,11 @@
   --font-size-label: 0.78rem;
   --font-weight-label: 600;
 
-  /* Roughly what the compendium pane gets at a full-width window,
-     so the drawer reads as that panel moved rather than resized. */
+  /* A number the reader is meant to land on first. */
+  --font-size-readout: 1.1rem;
+
+  /* Wide enough for a stat block's two-column header without
+     crowding the queue beside it. */
   --drawer-width: 400px;
 
   /* Accent / signal hues — muted and saturated together, not the
@@ -717,19 +720,19 @@ html:has(.app-shell[data-theme="accessible"]) {
    vision.  `:not(.action-btn)` exempts the "+ Add character"
    button, which already sizes well via the shared `.action-btn`
    rule. */
-[data-theme="accessible"] .modal--cr-calculator,
+[data-theme="accessible"] .panel-drawer--cr-calculator,
 [data-theme="accessible"]
-  .modal--cr-calculator
+  .panel-drawer--cr-calculator
   *:not(.action-btn):not(.action-btn *) {
   font-size: 1.1rem;
 }
 
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__section-title {
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__section-title {
   font-size: 1.3rem;
 }
 
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__result-value,
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__budget-tier {
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__result-value,
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__budget-tier {
   font-size: 1.2rem;
 }
 
@@ -771,11 +774,11 @@ html:has(.app-shell[data-theme="accessible"]) {
   display: none;
 }
 
-/* Unified Accessible hover: every B&W action button (card row 3,
-   Encounter Controls panel, Compendium panel) flips to black-on-
-   white on hover.  Inverted-button feedback is unambiguous for
-   low-vision users and matches the "high contrast" idiom — the
-   button reads as "pressed/active" the moment focus lands. */
+/* Unified Accessible hover: every B&W action button flips to
+   black-on-white on hover.  Inverted-button feedback is
+   unambiguous for low-vision users and matches the "high
+   contrast" idiom — the button reads as "pressed/active" the
+   moment focus lands. */
 [data-theme="accessible"] .creature-card .action-btn--damage:hover,
 [data-theme="accessible"] .creature-card .action-btn--heal:hover,
 [data-theme="accessible"] .creature-card .action-btn--temp:hover,
@@ -789,56 +792,30 @@ html:has(.app-shell[data-theme="accessible"]) {
   --btn-fg: #ffffff;
 }
 
-/* Encounter Controls panel buttons match the creature-card
-   treatment in Accessible — light gray fill, black text, black
-   border.  Every variant used in the panel
-   (`--blue`, `--green`, `--red`, `--orange`, `--dirty`) gets
-   the same override. */
-[data-theme="accessible"] .panel--controls .action-btn--blue,
-[data-theme="accessible"] .panel--controls .action-btn--green,
-[data-theme="accessible"] .panel--controls .action-btn--red,
-[data-theme="accessible"] .panel--controls .action-btn--orange {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
+/* Actions column buttons and the Reset / Clear confirmation
+   match the creature-card treatment in Accessible — light gray
+   fill, black text, black border — so each panel reads as one
+   B&W set whatever colour its buttons wear elsewhere. */
+[data-theme="accessible"] .panel-actions__btn,
+[data-theme="accessible"] .control-confirm__btn {
+  --btn-bg: var(--color-surface-2);
+  --btn-fg: var(--color-text);
+  --btn-bd: var(--color-border);
 }
 
-[data-theme="accessible"] .panel--controls .action-btn--blue:hover,
-[data-theme="accessible"] .panel--controls .action-btn--green:hover,
-[data-theme="accessible"] .panel--controls .action-btn--red:hover,
-[data-theme="accessible"] .panel--controls .action-btn--orange:hover {
+[data-theme="accessible"] .panel-actions__btn:hover,
+[data-theme="accessible"] .control-confirm__btn:hover {
   /* Token override + direct property assignment.  The variant
      base rules (e.g. `.action-btn--blue:hover { background:
      var(--btn-blue-bg-hover); }`) set `background` directly,
-     bypassing `--btn-bg`, so the token swap alone wasn't winning
-     the cascade.  Also setting `background` / `color` directly
-     here forces the black-fill flip regardless of which variant
-     the button carries. */
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
-  color: #ffffff;
-}
-
-/* Catch the unvariant `.action-btn` (Cancel button in the
-   Reset/Clear confirm flow).  Same B&W base + black-fill-on-
-   hover as the variant buttons in the Encounter Controls so the
-   whole panel reads as one B&W set.  The `:not()` selector
-   matches an action-btn that lacks any `--*` modifier class. */
-[data-theme="accessible"]
-  .panel--controls
-  .action-btn:not([class*="action-btn--"]) {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
-}
-
-[data-theme="accessible"]
-  .panel--controls
-  .action-btn:not([class*="action-btn--"]):hover {
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
+     bypassing `--btn-bg`, so the token swap alone doesn't win
+     the cascade.  Setting `background` / `color` here as well
+     forces the inverted fill whichever variant the button
+     carries. */
+  --btn-bg: var(--color-text);
+  --btn-fg: var(--color-surface);
+  background: var(--color-text);
+  color: var(--color-surface);
 }
 
 /* Card row 1 condition chip — dark bold orange text on the
@@ -950,26 +927,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 
 .action-btn--readied {
   animation: readied-flash 0.9s ease-in-out infinite;
-}
-
-/* Compendium-panel buttons (Open, CR Calculator) match the
-   creature-card + encounter-controls B&W treatment in
-   Accessible. */
-[data-theme="accessible"] .panel--detail .action-btn--blue {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
-}
-
-[data-theme="accessible"] .panel--detail .action-btn--blue:hover {
-  /* `.action-btn--blue:hover` sets `background` directly via
-     `--btn-blue-bg-hover`, bypassing the `--btn-bg` token.  Set
-     both the token AND `background` / `color` here so the
-     black-fill flip wins the cascade. */
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
-  color: #ffffff;
 }
 
 /* Active creature card — 4 px solid black border under
@@ -1576,8 +1533,8 @@ body {
 .workspace {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: auto 2fr 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr;
   gap: var(--space-4);
   /* Bottom padding makes room for the fixed-position
      `.app-footer`; without it, scrollable panel bodies would
@@ -1585,6 +1542,12 @@ body {
   padding: var(--space-4) var(--space-4)
     calc(var(--space-4) + var(--app-footer-height, 32px)) var(--space-4);
   min-height: 0;
+}
+
+/* The drawer's track exists only while the drawer does, so a
+   closed drawer leaves no empty column and no double gap. */
+.workspace--drawer {
+  grid-template-columns: auto var(--drawer-width) 1fr;
 }
 
 /* ── Account page (`/me`) ──────────────────────────────────────────── */
@@ -1767,15 +1730,7 @@ body {
   color: var(--color-accent, #4a90e2);
 }
 
-.modal--cr-calculator {
-  --modal-max-w: 640px;
-}
-
 /* ── Treasure modal ───────────────────────────────────────── */
-
-.modal--treasure {
-  --modal-max-w: 720px;
-}
 
 .treasure__controls {
   display: flex;
@@ -3630,10 +3585,6 @@ body {
    Shares the calc-modal layout (party rows, action sections), then
    adds parameter pickers and a result list.  Class prefix is
    `random-encounter__` to keep search-by-prefix tidy. */
-.modal--random-encounter {
-  --modal-max-w: 640px;
-}
-
 .random-encounter__blurb {
   margin: 0;
   padding: 12px 18px;
@@ -4239,7 +4190,7 @@ body {
    share of the row, so the queue keeps the width it had. */
 .panel--actions {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
 }
 
 .panel__body--actions {
@@ -4270,22 +4221,16 @@ body {
   flex: 0 0 auto;
 }
 
+/* The queue takes the last column whether or not the drawer
+   claimed the middle one. */
 .panel--main {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-column: -2 / -1;
+  grid-row: 1;
 }
 
-/* The Actions column's panel shares the queue's grid area rather
-   than taking a column of its own: the queue keeps its width and
-   stays scrollable while the panel covers its left edge.  The
-   opaque surface `.panel` already carries is what makes the
-   overlap read as a panel on top rather than a transparency. */
 .panel--drawer {
   grid-column: 2;
-  grid-row: 1 / span 2;
-  justify-self: start;
-  width: min(var(--drawer-width), 100%);
-  z-index: 10;
+  grid-row: 1;
   animation: drawer-slide-in 0.16s ease-out;
 }
 
@@ -4299,6 +4244,35 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Names the creature an editor is aimed at, directly under the
+   panel title.  In a column the editor is detached from its
+   target, so it has to say which one it means. */
+.panel-drawer__target {
+  flex: 0 0 auto;
+  padding: var(--space-1) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+/* Roll totals under the Roll button: oldest to newest, left to
+   right, so the newest sits closest to the panel it came from. */
+.dice-totals {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.xp-panel__total {
+  font-size: var(--font-size-readout);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
 }
 
 .panel-drawer__close {
@@ -4323,26 +4297,6 @@ body {
 .panel--solo {
   grid-column: 1 / -1;
   grid-row: 1;
-}
-
-.panel--controls {
-  grid-column: 3;
-  grid-row: 1;
-  /* The controls panel's body holds a fixed-size button grid;
-     it has no content that scrolls.  Letting absolute children
-     escape both clipping ancestors lets the Save / Load
-     split-button popovers extend past the panel boundary
-     instead of getting cropped to "first item only". */
-  overflow: visible;
-}
-
-.panel--controls .panel__body {
-  overflow: visible;
-}
-
-.panel--detail {
-  grid-column: 3;
-  grid-row: 2;
 }
 
 .panel__header {
@@ -5534,8 +5488,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  /* Filled with the toolbar's Status-button blue so the circle
-     reads as part of the same control family in every theme. */
+  /* Filled with the Status trigger's blue so the circle reads
+     as part of the same control family in every theme. */
   background: var(--btn-blue-bg);
   border: 1.5px solid var(--btn-blue-bg);
   color: var(--btn-blue-fg);
@@ -5602,7 +5556,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Compendium-linked creature name: hover-underline cues that
-   clicking will pin the source stat block in the side panel.
+   clicking will pin the source stat block in the Actions panel.
    The underlying element was promoted from `<span>` to
    `<button>` for keyboard a11y; these resets keep the visual
    appearance unchanged. */
@@ -6155,18 +6109,17 @@ button.creature-card__lifecycle--dead:focus-visible {
    as the other card buttons in Accessible theme via the
    .creature-card override at the top of the theme block. */
 .action-btn--save-chain {
-  /* Same blue tokens as the Quick Add button, so the toolbar
-     and the controls panel read as one button family. */
+  /* Same blue tokens as the Quick Add button, so the card and
+     the Actions column read as one button family. */
   --btn-bg: var(--btn-blue-bg);
   --btn-fg: var(--btn-blue-fg);
   --btn-bd: var(--btn-blue-bd);
 }
 
-/* Combined "Manage HP" card button — sits where the old
-   Damage / Heal / Temp HP row was, and opens the merged modal
-   with all four actions in its footer.  Uses the same green
-   token as the Encounter Controls "Next Turn" button so it
-   reads as the card's primary action affordance. */
+/* Combined "Manage HP" card button, opening the editor that
+   carries all four verbs.  Wears the same green token as the
+   "Next Turn" trigger so it reads as the card's primary action
+   affordance. */
 .action-btn--manage-hp {
   --btn-bg: var(--color-btn-green);
   --btn-fg: var(--card-btn-fg);
@@ -6192,57 +6145,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bg: #d97706;
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
-}
-
-/* ── Encounter action toolbar ─────────────────────────────────────── */
-
-/* Stationary strip under the reminder banners holding the
-   Manage HP / Condition / Save Chain triggers.  Like the
-   banners, it lives outside .panel__body so it stays put while
-   the card grid scrolls. */
-/* Open/closed caret inside the toolbar trigger buttons — the
-   bare glyph renders too small to notice at button font size. */
-.encounter-toolbar__caret {
-  font-size: 0.9em;
-  margin-left: 6px;
-  line-height: 1;
-}
-
-.encounter-toolbar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  /* Wraps to a second row on a narrow window; the triggers must
-     stay reachable rather than overflow the pane. */
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* Docked editor area directly under the toolbar — same
-   stationary treatment, with its own scrollbar so a tall
-   condition form can't push the queue off screen. */
-.encounter-toolbar__editor {
-  flex: 0 0 auto;
-  max-height: 60vh;
-  overflow-y: auto;
-  background: var(--color-surface);
-  /* Thicker and brighter than the banner separators, so the
-     boundary between the docked editor and the scrolling cards
-     underneath reads unmistakably. */
-  border-bottom: 2px solid var(--color-text-muted);
-  padding: 0 var(--space-3) var(--docked-panel-pad-bottom);
-}
-
-.encounter-toolbar__target {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 8px 0 0;
 }
 
 /* Replace editor's compendium picker — the Quick Add list
@@ -6559,41 +6461,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   box-shadow: none;
 }
 
-.btn-glyph {
-  font-size: 1.25em;
-  line-height: 1;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-/* The Open / CR Calculator strip pins to the top of the
-   compendium panel's scroll area so a long stat block doesn't
-   carry the buttons off-screen.
-
-   The detail panel zeroes its panel-body's padding-top (override
-   below) so the toolbar can pin flush directly under the
-   "Compendium" header row.  Negative left/right margins extend
-   the bar edge-to-edge inside the panel; padding restores the
-   button breathing room.  An opaque background + high z-index
-   prevent the stat block scrolling beneath it from peeking
-   through.  The grid is overridden to two columns since the
-   default `.btn-grid` defines three (the third column was
-   transparent and let stat-block text show through). */
-.panel--detail .panel__body {
-  padding-top: 0;
-}
-
-.compendium-toolbar.btn-grid {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--color-surface);
-  margin: 0 calc(var(--space-4) * -1) var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  grid-template-columns: 1fr 1fr;
-}
-
 .stat {
   display: flex;
   flex-direction: column;
@@ -6636,10 +6503,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: grid;
   gap: var(--space-2);
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.btn-grid--two-rows {
-  grid-template-rows: auto auto;
 }
 
 .btn-grid > .action-btn {
@@ -7199,49 +7062,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: help;
 }
 
-.xp-filter {
-  position: relative;
-}
-
-.xp-filter__summary {
-  appearance: none;
-  font-family: inherit;
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
-}
-
-.xp-filter__summary:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-}
-
-.xp-filter--open > .xp-filter__summary {
-  border-color: var(--color-accent);
-  color: var(--color-text);
-}
-
 .xp-filter__menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-  min-width: 200px;
-  z-index: 10;
   list-style: none;
   margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -7266,43 +7090,28 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 @media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: auto 1.6fr 1fr;
-  }
   .btn-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 820px) {
-  .workspace {
+  .workspace,
+  .workspace--drawer {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto;
   }
-  /* Stacked, the panes fall in source order, which lets the
-     drawer take a row of its own when it is open and leave no
-     empty one behind when it is not.  It stops overlapping here:
-     a fixed-width panel covering part of a full-width queue
-     would read as a rendering fault rather than a drawer. */
+  /* Stacked, the panes fall in source order, which leaves no
+     empty row behind when the drawer is closed. */
   .panel--actions {
-    grid-column: 1;
-    grid-row: auto;
-  }
-  .panel--main {
     grid-column: 1;
     grid-row: auto;
   }
   .panel--drawer {
     grid-column: 1;
     grid-row: auto;
-    justify-self: stretch;
-    width: auto;
   }
-  .panel--controls {
-    grid-column: 1;
-    grid-row: auto;
-  }
-  .panel--detail {
+  .panel--main {
     grid-column: 1;
     grid-row: auto;
   }
@@ -7448,11 +7257,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    /condition) layer those overrides in their own block below. */
 .modal--ability-save {
   --modal-max-w: 480px;
-}
-
-.modal--duplicate,
-.modal--quick-add {
-  --modal-max-w: 520px;
 }
 
 .modal--save,
@@ -9627,16 +9431,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 160px;
 }
 
-/* Dice "Roll" button cluster in the encounter-controls panel
-   header. The cluster groups the latest-total readout with the
-   button so they share a single flex baseline regardless of the
-   total's width. */
-.dice-roll-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .dice-last-total {
   font-weight: 700;
   color: var(--color-text);
@@ -9649,16 +9443,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Previous-roll trail to the LEFT of `.dice-last-total`.  Up to
    three entries, oldest-first, in muted text so the eye lands
-   on the headline current total but the recent history is still
-   glanceable.  Gap is smaller than `.dice-roll-cluster`'s 8px so
-   the trail reads as one group rather than three separate
-   readouts. */
-.dice-previous-totals {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
+   on the headline current total while the recent history stays
+   glanceable. */
 .dice-previous-total {
   color: var(--color-text-muted);
   font-weight: 500;
@@ -9715,13 +9501,6 @@ button.creature-card__lifecycle--dead:focus-visible {
     color: var(--color-text);
     text-shadow: none;
   }
-}
-
-.dice-arrow {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  user-select: none;
-  line-height: 1;
 }
 
 /* Yellow border indicator: rolls landed while the modal was
@@ -10182,60 +9961,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .compendium__bulk-menu__item:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-  opacity: 0.6;
-}
-
-/* Encounter-controls split-button dropdown for Save / Load (server
-   vs. device).  Same anchoring + popover pattern as the compendium
-   clear-menu, but the trigger fills its grid cell so the menu sits
-   in the existing two-row controls grid. */
-.control-menu {
-  position: relative;
-  display: flex;
-}
-
-.control-menu__trigger {
-  width: 100%;
-}
-
-.control-menu__list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 6px;
-  min-width: 160px;
-  padding: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.control-menu__item {
-  appearance: none;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  color: var(--color-text);
-  text-align: left;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-}
-
-.control-menu__item:hover:not(:disabled) {
-  background: var(--color-accent-soft, rgba(59, 130, 246, 0.12));
-  color: var(--color-accent, #3b82f6);
-}
-
-.control-menu__item:disabled {
   cursor: not-allowed;
   color: var(--color-text-muted);
   opacity: 0.6;
@@ -10910,9 +10635,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Standalone single-creature route at /compendium/creatures/:id —
    centered max-width column, restful background, no encounter
-   panels. Used as the deep link for the side panel's ↗ button
-   so the GM can keep a creature's stat block open in another
-   window for easy reference. */
+   panels. Used as the deep link for the stat-block panel's ↗
+   button so the GM can keep a creature's stat block open in
+   another window for easy reference. */
 .workspace--standalone {
   display: grid;
   place-items: start center;
@@ -11440,10 +11165,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 16px 0;
 }
 
-/* Inline confirmation strip rendered in the Encounter Controls
-   panel when Reset or Clear is pending.  Replaces the button
-   grid, so the user has to pick Confirm or Cancel before any
-   other panel action becomes available. */
+/* Confirmation strip the drawer shows while Reset or Clear is
+   pending, so the user picks Confirm or Cancel before anything
+   is touched. */
 .control-confirm {
   display: flex;
   flex-direction: column;

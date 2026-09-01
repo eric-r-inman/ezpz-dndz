@@ -77,7 +77,7 @@ casterHeader c sc =
                         [ class "spell-list__name"
                         , type_ "button"
                         , onClick (PanelShowCreature creatureId c.name)
-                        , Tooltips.attr ("Pin " ++ c.name ++ "'s stat block to the side panel")
+                        , Tooltips.attr (Tooltips.pinStatBlock c.name)
                         , attribute "aria-label"
                             ("Show stat block for " ++ c.name)
                         ]

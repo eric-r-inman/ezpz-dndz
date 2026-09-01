@@ -73,7 +73,7 @@ open model =
         primedUi =
             { baseUi | saves = saves }
     in
-    ( { model | surface = Just (SurfaceLoad primedUi), controlMenu = Nothing }
+    ( { model | surface = Just (SurfaceLoad primedUi) }
     , listCmd
     )
 
@@ -503,8 +503,7 @@ renameResponse { from, to } result model =
 
 fromDeviceClick : Model -> ( Model, Cmd Msg )
 fromDeviceClick model =
-    ( withLoadUi (\ui -> { ui | error = Nothing })
-        { model | controlMenu = Nothing }
+    ( withLoadUi (\ui -> { ui | error = Nothing }) model
     , File.Select.file [ "application/json", "text/plain" ] LoadFromDeviceFileChosen
     )
 

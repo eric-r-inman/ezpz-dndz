@@ -1,12 +1,10 @@
-module View.Modal.Dice exposing (view)
+module View.Panel.Dice exposing (view)
 
-{-| Dice roller modal. Renders nothing while closed, the full
-overlay while open. Surface chrome (backdrop, header, ✕ button,
-click-out / Esc to close) is delegated to `View.Modal.view`.
+{-| Dice roller. Renders nothing while closed, the drawer's
+whole column while open; the chrome comes from `View.Panel`.
 
-Also hosts the full recent-HP-changes log: the Manage-HP surface
-moved onto the creature card, where only the newest entry fits,
-so the roller — the future dice panel — carries the history.
+Also hosts the full recent-HP-changes log: the Manage-HP editor
+shows only its newest entry, so the roller carries the history.
 
 -}
 
@@ -17,22 +15,20 @@ import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
 import Ui.HpChange exposing (HpChangeEntry)
-import Ui.ModalChrome exposing (ModalChrome)
 import Util.Keyboard
 import View.HpLog
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : ModalChrome -> List HpChangeEntry -> DiceUi -> Html Msg
-view chrome hpChangeLog ui =
+view : List HpChangeEntry -> DiceUi -> Html Msg
+view hpChangeLog ui =
     if ui.open then
-        View.Modal.view
+        View.Panel.view
             { close = CloseDice
-            , noOp = NoOp
             , title = "🎲 Dice Roller"
-            , extraClass = "modal--dice"
-            , chrome = chrome
+            , subtitle = Nothing
+            , extraClass = "panel-drawer--dice"
             , body =
                 [ form ui
                 , faceButtons
@@ -269,7 +265,7 @@ rerunControl idx isOpen roll =
 
 {-| Render the source chip on a history entry: "Damage → Brakka,
 Ogre Brute" / "Stat block → Goblin Boss" / etc. Hides the chip
-for the default `Manual` source since the dice modal's own buttons
+for the default `Manual` source since the dice panel's own buttons
 already make the context obvious.
 -}
 rollSource : Dice.Source -> Html Msg

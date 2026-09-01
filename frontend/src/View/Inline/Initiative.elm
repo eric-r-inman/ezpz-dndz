@@ -1,6 +1,6 @@
 module View.Inline.Initiative exposing (view)
 
-{-| Initiative editor as a docked toolbar expansion.
+{-| Initiative editor body.
 
 How to roll is a setting the action buttons read, so picking a
 mode and picking who it applies to stay separate choices.

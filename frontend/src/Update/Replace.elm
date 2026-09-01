@@ -1,10 +1,10 @@
 module Update.Replace exposing (apply, applySelected, close, open, pick, searchChanged)
 
-{-| Update branches for the encounter toolbar's Replace editor:
-pick a compendium creature, then swap it in for the active
-creature (or every selected creature), preserving each old
-creature's queue position and initiative — the same core swap
-the Quick Add picker's replace mode performs.
+{-| Update branches for the Replace editor: pick a compendium
+creature, then swap it in for the active creature (or every
+selected creature), preserving each old creature's queue
+position and initiative — the same core swap the Quick Add
+picker's replace mode performs.
 -}
 
 import Compendium
@@ -15,7 +15,7 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Replace as ReplaceUi exposing (ReplaceUi)
 
 
-{-| Opening is a toggle: clicking the toolbar's Replace button
+{-| Opening is a toggle: clicking the column's Replace button
 while the editor is already open for the same target closes it.
 -}
 open : String -> Model -> ( Model, Cmd Msg )

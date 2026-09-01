@@ -1,8 +1,8 @@
 module Ui.Replace exposing (ReplaceLogEntry, ReplaceUi, fresh, maxReplaceLogEntries)
 
-{-| Replace editor state — the encounter toolbar's docked editor
-that swaps queue creatures for a compendium pick, preserving
-each old creature's queue position and initiative.
+{-| Replace editor state — the drawer panel that swaps queue
+creatures for a compendium pick, preserving each old creature's
+queue position and initiative.
 
 @docs ReplaceLogEntry, ReplaceUi, fresh, maxReplaceLogEntries
 

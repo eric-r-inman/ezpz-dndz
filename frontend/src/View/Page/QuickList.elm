@@ -43,16 +43,15 @@ view enc savedAs db =
     div [ class "workspace workspace--quick-list" ]
         [ section [ class "panel panel--quick-list" ]
             [ div [ class "panel__header panel__header--encounter" ]
-                [ -- XpScope / xpFilterOpen values are ignored by the
-                  -- bar in QuickListBar mode but the function still
-                  -- takes them.  Pass safe defaults.
+                [ -- The scope is ignored by the bar in
+                  -- QuickListBar mode but the function still takes
+                  -- it.  Pass a safe default.
                   View.EncounterBar.view
                     View.EncounterBar.QuickListBar
                     enc
                     savedAs
                     db
                     Xp.ScopeXpEnemiesAndNpcs
-                    False
                 ]
             , div [ class "panel__body quick-list__body" ]
                 (if List.isEmpty enc.creatures then

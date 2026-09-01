@@ -39,8 +39,9 @@ server migration.
 External review asked for a UI that never hides the encounter queue behind a
 modal.  The analysis and migration plan live in [[file:docs/MODAL_MIGRATION.org][docs/MODAL_MIGRATION.org]].  In
 progress on the =modal-migration-inline= branch: the Surface rename and the
-inline/toolbar tiers are implemented; popover, panel, route, and toast-plus-undo
-tiers remain.
+inline and panel tiers are implemented.  The popover tier is unbuilt
+(=AbilitySave= still renders as a modal), the route tier covers the compendium
+family plus =TreasureTable=, and the toast-plus-undo conversions remain.
 
 * DONE Give the Status editor's disabled Apply button a reachable tooltip
 
@@ -49,26 +50,35 @@ why "Apply to Selected" is unavailable never appeared.  Every docked editor's
 apply button now routes through =View.Inline.ApplyButton=, which hangs the
 tooltip on a wrapper span when the button is unavailable.
 
-* TODO Decide where the workspace's triggers live
+* DONE Decide where the workspace's triggers live
 
-The far-left Actions pane duplicates the triggers the other panes carry as a
-single column, none of them reaching their destination, so the placements can be
-judged side by side.  Wire whichever wins and drop the other.  Part of
-[[*Migrate the frontend off modal dialogs]].
+The Actions column won.  The encounter queue's toolbar row, the Encounter
+Controls pane, and the Compendium pane are gone, and every trigger they carried
+opens its panel in the drawer beside the column instead.
 
-* TODO Fill the Actions drawer
+* DONE Fill the Actions drawer
 
-Every button in the Actions column slides the same empty panel open, so the
-frame can be seen before anything is moved into it.  Give each button its
-destination — the compendium and the editors named in [[file:docs/MODAL_MIGRATION.org][docs/MODAL_MIGRATION.org]] —
-once [[*Decide where the workspace's triggers live]] is settled.  Part of
+Each button reaches its destination now, and the seven surfaces still wearing
+modal chrome moved into the drawer to get there.  The pinned stat block, the XP
+scope, and the Reset / Clear confirmations went with them, which is what let the
+two right-hand panes go — and left the loose ends in
+[[*Fold the drawer's stragglers into the Surface ADT]].
+
+* TODO Fold the drawer's stragglers into the Surface ADT
+
+Two of the drawer's panels — the pinned stat block and the XP scope picker —
+keep their state in their own ~Model~ fields, so =Update.PanelDrawer.soleOpen=
+has to reconcile at runtime what the ADT would have made a type property.  Give
+each a ~Surface~ variant and that reconciler shrinks to the dice roller, whose
+substate genuinely has to outlive a close.  Part of
 [[*Migrate the frontend off modal dialogs]].
 
 * TODO Sweep the "modal" wording out of the migrated editors
 
-Doc comments across the Ui and Update modules still describe surfaces that now
-dock inline as modals, so a reader meets a widget the UI no longer has.
-Retarget them file by file.  Part of [[*Migrate the frontend off modal dialogs]].
+Doc comments across the Ui and Update modules still call their surfaces modals,
+whether those now edit inline on the card or open as a panel in the Actions
+column's drawer, so a reader meets a widget the UI no longer has.  Retarget them
+file by file.  Part of [[*Migrate the frontend off modal dialogs]].
 
 * TODO Tokenise the stylesheet's type scale
 

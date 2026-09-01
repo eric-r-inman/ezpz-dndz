@@ -1,8 +1,8 @@
-module View.Modal.Load exposing (view)
+module View.Panel.Load exposing (view)
 
-{-| Load-encounter modal.
+{-| Load-encounter panel.
 
-Mirrors the Save modal's shape — a Server / Device source radio
+Mirrors the Save panel's shape — a Server / Device source radio
 at top, then a body that depends on the picked source:
 
   - **Server** (authenticated) → list of server-side saves with
@@ -14,7 +14,7 @@ at top, then a body that depends on the picked source:
   - **Device** → a file-picker button that reuses the existing
     `LoadFromDeviceClick` flow.
 
-Renders nothing when the modal isn't open.
+Renders nothing when the panel isn't open.
 
 -}
 
@@ -44,7 +44,7 @@ import Ui.Load as LoadUi
         , LoadUi
         )
 import Util.Keyboard
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
@@ -52,12 +52,11 @@ view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceLoad ui) ->
-            View.Modal.view
+            View.Panel.view
                 { close = LoadClose
-                , noOp = NoOp
                 , title = "Load Encounter"
-                , extraClass = "modal--load"
-                , chrome = model.modalChrome
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--load"
                 , body =
                     [ overwriteWarning
                     , sourceSection model.auth ui

@@ -1,7 +1,7 @@
 module View.Inline.Duplicate exposing (view)
 
-{-| Duplicate editor as a docked toolbar expansion: flavor
-radios, the two apply buttons, and the newest log row.
+{-| Duplicate editor body: flavor radios, the two apply
+buttons, and the newest log row.
 -}
 
 import Html exposing (Html, div, input, li, span, text, ul)

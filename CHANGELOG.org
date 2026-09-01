@@ -3,11 +3,9 @@
 
 * Upcoming
 ** Added
-1. Combat bookkeeping moved out of pop-up dialogs: the encounter panel gains a
-   stationary toolbar whose editors dock above the always-visible queue, while
-   timers, memos, and name notes are edited directly on the creature card (per
-   the plan in =docs/MODAL_MIGRATION.org=).  No action needed.
-2. The docked editors target the active creature or the current selection; they
+1. Combat bookkeeping moved out of pop-up dialogs: every encounter control now
+   opens into a panel beside the queue instead of over it.  No action needed.
+2. The panel editors target the active creature or the current selection; they
    stay open after applying, remember un-applied settings when closed, and keep
    recent-applies logs (undo-able for HP and conditions).  No action needed.
 3. When applying a dice-formula HP change to a selection, a "New roll for each
@@ -16,11 +14,10 @@
    top row, and grey out legendary-action pips during the creature's own turn
    (5e bars using them then).  No action needed.
 5. A creature card's status labels open the Status editor targeting that
-   creature, while the toolbar's Status button folds the editor away whoever it
+   creature, while the column's Status button folds the editor away whoever it
    is aimed at.  No action needed.
-6. The initiative manager is one of those docked editors now, opened by the
-   toolbar's Initiative button or by a card's initiative circle.  No action
-   needed.
+6. The initiative manager is one of those editors now, opened by the column's
+   Initiative button or by a card's initiative circle.  No action needed.
 7. The status, condition, replace, and duplicate editors choose their scope with
    a pair of buttons — "Apply to Target" and "Apply to Selected (N)" — rather
    than an apply-scope checkbox.  No action needed.
@@ -45,10 +42,10 @@
 15. The encounter title bar's flying readout punctuates its height, so the
     number reads as the wing icon's rather than a neighbouring value.  No action
     needed.
-16. A far-left Actions pane previews a new home for the encounter and compendium
-    controls, sliding a panel open over the queue when one is clicked.  Nothing
-    in it is wired yet, so no action is needed.
-17. The Condition/Effect trigger is now labelled Condition.  No action needed.
+16. The Condition/Effect trigger is now labelled Condition.  No action needed.
+17. The Encounter Controls and Compendium panes are gone — everything they held,
+    down to the dice roller and the pinned stat block, is reached from the
+    Actions column on the far left instead.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

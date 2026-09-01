@@ -1,6 +1,6 @@
-module View.Modal.Treasure exposing (view)
+module View.Panel.Treasure exposing (view)
 
-{-| Treasure-generator modal.
+{-| Treasure-generator panel.
 
 Layout, top to bottom:
 
@@ -64,15 +64,14 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium
-import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Treasure exposing (TreasureUi)
 import Util.Number
-import View.Modal
+import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : ModalChrome -> Model -> Html Msg
-view chrome model =
+view : Model -> Html Msg
+view model =
     case model.surface of
         Just (Model.SurfaceTreasure ui) ->
             let
@@ -82,12 +81,11 @@ view chrome model =
                 expectedGp =
                     expectedGpFor ui.kind brackets
             in
-            View.Modal.view
+            View.Panel.view
                 { close = TreasureClose
-                , noOp = NoOp
                 , title = "💰 Treasure"
-                , extraClass = "modal--treasure"
-                , chrome = chrome
+                , subtitle = Nothing
+                , extraClass = "panel-drawer--treasure"
                 , body =
                     body ui
                         model.encounter.treasure
@@ -460,13 +458,9 @@ roll time. Stays at the far right of every row regardless of
 whether the row has Count, Value, or both knobs to its left.
 
 Rendered as a button (not a native `<input type=checkbox>`)
-with a glyph indicator so we can decide the new value
-explicitly from `current`. The native-checkbox version was
-fighting the modal's `stopPropagationOn "click"` listener — the
-NoOp it dispatched on every click in the modal scheduled a
-re-render that raced the browser's checkbox state change, so
-the False → True direction never landed. Driving the toggle
-ourselves dodges the race entirely.
+with a glyph indicator, so the new value is decided explicitly
+from `current` rather than read back off the browser's own
+checkbox state.
 
 -}
 noneToggle : Treasure.Kind -> String -> Bool -> Html Msg

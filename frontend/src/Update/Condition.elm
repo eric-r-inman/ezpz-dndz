@@ -78,9 +78,9 @@ withConditionUi fn =
         (fn >> (\u -> { u | applied = False }))
 
 
-{-| Opening is a toggle: clicking the toolbar's Condition
+{-| Opening is a toggle: clicking the column's Condition
 button while any condition editor is expanded closes it — the
-button shows the fold caret and Cancel hover text whenever the
+button wears the open ring and Cancel hover text whenever the
 editor is open, so it must close regardless of which target or
 mode (add vs. chip-edit) opened it.
 -}

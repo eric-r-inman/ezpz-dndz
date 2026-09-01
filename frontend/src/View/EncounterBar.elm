@@ -9,15 +9,13 @@ text.
 
 Right cluster: total XP for the encounter, summed via the
 compendium creatureId lookup and filtered by the GM's chosen
-scope (Enemies & NPCs / Enemies Only / NPCs Only / Selected Only).
-The scope dropdown is the sole click target here; everything
-else is a glanceable summary.
+scope. The scope itself is picked in the Actions column's XP
+panel — the readout here is glanceable summary, not a control.
 
 `Mode` toggles the right cluster: `FullBar` is the main
-encounter page; `QuickListBar` omits the XP readout, Difficulty
-button, and the Quick-List ↗ link — the standalone Quick-List
-tab is read-only and shouldn't navigate back into the busy
-workspace surfaces.
+encounter page; `QuickListBar` omits it entirely — the
+standalone Quick-List tab is read-only and shouldn't navigate
+back into the busy workspace surfaces.
 
 @docs Mode, view
 
@@ -25,10 +23,9 @@ workspace surfaces.
 
 import Encounter exposing (Cover(..), Creature, Encounter)
 import Encounter.Xp as Xp exposing (XpScope(..))
-import Html exposing (Html, a, button, div, li, span, text, ul)
+import Html exposing (Html, a, button, div, span, text)
 import Html.Attributes exposing (attribute, class, href, tabindex, target, type_)
-import Html.Events exposing (onClick, stopPropagationOn)
-import Json.Decode as Decode
+import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Tooltips as Tooltips
@@ -39,8 +36,8 @@ type Mode
     | QuickListBar
 
 
-view : Mode -> Encounter -> Maybe String -> CompendiumDb -> XpScope -> Bool -> Html Msg
-view mode enc savedAs db xpScope xpFilterOpen =
+view : Mode -> Encounter -> Maybe String -> CompendiumDb -> XpScope -> Html Msg
+view mode enc savedAs db xpScope =
     let
         active =
             Encounter.activeCreature enc
@@ -62,7 +59,6 @@ view mode enc savedAs db xpScope xpFilterOpen =
                 FullBar ->
                     div [ class "encounter-bar__group encounter-bar__right" ]
                         [ xpReadout enc db xpScope
-                        , xpFilter xpScope xpFilterOpen
                         , button
                             [ class "encounter-bar__difficulty"
                             , type_ "button"
@@ -250,80 +246,6 @@ ac active =
 
         Nothing ->
             text ""
-
-
-{-| Hand-rolled controlled dropdown. Replaced the native
-`<details>/<summary>` pair so we can drive the open state from
-the model — the global Esc / click-outside subscriptions in
-`Main.subscriptions` need a single source of truth to close
-against.
-
-`stopPropagationOn "mousedown"` on the wrapper keeps the global
-mousedown subscription from immediately closing the dropdown
-when the user clicks the toggle button.
-
--}
-xpFilter : XpScope -> Bool -> Html Msg
-xpFilter current isOpen =
-    let
-        wrapperClass =
-            if isOpen then
-                "xp-filter xp-filter--open"
-
-            else
-                "xp-filter"
-    in
-    div
-        [ class wrapperClass
-        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
-        ]
-        [ button
-            [ class "xp-filter__summary"
-            , type_ "button"
-            , attribute "aria-haspopup" "listbox"
-            , attribute "aria-expanded"
-                (if isOpen then
-                    "true"
-
-                 else
-                    "false"
-                )
-            , attribute "aria-label" Tooltips.xpFilter
-            , Tooltips.attr Tooltips.xpFilter
-            , onClick XpFilterToggle
-            ]
-            [ text "▾" ]
-        , if isOpen then
-            ul
-                [ class "xp-filter__menu"
-                , attribute "role" "listbox"
-                ]
-                [ xpFilterItem current ScopeXpEnemiesAndNpcs "Enemies & NPCs"
-                , xpFilterItem current ScopeXpEnemiesOnly "Enemies Only"
-                , xpFilterItem current ScopeXpNpcsOnly "NPCs Only"
-                , xpFilterItem current ScopeXpSelectedOnly "Selected Only"
-                ]
-
-          else
-            text ""
-        ]
-
-
-xpFilterItem : XpScope -> XpScope -> String -> Html Msg
-xpFilterItem current scope label =
-    li
-        [ class "xp-filter__item"
-        , attribute "role" "option"
-        , attribute "aria-selected"
-            (if current == scope then
-                "true"
-
-             else
-                "false"
-            )
-        , onClick (XpScopeSet scope)
-        ]
-        [ text label ]
 
 
 {-| Active-creature state icons in the encounter title bar.

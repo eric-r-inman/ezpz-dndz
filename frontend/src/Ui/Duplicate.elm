@@ -1,7 +1,7 @@
 module Ui.Duplicate exposing (DuplicateLogEntry, DuplicateUi, fresh, maxDuplicateLogEntries)
 
-{-| Duplicate editor state — the encounter toolbar's docked
-editor that copies creatures in one of five flavors:
+{-| Duplicate editor state — the drawer panel that copies
+creatures in one of five flavors:
 
   - **Exact** — clone the creature with all current state (HP,
     conditions, notes, etc.).

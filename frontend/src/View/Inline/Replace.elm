@@ -1,9 +1,9 @@
 module View.Inline.Replace exposing (view)
 
-{-| Replace editor as a docked toolbar expansion: a compendium
-search + picker list (the Quick Add row styling), the two apply
-buttons, and the newest log row. The swap preserves each
-replaced creature's queue position and initiative.
+{-| Replace editor body: a compendium search + picker list (the
+Quick Add row styling), the two apply buttons, and the newest
+log row. The swap preserves each replaced creature's queue
+position and initiative.
 -}
 
 import Compendium
