@@ -67,8 +67,8 @@
     that suits them.  No action needed.
 26. The round counter in the encounter title bar is clickable, opening a dialog
     that sets the round directly.  No action needed.
-27. The Actions column groups its triggers under Compendium, Encounter, and
-    Creature headings, with Reset, Turn, and Roll floating above them.  No
+27. The Actions column groups its triggers under Creature, Encounter, and
+    Compendium headings, with Reset, Turn, and Roll floating above them.  No
     action needed.
 28. The XP total, Difficulty, and Treasure moved out of the encounter title bar
     into the Actions column.  No action needed.

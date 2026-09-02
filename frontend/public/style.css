@@ -6070,12 +6070,15 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* The group heading doubles as its collapse toggle, so it is a
    button wearing the panel-header face.  Declared after
    `.panel__header`: same specificity, so source order is what
-   centres the title against the header's own
-   `justify-content`. */
+   lets these win. */
 .panel-actions__group-header {
   appearance: none;
   width: 100%;
   justify-content: center;
+  /* Shorter than the workspace panes' header: these stack in one
+     column, so every pixel of vertical padding is paid once per
+     group. */
+  padding: var(--space-1) var(--drawer-pad-x);
   font: inherit;
   cursor: pointer;
 }

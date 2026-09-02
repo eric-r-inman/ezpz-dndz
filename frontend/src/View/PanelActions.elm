@@ -63,59 +63,6 @@ view model =
             , rollTrigger (Model.drawerHas Model.diceLens model) model.dice
             , diceTotals model.dice
             ]
-        , group "Compendium"
-            CompendiumGroup
-            groups.compendium
-            [ trigger "action-btn action-btn--blue"
-                False
-                CompendiumOpen
-                Tooltips.panelOpenCompendium
-                "Open"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.quickAddLens)
-                QuickAddOpen
-                Tooltips.quickAddButton
-                "Quick Add"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.randomEncounterLens)
-                RandomEncounterOpen
-                Tooltips.panelRandomEncounter
-                "Random"
-            ]
-        , group "Encounter"
-            EncounterGroup
-            groups.encounter
-            [ trigger "action-btn"
-                (showing Model.crCalculatorLens)
-                CrCalculatorOpen
-                Tooltips.difficultyButton
-                "Difficulty"
-            , trigger "action-btn"
-                (showing Model.treasureLens)
-                TreasureOpen
-                Tooltips.treasureButton
-                "Treasure"
-            , trigger "action-btn"
-                (showing Model.xpLens)
-                XpFilterToggle
-                Tooltips.xpFilter
-                (View.Panel.Xp.label enc model.compendium.db model.xpScope)
-            , trigger (saveClass model)
-                (showing Model.saveLens)
-                (SaveOpen SaveDestinationServer)
-                (saveTip model)
-                "Save"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.loadLens)
-                LoadOpen
-                Tooltips.loadButton
-                "Load"
-            , trigger "action-btn action-btn--red"
-                (model.surface == Just (SurfaceConfirm PendingClear))
-                EncounterClear
-                Tooltips.clear
-                "Clear"
-            ]
         , group "Creature"
             CreatureGroup
             groups.creature
@@ -154,6 +101,59 @@ view model =
                 (ReplaceOpen target)
                 Tooltips.queueReplace
                 "Replace"
+            ]
+        , group "Encounter"
+            EncounterGroup
+            groups.encounter
+            [ trigger "action-btn"
+                (showing Model.crCalculatorLens)
+                CrCalculatorOpen
+                Tooltips.difficultyButton
+                "Difficulty"
+            , trigger "action-btn"
+                (showing Model.treasureLens)
+                TreasureOpen
+                Tooltips.treasureButton
+                "Treasure"
+            , trigger "action-btn"
+                (showing Model.xpLens)
+                XpFilterToggle
+                Tooltips.xpFilter
+                (View.Panel.Xp.label enc model.compendium.db model.xpScope)
+            , trigger (saveClass model)
+                (showing Model.saveLens)
+                (SaveOpen SaveDestinationServer)
+                (saveTip model)
+                "Save"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.loadLens)
+                LoadOpen
+                Tooltips.loadButton
+                "Load"
+            , trigger "action-btn action-btn--red"
+                (model.surface == Just (SurfaceConfirm PendingClear))
+                EncounterClear
+                Tooltips.clear
+                "Clear"
+            ]
+        , group "Compendium"
+            CompendiumGroup
+            groups.compendium
+            [ trigger "action-btn action-btn--blue"
+                False
+                CompendiumOpen
+                Tooltips.panelOpenCompendium
+                "Open"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.quickAddLens)
+                QuickAddOpen
+                Tooltips.quickAddButton
+                "Quick Add"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.randomEncounterLens)
+                RandomEncounterOpen
+                Tooltips.panelRandomEncounter
+                "Random"
             ]
         ]
 
