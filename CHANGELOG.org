@@ -71,6 +71,7 @@
    unsaved-changes cue is a yellow border now.  No action needed.
 3. A creature card's inline numeric fields close when you click anywhere outside
    them.  No action needed.
+4. The Nix build fetches crates again.  No action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

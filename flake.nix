@@ -1,17 +1,26 @@
 {
   description = "D&D combat encounter manager and monster database";
   inputs = {
-    # LLM: Do NOT change this URL unless explicitly directed. This is the
-    # correct format for nixpkgs stable (25.11 is correct, not nixos-25.11).
-    nixpkgs.url = "github:NixOS/nixpkgs/25.11";
+    # LLM: Do NOT change this URL unless explicitly directed.  The bare
+    # `25.11` ref is a frozen release tag that never receives backports;
+    # `nixos-25.11` is the maintained release branch.  The branch is required
+    # here because `importCargoLock`'s fix to fetch crates from
+    # static.crates.io (crates.io now 403s generic curl User-Agents) exists
+    # only as a backport.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     rust-overlay.url = "github:oxalica/rust-overlay";
     crane.url = "github:ipetkov/crane";
     changelog-roller.url = "github:LoganBarnett/changelog-roller";
+    changelog-roller.inputs.nixpkgs.follows = "nixpkgs";
     # Shared infrastructure crate + Nix helpers (mkRustPackages, the
     # cross-compile package sets, mkCiShell, mkNixosService,
     # mkDarwinService, cargoHuskyHookSnippet).
     foundation.url = "github:LoganBarnett/rust-template";
     foundation.inputs.nixpkgs.follows = "nixpkgs";
+    # Without this follows, foundation carries its own changelog-roller whose
+    # private nixpkgs is the frozen `25.11` tag, reintroducing the blocked
+    # crates.io fetches this flake's nixpkgs pin exists to avoid.
+    foundation.inputs.changelog-roller.follows = "changelog-roller";
     # Formats org-mode documents (treefmt delegates .org files to it).
     # Re-adopted after upstream switched its orgize input from ssh:// to
     # https://, which had previously blocked use in environments without
