@@ -90,7 +90,13 @@ view mode enc savedAs db xpScope =
                 , tabindex 0
                 ]
                 [ text "ⓘ" ]
-            , span [ class "encounter-bar__round" ]
+            , button
+                [ class "encounter-bar__round"
+                , type_ "button"
+                , onClick RoundSetOpen
+                , Tooltips.attr Tooltips.roundSet
+                , attribute "aria-label" Tooltips.roundSet
+                ]
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , sectionSep
             , surprisedMarker active

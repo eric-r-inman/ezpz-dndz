@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -76,6 +76,7 @@ import Ui.QueuePanels exposing (QueuePanels)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Replace exposing (ReplaceUi)
+import Ui.RoundSet exposing (RoundSetUi)
 import Ui.Save exposing (SaveUi)
 import Ui.SaveChain exposing (SaveChainUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
@@ -166,6 +167,8 @@ type Surface
       -- The Reset / Clear confirmation.  A modal, not a drawer
       -- panel.
     | SurfaceConfirm PendingControl
+      -- Round-setter: correct the round counter directly.
+    | SurfaceRoundSet RoundSetUi
 
 
 {-| The open drawer panel matching `lens`, if any.
@@ -271,6 +274,20 @@ compendiumEditLens =
                 _ ->
                     Nothing
     , wrap = SurfaceCompendiumEdit
+    }
+
+
+roundSetLens : SurfaceLens RoundSetUi
+roundSetLens =
+    { extract =
+        \m ->
+            case m of
+                SurfaceRoundSet ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceRoundSet
     }
 
 

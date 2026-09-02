@@ -1103,6 +1103,13 @@ type Msg
     | LoadCompendiumConfirmCancel
     | LoadCompendiumConfirmConfirm
     | LoadCompendiumServerResponse String (Result Http.Error ( List Compendium.Creature, List Compendium.Group.Group ))
+      -- Round-setter modal, opened from the title bar's round
+      -- readout: correct the counter without advancing the fight.
+    | RoundSetOpen
+    | RoundSetClose
+    | RoundSetTextChanged String
+    | RoundSetToOne
+    | RoundSetApply
     | EncounterReset
     | EncounterClear
     | EncounterAddPlaceholder

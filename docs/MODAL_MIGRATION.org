@@ -46,6 +46,12 @@ it:
 A true modal remains acceptable only for a destructive, must-decide-now
 interruption, and the toast + undo pattern should eliminate most of those.
 
+One surface sits outside that rule by the operator's call: the round-setter
+(=View/Modal/RoundSet.elm=), reached from the title bar's round readout.  It is
+neither destructive nor must-decide-now, so the policy would place it in the
+drawer; it is recorded here rather than left to contradict the plan silently,
+and moving it is a wrapper swap if the call changes.
+
 * Mapping
 
 Every modal the app started with, and its target pattern.

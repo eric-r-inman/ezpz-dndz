@@ -121,6 +121,7 @@ module View.Tooltips exposing
     , reset
     , rollDice
     , rollDiceUnread
+    , roundSet
     , runEncounter
     , saveButton
     , saveButtonDirty
@@ -284,6 +285,11 @@ runEncounter =
 nextTurn : String
 nextTurn =
     "Advance to next creature in initiative order"
+
+
+roundSet : String
+roundSet =
+    "Set the round number"
 
 
 rollDice : String

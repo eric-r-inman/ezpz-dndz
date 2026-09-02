@@ -110,6 +110,7 @@ import Update.QueuePanels
 import Update.QuickAdd
 import Update.RandomEncounter
 import Update.Replace
+import Update.RoundSet
 import Update.Save
 import Update.SaveChain
 import Update.SaveCompendium
@@ -140,6 +141,7 @@ import View.Modal.Confirm
 import View.Modal.GroupEdit
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
+import View.Modal.RoundSet
 import View.Modal.SaveCompendium
 import View.Modal.TreasureTable
 import View.Page.Compendium
@@ -276,6 +278,9 @@ subscriptions model =
             case model.surface of
                 Just (SurfaceConfirm _) ->
                     Browser.Events.onKeyDown (escKey EncounterControlCancel)
+
+                Just (SurfaceRoundSet _) ->
+                    Browser.Events.onKeyDown (escKey RoundSetClose)
 
                 Just (SurfaceCompendiumPaste _) ->
                     Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
@@ -2471,6 +2476,21 @@ updateInner msg model =
         LoadCompendiumServerResponse name result ->
             Update.LoadCompendium.serverResponse name result model
 
+        RoundSetOpen ->
+            Update.RoundSet.open model
+
+        RoundSetClose ->
+            Update.RoundSet.close model
+
+        RoundSetTextChanged text ->
+            Update.RoundSet.textChanged text model
+
+        RoundSetToOne ->
+            Update.RoundSet.setToOne model
+
+        RoundSetApply ->
+            Update.RoundSet.apply model
+
         EncounterReset ->
             Update.Encounter.requestReset model
 
@@ -2796,6 +2816,7 @@ appShell maybeUser model =
             }
     , viewPage model
     , View.Modal.Confirm.view model
+    , View.Modal.RoundSet.view model
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model
     , View.Modal.SaveCompendium.view model
