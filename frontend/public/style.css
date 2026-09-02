@@ -84,8 +84,8 @@
      column uses, where a couple dozen triggers multiply every
      pixel. */
   --btn-compact-height: 22px;
-  --btn-compact-pad-x: 4px;
-  --font-size-compact: 0.72rem;
+  --btn-compact-pad-x: 3px;
+  --font-size-compact: 0.7rem;
 
   /* Type for the muted group label.  Most rules wearing that
      shape still spell the values out; converting them is
@@ -99,7 +99,7 @@
   /* Wide enough for a stat block's two-column header without
      crowding the queue beside it, with one shared horizontal
      inset for every piece of a drawer panel's chrome. */
-  --drawer-width: 332px;
+  --drawer-width: 310px;
   --drawer-pad-x: 10px;
 
   /* Accent / signal hues — muted and saturated together, not the
@@ -1748,14 +1748,15 @@ body {
 }
 
 .treasure__select {
-  padding: 6px 10px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 0.9rem;
-  min-width: 140px;
+  font-size: 0.85rem;
+  min-width: 110px;
+  max-width: 100%;
 }
 
 .treasure__roll {
@@ -3738,7 +3739,7 @@ body {
 
 .random-encounter__group-row {
   display: grid;
-  grid-template-columns: 40px 1fr auto auto auto auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -3896,7 +3897,7 @@ body {
 
 .random-encounter__pinned-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -8241,7 +8242,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .die-btn-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
   gap: 6px;
 }
 
@@ -8344,7 +8345,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .dice-history__entry {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
@@ -8491,12 +8492,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-@media (max-width: 600px) {
-  .die-btn-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
 /* Clickable inline dice notation inside stat-block traits. Renders as
    a softly-tinted accent badge that scales with surrounding text. */
 .dice-link {
@@ -8573,12 +8568,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .hp-change__input {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   /* Sized to its example text rather than stretching to the
-     docked editor's full width. */
+     editor's full width. */
   flex: 0 0 auto;
   width: 20ch;
+  max-width: 100%;
 }
 
 .hp-change__error {
@@ -8677,7 +8673,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-entry {
   display: grid;
-  grid-template-columns: 64px 1fr auto auto auto;
+  grid-template-columns: 64px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -8740,7 +8736,7 @@ button.creature-card__lifecycle--dead:focus-visible {
    duplicate flavor) rather than a fixed-width verb — let the
    column size to its text while keeping the shared 8px gap. */
 .hp-change__log-entry--wide {
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
 }
 
 .hp-change__log-target {
@@ -9069,6 +9065,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-input--w20 {
   flex: 0 0 auto;
   width: 22ch;
+  max-width: 100%;
 }
 
 /* The Replace editor's compendium search, sized to sit beside
