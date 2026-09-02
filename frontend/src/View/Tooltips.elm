@@ -62,11 +62,10 @@ module View.Tooltips exposing
     , diceFaceRoll
     , diceReset
     , diceRollAgain
+    , difficultyButton
     , dodging
     , drawerClose
-    , encounterBarDifficulty
     , encounterBarSpellList
-    , encounterBarTreasure
     , fallDamage
     , flyHeightDown
     , flyHeightUp
@@ -154,12 +153,8 @@ module View.Tooltips exposing
     , timerRunning
     , timerSet
     , toastDismiss
+    , treasureButton
     , xpFilter
-    , xpLairTotal
-    , xpScopeEnemiesAndNpcs
-    , xpScopeEnemiesOnly
-    , xpScopeNpcsOnly
-    , xpScopeSelectedOnly
     )
 
 {-| Centralised tooltip strings.
@@ -229,6 +224,16 @@ appBarDonate =
 -- ── ACTIONS COLUMN ───────────────────────────────────────────────────────────
 
 
+difficultyButton : String
+difficultyButton =
+    "Open the encounter-difficulty calculator (2024 XP budgets)"
+
+
+treasureButton : String
+treasureButton =
+    "Roll random treasure for this encounter (SRD individual or hoard tables)"
+
+
 quickAddButton : String
 quickAddButton =
     "Quick-add a creature from the Compendium"
@@ -269,7 +274,7 @@ loadButton =
 
 reset : String
 reset =
-    "Revert encounter to its last-saved state and reset round to 1"
+    "Reset every creature to full HP and clear conditions / status"
 
 
 clear : String
@@ -279,7 +284,7 @@ clear =
 
 runEncounter : String
 runEncounter =
-    "Begin combat — round 1, highest-initiative creature acts"
+    "Begin combat — highest-initiative creature acts"
 
 
 nextTurn : String
@@ -314,41 +319,6 @@ lastRollTotal =
 sourceUnsaved : String
 sourceUnsaved =
     "from file: (unsaved)"
-
-
-xpScopeEnemiesAndNpcs : String
-xpScopeEnemiesAndNpcs =
-    "Total XP for enemies and NPCs"
-
-
-xpScopeEnemiesOnly : String
-xpScopeEnemiesOnly =
-    "Total XP for enemies only"
-
-
-xpScopeNpcsOnly : String
-xpScopeNpcsOnly =
-    "Total XP for NPCs only"
-
-
-xpScopeSelectedOnly : String
-xpScopeSelectedOnly =
-    "Total XP for selected creatures only"
-
-
-xpLairTotal : String
-xpLairTotal =
-    "Total XP if creature(s) fought in lair"
-
-
-encounterBarDifficulty : String
-encounterBarDifficulty =
-    "Open the encounter-difficulty calculator (2024 XP budgets)"
-
-
-encounterBarTreasure : String
-encounterBarTreasure =
-    "Roll random treasure for this encounter (SRD individual or hoard tables)"
 
 
 encounterBarSpellList : String

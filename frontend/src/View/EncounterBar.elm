@@ -7,27 +7,21 @@ name + active HP readout + active AC readout + active state
 icons (cover, concentrating, hiding, flying) + active conditions
 text.
 
-Right cluster: total XP for the encounter, summed via the
-compendium creatureId lookup and filtered by the GM's chosen
-scope. The scope itself is picked in the Actions column's XP
-panel — the readout here is glanceable summary, not a control.
+Right cluster: the ↗ link to the standalone Quick-List page.
 
 `Mode` toggles the right cluster: `FullBar` is the main
-encounter page; `QuickListBar` omits it entirely — the
-standalone Quick-List tab is read-only and shouldn't navigate
-back into the busy workspace surfaces.
+encounter page; `QuickListBar` omits it entirely, since the
+link would point at the page the reader is already on.
 
 @docs Mode, view
 
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter)
-import Encounter.Xp as Xp exposing (XpScope(..))
 import Html exposing (Html, a, button, div, span, text)
 import Html.Attributes exposing (attribute, class, href, tabindex, target, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
-import Ui.Compendium exposing (CompendiumDb(..))
 import View.Tooltips as Tooltips
 
 
@@ -36,8 +30,8 @@ type Mode
     | QuickListBar
 
 
-view : Mode -> Encounter -> Maybe String -> CompendiumDb -> XpScope -> Html Msg
-view mode enc savedAs db xpScope =
+view : Mode -> Encounter -> Maybe String -> Html Msg
+view mode enc savedAs =
     let
         active =
             Encounter.activeCreature enc
@@ -58,25 +52,7 @@ view mode enc savedAs db xpScope =
             case mode of
                 FullBar ->
                     div [ class "encounter-bar__group encounter-bar__right" ]
-                        [ xpReadout enc db xpScope
-                        , button
-                            [ class "encounter-bar__difficulty"
-                            , type_ "button"
-                            , onClick CrCalculatorOpen
-                            , Tooltips.attr Tooltips.encounterBarDifficulty
-                            , attribute "aria-label" Tooltips.encounterBarDifficulty
-                            ]
-                            [ text "Difficulty" ]
-                        , button
-                            [ class "encounter-bar__treasure"
-                            , type_ "button"
-                            , onClick TreasureOpen
-                            , Tooltips.attr Tooltips.encounterBarTreasure
-                            , attribute "aria-label" Tooltips.encounterBarTreasure
-                            ]
-                            [ text "Treasure" ]
-                        , quickListLink
-                        ]
+                        [ quickListLink ]
 
                 QuickListBar ->
                     text ""
@@ -135,55 +111,6 @@ quickListLink =
         , attribute "aria-label" "Open quick-list in new tab"
         ]
         [ text "↗" ]
-
-
-xpReadout : Encounter -> CompendiumDb -> XpScope -> Html Msg
-xpReadout enc db scope =
-    case db of
-        CompendiumDbLoaded loaded ->
-            let
-                totals =
-                    Xp.totalsFor scope enc loaded
-            in
-            span [ class "encounter-bar__xp-group" ]
-                [ span
-                    [ class "encounter-bar__xp"
-                    , Tooltips.attr (xpScopeTooltip scope)
-                    ]
-                    [ text (Xp.formatThousands totals.total ++ " XP") ]
-                , if totals.lairTotal > totals.total then
-                    span
-                        [ class "encounter-bar__xp-lair"
-                        , Tooltips.attr Tooltips.xpLairTotal
-                        ]
-                        [ text ("(" ++ Xp.formatThousands totals.lairTotal ++ " w/Lair)") ]
-
-                  else
-                    text ""
-                ]
-
-        _ ->
-            span
-                [ class "encounter-bar__xp"
-                , Tooltips.attr (xpScopeTooltip scope)
-                ]
-                [ text "— XP" ]
-
-
-xpScopeTooltip : XpScope -> String
-xpScopeTooltip scope =
-    case scope of
-        ScopeXpEnemiesAndNpcs ->
-            Tooltips.xpScopeEnemiesAndNpcs
-
-        ScopeXpEnemiesOnly ->
-            Tooltips.xpScopeEnemiesOnly
-
-        ScopeXpNpcsOnly ->
-            Tooltips.xpScopeNpcsOnly
-
-        ScopeXpSelectedOnly ->
-            Tooltips.xpScopeSelectedOnly
 
 
 {-| HP readout for the encounter title bar. Reuses the same

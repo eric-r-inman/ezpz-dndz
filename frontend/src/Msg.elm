@@ -1293,11 +1293,11 @@ type Msg
     | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
-      -- Treasure modal — random loot generator from the encounter
-      -- title bar.  Open seeds the modal's UI state with the
-      -- bracket suggested from the toughest creature's CR; the
-      -- actual loot lives on `model.encounter.treasure` so it
-      -- persists with the encounter.
+      -- Treasure — random loot generator.  Open seeds the UI
+      -- state with the bracket suggested from the toughest
+      -- creature's CR; the actual loot lives on
+      -- `model.encounter.treasure` so it persists with the
+      -- encounter.
     | TreasureOpen
     | TreasureClose
       -- Icon on one of the queue's reminder strips, folding its

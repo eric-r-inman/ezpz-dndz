@@ -30,11 +30,10 @@ models what is open.
 
 `savedSnapshot` is the last-known persisted state of the
 encounter — the result of the user's most recent Save (or
-Load) action. It backs the Reset button: clicking Reset
-copies the snapshot back into `encounter` and forces the round
-counter to 1. `savedAs` parallels it, recording the name the
-encounter was last saved under so re-saving doesn't make the
-user retype the filename.
+Load) action. It backs the Save button's dirty indicator,
+which lights when the live roster differs from it. `savedAs`
+parallels it, recording the name the encounter was last saved
+under so re-saving doesn't make the user retype the filename.
 
 @docs Surface, Model
 
@@ -158,9 +157,9 @@ type Surface
       -- `model.dice` and this variant only records openness and
       -- stack position.
     | SurfaceDice
-      -- The XP-scope picker.  Also a marker — the scope itself is
-      -- read by the title bar whether or not the panel is open,
-      -- so it lives on `model.xpScope`.
+      -- The XP-scope picker.  Also a marker — the scope itself
+      -- is read by the column's trigger whether or not the
+      -- panel is open, so it lives on `model.xpScope`.
     | SurfaceXp
       -- The pinned creature's stat block.
     | SurfaceStatBlock PanelPin

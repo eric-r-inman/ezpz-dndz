@@ -2,9 +2,10 @@ module View.Panel.Xp exposing (label, view)
 
 {-| Which creatures the encounter's XP total counts.
 
-The four choices get room to say what they mean, and the title
-bar's total re-renders as each is picked, so the effect of the
-choice is visible while it's being made.
+The four choices get room to say what they mean, and both this
+panel's total and the column's trigger re-render as each is
+picked, so the effect of the choice is visible while it's being
+made.
 
 -}
 
@@ -28,6 +29,7 @@ view enc db current =
         , extraClass = "panel-drawer--xp"
         , body =
             [ div [ class "xp-panel__total" ] [ text (label enc db current) ]
+            , lairTotal enc db current
             , ul
                 [ class "xp-filter__menu"
                 , attribute "role" "listbox"
@@ -39,6 +41,29 @@ view enc db current =
                 ]
             ]
         }
+
+
+{-| Secondary total counting each creature's in-lair XP where
+it has one. Shown only when a lair actually raises the figure,
+so an encounter without one carries no dead line.
+-}
+lairTotal : Encounter -> CompendiumDb -> XpScope -> Html Msg
+lairTotal enc db scope =
+    case db of
+        CompendiumDbLoaded loaded ->
+            let
+                totals =
+                    Xp.totalsFor scope enc loaded
+            in
+            if totals.lairTotal > totals.total then
+                div [ class "xp-panel__lair" ]
+                    [ text (Xp.formatThousands totals.lairTotal ++ " XP in lair") ]
+
+            else
+                text ""
+
+        _ ->
+            text ""
 
 
 {-| The scoped total, as both this panel's headline and the

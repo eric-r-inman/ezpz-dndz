@@ -255,15 +255,15 @@ scoped to the workspace shell rather than to a single feature:
 
 - ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ — the most recent
   persisted state of the encounter and the name it was saved under.  Set by Save
-  / Load success and consumed by Reset (which restores from the snapshot and
-  forces ~round = 0~).
+  / Load success and consumed by the Save button's dirty indicator, which lights
+  when the live roster differs from the snapshot.
 - ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
   whose ~creatureId~ no longer matches anything in the bundled compendium).
-- ~xpScope : XpScope~ + ~xpFilterOpen : Bool~ — which creatures the XP total
-  counts, and whether the drawer is showing the panel that picks.  The title bar
-  keeps the readout; the scope is chosen from the Actions column.
+- ~xpScope : XpScope~ — which creatures the XP total counts.  Both the readout
+  and the scope live in the Actions column; the picker's open state is the
+  ~SurfaceXp~ marker in the drawer stack, not a field.
 - ~settingsOpen : Bool~ — AppBar settings popover (theme picker today; density /
   sound when those land).  A controlled ~<div>~ rather than a native
   ~<details>/<summary>~, so global Esc + click-outside subscriptions in
@@ -315,12 +315,12 @@ highest.  The app models this with three fields on =Encounter=:
 - ~activeName : String~ — whose turn it currently is.
 - ~round : Int~ — 1-indexed round counter.
 
-~round = 0~ is the pre-combat sentinel: the queue is set up but no one has acted
-yet.  Reset / Clear / Load all force the live encounter to round 0.  In this
-state the Actions column's green Turn button dispatches ~EncounterRun~, which
-calls ~Encounter.run~ — bumps round to 1 and sets the active creature to the
-queue head (highest initiative).  Once round >= 1 the same button dispatches
-~NextTurn~ instead.
+An empty ~activeName~ is the pre-combat sentinel: the queue is set up but no one
+has acted yet.  Reset / Clear / Load all return the live encounter to round 1
+with nobody active.  In that state the Actions column's green Turn button
+dispatches ~EncounterRun~, which calls ~Encounter.run~ — it sets the active
+creature to the queue head (highest initiative).  Once someone is active the
+same button dispatches ~NextTurn~ instead.
 
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
 ~Update.Encounter.nextTurn~ when the user presses the Turn button.  The
@@ -1019,7 +1019,7 @@ routes through:
     confirm).  Device downloads go through ~File.Download.string~.
   - *Load* — =View.Panel.Load= lists the server saves for click-to-load with
     confirm; the Device path fires ~File.Select.file~ directly.  Either replaces
-    the live encounter and forces ~round = 0~ + ~activeName = ""~ so the GM
+    the live encounter and forces ~round = 1~ + ~activeName = ""~ so the GM
     lands in pre-combat mode.  Successful loads also populate ~savedSnapshot~ +
     ~savedAs~.
 
@@ -1031,7 +1031,7 @@ routes through:
     status toggle off (cover, concentration, hiding, dodging, flying, readied,
     inactive, bloodied), legendary actions / resistances refilled, timers
     cleared.  Identity + combat baselines (name, kind, initiative, AC, max HP,
-    note, memo, compendium id) preserved.  Round → 0, active creature → none, so
+    note, memo, compendium id) preserved.  Round → 1, active creature → none, so
     the GM lands back in the pre-combat state.
   - *Clear* — empties the queue.
 
@@ -1282,15 +1282,14 @@ Esc / click-outside close):
 Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~, ~DiceRerunMenuClose~,
 ~DiceRerunNoModifier Dice.Roll~.
 
-* Encounter title-bar XP totals
+* Encounter XP totals
 
-The right cluster of the encounter title bar runs a real XP total, not a
-placeholder.  =View.EncounterBar.totalXp= walks the encounter, resolves each
-creature through ~Compendium.find creatureId~, and sums two parallel running
-totals: ~total~ (every in-scope creature's base ~xp~) and ~lairTotal~
-(~xpInLair~ when present, falling back to ~xp~).  Players are always excluded;
-missing-from-compendium entries are silently skipped.  When ~lairTotal > total~
-the view renders a muted secondary chip "(N w/Lair)" alongside the base figure.
+The Actions column's XP trigger carries the encounter's XP total.
+~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature through
+~Compendium.find creatureId~, and sums two parallel running totals: ~total~
+(every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when present,
+falling back to ~xp~).  Players are always excluded; missing-from-compendium
+entries are silently skipped.
 
 The four scope options come from the ~Encounter.Xp.XpScope~ enum (~Enemies &
 NPCs~ / ~Enemies Only~ / ~NPCs Only~ / ~Selected Only~).  ~Selected Only~ uses
@@ -1299,7 +1298,7 @@ creature's ~kind~ tag.
 
 The XP totals computation itself lives in =Encounter/Xp.elm= (domain module —
 pure rules, no ~Html~, no ~Cmd~) exposing ~totalsFor : XpScope -> Encounter ->
-Compendium.Db -> Totals~ + ~formatThousands~.  =View.EncounterBar= unwraps the
+Compendium.Db -> Totals~ + ~formatThousands~.  =View.Panel.Xp= unwraps the
 ~CompendiumDb~ loading wrapper at the boundary then calls into the domain
 helper.  Behavior is locked by the dedicated ~Encounter/XpTest~ suite (14 cases
 covering empty queues, scope filters, lair-XP fallback / preference, and the
@@ -1307,11 +1306,11 @@ thousand- separator math).
 
 The scope is picked in the Actions column's XP panel (=View/Panel/Xp.elm=),
 which also restates the total so the effect of a pick is visible while making
-it.  ~Model.xpFilterOpen~ holds the panel's open state; ~XpFilterToggle~ /
-~XpFilterClose~ flip and clear it, and ~XpScopeSet~ deliberately leaves it open.
-=Main.subscriptions= adds one sub while it is open — ~Browser.Events.onKeyDown
-(escKey XpFilterClose)~.  A click-outside sub would fire on every click landing
-in the queue beside the panel.
+it.  The ~SurfaceXp~ marker in the drawer stack is the panel's open state;
+~XpFilterToggle~ / ~XpFilterClose~ add and drop it, and ~XpScopeSet~
+deliberately leaves it open.  =Main.subscriptions= adds one sub while it is open
+— ~Browser.Events.onKeyDown (escKey XpFilterClose)~.  A click-outside sub would
+fire on every click landing in the queue beside the panel.
 
 Lair XP is plumbed end-to-end:
 

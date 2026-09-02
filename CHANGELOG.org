@@ -62,12 +62,16 @@
 23. A denser layout overall: buttons, editor panels, and their spacing all
     tightened, and the drawer column slimmed again, so more of the screen goes
     to the queue.  No action needed.
-24. The Actions column's title row carries the Reset and Turn buttons, and Reset
-    and Clear confirm in a dialog.  No action needed.
+24. Reset and Clear confirm in a dialog.  No action needed.
 25. The Actions column's Reset and Turn buttons read as icons alone, at a size
     that suits them.  No action needed.
 26. The round counter in the encounter title bar is clickable, opening a dialog
     that sets the round directly.  No action needed.
+27. The Actions column groups its triggers under Compendium, Encounter, and
+    Creature headings, with Reset, Turn, and Roll floating above them.  No
+    action needed.
+28. The XP total, Difficulty, and Treasure moved out of the encounter title bar
+    into the Actions column.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -76,6 +80,10 @@
 3. A creature card's inline numeric fields close when you click anywhere outside
    them.  No action needed.
 4. The Nix build fetches crates again.  No action needed.
+5. An encounter never sits at round 0 — new, reset, cleared, and loaded
+   encounters all start at round 1.  No action needed.
+6. Reset's hover text describes what it actually does — restore HP and clear
+   conditions, not revert to the last save.  No action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

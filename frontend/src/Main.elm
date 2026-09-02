@@ -2854,7 +2854,7 @@ viewPage model =
             View.Page.CompendiumStandalone.view model.compendium.db id
 
         QuickList ->
-            View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
+            View.Page.QuickList.view model.encounter model.savedAs
 
         Compendium ->
             View.Page.Compendium.view model.auth

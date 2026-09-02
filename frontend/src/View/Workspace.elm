@@ -73,7 +73,7 @@ panelMain model =
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs model.compendium.db model.xpScope ]
+            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs ]
         , legendaryActionStrip enc model.queuePanels.legendaryActions
         , specialReactionsStrip enc model.queuePanels.specialReactions
         , spellcasterStrip enc model.compendium.db model.queuePanels.spells

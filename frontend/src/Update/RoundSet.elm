@@ -42,9 +42,10 @@ setToOne model =
     ( setRound 1 model, Cmd.none )
 
 
-{-| Commit the typed value. Unparseable or negative input is a
-no-op rather than an error: the field is pre-filled with the
-current round, so there is always a sane value to fall back to.
+{-| Commit the typed value. Anything below round 1 — or
+unparseable — is a no-op rather than an error: the field is
+pre-filled with the current round, so there is always a sane
+value to fall back to.
 -}
 apply : Model -> ( Model, Cmd Msg )
 apply model =
@@ -55,7 +56,7 @@ apply model =
                 |> String.toInt
                 |> Maybe.andThen
                     (\n ->
-                        if n >= 0 then
+                        if n >= 1 then
                             Just (setRound n model)
 
                         else

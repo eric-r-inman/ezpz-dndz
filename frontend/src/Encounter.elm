@@ -46,9 +46,9 @@ damage), it belongs here.
 
 # Combat startup
 
-`round = 0` is the pre-combat sentinel: the queue is set up
-but no one has taken a turn. [`run`](#run) flips the encounter
-into round 1 and picks the first creature as active.
+An empty `activeName` is the pre-combat sentinel: the queue is
+set up but no one has taken a turn. [`run`](#run) picks the
+first creature as active and the fight is underway.
 
 @docs run
 
@@ -498,25 +498,27 @@ fixture (see `Encounter.Seed.initialEncounter`) — but the running
 app starts empty and either loads a persisted encounter from the
 server or waits for the user to add creatures from the compendium.
 
-`round = 0` is the pre-combat sentinel — see [`run`](#run).
+An encounter starts at round 1 with nobody active; the empty
+`activeName` is the pre-combat sentinel — see [`run`](#run).
 
 -}
 empty : Encounter
 empty =
     { creatures = []
     , activeName = ""
-    , round = 0
+    , round = 1
     , treasure = Nothing
     , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
-{-| Begin combat: bump round from 0 to 1 and pick the first
-creature in the queue as active. The queue is in initiative
-order, so "first" is the highest-initiative combatant.
+{-| Begin combat: pick the first creature in the queue as
+active. The queue is in initiative order, so "first" is the
+highest-initiative combatant. The round is left alone — a GM
+who set it before starting meant it.
 
-This is the begin-combat half of the round-0 sentinel: the GM
-lays out the encounter pre-combat (round 0, no one active),
+This is the begin-combat half of the empty-`activeName`
+sentinel: the GM lays out the encounter with nobody active,
 then starts it and the queue begins ticking.
 
 -}
@@ -531,7 +533,7 @@ run enc =
                 Nothing ->
                     ""
     in
-    { enc | round = 1, activeName = firstActiveName }
+    { enc | activeName = firstActiveName }
 
 
 {-| `True` when the current encounter's roster differs from the

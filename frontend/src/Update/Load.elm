@@ -210,7 +210,7 @@ applyLocalLoad name model =
                     save.encounter
 
                 fresh =
-                    { encounter | round = 0, activeName = "" }
+                    { encounter | round = 1, activeName = "" }
 
                 next =
                     { model
@@ -272,11 +272,10 @@ applyLocalDelete name model =
 
 
 {-| Server returned the encounter body. Replace the live
-encounter and snapshot it as the savefile state (so Reset
-returns to it). Force `round = 0` with no active creature so
-the GM lands in pre-combat mode and clicks Run when ready.
-The snapshot keeps the same shape so Reset returns to the
-same pre-combat state.
+encounter and snapshot it as the savefile state, so the Save
+button reads clean until the roster changes. Force round 1 with
+no active creature so the GM lands in pre-combat mode and
+starts the fight when ready.
 -}
 serverResponse : String -> Result Http.Error Encounter -> Model -> ( Model, Cmd Msg )
 serverResponse name result model =
@@ -284,7 +283,7 @@ serverResponse name result model =
         Ok encounter ->
             let
                 fresh =
-                    { encounter | round = 0, activeName = "" }
+                    { encounter | round = 1, activeName = "" }
 
                 next =
                     { model
@@ -533,7 +532,7 @@ fromDeviceFileRead raw model =
         Ok encounter ->
             let
                 fresh =
-                    { encounter | round = 0, activeName = "" }
+                    { encounter | round = 1, activeName = "" }
 
                 next =
                     { model

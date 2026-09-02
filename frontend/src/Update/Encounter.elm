@@ -429,10 +429,10 @@ requestClear model =
     inactive), legendary actions / resistances refilled, timers
     cleared. Identity + combat baselines (name, kind, initiative,
     AC, max HP, note, memo, compendium back-reference) survive
-    untouched. Round counter goes back to 0 and `activeName`
+    untouched. Round counter goes back to 1 and `activeName`
     clears so the GM is back in pre-combat mode with the same
     cast.
-  - `PendingClear` — drop every creature; force `round = 0`.
+  - `PendingClear` — drop every creature; back to round 1.
 
 In both cases the pending state is cleared so the modal closes.
 
@@ -448,7 +448,7 @@ controlConfirm model =
                 resetEnc =
                     { enc
                         | creatures = List.map resetCreatureState enc.creatures
-                        , round = 0
+                        , round = 1
                         , activeName = ""
                     }
             in
@@ -465,7 +465,7 @@ controlConfirm model =
             ( model, Cmd.none )
 
 
-{-| Strip a creature back to "round 0" state. Identity + combat
+{-| Strip a creature back to pre-combat state. Identity + combat
 baselines (name, kind, initiative, ability stats, AC, max HP,
 note, memo, compendium id, legendary capability flags, selection
 checkbox) are preserved; everything that can change mid-fight is
@@ -583,11 +583,10 @@ fallExpression count =
     }
 
 
-{-| Begin combat: flip the round-0 sentinel to round 1 and
-pick the highest-initiative creature as active. Domain rules
-live in [`Encounter.run`](Encounter#run); this branch handles
-the scroll-into-view side-effect so the new active card is
-visible.
+{-| Begin combat: pick the highest-initiative creature as
+active. Domain rules live in [`Encounter.run`](Encounter#run);
+this branch handles the scroll-into-view side-effect so the new
+active card is visible.
 -}
 run : Model -> ( Model, Cmd Msg )
 run model =

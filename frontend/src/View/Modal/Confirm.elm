@@ -33,24 +33,27 @@ view model =
 prompt : ModalChrome -> PendingControl -> Html Msg
 prompt chrome pending =
     let
-        ( message, confirmLabel, confirmClass ) =
+        -- The title carries the verb and its scope; the button
+        -- carries the verb alone, so it reads as the answer to
+        -- the question above it.
+        ( message, ( title, confirmLabel ), confirmClass ) =
             case pending of
                 PendingReset ->
                     ( "Reset every creature's HP to full and clear all conditions / status?"
-                    , "Reset"
+                    , ( "Reset Encounter", "Reset" )
                     , "action-btn action-btn--orange"
                     )
 
                 PendingClear ->
                     ( "Remove every creature and reset round to 1?"
-                    , "Clear"
+                    , ( "Clear Encounter", "Clear" )
                     , "action-btn action-btn--red"
                     )
     in
     View.Modal.view
         { close = EncounterControlCancel
         , noOp = NoOp
-        , title = confirmLabel
+        , title = title
         , extraClass = "modal--confirm"
         , chrome = chrome
         , body =

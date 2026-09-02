@@ -1,8 +1,8 @@
 module View.PanelActions exposing (view)
 
-{-| Far-left pane: the workspace's encounter-scoped triggers in
-one column, most of them opening a panel in the drawer beside
-it; a few act on the encounter directly instead.
+{-| Far-left column: the workspace's encounter-scoped triggers,
+grouped by what they act on, most of them opening a panel in
+the drawer beside it.
 
 Whichever trigger's surface is showing wears the shared
 editor-open ring, so the column says where it came from.
@@ -10,7 +10,7 @@ editor-open ring, so the column says where it came from.
 -}
 
 import Encounter
-import Html exposing (Html, button, div, h3, section, span, text)
+import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model, PendingControl(..), Surface(..))
@@ -43,21 +43,78 @@ view model =
         showing lens =
             Model.drawerHas lens model
     in
-    section [ class "panel panel--actions" ]
-        [ div [ class "panel__header panel__header--actions" ]
-            [ headerTrigger "action-btn action-btn--orange"
-                (model.surface == Just (SurfaceConfirm PendingReset))
-                EncounterReset
-                Tooltips.reset
-                "⟲"
-            , turnTrigger enc.round
+    div [ class "actions-column" ]
+        [ -- The encounter's own controls sit above the grouped
+          -- triggers with no panel around them: they belong to
+          -- no one creature or reference, so a heading would
+          -- have to invent a category for them.
+          div [ class "actions-column__controls" ]
+            [ div [ class "actions-column__pair" ]
+                [ headerTrigger "action-btn action-btn--orange"
+                    (model.surface == Just (SurfaceConfirm PendingReset))
+                    EncounterReset
+                    Tooltips.reset
+                    "⏮"
+                , turnTrigger enc.activeName
+                ]
+            , rollTrigger (Model.drawerHas Model.diceLens model) model.dice
+            , diceTotals model.dice
             ]
-        , div [ class "panel__body panel__body--actions" ]
+        , group "Compendium"
+            [ trigger "action-btn action-btn--blue"
+                False
+                CompendiumOpen
+                Tooltips.panelOpenCompendium
+                "Open"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.quickAddLens)
+                QuickAddOpen
+                Tooltips.quickAddButton
+                "Quick Add"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.randomEncounterLens)
+                RandomEncounterOpen
+                Tooltips.panelRandomEncounter
+                "Random"
+            ]
+        , group "Encounter"
+            [ trigger "action-btn"
+                (showing Model.crCalculatorLens)
+                CrCalculatorOpen
+                Tooltips.difficultyButton
+                "Difficulty"
+            , trigger "action-btn"
+                (showing Model.treasureLens)
+                TreasureOpen
+                Tooltips.treasureButton
+                "Treasure"
+            , trigger "action-btn"
+                (showing Model.xpLens)
+                XpFilterToggle
+                Tooltips.xpFilter
+                (View.Panel.Xp.label enc model.compendium.db model.xpScope)
+            , trigger (saveClass model)
+                (showing Model.saveLens)
+                (SaveOpen SaveDestinationServer)
+                (saveTip model)
+                "Save"
+            , trigger "action-btn action-btn--blue"
+                (showing Model.loadLens)
+                LoadOpen
+                Tooltips.loadButton
+                "Load"
+            , trigger "action-btn action-btn--red"
+                (model.surface == Just (SurfaceConfirm PendingClear))
+                EncounterClear
+                Tooltips.clear
+                "Clear"
+            ]
+        , group "Creature"
             [ trigger "action-btn action-btn--manage-hp"
                 (showing Model.hpChangeLens)
                 (HpChangeOpen target)
                 Tooltips.manageHp
-                "Manage HP"
+                "HP"
             , trigger "action-btn action-btn--blue"
                 (showing Model.statusLens)
                 (StatusOpen target)
@@ -79,79 +136,41 @@ view model =
                 Tooltips.initiativeManager
                 "Initiative"
             , trigger "action-btn action-btn--orange"
-                (showing Model.replaceLens)
-                (ReplaceOpen target)
-                Tooltips.queueReplace
-                "Replace"
-            , trigger "action-btn action-btn--orange"
                 (showing Model.duplicateLens)
                 (DuplicateOpen target)
                 Tooltips.queueDuplicate
                 "Duplicate"
-
-            -- Encounter-level tools take the neutral face; the
-            -- per-creature editors above and the file operations
-            -- below each keep a colour of their own.
-            , trigger "action-btn"
-                (showing Model.crCalculatorLens)
-                CrCalculatorOpen
-                Tooltips.encounterBarDifficulty
-                "Difficulty"
-            , trigger "action-btn"
-                (showing Model.treasureLens)
-                TreasureOpen
-                Tooltips.encounterBarTreasure
-                "Treasure"
-            , trigger "action-btn"
-                (showing Model.xpLens)
-                XpFilterToggle
-                Tooltips.xpFilter
-                (View.Panel.Xp.label enc model.compendium.db model.xpScope)
-            , trigger "action-btn action-btn--blue"
-                (showing Model.quickAddLens)
-                QuickAddOpen
-                Tooltips.quickAddButton
-                "Quick Add"
-            , trigger (saveClass model)
-                (showing Model.saveLens)
-                (SaveOpen SaveDestinationServer)
-                (saveTip model)
-                "💾 Save"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.loadLens)
-                LoadOpen
-                Tooltips.loadButton
-                "📁 Load"
-            , trigger "action-btn action-btn--red"
-                (model.surface == Just (SurfaceConfirm PendingClear))
-                EncounterClear
-                Tooltips.clear
-                "🗑 Clear"
-            , rollTrigger (Model.drawerHas Model.diceLens model) model.dice
-            , diceTotals model.dice
-            , heading "Compendium"
-            , trigger "action-btn action-btn--blue"
-                False
-                CompendiumOpen
-                Tooltips.panelOpenCompendium
-                "📖 Open"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.randomEncounterLens)
-                RandomEncounterOpen
-                Tooltips.panelRandomEncounter
-                "🎲 Random"
+            , trigger "action-btn action-btn--orange"
+                (showing Model.replaceLens)
+                (ReplaceOpen target)
+                Tooltips.queueReplace
+                "Replace"
             ]
         ]
 
 
-{-| Round 0 is the pre-combat sentinel: the queue is set up but
-combat hasn't started, so the button starts it rather than
-advancing it. Only the glyph changes — the column has no room
-for a label, and the tooltip carries the distinction.
+{-| One titled block of triggers. The heading is the block's
+own panel header, so the groups read as peers of the drawer
+panels beside them.
 -}
-turnTrigger : Int -> Html Msg
-turnTrigger round =
-    if round == 0 then
+group : String -> List (Html Msg) -> Html Msg
+group heading triggers =
+    section [ class "panel" ]
+        [ div [ class "panel__header" ]
+            [ div [ class "panel__title" ] [ text heading ] ]
+        , div [ class "panel__body panel__body--actions" ] triggers
+        ]
+
+
+{-| An empty active creature is the pre-combat sentinel: the
+queue is set up but combat hasn't started, so the button starts
+it rather than advancing it. Only the glyph changes — the
+column has no room for a label, and the tooltip carries the
+distinction.
+-}
+turnTrigger : String -> Html Msg
+turnTrigger activeName =
+    if String.isEmpty activeName then
         headerTrigger "action-btn action-btn--green"
             False
             EncounterRun
@@ -249,9 +268,8 @@ saveTip model =
         Tooltips.saveButton
 
 
-{-| Triggers that sit in the pane's title row instead of the
-trigger list: they act on the encounter rather than opening a
-panel, so they read as chrome.
+{-| A trigger in the controls block's paired row: sized to
+share that row rather than fill the column's width.
 -}
 headerTrigger : String -> Bool -> Msg -> String -> String -> Html Msg
 headerTrigger cls showing openMsg tip label =
@@ -294,8 +312,3 @@ trigger cls showing openMsg tip label =
             )
         ]
         [ text label ]
-
-
-heading : String -> Html msg
-heading label =
-    h3 [ class "panel-actions__heading" ] [ text label ]

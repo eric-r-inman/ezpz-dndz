@@ -28,30 +28,23 @@ uses so it's instantly recognisable as "whose turn it is."
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter, Timer)
-import Encounter.Xp as Xp
 import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, classList, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
-import Ui.Compendium exposing (CompendiumDb(..))
 import View.EncounterBar
 import View.Tooltips as Tooltips
 
 
-view : Encounter -> Maybe String -> CompendiumDb -> Html Msg
-view enc savedAs db =
+view : Encounter -> Maybe String -> Html Msg
+view enc savedAs =
     div [ class "workspace workspace--quick-list" ]
         [ section [ class "panel panel--quick-list" ]
             [ div [ class "panel__header panel__header--encounter" ]
-                [ -- The scope is ignored by the bar in
-                  -- QuickListBar mode but the function still takes
-                  -- it.  Pass a safe default.
-                  View.EncounterBar.view
+                [ View.EncounterBar.view
                     View.EncounterBar.QuickListBar
                     enc
                     savedAs
-                    db
-                    Xp.ScopeXpEnemiesAndNpcs
                 ]
             , div [ class "panel__body quick-list__body" ]
                 (if List.isEmpty enc.creatures then

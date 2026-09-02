@@ -3,10 +3,10 @@ module Update.Xp exposing (filterClose, filterToggle, scopeSet)
 {-| Which creatures the encounter's XP total counts, and whether
 the panel that picks is open.
 
-The scope itself is not panel state — the title bar's readout
-reads it whether or not the panel is showing — so it lives on
-the model, and the panel's presence in the drawer stack is all
-the open state there is.
+The scope itself is not panel state — the Actions column's XP
+trigger reads it whether or not the panel is showing — so it
+lives on the model, and the panel's presence in the drawer
+stack is all the open state there is.
 
 @docs filterClose, filterToggle, scopeSet
 

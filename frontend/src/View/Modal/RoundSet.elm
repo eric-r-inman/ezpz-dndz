@@ -38,21 +38,18 @@ body chrome ui =
         , extraClass = "modal--round-set"
         , chrome = chrome
         , body =
-            [ div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ div [ class "cond-row" ]
                 [ button
                     [ class "action-btn action-btn--blue"
                     , onClick RoundSetToOne
                     ]
                     [ text "Set to 1" ]
-                ]
-            , div [ class "cond-divider" ] []
-            , div [ class "cond-row" ]
-                [ Html.label [ Attr.for "round-set-input" ] [ text "Round:" ]
+                , Html.label [ Attr.for "round-set-input" ] [ text "Manual:" ]
                 , input
                     [ id "round-set-input"
-                    , class "cond-input cond-input--w20"
+                    , class "cond-input round-set__input"
                     , type_ "number"
-                    , Attr.min "0"
+                    , Attr.min "1"
                     , Attr.max "9999"
                     , value ui.roundText
                     , Attr.autofocus True

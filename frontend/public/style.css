@@ -842,14 +842,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-weight: 700;
 }
 
-/* Title-bar "Difficulty" button — slightly larger than the
-   default 0.82rem so it doesn't shrink relative to the bumped
-   bar text under Accessible.  Stays inside the .encounter-bar
-   colour-uniformity rule (black text on the surface tone). */
-[data-theme="accessible"] .encounter-bar__difficulty {
-  font-size: 1rem;
-}
-
 /* Title-bar conditions list gets bold weight under Accessible so
    the at-a-glance status reads clearly alongside the other
    bumped bar text.  Colour stays on the bar-wide
@@ -1692,40 +1684,6 @@ body {
 
 .account-card__text-link--danger {
   color: var(--color-danger, #d63b3b);
-}
-
-/* ── CR Calculator (encounter-bar entry + modal) ──────────────────────── */
-.encounter-bar__difficulty,
-.encounter-bar__treasure,
-.encounter-bar__icon-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 2px 10px;
-  margin-left: 8px;
-  font: inherit;
-  font-size: 0.82rem;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.encounter-bar__icon-btn {
-  /* Square-ish icon button (📜) sits next to the text-labelled
-     Difficulty / Treasure buttons; tighter padding keeps the glyph
-     visually centred without inheriting the text-button width. */
-  padding: 2px 8px;
-  line-height: 1.1;
-}
-
-.encounter-bar__difficulty:hover,
-.encounter-bar__difficulty:focus-visible,
-.encounter-bar__treasure:hover,
-.encounter-bar__treasure:focus-visible,
-.encounter-bar__icon-btn:hover,
-.encounter-bar__icon-btn:focus-visible {
-  border-color: var(--color-accent, #4a90e2);
-  color: var(--color-accent, #4a90e2);
 }
 
 /* ── Treasure modal ───────────────────────────────────────── */
@@ -4187,9 +4145,26 @@ body {
 
 /* Far-left action column: sized to its buttons rather than a
    share of the row, so the queue keeps the width it had. */
-.panel--actions {
+.actions-column {
   grid-column: 1;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.actions-column__controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.actions-column__pair {
+  display: flex;
+  gap: var(--space-1);
 }
 
 /* The queue takes the last column whether or not the drawer
@@ -4260,6 +4235,14 @@ body {
   margin-bottom: var(--space-3);
 }
 
+/* Secondary in-lair figure under the headline total; muted so
+   the base number still leads. */
+.xp-panel__lair {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
 /* Control rendered just before a drawer panel's title — the
    stat-block panel's 📖 jump to the full compendium. */
 .panel-drawer__title-lead {
@@ -4314,14 +4297,6 @@ body {
   padding: 6px var(--drawer-pad-x);
 }
 
-/* The Actions pane's title row holds triggers rather than a
-   label: encounter-wide actions that act instead of opening a
-   panel, sized to share the row in a narrow column. */
-.panel__header--actions {
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-1);
-}
-
 .panel__title {
   font-size: 0.78rem;
   font-weight: 600;
@@ -4345,17 +4320,6 @@ body {
 
 .panel__body--drawer {
   padding: var(--space-2) var(--drawer-pad-x);
-}
-
-/* Group label within the action column.  The space above it does
-   the separating; a rule line would have to compete with the
-   borders every button already carries. */
-.panel-actions__heading {
-  flex: 0 0 auto;
-  margin: var(--space-2) 0 0 0;
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-label);
-  color: var(--color-text-muted);
 }
 
 .panel__body--actions {
@@ -7106,31 +7070,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
 }
 
-.encounter-bar__xp-group {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.encounter-bar__xp {
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: help;
-}
-
-/* Optional secondary "(N w/Lair)" chip rendered to the right of
-   the base XP total when any in-scope creature has a non-zero
-   `xpInLair`.  Smaller / muted so the base total still leads. */
-.encounter-bar__xp-lair {
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  cursor: help;
-}
-
 .xp-filter__menu {
   list-style: none;
   margin: 0;
@@ -7172,7 +7111,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
   /* Stacked, the panes fall in source order, which leaves no
      empty row behind when the drawer is closed. */
-  .panel--actions {
+  .actions-column {
     grid-column: 1;
     grid-row: auto;
   }
@@ -9094,6 +9033,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
   background: var(--color-surface);
   padding: 3px 6px;
+}
+
+/* The round is a small number, so the field says so rather
+   than stretching to the row. */
+.round-set__input {
+  flex: 0 0 auto;
+  width: 6ch;
 }
 
 /* Sized to the 20-character cap its fields carry rather than
