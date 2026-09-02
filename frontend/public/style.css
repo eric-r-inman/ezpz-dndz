@@ -86,6 +86,7 @@
   --btn-compact-height: 22px;
   --btn-compact-pad-x: 2px;
   --font-size-compact: 0.7rem;
+  --font-size-glyph: 1.05rem;
 
   /* Type for the muted group label.  Most rules wearing that
      shape still spell the values out; converting them is
@@ -6081,7 +6082,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
   height: var(--btn-compact-height);
   padding: 0 var(--btn-compact-pad-x);
-  font-size: var(--font-size-compact);
+  /* Glyph-only, so the type scale that keeps the trigger labels
+     legible would leave these unreadably small — they size to
+     the button instead. */
+  font-size: var(--font-size-glyph);
+  line-height: 1;
 }
 
 .panel-actions__btn {

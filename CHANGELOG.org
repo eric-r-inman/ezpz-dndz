@@ -64,6 +64,8 @@
     to the queue.  No action needed.
 24. The Actions column's title row carries the Reset and Turn buttons, and Reset
     and Clear confirm in a dialog.  No action needed.
+25. The Actions column's Reset and Turn buttons read as icons alone, at a size
+    that suits them.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

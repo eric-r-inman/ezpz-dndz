@@ -146,8 +146,8 @@ view model =
 
 {-| Round 0 is the pre-combat sentinel: the queue is set up but
 combat hasn't started, so the button starts it rather than
-advancing it. Only the glyph changes — the column is too narrow
-for "Run Encounter", and the tooltip carries the distinction.
+advancing it. Only the glyph changes — the column has no room
+for a label, and the tooltip carries the distinction.
 -}
 turnTrigger : Int -> Html Msg
 turnTrigger round =
@@ -156,14 +156,14 @@ turnTrigger round =
             False
             EncounterRun
             Tooltips.runEncounter
-            "▶ Turn"
+            "▶"
 
     else
         headerTrigger "action-btn action-btn--green"
             False
             NextTurn
             Tooltips.nextTurn
-            "⏭ Turn"
+            "⏭"
 
 
 rollTrigger : Bool -> DiceUi -> Html Msg
