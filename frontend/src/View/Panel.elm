@@ -31,7 +31,7 @@ view :
     -> Html Msg
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
-        [ div [ class "panel__header" ]
+        [ div [ class "panel__header panel__header--drawer" ]
             [ div [ class "panel__title" ]
                 (Maybe.withDefault (text "") config.titleLead
                     :: [ text config.title ]
@@ -46,7 +46,7 @@ view config =
                 [ text "✕" ]
             ]
         , subtitleStrip config.subtitle
-        , div [ class "panel__body" ] config.body
+        , div [ class "panel__body panel__body--drawer" ] config.body
         ]
 
 

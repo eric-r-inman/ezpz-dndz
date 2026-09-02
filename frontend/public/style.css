@@ -97,8 +97,10 @@
   --font-size-readout: 1.1rem;
 
   /* Wide enough for a stat block's two-column header without
-     crowding the queue beside it. */
-  --drawer-width: 360px;
+     crowding the queue beside it, with one shared horizontal
+     inset for every piece of a drawer panel's chrome. */
+  --drawer-width: 332px;
+  --drawer-pad-x: 10px;
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
@@ -1724,9 +1726,9 @@ body {
 
 .treasure__controls {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   align-items: flex-end;
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
@@ -4234,7 +4236,7 @@ body {
   grid-row: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   overflow-y: auto;
   min-height: 0;
   /* Negative margins reach into the workspace's column gaps,
@@ -4260,12 +4262,23 @@ body {
   }
 }
 
+/* Drawer panels run denser chrome than the workspace panes:
+   the stack multiplies every pixel of header and body padding
+   by however many panels are up. */
+.panel__header--drawer {
+  padding: 6px var(--drawer-pad-x);
+}
+
+.panel__body--drawer {
+  padding: var(--space-2) var(--drawer-pad-x);
+}
+
 /* Names the creature an editor is aimed at, directly under the
    panel title.  In a column the editor is detached from its
    target, so it has to say which one it means. */
 .panel-drawer__target {
   flex: 0 0 auto;
-  padding: var(--space-1) var(--space-4);
+  padding: var(--space-1) var(--drawer-pad-x);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-2);
   font-size: var(--font-size-label);
@@ -6037,7 +6050,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid var(--btn-bd);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 0.78rem;
   /* Typography polish — Modern uses 500 weight + negative
      tracking; Dark / classic uses 600 + 0.02em.  Tokens set
@@ -6058,7 +6071,7 @@ button.creature-card__lifecycle--dead:focus-visible {
     color 0.1s ease,
     border-color 0.1s ease;
   white-space: nowrap;
-  height: 26px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6191,8 +6204,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    (.hp-change__*, .cond-*) so the controls keep their look; this
    block only supplies the in-card frame around them. */
 .creature-card__inline {
-  margin-top: 6px;
-  padding: 10px 12px 12px;
+  margin-top: 4px;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
@@ -8117,22 +8130,14 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Shared form-row pattern: a wrapping flex row with a leading
-   label.  Per-feature class blocks below set only their own gap
-   and label-width overrides. */
+   label.  Per-feature class blocks below set only their own
+   label-width overrides. */
 .dice-form__row,
 .hp-change__row,
 .cond-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.dice-form__row {
-  gap: 8px;
-}
-
-.cond-row {
   gap: 6px;
 }
 
@@ -8155,7 +8160,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .dice-form__row label {
   color: var(--color-text-muted);
   min-width: 72px;
-  font-size: 0.82rem;
+  font-size: var(--font-size-label);
 }
 
 .hp-change__label {
@@ -8917,8 +8922,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 .note-edit__buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .note-edit__buttons--start {
@@ -8933,7 +8938,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 0;
+  padding: 4px 0;
   border-bottom: 1px dashed var(--color-border);
 }
 
@@ -8943,7 +8948,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-section__heading {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: 0.02em;
@@ -9054,9 +9059,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-input {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   background: var(--color-surface);
-  padding: 5px 8px;
+  padding: 3px 6px;
 }
 
 /* Sized to the 20-character cap its fields carry rather than
@@ -10993,8 +10998,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 5px 8px;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
   transition:

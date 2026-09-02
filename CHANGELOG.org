@@ -58,6 +58,9 @@
     it is.  No action needed.
 22. The Actions column is more compact: smaller buttons, tighter spacing, and a
     slimmer column overall.  No action needed.
+23. A denser layout overall: buttons, editor panels, and their spacing all
+    tightened, and the drawer column slimmed again, so more of the screen goes
+    to the queue.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
