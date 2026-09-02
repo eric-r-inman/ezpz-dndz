@@ -56,10 +56,14 @@
     each new panel opens below it, and Esc closes the newest.  No action needed.
 21. A trigger whose panel is open closes it when clicked again, whichever panel
     it is.  No action needed.
+22. The Actions column is more compact: smaller buttons, tighter spacing, and a
+    slimmer column overall.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
-2. A creature card's inline numeric fields close when you click anywhere outside
+2. A dirty Save button no longer wears what looks like the open-panel ring — the
+   unsaved-changes cue is a yellow border now.  No action needed.
+3. A creature card's inline numeric fields close when you click anywhere outside
    them.  No action needed.
 ** Breaking
 * v0.2.0

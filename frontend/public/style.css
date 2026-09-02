@@ -80,6 +80,13 @@
   --space-5: 24px;
   --header-height: 56px;
 
+  /* Compact-control metrics: the small button face the Actions
+     column uses, where a couple dozen triggers multiply every
+     pixel. */
+  --btn-compact-height: 22px;
+  --btn-compact-pad-x: 6px;
+  --font-size-compact: 0.72rem;
+
   /* Type for the muted group label.  Most rules wearing that
      shape still spell the values out; converting them is
      tracked in `tasks.org`. */
@@ -4180,7 +4187,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-2);
 }
 
 /* Group label within the action column.  The space above it does
@@ -4188,7 +4196,7 @@ body {
    borders every button already carries. */
 .panel-actions__heading {
   flex: 0 0 auto;
-  margin: var(--space-3) 0 0 0;
+  margin: var(--space-2) 0 0 0;
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-label);
   color: var(--color-text-muted);
@@ -4197,6 +4205,12 @@ body {
 .panel-actions__btn {
   justify-content: center;
   white-space: nowrap;
+  /* Tighter than the base `.action-btn`: the column holds close
+     to twenty triggers, so every pixel of height and padding
+     multiplies. */
+  height: var(--btn-compact-height);
+  padding: 0 var(--btn-compact-pad-x);
+  font-size: var(--font-size-compact);
   /* `.action-btn` carries a fixed height, which a flex item is
      otherwise free to shrink below: without this the column
      squashes its buttons flat instead of letting the panel body
@@ -6391,12 +6405,12 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Save button when the encounter has unsaved roster changes
-   (creatures added or removed since the last save / load).  The
-   light-yellow outline cues the GM that combat state will be
-   lost on Reset / Clear without overpowering the button face. */
+   (creatures added or removed since the last save / load).  A
+   yellow border rather than an offset outline: the outline form
+   was indistinguishable from the open-panel ring, so a dirty
+   Save read as an editor that wouldn't close. */
 .action-btn--dirty {
-  outline: 1px solid var(--color-dirty-outline);
-  outline-offset: 1px;
+  border-color: var(--color-dirty-outline);
 }
 
 .action-btn--icon {
