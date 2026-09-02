@@ -56,6 +56,7 @@ import Route exposing (Route(..))
 import Task
 import Ui.AbilitySave
 import Ui.Account
+import Ui.ActionGroups
 import Ui.Compendium as CompendiumUi
     exposing
         ( CompendiumDb(..)
@@ -79,6 +80,7 @@ import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
+import Update.ActionGroups
 import Update.Auth
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
@@ -605,6 +607,7 @@ init flags url key =
       , placeholderRename = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
       , queuePanels = Ui.QueuePanels.fresh
+      , actionGroups = Ui.ActionGroups.fresh
       , drawer = []
       , settingsOpen = False
       , anonymousBannerDismissed = False
@@ -1823,6 +1826,9 @@ updateInner msg model =
 
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
+
+        ActionGroupToggle group ->
+            Update.ActionGroups.toggle group model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model

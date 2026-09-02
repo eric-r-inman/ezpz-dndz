@@ -72,6 +72,8 @@
     action needed.
 28. The XP total, Difficulty, and Treasure moved out of the encounter title bar
     into the Actions column.  No action needed.
+29. The Actions column's group headings fold their triggers away when clicked,
+    and the column no longer scrolls.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

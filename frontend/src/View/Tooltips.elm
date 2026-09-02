@@ -1,5 +1,6 @@
 module View.Tooltips exposing
-    ( appBarAccount
+    ( actionGroupToggle
+    , appBarAccount
     , appBarDonate
     , appBarSettings
     , applyCondition
@@ -232,6 +233,11 @@ difficultyButton =
 treasureButton : String
 treasureButton =
     "Roll random treasure for this encounter (SRD individual or hoard tables)"
+
+
+actionGroupToggle : String
+actionGroupToggle =
+    "Collapse or expand this group of buttons"
 
 
 quickAddButton : String

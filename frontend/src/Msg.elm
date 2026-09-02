@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , ActionGroup(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -93,6 +93,15 @@ type QueuePanel
     = LegendaryActionsPanel
     | SpecialReactionsPanel
     | SpellsPanel
+
+
+{-| Which of the Actions column's trigger groups a heading
+click folds away.
+-}
+type ActionGroup
+    = CompendiumGroup
+    | EncounterGroup
+    | CreatureGroup
 
 
 {-| Which boolean posture toggle a Status-editor click flips.
@@ -1303,6 +1312,9 @@ type Msg
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
+      -- Heading in the Actions column, folding its group of
+      -- triggers away or back.
+    | ActionGroupToggle ActionGroup
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

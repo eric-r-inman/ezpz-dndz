@@ -14,7 +14,7 @@ import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model, PendingControl(..), Surface(..))
-import Msg exposing (Msg(..), SaveDestination(..))
+import Msg exposing (ActionGroup(..), Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
 import View.Card
 import View.Panel.Xp
@@ -42,6 +42,9 @@ view model =
 
         showing lens =
             Model.drawerHas lens model
+
+        groups =
+            model.actionGroups
     in
     div [ class "actions-column" ]
         [ -- The encounter's own controls sit above the grouped
@@ -61,6 +64,8 @@ view model =
             , diceTotals model.dice
             ]
         , group "Compendium"
+            CompendiumGroup
+            groups.compendium
             [ trigger "action-btn action-btn--blue"
                 False
                 CompendiumOpen
@@ -78,6 +83,8 @@ view model =
                 "Random"
             ]
         , group "Encounter"
+            EncounterGroup
+            groups.encounter
             [ trigger "action-btn"
                 (showing Model.crCalculatorLens)
                 CrCalculatorOpen
@@ -110,6 +117,8 @@ view model =
                 "Clear"
             ]
         , group "Creature"
+            CreatureGroup
+            groups.creature
             [ trigger "action-btn action-btn--manage-hp"
                 (showing Model.hpChangeLens)
                 (HpChangeOpen target)
@@ -150,15 +159,32 @@ view model =
 
 
 {-| One titled block of triggers. The heading is the block's
-own panel header, so the groups read as peers of the drawer
-panels beside them.
+own panel header and its collapse toggle, so a GM working out
+of one group can fold the others away rather than scroll past
+them.
 -}
-group : String -> List (Html Msg) -> Html Msg
-group heading triggers =
+group : String -> ActionGroup -> Bool -> List (Html Msg) -> Html Msg
+group heading which collapsed triggers =
     section [ class "panel" ]
-        [ div [ class "panel__header" ]
+        [ button
+            [ class "panel__header panel-actions__group-header"
+            , type_ "button"
+            , onClick (ActionGroupToggle which)
+            , Tooltips.attr Tooltips.actionGroupToggle
+            , attribute "aria-expanded"
+                (if collapsed then
+                    "false"
+
+                 else
+                    "true"
+                )
+            ]
             [ div [ class "panel__title" ] [ text heading ] ]
-        , div [ class "panel__body panel__body--actions" ] triggers
+        , if collapsed then
+            text ""
+
+          else
+            div [ class "panel__body panel__body--actions" ] triggers
         ]
 
 
