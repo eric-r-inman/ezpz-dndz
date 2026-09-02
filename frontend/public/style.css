@@ -100,7 +100,7 @@
      crowding the queue beside it, with one shared horizontal
      inset for every piece of a drawer panel's chrome. */
   --drawer-width: 310px;
-  --drawer-pad-x: 10px;
+  --drawer-pad-x: 6px;
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
@@ -6206,7 +6206,7 @@ button.creature-card__lifecycle--dead:focus-visible {
    block only supplies the in-card frame around them. */
 .creature-card__inline {
   margin-top: 4px;
-  padding: 6px 8px 8px;
+  padding: 6px 4px 8px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
