@@ -59,25 +59,25 @@ opens its panel in the drawer beside the column instead.
 
 * DONE Fill the Actions drawer
 
-Each button reaches its destination now, and the seven surfaces still wearing
-modal chrome moved into the drawer to get there.  The pinned stat block, the XP
-scope, and the Reset / Clear confirmations went with them, which is what let the
-two right-hand panes go — and left the loose ends in
+Each button reaches its destination now, and the surfaces still wearing modal
+chrome moved into the drawer to get there, which is what let the two right-hand
+panes go — and left the loose ends in
 [[*Fold the drawer's stragglers into the Surface ADT]].
 
 * DONE Fold the drawer's stragglers into the Surface ADT
 
-Superseded by the drawer becoming a stack: every drawer panel — the pinned stat
-block, the XP scope picker, the Reset / Clear confirmation, and a marker for the
-dice roller — is a ~Surface~ variant in ~model.drawer~ now, and the runtime
-reconciler is gone with the one-panel-at-a-time invariant it enforced.
+Superseded by the drawer becoming a stack: every drawer panel is a ~Surface~
+variant in ~model.drawer~ now, and the runtime reconciler is gone with the
+one-panel-at-a-time invariant it enforced.
 
 * TODO Sweep the "modal" wording out of the migrated editors
 
 Doc comments across the Ui and Update modules still call their surfaces modals,
 whether those now edit inline on the card or open as a panel in the Actions
-column's drawer, so a reader meets a widget the UI no longer has.  Retarget them
-file by file.  Part of [[*Migrate the frontend off modal dialogs]].
+column's drawer, so a reader meets a widget the UI no longer has.  The same
+drift reaches [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]], whose model section still names the ADT
+~Modal~ and its constructors ~ModalX~.  Retarget them file by file.  Part of
+[[*Migrate the frontend off modal dialogs]].
 
 * TODO Tokenise the stylesheet's type scale
 

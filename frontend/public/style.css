@@ -84,7 +84,7 @@
      column uses, where a couple dozen triggers multiply every
      pixel. */
   --btn-compact-height: 22px;
-  --btn-compact-pad-x: 3px;
+  --btn-compact-pad-x: 2px;
   --font-size-compact: 0.7rem;
 
   /* Type for the muted group label.  Most rules wearing that
@@ -99,8 +99,13 @@
   /* Wide enough for a stat block's two-column header without
      crowding the queue beside it, with one shared horizontal
      inset for every piece of a drawer panel's chrome. */
-  --drawer-width: 310px;
-  --drawer-pad-x: 6px;
+  --drawer-width: 296px;
+  --drawer-pad-x: 4px;
+
+  /* How far the drawer reaches into the workspace's column gaps
+     on each side, tightening both seams by the same amount —
+     the width judged at the table, not derived from the gap. */
+  --drawer-bleed: 10px;
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
@@ -4186,41 +4191,6 @@ body {
   grid-row: 1;
 }
 
-.panel__body--actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-1);
-}
-
-/* Group label within the action column.  The space above it does
-   the separating; a rule line would have to compete with the
-   borders every button already carries. */
-.panel-actions__heading {
-  flex: 0 0 auto;
-  margin: var(--space-2) 0 0 0;
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-label);
-  color: var(--color-text-muted);
-}
-
-.panel-actions__btn {
-  justify-content: center;
-  white-space: nowrap;
-  /* Tighter than the base `.action-btn`: the column holds close
-     to twenty triggers, so every pixel of height and padding
-     multiplies. */
-  height: var(--btn-compact-height);
-  padding: 0 var(--btn-compact-pad-x);
-  font-size: var(--font-size-compact);
-  /* `.action-btn` carries a fixed height, which a flex item is
-     otherwise free to shrink below: without this the column
-     squashes its buttons flat instead of letting the panel body
-     scroll once they outrun the viewport. */
-  flex: 0 0 auto;
-}
-
 /* The queue takes the last column whether or not the drawer
    claimed the middle one. */
 .panel--main {
@@ -4240,10 +4210,7 @@ body {
   gap: var(--space-2);
   overflow-y: auto;
   min-height: 0;
-  /* Negative margins reach into the workspace's column gaps,
-     tightening the seams the operator judged too wide — five
-     pixels against the Actions column, ten against the queue. */
-  margin: 0 -10px 0 -5px;
+  margin: 0 calc(var(--drawer-bleed) * -1);
 }
 
 .panel--drawer {
@@ -4261,17 +4228,6 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
-}
-
-/* Drawer panels run denser chrome than the workspace panes:
-   the stack multiplies every pixel of header and body padding
-   by however many panels are up. */
-.panel__header--drawer {
-  padding: 6px var(--drawer-pad-x);
-}
-
-.panel__body--drawer {
-  padding: var(--space-2) var(--drawer-pad-x);
 }
 
 /* Names the creature an editor is aimed at, directly under the
@@ -4350,6 +4306,21 @@ body {
   background: var(--color-surface-2);
 }
 
+/* Drawer panels run denser chrome than the workspace panes:
+   the stack multiplies every pixel of header and body padding
+   by however many panels are up. */
+.panel__header--drawer {
+  padding: 6px var(--drawer-pad-x);
+}
+
+/* The Actions pane's title row holds triggers rather than a
+   label: encounter-wide actions that act instead of opening a
+   panel, sized to share the row in a narrow column. */
+.panel__header--actions {
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1);
+}
+
 .panel__title {
   font-size: 0.78rem;
   font-weight: 600;
@@ -4369,6 +4340,29 @@ body {
   flex: 1 1 auto;
   overflow: auto;
   padding: var(--space-4);
+}
+
+.panel__body--drawer {
+  padding: var(--space-2) var(--drawer-pad-x);
+}
+
+/* Group label within the action column.  The space above it does
+   the separating; a rule line would have to compete with the
+   borders every button already carries. */
+.panel-actions__heading {
+  flex: 0 0 auto;
+  margin: var(--space-2) 0 0 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
+}
+
+.panel__body--actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-1);
 }
 
 .creature-grid {
@@ -4615,7 +4609,7 @@ body {
 }
 
 /* If a dead creature somehow has the active marker (e.g. died
-   on their own turn before the GM clicked Next Turn), the active
+   on their own turn before the GM advanced it), the active
    highlight wins on border but the grey filter still applies so
    it's obvious they're dead. */
 .creature-card--dead.creature-card--active {
@@ -6079,6 +6073,29 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 4px;
 }
 
+/* The Actions column runs a compact button face.  Declared
+   after `.action-btn` on purpose: same specificity, so source
+   order is what lets these win. */
+.panel-actions__header-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--btn-compact-height);
+  padding: 0 var(--btn-compact-pad-x);
+  font-size: var(--font-size-compact);
+}
+
+.panel-actions__btn {
+  white-space: nowrap;
+  height: var(--btn-compact-height);
+  padding: 0 var(--btn-compact-pad-x);
+  font-size: var(--font-size-compact);
+  /* `.action-btn` carries a fixed height, which a flex item is
+     otherwise free to shrink below: without this the column
+     squashes its buttons flat instead of letting the panel body
+     scroll once they outrun the viewport. */
+  flex: 0 0 auto;
+}
+
 .action-btn:hover {
   /* Hover treatment is per-theme — Dark uses a faint white
      inset overlay (visible on dark surfaces); Modern leaves the
@@ -6159,7 +6176,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Combined "Manage HP" card button, opening the editor that
    carries all four verbs.  Wears the same green token as the
-   "Next Turn" trigger so it reads as the card's primary action
+   Turn trigger so it reads as the card's primary action
    affordance. */
 .action-btn--manage-hp {
   --btn-bg: var(--color-btn-green);
@@ -7298,6 +7315,10 @@ button.creature-card__lifecycle--dead:focus-visible {
    /condition) layer those overrides in their own block below. */
 .modal--ability-save {
   --modal-max-w: 480px;
+}
+
+.modal--confirm {
+  --modal-max-w: 420px;
 }
 
 .modal--save,
@@ -11126,7 +11147,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 16px 0;
 }
 
-/* Confirmation strip the drawer shows while Reset or Clear is
+/* Body of the confirmation modal shown while Reset or Clear is
    pending, so the user picks Confirm or Cancel before anything
    is touched. */
 .control-confirm {

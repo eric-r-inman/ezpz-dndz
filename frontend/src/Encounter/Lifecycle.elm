@@ -50,7 +50,7 @@ combat round, so `round` increments.
   - explicitly marked inactive (via the card's ∅ toggle).
 
 The marker keeps walking past skipped creatures on every
-subsequent Next Turn. Dead state isn't cleared automatically;
+subsequent turn advance. Dead state isn't cleared automatically;
 inactive state only clears when the user toggles the button
 back off; the downed-without-opt-in state clears via the heal /
 opt-in paths just described. An iteration cap of `length creatures`
@@ -58,7 +58,7 @@ protects the all-skipped edge case (TPK, or all-inactive while the
 GM is setting up an encounter).
 
 In addition to the queue walk, this fires two condition hooks
-once per Next Turn click: end-of-turn for the OUTGOING active
+once per turn advance: end-of-turn for the OUTGOING active
 creature, then begin-of-turn for the INCOMING (post-skip) active
 creature.
 

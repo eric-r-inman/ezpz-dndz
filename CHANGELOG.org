@@ -3,8 +3,9 @@
 
 * Upcoming
 ** Added
-1. Combat bookkeeping moved out of pop-up dialogs: every encounter control now
-   opens into a panel beside the queue instead of over it.  No action needed.
+1. Combat bookkeeping moved out of pop-up dialogs: every encounter control
+   except the destructive Reset / Clear confirmation now opens into a panel
+   beside the queue instead of over it.  No action needed.
 2. The panel editors target the active creature or the current selection; they
    stay open after applying, remember un-applied settings when closed, and keep
    recent-applies logs (undo-able for HP and conditions).  No action needed.
@@ -46,9 +47,9 @@
 17. The Encounter Controls and Compendium panes are gone — everything they held,
     down to the dice roller and the pinned stat block, is reached from the
     Actions column on the far left instead.  No action needed.
-18. The Compendium always opens in its own browser tab now, with no creature
-    pre-selected; the in-page dialog it used to fall back to is gone, and its
-    title-bar "From file" tag went with it.  No action needed.
+18. The Compendium always opens in its own browser tab, titled "Compendium",
+    with no creature pre-selected; the in-page dialog it used to fall back to is
+    gone, and its title-bar "From file" tag went with it.  No action needed.
 19. The stat-block panel's title carries a 📖 button that hands the creature off
     to the Compendium tab, opened with that creature selected and scrolled into
     view.  No action needed.
@@ -61,6 +62,8 @@
 23. A denser layout overall: buttons, editor panels, and their spacing all
     tightened, and the drawer column slimmed again, so more of the screen goes
     to the queue.  No action needed.
+24. The Actions column's title row carries the Reset and Turn buttons, and Reset
+    and Clear confirm in a dialog.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

@@ -150,8 +150,8 @@ scrollCompendiumRowIntoView creatureId =
 the encounter panel's visible region. Two cases:
 
   - Card's bottom is past the panel's bottom edge → scroll _down_
-    by the overflow. Covers the "Next Turn moved past where I
-    was looking" case.
+    by the overflow. Covers the "turn moved past where I was
+    looking" case.
   - Card's top is above the panel's top edge → scroll _up_ by
     the underflow. Covers the "round just wrapped and the active
     creature is now back at the top of the queue, which is above

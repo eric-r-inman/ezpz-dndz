@@ -1,26 +1,39 @@
-module View.Panel.Confirm exposing (view)
+module View.Modal.Confirm exposing (view)
 
 {-| Two-step confirmation for Reset and Clear.
 
-Both wipe combat state, so the column's button only stages the
-action; the drawer asks before anything is touched. The confirm
-button keeps the colour of the button that staged it, so the
-visual association survives the trip across the workspace.
+Both wipe combat state, so the trigger only stages the action
+and this asks before anything is touched. A modal rather than a
+drawer panel: it is the one interruption the GM has to answer
+before doing anything else, which is what the modal tier is
+for. The confirm button keeps the colour of the button that
+staged it, so the visual association survives the trip.
 
 -}
 
 import Html exposing (Html, button, div, p, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Model exposing (PendingControl(..))
+import Model exposing (Model, PendingControl(..), Surface(..))
 import Msg exposing (Msg(..))
-import View.Panel
+import Ui.ModalChrome exposing (ModalChrome)
+import View.Modal
 
 
-view : PendingControl -> Html Msg
-view pending =
+view : Model -> Html Msg
+view model =
+    case model.surface of
+        Just (SurfaceConfirm pending) ->
+            prompt model.modalChrome pending
+
+        _ ->
+            text ""
+
+
+prompt : ModalChrome -> PendingControl -> Html Msg
+prompt chrome pending =
     let
-        ( prompt, confirmLabel, confirmClass ) =
+        ( message, confirmLabel, confirmClass ) =
             case pending of
                 PendingReset ->
                     ( "Reset every creature's HP to full and clear all conditions / status?"
@@ -34,15 +47,15 @@ view pending =
                     , "action-btn action-btn--red"
                     )
     in
-    View.Panel.view
+    View.Modal.view
         { close = EncounterControlCancel
+        , noOp = NoOp
         , title = confirmLabel
-        , titleLead = Nothing
-        , subtitle = Nothing
-        , extraClass = "panel-drawer--confirm"
+        , extraClass = "modal--confirm"
+        , chrome = chrome
         , body =
             [ div [ class "control-confirm" ]
-                [ p [ class "control-confirm__msg" ] [ text prompt ]
+                [ p [ class "control-confirm__msg" ] [ text message ]
                 , div [ class "control-confirm__actions" ]
                     [ button
                         [ class "action-btn control-confirm__btn"

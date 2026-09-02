@@ -515,9 +515,9 @@ empty =
 creature in the queue as active. The queue is in initiative
 order, so "first" is the highest-initiative combatant.
 
-This is the "Run Encounter" half of the round-0 sentinel: the
-GM lays out the encounter pre-combat (round 0, no one active),
-then clicks Run to begin and the queue starts ticking.
+This is the begin-combat half of the round-0 sentinel: the GM
+lays out the encounter pre-combat (round 0, no one active),
+then starts it and the queue begins ticking.
 
 -}
 run : Encounter -> Encounter

@@ -136,6 +136,7 @@ import View.Modal
 import View.Modal.AbilitySave
 import View.Modal.CompendiumEdit
 import View.Modal.CompendiumPaste
+import View.Modal.Confirm
 import View.Modal.GroupEdit
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
@@ -273,6 +274,9 @@ subscriptions model =
 
         primary =
             case model.surface of
+                Just (SurfaceConfirm _) ->
+                    Browser.Events.onKeyDown (escKey EncounterControlCancel)
+
                 Just (SurfaceCompendiumPaste _) ->
                     Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
 
@@ -391,9 +395,6 @@ drawerEscSub newest =
 
         SurfaceStatBlock _ ->
             Browser.Events.onKeyDown (escKey PanelClearCreature)
-
-        SurfaceConfirm _ ->
-            Browser.Events.onKeyDown (escKey EncounterControlCancel)
 
         -- Modal and card-inline variants never enter the stack.
         _ ->
@@ -2703,12 +2704,10 @@ updateInner msg model =
 -- VIEW
 
 
-{-| Browser tab title. Defaults to the app name but switches to
-the creature's display name on the standalone single-creature
-page (`/compendium/creatures/:id`) so GMs who park multiple
-stat-block tabs can tell them apart at a glance. Falls back to
-the app name when the compendium hasn't loaded yet or the id
-doesn't match any creature.
+{-| Browser tab title. The routes a GM parks on a second
+monitor name themselves, so a row of tabs can be told apart at
+a glance; everything else falls back to the app name, as does a
+named route whose creature the compendium can't resolve.
 -}
 documentTitle : Model -> String
 documentTitle model =
@@ -2727,12 +2726,12 @@ documentTitle model =
                 _ ->
                     default
 
+        Compendium ->
+            "Compendium"
+
         QuickList ->
-            -- Standalone quick-view tab (opened via ↗ from the
-            -- encounter title bar).  Distinct title so a GM
-            -- parking multiple tabs (main workspace + several
-            -- stat-block tabs) can pick this one out at a
-            -- glance without reading the URL.
+            -- Standalone quick-view tab, opened via ↗ from the
+            -- encounter title bar.
             "eZpZ Quick View"
 
         _ ->
@@ -2796,6 +2795,7 @@ appShell maybeUser model =
             , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
+    , View.Modal.Confirm.view model
     , View.Modal.CompendiumEdit.view model
     , View.Modal.CompendiumPaste.view model
     , View.Modal.SaveCompendium.view model

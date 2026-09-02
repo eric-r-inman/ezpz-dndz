@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, confirmLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -102,7 +102,7 @@ type alias PanelPin =
     }
 
 
-{-| Which destructive action the drawer's confirmation panel
+{-| Which destructive action the confirmation modal
 (`SurfaceConfirm`) is staging, so a mis-click on Reset or Clear
 can't drop combat state. Cleared by the user picking Confirm or
 Cancel.
@@ -163,7 +163,8 @@ type Surface
     | SurfaceXp
       -- The pinned creature's stat block.
     | SurfaceStatBlock PanelPin
-      -- The Reset / Clear confirmation.
+      -- The Reset / Clear confirmation.  A modal, not a drawer
+      -- panel.
     | SurfaceConfirm PendingControl
 
 
@@ -354,20 +355,6 @@ statBlockLens =
                 _ ->
                     Nothing
     , wrap = SurfaceStatBlock
-    }
-
-
-confirmLens : SurfaceLens PendingControl
-confirmLens =
-    { extract =
-        \m ->
-            case m of
-                SurfaceConfirm pending ->
-                    Just pending
-
-                _ ->
-                    Nothing
-    , wrap = SurfaceConfirm
     }
 
 

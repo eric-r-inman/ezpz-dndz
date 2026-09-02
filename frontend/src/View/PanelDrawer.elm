@@ -24,7 +24,6 @@ import View.Inline.Replace
 import View.Inline.SaveChain
 import View.Inline.Status
 import View.Panel
-import View.Panel.Confirm
 import View.Panel.CrCalculator
 import View.Panel.Dice
 import View.Panel.Load
@@ -169,9 +168,6 @@ panelFor model surface =
 
         SurfaceStatBlock pin ->
             View.Panel.StatBlock.view model.compendium.db pin
-
-        SurfaceConfirm pending ->
-            View.Panel.Confirm.view pending
 
         -- Modal and card-inline variants never enter the stack —
         -- their Update modules write `model.surface`, and the

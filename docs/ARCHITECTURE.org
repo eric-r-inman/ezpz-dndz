@@ -257,10 +257,6 @@ scoped to the workspace shell rather than to a single feature:
   persisted state of the encounter and the name it was saved under.  Set by Save
   / Load success and consumed by Reset (which restores from the snapshot and
   forces ~round = 0~).
-- ~pendingControl : Maybe PendingControl~ — two-step confirmation state for the
-  destructive Reset / Clear actions (~PendingReset~ / ~PendingClear~).  When
-  ~Just~, the drawer shows a confirmation instead of whatever else it was
-  holding, so a misclick can't drop combat state.
 - ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
@@ -321,14 +317,14 @@ highest.  The app models this with three fields on =Encounter=:
 
 ~round = 0~ is the pre-combat sentinel: the queue is set up but no one has acted
 yet.  Reset / Clear / Load all force the live encounter to round 0.  In this
-state the green action button in the Actions column reads "Run Encounter" and
-dispatches ~EncounterRun~, which calls ~Encounter.run~ — bumps round to 1 and
-sets the active creature to the queue head (highest initiative).  Once round >=
-1 the same button reverts to "Next Turn".
+state the Actions column's green Turn button dispatches ~EncounterRun~, which
+calls ~Encounter.run~ — bumps round to 1 and sets the active creature to the
+queue head (highest initiative).  Once round >= 1 the same button dispatches
+~NextTurn~ instead.
 
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
-~Update.Encounter.nextTurn~ when the user clicks ⏭ Next Turn.  The lifecycle
-module owns:
+~Update.Encounter.nextTurn~ when the user presses the Turn button.  The
+lifecycle module owns:
 
 1. *Dead-skip rule* — creatures with three failed death saves
    (~Encounter.isDeathSaveDead~) are skipped permanently.  The iteration cap
@@ -1027,16 +1023,16 @@ routes through:
     lands in pre-combat mode.  Successful loads also populate ~savedSnapshot~ +
     ~savedAs~.
 
-- *Reset* / *Clear* — staged through ~pendingControl~ so a misclick can't drop
-  combat state.  The first click puts a confirmation in the drawer (Cancel /
-  coloured Confirm); the second applies.
+- *Reset* / *Clear* — staged as ~SurfaceConfirm~ so a misclick can't drop combat
+  state.  The first click opens the confirmation modal (Cancel / coloured
+  Confirm); the second applies.
   - *Reset* — keeps every creature in the roster but strips per-fight state: HP
     to full, no temp HP, no conditions / save notices / death saves, every
     status toggle off (cover, concentration, hiding, dodging, flying, readied,
     inactive, bloodied), legendary actions / resistances refilled, timers
     cleared.  Identity + combat baselines (name, kind, initiative, AC, max HP,
     note, memo, compendium id) preserved.  Round → 0, active creature → none, so
-    the GM lands back in the pre-combat "Run Encounter" state.
+    the GM lands back in the pre-combat state.
   - *Clear* — empties the queue.
 
 The shared behaviour: any branch that mutates ~model.encounter~ flows through

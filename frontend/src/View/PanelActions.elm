@@ -4,8 +4,8 @@ module View.PanelActions exposing (view)
 one column, most of them opening a panel in the drawer beside
 it; a few act on the encounter directly instead.
 
-Whichever trigger the drawer is showing wears the shared
-editor-open ring, so the column says where the panel came from.
+Whichever trigger's surface is showing wears the shared
+editor-open ring, so the column says where it came from.
 
 -}
 
@@ -13,7 +13,7 @@ import Encounter
 import Html exposing (Html, button, div, h3, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
-import Model exposing (Model, PendingControl(..))
+import Model exposing (Model, PendingControl(..), Surface(..))
 import Msg exposing (Msg(..), SaveDestination(..))
 import Ui.Dice exposing (DiceUi)
 import View.Card
@@ -44,8 +44,14 @@ view model =
             Model.drawerHas lens model
     in
     section [ class "panel panel--actions" ]
-        [ div [ class "panel__header" ]
-            [ div [ class "panel__title" ] [ text "Actions" ] ]
+        [ div [ class "panel__header panel__header--actions" ]
+            [ headerTrigger "action-btn action-btn--orange"
+                (model.surface == Just (SurfaceConfirm PendingReset))
+                EncounterReset
+                Tooltips.reset
+                "⟲"
+            , turnTrigger enc.round
+            ]
         , div [ class "panel__body panel__body--actions" ]
             [ trigger "action-btn action-btn--manage-hp"
                 (showing Model.hpChangeLens)
@@ -105,7 +111,7 @@ view model =
                 (showing Model.quickAddLens)
                 QuickAddOpen
                 Tooltips.quickAddButton
-                "➕ Quick Add"
+                "Quick Add"
             , trigger (saveClass model)
                 (showing Model.saveLens)
                 (SaveOpen SaveDestinationServer)
@@ -116,14 +122,8 @@ view model =
                 LoadOpen
                 Tooltips.loadButton
                 "📁 Load"
-            , turnTrigger enc.round
-            , trigger "action-btn action-btn--orange"
-                (Model.drawerGet Model.confirmLens model == Just PendingReset)
-                EncounterReset
-                Tooltips.reset
-                "⟲ Reset"
             , trigger "action-btn action-btn--red"
-                (Model.drawerGet Model.confirmLens model == Just PendingClear)
+                (model.surface == Just (SurfaceConfirm PendingClear))
                 EncounterClear
                 Tooltips.clear
                 "🗑 Clear"
@@ -146,23 +146,24 @@ view model =
 
 {-| Round 0 is the pre-combat sentinel: the queue is set up but
 combat hasn't started, so the button starts it rather than
-advancing it.
+advancing it. Only the glyph changes — the column is too narrow
+for "Run Encounter", and the tooltip carries the distinction.
 -}
 turnTrigger : Int -> Html Msg
 turnTrigger round =
     if round == 0 then
-        trigger "action-btn action-btn--green"
+        headerTrigger "action-btn action-btn--green"
             False
             EncounterRun
             Tooltips.runEncounter
-            "▶ Run Encounter"
+            "▶ Turn"
 
     else
-        trigger "action-btn action-btn--green"
+        headerTrigger "action-btn action-btn--green"
             False
             NextTurn
             Tooltips.nextTurn
-            "⏭ Next Turn"
+            "⏭ Turn"
 
 
 rollTrigger : Bool -> DiceUi -> Html Msg
@@ -246,6 +247,29 @@ saveTip model =
 
     else
         Tooltips.saveButton
+
+
+{-| Triggers that sit in the pane's title row instead of the
+trigger list: they act on the encounter rather than opening a
+panel, so they read as chrome.
+-}
+headerTrigger : String -> Bool -> Msg -> String -> String -> Html Msg
+headerTrigger cls showing openMsg tip label =
+    button
+        [ class (View.Card.editorTriggerClass (cls ++ " panel-actions__header-btn") showing)
+        , type_ "button"
+        , onClick openMsg
+        , Tooltips.attr tip
+        , attribute "aria-label" tip
+        , attribute "aria-expanded"
+            (if showing then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text label ]
 
 
 trigger : String -> Bool -> Msg -> String -> String -> Html Msg

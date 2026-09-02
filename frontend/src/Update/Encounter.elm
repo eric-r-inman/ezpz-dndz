@@ -389,8 +389,8 @@ addPlaceholder model =
     ( withEncounter Encounter.Roster.appendPlaceholder model, Cmd.none )
 
 
-{-| First click of Reset: stage the pending state so the panel
-renders the confirmation banner. The actual revert happens in
+{-| First click of Reset: stage the pending state so the
+confirmation modal opens. The actual revert happens in
 [`controlConfirm`](#controlConfirm); this branch is purely
 about asking "are you sure?" before touching the encounter.
 -}
@@ -399,17 +399,17 @@ requestReset model =
     ( stage PendingReset model, Cmd.none )
 
 
-{-| Stage the action in the drawer's confirmation panel.
-Re-clicking the staging button un-stages it; clicking the other
-one re-aims the open confirmation instead of stacking a second.
+{-| Stage the action in the confirmation modal. Re-clicking the
+staging button un-stages it; clicking the other one re-aims the
+open confirmation rather than opening a second.
 -}
 stage : PendingControl -> Model -> Model
 stage pending model =
-    if Model.drawerGet Model.confirmLens model == Just pending then
-        Model.closeDrawer Model.confirmLens model
+    if model.surface == Just (Model.SurfaceConfirm pending) then
+        { model | surface = Nothing }
 
     else
-        Model.openDrawer Model.confirmLens pending model
+        { model | surface = Just (Model.SurfaceConfirm pending) }
 
 
 {-| First click of Clear — see [`requestReset`](#requestReset);
@@ -434,14 +434,13 @@ requestClear model =
     cast.
   - `PendingClear` — drop every creature; force `round = 0`.
 
-In both cases the pending state is cleared so the panel returns
-to its normal button grid.
+In both cases the pending state is cleared so the modal closes.
 
 -}
 controlConfirm : Model -> ( Model, Cmd Msg )
 controlConfirm model =
-    case Model.drawerGet Model.confirmLens model of
-        Just PendingReset ->
+    case model.surface of
+        Just (Model.SurfaceConfirm PendingReset) ->
             let
                 enc =
                     model.encounter
@@ -453,18 +452,16 @@ controlConfirm model =
                         , activeName = ""
                     }
             in
-            ( Model.closeDrawer Model.confirmLens
-                { model | encounter = resetEnc }
+            ( { model | encounter = resetEnc, surface = Nothing }
             , Cmd.none
             )
 
-        Just PendingClear ->
-            ( Model.closeDrawer Model.confirmLens
-                { model | encounter = Encounter.empty }
+        Just (Model.SurfaceConfirm PendingClear) ->
+            ( { model | encounter = Encounter.empty, surface = Nothing }
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
@@ -586,7 +583,7 @@ fallExpression count =
     }
 
 
-{-| "Run Encounter": flip the round-0 sentinel to round 1 and
+{-| Begin combat: flip the round-0 sentinel to round 1 and
 pick the highest-initiative creature as active. Domain rules
 live in [`Encounter.run`](Encounter#run); this branch handles
 the scroll-into-view side-effect so the new active card is
@@ -611,4 +608,4 @@ run model =
 -}
 controlCancel : Model -> ( Model, Cmd Msg )
 controlCancel model =
-    ( Model.closeDrawer Model.confirmLens model, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )

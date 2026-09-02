@@ -8,7 +8,7 @@ unmounts; a future ring remounts it and replays the sound.
 
 Browsers without autoplay permission may block the first play
 until the user has interacted with the page; in this app the GM
-has already clicked Next Turn (which is what triggered the ring)
+has already advanced the turn (which is what triggered the ring)
 so the user-gesture requirement is satisfied.
 
 -}

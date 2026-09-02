@@ -109,10 +109,12 @@ All of these landed in one frame rather than a drawer per tier: the far-left
 Actions column gathers the encounter-scoped triggers, and the panel beside it
 shows whichever was pressed.  =QuickAdd= went there too — the popover the tier
 above mapped it to would have been the only one of its kind — and so did the
-pinned stat block, the XP scope, and the Reset / Clear confirmations, which is
-what let the two right-hand panes go away entirely.  =View.Panel= carries the
-shared chrome, with its shell fields lined up against =View.Modal='s, so moving
-a feature between the two is mostly a matter of swapping the wrapper.
+pinned stat block and the XP scope, which is what let the two right-hand panes
+go away entirely.  The Reset / Clear confirmation is the exception the policy
+above reserves: a destructive must-decide-now interruption, so it stayed a
+modal.  =View.Panel= carries the shared chrome, with its shell fields lined up
+against =View.Modal='s, so moving a feature between the two is mostly a matter
+of swapping the wrapper.
 
 ** Route / full page
 
@@ -139,10 +141,10 @@ a feature between the two is mostly a matter of swapping the wrapper.
 
 ** Toast + undo
 
-The Reset and Clear confirmations, and the overwrite confirmation inside Save,
-become non-blocking toasts with an Undo action.  Faster at the table, and it
-removes the last must-answer-now surfaces — which is what makes the policy
-workable without an escape hatch.
+The overwrite confirmation inside Save becomes a non-blocking toast with an Undo
+action — faster at the table, and undo is the honest answer where the action is
+reversible.  The Reset / Clear confirmation is the one that stays a dialog,
+under the policy's carve-out above.
 
 * Sequencing
 
@@ -230,7 +232,7 @@ modules byte-identical; only the rendering moves.
   remaining member, and already carries click coordinates.
 - *Routes* extend =Route= with the compendium family and =/saves=; the existing
   standalone-page pattern (=View/Page/*=) is the template.
-- *Toast + undo* replaces the =PendingControl= confirmations last.
+- *Toast + undo* replaces the reversible confirmations last.
 
 ** Verification
 
