@@ -86,7 +86,7 @@ manualSection selectedCount ui =
 
 
 {-| The heading is the section's own disclosure control, in the
-same ▾/▸ vocabulary as the condition editor's preset categories.
+same ▼/▶ vocabulary as the condition editor's preset categories.
 -}
 manualHeading : Bool -> Html Msg
 manualHeading isOpen =
@@ -106,10 +106,10 @@ manualHeading isOpen =
         [ span [ class "cond-section__triangle" ]
             [ text
                 (if isOpen then
-                    "▾"
+                    "▼"
 
                  else
-                    "▸"
+                    "▶"
                 )
             ]
         , h3 [ class "cond-section__heading" ] [ text "Manual:" ]

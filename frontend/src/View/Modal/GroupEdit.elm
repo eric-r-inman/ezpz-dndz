@@ -547,10 +547,10 @@ disclosureRow cfg =
         [ span [ class "group-edit__lore-disclosure-caret" ]
             [ text
                 (if cfg.expanded then
-                    "▾"
+                    "▼"
 
                  else
-                    "▸"
+                    "▶"
                 )
             ]
         , span [ class "group-edit__lore-disclosure-label" ]
@@ -581,10 +581,10 @@ userGroupRow expandedSet g =
                 [ span [ class "group-edit__lore-row-caret" ]
                     [ text
                         (if isOpen then
-                            "▾"
+                            "▼"
 
                          else
-                            "▸"
+                            "▶"
                         )
                     ]
                 , span [ class "group-edit__lore-row-name" ] [ text g.name ]
@@ -644,10 +644,10 @@ bundledGroupRow expandedSet g =
                 [ span [ class "group-edit__lore-row-caret" ]
                     [ text
                         (if isOpen then
-                            "▾"
+                            "▼"
 
                          else
-                            "▸"
+                            "▶"
                         )
                     ]
                 , span [ class "group-edit__lore-row-name" ] [ text g.name ]

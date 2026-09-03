@@ -92,6 +92,8 @@
    encounters all start at round 1.  No action needed.
 6. Reset's hover text describes what it actually does — restore HP and clear
    conditions, not revert to the last save.  No action needed.
+7. Disclosure carets and the queue's move arrows are large enough to see.  No
+   action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

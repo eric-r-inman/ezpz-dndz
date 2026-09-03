@@ -1063,10 +1063,10 @@ collapsible cfg =
             [ span [ class "treasure-table__section-caret" ]
                 [ text
                     (if cfg.isOpen then
-                        "▾"
+                        "▼"
 
                      else
-                        "▸"
+                        "▶"
                     )
                 ]
             , span [ class "treasure-table__section-label" ] [ text cfg.label ]

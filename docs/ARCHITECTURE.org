@@ -1207,7 +1207,7 @@ body id), serde / IO failures → 500.
 ** UI surface
 
 - *Compendium list rendering* — groups render at the top of the list as
-  expandable rows (~▸~/~▾~ disclosure) above the creature rows.
+  expandable rows (~▶~/~▼~ disclosure) above the creature rows.
   =View.Page.Compendium.groupListItem= produces a header + an optional list of
   child entry rows (read-only — to edit contents the GM re-opens the Edit
   modal).  The Groups filter chip on the toolbar hides them entirely.  Groups
@@ -1455,7 +1455,7 @@ For a surface =Foo= the pieces are:
 8. *View* — =View/Modal/Foo.elm= renders a footer row built from two helpers:
    - ~presetSaveControl~ — toggles between a single ~Save~ button (when
      ~pendingSaveName == Nothing~) and a ~[name input][Save][Cancel]~ trio.
-   - ~presetLoadControl~ — disabled ~Load ▾~ when the dict is empty; otherwise
+   - ~presetLoadControl~ — disabled ~Load ▼~ when the dict is empty; otherwise
      opens a dropdown of preset names sorted case-insensitively (~Dict.keys
      presets |> List.sortBy String.toLower~).  Each row is a ~[name][×]~ pair
      where the × uses ~stopPropagationOn "click"~ so a misclick on delete inside

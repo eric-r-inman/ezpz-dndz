@@ -214,10 +214,10 @@ settingsSection kind expanded settings profiles profileDraft =
             [ span [ class "treasure__settings-caret" ]
                 [ text
                     (if expanded then
-                        "▾"
+                        "▼"
 
                      else
-                        "▸"
+                        "▶"
                     )
                 ]
             , span [ class "treasure__settings-label" ]
@@ -647,10 +647,10 @@ contributionsSection expanded contributions =
                 [ span [ class "treasure__contributions-caret" ]
                     [ text
                         (if expanded then
-                            "▾"
+                            "▼"
 
                          else
-                            "▸"
+                            "▶"
                         )
                     ]
                 , span [ class "treasure__contributions-label" ]

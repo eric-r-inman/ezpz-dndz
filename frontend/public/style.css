@@ -101,6 +101,12 @@
   /* A number the reader is meant to land on first. */
   --font-size-readout: 1.1rem;
 
+  /* Triangle glyphs.  Sized well above the text they sit
+     beside because a triangle's ink fills far less of its em box
+     than a letter's does — at the surrounding text's size they
+     read as specks. */
+  --font-size-caret: 1rem;
+
   /* Wide enough for a stat block's two-column header without
      crowding the queue beside it, with one shared horizontal
      inset for every piece of a drawer panel's chrome. */
@@ -2210,7 +2216,7 @@ body {
 
 .treasure__settings-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure__settings-label {
@@ -2452,7 +2458,7 @@ body {
 
 .treasure__contributions-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure__contributions-label {
@@ -2614,7 +2620,7 @@ body {
 
 .treasure-table__section-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure-table__section-label {
@@ -4295,7 +4301,7 @@ body {
   cursor: pointer;
   color: var(--color-text-muted);
   font-family: inherit;
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-caret);
   line-height: 1;
 }
 
@@ -5514,6 +5520,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 0.55;
 }
 
+/* The queue's move-up / move-down arrows.  Bigger than the
+   other icon buttons because they are aimed at mid-combat, and
+   an arrowhead has to be read at a glance rather than found. */
+.icon-btn--arrow {
+  font-size: var(--font-size-glyph);
+  line-height: 1;
+}
+
 .icon-btn--sm:hover {
   opacity: 1;
 }
@@ -6001,7 +6015,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .fly-height__btn {
   padding: 0 2px;
-  font-size: 0.7rem;
+  font-size: var(--font-size-caret);
   color: var(--color-text-muted);
   line-height: 1;
 }
@@ -7546,7 +7560,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .group-edit__lore-disclosure-caret {
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .group-edit__lore-list {
@@ -7603,7 +7617,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .group-edit__lore-row-caret {
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
   color: var(--color-text-muted);
 }
 
@@ -7871,7 +7885,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: transparent;
   border: none;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-caret);
   cursor: pointer;
   padding: 0 6px;
   line-height: 1;
@@ -9021,7 +9035,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-section__triangle {
-  font-size: var(--font-size-compact);
+  font-size: var(--font-size-caret);
   color: var(--color-text-muted);
   line-height: 1;
 }
@@ -9484,7 +9498,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: inline-block;
   width: 1ch;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--font-size-caret);
 }
 
 .cond-footer__load-category-label {

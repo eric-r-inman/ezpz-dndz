@@ -674,7 +674,7 @@ presetLoadControl ui userPresets =
                     "Load a saved preset"
                 )
             ]
-            [ text "Load ▾" ]
+            [ text "Load ▼" ]
         , if ui.loadMenuOpen && not empty then
             div
                 [ class "cond-footer__load-menu"
@@ -701,10 +701,10 @@ categorySection ui userPresets displayPresets category =
 
         triangle =
             if expanded then
-                "▾"
+                "▼"
 
             else
-                "▸"
+                "▶"
     in
     div [ class "cond-footer__load-category" ]
         [ button

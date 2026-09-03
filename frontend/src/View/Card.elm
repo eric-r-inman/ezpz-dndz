@@ -95,14 +95,14 @@ view ctx creature =
                     ]
                     []
                 , button
-                    [ class "icon-btn"
+                    [ class "icon-btn icon-btn--arrow"
                     , onClick (MoveCreatureUp creature.name)
                     , Tooltips.attr Tooltips.queueMoveUp
                     , attribute "aria-label" "Move up in queue"
                     ]
                     [ text "↑" ]
                 , button
-                    [ class "icon-btn"
+                    [ class "icon-btn icon-btn--arrow"
                     , onClick (MoveCreatureDown creature.name)
                     , Tooltips.attr Tooltips.queueMoveDown
                     , attribute "aria-label" "Move down in queue"

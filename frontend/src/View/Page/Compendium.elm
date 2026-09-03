@@ -734,10 +734,10 @@ groupListItem ui group =
                     ]
                     [ text
                         (if isExpanded then
-                            "▾"
+                            "▼"
 
                          else
-                            "▸"
+                            "▶"
                         )
                     ]
                 , div [ class "compendium__row-text" ]
@@ -1576,10 +1576,10 @@ loreSectionHeader auth ui totalCount =
             ]
             [ text
                 (if ui.loreGroupsExpanded then
-                    "▾"
+                    "▼"
 
                  else
-                    "▸"
+                    "▶"
                 )
             ]
         , div [ class "compendium__row-text" ]
@@ -1657,10 +1657,10 @@ loreRow ui group =
                 ]
                 [ text
                     (if isExpanded then
-                        "▾"
+                        "▼"
 
                      else
-                        "▸"
+                        "▶"
                     )
                 ]
             , div [ class "compendium__row-text" ]

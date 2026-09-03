@@ -93,8 +93,8 @@ headerClass collapsed =
 
 {-| The header row is what a mouse folds the panel with, so the
 caret is mostly the open/closed cue — in the disclosure
-vocabulary the compendium's group rows already use, where ▾
-points at a revealed body and ▸ at a folded one. It is a button
+vocabulary the compendium's group rows already use, where ▼
+points at a revealed body and ▶ at a folded one. It is a button
 and not a span because it is also the panel's keyboard control:
 a bare clickable row leaves nothing to tab to.
 -}
@@ -115,10 +115,10 @@ collapseToggle collapse =
         ]
         [ text
             (if collapse.collapsed then
-                "▸"
+                "▶"
 
              else
-                "▾"
+                "▼"
             )
         ]
 

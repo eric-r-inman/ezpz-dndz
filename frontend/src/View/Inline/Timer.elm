@@ -181,7 +181,7 @@ presetLoadControl ui presets =
                     "Load a saved preset"
                 )
             ]
-            [ text "Load ▾" ]
+            [ text "Load ▼" ]
         , if ui.loadMenuOpen && not empty then
             div
                 [ class "cond-footer__load-menu"
