@@ -43,6 +43,12 @@
   /* Borders + dividers — hairline, low contrast */
   --color-border: #e4e4e7;
 
+  /* A shade stronger than --color-border: a field's edge has to
+     read as an edge you can type inside, which the same hairline
+     used for panel and divider rules does not manage.  The
+     Accessible theme keeps its black, already at full contrast. */
+  --color-input-border: #d4d4d8;
+
   /* Ring around a card button whose inline editor is open.
      Deliberately white in every theme — the point is maximum
      contrast against the card so the open editor's trigger is
@@ -242,6 +248,8 @@
   --color-text: #18181b;
   --color-text-muted: #71717a;
   --color-border: #e4e4e7;
+
+  --color-input-border: #d4d4d8;
   --color-link: #5b5bd6;
   --color-accent: #5b5bd6;
   --color-accent-hover: #4f46e5;
@@ -335,6 +343,8 @@
   --color-text-muted: #8e95a8;
   --color-link: #8aa9ff;
   --color-border: #2a2f3a;
+
+  --color-input-border: #3a4150;
   --color-accent: #8a6cff;
   --color-accent-hover: #9c81ff;
   --color-accent-soft: rgba(138, 108, 255, 0.18);
@@ -421,6 +431,8 @@
   --color-text: #000000;
   --color-text-muted: #3a3a3a;
   --color-border: #000000;
+
+  --color-input-border: #000000;
   --color-link: #0033cc;
   --color-accent: #0033cc;
   --color-accent-hover: #001a99;
@@ -1352,7 +1364,7 @@ body {
 .auth-login__input {
   appearance: none;
   background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   color: var(--color-text);
   font: inherit;
   padding: 8px 10px;
@@ -1625,7 +1637,7 @@ body {
 
 .account-card__input {
   padding: 8px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -1731,7 +1743,7 @@ body {
 .treasure__select {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -1916,7 +1928,7 @@ body {
 .treasure__settings-profile-input {
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -2314,7 +2326,7 @@ body {
 .treasure__settings-scroll-input {
   width: 4em;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -2705,7 +2717,7 @@ body {
 .treasure-table__field-input {
   width: 4em;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -2778,7 +2790,7 @@ body {
 .treasure-table__num-input {
   width: 3.5em;
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.82rem;
@@ -2790,7 +2802,7 @@ body {
 
 .treasure-table__sub-tier {
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.82rem;
@@ -2877,7 +2889,7 @@ body {
 
 .treasure-table__name-input {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.88rem;
@@ -2937,7 +2949,7 @@ body {
 
 .treasure-table__flat-name {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.88rem;
@@ -2947,7 +2959,7 @@ body {
 
 .treasure-table__flat-value {
   padding: 4px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -3251,7 +3263,7 @@ body {
 
 .cr-calc__party-level {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -3632,7 +3644,7 @@ body {
 
 .random-encounter__party-level {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -3703,7 +3715,7 @@ body {
 .random-encounter__habitat-select {
   flex: 1 1 200px;
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -4017,7 +4029,7 @@ body {
 
 .random-encounter__pin-search {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7386,7 +7398,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__input {
   flex: 1 1 auto;
   padding: 8px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7409,7 +7421,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__manual-initiative {
   width: 70px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7454,7 +7466,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__creature {
   flex: 1 1 auto;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7464,7 +7476,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__count {
   width: 56px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7474,7 +7486,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__minion {
   width: 140px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7743,7 +7755,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .group-edit__lore-role-select {
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7759,7 +7771,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__lore-count-input {
   width: 50px;
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -8256,7 +8268,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .hp-change__input {
   flex: 1 1 auto;
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-2);
   color: var(--color-text);
@@ -8976,7 +8988,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 1rem;
   color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
   padding: 6px 8px;
   margin-top: 4px;
@@ -9122,7 +9134,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: 100%;
   font-family: inherit;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   outline: none;
   box-sizing: border-box;
@@ -9212,7 +9224,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.9rem;
   color: var(--color-text);
   background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
   padding: 3px 6px;
 }
@@ -9665,7 +9677,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 240px;
   padding: 8px 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -9695,7 +9707,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .compendium__sort {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -9710,7 +9722,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .compendium__tag-filter {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -10364,7 +10376,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .edit-field__input {
   padding: 6px 8px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -10616,7 +10628,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-height: 360px;
   padding: 8px 10px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -11201,7 +11213,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 auto;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -11611,7 +11623,7 @@ button.quick-list-card {
   min-width: 220px;
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -11629,7 +11641,7 @@ button.quick-list-card {
   min-width: 160px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -11659,7 +11671,7 @@ button.quick-list-card {
   width: 200px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -11821,7 +11833,7 @@ button.quick-list-card {
   min-width: 140px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -11832,7 +11844,7 @@ button.quick-list-card {
   min-width: 100px;
   padding: 6px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;

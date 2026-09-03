@@ -95,6 +95,8 @@
    action needed.
 8. The Manage HP and Initiative editors no longer leave extra empty space below
    their buttons.  No action needed.
+9. Input fields draw a stronger border, the same one in every editor.  No action
+   needed.
 ** Breaking
 * v0.2.0
 ** Fixes
