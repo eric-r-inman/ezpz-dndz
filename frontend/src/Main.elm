@@ -317,7 +317,7 @@ subscriptions model =
                 _ ->
                     case List.head (List.reverse model.drawer) of
                         Just newest ->
-                            drawerEscSub newest
+                            drawerEscSub newest.surface
 
                         Nothing ->
                             if model.route == Compendium then
@@ -1829,6 +1829,9 @@ updateInner msg model =
 
         ActionGroupToggle group ->
             Update.ActionGroups.toggle group model
+
+        DrawerCollapseToggle index ->
+            Update.PanelDrawer.toggleCollapse index model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model

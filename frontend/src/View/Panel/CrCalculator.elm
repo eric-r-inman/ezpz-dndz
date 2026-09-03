@@ -49,8 +49,8 @@ import Ui.CrCalculator exposing (CrCalculatorUi)
 import View.Panel
 
 
-view : Model -> Html Msg
-view model =
+view : View.Panel.Collapse -> Model -> Html Msg
+view collapse model =
     case Model.drawerGet Model.crCalculatorLens model of
         Just ui ->
             View.Panel.view
@@ -58,6 +58,7 @@ view model =
                 , title = "Encounter Difficulty"
                 , titleLead = Nothing
                 , subtitle = Nothing
+                , collapse = collapse
                 , extraClass = "panel-drawer--cr-calculator"
                 , body =
                     [ blurb

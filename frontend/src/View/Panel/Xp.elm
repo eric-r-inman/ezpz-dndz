@@ -19,13 +19,14 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import View.Panel
 
 
-view : Encounter -> CompendiumDb -> XpScope -> Html Msg
-view enc db current =
+view : View.Panel.Collapse -> Encounter -> CompendiumDb -> XpScope -> Html Msg
+view collapse enc db current =
     View.Panel.view
         { close = XpFilterToggle
         , title = "XP"
         , titleLead = Nothing
         , subtitle = Nothing
+        , collapse = collapse
         , extraClass = "panel-drawer--xp"
         , body =
             [ div [ class "xp-panel__total" ] [ text (label enc db current) ]

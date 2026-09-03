@@ -66,6 +66,7 @@ module View.Tooltips exposing
     , difficultyButton
     , dodging
     , drawerClose
+    , drawerCollapse
     , encounterBarSpellList
     , fallDamage
     , flyHeightDown
@@ -969,6 +970,11 @@ quickAddSortToCr =
 drawerClose : String
 drawerClose =
     "Close this panel"
+
+
+drawerCollapse : String
+drawerCollapse =
+    "Fold this panel away, or open it back up"
 
 
 modalClose : String

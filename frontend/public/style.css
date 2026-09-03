@@ -4274,6 +4274,24 @@ body {
   color: var(--color-text);
 }
 
+/* Mirrors the close button so the two header controls read as a
+   matched pair bracketing the title. */
+.panel-drawer__collapse {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+}
+
+.panel-drawer__collapse:hover {
+  color: var(--color-text);
+}
+
 /* A page whose workspace holds this panel alone: it spans the
    grid rather than sitting in the queue's column, which would
    leave the action column's gap hanging to its left. */
@@ -4299,10 +4317,21 @@ body {
   padding: 6px var(--drawer-pad-x);
 }
 
+.panel__header--collapsed {
+  border-bottom: none;
+}
+
 .panel__title {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
+}
+
+/* The caret makes three items of a header laid out
+   space-between, which would otherwise centre the title. */
+.panel__title--drawer {
+  margin-right: auto;
+  padding-left: var(--space-1);
 }
 
 .panel__count {

@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -171,12 +171,22 @@ type Surface
     | SurfaceRoundSet RoundSetUi
 
 
+{-| One panel in the drawer stack. `collapsed` rides the panel
+rather than a separate keyed set, so folding state can't outlive
+the panel it describes.
+-}
+type alias DrawerPanel =
+    { surface : Surface
+    , collapsed : Bool
+    }
+
+
 {-| The open drawer panel matching `lens`, if any.
 -}
 drawerGet : SurfaceLens a -> Model -> Maybe a
 drawerGet lens model =
     model.drawer
-        |> List.filterMap lens.extract
+        |> List.filterMap (.surface >> lens.extract)
         |> List.head
 
 
@@ -193,10 +203,11 @@ mapDrawer lens fn model =
     { model
         | drawer =
             List.map
-                (\surface ->
-                    lens.extract surface
-                        |> Maybe.map (fn >> lens.wrap)
-                        |> Maybe.withDefault surface
+                (\panel ->
+                    lens.extract panel.surface
+                        |> Maybe.map
+                            (\ui -> { panel | surface = lens.wrap (fn ui) })
+                        |> Maybe.withDefault panel
                 )
                 model.drawer
     }
@@ -212,14 +223,39 @@ openDrawer lens ui model =
         mapDrawer lens (\_ -> ui) model
 
     else
-        { model | drawer = model.drawer ++ [ lens.wrap ui ] }
+        { model
+            | drawer =
+                model.drawer ++ [ { surface = lens.wrap ui, collapsed = False } ]
+        }
 
 
 closeDrawer : SurfaceLens a -> Model -> Model
 closeDrawer lens model =
     { model
         | drawer =
-            List.filter (\s -> lens.extract s == Nothing) model.drawer
+            List.filter
+                (\panel -> lens.extract panel.surface == Nothing)
+                model.drawer
+    }
+
+
+{-| Fold the panel at `index` away, or unfold it. The index is
+the panel's position in the rendered stack, which is what the
+click that produced it was aimed at.
+-}
+toggleCollapsedAt : Int -> Model -> Model
+toggleCollapsedAt index model =
+    { model
+        | drawer =
+            List.indexedMap
+                (\i panel ->
+                    if i == index then
+                        { panel | collapsed = not panel.collapsed }
+
+                    else
+                        panel
+                )
+                model.drawer
     }
 
 
@@ -680,7 +716,7 @@ type alias Model =
     -- one-at-a-time invariant `surface` enforces stops at the
     -- drawer's edge.  Only drawer-eligible variants belong here;
     -- their Update modules are the only writers.
-    , drawer : List Surface
+    , drawer : List DrawerPanel
 
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.

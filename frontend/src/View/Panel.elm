@@ -1,4 +1,4 @@
-module View.Panel exposing (view)
+module View.Panel exposing (Collapse, view)
 
 {-| Shared chrome for whatever the Actions column has open.
 
@@ -11,6 +11,12 @@ difference.
 `titleLead` is a control rendered just before the title — the
 encounter-level panels leave both empty.
 
+`collapse` folds the body away while leaving the panel in the
+stack, so a GM can keep an editor to hand without paying its
+height.
+
+@docs Collapse, view
+
 -}
 
 import Html exposing (Html, button, div, section, text)
@@ -20,19 +26,30 @@ import Msg exposing (Msg)
 import View.Tooltips as Tooltips
 
 
+{-| Whether this panel's body is folded away, and the message
+that flips it.
+-}
+type alias Collapse =
+    { collapsed : Bool
+    , toggle : Msg
+    }
+
+
 view :
     { close : Msg
     , title : String
     , titleLead : Maybe (Html Msg)
     , subtitle : Maybe String
     , extraClass : String
+    , collapse : Collapse
     , body : List (Html Msg)
     }
     -> Html Msg
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
-        [ div [ class "panel__header panel__header--drawer" ]
-            [ div [ class "panel__title" ]
+        (div [ class (headerClass config.collapse.collapsed) ]
+            [ collapseToggle config.collapse
+            , div [ class "panel__title panel__title--drawer" ]
                 (Maybe.withDefault (text "") config.titleLead
                     :: [ text config.title ]
                 )
@@ -45,8 +62,57 @@ view config =
                 ]
                 [ text "✕" ]
             ]
-        , subtitleStrip config.subtitle
-        , div [ class "panel__body panel__body--drawer" ] config.body
+            :: (if config.collapse.collapsed then
+                    []
+
+                else
+                    [ subtitleStrip config.subtitle
+                    , div [ class "panel__body panel__body--drawer" ] config.body
+                    ]
+               )
+        )
+
+
+{-| A folded panel is header and nothing else, so the header's
+divider would land against the panel's own bottom border and
+read as a doubled line.
+-}
+headerClass : Bool -> String
+headerClass collapsed =
+    if collapsed then
+        "panel__header panel__header--drawer panel__header--collapsed"
+
+    else
+        "panel__header panel__header--drawer"
+
+
+{-| The caret doubles as the open/closed cue, in the disclosure
+vocabulary the compendium's group rows already use: ▾ points at
+a revealed body, ▸ at a folded one.
+-}
+collapseToggle : Collapse -> Html Msg
+collapseToggle collapse =
+    button
+        [ class "panel-drawer__collapse"
+        , type_ "button"
+        , onClick collapse.toggle
+        , Tooltips.attr Tooltips.drawerCollapse
+        , attribute "aria-label" Tooltips.drawerCollapse
+        , attribute "aria-expanded"
+            (if collapse.collapsed then
+                "false"
+
+             else
+                "true"
+            )
+        ]
+        [ text
+            (if collapse.collapsed then
+                "▸"
+
+             else
+                "▾"
+            )
         ]
 
 

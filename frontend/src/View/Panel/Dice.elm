@@ -21,13 +21,14 @@ import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : List HpChangeEntry -> DiceUi -> Html Msg
-view hpChangeLog ui =
+view : View.Panel.Collapse -> List HpChangeEntry -> DiceUi -> Html Msg
+view collapse hpChangeLog ui =
     View.Panel.view
         { close = CloseDice
         , title = "🎲 Dice Roller"
         , titleLead = Nothing
         , subtitle = Nothing
+        , collapse = collapse
         , extraClass = "panel-drawer--dice"
         , body =
             [ form ui

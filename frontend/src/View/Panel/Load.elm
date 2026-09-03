@@ -48,8 +48,8 @@ import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : Model -> Html Msg
-view model =
+view : View.Panel.Collapse -> Model -> Html Msg
+view collapse model =
     case Model.drawerGet Model.loadLens model of
         Just ui ->
             View.Panel.view
@@ -57,6 +57,7 @@ view model =
                 , title = "Load Encounter"
                 , titleLead = Nothing
                 , subtitle = Nothing
+                , collapse = collapse
                 , extraClass = "panel-drawer--load"
                 , body =
                     [ overwriteWarning

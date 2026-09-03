@@ -1757,9 +1757,12 @@ dependency order:
    boilerplate).  Update modules don't ~import Http~ directly.
 7. *View* — =View/Panel/Foo.elm= for a workspace surface, which is nearly all of
    them; =View/Modal/Foo.elm= only for something that genuinely has to cover the
-   page.  Entry point is ~view : Model -> Html Msg~ that pattern-matches
-   ~model.surface~ and falls through to ~text ""~; the chrome comes from
-   =View.Panel.view= or =View.Modal.view=, whose shared fields line up.
+   page.  Entry point is ~view : View.Panel.Collapse -> Model -> Html Msg~ for a
+   panel (a modal's takes no ~Collapse~, having nothing to fold into) that
+   pattern-matches ~model.surface~ and falls through to ~text ""~; the chrome
+   comes from =View.Panel.view= or =View.Modal.view=, whose shared fields line
+   up.  The ~Collapse~ is passed straight through to =View.Panel.view=, which
+   owns the caret and decides whether the body renders at all.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
    render arm in ~View.PanelDrawer.panelFor~, and an Esc mapping in
    ~Main.drawerEscSub~; those three move together.  Panels live in the

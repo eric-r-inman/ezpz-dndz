@@ -52,12 +52,17 @@ view model =
 
         panels ->
             div [ class "drawer-stack" ]
-                (List.map (panelFor model) panels)
+                (List.indexedMap (panelFor model) panels)
 
 
-panelFor : Model -> Surface -> Html Msg
-panelFor model surface =
+panelFor : Model -> Int -> Model.DrawerPanel -> Html Msg
+panelFor model index panel =
     let
+        collapse =
+            { collapsed = panel.collapsed
+            , toggle = DrawerCollapseToggle index
+            }
+
         selectedCount =
             List.length (List.filter .selected model.encounter.creatures)
 
@@ -78,11 +83,12 @@ panelFor model surface =
                 , title = title
                 , titleLead = Nothing
                 , subtitle = Just subtitle
+                , collapse = collapse
                 , extraClass = "panel-drawer--editor"
                 , body = [ body ]
                 }
     in
-    case surface of
+    case panel.surface of
         SurfaceHpChange ui ->
             editor "Manage HP"
                 (scopedLabel ui.target ui.applyToSelected)
@@ -143,31 +149,31 @@ panelFor model surface =
                 (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
         SurfaceCrCalculator _ ->
-            View.Panel.CrCalculator.view model
+            View.Panel.CrCalculator.view collapse model
 
         SurfaceTreasure _ ->
-            View.Panel.Treasure.view model
+            View.Panel.Treasure.view collapse model
 
         SurfaceQuickAdd _ ->
-            View.Panel.QuickAdd.view model
+            View.Panel.QuickAdd.view collapse model
 
         SurfaceSave _ ->
-            View.Panel.Save.view model
+            View.Panel.Save.view collapse model
 
         SurfaceLoad _ ->
-            View.Panel.Load.view model
+            View.Panel.Load.view collapse model
 
         SurfaceRandomEncounter _ ->
-            View.Panel.RandomEncounter.view model
+            View.Panel.RandomEncounter.view collapse model
 
         SurfaceDice ->
-            View.Panel.Dice.view model.hpChangeLog model.dice
+            View.Panel.Dice.view collapse model.hpChangeLog model.dice
 
         SurfaceXp ->
-            View.Panel.Xp.view model.encounter model.compendium.db model.xpScope
+            View.Panel.Xp.view collapse model.encounter model.compendium.db model.xpScope
 
         SurfaceStatBlock pin ->
-            View.Panel.StatBlock.view model.compendium.db pin
+            View.Panel.StatBlock.view collapse model.compendium.db pin
 
         -- Modal and card-inline variants never enter the stack —
         -- their Update modules write `model.surface`, and the

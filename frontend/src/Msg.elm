@@ -1315,6 +1315,10 @@ type Msg
       -- Heading in the Actions column, folding its group of
       -- triggers away or back.
     | ActionGroupToggle ActionGroup
+      -- Caret on a drawer panel, folding its body away or back.
+      -- The payload is the panel's position in the stack, which
+      -- is what the click that produced it was aimed at.
+    | DrawerCollapseToggle Int
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised
