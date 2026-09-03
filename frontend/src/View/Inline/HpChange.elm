@@ -52,9 +52,9 @@ manualSection selectedCount ui =
             [ h3
                 [ class "cond-section__heading cond-section__heading--inline" ]
                 [ text "Manual:" ]
-            , manualField "manual-hp" "HP" ui.manualHpText CurrentHpField
-            , manualField "manual-max-hp" "Max" ui.manualMaxHpText MaxHpField
-            , manualField "manual-temp-hp" "Temp" ui.manualTempHpText TempHpField
+            , manualField "" "manual-hp" "HP" ui.manualHpText CurrentHpField
+            , manualField split "manual-max-hp" "Max" ui.manualMaxHpText MaxHpField
+            , manualField split "manual-temp-hp" "Temp" ui.manualTempHpText TempHpField
             ]
         , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ ApplyButton.view
@@ -80,9 +80,18 @@ manualSection selectedCount ui =
         ]
 
 
-manualField : String -> String -> String -> HpField -> Html Msg
-manualField fieldId label current field =
-    span [ class "hp-change__manual-field" ]
+{-| Extra air before a pair, separating it from the pair it
+follows. The first pair trails the section heading rather than
+another field, so it goes without.
+-}
+split : String
+split =
+    "hp-change__manual-field--split"
+
+
+manualField : String -> String -> String -> String -> HpField -> Html Msg
+manualField extraClass fieldId label current field =
+    span [ class ("hp-change__manual-field " ++ extraClass) ]
         [ Html.label [ for fieldId, class "hp-change__manual-label" ] [ text label ]
         , input
             [ id fieldId

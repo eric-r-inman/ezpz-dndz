@@ -8201,15 +8201,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-1);
 }
 
-/* One label-plus-input pair, glued so the two never separate.
+/* One label-plus-input pair.  The gap inside a pair is deliberately
+   tighter than the one between pairs, so a label reads as belonging
+   to the input beside it rather than the one it trails.
    `min-width: 0` lets a pair shrink past its input's intrinsic
    width when the row runs out of room. */
 .hp-change__manual-field {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-0);
   flex: 0 1 auto;
   min-width: 0;
+}
+
+.hp-change__manual-field--split {
+  margin-left: var(--space-1);
 }
 
 .hp-change__manual-label {

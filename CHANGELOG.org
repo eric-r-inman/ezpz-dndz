@@ -77,8 +77,8 @@
 30. Clicking an open drawer panel's heading row folds it down to that row alone,
     so several panels can stay open without filling the column.  No action
     needed.
-31. The Manage HP editor sets all three pools from a single Manual row.  No
-    action needed.
+31. The Manage HP editor sets all three pools from a single Manual row, each
+    label grouped with the field it names.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
