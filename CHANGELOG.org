@@ -77,9 +77,8 @@
 30. Clicking an open drawer panel's heading row folds it down to that row alone,
     so several panels can stay open without filling the column.  No action
     needed.
-31. The Manage HP editor's Manual section starts folded away and opens when its
-    heading is clicked, with its three pool fields on one row.  No action
-    needed.
+31. The Manage HP editor sets all three pools from a single Manual row.  No
+    action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -94,6 +93,8 @@
    conditions, not revert to the last save.  No action needed.
 7. Disclosure carets and the queue's move arrows are large enough to see.  No
    action needed.
+8. The Manage HP and Initiative editors no longer leave extra empty space below
+   their buttons.  No action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

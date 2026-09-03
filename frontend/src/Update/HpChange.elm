@@ -13,7 +13,6 @@ module Update.HpChange exposing
     , manualApplySelected
     , manualApplyTarget
     , manualChanged
-    , manualToggle
     , open
     , openFor
     , rollLanded
@@ -87,20 +86,6 @@ manualChanged field text model =
                 ArmorClassField ->
                     u
         )
-        model
-    , Cmd.none
-    )
-
-
-{-| Fold the Manual section open or shut. Deliberately not
-routed through `withHpChange`: folding a section is not a form
-edit, and clearing the applied flag for it would make a
-just-applied editor look dirty and stash a draft on close.
--}
-manualToggle : Model -> ( Model, Cmd Msg )
-manualToggle model =
-    ( Model.mapSurface Model.hpChangeLens
-        (\u -> { u | manualOpen = not u.manualOpen })
         model
     , Cmd.none
     )

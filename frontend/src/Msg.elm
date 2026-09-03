@@ -567,9 +567,6 @@ type Msg
       -- The column trigger folds the editor away; a card's HP
       -- value re-aims it at that card's creature.
     | HpChangeOpenFor String
-      -- Folds the Manual section away.  The pools it holds keep
-      -- whatever was typed into them.
-    | HpChangeManualToggle
       -- The Manual section writes typed pools, no verb involved.
     | HpChangeManualChanged HpField String
     | HpChangeManualApplyTarget

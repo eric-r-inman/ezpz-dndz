@@ -1090,9 +1090,6 @@ updateInner msg model =
         HpChangeOpenFor target ->
             Update.HpChange.openFor target model
 
-        HpChangeManualToggle ->
-            Update.HpChange.manualToggle model
-
         HpChangeManualChanged field text ->
             Update.HpChange.manualChanged field text model
 

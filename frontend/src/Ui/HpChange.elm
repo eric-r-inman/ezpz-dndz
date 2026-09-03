@@ -59,12 +59,6 @@ type alias HpChangeUi =
     , manualMaxHpText : String
     , manualTempHpText : String
 
-    -- Whether the manual pools are showing.  Folded by default:
-    -- the verb buttons above are the common path, and the
-    -- fields cost more of the editor's height than a rarely-used
-    -- section should.
-    , manualOpen : Bool
-
     -- True once the current settings have been applied and not
     -- edited since.  Closing an applied editor resets it;
     -- closing an un-applied one stashes the settings as the
@@ -142,6 +136,5 @@ fresh target =
     , manualHpText = ""
     , manualMaxHpText = ""
     , manualTempHpText = ""
-    , manualOpen = False
     , applied = False
     }

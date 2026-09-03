@@ -17,14 +17,13 @@ the full list lives in the dice roller via `View.HpLog`.
 
 import Dice
 import Html exposing (Html, button, div, em, h3, input, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, for, id, placeholder, type_, value)
+import Html.Attributes as Attr exposing (autofocus, checked, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
-import View.Tooltips as Tooltips
 
 
 view : Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
@@ -49,70 +48,35 @@ one pool can be set without restating the others.
 manualSection : Int -> HpChangeUi -> Html Msg
 manualSection selectedCount ui =
     div [ class "cond-section" ]
-        (manualHeading ui.manualOpen
-            :: (if ui.manualOpen then
-                    [ div [ class "cond-row cond-row--pools" ]
-                        [ manualField "manual-hp" "HP:" ui.manualHpText CurrentHpField
-                        , manualField "manual-max-hp" "Max HP:" ui.manualMaxHpText MaxHpField
-                        , manualField "manual-temp-hp" "Temp HP:" ui.manualTempHpText TempHpField
-                        ]
-                    , div [ class "note-edit__buttons note-edit__buttons--start" ]
-                        [ ApplyButton.view
-                            { enabled = True
-                            , cls = "action-btn action-btn--green"
-                            , msg = HpChangeManualApplyTarget
-                            , tip = "Set the typed pools on the target creature"
-                            , label = "Apply to Target"
-                            }
-                        , ApplyButton.view
-                            { enabled = selectedCount > 0
-                            , cls = "action-btn action-btn--green"
-                            , msg = HpChangeManualApplySelected
-                            , tip =
-                                if selectedCount == 0 then
-                                    "Select creatures first"
-
-                                else
-                                    "Set the typed pools on every selected creature"
-                            , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
-                            }
-                        ]
-                    ]
-
-                else
-                    []
-               )
-        )
-
-
-{-| The heading is the section's own disclosure control, in the
-same ▼/▶ vocabulary as the condition editor's preset categories.
--}
-manualHeading : Bool -> Html Msg
-manualHeading isOpen =
-    button
-        [ class "cond-section__toggle"
-        , type_ "button"
-        , onClick HpChangeManualToggle
-        , Tooltips.attr Tooltips.hpChangeManualToggle
-        , attribute "aria-expanded"
-            (if isOpen then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ span [ class "cond-section__triangle" ]
-            [ text
-                (if isOpen then
-                    "▼"
-
-                 else
-                    "▶"
-                )
+        [ div [ class "cond-row cond-row--pools" ]
+            [ h3
+                [ class "cond-section__heading cond-section__heading--inline" ]
+                [ text "Manual:" ]
+            , manualField "manual-hp" "HP" ui.manualHpText CurrentHpField
+            , manualField "manual-max-hp" "Max" ui.manualMaxHpText MaxHpField
+            , manualField "manual-temp-hp" "Temp" ui.manualTempHpText TempHpField
             ]
-        , h3 [ class "cond-section__heading" ] [ text "Manual:" ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = HpChangeManualApplyTarget
+                , tip = "Set the typed pools on the target creature"
+                , label = "Apply to Target"
+                }
+            , ApplyButton.view
+                { enabled = selectedCount > 0
+                , cls = "action-btn action-btn--green"
+                , msg = HpChangeManualApplySelected
+                , tip =
+                    if selectedCount == 0 then
+                        "Select creatures first"
+
+                    else
+                        "Set the typed pools on every selected creature"
+                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
+            ]
         ]
 
 

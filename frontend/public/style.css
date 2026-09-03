@@ -903,7 +903,7 @@ html:has(.app-shell[data-theme="accessible"]) {
 }
 
 /* Manage HP pool fields.  The same body bump leaves the row no
-   room to hold four legible digits on one line, and legibility
+   room to hold its fields legibly on one line, and legibility
    over density is the trade this theme exists to make. */
 [data-theme="accessible"] .cond-row--pools {
   flex-wrap: wrap;
@@ -8193,9 +8193,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 6px;
 }
 
-/* The Manage HP editor's pool fields, on one row.  Tighter than
-   the shared gap because three label-plus-input pairs have to
-   fit a drawer panel's width. */
+/* The Manage HP editor's manual row.  Tighter than the shared
+   gap because the heading and its fields all have to fit a
+   drawer panel's width. */
 .cond-row--pools {
   flex-wrap: nowrap;
   gap: var(--space-1);
@@ -9008,6 +9008,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-section:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
 .cond-section__heading {
@@ -9018,26 +9019,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   letter-spacing: 0.02em;
 }
 
-/* Wraps the heading so the whole strip is the disclosure
-   control, matching the condition editor's preset categories. */
-.cond-section__toggle {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  width: 100%;
-  padding: 0;
-  background: none;
-  border: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cond-section__triangle {
-  font-size: var(--font-size-caret);
-  color: var(--color-text-muted);
-  line-height: 1;
+/* A heading that leads its section's row instead of sitting
+   above it, so the fields beside it must not squeeze it. */
+.cond-section__heading--inline {
+  flex: 0 0 auto;
 }
 
 .cond-section__caption {
@@ -9165,11 +9150,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   max-width: 100%;
 }
 
-/* An HP pool field.  The spinner is suppressed because at this
-   width it would cost more room than the four digits beside it. */
+/* An HP pool field, sized for the three digits that cover every
+   creature in play; the cap allows a fourth, which scrolls rather
+   than claiming width the row cannot spare.  The spinner is
+   suppressed for the same reason. */
 .cond-input--pool {
   flex: 0 1 auto;
-  width: 6ch;
+  width: 5ch;
   min-width: 0;
   font-size: var(--font-size-section);
   padding-left: var(--space-1);
