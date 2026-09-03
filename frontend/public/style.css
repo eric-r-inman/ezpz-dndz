@@ -92,6 +92,10 @@
      shape still spell the values out; converting them is
      tracked in `tasks.org`. */
   --font-size-label: 0.78rem;
+
+  /* The type scale an editor section reads at, heading and
+     contents alike. */
+  --font-size-section: 0.8rem;
   --font-weight-label: 600;
 
   /* A number the reader is meant to land on first. */
@@ -890,6 +894,13 @@ html:has(.app-shell[data-theme="accessible"]) {
 
 [data-theme="accessible"] .cond-radio {
   padding: 6px 12px;
+}
+
+/* Manage HP pool fields.  The same body bump leaves the row no
+   room to hold four legible digits on one line, and legibility
+   over density is the trade this theme exists to make. */
+[data-theme="accessible"] .cond-row--pools {
+  flex-wrap: wrap;
 }
 
 /* Readied-action flash.  When a creature has readied an action,
@@ -8168,12 +8179,29 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 6px;
 }
 
-/* One label-plus-input pair in the Manage HP editor's manual
-   row, so the three pairs stay glued when the row wraps. */
+/* The Manage HP editor's pool fields, on one row.  Tighter than
+   the shared gap because three label-plus-input pairs have to
+   fit a drawer panel's width. */
+.cond-row--pools {
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+}
+
+/* One label-plus-input pair, glued so the two never separate.
+   `min-width: 0` lets a pair shrink past its input's intrinsic
+   width when the row runs out of room. */
 .hp-change__manual-field {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.hp-change__manual-label {
+  flex: 0 0 auto;
+  font-size: var(--font-size-section);
+  white-space: nowrap;
 }
 
 /* Hairline between the Custom and Note rows of the condition
@@ -8970,10 +8998,32 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-section__heading {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--font-size-section);
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: 0.02em;
+}
+
+/* Wraps the heading so the whole strip is the disclosure
+   control, matching the condition editor's preset categories. */
+.cond-section__toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cond-section__triangle {
+  font-size: var(--font-size-compact);
+  color: var(--color-text-muted);
+  line-height: 1;
 }
 
 .cond-section__caption {
@@ -9099,6 +9149,28 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 0 0 auto;
   width: 22ch;
   max-width: 100%;
+}
+
+/* An HP pool field.  The spinner is suppressed because at this
+   width it would cost more room than the four digits beside it. */
+.cond-input--pool {
+  flex: 0 1 auto;
+  width: 6ch;
+  min-width: 0;
+  font-size: var(--font-size-section);
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  appearance: textfield;
+}
+
+.cond-input--pool::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.cond-input--pool::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 /* The Replace editor's compendium search, sized to sit beside

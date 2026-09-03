@@ -75,6 +75,7 @@ module View.Tooltips exposing
     , fullCover
     , halfCover
     , hiding
+    , hpChangeManualToggle
     , hpOpenManage
     , initSelectedNone
     , initiativeManager
@@ -539,6 +540,11 @@ reactionSpent =
 clickToEdit : String
 clickToEdit =
     "Click to edit"
+
+
+hpChangeManualToggle : String
+hpChangeManualToggle =
+    "Show or hide the fields that set HP pools directly"
 
 
 hpOpenManage : String
