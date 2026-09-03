@@ -4313,8 +4313,12 @@ body {
 /* Drawer panels run denser chrome than the workspace panes:
    the stack multiplies every pixel of header and body padding
    by however many panels are up. */
+/* The whole row folds the panel, so a drag across the title
+   should not leave the GM with a selection instead. */
 .panel__header--drawer {
   padding: 6px var(--drawer-pad-x);
+  cursor: pointer;
+  user-select: none;
 }
 
 .panel__header--collapsed {

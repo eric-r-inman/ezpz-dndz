@@ -74,9 +74,9 @@
     into the Actions column.  No action needed.
 29. The Actions column's group headings fold their triggers away when clicked,
     and the column no longer scrolls.  No action needed.
-30. Each open drawer panel has a caret beside its title that folds the panel
-    down to its header, so several can stay open without filling the column.  No
-    action needed.
+30. Clicking an open drawer panel's heading row folds it down to that row alone,
+    so several panels can stay open without filling the column.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

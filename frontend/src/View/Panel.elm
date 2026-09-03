@@ -1,4 +1,4 @@
-module View.Panel exposing (Collapse, view)
+module View.Panel exposing (Collapse, onClickWithoutFolding, view)
 
 {-| Shared chrome for whatever the Actions column has open.
 
@@ -15,13 +15,14 @@ encounter-level panels leave both empty.
 stack, so a GM can keep an editor to hand without paying its
 height.
 
-@docs Collapse, view
+@docs Collapse, onClickWithoutFolding, view
 
 -}
 
 import Html exposing (Html, button, div, section, text)
 import Html.Attributes exposing (attribute, class, type_)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, stopPropagationOn)
+import Json.Decode as Decode
 import Msg exposing (Msg)
 import View.Tooltips as Tooltips
 
@@ -47,7 +48,11 @@ view :
     -> Html Msg
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
-        (div [ class (headerClass config.collapse.collapsed) ]
+        (div
+            [ class (headerClass config.collapse.collapsed)
+            , onClick config.collapse.toggle
+            , Tooltips.attr Tooltips.drawerCollapse
+            ]
             [ collapseToggle config.collapse
             , div [ class "panel__title panel__title--drawer" ]
                 (Maybe.withDefault (text "") config.titleLead
@@ -56,7 +61,7 @@ view config =
             , button
                 [ class "panel-drawer__close"
                 , type_ "button"
-                , onClick config.close
+                , onClickWithoutFolding config.close
                 , Tooltips.attr Tooltips.drawerClose
                 , attribute "aria-label" Tooltips.drawerClose
                 ]
@@ -86,17 +91,19 @@ headerClass collapsed =
         "panel__header panel__header--drawer"
 
 
-{-| The caret doubles as the open/closed cue, in the disclosure
-vocabulary the compendium's group rows already use: ▾ points at
-a revealed body, ▸ at a folded one.
+{-| The header row is what a mouse folds the panel with, so the
+caret is mostly the open/closed cue — in the disclosure
+vocabulary the compendium's group rows already use, where ▾
+points at a revealed body and ▸ at a folded one. It is a button
+and not a span because it is also the panel's keyboard control:
+a bare clickable row leaves nothing to tab to.
 -}
 collapseToggle : Collapse -> Html Msg
 collapseToggle collapse =
     button
         [ class "panel-drawer__collapse"
         , type_ "button"
-        , onClick collapse.toggle
-        , Tooltips.attr Tooltips.drawerCollapse
+        , onClickWithoutFolding collapse.toggle
         , attribute "aria-label" Tooltips.drawerCollapse
         , attribute "aria-expanded"
             (if collapse.collapsed then
@@ -114,6 +121,17 @@ collapseToggle collapse =
                 "▾"
             )
         ]
+
+
+{-| Click handler for a control sitting inside the header row,
+including anything a panel supplies as its `titleLead`. Plain
+`onClick` there bubbles into the row's own handler, so the
+control would fold the panel as a side effect of doing its own
+job.
+-}
+onClickWithoutFolding : Msg -> Html.Attribute Msg
+onClickWithoutFolding msg =
+    stopPropagationOn "click" (Decode.succeed ( msg, True ))
 
 
 subtitleStrip : Maybe String -> Html Msg

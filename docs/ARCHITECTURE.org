@@ -1762,7 +1762,10 @@ dependency order:
    pattern-matches ~model.surface~ and falls through to ~text ""~; the chrome
    comes from =View.Panel.view= or =View.Modal.view=, whose shared fields line
    up.  The ~Collapse~ is passed straight through to =View.Panel.view=, which
-   owns the caret and decides whether the body renders at all.
+   owns the heading row and decides whether the body renders at all.  That row
+   folds the panel when clicked, so a control placed in ~titleLead~ takes its
+   handler from ~View.Panel.onClickWithoutFolding~ rather than ~onClick~ — a
+   plain ~onClick~ there folds the panel as a side effect of doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
    render arm in ~View.PanelDrawer.panelFor~, and an Esc mapping in
    ~Main.drawerEscSub~; those three move together.  Panels live in the

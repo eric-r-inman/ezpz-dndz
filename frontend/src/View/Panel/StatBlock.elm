@@ -21,7 +21,6 @@ import Compendium
 import Encounter.Roster
 import Html exposing (Html, a, button, div, p, text)
 import Html.Attributes as Attr exposing (attribute, class, href, target)
-import Html.Events exposing (onClick)
 import Model exposing (PanelPin)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -55,7 +54,7 @@ compendiumJump pin =
     button
         [ class "panel-drawer__title-lead"
         , Attr.type_ "button"
-        , onClick (CompendiumShowCreature pin.id)
+        , View.Panel.onClickWithoutFolding (CompendiumShowCreature pin.id)
         , Tooltips.attr Tooltips.statBlockShowInCompendium
         , attribute "aria-label" Tooltips.statBlockShowInCompendium
         ]
