@@ -1,4 +1,4 @@
-module View.Panel exposing (Collapse, onClickWithoutFolding, view)
+module View.Panel exposing (Header, onClickWithoutFolding, view)
 
 {-| Shared chrome for whatever the Actions column has open.
 
@@ -8,14 +8,15 @@ swapping the wrapper it calls. The signatures carry the
 difference.
 
 `subtitle` names the creature an editor is aimed at, and
-`titleLead` is a control rendered just before the title — the
+`titleTrail` is a control rendered just after the title — the
 encounter-level panels leave both empty.
 
-`collapse` folds the body away while leaving the panel in the
-stack, so a GM can keep an editor to hand without paying its
-height.
+`header` wires the heading row to the stack it sits in: the
+fold state (a folded panel keeps its place without paying its
+height) and the drag attributes that let the row be picked up
+and dropped into a new slot.
 
-@docs Collapse, onClickWithoutFolding, view
+@docs Header, onClickWithoutFolding, view
 
 -}
 
@@ -27,37 +28,43 @@ import Msg exposing (Msg)
 import View.Tooltips as Tooltips
 
 
-{-| Whether this panel's body is folded away, and the message
-that flips it.
+{-| The heading row's wiring from the drawer stack: whether the
+body is folded away, the message that flips it, and the drag
+attributes that make the row the panel's reorder handle. Built
+by `View.PanelDrawer`, which knows the panel's position; passed
+through the panel modules untouched.
 -}
-type alias Collapse =
+type alias Header =
     { collapsed : Bool
     , toggle : Msg
+    , dragAttrs : List (Html.Attribute Msg)
     }
 
 
 view :
     { close : Msg
     , title : String
-    , titleLead : Maybe (Html Msg)
+    , titleTrail : Maybe (Html Msg)
     , subtitle : Maybe String
     , extraClass : String
-    , collapse : Collapse
+    , collapse : Header
     , body : List (Html Msg)
     }
     -> Html Msg
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
         (div
-            [ class (headerClass config.collapse.collapsed)
-            , onClick config.collapse.toggle
-            , Tooltips.attr Tooltips.drawerCollapse
-            ]
+            ([ class (headerClass config.collapse.collapsed)
+             , onClick config.collapse.toggle
+             , Tooltips.attr Tooltips.drawerCollapse
+             ]
+                ++ config.collapse.dragAttrs
+            )
             [ collapseToggle config.collapse
             , div [ class "panel__title panel__title--drawer" ]
-                (Maybe.withDefault (text "") config.titleLead
-                    :: [ text config.title ]
-                )
+                [ text config.title
+                , Maybe.withDefault (text "") config.titleTrail
+                ]
             , button
                 [ class "panel-drawer__close"
                 , type_ "button"
@@ -98,7 +105,7 @@ points at a revealed body and ▶ at a folded one. It is a button
 and not a span because it is also the panel's keyboard control:
 a bare clickable row leaves nothing to tab to.
 -}
-collapseToggle : Collapse -> Html Msg
+collapseToggle : Header -> Html Msg
 collapseToggle collapse =
     button
         [ class "panel-drawer__collapse"
@@ -124,7 +131,7 @@ collapseToggle collapse =
 
 
 {-| Click handler for a control sitting inside the header row,
-including anything a panel supplies as its `titleLead`. Plain
+including anything a panel supplies as its `titleTrail`. Plain
 `onClick` there bubbles into the row's own handler, so the
 control would fold the panel as a side effect of doing its own
 job.

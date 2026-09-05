@@ -62,14 +62,14 @@ import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Collapse -> Model -> Html Msg
+view : View.Panel.Header -> Model -> Html Msg
 view collapse model =
     case Model.drawerGet Model.randomEncounterLens model of
         Just ui ->
             View.Panel.view
                 { close = RandomEncounterClose
                 , title = "Random Encounter"
-                , titleLead = Nothing
+                , titleTrail = Nothing
                 , subtitle = Nothing
                 , collapse = collapse
                 , extraClass = "panel-drawer--random-encounter"

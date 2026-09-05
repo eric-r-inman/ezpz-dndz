@@ -102,6 +102,11 @@ type alias CompendiumUi =
     -- (which picks the right-pane stat block).
     , selectedIds : Set String
 
+    -- Compendium id whose "[N] in Encounter" badge is mid-flash.
+    -- Set by an add, cleared by a timed message, so the count
+    -- change is visibly acknowledged where the eye already is.
+    , badgeFlashFor : Maybe String
+
     -- Bulk-action split-button popover state.  At most one of
     -- the Clear / Import / Export dropdowns is open at a time;
     -- `Nothing` collapses all three.  Replaces the older
@@ -182,6 +187,8 @@ confirmation message.
 -}
 type PendingAction
     = PendingReset
+    | PendingClearAll
+    | PendingClearSelected
     | PendingImport (List Compendium.Creature) (List Group) Int
     | PendingDelete String String
 
@@ -203,6 +210,7 @@ emptyCompendium =
     , showOnlyAdded = False
     , pending = Nothing
     , selectedIds = Set.empty
+    , badgeFlashFor = Nothing
     , bulkMenu = Nothing
     , compendiumDirty = False
     , bulkBusy = False

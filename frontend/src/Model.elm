@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -171,6 +171,17 @@ type Surface
     | SurfaceRoundSet RoundSetUi
 
 
+{-| A drawer panel being dragged to a new position: where it
+started, and the slot the pointer is over (the drop cue). Lives
+on the model rather than in any panel, because the drag is about
+the stack's order, not about what any panel holds.
+-}
+type alias DrawerDrag =
+    { from : Int
+    , over : Maybe Int
+    }
+
+
 {-| One panel in the drawer stack. `collapsed` rides the panel
 rather than a separate keyed set, so folding state can't outlive
 the panel it describes.
@@ -179,6 +190,27 @@ type alias DrawerPanel =
     { surface : Surface
     , collapsed : Bool
     }
+
+
+{-| Move the panel at `from` so it sits at `to`, shifting the
+ones between. Out-of-range indices leave the stack unchanged.
+-}
+moveDrawerPanel : Int -> Int -> Model -> Model
+moveDrawerPanel from to model =
+    case model.drawer |> List.drop from |> List.head of
+        Just moved ->
+            let
+                rest =
+                    List.take from model.drawer
+                        ++ List.drop (from + 1) model.drawer
+            in
+            { model
+                | drawer =
+                    List.take to rest ++ moved :: List.drop to rest
+            }
+
+        Nothing ->
+            model
 
 
 {-| Where the panel matching `lens` sits in the stack, if it is
@@ -730,6 +762,9 @@ type alias Model =
     -- drawer's edge.  Only drawer-eligible variants belong here;
     -- their Update modules are the only writers.
     , drawer : List DrawerPanel
+
+    -- The drawer reorder in progress, if any.
+    , drawerDrag : Maybe DrawerDrag
 
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.

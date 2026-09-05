@@ -513,6 +513,8 @@ type Msg
     | DiceRerunMenuToggle Int
     | DiceRerunMenuClose
     | DiceRerunNoModifier Dice.Roll
+      -- Folds the Recent-rolls list away or back.
+    | DiceHistoryToggle
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
       -- A peer tab broadcast a freshly-landed roll over the
@@ -824,6 +826,8 @@ type Msg
     | CompendiumSelect String
     | CompendiumAddedToggle
     | CompendiumAddToQueue String
+      -- The timed end of the "[N] in Encounter" badge flash.
+    | CompendiumBadgeFlashCleared
     | CompendiumAddSelectedToQueue
       -- Group feature (Phase A: UI scaffolding only — buttons fire
       -- placeholder toasts until the modal + store land).
@@ -1315,6 +1319,13 @@ type Msg
       -- Heading in the Actions column, folding its group of
       -- triggers away or back.
     | ActionGroupToggle ActionGroup
+      -- Dragging a drawer panel by its heading row to a new slot.
+      -- Payloads are stack positions; Over fires per slot the
+      -- pointer crosses, End covers cancelled drags.
+    | DrawerDragStart Int
+    | DrawerDragOver Int
+    | DrawerDrop Int
+    | DrawerDragEnd
       -- Caret on a drawer panel, folding its body away or back.
       -- The payload is the panel's position in the stack, which
       -- is what the click that produced it was aimed at.

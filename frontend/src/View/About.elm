@@ -120,7 +120,7 @@ betaFeaturesSection =
         , p []
             [ text "Setting any of the Random Encounter constraints will drastically reduce the types of creatures that get generated; broaden your parameters if you're not seeing as much creature variety as you're hoping for." ]
         , p []
-            [ text "The Lore grouping toggle pulls from a table that makes certain creatures more likely to spawn together. You can view the bundled Lore groupings, or create/edit your own (sign in first), via the Compendium." ]
+            [ text "The Lore grouping toggle pulls from a table that makes certain creatures more likely to spawn together. You can view the bundled Lore groupings, or create/edit your own, via the Compendium." ]
         , h3 [] [ text "Difficulty Calculator" ]
         , p []
             [ text "Uses SRD guidelines to calculate the difficulty of the current encounter. Opened via the Difficulty button in the status bar of the encounter queue." ]

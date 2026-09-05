@@ -43,6 +43,11 @@ type alias DiceUi =
     -- "Reroll" (existing behaviour) and "Reroll, no modifier"
     -- (strip the constant before rolling).
     , rerunMenuOpenFor : Maybe Int
+
+    -- Whether the Recent-rolls list is showing.  Open by
+    -- default: the roller exists to answer "what did I just
+    -- roll", and the fold is for parking the panel small.
+    , historyOpen : Bool
     }
 
 
@@ -57,4 +62,5 @@ empty =
     , unread = False
     , flashLatest = False
     , rerunMenuOpenFor = Nothing
+    , historyOpen = True
     }

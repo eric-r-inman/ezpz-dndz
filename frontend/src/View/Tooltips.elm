@@ -36,6 +36,7 @@ module View.Tooltips exposing
     , compendiumEditRemoveSection
     , compendiumEditRemoveSkill
     , compendiumEditRemoveTag
+    , compendiumEditorClose
     , compendiumExport
     , compendiumExportDirty
     , compendiumGroupAdd
@@ -61,6 +62,7 @@ module View.Tooltips exposing
     , diceCoinFlip
     , diceDisadvantage
     , diceFaceRoll
+    , diceHistoryToggle
     , diceReset
     , diceRollAgain
     , difficultyButton
@@ -808,6 +810,11 @@ compendiumImport =
     "Replace the current Compenidum with a saved Compendium file"
 
 
+compendiumEditorClose : String
+compendiumEditorClose =
+    "Close this editor without saving"
+
+
 compendiumExport : String
 compendiumExport =
     "Save the current Compendium"
@@ -908,6 +915,11 @@ loadRowCompendium =
 
 
 -- ── DICE PANEL ───────────────────────────────────────────────────────────────
+
+
+diceHistoryToggle : String
+diceHistoryToggle =
+    "Show or hide the roll history"
 
 
 diceReset : String

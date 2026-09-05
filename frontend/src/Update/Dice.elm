@@ -5,6 +5,7 @@ module Update.Dice exposing
     , countChanged
     , flipCoin
     , historyLoaded
+    , historyToggle
     , inputChanged
     , lastTotalFlashCleared
     , modifierChanged
@@ -203,6 +204,15 @@ rerunNoModifier roll model =
             { roll | expression = { expr | constant = 0 } }
     in
     rerun stripped model
+
+
+{-| Fold the Recent-rolls list away or back.
+-}
+historyToggle : Model -> ( Model, Cmd Msg )
+historyToggle model =
+    ( withDice (\d -> { d | historyOpen = not d.historyOpen }) model
+    , Cmd.none
+    )
 
 
 {-| Toggle the re-roll dropdown for one history entry. Clicking

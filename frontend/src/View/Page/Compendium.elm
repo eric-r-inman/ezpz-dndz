@@ -1,4 +1,4 @@
-module View.Page.Compendium exposing (view)
+module View.Page.Compendium exposing (editorPane, view)
 
 {-| The creature library, at `/compendium` in its own browser
 tab. Two-column layout: filterable + sortable list on the left,
@@ -30,6 +30,7 @@ import Html exposing (Html, button, div, h3, input, label, option, p, section, s
 import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as Decode
+import Model exposing (Model)
 import Msg
     exposing
         ( CompendiumBulkMenu(..)
@@ -44,18 +45,50 @@ import Ui.Compendium as CompendiumUi
         , CompendiumUi
         , PendingAction(..)
         )
+import Ui.ModalChrome
 import Update.Compendium.Browser
 import View.AuthGate as AuthGate
+import View.Compendium.EditPane
+import View.Compendium.GroupEditPane
+import View.Compendium.PastePane
+import View.Modal
 import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
-view auth ui userLoreGroups encounterIds =
+{-| The editor occupying this page's detail pane, if one is
+open. Built from the full model because the pane modules read
+more of it than the page view otherwise needs; the page slots
+whatever it gets in place of the selected stat block.
+-}
+editorPane : Model -> Maybe (Html Msg)
+editorPane model =
+    case model.surface of
+        Just (Model.SurfaceCompendiumEdit _) ->
+            Just (View.Compendium.EditPane.view model)
+
+        Just (Model.SurfaceCompendiumPaste _) ->
+            Just (View.Compendium.PastePane.view model)
+
+        Just (Model.SurfaceGroupEdit _) ->
+            Just (View.Compendium.GroupEditPane.view model)
+
+        _ ->
+            Nothing
+
+
+view :
+    Auth.AuthState
+    -> CompendiumUi
+    -> List Lore.Group
+    -> List String
+    -> Maybe (Html Msg)
+    -> Html Msg
+view auth ui userLoreGroups encounterIds openEditor =
     div [ class "workspace workspace--compendium-page" ]
         [ section [ class "panel panel--compendium-page" ]
             [ div [ class "panel__body compendium-page__body" ]
-                (pageBody auth ui userLoreGroups encounterIds)
+                (pageBody auth ui userLoreGroups encounterIds openEditor)
             ]
         ]
 
@@ -63,12 +96,18 @@ view auth ui userLoreGroups encounterIds =
 {-| The page's body content — filter bar, actions bar,
 bulk-confirm banner, and the main list/stat-block pane.
 -}
-pageBody : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> List (Html Msg)
-pageBody auth ui userLoreGroups encounterIds =
+pageBody :
+    Auth.AuthState
+    -> CompendiumUi
+    -> List Lore.Group
+    -> List String
+    -> Maybe (Html Msg)
+    -> List (Html Msg)
+pageBody auth ui userLoreGroups encounterIds openEditor =
     [ filterBar ui
     , actionsBar auth ui
     , bulkBanner ui
-    , body auth ui userLoreGroups encounterIds
+    , body auth ui userLoreGroups encounterIds openEditor
     ]
 
 
@@ -94,14 +133,41 @@ bulkBanner : CompendiumUi -> Html Msg
 bulkBanner ui =
     case ( ui.pending, ui.bulkError ) of
         ( Just PendingReset, _ ) ->
-            confirmBanner
-                { message =
+            confirmModal
+                { title = "Reset Compendium"
+                , message =
                     "Reset to bundled? Every custom creature will be discarded "
                         ++ "and the library returned to the original 5 creatures."
                 , confirmLabel = "Reset"
-                , danger = True
                 , busy = ui.bulkBusy
-                , extra = Nothing
+                }
+
+        ( Just PendingClearAll, _ ) ->
+            confirmModal
+                { title = "Clear Compendium"
+                , message =
+                    "Remove every creature from the library, bundled ones "
+                        ++ "included? This cannot be undone."
+                , confirmLabel = "Clear All"
+                , busy = ui.bulkBusy
+                }
+
+        ( Just PendingClearSelected, _ ) ->
+            confirmModal
+                { title = "Clear Selected"
+                , message =
+                    "Remove the "
+                        ++ String.fromInt (Set.size ui.selectedIds)
+                        ++ " selected creature"
+                        ++ (if Set.size ui.selectedIds == 1 then
+                                ""
+
+                            else
+                                "s"
+                           )
+                        ++ " from the library? This cannot be undone."
+                , confirmLabel = "Clear Selected"
+                , busy = ui.bulkBusy
                 }
 
         ( Just (PendingImport _ groups count), _ ) ->
@@ -187,6 +253,54 @@ bulkBanner ui =
 
         ( Nothing, Nothing ) ->
             text ""
+
+
+{-| Confirmation as a page-covering dialog rather than the
+inline banner: Reset and Clear discard work wholesale, so they
+are the interruptions the GM has to answer before doing anything
+else — which is what the modal tier is for.
+-}
+confirmModal :
+    { title : String
+    , message : String
+    , confirmLabel : String
+    , busy : Bool
+    }
+    -> Html Msg
+confirmModal cfg =
+    View.Modal.view
+        { close = CompendiumPendingCancel
+        , noOp = NoOp
+        , title = cfg.title
+        , extraClass = "modal--confirm"
+        , chrome = Ui.ModalChrome.fresh
+        , body =
+            [ div [ class "control-confirm" ]
+                [ p [ class "control-confirm__msg" ] [ text cfg.message ]
+                , div [ class "control-confirm__buttons" ]
+                    [ button
+                        [ class "action-btn action-btn--blue"
+                        , onClick CompendiumPendingCancel
+                        , disabled cfg.busy
+                        ]
+                        [ text "Cancel" ]
+                    , button
+                        [ class "action-btn action-btn--red"
+                        , onClick CompendiumPendingConfirm
+                        , disabled cfg.busy
+                        ]
+                        [ text
+                            (if cfg.busy then
+                                "Working…"
+
+                             else
+                                cfg.confirmLabel
+                            )
+                        ]
+                    ]
+                ]
+            ]
+        }
 
 
 confirmBanner :
@@ -548,8 +662,14 @@ tagPicker ui =
         (select_ :: clearButton)
 
 
-body : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
-body auth ui userLoreGroups encounterIds =
+body :
+    Auth.AuthState
+    -> CompendiumUi
+    -> List Lore.Group
+    -> List String
+    -> Maybe (Html Msg)
+    -> Html Msg
+body auth ui userLoreGroups encounterIds openEditor =
     case ui.db of
         CompendiumDbLoading ->
             skeleton
@@ -559,7 +679,7 @@ body auth ui userLoreGroups encounterIds =
                 [ text "Couldn't load the compendium. Check the server logs." ]
 
         CompendiumDbLoaded _ ->
-            twoColumn auth ui userLoreGroups encounterIds
+            twoColumn auth ui userLoreGroups encounterIds openEditor
 
 
 skeleton : Html Msg
@@ -584,8 +704,14 @@ skeletonRow =
         ]
 
 
-twoColumn : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List String -> Html Msg
-twoColumn auth ui userLoreGroups encounterIds =
+twoColumn :
+    Auth.AuthState
+    -> CompendiumUi
+    -> List Lore.Group
+    -> List String
+    -> Maybe (Html Msg)
+    -> Html Msg
+twoColumn auth ui userLoreGroups encounterIds openEditor =
     let
         baseVisible =
             CompendiumUi.compendiumVisible ui
@@ -612,7 +738,7 @@ twoColumn auth ui userLoreGroups encounterIds =
     in
     div [ class "compendium__columns" ]
         [ list auth ui totalCount visible userLoreGroups encounterIds ui.selectedIds
-        , detail auth ui visible userLoreGroups encounterIds
+        , detail ui visible userLoreGroups encounterIds openEditor
         ]
 
 
@@ -631,7 +757,7 @@ list auth ui totalCount visible userLoreGroups encounterIds selectedIds =
             CompendiumUi.visibleGroups ui
 
         loreRows =
-            loreSection auth ui userLoreGroups
+            loreSection ui userLoreGroups
 
         groupRows =
             List.concatMap (groupListItem ui) groups
@@ -1015,8 +1141,14 @@ crLabel cr =
         "CR\u{00A0}" ++ cr
 
 
-detail : Auth.AuthState -> CompendiumUi -> List Compendium.Creature -> List Lore.Group -> List String -> Html Msg
-detail auth ui visible userLoreGroups encounterIds =
+detail :
+    CompendiumUi
+    -> List Compendium.Creature
+    -> List Lore.Group
+    -> List String
+    -> Maybe (Html Msg)
+    -> Html Msg
+detail ui visible userLoreGroups encounterIds openEditor =
     let
         chosenLore =
             ui.selectedLoreId
@@ -1035,16 +1167,36 @@ detail auth ui visible userLoreGroups encounterIds =
             ui.selectedId
                 |> Maybe.andThen (\id -> List.filter (\c -> c.id == id) visible |> List.head)
     in
+    case openEditor of
+        Just pane ->
+            -- An open editor claims the pane outright: it is the
+            -- work in progress, and the selection comes back the
+            -- moment it closes.
+            div [ class "compendium__detail" ] [ pane ]
+
+        Nothing ->
+            detailForSelection ui encounterIds ( chosenLore, chosenGroup, chosen )
+
+
+{-| The detail pane's resting content: whatever the list
+selection points at.
+-}
+detailForSelection :
+    CompendiumUi
+    -> List String
+    -> ( Maybe Lore.Group, Maybe Compendium.Group.Group, Maybe Compendium.Creature )
+    -> Html Msg
+detailForSelection ui encounterIds ( chosenLore, chosenGroup, chosen ) =
     case ( chosenLore, chosenGroup, chosen ) of
         ( Just loreGroup, _, _ ) ->
             div [ class "compendium__detail" ]
-                [ loreActionBar auth loreGroup
+                [ loreActionBar loreGroup
                 , loreDetailBody loreGroup
                 ]
 
         ( Nothing, Just group, _ ) ->
             div [ class "compendium__detail" ]
-                [ groupActionBar auth group
+                [ groupActionBar group
                 , groupDetailBody ui group
                 ]
 
@@ -1053,6 +1205,7 @@ detail auth ui visible userLoreGroups encounterIds =
                 [ actionBar creature
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
+                    (ui.badgeFlashFor == Just creature.id)
                 , View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
                 ]
 
@@ -1061,8 +1214,8 @@ detail auth ui visible userLoreGroups encounterIds =
                 [ text "Select a creature or group on the left." ]
 
 
-groupActionBar : Auth.AuthState -> Compendium.Group.Group -> Html Msg
-groupActionBar auth group =
+groupActionBar : Compendium.Group.Group -> Html Msg
+groupActionBar group =
     div [ class "compendium__action-bar" ]
         [ span [ class "compendium__in-encounter" ]
             [ text
@@ -1079,28 +1232,14 @@ groupActionBar auth group =
             [ text "➕ Add Group to Encounter" ]
         , button
             [ class "action-btn action-btn--blue compendium__edit-btn"
-            , onClick
-                (AuthGate.clickWhenAuthed auth
-                    (CompendiumGroupEditOpenExisting group.id)
-                )
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    Tooltips.compendiumGroupEdit
-                    "Sign in to edit encounter groups."
-                )
+            , onClick (CompendiumGroupEditOpenExisting group.id)
+            , Tooltips.attr Tooltips.compendiumGroupEdit
             ]
             [ text "✏️ Edit" ]
         , button
             [ class "action-btn action-btn--red compendium__delete-btn"
-            , onClick
-                (AuthGate.clickWhenAuthed auth
-                    (CompendiumGroupDelete group.id)
-                )
-            , Tooltips.attr
-                (AuthGate.tooltipWhenAuthed auth
-                    Tooltips.compendiumGroupDelete
-                    "Sign in to delete encounter groups."
-                )
+            , onClick (CompendiumGroupDelete group.id)
+            , Tooltips.attr Tooltips.compendiumGroupDelete
             , attribute "aria-label" "Delete group"
             ]
             [ text "🗑" ]
@@ -1170,15 +1309,25 @@ button appears next to "+ Add to Encounter" to bulk-add every
 checked creature in a single batched roll.
 
 -}
-actionBar : Compendium.Creature -> Int -> Set String -> Html Msg
-actionBar creature inEncounter selectedIds =
+actionBar : Compendium.Creature -> Int -> Set String -> Bool -> Html Msg
+actionBar creature inEncounter selectedIds badgeFlashing =
     let
         badgeClass =
-            if inEncounter > 0 then
-                "compendium__in-encounter compendium__in-encounter--present"
+            String.join " "
+                (List.concat
+                    [ [ "compendium__in-encounter" ]
+                    , if inEncounter > 0 then
+                        [ "compendium__in-encounter--present" ]
 
-            else
-                "compendium__in-encounter"
+                      else
+                        []
+                    , if badgeFlashing then
+                        [ "compendium__in-encounter--flash" ]
+
+                      else
+                        []
+                    ]
+                )
 
         selectedCount =
             Set.size selectedIds
@@ -1514,8 +1663,8 @@ Returns a List of rows; the caller wraps them in the sticky
 at the top of the list while the creature rows scroll under it.
 
 -}
-loreSection : Auth.AuthState -> CompendiumUi -> List Lore.Group -> List (Html Msg)
-loreSection auth ui userLoreGroups =
+loreSection : CompendiumUi -> List Lore.Group -> List (Html Msg)
+loreSection ui userLoreGroups =
     let
         allGroups =
             -- User-authored first so the GM's own groups read
@@ -1524,7 +1673,7 @@ loreSection auth ui userLoreGroups =
             userLoreGroups ++ Lore.bundled
 
         header =
-            loreSectionHeader auth ui (List.length allGroups)
+            loreSectionHeader ui (List.length allGroups)
 
         rows =
             if ui.loreGroupsExpanded then
@@ -1536,26 +1685,8 @@ loreSection auth ui userLoreGroups =
     header :: rows
 
 
-loreSectionHeader : Auth.AuthState -> CompendiumUi -> Int -> Html Msg
-loreSectionHeader auth ui totalCount =
-    let
-        signedOut =
-            not (Auth.isAuthenticated auth)
-
-        newClickMsg =
-            if signedOut then
-                Msg.NoOp
-
-            else
-                LoreEditOpenNew
-
-        newTitle =
-            if signedOut then
-                "Sign in first"
-
-            else
-                "Create a new Lore grouping"
-    in
+loreSectionHeader : CompendiumUi -> Int -> Html Msg
+loreSectionHeader ui totalCount =
     div
         [ class "compendium__row compendium__row--lore-section"
         , onClick CompendiumLoreSectionToggle
@@ -1589,18 +1720,10 @@ loreSectionHeader auth ui totalCount =
                 [ text (String.fromInt totalCount ++ " groupings") ]
             ]
         , button
-            [ class
-                ("action-btn action-btn--condition compendium__lore-new"
-                    ++ (if signedOut then
-                            " compendium__lore-new--locked"
-
-                        else
-                            ""
-                       )
-                )
-            , onClickStopPropagation newClickMsg
-            , Tooltips.attr newTitle
-            , attribute "aria-label" newTitle
+            [ class "action-btn action-btn--condition compendium__lore-new"
+            , onClickStopPropagation LoreEditOpenNew
+            , Tooltips.attr "Create a new Lore grouping"
+            , attribute "aria-label" "Create a new Lore grouping"
             ]
             [ text "+ New" ]
         ]
@@ -1742,24 +1865,21 @@ loreRoleLabel r =
 -- ── LORE GROUP RIGHT-PANE DETAIL ────────────────────────────────────────────
 
 
-loreActionBar : Auth.AuthState -> Lore.Group -> Html Msg
-loreActionBar auth group =
+loreActionBar : Lore.Group -> Html Msg
+loreActionBar group =
     let
         bundled =
             group.source == Lore.Bundled
 
-        signedOut =
-            not (Auth.isAuthenticated auth)
-
         editClickMsg =
-            if bundled || signedOut then
+            if bundled then
                 Msg.NoOp
 
             else
                 LoreEditOpenExisting group.id
 
         deleteClickMsg =
-            if bundled || signedOut then
+            if bundled then
                 Msg.NoOp
 
             else
@@ -1769,18 +1889,12 @@ loreActionBar auth group =
             if bundled then
                 "Bundled Lore groupings can't be edited. Duplicate or create a new one to customise."
 
-            else if signedOut then
-                "Sign in first"
-
             else
-                "Create / Edit Lore grouping"
+                "Edit Lore Grouping"
 
         deleteTitle =
             if bundled then
                 "Bundled Lore groupings can't be deleted."
-
-            else if signedOut then
-                "Sign in first"
 
             else
                 "Delete this Lore grouping"
@@ -1805,9 +1919,6 @@ loreActionBar auth group =
                     ++ (if bundled then
                             " compendium__edit-btn--disabled"
 
-                        else if signedOut then
-                            " compendium__edit-btn--locked"
-
                         else
                             ""
                        )
@@ -1817,15 +1928,12 @@ loreActionBar auth group =
             , Tooltips.attr editTitle
             , attribute "aria-label" editTitle
             ]
-            [ text "✏️ Create/Edit Lore grouping" ]
+            [ text "✏️ Edit Lore Grouping" ]
         , button
             [ class
                 ("action-btn action-btn--red compendium__delete-btn"
                     ++ (if bundled then
                             " compendium__delete-btn--disabled"
-
-                        else if signedOut then
-                            " compendium__delete-btn--locked"
 
                         else
                             ""

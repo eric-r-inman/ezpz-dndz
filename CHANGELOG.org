@@ -84,6 +84,19 @@
 33. Opening an editor scrolls the drawer column to it, and a creature card's
     controls scroll to the editor they aim at instead of closing it.  No action
     needed.
+34. Drawer panels reorder by dragging their heading rows, and the stat-block
+    panel's 📖 button sits after the creature's name.  No action needed.
+35. The Dice Roller's Recent rolls fold away, its Count and Modifier share one
+    row, and its title drops the die icon.  No action needed.
+36. The Compendium's Reset and Clear ask in a dialog before touching the
+    library.  No action needed.
+37. Adding a creature to the encounter flashes its "in Encounter" badge.  No
+    action needed.
+38. Encounter groups and Lore groupings can be created, edited, and deleted
+    without signing in; the bundled ones stay read-only.  No action needed.
+39. Creating, pasting, editing, and duplicating creatures — and creating groups
+    — happens in the Compendium's detail pane instead of a dialog.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -108,6 +121,8 @@
     wide, with its caption on the line below.  No action needed.
 12. The Condition editor's apply buttons take the row below Save and Load rather
     than crowding them.  No action needed.
+13. The Dice Roller's die buttons fit the panel instead of running past its
+    edge, with air before the Advantage row.  No action needed.
 ** Breaking
 * v0.2.0
 ** Fixes

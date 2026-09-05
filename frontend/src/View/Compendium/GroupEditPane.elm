@@ -1,6 +1,7 @@
-module View.Modal.GroupEdit exposing (view)
+module View.Compendium.GroupEditPane exposing (view)
 
-{-| Create / Edit Group modal.
+{-| Create / Edit Group editor, filling the browser's detail
+pane.
 
 Three sections:
 
@@ -74,7 +75,7 @@ import Ui.GroupEdit as GroupEdit
         , LoreMemberDraft
         , LoreSection
         )
-import View.Modal
+import View.Compendium.Pane
 import View.Tooltips as Tooltips
 
 
@@ -99,12 +100,10 @@ view model =
                         GroupEditExisting _ ->
                             "Edit Group"
             in
-            View.Modal.view
+            View.Compendium.Pane.chrome
                 { close = GroupEditClose
-                , noOp = NoOp
                 , title = "👥 " ++ titleText
-                , extraClass = "modal--group-edit"
-                , chrome = model.modalChrome
+                , extraClass = "compendium__editor-pane--group"
                 , body =
                     [ nameSection ui
                     , initiativeSection ui

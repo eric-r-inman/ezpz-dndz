@@ -15,6 +15,9 @@ means a lens in `Model`, an arm here, and an Esc mapping in
 import Effects
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr exposing (class)
+import Html.Events
+import Html.Keyed
+import Json.Decode as Decode
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import View.Inline.Condition
@@ -52,8 +55,89 @@ view model =
             text ""
 
         panels ->
-            div [ class "drawer-stack", Attr.id Effects.drawerStackId ]
-                (List.indexedMap (panelFor model) panels)
+            -- Keyed by surface so a reorder moves DOM nodes
+            -- instead of rewriting every panel in place, which
+            -- would drop focus and replay the mount animation.
+            Html.Keyed.node "div"
+                [ class "drawer-stack", Attr.id Effects.drawerStackId ]
+                (List.indexedMap
+                    (\index panel ->
+                        ( surfaceKey panel.surface, panelFor model index panel )
+                    )
+                    panels
+                )
+
+
+{-| A stable identity for one drawer panel. Each drawer-eligible
+surface appears in the stack at most once (`Model.openDrawer`
+re-aims an existing panel rather than adding a twin), so the
+variant alone is identity enough.
+-}
+surfaceKey : Surface -> String
+surfaceKey surface =
+    case surface of
+        SurfaceHpChange _ ->
+            "hp-change"
+
+        SurfaceStatus _ ->
+            "status"
+
+        SurfaceCondition _ ->
+            "condition"
+
+        SurfaceSaveChain _ ->
+            "save-chain"
+
+        SurfaceInitiative _ ->
+            "initiative"
+
+        SurfaceReplace _ ->
+            "replace"
+
+        SurfaceDuplicate _ ->
+            "duplicate"
+
+        SurfaceCrCalculator _ ->
+            "cr-calculator"
+
+        SurfaceTreasure _ ->
+            "treasure"
+
+        SurfaceQuickAdd _ ->
+            "quick-add"
+
+        SurfaceSave _ ->
+            "save"
+
+        SurfaceLoad _ ->
+            "load"
+
+        SurfaceRandomEncounter _ ->
+            "random-encounter"
+
+        SurfaceDice ->
+            "dice"
+
+        SurfaceXp ->
+            "xp"
+
+        SurfaceStatBlock _ ->
+            "stat-block"
+
+        -- Never in the stack; a fixed key is as good as any.
+        _ ->
+            "other"
+
+
+{-| The slot under the pointer during a drag wears the drop cue.
+-}
+slotClass : Int -> Maybe Model.DrawerDrag -> String
+slotClass index drag =
+    if Maybe.map .over drag == Just (Just index) then
+        "drawer-stack__slot drawer-stack__slot--drop"
+
+    else
+        "drawer-stack__slot"
 
 
 panelFor : Model -> Int -> Model.DrawerPanel -> Html Msg
@@ -62,6 +146,16 @@ panelFor model index panel =
         collapse =
             { collapsed = panel.collapsed
             , toggle = DrawerCollapseToggle index
+
+            -- The heading row is the drag handle; the body keeps
+            -- its clicks and selections to itself.
+            , dragAttrs =
+                [ Attr.draggable "true"
+                , Html.Events.on "dragstart"
+                    (Decode.succeed (DrawerDragStart index))
+                , Html.Events.on "dragend"
+                    (Decode.succeed DrawerDragEnd)
+                ]
             }
 
         selectedCount =
@@ -82,7 +176,7 @@ panelFor model index panel =
             View.Panel.view
                 { close = close
                 , title = title
-                , titleLead = Nothing
+                , titleTrail = Nothing
                 , subtitle = Just subtitle
                 , collapse = collapse
                 , extraClass = "panel-drawer--editor"
@@ -93,7 +187,17 @@ panelFor model index panel =
             -- The id rides a wrapper rather than the panel itself
             -- so scroll-into-view can address a panel without every
             -- panel module having to carry an id through its config.
-            div [ class "drawer-stack__slot", Attr.id (Effects.drawerPanelId index) ]
+            -- The wrapper is also the drop target: `dragover` must
+            -- be preventDefault-ed or the browser never allows the
+            -- drop at all.
+            div
+                [ class (slotClass index model.drawerDrag)
+                , Attr.id (Effects.drawerPanelId index)
+                , Html.Events.preventDefaultOn "dragover"
+                    (Decode.succeed ( DrawerDragOver index, True ))
+                , Html.Events.preventDefaultOn "drop"
+                    (Decode.succeed ( DrawerDrop index, True ))
+                ]
                 [ body ]
     in
     wrap <|

@@ -45,14 +45,14 @@ import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Collapse -> Model -> Html Msg
+view : View.Panel.Header -> Model -> Html Msg
 view collapse model =
     case Model.drawerGet Model.saveLens model of
         Just ui ->
             View.Panel.view
                 { close = SaveClose
                 , title = "Save Encounter"
-                , titleLead = Nothing
+                , titleTrail = Nothing
                 , subtitle = Nothing
                 , collapse = collapse
                 , extraClass = "panel-drawer--save"

@@ -4235,6 +4235,13 @@ body {
   display: none;
 }
 
+/* The slot the pointer is over mid-drag.  An inset line rather
+   than an outline so the cue can't be clipped by the stack's
+   scroll box. */
+.drawer-stack__slot--drop {
+  box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
 .panel--drawer {
   flex: 0 0 auto;
   animation: drawer-slide-in 0.16s ease-out;
@@ -4289,13 +4296,13 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* Control rendered just before a drawer panel's title — the
+/* Control rendered just after a drawer panel's title — the
    stat-block panel's 📖 jump to the full compendium. */
-.panel-drawer__title-lead {
+.panel-drawer__title-trail {
   appearance: none;
   background: none;
   border: none;
-  padding: 0 var(--space-1) 0 0;
+  padding: 0 0 0 var(--space-1);
   cursor: pointer;
   font-family: inherit;
   font-size: var(--font-size-label);
@@ -7374,15 +7381,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   --modal-max-w: 560px;
 }
 
-.modal--compendium-edit {
-  --modal-max-w: 800px;
-  max-height: calc(100vh - 32px);
-}
-
-.modal--group-edit {
-  --modal-max-w: 680px;
-}
-
 /* ── Group-edit modal form ─────────────────────────────────────────── */
 .group-edit__row {
   display: flex;
@@ -8061,16 +8059,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   pointer-events: none;
 }
 
-/* Clickable-but-locked — visually greyed AND clickable so the
-   GM can click through to the sign-in page.  Cursor stays as
-   pointer because a click DOES do something (navigates to
-   /login); the tooltip explains why. */
-.compendium__edit-btn--locked,
-.compendium__delete-btn--locked,
-.compendium__lore-new--locked {
-  opacity: 0.55;
-}
-
 .compendium__group-detail {
   padding: 16px 18px;
 }
@@ -8095,11 +8083,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .compendium__group-entry {
   padding: 4px 0;
   border-bottom: 1px solid var(--color-border);
-}
-
-.modal--compendium-paste {
-  --modal-max-w: 1200px;
-  max-height: calc(100vh - 32px);
 }
 
 .modal__header {
@@ -8261,8 +8244,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
 }
 
-.dice-form__row-spacer {
-  margin-left: 12px;
+.dice-form__pair-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+}
+
+.dice-form__pair-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label);
+  white-space: nowrap;
+}
+
+.dice-form__pair-label--split {
+  margin-left: var(--space-2);
 }
 
 /* Shared form-input chrome used by .dice-form__input,
@@ -8293,8 +8289,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .dice-form__numeric {
-  flex: 0 0 auto;
-  width: 80px;
+  flex: 0 1 auto;
+  width: 8ch;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -8334,8 +8331,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .die-btn-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: var(--space-1);
 }
 
 .die-btn {
@@ -8347,12 +8344,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 12px 6px;
-  font-size: 0.9rem;
+  /* Compact face: a grid track never shrinks below its content,
+     so a face wide enough for "d100" decides whether seven dice
+     fit a drawer panel at all. */
+  padding: var(--space-2) var(--space-0);
+  min-width: 0;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #ffffff;
   font-family: inherit;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   transition:
     filter 0.1s ease,
     transform 0.05s ease;
@@ -8402,6 +8403,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: var(--space-2);
 }
 
 .dice-history {
@@ -8416,6 +8418,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* Wraps the caret and title so the whole strip is the fold
+   control, in the disclosure vocabulary the drawer already uses. */
+.dice-history__fold {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dice-history__caret {
+  font-size: var(--font-size-caret);
+  color: var(--color-text-muted);
+  line-height: 1;
 }
 
 .dice-history__title {
@@ -9892,6 +9915,50 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 18px 22px;
 }
 
+/* An editor occupying the detail pane in place of the stat
+   block.  The pane provides the scroll, so the editor only has
+   to stack its sections. */
+.compendium__editor-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.compendium__editor-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+.compendium__editor-pane-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.compendium__editor-pane-close {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.compendium__editor-pane-close:hover {
+  color: var(--color-text);
+}
+
+.compendium__editor-pane-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .compendium__action-bar {
   display: flex;
   align-items: center;
@@ -9934,6 +10001,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-success-soft);
   color: var(--color-success);
   font-weight: 600;
+}
+
+/* One bright pulse when an add lands, so the count change is
+   acknowledged where the eye already is.  Honors the global
+   reduced-motion block, which zeroes animation durations. */
+.compendium__in-encounter--flash {
+  animation: badge-flash 0.7s ease-out;
+}
+
+@keyframes badge-flash {
+  0% {
+    background: var(--color-success);
+    color: var(--color-surface);
+    transform: scale(1.15);
+  }
+
+  100% {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+    transform: scale(1);
+  }
 }
 
 /* Small green dot rendered to the right of a creature's name in
@@ -10286,13 +10374,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-/* Compendium edit / create modal — tall, narrow, scrollable form
-   with section fieldsets and inline numeric inputs. */
-.modal--compendium-edit .modal__body {
-  padding: 16px 20px;
-  gap: 12px;
-}
-
 .edit-section {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -10609,13 +10690,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .edit-footer__spacer {
   flex: 1 1 auto;
-}
-
-/* Paste-stat-block modal — wide two-column layout: textarea on
-   the left, live-parsed preview on the right. */
-.modal--compendium-paste .modal__body {
-  padding: 0;
-  gap: 0;
 }
 
 .paste-modal__columns {

@@ -137,10 +137,7 @@ import View.Footer
 import View.Login
 import View.Modal
 import View.Modal.AbilitySave
-import View.Modal.CompendiumEdit
-import View.Modal.CompendiumPaste
 import View.Modal.Confirm
-import View.Modal.GroupEdit
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
 import View.Modal.RoundSet
@@ -424,6 +421,11 @@ compendiumKeyDecoder =
                     ( "/", False ) ->
                         Decode.succeed CompendiumFocusSearch
 
+                    -- Backs out of a staged Reset / Clear dialog;
+                    -- a no-op when nothing is staged.
+                    ( "Escape", _ ) ->
+                        Decode.succeed CompendiumPendingCancel
+
                     _ ->
                         Decode.fail "ignored key"
             )
@@ -609,6 +611,7 @@ init flags url key =
       , queuePanels = Ui.QueuePanels.fresh
       , actionGroups = Ui.ActionGroups.fresh
       , drawer = []
+      , drawerDrag = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
       , toasts = []
@@ -1049,6 +1052,9 @@ updateInner msg model =
 
         DiceRerunNoModifier roll ->
             Update.Dice.rerunNoModifier roll model
+
+        DiceHistoryToggle ->
+            Update.Dice.historyToggle model
 
         DiceClearHistory ->
             Update.Dice.clearHistory model
@@ -1562,6 +1568,9 @@ updateInner msg model =
         CompendiumAddToQueue creatureId ->
             Update.Compendium.Add.addToQueue creatureId model
 
+        CompendiumBadgeFlashCleared ->
+            Update.Compendium.Add.badgeFlashCleared model
+
         CompendiumAddSelectedToQueue ->
             Update.Compendium.Add.addSelectedToQueue model
 
@@ -1844,6 +1853,18 @@ updateInner msg model =
 
         ActionGroupToggle group ->
             Update.ActionGroups.toggle group model
+
+        DrawerDragStart index ->
+            Update.PanelDrawer.dragStart index model
+
+        DrawerDragOver index ->
+            Update.PanelDrawer.dragOver index model
+
+        DrawerDrop index ->
+            Update.PanelDrawer.drop index model
+
+        DrawerDragEnd ->
+            Update.PanelDrawer.dragEnd model
 
         DrawerCollapseToggle index ->
             Update.PanelDrawer.toggleCollapse index model
@@ -2841,12 +2862,9 @@ appShell maybeUser model =
     , viewPage model
     , View.Modal.Confirm.view model
     , View.Modal.RoundSet.view model
-    , View.Modal.CompendiumEdit.view model
-    , View.Modal.CompendiumPaste.view model
     , View.Modal.SaveCompendium.view model
     , View.Modal.LoadCompendium.view model
     , View.Modal.AbilitySave.view model
-    , View.Modal.GroupEdit.view model
     , View.Modal.LoreEdit.view model
     , View.Modal.TreasureTable.view model
     , View.Toast.list model.toasts
@@ -2885,6 +2903,7 @@ viewPage model =
                 model.compendium
                 model.userLoreGroups
                 (List.filterMap .creatureId model.encounter.creatures)
+                (View.Page.Compendium.editorPane model)
 
         NotFound ->
             View.Page.NotFound.view

@@ -1,8 +1,9 @@
-module View.Modal.CompendiumPaste exposing (view)
+module View.Compendium.PastePane exposing (view)
 
-{-| Paste-stat-block modal. Two-column layout: textarea input on
-the left, live preview / parse-error on the right. Apply hands
-the parsed creature off to the edit modal pre-filled.
+{-| Paste-stat-block editor, filling the browser's detail pane.
+Two-column layout: textarea input on the left, live preview /
+parse-error on the right. Apply hands the parsed creature off to
+the edit pane pre-filled.
 -}
 
 import Compendium.Parser
@@ -12,7 +13,7 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumPasteUi)
-import View.Modal
+import View.Compendium.Pane
 import View.StatBlock
 import View.Tooltips as Tooltips
 
@@ -21,12 +22,10 @@ view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceCompendiumPaste ui) ->
-            View.Modal.view
+            View.Compendium.Pane.chrome
                 { close = CompendiumPasteCancel
-                , noOp = NoOp
                 , title = "📋 Paste Stat Block"
-                , extraClass = "modal--compendium-paste"
-                , chrome = model.modalChrome
+                , extraClass = "compendium__editor-pane--paste"
                 , body =
                     [ div [ class "paste-modal__columns" ]
                         [ pasteInput ui

@@ -29,12 +29,12 @@ import View.StatBlock
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Collapse -> CompendiumDb -> PanelPin -> Html Msg
+view : View.Panel.Header -> CompendiumDb -> PanelPin -> Html Msg
 view collapse db pin =
     View.Panel.view
         { close = PanelClearCreature
         , title = pin.name
-        , titleLead = Just (compendiumJump pin)
+        , titleTrail = Just (compendiumJump pin)
         , subtitle = Nothing
         , collapse = collapse
         , extraClass = "panel-drawer--statblock"
@@ -52,7 +52,7 @@ view collapse db pin =
 compendiumJump : PanelPin -> Html Msg
 compendiumJump pin =
     button
-        [ class "panel-drawer__title-lead"
+        [ class "panel-drawer__title-trail"
         , Attr.type_ "button"
         , View.Panel.onClickWithoutFolding (CompendiumShowCreature pin.id)
         , Tooltips.attr Tooltips.statBlockShowInCompendium

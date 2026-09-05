@@ -21,12 +21,12 @@ import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Collapse -> List HpChangeEntry -> DiceUi -> Html Msg
+view : View.Panel.Header -> List HpChangeEntry -> DiceUi -> Html Msg
 view collapse hpChangeLog ui =
     View.Panel.view
         { close = CloseDice
-        , title = "🎲 Dice Roller"
-        , titleLead = Nothing
+        , title = "Dice Roller"
+        , titleTrail = Nothing
         , subtitle = Nothing
         , collapse = collapse
         , extraClass = "panel-drawer--dice"
@@ -68,8 +68,10 @@ form ui =
 
             Nothing ->
                 text ""
-        , div [ class "dice-form__row" ]
-            [ label [ for "dice-count" ] [ text "Count" ]
+        , div [ class "dice-form__pair-row" ]
+            [ label
+                [ for "dice-count", class "dice-form__pair-label" ]
+                [ text "Count" ]
             , input
                 [ id "dice-count"
                 , class "dice-form__input dice-form__numeric"
@@ -80,7 +82,11 @@ form ui =
                 , onInput DiceCountChanged
                 ]
                 []
-            , label [ for "dice-modifier", class "dice-form__row-spacer" ] [ text "Modifier" ]
+            , label
+                [ for "dice-modifier"
+                , class "dice-form__pair-label dice-form__pair-label--split"
+                ]
+                [ text "Modifier" ]
             , input
                 [ id "dice-modifier"
                 , class "dice-form__input dice-form__numeric"
@@ -156,9 +162,32 @@ history ui =
             Dice.historyEntries ui.history
     in
     div [ class "dice-history" ]
-        [ div [ class "dice-history__head" ]
-            [ div [ class "dice-history__title" ]
-                [ text ("Recent rolls (" ++ String.fromInt (List.length entries) ++ ")") ]
+        (div [ class "dice-history__head" ]
+            [ button
+                [ class "dice-history__fold"
+                , type_ "button"
+                , onClick DiceHistoryToggle
+                , Tooltips.attr Tooltips.diceHistoryToggle
+                , attribute "aria-expanded"
+                    (if ui.historyOpen then
+                        "true"
+
+                     else
+                        "false"
+                    )
+                ]
+                [ span [ class "dice-history__caret" ]
+                    [ text
+                        (if ui.historyOpen then
+                            "▼"
+
+                         else
+                            "▶"
+                        )
+                    ]
+                , span [ class "dice-history__title" ]
+                    [ text ("Recent rolls (" ++ String.fromInt (List.length entries) ++ ")") ]
+                ]
             , if List.isEmpty entries then
                 text ""
 
@@ -170,14 +199,20 @@ history ui =
                     ]
                     [ text "Clear" ]
             ]
-        , if List.isEmpty entries then
-            div [ class "dice-history__empty" ]
-                [ text "No rolls yet. Click a die above or type an expression." ]
+            :: (if not ui.historyOpen then
+                    []
 
-          else
-            ul [ class "dice-history__list" ]
-                (List.indexedMap (historyEntry ui) entries)
-        ]
+                else if List.isEmpty entries then
+                    [ div [ class "dice-history__empty" ]
+                        [ text "No rolls yet. Click a die above or type an expression." ]
+                    ]
+
+                else
+                    [ ul [ class "dice-history__list" ]
+                        (List.indexedMap (historyEntry ui) entries)
+                    ]
+               )
+        )
 
 
 historyEntry : DiceUi -> Int -> Dice.Roll -> Html Msg

@@ -10,9 +10,9 @@ browser. All three actions go through a "pending" confirmation
 banner before the wire call fires so a mis-click can't replace
 the library or wipe a creature without one final yes.
 
-`PendingReset`, `PendingImport`, `PendingDelete` (an ADT in
-`Ui.Compendium`) identify which destructive action the GM has
-queued; `pendingConfirm` dispatches to the right Cmd.
+`Ui.Compendium.PendingAction` identifies which destructive
+action the GM has queued; `pendingConfirm` dispatches to the
+right Cmd.
 
 @docs deleteFromBrowser, importClick, importFileChosen
 @docs importFileRead, importResponse, pendingCancel, pendingConfirm
@@ -153,6 +153,14 @@ pendingCancel model =
 pendingConfirm : Model -> ( Model, Cmd Msg )
 pendingConfirm model =
     case model.compendium.pending of
+        Just PendingClearAll ->
+            runClearAll
+                (withCompendium (\ui -> { ui | pending = Nothing }) model)
+
+        Just PendingClearSelected ->
+            runClearSelected
+                (withCompendium (\ui -> { ui | pending = Nothing }) model)
+
         Just PendingReset ->
             case model.auth of
                 Auth.AuthAuthenticated _ ->
@@ -307,10 +315,27 @@ fires.
 -}
 clearAll : Model -> ( Model, Cmd Msg )
 clearAll model =
+    ( withCompendium
+        (\ui ->
+            { ui
+                | bulkMenu = Nothing
+                , pending = Just PendingClearAll
+                , bulkError = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| The staged Clear All, once the modal has been answered.
+-}
+runClearAll : Model -> ( Model, Cmd Msg )
+runClearAll model =
     case model.auth of
         Auth.AuthAuthenticated _ ->
             ( withCompendium
-                (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                (\ui -> { ui | bulkBusy = True })
                 model
             , Effects.clearCompendiumCreatures []
             )
@@ -326,6 +351,23 @@ selected or the library hasn't loaded.
 -}
 clearSelected : Model -> ( Model, Cmd Msg )
 clearSelected model =
+    ( withCompendium
+        (\ui ->
+            { ui
+                | bulkMenu = Nothing
+                , pending = Just PendingClearSelected
+                , bulkError = Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| The staged Clear Selected, once the modal has been answered.
+-}
+runClearSelected : Model -> ( Model, Cmd Msg )
+runClearSelected model =
     case model.compendium.db of
         CompendiumDbLoaded db ->
             let
@@ -337,7 +379,7 @@ clearSelected model =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
                     ( withCompendium
-                        (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                        (\ui -> { ui | bulkBusy = True })
                         model
                     , Effects.clearCompendiumCreatures kept
                     )
@@ -346,9 +388,7 @@ clearSelected model =
                     applyLocalClear kept model
 
         _ ->
-            ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
-            , Cmd.none
-            )
+            ( model, Cmd.none )
 
 
 {-| "Delete Selected" from the delete-confirm banner: identical

@@ -1,6 +1,7 @@
-module View.Modal.CompendiumEdit exposing (view)
+module View.Compendium.EditPane exposing (view)
 
-{-| Compendium edit / create modal. ~50-field form covering
+{-| Compendium edit / create editor, filling the browser's
+detail pane. ~50-field form covering
 identity, combat core, abilities, saves, skills, properties,
 senses, and four feature groups (traits / actions / bonus actions
 / reactions) plus a free-form custom-sections list.
@@ -32,7 +33,7 @@ import Ui.Compendium as CompendiumUi
         , EditMode(..)
         , FeatureDraft
         )
-import View.Modal
+import View.Compendium.Pane
 import View.Tooltips as Tooltips
 
 
@@ -40,12 +41,10 @@ view : Model -> Html Msg
 view model =
     case model.surface of
         Just (SurfaceCompendiumEdit ui) ->
-            View.Modal.view
+            View.Compendium.Pane.chrome
                 { close = CompendiumEditCancel
-                , noOp = NoOp
-                , title = modalTitle ui
-                , extraClass = "modal--compendium-edit"
-                , chrome = model.modalChrome
+                , title = paneTitle ui
+                , extraClass = "compendium__editor-pane--edit"
                 , body =
                     [ errorBanner ui
                     , editSection "Identity"
@@ -176,8 +175,8 @@ view model =
             text ""
 
 
-modalTitle : CompendiumEditUi -> String
-modalTitle ui =
+paneTitle : CompendiumEditUi -> String
+paneTitle ui =
     case ui.mode of
         CreateMode ->
             "📚 New Creature"

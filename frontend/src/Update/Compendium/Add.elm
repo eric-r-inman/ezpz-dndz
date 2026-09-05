@@ -1,6 +1,7 @@
 module Update.Compendium.Add exposing
     ( addToQueue
     , addSelectedToQueue
+    , badgeFlashCleared
     )
 
 {-| Add-to-queue flow for the compendium browser: the GM picks a
@@ -24,7 +25,9 @@ import Compendium
 import Encounter.Roster
 import Model exposing (Model)
 import Msg exposing (Msg(..))
+import Process
 import Set
+import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
@@ -56,8 +59,10 @@ addToQueue creatureId model =
                     ( { model
                         | encounter =
                             Encounter.Roster.appendCreatures [ instance ] model.encounter
+                        , compendium = flashBadge creatureId model.compendium
                       }
-                    , Cmd.none
+                    , Process.sleep badgeFlashMs
+                        |> Task.perform (\_ -> CompendiumBadgeFlashCleared)
                     )
 
                 Nothing ->
@@ -65,6 +70,30 @@ addToQueue creatureId model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| How long the "[N] in Encounter" badge stays lit after an
+add. Long enough to catch the eye mid-click, short enough that
+rapid adds read as separate acknowledgements.
+-}
+badgeFlashMs : Float
+badgeFlashMs =
+    700
+
+
+flashBadge : String -> Ui.Compendium.CompendiumUi -> Ui.Compendium.CompendiumUi
+flashBadge creatureId ui =
+    { ui | badgeFlashFor = Just creatureId }
+
+
+badgeFlashCleared : Model -> ( Model, Cmd Msg )
+badgeFlashCleared model =
+    ( { model
+        | compendium =
+            (\ui -> { ui | badgeFlashFor = Nothing }) model.compendium
+      }
+    , Cmd.none
+    )
 
 
 {-| Bulk-add: materialise every checkbox-selected creature in
