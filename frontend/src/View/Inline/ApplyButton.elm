@@ -1,4 +1,4 @@
-module View.Inline.ApplyButton exposing (view)
+module View.Inline.ApplyButton exposing (row, view)
 
 {-| One editor's Apply button.
 
@@ -10,7 +10,7 @@ the one message a dead button owes the reader.
 
 -}
 
-import Html exposing (Html, button, span, text)
+import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (attribute, class, disabled)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg)
@@ -46,3 +46,14 @@ view cfg =
                 ]
                 [ text cfg.label ]
             ]
+
+
+{-| An editor's scope row: the verb once, as a lead-in, then one
+button per scope. Repeating the verb in each button costs the
+width a third scope needs, which a drawer panel does not have to
+spare.
+-}
+row : String -> List (Html Msg) -> Html Msg
+row lead buttons =
+    div [ class "note-edit__buttons note-edit__buttons--start" ]
+        (span [ class "apply-row__lead" ] [ text lead ] :: buttons)

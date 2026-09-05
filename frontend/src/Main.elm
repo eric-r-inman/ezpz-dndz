@@ -871,6 +871,20 @@ update msg model =
             else
                 Cmd.none
 
+        -- Drawer-open feedback.  A panel opens at the bottom of
+        -- a stack that may already overflow the column, so
+        -- without scrolling it into view the only sign anything
+        -- happened is a shorter scrollbar.  Keyed off the stack
+        -- growing rather than off each opener, so a toggle that
+        -- closed a panel doesn't scroll and future openers get
+        -- the behaviour for free.
+        drawerScrollCmd =
+            if List.length next.drawer > List.length model.drawer then
+                Effects.scrollDrawerPanelIntoView (List.length next.drawer - 1)
+
+            else
+                Cmd.none
+
         -- Reset modal chrome (drag offset + resized dimensions)
         -- to defaults on every modal-open transition so each
         -- freshly opened modal starts centered and at its CSS
@@ -904,6 +918,7 @@ update msg model =
         , userTreasureTableCmd
         , userTreasureProfilesCmd
         , modalFocusCmd
+        , drawerScrollCmd
         ]
     )
 

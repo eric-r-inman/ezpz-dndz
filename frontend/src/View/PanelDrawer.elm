@@ -12,8 +12,9 @@ means a lens in `Model`, an arm here, and an Esc mapping in
 
 -}
 
+import Effects
 import Html exposing (Html, div, text)
-import Html.Attributes exposing (class)
+import Html.Attributes as Attr exposing (class)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import View.Inline.Condition
@@ -51,7 +52,7 @@ view model =
             text ""
 
         panels ->
-            div [ class "drawer-stack" ]
+            div [ class "drawer-stack", Attr.id Effects.drawerStackId ]
                 (List.indexedMap (panelFor model) panels)
 
 
@@ -87,97 +88,105 @@ panelFor model index panel =
                 , extraClass = "panel-drawer--editor"
                 , body = [ body ]
                 }
+
+        wrap body =
+            -- The id rides a wrapper rather than the panel itself
+            -- so scroll-into-view can address a panel without every
+            -- panel module having to carry an id through its config.
+            div [ class "drawer-stack__slot", Attr.id (Effects.drawerPanelId index) ]
+                [ body ]
     in
-    case panel.surface of
-        SurfaceHpChange ui ->
-            editor "Manage HP"
-                (scopedLabel ui.target ui.applyToSelected)
-                HpChangeClose
-                (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
+    wrap <|
+        case panel.surface of
+            SurfaceHpChange ui ->
+                editor "Manage HP"
+                    (scopedLabel ui.target ui.applyToSelected)
+                    HpChangeClose
+                    (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
 
-        SurfaceStatus ui ->
-            editor "Status"
-                ("Target: " ++ ui.target)
-                StatusClose
-                (View.Inline.Status.view selectedCount ui)
+            SurfaceStatus ui ->
+                editor "Status"
+                    ("Target: " ++ ui.target)
+                    StatusClose
+                    (View.Inline.Status.view selectedCount ui)
 
-        SurfaceCondition ui ->
-            editor "Condition"
-                ("Target: " ++ ui.target)
-                ConditionClose
-                (View.Inline.Condition.view
-                    { creatureNames = List.map .name model.encounter.creatures
-                    , selectedCount = selectedCount
-                    , presets = model.conditionPresets
-                    , log = model.conditionLog
-                    }
-                    ui
-                )
+            SurfaceCondition ui ->
+                editor "Condition"
+                    ("Target: " ++ ui.target)
+                    ConditionClose
+                    (View.Inline.Condition.view
+                        { creatureNames = List.map .name model.encounter.creatures
+                        , selectedCount = selectedCount
+                        , presets = model.conditionPresets
+                        , log = model.conditionLog
+                        }
+                        ui
+                    )
 
-        SurfaceSaveChain ui ->
-            editor "Save Chain"
-                (scopedLabel ui.target ui.applyToSelected)
-                SaveChainClose
-                (View.Inline.SaveChain.view
-                    { presets = model.saveChainPresets
-                    , selectedCount = selectedCount
-                    , log = model.saveChainLog
-                    }
-                    ui
-                )
+            SurfaceSaveChain ui ->
+                editor "Save Chain"
+                    (scopedLabel ui.target ui.applyToSelected)
+                    SaveChainClose
+                    (View.Inline.SaveChain.view
+                        { presets = model.saveChainPresets
+                        , selectedCount = selectedCount
+                        , log = model.saveChainLog
+                        }
+                        ui
+                    )
 
-        SurfaceInitiative ui ->
-            editor "Initiative"
-                ("Target: " ++ ui.target)
-                InitiativeClose
-                (View.Inline.Initiative.view selectedCount ui)
+            SurfaceInitiative ui ->
+                editor "Initiative"
+                    ("Target: " ++ ui.target)
+                    InitiativeClose
+                    (View.Inline.Initiative.view selectedCount ui)
 
-        SurfaceReplace ui ->
-            editor "Replace"
-                ("Target: " ++ ui.target)
-                ReplaceClose
-                (View.Inline.Replace.view model.compendium.db
-                    selectedCount
-                    model.replaceLog
-                    ui
-                )
+            SurfaceReplace ui ->
+                editor "Replace"
+                    ("Target: " ++ ui.target)
+                    ReplaceClose
+                    (View.Inline.Replace.view model.compendium.db
+                        selectedCount
+                        model.replaceLog
+                        ui
+                    )
 
-        SurfaceDuplicate ui ->
-            editor "Duplicate"
-                ("Target: " ++ ui.target)
-                DuplicateClose
-                (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
+            SurfaceDuplicate ui ->
+                editor "Duplicate"
+                    ("Target: " ++ ui.target)
+                    DuplicateClose
+                    (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
-        SurfaceCrCalculator _ ->
-            View.Panel.CrCalculator.view collapse model
+            SurfaceCrCalculator _ ->
+                View.Panel.CrCalculator.view collapse model
 
-        SurfaceTreasure _ ->
-            View.Panel.Treasure.view collapse model
+            SurfaceTreasure _ ->
+                View.Panel.Treasure.view collapse model
 
-        SurfaceQuickAdd _ ->
-            View.Panel.QuickAdd.view collapse model
+            SurfaceQuickAdd _ ->
+                View.Panel.QuickAdd.view collapse model
 
-        SurfaceSave _ ->
-            View.Panel.Save.view collapse model
+            SurfaceSave _ ->
+                View.Panel.Save.view collapse model
 
-        SurfaceLoad _ ->
-            View.Panel.Load.view collapse model
+            SurfaceLoad _ ->
+                View.Panel.Load.view collapse model
 
-        SurfaceRandomEncounter _ ->
-            View.Panel.RandomEncounter.view collapse model
+            SurfaceRandomEncounter _ ->
+                View.Panel.RandomEncounter.view collapse model
 
-        SurfaceDice ->
-            View.Panel.Dice.view collapse model.hpChangeLog model.dice
+            SurfaceDice ->
+                View.Panel.Dice.view collapse model.hpChangeLog model.dice
 
-        SurfaceXp ->
-            View.Panel.Xp.view collapse model.encounter model.compendium.db model.xpScope
+            SurfaceXp ->
+                View.Panel.Xp.view collapse model.encounter model.compendium.db model.xpScope
 
-        SurfaceStatBlock pin ->
-            View.Panel.StatBlock.view collapse model.compendium.db pin
+            SurfaceStatBlock pin ->
+                View.Panel.StatBlock.view collapse model.compendium.db pin
 
-        -- Modal and card-inline variants never enter the stack —
-        -- their Update modules write `model.surface`, and the
-        -- drawer's own Update modules are the stack's only
-        -- writers.
-        _ ->
-            text ""
+            -- Modal and card-inline variants never enter the stack —
+            -- their Update modules write `model.surface`, and the
+            -- drawer's own Update modules are the stack's only
+            -- writers.
+            _ ->
+                text ""

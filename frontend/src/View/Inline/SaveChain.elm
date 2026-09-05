@@ -1,23 +1,12 @@
 module View.Inline.SaveChain exposing (Context, view)
 
-{-| Save Chain as an inline card expansion — reusable "creature
-makes a save; something happens" recipe editor plus a two-button
-apply row.
+{-| Save Chain as an inline card expansion: a reusable "creature
+makes a save; something happens" recipe, saveable as a preset,
+with one outcome per side of the save.
 
-Layout, top to bottom:
-
-  - Preset picker row (dropdown + Load / Delete)
-  - Name field (required to save as preset)
-  - Save ability radios + Save DC input
-  - On Fail outcome (HP radio + condition apply)
-  - On Success outcome (HP radio + condition apply, adds a
-    "Half of Fail damage" option that resolves at apply time)
-  - Apply-to-selected toggle (only visible when the selection
-    is non-empty)
-  - Two action buttons: Fail applies the fail outcome; Pass
-    applies the success outcome. Neither closes the editor —
-    the GM often runs Fail + Pass on the same open (fail for
-    the creatures that missed, pass for the survivors).
+Applying never closes the editor. A GM usually runs both sides
+on the same open — fail for the creatures that missed, pass for
+the survivors.
 
 -}
 
@@ -58,6 +47,7 @@ view ctx ui =
         [ presetRow ui ctx.presets
         , nameRow ui
         , saveRow ui
+        , dcHint ui
         , outcomeBlock "On failed save" SaveChainFail ui.onFail
         , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
         , applyScope ctx.selectedCount ui
@@ -166,25 +156,11 @@ nameRow ui =
 
 saveRow : SaveChainUi -> Html Msg
 saveRow ui =
-    let
-        dcMissing =
-            case String.toInt (String.trim ui.dcText) of
-                Just _ ->
-                    False
-
-                Nothing ->
-                    True
-
-        dcHintClass =
-            if dcMissing then
-                "save-chain__caption save-chain__caption--warn"
-
-            else
-                "save-chain__caption"
-    in
     div [ class "save-chain__row save-chain__row--save" ]
         [ div [ class "save-chain__ability-group" ]
-            [ span [ class "save-chain__field-label" ] [ text "Save" ]
+            [ span
+                [ class "save-chain__field-label save-chain__field-label--tight" ]
+                [ text "Save" ]
             , div [ class "save-chain__ability-radios" ]
                 [ abilityRadio ui Str "STR"
                 , abilityRadio ui Dex "DEX"
@@ -195,19 +171,37 @@ saveRow ui =
                 ]
             ]
         , div [ class "save-chain__dc-group" ]
-            [ span [ class "save-chain__field-label" ] [ text "DC" ]
+            [ span
+                [ class "save-chain__field-label save-chain__field-label--tight" ]
+                [ text "DC" ]
             , input
                 [ type_ "text"
                 , class "save-chain__dc-input"
                 , value ui.dcText
-                , placeholder "(blank = input at apply)"
+                , Attr.maxlength 2
                 , onInput SaveChainDcChanged
                 ]
                 []
-            , span [ class dcHintClass ]
-                [ text "req. for save rolls and Save-to-end" ]
             ]
         ]
+
+
+{-| The DC's own caption, on the line below rather than trailing
+the field: at two characters wide the field leaves a row nowhere
+to put a sentence.
+-}
+dcHint : SaveChainUi -> Html Msg
+dcHint ui =
+    span
+        [ class
+            (if String.toInt (String.trim ui.dcText) == Nothing then
+                "save-chain__caption save-chain__caption--warn"
+
+             else
+                "save-chain__caption"
+            )
+        ]
+        [ text "req. for save rolls and Save-to-end; blank = enter at apply" ]
 
 
 abilityRadio : SaveChainUi -> Ability -> String -> Html Msg

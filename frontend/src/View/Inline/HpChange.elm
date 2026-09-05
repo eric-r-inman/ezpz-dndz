@@ -56,13 +56,13 @@ manualSection selectedCount ui =
             , manualField split "manual-max-hp" "Max" ui.manualMaxHpText MaxHpField
             , manualField split "manual-temp-hp" "Temp" ui.manualTempHpText TempHpField
             ]
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = HpChangeManualApplyTarget
                 , tip = "Set the typed pools on the target creature"
-                , label = "Apply to Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
@@ -74,7 +74,7 @@ manualSection selectedCount ui =
 
                     else
                         "Set the typed pools on every selected creature"
-                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         ]

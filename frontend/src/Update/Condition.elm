@@ -153,23 +153,26 @@ stashAndClose ui model =
         }
 
 
-{-| Chip clicks toggle the same way: re-clicking the chip whose
-edit form is already open closes it unchanged.
+{-| A chip whose edit form is already open scrolls into view
+rather than closing, the same as every other card control: the
+click asks to see that condition, not to dismiss it. The Actions
+column's own trigger still toggles.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
-    ( case drawerSurface model of
+    case drawerSurface model of
         Just (SurfaceCondition ui) ->
             if ui.target == name && ui.editingId == Just id then
-                Model.closeDrawer Model.conditionLens model
+                ( model
+                , Effects.scrollDrawerIndex
+                    (Model.drawerIndexOf Model.conditionLens model)
+                )
 
             else
-                openEditFresh name id model
+                ( openEditFresh name id model, Cmd.none )
 
         _ ->
-            openEditFresh name id model
-    , Cmd.none
-    )
+            ( openEditFresh name id model, Cmd.none )
 
 
 openEditFresh : String -> Int -> Model -> Model

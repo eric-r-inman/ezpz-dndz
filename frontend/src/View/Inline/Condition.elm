@@ -435,7 +435,7 @@ footer ui presets selectedCount =
 
         applyLabel =
             if ui.editingId == Nothing then
-                "Apply to Target"
+                "Target"
 
             else
                 "Save Changes"
@@ -444,25 +444,13 @@ footer ui presets selectedCount =
         [ div [ class "cond-footer__presets" ]
             [ presetSaveControl ui canSubmit
             , presetLoadControl ui presets
-
-            -- Apply sits with Save / Load rather than alone on
-            -- the right, so the three controls read as one row.
-            -- No Cancel button: Escape and re-clicking the
-            -- Condition button both cancel.
-            , ApplyButton.view
-                { enabled = canSubmit
-                , cls = "action-btn action-btn--green"
-                , msg = ConditionSubmit
-                , tip =
-                    if canSubmit then
-                        applyLabel
-
-                    else
-                        "Pick a condition or type a custom name first"
-                , label = applyLabel
-                }
-            , applySelectedButton ui canSubmit selectedCount
             ]
+
+        -- Apply takes the row below Save / Load: two scopes and
+        -- two preset controls do not share one row inside a
+        -- drawer panel.  No Cancel button: Escape and
+        -- re-clicking the Condition button both cancel.
+        , applyControls ui canSubmit selectedCount applyLabel
         , div [ class "cond-footer__actions" ]
             [ case ui.editingId of
                 Just _ ->
@@ -479,31 +467,49 @@ footer ui presets selectedCount =
         ]
 
 
-{-| The multi-target apply. Editing an existing condition is a
-one-row operation, so the button is absent in that mode rather
-than disabled — there is nothing a selection could mean there.
+{-| The commit row. Editing an existing condition is a one-row
+operation — there is nothing a selection could mean there — so
+that mode commits with a single button and no scope lead-in.
 -}
-applySelectedButton : ConditionUi -> Bool -> Int -> Html Msg
-applySelectedButton ui canSubmit selectedCount =
+applyControls : ConditionUi -> Bool -> Int -> String -> Html Msg
+applyControls ui canSubmit selectedCount applyLabel =
+    let
+        commit =
+            ApplyButton.view
+                { enabled = canSubmit
+                , cls = "action-btn action-btn--green"
+                , msg = ConditionSubmit
+                , tip =
+                    if canSubmit then
+                        applyLabel
+
+                    else
+                        "Pick a condition or type a custom name first"
+                , label = applyLabel
+                }
+    in
     if ui.editingId /= Nothing then
-        text ""
+        div [ class "note-edit__buttons note-edit__buttons--start" ] [ commit ]
 
     else
-        ApplyButton.view
-            { enabled = canSubmit && selectedCount > 0
-            , cls = "action-btn action-btn--green"
-            , msg = ConditionSubmitSelected
-            , tip =
-                if not canSubmit then
-                    "Pick a condition or type a custom name first"
+        ApplyButton.row "Apply to:"
+            [ commit
+            , ApplyButton.view
+                { enabled = canSubmit && selectedCount > 0
+                , cls = "action-btn action-btn--green"
+                , msg = ConditionSubmitSelected
+                , tip =
+                    if not canSubmit then
+                        "Pick a condition or type a custom name first"
 
-                else if selectedCount == 0 then
-                    "Select creatures first"
+                    else if selectedCount == 0 then
+                        "Select creatures first"
 
-                else
-                    "Give every selected creature its own copy"
-            , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
-            }
+                    else
+                        "Give every selected creature its own copy"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
+            ]
 
 
 {-| Save button + inline name prompt. When `pendingSaveName` is

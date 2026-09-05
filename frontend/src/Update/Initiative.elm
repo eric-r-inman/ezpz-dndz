@@ -72,24 +72,31 @@ open target model =
 
 
 {-| A card's init circle: it aims the editor at its own creature,
-so an editor already open for someone else re-aims rather than
-closing. Re-clicking the circle of the creature being edited
-folds the editor away, matching the column trigger's toggle.
+so an editor already open for someone else re-aims. One already
+aimed here scrolls into view instead of closing — a card control
+asks to see a creature's editor, which is the opposite of what
+dismissing it would do. The Actions column's own trigger still
+toggles.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case drawerSurface model of
+    case drawerSurface model of
         Just (SurfaceInitiative ui) ->
             if ui.target == target then
-                Model.closeDrawer Model.initiativeLens model
+                ( model
+                , Effects.scrollDrawerIndex
+                    (Model.drawerIndexOf Model.initiativeLens model)
+                )
 
             else
-                Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+                ( Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+                , Cmd.none
+                )
 
         _ ->
-            Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
-    , Cmd.none
-    )
+            ( Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+            , Cmd.none
+            )
 
 
 close : Model -> ( Model, Cmd Msg )

@@ -33,13 +33,13 @@ view selectedCount ui =
                 , flyHeight ui
                 ]
             ]
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = StatusApplyTarget
                 , tip = "Write these statuses onto the target creature"
-                , label = "Apply to Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
@@ -51,7 +51,7 @@ view selectedCount ui =
 
                     else
                         "Write these statuses onto every selected creature"
-                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         ]

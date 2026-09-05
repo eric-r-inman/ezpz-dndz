@@ -45,13 +45,13 @@ rollSection selectedCount ui =
             ]
         , div [ class "cond-section__caption" ]
             [ text "Rolls 1d20 plus the creature's initiative bonus, then sorts the queue." ]
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Roll for:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = InitiativeAutoRoll ScopeTarget
                 , tip = "Roll for " ++ ui.target
-                , label = "Roll for Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
@@ -63,14 +63,14 @@ rollSection selectedCount ui =
 
                     else
                         "Roll for every selected creature"
-                , label = "Roll for Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             , ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = InitiativeAutoRoll ScopeAll
                 , tip = "Roll for the whole queue"
-                , label = "Roll for All"
+                , label = "All"
                 }
             ]
         ]
@@ -94,13 +94,13 @@ manualSection selectedCount ui =
                 ]
                 []
             ]
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = InitiativeApplyTarget
                 , tip = "Set " ++ ui.target ++ "'s initiative to the typed value"
-                , label = "Apply to Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
@@ -112,7 +112,7 @@ manualSection selectedCount ui =
 
                     else
                         "Set every selected creature to the typed value"
-                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         ]

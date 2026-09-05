@@ -120,11 +120,11 @@ view model =
                 XpFilterToggle
                 Tooltips.xpFilter
                 (View.Panel.Xp.label enc model.compendium.db model.xpScope)
-            , trigger (saveClass model)
+            , trigger "action-btn action-btn--blue"
                 (showing Model.saveLens)
                 (SaveOpen SaveDestinationServer)
                 (saveTip model)
-                "Save"
+                (saveLabel model)
             , trigger "action-btn action-btn--blue"
                 (showing Model.loadLens)
                 LoadOpen
@@ -273,16 +273,18 @@ diceTotals dice =
                 )
 
 
-{-| Save lights up yellow while the encounter has changes the
-last save didn't capture.
+{-| Unsaved roster changes ride the label, not the button's
+border. A border cue here is indistinguishable from the ring
+every trigger wears while its panel is open, so a bordered Save
+reads as a panel that will not close.
 -}
-saveClass : Model -> String
-saveClass model =
+saveLabel : Model -> String
+saveLabel model =
     if Encounter.rosterDirty model.encounter model.savedSnapshot then
-        "action-btn action-btn--blue action-btn--dirty"
+        "Save •"
 
     else
-        "action-btn action-btn--blue"
+        "Save"
 
 
 saveTip : Model -> String

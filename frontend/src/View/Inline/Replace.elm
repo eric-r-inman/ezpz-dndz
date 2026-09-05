@@ -21,7 +21,7 @@ view db selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ searchRow ui
         , pickerList db ui
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = ui.pickedId /= Nothing
                 , cls = "action-btn action-btn--green"
@@ -32,7 +32,7 @@ view db selectedCount log ui =
 
                     else
                         "Swap in the picked creature for the target"
-                , label = "Apply to Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = ui.pickedId /= Nothing && selectedCount > 0
@@ -47,7 +47,7 @@ view db selectedCount log ui =
 
                     else
                         "Swap in the picked creature for every selected creature"
-                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         , latestLog log

@@ -176,24 +176,31 @@ open target model =
 
 
 {-| A card's HP value: it aims the editor at its own creature,
-so an editor already open for someone else re-aims rather than
-closing. Re-clicking a value on the creature being edited folds
-the editor away, matching the column trigger's toggle.
+so an editor already open for someone else re-aims. One already
+aimed here scrolls into view instead of closing — a card control
+asks to see a creature's editor, which is the opposite of what
+dismissing it would do. The Actions column's own trigger still
+toggles.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case drawerSurface model of
+    case drawerSurface model of
         Just (SurfaceHpChange ui) ->
             if ui.target == target then
-                stashAndClose ui model
+                ( model
+                , Effects.scrollDrawerIndex
+                    (Model.drawerIndexOf Model.hpChangeLens model)
+                )
 
             else
-                Model.openDrawer Model.hpChangeLens (reopened target model) model
+                ( Model.openDrawer Model.hpChangeLens (reopened target model) model
+                , Cmd.none
+                )
 
         _ ->
-            Model.openDrawer Model.hpChangeLens (reopened target model) model
-    , Cmd.none
-    )
+            ( Model.openDrawer Model.hpChangeLens (reopened target model) model
+            , Cmd.none
+            )
 
 
 reopened : String -> Model -> HpChangeUi

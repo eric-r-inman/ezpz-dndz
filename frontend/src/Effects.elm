@@ -1,5 +1,6 @@
 module Effects exposing
     ( cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
+    , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -26,6 +27,7 @@ import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
 @docs cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
+@docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -118,6 +120,82 @@ creature's compendium id.
 compendiumRowId : String -> String
 compendiumRowId id =
     "compendium-row-" ++ id
+
+
+{-| DOM id of the drawer column's scroll container. The stack
+scrolls independently of the page, so bringing a panel into view
+means moving this element's viewport rather than the window's.
+-}
+drawerStackId : String
+drawerStackId =
+    "drawer-stack"
+
+
+{-| Stable id for one drawer panel, keyed by its position in the
+stack. Position is what a click on a panel's own chrome already
+identifies it by, so nothing has to carry an identity of its own.
+-}
+drawerPanelId : Int -> String
+drawerPanelId index =
+    "drawer-panel-" ++ String.fromInt index
+
+
+{-| Scroll the drawer panel at `index` into view when it sits
+outside the stack's visible region, leaving one that already fits
+alone. A newly opened panel lands at the bottom of a stack that
+may already be taller than the column, so without this the only
+feedback for opening one is a scrollbar that got shorter.
+
+Same geometry as `scrollActiveIntoView`. Failure means the panel
+or the stack isn't in the DOM yet, which is benign.
+
+-}
+scrollDrawerPanelIntoView : Int -> Cmd Msg
+scrollDrawerPanelIntoView index =
+    Task.map3
+        (\containerElement panelElement containerVp ->
+            let
+                margin =
+                    8
+
+                overflowBelow =
+                    (panelElement.element.y + panelElement.element.height)
+                        - (containerElement.element.y
+                            + containerElement.element.height
+                            - margin
+                          )
+
+                overflowAbove =
+                    (containerElement.element.y + margin) - panelElement.element.y
+            in
+            if overflowBelow > 0 then
+                Browser.Dom.setViewportOf
+                    drawerStackId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y + overflowBelow)
+
+            else if overflowAbove > 0 then
+                Browser.Dom.setViewportOf
+                    drawerStackId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y - overflowAbove)
+
+            else
+                Task.succeed ()
+        )
+        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement (drawerPanelId index))
+        (Browser.Dom.getViewportOf drawerStackId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
+{-| Scroll the panel at `index` into view, or do nothing when
+there is no panel to scroll to.
+-}
+scrollDrawerIndex : Maybe Int -> Cmd Msg
+scrollDrawerIndex =
+    Maybe.map scrollDrawerPanelIntoView >> Maybe.withDefault Cmd.none
 
 
 {-| Scroll a compendium list row to the top region of the list.

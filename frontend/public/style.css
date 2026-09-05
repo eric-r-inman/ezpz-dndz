@@ -4220,6 +4220,21 @@ body {
   margin: 0 calc(var(--drawer-bleed) * -1);
 }
 
+/* Carries the scroll-into-view id for one panel.  Must stay
+   transparent to layout, so the stack's column rules reach the
+   panel through it.  A slot holding nothing leaves the flex row
+   entirely rather than contributing the stack's gap. */
+.drawer-stack__slot {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.drawer-stack__slot:empty {
+  display: none;
+}
+
 .panel--drawer {
   flex: 0 0 auto;
   animation: drawer-slide-in 0.16s ease-out;
@@ -6494,15 +6509,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bg: #f97316; /* orange-500 */
   --btn-fg: #ffffff;
   --btn-bd: transparent;
-}
-
-/* Save button when the encounter has unsaved roster changes
-   (creatures added or removed since the last save / load).  A
-   yellow border rather than an offset outline: the outline form
-   was indistinguishable from the open-panel ring, so a dirty
-   Save read as an editor that wouldn't close. */
-.action-btn--dirty {
-  border-color: var(--color-dirty-outline);
 }
 
 .action-btn--icon {
@@ -9003,6 +9009,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .note-edit__buttons {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 6px;
   margin-top: 8px;
@@ -9010,6 +9018,15 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .note-edit__buttons--start {
   justify-content: flex-start;
+}
+
+/* Names the verb once for the scope buttons that follow it, so
+   each button carries only the scope. */
+.apply-row__lead {
+  flex: 0 0 auto;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
 }
 
 /* Condition / effect modal — same .modal-backdrop / .modal /
@@ -11619,6 +11636,10 @@ button.quick-list-card {
   min-width: 60px;
 }
 
+.save-chain__field-label--tight {
+  min-width: 0;
+}
+
 .save-chain__preset-picker {
   min-width: 220px;
   padding: 4px 6px;
@@ -11647,15 +11668,22 @@ button.quick-list-card {
   font: inherit;
 }
 
-.save-chain__ability-group,
+.save-chain__ability-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
 .save-chain__dc-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .save-chain__ability-radios {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -11668,8 +11696,8 @@ button.quick-list-card {
 }
 
 .save-chain__dc-input {
-  width: 200px;
-  padding: 6px 8px;
+  width: 4ch;
+  padding: 6px var(--space-1);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-input-border);
   background: var(--color-surface);
@@ -11994,6 +12022,7 @@ button.quick-list-card {
 
 .save-chain__apply-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

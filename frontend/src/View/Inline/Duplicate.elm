@@ -16,13 +16,13 @@ view : Int -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
 view selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ modeSection ui
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+        , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = DuplicateApply
                 , tip = "Copy the target creature"
-                , label = "Apply to Target"
+                , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
@@ -34,7 +34,7 @@ view selectedCount log ui =
 
                     else
                         "Copy every selected creature"
-                , label = "Apply to Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
         , latestLog log

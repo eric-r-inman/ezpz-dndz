@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -179,6 +179,19 @@ type alias DrawerPanel =
     { surface : Surface
     , collapsed : Bool
     }
+
+
+{-| Where the panel matching `lens` sits in the stack, if it is
+open. Position is the drawer's own identifier for a panel, so
+this is what addresses one for scrolling.
+-}
+drawerIndexOf : SurfaceLens a -> Model -> Maybe Int
+drawerIndexOf lens model =
+    model.drawer
+        |> List.indexedMap
+            (\i panel -> Maybe.map (\_ -> i) (lens.extract panel.surface))
+        |> List.filterMap identity
+        |> List.head
 
 
 {-| The open drawer panel matching `lens`, if any.

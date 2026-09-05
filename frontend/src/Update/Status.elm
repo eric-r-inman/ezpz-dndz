@@ -5,6 +5,7 @@ draft; the two Apply buttons write the whole draft onto the
 active creature or onto every selected creature.
 -}
 
+import Effects
 import Encounter
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg, StatusFlag(..))
@@ -39,25 +40,31 @@ open target model =
 
 
 {-| A card's status label: it aims the editor at its own
-creature, so an editor already open for someone else re-aims
-rather than closing. Re-clicking the label of the creature
-being edited folds the editor away, matching the column
-trigger's toggle.
+creature, so an editor already open for someone else re-aims.
+One already aimed here scrolls into view instead of closing — a
+card control asks to see a creature's editor, which is the
+opposite of dismissing it. The Actions column's own trigger
+still toggles.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    ( case drawerSurface model of
+    case drawerSurface model of
         Just (SurfaceStatus ui) ->
             if ui.target == target then
-                Model.closeDrawer Model.statusLens model
+                ( model
+                , Effects.scrollDrawerIndex
+                    (Model.drawerIndexOf Model.statusLens model)
+                )
 
             else
-                Model.openDrawer Model.statusLens (prefilled target model) model
+                ( Model.openDrawer Model.statusLens (prefilled target model) model
+                , Cmd.none
+                )
 
         _ ->
-            Model.openDrawer Model.statusLens (prefilled target model) model
-    , Cmd.none
-    )
+            ( Model.openDrawer Model.statusLens (prefilled target model) model
+            , Cmd.none
+            )
 
 
 prefilled : String -> Model -> StatusUi

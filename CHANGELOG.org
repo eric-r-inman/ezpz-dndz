@@ -20,8 +20,7 @@
 6. The initiative manager is one of those editors now, opened by the column's
    Initiative button or by a card's initiative circle.  No action needed.
 7. The status, condition, replace, and duplicate editors choose their scope with
-   a pair of buttons — "Apply to Target" and "Apply to Selected (N)" — rather
-   than an apply-scope checkbox.  No action needed.
+   a pair of buttons rather than an apply-scope checkbox.  No action needed.
 8. The encounter queue lists its spellcasters in a reminder strip alongside the
    legendary-action and special-reaction ones, and each strip's icon drops down
    a panel detailing what those actions, reactions, or spells do.  No action
@@ -79,11 +78,17 @@
     needed.
 31. The Manage HP editor sets all three pools from a single Manual row, each
     label grouped with the field it names.  No action needed.
+32. Editor button rows name the verb once — "Apply to:" or "Roll for:" — and
+    each button carries only its scope, so three scopes fit where two used to.
+    No action needed.
+33. Opening an editor scrolls the drawer column to it, and a creature card's
+    controls scroll to the editor they aim at instead of closing it.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
-2. A dirty Save button no longer wears what looks like the open-panel ring — the
-   unsaved-changes cue is a yellow border now.  No action needed.
+2. A dirty Save button no longer wears what looks like the open-panel ring —
+   unsaved roster changes show as a dot on its label.  No action needed.
 3. A creature card's inline numeric fields close when you click anywhere outside
    them.  No action needed.
 4. The Nix build fetches crates again.  No action needed.
@@ -97,6 +102,12 @@
    their buttons.  No action needed.
 9. Input fields draw a stronger border, the same one in every editor.  No action
    needed.
+10. The Save Chain editor's ability buttons and its Fail / Pass / Roll row wrap
+    instead of running past the panel's edge.  No action needed.
+11. The Save Chain editor's DC field sits beside its label at two characters
+    wide, with its caption on the line below.  No action needed.
+12. The Condition editor's apply buttons take the row below Save and Load rather
+    than crowding them.  No action needed.
 ** Breaking
 * v0.2.0
 ** Fixes
