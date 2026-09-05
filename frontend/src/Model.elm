@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -190,6 +190,21 @@ type alias DrawerPanel =
     { surface : Surface
     , collapsed : Bool
     }
+
+
+{-| Close the creature editor if it is open. The editor mirrors
+its form into `compendiumEditDraft` on every edit, so closing it
+here parks the work rather than losing it — selecting something
+else mid-edit is a pause, not a cancel.
+-}
+parkCreatureEditor : Model -> Model
+parkCreatureEditor model =
+    case Maybe.andThen compendiumEditLens.extract model.surface of
+        Just _ ->
+            { model | surface = Nothing }
+
+        Nothing ->
+            model
 
 
 {-| Move the panel at `from` so it sits at `to`, shifting the
@@ -765,6 +780,13 @@ type alias Model =
 
     -- The drawer reorder in progress, if any.
     , drawerDrag : Maybe DrawerDrag
+
+    -- The creature editor's work in progress, mirrored on every
+    -- edit so closing the editor by any route — selecting
+    -- something else, opening another editor — loses nothing.
+    -- Cleared only by Cancel and by a completed save or delete,
+    -- the two ways an editing session actually ends.
+    , compendiumEditDraft : Maybe CompendiumEditUi
 
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.

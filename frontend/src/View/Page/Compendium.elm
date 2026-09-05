@@ -142,33 +142,8 @@ bulkBanner ui =
                 , busy = ui.bulkBusy
                 }
 
-        ( Just PendingClearAll, _ ) ->
-            confirmModal
-                { title = "Clear Compendium"
-                , message =
-                    "Remove every creature from the library, bundled ones "
-                        ++ "included? This cannot be undone."
-                , confirmLabel = "Clear All"
-                , busy = ui.bulkBusy
-                }
-
-        ( Just PendingClearSelected, _ ) ->
-            confirmModal
-                { title = "Clear Selected"
-                , message =
-                    "Remove the "
-                        ++ String.fromInt (Set.size ui.selectedIds)
-                        ++ " selected creature"
-                        ++ (if Set.size ui.selectedIds == 1 then
-                                ""
-
-                            else
-                                "s"
-                           )
-                        ++ " from the library? This cannot be undone."
-                , confirmLabel = "Clear Selected"
-                , busy = ui.bulkBusy
-                }
+        ( Just PendingClear, _ ) ->
+            clearModal ui
 
         ( Just (PendingImport _ groups count), _ ) ->
             let
@@ -253,6 +228,71 @@ bulkBanner ui =
 
         ( Nothing, Nothing ) ->
             text ""
+
+
+{-| The Clear dialog: one warning, and a button per scope. The
+Selected scope only renders when something is selected, so the
+dialog never offers a button that could do nothing.
+-}
+clearModal : CompendiumUi -> Html Msg
+clearModal ui =
+    let
+        selectedCount =
+            Set.size ui.selectedIds
+    in
+    View.Modal.view
+        { close = CompendiumPendingCancel
+        , noOp = NoOp
+        , title = "Clear Compendium"
+        , extraClass = "modal--confirm"
+        , chrome = Ui.ModalChrome.fresh
+        , body =
+            [ div [ class "control-confirm" ]
+                [ p [ class "control-confirm__msg" ]
+                    [ text
+                        ("Remove creatures from the library? Bundled creatures "
+                            ++ "go too, and this cannot be undone."
+                        )
+                    ]
+                , div [ class "control-confirm__buttons" ]
+                    [ button
+                        [ class "action-btn action-btn--blue"
+                        , onClick CompendiumPendingCancel
+                        , disabled ui.bulkBusy
+                        ]
+                        [ text "Cancel" ]
+                    , if selectedCount > 0 then
+                        button
+                            [ class "action-btn action-btn--red"
+                            , onClick CompendiumClearSelected
+                            , disabled ui.bulkBusy
+                            ]
+                            [ text
+                                ("Clear Selected ("
+                                    ++ String.fromInt selectedCount
+                                    ++ ")"
+                                )
+                            ]
+
+                      else
+                        text ""
+                    , button
+                        [ class "action-btn action-btn--red"
+                        , onClick CompendiumClearAll
+                        , disabled ui.bulkBusy
+                        ]
+                        [ text
+                            (if ui.bulkBusy then
+                                "Working…"
+
+                             else
+                                "Clear All"
+                            )
+                        ]
+                    ]
+                ]
+            ]
+        }
 
 
 {-| Confirmation as a page-covering dialog rather than the
@@ -1462,7 +1502,7 @@ bulkButtons auth ui =
             , Tooltips.attr Tooltips.compendiumReset
             ]
             [ text "↺ Reset" ]
-        , clearMenu ui
+        , clearTrigger
         ]
 
 
@@ -1608,44 +1648,17 @@ exportMenu _ ui =
         [ text "📤 Export" ]
 
 
-{-| Clear button + popover dropdown. Same wrapper / behavior
-as the Import / Export menus; the menu items dispatch the Clear
-All / Clear Selected actions.
+{-| Stages the Clear dialog; the dialog's own buttons carry the
+All / Selected scopes.
 -}
-clearMenu : CompendiumUi -> Html Msg
-clearMenu ui =
-    let
-        nothingSelected =
-            Set.isEmpty ui.selectedIds
-
-        clearSelectedItem =
-            button
-                [ class "compendium__bulk-menu__item"
-                , onClick CompendiumClearSelected
-                , disabled nothingSelected
-                , Tooltips.attr
-                    (if nothingSelected then
-                        Tooltips.compendiumClearSelectedNone
-
-                     else
-                        Tooltips.compendiumClearSelectedReady
-                    )
-                , attribute "role" "menuitem"
-                ]
-                [ text "Clear Selected" ]
-    in
-    splitMenu
-        { menu = ClearMenu
-        , isOpen = ui.bulkMenu == Just ClearMenu
-        , triggerClass = "action-btn action-btn--red"
-        , triggerLabel = "🗑 Clear"
-        , triggerTitle = Tooltips.compendiumClear
-        , alignLeft = False
-        , items =
-            [ menuItem CompendiumClearAll "Clear All"
-            , clearSelectedItem
-            ]
-        }
+clearTrigger : Html Msg
+clearTrigger =
+    button
+        [ class "action-btn action-btn--red"
+        , onClick CompendiumClearClick
+        , Tooltips.attr Tooltips.compendiumClear
+        ]
+        [ text "🗑 Clear" ]
 
 
 

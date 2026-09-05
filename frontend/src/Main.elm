@@ -612,6 +612,7 @@ init flags url key =
       , actionGroups = Ui.ActionGroups.fresh
       , drawer = []
       , drawerDrag = Nothing
+      , compendiumEditDraft = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
       , toasts = []
@@ -2649,6 +2650,9 @@ updateInner msg model =
 
         CompendiumBulkMenuClose ->
             Update.Compendium.Browser.bulkMenuClose model
+
+        CompendiumClearClick ->
+            Update.Compendium.Bulk.clearClick model
 
         CompendiumClearAll ->
             Update.Compendium.Bulk.clearAll model

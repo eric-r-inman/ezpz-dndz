@@ -128,8 +128,19 @@ import Util.Http
 
 
 withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
-withCompendiumEdit =
-    Model.mapSurface Model.compendiumEditLens
+withCompendiumEdit fn model =
+    let
+        next =
+            Model.mapSurface Model.compendiumEditLens fn model
+    in
+    -- Mirror the form into the draft on every edit, so however
+    -- the editor later closes, the work is already kept.
+    case Maybe.andThen Model.compendiumEditLens.extract next.surface of
+        Just ui ->
+            { next | compendiumEditDraft = Just ui }
+
+        Nothing ->
+            next
 
 
 
@@ -138,17 +149,44 @@ withCompendiumEdit =
 
 new : Model -> ( Model, Cmd Msg )
 new model =
-    ( { model | surface = Just (SurfaceCompendiumEdit CompendiumUi.blankEdit) }
+    let
+        restoredOrBlank =
+            case model.compendiumEditDraft of
+                Just draft ->
+                    case draft.mode of
+                        CompendiumUi.CreateMode ->
+                            draft
+
+                        CompendiumUi.EditExisting _ ->
+                            CompendiumUi.blankEdit
+
+                Nothing ->
+                    CompendiumUi.blankEdit
+    in
+    ( { model | surface = Just (SurfaceCompendiumEdit restoredOrBlank) }
     , Cmd.none
     )
 
 
 existing : Model -> ( Model, Cmd Msg )
 existing model =
+    let
+        restoredOrFresh creature =
+            case model.compendiumEditDraft of
+                Just draft ->
+                    if draft.mode == CompendiumUi.EditExisting { id = creature.id, createdAt = creature.createdAt } then
+                        draft
+
+                    else
+                        CompendiumUi.editFromCreature creature
+
+                Nothing ->
+                    CompendiumUi.editFromCreature creature
+    in
     ( { model
         | surface =
             currentlySelectedCreature model
-                |> Maybe.map (CompendiumUi.editFromCreature >> SurfaceCompendiumEdit)
+                |> Maybe.map (restoredOrFresh >> SurfaceCompendiumEdit)
       }
     , Cmd.none
     )
@@ -193,7 +231,9 @@ editFromDuplicate source =
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | surface = Nothing }, Cmd.none )
+    ( { model | surface = Nothing, compendiumEditDraft = Nothing }
+    , Cmd.none
+    )
 
 
 fieldChanged : CompendiumField -> String -> Model -> ( Model, Cmd Msg )
@@ -1399,6 +1439,7 @@ applyLocalCreatureSubmit mode incoming model =
     in
     { withId
         | surface = Nothing
+        , compendiumEditDraft = Nothing
         , compendium =
             { compendium
                 | db = newDb
@@ -1422,6 +1463,7 @@ submitResponse result model =
         Ok creature ->
             { model
                 | surface = Nothing
+                , compendiumEditDraft = Nothing
                 , compendium =
                     let
                         ui =
@@ -1456,7 +1498,12 @@ delete model =
                             applyLocalCreatureDelete id model
 
                 CreateMode ->
-                    ( { model | surface = Nothing }, Cmd.none )
+                    ( { model
+                        | surface = Nothing
+                        , compendiumEditDraft = Nothing
+                      }
+                    , Cmd.none
+                    )
 
         _ ->
             ( model, Cmd.none )
@@ -1495,7 +1542,11 @@ applyLocalCreatureDelete deletedId model =
                 , compendiumDirty = True
             }
     in
-    { model | surface = Nothing, compendium = clearedSelection }
+    { model
+        | surface = Nothing
+        , compendiumEditDraft = Nothing
+        , compendium = clearedSelection
+    }
         |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
@@ -1533,6 +1584,7 @@ deleteResponse deletedId result model =
             in
             { model
                 | surface = Nothing
+                , compendiumEditDraft = Nothing
                 , compendium = clearedSelection model.compendium
             }
                 |> Update.Toast.pushWith ToastSuccess

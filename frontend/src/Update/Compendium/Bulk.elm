@@ -2,7 +2,7 @@ module Update.Compendium.Bulk exposing
     ( deleteFromBrowser, importClick, importFileChosen
     , importFileRead, importResponse, pendingCancel, pendingConfirm
     , resetClick, resetResponse
-    , clearAll, clearResponse, clearSelected, deleteSelected
+    , clearAll, clearClick, clearResponse, clearSelected, deleteSelected
     )
 
 {-| Bulk import / reset / per-row delete flow for the compendium
@@ -153,14 +153,9 @@ pendingCancel model =
 pendingConfirm : Model -> ( Model, Cmd Msg )
 pendingConfirm model =
     case model.compendium.pending of
-        Just PendingClearAll ->
-            runClearAll
-                (withCompendium (\ui -> { ui | pending = Nothing }) model)
-
-        Just PendingClearSelected ->
-            runClearSelected
-                (withCompendium (\ui -> { ui | pending = Nothing }) model)
-
+        -- PendingClear resolves through its own scope buttons
+        -- (`clearAll` / `clearSelected`), never this generic
+        -- confirm, so it falls through to the no-op arm.
         Just PendingReset ->
             case model.auth of
                 Auth.AuthAuthenticated _ ->
@@ -196,6 +191,9 @@ pendingConfirm model =
 
                 _ ->
                     applyLocalCompendiumDelete id model
+
+        Just PendingClear ->
+            ( model, Cmd.none )
 
         Nothing ->
             ( model, Cmd.none )
@@ -302,46 +300,36 @@ applyLocalCompendiumDelete id model =
         |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
-{-| Wholesale-replace the compendium with an empty list.
-Routes through `Effects.clearCompendiumCreatures` so the
-response lands in `clearResponse` and keeps the library marked
-dirty (the GM just discarded everything; Export should still
-flag as having unsaved changes).
-
-Closes the Clear dropdown synchronously; the user shouldn't
-see the dropdown still hovering after the destructive op
-fires.
-
+{-| The Clear trigger: stage the dialog that picks a scope.
 -}
-clearAll : Model -> ( Model, Cmd Msg )
-clearAll model =
+clearClick : Model -> ( Model, Cmd Msg )
+clearClick model =
     ( withCompendium
-        (\ui ->
-            { ui
-                | bulkMenu = Nothing
-                , pending = Just PendingClearAll
-                , bulkError = Nothing
-            }
-        )
+        (\ui -> { ui | pending = Just PendingClear, bulkError = Nothing })
         model
     , Cmd.none
     )
 
 
-{-| The staged Clear All, once the modal has been answered.
+{-| Clear All, from the staged dialog's own button.
+Routes through `Effects.clearCompendiumCreatures` so the
+response lands in `clearResponse` and keeps the library marked
+dirty — the GM just discarded everything, so Export should
+still flag unsaved changes.
 -}
-runClearAll : Model -> ( Model, Cmd Msg )
-runClearAll model =
+clearAll : Model -> ( Model, Cmd Msg )
+clearAll model =
     case model.auth of
         Auth.AuthAuthenticated _ ->
             ( withCompendium
-                (\ui -> { ui | bulkBusy = True })
+                (\ui -> { ui | pending = Nothing, bulkBusy = True })
                 model
             , Effects.clearCompendiumCreatures []
             )
 
         _ ->
-            applyLocalClear [] model
+            applyLocalClear []
+                (withCompendium (\ui -> { ui | pending = Nothing }) model)
 
 
 {-| Replace the compendium with the kept set — every creature
@@ -351,23 +339,6 @@ selected or the library hasn't loaded.
 -}
 clearSelected : Model -> ( Model, Cmd Msg )
 clearSelected model =
-    ( withCompendium
-        (\ui ->
-            { ui
-                | bulkMenu = Nothing
-                , pending = Just PendingClearSelected
-                , bulkError = Nothing
-            }
-        )
-        model
-    , Cmd.none
-    )
-
-
-{-| The staged Clear Selected, once the modal has been answered.
--}
-runClearSelected : Model -> ( Model, Cmd Msg )
-runClearSelected model =
     case model.compendium.db of
         CompendiumDbLoaded db ->
             let
@@ -379,16 +350,19 @@ runClearSelected model =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
                     ( withCompendium
-                        (\ui -> { ui | bulkBusy = True })
+                        (\ui -> { ui | pending = Nothing, bulkBusy = True })
                         model
                     , Effects.clearCompendiumCreatures kept
                     )
 
                 _ ->
-                    applyLocalClear kept model
+                    applyLocalClear kept
+                        (withCompendium (\ui -> { ui | pending = Nothing }) model)
 
         _ ->
-            ( model, Cmd.none )
+            ( withCompendium (\ui -> { ui | pending = Nothing }) model
+            , Cmd.none
+            )
 
 
 {-| "Delete Selected" from the delete-confirm banner: identical

@@ -187,8 +187,7 @@ confirmation message.
 -}
 type PendingAction
     = PendingReset
-    | PendingClearAll
-    | PendingClearSelected
+    | PendingClear
     | PendingImport (List Compendium.Creature) (List Group) Int
     | PendingDelete String String
 

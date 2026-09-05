@@ -63,7 +63,13 @@ apply model =
                         recreated =
                             { editUi | mode = CreateMode }
                     in
-                    ( { model | surface = Just (SurfaceCompendiumEdit recreated) }
+                    -- Mirrored into the draft immediately: the
+                    -- parsed creature is work worth keeping even
+                    -- before the first keystroke in the editor.
+                    ( { model
+                        | surface = Just (SurfaceCompendiumEdit recreated)
+                        , compendiumEditDraft = Just recreated
+                      }
                     , Cmd.none
                     )
 

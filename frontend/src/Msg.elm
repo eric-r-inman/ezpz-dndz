@@ -362,8 +362,7 @@ constructor parameterizes the `CompendiumBulkMenuToggle` Msg and
 `Ui.Compendium` already imports `Msg` (cycle avoidance).
 -}
 type CompendiumBulkMenu
-    = ClearMenu
-    | ImportMenu
+    = ImportMenu
     | ExportMenu
 
 
@@ -1187,6 +1186,9 @@ type Msg
       -- everything (used by Esc + click-outside).
     | CompendiumBulkMenuToggle CompendiumBulkMenu
     | CompendiumBulkMenuClose
+      -- The Clear trigger stages the dialog; All / Selected run
+      -- from the dialog's own buttons.
+    | CompendiumClearClick
     | CompendiumClearAll
     | CompendiumClearSelected
     | CompendiumDeleteSelected

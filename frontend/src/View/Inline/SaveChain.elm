@@ -47,7 +47,6 @@ view ctx ui =
         [ presetRow ui ctx.presets
         , nameRow ui
         , saveRow ui
-        , dcHint ui
         , outcomeBlock "On failed save" SaveChainFail ui.onFail
         , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
         , applyScope ctx.selectedCount ui
@@ -135,12 +134,14 @@ presetRow ui presets =
 nameRow : SaveChainUi -> Html Msg
 nameRow ui =
     div [ class "save-chain__row" ]
-        [ span [ class "save-chain__field-label" ] [ text "Name" ]
+        [ span
+            [ class "save-chain__field-label save-chain__field-label--tight" ]
+            [ text "Name" ]
         , input
             [ type_ "text"
             , class "save-chain__name-input"
             , value ui.name
-            , placeholder "e.g. Hold Person, Blindness, Fireball…"
+            , placeholder "e.g., Hold Person"
             , onInput SaveChainNameChanged
             ]
             []
@@ -183,22 +184,23 @@ saveRow ui =
                 ]
                 []
             ]
+        , dcHint ui
         ]
 
 
-{-| The DC's own caption, on the line below rather than trailing
-the field: at two characters wide the field leaves a row nowhere
-to put a sentence.
+{-| The DC's caption, trailing the field on the same row. It
+takes the row's leftover width and wraps inside it, so the
+sentence can never push past the panel's edge.
 -}
 dcHint : SaveChainUi -> Html Msg
 dcHint ui =
     span
         [ class
             (if String.toInt (String.trim ui.dcText) == Nothing then
-                "save-chain__caption save-chain__caption--warn"
+                "save-chain__caption save-chain__caption--dc save-chain__caption--warn"
 
              else
-                "save-chain__caption"
+                "save-chain__caption save-chain__caption--dc"
             )
         ]
         [ text "req. for save rolls and Save-to-end; blank = enter at apply" ]

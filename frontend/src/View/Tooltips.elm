@@ -19,8 +19,6 @@ module View.Tooltips exposing
     , compendiumAddedFilterOff
     , compendiumAddedFilterOn
     , compendiumClear
-    , compendiumClearSelectedNone
-    , compendiumClearSelectedReady
     , compendiumClearTagFilter
     , compendiumCreateGroup
     , compendiumCreateGroupFromSelected
@@ -828,16 +826,6 @@ compendiumExportDirty =
 compendiumClear : String
 compendiumClear =
     "Clear all creatures, or just the checked ones"
-
-
-compendiumClearSelectedNone : String
-compendiumClearSelectedNone =
-    "No creatures are checked"
-
-
-compendiumClearSelectedReady : String
-compendiumClearSelectedReady =
-    "Remove checked creatures"
 
 
 compendiumClearTagFilter : String

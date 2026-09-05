@@ -11965,6 +11965,13 @@ button.quick-list-card {
   color: var(--color-text-muted);
 }
 
+/* Trails the DC field on its row: takes the leftover width and
+   wraps within it rather than pushing past the panel's edge. */
+.save-chain__caption--dc {
+  flex: 1 1 12ch;
+  min-width: 0;
+}
+
 .save-chain__caption--warn {
   color: var(--color-warning, #b9602a);
 }

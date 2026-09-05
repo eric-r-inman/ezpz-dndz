@@ -65,7 +65,14 @@ expandToggle id model =
 selections so the right pane reads as the lore detail.
 -}
 select : String -> Model -> ( Model, Cmd Msg )
-select id model =
+select id rawModel =
+    let
+        -- A selection mid-edit parks the creature editor: its
+        -- draft is already mirrored, so this pauses the edit
+        -- rather than discarding it.
+        model =
+            Model.parkCreatureEditor rawModel
+    in
     ( withCompendium
         (\ui ->
             { ui

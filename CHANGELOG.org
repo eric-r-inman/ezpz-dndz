@@ -97,6 +97,9 @@
 39. Creating, pasting, editing, and duplicating creatures — and creating groups
     — happens in the Compendium's detail pane instead of a dialog.  No action
     needed.
+40. The creature editor keeps unsaved work: selecting anything else closes it
+    without losing changes, reopening restores them, and only Cancel or a save
+    lets them go.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -117,8 +120,8 @@
    needed.
 10. The Save Chain editor's ability buttons and its Fail / Pass / Roll row wrap
     instead of running past the panel's edge.  No action needed.
-11. The Save Chain editor's DC field sits beside its label at two characters
-    wide, with its caption on the line below.  No action needed.
+11. The Save Chain editor's Name and DC fields sit beside their labels, the DC
+    two characters wide with its caption alongside.  No action needed.
 12. The Condition editor's apply buttons take the row below Save and Load rather
     than crowding them.  No action needed.
 13. The Dice Roller's die buttons fit the panel instead of running past its
