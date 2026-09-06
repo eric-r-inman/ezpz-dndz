@@ -1285,6 +1285,9 @@ type Msg
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
+      -- The strip between the drawer and the queue, folding the
+      -- whole column away without closing what it holds.
+    | DrawerColumnToggle
       -- Dragging a drawer panel by its heading row to a new slot.
       -- Payloads are stack positions; Over fires per slot the
       -- pointer crosses, End covers cancelled drags.

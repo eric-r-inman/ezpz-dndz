@@ -5,8 +5,9 @@ holding every open panel, stacked oldest-first so a newly
 opened panel appears below the ones already up.
 
 Each drawer variant renders through `panelFor`; adding a panel
-means a lens in `Model`, an arm here, and an Esc mapping in
-`Main.subscriptions`.
+means a lens in `Model`, an arm here, an Esc mapping in
+`Main.subscriptions`, and — if the Actions column opens it — an
+entry in `Model.defaultDrawer`.
 
 @docs isOpen, view
 
@@ -38,9 +39,8 @@ import View.Panel.Treasure
 import View.Panel.Xp
 
 
-{-| Whether the column has anything to show. Also drives the
-workspace's grid template, which carries no drawer track while
-the stack is empty.
+{-| Whether the stack holds any panels, and so whether the
+drawer has a column to claim in the first place.
 -}
 isOpen : Model -> Bool
 isOpen model =
@@ -49,6 +49,15 @@ isOpen model =
 
 view : Model -> Html Msg
 view model =
+    if model.drawerCollapsed then
+        text ""
+
+    else
+        stack model
+
+
+stack : Model -> Html Msg
+stack model =
     case model.drawer of
         [] ->
             text ""

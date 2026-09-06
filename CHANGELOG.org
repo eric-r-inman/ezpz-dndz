@@ -103,9 +103,15 @@
 41. Save and Load are one "Encounter Saves" panel.  No action needed.
 42. The Actions column is a grid of icon buttons; hover any button for its name.
     No action needed.
-43. The XP total now rides the XP button's hover text.  No action needed.
-44. Recent dice totals live in the Dice Roller rather than under the Actions
-    column's Roll button.  No action needed.
+43. The XP total and the recent dice totals read from their own panels rather
+    than the Actions column.  No action needed.
+44. The editor column opens with every editor already in it, folded to its
+    heading row.  No action needed.
+45. A strip between the editor column and the queue folds the whole column away.
+    No action needed.
+46. Buttons that open an editor keep one short hover name whether that editor is
+    open or closed.  No action needed.
+47. Treasure and XP swap places in the Actions column.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

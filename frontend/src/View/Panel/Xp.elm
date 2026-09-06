@@ -1,11 +1,10 @@
-module View.Panel.Xp exposing (label, view)
+module View.Panel.Xp exposing (view)
 
 {-| Which creatures the encounter's XP total counts.
 
-The four choices get room to say what they mean, and both this
-panel's total and the column's trigger re-render as each is
-picked, so the effect of the choice is visible while it's being
-made.
+The four choices get room to say what they mean, and the
+panel's total re-renders as each is picked, so the effect of the
+choice is visible while it's being made.
 
 -}
 
@@ -67,9 +66,7 @@ lairTotal enc db scope =
             text ""
 
 
-{-| The scoped total, as both this panel's headline and the
-Actions column's XP button face — one string so the two can't
-drift apart.
+{-| The panel's headline XP figure.
 -}
 label : Encounter -> CompendiumDb -> XpScope -> String
 label enc db scope =

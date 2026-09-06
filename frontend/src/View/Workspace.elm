@@ -1,12 +1,9 @@
 module View.Workspace exposing (view)
 
-{-| Workspace layout for the Home route: the Actions column, the
-panel it opens, and the encounter queue.
+{-| Workspace layout for the Home route.
 
 Each pane is a separate `View/` module — this module just wires
-them together with the model fragments each one needs. The
-drawer's column only exists while it has something to show,
-which is why the grid template is conditional.
+them together with the model fragments each one needs.
 
 -}
 
@@ -33,20 +30,65 @@ import View.Tooltips as Tooltips
 view : Model -> Html Msg
 view model =
     main_
-        [ class
-            (if View.PanelDrawer.isOpen model then
-                "workspace workspace--drawer"
-
-             else
-                "workspace"
-            )
+        [ class (workspaceClass model)
         , id "main"
         , attribute "tabindex" "-1"
         ]
         [ View.PanelActions.view model
         , View.PanelDrawer.view model
+        , drawerColumnToggle model
         , panelMain model
         ]
+
+
+{-| The drawer claims its own grid track only while it is holding
+panels and not folded away; the fold keeps the panels, so the
+track is the only thing that comes and goes.
+-}
+workspaceClass : Model -> String
+workspaceClass model =
+    if not (View.PanelDrawer.isOpen model) then
+        "workspace"
+
+    else if model.drawerCollapsed then
+        "workspace workspace--drawer-folded"
+
+    else
+        "workspace workspace--drawer"
+
+
+{-| The strip between the drawer and the queue. The triangle
+points the way the column will move: left to fold it away, right
+to bring it back.
+-}
+drawerColumnToggle : Model -> Html Msg
+drawerColumnToggle model =
+    if not (View.PanelDrawer.isOpen model) then
+        text ""
+
+    else
+        button
+            [ class "drawer-fold"
+            , type_ "button"
+            , onClick DrawerColumnToggle
+            , Tooltips.attr Tooltips.drawerColumnToggle
+            , attribute "aria-label" Tooltips.drawerColumnToggle
+            , attribute "aria-expanded"
+                (if model.drawerCollapsed then
+                    "false"
+
+                 else
+                    "true"
+                )
+            ]
+            [ text
+                (if model.drawerCollapsed then
+                    "▶"
+
+                 else
+                    "◀"
+                )
+            ]
 
 
 {-| The encounter pane. Builds the card context each card render

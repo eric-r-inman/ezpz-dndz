@@ -66,6 +66,7 @@ module View.Tooltips exposing
     , dodging
     , drawerClose
     , drawerCollapse
+    , drawerColumnToggle
     , encounterBarSpellList
     , fallDamage
     , flyHeightDown
@@ -117,11 +118,9 @@ module View.Tooltips exposing
     , releaseReadied
     , reset
     , rollDice
-    , rollDiceUnread
     , roundSet
     , runEncounter
     , saveButton
-    , saveButtonDirty
     , saveChain
     , saveLoadConfirmCancel
     , saveLoadConfirmGo
@@ -157,7 +156,7 @@ module View.Tooltips exposing
     , timerSet
     , toastDismiss
     , treasureButton
-    , xpFilterTotal
+    , xpCalculator
     )
 
 {-| Centralised tooltip strings.
@@ -229,40 +228,37 @@ appBarDonate =
 
 difficultyButton : String
 difficultyButton =
-    "Open the encounter-difficulty calculator (2024 XP budgets)"
+    "Difficulty calculator"
+
+
+xpCalculator : String
+xpCalculator =
+    "XP calculator"
 
 
 treasureButton : String
 treasureButton =
-    "Roll random treasure for this encounter (SRD individual or hoard tables)"
+    "Treasure roller"
 
 
 quickAddButton : String
 quickAddButton =
-    "Quick-add a creature from the Compendium"
+    "Quick add creature"
 
 
 panelOpenCompendium : String
 panelOpenCompendium =
-    "Open the Creature Compendium in its own browser tab"
+    "Compendium (new tab)"
 
 
 panelRandomEncounter : String
 panelRandomEncounter =
-    "Choose parameters & generate encounter"
+    "Random encounter generator"
 
 
-{-| Save trigger when there are no unsaved roster changes. See
-`saveButtonDirty` for the dirty variant.
--}
 saveButton : String
 saveButton =
-    "Save the encounter"
-
-
-saveButtonDirty : String
-saveButtonDirty =
-    "Save the encounter (unsaved roster changes)"
+    "Save/Load encounter"
 
 
 reset : String
@@ -272,7 +268,7 @@ reset =
 
 clear : String
 clear =
-    "Remove every creature and reset round to 1"
+    "Clear encounter"
 
 
 runEncounter : String
@@ -293,11 +289,6 @@ roundSet =
 rollDice : String
 rollDice =
     "Roll dice"
-
-
-rollDiceUnread : String
-rollDiceUnread =
-    "Roll dice (new entries since last open)"
 
 
 
@@ -395,7 +386,7 @@ queueRemove =
 
 queueReplace : String
 queueReplace =
-    "Swap for a compendium pick (keeps position and initiative)"
+    "Replace creature"
 
 
 queueDuplicate : String
@@ -460,7 +451,7 @@ specialReactionBadge =
 
 initiativeManager : String
 initiativeManager =
-    "Initiative manager"
+    "Manage Initiative"
 
 
 showStatBlock : String
@@ -529,7 +520,7 @@ hpOpenManage =
 
 manageHp : String
 manageHp =
-    "Manage HP — Damage, Heal, Temp HP, or +Max HP"
+    "Manage HP"
 
 
 applyCondition : String
@@ -539,7 +530,7 @@ applyCondition =
 
 saveChain : String
 saveChain =
-    "Save Chain — reusable save + effect recipe (damage / heal / apply condition on fail or success)"
+    "Save roll + results"
 
 
 bloodied : String
@@ -973,6 +964,11 @@ drawerClose =
     "Close this panel"
 
 
+drawerColumnToggle : String
+drawerColumnToggle =
+    "Fold the editor column away, or bring it back"
+
+
 drawerCollapse : String
 drawerCollapse =
     "Fold this panel away, or open it back up"
@@ -993,11 +989,6 @@ toastDismiss =
 --
 -- One per parameterised tooltip.  Kept thin so the static
 -- survey above isn't broken up by template logic.
-
-
-xpFilterTotal : String -> String
-xpFilterTotal total =
-    total ++ " — choose which creatures the XP total counts"
 
 
 {-| Names the creature whose stat block a click will pin.
@@ -1024,7 +1015,7 @@ statusBadgeEdit =
 -}
 statusEditor : String
 statusEditor =
-    "Set cover, concentration, hiding, dodging, and flying"
+    "Set cover, concentration, hiding, dodging, flying"
 
 
 {-| Status-editor posture toggle (concentrate / hide / dodge

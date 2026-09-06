@@ -261,9 +261,9 @@ scoped to the workspace shell rather than to a single feature:
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
   whose ~creatureId~ no longer matches anything in the bundled compendium).
-- ~xpScope : XpScope~ — which creatures the XP total counts.  Both the readout
-  and the scope live in the Actions column; the picker's open state is the
-  ~SurfaceXp~ marker in the drawer stack, not a field.
+- ~xpScope : XpScope~ — which creatures the XP total counts.  The scope is
+  picked in the XP panel, which is also where the readout lives; the picker's
+  open state is the ~SurfaceXp~ marker in the drawer stack, not a field.
 - ~settingsOpen : Bool~ — AppBar settings popover (theme picker today; density /
   sound when those land).  A controlled ~<div>~ rather than a native
   ~<details>/<summary>~, so global Esc + click-outside subscriptions in
@@ -1280,12 +1280,12 @@ Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~, ~DiceRerunMenuClose~,
 
 * Encounter XP totals
 
-The Actions column's XP trigger reports the encounter's XP total in its hover
-text.  ~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature
-through ~Compendium.find creatureId~, and sums two parallel running totals:
-~total~ (every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when
-present, falling back to ~xp~).  Players are always excluded;
-missing-from-compendium entries are silently skipped.
+The XP panel's headline reports the encounter's XP total.
+~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature through
+~Compendium.find creatureId~, and sums two parallel running totals: ~total~
+(every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when present,
+falling back to ~xp~).  Players are always excluded; missing-from-compendium
+entries are silently skipped.
 
 The four scope options come from the ~Encounter.Xp.XpScope~ enum (~Enemies &
 NPCs~ / ~Enemies Only~ / ~NPCs Only~ / ~Selected Only~).  ~Selected Only~ uses
@@ -1300,9 +1300,9 @@ helper.  Behavior is locked by the dedicated ~Encounter/XpTest~ suite (14 cases
 covering empty queues, scope filters, lair-XP fallback / preference, and the
 thousand- separator math).
 
-The scope is picked in the Actions column's XP panel (=View/Panel/Xp.elm=),
-which also restates the total so the effect of a pick is visible while making
-it.  The ~SurfaceXp~ marker in the drawer stack is the panel's open state;
+The scope is picked in the XP panel (=View/Panel/Xp.elm=), which carries the
+total alongside it so the effect of a pick is visible while making it.  The
+~SurfaceXp~ marker in the drawer stack is the panel's open state;
 ~XpFilterToggle~ / ~XpFilterClose~ add and drop it, and ~XpScopeSet~
 deliberately leaves it open.  =Main.subscriptions= adds one sub while it is open
 — ~Browser.Events.onKeyDown (escKey XpFilterClose)~.  A click-outside sub would
@@ -1764,14 +1764,15 @@ dependency order:
    ~View.Panel.onClickWithoutFolding~ rather than ~onClick~ — a plain ~onClick~
    there folds the panel as a side effect of doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
-   render arm in ~View.PanelDrawer.panelFor~, and an Esc mapping in
-   ~Main.drawerEscSub~; those three move together.  Panels live in the
-   ~model.drawer~ stack — many open at once, newest at the bottom — and their
-   Update modules open, close, and edit them through ~Model.openDrawer~ /
-   ~closeDrawer~ / ~toggleDrawer~ / ~mapDrawer~.  A per-creature editor takes a
-   narrower shape: its body lives in =View/Inline/Foo.elm= and
-   =View.PanelDrawer='s ~editor~ helper supplies the chrome, so every editor's
-   target strip and close behaviour stay identical.
+   render arm in ~View.PanelDrawer.panelFor~, an Esc mapping in
+   ~Main.drawerEscSub~, and — for a panel the Actions column opens — an entry in
+   ~Model.defaultDrawer~, the folded stack the drawer boots with; those four
+   move together.  Panels live in the ~model.drawer~ stack — many open at once,
+   newest at the bottom — and their Update modules open, close, and edit them
+   through ~Model.openDrawer~ / ~closeDrawer~ / ~toggleDrawer~ / ~mapDrawer~.  A
+   per-creature editor takes a narrower shape: its body lives in
+   =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper supplies the
+   chrome, so every editor's target strip and close behaviour stay identical.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.

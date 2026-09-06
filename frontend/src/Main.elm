@@ -603,8 +603,9 @@ init flags url key =
       , placeholderRename = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
       , queuePanels = Ui.QueuePanels.fresh
-      , drawer = []
+      , drawer = Model.defaultDrawer
       , drawerDrag = Nothing
+      , drawerCollapsed = False
       , compendiumEditDraft = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
@@ -1841,6 +1842,9 @@ updateInner msg model =
 
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
+
+        DrawerColumnToggle ->
+            Update.PanelDrawer.columnToggle model
 
         DrawerDragStart index ->
             Update.PanelDrawer.dragStart index model

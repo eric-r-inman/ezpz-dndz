@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerHas, drawerIndexOf, drawerPanelAt, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -204,6 +204,36 @@ parkCreatureEditor model =
             model
 
 
+{-| The drawer's boot contents: every panel the Actions column
+opens, folded to its heading row, in the column's own order so
+the two read the same way down.
+
+The per-creature editors take no target here — the encounter
+arrives after `init` — so they come up unaimed and
+`Update.PanelDrawer.toggleCollapse` aims them at whatever is in
+the queue the first time one is expanded.
+
+-}
+defaultDrawer : List DrawerPanel
+defaultDrawer =
+    List.map (\s -> { surface = s, collapsed = True })
+        [ SurfaceDice
+        , SurfaceHpChange (Ui.HpChange.fresh "")
+        , SurfaceStatus (Ui.Status.fresh "")
+        , SurfaceCondition (UiCondition.fresh "")
+        , SurfaceSaveChain (Ui.SaveChain.fresh "")
+        , SurfaceInitiative (Ui.Initiative.fresh "")
+        , SurfaceDuplicate (Ui.Duplicate.fresh "")
+        , SurfaceReplace (Ui.Replace.fresh "")
+        , SurfaceCrCalculator Ui.CrCalculator.fresh
+        , SurfaceXp
+        , SurfaceTreasure Ui.Treasure.fresh
+        , SurfaceSaveLoad (Ui.SaveLoad.fresh Nothing)
+        , SurfaceQuickAdd Ui.QuickAdd.fresh
+        , SurfaceRandomEncounter Ui.RandomEncounter.fresh
+        ]
+
+
 {-| Move the panel at `from` so it sits at `to`, shifting the
 ones between. Out-of-range indices leave the stack unchanged.
 -}
@@ -308,6 +338,32 @@ toggleCollapsedAt index model =
                 (\i panel ->
                     if i == index then
                         { panel | collapsed = not panel.collapsed }
+
+                    else
+                        panel
+                )
+                model.drawer
+    }
+
+
+{-| The panel at `index` in the stack, if there is one.
+-}
+drawerPanelAt : Int -> Model -> Maybe DrawerPanel
+drawerPanelAt index model =
+    model.drawer |> List.drop index |> List.head
+
+
+{-| Replace the surface of the panel at `index`, leaving its fold
+state and its neighbours alone.
+-}
+mapSurfaceAt : Int -> (Surface -> Surface) -> Model -> Model
+mapSurfaceAt index fn model =
+    { model
+        | drawer =
+            List.indexedMap
+                (\i panel ->
+                    if i == index then
+                        { panel | surface = fn panel.surface }
 
                     else
                         panel
@@ -763,6 +819,11 @@ type alias Model =
 
     -- The drawer reorder in progress, if any.
     , drawerDrag : Maybe DrawerDrag
+
+    -- Whether the drawer column is folded out of the layout.
+    -- The panels stay in the stack while it is, so folding the
+    -- column is a view of the same work rather than a close.
+    , drawerCollapsed : Bool
 
     -- The creature editor's work in progress, mirrored on every
     -- edit so closing the editor by any route — selecting

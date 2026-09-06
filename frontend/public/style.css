@@ -127,6 +127,10 @@
   --drawer-width: 296px;
   --drawer-pad-x: 4px;
 
+  /* The fold strip: narrow enough to read as a seam rather than a
+     column of its own, wide enough to hit. */
+  --drawer-fold-width: 14px;
+
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
      the width judged at the table, not derived from the gap. */
@@ -1594,7 +1598,13 @@ body {
 /* The drawer's track exists only while the drawer does, so a
    closed drawer leaves no empty column and no double gap. */
 .workspace--drawer {
-  grid-template-columns: auto var(--drawer-width) 1fr;
+  grid-template-columns: auto var(--drawer-width) auto 1fr;
+}
+
+/* Folded: the drawer's track goes, the fold strip stays so there
+   is something to bring it back with. */
+.workspace--drawer-folded {
+  grid-template-columns: auto auto 1fr;
 }
 
 /* ── Account page (`/me`) ──────────────────────────────────────────── */
@@ -4224,6 +4234,30 @@ body {
 .actions-column__pair {
   display: flex;
   gap: var(--space-1);
+}
+
+/* Sits between the drawer and the queue in either grid, so it
+   is addressed from the end rather than by a fixed number. */
+.drawer-fold {
+  grid-column: -3 / -2;
+  grid-row: 1;
+  appearance: none;
+  align-self: stretch;
+  width: var(--drawer-fold-width);
+  padding: 0;
+  cursor: pointer;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-caret);
+  line-height: 1;
+}
+
+.drawer-fold:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* The queue takes the last column whether or not the drawer
@@ -7204,9 +7238,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 @media (max-width: 820px) {
   .workspace,
-  .workspace--drawer {
+  .workspace--drawer,
+  .workspace--drawer-folded {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto;
   }
   /* Stacked, the panes fall in source order, which leaves no
      empty row behind when the drawer is closed. */
@@ -7217,6 +7252,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   .drawer-stack {
     grid-column: 1;
     grid-row: auto;
+  }
+  /* A fold that hides a column has nothing to do once the panes
+     are stacked in one. */
+  .drawer-fold {
+    display: none;
   }
   .panel--main {
     grid-column: 1;

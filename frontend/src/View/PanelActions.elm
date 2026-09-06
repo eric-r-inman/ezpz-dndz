@@ -16,7 +16,6 @@ import Model exposing (Model, PendingControl(..), Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
 import View.Card
-import View.Panel.Xp
 import View.Tooltips as Tooltips
 
 
@@ -26,18 +25,8 @@ view model =
         enc =
             model.encounter
 
-        -- Every editor aims at the active creature, falling back
-        -- to the top of the queue before combat starts; their
-        -- own "apply to selected" buttons cover the rest.
         target =
-            if String.isEmpty enc.activeName then
-                enc.creatures
-                    |> List.head
-                    |> Maybe.map .name
-                    |> Maybe.withDefault ""
-
-            else
-                enc.activeName
+            Encounter.defaultTarget enc
 
         showing lens =
             Model.drawerHas lens model
@@ -93,19 +82,17 @@ view model =
                 CrCalculatorOpen
                 Tooltips.difficultyButton
                 "⚖️"
+            , trigger (showing Model.xpLens)
+                XpFilterToggle
+                Tooltips.xpCalculator
+                "🏅"
             , trigger (showing Model.treasureLens)
                 TreasureOpen
                 Tooltips.treasureButton
                 "💰"
-            , trigger (showing Model.xpLens)
-                XpFilterToggle
-                (Tooltips.xpFilterTotal
-                    (View.Panel.Xp.label enc model.compendium.db model.xpScope)
-                )
-                "🏅"
             , trigger (showing Model.saveLoadLens)
                 SaveLoadOpen
-                (saveTip model)
+                Tooltips.saveButton
                 (saveLabel model)
             , trigger (model.surface == Just (SurfaceConfirm PendingClear))
                 EncounterClear
@@ -166,12 +153,7 @@ rollTrigger open dice =
          else
             OpenDice
         )
-        (if dice.unread then
-            Tooltips.rollDiceUnread
-
-         else
-            Tooltips.rollDice
-        )
+        Tooltips.rollDice
         "🎲"
 
 
@@ -187,15 +169,6 @@ saveLabel model =
 
     else
         "💾"
-
-
-saveTip : Model -> String
-saveTip model =
-    if Encounter.rosterDirty model.encounter model.savedSnapshot then
-        Tooltips.saveButtonDirty
-
-    else
-        Tooltips.saveButton
 
 
 {-| A trigger in the controls block's paired row: sized to
@@ -246,13 +219,7 @@ triggerWithClass extraClass showing openMsg tip glyph =
             )
         , type_ "button"
         , onClick openMsg
-        , Tooltips.attr
-            (if showing then
-                Tooltips.inlineEditCancel
-
-             else
-                tip
-            )
+        , Tooltips.attr tip
         , attribute "aria-label" tip
         , attribute "aria-expanded"
             (if showing then

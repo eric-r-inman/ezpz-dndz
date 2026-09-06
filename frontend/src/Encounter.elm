@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, rosterDirty
+    , RechargeAbility, defaultTarget, hasCreature, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -534,6 +534,30 @@ run enc =
                     ""
     in
     { enc | activeName = firstActiveName }
+
+
+{-| The creature an editor aims at when nothing named one: the
+active creature, or the top of the queue before combat starts.
+Empty only when the queue is.
+-}
+defaultTarget : Encounter -> String
+defaultTarget enc =
+    if String.isEmpty enc.activeName then
+        enc.creatures
+            |> List.head
+            |> Maybe.map .name
+            |> Maybe.withDefault ""
+
+    else
+        enc.activeName
+
+
+{-| Whether a name still belongs to a creature in the queue. An
+editor aimed at one that has left is aimed at nothing.
+-}
+hasCreature : String -> Encounter -> Bool
+hasCreature name enc =
+    List.any (\c -> c.name == name) enc.creatures
 
 
 {-| `True` when the current encounter's roster differs from the
