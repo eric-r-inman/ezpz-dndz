@@ -6,10 +6,10 @@ module Ui.SaveCompendium exposing
 
 {-| Save-compendium modal state.
 
-Mirrors `Ui.Save` (the encounter save modal) for the compendium
-snapshot flow. The modal lets the GM save the current creature
-library to the server under a name, or trigger a JSON download
-to their local machine. Existing server-side snapshots are
+Mirrors `Ui.SaveLoad` (the encounter saves panel) for the
+compendium snapshot flow. The modal lets the GM save the current
+creature library to the server under a name, or trigger a JSON
+download to their local machine. Existing server-side snapshots are
 listed so the user can rename, delete, or pick one to overwrite.
 
 @docs SaveCompendiumUi, SaveListState, ConfirmAction
@@ -19,7 +19,7 @@ listed so the user can rename, delete, or pick one to overwrite.
 -}
 
 import Compendium.Wire exposing (SavedCompendiumMeta)
-import Msg exposing (SaveDestination(..))
+import Msg exposing (SaveStorage(..))
 
 
 {-| Loading state for the server-side snapshot listing.
@@ -46,11 +46,11 @@ type alias RenameDraft =
     }
 
 
-{-| See `Ui.Save.SaveUi` for field semantics — these are
+{-| See `Ui.SaveLoad.SaveLoadUi` for field semantics — these are
 deliberately parallel.
 -}
 type alias SaveCompendiumUi =
-    { destination : SaveDestination
+    { destination : SaveStorage
     , filename : String
     , saves : SaveListState
     , busy : Bool
@@ -60,7 +60,7 @@ type alias SaveCompendiumUi =
     }
 
 
-fresh : SaveDestination -> Maybe String -> SaveCompendiumUi
+fresh : SaveStorage -> Maybe String -> SaveCompendiumUi
 fresh destination suggestedName =
     { destination = destination
     , filename = Maybe.withDefault "" suggestedName

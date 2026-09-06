@@ -1,12 +1,15 @@
-module Update.Save exposing
+module Update.SaveLoad exposing
     ( close
     , confirmCancel
     , confirmConfirm
     , deleteRequested
     , deleteResponse
-    , destinationSet
+    , deviceFileChosen
+    , deviceFileRead
+    , deviceImportClick
     , filenameChanged
     , listLoaded
+    , loadRequested
     , open
     , overwriteRequested
     , persistResponse
@@ -15,23 +18,16 @@ module Update.Save exposing
     , renameResponse
     , renameStart
     , renameSubmit
+    , serverResponse
+    , storageSet
     , submit
     )
 
-{-| Update branches for the Save modal.
+{-| Update branches for the encounter save/load panel.
 
-The modal owns four interlocking concerns:
-
-  - Pick destination (server vs. device download).
-  - Pick / edit the filename.
-  - List + manage existing server-side saves (delete / rename /
-    overwrite via confirmation prompt).
-  - Submit: either upload to server (with overwrite confirm if
-    the name exists) or trigger a local file download.
-
-`pushSnapshot` is the shared "we just persisted the encounter,
-update the savefile snapshot" path used by both upload-success
-and load-success branches; it backs the Reset button.
+An anonymous GM's saves live in `localStorage` rather than on
+the server, so each handler that talks to the server has a local
+counterpart; `model.auth` picks between them.
 
 -}
 
@@ -39,56 +35,55 @@ import Auth
 import Dict
 import Encounter exposing (Encounter)
 import Encounter.Wire
+import File exposing (File)
 import File.Download
+import File.Select
 import Http
+import Json.Decode as Decode
 import Json.Encode as E
 import Model exposing (Model, Surface(..))
-import Msg exposing (Msg(..), SaveDestination(..))
-import Ui.Save as SaveUi exposing (ConfirmAction(..), SaveListState(..), SaveUi)
+import Msg exposing (Msg(..), SaveStorage(..))
+import Task
+import Ui.SaveLoad as SaveLoadUi exposing (ConfirmAction(..), ListState(..), SaveLoadUi)
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
 import Util.Http
 
 
-{-| The editor's own drawer entry, in the `Maybe Surface`
-shape the pattern matches below were written against.
--}
 drawerSurface : Model -> Maybe Surface
 drawerSurface model =
-    Model.drawerGet Model.saveLens model
-        |> Maybe.map SurfaceSave
+    Model.drawerGet Model.saveLoadLens model
+        |> Maybe.map SurfaceSaveLoad
 
 
-{-| Lens over the SaveUi in the drawer stack. Other update
-modules don't touch the save panel's state.
+{-| Other update modules don't touch this panel's state.
 -}
-withSaveUi : (SaveUi -> SaveUi) -> Model -> Model
-withSaveUi =
-    Model.mapSurface Model.saveLens
+withUi : (SaveLoadUi -> SaveLoadUi) -> Model -> Model
+withUi =
+    Model.mapSurface Model.saveLoadLens
 
 
-open : SaveDestination -> Model -> ( Model, Cmd Msg )
-open destination model =
+open : Model -> ( Model, Cmd Msg )
+open model =
     let
         ( saves, listCmd ) =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
-                    -- Server saves load async via the listSavesCmd.
-                    ( SavesLoading, Encounter.Wire.listSavesCmd SaveListLoaded )
+                    ( ListLoading, Encounter.Wire.listSavesCmd SaveLoadListLoaded )
 
                 _ ->
                     -- Anonymous: derive the metadata list from the
-                    -- in-memory dict synchronously so the modal
+                    -- in-memory dict synchronously so the panel
                     -- shows the existing saves on first paint.
-                    ( SavesLoaded (localSavesMetas model), Cmd.none )
+                    ( ListLoaded (localSavesMetas model), Cmd.none )
 
         baseUi =
-            SaveUi.fresh destination model.savedAs
+            SaveLoadUi.fresh model.savedAs
 
         primedUi =
             { baseUi | saves = saves }
     in
-    ( Model.toggleDrawer Model.saveLens primedUi model
+    ( Model.toggleDrawer Model.saveLoadLens primedUi model
     , listCmd
     )
 
@@ -107,13 +102,13 @@ localSavesMetas model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( Model.closeDrawer Model.saveLens model, Cmd.none )
+    ( Model.closeDrawer Model.saveLoadLens model, Cmd.none )
 
 
-destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
-destinationSet dest model =
-    ( withSaveUi
-        (\ui -> { ui | destination = dest, error = Nothing })
+storageSet : SaveStorage -> Model -> ( Model, Cmd Msg )
+storageSet storage model =
+    ( withUi
+        (\ui -> { ui | storage = storage, error = Nothing })
         model
     , Cmd.none
     )
@@ -121,10 +116,10 @@ destinationSet dest model =
 
 filenameChanged : String -> Model -> ( Model, Cmd Msg )
 filenameChanged text model =
-    ( withSaveUi
+    ( withUi
         (\ui ->
             { ui
-                | filename = String.left SaveUi.maxNameLength text
+                | filename = String.left SaveLoadUi.maxNameLength text
                 , error = Nothing
             }
         )
@@ -142,44 +137,42 @@ listLoaded result model =
         next =
             case result of
                 Ok metas ->
-                    SavesLoaded metas
+                    ListLoaded metas
 
                 Err err ->
-                    SavesFailed (Util.Http.errorToString err)
+                    ListFailed (Util.Http.errorToString err)
     in
-    ( withSaveUi (\ui -> { ui | saves = next }) model, Cmd.none )
+    ( withUi (\ui -> { ui | saves = next }) model, Cmd.none )
 
 
-{-| Submit the modal. Server-mode goes through the
-upload pipeline (with a 409 conflict surfacing as an inline
-overwrite prompt); device-mode triggers `File.Download.string`
-immediately and closes the modal.
+{-| Submit the panel. A name collision comes back as a 409,
+which `persistResponse` turns into the overwrite prompt.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
     case drawerSurface model of
-        Just (SurfaceSave ui) ->
+        Just (SurfaceSaveLoad ui) ->
             let
                 trimmed =
                     String.trim ui.filename
             in
             if String.isEmpty trimmed then
-                ( withSaveUi
+                ( withUi
                     (\u -> { u | error = Just "Name is required." })
                     model
                 , Cmd.none
                 )
 
             else
-                case ui.destination of
-                    SaveDestinationServer ->
+                case ui.storage of
+                    StorageServer ->
                         case model.auth of
                             Auth.AuthAuthenticated _ ->
-                                ( withSaveUi
+                                ( withUi
                                     (\u -> { u | busy = True, error = Nothing })
                                     model
                                 , Encounter.Wire.putSaveCmd
-                                    (SavePersistResponse trimmed)
+                                    (SaveLoadPersistResponse trimmed)
                                     { name = trimmed, overwrite = False }
                                     model.encounter
                                 )
@@ -187,8 +180,8 @@ submit model =
                             _ ->
                                 applyLocalEncounterSave trimmed False model
 
-                    SaveDestinationDevice ->
-                        ( Model.closeDrawer Model.saveLens model
+                    StorageDevice ->
+                        ( Model.closeDrawer Model.saveLoadLens model
                         , downloadEncounter trimmed model.encounter
                         )
 
@@ -198,9 +191,8 @@ submit model =
 
 {-| Anonymous equivalent of the server save flow. If the name
 already exists and `overwrite` is False, surface the same
-confirm-overwrite banner the server's 409 path would (so the
-UX matches across auth states). Otherwise insert / replace the
-entry in `model.localEncounterSaves` and toast.
+confirm-overwrite banner the server's 409 path would, so the UX
+matches across auth states.
 
 The update-loop wrapper notices the dict change and writes the
 new snapshot to `localStorage.encounterSaves`.
@@ -214,7 +206,7 @@ applyLocalEncounterSave name overwrite model =
     in
     case ( existing, overwrite ) of
         ( Just _, False ) ->
-            ( withSaveUi
+            ( withUi
                 (\ui ->
                     { ui
                         | busy = False
@@ -245,10 +237,11 @@ applyLocalEncounterSave name overwrite model =
                             Dict.insert name entry model.localEncounterSaves
                         , savedSnapshot = Just model.encounter
                         , savedAs = Just name
-                        , surface = Nothing
                     }
             in
-            Update.Toast.push ToastSuccess ("Saved \"" ++ name ++ "\".") next
+            Update.Toast.push ToastSuccess
+                ("Saved \"" ++ name ++ "\".")
+                (Model.closeDrawer Model.saveLoadLens next)
 
 
 {-| Encode the encounter and trigger a JSON download with the
@@ -271,10 +264,8 @@ downloadEncounter rawName encounter =
     File.Download.string (safe ++ ".json") "application/json" body
 
 
-{-| Server response to PUT. Success: snapshot the just-saved
-encounter so Reset has somewhere to go back to, close the modal,
-toast the success. 409 conflict: open the overwrite-confirm
-banner. Other errors: surface inline.
+{-| Server response to PUT. A success snapshots the just-saved
+encounter, so Reset has somewhere to go back to.
 -}
 persistResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
 persistResponse name result model =
@@ -285,15 +276,14 @@ persistResponse name result model =
                     { model
                         | savedSnapshot = Just model.encounter
                         , savedAs = Just name
-                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
                 ("Saved \"" ++ name ++ "\".")
-                snapshotted
+                (Model.closeDrawer Model.saveLoadLens snapshotted)
 
         Err (Http.BadStatus 409) ->
-            ( withSaveUi
+            ( withUi
                 (\ui ->
                     { ui
                         | busy = False
@@ -306,7 +296,7 @@ persistResponse name result model =
             )
 
         Err err ->
-            ( withSaveUi
+            ( withUi
                 (\ui ->
                     { ui
                         | busy = False
@@ -318,12 +308,9 @@ persistResponse name result model =
             )
 
 
-{-| The user clicked the overwrite icon next to an existing save
-in the list. Bring up the overwrite-confirm banner.
--}
 overwriteRequested : String -> Model -> ( Model, Cmd Msg )
 overwriteRequested name model =
-    ( withSaveUi
+    ( withUi
         (\ui -> { ui | confirm = Just (ConfirmOverwrite name), error = Nothing })
         model
     , Cmd.none
@@ -332,7 +319,7 @@ overwriteRequested name model =
 
 deleteRequested : String -> Model -> ( Model, Cmd Msg )
 deleteRequested name model =
-    ( withSaveUi
+    ( withUi
         (\ui -> { ui | confirm = Just (ConfirmDelete name), error = Nothing })
         model
     , Cmd.none
@@ -341,21 +328,38 @@ deleteRequested name model =
 
 confirmCancel : Model -> ( Model, Cmd Msg )
 confirmCancel model =
-    ( withSaveUi (\ui -> { ui | confirm = Nothing }) model, Cmd.none )
+    ( withUi (\ui -> { ui | confirm = Nothing }) model, Cmd.none )
 
 
-{-| Fire the confirmed action. Overwrite re-PUTs with
-`?overwrite=true`; delete fires the DELETE call.
--}
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
     case drawerSurface model of
-        Just (SurfaceSave ui) ->
+        Just (SurfaceSaveLoad ui) ->
             case ui.confirm of
+                Just (ConfirmLoad name) ->
+                    case model.auth of
+                        Auth.AuthAuthenticated _ ->
+                            ( withUi
+                                (\u ->
+                                    { u
+                                        | busy = True
+                                        , confirm = Nothing
+                                        , error = Nothing
+                                    }
+                                )
+                                model
+                            , Encounter.Wire.getSaveCmd
+                                (SaveLoadServerResponse name)
+                                name
+                            )
+
+                        _ ->
+                            applyLocalLoad name model
+
                 Just (ConfirmOverwrite name) ->
                     case model.auth of
                         Auth.AuthAuthenticated _ ->
-                            ( withSaveUi
+                            ( withUi
                                 (\u ->
                                     { u
                                         | busy = True
@@ -365,7 +369,7 @@ confirmConfirm model =
                                 )
                                 model
                             , Encounter.Wire.putSaveCmd
-                                (SavePersistResponse name)
+                                (SaveLoadPersistResponse name)
                                 { name = name, overwrite = True }
                                 model.encounter
                             )
@@ -376,7 +380,7 @@ confirmConfirm model =
                 Just (ConfirmDelete name) ->
                     case model.auth of
                         Auth.AuthAuthenticated _ ->
-                            ( withSaveUi
+                            ( withUi
                                 (\u ->
                                     { u
                                         | busy = True
@@ -386,7 +390,7 @@ confirmConfirm model =
                                 )
                                 model
                             , Encounter.Wire.deleteSaveCmd
-                                (SaveDeleteResponse name)
+                                (SaveLoadDeleteResponse name)
                                 name
                             )
 
@@ -400,9 +404,8 @@ confirmConfirm model =
             ( model, Cmd.none )
 
 
-{-| Anonymous-mode delete: drop the entry from the dict, refresh
-the modal's saves list, clear `savedAs` if it matched. The
-update wrapper persists the new dict to localStorage.
+{-| Anonymous-mode delete. The update wrapper persists the new
+dict to localStorage.
 -}
 applyLocalEncounterDelete : String -> Model -> ( Model, Cmd Msg )
 applyLocalEncounterDelete name model =
@@ -421,13 +424,13 @@ applyLocalEncounterDelete name model =
             }
 
         refreshed =
-            withSaveUi
+            withUi
                 (\ui ->
                     { ui
                         | confirm = Nothing
                         , busy = False
                         , error = Nothing
-                        , saves = SavesLoaded (localSavesMetas next)
+                        , saves = ListLoaded (localSavesMetas next)
                     }
                 )
                 next
@@ -447,12 +450,12 @@ deleteResponse name result model =
                     else
                         model
             in
-            ( withSaveUi (\ui -> { ui | busy = False }) cleared
-            , Encounter.Wire.listSavesCmd SaveListLoaded
+            ( withUi (\ui -> { ui | busy = False }) cleared
+            , Encounter.Wire.listSavesCmd SaveLoadListLoaded
             )
 
         Err err ->
-            ( withSaveUi
+            ( withUi
                 (\ui ->
                     { ui
                         | busy = False
@@ -466,7 +469,7 @@ deleteResponse name result model =
 
 renameStart : String -> Model -> ( Model, Cmd Msg )
 renameStart name model =
-    ( withSaveUi
+    ( withUi
         (\ui ->
             { ui
                 | renaming = Just { original = name, draft = name }
@@ -481,12 +484,12 @@ renameStart name model =
 
 renameChange : String -> Model -> ( Model, Cmd Msg )
 renameChange text model =
-    ( withSaveUi
+    ( withUi
         (\ui ->
             { ui
                 | renaming =
                     Maybe.map
-                        (\r -> { r | draft = String.left SaveUi.maxNameLength text })
+                        (\r -> { r | draft = String.left SaveLoadUi.maxNameLength text })
                         ui.renaming
             }
         )
@@ -498,7 +501,7 @@ renameChange text model =
 renameSubmit : Model -> ( Model, Cmd Msg )
 renameSubmit model =
     case drawerSurface model of
-        Just (SurfaceSave ui) ->
+        Just (SurfaceSaveLoad ui) ->
             case ui.renaming of
                 Just { original, draft } ->
                     let
@@ -506,18 +509,18 @@ renameSubmit model =
                             String.trim draft
                     in
                     if String.isEmpty trimmed || trimmed == original then
-                        ( withSaveUi (\u -> { u | renaming = Nothing }) model
+                        ( withUi (\u -> { u | renaming = Nothing }) model
                         , Cmd.none
                         )
 
                     else
                         case model.auth of
                             Auth.AuthAuthenticated _ ->
-                                ( withSaveUi
+                                ( withUi
                                     (\u -> { u | busy = True, error = Nothing })
                                     model
                                 , Encounter.Wire.renameSaveCmd
-                                    (SaveRenameResponse { from = original, to = trimmed })
+                                    (SaveLoadRenameResponse { from = original, to = trimmed })
                                     { from = original, to = trimmed }
                                 )
 
@@ -531,9 +534,6 @@ renameSubmit model =
             ( model, Cmd.none )
 
 
-{-| Anonymous-mode rename in the Save modal. Swaps the dict
-key, bumps updated\_at, refreshes the saves list.
--}
 applyLocalRename : String -> String -> Model -> ( Model, Cmd Msg )
 applyLocalRename from to model =
     case Dict.get from model.localEncounterSaves of
@@ -557,13 +557,13 @@ applyLocalRename from to model =
                 next =
                     { renamedSavedAs | localEncounterSaves = nextSaves }
             in
-            ( withSaveUi
+            ( withUi
                 (\u ->
                     { u
                         | busy = False
                         , renaming = Nothing
                         , error = Nothing
-                        , saves = SavesLoaded (localSavesMetas next)
+                        , saves = ListLoaded (localSavesMetas next)
                     }
                 )
                 next
@@ -571,7 +571,7 @@ applyLocalRename from to model =
             )
 
         Nothing ->
-            ( withSaveUi
+            ( withUi
                 (\u ->
                     { u
                         | busy = False
@@ -586,7 +586,7 @@ applyLocalRename from to model =
 
 renameCancel : Model -> ( Model, Cmd Msg )
 renameCancel model =
-    ( withSaveUi (\ui -> { ui | renaming = Nothing }) model, Cmd.none )
+    ( withUi (\ui -> { ui | renaming = Nothing }) model, Cmd.none )
 
 
 renameResponse :
@@ -605,18 +605,152 @@ renameResponse { from, to } result model =
                     else
                         model
             in
-            ( withSaveUi
+            ( withUi
                 (\ui -> { ui | busy = False, renaming = Nothing })
                 renamedSavedAs
-            , Encounter.Wire.listSavesCmd SaveListLoaded
+            , Encounter.Wire.listSavesCmd SaveLoadListLoaded
             )
 
         Err err ->
-            ( withSaveUi
+            ( withUi
                 (\ui ->
                     { ui
                         | busy = False
                         , error = Just (Util.Http.errorToString err)
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+
+loadRequested : String -> Model -> ( Model, Cmd Msg )
+loadRequested name model =
+    ( withUi
+        (\ui -> { ui | confirm = Just (ConfirmLoad name), error = Nothing })
+        model
+    , Cmd.none
+    )
+
+
+{-| Anonymous-mode load. The name should always resolve — the
+list is rendered from the same dict — so a miss surfaces as an
+error rather than passing quietly.
+-}
+applyLocalLoad : String -> Model -> ( Model, Cmd Msg )
+applyLocalLoad name model =
+    case Dict.get name model.localEncounterSaves of
+        Just save ->
+            let
+                encounter =
+                    save.encounter
+
+                fresh =
+                    { encounter | round = 1, activeName = "" }
+
+                next =
+                    { model
+                        | encounter = fresh
+                        , savedSnapshot = Just fresh
+                        , savedAs = Just name
+                    }
+            in
+            Update.Toast.push ToastSuccess
+                ("Loaded \"" ++ name ++ "\".")
+                (Model.closeDrawer Model.saveLoadLens next)
+
+        Nothing ->
+            ( withUi
+                (\u ->
+                    { u
+                        | busy = False
+                        , confirm = Nothing
+                        , error = Just "That save no longer exists."
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+
+{-| Server returned the encounter body. Replace the live
+encounter and snapshot it as the savefile state, so the Save
+button reads clean until the roster changes. Force round 1 with
+no active creature so the GM lands in pre-combat mode and
+starts the fight when ready.
+-}
+serverResponse : String -> Result Http.Error Encounter -> Model -> ( Model, Cmd Msg )
+serverResponse name result model =
+    case result of
+        Ok encounter ->
+            let
+                fresh =
+                    { encounter | round = 1, activeName = "" }
+
+                next =
+                    { model
+                        | encounter = fresh
+                        , savedSnapshot = Just fresh
+                        , savedAs = Just name
+                    }
+            in
+            Update.Toast.push ToastSuccess
+                ("Loaded \"" ++ name ++ "\".")
+                (Model.closeDrawer Model.saveLoadLens next)
+
+        Err err ->
+            ( withUi
+                (\ui ->
+                    { ui
+                        | busy = False
+                        , error = Just (Util.Http.errorToString err)
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+
+deviceImportClick : Model -> ( Model, Cmd Msg )
+deviceImportClick model =
+    ( withUi (\ui -> { ui | error = Nothing }) model
+    , File.Select.file [ "application/json", "text/plain" ] SaveLoadDeviceFileChosen
+    )
+
+
+deviceFileChosen : File -> Model -> ( Model, Cmd Msg )
+deviceFileChosen file model =
+    ( model, Task.perform SaveLoadDeviceFileRead (File.toString file) )
+
+
+{-| Decode the file the GM picked. A success forces pre-combat
+mode, for the reason `serverResponse` gives.
+-}
+deviceFileRead : String -> Model -> ( Model, Cmd Msg )
+deviceFileRead raw model =
+    case Decode.decodeString Encounter.Wire.decodeEncounter raw of
+        Ok encounter ->
+            let
+                fresh =
+                    { encounter | round = 1, activeName = "" }
+
+                next =
+                    { model
+                        | encounter = fresh
+                        , savedSnapshot = Just fresh
+                        , savedAs = Nothing
+                    }
+            in
+            Update.Toast.push ToastSuccess
+                "Loaded encounter from file."
+                (Model.closeDrawer Model.saveLoadLens next)
+
+        Err err ->
+            ( withUi
+                (\ui ->
+                    { ui
+                        | error =
+                            Just ("Couldn't parse file: " ++ Decode.errorToString err)
                     }
                 )
                 model

@@ -304,10 +304,10 @@ rechargeRollLanded creatureName abilityName roll model =
                 )
                 model.encounter
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll { model | encounter = nextEncounter }
     in
-    ( pushed, flashCmd )
+    ( pushed, broadcastCmd )
 
 
 {-| Toggle the per-creature `inactive` flag. An inactive
@@ -558,11 +558,11 @@ open. No HP mutation — see `rollFallDamage`.
 fallDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 fallDamageLanded _ roll model =
     let
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
 

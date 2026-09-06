@@ -31,12 +31,6 @@ type alias DiceUi =
     , history : Dice.History
     , unread : Bool
 
-    -- Brief yellow flash on the panel-header "last roll total"
-    -- readout when a new floating-popup roll lands.  Set true
-    -- by `Update.Dice.spawnRollPopup` and cleared after the
-    -- flash duration via `Process.sleep`.
-    , flashLatest : Bool
-
     -- Which roll-history entry (by index) has its re-roll
     -- dropdown menu open.  Single-open-at-a-time, so `Maybe Int`
     -- rather than a `Set`.  The menu lets the GM choose between
@@ -60,7 +54,6 @@ empty =
     , modifierText = "0"
     , history = Dice.emptyHistory
     , unread = False
-    , flashLatest = False
     , rerunMenuOpenFor = Nothing
     , historyOpen = True
     }

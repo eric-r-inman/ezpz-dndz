@@ -36,7 +36,7 @@ import Msg
         ( CompendiumBulkMenu(..)
         , CompendiumSort(..)
         , Msg(..)
-        , SaveDestination(..)
+        , SaveStorage(..)
         )
 import Set exposing (Set)
 import Ui.Compendium as CompendiumUi
@@ -1642,7 +1642,7 @@ exportMenu _ ui =
     -- Server if they're signed in.
     button
         [ class triggerClass
-        , onClick (SaveCompendiumOpen SaveDestinationDevice)
+        , onClick (SaveCompendiumOpen StorageDevice)
         , Tooltips.attr triggerTitle
         ]
         [ text "📤 Export" ]

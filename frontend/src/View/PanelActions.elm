@@ -1,8 +1,7 @@
 module View.PanelActions exposing (view)
 
 {-| Far-left column: the workspace's encounter-scoped triggers,
-grouped by what they act on, most of them opening a panel in
-the drawer beside it.
+most of them opening a panel in the drawer beside it.
 
 Whichever trigger's surface is showing wears the shared
 editor-open ring, so the column says where it came from.
@@ -10,11 +9,11 @@ editor-open ring, so the column says where it came from.
 -}
 
 import Encounter
-import Html exposing (Html, button, div, section, span, text)
+import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model, PendingControl(..), Surface(..))
-import Msg exposing (ActionGroup(..), Msg(..), SaveDestination(..))
+import Msg exposing (Msg(..))
 import Ui.Dice exposing (DiceUi)
 import View.Card
 import View.Panel.Xp
@@ -42,149 +41,89 @@ view model =
 
         showing lens =
             Model.drawerHas lens model
-
-        groups =
-            model.actionGroups
     in
     div [ class "actions-column" ]
-        [ -- The encounter's own controls sit above the grouped
-          -- triggers with no panel around them: they belong to
-          -- no one creature or reference, so a heading would
-          -- have to invent a category for them.
+        [ -- The encounter's own controls sit above the grid with
+          -- no panel around them: they act on the encounter
+          -- rather than opening anything.
           div [ class "actions-column__controls" ]
             [ div [ class "actions-column__pair" ]
-                [ headerTrigger "action-btn action-btn--orange"
+                [ headerTrigger
                     (model.surface == Just (SurfaceConfirm PendingReset))
                     EncounterReset
                     Tooltips.reset
                     "⏮"
                 , turnTrigger enc.activeName
                 ]
-            , rollTrigger (Model.drawerHas Model.diceLens model) model.dice
-            , diceTotals model.dice
             ]
-        , group "Creature"
-            CreatureGroup
-            groups.creature
-            [ trigger "action-btn action-btn--manage-hp"
-                (showing Model.hpChangeLens)
+
+        -- At icon size the triggers read as a keypad, so they
+        -- share one grid.
+        , div [ class "actions-column__grid" ]
+            [ rollTrigger (Model.drawerHas Model.diceLens model) model.dice
+            , trigger (showing Model.hpChangeLens)
                 (HpChangeOpen target)
                 Tooltips.manageHp
-                "HP"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.statusLens)
+                "💜"
+            , trigger (showing Model.statusLens)
                 (StatusOpen target)
                 Tooltips.statusEditor
-                "Status"
-            , trigger "action-btn action-btn--condition"
-                (showing Model.conditionLens)
+                "❗"
+            , trigger (showing Model.conditionLens)
                 (ConditionOpenNew target)
                 Tooltips.applyCondition
-                "Condition"
-            , trigger "action-btn action-btn--save-chain"
-                (showing Model.saveChainLens)
+                "🌀"
+            , trigger (showing Model.saveChainLens)
                 (SaveChainOpen target)
                 Tooltips.saveChain
-                "Save Chain"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.initiativeLens)
+                "🍀"
+            , trigger (showing Model.initiativeLens)
                 (InitiativeOpen target)
                 Tooltips.initiativeManager
-                "Initiative"
-            , trigger "action-btn action-btn--orange"
-                (showing Model.duplicateLens)
+                "🏁"
+            , trigger (showing Model.duplicateLens)
                 (DuplicateOpen target)
                 Tooltips.queueDuplicate
-                "Duplicate"
-            , trigger "action-btn action-btn--orange"
-                (showing Model.replaceLens)
+                "👥"
+            , trigger (showing Model.replaceLens)
                 (ReplaceOpen target)
                 Tooltips.queueReplace
-                "Replace"
-            ]
-        , group "Encounter"
-            EncounterGroup
-            groups.encounter
-            [ trigger "action-btn"
-                (showing Model.crCalculatorLens)
+                "🔄"
+            , trigger (showing Model.crCalculatorLens)
                 CrCalculatorOpen
                 Tooltips.difficultyButton
-                "Difficulty"
-            , trigger "action-btn"
-                (showing Model.treasureLens)
+                "⚖️"
+            , trigger (showing Model.treasureLens)
                 TreasureOpen
                 Tooltips.treasureButton
-                "Treasure"
-            , trigger "action-btn"
-                (showing Model.xpLens)
+                "💰"
+            , trigger (showing Model.xpLens)
                 XpFilterToggle
-                Tooltips.xpFilter
-                (View.Panel.Xp.label enc model.compendium.db model.xpScope)
-            , trigger "action-btn action-btn--blue"
-                (showing Model.saveLens)
-                (SaveOpen SaveDestinationServer)
+                (Tooltips.xpFilterTotal
+                    (View.Panel.Xp.label enc model.compendium.db model.xpScope)
+                )
+                "🏅"
+            , trigger (showing Model.saveLoadLens)
+                SaveLoadOpen
                 (saveTip model)
                 (saveLabel model)
-            , trigger "action-btn action-btn--blue"
-                (showing Model.loadLens)
-                LoadOpen
-                Tooltips.loadButton
-                "Load"
-            , trigger "action-btn action-btn--red"
-                (model.surface == Just (SurfaceConfirm PendingClear))
+            , trigger (model.surface == Just (SurfaceConfirm PendingClear))
                 EncounterClear
                 Tooltips.clear
-                "Clear"
-            ]
-        , group "Compendium"
-            CompendiumGroup
-            groups.compendium
-            [ trigger "action-btn action-btn--blue"
-                False
+                "🗑️"
+            , trigger False
                 CompendiumOpen
                 Tooltips.panelOpenCompendium
-                "Open"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.quickAddLens)
+                "📚"
+            , trigger (showing Model.quickAddLens)
                 QuickAddOpen
                 Tooltips.quickAddButton
-                "Quick Add"
-            , trigger "action-btn action-btn--blue"
-                (showing Model.randomEncounterLens)
+                "＋"
+            , trigger (showing Model.randomEncounterLens)
                 RandomEncounterOpen
                 Tooltips.panelRandomEncounter
-                "Random"
+                "🎰"
             ]
-        ]
-
-
-{-| One titled block of triggers. The heading is the block's
-own panel header and its collapse toggle, so a GM working out
-of one group can fold the others away rather than scroll past
-them.
--}
-group : String -> ActionGroup -> Bool -> List (Html Msg) -> Html Msg
-group heading which collapsed triggers =
-    section [ class "panel" ]
-        [ button
-            [ class "panel__header panel-actions__group-header"
-            , type_ "button"
-            , onClick (ActionGroupToggle which)
-            , Tooltips.attr Tooltips.actionGroupToggle
-            , attribute "aria-expanded"
-                (if collapsed then
-                    "false"
-
-                 else
-                    "true"
-                )
-            ]
-            [ div [ class "panel__title" ] [ text heading ] ]
-        , if collapsed then
-            text ""
-
-          else
-            div [ class "panel__body panel__body--actions" ] triggers
         ]
 
 
@@ -197,14 +136,14 @@ distinction.
 turnTrigger : String -> Html Msg
 turnTrigger activeName =
     if String.isEmpty activeName then
-        headerTrigger "action-btn action-btn--green"
+        headerTrigger
             False
             EncounterRun
             Tooltips.runEncounter
             "▶"
 
     else
-        headerTrigger "action-btn action-btn--green"
+        headerTrigger
             False
             NextTurn
             Tooltips.nextTurn
@@ -213,12 +152,12 @@ turnTrigger activeName =
 
 rollTrigger : Bool -> DiceUi -> Html Msg
 rollTrigger open dice =
-    trigger
+    triggerWithClass
         (if dice.unread then
-            "action-btn action-btn--green dice-roll-btn dice-roll-btn--unread"
+            " dice-roll-btn--unread"
 
          else
-            "action-btn action-btn--green"
+            ""
         )
         open
         (if open then
@@ -233,58 +172,21 @@ rollTrigger open dice =
          else
             Tooltips.rollDice
         )
-        "🎲 Roll"
-
-
-{-| The last roll's total plus the three before it, oldest
-first, so the run reads left to right into the newest. Sits
-under the Roll button rather than inside the roller: the point
-is to be readable from across the table with nothing open.
--}
-diceTotals : DiceUi -> Html Msg
-diceTotals dice =
-    case dice.history.entries of
-        [] ->
-            text ""
-
-        newest :: older ->
-            div [ class "dice-totals" ]
-                ((older
-                    |> List.take 3
-                    |> List.reverse
-                    |> List.map
-                        (\r ->
-                            span [ class "dice-previous-total" ]
-                                [ text (String.fromInt r.total) ]
-                        )
-                 )
-                    ++ [ span
-                            [ class
-                                (if dice.flashLatest then
-                                    "dice-last-total dice-last-total--flash"
-
-                                 else
-                                    "dice-last-total"
-                                )
-                            , Tooltips.attr Tooltips.lastRollTotal
-                            ]
-                            [ text (String.fromInt newest.total) ]
-                       ]
-                )
+        "🎲"
 
 
 {-| Unsaved roster changes ride the label, not the button's
 border. A border cue here is indistinguishable from the ring
-every trigger wears while its panel is open, so a bordered Save
-reads as a panel that will not close.
+every trigger wears while its panel is open, so a bordered
+trigger reads as a panel that will not close.
 -}
 saveLabel : Model -> String
 saveLabel model =
     if Encounter.rosterDirty model.encounter model.savedSnapshot then
-        "Save •"
+        "💾•"
 
     else
-        "Save"
+        "💾"
 
 
 saveTip : Model -> String
@@ -299,10 +201,14 @@ saveTip model =
 {-| A trigger in the controls block's paired row: sized to
 share that row rather than fill the column's width.
 -}
-headerTrigger : String -> Bool -> Msg -> String -> String -> Html Msg
-headerTrigger cls showing openMsg tip label =
+headerTrigger : Bool -> Msg -> String -> String -> Html Msg
+headerTrigger showing openMsg tip label =
     button
-        [ class (View.Card.editorTriggerClass (cls ++ " panel-actions__header-btn") showing)
+        [ class
+            (View.Card.editorTriggerClass
+                "action-btn panel-actions__header-btn"
+                showing
+            )
         , type_ "button"
         , onClick openMsg
         , Tooltips.attr tip
@@ -318,10 +224,26 @@ headerTrigger cls showing openMsg tip label =
         [ text label ]
 
 
-trigger : String -> Bool -> Msg -> String -> String -> Html Msg
-trigger cls showing openMsg tip label =
+{-| One grid trigger. The glyph is the only label, so the
+tooltip text doubles as the accessible name — nothing else in
+the button says what it opens.
+-}
+trigger : Bool -> Msg -> String -> String -> Html Msg
+trigger =
+    triggerWithClass ""
+
+
+{-| A trigger carrying a state class of its own, for the one
+that marks unread rolls.
+-}
+triggerWithClass : String -> Bool -> Msg -> String -> String -> Html Msg
+triggerWithClass extraClass showing openMsg tip glyph =
     button
-        [ class (View.Card.editorTriggerClass (cls ++ " panel-actions__btn") showing)
+        [ class
+            (View.Card.editorTriggerClass
+                ("action-btn panel-actions__btn" ++ extraClass)
+                showing
+            )
         , type_ "button"
         , onClick openMsg
         , Tooltips.attr
@@ -331,6 +253,7 @@ trigger cls showing openMsg tip label =
              else
                 tip
             )
+        , attribute "aria-label" tip
         , attribute "aria-expanded"
             (if showing then
                 "true"
@@ -339,4 +262,4 @@ trigger cls showing openMsg tip label =
                 "false"
             )
         ]
-        [ text label ]
+        [ text glyph ]

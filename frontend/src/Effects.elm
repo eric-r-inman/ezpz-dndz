@@ -60,7 +60,6 @@ import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
 import Ports
-import Process
 import Route exposing (Route(..))
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -440,12 +439,12 @@ mutation but without the broadcast Cmd, so we don't loop.
 pushDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
 pushDiceRoll roll model =
     let
-        ( next, flashCmd ) =
+        ( next, incomingCmd ) =
             pushIncomingDiceRoll roll model
     in
     ( next
     , Cmd.batch
-        [ flashCmd
+        [ incomingCmd
         , Ports.broadcastDiceRoll (Dice.encodeRoll roll)
         ]
     )
@@ -472,26 +471,10 @@ pushIncomingDiceRoll roll model =
 
                     else
                         True
-                , flashLatest = True
             }
       }
-    , Process.sleep flashDurationMs
-        |> Task.perform (\_ -> DiceLastTotalFlashCleared)
+    , Cmd.none
     )
-
-
-{-| Duration in milliseconds for the panel-header
-"last-roll-total" yellow blink. Should match the CSS
-`animation-duration` on `.dice-last-total--flash`. Lives here
-(rather than in `Update.Dice`) because `pushDiceRoll` is the
-universal "a roll just landed" entry point, and putting the
-flash trigger right alongside it means every roll source gets
-the flash automatically without each handler remembering to
-fire it.
--}
-flashDurationMs : Float
-flashDurationMs =
-    700
 
 
 {-| GET the persisted dice history. Result lands in

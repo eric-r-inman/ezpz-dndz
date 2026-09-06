@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , ActionGroup(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), LoadSource(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveDestination(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -93,15 +93,6 @@ type QueuePanel
     = LegendaryActionsPanel
     | SpecialReactionsPanel
     | SpellsPanel
-
-
-{-| Which of the Actions column's trigger groups a heading
-click folds away.
--}
-type ActionGroup
-    = CompendiumGroup
-    | EncounterGroup
-    | CreatureGroup
 
 
 {-| Which boolean posture toggle a Status-editor click flips.
@@ -329,29 +320,18 @@ type DamagePicker
 -- ── SAVE / LOAD AUX ──────────────────────────────────────────────────────────
 
 
-{-| Where the Save button writes when submitted.
+{-| Where a save lives.
 
-  - `SaveDestinationServer` — POST/PUT to the server's named-save
-    store under the user's account.
-  - `SaveDestinationDevice` — trigger a `File.Download` of the
-    encoded encounter so the GM can keep it on their own machine.
-
-This is a pure UI enum; the server side doesn't care which mode
-was used because it only sees the half of the flow that uses it.
+  - `StorageServer` — the server's named-save endpoints for a
+    signed-in GM, or `localStorage` for an anonymous one. Same
+    constructor either way; the handlers pick the backend.
+  - `StorageDevice` — a file on the GM's machine, written by
+    download and read back through the file picker.
 
 -}
-type SaveDestination
-    = SaveDestinationServer
-    | SaveDestinationDevice
-
-
-{-| Where the Load Compendium modal pulls from. Mirrors
-`SaveDestination` so the radio group reads as a symmetric
-Server / Device pair across both modals.
--}
-type LoadSource
-    = LoadSourceServer
-    | LoadSourceDevice
+type SaveStorage
+    = StorageServer
+    | StorageDevice
 
 
 {-| Which compendium-modal split-button dropdown is currently
@@ -560,7 +540,6 @@ type Msg
     | StatBlockRollLanded Int Int Dice.Roll
       -- (clientX, clientY captured at click, the resolved roll)
     | RollPopupExpired Int
-    | DiceLastTotalFlashCleared
       -- Manage HP editor.  Opens with the target creature but
       -- no committed kind — the verb buttons fire
       -- `HpChangeApplyAs kind` to choose one.
@@ -1057,49 +1036,37 @@ type Msg
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
       -- Encounter-level controls: Save / Load / Reset / Clear
-    | SaveOpen SaveDestination
-    | SaveClose
-    | SaveDestinationSet SaveDestination
-    | SaveFilenameChanged String
-    | SaveSubmit
-    | SaveListLoaded (Result Http.Error (List Encounter.Wire.SavedEncounterMeta))
-    | SavePersistResponse String (Result Http.Error ())
-    | SaveOverwriteRequested String
-    | SaveDeleteRequested String
-    | SaveConfirmCancel
-    | SaveConfirmConfirm
-    | SaveDeleteResponse String (Result Http.Error ())
-    | SaveRenameStart String
-    | SaveRenameChange String
-    | SaveRenameSubmit
-    | SaveRenameCancel
-    | SaveRenameResponse { from : String, to : String } (Result Http.Error ())
-    | LoadOpen
-    | LoadClose
-    | LoadSourceSet LoadSource
-    | LoadFromServerRequested String
-    | LoadConfirmCancel
-    | LoadConfirmConfirm
-    | LoadServerResponse String (Result Http.Error Encounter)
-    | LoadDeleteRequested String
-    | LoadDeleteResponse String (Result Http.Error ())
-    | LoadRenameStart String
-    | LoadRenameChange String
-    | LoadRenameSubmit
-    | LoadRenameCancel
-    | LoadRenameResponse { from : String, to : String } (Result Http.Error ())
-    | LoadListLoaded (Result Http.Error (List Encounter.Wire.SavedEncounterMeta))
-    | LoadFromDeviceClick
-    | LoadFromDeviceFileChosen File
-    | LoadFromDeviceFileRead String
+    | SaveLoadOpen
+    | SaveLoadClose
+    | SaveLoadStorageSet SaveStorage
+    | SaveLoadFilenameChanged String
+    | SaveLoadSaveSubmit
+      -- Row actions.
+    | SaveLoadLoadRequested String
+    | SaveLoadOverwriteRequested String
+    | SaveLoadDeleteRequested String
+    | SaveLoadConfirmCancel
+    | SaveLoadConfirmConfirm
+    | SaveLoadListLoaded (Result Http.Error (List Encounter.Wire.SavedEncounterMeta))
+    | SaveLoadPersistResponse String (Result Http.Error ())
+    | SaveLoadServerResponse String (Result Http.Error Encounter)
+    | SaveLoadDeleteResponse String (Result Http.Error ())
+    | SaveLoadRenameStart String
+    | SaveLoadRenameChange String
+    | SaveLoadRenameSubmit
+    | SaveLoadRenameCancel
+    | SaveLoadRenameResponse { from : String, to : String } (Result Http.Error ())
+    | SaveLoadDeviceImportClick
+    | SaveLoadDeviceFileChosen File
+    | SaveLoadDeviceFileRead String
       -- Compendium snapshot Save / Load (server-side named
       -- snapshots, distinct from the live working compendium).
       -- Mirrors the encounter Save / Load modal's wire pattern;
       -- device-save / device-load reuse the existing
       -- CompendiumExportClick / CompendiumImportClick paths.
-    | SaveCompendiumOpen SaveDestination
+    | SaveCompendiumOpen SaveStorage
     | SaveCompendiumClose
-    | SaveCompendiumDestinationSet SaveDestination
+    | SaveCompendiumDestinationSet SaveStorage
     | SaveCompendiumFilenameChanged String
     | SaveCompendiumSubmit
     | SaveCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
@@ -1109,7 +1076,7 @@ type Msg
     | SaveCompendiumConfirmConfirm
     | LoadCompendiumOpen
     | LoadCompendiumClose
-    | LoadCompendiumSourceSet LoadSource
+    | LoadCompendiumSourceSet SaveStorage
     | LoadCompendiumListLoaded (Result Http.Error (List Compendium.Wire.SavedCompendiumMeta))
     | LoadCompendiumFromServerRequested String
     | LoadCompendiumConfirmCancel
@@ -1318,9 +1285,6 @@ type Msg
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
-      -- Heading in the Actions column, folding its group of
-      -- triggers away or back.
-    | ActionGroupToggle ActionGroup
       -- Dragging a drawer panel by its heading row to a new slot.
       -- Payloads are stack positions; Over fires per slot the
       -- pointer crosses, End covers cancelled drags.

@@ -7,7 +7,6 @@ module Update.Dice exposing
     , historyLoaded
     , historyToggle
     , inputChanged
-    , lastTotalFlashCleared
     , modifierChanged
     , open
     , persistResponse
@@ -275,11 +274,11 @@ surfacing from disk after init come through that same path).
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
     let
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ persistRollFor model.auth roll, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, broadcastCmd ]
     )
 
 
@@ -411,11 +410,11 @@ statBlockRollLanded x y roll model =
         ( withPopup, popupCmd ) =
             spawnRollPopup { x = x, y = y, total = roll.total } model
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll withPopup
     in
     ( pushed
-    , Cmd.batch [ persistRollFor model.auth roll, popupCmd, flashCmd ]
+    , Cmd.batch [ persistRollFor model.auth roll, popupCmd, broadcastCmd ]
     )
 
 
@@ -426,12 +425,6 @@ feedback (stat-block dice links, ability-save modal lands). The
 caller is responsible for any other roll-landed bookkeeping
 (push to dice history, persist, etc.) and for batching
 `popupCmd` with whatever else the source needs to fire.
-
-The panel-header "last roll total" yellow blink lives in
-`Effects.pushDiceRoll` (which every roll source already calls)
-rather than here — that way every roll flashes the readout
-regardless of whether it spawns a floating popup or not.
-
 -}
 spawnRollPopup : { x : Int, y : Int, total : Int } -> Model -> ( Model, Cmd Msg )
 spawnRollPopup { x, y, total } model =
@@ -450,13 +443,6 @@ spawnRollPopup { x, y, total } model =
       }
     , Process.sleep popupLifetimeMs
         |> Task.perform (\_ -> RollPopupExpired popup.id)
-    )
-
-
-lastTotalFlashCleared : Model -> ( Model, Cmd Msg )
-lastTotalFlashCleared model =
-    ( withDice (\d -> { d | flashLatest = False }) model
-    , Cmd.none
     )
 
 

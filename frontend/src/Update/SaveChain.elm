@@ -806,7 +806,7 @@ the selection shifted while the roll was in flight.
 applyRollLanded : SaveChainSide -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 applyRollLanded side roll model =
     let
-        ( logged, flashCmd ) =
+        ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
     case logged.surface of
@@ -849,11 +849,11 @@ applyRollLanded side roll model =
                         targets
             in
             ( pushLog entries { logged | encounter = nextEnc }
-            , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+            , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
             )
 
         _ ->
-            ( logged, Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ] )
+            ( logged, Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ] )
 
 
 outcomeFor : SaveChainSide -> SaveChain -> SaveOutcome

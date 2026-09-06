@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loadLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, diceLens, drawerGet, drawerHas, drawerIndexOf, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -55,7 +55,6 @@ import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
-import Ui.ActionGroups exposing (ActionGroups)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition as UiCondition exposing (ConditionUi)
 import Ui.CrCalculator exposing (CrCalculatorUi)
@@ -64,7 +63,6 @@ import Ui.Duplicate exposing (DuplicateUi)
 import Ui.GroupEdit exposing (GroupEditUi)
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative exposing (InitiativeUi)
-import Ui.Load exposing (LoadUi)
 import Ui.LoadCompendium exposing (LoadCompendiumUi)
 import Ui.Login exposing (LoginUi)
 import Ui.LoreEdit exposing (LoreEditUi)
@@ -77,9 +75,9 @@ import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Replace exposing (ReplaceUi)
 import Ui.RoundSet exposing (RoundSetUi)
-import Ui.Save exposing (SaveUi)
 import Ui.SaveChain exposing (SaveChainUi)
 import Ui.SaveCompendium exposing (SaveCompendiumUi)
+import Ui.SaveLoad exposing (SaveLoadUi)
 import Ui.Status exposing (StatusUi)
 import Ui.Timer as UiTimer exposing (TimerSetupUi)
 import Ui.Toast exposing (Toast)
@@ -132,8 +130,6 @@ type Surface
     | SurfaceTimerSetup TimerSetupUi
     | SurfaceCompendiumEdit CompendiumEditUi
     | SurfaceCompendiumPaste CompendiumPasteUi
-    | SurfaceSave SaveUi
-    | SurfaceLoad LoadUi
     | SurfaceSaveCompendium SaveCompendiumUi
     | SurfaceLoadCompendium LoadCompendiumUi
     | SurfaceAbilitySave AbilitySaveUi
@@ -147,6 +143,7 @@ type Surface
     | SurfaceRandomEncounter RandomEncounterUi
     | SurfaceTreasure TreasureUi
     | SurfaceTreasureTable TreasureTableUi
+    | SurfaceSaveLoad SaveLoadUi
       -- Save Chain editor: reusable "creature makes a save;
       -- something happens" recipe.  Opened from each card's
       -- Save Chain button; loads / edits / saves named presets
@@ -401,6 +398,20 @@ statusLens =
     }
 
 
+saveLoadLens : SurfaceLens SaveLoadUi
+saveLoadLens =
+    { extract =
+        \s ->
+            case s of
+                SurfaceSaveLoad ui ->
+                    Just ui
+
+                _ ->
+                    Nothing
+    , wrap = SurfaceSaveLoad
+    }
+
+
 saveChainLens : SurfaceLens SaveChainUi
 saveChainLens =
     { extract =
@@ -611,20 +622,6 @@ initiativeLens =
     }
 
 
-loadLens : SurfaceLens LoadUi
-loadLens =
-    { extract =
-        \m ->
-            case m of
-                SurfaceLoad ui ->
-                    Just ui
-
-                _ ->
-                    Nothing
-    , wrap = SurfaceLoad
-    }
-
-
 memoLens : SurfaceLens MemoEditUi
 memoLens =
     { extract =
@@ -664,20 +661,6 @@ quickAddLens =
                 _ ->
                     Nothing
     , wrap = SurfaceQuickAdd
-    }
-
-
-saveLens : SurfaceLens SaveUi
-saveLens =
-    { extract =
-        \m ->
-            case m of
-                SurfaceSave ui ->
-                    Just ui
-
-                _ ->
-                    Nothing
-    , wrap = SurfaceSave
     }
 
 
@@ -791,10 +774,6 @@ type alias Model =
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.
     , queuePanels : QueuePanels
-
-    -- Which of the Actions column's trigger groups are folded
-    -- away.  Independent of `surface` for the same reason.
-    , actionGroups : ActionGroups
 
     -- Dismissed-the-anonymous-banner flag.  When `True`, the
     -- "you're browsing as a guest" strip at the top of the

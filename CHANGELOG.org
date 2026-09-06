@@ -100,6 +100,12 @@
 40. The creature editor keeps unsaved work: selecting anything else closes it
     without losing changes, reopening restores them, and only Cancel or a save
     lets them go.  No action needed.
+41. Save and Load are one "Encounter Saves" panel.  No action needed.
+42. The Actions column is a grid of icon buttons; hover any button for its name.
+    No action needed.
+43. The XP total now rides the XP button's hover text.  No action needed.
+44. Recent dice totals live in the Dice Roller rather than under the Actions
+    column's Roll button.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

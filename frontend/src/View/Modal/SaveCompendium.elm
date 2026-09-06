@@ -2,7 +2,7 @@ module View.Modal.SaveCompendium exposing (view)
 
 {-| Save-compendium modal.
 
-Mirrors `View.Panel.Save` but for the creature library: the
+Mirrors `View.Panel.SaveLoad` but for the creature library: the
 top half picks destination + filename; the bottom half lists
 existing server-side snapshots so the user can pick one to
 overwrite.
@@ -32,7 +32,7 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput)
 import Model exposing (Model, Surface(..))
-import Msg exposing (Msg(..), SaveDestination(..))
+import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.SaveCompendium as SaveCompendiumUi
     exposing
         ( ConfirmAction(..)
@@ -75,7 +75,7 @@ banner and the submit button can share the predicate.
 -}
 serverNeedsSignIn : Auth.AuthState -> SaveCompendiumUi -> Bool
 serverNeedsSignIn auth ui =
-    ui.destination == SaveDestinationServer && not (Auth.isAuthenticated auth)
+    ui.destination == StorageServer && not (Auth.isAuthenticated auth)
 
 
 destinationSection : SaveCompendiumUi -> Html Msg
@@ -83,13 +83,13 @@ destinationSection ui =
     div [ class "save-modal__row save-modal__row--destination" ]
         [ label [ class "save-modal__label" ] [ text "Save to" ]
         , div [ class "save-modal__radio-group", attribute "role" "radiogroup" ]
-            [ destinationRadio ui SaveDestinationServer "Server" "save-cmp-dest-server"
-            , destinationRadio ui SaveDestinationDevice "Device" "save-cmp-dest-device"
+            [ destinationRadio ui StorageServer "Server" "save-cmp-dest-server"
+            , destinationRadio ui StorageDevice "Device" "save-cmp-dest-device"
             ]
         ]
 
 
-destinationRadio : SaveCompendiumUi -> SaveDestination -> String -> String -> Html Msg
+destinationRadio : SaveCompendiumUi -> SaveStorage -> String -> String -> Html Msg
 destinationRadio ui dest label_ idAttr =
     Html.label [ class "save-modal__radio" ]
         [ input
@@ -113,10 +113,10 @@ filenameSection ui =
             ]
             [ text
                 (case ui.destination of
-                    SaveDestinationServer ->
+                    StorageServer ->
                         "Save name"
 
-                    SaveDestinationDevice ->
+                    StorageDevice ->
                         "Filename"
                 )
             ]
@@ -201,10 +201,10 @@ errorBanner auth ui =
 savesSectionFor : Auth.AuthState -> SaveCompendiumUi -> Html Msg
 savesSectionFor auth ui =
     case ui.destination of
-        SaveDestinationDevice ->
+        StorageDevice ->
             text ""
 
-        SaveDestinationServer ->
+        StorageServer ->
             if Auth.isAuthenticated auth then
                 savesSection ui
 
@@ -271,10 +271,10 @@ submitRow auth ui =
 
             else
                 case ui.destination of
-                    SaveDestinationServer ->
+                    StorageServer ->
                         "Save to the eZpZ-dndZ server"
 
-                    SaveDestinationDevice ->
+                    StorageDevice ->
                         "Save the compendium to a file on this device"
     in
     div [ class "save-modal__buttons" ]

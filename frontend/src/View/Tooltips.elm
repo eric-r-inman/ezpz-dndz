@@ -1,6 +1,5 @@
 module View.Tooltips exposing
-    ( actionGroupToggle
-    , appBarAccount
+    ( appBarAccount
     , appBarDonate
     , appBarSettings
     , applyCondition
@@ -79,16 +78,13 @@ module View.Tooltips exposing
     , initSelectedNone
     , initiativeManager
     , inlineEditCancel
-    , lastRollTotal
     , legendaryActionColumn
     , legendaryActionsPanel
     , legendaryPipLocked
     , legendaryResistanceColumn
     , lifecycleDeadToDown
     , lifecycleDownToDead
-    , loadButton
     , loadRowCompendium
-    , loadRowEncounter
     , manageHp
     , memoAdd
     , memoClear
@@ -127,6 +123,11 @@ module View.Tooltips exposing
     , saveButton
     , saveButtonDirty
     , saveChain
+    , saveLoadConfirmCancel
+    , saveLoadConfirmGo
+    , saveLoadRenameCancel
+    , saveLoadRenameSubmit
+    , saveLoadRowLoad
     , saveNoticeDismiss
     , saveRowDelete
     , saveRowOverwrite
@@ -156,7 +157,7 @@ module View.Tooltips exposing
     , timerSet
     , toastDismiss
     , treasureButton
-    , xpFilter
+    , xpFilterTotal
     )
 
 {-| Centralised tooltip strings.
@@ -236,19 +237,9 @@ treasureButton =
     "Roll random treasure for this encounter (SRD individual or hoard tables)"
 
 
-actionGroupToggle : String
-actionGroupToggle =
-    "Collapse or expand this group of buttons"
-
-
 quickAddButton : String
 quickAddButton =
     "Quick-add a creature from the Compendium"
-
-
-xpFilter : String
-xpFilter =
-    "Choose which creatures the XP total counts"
 
 
 panelOpenCompendium : String
@@ -272,11 +263,6 @@ saveButton =
 saveButtonDirty : String
 saveButtonDirty =
     "Save the encounter (unsaved roster changes)"
-
-
-loadButton : String
-loadButton =
-    "Load a saved encounter"
 
 
 reset : String
@@ -312,11 +298,6 @@ rollDice =
 rollDiceUnread : String
 rollDiceUnread =
     "Roll dice (new entries since last open)"
-
-
-lastRollTotal : String
-lastRollTotal =
-    "Last roll total"
 
 
 
@@ -873,7 +854,7 @@ compendiumEditRemoveTag =
 
 
 
--- ── SAVE / LOAD MODAL ROW ICONS ──────────────────────────────────────────────
+-- ── SAVE / LOAD PANEL ROW ICONS ──────────────────────────────────────────────
 
 
 saveRowOverwrite : String
@@ -886,14 +867,34 @@ saveRowRename =
     "Rename"
 
 
+saveLoadRenameSubmit : String
+saveLoadRenameSubmit =
+    "Save the new name"
+
+
+saveLoadRenameCancel : String
+saveLoadRenameCancel =
+    "Keep the old name"
+
+
+saveLoadConfirmCancel : String
+saveLoadConfirmCancel =
+    "Back out"
+
+
+saveLoadConfirmGo : String
+saveLoadConfirmGo =
+    "Go ahead"
+
+
+saveLoadRowLoad : String
+saveLoadRowLoad =
+    "Replace the current encounter with this save"
+
+
 saveRowDelete : String
 saveRowDelete =
     "Delete"
-
-
-loadRowEncounter : String
-loadRowEncounter =
-    "Load this encounter"
 
 
 loadRowCompendium : String
@@ -992,6 +993,11 @@ toastDismiss =
 --
 -- One per parameterised tooltip.  Kept thin so the static
 -- survey above isn't broken up by template logic.
+
+
+xpFilterTotal : String -> String
+xpFilterTotal total =
+    total ++ " — choose which creatures the XP total counts"
 
 
 {-| Names the creature whose stat block a click will pin.

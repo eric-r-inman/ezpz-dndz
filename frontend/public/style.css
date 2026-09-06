@@ -86,13 +86,17 @@
   --space-5: 24px;
   --header-height: 56px;
 
-  /* Compact-control metrics: the small button face the Actions
-     column uses, where a couple dozen triggers multiply every
-     pixel. */
+  /* The paired Reset / Turn face at the top of the Actions
+     column: shorter than a standard button so the pair reads as
+     chrome above the grid rather than part of it. */
   --btn-compact-height: 22px;
   --btn-compact-pad-x: 2px;
-  --font-size-compact: 0.7rem;
   --font-size-glyph: 1.25rem;
+
+  /* The Actions column's icon triggers: square enough to read as
+     a keypad, with a glyph sized to fill it. */
+  --action-btn-size: 30px;
+  --font-size-action-glyph: 1rem;
 
   /* Type for the muted group label.  Most rules wearing that
      shape still spell the values out; converting them is
@@ -106,6 +110,10 @@
 
   /* A number the reader is meant to land on first. */
   --font-size-readout: 1.1rem;
+
+  /* How tall a scrolling list inside a panel grows before it
+     scrolls rather than pushing the rest of the panel down. */
+  --scroll-list-max-h: 240px;
 
   /* Triangle glyphs.  Sized well above the text they sit
      beside because a triangle's ink fills far less of its em box
@@ -205,6 +213,14 @@
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
+
+  /* One face for every trigger in the Actions column: at
+     icon size a per-button palette reads as noise rather
+     than meaning. */
+  --action-btn-bg: #f3eefc;
+  --action-btn-fg: #3b2a63;
+  --action-btn-bd: #a78bda;
+  --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63; /* cyan-900 */
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -288,6 +304,11 @@
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
+
+  --action-btn-bg: #f3eefc;
+  --action-btn-fg: #3b2a63;
+  --action-btn-bd: #a78bda;
+  --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63;
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -393,6 +414,11 @@
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: var(--card-btn-fg);
   --btn-blue-bd: transparent;
+
+  --action-btn-bg: #2a2440;
+  --action-btn-fg: #e2dcf5;
+  --action-btn-bd: #6f5fa8;
+  --action-btn-bg-hover: #332b4d;
   --btn-blue-bg-hover: var(--color-btn-blue);
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: var(--card-btn-fg);
@@ -485,6 +511,11 @@
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: #000000;
+
+  --action-btn-bg: #ffffff;
+  --action-btn-fg: #000000;
+  --action-btn-bd: #4b0082;
+  --action-btn-bg-hover: #efe6ff;
   --btn-blue-bg-hover: #001a99;
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -783,8 +814,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--damage,
 [data-theme="accessible"] .creature-card .action-btn--heal,
 [data-theme="accessible"] .creature-card .action-btn--temp,
-[data-theme="accessible"] .creature-card .action-btn--manage-hp,
-[data-theme="accessible"] .creature-card .action-btn--save-chain,
 [data-theme="accessible"] .creature-card .action-btn--condition,
 [data-theme="accessible"] .creature-card .action-btn--ready,
 [data-theme="accessible"] .creature-card .action-btn--readied,
@@ -819,7 +848,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--damage:hover,
 [data-theme="accessible"] .creature-card .action-btn--heal:hover,
 [data-theme="accessible"] .creature-card .action-btn--temp:hover,
-[data-theme="accessible"] .creature-card .action-btn--manage-hp:hover,
 [data-theme="accessible"] .creature-card .action-btn--condition:hover,
 [data-theme="accessible"] .creature-card .action-btn--ready:hover,
 [data-theme="accessible"] .creature-card .action-btn--readied:hover,
@@ -4271,16 +4299,6 @@ body {
   color: var(--color-text-muted);
 }
 
-/* Roll totals under the Roll button: oldest to newest, left to
-   right, so the newest sits closest to the panel it came from. */
-.dice-totals {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: var(--space-1);
-}
-
 .xp-panel__total {
   font-size: var(--font-size-readout);
   font-weight: var(--font-weight-label);
@@ -4406,14 +4424,6 @@ body {
 
 .panel__body--drawer {
   padding: var(--space-2) var(--drawer-pad-x);
-}
-
-.panel__body--actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1);
-  padding: var(--space-1);
 }
 
 .creature-grid {
@@ -6132,9 +6142,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 4px;
 }
 
-/* The Actions column runs a compact button face.  Declared
-   after `.action-btn` on purpose: same specificity, so source
-   order is what lets these win. */
+/* The paired Reset / Turn face.  Declared after `.action-btn` on
+   purpose: same specificity, so source order is what lets these
+   win. */
 .panel-actions__header-btn {
   flex: 1 1 0;
   min-width: 0;
@@ -6147,32 +6157,38 @@ button.creature-card__lifecycle--dead:focus-visible {
   line-height: 1;
 }
 
-.panel-actions__btn {
-  white-space: nowrap;
-  height: var(--btn-compact-height);
-  padding: 0 var(--btn-compact-pad-x);
-  font-size: var(--font-size-compact);
-  /* `.action-btn` carries a fixed height, which a flex item is
-     otherwise free to shrink below: without this the column
-     squashes its buttons flat instead of letting the panel body
-     scroll once they outrun the viewport. */
-  flex: 0 0 auto;
+/* The triggers, as a keypad.  `auto-fill` rather than a fixed
+   count so the column can be narrowed without stranding a row. */
+.actions-column__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--action-btn-size), 1fr));
+  gap: var(--space-1);
+  align-content: start;
 }
 
-/* The group heading doubles as its collapse toggle, so it is a
-   button wearing the panel-header face.  Declared after
-   `.panel__header`: same specificity, so source order is what
-   lets these win. */
-.panel-actions__group-header {
-  appearance: none;
-  width: 100%;
-  justify-content: center;
-  /* Shorter than the workspace panes' header: these stack in one
-     column, so every pixel of vertical padding is paid once per
-     group. */
-  padding: var(--space-1) var(--drawer-pad-x);
-  font: inherit;
-  cursor: pointer;
+.panel-actions__btn {
+  height: var(--action-btn-size);
+  min-width: 0;
+  padding: 0;
+  font-size: var(--font-size-action-glyph);
+  line-height: 1;
+}
+
+/* Rolls landed while the roller was closed.  A ring rather than
+   a fill, so it reads on top of the column's one face. */
+.dice-roll-btn--unread {
+  box-shadow:
+    0 0 0 2px var(--color-yellow),
+    0 0 12px rgba(245, 200, 66, 0.45);
+}
+
+/* Covers the controls row above the grid as well as the grid
+   itself. */
+.panel-actions__btn,
+.panel-actions__header-btn {
+  --btn-bg: var(--action-btn-bg);
+  --btn-fg: var(--action-btn-fg);
+  --btn-bd: var(--action-btn-bd);
 }
 
 .action-btn:hover {
@@ -6194,6 +6210,11 @@ button.creature-card__lifecycle--dead:focus-visible {
    also have an `action-btn--*` modifier class". */
 .action-btn:not([class*="action-btn--"]):hover {
   background: var(--color-surface-2);
+}
+
+.panel-actions__btn:hover,
+.panel-actions__header-btn:hover {
+  background: var(--action-btn-bg-hover);
 }
 
 .action-btn:active {
@@ -6236,29 +6257,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .action-btn--condition {
   --btn-bg: var(--color-condition);
-  --btn-fg: var(--card-btn-fg);
-  --btn-bd: transparent;
-}
-
-/* Save Chain card button — sits right of Condition.
-   Mid-blue so it reads as a distinct kind of action from the
-   calm Manage HP (green) to its left.  Same neutral chrome
-   as the other card buttons in Accessible theme via the
-   .creature-card override at the top of the theme block. */
-.action-btn--save-chain {
-  /* Same blue tokens as the Quick Add button, so the card and
-     the Actions column read as one button family. */
-  --btn-bg: var(--btn-blue-bg);
-  --btn-fg: var(--btn-blue-fg);
-  --btn-bd: var(--btn-blue-bd);
-}
-
-/* Combined "Manage HP" card button, opening the editor that
-   carries all four verbs.  Wears the same green token as the
-   Turn trigger so it reads as the card's primary action
-   affordance. */
-.action-btn--manage-hp {
-  --btn-bg: var(--color-btn-green);
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
@@ -9571,88 +9569,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 160px;
 }
 
-.dice-last-total {
-  font-weight: 700;
-  color: var(--color-text);
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  min-width: 1.2em;
-  text-align: right;
-}
-
-/* Previous-roll trail to the LEFT of `.dice-last-total`.  Up to
-   three entries, oldest-first, in muted text so the eye lands
-   on the headline current total while the recent history stays
-   glanceable. */
-.dice-previous-total {
-  color: var(--color-text-muted);
-  font-weight: 500;
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-/* Hard on/off blink on the panel-header "last roll total"
-   readout whenever a stat-block roll lands a floating popup.
-   Three visible/invisible cycles over 700ms — sharp opacity
-   transitions (adjacent keyframes 1% apart, `linear` timing)
-   so the text reads as actually disappearing and reappearing
-   rather than smoothly tinting.  Duration matches
-   `Update.Dice.flashDurationMs` so the CSS resting state
-   arrives just as Elm clears the flag. */
-.dice-last-total--flash {
-  animation: dice-last-total-blink 0.7s linear;
-}
-
-@keyframes dice-last-total-blink {
-  0%,
-  14% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  15%,
-  28% {
-    opacity: 0;
-  }
-  29%,
-  42% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  43%,
-  56% {
-    opacity: 0;
-  }
-  57%,
-  70% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  71%,
-  84% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-    color: var(--color-text);
-    text-shadow: none;
-  }
-}
-
-/* Yellow border indicator: rolls landed while the modal was
-   closed. Cleared when the modal opens. The 2px outset stays
-   inside the existing button rhythm so the surrounding layout
-   doesn't reflow when the indicator toggles. */
-.dice-roll-btn--unread {
-  box-shadow:
-    0 0 0 2px var(--color-yellow),
-    0 0 12px rgba(245, 200, 66, 0.45);
-}
-
 .compendium__filter-bar {
   display: flex;
   gap: 12px;
@@ -10983,6 +10899,108 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   margin-top: 6px;
+}
+
+/* ── Encounter save/load panel ──────────────────────────────────── */
+
+.save-load__storage {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.save-load__storage-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.save-load__server {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.save-load__save-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.save-load__filename {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-input-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-label);
+}
+
+.save-load__saves {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.save-load__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: var(--scroll-list-max-h);
+  overflow-y: auto;
+}
+
+/* A row stacks its name above its actions: four affordances and
+   a name do not share a drawer panel's width. */
+.save-load__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.save-load__row-name {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  overflow-wrap: anywhere;
+}
+
+.save-load__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.save-load__device {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.save-load__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.save-load__confirm-msg {
+  font-size: var(--font-size-label);
+}
+
+.save-load__error {
+  font-size: var(--font-size-label);
+  color: var(--color-danger);
 }
 
 /* Save / Load modals — reuse the standard .modal chrome.  Both

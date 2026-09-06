@@ -66,7 +66,7 @@ close model =
 the inline error so a prior 401 / network message from a
 previous Server attempt doesn't bleed into the Device view.
 -}
-sourceSet : Msg.LoadSource -> Model -> ( Model, Cmd Msg )
+sourceSet : Msg.SaveStorage -> Model -> ( Model, Cmd Msg )
 sourceSet source model =
     ( withLoadUi (\ui -> { ui | source = source, error = Nothing }) model
     , Cmd.none

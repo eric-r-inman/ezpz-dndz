@@ -89,8 +89,8 @@ port clearLocalCompendium : () -> Cmd msg
 
 {-| Persist the anonymous named-encounter-saves dict
 (`{ name → { encounter, created_at, updated_at } }`) to
-localStorage. Fired by `Update.Save` / `Update.Load` after any
-local mutation.
+localStorage. Fired by `Update.SaveLoad` after any local
+mutation.
 -}
 port persistLocalEncounterSaves : E.Value -> Cmd msg
 

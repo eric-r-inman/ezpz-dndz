@@ -174,7 +174,7 @@ tree, and Cmd helper lives in its own module.
 | Domain          | =Compendium.elm= + =Compendium/{Group,GroupWire,Parser,Reference,SpellcastingText,Wire}= |
 | Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
 | Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / About / CompendiumCreaturePage / Compendium / QuickList / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ten ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, clipboard, and the cross-tab BroadcastChannel ports) |
-| UI substate     | =Ui/{AbilitySave,Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,Save,SaveChain,SaveCompendium,Timer,Toast,Treasure,TreasureTable}.elm= |
+| UI substate     | =Ui/{AbilitySave,Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,SaveChain,SaveCompendium,SaveLoad,Timer,Toast,Treasure,TreasureTable}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings popover, ~NoOp~), =Update/Tabs.elm= (cross-tab BroadcastChannel receive paths — ~encounterFromOtherTab~, ~panelShowFromOtherTab~, ~incomingPanelShow~) |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
 | Update / domain | =Update/*.elm= — one module per feature, each exposing one function per Msg branch |
@@ -317,10 +317,10 @@ highest.  The app models this with three fields on =Encounter=:
 
 An empty ~activeName~ is the pre-combat sentinel: the queue is set up but no one
 has acted yet.  Reset / Clear / Load all return the live encounter to round 1
-with nobody active.  In that state the Actions column's green Turn button
-dispatches ~EncounterRun~, which calls ~Encounter.run~ — it sets the active
-creature to the queue head (highest initiative).  Once someone is active the
-same button dispatches ~NextTurn~ instead.
+with nobody active.  In that state the Actions column's Turn button dispatches
+~EncounterRun~, which calls ~Encounter.run~ — it sets the active creature to the
+queue head (highest initiative).  Once someone is active the same button
+dispatches ~NextTurn~ instead.
 
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
 ~Update.Encounter.nextTurn~ when the user presses the Turn button.  The
@@ -916,11 +916,10 @@ tooltipWhenAuthed auth normalTooltip signInTooltip = ...
 #+end_src
 
 The gated control stays visible (so the affordance doesn't appear/disappear with
-auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The Save and
-Load panels' "To Server" / "From Server" radios use a different shape — labels
-rename to "To Browser" / "From Browser" anonymously (via ~saveToServerLabel
-auth~), and the submit routes through =Update.Save= / =Update.Load='s
-auth-branched mutators.
+auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The saves
+panel's storage toggle uses a different shape — the server button reads
+"Browser" anonymously, and the handlers in =Update.SaveLoad= branch on
+~model.auth~ to pick the backend.
 
 * Persistence
 
@@ -941,7 +940,7 @@ maintains.
 |-----------------------------------+-------------------------------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
 | ~/api/auth/{register,login,me}~   | ~users~                                               | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
 | ~/api/encounter~ GET / PUT        | ~encounters~ + children                               | yes       | Live encounter state, fully typed; auto-saved on every mutation.  GET returns ~null~ before the first PUT; a body that fails the wire decoder 400s. |
-| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (Save / Load panel).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (the saves panel).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
 | ~/api/compendium/*~               | ~user_creatures~ + children                           | yes       | Per-user creatures; the bundled bestiary merges in at request time from the binary.                                                               |
 | ~/api/compendium/saves(/:name)*~  | ~compendium_saves~ + ~compendium_save_nodes~          | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
 | ~/api/compendium/groups(/:id)*~   | ~compendium_groups~ + ~compendium_group_entries~      | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
@@ -1009,19 +1008,16 @@ vanilla encounters keep their existing title-bar / card-grid layout.
 The Actions column runs a small set of named flows that the rest of the app
 routes through:
 
-- *Save / Load* — each opens its panel in the drawer, carrying the Server /
-  Device radio pair that picks the destination.
+- *Saves* — one drawer panel, =View.Panel.SaveLoad=, covering both directions.
+  The row affordances are shared because they hit the same endpoints.
 
-  - *Save* — =View.Panel.Save=.  Filename input, list of existing server saves
-    with inline rename / overwrite / delete.  Server uploads PUT to
-    ~/api/encounter/saves/:name~ (server returns 409 on a name collision,
-    surfaced as an inline overwrite-confirm banner; ~?overwrite=true~ upserts on
-    confirm).  Device downloads go through ~File.Download.string~.
-  - *Load* — =View.Panel.Load= lists the server saves for click-to-load with
-    confirm; the Device path fires ~File.Select.file~ directly.  Either replaces
-    the live encounter and forces ~round = 1~ + ~activeName = ""~ so the GM
-    lands in pre-combat mode.  Successful loads also populate ~savedSnapshot~ +
-    ~savedAs~.
+  - Server uploads PUT to ~/api/encounter/saves/:name~ (the server returns 409
+    on a name collision, surfaced as the panel's overwrite-confirm banner;
+    ~?overwrite=true~ upserts on confirm).  Device writes go through
+    ~File.Download.string~ and reads through ~File.Select.file~.
+  - Loading replaces the live encounter and forces ~round = 1~ + ~activeName =
+    ""~ so the GM lands in pre-combat mode.  Successful loads also populate
+    ~savedSnapshot~ + ~savedAs~.
 
 - *Reset* / *Clear* — staged as ~SurfaceConfirm~ so a misclick can't drop combat
   state.  The first click opens the confirmation modal (Cancel / coloured
@@ -1037,7 +1033,7 @@ routes through:
 
 The shared behaviour: any branch that mutates ~model.encounter~ flows through
 ~Main.update~'s diff-and-persist wrapper, which fires a ~/api/encounter~ PUT iff
-the encounter actually changed.  The Save / Load Msgs themselves are exempt to
+the encounter actually changed.  The save/load Msgs themselves are exempt to
 avoid an obvious infinite loop.
 
 * Pinned stat block
@@ -1118,10 +1114,10 @@ click-outside subscriptions have a single handler to close them all.
 - *Reset* — single button (no popover); restores the bundled creature set via
   ~/api/compendium/reset~.
 
-The Save / Load Compendium modals themselves mirror the encounter Save / Load
-panels: filename input, list of existing snapshots, inline overwrite-confirm
-banner.  The MVP omits per-row rename / delete affordances — re-saving under an
-existing name fires the overwrite-confirm prompt, which covers the common case.
+The Save / Load Compendium modals themselves mirror the encounter saves panel:
+filename input, list of existing snapshots, inline overwrite-confirm banner.
+The MVP omits per-row rename / delete affordances — re-saving under an existing
+name fires the overwrite-confirm prompt, which covers the common case.
 Successful save / load clears ~compendiumDirty~ and stamps the snapshot's name
 into ~CompendiumUi.savedAs~ so the next Save modal opens pre-populated.
 
@@ -1284,12 +1280,12 @@ Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~, ~DiceRerunMenuClose~,
 
 * Encounter XP totals
 
-The Actions column's XP trigger carries the encounter's XP total.
-~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature through
-~Compendium.find creatureId~, and sums two parallel running totals: ~total~
-(every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when present,
-falling back to ~xp~).  Players are always excluded; missing-from-compendium
-entries are silently skipped.
+The Actions column's XP trigger reports the encounter's XP total in its hover
+text.  ~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature
+through ~Compendium.find creatureId~, and sums two parallel running totals:
+~total~ (every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when
+present, falling back to ~xp~).  Players are always excluded;
+missing-from-compendium entries are silently skipped.
 
 The four scope options come from the ~Encounter.Xp.XpScope~ enum (~Enemies &
 NPCs~ / ~Enemies Only~ / ~NPCs Only~ / ~Selected Only~).  ~Selected Only~ uses

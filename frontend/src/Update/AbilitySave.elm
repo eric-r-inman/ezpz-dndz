@@ -100,9 +100,9 @@ landed x y roll_ model =
                 { x = x, y = y, total = roll_.total }
                 model
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll_ withPopup
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd, broadcastCmd ]
     )

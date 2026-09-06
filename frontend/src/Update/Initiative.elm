@@ -253,12 +253,12 @@ rollsLanded results model =
                                 m.encounter
                     }
 
-                ( pushed, flashCmd ) =
+                ( pushed, broadcastCmd ) =
                     Effects.pushDiceRoll roll stamped
             in
-            ( pushed, flashCmd :: cs )
+            ( pushed, broadcastCmd :: cs )
 
-        ( m1, flashCmds ) =
+        ( m1, broadcastCmds ) =
             List.foldl applyOne ( model, [] ) results
 
         rolls =
@@ -266,7 +266,7 @@ rollsLanded results model =
     in
     ( { m1 | encounter = Encounter.Roster.sortByInitiative m1.encounter }
     , Cmd.batch
-        (List.map Effects.persistDiceRoll rolls ++ flashCmds)
+        (List.map Effects.persistDiceRoll rolls ++ broadcastCmds)
     )
 
 

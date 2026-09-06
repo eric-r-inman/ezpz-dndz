@@ -13,7 +13,7 @@ module Update.SaveCompendium exposing
 
 {-| Update branches for the Save-compendium modal.
 
-Mirrors the encounter `Update.Save` for snapshotting the
+Mirrors the encounter `Update.SaveLoad` for snapshotting the
 creature library to the server (under a name) or to the user's
 local device (as a JSON download). The modal is opened with
 its destination preselected via `Compendium → Export → Server /
@@ -36,7 +36,7 @@ import File.Download
 import Http
 import Json.Encode as E
 import Model exposing (Model, Surface(..))
-import Msg exposing (Msg(..), SaveDestination(..))
+import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.Compendium as CompendiumUi
 import Ui.SaveCompendium as SaveCompendiumUi
     exposing
@@ -56,7 +56,7 @@ withSaveUi =
     Model.mapSurface Model.saveCompendiumLens
 
 
-open : SaveDestination -> Model -> ( Model, Cmd Msg )
+open : SaveStorage -> Model -> ( Model, Cmd Msg )
 open destination model =
     let
         suggested =
@@ -80,7 +80,7 @@ close model =
     ( { model | surface = Nothing }, Cmd.none )
 
 
-destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
+destinationSet : SaveStorage -> Model -> ( Model, Cmd Msg )
 destinationSet dest model =
     ( withSaveUi
         (\ui -> { ui | destination = dest, error = Nothing })
@@ -138,7 +138,7 @@ submit model =
 
             else
                 case ui.destination of
-                    SaveDestinationServer ->
+                    StorageServer ->
                         ( withSaveUi
                             (\u -> { u | busy = True, error = Nothing })
                             model
@@ -149,7 +149,7 @@ submit model =
                             (CompendiumUi.groupsList model.compendium)
                         )
 
-                    SaveDestinationDevice ->
+                    StorageDevice ->
                         ( { model | surface = Nothing }
                         , downloadCompendium trimmed
                             (CompendiumUi.currentCreatures model.compendium)

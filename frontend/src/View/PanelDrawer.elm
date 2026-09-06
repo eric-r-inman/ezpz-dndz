@@ -30,10 +30,9 @@ import View.Inline.Status
 import View.Panel
 import View.Panel.CrCalculator
 import View.Panel.Dice
-import View.Panel.Load
 import View.Panel.QuickAdd
 import View.Panel.RandomEncounter
-import View.Panel.Save
+import View.Panel.SaveLoad
 import View.Panel.StatBlock
 import View.Panel.Treasure
 import View.Panel.Xp
@@ -106,11 +105,8 @@ surfaceKey surface =
         SurfaceQuickAdd _ ->
             "quick-add"
 
-        SurfaceSave _ ->
-            "save"
-
-        SurfaceLoad _ ->
-            "load"
+        SurfaceSaveLoad _ ->
+            "save-load"
 
         SurfaceRandomEncounter _ ->
             "random-encounter"
@@ -270,11 +266,8 @@ panelFor model index panel =
             SurfaceQuickAdd _ ->
                 View.Panel.QuickAdd.view collapse model
 
-            SurfaceSave _ ->
-                View.Panel.Save.view collapse model
-
-            SurfaceLoad _ ->
-                View.Panel.Load.view collapse model
+            SurfaceSaveLoad _ ->
+                View.Panel.SaveLoad.view collapse model
 
             SurfaceRandomEncounter _ ->
                 View.Panel.RandomEncounter.view collapse model

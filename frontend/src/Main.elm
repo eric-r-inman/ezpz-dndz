@@ -56,7 +56,6 @@ import Route exposing (Route(..))
 import Task
 import Ui.AbilitySave
 import Ui.Account
-import Ui.ActionGroups
 import Ui.Compendium as CompendiumUi
     exposing
         ( CompendiumDb(..)
@@ -80,7 +79,6 @@ import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
 import Update.Account
-import Update.ActionGroups
 import Update.Auth
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
@@ -99,7 +97,6 @@ import Update.Encounter
 import Update.HpChange
 import Update.Initiative
 import Update.LegendaryPip
-import Update.Load
 import Update.LoadCompendium
 import Update.LoreEdit
 import Update.Memo
@@ -113,9 +110,9 @@ import Update.QuickAdd
 import Update.RandomEncounter
 import Update.Replace
 import Update.RoundSet
-import Update.Save
 import Update.SaveChain
 import Update.SaveCompendium
+import Update.SaveLoad
 import Update.Shell
 import Update.Status
 import Update.Tabs
@@ -376,11 +373,8 @@ drawerEscSub newest =
         SurfaceQuickAdd _ ->
             Browser.Events.onKeyDown (escKey QuickAddClose)
 
-        SurfaceSave _ ->
-            Browser.Events.onKeyDown (escKey SaveClose)
-
-        SurfaceLoad _ ->
-            Browser.Events.onKeyDown (escKey LoadClose)
+        SurfaceSaveLoad _ ->
+            Browser.Events.onKeyDown (escKey SaveLoadClose)
 
         SurfaceCrCalculator _ ->
             Browser.Events.onKeyDown (escKey CrCalculatorClose)
@@ -609,7 +603,6 @@ init flags url key =
       , placeholderRename = Nothing
       , xpScope = ScopeXpEnemiesAndNpcs
       , queuePanels = Ui.QueuePanels.fresh
-      , actionGroups = Ui.ActionGroups.fresh
       , drawer = []
       , drawerDrag = Nothing
       , compendiumEditDraft = Nothing
@@ -1104,9 +1097,6 @@ updateInner msg model =
 
         RollPopupExpired id ->
             Update.Dice.rollPopupExpired id model
-
-        DiceLastTotalFlashCleared ->
-            Update.Dice.lastTotalFlashCleared model
 
         -- HP change modal lifecycle
         HpChangeOpenFor target ->
@@ -1852,9 +1842,6 @@ updateInner msg model =
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
 
-        ActionGroupToggle group ->
-            Update.ActionGroups.toggle group model
-
         DrawerDragStart index ->
             Update.PanelDrawer.dragStart index model
 
@@ -2363,110 +2350,71 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
-        SaveOpen destination ->
-            Update.Save.open destination model
+        SaveLoadOpen ->
+            Update.SaveLoad.open model
 
-        SaveClose ->
-            Update.Save.close model
+        SaveLoadClose ->
+            Update.SaveLoad.close model
 
-        SaveDestinationSet dest ->
-            Update.Save.destinationSet dest model
+        SaveLoadStorageSet storage ->
+            Update.SaveLoad.storageSet storage model
 
-        SaveFilenameChanged text ->
-            Update.Save.filenameChanged text model
+        SaveLoadFilenameChanged text ->
+            Update.SaveLoad.filenameChanged text model
 
-        SaveSubmit ->
-            Update.Save.submit model
+        SaveLoadSaveSubmit ->
+            Update.SaveLoad.submit model
 
-        SaveListLoaded result ->
-            Update.Save.listLoaded result model
+        SaveLoadListLoaded result ->
+            Update.SaveLoad.listLoaded result model
 
-        SavePersistResponse name result ->
-            Update.Save.persistResponse name result model
+        SaveLoadPersistResponse name result ->
+            Update.SaveLoad.persistResponse name result model
 
-        SaveOverwriteRequested name ->
-            Update.Save.overwriteRequested name model
+        SaveLoadLoadRequested name ->
+            Update.SaveLoad.loadRequested name model
 
-        SaveDeleteRequested name ->
-            Update.Save.deleteRequested name model
+        SaveLoadOverwriteRequested name ->
+            Update.SaveLoad.overwriteRequested name model
 
-        SaveConfirmCancel ->
-            Update.Save.confirmCancel model
+        SaveLoadDeleteRequested name ->
+            Update.SaveLoad.deleteRequested name model
 
-        SaveConfirmConfirm ->
-            Update.Save.confirmConfirm model
+        SaveLoadConfirmCancel ->
+            Update.SaveLoad.confirmCancel model
 
-        SaveDeleteResponse name result ->
-            Update.Save.deleteResponse name result model
+        SaveLoadConfirmConfirm ->
+            Update.SaveLoad.confirmConfirm model
 
-        SaveRenameStart name ->
-            Update.Save.renameStart name model
+        SaveLoadServerResponse name result ->
+            Update.SaveLoad.serverResponse name result model
 
-        SaveRenameChange text ->
-            Update.Save.renameChange text model
+        SaveLoadDeleteResponse name result ->
+            Update.SaveLoad.deleteResponse name result model
 
-        SaveRenameSubmit ->
-            Update.Save.renameSubmit model
+        SaveLoadRenameStart name ->
+            Update.SaveLoad.renameStart name model
 
-        SaveRenameCancel ->
-            Update.Save.renameCancel model
+        SaveLoadRenameChange text ->
+            Update.SaveLoad.renameChange text model
 
-        SaveRenameResponse names result ->
-            Update.Save.renameResponse names result model
+        SaveLoadRenameSubmit ->
+            Update.SaveLoad.renameSubmit model
 
-        LoadOpen ->
-            Update.Load.open model
+        SaveLoadRenameCancel ->
+            Update.SaveLoad.renameCancel model
 
-        LoadClose ->
-            Update.Load.close model
+        SaveLoadRenameResponse names result ->
+            Update.SaveLoad.renameResponse names result model
 
-        LoadSourceSet source ->
-            Update.Load.sourceSet source model
+        SaveLoadDeviceImportClick ->
+            Update.SaveLoad.deviceImportClick model
 
-        LoadFromServerRequested name ->
-            Update.Load.fromServerRequested name model
+        SaveLoadDeviceFileChosen file ->
+            Update.SaveLoad.deviceFileChosen file model
 
-        LoadConfirmCancel ->
-            Update.Load.confirmCancel model
-
-        LoadConfirmConfirm ->
-            Update.Load.confirmConfirm model
-
-        LoadServerResponse name result ->
-            Update.Load.serverResponse name result model
-
-        LoadDeleteRequested name ->
-            Update.Load.deleteRequested name model
-
-        LoadDeleteResponse name result ->
-            Update.Load.deleteResponse name result model
-
-        LoadRenameStart name ->
-            Update.Load.renameStart name model
-
-        LoadRenameChange text ->
-            Update.Load.renameChange text model
-
-        LoadRenameSubmit ->
-            Update.Load.renameSubmit model
-
-        LoadRenameCancel ->
-            Update.Load.renameCancel model
-
-        LoadRenameResponse names result ->
-            Update.Load.renameResponse names result model
-
-        LoadListLoaded result ->
-            Update.Load.listLoaded result model
-
-        LoadFromDeviceClick ->
-            Update.Load.fromDeviceClick model
-
-        LoadFromDeviceFileChosen file ->
-            Update.Load.fromDeviceFileChosen file model
-
-        LoadFromDeviceFileRead raw ->
-            Update.Load.fromDeviceFileRead raw model
+        SaveLoadDeviceFileRead raw ->
+            Update.SaveLoad.deviceFileRead raw model
 
         SaveCompendiumOpen destination ->
             Update.SaveCompendium.open destination model

@@ -381,7 +381,7 @@ rolls on the floor.
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
     let
-        ( logged, flashCmd ) =
+        ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
 
         committed =
@@ -393,7 +393,7 @@ rollLanded roll model =
                     logged
     in
     ( committed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
 
@@ -406,11 +406,11 @@ siblings.
 freshRollLanded : HpKind -> Bool -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 freshRollLanded kind ignoreTemp target roll model =
     let
-        ( logged, flashCmd ) =
+        ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
     ( applyAmountTo kind ignoreTemp [ target ] roll.total logged |> markApplied
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
 
