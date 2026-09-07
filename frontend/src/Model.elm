@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -86,14 +86,13 @@ import Ui.TreasureTable exposing (TreasureTableUi)
 import Url exposing (Url)
 
 
-{-| The creature pinned in the drawer's stat-block panel
-(`SurfaceStatBlock`). Carries
-both the compendium `id` (for the canonical UUID lookup) and
-the encounter creature's display `name` (so we can fall back to
-a name match when an old saved encounter's `creatureId` no
-longer matches anything in the current bundled compendium —
-otherwise the panel would silently revert to the placeholder
-mock).
+{-| The creature a card put in the drawer's stat-block panel
+(`SurfaceStatBlock`). Carries both the compendium `id` (for the
+canonical UUID lookup) and the encounter creature's display
+`name` (so we can fall back to a name match when an old saved
+encounter's `creatureId` no longer matches anything in the
+current bundled compendium — otherwise the panel would silently
+revert to the placeholder mock).
 -}
 type alias PanelPin =
     { id : String
@@ -157,7 +156,7 @@ type Surface
       -- The XP-scope picker.  Also a marker — the scope
       -- outlives a close, so it lives on `model.xpScope`.
     | SurfaceXp
-      -- The pinned creature's stat block.
+      -- The stat block a card put there.
     | SurfaceStatBlock PanelPin
       -- The Reset / Clear confirmation.  A modal, not a drawer
       -- panel.
@@ -167,9 +166,10 @@ type Surface
 
 
 {-| A drawer panel being dragged to a new position: where it
-started, and the slot the pointer is over (the drop cue). Lives
-on the model rather than in any panel, because the drag is about
-the stack's order, not about what any panel holds.
+started, and the slot it would land in — which the pinned
+boundary can pull off the slot the pointer is actually over.
+Lives on the model rather than in any panel, because the drag is
+about the stack's order, not about what any panel holds.
 -}
 type alias DrawerDrag =
     { from : Int
@@ -184,6 +184,12 @@ the panel it describes.
 type alias DrawerPanel =
     { surface : Surface
     , collapsed : Bool
+
+    -- Pinned panels hold the top of the column as a block, in
+    -- their own order.  Nothing else distinguishes them: the
+    -- stack stays one list, and every move is clamped to the
+    -- side of the boundary the panel started on.
+    , pinned : Bool
     }
 
 
@@ -212,7 +218,7 @@ the queue the first time one is expanded.
 -}
 defaultDrawer : List DrawerPanel
 defaultDrawer =
-    List.map (\s -> { surface = s, collapsed = True })
+    List.map (\s -> { surface = s, collapsed = True, pinned = False })
         [ SurfaceDice
         , SurfaceHpChange (Ui.HpChange.fresh "")
         , SurfaceStatus (Ui.Status.fresh "")
@@ -230,8 +236,9 @@ defaultDrawer =
         ]
 
 
-{-| Move the panel at `from` so it sits at `to`, shifting the
-ones between. Out-of-range indices leave the stack unchanged.
+{-| Move the panel at `from` so it sits at `to`, or as near it
+as the pinned boundary allows — `drawerDropIndex` has the rule.
+Out-of-range indices leave the stack unchanged.
 -}
 moveDrawerPanel : Int -> Int -> Model -> Model
 moveDrawerPanel from to model =
@@ -241,11 +248,77 @@ moveDrawerPanel from to model =
                 rest =
                     List.take from model.drawer
                         ++ List.drop (from + 1) model.drawer
+
+                target =
+                    drawerDropIndex from to model.drawer
             in
             { model
                 | drawer =
-                    List.take to rest ++ moved :: List.drop to rest
+                    List.take target rest ++ moved :: List.drop target rest
             }
+
+        Nothing ->
+            model
+
+
+{-| Where a panel dragged from `from` actually lands when the GM
+lets go over `to`. Dropping a pinned panel below the block clamps
+it to the bottom of the block rather than refusing the drop,
+which is what "pinned to the top" has to mean once the drag is
+already under way; an unpinned panel clamps the same way at the
+other end. The drop cue reads this too, so the slot the GM sees
+lit is the slot the panel takes.
+-}
+drawerDropIndex : Int -> Int -> List DrawerPanel -> Int
+drawerDropIndex from to panels =
+    let
+        rest =
+            List.take from panels ++ List.drop (from + 1) panels
+
+        boundary =
+            List.length (List.filter .pinned rest)
+    in
+    case panels |> List.drop from |> List.head of
+        Just moved ->
+            if moved.pinned then
+                Basics.min to boundary
+
+            else
+                Basics.max to boundary
+
+        Nothing ->
+            to
+
+
+{-| Pin a panel to the top of the column, or release it. Either
+way it lands at the boundary — the bottom of the pinned block
+when pinning, the top of the rest when releasing — so the panel
+the GM just acted on is the one nearest the line they moved it
+across.
+-}
+togglePinnedAt : Int -> Model -> Model
+togglePinnedAt index model =
+    case model.drawer |> List.drop index |> List.head of
+        Just panel ->
+            moveDrawerPanel index
+                (if panel.pinned then
+                    0
+
+                 else
+                    List.length model.drawer
+                )
+                { model
+                    | drawer =
+                        List.indexedMap
+                            (\i p ->
+                                if i == index then
+                                    { p | pinned = not p.pinned }
+
+                                else
+                                    p
+                            )
+                            model.drawer
+                }
 
         Nothing ->
             model
@@ -320,7 +393,12 @@ openDrawer lens ui model =
     else
         { model
             | drawer =
-                model.drawer ++ [ { surface = lens.wrap ui, collapsed = False } ]
+                model.drawer
+                    ++ [ { surface = lens.wrap ui
+                         , collapsed = False
+                         , pinned = False
+                         }
+                       ]
         }
 
 

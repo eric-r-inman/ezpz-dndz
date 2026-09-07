@@ -19,13 +19,13 @@ import View.Panel
 
 
 view : View.Panel.Header -> Encounter -> CompendiumDb -> XpScope -> Html Msg
-view collapse enc db current =
+view header enc db current =
     View.Panel.view
         { close = Nothing
         , title = "Encounter XP"
         , titleTrail = Nothing
         , subtitle = Nothing
-        , collapse = collapse
+        , header = header
         , extraClass = "panel-drawer--xp"
         , body =
             [ div [ class "xp-panel__total" ] [ text (label enc db current) ]

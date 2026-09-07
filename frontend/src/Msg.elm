@@ -982,20 +982,20 @@ type Msg
     | CompendiumPasteCancel
     | CompendiumPasteTextChanged String
     | CompendiumPasteApply
-      -- Pin a compendium creature's stat block in the drawer.
+      -- Show a compendium creature's stat block in the drawer.
     | PanelShowCreature String String
       -- (compendium id, encounter creature display name)
       --
-      -- Unpin it again, closing the drawer's stat block.
+      -- Remove it again, closing the drawer's stat block.
     | PanelClearCreature
       -- QuickList (`/quick-list`) row click: fires from the
       -- standalone quick-view tab.  Broadcasts a panel-show
       -- request across the BroadcastChannel so the main tab
-      -- pins the stat block + scrolls the card into view, and
+      -- shows the stat block + scrolls the card into view, and
       -- brings itself to front via `window.opener.focus()`.
     | QuickListRowClick String String
       -- Payload from the main tab's `incomingPanelShow`
-      -- subscription — a QuickList tab asked us to pin +
+      -- subscription — a QuickList tab asked us to show +
       -- scroll to (id, name).
     | IncomingPanelShow String String
       -- Legendary action / legendary resistance pip toggles,
@@ -1250,6 +1250,8 @@ type Msg
       -- The payload is the panel's position in the stack, which
       -- is what the click that produced it was aimed at.
     | DrawerCollapseToggle Int
+      -- Pin one panel to the top of the column, or release it.
+    | DrawerPinToggle Int
       -- Esc, which dismisses what is showing rather than
       -- deleting a panel the GM cannot put back.
     | DrawerFoldNewest

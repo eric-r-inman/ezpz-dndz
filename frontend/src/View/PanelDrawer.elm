@@ -182,7 +182,9 @@ surfaceKey surface =
             "other"
 
 
-{-| The slot under the pointer during a drag wears the drop cue.
+{-| The slot the dragged panel would land in wears the drop cue.
+That is not always the one under the pointer — a drag across the
+pinned boundary clamps, and the cue shows where it clamps to.
 -}
 slotClass : Int -> Maybe Model.DrawerDrag -> String
 slotClass index drag =
@@ -196,7 +198,7 @@ slotClass index drag =
 panelFor : Model -> Int -> Model.DrawerPanel -> Html Msg
 panelFor model index panel =
     let
-        collapse =
+        header =
             { collapsed = panel.collapsed
             , toggle = DrawerCollapseToggle index
 
@@ -209,6 +211,8 @@ panelFor model index panel =
                 , Html.Events.on "dragend"
                     (Decode.succeed DrawerDragEnd)
                 ]
+            , pinned = panel.pinned
+            , pinToggle = DrawerPinToggle index
             }
 
         selectedCount =
@@ -231,7 +235,7 @@ panelFor model index panel =
                 , title = title
                 , titleTrail = Nothing
                 , subtitle = Just subtitle
-                , collapse = collapse
+                , header = header
                 , extraClass = "panel-drawer--editor"
                 , body = [ body ]
                 }
@@ -308,28 +312,28 @@ panelFor model index panel =
                     (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
             SurfaceCrCalculator _ ->
-                View.Panel.CrCalculator.view collapse model
+                View.Panel.CrCalculator.view header model
 
             SurfaceTreasure _ ->
-                View.Panel.Treasure.view collapse model
+                View.Panel.Treasure.view header model
 
             SurfaceQuickAdd _ ->
-                View.Panel.QuickAdd.view collapse model
+                View.Panel.QuickAdd.view header model
 
             SurfaceSaveLoad _ ->
-                View.Panel.SaveLoad.view collapse model
+                View.Panel.SaveLoad.view header model
 
             SurfaceRandomEncounter _ ->
-                View.Panel.RandomEncounter.view collapse model
+                View.Panel.RandomEncounter.view header model
 
             SurfaceDice ->
-                View.Panel.Dice.view collapse model.hpChangeLog model.dice
+                View.Panel.Dice.view header model.hpChangeLog model.dice
 
             SurfaceXp ->
-                View.Panel.Xp.view collapse model.encounter model.compendium.db model.xpScope
+                View.Panel.Xp.view header model.encounter model.compendium.db model.xpScope
 
             SurfaceStatBlock pin ->
-                View.Panel.StatBlock.view collapse model.compendium.db pin
+                View.Panel.StatBlock.view header model.compendium.db pin
 
             -- Modal and card-inline variants never enter the stack —
             -- their Update modules write `model.surface`, and the

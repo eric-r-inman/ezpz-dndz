@@ -1769,10 +1769,13 @@ dependency order:
    newest at the bottom — and their Update modules open, close, and edit them
    through ~Model.openDrawer~ / ~foldDrawer~ / ~mapDrawer~.  ~closeDrawer~ takes
    a panel out of the stack, which is only right for one the GM can put back —
-   in practice the pinned stat block.  A per-creature editor takes a narrower
-   shape: its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s
-   ~editor~ helper supplies the chrome, so every editor's target strip and
-   heading row stay identical.
+   in practice the stat block a card put there.  The stack is partitioned:
+   panels the GM has pinned hold the top in their own order, and
+   ~Model.drawerDropIndex~ clamps every move to the side of that boundary it
+   started on, so no reorder can interleave the two groups.  A per-creature
+   editor takes a narrower shape: its body lives in =View/Inline/Foo.elm= and
+   =View.PanelDrawer='s ~editor~ helper supplies the chrome, so every editor's
+   target strip and heading row stay identical.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.

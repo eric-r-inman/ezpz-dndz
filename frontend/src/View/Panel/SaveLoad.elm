@@ -35,7 +35,7 @@ import View.Tooltips as Tooltips
 
 
 view : View.Panel.Header -> Model -> Html Msg
-view collapse model =
+view header model =
     case Model.drawerGet Model.saveLoadLens model of
         Just ui ->
             View.Panel.view
@@ -45,7 +45,7 @@ view collapse model =
                     View.Panel.titleMarkIf
                         (Encounter.rosterDirty model.encounter model.savedSnapshot)
                 , subtitle = Nothing
-                , collapse = collapse
+                , header = header
                 , extraClass = "panel-drawer--save-load"
                 , body =
                     [ storageSection model.auth ui

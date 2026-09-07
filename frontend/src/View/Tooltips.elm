@@ -63,7 +63,9 @@ module View.Tooltips exposing
     , diceRollAgain
     , dodging
     , drawerCollapse
-    , drawerUnpin
+    , drawerPinPanel
+    , drawerRemoveStatBlock
+    , drawerUnpinPanel
     , encounterBarSpellList
     , fallDamage
     , flyHeightDown
@@ -890,9 +892,19 @@ quickAddSortToCr =
 -- ── DRAWER PANEL CHROME ─────────────────────────────────────────────────────
 
 
-drawerUnpin : String
-drawerUnpin =
-    "Unpin this stat block"
+drawerPinPanel : String
+drawerPinPanel =
+    "Pin to the top of the column"
+
+
+drawerUnpinPanel : String
+drawerUnpinPanel =
+    "Unpin from the top of the column"
+
+
+drawerRemoveStatBlock : String
+drawerRemoveStatBlock =
+    "Remove this stat block"
 
 
 drawerCollapse : String

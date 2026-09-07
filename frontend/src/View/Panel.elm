@@ -11,10 +11,9 @@ difference.
 encounter-level panels leave empty. `titleTrail` is a control
 or cue rendered just after the title.
 
-`header` wires the heading row to the stack it sits in: the
-fold state (a folded panel keeps its place without paying its
-height) and the drag attributes that let the row be picked up
-and dropped into a new slot.
+`header` wires the heading row to the stack it sits in —
+whether the body is folded, where the panel sits in the order,
+and the controls that change either.
 
 @docs Header, onClickWithoutFolding, titleMarkIf, view
 
@@ -28,16 +27,16 @@ import Msg exposing (Msg)
 import View.Tooltips as Tooltips
 
 
-{-| The heading row's wiring from the drawer stack: whether the
-body is folded away, the message that flips it, and the drag
-attributes that make the row the panel's reorder handle. Built
-by `View.PanelDrawer`, which knows the panel's position; passed
-through the panel modules untouched.
+{-| The heading row's wiring from the drawer stack. Built by
+`View.PanelDrawer`, which is what knows a panel's position, and
+passed through the panel modules untouched.
 -}
 type alias Header =
     { collapsed : Bool
     , toggle : Msg
     , dragAttrs : List (Html.Attribute Msg)
+    , pinned : Bool
+    , pinToggle : Msg
     }
 
 
@@ -47,26 +46,27 @@ view :
     , titleTrail : Maybe (Html Msg)
     , subtitle : Maybe String
     , extraClass : String
-    , collapse : Header
+    , header : Header
     , body : List (Html Msg)
     }
     -> Html Msg
 view config =
     section [ class ("panel panel--drawer " ++ config.extraClass) ]
         (div
-            ([ class (headerClass config.collapse.collapsed)
-             , onClick config.collapse.toggle
+            ([ class (headerClass config.header.collapsed)
+             , onClick config.header.toggle
              ]
-                ++ config.collapse.dragAttrs
+                ++ config.header.dragAttrs
             )
-            [ collapseToggle config.collapse
+            [ collapseToggle config.header
             , div [ class "panel__title panel__title--drawer" ]
                 [ text config.title
                 , Maybe.withDefault (text "") config.titleTrail
                 ]
+            , pinButton config.header
             , Maybe.withDefault (text "") (Maybe.map closeButton config.close)
             ]
-            :: (if config.collapse.collapsed then
+            :: (if config.header.collapsed then
                     []
 
                 else
@@ -77,10 +77,51 @@ view config =
         )
 
 
+{-| Holds a panel at the top of the column. The glyph reads as
+its own state rather than as what the click will do, the way a
+checkbox does — `aria-pressed` says the same thing to a reader
+that cannot see the tilt.
+-}
+pinButton : Header -> Html Msg
+pinButton header =
+    let
+        label =
+            if header.pinned then
+                Tooltips.drawerUnpinPanel
+
+            else
+                Tooltips.drawerPinPanel
+    in
+    button
+        [ class (pinClass header.pinned)
+        , type_ "button"
+        , onClickWithoutFolding header.pinToggle
+        , Tooltips.attr label
+        , attribute "aria-label" label
+        , attribute "aria-pressed"
+            (if header.pinned then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text "📌" ]
+
+
+pinClass : Bool -> String
+pinClass pinned =
+    if pinned then
+        "panel-drawer__pin panel-drawer__pin--on"
+
+    else
+        "panel-drawer__pin"
+
+
 {-| Only a panel the GM can put back offers this — in practice
-the pinned stat block. The editors the drawer boots with have no
-trigger left to reopen them, so they fold instead of closing and
-never render it.
+the stat block a card put there. The editors the drawer boots
+with have no trigger left to reopen them, so they fold instead of
+closing and never render it.
 -}
 closeButton : Msg -> Html Msg
 closeButton msg =
@@ -88,8 +129,8 @@ closeButton msg =
         [ class "panel-drawer__close"
         , type_ "button"
         , onClickWithoutFolding msg
-        , Tooltips.attr Tooltips.drawerUnpin
-        , attribute "aria-label" Tooltips.drawerUnpin
+        , Tooltips.attr Tooltips.drawerRemoveStatBlock
+        , attribute "aria-label" Tooltips.drawerRemoveStatBlock
         ]
         [ text "✕" ]
 
@@ -115,14 +156,14 @@ and not a span because it is also the panel's keyboard control:
 a bare clickable row leaves nothing to tab to.
 -}
 collapseToggle : Header -> Html Msg
-collapseToggle collapse =
+collapseToggle header =
     button
         [ class "panel-drawer__collapse"
         , type_ "button"
-        , onClickWithoutFolding collapse.toggle
+        , onClickWithoutFolding header.toggle
         , attribute "aria-label" Tooltips.drawerCollapse
         , attribute "aria-expanded"
-            (if collapse.collapsed then
+            (if header.collapsed then
                 "false"
 
              else
@@ -130,7 +171,7 @@ collapseToggle collapse =
             )
         ]
         [ text
-            (if collapse.collapsed then
+            (if header.collapsed then
                 "▶"
 
              else

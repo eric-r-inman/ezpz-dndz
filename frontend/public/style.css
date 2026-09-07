@@ -4265,9 +4265,9 @@ body {
   display: none;
 }
 
-/* The slot the pointer is over mid-drag.  An inset line rather
-   than an outline so the cue can't be clipped by the stack's
-   scroll box. */
+/* The slot the dragged panel would land in — not always the one
+   under the pointer.  An inset line rather than an outline so
+   the cue can't be clipped by the stack's scroll box. */
 .drawer-stack__slot--drop {
   box-shadow: inset 0 2px 0 var(--color-accent);
 }
@@ -4345,7 +4345,41 @@ body {
   color: var(--color-text);
 }
 
-/* Mirrors the close button so the two header controls read as a
+/* An unpinned tack is dimmed and tilted so its state reads from
+   the glyph alone — the pin is the header control whose meaning
+   is a state rather than an action, and there is no room for a
+   label. */
+.panel-drawer__pin {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  opacity: 0.45;
+  transform: rotate(45deg);
+}
+
+.panel-drawer__pin:hover {
+  opacity: 0.8;
+}
+
+.panel-drawer__pin--on {
+  opacity: 1;
+  transform: none;
+}
+
+/* Declared after the plain `:hover`, which outranks the modifier
+   on specificity and would otherwise dim a pinned tack on hover
+   — the opposite of what every other header control does. */
+.panel-drawer__pin--on:hover {
+  opacity: 1;
+}
+
+/* Mirrors the close button, so the caret and the close read as a
    matched pair bracketing the title. */
 .panel-drawer__collapse {
   appearance: none;

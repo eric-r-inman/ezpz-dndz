@@ -337,8 +337,8 @@ subscriptions model =
 
 {-| Esc folds the newest panel that is showing its body — the
 editors the drawer boots with have no trigger to reopen them, so
-dismissing one must not delete it. The pinned stat block is the
-exception: it arrived from a card and unpinning is what dismisses
+dismissing one must not delete it. The stat block is the
+exception: a card put it there, and removing it is what dismisses
 it.
 -}
 drawerEscSub : Surface -> Sub Msg
@@ -1747,6 +1747,9 @@ updateInner msg model =
 
         DrawerCollapseToggle index ->
             Update.PanelDrawer.toggleCollapse index model
+
+        DrawerPinToggle index ->
+            Update.PanelDrawer.togglePin index model
 
         DrawerFoldNewest ->
             Update.PanelDrawer.foldNewest model

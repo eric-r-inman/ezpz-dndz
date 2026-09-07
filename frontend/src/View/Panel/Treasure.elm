@@ -71,7 +71,7 @@ import View.Tooltips as Tooltips
 
 
 view : View.Panel.Header -> Model -> Html Msg
-view collapse model =
+view header model =
     case Model.drawerGet Model.treasureLens model of
         Just ui ->
             let
@@ -86,7 +86,7 @@ view collapse model =
                 , title = "Treasure"
                 , titleTrail = Nothing
                 , subtitle = Nothing
-                , collapse = collapse
+                , header = header
                 , extraClass = "panel-drawer--treasure"
                 , body =
                     body ui

@@ -30,13 +30,13 @@ import View.Tooltips as Tooltips
 
 
 view : View.Panel.Header -> CompendiumDb -> PanelPin -> Html Msg
-view collapse db pin =
+view header db pin =
     View.Panel.view
         { close = Just PanelClearCreature
         , title = pin.name
         , titleTrail = Just (compendiumJump pin)
         , subtitle = Nothing
-        , collapse = collapse
+        , header = header
         , extraClass = "panel-drawer--statblock"
         , body =
             [ resolvePin pin db

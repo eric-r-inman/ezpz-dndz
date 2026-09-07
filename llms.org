@@ -713,7 +713,10 @@ For a new feature that opens a surface, the canonical layout is:
     bottom — and their Update modules open, close, and edit them through the
     ~Model.openDrawer~ / ~foldDrawer~ / ~mapDrawer~ helpers.  ~closeDrawer~
     takes a panel out of the stack, which is only right for one the GM can put
-    back — in practice the pinned stat block.
+    back — in practice the stat block a card put there.  The stack is
+    partitioned: panels the GM has pinned hold the top in their own order, and
+    ~Model.drawerDropIndex~ clamps every move to the side of that boundary it
+    started on, so no reorder can interleave the two groups.
   - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
     ~import Http~ directly.
   - Wire the dispatch as one-liners in =Main='s =updateInner=.

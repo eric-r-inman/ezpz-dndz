@@ -23,13 +23,13 @@ import View.Tooltips as Tooltips
 
 
 view : View.Panel.Header -> List HpChangeEntry -> DiceUi -> Html Msg
-view collapse hpChangeLog ui =
+view header hpChangeLog ui =
     View.Panel.view
         { close = Nothing
         , title = "Dice Roller"
         , titleTrail = View.Panel.titleMarkIf ui.unread
         , subtitle = Nothing
-        , collapse = collapse
+        , header = header
         , extraClass = "panel-drawer--dice"
         , body =
             [ form ui

@@ -29,7 +29,7 @@ import View.Tooltips as Tooltips
 
 
 view : View.Panel.Header -> Model -> Html Msg
-view collapse model =
+view header model =
     case Model.drawerGet Model.quickAddLens model of
         Just ui ->
             let
@@ -46,7 +46,7 @@ view collapse model =
                 , title = title
                 , titleTrail = Nothing
                 , subtitle = Nothing
-                , collapse = collapse
+                , header = header
                 , extraClass = "panel-drawer--quick-add"
                 , body =
                     [ controlsRow ui

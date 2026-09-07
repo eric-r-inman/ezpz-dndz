@@ -1,11 +1,11 @@
 module Update.PanelDrawer exposing
-    ( clearCreature, foldNewest, toggleCollapse
+    ( clearCreature, foldNewest, toggleCollapse, togglePin
     , dragStart, dragOver, drop, dragEnd
     )
 
 {-| Drawer-wide handlers that belong to no single panel.
 
-@docs clearCreature, foldNewest, toggleCollapse
+@docs clearCreature, foldNewest, toggleCollapse, togglePin
 @docs dragStart, dragOver, drop, dragEnd
 
 -}
@@ -24,7 +24,7 @@ import Update.Dice
 import Update.SaveLoad
 
 
-{-| Close the stat-block panel, unpinning its creature.
+{-| Close the stat-block panel, clearing its creature.
 -}
 clearCreature : Model -> ( Model, Cmd Msg )
 clearCreature model =
@@ -50,6 +50,15 @@ toggleCollapse index model =
 
     else
         ( Model.toggleCollapsedAt index model, Cmd.none )
+
+
+{-| Hold a panel at the top of the column, or release it. Either
+way it moves: to the bottom of the pinned block when pinning, to
+the top of the rest when releasing.
+-}
+togglePin : Int -> Model -> ( Model, Cmd Msg )
+togglePin index model =
+    ( Model.togglePinnedAt index model, Cmd.none )
 
 
 {-| Esc means "dismiss what I am looking at", which
@@ -147,13 +156,20 @@ dragStart index model =
     )
 
 
-{-| The pointer crossed a slot; that slot wears the drop cue.
+{-| The pointer crossed a slot. The cue goes on the slot the
+panel would actually take, not the one under the pointer, so a
+drag across the pinned boundary shows the snap coming rather than
+springing it at the drop.
 -}
 dragOver : Int -> Model -> ( Model, Cmd Msg )
 dragOver index model =
     ( { model
         | drawerDrag =
-            Maybe.map (\d -> { d | over = Just index }) model.drawerDrag
+            Maybe.map
+                (\d ->
+                    { d | over = Just (Model.drawerDropIndex d.from index model.drawer) }
+                )
+                model.drawerDrag
       }
     , Cmd.none
     )

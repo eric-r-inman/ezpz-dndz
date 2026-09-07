@@ -104,6 +104,10 @@
     its coin icon.  No action needed.
 43. The Dice Roller's log carries HP changes alongside the rolls, in the order
     they happened, and Clear empties both.  No action needed.
+44. A thumbtack in each editor's heading row holds it at the top of the column,
+    above the unpinned ones.  No action needed.
+45. The stat block panel's ✕ now reads "Remove this stat block", so it no longer
+    collides with the new pin.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

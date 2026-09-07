@@ -50,7 +50,7 @@ import View.Panel
 
 
 view : View.Panel.Header -> Model -> Html Msg
-view collapse model =
+view header model =
     case Model.drawerGet Model.crCalculatorLens model of
         Just ui ->
             View.Panel.view
@@ -58,7 +58,7 @@ view collapse model =
                 , title = "Encounter Difficulty"
                 , titleTrail = Nothing
                 , subtitle = Nothing
-                , collapse = collapse
+                , header = header
                 , extraClass = "panel-drawer--cr-calculator"
                 , body =
                     [ blurb
