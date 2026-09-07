@@ -1068,9 +1068,6 @@ updateInner msg model =
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model
 
-        HpChangeIgnoreTempToggle ->
-            Update.HpChange.ignoreTempToggle model
-
         HpChangeApplyToSelectedToggle ->
             Update.HpChange.applyToSelectedToggle model
 
@@ -1083,8 +1080,8 @@ updateInner msg model =
         HpChangeFreshRollToggle ->
             Update.HpChange.freshRollToggle model
 
-        HpChangeFreshRollLanded kind ignoreTemp target roll ->
-            Update.HpChange.freshRollLanded kind ignoreTemp target roll model
+        HpChangeFreshRollLanded kind target roll ->
+            Update.HpChange.freshRollLanded kind target roll model
 
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model

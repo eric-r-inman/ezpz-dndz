@@ -8,7 +8,6 @@ module Update.HpChange exposing
     , editStart
     , freshRollLanded
     , freshRollToggle
-    , ignoreTempToggle
     , manualApplySelected
     , manualApplyTarget
     , manualChanged
@@ -184,13 +183,6 @@ amountChanged text model =
     )
 
 
-ignoreTempToggle : Model -> ( Model, Cmd Msg )
-ignoreTempToggle model =
-    ( withHpChange (\u -> { u | ignoreTemp = not u.ignoreTemp }) model
-    , Cmd.none
-    )
-
-
 applyToSelectedToggle : Model -> ( Model, Cmd Msg )
 applyToSelectedToggle model =
     ( withHpChange (\u -> { u | applyToSelected = not u.applyToSelected }) model
@@ -264,7 +256,7 @@ applyAs kind model =
                                         |> List.map
                                             (\name ->
                                                 Dice.rollCmd
-                                                    (HpChangeFreshRollLanded kind withKind.ignoreTemp name)
+                                                    (HpChangeFreshRollLanded kind name)
                                                     { feature = kindLabel kind, target = Just name }
                                                     expr
                                             )
@@ -319,13 +311,13 @@ have been closed between dispatch and landing — so each landing
 applies, logs, and persists its own roll independently of its
 siblings.
 -}
-freshRollLanded : HpKind -> Bool -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
-freshRollLanded kind ignoreTemp target roll model =
+freshRollLanded : HpKind -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+freshRollLanded kind target roll model =
     let
         ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
-    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged
+    ( applyAmountTo kind [ target ] roll.total logged
     , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
@@ -485,7 +477,7 @@ kindLabel kind =
             "+Max HP"
 
 
-{-| Resolve the editor's kind + flags into an `HpChange.Change`,
+{-| Resolve the editor's kind into an `HpChange.Change`,
 hand it to the engine, write the updated creature back through
 `Encounter.mapCreature`, push a log entry capturing the before/after
 snapshot. The caller decides the amount — it comes from the manual
@@ -510,31 +502,23 @@ the GM who explicitly checked the multi-target toggle.
 applyHpChange : HpChangeUi -> Int -> Model -> Model
 applyHpChange ui amount model =
     applyAmountTo ui.kind
-        ui.ignoreTemp
         (hpChangeTargets ui model.encounter)
         amount
         model
 
 
 {-| The commit core shared by every apply path: resolve the kind
-
-  - ignore-temp flag into an `HpChange.Change`, write it through
-    `Encounter.mapCreature` for each target, and push log entries
-    capturing the before/after snapshots. Does not touch the
-    surface — the shared-roll path closes it here-abouts, the
-    fresh-per-creature path already closed it at dispatch.
-
+into an `HpChange.Change`, write it through `Encounter.mapCreature`
+for each target, and push log entries capturing the before/after
+snapshots.
 -}
-applyAmountTo : HpKind -> Bool -> List String -> Int -> Model -> Model
-applyAmountTo kind ignoreTemp targets amount model =
+applyAmountTo : HpKind -> List String -> Int -> Model -> Model
+applyAmountTo kind targets amount model =
     let
         change =
             case kind of
                 DamageKind ->
-                    HpChange.Damage
-                        { amount = amount
-                        , ignoreTemp = ignoreTemp
-                        }
+                    HpChange.Damage amount
 
                 HealKind ->
                     HpChange.Heal amount

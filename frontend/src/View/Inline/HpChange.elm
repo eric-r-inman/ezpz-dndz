@@ -31,7 +31,6 @@ view selectedCount log ui =
     div [ class "creature-card__inline" ]
         [ amount ui
         , parseErrorHint ui
-        , ignoreTempToggle ui
         , applyScope selectedCount ui
         , actionButtons
         , div [ class "cond-divider" ] []
@@ -139,27 +138,6 @@ parseErrorHint ui =
 
         Nothing ->
             text ""
-
-
-{-| Ignore-temp-HP toggle. Always visible so the GM can pre-set
-the flag before clicking Damage; the caption spells out that it
-only affects the Damage path.
--}
-ignoreTempToggle : HpChangeUi -> Html Msg
-ignoreTempToggle ui =
-    div [ class "hp-change__row" ]
-        [ Html.label [ class "hp-change__checkbox" ]
-            [ input
-                [ type_ "checkbox"
-                , checked ui.ignoreTemp
-                , onClick HpChangeIgnoreTempToggle
-                ]
-                []
-            , text " Ignore temporary HP"
-            ]
-        , Html.span [ class "hp-change__caption hp-change__caption--inline" ]
-            [ text "(applies to Damage only)" ]
-        ]
 
 
 {-| Multi-target scope checkbox. Hidden entirely when zero

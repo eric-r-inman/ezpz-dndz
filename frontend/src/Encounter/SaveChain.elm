@@ -241,12 +241,12 @@ applyResolvedHp hp amount target enc =
 
         DealDamage _ ->
             Encounter.mapCreature target
-                (HpChange.apply (HpChange.Damage { amount = amount, ignoreTemp = False }))
+                (HpChange.apply (HpChange.Damage amount))
                 enc
 
         HalfFailDamage ->
             Encounter.mapCreature target
-                (HpChange.apply (HpChange.Damage { amount = amount, ignoreTemp = False }))
+                (HpChange.apply (HpChange.Damage amount))
                 enc
 
 

@@ -546,7 +546,6 @@ type Msg
     | HpChangeManualApplyTarget
     | HpChangeManualApplySelected
     | HpChangeAmountChanged String
-    | HpChangeIgnoreTempToggle
     | HpChangeApplyToSelectedToggle
       -- Commits the modal's current amount as the given kind,
       -- then closes.  The amount text is parsed at commit time:
@@ -557,11 +556,11 @@ type Msg
     | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
     | HpChangeFreshRollToggle
-      -- One fresh-per-creature roll landing.  Carries the kind,
-      -- the ignore-temp flag, and the target name because the
-      -- editor closes when the roll batch is dispatched — the
-      -- landing must not depend on surface state that is gone.
-    | HpChangeFreshRollLanded HpKind Bool String Dice.Roll
+      -- One fresh-per-creature roll landing.  Carries the kind
+      -- and the target name because the editor closes when the
+      -- roll batch is dispatched — the landing must not depend on
+      -- surface state that is gone.
+    | HpChangeFreshRollLanded HpKind String Dice.Roll
     | HpChangeUndoLatest
       -- Save chain.  State is edited here, saved as a named
       -- preset in `localStorage.saveChainPresets`, and executed

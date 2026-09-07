@@ -8626,22 +8626,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    .modal / .modal__header / .modal__body) for layout, with its own
    form / preview / footer styles. */
 
-.hp-change__caption {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-  flex-basis: 100%;
-}
-
-/* Variant that keeps the caption on the same line as its
-   sibling label instead of wrapping to the next row.  Used
-   by the "Ignore temporary HP" row where the parenthetical
-   ("(applies to Damage only)") is short enough that it reads
-   as a hint on the toggle, not its own line item. */
-.hp-change__caption--inline {
-  flex-basis: auto;
-}
-
 .hp-change__input {
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;

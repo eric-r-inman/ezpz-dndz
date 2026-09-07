@@ -1,5 +1,5 @@
 module HpChange exposing
-    ( Change(..), DamageSpec
+    ( Change(..)
     , apply, describe
     , setCurrentHp, setMaxHp, setArmorClass, setTempHp
     , restoreHp
@@ -22,7 +22,7 @@ prompts upstream and hand the engine a final integer amount.
 
 # Types
 
-@docs Change, DamageSpec
+@docs Change
 
 
 # Apply
@@ -52,11 +52,9 @@ import Encounter exposing (Creature)
 treated as already-resolved; if you wanted to roll for it, do that
 upstream and pass the integer total.
 
-  - `Damage` follows 5e order-of-operations: temp HP absorbs first
-    (unless `ignoreTemp` is set, which models effects like force
-    damage to a temporary-HP-granting spell that bypasses the buffer),
-    then the remainder reduces `currentHp` (clamped at zero, not
-    negative). The death-save tracker shows automatically once
+  - `Damage` follows 5e order-of-operations: temp HP absorbs
+    first, then the remainder reduces `currentHp` (clamped at
+    zero, not negative). The death-save tracker shows automatically once
     `currentHp` is 0 (the view code reads that directly), so we
     don't need a side flag here.
 
@@ -72,7 +70,7 @@ upstream and pass the integer total.
 
 -}
 type Change
-    = Damage DamageSpec
+    = Damage Int
     | Heal Int
     | TempHp Int
       -- +Max HP N: raise maxHp by N and also raise currentHp by
@@ -82,19 +80,6 @@ type Change
       -- accidentally shrink a stat block through this path — use
       -- the inline `MaxHpField` edit for that.
     | MaxHpDelta Int
-
-
-{-| Damage parameters, broken out so the field names self-document
-at call sites.
-
-  - `amount` is the final pre-soak damage total.
-  - `ignoreTemp` skips the temp-HP buffer when True.
-
--}
-type alias DamageSpec =
-    { amount : Int
-    , ignoreTemp : Bool
-    }
 
 
 
@@ -115,8 +100,8 @@ apply change c =
     let
         afterChange =
             case change of
-                Damage spec ->
-                    applyDamage spec c
+                Damage n ->
+                    applyDamage n c
 
                 Heal n ->
                     applyHeal n c
@@ -136,18 +121,14 @@ heal. The death-save tracker becomes visible automatically once
 `currentHp == 0` (handled in view code) — no flag bookkeeping
 needed here.
 -}
-applyDamage : DamageSpec -> Creature -> Creature
-applyDamage spec c =
+applyDamage : Int -> Creature -> Creature
+applyDamage n c =
     let
         incoming =
-            Basics.max 0 spec.amount
+            Basics.max 0 n
 
         absorbed =
-            if spec.ignoreTemp then
-                0
-
-            else
-                Basics.min c.tempHp incoming
+            Basics.min c.tempHp incoming
 
         remainder =
             incoming - absorbed
@@ -323,7 +304,7 @@ its own descriptions when we add a combat log.
 describe : Change -> Creature -> Creature -> String
 describe change before after =
     case change of
-        Damage spec ->
+        Damage n ->
             let
                 tempLost =
                     before.tempHp - after.tempHp
@@ -334,7 +315,7 @@ describe change before after =
                 stem =
                     before.name
                         ++ " took "
-                        ++ String.fromInt (Basics.max 0 spec.amount)
+                        ++ String.fromInt (Basics.max 0 n)
                         ++ " damage"
 
                 tempPart =

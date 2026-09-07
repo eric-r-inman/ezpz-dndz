@@ -36,7 +36,6 @@ type alias HpChangeUi =
     -- routing.
     , amountText : String
     , parseError : Maybe Dice.Error
-    , ignoreTemp : Bool
     , applyToSelected : Bool
 
     -- When applying a dice formula to a selection, roll fresh
@@ -117,7 +116,6 @@ fresh target =
     , kind = DamageKind
     , amountText = ""
     , parseError = Nothing
-    , ignoreTemp = False
     , applyToSelected = False
     , freshRollPerTarget = False
     , manualHpText = ""

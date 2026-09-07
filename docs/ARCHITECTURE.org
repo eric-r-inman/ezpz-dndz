@@ -1603,9 +1603,8 @@ Creature~ entry point so the arithmetic doesn't drift between code paths.
 
 ~Change~ is an ADT:
 
-- ~Damage { amount, ignoreTemp }~ — temp HP soaks first (skippable via
-  ~ignoreTemp~); current HP clamps at 0.  The death-save tracker auto-appears
-  once ~currentHp == 0~ (view-side gate).
+- ~Damage Int~ — temp HP soaks first; current HP clamps at 0.  The death-save
+  tracker auto-appears once ~currentHp == 0~ (view-side gate).
 - ~Heal Int~ — caps at maxHp; clears the death-save counters via
   ~Encounter.emptyDeathSaves~ when reviving from 0.
 - ~TempHp Int~ — replace-if-higher (5e never-stacks rule).

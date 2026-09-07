@@ -130,6 +130,10 @@
     edge, with air before the Advantage row.  No action needed.
 14. A spent reaction button greys its background, not just its label.  No action
     needed.
+** Breaking
+1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
+   always soaks against the temporary pool first, as 5e requires.  Adjust a
+   creature's temporary pool by hand if you relied on that bypass.
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the
