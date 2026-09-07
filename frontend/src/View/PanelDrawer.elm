@@ -118,75 +118,17 @@ stack model =
                 [ class "drawer-stack", Attr.id Effects.drawerStackId ]
                 (List.indexedMap
                     (\index panel ->
-                        ( surfaceKey panel.surface, panelFor model index panel )
+                        ( Model.surfaceKey panel.surface, panelFor model index panel )
                     )
                     panels
                 )
-
-
-{-| A stable identity for one drawer panel. Each drawer-eligible
-surface appears in the stack at most once (`Model.openDrawer`
-re-aims an existing panel rather than adding a twin), so the
-variant alone is identity enough.
--}
-surfaceKey : Surface -> String
-surfaceKey surface =
-    case surface of
-        SurfaceHpChange _ ->
-            "hp-change"
-
-        SurfaceStatus _ ->
-            "status"
-
-        SurfaceCondition _ ->
-            "condition"
-
-        SurfaceSaveChain _ ->
-            "save-chain"
-
-        SurfaceInitiative _ ->
-            "initiative"
-
-        SurfaceReplace _ ->
-            "replace"
-
-        SurfaceDuplicate _ ->
-            "duplicate"
-
-        SurfaceCrCalculator _ ->
-            "cr-calculator"
-
-        SurfaceTreasure _ ->
-            "treasure"
-
-        SurfaceQuickAdd _ ->
-            "quick-add"
-
-        SurfaceSaveLoad _ ->
-            "save-load"
-
-        SurfaceRandomEncounter _ ->
-            "random-encounter"
-
-        SurfaceDice ->
-            "dice"
-
-        SurfaceXp ->
-            "xp"
-
-        SurfaceStatBlock _ ->
-            "stat-block"
-
-        -- Never in the stack; a fixed key is as good as any.
-        _ ->
-            "other"
 
 
 {-| The slot the dragged panel would land in wears the drop cue.
 That is not always the one under the pointer — a drag across the
 pinned boundary clamps, and the cue shows where it clamps to.
 -}
-slotClass : Int -> Maybe Model.DrawerDrag -> String
+slotClass : Int -> Maybe Model.DragState -> String
 slotClass index drag =
     if Maybe.map .over drag == Just (Just index) then
         "drawer-stack__slot drawer-stack__slot--drop"
@@ -262,7 +204,11 @@ panelFor model index panel =
             SurfaceHpChange ui ->
                 editor "Manage HP"
                     (scopedLabel ui.target ui.applyToSelected)
-                    (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
+                    (View.Inline.HpChange.view selectedCount
+                        model.flashedHpLogSeq
+                        model.hpChangeLog
+                        ui
+                    )
 
             SurfaceStatus ui ->
                 editor "Status"

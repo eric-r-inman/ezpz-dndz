@@ -107,13 +107,14 @@ meReceived result model =
                 compendiumMigrationCmd =
                     migrateLocalCompendiumCmd model.localCompendiumRaw
             in
-            ( { model
-                | auth = AuthAuthenticated user
-                , encounter = liveEncounter
-                , localEncounterRaw = Nothing
-                , localDiceHistoryRaw = Nothing
-                , localCompendiumRaw = Nothing
-              }
+            ( Model.reaimStale
+                { model
+                    | auth = AuthAuthenticated user
+                    , encounter = liveEncounter
+                    , localEncounterRaw = Nothing
+                    , localDiceHistoryRaw = Nothing
+                    , localCompendiumRaw = Nothing
+                }
             , Cmd.batch
                 [ fetchOrSeedActiveCmd
                 , Compendium.Wire.fetchAll CompendiumLoaded

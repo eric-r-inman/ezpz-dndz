@@ -1,7 +1,7 @@
 module Encounter.RosterTest exposing (suite)
 
 {-| Behavior tests for `Encounter.Roster` — queue mutation
-helpers (move up / down, sort by initiative, remove, duplicate,
+helpers (move, sort by initiative, remove, duplicate,
 append).
 
 These exercise the documented invariants:
@@ -31,8 +31,7 @@ import Test exposing (Test, describe, test)
 suite : Test
 suite =
     describe "Encounter.Roster"
-        [ moveUpSuite
-        , moveDownSuite
+        [ moveCreatureSuite
         , sortByInitiativeSuite
         , removeCreatureSuite
         , duplicateCreatureSuite
@@ -116,53 +115,55 @@ names enc =
 
 
 
--- ── moveUp / moveDown ────────────────────────────────────────────────────
+-- ── moveCreature ─────────────────────────────────────────────────────────
 
 
-moveUpSuite : Test
-moveUpSuite =
-    describe "moveUp"
-        [ test "swaps a creature with its predecessor" <|
+moveCreatureSuite : Test
+moveCreatureSuite =
+    describe "moveCreature"
+        [ test "moves a creature up the queue" <|
             \_ ->
-                Roster.moveUp "B" threeCreatures
+                Roster.moveCreature 1 0 threeCreatures
                     |> names
                     |> Expect.equal [ "B", "A", "C" ]
-        , test "is a no-op on the first creature" <|
+        , test "moves a creature down the queue" <|
             \_ ->
-                Roster.moveUp "A" threeCreatures
-                    |> names
-                    |> Expect.equal [ "A", "B", "C" ]
-        , test "is a no-op on a name that isn't in the queue" <|
-            \_ ->
-                Roster.moveUp "X" threeCreatures
-                    |> names
-                    |> Expect.equal [ "A", "B", "C" ]
-        , test "preserves activeName" <|
-            \_ ->
-                Roster.moveUp "B" threeCreatures
-                    |> .activeName
-                    |> Expect.equal "A"
-        ]
-
-
-moveDownSuite : Test
-moveDownSuite =
-    describe "moveDown"
-        [ test "swaps a creature with its successor" <|
-            \_ ->
-                Roster.moveDown "B" threeCreatures
+                Roster.moveCreature 1 2 threeCreatures
                     |> names
                     |> Expect.equal [ "A", "C", "B" ]
-        , test "is a no-op on the last creature" <|
+        , test "moves across the whole queue, shifting the rest" <|
             \_ ->
-                Roster.moveDown "C" threeCreatures
+                Roster.moveCreature 2 0 threeCreatures
+                    |> names
+                    |> Expect.equal [ "C", "A", "B" ]
+        , test "a move onto its own position changes nothing" <|
+            \_ ->
+                Roster.moveCreature 1 1 threeCreatures
                     |> names
                     |> Expect.equal [ "A", "B", "C" ]
-        , test "is a no-op on a name that isn't in the queue" <|
+        , test "an out-of-range source leaves the queue alone" <|
             \_ ->
-                Roster.moveDown "X" threeCreatures
+                Roster.moveCreature 9 0 threeCreatures
                     |> names
                     |> Expect.equal [ "A", "B", "C" ]
+        , test "a negative source leaves the queue alone" <|
+            \_ ->
+                -- `List.drop` clamps a negative count to zero, so
+                -- the guard is what stops this duplicating the
+                -- first creature instead of moving it.
+                Roster.moveCreature -1 0 threeCreatures
+                    |> names
+                    |> Expect.equal [ "A", "B", "C" ]
+        , test "a target past the end lands at the bottom" <|
+            \_ ->
+                Roster.moveCreature 0 9 threeCreatures
+                    |> names
+                    |> Expect.equal [ "B", "C", "A" ]
+        , test "preserves activeName" <|
+            \_ ->
+                Roster.moveCreature 1 0 threeCreatures
+                    |> .activeName
+                    |> Expect.equal "A"
         ]
 
 

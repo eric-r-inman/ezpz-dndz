@@ -197,7 +197,10 @@ puddingFor name model =
                 afterSecond =
                     Encounter.Roster.insertCopyAfter copyA.name copyB afterFirst
             in
-            { model | encounter = Encounter.Roster.removeCreature name afterSecond }
+            Model.reaimStale
+                { model
+                    | encounter = Encounter.Roster.removeCreature name afterSecond
+                }
 
 
 {-| Build the two pudding halves from the source. Each gets

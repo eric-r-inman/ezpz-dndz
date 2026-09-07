@@ -648,11 +648,12 @@ applyLocalLoad name model =
                     { encounter | round = 1, activeName = "" }
 
                 next =
-                    { model
-                        | encounter = fresh
-                        , savedSnapshot = Just fresh
-                        , savedAs = Just name
-                    }
+                    Model.reaimStale
+                        { model
+                            | encounter = fresh
+                            , savedSnapshot = Just fresh
+                            , savedAs = Just name
+                        }
             in
             Update.Toast.push ToastSuccess
                 ("Loaded \"" ++ name ++ "\".")
@@ -687,11 +688,12 @@ serverResponse name result model =
                     { encounter | round = 1, activeName = "" }
 
                 next =
-                    { model
-                        | encounter = fresh
-                        , savedSnapshot = Just fresh
-                        , savedAs = Just name
-                    }
+                    Model.reaimStale
+                        { model
+                            | encounter = fresh
+                            , savedSnapshot = Just fresh
+                            , savedAs = Just name
+                        }
             in
             Update.Toast.push ToastSuccess
                 ("Loaded \"" ++ name ++ "\".")
@@ -734,11 +736,12 @@ deviceFileRead raw model =
                     { encounter | round = 1, activeName = "" }
 
                 next =
-                    { model
-                        | encounter = fresh
-                        , savedSnapshot = Just fresh
-                        , savedAs = Nothing
-                    }
+                    Model.reaimStale
+                        { model
+                            | encounter = fresh
+                            , savedSnapshot = Just fresh
+                            , savedAs = Nothing
+                        }
             in
             Update.Toast.push ToastSuccess
                 "Loaded encounter from file."

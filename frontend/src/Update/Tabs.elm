@@ -37,7 +37,7 @@ encounterFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
 encounterFromOtherTab raw model =
     case Decode.decodeValue Encounter.Wire.decodeEncounter raw of
         Ok encounter ->
-            ( { model | encounter = encounter }, Cmd.none )
+            ( Model.reaimStale { model | encounter = encounter }, Cmd.none )
 
         Err _ ->
             ( model, Cmd.none )

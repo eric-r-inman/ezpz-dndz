@@ -53,11 +53,14 @@ commit : Model -> ( Model, Cmd Msg )
 commit model =
     case model.placeholderRename of
         Just state ->
-            ( { model
-                | encounter =
-                    Encounter.Roster.renameCreature state.target state.draft model.encounter
-                , placeholderRename = Nothing
-              }
+            ( Model.reaimStale
+                { model
+                    | encounter =
+                        Encounter.Roster.renameCreature state.target
+                            state.draft
+                            model.encounter
+                    , placeholderRename = Nothing
+                }
             , Cmd.none
             )
 

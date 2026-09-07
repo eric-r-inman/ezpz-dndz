@@ -5,9 +5,11 @@ module Update.Encounter exposing
     , controlConfirm
     , cycleCover
     , fallDamageLanded
-    , moveCreatureDown
-    , moveCreatureUp
     , nextTurn
+    , queueDragEnd
+    , queueDragOver
+    , queueDragStart
+    , queueDrop
     , rechargeRollLanded
     , removeCreature
     , requestClear
@@ -52,13 +54,18 @@ import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 
 
-{-| Local lens for `model.encounter`. Kept private to this module —
-other Update modules either don't touch the encounter or own their
-own narrower lens.
+{-| Apply a change to `model.encounter`, then re-aim any editor
+left pointing at a creature the change removed. Every roster
+mutation in this module goes through here, which is what keeps
+that invariant from depending on the caller remembering it.
+
+Kept private to this module — other Update modules either don't
+touch the encounter or own their own narrower lens.
+
 -}
 withEncounter : (Encounter -> Encounter) -> Model -> Model
 withEncounter fn model =
-    { model | encounter = fn model.encounter }
+    Model.reaimStale { model | encounter = fn model.encounter }
 
 
 {-| Advance the queue one slot. Domain layer owns the queue walk,
@@ -362,18 +369,48 @@ shiftToggleSelected name model =
     )
 
 
-{-| Manual queue reordering (the up/down arrows on each card). Pure
-position swaps; initiative isn't touched. A later `sortByInitiative`
-wipes the manual order, which matches the documented contract.
+{-| A card picked up: remember the position it came from.
 -}
-moveCreatureUp : String -> Model -> ( Model, Cmd Msg )
-moveCreatureUp name model =
-    ( withEncounter (Encounter.Roster.moveUp name) model, Cmd.none )
+queueDragStart : Int -> Model -> ( Model, Cmd Msg )
+queueDragStart index model =
+    ( { model | queueDrag = Just { from = index, over = Nothing } }
+    , Cmd.none
+    )
 
 
-moveCreatureDown : String -> Model -> ( Model, Cmd Msg )
-moveCreatureDown name model =
-    ( withEncounter (Encounter.Roster.moveDown name) model, Cmd.none )
+{-| The pointer crossed a card; that card wears the drop cue.
+-}
+queueDragOver : Int -> Model -> ( Model, Cmd Msg )
+queueDragOver index model =
+    ( { model
+        | queueDrag =
+            Maybe.map (\d -> { d | over = Just index }) model.queueDrag
+      }
+    , Cmd.none
+    )
+
+
+{-| Dropped on a card: commit the reorder and clear the drag.
+-}
+queueDrop : Int -> Model -> ( Model, Cmd Msg )
+queueDrop index model =
+    ( model.queueDrag
+        |> Maybe.map
+            (\d ->
+                withEncounter (Encounter.Roster.moveCreature d.from index)
+                    { model | queueDrag = Nothing }
+            )
+        |> Maybe.withDefault model
+    , Cmd.none
+    )
+
+
+{-| The drag ended anywhere but a card: clear the cue without
+reordering.
+-}
+queueDragEnd : Model -> ( Model, Cmd Msg )
+queueDragEnd model =
+    ( { model | queueDrag = Nothing }, Cmd.none )
 
 
 removeCreature : String -> Model -> ( Model, Cmd Msg )
@@ -452,12 +489,13 @@ controlConfirm model =
                         , activeName = ""
                     }
             in
-            ( { model | encounter = resetEnc, surface = Nothing }
+            ( withEncounter (always resetEnc) { model | surface = Nothing }
             , Cmd.none
             )
 
         Just (Model.SurfaceConfirm PendingClear) ->
-            ( { model | encounter = Encounter.empty, surface = Nothing }
+            ( withEncounter (always Encounter.empty)
+                { model | surface = Nothing }
             , Cmd.none
             )
 

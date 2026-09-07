@@ -57,6 +57,7 @@ panelMain model =
             , surface = model.surface
             , timerPresets = model.timerPresets
             , compendium = model.compendium.db
+            , drag = model.queueDrag
             }
     in
     section [ class "panel panel--main" ]
@@ -76,7 +77,7 @@ panelMain model =
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class "creature-grid" ]
-                (List.map (View.Card.view cardContext) enc.creatures)
+                (List.indexedMap (View.Card.view cardContext) enc.creatures)
             , quickAddRow
             ]
         ]

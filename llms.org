@@ -706,17 +706,23 @@ For a new feature that opens a surface, the canonical layout is:
     wrapper — the exception is ~close~, optional on a panel (only one the GM can
     reopen offers a ✕) and required on a modal.
   - A drawer panel also needs a ~SurfaceLens~ in =Model.elm=, a render arm in
-    ~View.PanelDrawer.panelFor~, and — when the drawer boots with it — an entry
-    in ~Model.defaultDrawer~; those three move together.  ~Main.drawerEscSub~
-    needs an arm only for a panel Esc should treat specially; the rest fold.
-    Panels live in the ~model.drawer~ stack — many open at once, newest at the
-    bottom — and their Update modules open, close, and edit them through the
-    ~Model.openDrawer~ / ~foldDrawer~ / ~mapDrawer~ helpers.  ~closeDrawer~
-    takes a panel out of the stack, which is only right for one the GM can put
-    back — in practice the stat block a card put there.  The stack is
-    partitioned: panels the GM has pinned hold the top in their own order, and
-    ~Model.drawerDropIndex~ clamps every move to the side of that boundary it
-    started on, so no reorder can interleave the two groups.
+    ~View.PanelDrawer.panelFor~, an arm in ~Model.surfaceKey~, and — when the
+    drawer boots with it — an entry in ~Model.defaultDrawer~; those four move
+    together.  The compiler forces the ~surfaceKey~ arm but not the care it
+    needs: those strings are the persisted column layout, so a key is chosen
+    once and never renamed.  An editor that aims at a creature needs a further
+    arm in ~Model.reaimStale~ that actually re-aims — the compiler accepts a
+    fall-through, and a fall-through silently strands the editor on a creature
+    that has left the queue.  ~Main.drawerEscSub~ needs an arm only for a panel
+    Esc should treat specially; the rest fold.  Panels live in the
+    ~model.drawer~ stack — many open at once, newest at the bottom — and their
+    Update modules open, close, and edit them through the ~Model.openDrawer~ /
+    ~foldDrawer~ / ~mapDrawer~ helpers.  ~closeDrawer~ takes a panel out of the
+    stack, which is only right for one the GM can put back — in practice the
+    stat block a card put there.  The stack is partitioned: panels the GM has
+    pinned hold the top in their own order, and ~Model.drawerDropIndex~ clamps
+    every move to the side of that boundary it started on, so no reorder can
+    interleave the two groups.
   - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
     ~import Http~ directly.
   - Wire the dispatch as one-liners in =Main='s =updateInner=.

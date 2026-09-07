@@ -637,9 +637,14 @@ type Msg
       -- Selection
     | ToggleSelected String
     | ShiftToggleSelected String
-      -- Manual queue reordering
-    | MoveCreatureUp String
-    | MoveCreatureDown String
+      -- Manual queue reordering: dragging a creature card to a
+      -- new position.  Same shape as the drawer's reorder —
+      -- payloads are queue positions, Over fires per card the
+      -- pointer crosses, End covers a drag the browser cancelled.
+    | QueueDragStart Int
+    | QueueDragOver Int
+    | QueueDrop Int
+    | QueueDragEnd
       -- Roster mutation (the right rail's × button)
     | RemoveCreature String
       -- Duplicate.  Spawns numbered copies of a creature.

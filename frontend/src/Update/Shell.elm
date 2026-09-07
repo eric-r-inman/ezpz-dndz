@@ -102,7 +102,7 @@ encounterLoaded : Result Http.Error (Maybe Encounter) -> Model -> ( Model, Cmd M
 encounterLoaded result model =
     case result of
         Ok (Just encounter) ->
-            ( { model | encounter = encounter }, Cmd.none )
+            ( Model.reaimStale { model | encounter = encounter }, Cmd.none )
 
         Ok Nothing ->
             ( model, Cmd.none )

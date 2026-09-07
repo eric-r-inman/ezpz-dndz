@@ -10,16 +10,8 @@ module Update.PanelDrawer exposing
 
 -}
 
-import Encounter
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
-import Ui.Condition
-import Ui.Duplicate
-import Ui.HpChange
-import Ui.Initiative
-import Ui.Replace
-import Ui.SaveChain
-import Ui.Status
 import Update.Dice
 import Update.SaveLoad
 
@@ -33,7 +25,8 @@ clearCreature model =
 
 {-| Fold one panel's body away, or open it back up. The panel
 stays in the stack either way, so a folded editor keeps what the
-GM typed — unless expanding re-aims it, which `aimAt` explains.
+GM typed — unless expanding re-aims it, which
+`Model.reaimStale` explains.
 -}
 toggleCollapse : Int -> Model -> ( Model, Cmd Msg )
 toggleCollapse index model =
@@ -45,7 +38,7 @@ toggleCollapse index model =
     in
     if expanding then
         Model.toggleCollapsedAt index model
-            |> (aimAt index >> markRead index)
+            |> (Model.reaimStale >> markRead index >> ackHpLog index)
             |> primeList index
 
     else
@@ -84,6 +77,19 @@ primeList index model =
             ( model, Cmd.none )
 
 
+{-| Expanding the HP editor shows whatever the log already held,
+so those entries are spent as far as the flash is concerned.
+-}
+ackHpLog : Int -> Model -> Model
+ackHpLog index model =
+    case Maybe.map .surface (Model.drawerPanelAt index model) of
+        Just (SurfaceHpChange _) ->
+            Model.ackHpLog model
+
+        _ ->
+            model
+
+
 {-| Expanding the roller puts its history on screen, so that is
 what clears the unread mark.
 -}
@@ -95,56 +101,6 @@ markRead index model =
 
         _ ->
             model
-
-
-{-| A per-creature editor being expanded is aimed at the queue's
-default target when it is aimed at nothing, or at a creature that
-has since left. One already pointing somewhere real is left
-alone, so a deliberate aim from a card survives a fold — but a
-re-aim resets the editor, so a draft typed against a creature
-that then left the queue does not.
--}
-aimAt : Int -> Model -> Model
-aimAt index model =
-    let
-        target =
-            Encounter.defaultTarget model.encounter
-
-        reaim wrap fresh aimed surface =
-            if Encounter.hasCreature aimed model.encounter then
-                surface
-
-            else
-                wrap (fresh target)
-    in
-    Model.mapSurfaceAt index
-        (\surface ->
-            case surface of
-                SurfaceHpChange ui ->
-                    reaim SurfaceHpChange Ui.HpChange.fresh ui.target surface
-
-                SurfaceStatus ui ->
-                    reaim SurfaceStatus Ui.Status.fresh ui.target surface
-
-                SurfaceCondition ui ->
-                    reaim SurfaceCondition Ui.Condition.fresh ui.target surface
-
-                SurfaceSaveChain ui ->
-                    reaim SurfaceSaveChain Ui.SaveChain.fresh ui.target surface
-
-                SurfaceInitiative ui ->
-                    reaim SurfaceInitiative Ui.Initiative.fresh ui.target surface
-
-                SurfaceDuplicate ui ->
-                    reaim SurfaceDuplicate Ui.Duplicate.fresh ui.target surface
-
-                SurfaceReplace ui ->
-                    reaim SurfaceReplace Ui.Replace.fresh ui.target surface
-
-                _ ->
-                    surface
-        )
-        model
 
 
 {-| A heading row picked up: remember where it came from.

@@ -156,10 +156,11 @@ replaceOne source oldName acc =
                 acc.model
         in
         { model =
-            { m
-                | encounter =
-                    Encounter.Roster.replaceCreature oldName newCreature m.encounter
-            }
+            Model.reaimStale
+                { m
+                    | encounter =
+                        Encounter.Roster.replaceCreature oldName newCreature m.encounter
+                }
         , news = newName :: acc.news
         }
 

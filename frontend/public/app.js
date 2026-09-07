@@ -92,6 +92,17 @@ try {
   }
 } catch (_) {}
 
+// The editor column's arrangement: the order the GM dragged the
+// panels into, and which ones they pinned to the top.  Browser-
+// local, so an account doesn't carry it between machines.
+var localDrawerLayout = null;
+try {
+  var drawerLayoutRaw = localStorage.getItem("drawerLayout");
+  if (drawerLayoutRaw) {
+    localDrawerLayout = JSON.parse(drawerLayoutRaw);
+  }
+} catch (_) {}
+
 // User-named timer presets — twin of conditionPresets.
 var localTimerPresets = null;
 try {
@@ -165,6 +176,7 @@ var app = Elm.Main.init({
     localCompendium: localCompendium,
     localEncounterSaves: localEncounterSaves,
     localConditionPresets: localConditionPresets,
+    localDrawerLayout: localDrawerLayout,
     localTimerPresets: localTimerPresets,
     localSaveChainPresets: localSaveChainPresets,
     localParty: localParty,
@@ -256,6 +268,16 @@ if (app.ports && app.ports.persistLocalConditionPresets) {
         "conditionPresets",
         JSON.stringify(value),
       );
+    } catch (_) {}
+  });
+}
+
+// Editor-column arrangement writer.  Fires whenever the GM drags
+// a panel to a new slot or pins one.
+if (app.ports && app.ports.persistLocalDrawerLayout) {
+  app.ports.persistLocalDrawerLayout.subscribe(function (value) {
+    try {
+      localStorage.setItem("drawerLayout", JSON.stringify(value));
     } catch (_) {}
   });
 }
@@ -649,6 +671,25 @@ if (app.ports && app.ports.openCompendiumTab) {
   document.addEventListener("scroll", hide, true);
   window.addEventListener("resize", hide);
 })();
+
+// Elm's event decoders can read a `dragstart` but can't call
+// `dataTransfer.setData` on it, and Firefox refuses to begin a
+// drag whose dragstart set no transfer data.  Both reorderable
+// lists — the editor column's panels and the creature cards —
+// would be dead there without this.  Capture phase so it runs
+// before Elm's own handler, and only when nothing has set data
+// already, so a real payload is never clobbered.
+document.addEventListener(
+  "dragstart",
+  function (e) {
+    try {
+      if (e.dataTransfer && e.dataTransfer.types.length === 0) {
+        e.dataTransfer.setData("text/plain", "");
+      }
+    } catch (_) {}
+  },
+  true,
+);
 
 // Modal focus-trap.  When Tab walks past the last focusable
 // element inside a modal it lands on the END sentinel

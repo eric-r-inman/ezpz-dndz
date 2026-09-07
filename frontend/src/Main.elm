@@ -9,6 +9,7 @@ import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dict
+import DrawerLayout
 import Effects
 import Encounter
     exposing
@@ -499,6 +500,7 @@ type alias Flags =
     , localCompendium : Maybe Decode.Value
     , localEncounterSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
+    , localDrawerLayout : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
     , localSaveChainPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
@@ -540,56 +542,69 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Difficulty.defaultParty
+
+        -- Applied to the built model rather than folded into the
+        -- record: the layout reorders the boot drawer, so it has
+        -- to run against a drawer that already exists.
+        savedLayout =
+            flags.localDrawerLayout
+                |> Maybe.andThen
+                    (Decode.decodeValue DrawerLayout.decoder >> Result.toMaybe)
+                |> Maybe.withDefault []
     in
-    ( { key = key
-      , url = url
-      , route = route
-      , me = Loading
-      , auth = Auth.AuthLoading
-      , loginUi = LoginUi.empty
-      , encounter = Encounter.empty
-      , savedSnapshot = Nothing
-      , savedAs = Nothing
-      , dice = DiceUi.empty
-      , hpChangeLog = []
-      , saveChainLog = []
-      , hpEdit = Nothing
-      , compendium = compendiumFromUrl url
-      , surface = Nothing
-      , conditionLog = []
-      , duplicateLog = []
-      , replaceLog = []
-      , modalChrome = Ui.ModalChrome.fresh
-      , placeholderRename = Nothing
-      , xpScope = ScopeXpEnemiesAndNpcs
-      , queuePanels = Ui.QueuePanels.fresh
-      , drawer = Model.defaultDrawer
-      , drawerDrag = Nothing
-      , compendiumEditDraft = Nothing
-      , settingsOpen = False
-      , anonymousBannerDismissed = False
-      , toasts = []
-      , nextToastId = 0
-      , rollPopups = []
-      , nextRollPopupId = 0
-      , preferences = prefs
-      , accountUi = Ui.Account.empty
-      , party = partyFromFlags.members
-      , nextPartyMemberId = partyFromFlags.nextId
-      , localEncounterRaw = flags.localEncounter
-      , migrationDateLabel = flags.migrationDateLabel
-      , localDiceHistoryRaw = flags.localDiceHistory
-      , localCompendiumRaw = flags.localCompendium
-      , pendingBundleMerge = False
-      , nextLocalCreatureId = 1
-      , localEncounterSaves =
+    ( Model.applyDrawerLayout savedLayout
+        { key = key
+        , url = url
+        , route = route
+        , me = Loading
+        , auth = Auth.AuthLoading
+        , loginUi = LoginUi.empty
+        , encounter = Encounter.empty
+        , savedSnapshot = Nothing
+        , savedAs = Nothing
+        , dice = DiceUi.empty
+        , hpChangeLog = []
+        , nextHpLogSeq = 1
+        , flashedHpLogSeq = 0
+        , saveChainLog = []
+        , hpEdit = Nothing
+        , compendium = compendiumFromUrl url
+        , surface = Nothing
+        , conditionLog = []
+        , duplicateLog = []
+        , replaceLog = []
+        , modalChrome = Ui.ModalChrome.fresh
+        , placeholderRename = Nothing
+        , xpScope = ScopeXpEnemiesAndNpcs
+        , queuePanels = Ui.QueuePanels.fresh
+        , drawer = Model.defaultDrawer
+        , drawerDrag = Nothing
+        , queueDrag = Nothing
+        , compendiumEditDraft = Nothing
+        , settingsOpen = False
+        , anonymousBannerDismissed = False
+        , toasts = []
+        , nextToastId = 0
+        , rollPopups = []
+        , nextRollPopupId = 0
+        , preferences = prefs
+        , accountUi = Ui.Account.empty
+        , party = partyFromFlags.members
+        , nextPartyMemberId = partyFromFlags.nextId
+        , localEncounterRaw = flags.localEncounter
+        , migrationDateLabel = flags.migrationDateLabel
+        , localDiceHistoryRaw = flags.localDiceHistory
+        , localCompendiumRaw = flags.localCompendium
+        , pendingBundleMerge = False
+        , nextLocalCreatureId = 1
+        , localEncounterSaves =
             flags.localEncounterSaves
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
-      , conditionPresets =
+        , conditionPresets =
             case flags.localConditionPresets of
                 Just raw ->
                     -- localStorage.conditionPresets exists (even
@@ -606,37 +621,37 @@ init flags url key =
                     -- in the Load menu are populated out of the
                     -- box.
                     Ui.Condition.Bundled.defaults
-      , timerPresets =
+        , timerPresets =
             flags.localTimerPresets
                 |> Maybe.andThen
                     (Decode.decodeValue Ui.Timer.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
-      , saveChainPresets =
+        , saveChainPresets =
             flags.localSaveChainPresets
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.SaveChain.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Encounter.SaveChain.Bundled.defaults
-      , userLoreGroups =
+        , userLoreGroups =
             flags.localUserLoreGroups
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.RandomEncounter.Lore.Wire.decodeGroups
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault []
-      , userTreasureTable =
+        , userTreasureTable =
             flags.localUserTreasureTable
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-      , userTreasureProfiles = Dict.empty
-      , userTreasureProfileNameDraft = ""
-      , bootMs = flags.bootMs
-      }
+        , userTreasureProfiles = Dict.empty
+        , userTreasureProfileNameDraft = ""
+        , bootMs = flags.bootMs
+        }
       -- The auth-dependent data fetches (encounter, compendium,
       -- groups, dice history) all live in
       -- `Update.Auth.meReceived` because each one's destination —
@@ -733,6 +748,14 @@ update msg model =
                     _ ->
                         Ports.persistLocalConditionPresets
                             (Ui.Condition.Wire.encodePresets next.conditionPresets)
+
+            else
+                Cmd.none
+
+        drawerLayoutCmd =
+            if Effects.shouldPersistAfter msg && Model.drawerLayout model /= Model.drawerLayout next then
+                Ports.persistLocalDrawerLayout
+                    (DrawerLayout.encode (Model.drawerLayout next))
 
             else
                 Cmd.none
@@ -874,6 +897,7 @@ update msg model =
         , userLoreGroupsCmd
         , userTreasureTableCmd
         , userTreasureProfilesCmd
+        , drawerLayoutCmd
         , modalFocusCmd
         , drawerScrollCmd
         ]
@@ -1181,11 +1205,17 @@ updateInner msg model =
         ShiftToggleSelected name ->
             Update.Encounter.shiftToggleSelected name model
 
-        MoveCreatureUp name ->
-            Update.Encounter.moveCreatureUp name model
+        QueueDragStart index ->
+            Update.Encounter.queueDragStart index model
 
-        MoveCreatureDown name ->
-            Update.Encounter.moveCreatureDown name model
+        QueueDragOver index ->
+            Update.Encounter.queueDragOver index model
+
+        QueueDrop index ->
+            Update.Encounter.queueDrop index model
+
+        QueueDragEnd ->
+            Update.Encounter.queueDragEnd model
 
         RemoveCreature name ->
             Update.Encounter.removeCreature name model

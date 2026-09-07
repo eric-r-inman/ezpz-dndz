@@ -26,8 +26,8 @@ import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
 
 
-view : Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
-view selectedCount log ui =
+view : Int -> Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
+view selectedCount flashedSeq log ui =
     div [ class "creature-card__inline" ]
         [ amount ui
         , parseErrorHint ui
@@ -35,7 +35,7 @@ view selectedCount log ui =
         , actionButtons
         , div [ class "cond-divider" ] []
         , manualSection selectedCount ui
-        , View.HpLog.latest log
+        , View.HpLog.latest flashedSeq log
         ]
 
 

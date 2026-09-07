@@ -12,8 +12,10 @@ Three rows + two side rails + an optional legendary-pip column:
   - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
     timer slot.
 
-The two side rails carry the queue-mutation buttons and the
-"make active" arrow.
+The card itself is the queue's reorder handle: the whole article
+is a drag source and a drop target, so a GM moves a creature by
+dragging its card. A card with an open inline field is a target
+but not a source — see `dragAttrs`.
 
 The legendary-pip column lives between the center column and
 the right rail, and is only present when the creature's
@@ -48,6 +50,65 @@ import View.Inline.Timer
 import View.Tooltips as Tooltips
 
 
+{-| The whole card is the drag handle, so the GM grabs it
+anywhere and drops it where it belongs — except while one of its
+inline fields is open. A `draggable` ancestor puts the browser
+into drag mode on mousedown, and no handler can hand the gesture
+back afterwards, so a card holding a text field the GM might be
+selecting inside stops being a drag _source_. It stays a drop
+target either way: a card the GM cannot pick up is still
+somewhere they can put another one.
+-}
+dragAttrs : Bool -> Int -> List (Html.Attribute Msg)
+dragAttrs editing index =
+    (if editing then
+        []
+
+     else
+        [ Attr.draggable "true"
+        , on "dragstart" (Decode.succeed (QueueDragStart index))
+        , on "dragend" (Decode.succeed QueueDragEnd)
+        ]
+    )
+        ++ [ preventDefaultOn "dragover"
+                (Decode.succeed ( QueueDragOver index, True ))
+           , preventDefaultOn "drop"
+                (Decode.succeed ( QueueDrop index, True ))
+           ]
+
+
+{-| Whether this card is currently showing a text field — an
+open inline surface, a placeholder rename, or an HP edit. Only
+the fields matter, which is why the condition chips and the
+status strip do not count.
+-}
+holdsOpenField : Context -> Creature -> Bool
+holdsOpenField ctx creature =
+    let
+        renaming =
+            ctx.renameState
+                |> Maybe.map (\r -> r.target == creature.name)
+                |> Maybe.withDefault False
+
+        editingHp =
+            ctx.hpEdit
+                |> Maybe.map (\e -> e.target == creature.name)
+                |> Maybe.withDefault False
+    in
+    renaming || editingHp || surfaceFor ctx creature /= Nothing
+
+
+{-| The card the dragged one would land on wears the cue.
+-}
+dropCueClasses : Int -> Maybe Model.DragState -> List String
+dropCueClasses index drag =
+    if Maybe.map .over drag == Just (Just index) then
+        [ "creature-card--drop" ]
+
+    else
+        []
+
+
 {-| The model fragments a card render needs beyond its own
 `Creature`. `surface` powers the card-owned inline surfaces:
 when the open surface targets this card's creature, the card
@@ -61,11 +122,12 @@ type alias Context =
     , surface : Maybe Surface
     , timerPresets : Dict String TimerPreset
     , compendium : CompendiumDb
+    , drag : Maybe Model.DragState
     }
 
 
-view : Context -> Creature -> Html Msg
-view ctx creature =
+view : Context -> Int -> Creature -> Html Msg
+view ctx index creature =
     let
         hpEdit =
             ctx.hpEdit
@@ -77,9 +139,18 @@ view ctx creature =
             creature.name == ctx.activeName
 
         cardClass =
-            String.join " " ("creature-card" :: lifecycleClasses isActive creature)
+            String.join " "
+                ("creature-card"
+                    :: dropCueClasses index ctx.drag
+                    ++ lifecycleClasses isActive creature
+                )
     in
-    article [ id (Effects.cardId creature.name), class cardClass ]
+    article
+        ([ id (Effects.cardId creature.name)
+         , class cardClass
+         ]
+            ++ dragAttrs (holdsOpenField ctx creature) index
+        )
         [ lifecycleBadge creature
         , div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
@@ -92,25 +163,6 @@ view ctx creature =
                     , Tooltips.attr Tooltips.queueSelectShiftClick
                     ]
                     []
-                , button
-                    [ class "icon-btn icon-btn--arrow"
-                    , onClick (MoveCreatureUp creature.name)
-                    , Tooltips.attr Tooltips.queueMoveUp
-                    , attribute "aria-label" "Move up in queue"
-                    ]
-                    [ text "↑" ]
-                , button
-                    [ class "icon-btn icon-btn--arrow"
-                    , onClick (MoveCreatureDown creature.name)
-                    , Tooltips.attr Tooltips.queueMoveDown
-                    , attribute "aria-label" "Move down in queue"
-                    ]
-                    [ text "↓" ]
-
-                -- Same group as the movers: an open inline editor
-                -- makes the card tall, and the rail's space-evenly
-                -- distribution would otherwise float this away
-                -- from the buttons it belongs with.
                 , button
                     [ class "icon-btn"
                     , onClick (SetActive creature.name)

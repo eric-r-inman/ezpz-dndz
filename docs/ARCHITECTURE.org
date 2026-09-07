@@ -172,8 +172,8 @@ tree, and Cmd helper lives in its own module.
 | Auth            | =Auth.elm= (~AuthState~ ADT + ~User~ + decoder)                                                                                          |
 | Domain          | =Encounter.elm= + =Encounter/{DeathSaves,Difficulty,Lifecycle,RandomEncounter,Roster,SaveChain,SaveNotice,Seed,Treasure,Wire,Xp}= (plus the =RandomEncounter/Lore=, =SaveChain/{Bundled,Export,Wire}=, and =Treasure/*= sub-modules) |
 | Domain          | =Compendium.elm= + =Compendium/{Group,GroupWire,Parser,Reference,SpellcastingText,Wire}= |
-| Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
-| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / About / CompendiumCreaturePage / Compendium / QuickList / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ten ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, clipboard, and the cross-tab BroadcastChannel ports) |
+| Domain          | =Dice.elm=, =DrawerLayout.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
+| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / About / CompendiumCreaturePage / Compendium / QuickList / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, clipboard, and the cross-tab BroadcastChannel ports) |
 | UI substate     | =Ui/{AbilitySave,Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,SaveChain,SaveCompendium,SaveLoad,Timer,Toast,Treasure,TreasureTable}.elm= |
 | Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings popover, ~NoOp~), =Update/Tabs.elm= (cross-tab BroadcastChannel receive paths — ~encounterFromOtherTab~, ~panelShowFromOtherTab~, ~incomingPanelShow~) |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
@@ -778,6 +778,7 @@ analogue; ~model.auth~ picks at write time, the boot path picks at read time.
 | Save Chain presets | =PUT /api/save-chain-presets=        | =saveChainPresets=              |
 | Timer presets      | (localStorage in both modes)         | =timerPresets=                  |
 | Party (Difficulty) | (localStorage in both modes)         | =party=                         |
+| Editor-column layout | (localStorage in both modes)       | =drawerLayout=                  |
 | Lore groups        | =PUT /api/lore-groups=               | =userLoreGroups=                |
 | Treasure table     | =PUT /api/treasure-table=            | =userTreasureTable=             |
 | Treasure profiles  | =PUT /api/treasure-profiles=         | (not persisted anonymously)     |
@@ -807,7 +808,12 @@ partyCmd               = if next.party /= model.party ...
 userLoreGroupsCmd      = if next.userLoreGroups /= model.userLoreGroups ...
 userTreasureTableCmd   = if next.userTreasureTable /= model.userTreasureTable ...
 userTreasureProfilesCmd = if next.userTreasureProfiles /= model.userTreasureProfiles ...
+drawerLayoutCmd        = if Model.drawerLayout next /= Model.drawerLayout model ...
 #+end_src
+
+The layout branch is the one that diffs a derived value rather than a ~Model~
+field: the panels carry more than the arrangement, so comparing them whole would
+fire on every fold and re-aim.
 
 The wrapper stays in =Main.elm= (it needs the before/after models), but every
 predicate and Cmd helper it calls lives in =Effects.elm= — ~shouldPersistAfter~
@@ -849,6 +855,7 @@ the stylesheet loads.)
 | =localTimerPresets=      | =timerPresets=         | ~Model.timerPresets~ (Dict)            |
 | =localSaveChainPresets=  | =saveChainPresets=     | ~Model.saveChainPresets~ (Dict)        |
 | =localParty=             | =party=                | ~Model.party~ + ~nextPartyMemberId~    |
+| =localDrawerLayout=      | =drawerLayout=         | ~Model.drawer~ via ~Model.applyDrawerLayout~ |
 | =localUserLoreGroups=    | =userLoreGroups=       | ~Model.userLoreGroups~                 |
 | =localUserTreasureTable= | =userTreasureTable=    | ~Model.userTreasureTable~              |
 | =migrationDateLabel=     | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
@@ -1762,20 +1769,25 @@ dependency order:
    than ~onClick~ — a plain ~onClick~ there folds the panel as a side effect of
    doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
-   render arm in ~View.PanelDrawer.panelFor~, and — when the drawer boots with
-   it — an entry in ~Model.defaultDrawer~; those three move together.
-   ~Main.drawerEscSub~ needs an arm only for a panel Esc should treat specially;
-   the rest fold.  Panels live in the ~model.drawer~ stack — many open at once,
-   newest at the bottom — and their Update modules open, close, and edit them
-   through ~Model.openDrawer~ / ~foldDrawer~ / ~mapDrawer~.  ~closeDrawer~ takes
-   a panel out of the stack, which is only right for one the GM can put back —
-   in practice the stat block a card put there.  The stack is partitioned:
-   panels the GM has pinned hold the top in their own order, and
-   ~Model.drawerDropIndex~ clamps every move to the side of that boundary it
-   started on, so no reorder can interleave the two groups.  A per-creature
-   editor takes a narrower shape: its body lives in =View/Inline/Foo.elm= and
-   =View.PanelDrawer='s ~editor~ helper supplies the chrome, so every editor's
-   target strip and heading row stay identical.
+   render arm in ~View.PanelDrawer.panelFor~, an arm in ~Model.surfaceKey~, and
+   — when the drawer boots with it — an entry in ~Model.defaultDrawer~; those
+   four move together.  The compiler forces the ~surfaceKey~ arm but not the
+   care it needs: those strings are the persisted column layout, so a key is
+   chosen once and never renamed.  ~Main.drawerEscSub~ needs an arm only for a
+   panel Esc should treat specially; the rest fold.  Panels live in the
+   ~model.drawer~ stack — many open at once, newest at the bottom — and their
+   Update modules open, close, and edit them through ~Model.openDrawer~ /
+   ~foldDrawer~ / ~mapDrawer~.  ~closeDrawer~ takes a panel out of the stack,
+   which is only right for one the GM can put back — in practice the stat block
+   a card put there.  The stack is partitioned: panels the GM has pinned hold
+   the top in their own order, and ~Model.drawerDropIndex~ clamps every move to
+   the side of that boundary it started on, so no reorder can interleave the two
+   groups.  A per-creature editor takes a narrower shape: its body lives in
+   =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper supplies the
+   chrome, so every editor's target strip and heading row stay identical.  It
+   also needs an arm in ~Model.reaimStale~ that actually re-aims — the compiler
+   accepts a fall-through, and a fall-through silently strands the editor on a
+   creature that has left the queue.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.

@@ -97,8 +97,6 @@ module View.Tooltips exposing
     , pinStatBlock
     , queueInactive
     , queueMakeActive
-    , queueMoveDown
-    , queueMoveUp
     , queueReactivate
     , queueRemove
     , queueSelectShiftClick
@@ -315,16 +313,6 @@ flying ft =
 queueSelectShiftClick : String
 queueSelectShiftClick =
     "Shift-click to select / deselect all"
-
-
-queueMoveUp : String
-queueMoveUp =
-    "Move up in queue (ignores initiative)"
-
-
-queueMoveDown : String
-queueMoveDown =
-    "Move down in queue (ignores initiative)"
 
 
 queueMakeActive : String

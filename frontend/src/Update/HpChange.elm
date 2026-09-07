@@ -162,12 +162,20 @@ openFor target model =
                 )
 
             else
-                ( Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
+                ( Model.ackHpLog
+                    (Model.openDrawer Model.hpChangeLens
+                        (HpChangeUi.fresh target)
+                        model
+                    )
                 , Cmd.none
                 )
 
         _ ->
-            ( Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
+            ( Model.ackHpLog
+                (Model.openDrawer Model.hpChangeLens
+                    (HpChangeUi.fresh target)
+                    model
+                )
             , Cmd.none
             )
 
@@ -425,6 +433,14 @@ undoLatest model =
                 | encounter =
                     List.foldl restoreOne model.encounter entry.targets
                 , hpChangeLog = rest
+
+                -- Undo uncovers an older row, which remounts under
+                -- a different key.  Acknowledging it here is what
+                -- stops that remount reading as a fresh apply.
+                , flashedHpLogSeq =
+                    List.head rest
+                        |> Maybe.map .seq
+                        |> Maybe.withDefault model.flashedHpLogSeq
               }
             , Cmd.none
             )
@@ -570,6 +586,7 @@ applyAmountTo kind targets amount model =
     in
     { model
         | encounter = result.encounter
+        , nextHpLogSeq = model.nextHpLogSeq + 1
         , hpChangeLog =
             -- One entry per application, however many creatures it
             -- touched; nothing is logged when no target resolved.
@@ -581,6 +598,7 @@ applyAmountTo kind targets amount model =
                 , amount = amount
                 , targets = List.reverse result.snapshots
                 , rollsBefore = model.dice.history.pushed
+                , seq = model.nextHpLogSeq
                 }
                     :: List.take (HpChangeUi.maxHpLogEntries - 1) model.hpChangeLog
     }

@@ -70,6 +70,11 @@ type alias HpChangeEntry =
     -- whole application rather than one creature of it.
     , targets : List HpChangeTargetSnapshot
 
+    -- Identifies this application, so the newest row can be keyed
+    -- on it and remount — which is what replays the flash for two
+    -- identical applies in a row.  Comes from `Model.nextHpLogSeq`.
+    , seq : Int
+
     -- The roll count at the moment this was logged, which is what
     -- orders it against the dice history in the shared log.  A
     -- manual apply rolls nothing, so this is the only thing

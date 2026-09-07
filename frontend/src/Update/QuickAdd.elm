@@ -104,7 +104,9 @@ pickPlaceholder model =
                 Nothing ->
                     Encounter.Roster.appendPlaceholder model.encounter
     in
-    ( addDone { model | encounter = nextEncounter }, Cmd.none )
+    ( addDone (Model.reaimStale { model | encounter = nextEncounter })
+    , Cmd.none
+    )
 
 
 {-| Add one instance of the chosen creature to the encounter.
@@ -162,10 +164,14 @@ replaceInPlace oldName source model =
                 source
     in
     ( addDone
-        { model
-            | encounter =
-                Encounter.Roster.replaceCreature oldName newCreature model.encounter
-        }
+        (Model.reaimStale
+            { model
+                | encounter =
+                    Encounter.Roster.replaceCreature oldName
+                        newCreature
+                        model.encounter
+            }
+        )
     , Cmd.none
     )
 

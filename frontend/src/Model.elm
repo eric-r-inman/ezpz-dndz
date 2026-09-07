@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, xpLens
+    , DragState, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, ackHpLog, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -42,6 +42,7 @@ under so re-saving doesn't make the user retype the filename.
 import Auth exposing (AuthState)
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
+import DrawerLayout
 import Encounter exposing (Encounter)
 import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
@@ -165,13 +166,15 @@ type Surface
     | SurfaceRoundSet RoundSetUi
 
 
-{-| A drawer panel being dragged to a new position: where it
-started, and the slot it would land in — which the pinned
-boundary can pull off the slot the pointer is actually over.
-Lives on the model rather than in any panel, because the drag is
-about the stack's order, not about what any panel holds.
+{-| Something being dragged to a new position in a list: where it
+started, and the slot it would land in — which, in the drawer,
+the pinned boundary can pull off the slot the pointer is actually
+over. Shared by the editor column and the creature queue, the two
+places the GM reorders by hand. Lives on the model rather than in
+either list, because a drag is about order, not about what any
+one item holds.
 -}
-type alias DrawerDrag =
+type alias DragState =
     { from : Int
     , over : Maybe Int
     }
@@ -242,7 +245,16 @@ Out-of-range indices leave the stack unchanged.
 -}
 moveDrawerPanel : Int -> Int -> Model -> Model
 moveDrawerPanel from to model =
-    case model.drawer |> List.drop from |> List.head of
+    case
+        if from < 0 then
+            -- See `Encounter.Roster.moveCreature`: a negative
+            -- source would duplicate the panel rather than move
+            -- it.
+            Nothing
+
+        else
+            model.drawer |> List.drop from |> List.head
+    of
         Just moved ->
             let
                 rest =
@@ -259,6 +271,310 @@ moveDrawerPanel from to model =
 
         Nothing ->
             model
+
+
+{-| A stable identity for one drawer panel. Each drawer-eligible
+surface appears in the stack at most once (`openDrawer` re-aims
+an existing panel rather than adding a twin), so the variant
+alone is identity enough.
+
+These strings are persisted as the saved column layout, so
+renaming one silently discards every GM's arrangement for that
+panel. Change them only deliberately.
+
+-}
+surfaceKey : Surface -> String
+surfaceKey surface =
+    case surface of
+        SurfaceHpChange _ ->
+            "hp-change"
+
+        SurfaceStatus _ ->
+            "status"
+
+        SurfaceCondition _ ->
+            "condition"
+
+        SurfaceSaveChain _ ->
+            "save-chain"
+
+        SurfaceInitiative _ ->
+            "initiative"
+
+        SurfaceReplace _ ->
+            "replace"
+
+        SurfaceDuplicate _ ->
+            "duplicate"
+
+        SurfaceCrCalculator _ ->
+            "cr-calculator"
+
+        SurfaceTreasure _ ->
+            "treasure"
+
+        SurfaceQuickAdd _ ->
+            "quick-add"
+
+        SurfaceSaveLoad _ ->
+            "save-load"
+
+        SurfaceRandomEncounter _ ->
+            "random-encounter"
+
+        SurfaceDice ->
+            "dice"
+
+        SurfaceXp ->
+            "xp"
+
+        SurfaceStatBlock _ ->
+            "stat-block"
+
+        -- Modal and card-inline surfaces never enter the stack.
+        -- Enumerated rather than caught by a wildcard: these keys
+        -- are persisted, so a new drawer-eligible surface has to
+        -- fail the compile here rather than quietly inherit
+        -- another panel's saved slot.
+        SurfaceNoteEdit _ ->
+            "note-edit"
+
+        SurfaceMemoEdit _ ->
+            "memo-edit"
+
+        SurfaceTimerSetup _ ->
+            "timer-setup"
+
+        SurfaceCompendiumEdit _ ->
+            "compendium-edit"
+
+        SurfaceCompendiumPaste _ ->
+            "compendium-paste"
+
+        SurfaceSaveCompendium _ ->
+            "save-compendium"
+
+        SurfaceLoadCompendium _ ->
+            "load-compendium"
+
+        SurfaceAbilitySave _ ->
+            "ability-save"
+
+        SurfaceGroupEdit _ ->
+            "group-edit"
+
+        SurfaceLoreEdit _ ->
+            "lore-edit"
+
+        SurfaceTreasureTable _ ->
+            "treasure-table"
+
+        SurfaceConfirm _ ->
+            "confirm"
+
+        SurfaceRoundSet _ ->
+            "round-set"
+
+
+{-| Mark the HP log as shown. The newest row flashes only past
+this, so every path that puts the panel's body back on screen has
+to call it — otherwise reopening a folded panel replays the cue
+for a change that landed minutes ago.
+-}
+ackHpLog : Model -> Model
+ackHpLog model =
+    { model
+        | flashedHpLogSeq =
+            List.head model.hpChangeLog
+                |> Maybe.map .seq
+                |> Maybe.withDefault 0
+    }
+
+
+{-| The column as the GM arranged it, in the shape that survives
+a reload.
+-}
+drawerLayout : Model -> List DrawerLayout.Entry
+drawerLayout model =
+    List.map
+        (\panel -> { key = surfaceKey panel.surface, pinned = panel.pinned })
+        model.drawer
+
+
+{-| Re-order and re-pin the boot drawer to match a saved layout.
+
+The saved order leads; anything it doesn't mention follows in the
+order the build ships, which is what lets a release add an editor
+without disturbing arrangements already saved. A key the build no
+longer knows is simply absent from the result, since the panels
+come from the current drawer rather than from the layout.
+
+-}
+applyDrawerLayout : List DrawerLayout.Entry -> Model -> Model
+applyDrawerLayout layout model =
+    let
+        entryFor panel =
+            layout
+                |> List.filter (\e -> e.key == surfaceKey panel.surface)
+                |> List.head
+
+        ( known, rest ) =
+            List.partition (\panel -> entryFor panel /= Nothing) model.drawer
+
+        pinnedFor panel =
+            entryFor panel
+                |> Maybe.map .pinned
+                |> Maybe.withDefault False
+
+        rank panel =
+            layout
+                |> List.indexedMap (\i e -> ( i, e ))
+                |> List.filter (\( _, e ) -> e.key == surfaceKey panel.surface)
+                |> List.head
+                |> Maybe.map Tuple.first
+                |> Maybe.withDefault 0
+
+        ordered =
+            List.map
+                (\panel -> { panel | pinned = pinnedFor panel })
+                (List.sortBy rank known)
+                ++ rest
+
+        -- The final partition rebuilds the contiguous pinned
+        -- prefix `drawerDropIndex` relies on, whatever the stored
+        -- layout looked like and whatever the build's own panels
+        -- boot as. `List.partition` is stable, so the order
+        -- within each group survives.
+        ( held, loose ) =
+            List.partition .pinned ordered
+    in
+    { model | drawer = held ++ loose }
+
+
+{-| Re-aim every per-creature editor whose creature has left the
+queue, at whatever the queue makes the default target — the
+active creature, or its head before combat starts. An editor
+still aimed at someone present is left alone.
+
+Every write that can drop or rename a creature runs this —
+removals and replacements, and the wholesale swaps too: a load, a
+sign-in, an encounter arriving from another tab. That is the
+property to preserve when adding one, because an editor already
+unfolded is never unfolded again: without this it keeps a
+departed creature's name on its target strip, and Apply silently
+resolves nothing. Writes that only change a creature in place
+need no call.
+
+-}
+reaimStale : Model -> Model
+reaimStale model =
+    let
+        target =
+            Encounter.defaultTarget model.encounter
+
+        reaim wrap fresh aimed surface =
+            if Encounter.hasCreature aimed model.encounter then
+                surface
+
+            else
+                wrap (fresh target)
+
+        reaimOne surface =
+            case surface of
+                SurfaceHpChange ui ->
+                    reaim SurfaceHpChange Ui.HpChange.fresh ui.target surface
+
+                SurfaceStatus ui ->
+                    reaim SurfaceStatus Ui.Status.fresh ui.target surface
+
+                SurfaceCondition ui ->
+                    reaim SurfaceCondition UiCondition.fresh ui.target surface
+
+                SurfaceSaveChain ui ->
+                    reaim SurfaceSaveChain Ui.SaveChain.fresh ui.target surface
+
+                SurfaceInitiative ui ->
+                    reaim SurfaceInitiative Ui.Initiative.fresh ui.target surface
+
+                SurfaceDuplicate ui ->
+                    reaim SurfaceDuplicate Ui.Duplicate.fresh ui.target surface
+
+                SurfaceReplace ui ->
+                    reaim SurfaceReplace Ui.Replace.fresh ui.target surface
+
+                -- Enumerated for the same reason `surfaceKey` is:
+                -- a new per-creature editor has to fail the
+                -- compile here rather than quietly never re-aim.
+                -- These surfaces aim at no creature.
+                SurfaceDice ->
+                    surface
+
+                SurfaceXp ->
+                    surface
+
+                SurfaceCrCalculator _ ->
+                    surface
+
+                SurfaceRandomEncounter _ ->
+                    surface
+
+                SurfaceTreasure _ ->
+                    surface
+
+                SurfaceTreasureTable _ ->
+                    surface
+
+                SurfaceSaveLoad _ ->
+                    surface
+
+                SurfaceQuickAdd _ ->
+                    surface
+
+                SurfaceStatBlock _ ->
+                    surface
+
+                SurfaceNoteEdit _ ->
+                    surface
+
+                SurfaceMemoEdit _ ->
+                    surface
+
+                SurfaceTimerSetup _ ->
+                    surface
+
+                SurfaceCompendiumEdit _ ->
+                    surface
+
+                SurfaceCompendiumPaste _ ->
+                    surface
+
+                SurfaceSaveCompendium _ ->
+                    surface
+
+                SurfaceLoadCompendium _ ->
+                    surface
+
+                SurfaceAbilitySave _ ->
+                    surface
+
+                SurfaceGroupEdit _ ->
+                    surface
+
+                SurfaceLoreEdit _ ->
+                    surface
+
+                SurfaceConfirm _ ->
+                    surface
+
+                SurfaceRoundSet _ ->
+                    surface
+    in
+    { model
+        | drawer =
+            List.map
+                (\panel -> { panel | surface = reaimOne panel.surface })
+                model.drawer
+    }
 
 
 {-| Where a panel dragged from `from` actually lands when the GM
@@ -908,6 +1224,20 @@ type alias Model =
     , dice : DiceUi
     , hpChangeLog : List HpChangeEntry
 
+    -- Hands out `HpChangeEntry.seq`.  A counter rather than a
+    -- read of the log's head, because undo and a history clear
+    -- both shrink the log, and a derived number would hand out
+    -- one the mark below has already passed.
+    , nextHpLogSeq : Int
+
+    -- How far the Manage HP panel has shown its log.  The newest
+    -- row flashes only past this, so reopening a folded panel
+    -- doesn't replay the cue for a change that landed minutes
+    -- ago.  Lives here rather than on `HpChangeUi` because it is
+    -- bookkeeping about the log, and every path that re-aims the
+    -- editor rebuilds that record.
+    , flashedHpLogSeq : Int
+
     -- Twin of `hpChangeLog` for the Save Chain modal.  The
     -- three apply paths (Fail button, Pass button, 🎲 Roll
     -- saves button) each prepend one entry per target so the
@@ -943,7 +1273,10 @@ type alias Model =
     , drawer : List DrawerPanel
 
     -- The drawer reorder in progress, if any.
-    , drawerDrag : Maybe DrawerDrag
+    , drawerDrag : Maybe DragState
+
+    -- The creature card being dragged to a new queue position.
+    , queueDrag : Maybe DragState
 
     -- The creature editor's work in progress, mirrored on every
     -- edit so closing the editor by any route — selecting
