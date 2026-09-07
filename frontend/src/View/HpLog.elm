@@ -1,37 +1,17 @@
-module View.HpLog exposing (latest, list)
+module View.HpLog exposing (entry, latest)
 
-{-| Recent-HP-changes log rendering, shared between the dice
-modal (the full capped list) and the Manage-HP editor (newest
-entry only, with its undo button) — the row markup exists once
+{-| Recent-HP-changes row rendering, shared between the dice
+roller's log (where the rows are interleaved with the rolls) and
+the Manage-HP editor (newest entry only) — the markup exists once
 so the two mounts can't drift apart.
 -}
 
-import Html exposing (Html, button, div, li, span, text, ul)
+import Html exposing (Html, button, li, span, text, ul)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Msg exposing (HpKind(..), Msg(..))
 import Ui.HpChange exposing (HpChangeEntry)
 import View.Tooltips as Tooltips
-
-
-{-| The full log section: title with count, then every retained
-entry (capped upstream at `Ui.HpChange.maxHpLogEntries`). Empty
-state shows a small "No HP changes yet" line so the section
-doesn't collapse to nothing.
--}
-list : List HpChangeEntry -> Html Msg
-list entries =
-    div [ class "hp-change__log" ]
-        [ div [ class "hp-change__log-title" ]
-            [ text ("Recent HP changes (" ++ String.fromInt (List.length entries) ++ ")") ]
-        , if List.isEmpty entries then
-            div [ class "hp-change__log-empty" ]
-                [ text "No HP changes yet." ]
-
-          else
-            ul [ class "hp-change__log-list" ]
-                (List.indexedMap entry entries)
-        ]
 
 
 {-| Just the newest entry (undo-able), for the card expansion.
@@ -43,19 +23,18 @@ latest entries =
     case entries of
         newest :: _ ->
             ul [ class "hp-change__log-list hp-change__log-list--latest" ]
-                [ entry 0 newest ]
+                [ entry True newest ]
 
         [] ->
             text ""
 
 
-{-| Render one log row. The newest entry (`index == 0`) carries
-an inline undo button so the GM can revert the latest change in
-one click; older rows render without it so a misclick can't
-silently rewrite the middle of the history.
+{-| Render one log row. Only the newest entry carries an inline
+undo button, so a misclick can't silently rewrite the middle of
+the history.
 -}
-entry : Int -> HpChangeEntry -> Html Msg
-entry index e =
+entry : Bool -> HpChangeEntry -> Html Msg
+entry undoable e =
     let
         kindLabel =
             case e.kind of
@@ -107,7 +86,7 @@ entry index e =
         , span [ class "hp-change__log-amount" ]
             [ text (String.fromInt e.amount) ]
         , span [ class "hp-change__log-trans" ] [ text transition ]
-        , if index == 0 then
+        , if undoable then
             button
                 [ class "icon-btn icon-btn--sm hp-change__log-undo"
                 , onClick HpChangeUndoLatest

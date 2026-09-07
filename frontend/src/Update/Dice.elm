@@ -224,11 +224,17 @@ rerunMenuClose model =
     ( withDice (\d -> { d | rerunMenuOpenFor = Nothing }) model, Cmd.none )
 
 
+{-| Clear takes the HP changes with the rolls. They render as one
+list, so leaving half the rows standing would read as a failed
+click — and the roll count restarts here, which the surviving
+stamps would then sort against wrongly.
+-}
 clearHistory : Model -> ( Model, Cmd Msg )
 clearHistory model =
     let
         cleared =
-            withDice (\d -> { d | history = Dice.emptyHistory }) model
+            withDice (\d -> { d | history = Dice.emptyHistory })
+                { model | hpChangeLog = [] }
 
         cmd =
             case model.auth of
@@ -310,8 +316,15 @@ historyLoaded result model =
                 (\d ->
                     { d
                         | history =
+                            -- The only place the count restarts,
+                            -- which is safe because this answers
+                            -- the boot probe, before any HP entry
+                            -- has been stamped against it.  A
+                            -- second caller would renumber rolls
+                            -- the HP log already points at.
                             { entries = rolls
                             , max = Dice.maxHistoryEntries
+                            , pushed = List.length rolls
                             }
                     }
                 )
@@ -335,8 +348,15 @@ persistResponse result model =
                 (\d ->
                     { d
                         | history =
+                            -- The count carries over rather than
+                            -- restarting at what came back: the
+                            -- server sends its truncated list, and
+                            -- resetting to that length would
+                            -- renumber rolls the HP log has
+                            -- already been stamped against.
                             { entries = rolls
                             , max = Dice.maxHistoryEntries
+                            , pushed = d.history.pushed
                             }
                     }
                 )

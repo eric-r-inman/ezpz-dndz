@@ -719,7 +719,7 @@ applyRollLanded side roll model =
         ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
-    case logged.surface of
+    case drawerSurface logged of
         Just (SurfaceSaveChain ui) ->
             let
                 chain =

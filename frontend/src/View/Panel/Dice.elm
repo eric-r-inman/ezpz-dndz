@@ -3,8 +3,9 @@ module View.Panel.Dice exposing (view)
 {-| Dice roller panel; the chrome comes from `View.Panel`.
 Rendered only while `SurfaceDice` sits in the drawer stack.
 
-Also hosts the full recent-HP-changes log: the Manage-HP editor
-shows only its newest entry, so the roller carries the history.
+Its log carries the HP changes as well as the rolls: the two are
+one record of what happened at the table, and a manual HP change
+rolls nothing, so the roller is the only place it would show.
 
 -}
 
@@ -34,8 +35,7 @@ view collapse hpChangeLog ui =
             [ form ui
             , faceButtons
             , specialButtons
-            , history ui
-            , View.HpLog.list hpChangeLog
+            , history hpChangeLog ui
             ]
         }
 
@@ -155,11 +155,38 @@ specialButtons =
         ]
 
 
-history : DiceUi -> Html Msg
-history ui =
+{-| Rolls and HP changes read as one record of what happened, so
+they share a list. Neither carries a clock the other can be
+compared against, so the order comes from the roll count each HP
+entry was stamped with: an entry logged after the nth roll sorts
+between the nth and the (n+1)th, and ahead of the nth on the tie,
+because the roll that produced it came first. Manual changes
+between two rolls all carry the same stamp, and hold the order
+they arrive in — the sort is stable and the log is newest-first.
+-}
+history : List HpChangeEntry -> DiceUi -> Html Msg
+history hpChangeLog ui =
     let
-        entries =
+        rolls =
             Dice.historyEntries ui.history
+
+        rollRows =
+            List.indexedMap
+                (\i roll ->
+                    ( ( ui.history.pushed - i, 0 ), historyEntry ui i roll )
+                )
+                rolls
+
+        hpRows =
+            List.indexedMap
+                (\i e ->
+                    ( ( e.rollsBefore, 1 ), View.HpLog.entry (i == 0) e )
+                )
+                hpChangeLog
+
+        entries =
+            List.sortBy (\( ( ordinal, tie ), _ ) -> ( -ordinal, -tie ))
+                (rollRows ++ hpRows)
     in
     div [ class "dice-history" ]
         (div [ class "dice-history__head" ]
@@ -186,7 +213,7 @@ history ui =
                         )
                     ]
                 , span [ class "dice-history__title" ]
-                    [ text ("Recent rolls (" ++ String.fromInt (List.length entries) ++ ")") ]
+                    [ text ("Rolls and HP changes (" ++ String.fromInt (List.length entries) ++ ")") ]
                 ]
             , if List.isEmpty entries then
                 text ""
@@ -204,12 +231,12 @@ history ui =
 
                 else if List.isEmpty entries then
                     [ div [ class "dice-history__empty" ]
-                        [ text "No rolls yet. Click a die above or type an expression." ]
+                        [ text "Nothing yet. Click a die above or type an expression." ]
                     ]
 
                 else
                     [ ul [ class "dice-history__list" ]
-                        (List.indexedMap (historyEntry ui) entries)
+                        (List.map Tuple.second entries)
                     ]
                )
         )

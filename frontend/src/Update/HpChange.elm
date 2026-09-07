@@ -293,7 +293,7 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
 
         committed =
-            case logged.surface of
+            case drawerSurface logged of
                 Just (SurfaceHpChange ui) ->
                     applyHpChange ui roll.total logged
 
@@ -580,6 +580,7 @@ applyAmountTo kind targets amount model =
                 { kind = kind
                 , amount = amount
                 , targets = List.reverse result.snapshots
+                , rollsBefore = model.dice.history.pushed
                 }
                     :: List.take (HpChangeUi.maxHpLogEntries - 1) model.hpChangeLog
     }

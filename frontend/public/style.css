@@ -1054,6 +1054,20 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.05rem;
 }
 
+/* HP-change rows sit in that same log, so the bump has to reach
+   them too or the list renders at two scales at once. */
+[data-theme="accessible"] .hp-change__log-entry {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .hp-change__log-kind {
+  font-size: 0.9rem;
+}
+
+[data-theme="accessible"] .hp-change__log-trans {
+  font-size: 1rem;
+}
+
 [data-theme="accessible"] .dice-history__rolled {
   font-size: 1rem;
 }
@@ -5516,7 +5530,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .stat__label,
 .ability__label,
 .dice-history__title,
-.hp-change__log-title,
 .hp-change__log-kind,
 .encounter-bar__hp-label,
 .encounter-bar__ac-label {
@@ -8695,28 +8708,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 4px;
-}
-
-.hp-change__log {
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hp-change__log-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.hp-change__log-empty {
-  color: var(--color-text-muted);
-  font-style: italic;
-  font-size: 0.82rem;
-  padding: 8px 0;
-  text-align: center;
 }
 
 .hp-change__log-list {

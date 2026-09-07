@@ -215,11 +215,16 @@ type Error
 -- HISTORY
 
 
-{-| Bounded list of recent rolls, newest first.
+{-| Bounded list of recent rolls, newest first. `pushed` counts
+every roll the history has ever taken, including the ones the cap
+has since dropped, so a log kept alongside this one can record
+which rolls preceded each of its own entries and the two can be
+interleaved without a shared clock.
 -}
 type alias History =
     { entries : List Roll
     , max : Int
+    , pushed : Int
     }
 
 
@@ -234,14 +239,17 @@ maxHistoryEntries =
 -}
 emptyHistory : History
 emptyHistory =
-    { entries = [], max = maxHistoryEntries }
+    { entries = [], max = maxHistoryEntries, pushed = 0 }
 
 
 {-| Push a fresh roll onto the history; truncate to `max`.
 -}
 push : Roll -> History -> History
 push roll h =
-    { h | entries = roll :: List.take (h.max - 1) h.entries }
+    { h
+        | entries = roll :: List.take (h.max - 1) h.entries
+        , pushed = h.pushed + 1
+    }
 
 
 {-| Read the entries (newest first).

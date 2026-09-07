@@ -220,8 +220,16 @@ applyLocalDiceHistory raw model =
                         | dice =
                             { dice
                                 | history =
+                                    -- The count only ever grows,
+                                    -- because the HP log is
+                                    -- stamped against it and
+                                    -- rewinding would reorder
+                                    -- rows already logged.
                                     { entries = entries
                                     , max = Dice.maxHistoryEntries
+                                    , pushed =
+                                        dice.history.pushed
+                                            + List.length entries
                                     }
                             }
                     }

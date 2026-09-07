@@ -11,7 +11,7 @@ verb takes. Below them, the Manual section sets the pools to
 typed values instead.
 
 Only the newest log entry renders here (with its undo button);
-the full list lives in the dice roller via `View.HpLog`.
+the rest of the log lives in the dice roller.
 
 -}
 

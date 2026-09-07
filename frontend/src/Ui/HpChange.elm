@@ -69,6 +69,12 @@ type alias HpChangeEntry =
     -- the log reads "Damage  A, B, C  8" and undo reverts the
     -- whole application rather than one creature of it.
     , targets : List HpChangeTargetSnapshot
+
+    -- The roll count at the moment this was logged, which is what
+    -- orders it against the dice history in the shared log.  A
+    -- manual apply rolls nothing, so this is the only thing
+    -- placing it among the rolls.
+    , rollsBefore : Int
     }
 
 

@@ -102,6 +102,8 @@
     without reopening it.  No action needed.
 42. The XP panel is titled "Encounter XP" and the Treasure panel's title drops
     its coin icon.  No action needed.
+43. The Dice Roller's log carries HP changes alongside the rolls, in the order
+    they happened, and Clear empties both.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

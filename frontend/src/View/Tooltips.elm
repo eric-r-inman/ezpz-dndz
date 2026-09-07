@@ -850,7 +850,7 @@ diceCoinFlip =
 
 diceClearHistory : String
 diceClearHistory =
-    "Clear roll history"
+    "Clear the log"
 
 
 diceRollAgain : String
