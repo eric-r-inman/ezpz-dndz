@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -283,10 +283,9 @@ weaker question: whether the panel exists at all.
 -}
 drawerShows : SurfaceLens a -> Model -> Bool
 drawerShows lens model =
-    not model.drawerCollapsed
-        && List.any
-            (\panel -> lens.extract panel.surface /= Nothing && not panel.collapsed)
-            model.drawer
+    List.any
+        (\panel -> lens.extract panel.surface /= Nothing && not panel.collapsed)
+        model.drawer
 
 
 {-| Apply `fn` to the matching drawer panel's substate, leaving
@@ -310,35 +309,34 @@ mapDrawer lens fn model =
 {-| Open a drawer panel with the given substate. A panel already
 open keeps its stack position and takes the new substate (the
 re-aim case); otherwise the panel joins the bottom of the stack.
-Either way the panel and the column around it come unfolded, so
-an open the GM asked for actually lands on screen.
+Either way the panel comes unfolded, so an open the GM asked for
+actually lands on screen.
 -}
 openDrawer : SurfaceLens a -> a -> Model -> Model
 openDrawer lens ui model =
     if drawerHas lens model then
-        mapDrawer lens (\_ -> ui) (unfoldDrawer lens model)
+        mapDrawer lens (\_ -> ui) (setFolded False lens model)
 
     else
         { model
             | drawer =
                 model.drawer ++ [ { surface = lens.wrap ui, collapsed = False } ]
-            , drawerCollapsed = False
         }
 
 
-{-| Unfold a panel already in the stack, and the column around
-it, so opening one the drawer booted folded actually puts it on
-screen.
+{-| Fold a panel already in the stack, or unfold it. The editors
+the drawer boots with have no trigger to reopen them, so both
+"show me this" and "done with this" have to move the fold rather
+than the stack.
 -}
-unfoldDrawer : SurfaceLens a -> Model -> Model
-unfoldDrawer lens model =
+setFolded : Bool -> SurfaceLens a -> Model -> Model
+setFolded folded lens model =
     { model
-        | drawerCollapsed = False
-        , drawer =
+        | drawer =
             List.map
                 (\panel ->
                     if lens.extract panel.surface /= Nothing then
-                        { panel | collapsed = False }
+                        { panel | collapsed = folded }
 
                     else
                         panel
@@ -347,12 +345,50 @@ unfoldDrawer lens model =
     }
 
 
+foldDrawer : SurfaceLens a -> Model -> Model
+foldDrawer =
+    setFolded True
+
+
 closeDrawer : SurfaceLens a -> Model -> Model
 closeDrawer lens model =
     { model
         | drawer =
             List.filter
                 (\panel -> lens.extract panel.surface == Nothing)
+                model.drawer
+    }
+
+
+{-| The panel a dismissal acts on: the last one still showing
+its body, since the stack reads newest-last. Esc consults it to
+pick its behaviour and `foldNewest` folds what it names, so the
+two cannot drift apart.
+-}
+newestShowing : Model -> Maybe ( Int, DrawerPanel )
+newestShowing model =
+    model.drawer
+        |> List.indexedMap Tuple.pair
+        |> List.filter (\( _, panel ) -> not panel.collapsed)
+        |> List.reverse
+        |> List.head
+
+
+{-| Fold the panel at `index`, where `toggleCollapsedAt` would
+flip it. Saying which one is meant keeps the caller readable.
+-}
+collapseAt : Int -> Model -> Model
+collapseAt index model =
+    { model
+        | drawer =
+            List.indexedMap
+                (\i panel ->
+                    if i == index then
+                        { panel | collapsed = True }
+
+                    else
+                        panel
+                )
                 model.drawer
     }
 
@@ -805,11 +841,6 @@ type alias Model =
     , compendium : CompendiumUi
     , surface : Maybe Surface
 
-    -- The Manage HP editor's un-applied settings, restored the
-    -- next time a card aims it.  Stashed when it closes with
-    -- work in it; cleared when it closes after applying.
-    , hpChangeDraft : Maybe HpChangeUi
-
     -- Recent condition applications, newest first — the
     -- condition editor's counterpart to `hpChangeLog`, carrying
     -- the created condition ids so undo can remove exactly the
@@ -835,11 +866,6 @@ type alias Model =
 
     -- The drawer reorder in progress, if any.
     , drawerDrag : Maybe DrawerDrag
-
-    -- Whether the editor column is folded out of the layout.
-    -- The panels stay in the stack while it is, so folding the
-    -- column is a view of the same work rather than a close.
-    , drawerCollapsed : Bool
 
     -- The creature editor's work in progress, mirrored on every
     -- edit so closing the editor by any route — selecting

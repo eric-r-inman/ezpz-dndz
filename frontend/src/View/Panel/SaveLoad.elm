@@ -39,7 +39,7 @@ view collapse model =
     case Model.drawerGet Model.saveLoadLens model of
         Just ui ->
             View.Panel.view
-                { close = SaveLoadClose
+                { close = Nothing
                 , title = "Encounter Saves"
                 , titleTrail =
                     View.Panel.titleMarkIf

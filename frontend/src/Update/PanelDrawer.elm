@@ -1,8 +1,12 @@
-module Update.PanelDrawer exposing (clearCreature, columnToggle, dragEnd, dragOver, dragStart, drop, toggleCollapse)
+module Update.PanelDrawer exposing
+    ( clearCreature, foldNewest, toggleCollapse
+    , dragStart, dragOver, drop, dragEnd
+    )
 
 {-| Drawer-wide handlers that belong to no single panel.
 
-@docs clearCreature, columnToggle, dragEnd, dragOver, dragStart, drop, toggleCollapse
+@docs clearCreature, foldNewest, toggleCollapse
+@docs dragStart, dragOver, drop, dragEnd
 
 -}
 
@@ -46,6 +50,16 @@ toggleCollapse index model =
 
     else
         ( Model.toggleCollapsedAt index model, Cmd.none )
+
+
+{-| Esc means "dismiss what I am looking at", which
+`Model.newestShowing` names.
+-}
+foldNewest : Model -> ( Model, Cmd Msg )
+foldNewest model =
+    Model.newestShowing model
+        |> Maybe.map (\( i, _ ) -> ( Model.collapseAt i model, Cmd.none ))
+        |> Maybe.withDefault ( model, Cmd.none )
 
 
 {-| The saves listing is only worth fetching once the panel can
@@ -167,22 +181,3 @@ browser cancelled it): clear the cue without reordering.
 dragEnd : Model -> ( Model, Cmd Msg )
 dragEnd model =
     ( { model | drawerDrag = Nothing }, Cmd.none )
-
-
-{-| Fold the editor column out of the layout, or back into it.
-The panels keep their place in the stack, so this is a view of
-the same work rather than a close — but unfolding does put the
-roller's history back in sight, which clears its unread mark.
--}
-columnToggle : Model -> ( Model, Cmd Msg )
-columnToggle model =
-    ( { model | drawerCollapsed = not model.drawerCollapsed }
-        |> (\next ->
-                if Model.drawerShows Model.diceLens next then
-                    Update.Dice.markRead next
-
-                else
-                    next
-           )
-    , Cmd.none
-    )

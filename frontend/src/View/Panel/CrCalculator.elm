@@ -54,7 +54,7 @@ view collapse model =
     case Model.drawerGet Model.crCalculatorLens model of
         Just ui ->
             View.Panel.view
-                { close = CrCalculatorClose
+                { close = Nothing
                 , title = "Encounter Difficulty"
                 , titleTrail = Nothing
                 , subtitle = Nothing

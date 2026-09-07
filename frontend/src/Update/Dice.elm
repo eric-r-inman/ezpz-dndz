@@ -1,7 +1,6 @@
 module Update.Dice exposing
     ( clearHistory
     , clearResponse
-    , close
     , countChanged
     , flipCoin
     , historyLoaded
@@ -58,14 +57,6 @@ withDice fn model =
 markRead : Model -> Model
 markRead =
     withDice (\d -> { d | unread = False })
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.diceLens
-        (withDice (\d -> { d | inputError = Nothing }) model)
-    , Cmd.none
-    )
 
 
 inputChanged : String -> Model -> ( Model, Cmd Msg )

@@ -122,10 +122,6 @@
   --drawer-width: 296px;
   --drawer-pad-x: 4px;
 
-  /* The fold strip: narrow enough to read as a seam rather than a
-     column of its own, wide enough to hit. */
-  --drawer-fold-width: 14px;
-
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
      the width judged at the table, not derived from the gap. */
@@ -1589,14 +1585,8 @@ body {
   min-height: 0;
 }
 
-/* The drawer's track carries the editors' width only while they
-   are showing; folded, it sizes to the controls row alone. */
 .workspace--drawer {
-  grid-template-columns: var(--drawer-width) auto 1fr;
-}
-
-.workspace--drawer-folded {
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: var(--drawer-width) 1fr;
 }
 
 /* ── Account page (`/me`) ──────────────────────────────────────────── */
@@ -4202,34 +4192,8 @@ body {
   min-height: 0;
 }
 
-/* Sits between the drawer and the queue in either grid, so it
-   is addressed from the end rather than by a fixed number. */
-.drawer-fold {
-  grid-column: -3 / -2;
-  grid-row: 1;
-  appearance: none;
-  align-self: stretch;
-  width: var(--drawer-fold-width);
-  padding: 0;
-  cursor: pointer;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-family: inherit;
-  font-size: var(--font-size-caret);
-  line-height: 1;
-}
-
-.drawer-fold:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-/* The queue takes the last column whether or not the editor
-   column is folded. */
 .panel--main {
-  grid-column: -2 / -1;
+  grid-column: 2;
   grid-row: 1;
 }
 
@@ -7205,8 +7169,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 @media (max-width: 820px) {
   .workspace,
-  .workspace--drawer,
-  .workspace--drawer-folded {
+  .workspace--drawer {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
@@ -7215,11 +7178,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   .drawer-column {
     grid-column: 1;
     grid-row: auto;
-  }
-  /* A fold that hides a column has nothing to do once the panes
-     are stacked in one. */
-  .drawer-fold {
-    display: none;
   }
   .panel--main {
     grid-column: 1;

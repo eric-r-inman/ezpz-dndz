@@ -2,7 +2,6 @@ module Update.Initiative exposing
     ( applySelected
     , applyTarget
     , autoRoll
-    , close
     , customChanged
     , initiativeExpression
     , openFor
@@ -55,9 +54,8 @@ withInitiative =
 
 {-| A card's init circle: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. One already
-aimed here scrolls into view instead of closing — a card control
-asks to see a creature's editor, which is the opposite of what
-dismissing it would do. The panel's own ✕ closes it.
+aimed here scrolls into view — a card control asks to see a
+creature's editor.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
@@ -78,11 +76,6 @@ openFor target model =
             ( Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
             , Cmd.none
             )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.initiativeLens model, Cmd.none )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )

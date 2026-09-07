@@ -1,13 +1,11 @@
-module Update.Xp exposing (filterClose, scopeSet)
+module Update.Xp exposing (scopeSet)
 
-{-| Which creatures the encounter's XP total counts, and whether
-the panel that picks is open.
+{-| Which creatures the encounter's XP total counts.
 
-The scope itself is not panel state — it outlives a close, so
-it lives on the model, and the panel's presence in the drawer
-stack is all the open state there is.
+The scope itself is not panel state — it outlives a fold, so it
+lives on the model.
 
-@docs filterClose, scopeSet
+@docs scopeSet
 
 -}
 
@@ -16,15 +14,10 @@ import Model exposing (Model)
 import Msg exposing (Msg)
 
 
-{-| Picking a scope leaves the panel open: the total it shows is
-the reason to pick one, so closing on the pick would hide the
+{-| Picking a scope leaves the panel unfolded: the total it shows
+is the reason to pick one, so folding on the pick would hide the
 answer.
 -}
 scopeSet : XpScope -> Model -> ( Model, Cmd Msg )
 scopeSet scope model =
     ( { model | xpScope = scope }, Cmd.none )
-
-
-filterClose : Model -> ( Model, Cmd Msg )
-filterClose model =
-    ( Model.closeDrawer Model.xpLens model, Cmd.none )

@@ -448,8 +448,7 @@ footer ui presets selectedCount =
 
         -- Apply takes the row below Save / Load: two scopes and
         -- two preset controls do not share one row inside a
-        -- drawer panel.  No Cancel button: Escape or the
-        -- panel's ✕ cancels.
+        -- drawer panel.
         , applyControls ui canSubmit selectedCount applyLabel
         , div [ class "cond-footer__actions" ]
             [ case ui.editingId of

@@ -1,4 +1,4 @@
-module Update.Status exposing (applySelected, applyTarget, close, coverCycle, flyHeightAdjust, openFor, toggleFlag)
+module Update.Status exposing (applySelected, applyTarget, coverCycle, flyHeightAdjust, openFor, toggleFlag)
 
 {-| Update branches for the Status editor. The toggles edit a
 draft; the two Apply buttons write the whole draft onto the
@@ -23,9 +23,8 @@ drawerSurface model =
 
 {-| A card's status label: it aims the editor at its own
 creature, so an editor already open for someone else re-aims.
-One already aimed here scrolls into view instead of closing — a
-card control asks to see a creature's editor, which is the
-opposite of dismissing it. The panel's own ✕ closes it.
+One already aimed here scrolls into view — a card control asks
+to see a creature's editor.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
@@ -55,11 +54,6 @@ prefilled target model =
         |> List.head
         |> Maybe.map StatusUi.fromCreature
         |> Maybe.withDefault (StatusUi.fresh target)
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.statusLens model, Cmd.none )
 
 
 withUi : (StatusUi -> StatusUi) -> Model -> Model

@@ -1,6 +1,5 @@
 module Update.SaveLoad exposing
-    ( close
-    , confirmCancel
+    ( confirmCancel
     , confirmConfirm
     , deleteRequested
     , deleteResponse
@@ -105,11 +104,6 @@ localSavesMetas model =
         |> List.sortBy (\m -> -m.updatedAt)
 
 
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.saveLoadLens model, Cmd.none )
-
-
 storageSet : SaveStorage -> Model -> ( Model, Cmd Msg )
 storageSet storage model =
     ( withUi
@@ -186,7 +180,7 @@ submit model =
                                 applyLocalEncounterSave trimmed False model
 
                     StorageDevice ->
-                        ( Model.closeDrawer Model.saveLoadLens model
+                        ( Model.foldDrawer Model.saveLoadLens model
                         , downloadEncounter trimmed model.encounter
                         )
 
@@ -246,7 +240,7 @@ applyLocalEncounterSave name overwrite model =
             in
             Update.Toast.push ToastSuccess
                 ("Saved \"" ++ name ++ "\".")
-                (Model.closeDrawer Model.saveLoadLens next)
+                (Model.foldDrawer Model.saveLoadLens next)
 
 
 {-| Encode the encounter and trigger a JSON download with the
@@ -285,7 +279,7 @@ persistResponse name result model =
             in
             Update.Toast.push ToastSuccess
                 ("Saved \"" ++ name ++ "\".")
-                (Model.closeDrawer Model.saveLoadLens snapshotted)
+                (Model.foldDrawer Model.saveLoadLens snapshotted)
 
         Err (Http.BadStatus 409) ->
             ( withUi
@@ -662,7 +656,7 @@ applyLocalLoad name model =
             in
             Update.Toast.push ToastSuccess
                 ("Loaded \"" ++ name ++ "\".")
-                (Model.closeDrawer Model.saveLoadLens next)
+                (Model.foldDrawer Model.saveLoadLens next)
 
         Nothing ->
             ( withUi
@@ -701,7 +695,7 @@ serverResponse name result model =
             in
             Update.Toast.push ToastSuccess
                 ("Loaded \"" ++ name ++ "\".")
-                (Model.closeDrawer Model.saveLoadLens next)
+                (Model.foldDrawer Model.saveLoadLens next)
 
         Err err ->
             ( withUi
@@ -748,7 +742,7 @@ deviceFileRead raw model =
             in
             Update.Toast.push ToastSuccess
                 "Loaded encounter from file."
-                (Model.closeDrawer Model.saveLoadLens next)
+                (Model.foldDrawer Model.saveLoadLens next)
 
         Err err ->
             ( withUi

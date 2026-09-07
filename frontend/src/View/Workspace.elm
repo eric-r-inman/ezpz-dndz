@@ -29,64 +29,13 @@ import View.Tooltips as Tooltips
 view : Model -> Html Msg
 view model =
     main_
-        [ class (workspaceClass model)
+        [ class "workspace workspace--drawer"
         , id "main"
         , attribute "tabindex" "-1"
         ]
         [ View.PanelDrawer.view model
-        , drawerColumnToggle model
         , panelMain model
         ]
-
-
-{-| The column's track: the editors' width while they are in it,
-and the width of its controls row once the fold strip takes them
-away or the stack empties.
--}
-workspaceClass : Model -> String
-workspaceClass model =
-    if not (View.PanelDrawer.isOpen model) then
-        "workspace"
-
-    else if model.drawerCollapsed then
-        "workspace workspace--drawer-folded"
-
-    else
-        "workspace workspace--drawer"
-
-
-{-| The strip between the drawer and the queue. The triangle
-points the way the column will move: left to fold it away, right
-to bring it back.
--}
-drawerColumnToggle : Model -> Html Msg
-drawerColumnToggle model =
-    if not (View.PanelDrawer.isOpen model) then
-        text ""
-
-    else
-        button
-            [ class "drawer-fold"
-            , type_ "button"
-            , onClick DrawerColumnToggle
-            , Tooltips.attr Tooltips.drawerColumnToggle
-            , attribute "aria-label" Tooltips.drawerColumnToggle
-            , attribute "aria-expanded"
-                (if model.drawerCollapsed then
-                    "false"
-
-                 else
-                    "true"
-                )
-            ]
-            [ text
-                (if model.drawerCollapsed then
-                    "▶"
-
-                 else
-                    "◀"
-                )
-            ]
 
 
 {-| The encounter pane. Builds the card context each card render

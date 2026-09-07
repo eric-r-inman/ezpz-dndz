@@ -1,6 +1,5 @@
 module Update.SaveChain exposing
-    ( close
-    , nameChanged, abilitySet, dcChanged, dcOverrideChanged
+    ( nameChanged, abilitySet, dcChanged, dcOverrideChanged
     , applyToSelectedToggle
     , outcomeHpKindSet, outcomeHpAmountChanged
     , outcomeEffectAdd, outcomeEffectRemove
@@ -23,7 +22,6 @@ users, `Effects.putSaveChainPresets` for authenticated ones —
 so update branches here return `Cmd.none` on preset mutations
 and let the diff catch it.
 
-@docs close
 @docs nameChanged, abilitySet, dcChanged, dcOverrideChanged
 @docs applyToSelectedToggle
 @docs outcomeHpKindSet, outcomeHpAmountChanged
@@ -66,15 +64,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.saveChainLens model
         |> Maybe.map SurfaceSaveChain
-
-
-
--- ── CLOSE ───────────────────────────────────────────────────────
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.saveChainLens model, Cmd.none )
 
 
 

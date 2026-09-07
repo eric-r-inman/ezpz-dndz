@@ -1,6 +1,5 @@
 module Update.CrCalculator exposing
-    ( close
-    , scopeSet
+    ( scopeSet
     , partyMemberAdd, partyMemberRemove, partyMemberLevelSet
     )
 
@@ -9,7 +8,6 @@ module Update.CrCalculator exposing
 The party (`model.party`) lives on Model because the Random
 Encounter panel shares it. Scope (`ui.scope`) is panel-local.
 
-@docs close
 @docs scopeSet
 @docs partyMemberAdd, partyMemberRemove, partyMemberLevelSet
 
@@ -19,15 +17,6 @@ import Encounter.Difficulty as Difficulty
 import Encounter.Xp as Xp
 import Model exposing (Model)
 import Msg exposing (Msg(..))
-
-
-
--- ── CLOSE ────────────────────────────────────────────────────────────────────
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.crCalculatorLens model, Cmd.none )
 
 
 

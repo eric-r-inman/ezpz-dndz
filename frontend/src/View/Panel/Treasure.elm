@@ -82,8 +82,8 @@ view collapse model =
                     expectedGpFor ui.kind brackets
             in
             View.Panel.view
-                { close = TreasureClose
-                , title = "💰 Treasure"
+                { close = Nothing
+                , title = "Treasure"
                 , titleTrail = Nothing
                 , subtitle = Nothing
                 , collapse = collapse

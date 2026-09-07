@@ -42,7 +42,7 @@ type alias Header =
 
 
 view :
-    { close : Msg
+    { close : Maybe Msg
     , title : String
     , titleTrail : Maybe (Html Msg)
     , subtitle : Maybe String
@@ -56,7 +56,6 @@ view config =
         (div
             ([ class (headerClass config.collapse.collapsed)
              , onClick config.collapse.toggle
-             , Tooltips.attr Tooltips.drawerCollapse
              ]
                 ++ config.collapse.dragAttrs
             )
@@ -65,14 +64,7 @@ view config =
                 [ text config.title
                 , Maybe.withDefault (text "") config.titleTrail
                 ]
-            , button
-                [ class "panel-drawer__close"
-                , type_ "button"
-                , onClickWithoutFolding config.close
-                , Tooltips.attr Tooltips.drawerClose
-                , attribute "aria-label" Tooltips.drawerClose
-                ]
-                [ text "✕" ]
+            , Maybe.withDefault (text "") (Maybe.map closeButton config.close)
             ]
             :: (if config.collapse.collapsed then
                     []
@@ -83,6 +75,23 @@ view config =
                     ]
                )
         )
+
+
+{-| Only a panel the GM can put back offers this — in practice
+the pinned stat block. The editors the drawer boots with have no
+trigger left to reopen them, so they fold instead of closing and
+never render it.
+-}
+closeButton : Msg -> Html Msg
+closeButton msg =
+    button
+        [ class "panel-drawer__close"
+        , type_ "button"
+        , onClickWithoutFolding msg
+        , Tooltips.attr Tooltips.drawerUnpin
+        , attribute "aria-label" Tooltips.drawerUnpin
+        ]
+        [ text "✕" ]
 
 
 {-| A folded panel is header and nothing else, so the header's

@@ -24,7 +24,7 @@ import View.Tooltips as Tooltips
 view : View.Panel.Header -> List HpChangeEntry -> DiceUi -> Html Msg
 view collapse hpChangeLog ui =
     View.Panel.view
-        { close = CloseDice
+        { close = Nothing
         , title = "Dice Roller"
         , titleTrail = View.Panel.titleMarkIf ui.unread
         , subtitle = Nothing

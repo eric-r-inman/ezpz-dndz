@@ -1,5 +1,5 @@
 module Update.Treasure exposing
-    ( open, close
+    ( open
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
@@ -19,7 +19,7 @@ The treasure result persists with the encounter (it's a field on
 update wrapper round-trips it to the server or localStorage
 without anything extra from this module.
 
-@docs open, close
+@docs open
 @docs kindSet
 @docs roll, rolled
 @docs categoryRolled, rerollCategory
@@ -63,11 +63,6 @@ drawerSurface : Model -> Maybe Model.Surface
 drawerSurface model =
     Model.drawerGet Model.treasureLens model
         |> Maybe.map Model.SurfaceTreasure
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.treasureLens model, Cmd.none )
 
 
 contributionsToggle : Model -> ( Model, Cmd Msg )

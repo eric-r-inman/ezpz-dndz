@@ -2,7 +2,6 @@ module Update.HpChange exposing
     ( amountChanged
     , applyAs
     , applyToSelectedToggle
-    , close
     , editCancel
     , editChange
     , editCommit
@@ -53,15 +52,9 @@ drawerSurface model =
         |> Maybe.map SurfaceHpChange
 
 
-{-| Apply `fn` to the open HP-change modal. No-op when the modal
-is closed (or a different modal is open). Every form mutation
-routes through here, so the applied-and-untouched flag clears
-itself the moment the GM edits anything.
--}
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
-withHpChange fn =
+withHpChange =
     Model.mapSurface Model.hpChangeLens
-        (fn >> (\u -> { u | applied = False }))
 
 
 {-| Type into one of the three manual pool fields. `HpField`
@@ -145,21 +138,19 @@ manualApplyTo names ui model =
         parse =
             String.toInt << String.trim
     in
-    markApplied
-        { model
-            | encounter =
-                model.encounter
-                    |> step (parse ui.manualMaxHpText) HpChange.setMaxHp
-                    |> step (parse ui.manualHpText) HpChange.setCurrentHp
-                    |> step (parse ui.manualTempHpText) HpChange.setTempHp
-        }
+    { model
+        | encounter =
+            model.encounter
+                |> step (parse ui.manualMaxHpText) HpChange.setMaxHp
+                |> step (parse ui.manualHpText) HpChange.setCurrentHp
+                |> step (parse ui.manualTempHpText) HpChange.setTempHp
+    }
 
 
 {-| A card's HP value: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. One already
-aimed here scrolls into view instead of closing — a card control
-asks to see a creature's editor, which is the opposite of what
-dismissing it would do. The panel's own ✕ closes it.
+aimed here scrolls into view — a card control asks to see a
+creature's editor.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
@@ -172,68 +163,14 @@ openFor target model =
                 )
 
             else
-                ( Model.openDrawer Model.hpChangeLens (reopened target model) model
+                ( Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
                 , Cmd.none
                 )
 
         _ ->
-            ( Model.openDrawer Model.hpChangeLens (reopened target model) model
+            ( Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
             , Cmd.none
             )
-
-
-reopened : String -> Model -> HpChangeUi
-reopened target model =
-    case model.hpChangeDraft of
-        Just draft ->
-            { draft | target = target, parseError = Nothing, applied = False }
-
-        Nothing ->
-            HpChangeUi.fresh target
-
-
-{-| Closing keeps un-applied settings as the draft the next open
-restores; once the settings were applied (and untouched since),
-closing resets to defaults instead.
--}
-stashAndClose : HpChangeUi -> Model -> Model
-stashAndClose ui model =
-    Model.closeDrawer Model.hpChangeLens
-        { model
-            | hpChangeDraft =
-                if ui.applied then
-                    Nothing
-
-                else
-                    Just ui
-        }
-
-
-{-| Applying marks the open editor so a subsequent close resets
-rather than stashes, and drops any stale draft.
--}
-markApplied : Model -> Model
-markApplied model =
-    case drawerSurface model of
-        Just (SurfaceHpChange ui) ->
-            Model.mapDrawer Model.hpChangeLens
-                (\u -> { u | applied = True })
-                { model | hpChangeDraft = Nothing }
-
-        _ ->
-            { model | hpChangeDraft = Nothing }
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( case drawerSurface model of
-        Just (SurfaceHpChange ui) ->
-            stashAndClose ui model
-
-        _ ->
-            Model.closeDrawer Model.hpChangeLens model
-    , Cmd.none
-    )
 
 
 {-| Mirror the raw text for the controlled input. Clears any
@@ -268,7 +205,7 @@ freshRollToggle model =
     )
 
 
-{-| Footer action-button click: commit the modal's amount text
+{-| Footer action-button click: commit the editor's amount text
 as `kind`. Sets `ui.kind = kind` first (so the dice-source
 label + log entry reflect the chosen kind), then routes based
 on what the input looks like:
@@ -278,7 +215,7 @@ on what the input looks like:
   - parse failure → set `parseError`
 
 The editor stays open after every path so the GM can keep
-applying; Escape or the panel's ✕ closes it.
+applying.
 
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
@@ -297,7 +234,7 @@ applyAs kind model =
             in
             case String.toInt trimmed of
                 Just n ->
-                    ( applyHpChange withKind n modelWithKind |> markApplied
+                    ( applyHpChange withKind n modelWithKind
                     , Cmd.none
                     )
 
@@ -309,7 +246,7 @@ applyAs kind model =
                         -- creature reference — the previous
                         -- behaviour when `amountText = "0"`
                         -- was the default.
-                        ( applyHpChange withKind 0 modelWithKind |> markApplied
+                        ( applyHpChange withKind 0 modelWithKind
                         , Cmd.none
                         )
 
@@ -353,8 +290,8 @@ applyAs kind model =
 {-| The dice-mode path lands here. We commit the change with
 `roll.total`, log the roll to the dice history (so the user has a
 record), and persist it server-side through the same
-`/api/dice/history` pipe the dice modal uses. If the modal got
-closed mid-flight (defensive), still log/persist so we don't drop
+`/api/dice/history` pipe the dice roller uses. If the editor is
+gone mid-flight (defensive), still log/persist so we don't drop
 rolls on the floor.
 -}
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
@@ -366,7 +303,7 @@ rollLanded roll model =
         committed =
             case logged.surface of
                 Just (SurfaceHpChange ui) ->
-                    applyHpChange ui roll.total logged |> markApplied
+                    applyHpChange ui roll.total logged
 
                 _ ->
                     logged
@@ -388,7 +325,7 @@ freshRollLanded kind ignoreTemp target roll model =
         ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
-    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged |> markApplied
+    ( applyAmountTo kind ignoreTemp [ target ] roll.total logged
     , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
@@ -548,12 +485,12 @@ kindLabel kind =
             "+Max HP"
 
 
-{-| Resolve the modal's kind + flags into an `HpChange.Change`,
+{-| Resolve the editor's kind + flags into an `HpChange.Change`,
 hand it to the engine, write the updated creature back through
 `Encounter.mapCreature`, push a log entry capturing the before/after
-snapshot, and close the modal. The caller decides the amount — it
-comes from the manual input on the manual path or from the rolled
-total on the dice path.
+snapshot. The caller decides the amount — it comes from the manual
+input on the manual path or from the rolled total on the dice
+path.
 
 When `ui.applyToSelected` is True, the change is applied to every
 selected creature (`Creature.selected = True`). Same amount across
@@ -565,10 +502,9 @@ target takes that much, not 8d6 per target).
 When `applyToSelected` is False, only `ui.target` is affected (the
 original single-card flow).
 
-If no creatures match (no selection), the modal still closes
-without applying to anyone — better than silently falling back to
-`ui.target`, which would surprise the GM who explicitly checked the
-multi-target toggle.
+If no creatures match (no selection), nothing is applied — better
+than silently falling back to `ui.target`, which would surprise
+the GM who explicitly checked the multi-target toggle.
 
 -}
 applyHpChange : HpChangeUi -> Int -> Model -> Model

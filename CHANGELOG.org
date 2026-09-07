@@ -41,66 +41,67 @@
 15. The encounter title bar's flying readout punctuates its height, so the
     number reads as the wing icon's rather than a neighbouring value.  No action
     needed.
-16. The Condition/Effect editor is now labelled Condition.  No action needed.
-17. The Encounter Controls and Compendium panes are gone — everything they held,
+16. The Encounter Controls and Compendium panes are gone — everything they held,
     down to the dice roller and the pinned stat block, is in the editor column
     on the left instead.  No action needed.
-18. The Compendium always opens in its own browser tab, titled "Compendium",
+17. The Compendium always opens in its own browser tab, titled "Compendium",
     with no creature pre-selected; the in-page dialog it used to fall back to is
     gone, and its title-bar "From file" tag went with it.  No action needed.
-19. The stat-block panel's title carries a 📖 button that hands the creature off
+18. The stat-block panel's title carries a 📖 button that hands the creature off
     to the Compendium tab, opened with that creature selected and scrolled into
     view.  No action needed.
-20. Drawer panels stack: opening an editor no longer closes the one already up —
-    each new panel opens below it, and Esc closes the newest.  No action needed.
-21. A denser layout overall: buttons, editor panels, and their spacing all
+19. Drawer panels stack: opening an editor no longer closes the one already up —
+    each new panel opens below it.  No action needed.
+20. A denser layout overall: buttons, editor panels, and their spacing all
     tightened, and the editor column slimmed, so more of the screen goes to the
     queue.  No action needed.
-22. Reset and Clear confirm in a dialog.  No action needed.
-23. The round counter in the encounter title bar is clickable, opening a dialog
+21. Reset and Clear confirm in a dialog.  No action needed.
+22. The round counter in the encounter title bar is clickable, opening a dialog
     that sets the round directly.  No action needed.
-24. The XP total, Difficulty, and Treasure moved out of the encounter title bar
+23. The XP total, Difficulty, and Treasure moved out of the encounter title bar
     into their own panels.  No action needed.
-25. Clicking an open drawer panel's heading row folds it down to that row alone,
+24. Clicking an open drawer panel's heading row folds it down to that row alone,
     so several panels can stay open without filling the column.  No action
     needed.
-26. The Manage HP editor sets all three pools from a single Manual row, each
+25. The Manage HP editor sets all three pools from a single Manual row, each
     label grouped with the field it names.  No action needed.
-27. Editor button rows name the verb once — "Apply to:" or "Roll for:" — and
+26. Editor button rows name the verb once — "Apply to:" or "Roll for:" — and
     each button carries only its scope, so three scopes fit where two used to.
     No action needed.
-28. Opening an editor scrolls the editor column to it, and a creature card's
+27. Opening an editor scrolls the editor column to it, and a creature card's
     controls scroll to the editor they aim at instead of closing it.  No action
     needed.
-29. Drawer panels reorder by dragging their heading rows, and the stat-block
+28. Drawer panels reorder by dragging their heading rows, and the stat-block
     panel's 📖 button sits after the creature's name.  No action needed.
-30. The Dice Roller's Recent rolls fold away, its Count and Modifier share one
+29. The Dice Roller's Recent rolls fold away, its Count and Modifier share one
     row, and its title drops the die icon.  No action needed.
-31. The Compendium's Reset and Clear ask in a dialog before touching the
+30. The Compendium's Reset and Clear ask in a dialog before touching the
     library.  No action needed.
-32. Adding a creature to the encounter flashes its "in Encounter" badge.  No
+31. Adding a creature to the encounter flashes its "in Encounter" badge.  No
     action needed.
-33. Encounter groups and Lore groupings can be created, edited, and deleted
+32. Encounter groups and Lore groupings can be created, edited, and deleted
     without signing in; the bundled ones stay read-only.  No action needed.
-34. Creating, pasting, editing, and duplicating creatures — and creating groups
+33. Creating, pasting, editing, and duplicating creatures — and creating groups
     — happens in the Compendium's detail pane instead of a dialog.  No action
     needed.
-35. The creature editor keeps unsaved work: selecting anything else closes it
+34. The creature editor keeps unsaved work: selecting anything else closes it
     without losing changes, reopening restores them, and only Cancel or a save
     lets them go.  No action needed.
-36. Save and Load are one "Encounter Saves" panel.  No action needed.
-37. The recent dice totals read from the Dice Roller panel.  No action needed.
-38. The editor column opens with every editor already in it, folded to its
+35. Save and Load are one "Encounter Saves" panel.  No action needed.
+36. The recent dice totals read from the Dice Roller panel.  No action needed.
+37. The editor column opens with every editor already in it, folded to its
     heading row.  No action needed.
-39. A strip between the editor column and the queue folds the whole column away,
-    and folding keeps every panel's work.  No action needed.
-40. The encounter's own controls — Compendium, Clear, Reset, and Turn — sit in a
+38. Folding an editor keeps its work, and Esc folds the last editor you opened.
+    No action needed.
+39. The encounter's own controls — Compendium, Clear, Reset, and Turn — sit in a
     row at the top of the editor column, still reachable while the editors are
     folded away.  No action needed.
-41. The Dice Roller marks its title when rolls land while it is out of sight,
+40. The Dice Roller marks its title when rolls land while it is out of sight,
     and clears the mark when you open it.  No action needed.
-42. Closing an editor panel with its ✕ or Esc removes it for the session; reload
-    the page to bring it back.  No action needed.
+41. Quick Add stays up after adding a creature, so a whole encounter goes in
+    without reopening it.  No action needed.
+42. The XP panel is titled "Encounter XP" and the Treasure panel's title drops
+    its coin icon.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

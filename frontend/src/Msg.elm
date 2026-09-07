@@ -472,7 +472,6 @@ type Msg
     | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
       -- Dice roller.
-    | CloseDice
     | DiceInputChanged String
     | DiceCountChanged String
     | DiceModifierChanged String
@@ -546,7 +545,6 @@ type Msg
     | HpChangeManualChanged HpField String
     | HpChangeManualApplyTarget
     | HpChangeManualApplySelected
-    | HpChangeClose
     | HpChangeAmountChanged String
     | HpChangeIgnoreTempToggle
     | HpChangeApplyToSelectedToggle
@@ -568,7 +566,6 @@ type Msg
       -- Save chain.  State is edited here, saved as a named
       -- preset in `localStorage.saveChainPresets`, and executed
       -- via `SaveChainApplyFail` / `SaveChainApplyPass`.
-    | SaveChainClose
     | SaveChainNameChanged String
     | SaveChainAbilitySet Compendium.Ability
     | SaveChainDcChanged String
@@ -647,13 +644,11 @@ type Msg
       -- Roster mutation (the right rail's × button)
     | RemoveCreature String
       -- Duplicate.  Spawns numbered copies of a creature.
-    | DuplicateClose
     | DuplicateModeSet DuplicateMode
     | DuplicateApply
     | DuplicateApplySelected
       -- Replace.  Swaps a creature for a compendium pick,
       -- preserving its queue position and initiative.
-    | ReplaceClose
     | ReplaceSearchChanged String
     | ReplacePick String
     | ReplaceApply
@@ -661,7 +656,6 @@ type Msg
       -- Status.  The toggles edit a draft; the Apply buttons
       -- stamp it onto the target or the selection.
     | StatusOpenFor String
-    | StatusClose
     | StatusCoverCycle
     | StatusToggle StatusFlag
     | StatusFlyHeightAdjust Int
@@ -670,7 +664,6 @@ type Msg
       -- Initiative.  Manual entry and the auto-roll batch land
       -- through the same re-sort.
     | InitiativeOpenFor String
-    | InitiativeClose
     | InitiativeCustomChanged String
     | InitiativeQuickSort
     | InitiativeRollModeSet RollMode
@@ -693,7 +686,6 @@ type Msg
     | NoteEditCancel
       -- Conditions and effects, timed or open-ended.
     | ConditionOpenEdit String Int
-    | ConditionClose
     | ConditionPickStandard String
     | ConditionCustomNameChanged String
     | ConditionNoteChanged String
@@ -1016,7 +1008,6 @@ type Msg
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
       -- Named saves, on the server or the GM's own machine.
-    | SaveLoadClose
     | SaveLoadStorageSet SaveStorage
     | SaveLoadFilenameChanged String
     | SaveLoadSaveSubmit
@@ -1085,7 +1076,6 @@ type Msg
       -- handler then replaces the named creature in place with
       -- the chosen one, preserving the old initiative.
     | QuickAddOpenForReplace String
-    | QuickAddClose
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String
@@ -1113,7 +1103,6 @@ type Msg
     | EncounterControlCancel
     | EncounterRun
     | XpScopeSet XpScope
-    | XpFilterClose
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File
@@ -1193,19 +1182,16 @@ type Msg
       -- specific.
     | LocalCompendiumMigrated Int (Result Http.Error ())
       -- Difficulty calculator.
-    | CrCalculatorClose
     | CrCalculatorScopeSet XpScope
     | CrCalculatorPartyAdd
     | CrCalculatorPartyRemove Int
     | CrCalculatorPartyLevelSet Int String
       -- Random encounter.  Party config reuses the CR
       -- Calculator's `*Party*` Msgs because `model.party` is
-      -- shared between the two.
-    | RandomEncounterClose
-      -- Wire tokens for all the dropdown / pill fields —
-      -- keeps the Msg payloads as `String` so the view's
-      -- <select> handlers stay simple.  "" on habitat /
-      -- creature type means Any.
+      -- shared between the two.  The dropdown / pill fields keep
+      -- their Msg payloads as `String` so the view's <select>
+      -- handlers stay simple; "" on habitat / creature type
+      -- means Any.
     | RandomEncounterDifficultySet String
     | RandomEncounterScaleSet String
     | RandomEncounterHabitatSet String
@@ -1251,16 +1237,9 @@ type Msg
     | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
-      -- Treasure.  The roller reads the encounter's own CR; the
-      -- loot it produces lives on `model.encounter.treasure`, so
-      -- it persists with the encounter.
-    | TreasureClose
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
-      -- The strip between the drawer and the queue, folding the
-      -- whole column away without closing what it holds.
-    | DrawerColumnToggle
       -- Dragging a drawer panel by its heading row to a new slot.
       -- Payloads are stack positions; Over fires per slot the
       -- pointer crosses, End covers cancelled drags.
@@ -1272,6 +1251,12 @@ type Msg
       -- The payload is the panel's position in the stack, which
       -- is what the click that produced it was aimed at.
     | DrawerCollapseToggle Int
+      -- Esc, which dismisses what is showing rather than
+      -- deleting a panel the GM cannot put back.
+    | DrawerFoldNewest
+      -- Treasure.  The roller reads the encounter's own CR; the
+      -- loot it produces lives on `model.encounter.treasure`, so
+      -- it persists with the encounter.
     | TreasureKindSet String
     | TreasureRoll
       -- The random Generator landed; payload is the materialised

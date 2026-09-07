@@ -1,4 +1,4 @@
-module Update.Duplicate exposing (apply, applySelected, close, modeSet)
+module Update.Duplicate exposing (apply, applySelected, modeSet)
 
 {-| Update branches for the Duplicate editor.
 
@@ -37,11 +37,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.duplicateLens model
         |> Maybe.map SurfaceDuplicate
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.duplicateLens model, Cmd.none )
 
 
 withUi : (DuplicateUi -> DuplicateUi) -> Model -> Model

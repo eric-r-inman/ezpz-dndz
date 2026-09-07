@@ -1,6 +1,5 @@
 module Update.Condition exposing
-    ( close
-    , countdownPhaseSet
+    ( countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
     , delete
@@ -81,10 +80,9 @@ withConditionUi =
     Model.mapSurface Model.conditionLens
 
 
-{-| A chip whose edit form is already open scrolls into view
-rather than closing, the same as every other card control: the
-click asks to see that condition, not to dismiss it. The panel's
-own ✕ closes it.
+{-| A chip whose edit form is already open scrolls into view, the
+same as every other card control: the click asks to see that
+condition.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
@@ -111,11 +109,6 @@ openEditFresh name id model =
 
         Nothing ->
             model
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.conditionLens model, Cmd.none )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -593,7 +586,7 @@ submitTo targets model =
                     String.trim ui.name
             in
             if String.isEmpty name then
-                ( Model.closeDrawer Model.conditionLens model, Cmd.none )
+                ( Model.foldDrawer Model.conditionLens model, Cmd.none )
 
             else
                 let
@@ -660,7 +653,7 @@ delete model =
                     )
 
                 Nothing ->
-                    ( Model.closeDrawer Model.conditionLens model, Cmd.none )
+                    ( Model.foldDrawer Model.conditionLens model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

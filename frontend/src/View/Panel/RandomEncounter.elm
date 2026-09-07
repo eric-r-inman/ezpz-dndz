@@ -67,7 +67,7 @@ view collapse model =
     case Model.drawerGet Model.randomEncounterLens model of
         Just ui ->
             View.Panel.view
-                { close = RandomEncounterClose
+                { close = Nothing
                 , title = "Random Encounter"
                 , titleTrail = Nothing
                 , subtitle = Nothing

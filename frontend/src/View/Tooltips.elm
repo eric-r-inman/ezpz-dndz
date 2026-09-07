@@ -62,9 +62,8 @@ module View.Tooltips exposing
     , diceReset
     , diceRollAgain
     , dodging
-    , drawerClose
     , drawerCollapse
-    , drawerColumnToggle
+    , drawerUnpin
     , encounterBarSpellList
     , fallDamage
     , flyHeightDown
@@ -888,22 +887,21 @@ quickAddSortToCr =
 
 
 
--- ── MODAL CHROME / TOAST ─────────────────────────────────────────────────────
+-- ── DRAWER PANEL CHROME ─────────────────────────────────────────────────────
 
 
-drawerClose : String
-drawerClose =
-    "Close this panel"
-
-
-drawerColumnToggle : String
-drawerColumnToggle =
-    "Fold the editor column away, or bring it back"
+drawerUnpin : String
+drawerUnpin =
+    "Unpin this stat block"
 
 
 drawerCollapse : String
 drawerCollapse =
     "Fold this panel away, or open it back up"
+
+
+
+-- ── MODAL CHROME / TOAST ─────────────────────────────────────────────────────
 
 
 modalClose : String

@@ -309,9 +309,9 @@ subscriptions model =
                     Browser.Events.onKeyDown (escKey AbilitySaveClose)
 
                 _ ->
-                    case List.head (List.reverse model.drawer) of
-                        Just newest ->
-                            drawerEscSub newest.surface
+                    case Model.newestShowing model of
+                        Just ( _, panel ) ->
+                            drawerEscSub panel.surface
 
                         Nothing ->
                             if model.route == Compendium then
@@ -335,68 +335,31 @@ subscriptions model =
         )
 
 
-{-| Esc closes the newest open drawer panel — the one at the
-bottom of the stack, which is the one the GM opened last.
+{-| Esc folds the newest panel that is showing its body — the
+editors the drawer boots with have no trigger to reopen them, so
+dismissing one must not delete it. The pinned stat block is the
+exception: it arrived from a card and unpinning is what dismisses
+it.
 -}
 drawerEscSub : Surface -> Sub Msg
 drawerEscSub newest =
     case newest of
-        SurfaceHpChange _ ->
-            Browser.Events.onKeyDown (escKey HpChangeClose)
-
         SurfaceCondition ui ->
             -- While the preset Load menu is open, Esc belongs to
             -- `conditionPresetLoadMenuSubs` (closing just the
-            -- menu); claiming it here too would collapse the
-            -- whole editor on the same keypress.
+            -- menu); claiming it here too would fold the whole
+            -- editor on the same keypress.
             if ui.loadMenuOpen then
                 Sub.none
 
             else
-                Browser.Events.onKeyDown (escKey ConditionClose)
-
-        SurfaceStatus _ ->
-            Browser.Events.onKeyDown (escKey StatusClose)
-
-        SurfaceSaveChain _ ->
-            Browser.Events.onKeyDown (escKey SaveChainClose)
-
-        SurfaceInitiative _ ->
-            Browser.Events.onKeyDown (escKey InitiativeClose)
-
-        SurfaceReplace _ ->
-            Browser.Events.onKeyDown (escKey ReplaceClose)
-
-        SurfaceDuplicate _ ->
-            Browser.Events.onKeyDown (escKey DuplicateClose)
-
-        SurfaceQuickAdd _ ->
-            Browser.Events.onKeyDown (escKey QuickAddClose)
-
-        SurfaceSaveLoad _ ->
-            Browser.Events.onKeyDown (escKey SaveLoadClose)
-
-        SurfaceCrCalculator _ ->
-            Browser.Events.onKeyDown (escKey CrCalculatorClose)
-
-        SurfaceRandomEncounter _ ->
-            Browser.Events.onKeyDown (escKey RandomEncounterClose)
-
-        SurfaceTreasure _ ->
-            Browser.Events.onKeyDown (escKey TreasureClose)
-
-        SurfaceDice ->
-            Browser.Events.onKeyDown (escKey CloseDice)
-
-        SurfaceXp ->
-            Browser.Events.onKeyDown (escKey XpFilterClose)
+                Browser.Events.onKeyDown (escKey DrawerFoldNewest)
 
         SurfaceStatBlock _ ->
             Browser.Events.onKeyDown (escKey PanelClearCreature)
 
-        -- Modal and card-inline variants never enter the stack.
         _ ->
-            Sub.none
+            Browser.Events.onKeyDown (escKey DrawerFoldNewest)
 
 
 {-| Compendium-page keyboard decoder: `/` focuses the search
@@ -593,7 +556,6 @@ init flags url key =
       , hpEdit = Nothing
       , compendium = compendiumFromUrl url
       , surface = Nothing
-      , hpChangeDraft = Nothing
       , conditionLog = []
       , duplicateLog = []
       , replaceLog = []
@@ -603,7 +565,6 @@ init flags url key =
       , queuePanels = Ui.QueuePanels.fresh
       , drawer = Model.defaultDrawer
       , drawerDrag = Nothing
-      , drawerCollapsed = False
       , compendiumEditDraft = Nothing
       , settingsOpen = False
       , anonymousBannerDismissed = False
@@ -1001,9 +962,6 @@ updateInner msg model =
             Update.Encounter.toggleInactive name model
 
         -- Dice roller lifecycle
-        CloseDice ->
-            Update.Dice.close model
-
         DiceInputChanged text ->
             Update.Dice.inputChanged text model
 
@@ -1107,9 +1065,6 @@ updateInner msg model =
         HpChangeManualApplySelected ->
             Update.HpChange.manualApplySelected model
 
-        HpChangeClose ->
-            Update.HpChange.close model
-
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model
 
@@ -1135,9 +1090,6 @@ updateInner msg model =
             Update.HpChange.undoLatest model
 
         -- Save Chain panel
-        SaveChainClose ->
-            Update.SaveChain.close model
-
         SaveChainNameChanged text ->
             Update.SaveChain.nameChanged text model
 
@@ -1241,9 +1193,6 @@ updateInner msg model =
         RemoveCreature name ->
             Update.Encounter.removeCreature name model
 
-        DuplicateClose ->
-            Update.Duplicate.close model
-
         DuplicateModeSet mode ->
             Update.Duplicate.modeSet mode model
 
@@ -1252,9 +1201,6 @@ updateInner msg model =
 
         DuplicateApply ->
             Update.Duplicate.apply model
-
-        ReplaceClose ->
-            Update.Replace.close model
 
         ReplaceSearchChanged text ->
             Update.Replace.searchChanged text model
@@ -1270,9 +1216,6 @@ updateInner msg model =
 
         StatusOpenFor name ->
             Update.Status.openFor name model
-
-        StatusClose ->
-            Update.Status.close model
 
         StatusCoverCycle ->
             Update.Status.coverCycle model
@@ -1292,9 +1235,6 @@ updateInner msg model =
         -- Initiative manager
         InitiativeOpenFor name ->
             Update.Initiative.openFor name model
-
-        InitiativeClose ->
-            Update.Initiative.close model
 
         InitiativeCustomChanged text ->
             Update.Initiative.customChanged text model
@@ -1335,9 +1275,6 @@ updateInner msg model =
         -- Condition / effect panel lifecycle
         ConditionOpenEdit name id ->
             Update.Condition.openEdit name id model
-
-        ConditionClose ->
-            Update.Condition.close model
 
         ConditionPickStandard label ->
             Update.Condition.pickStandard label model
@@ -1730,9 +1667,6 @@ updateInner msg model =
         CompendiumGroupDeleted groupId result ->
             Update.Compendium.Group.deleteResponse groupId result model
 
-        CrCalculatorClose ->
-            Update.CrCalculator.close model
-
         CrCalculatorScopeSet scope ->
             Update.CrCalculator.scopeSet scope model
 
@@ -1744,9 +1678,6 @@ updateInner msg model =
 
         CrCalculatorPartyLevelSet memberId raw ->
             Update.CrCalculator.partyMemberLevelSet memberId raw model
-
-        RandomEncounterClose ->
-            Update.RandomEncounter.close model
 
         RandomEncounterDifficultySet raw ->
             Update.RandomEncounter.difficultySet raw model
@@ -1802,14 +1733,8 @@ updateInner msg model =
         RandomEncounterAddToEncounter ->
             Update.RandomEncounter.addToEncounter model
 
-        TreasureClose ->
-            Update.Treasure.close model
-
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
-
-        DrawerColumnToggle ->
-            Update.PanelDrawer.columnToggle model
 
         DrawerDragStart index ->
             Update.PanelDrawer.dragStart index model
@@ -1825,6 +1750,9 @@ updateInner msg model =
 
         DrawerCollapseToggle index ->
             Update.PanelDrawer.toggleCollapse index model
+
+        DrawerFoldNewest ->
+            Update.PanelDrawer.foldNewest model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
@@ -2319,9 +2247,6 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
-        SaveLoadClose ->
-            Update.SaveLoad.close model
-
         SaveLoadStorageSet storage ->
             Update.SaveLoad.storageSet storage model
 
@@ -2484,17 +2409,11 @@ updateInner msg model =
         XpScopeSet scope ->
             Update.Xp.scopeSet scope model
 
-        XpFilterClose ->
-            Update.Xp.filterClose model
-
         QuickAddOpen ->
             Update.QuickAdd.open model
 
         QuickAddOpenForReplace oldName ->
             Update.QuickAdd.openForReplace oldName model
-
-        QuickAddClose ->
-            Update.QuickAdd.close model
 
         QuickAddSortToggle ->
             Update.QuickAdd.sortToggle model

@@ -42,7 +42,7 @@ view collapse model =
                             "Quick Add"
             in
             View.Panel.view
-                { close = QuickAddClose
+                { close = Nothing
                 , title = title
                 , titleTrail = Nothing
                 , subtitle = Nothing

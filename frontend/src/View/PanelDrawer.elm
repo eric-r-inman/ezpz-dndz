@@ -1,15 +1,14 @@
-module View.PanelDrawer exposing (isOpen, view)
+module View.PanelDrawer exposing (view)
 
 {-| The editor column: the encounter's own controls above a
 stack holding every panel, oldest-first, so a newly opened one
 appears below the ones already up.
 
 Each drawer variant renders through `panelFor`; adding a panel
-means a lens in `Model`, an arm here, an Esc mapping in
-`Main.subscriptions`, and — if the drawer boots with it — an
-entry in `Model.defaultDrawer`.
+means a lens in `Model`, an arm here, and — if the drawer boots
+with it — an entry in `Model.defaultDrawer`.
 
-@docs isOpen, view
+@docs view
 
 -}
 
@@ -40,24 +39,11 @@ import View.Panel.Xp
 import View.Tooltips as Tooltips
 
 
-{-| Whether the stack has panels for the column to show — what
-the workspace grid sizes its track against, and what the fold
-strip needs before it has anything to fold.
--}
-isOpen : Model -> Bool
-isOpen model =
-    not (List.isEmpty model.drawer)
-
-
 view : Model -> Html Msg
 view model =
     div [ class "drawer-column" ]
         [ encounterControls model
-        , if model.drawerCollapsed then
-            text ""
-
-          else
-            stack model
+        , stack model
         ]
 
 
@@ -239,9 +225,9 @@ panelFor model index panel =
             else
                 "Target: " ++ targetName
 
-        editor title subtitle close body =
+        editor title subtitle body =
             View.Panel.view
-                { close = close
+                { close = Nothing
                 , title = title
                 , titleTrail = Nothing
                 , subtitle = Just subtitle
@@ -272,19 +258,16 @@ panelFor model index panel =
             SurfaceHpChange ui ->
                 editor "Manage HP"
                     (scopedLabel ui.target ui.applyToSelected)
-                    HpChangeClose
                     (View.Inline.HpChange.view selectedCount model.hpChangeLog ui)
 
             SurfaceStatus ui ->
                 editor "Status"
                     ("Target: " ++ ui.target)
-                    StatusClose
                     (View.Inline.Status.view selectedCount ui)
 
             SurfaceCondition ui ->
-                editor "Condition"
+                editor "Condition/Effect"
                     ("Target: " ++ ui.target)
-                    ConditionClose
                     (View.Inline.Condition.view
                         { creatureNames = List.map .name model.encounter.creatures
                         , selectedCount = selectedCount
@@ -297,7 +280,6 @@ panelFor model index panel =
             SurfaceSaveChain ui ->
                 editor "Save Chain"
                     (scopedLabel ui.target ui.applyToSelected)
-                    SaveChainClose
                     (View.Inline.SaveChain.view
                         { presets = model.saveChainPresets
                         , selectedCount = selectedCount
@@ -309,13 +291,11 @@ panelFor model index panel =
             SurfaceInitiative ui ->
                 editor "Initiative"
                     ("Target: " ++ ui.target)
-                    InitiativeClose
                     (View.Inline.Initiative.view selectedCount ui)
 
             SurfaceReplace ui ->
                 editor "Replace"
                     ("Target: " ++ ui.target)
-                    ReplaceClose
                     (View.Inline.Replace.view model.compendium.db
                         selectedCount
                         model.replaceLog
@@ -325,7 +305,6 @@ panelFor model index panel =
             SurfaceDuplicate ui ->
                 editor "Duplicate"
                     ("Target: " ++ ui.target)
-                    DuplicateClose
                     (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
 
             SurfaceCrCalculator _ ->

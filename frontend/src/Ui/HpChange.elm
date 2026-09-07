@@ -3,14 +3,8 @@ module Ui.HpChange exposing
     , HpChangeTargetSnapshot
     )
 
-{-| HP-change modal state plus the inline-HP edit and the
+{-| HP-change editor state plus the inline-HP edit and the
 recent-changes log entries.
-
-The HP-modal `Open ↔ closed` distinction lives at the
-`Model.hpChange : Maybe HpChangeUi` field rather than as a flag
-inside this record, so `Encounter.mapCreature` deleting the
-targeted creature can't leave a stale modal pointing at
-something that no longer exists.
 
 `amountText` mirrors the `<input>` characters so a transient
 mid-typing state (a bare `-` or the `2d` prefix of a formula
@@ -29,10 +23,9 @@ import Msg exposing (HpField(..), HpKind(..))
 type alias HpChangeUi =
     { target : String
 
-    -- Tracks the last-committed kind so a keyboard-cancelled
-    -- modal can still be reopened at whatever kind the GM
-    -- was last dabbling with.  Starts at `DamageKind` on
-    -- fresh open; only mutates when one of the four footer
+    -- Tracks the last-committed kind, so folding the editor and
+    -- coming back finds it where the GM left it.  Starts at
+    -- `DamageKind`; only mutates when one of the four footer
     -- action buttons commits.
     , kind : HpKind
 
@@ -58,17 +51,11 @@ type alias HpChangeUi =
     , manualHpText : String
     , manualMaxHpText : String
     , manualTempHpText : String
-
-    -- True once the current settings have been applied and not
-    -- edited since.  Closing an applied editor resets it;
-    -- closing an un-applied one stashes the settings as the
-    -- draft the next open restores.
-    , applied : Bool
     }
 
 
 {-| One row in the recent-HP-changes log shown at the bottom of
-the Manage HP modal. Captures who, what kind, the input amount,
+the Manage HP editor. Captures who, what kind, the input amount,
 and the before/after snapshot so the row can render
 "27/59 (+0) → 14/59 (+0)" without re-querying the encounter
 state, and so undo can walk maxHp back too when a `MaxHpKind`
@@ -119,7 +106,7 @@ maxHpLogEntries =
     10
 
 
-{-| Initial state for opening the Manage HP modal targeted at a
+{-| Initial state for opening the Manage HP editor targeted at a
 creature. Kind defaults to `DamageKind` — the most-common
 first action; the four footer buttons let the GM commit as
 whichever kind actually applies without a mid-flow radio pick.
@@ -136,5 +123,4 @@ fresh target =
     , manualHpText = ""
     , manualMaxHpText = ""
     , manualTempHpText = ""
-    , applied = False
     }

@@ -179,7 +179,7 @@ tree, and Cmd helper lives in its own module.
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
 | Update / domain | =Update/*.elm= — one module per feature, each exposing one function per Msg branch |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Lore,Paste}.elm=                                                               |
-| View / surfaces | =View/Modal/*.elm= for what still opens over the page and =View/Panel/*.elm= for what opens in the editor column's drawer; =View/Modal.elm= and =View/Panel.elm= carry the two shells, whose shared fields line up |
+| View / surfaces | =View/Modal/*.elm= for what still opens over the page and =View/Panel/*.elm= for what opens in the editor column's drawer; =View/Modal.elm= and =View/Panel.elm= carry the two shells, whose fields line up but for the optional panel ~close~ |
 | View / pages    | =View/Page/{Loading,Donate,NotFound,Compendium,CompendiumStandalone,QuickList}.elm= — the page trees ~Main.viewPage~ dispatches to (formerly inline in =Main.elm=) |
 | View / shell    | =View/*.elm= — the chrome around the surfaces, and the renderers they share.  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard,Number}.elm=                                                                                                       |
@@ -1302,11 +1302,9 @@ thousand- separator math).
 The scope is picked in the XP panel (=View/Panel/Xp.elm=), which carries the
 total alongside it so the effect of a pick is visible while making it.  The
 ~SurfaceXp~ marker in the drawer stack is the panel's open state;
-~Model.defaultDrawer~ supplies it at boot and ~XpFilterClose~ drops it, while
-~XpScopeSet~ deliberately leaves it open.  =Main.subscriptions= adds one sub
-while it is open — ~Browser.Events.onKeyDown (escKey XpFilterClose)~.  A
-click-outside sub would fire on every click landing in the queue beside the
-panel.
+~Model.defaultDrawer~ supplies it at boot, and ~XpScopeSet~ deliberately leaves
+it unfolded.  Esc folds it through the drawer's shared path; a click-outside sub
+would fire on every click landing in the queue beside the panel.
 
 Lair XP is plumbed end-to-end:
 
@@ -1351,7 +1349,7 @@ single-instance roll spec, and fires ~Dice.batchRollCmd
 ~Update.Compendium.Add.initiativeRolled~ handler — same
 ~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~ → toast
 pipeline as the full browser, just with a count of one and a different opener
-UI.  Esc closes.
+UI.  Esc folds the panel.
 
 The Quick Add panel has two extra surfaces beyond compendium picks:
 
@@ -1756,30 +1754,33 @@ dependency order:
    page.  Entry point is ~view : View.Panel.Header -> Model -> Html Msg~ for a
    panel (a modal's takes no ~Header~, having no heading row in a stack) that
    pattern-matches ~model.surface~ and falls through to ~text ""~; the chrome
-   comes from =View.Panel.view= or =View.Modal.view=, whose shared fields line
-   up.  The ~Header~ is passed straight through to =View.Panel.view=, which owns
-   the heading row and decides whether the body renders at all.  That row folds
-   the panel when clicked and is the drag handle for reordering, so a control
-   placed in ~titleTrail~ takes its handler from
-   ~View.Panel.onClickWithoutFolding~ rather than ~onClick~ — a plain ~onClick~
-   there folds the panel as a side effect of doing its own job.
+   comes from =View.Panel.view= or =View.Modal.view=, whose fields line up but
+   for ~close~ — optional on a panel, required on a modal.  The ~Header~ is
+   passed straight through to =View.Panel.view=, which owns the heading row and
+   decides whether the body renders at all.  That row folds the panel when
+   clicked and is the drag handle for reordering, so a control placed in
+   ~titleTrail~ takes its handler from ~View.Panel.onClickWithoutFolding~ rather
+   than ~onClick~ — a plain ~onClick~ there folds the panel as a side effect of
+   doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
-   render arm in ~View.PanelDrawer.panelFor~, an Esc mapping in
-   ~Main.drawerEscSub~, and — when the drawer boots with it — an entry in
-   ~Model.defaultDrawer~; those four move together.  Panels live in the
-   ~model.drawer~ stack — many open at once, newest at the bottom — and their
-   Update modules open, close, and edit them through ~Model.openDrawer~ /
-   ~closeDrawer~ / ~mapDrawer~.  A per-creature editor takes a narrower shape:
-   its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~
-   helper supplies the chrome, so every editor's target strip and close
-   behaviour stay identical.
+   render arm in ~View.PanelDrawer.panelFor~, and — when the drawer boots with
+   it — an entry in ~Model.defaultDrawer~; those three move together.
+   ~Main.drawerEscSub~ needs an arm only for a panel Esc should treat specially;
+   the rest fold.  Panels live in the ~model.drawer~ stack — many open at once,
+   newest at the bottom — and their Update modules open, close, and edit them
+   through ~Model.openDrawer~ / ~foldDrawer~ / ~mapDrawer~.  ~closeDrawer~ takes
+   a panel out of the stack, which is only right for one the GM can put back —
+   in practice the pinned stat block.  A per-creature editor takes a narrower
+   shape: its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s
+   ~editor~ helper supplies the chrome, so every editor's target strip and
+   heading row stay identical.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.
-10. *Dispatch wiring* — add the Esc-key case to =Main.subscriptions= and one
-    line per Msg branch to =Main.updateInner= (~FooMsg arg -> Update.Foo.bar arg
-    model~).  =View.PanelDrawer= renders a drawer panel, so it needs no mounting
-    in =Main.appShell=; a modal does.
+10. *Dispatch wiring* — one line per Msg branch in =Main.updateInner= (~FooMsg
+    arg -> Update.Foo.bar arg model~).  Esc needs no wiring unless the panel
+    should treat it specially; see step 8.  =View.PanelDrawer= renders a drawer
+    panel, so it needs no mounting in =Main.appShell=; a modal does.
 11. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain helpers; the
     Update + View modules are integration-tested through the existing patterns.
 

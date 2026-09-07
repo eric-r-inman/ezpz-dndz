@@ -1,4 +1,4 @@
-module Update.Replace exposing (apply, applySelected, close, pick, searchChanged)
+module Update.Replace exposing (apply, applySelected, pick, searchChanged)
 
 {-| Update branches for the Replace editor: pick a compendium
 creature, then swap it in for the active creature (or every
@@ -22,11 +22,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.replaceLens model
         |> Maybe.map SurfaceReplace
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.replaceLens model, Cmd.none )
 
 
 withUi : (ReplaceUi -> ReplaceUi) -> Model -> Model

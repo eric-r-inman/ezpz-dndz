@@ -32,7 +32,7 @@ import View.Tooltips as Tooltips
 view : View.Panel.Header -> CompendiumDb -> PanelPin -> Html Msg
 view collapse db pin =
     View.Panel.view
-        { close = PanelClearCreature
+        { close = Just PanelClearCreature
         , title = pin.name
         , titleTrail = Just (compendiumJump pin)
         , subtitle = Nothing

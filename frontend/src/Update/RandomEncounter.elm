@@ -1,6 +1,5 @@
 module Update.RandomEncounter exposing
-    ( close
-    , difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
+    ( difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
     , pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
     , excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
     , generate, rolled
@@ -16,7 +15,6 @@ Generation goes through `Random.generate` so the entropy comes
 from the runtime; we don't carry a seed. Re-rolling is just
 "fire `generate` again with the same params".
 
-@docs close
 @docs difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
 @docs pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
 @docs excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
@@ -45,15 +43,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.randomEncounterLens model
         |> Maybe.map SurfaceRandomEncounter
-
-
-
--- ── CLOSE ────────────────────────────────────────────────────────────────────
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( Model.closeDrawer Model.randomEncounterLens model, Cmd.none )
 
 
 
@@ -573,7 +562,7 @@ Initiative is set to 0 for every spawn; the GM rolls per-card
 once the encounter starts. This matches the established
 single-add / bulk-add convention.
 
-The modal closes after adding; a toast confirms the count.
+A toast confirms the count.
 
 -}
 addToEncounter : Model -> ( Model, Cmd Msg )
