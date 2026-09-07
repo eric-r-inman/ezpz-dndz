@@ -128,6 +128,8 @@
     than crowding them.  No action needed.
 13. The Dice Roller's die buttons fit the panel instead of running past its
     edge, with air before the Advantage row.  No action needed.
+14. A spent reaction button greys its background, not just its label.  No action
+    needed.
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the

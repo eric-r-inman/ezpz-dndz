@@ -6338,6 +6338,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .action-btn--reaction-spent {
+  --btn-bg: var(--color-surface-2);
   --btn-fg: var(--color-text-muted);
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
