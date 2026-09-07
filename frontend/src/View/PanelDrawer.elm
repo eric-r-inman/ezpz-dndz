@@ -205,7 +205,9 @@ panelFor model index panel =
                 editor "Manage HP"
                     (scopedLabel ui.target ui.applyToSelected)
                     (View.Inline.HpChange.view selectedCount
-                        model.flashedHpLogSeq
+                        { flashedSeq = model.flashedHpLogSeq
+                        , expanded = model.expandedLogRows
+                        }
                         model.hpChangeLog
                         ui
                     )
@@ -273,7 +275,12 @@ panelFor model index panel =
                 View.Panel.RandomEncounter.view header model
 
             SurfaceDice ->
-                View.Panel.Dice.view header model.hpChangeLog model.dice
+                View.Panel.Dice.view header
+                    { hpChangeLog = model.hpChangeLog
+                    , expanded = model.expandedLogRows
+                    , flashedRollSeq = model.flashedRollSeq
+                    }
+                    model.dice
 
             SurfaceXp ->
                 View.Panel.Xp.view header model.encounter model.compendium.db model.xpScope

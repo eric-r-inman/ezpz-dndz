@@ -19,6 +19,7 @@ module Update.Encounter exposing
     , run
     , setActive
     , shiftToggleSelected
+    , targetCreature
     , toggleConcentration
     , toggleDodging
     , toggleFlying
@@ -365,6 +366,25 @@ shiftToggleSelected name model =
             }
         )
         model
+    , Cmd.none
+    )
+
+
+{-| Pick a creature as the editors' target, or clear the pick
+when it is already the target. Either way every per-creature
+editor re-aims: at the pick, or back at the active creature.
+-}
+targetCreature : String -> Model -> ( Model, Cmd Msg )
+targetCreature name model =
+    ( Model.aimEditorsAtTarget
+        { model
+            | targetName =
+                if model.targetName == Just name then
+                    Nothing
+
+                else
+                    Just name
+        }
     , Cmd.none
     )
 

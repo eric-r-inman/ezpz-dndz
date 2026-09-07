@@ -58,6 +58,7 @@ panelMain model =
             , timerPresets = model.timerPresets
             , compendium = model.compendium.db
             , drag = model.queueDrag
+            , targetName = model.targetName
             }
     in
     section [ class "panel panel--main" ]

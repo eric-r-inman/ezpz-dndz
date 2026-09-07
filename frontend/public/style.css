@@ -48,6 +48,7 @@
      used for panel and divider rules does not manage.  The
      Accessible theme keeps its black, already at full contrast. */
   --color-input-border: #d4d4d8;
+  --color-target-ring: #ffffff;
 
   /* Ring around a card button whose inline editor is open.
      Deliberately white in every theme — the point is maximum
@@ -258,6 +259,7 @@
   --color-border: #e4e4e7;
 
   --color-input-border: #d4d4d8;
+  --color-target-ring: #ffffff;
   --color-link: #5b5bd6;
   --color-accent: #5b5bd6;
   --color-accent-hover: #4f46e5;
@@ -358,6 +360,7 @@
   --color-border: #2a2f3a;
 
   --color-input-border: #3a4150;
+  --color-target-ring: #ffffff;
   --color-accent: #8a6cff;
   --color-accent-hover: #9c81ff;
   --color-accent-soft: rgba(138, 108, 255, 0.18);
@@ -451,6 +454,7 @@
   --color-border: #000000;
 
   --color-input-border: #000000;
+  --color-target-ring: #ffffff;
   --color-link: #0033cc;
   --color-accent: #0033cc;
   --color-accent-hover: #001a99;
@@ -4650,6 +4654,20 @@ body {
   border-color: var(--color-text-muted);
 }
 
+/* The creature the editors are aimed at.  A bright white ring
+   drawn as an inset outline, since `box-shadow` is the lifecycle
+   stripes' and a targeted corpse keeps its stripe.  The card's
+   own border darkens to a hairline of text colour just outside
+   the ring, so the white still reads against a light card.
+   Declared ahead of the active card's rule so an active target
+   keeps its accent border, and ahead of the drop cue, which
+   shares `outline` and wins for the length of a drag. */
+.creature-card--target {
+  outline: 3px solid var(--color-target-ring);
+  outline-offset: -3px;
+  border-color: var(--color-text);
+}
+
 .creature-card--active {
   /* Border-width +1 from the base 1px (= 2px) so the active
      card pops out for Modern / Dark.  Accessible has its own
@@ -4773,6 +4791,12 @@ body {
 
 .creature-card--unconscious {
   box-shadow: inset 6px 0 0 0 var(--color-warn, #d97706);
+}
+
+.creature-card__target-icon {
+  font-size: var(--font-size-label);
+  line-height: 1;
+  cursor: default;
 }
 
 /* The card a dragged one would land on.  An outline rather than
@@ -6071,10 +6095,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-yellow);
 }
 
-.status-toggles__sep {
-  color: var(--color-text-muted);
-  user-select: none;
-  margin: 0 2px;
+/* One row of status toggles.  Tighter than the shared
+   `.cond-row` gap: the toggles carry their own padding, and the
+   row has to hold three of them beside the drawer's width. */
+.status-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-0);
 }
 
 /* Wrapper around the "flying" toggle + fly-height selector so the
@@ -6090,9 +6118,12 @@ button.creature-card__lifecycle--dead:focus-visible {
 .fly-height {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  padding: 2px 6px;
+  /* A hairline below the spacing scale on purpose: the widget
+     rides inside a card's status row, and the arrows, height and
+     unit have to read as one control rather than four. */
+  gap: 1px;
+  margin-left: var(--space-0);
+  padding: 1px var(--space-0);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -6325,12 +6356,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.9rem;
 }
 
-/* Indent under the parent apply-to-selected checkbox — the
-   fresh-roll-per-creature option only modifies that choice. */
-.hp-change__checkbox--nested {
-  margin-left: 22px;
-}
-
 /* Compact single-row variant of the expansion strip, used by the
    memo / name-note editors: title, short input, ✓ save.  The
    trigger button stays in its row (highlighted) and doubles as
@@ -6354,12 +6379,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   outline-offset: 1px;
 }
 
-/* The newest row flashes as it mounts, so an apply reads as
-   having landed even when the GM's eyes are on the cards rather
-   than the editor.  One pulse, not a repeat: this confirms an
-   action the GM just took, it is not a standing alarm.  Honours
+/* A row that just landed flashes as it mounts — an apply in the
+   HP editor, a roll in the dice roller — so the action reads as
+   having worked even when the GM's eyes are on the cards.  One
+   pulse, not a repeat: it confirms something the GM just did, it
+   is not a standing alarm.  Both logs' rows rest on
+   `--color-surface-2`, which is where the pulse settles.  Honours
    the global reduced-motion block. */
-@keyframes hp-log-flash {
+@keyframes log-flash {
   0% {
     background: var(--color-accent-soft);
     box-shadow: inset 0 0 0 1px var(--color-accent);
@@ -8354,8 +8381,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .die-btn-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  /* Eight faces in one row: the seven dice and the coin. */
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
 .die-btn {
@@ -8372,7 +8401,7 @@ button.creature-card__lifecycle--dead:focus-visible {
      fit a drawer panel at all. */
   padding: var(--space-2) var(--space-0);
   min-width: 0;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #ffffff;
   font-family: inherit;
@@ -8380,6 +8409,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   transition:
     filter 0.1s ease,
     transform 0.05s ease;
+}
+
+/* The coin sits with the dice as an eighth face. */
+.die-btn--coin {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .die-btn:hover {
@@ -8483,7 +8518,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .dice-history__entry {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  /* The leading track is the fold caret. */
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
@@ -8491,6 +8527,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
+}
+
+.dice-history__entry--flash {
+  animation: log-flash 0.9s ease-out 1;
 }
 
 .dice-history__formula {
@@ -8503,6 +8543,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+/* Unfolded, the formula flows as text and wraps — anywhere,
+   because a formula is one unbreakable word. */
+.dice-history__formula--open {
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .dice-history__rolled {
@@ -8692,11 +8742,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 .hp-change__input {
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
-  /* Sized to its example text rather than stretching to the
-     editor's full width. */
+  /* Three characters, and sized to say so, rather than stretching
+     to the editor's full width. */
   flex: 0 0 auto;
-  width: 20ch;
-  max-width: 100%;
+  width: 5ch;
 }
 
 .hp-change__error {
@@ -8773,7 +8822,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-entry {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto auto auto;
+  /* The leading track is the fold caret. */
+  grid-template-columns: auto 64px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -8840,7 +8890,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .hp-change__log-entry--flash {
-  animation: hp-log-flash 0.9s ease-out 1;
+  animation: log-flash 0.9s ease-out 1;
 }
 
 .hp-change__log-target {
@@ -8849,6 +8899,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.hp-change__log-target--open {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
 }
 
 .hp-change__log-amount {
@@ -8863,6 +8920,29 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.hp-change__log-trans--open {
+  white-space: normal;
+}
+
+/* The caret at a log row's left edge that unfolds it.  Bare
+   glyph, no chrome: it is the row's disclosure, not a button in
+   its own right. */
+.log-row__fold {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-caret);
+  line-height: 1;
+}
+
+.log-row__fold:hover {
+  color: var(--color-text);
 }
 
 /* Wrapper around a docked editor's unavailable Apply button.  It

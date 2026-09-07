@@ -55,8 +55,9 @@ withDice fn model =
 
 
 markRead : Model -> Model
-markRead =
+markRead model =
     withDice (\d -> { d | unread = False })
+        { model | flashedRollSeq = model.dice.history.pushed }
 
 
 inputChanged : String -> Model -> ( Model, Cmd Msg )
@@ -234,7 +235,10 @@ clearHistory model =
     let
         cleared =
             withDice (\d -> { d | history = Dice.emptyHistory })
-                { model | hpChangeLog = [] }
+                -- The roll count restarts with the history, so
+                -- the mark the flash compares against restarts
+                -- with it.
+                { model | hpChangeLog = [], flashedRollSeq = 0 }
 
         cmd =
             case model.auth of

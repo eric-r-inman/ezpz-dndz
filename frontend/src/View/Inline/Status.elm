@@ -12,6 +12,7 @@ import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..), StatusFlag(..))
 import Ui.Status exposing (StatusUi)
+import View.FlyHeight
 import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
 
@@ -19,15 +20,13 @@ import View.Tooltips as Tooltips
 view : Int -> StatusUi -> Html Msg
 view selectedCount ui =
     div [ class "creature-card__inline" ]
-        [ div [ class "cond-row" ]
+        [ div [ class "status-toggles" ]
             [ coverToggle ui
-            , sep
-            , boolToggle "concentrating" ui.concentrating FlagConcentrating
-            , sep
             , boolToggle "hiding" ui.hiding FlagHiding
-            , sep
             , boolToggle "dodging" ui.dodging FlagDodging
-            , sep
+            ]
+        , div [ class "status-toggles" ]
+            [ boolToggle "concentrating" ui.concentrating FlagConcentrating
             , span [ class "flying-group" ]
                 [ boolToggle "flying" ui.flying FlagFlying
                 , flyHeight ui
@@ -55,11 +54,6 @@ view selectedCount ui =
                 }
             ]
         ]
-
-
-sep : Html Msg
-sep =
-    span [ class "status-toggles__sep" ] [ text "|" ]
 
 
 boolToggle : String -> Bool -> StatusFlag -> Html Msg
@@ -142,32 +136,12 @@ coverToggle ui =
 flyHeight : StatusUi -> Html Msg
 flyHeight ui =
     if ui.flying then
-        span [ class "fly-height" ]
-            [ button
-                [ class "fly-height__btn"
-                , onClick (StatusFlyHeightAdjust 5)
-                , Tooltips.attr Tooltips.flyHeightUp
-                , attribute "aria-label" "Increase flight height by 5 feet"
-                ]
-                [ text "▲" ]
-            , span [ class "fly-height__value" ]
-                [ text (String.fromInt ui.flyHeight) ]
-            , button
-                [ class "fly-height__btn"
-                , onClick (StatusFlyHeightAdjust -5)
-                , Tooltips.attr Tooltips.flyHeightDown
-                , attribute "aria-label" "Decrease flight height by 5 feet"
-                ]
-                [ text "▼" ]
-            , span [ class "fly-height__unit" ] [ text "ft" ]
-            , button
-                [ class "icon-btn icon-btn--sm fly-height__fall"
-                , onClick (RollFallDamage ui.target)
-                , Tooltips.attr Tooltips.fallDamage
-                , attribute "aria-label" "Roll falling damage"
-                ]
-                [ text "↯" ]
-            ]
+        View.FlyHeight.view
+            { height = ui.flyHeight
+            , up = StatusFlyHeightAdjust 5
+            , down = StatusFlyHeightAdjust -5
+            , fall = RollFallDamage ui.target
+            }
 
     else
         text ""

@@ -54,7 +54,7 @@ withInitiative =
 
 {-| A card's init circle: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. One already
-aimed here scrolls into view — a card control asks to see a
+aimed here unfolds and scrolls into view — a card control asks to see a
 creature's editor.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
@@ -62,7 +62,7 @@ openFor target model =
     case drawerSurface model of
         Just (SurfaceInitiative ui) ->
             if ui.target == target then
-                ( model
+                ( Model.unfoldDrawer Model.initiativeLens model
                 , Effects.scrollDrawerIndex
                     (Model.drawerIndexOf Model.initiativeLens model)
                 )

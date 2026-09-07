@@ -16,8 +16,8 @@ the rest of the log lives in the dice roller.
 -}
 
 import Dice
-import Html exposing (Html, button, div, em, h3, input, span, text)
-import Html.Attributes as Attr exposing (autofocus, checked, class, for, id, placeholder, type_, value)
+import Html exposing (Html, button, div, h3, input, span, text)
+import Html.Attributes as Attr exposing (autofocus, checked, class, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
@@ -26,16 +26,16 @@ import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
 
 
-view : Int -> Int -> List HpChangeEntry -> HpChangeUi -> Html Msg
-view selectedCount flashedSeq log ui =
+view : Int -> View.HpLog.Latest -> List HpChangeEntry -> HpChangeUi -> Html Msg
+view selectedCount latest log ui =
     div [ class "creature-card__inline" ]
-        [ amount ui
+        [ amount selectedCount ui
         , parseErrorHint ui
-        , applyScope selectedCount ui
+        , freshRollOption selectedCount ui
         , actionButtons
         , div [ class "cond-divider" ] []
         , manualSection selectedCount ui
-        , View.HpLog.latest flashedSeq log
+        , View.HpLog.latest latest log
         ]
 
 
@@ -105,21 +105,24 @@ manualField extraClass fieldId label current field =
         ]
 
 
-{-| Single amount input. Enter-key commits as `DamageKind`
+{-| The amount row: the scope checkbox (only while something is
+selected), then the amount itself. Enter commits as `DamageKind`
 because the expansion has four commit paths; Enter isn't safely
 overloadable across all of them. GMs who want Heal / Temp HP
 / +Max HP click the corresponding button.
 -}
-amount : HpChangeUi -> Html Msg
-amount ui =
+amount : Int -> HpChangeUi -> Html Msg
+amount selectedCount ui =
     div [ class "hp-change__row" ]
-        [ Html.label [ class "hp-change__label", for "hp-amount" ]
-            [ text "HP amount:" ]
+        [ applyScope selectedCount ui
+        , Html.label [ class "hp-change__label", for "hp-amount" ]
+            [ text "HP:" ]
         , input
             [ id "hp-amount"
             , class "hp-change__input"
             , type_ "text"
-            , placeholder "e.g. 12, or 2d6+3"
+            , placeholder "12"
+            , maxlength 3
             , value ui.amountText
             , autofocus True
             , onInput HpChangeAmountChanged
@@ -142,10 +145,7 @@ parseErrorHint ui =
 
 {-| Multi-target scope checkbox. Hidden entirely when zero
 creatures are selected — there's no useful "apply to all
-selected" when there's no selection. When the amount reads as
-a dice formula, a nested checkbox offers a fresh roll per
-creature instead of one shared total; an integer amount hides
-it, since there is nothing to reroll.
+selected" when there's no selection.
 -}
 applyScope : Int -> HpChangeUi -> Html Msg
 applyScope selectedCount ui =
@@ -153,39 +153,39 @@ applyScope selectedCount ui =
         text ""
 
     else
+        Html.label [ class "hp-change__checkbox" ]
+            [ input
+                [ type_ "checkbox"
+                , checked ui.applyToSelected
+                , onClick HpChangeApplyToSelectedToggle
+                ]
+                []
+            , text (" Selected (" ++ String.fromInt selectedCount ++ "):")
+            ]
+
+
+{-| When the amount reads as a dice formula and a selection is
+in play, offer a fresh roll per creature instead of one shared
+total; an integer amount hides it, since there is nothing to
+reroll.
+-}
+freshRollOption : Int -> HpChangeUi -> Html Msg
+freshRollOption selectedCount ui =
+    if selectedCount > 0 && isFormula ui.amountText then
         div [ class "hp-change__row" ]
-            ([ Html.label [ class "hp-change__checkbox" ]
+            [ Html.label [ class "hp-change__checkbox" ]
                 [ input
                     [ type_ "checkbox"
-                    , checked ui.applyToSelected
-                    , onClick HpChangeApplyToSelectedToggle
+                    , checked ui.freshRollPerTarget
+                    , onClick HpChangeFreshRollToggle
                     ]
                     []
-                , text " Apply "
-                , em [] [ text "only" ]
-                , text
-                    (" to selected creatures ("
-                        ++ String.fromInt selectedCount
-                        ++ ")"
-                    )
+                , text " New roll for each creature"
                 ]
-             ]
-                ++ (if isFormula ui.amountText then
-                        [ Html.label [ class "hp-change__checkbox hp-change__checkbox--nested" ]
-                            [ input
-                                [ type_ "checkbox"
-                                , checked ui.freshRollPerTarget
-                                , onClick HpChangeFreshRollToggle
-                                ]
-                                []
-                            , text " New roll for each creature"
-                            ]
-                        ]
+            ]
 
-                    else
-                        []
-                   )
-            )
+    else
+        text ""
 
 
 {-| True when the amount text parses as a dice formula rather
@@ -231,10 +231,10 @@ actionButtons =
             [ class "action-btn action-btn--temp"
             , onClick (HpChangeApplyAs TempHpKind)
             ]
-            [ text "Temp HP" ]
+            [ text "+ Temp" ]
         , button
             [ class "action-btn action-btn--max"
             , onClick (HpChangeApplyAs MaxHpKind)
             ]
-            [ text "Max HP" ]
+            [ text "+ Max" ]
         ]

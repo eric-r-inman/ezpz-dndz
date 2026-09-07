@@ -80,16 +80,16 @@ withConditionUi =
     Model.mapSurface Model.conditionLens
 
 
-{-| A chip whose edit form is already open scrolls into view, the
-same as every other card control: the click asks to see that
-condition.
+{-| A chip whose edit form is already open unfolds and scrolls
+into view, the same as every other card control: the click asks
+to see that condition.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
     case drawerSurface model of
         Just (SurfaceCondition ui) ->
             if ui.target == name && ui.editingId == Just id then
-                ( model
+                ( Model.unfoldDrawer Model.conditionLens model
                 , Effects.scrollDrawerIndex
                     (Model.drawerIndexOf Model.conditionLens model)
                 )

@@ -1,4 +1,4 @@
-module View.HpLog exposing (entry, latest)
+module View.HpLog exposing (Latest, Row, entry, latest, rowKey)
 
 {-| Recent-HP-changes row rendering, shared between the dice
 roller's log (where the rows are interleaved with the rolls) and
@@ -11,7 +11,9 @@ import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Msg exposing (HpKind(..), Msg(..))
+import Set exposing (Set)
 import Ui.HpChange exposing (HpChangeEntry)
+import View.LogRow
 import View.Tooltips as Tooltips
 
 
@@ -19,8 +21,8 @@ import View.Tooltips as Tooltips
 Renders nothing when the log is empty — the expansion shouldn't
 grow a header for a list that isn't there.
 -}
-latest : Int -> List HpChangeEntry -> Html Msg
-latest flashedSeq entries =
+latest : Latest -> List HpChangeEntry -> Html Msg
+latest opts entries =
     case entries of
         newest :: _ ->
             -- Keyed on the entry's own counter so each application
@@ -31,7 +33,12 @@ latest flashedSeq entries =
             Html.Keyed.ul
                 [ class "hp-change__log-list hp-change__log-list--latest" ]
                 [ ( String.fromInt newest.seq
-                  , row (rowClassFor flashedSeq newest) True newest
+                  , entry
+                        { undoable = True
+                        , flash = newest.seq > opts.flashedSeq
+                        , expanded = Set.member (rowKey newest) opts.expanded
+                        }
+                        newest
                   )
                 ]
 
@@ -39,35 +46,40 @@ latest flashedSeq entries =
             text ""
 
 
+{-| What the editor's single-row mount needs to know: the seq it
+last showed (a row past it flashes; see `Model.flashedHpLogSeq`)
+and which rows the GM has unfolded.
+-}
+type alias Latest =
+    { flashedSeq : Int
+    , expanded : Set String
+    }
+
+
+{-| How one row renders. `flash` is the editor's cue for an apply
+that just landed; the dice roller's list never sets it, because
+nothing there answers a click the GM just made.
+-}
+type alias Row =
+    { undoable : Bool
+    , flash : Bool
+    , expanded : Bool
+    }
+
+
+{-| The row's identity in `Model.expandedLogRows`.
+-}
+rowKey : HpChangeEntry -> String
+rowKey e =
+    "hp-" ++ String.fromInt e.seq
+
+
 {-| Render one log row. Only the newest entry carries an inline
 undo button, so a misclick can't silently rewrite the middle of
 the history.
 -}
-entry : Bool -> HpChangeEntry -> Html Msg
-entry =
-    row "hp-change__log-entry"
-
-
-{-| A row the panel has already shown mounts unflashed. Folding
-the panel destroys it, so without this an unfold would replay the
-cue for a change that landed long before.
--}
-rowClassFor : Int -> HpChangeEntry -> String
-rowClassFor flashedSeq e =
-    if e.seq > flashedSeq then
-        "hp-change__log-entry hp-change__log-entry--flash"
-
-    else
-        "hp-change__log-entry"
-
-
-{-| The row markup, under whichever class the mount wants. The
-editor's single-row mount takes the flashing variant; the dice
-roller's full log takes the plain one, because nothing there
-answers a click the GM just made.
--}
-row : String -> Bool -> HpChangeEntry -> Html Msg
-row rowClass undoable e =
+entry : Row -> HpChangeEntry -> Html Msg
+entry opts e =
     let
         kindLabel =
             case e.kind of
@@ -112,14 +124,24 @@ row rowClass undoable e =
 
                 _ ->
                     ""
+
+        rowClass =
+            if opts.flash then
+                "hp-change__log-entry hp-change__log-entry--flash"
+
+            else
+                "hp-change__log-entry"
     in
     li [ class rowClass ]
-        [ span [ class kindClass ] [ text kindLabel ]
-        , span [ class "hp-change__log-target" ] [ text names ]
+        [ View.LogRow.foldToggle (rowKey e) opts.expanded
+        , span [ class kindClass ] [ text kindLabel ]
+        , span [ class (View.LogRow.openable "hp-change__log-target" opts.expanded) ]
+            [ text names ]
         , span [ class "hp-change__log-amount" ]
             [ text (String.fromInt e.amount) ]
-        , span [ class "hp-change__log-trans" ] [ text transition ]
-        , if undoable then
+        , span [ class (View.LogRow.openable "hp-change__log-trans" opts.expanded) ]
+            [ text transition ]
+        , if opts.undoable then
             button
                 [ class "icon-btn icon-btn--sm hp-change__log-undo"
                 , onClick HpChangeUndoLatest

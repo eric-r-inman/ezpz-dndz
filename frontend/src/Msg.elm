@@ -424,6 +424,9 @@ type Msg
     | GotMe (Result Http.Error MeInfo)
     | NextTurn
     | SetActive String
+      -- A click on an empty spot of a card picks that creature as
+      -- the editors' target, or clears it when it already was.
+    | TargetCreature String
     | CycleCover String
     | ToggleConcentration String
     | ToggleHiding String
@@ -1260,6 +1263,8 @@ type Msg
       -- Esc, which dismisses what is showing rather than
       -- deleting a panel the GM cannot put back.
     | DrawerFoldNewest
+      -- Unfold or refold one log row, by the key its log built.
+    | LogRowToggle String
       -- Treasure.  The roller reads the encounter's own CR; the
       -- loot it produces lives on `model.encounter.treasure`, so
       -- it persists with the encounter.

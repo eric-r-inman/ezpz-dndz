@@ -46,6 +46,7 @@ import Ui.Memo as MemoUi
 import Ui.Note as NoteUi
 import Ui.PlaceholderRename as Rename exposing (PlaceholderRenameState)
 import Ui.Timer exposing (TimerPreset)
+import View.FlyHeight
 import View.Inline.Timer
 import View.Tooltips as Tooltips
 
@@ -98,6 +99,28 @@ holdsOpenField ctx creature =
     renaming || editingHp || surfaceFor ctx creature /= Nothing
 
 
+{-| A click on the card's own surface — the article, its
+column, a row, a rail — picks the creature as the editors'
+target. A click on anything inside those, a button or a chip or
+a field, is that control's business and is left alone: the
+decoder fails for it, and a failed decoder is no message. A drag
+never gets here, because a completed drag fires no click.
+-}
+emptySpotClick : String -> Decode.Decoder Msg
+emptySpotClick name =
+    Decode.map2 Tuple.pair
+        (Decode.at [ "target", "tagName" ] Decode.string)
+        (Decode.at [ "target", "className" ] Decode.string)
+        |> Decode.andThen
+            (\( tag, cls ) ->
+                if List.member tag [ "ARTICLE", "DIV" ] && String.startsWith "creature-card" cls then
+                    Decode.succeed (TargetCreature name)
+
+                else
+                    Decode.fail "a control, not the card"
+            )
+
+
 {-| The card the dragged one would land on wears the cue.
 -}
 dropCueClasses : Int -> Maybe Model.DragState -> List String
@@ -123,6 +146,7 @@ type alias Context =
     , timerPresets : Dict String TimerPreset
     , compendium : CompendiumDb
     , drag : Maybe Model.DragState
+    , targetName : Maybe String
     }
 
 
@@ -138,16 +162,26 @@ view ctx index creature =
         isActive =
             creature.name == ctx.activeName
 
+        isTarget =
+            ctx.targetName == Just creature.name
+
         cardClass =
             String.join " "
                 ("creature-card"
                     :: dropCueClasses index ctx.drag
+                    ++ (if isTarget then
+                            [ "creature-card--target" ]
+
+                        else
+                            []
+                       )
                     ++ lifecycleClasses isActive creature
                 )
     in
     article
         ([ id (Effects.cardId creature.name)
          , class cardClass
+         , on "click" (emptySpotClick creature.name)
          ]
             ++ dragAttrs (holdsOpenField ctx creature) index
         )
@@ -163,6 +197,16 @@ view ctx index creature =
                     , Tooltips.attr Tooltips.queueSelectShiftClick
                     ]
                     []
+                , if isTarget then
+                    span
+                        [ class "creature-card__target-icon"
+                        , Tooltips.attr Tooltips.queueTargetIcon
+                        , attribute "aria-label" "Editors target this creature"
+                        ]
+                        [ text "🎯" ]
+
+                  else
+                    text ""
                 , button
                     [ class "icon-btn"
                     , onClick (SetActive creature.name)
@@ -1508,9 +1552,24 @@ statusIcons creature =
                 , flag creature.concentrating "concentrating"
                 , flag creature.hiding "hiding"
                 , flag creature.dodging "dodging"
-                , flag creature.flying
-                    ("flying (" ++ String.fromInt creature.flyHeight ++ " ft)")
+                , flag creature.flying "flying"
                 ]
+
+        -- The height and fall controls ride beside the flying
+        -- label and write straight to the creature, so a flier
+        -- can be nudged without opening the editor.
+        flyControls =
+            if creature.flying then
+                [ View.FlyHeight.view
+                    { height = creature.flyHeight
+                    , up = AdjustFlyHeight creature.name 5
+                    , down = AdjustFlyHeight creature.name -5
+                    , fall = RollFallDamage creature.name
+                    }
+                ]
+
+            else
+                []
 
         labelButton name =
             button
@@ -1528,10 +1587,7 @@ statusIcons creature =
 
     else
         span [ class "status-icons" ]
-            (labels
-                |> List.map labelButton
-                |> List.intersperse (span [ class "status-toggles__sep" ] [ text "|" ])
-            )
+            (List.map labelButton labels ++ flyControls)
 
 
 {-| The 5e death-save tracker, rendered as a side-by-side pair of

@@ -54,6 +54,7 @@ import Msg
 import Ports
 import Preferences
 import Route exposing (Route(..))
+import Set
 import Task
 import Ui.AbilitySave
 import Ui.Account
@@ -99,6 +100,7 @@ import Update.HpChange
 import Update.Initiative
 import Update.LegendaryPip
 import Update.LoadCompendium
+import Update.LogRow
 import Update.LoreEdit
 import Update.Memo
 import Update.ModalChrome
@@ -563,9 +565,12 @@ init flags url key =
         , savedSnapshot = Nothing
         , savedAs = Nothing
         , dice = DiceUi.empty
+        , targetName = Nothing
         , hpChangeLog = []
         , nextHpLogSeq = 1
         , flashedHpLogSeq = 0
+        , flashedRollSeq = 0
+        , expandedLogRows = Set.empty
         , saveChainLog = []
         , hpEdit = Nothing
         , compendium = compendiumFromUrl url
@@ -918,6 +923,9 @@ updateInner msg model =
 
         NextTurn ->
             Update.Encounter.nextTurn model
+
+        TargetCreature name ->
+            Update.Encounter.targetCreature name model
 
         SetActive name ->
             Update.Encounter.setActive name model
@@ -1780,6 +1788,9 @@ updateInner msg model =
 
         DrawerPinToggle index ->
             Update.PanelDrawer.togglePin index model
+
+        LogRowToggle key ->
+            Update.LogRow.toggle key model
 
         DrawerFoldNewest ->
             Update.PanelDrawer.foldNewest model

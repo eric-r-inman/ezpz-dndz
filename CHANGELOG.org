@@ -115,6 +115,19 @@
     were pointed at leaves the queue.  No action needed.
 49. The Manage HP editor's log row flashes as a change lands, so an apply reads
     as having worked without looking away from the cards.  No action needed.
+50. Clicking an empty spot on a creature card picks it as the editors' target,
+    marked by a white ring and a 🎯; click again to clear it.  No action needed.
+51. The Manage HP editor's amount row is one line — the Selected checkbox,
+    "HP:", and a three-character field — and its buttons read "+ Temp" and "+
+    Max".  No action needed.
+52. The Status editor's toggles sit in two rows without separators.  No action
+    needed.
+53. A flying creature's card carries its height and fall controls beside the
+    status.  No action needed.
+54. The Dice Roller's faces are one row of eight, the coin among them, and a
+    roll that lands flashes its log row.  No action needed.
+55. Every log row has a caret that unfolds it so a long entry can be read in
+    full.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -142,12 +155,17 @@
     edge, with air before the Advantage row.  No action needed.
 14. A spent reaction button greys its background, not just its label.  No action
     needed.
+15. Clicking a card's status, HP, initiative, or condition chip opens its editor
+    when that editor was folded and already aimed at the creature.  No action
+    needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a
    creature's temporary pool by hand if you relied on that bypass.
 2. The ↑ / ↓ buttons are gone from the creature cards; drag a card to move it
    instead.  The → button that makes a creature active stays.
+3. The Manage HP amount field takes three characters, so a formula like 2d6+3 no
+   longer fits there.  Roll those in the Dice Roller and type the total.
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the

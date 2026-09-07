@@ -13,17 +13,30 @@ import Dice
 import Html exposing (Html, button, div, input, label, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
+import Html.Keyed
 import Msg exposing (Msg(..))
+import Set exposing (Set)
 import Ui.Dice exposing (DiceUi)
 import Ui.HpChange exposing (HpChangeEntry)
 import Util.Keyboard
 import View.HpLog
+import View.LogRow
 import View.Panel
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Header -> List HpChangeEntry -> DiceUi -> Html Msg
-view header hpChangeLog ui =
+{-| What the log needs from the model beyond the roller's own
+state.
+-}
+type alias Log =
+    { hpChangeLog : List HpChangeEntry
+    , expanded : Set String
+    , flashedRollSeq : Int
+    }
+
+
+view : View.Panel.Header -> Log -> DiceUi -> Html Msg
+view header log ui =
     View.Panel.view
         { close = Nothing
         , title = "Dice Roller"
@@ -35,7 +48,7 @@ view header hpChangeLog ui =
             [ form ui
             , faceButtons
             , specialButtons
-            , history hpChangeLog ui
+            , history log ui
             ]
         }
 
@@ -118,6 +131,13 @@ faceButtons =
         , faceButton 12 "die-btn--d12"
         , faceButton 20 "die-btn--d20"
         , faceButton 100 "die-btn--d100"
+        , button
+            [ class "die-btn die-btn--coin"
+            , onClick DiceFlipCoin
+            , Tooltips.attr Tooltips.diceCoinFlip
+            , attribute "aria-label" "Flip a coin"
+            ]
+            [ text "🪙" ]
         ]
 
 
@@ -146,12 +166,6 @@ specialButtons =
             , Tooltips.attr Tooltips.diceDisadvantage
             ]
             [ text "Disadvantage (d20)" ]
-        , button
-            [ class "action-btn"
-            , onClick DiceFlipCoin
-            , Tooltips.attr Tooltips.diceCoinFlip
-            ]
-            [ text "🪙 Coin Flip" ]
         ]
 
 
@@ -164,8 +178,8 @@ because the roll that produced it came first. Manual changes
 between two rolls all carry the same stamp, and hold the order
 they arrive in — the sort is stable and the log is newest-first.
 -}
-history : List HpChangeEntry -> DiceUi -> Html Msg
-history hpChangeLog ui =
+history : Log -> DiceUi -> Html Msg
+history log ui =
     let
         rolls =
             Dice.historyEntries ui.history
@@ -173,16 +187,42 @@ history hpChangeLog ui =
         rollRows =
             List.indexedMap
                 (\i roll ->
-                    ( ( ui.history.pushed - i, 0 ), historyEntry ui i roll )
+                    let
+                        ordinal =
+                            ui.history.pushed - i
+
+                        key =
+                            "roll-" ++ String.fromInt ordinal
+                    in
+                    ( ( ordinal, 0 )
+                    , ( "r" ++ String.fromInt ordinal
+                      , historyEntry ui
+                            i
+                            { key = key
+                            , flash = ordinal > log.flashedRollSeq
+                            , expanded = Set.member key log.expanded
+                            }
+                            roll
+                      )
+                    )
                 )
                 rolls
 
         hpRows =
             List.indexedMap
                 (\i e ->
-                    ( ( e.rollsBefore, 1 ), View.HpLog.entry (i == 0) e )
+                    ( ( e.rollsBefore, 1 )
+                    , ( "h" ++ String.fromInt e.seq
+                      , View.HpLog.entry
+                            { undoable = i == 0
+                            , flash = False
+                            , expanded = Set.member (View.HpLog.rowKey e) log.expanded
+                            }
+                            e
+                      )
+                    )
                 )
-                hpChangeLog
+                log.hpChangeLog
 
         entries =
             List.sortBy (\( ( ordinal, tie ), _ ) -> ( -ordinal, -tie ))
@@ -235,21 +275,35 @@ history hpChangeLog ui =
                     ]
 
                 else
-                    [ ul [ class "dice-history__list" ]
+                    -- Keyed so a landing roll mounts a fresh row and
+                    -- its flash runs, rather than patching the row
+                    -- that held the previous newest.
+                    [ Html.Keyed.ul [ class "dice-history__list" ]
                         (List.map Tuple.second entries)
                     ]
                )
         )
 
 
-historyEntry : DiceUi -> Int -> Dice.Roll -> Html Msg
-historyEntry ui idx roll =
+{-| One roll row. `key` is its identity for the fold; `flash`
+marks a roll that landed while the panel was showing.
+-}
+historyEntry : DiceUi -> Int -> { key : String, flash : Bool, expanded : Bool } -> Dice.Roll -> Html Msg
+historyEntry ui idx opts roll =
     let
         isMenuOpen =
             ui.rerunMenuOpenFor == Just idx
+
+        rowClass =
+            if opts.flash then
+                "dice-history__entry dice-history__entry--flash"
+
+            else
+                "dice-history__entry"
     in
-    li [ class "dice-history__entry" ]
-        [ div [ class "dice-history__formula" ]
+    li [ class rowClass ]
+        [ View.LogRow.foldToggle opts.key opts.expanded
+        , div [ class (View.LogRow.openable "dice-history__formula" opts.expanded) ]
             [ rollSource roll.source
             , text roll.formula
             , span [ class "dice-history__rolled" ]

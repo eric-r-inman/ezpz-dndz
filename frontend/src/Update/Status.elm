@@ -23,7 +23,7 @@ drawerSurface model =
 
 {-| A card's status label: it aims the editor at its own
 creature, so an editor already open for someone else re-aims.
-One already aimed here scrolls into view — a card control asks
+One already aimed here unfolds and scrolls into view — a card control asks
 to see a creature's editor.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
@@ -31,7 +31,7 @@ openFor target model =
     case drawerSurface model of
         Just (SurfaceStatus ui) ->
             if ui.target == target then
-                ( model
+                ( Model.unfoldDrawer Model.statusLens model
                 , Effects.scrollDrawerIndex
                     (Model.drawerIndexOf Model.statusLens model)
                 )

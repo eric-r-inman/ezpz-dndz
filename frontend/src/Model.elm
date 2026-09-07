@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, ackHpLog, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, xpLens
+    , DragState, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -54,6 +54,7 @@ import Json.Decode as Decode
 import Msg exposing (MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
+import Set exposing (Set)
 import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
@@ -468,16 +469,66 @@ need no call.
 -}
 reaimStale : Model -> Model
 reaimStale model =
-    let
-        target =
-            Encounter.defaultTarget model.encounter
+    reaimWhere (\aimed -> not (Encounter.hasCreature aimed model.encounter))
+        (dropDeadTarget model)
 
-        reaim wrap fresh aimed surface =
-            if Encounter.hasCreature aimed model.encounter then
-                surface
+
+{-| Point every per-creature editor at the current default target,
+whatever it was aimed at before. Picking a target is what calls
+this: the pick is the GM saying "this one now", so an editor
+already aimed elsewhere is re-aimed too.
+-}
+aimEditorsAtTarget : Model -> Model
+aimEditorsAtTarget =
+    reaimWhere (always True)
+
+
+{-| The creature an editor should aim at absent a better idea:
+the picked target while it is still in the queue, else the
+active creature, else the queue's head.
+-}
+defaultTarget : Model -> String
+defaultTarget model =
+    case model.targetName of
+        Just name ->
+            if Encounter.hasCreature name model.encounter then
+                name
 
             else
+                Encounter.defaultTarget model.encounter
+
+        Nothing ->
+            Encounter.defaultTarget model.encounter
+
+
+{-| A picked target that has left the queue is no target.
+-}
+dropDeadTarget : Model -> Model
+dropDeadTarget model =
+    case model.targetName of
+        Just name ->
+            if Encounter.hasCreature name model.encounter then
+                model
+
+            else
+                { model | targetName = Nothing }
+
+        Nothing ->
+            model
+
+
+reaimWhere : (String -> Bool) -> Model -> Model
+reaimWhere stale model =
+    let
+        target =
+            defaultTarget model
+
+        reaim wrap fresh aimed surface =
+            if stale aimed then
                 wrap (fresh target)
+
+            else
+                surface
 
         reaimOne surface =
             case surface of
@@ -716,6 +767,15 @@ openDrawer lens ui model =
                          }
                        ]
         }
+
+
+{-| Show a panel that is already in the stack, keeping whatever it
+holds. A card control aimed at the creature the panel already
+targets asks for exactly this — see it, don't reset it.
+-}
+unfoldDrawer : SurfaceLens a -> Model -> Model
+unfoldDrawer =
+    setFolded False
 
 
 {-| Fold a panel already in the stack, or unfold it. The editors
@@ -1222,6 +1282,13 @@ type alias Model =
     , savedSnapshot : Maybe Encounter
     , savedAs : Maybe String
     , dice : DiceUi
+
+    -- The creature the GM has picked out by clicking its card,
+    -- which the per-creature editors aim at ahead of the active
+    -- one.  Distinct from the cards' checkboxes, which choose a
+    -- set for "apply to selected"; this is one creature, and it
+    -- is what "the target" means until the GM clears it.
+    , targetName : Maybe String
     , hpChangeLog : List HpChangeEntry
 
     -- Hands out `HpChangeEntry.seq`.  A counter rather than a
@@ -1237,6 +1304,16 @@ type alias Model =
     -- bookkeeping about the log, and every path that re-aims the
     -- editor rebuilds that record.
     , flashedHpLogSeq : Int
+
+    -- The dice roller's counterpart: the roll count its panel
+    -- has already shown, so a roll landing while the panel is
+    -- open flashes and one it reopens on does not.
+    , flashedRollSeq : Int
+
+    -- Log rows the GM has unfolded to read in full, by the row
+    -- key each log builds.  One set for both logs, since a row
+    -- has one identity wherever it renders.
+    , expandedLogRows : Set String
 
     -- Twin of `hpChangeLog` for the Save Chain modal.  The
     -- three apply paths (Fail button, Pass button, 🎲 Roll
