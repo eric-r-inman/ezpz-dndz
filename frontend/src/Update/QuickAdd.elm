@@ -13,6 +13,7 @@ back-to-back.
 -}
 
 import Compendium
+import Effects
 import Encounter.Roster
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
@@ -29,9 +30,18 @@ drawerSurface model =
         |> Maybe.map SurfaceQuickAdd
 
 
+{-| The queue's "+" row sits far from the panel's heading, so an
+open that lands off screen reads as nothing having happened.
+-}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( Model.toggleDrawer Model.quickAddLens QuickAddUi.fresh model, Cmd.none )
+    let
+        next =
+            Model.openDrawer Model.quickAddLens QuickAddUi.fresh model
+    in
+    ( next
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.quickAddLens next)
+    )
 
 
 {-| Open the Quick Add modal in "replace this creature" mode.

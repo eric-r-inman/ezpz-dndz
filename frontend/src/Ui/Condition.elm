@@ -5,9 +5,10 @@ module Ui.Condition exposing
 
 {-| Condition / effect editor state.
 
-`target` is the creature whose Condition button (or chip)
-was clicked. `editingId` is `Nothing` when creating a new
-condition and `Just id` when editing an existing one — the
+`target` is the creature the editor is aimed at — the queue's
+default when the drawer expands it unaimed, or the creature
+whose chip was clicked. `editingId` is `Nothing` when creating a
+new condition and `Just id` when editing an existing one — the
 latter unlocks a "Delete" button in the editor footer.
 
 The remaining fields mirror the rendered form. We track raw
@@ -73,12 +74,6 @@ type alias ConditionUi =
     -- reads as a bug.  Reset to False whenever the user touches
     -- duration in any other way.
     , useOneMinutePreset : Bool
-
-    -- True once the current settings have been applied and not
-    -- edited since.  Closing an applied editor resets it;
-    -- closing an un-applied add-mode editor stashes the settings
-    -- as the draft the next open restores.
-    , applied : Bool
     }
 
 
@@ -152,7 +147,6 @@ fresh target =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
-    , applied = False
     }
 
 
@@ -229,7 +223,6 @@ fromCondition target cond =
     , loadedPresetName = Nothing
     , expandedCategories = Set.empty
     , useOneMinutePreset = False
-    , applied = False
     }
 
 

@@ -1,12 +1,12 @@
 module View.PanelDrawer exposing (isOpen, view)
 
-{-| The Actions column's drawer: a second workspace column
-holding every open panel, stacked oldest-first so a newly
-opened panel appears below the ones already up.
+{-| The editor column: the encounter's own controls above a
+stack holding every panel, oldest-first, so a newly opened one
+appears below the ones already up.
 
 Each drawer variant renders through `panelFor`; adding a panel
 means a lens in `Model`, an arm here, an Esc mapping in
-`Main.subscriptions`, and — if the Actions column opens it — an
+`Main.subscriptions`, and — if the drawer boots with it — an
 entry in `Model.defaultDrawer`.
 
 @docs isOpen, view
@@ -14,9 +14,9 @@ entry in `Model.defaultDrawer`.
 -}
 
 import Effects
-import Html exposing (Html, div, text)
+import Html exposing (Html, button, div, text)
 import Html.Attributes as Attr exposing (class)
-import Html.Events
+import Html.Events exposing (onClick)
 import Html.Keyed
 import Json.Decode as Decode
 import Model exposing (Model, Surface(..))
@@ -37,10 +37,12 @@ import View.Panel.SaveLoad
 import View.Panel.StatBlock
 import View.Panel.Treasure
 import View.Panel.Xp
+import View.Tooltips as Tooltips
 
 
-{-| Whether the stack holds any panels, and so whether the
-drawer has a column to claim in the first place.
+{-| Whether the stack has panels for the column to show — what
+the workspace grid sizes its track against, and what the fold
+strip needs before it has anything to fold.
 -}
 isOpen : Model -> Bool
 isOpen model =
@@ -49,11 +51,71 @@ isOpen model =
 
 view : Model -> Html Msg
 view model =
-    if model.drawerCollapsed then
-        text ""
+    div [ class "drawer-column" ]
+        [ encounterControls model
+        , if model.drawerCollapsed then
+            text ""
+
+          else
+            stack model
+        ]
+
+
+{-| The encounter's own controls, above the editors they sit
+with. They stay put when the stack folds away: advancing the
+turn is the one thing a GM does every round, and it should not
+need the editors unfolded first.
+-}
+encounterControls : Model -> Html Msg
+encounterControls model =
+    div [ class "drawer-controls" ]
+        [ controlButton "action-btn action-btn--plain"
+            CompendiumOpen
+            Tooltips.panelOpenCompendium
+            "📚"
+        , div [ class "drawer-controls__encounter" ]
+            [ controlButton "action-btn action-btn--red"
+                EncounterClear
+                Tooltips.clear
+                "🗑️"
+            , controlButton "action-btn action-btn--orange"
+                EncounterReset
+                Tooltips.reset
+                "⏮"
+            , turnControl model.encounter.activeName
+            ]
+        ]
+
+
+{-| An empty active creature is the pre-combat sentinel: the
+queue is set up but combat hasn't started, so the button starts
+it rather than advancing it.
+-}
+turnControl : String -> Html Msg
+turnControl activeName =
+    if String.isEmpty activeName then
+        controlButton "action-btn action-btn--green"
+            EncounterRun
+            Tooltips.runEncounter
+            "▶"
 
     else
-        stack model
+        controlButton "action-btn action-btn--green"
+            NextTurn
+            Tooltips.nextTurn
+            "⏭"
+
+
+controlButton : String -> Msg -> String -> String -> Html Msg
+controlButton cls msg tip glyph =
+    button
+        [ class (cls ++ " drawer-controls__btn")
+        , Attr.type_ "button"
+        , onClick msg
+        , Tooltips.attr tip
+        , Attr.attribute "aria-label" tip
+        ]
+        [ text glyph ]
 
 
 stack : Model -> Html Msg

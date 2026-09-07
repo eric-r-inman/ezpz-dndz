@@ -16,6 +16,8 @@ import Ui.Initiative
 import Ui.Replace
 import Ui.SaveChain
 import Ui.Status
+import Update.Dice
+import Update.SaveLoad
 
 
 {-| Close the stat-block panel, unpinning its creature.
@@ -37,15 +39,39 @@ toggleCollapse index model =
                 |> Maybe.map .collapsed
                 |> Maybe.withDefault False
     in
-    ( Model.toggleCollapsedAt index model
-        |> (if expanding then
-                aimAt index
+    if expanding then
+        Model.toggleCollapsedAt index model
+            |> (aimAt index >> markRead index)
+            |> primeList index
 
-            else
-                identity
-           )
-    , Cmd.none
-    )
+    else
+        ( Model.toggleCollapsedAt index model, Cmd.none )
+
+
+{-| The saves listing is only worth fetching once the panel can
+show it, so expanding is what asks for it.
+-}
+primeList : Int -> Model -> ( Model, Cmd Msg )
+primeList index model =
+    case Maybe.map .surface (Model.drawerPanelAt index model) of
+        Just (SurfaceSaveLoad _) ->
+            Update.SaveLoad.primeList model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Expanding the roller puts its history on screen, so that is
+what clears the unread mark.
+-}
+markRead : Int -> Model -> Model
+markRead index model =
+    case Maybe.map .surface (Model.drawerPanelAt index model) of
+        Just SurfaceDice ->
+            Update.Dice.markRead model
+
+        _ ->
+            model
 
 
 {-| A per-creature editor being expanded is aimed at the queue's
@@ -143,10 +169,20 @@ dragEnd model =
     ( { model | drawerDrag = Nothing }, Cmd.none )
 
 
-{-| Fold the drawer column out of the layout, or back into it.
+{-| Fold the editor column out of the layout, or back into it.
 The panels keep their place in the stack, so this is a view of
-the same work rather than a close.
+the same work rather than a close — but unfolding does put the
+roller's history back in sight, which clears its unread mark.
 -}
 columnToggle : Model -> ( Model, Cmd Msg )
 columnToggle model =
-    ( { model | drawerCollapsed = not model.drawerCollapsed }, Cmd.none )
+    ( { model | drawerCollapsed = not model.drawerCollapsed }
+        |> (\next ->
+                if Model.drawerShows Model.diceLens next then
+                    Update.Dice.markRead next
+
+                else
+                    next
+           )
+    , Cmd.none
+    )

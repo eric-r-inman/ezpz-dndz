@@ -52,12 +52,6 @@ type alias SaveChainUi =
     -- form (so "Delete" knows which entry to remove).
     , presetPickerSelection : String
     , loadedPresetName : Maybe String
-
-    -- True once the current settings have been applied and not
-    -- edited since.  Closing an applied editor resets it;
-    -- closing an un-applied one stashes the settings as the
-    -- draft the next open restores.
-    , applied : Bool
     }
 
 
@@ -88,7 +82,6 @@ fresh target =
     , dcOverrideText = ""
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
-    , applied = False
     }
 
 

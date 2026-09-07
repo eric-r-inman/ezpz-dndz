@@ -26,7 +26,7 @@ view collapse hpChangeLog ui =
     View.Panel.view
         { close = CloseDice
         , title = "Dice Roller"
-        , titleTrail = Nothing
+        , titleTrail = View.Panel.titleMarkIf ui.unread
         , subtitle = Nothing
         , collapse = collapse
         , extraClass = "panel-drawer--dice"

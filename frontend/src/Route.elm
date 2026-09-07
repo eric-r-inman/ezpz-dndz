@@ -24,9 +24,9 @@ import Url.Parser.Query as Query
   - `About` — static "about this app" page, linked from the
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
-    block, opened via the ↗ link in the Actions panel.
+    block, opened via the ↗ link in the stat-block panel.
   - `Compendium` — the full-page compendium browser, opened
-    from the Actions column's Compendium Open trigger and laid
+    from the editor column's Compendium trigger and laid
     out as a full page so the GM can park it on a second
     monitor. The AppBar is suppressed on this route, matching
     `QuickList`.

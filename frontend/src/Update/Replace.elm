@@ -1,4 +1,4 @@
-module Update.Replace exposing (apply, applySelected, close, open, pick, searchChanged)
+module Update.Replace exposing (apply, applySelected, close, pick, searchChanged)
 
 {-| Update branches for the Replace editor: pick a compendium
 creature, then swap it in for the active creature (or every
@@ -22,25 +22,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.replaceLens model
         |> Maybe.map SurfaceReplace
-
-
-{-| Opening is a toggle: clicking the column's Replace button
-while the editor is already open for the same target closes it.
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceReplace ui) ->
-            if ui.target == target then
-                Model.closeDrawer Model.replaceLens model
-
-            else
-                Model.openDrawer Model.replaceLens (ReplaceUi.fresh target) model
-
-        _ ->
-            Model.openDrawer Model.replaceLens (ReplaceUi.fresh target) model
-    , Cmd.none
-    )
 
 
 close : Model -> ( Model, Cmd Msg )

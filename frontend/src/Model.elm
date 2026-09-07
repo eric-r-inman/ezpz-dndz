@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerHas, drawerIndexOf, drawerPanelAt, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, toggleDrawer, treasureLens, treasureTableLens, xpLens
+    , DrawerDrag, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, closeDrawer, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, diceLens, drawerGet, drawerIndexOf, drawerPanelAt, drawerShows, duplicateLens, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, timerLens, toggleCollapsedAt, treasureLens, treasureTableLens, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -30,7 +30,7 @@ models what is open.
 
 `savedSnapshot` is the last-known persisted state of the
 encounter — the result of the user's most recent Save (or
-Load) action. It backs the Save button's dirty indicator,
+Load) action. It backs the Encounter Saves panel's dirty mark,
 which lights when the live roster differs from it. `savedAs`
 parallels it, recording the name the encounter was last saved
 under so re-saving doesn't make the user retype the filename.
@@ -145,19 +145,17 @@ type Surface
     | SurfaceTreasureTable TreasureTableUi
     | SurfaceSaveLoad SaveLoadUi
       -- Save Chain editor: reusable "creature makes a save;
-      -- something happens" recipe.  Opened from each card's
-      -- Save Chain button; loads / edits / saves named presets
-      -- from `model.saveChainPresets` and applies fail/success
-      -- outcomes to the target (or the selection).
+      -- something happens" recipe.  Loads / edits / saves named
+      -- presets from `model.saveChainPresets` and applies
+      -- fail/success outcomes to the target (or the selection).
     | SurfaceSaveChain SaveChainUi
       -- The dice roller.  A marker: the roller's substate has to
       -- outlive a close (history, unread flag), so it stays on
       -- `model.dice` and this variant only records openness and
       -- stack position.
     | SurfaceDice
-      -- The XP-scope picker.  Also a marker — the scope itself
-      -- is read by the column's trigger whether or not the
-      -- panel is open, so it lives on `model.xpScope`.
+      -- The XP-scope picker.  Also a marker — the scope
+      -- outlives a close, so it lives on `model.xpScope`.
     | SurfaceXp
       -- The pinned creature's stat block.
     | SurfaceStatBlock PanelPin
@@ -204,9 +202,7 @@ parkCreatureEditor model =
             model
 
 
-{-| The drawer's boot contents: every panel the Actions column
-opens, folded to its heading row, in the column's own order so
-the two read the same way down.
+{-| The drawer's boot contents, folded to their heading rows.
 
 The per-creature editors take no target here — the encounter
 arrives after `init` — so they come up unaimed and
@@ -228,7 +224,7 @@ defaultDrawer =
         , SurfaceCrCalculator Ui.CrCalculator.fresh
         , SurfaceXp
         , SurfaceTreasure Ui.Treasure.fresh
-        , SurfaceSaveLoad (Ui.SaveLoad.fresh Nothing)
+        , SurfaceSaveLoad Ui.SaveLoad.fresh
         , SurfaceQuickAdd Ui.QuickAdd.fresh
         , SurfaceRandomEncounter Ui.RandomEncounter.fresh
         ]
@@ -282,6 +278,17 @@ drawerHas lens model =
     drawerGet lens model /= Nothing
 
 
+{-| Whether a panel's body is on screen. `drawerHas` answers a
+weaker question: whether the panel exists at all.
+-}
+drawerShows : SurfaceLens a -> Model -> Bool
+drawerShows lens model =
+    not model.drawerCollapsed
+        && List.any
+            (\panel -> lens.extract panel.surface /= Nothing && not panel.collapsed)
+            model.drawer
+
+
 {-| Apply `fn` to the matching drawer panel's substate, leaving
 its stack position alone. No-op when that panel isn't open.
 -}
@@ -303,17 +310,41 @@ mapDrawer lens fn model =
 {-| Open a drawer panel with the given substate. A panel already
 open keeps its stack position and takes the new substate (the
 re-aim case); otherwise the panel joins the bottom of the stack.
+Either way the panel and the column around it come unfolded, so
+an open the GM asked for actually lands on screen.
 -}
 openDrawer : SurfaceLens a -> a -> Model -> Model
 openDrawer lens ui model =
     if drawerHas lens model then
-        mapDrawer lens (\_ -> ui) model
+        mapDrawer lens (\_ -> ui) (unfoldDrawer lens model)
 
     else
         { model
             | drawer =
                 model.drawer ++ [ { surface = lens.wrap ui, collapsed = False } ]
+            , drawerCollapsed = False
         }
+
+
+{-| Unfold a panel already in the stack, and the column around
+it, so opening one the drawer booted folded actually puts it on
+screen.
+-}
+unfoldDrawer : SurfaceLens a -> Model -> Model
+unfoldDrawer lens model =
+    { model
+        | drawerCollapsed = False
+        , drawer =
+            List.map
+                (\panel ->
+                    if lens.extract panel.surface /= Nothing then
+                        { panel | collapsed = False }
+
+                    else
+                        panel
+                )
+                model.drawer
+    }
 
 
 closeDrawer : SurfaceLens a -> Model -> Model
@@ -370,18 +401,6 @@ mapSurfaceAt index fn model =
                 )
                 model.drawer
     }
-
-
-{-| The column-trigger gesture: close the panel if it is open,
-open it with the given substate if not.
--}
-toggleDrawer : SurfaceLens a -> a -> Model -> Model
-toggleDrawer lens ui model =
-    if drawerHas lens model then
-        closeDrawer lens model
-
-    else
-        openDrawer lens ui model
 
 
 {-| Pair of `extract` / `wrap` functions identifying one variant
@@ -786,13 +805,10 @@ type alias Model =
     , compendium : CompendiumUi
     , surface : Maybe Surface
 
-    -- Remembered editor settings, restored on the next open of
-    -- the matching surface.  Stashed when an editor closes with
-    -- un-applied settings; cleared when it closes after applying
-    -- (see each Update module's close).
+    -- The Manage HP editor's un-applied settings, restored the
+    -- next time a card aims it.  Stashed when it closes with
+    -- work in it; cleared when it closes after applying.
     , hpChangeDraft : Maybe HpChangeUi
-    , conditionDraft : Maybe ConditionUi
-    , saveChainDraft : Maybe SaveChainUi
 
     -- Recent condition applications, newest first — the
     -- condition editor's counterpart to `hpChangeLog`, carrying
@@ -809,7 +825,7 @@ type alias Model =
     , xpScope : XpScope
     , settingsOpen : Bool
 
-    -- The Actions column's drawer: every open panel, oldest
+    -- The editor column's drawer: every open panel, oldest
     -- first, rendered top to bottom.  A stack rather than a
     -- single slot — drawer panels deliberately coexist, so the
     -- one-at-a-time invariant `surface` enforces stops at the
@@ -820,7 +836,7 @@ type alias Model =
     -- The drawer reorder in progress, if any.
     , drawerDrag : Maybe DrawerDrag
 
-    -- Whether the drawer column is folded out of the layout.
+    -- Whether the editor column is folded out of the layout.
     -- The panels stay in the stack while it is, so folding the
     -- column is a view of the same work rather than a close.
     , drawerCollapsed : Bool

@@ -471,8 +471,7 @@ type Msg
       -- ability.low, flip ready=True.
     | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
-      -- Dice modal
-    | OpenDice
+      -- Dice roller.
     | CloseDice
     | DiceInputChanged String
     | DiceCountChanged String
@@ -540,12 +539,8 @@ type Msg
     | StatBlockRollLanded Int Int Dice.Roll
       -- (clientX, clientY captured at click, the resolved roll)
     | RollPopupExpired Int
-      -- Manage HP editor.  Opens with the target creature but
-      -- no committed kind — the verb buttons fire
-      -- `HpChangeApplyAs kind` to choose one.
-    | HpChangeOpen String
-      -- The column trigger folds the editor away; a card's HP
-      -- value re-aims it at that card's creature.
+      -- A card's HP value aims the editor at that card's
+      -- creature.
     | HpChangeOpenFor String
       -- The Manual section writes typed pools, no verb involved.
     | HpChangeManualChanged HpField String
@@ -570,13 +565,9 @@ type Msg
       -- landing must not depend on surface state that is gone.
     | HpChangeFreshRollLanded HpKind Bool String Dice.Roll
     | HpChangeUndoLatest
-      -- ── Save Chain modal ─────────────────────────────────
-      -- Opens the reusable "creature makes a save; something
-      -- happens" modal from the card's Save Chain button.  Form
-      -- state is edited here, saved as a named preset in
-      -- `localStorage.saveChainPresets`, and executed via
-      -- `SaveChainApplyFail` / `SaveChainApplyPass`.
-    | SaveChainOpen String
+      -- Save chain.  State is edited here, saved as a named
+      -- preset in `localStorage.saveChainPresets`, and executed
+      -- via `SaveChainApplyFail` / `SaveChainApplyPass`.
     | SaveChainClose
     | SaveChainNameChanged String
     | SaveChainAbilitySet Compendium.Ability
@@ -653,30 +644,22 @@ type Msg
       -- Manual queue reordering
     | MoveCreatureUp String
     | MoveCreatureDown String
-      -- Roster mutation (right rail × / ⧉ buttons)
+      -- Roster mutation (the right rail's × button)
     | RemoveCreature String
-      -- Duplicate editor: pick a flavor, choose the target
-      -- scope, Apply.
-    | DuplicateOpen String
+      -- Duplicate.  Spawns numbered copies of a creature.
     | DuplicateClose
     | DuplicateModeSet DuplicateMode
     | DuplicateApply
     | DuplicateApplySelected
-      -- Replace editor: search the compendium, pick the
-      -- replacement, choose the scope, Apply.  Swaps preserve
-      -- queue position and initiative.
-    | ReplaceOpen String
+      -- Replace.  Swaps a creature for a compendium pick,
+      -- preserving its queue position and initiative.
     | ReplaceClose
     | ReplaceSearchChanged String
     | ReplacePick String
     | ReplaceApply
     | ReplaceApplySelected
-      -- Status editor: posture toggles edit a draft; the Apply
-      -- buttons stamp it onto the active creature or the
-      -- selection.  The column trigger folds the editor away,
-      -- while a card's status label aims it at that card's
-      -- creature.
-    | StatusOpen String
+      -- Status.  The toggles edit a draft; the Apply buttons
+      -- stamp it onto the target or the selection.
     | StatusOpenFor String
     | StatusClose
     | StatusCoverCycle
@@ -684,10 +667,8 @@ type Msg
     | StatusFlyHeightAdjust Int
     | StatusApplyTarget
     | StatusApplySelected
-      -- Initiative editor.  The column trigger folds the editor
-      -- away, while a card's init circle aims it at that card's
-      -- creature.
-    | InitiativeOpen String
+      -- Initiative.  Manual entry and the auto-roll batch land
+      -- through the same re-sort.
     | InitiativeOpenFor String
     | InitiativeClose
     | InitiativeCustomChanged String
@@ -710,8 +691,7 @@ type Msg
     | NoteEditChange String
     | NoteEditCommit
     | NoteEditCancel
-      -- Condition / effect modal
-    | ConditionOpenNew String
+      -- Conditions and effects, timed or open-ended.
     | ConditionOpenEdit String Int
     | ConditionClose
     | ConditionPickStandard String
@@ -1035,8 +1015,7 @@ type Msg
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
-      -- Encounter-level controls: Save / Load / Reset / Clear
-    | SaveLoadOpen
+      -- Named saves, on the server or the GM's own machine.
     | SaveLoadClose
     | SaveLoadStorageSet SaveStorage
     | SaveLoadFilenameChanged String
@@ -1134,7 +1113,6 @@ type Msg
     | EncounterControlCancel
     | EncounterRun
     | XpScopeSet XpScope
-    | XpFilterToggle
     | XpFilterClose
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
@@ -1214,17 +1192,15 @@ type Msg
       -- creatures that landed server-side so the toast can be
       -- specific.
     | LocalCompendiumMigrated Int (Result Http.Error ())
-      -- CR Calculator modal.
-    | CrCalculatorOpen
+      -- Difficulty calculator.
     | CrCalculatorClose
     | CrCalculatorScopeSet XpScope
     | CrCalculatorPartyAdd
     | CrCalculatorPartyRemove Int
     | CrCalculatorPartyLevelSet Int String
-      -- Random Encounter modal.  Party config reuses the
-      -- CR Calculator's `*Party*` Msgs because the underlying
-      -- `model.party` is shared between the two features.
-    | RandomEncounterOpen
+      -- Random encounter.  Party config reuses the CR
+      -- Calculator's `*Party*` Msgs because `model.party` is
+      -- shared between the two.
     | RandomEncounterClose
       -- Wire tokens for all the dropdown / pill fields —
       -- keeps the Msg payloads as `String` so the view's
@@ -1275,12 +1251,9 @@ type Msg
     | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
-      -- Treasure — random loot generator.  Open seeds the UI
-      -- state with the bracket suggested from the toughest
-      -- creature's CR; the actual loot lives on
-      -- `model.encounter.treasure` so it persists with the
-      -- encounter.
-    | TreasureOpen
+      -- Treasure.  The roller reads the encounter's own CR; the
+      -- loot it produces lives on `model.encounter.treasure`, so
+      -- it persists with the encounter.
     | TreasureClose
       -- Icon on one of the queue's reminder strips, folding its
       -- read-only drop-down open or shut.

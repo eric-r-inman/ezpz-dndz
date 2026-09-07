@@ -59,12 +59,12 @@ Every modal the app started with, and its target pattern.
 ** Inline on the creature card
 
 - =HpChange= (Damage / Heal / Temp HP) :: Converted as a card expansion, then
-  re-homed twice: its trigger is in the Actions column and the editor opens in
+  re-homed twice: its trigger sits on the creature card and the editor opens in
   the drawer, targeting the active creature.  The ten-entry log shrinks to "last
   change + undo" in the editor; the full log lives in the dice panel.
-- =Condition= :: Same journey as =HpChange= — column trigger, drawer panel,
-  active-creature default, with a second button applying to the selection.  The
-  biggest payoff of the migration: conditions get set while watching the fight.
+- =Condition= :: Same journey as =HpChange= — drawer panel, active-creature
+  default, with a second button applying to the selection.  The biggest payoff
+  of the migration: conditions get set while watching the fight.
 - =Memo= (the row-three note) :: Clicking the icon becomes an in-place text
   input; no surface at all.
 - =Note= (the name note) :: Identical treatment, completing the existing
@@ -72,11 +72,11 @@ Every modal the app started with, and its target pattern.
 - =Timer= :: Originally mapped as a popover, but converted with this group so
   every card-button editor shares one UX; it may still shrink to a popover once
   that tier's anchored container exists.
-- =SaveChain= :: Originally mapped as a right-rail panel; it shares the
-  column-plus-drawer home of =HpChange= and =Condition=, which is that panel on
-  the other side of the queue.
+- =SaveChain= :: Originally mapped as a right-rail panel; it shares the drawer
+  panel home of =HpChange= and =Condition=, which is that panel on the other
+  side of the queue.
 - =Initiative= :: Originally mapped as a popover anchored to the clicked
-  initiative badge; it took the column-plus-drawer treatment instead, since its
+  initiative badge; it took the drawer panel treatment instead, since its
   roll-and-sort batch is too wide for an anchored container.  The card's init
   circle still aims the editor at its own creature.
 
@@ -95,8 +95,8 @@ Every modal the app started with, and its target pattern.
 ** Docked panel / drawer
 
 - =Dice= :: The strongest panel candidate — a GM plausibly wants it persistently
-  open.  Mapped as a right-rail dock beside the stat block; landed in the
-  Actions column's drawer with it, stacked in whatever order the GM opened them.
+  open.  Mapped as a right-rail dock beside the stat block; landed in the editor
+  column's drawer with it, stacked in whatever order the GM opened them.
 - =Treasure= (the roller) :: Rolls against the current queue's enemies; a drawer
   keeps them visible while results generate.
 - =CrCalculator= :: Reads the live queue by design; as a panel, the difficulty
@@ -111,16 +111,16 @@ Every modal the app started with, and its target pattern.
   drawer landed, carrying the whole form; the quick-save button and the route
   are still ahead.
 
-All of these landed in one frame rather than a drawer per tier: the far-left
-Actions column gathers the encounter-scoped triggers, and the panel beside it
-shows whichever was pressed.  =QuickAdd= went there too — the popover the tier
-above mapped it to would have been the only one of its kind — and so did the
-pinned stat block and the XP scope, which is what let the two right-hand panes
-go away entirely.  The Reset / Clear confirmation is the exception the policy
-above reserves: a destructive must-decide-now interruption, so it stayed a
-modal.  =View.Panel= carries the shared chrome, with its shell fields lined up
-against =View.Modal='s, so moving a feature between the two is mostly a matter
-of swapping the wrapper.
+All of these landed in one frame rather than a drawer per tier: the editor
+column gathers the encounter's own controls, and the stack below them holds
+every editor, folded to its heading row.  =QuickAdd= went there too — the
+popover the tier above mapped it to would have been the only one of its kind —
+and so did the pinned stat block and the XP scope, which is what let the two
+right-hand panes go away entirely.  The Reset / Clear confirmation is the
+exception the policy above reserves: a destructive must-decide-now interruption,
+so it stayed a modal.  =View.Panel= carries the shared chrome, with its shell
+fields lined up against =View.Modal='s, so moving a feature between the two is
+mostly a matter of swapping the wrapper.
 
 ** Route / full page
 

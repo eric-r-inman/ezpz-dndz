@@ -6,6 +6,7 @@ module Encounter.Difficulty exposing
     , difficultyKey, difficultyLabel, difficultyDescription
     , maxLevel, minLevel
     , encodePartyState, decodePartyState
+    , defaultParty
     )
 
 {-| Encounter-difficulty math.
@@ -34,6 +35,7 @@ No `Html`, no `Msg` — same discipline as
 @docs difficultyKey, difficultyLabel, difficultyDescription
 @docs maxLevel, minLevel
 @docs encodePartyState, decodePartyState
+@docs defaultParty
 
 -}
 
@@ -279,6 +281,17 @@ difficultyDescription d =
 
         BeyondHigh ->
             "Exceeds the 2024 budget ceiling. Likely deadly — split the fight or scale down unless a TPK is desired."
+
+
+{-| A party to start from, so the difficulty readout means
+something before the GM has configured anything. Four level-1
+characters is the SRD's own starting assumption.
+-}
+defaultParty : { members : List PartyMember, nextId : Int }
+defaultParty =
+    { members = List.map (\i -> { id = i, level = 1 }) (List.range 1 4)
+    , nextId = 5
+    }
 
 
 

@@ -16,8 +16,8 @@ import Encounter.Wire exposing (SavedEncounterMeta)
 import Msg exposing (SaveStorage(..))
 
 
-{-| Loading state for the save listing. The panel opens with
-`ListLoading` and transitions on the response.
+{-| Loading state for the save listing. The panel wears
+`ListLoading` until expanding it asks for the saves.
 -}
 type ListState
     = ListLoading
@@ -49,8 +49,8 @@ type alias RenameDraft =
 
   - `storage` — server for a signed-in GM, browser storage for
     an anonymous one; or a file on their machine.
-  - `filename` — opens pre-filled with whatever the encounter
-    was last saved as, so re-saving doesn't make the GM retype.
+  - `filename` — what the save will be called; `primeList`
+    fills it in from the encounter's last save name.
   - `busy` — a wire call is in flight; disables the actions that
     would double-fire.
 
@@ -66,13 +66,10 @@ type alias SaveLoadUi =
     }
 
 
-{-| Build the initial panel state. The caller passes the
-encounter's last-known save name, if any.
--}
-fresh : Maybe String -> SaveLoadUi
-fresh suggestedName =
+fresh : SaveLoadUi
+fresh =
     { storage = StorageServer
-    , filename = Maybe.withDefault "" suggestedName
+    , filename = ""
     , saves = ListLoading
     , busy = False
     , error = Nothing

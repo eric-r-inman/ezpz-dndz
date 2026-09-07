@@ -19,7 +19,7 @@
 //!   stored opaquely (unreachable from the real frontend).
 //! - The user's named save files (`saves.rs` /
 //!   [`SavedEncounterStore`]).  Explicit user-initiated saves and
-//!   loads via the Save / Load buttons in the Actions column.
+//!   loads via the Encounter Saves panel.
 //!   Typed **metadata** (name + timestamps + listing order) over an
 //!   **opaque body** stored as a relational JSON node tree
 //!   ([`save_nodes`], mirroring the compendium's `save_body`).  The

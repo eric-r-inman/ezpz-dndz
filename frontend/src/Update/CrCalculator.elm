@@ -1,60 +1,28 @@
 module Update.CrCalculator exposing
-    ( open, close
+    ( close
     , scopeSet
-    , partyMemberAdd, partyMemberRemove
-    , partyMemberLevelSet
+    , partyMemberAdd, partyMemberRemove, partyMemberLevelSet
     )
 
-{-| Update handlers for the CR Calculator modal.
+{-| Update handlers for the CR Calculator panel.
 
-The party (`model.party`) lives on Model so a closed-and-reopened
-modal keeps the GM's last roster. Scope (`ui.scope`) is modal-
-local because it's a transient view-of-the-day decision.
+The party (`model.party`) lives on Model because the Random
+Encounter panel shares it. Scope (`ui.scope`) is panel-local.
 
-@docs open, close
+@docs close
 @docs scopeSet
-@docs partyMemberAdd, partyMemberRemove, partyMemberLevelChanged
+@docs partyMemberAdd, partyMemberRemove, partyMemberLevelSet
 
 -}
 
 import Encounter.Difficulty as Difficulty
 import Encounter.Xp as Xp
-import Model exposing (Model, Surface(..))
+import Model exposing (Model)
 import Msg exposing (Msg(..))
-import Ui.CrCalculator as CrCalc
 
 
 
--- ── OPEN / CLOSE ─────────────────────────────────────────────────────────────
-
-
-open : Model -> ( Model, Cmd Msg )
-open model =
-    let
-        -- First open seeds a sensible default party (4× level 1)
-        -- so the modal isn't immediately useless.  Subsequent
-        -- opens keep whatever the GM has typed.
-        seeded =
-            if List.isEmpty model.party then
-                let
-                    members =
-                        List.range 1 4
-                            |> List.map
-                                (\i ->
-                                    { id = i, level = 1 }
-                                )
-                in
-                { model
-                    | party = members
-                    , nextPartyMemberId = 5
-                }
-
-            else
-                model
-    in
-    ( Model.toggleDrawer Model.crCalculatorLens CrCalc.fresh seeded
-    , Cmd.none
-    )
+-- ── CLOSE ────────────────────────────────────────────────────────────────────
 
 
 close : Model -> ( Model, Cmd Msg )

@@ -53,16 +53,16 @@ tooltip on a wrapper span when the button is unavailable.
 
 * DONE Decide where the workspace's triggers live
 
-The Actions column won.  The encounter queue's toolbar row, the Encounter
-Controls pane, and the Compendium pane are gone, and every trigger they carried
-opens its panel in the drawer beside the column instead.
+Superseded by [[*Fill the editor drawer]]: with every editor in the drawer, the
+triggers have no column to live in, because the panels they opened are already
+in the drawer, folded to their heading rows.  Only the encounter's own controls
+— Compendium, Clear, Reset, Turn — kept a row, at the top of that column.
 
-* DONE Fill the Actions drawer
+* DONE Fill the editor drawer
 
-Each button reaches its destination now, and the surfaces still wearing modal
-chrome moved into the drawer to get there, which is what let the two right-hand
-panes go — and left the loose ends in
-[[*Fold the drawer's stragglers into the Surface ADT]].
+Each surface reaches the drawer now, and the ones still wearing modal chrome
+moved in to get there, which is what let the right-hand panes go — and left the
+loose ends in [[*Fold the drawer's stragglers into the Surface ADT]].
 
 * DONE Fold the drawer's stragglers into the Surface ADT
 
@@ -73,7 +73,7 @@ one-panel-at-a-time invariant it enforced.
 * TODO Sweep the "modal" wording out of the migrated editors
 
 Doc comments across the Ui and Update modules still call their surfaces modals,
-whether those now edit inline on the card or open as a panel in the Actions
+whether those now edit inline on the card or open as a panel in the editor
 column's drawer, so a reader meets a widget the UI no longer has.  The same
 drift reaches [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]], whose model section still names the ADT
 ~Modal~ and its constructors ~ModalX~.  Retarget them file by file.  Part of

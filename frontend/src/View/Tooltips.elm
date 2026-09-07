@@ -2,7 +2,6 @@ module View.Tooltips exposing
     ( appBarAccount
     , appBarDonate
     , appBarSettings
-    , applyCondition
     , armorClass
     , attr
     , bloodied
@@ -62,7 +61,6 @@ module View.Tooltips exposing
     , diceHistoryToggle
     , diceReset
     , diceRollAgain
-    , difficultyButton
     , dodging
     , drawerClose
     , drawerCollapse
@@ -86,7 +84,6 @@ module View.Tooltips exposing
     , lifecycleDeadToDown
     , lifecycleDownToDead
     , loadRowCompendium
-    , manageHp
     , memoAdd
     , memoClear
     , memoEdit
@@ -95,17 +92,14 @@ module View.Tooltips exposing
     , noteAdd
     , noteEdit
     , panelOpenCompendium
-    , panelRandomEncounter
     , panelStatBlockNewWindow
     , pinStatBlock
-    , queueDuplicate
     , queueInactive
     , queueMakeActive
     , queueMoveDown
     , queueMoveUp
     , queueReactivate
     , queueRemove
-    , queueReplace
     , queueSelectShiftClick
     , quickAddButton
     , quickAddCreatureRow
@@ -117,11 +111,8 @@ module View.Tooltips exposing
     , readyAction
     , releaseReadied
     , reset
-    , rollDice
     , roundSet
     , runEncounter
-    , saveButton
-    , saveChain
     , saveLoadConfirmCancel
     , saveLoadConfirmGo
     , saveLoadRenameCancel
@@ -145,7 +136,6 @@ module View.Tooltips exposing
     , statBlockSavingThrow
     , statBlockShowInCompendium
     , statusBadgeEdit
-    , statusEditor
     , statusOffTip
     , statusOnTip
     , tempHp
@@ -155,8 +145,6 @@ module View.Tooltips exposing
     , timerRunning
     , timerSet
     , toastDismiss
-    , treasureButton
-    , xpCalculator
     )
 
 {-| Centralised tooltip strings.
@@ -178,8 +166,7 @@ Layout:
     up by combinators.
 
 If you're reviewing or rewording: the section comments group
-tooltips by where they appear in the UI (App bar, Actions
-column, Card rows, Compendium page, etc.).
+tooltips by where they appear in the UI.
 
 -}
 
@@ -223,42 +210,12 @@ appBarDonate =
 
 
 
--- ── ACTIONS COLUMN ───────────────────────────────────────────────────────────
-
-
-difficultyButton : String
-difficultyButton =
-    "Difficulty calculator"
-
-
-xpCalculator : String
-xpCalculator =
-    "XP calculator"
-
-
-treasureButton : String
-treasureButton =
-    "Treasure roller"
-
-
-quickAddButton : String
-quickAddButton =
-    "Quick add creature"
+-- ── ENCOUNTER CONTROLS ───────────────────────────────────────────────────────
 
 
 panelOpenCompendium : String
 panelOpenCompendium =
     "Compendium (new tab)"
-
-
-panelRandomEncounter : String
-panelRandomEncounter =
-    "Random encounter generator"
-
-
-saveButton : String
-saveButton =
-    "Save/Load encounter"
 
 
 reset : String
@@ -281,18 +238,13 @@ nextTurn =
     "Advance to next creature in initiative order"
 
 
+
+-- ── ENCOUNTER TITLE BAR (above the creature grid) ────────────────────────────
+
+
 roundSet : String
 roundSet =
     "Set the round number"
-
-
-rollDice : String
-rollDice =
-    "Roll dice"
-
-
-
--- ── ENCOUNTER TITLE BAR (above the creature grid) ────────────────────────────
 
 
 sourceUnsaved : String
@@ -382,16 +334,6 @@ queueMakeActive =
 queueRemove : String
 queueRemove =
     "Remove from encounter"
-
-
-queueReplace : String
-queueReplace =
-    "Replace creature"
-
-
-queueDuplicate : String
-queueDuplicate =
-    "Duplicate creature"
 
 
 {-| Tooltip on the per-card ∅ toggle. Reads asymmetrically: the
@@ -516,21 +458,6 @@ clickToEdit =
 hpOpenManage : String
 hpOpenManage =
     "Open Manage HP for this creature"
-
-
-manageHp : String
-manageHp =
-    "Manage HP"
-
-
-applyCondition : String
-applyCondition =
-    "Apply condition or effect"
-
-
-saveChain : String
-saveChain =
-    "Save roll + results"
 
 
 bloodied : String
@@ -945,6 +872,11 @@ initSelectedNone =
 -- ── QUICK ADD PANEL ──────────────────────────────────────────────────────────
 
 
+quickAddButton : String
+quickAddButton =
+    "Quick add creature"
+
+
 quickAddSortToAlpha : String
 quickAddSortToAlpha =
     "Switch to alphabetical order"
@@ -995,7 +927,7 @@ toastDismiss =
 -}
 pinStatBlock : String -> String
 pinStatBlock name =
-    "Pin " ++ name ++ "'s stat block in the Actions panel"
+    "Pin " ++ name ++ "'s stat block in the editor column"
 
 
 sourceFromSaved : String -> String
@@ -1009,13 +941,6 @@ label's creature.
 statusBadgeEdit : String
 statusBadgeEdit =
     "Click to edit this creature's statuses"
-
-
-{-| The Actions column's Status button — opens the posture-toggle editor.
--}
-statusEditor : String
-statusEditor =
-    "Set cover, concentration, hiding, dodging, flying"
 
 
 {-| Status-editor posture toggle (concentrate / hide / dodge

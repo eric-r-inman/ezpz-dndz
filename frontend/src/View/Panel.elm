@@ -1,26 +1,26 @@
-module View.Panel exposing (Header, onClickWithoutFolding, view)
+module View.Panel exposing (Header, onClickWithoutFolding, titleMarkIf, view)
 
-{-| Shared chrome for whatever the Actions column has open.
+{-| Shared chrome for whatever the editor column has open.
 
 Deliberately close to `View.Modal.view`: the shared shell
 fields line up, so a surface moves between the two tiers by
 swapping the wrapper it calls. The signatures carry the
 difference.
 
-`subtitle` names the creature an editor is aimed at, and
-`titleTrail` is a control rendered just after the title — the
-encounter-level panels leave both empty.
+`subtitle` names the creature an editor is aimed at, which the
+encounter-level panels leave empty. `titleTrail` is a control
+or cue rendered just after the title.
 
 `header` wires the heading row to the stack it sits in: the
 fold state (a folded panel keeps its place without paying its
 height) and the drag attributes that let the row be picked up
 and dropped into a new slot.
 
-@docs Header, onClickWithoutFolding, view
+@docs Header, onClickWithoutFolding, titleMarkIf, view
 
 -}
 
-import Html exposing (Html, button, div, section, text)
+import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
@@ -128,6 +128,19 @@ collapseToggle collapse =
                 "▼"
             )
         ]
+
+
+{-| The cue a panel wears when it holds something the GM hasn't
+seen. It rides `titleTrail` so a folded panel, which shows
+nothing but its title row, still carries it.
+-}
+titleMarkIf : Bool -> Maybe (Html Msg)
+titleMarkIf unseen =
+    if unseen then
+        Just (span [ class "panel__title-mark" ] [ text "•" ])
+
+    else
+        Nothing
 
 
 {-| Click handler for a control sitting inside the header row,

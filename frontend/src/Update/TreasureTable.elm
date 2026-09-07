@@ -71,13 +71,12 @@ open model =
     )
 
 
-{-| Close the modal without committing. The draft inside the UI
-state is discarded along with the modal itself; the live
-`model.userTreasureTable` is untouched, so nothing persists.
-The Treasure roller modal opens immediately after — the GM
-almost always edits the table because they're about to roll
-from it, so chaining the two saves a click and keeps focus on
-the task.
+{-| Close the editor without committing. The draft inside the
+UI state is discarded along with the editor itself; the live
+`model.userTreasureTable` is untouched, so nothing persists. The
+Treasure roller opens immediately after — the GM almost always
+edits the table because they're about to roll from it, so
+chaining the two saves a click and keeps focus on the task.
 -}
 close : Model -> ( Model, Cmd Msg )
 close model =

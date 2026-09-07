@@ -5,7 +5,6 @@ module Update.Initiative exposing
     , close
     , customChanged
     , initiativeExpression
-    , open
     , openFor
     , quickSort
     , rollModeSet
@@ -54,29 +53,11 @@ withInitiative =
     Model.mapSurface Model.initiativeLens
 
 
-{-| The column trigger: clicking it while any Initiative editor
-is expanded closes it — the button wears the open ring and
-Cancel hover text whenever the editor is open, so it must close
-regardless of which creature a card's init circle aimed it at.
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceInitiative _) ->
-            Model.closeDrawer Model.initiativeLens model
-
-        _ ->
-            Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
-    , Cmd.none
-    )
-
-
 {-| A card's init circle: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. One already
 aimed here scrolls into view instead of closing — a card control
 asks to see a creature's editor, which is the opposite of what
-dismissing it would do. The Actions column's own trigger still
-toggles.
+dismissing it would do. The panel's own ✕ closes it.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =

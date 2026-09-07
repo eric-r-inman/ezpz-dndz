@@ -1,6 +1,6 @@
 module View.Inline.Condition exposing (Context, view)
 
-{-| Condition / effect editor body. It opens in the Actions
+{-| Condition / effect editor body. It opens in the editor
 column's drawer, so the queue stays visible while the GM fills
 it in.
 -}
@@ -448,8 +448,8 @@ footer ui presets selectedCount =
 
         -- Apply takes the row below Save / Load: two scopes and
         -- two preset controls do not share one row inside a
-        -- drawer panel.  No Cancel button: Escape and
-        -- re-clicking the Condition button both cancel.
+        -- drawer panel.  No Cancel button: Escape or the
+        -- panel's ✕ cancels.
         , applyControls ui canSubmit selectedCount applyLabel
         , div [ class "cond-footer__actions" ]
             [ case ui.editingId of

@@ -699,24 +699,22 @@ For a new feature that opens a surface, the canonical layout is:
     pattern-matching on the ~Surface~ ADT).
   - Surface ADT → add ~SurfaceFoo FooUi~ to ~Surface~ in =Model.elm=; do NOT add
     a separate ~Maybe FooUi~ field on ~Model~.
-  - View → =View/Panel/Foo.elm= for the Actions column's drawer, which is where
-    a workspace surface belongs; =View/Modal/Foo.elm= only for something that
+  - View → =View/Panel/Foo.elm= for the editor column's drawer, which is where a
+    workspace surface belongs; =View/Modal/Foo.elm= only for something that
     genuinely has to cover the page.  The two shells share their shell fields,
     so moving a surface between the tiers is mostly a matter of swapping the
     wrapper.
   - A drawer panel also needs a ~SurfaceLens~ in =Model.elm=, a render arm in
-    ~View.PanelDrawer.panelFor~, an Esc mapping in ~Main.drawerEscSub~, and — if
-    the Actions column opens it — an entry in ~Model.defaultDrawer~, the folded
-    stack the drawer boots with; those four move together.  Panels live in the
-    ~model.drawer~ stack — many open at once, newest at the bottom — and their
-    Update modules open, close, and edit them through the ~Model.openDrawer~ /
-    ~closeDrawer~ / ~toggleDrawer~ / ~mapDrawer~ helpers.
+    ~View.PanelDrawer.panelFor~, an Esc mapping in ~Main.drawerEscSub~, and —
+    when the drawer boots with it — an entry in ~Model.defaultDrawer~; those
+    four move together.  Panels live in the ~model.drawer~ stack — many open at
+    once, newest at the bottom — and their Update modules open, close, and edit
+    them through the ~Model.openDrawer~ / ~closeDrawer~ / ~mapDrawer~ helpers.
   - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
     ~import Http~ directly.
-  - Wire the dispatch as one-liners in =Main='s =updateInner=, and the trigger
-    into =View/PanelActions.elm=.  A modal also has to be mounted by hand in
-    =Main='s =appShell=; a drawer panel does not, since =View.PanelDrawer=
-    renders it.
+  - Wire the dispatch as one-liners in =Main='s =updateInner=.
+    =View.PanelDrawer= renders a drawer panel, so it needs no mounting; a modal
+    has to be mounted by hand in =Main='s =appShell=.
 
 For a new backend feature: =JsonFileStore<T>= for persistence, =aide::ApiRouter=
 for routes, semantic ~thiserror~ variants naming the operation.  CLI subcommands

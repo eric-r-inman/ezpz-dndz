@@ -7,8 +7,8 @@ module Update.Dice exposing
     , historyLoaded
     , historyToggle
     , inputChanged
+    , markRead
     , modifierChanged
-    , open
     , persistResponse
     , rerun
     , rerunMenuClose
@@ -27,14 +27,11 @@ module Update.Dice exposing
     , statBlockRollLanded
     )
 
-{-| Update branches for the dice roller modal: opening / closing,
-slider state, free-text expression entry, the rainbow face buttons,
-the advantage / disadvantage / coin shortcuts, the rerun action on
-historical rolls, and the result-handling round-trip
-(`DiceRollLanded` → push to history → persist).
+{-| Update branches for the dice roller panel, and the
+round-trip a landed roll makes through history and persistence.
 
-The dice modal is always present in the model (no `Maybe`), so
-`withDice` is a flat lens over `model.dice` rather than a
+The roller's state is always present in the model (no `Maybe`),
+so `withDice` is a flat lens over `model.dice` rather than a
 `Maybe.map`.
 
 -}
@@ -58,17 +55,9 @@ withDice fn model =
     { model | dice = fn model.dice }
 
 
-{-| Open the modal. Clear the "unread rolls landed" flag whenever
-the modal opens; whatever the user is about to see, they are now
-caught up.
--}
-open : Model -> ( Model, Cmd Msg )
-open model =
-    ( Model.openDrawer Model.diceLens
-        ()
-        (withDice (\d -> { d | inputError = Nothing, unread = False }) model)
-    , Cmd.none
-    )
+markRead : Model -> Model
+markRead =
+    withDice (\d -> { d | unread = False })
 
 
 close : Model -> ( Model, Cmd Msg )
@@ -377,10 +366,10 @@ clearResponse _ model =
 
 
 {-| Click on inline dice notation in a stat-block trait. Fire the
-roll through the same code path as the modal's own buttons, but
-do NOT open the modal — the result lands silently in the dice
-history and the panel's Roll button picks up its "unread"
-indicator so the user can open the log when they want to see it.
+roll through the same code path as the panel's own buttons, but
+do NOT open the panel — the result lands silently in the dice
+history and the panel marks its title unread, so the GM can open
+the log when they want to see it.
 The source is tagged "Stat block" with the creature name so it
 shows up in the history as "Stat block → Brakka, Ogre Brute".
 

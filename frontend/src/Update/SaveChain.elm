@@ -1,5 +1,5 @@
 module Update.SaveChain exposing
-    ( open, close
+    ( close
     , nameChanged, abilitySet, dcChanged, dcOverrideChanged
     , applyToSelectedToggle
     , outcomeHpKindSet, outcomeHpAmountChanged
@@ -23,7 +23,7 @@ users, `Effects.putSaveChainPresets` for authenticated ones —
 so update branches here return `Cmd.none` on preset mutations
 and let the diff catch it.
 
-@docs open, close
+@docs close
 @docs nameChanged, abilitySet, dcChanged, dcOverrideChanged
 @docs applyToSelectedToggle
 @docs outcomeHpKindSet, outcomeHpAmountChanged
@@ -69,98 +69,21 @@ drawerSurface model =
 
 
 
--- ── OPEN / CLOSE ────────────────────────────────────────────────
-
-
-{-| Opening is a toggle: clicking the card's Save Chain button
-while its own editor is already expanded closes it (a cancel).
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceSaveChain ui) ->
-            if ui.target == target then
-                stashAndClose ui model
-
-            else
-                Model.openDrawer Model.saveChainLens (reopened target model) model
-
-        _ ->
-            Model.openDrawer Model.saveChainLens (reopened target model) model
-    , Cmd.none
-    )
-
-
-{-| A fresh open restores the stashed draft when the last close
-left un-applied settings.
--}
-reopened : String -> Model -> SaveChainUi
-reopened target model =
-    case model.saveChainDraft of
-        Just draft ->
-            { draft | target = target, applied = False }
-
-        Nothing ->
-            UiSaveChain.fresh target
-
-
-{-| Closing keeps un-applied settings as the draft the next open
-restores; once the settings were applied (and untouched since),
-closing resets to defaults instead.
--}
-stashAndClose : SaveChainUi -> Model -> Model
-stashAndClose ui model =
-    Model.closeDrawer Model.saveChainLens
-        { model
-            | saveChainDraft =
-                if ui.applied then
-                    Nothing
-
-                else
-                    Just ui
-        }
-
-
-{-| Applying (Fail / Pass / Roll Saves) marks the open editor so
-a subsequent close resets rather than stashes, and drops any
-stale draft.
--}
-markApplied : Model -> Model
-markApplied model =
-    case drawerSurface model of
-        Just (SurfaceSaveChain ui) ->
-            Model.mapDrawer Model.saveChainLens
-                (\u -> { u | applied = True })
-                { model | saveChainDraft = Nothing }
-
-        _ ->
-            { model | saveChainDraft = Nothing }
+-- ── CLOSE ───────────────────────────────────────────────────────
 
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( case drawerSurface model of
-        Just (SurfaceSaveChain ui) ->
-            stashAndClose ui model
-
-        _ ->
-            Model.closeDrawer Model.saveChainLens model
-    , Cmd.none
-    )
+    ( Model.closeDrawer Model.saveChainLens model, Cmd.none )
 
 
 
 -- ── FORM FIELD SETTERS ──────────────────────────────────────────
 
 
-{-| Every form mutation routes through here, so the
-applied-and-untouched flag clears itself the moment the GM edits
-anything.
--}
 withUi : (SaveChainUi -> SaveChainUi) -> Model -> Model
-withUi fn =
+withUi =
     Model.mapDrawer Model.saveChainLens
-        (fn >> (\u -> { u | applied = False }))
 
 
 nameChanged : String -> Model -> ( Model, Cmd Msg )
@@ -661,13 +584,11 @@ exportBundled model =
 applyFail : Model -> ( Model, Cmd Msg )
 applyFail model =
     applySide SaveChainFail model
-        |> Tuple.mapFirst markApplied
 
 
 applyPass : Model -> ( Model, Cmd Msg )
 applyPass model =
     applySide SaveChainSuccess model
-        |> Tuple.mapFirst markApplied
 
 
 {-| Apply one side of the chain. Walks the outcome:
@@ -987,18 +908,12 @@ downstream fail / pass routing in `savesRolled` cares only
 about `roll.total`.
 
 Returns silently when the chain has no DC (either fixed or
-overridden) — the modal disables the buttons visually in that
+overridden) — the panel disables the buttons visually in that
 case; this guard is defence in depth.
 
 -}
 rollSaves : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
 rollSaves mode model =
-    rollSavesInner mode model
-        |> Tuple.mapFirst markApplied
-
-
-rollSavesInner : SaveChainRollMode -> Model -> ( Model, Cmd Msg )
-rollSavesInner mode model =
     case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
             case resolveDc ui of

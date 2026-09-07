@@ -9,7 +9,6 @@ module Update.Condition exposing
     , maxConditionNoteLength
     , noteChanged
     , openEdit
-    , openNew
     , pickStandard
     , presetCategoryToggle
     , presetDelete
@@ -77,86 +76,15 @@ maxConditionNoteLength =
     20
 
 
-{-| Every form mutation routes through here, so the
-applied-and-untouched flag clears itself the moment the GM edits
-anything.
--}
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
-withConditionUi fn =
+withConditionUi =
     Model.mapSurface Model.conditionLens
-        (fn >> (\u -> { u | applied = False }))
-
-
-{-| Opening is a toggle: clicking the column's Condition
-button while any condition editor is expanded closes it — the
-button wears the open ring and Cancel hover text whenever the
-editor is open, so it must close regardless of which target or
-mode (add vs. chip-edit) opened it.
--}
-openNew : String -> Model -> ( Model, Cmd Msg )
-openNew name model =
-    ( case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            stashAndClose ui model
-
-        _ ->
-            Model.openDrawer Model.conditionLens (reopened name model) model
-    , Cmd.none
-    )
-
-
-{-| A fresh add-mode open restores the stashed draft when the
-last close left un-applied settings. The draft's target (and an
-until-turn reference that pointed at it) re-aim at the newly
-opened creature; a reference to some third creature survives.
--}
-reopened : String -> Model -> ConditionUi
-reopened name model =
-    case model.conditionDraft of
-        Just draft ->
-            { draft
-                | target = name
-                , editingId = Nothing
-                , untilCreature =
-                    if draft.untilCreature == draft.target then
-                        name
-
-                    else
-                        draft.untilCreature
-                , loadMenuOpen = False
-                , pendingSaveName = Nothing
-                , applied = False
-            }
-
-        Nothing ->
-            ConditionUi.fresh name
-
-
-{-| Closing keeps un-applied add-mode settings as the draft the
-next open restores; an applied (and untouched) editor resets
-instead, and closing an edit-mode form never disturbs the
-remembered add-mode draft.
--}
-stashAndClose : ConditionUi -> Model -> Model
-stashAndClose ui model =
-    Model.closeDrawer Model.conditionLens
-        { model
-            | conditionDraft =
-                if ui.editingId /= Nothing then
-                    model.conditionDraft
-
-                else if ui.applied then
-                    Nothing
-
-                else
-                    Just ui
-        }
 
 
 {-| A chip whose edit form is already open scrolls into view
 rather than closing, the same as every other card control: the
-click asks to see that condition, not to dismiss it. The Actions
-column's own trigger still toggles.
+click asks to see that condition, not to dismiss it. The panel's
+own ✕ closes it.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
@@ -187,14 +115,7 @@ openEditFresh name id model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            stashAndClose ui model
-
-        _ ->
-            Model.closeDrawer Model.conditionLens model
-    , Cmd.none
-    )
+    ( Model.closeDrawer Model.conditionLens model, Cmd.none )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -693,25 +614,10 @@ submitTo targets model =
                             Nothing ->
                                 committed
                 in
-                ( markApplied withLog, Cmd.none )
+                ( withLog, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
-
-
-{-| Applying marks the open editor so a subsequent close resets
-rather than stashes, and drops any stale draft.
--}
-markApplied : Model -> Model
-markApplied model =
-    case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            Model.mapDrawer Model.conditionLens
-                (\u -> { u | applied = True })
-                { model | conditionDraft = Nothing }
-
-        _ ->
-            { model | conditionDraft = Nothing }
 
 
 {-| Undo the newest condition application: remove every condition

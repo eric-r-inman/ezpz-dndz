@@ -1,4 +1,4 @@
-module Update.Duplicate exposing (apply, applySelected, close, modeSet, open)
+module Update.Duplicate exposing (apply, applySelected, close, modeSet)
 
 {-| Update branches for the Duplicate editor.
 
@@ -37,25 +37,6 @@ drawerSurface : Model -> Maybe Surface
 drawerSurface model =
     Model.drawerGet Model.duplicateLens model
         |> Maybe.map SurfaceDuplicate
-
-
-{-| Opening is a toggle: clicking the column's Duplicate button
-while the editor is already open for the same target closes it.
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceDuplicate ui) ->
-            if ui.target == target then
-                Model.closeDrawer Model.duplicateLens model
-
-            else
-                Model.openDrawer Model.duplicateLens (DuplicateUi.fresh target) model
-
-        _ ->
-            Model.openDrawer Model.duplicateLens (DuplicateUi.fresh target) model
-    , Cmd.none
-    )
 
 
 close : Model -> ( Model, Cmd Msg )

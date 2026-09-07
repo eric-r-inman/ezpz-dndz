@@ -22,7 +22,6 @@ import View.Card
 import View.EncounterBar
 import View.Inline.QueueReference
 import View.Inline.SpellList
-import View.PanelActions
 import View.PanelDrawer
 import View.Tooltips as Tooltips
 
@@ -34,16 +33,15 @@ view model =
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ View.PanelActions.view model
-        , View.PanelDrawer.view model
+        [ View.PanelDrawer.view model
         , drawerColumnToggle model
         , panelMain model
         ]
 
 
-{-| The drawer claims its own grid track only while it is holding
-panels and not folded away; the fold keeps the panels, so the
-track is the only thing that comes and goes.
+{-| The column's track: the editors' width while they are in it,
+and the width of its controls row once the fold strip takes them
+away or the stack empties.
 -}
 workspaceClass : Model -> String
 workspaceClass model =
@@ -95,8 +93,7 @@ drawerColumnToggle model =
 needs (inline-edit and rename states, the open surface, timer
 presets), then stacks the stationary strips above the scrolling
 card grid. `savedAs` lights up the title-bar info icon with the
-source filename; the compendium DB + XP scope let the title
-bar's right cluster compute the real XP total.
+source filename.
 -}
 panelMain : Model -> Html Msg
 panelMain model =
@@ -400,11 +397,10 @@ nameNode c =
 
 
 {-| Full-width "+" row appended below the last creature card in
-the queue. Opens the same Quick Add panel the Actions column
-does, surfaced inside the queue itself so the GM doesn't have to
-track across to add another creature. Hover text doubles as the
-aria-label so screen-reader users hear the intent rather than
-just "+".
+the queue. Opens the Quick Add panel from inside the queue
+itself, so the GM doesn't have to track across to add another
+creature. The glyph carries an aria-label, since "+" alone
+reads as nothing.
 -}
 quickAddRow : Html Msg
 quickAddRow =

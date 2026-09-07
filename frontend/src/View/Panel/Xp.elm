@@ -21,7 +21,7 @@ import View.Panel
 view : View.Panel.Header -> Encounter -> CompendiumDb -> XpScope -> Html Msg
 view collapse enc db current =
     View.Panel.view
-        { close = XpFilterToggle
+        { close = XpFilterClose
         , title = "XP"
         , titleTrail = Nothing
         , subtitle = Nothing

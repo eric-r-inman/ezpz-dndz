@@ -5,6 +5,7 @@ module View.Panel.SaveLoad exposing (view)
 -}
 
 import Auth
+import Encounter
 import Encounter.Wire exposing (SavedEncounterMeta)
 import Html exposing (Html, button, div, h3, input, li, p, span, text, ul)
 import Html.Attributes
@@ -40,7 +41,9 @@ view collapse model =
             View.Panel.view
                 { close = SaveLoadClose
                 , title = "Encounter Saves"
-                , titleTrail = Nothing
+                , titleTrail =
+                    View.Panel.titleMarkIf
+                        (Encounter.rosterDirty model.encounter model.savedSnapshot)
                 , subtitle = Nothing
                 , collapse = collapse
                 , extraClass = "panel-drawer--save-load"

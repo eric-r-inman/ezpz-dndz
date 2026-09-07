@@ -1,4 +1,4 @@
-module Update.Status exposing (applySelected, applyTarget, close, coverCycle, flyHeightAdjust, open, openFor, toggleFlag)
+module Update.Status exposing (applySelected, applyTarget, close, coverCycle, flyHeightAdjust, openFor, toggleFlag)
 
 {-| Update branches for the Status editor. The toggles edit a
 draft; the two Apply buttons write the whole draft onto the
@@ -21,30 +21,11 @@ drawerSurface model =
         |> Maybe.map SurfaceStatus
 
 
-{-| The column trigger: clicking it while any Status editor is
-expanded closes it — the button wears the open ring and Cancel
-hover text whenever the editor is open, so it must close
-regardless of which creature a card status label aimed it at. A
-fresh open prefills the draft from the target creature.
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceStatus _) ->
-            Model.closeDrawer Model.statusLens model
-
-        _ ->
-            Model.openDrawer Model.statusLens (prefilled target model) model
-    , Cmd.none
-    )
-
-
 {-| A card's status label: it aims the editor at its own
 creature, so an editor already open for someone else re-aims.
 One already aimed here scrolls into view instead of closing — a
 card control asks to see a creature's editor, which is the
-opposite of dismissing it. The Actions column's own trigger
-still toggles.
+opposite of dismissing it. The panel's own ✕ closes it.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =

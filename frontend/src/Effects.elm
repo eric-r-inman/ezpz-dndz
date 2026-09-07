@@ -17,9 +17,9 @@ Centralized here so per-feature `Update/*` modules can call into
 them without importing `Main.elm` (which would be a cycle: Main
 imports Update.Foo, Update.Foo would import Main).
 
-Each function in this module has the shape `... -> Cmd Msg` (or
-`... -> Model -> Model` for the dice-history push, which mutates
-state but is conceptually part of the same "roll lands" flow).
+Each function in this module has the shape `... -> Cmd Msg`. The
+dice-history push is the exception: it mutates state, but
+belongs to the same "roll lands" flow.
 
 Imports `Msg` for the constructors that Cmds dispatch back into,
 and `Model` for the small set of model-level helpers. Doesn't
@@ -121,7 +121,7 @@ compendiumRowId id =
     "compendium-row-" ++ id
 
 
-{-| DOM id of the drawer column's scroll container. The stack
+{-| DOM id of the editor column's scroll container. The stack
 scrolls independently of the page, so bringing a panel into view
 means moving this element's viewport rather than the window's.
 -}
@@ -420,13 +420,11 @@ saveExpression bonus =
 
 
 {-| Land one roll into the dice history. Single chokepoint so
-the "unread" indicator on the Actions column's Roll button
-stays in sync — every Cmd that returns a Roll funnels through
-here.
+the Dice Roller panel's unread mark stays in sync — every Cmd
+that returns a Roll funnels through here.
 
-`unread = True` only when the roller is closed at land time.
-When it is already open, the user can see the roll, so no
-indicator is needed.
+The mark goes up when a roll lands where the GM cannot see it;
+a roll landing in an open panel is already on screen.
 
 Also broadcasts the roll to peer tabs via the dice
 BroadcastChannel so a stat block opened in its own tab and the
@@ -466,7 +464,7 @@ pushIncomingDiceRoll roll model =
             { d
                 | history = Dice.push roll d.history
                 , unread =
-                    if Model.drawerHas Model.diceLens model then
+                    if Model.drawerShows Model.diceLens model then
                         d.unread
 
                     else

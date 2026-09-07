@@ -576,7 +576,7 @@ init flags url key =
                     (Decode.decodeValue Difficulty.decodePartyState
                         >> Result.toMaybe
                     )
-                |> Maybe.withDefault { members = [], nextId = 1 }
+                |> Maybe.withDefault Difficulty.defaultParty
     in
     ( { key = key
       , url = url
@@ -594,8 +594,6 @@ init flags url key =
       , compendium = compendiumFromUrl url
       , surface = Nothing
       , hpChangeDraft = Nothing
-      , conditionDraft = Nothing
-      , saveChainDraft = Nothing
       , conditionLog = []
       , duplicateLog = []
       , replaceLog = []
@@ -1002,10 +1000,7 @@ updateInner msg model =
         ToggleInactive name ->
             Update.Encounter.toggleInactive name model
 
-        -- Dice modal lifecycle
-        OpenDice ->
-            Update.Dice.open model
-
+        -- Dice roller lifecycle
         CloseDice ->
             Update.Dice.close model
 
@@ -1099,7 +1094,7 @@ updateInner msg model =
         RollPopupExpired id ->
             Update.Dice.rollPopupExpired id model
 
-        -- HP change modal lifecycle
+        -- HP change panel lifecycle
         HpChangeOpenFor target ->
             Update.HpChange.openFor target model
 
@@ -1111,9 +1106,6 @@ updateInner msg model =
 
         HpChangeManualApplySelected ->
             Update.HpChange.manualApplySelected model
-
-        HpChangeOpen target ->
-            Update.HpChange.open target model
 
         HpChangeClose ->
             Update.HpChange.close model
@@ -1142,10 +1134,7 @@ updateInner msg model =
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model
 
-        -- Save Chain modal
-        SaveChainOpen target ->
-            Update.SaveChain.open target model
-
+        -- Save Chain panel
         SaveChainClose ->
             Update.SaveChain.close model
 
@@ -1252,9 +1241,6 @@ updateInner msg model =
         RemoveCreature name ->
             Update.Encounter.removeCreature name model
 
-        DuplicateOpen name ->
-            Update.Duplicate.open name model
-
         DuplicateClose ->
             Update.Duplicate.close model
 
@@ -1266,9 +1252,6 @@ updateInner msg model =
 
         DuplicateApply ->
             Update.Duplicate.apply model
-
-        ReplaceOpen name ->
-            Update.Replace.open name model
 
         ReplaceClose ->
             Update.Replace.close model
@@ -1284,9 +1267,6 @@ updateInner msg model =
 
         ReplaceApply ->
             Update.Replace.apply model
-
-        StatusOpen name ->
-            Update.Status.open name model
 
         StatusOpenFor name ->
             Update.Status.openFor name model
@@ -1310,9 +1290,6 @@ updateInner msg model =
             Update.Status.applySelected model
 
         -- Initiative manager
-        InitiativeOpen target ->
-            Update.Initiative.open target model
-
         InitiativeOpenFor name ->
             Update.Initiative.openFor name model
 
@@ -1355,10 +1332,7 @@ updateInner msg model =
         NoteEditCancel ->
             Update.Note.cancel model
 
-        -- Condition / effect modal lifecycle
-        ConditionOpenNew name ->
-            Update.Condition.openNew name model
-
+        -- Condition / effect panel lifecycle
         ConditionOpenEdit name id ->
             Update.Condition.openEdit name id model
 
@@ -1756,9 +1730,6 @@ updateInner msg model =
         CompendiumGroupDeleted groupId result ->
             Update.Compendium.Group.deleteResponse groupId result model
 
-        CrCalculatorOpen ->
-            Update.CrCalculator.open model
-
         CrCalculatorClose ->
             Update.CrCalculator.close model
 
@@ -1773,9 +1744,6 @@ updateInner msg model =
 
         CrCalculatorPartyLevelSet memberId raw ->
             Update.CrCalculator.partyMemberLevelSet memberId raw model
-
-        RandomEncounterOpen ->
-            Update.RandomEncounter.open model
 
         RandomEncounterClose ->
             Update.RandomEncounter.close model
@@ -1833,9 +1801,6 @@ updateInner msg model =
 
         RandomEncounterAddToEncounter ->
             Update.RandomEncounter.addToEncounter model
-
-        TreasureOpen ->
-            Update.Treasure.open model
 
         TreasureClose ->
             Update.Treasure.close model
@@ -2354,9 +2319,6 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
-        SaveLoadOpen ->
-            Update.SaveLoad.open model
-
         SaveLoadClose ->
             Update.SaveLoad.close model
 
@@ -2521,9 +2483,6 @@ updateInner msg model =
 
         XpScopeSet scope ->
             Update.Xp.scopeSet scope model
-
-        XpFilterToggle ->
-            Update.Xp.filterToggle model
 
         XpFilterClose ->
             Update.Xp.filterClose model

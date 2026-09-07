@@ -179,7 +179,7 @@ tree, and Cmd helper lives in its own module.
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
 | Update / domain | =Update/*.elm= — one module per feature, each exposing one function per Msg branch |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Lore,Paste}.elm=                                                               |
-| View / surfaces | =View/Modal/*.elm= for what still opens over the page and =View/Panel/*.elm= for what opens in the Actions column's drawer; =View/Modal.elm= and =View/Panel.elm= carry the two shells, whose shared fields line up |
+| View / surfaces | =View/Modal/*.elm= for what still opens over the page and =View/Panel/*.elm= for what opens in the editor column's drawer; =View/Modal.elm= and =View/Panel.elm= carry the two shells, whose shared fields line up |
 | View / pages    | =View/Page/{Loading,Donate,NotFound,Compendium,CompendiumStandalone,QuickList}.elm= — the page trees ~Main.viewPage~ dispatches to (formerly inline in =Main.elm=) |
 | View / shell    | =View/*.elm= — the chrome around the surfaces, and the renderers they share.  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard,Number}.elm=                                                                                                       |
@@ -255,8 +255,8 @@ scoped to the workspace shell rather than to a single feature:
 
 - ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ — the most recent
   persisted state of the encounter and the name it was saved under.  Set by Save
-  / Load success and consumed by the Save button's dirty indicator, which lights
-  when the live roster differs from the snapshot.
+  / Load success and consumed by the Encounter Saves panel, which marks its
+  title when the live roster differs from the snapshot.
 - ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
@@ -317,7 +317,7 @@ highest.  The app models this with three fields on =Encounter=:
 
 An empty ~activeName~ is the pre-combat sentinel: the queue is set up but no one
 has acted yet.  Reset / Clear / Load all return the live encounter to round 1
-with nobody active.  In that state the Actions column's Turn button dispatches
+with nobody active.  In that state the editor column's Turn button dispatches
 ~EncounterRun~, which calls ~Encounter.run~ — it sets the active creature to the
 queue head (highest initiative).  Once someone is active the same button
 dispatches ~NextTurn~ instead.
@@ -1005,7 +1005,7 @@ vanilla encounters keep their existing title-bar / card-grid layout.
 
 * Encounter controls
 
-The Actions column runs a small set of named flows that the rest of the app
+The editor column runs a small set of named flows that the rest of the app
 routes through:
 
 - *Saves* — one drawer panel, =View.Panel.SaveLoad=, covering both directions.
@@ -1214,8 +1214,8 @@ body id), serde / IO failures → 500.
   manual-value number input shown only when "Shared manual" is picked),
   per-entry rows with creature picker + count + minion-type select + remove ×,
   and a "+ Add Entry" button.
-- *Add to encounter* — clicking a group row pins it in the Actions column's
-  panel with an action bar (➕ Add Group to Encounter / ✏️ Edit / 🗑 Delete).  Add
+- *Add to encounter* — clicking a group row pins it in the editor column's panel
+  with an action bar (➕ Add Group to Encounter / ✏️ Edit / 🗑 Delete).  Add
   dispatches =Update.Compendium.AddGroup.addGroup= which:
   1. Expands the group's entries into a flat list of ~Skeleton~ records (one per
      spawned instance), name- disambiguating against the existing roster as it
@@ -1253,9 +1253,8 @@ the result.
 
 Every clickable inline-dice link in a stat block routes through
 ~Update.Dice.rollFromStatBlock~, which fires the roll into the shared dice
-history *without* opening the dice panel.  The column's Roll button picks up its
-"unread rolls" indicator so the user can open the log when they want to see the
-breakdown.
+history *without* opening the dice panel.  The Dice Roller marks its title as
+unread so the GM can open the log when they want to see the breakdown.
 
 The =Dice.scan= parser also captures a trailing 5e damage type (~"5 (1d6 + 2)
 Slashing damage"~ → ~damageType = Just "Slashing"~) as long as the alpha word
@@ -1303,10 +1302,11 @@ thousand- separator math).
 The scope is picked in the XP panel (=View/Panel/Xp.elm=), which carries the
 total alongside it so the effect of a pick is visible while making it.  The
 ~SurfaceXp~ marker in the drawer stack is the panel's open state;
-~XpFilterToggle~ / ~XpFilterClose~ add and drop it, and ~XpScopeSet~
-deliberately leaves it open.  =Main.subscriptions= adds one sub while it is open
-— ~Browser.Events.onKeyDown (escKey XpFilterClose)~.  A click-outside sub would
-fire on every click landing in the queue beside the panel.
+~Model.defaultDrawer~ supplies it at boot and ~XpFilterClose~ drops it, while
+~XpScopeSet~ deliberately leaves it open.  =Main.subscriptions= adds one sub
+while it is open — ~Browser.Events.onKeyDown (escKey XpFilterClose)~.  A
+click-outside sub would fire on every click landing in the queue beside the
+panel.
 
 Lair XP is plumbed end-to-end:
 
@@ -1475,9 +1475,9 @@ each branch a true one-liner in =Main.updateInner=.
 
 * Random Encounter generator
 
-The 🎲 Random Encounter panel (opened from the Actions column) builds an
-encounter to a party's XP budget and drops it into the queue.  The pure domain
-lives in =frontend/src/Encounter/RandomEncounter.elm=; the UI substate in
+The 🎲 Random Encounter panel builds an encounter to a party's XP budget and
+drops it into the queue.  The pure domain lives in
+=frontend/src/Encounter/RandomEncounter.elm=; the UI substate in
 =Ui/RandomEncounter.elm=; the panel view in =View/Panel/RandomEncounter.elm=.
 Bundled lore content lives in =Encounter/RandomEncounter/Lore.elm=;
 user-authored lore lives on =model.userLoreGroups= and persists via ~PUT
@@ -1765,22 +1765,21 @@ dependency order:
    there folds the panel as a side effect of doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
    render arm in ~View.PanelDrawer.panelFor~, an Esc mapping in
-   ~Main.drawerEscSub~, and — for a panel the Actions column opens — an entry in
-   ~Model.defaultDrawer~, the folded stack the drawer boots with; those four
-   move together.  Panels live in the ~model.drawer~ stack — many open at once,
-   newest at the bottom — and their Update modules open, close, and edit them
-   through ~Model.openDrawer~ / ~closeDrawer~ / ~toggleDrawer~ / ~mapDrawer~.  A
-   per-creature editor takes a narrower shape: its body lives in
-   =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper supplies the
-   chrome, so every editor's target strip and close behaviour stay identical.
+   ~Main.drawerEscSub~, and — when the drawer boots with it — an entry in
+   ~Model.defaultDrawer~; those four move together.  Panels live in the
+   ~model.drawer~ stack — many open at once, newest at the bottom — and their
+   Update modules open, close, and edit them through ~Model.openDrawer~ /
+   ~closeDrawer~ / ~mapDrawer~.  A per-creature editor takes a narrower shape:
+   its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~
+   helper supplies the chrome, so every editor's target strip and close
+   behaviour stay identical.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.
-10. *Dispatch wiring* — add the trigger to =View/PanelActions.elm=, the Esc-key
-    case to =Main.subscriptions=, and one line per Msg branch to
-    =Main.updateInner= (~FooMsg arg -> Update.Foo.bar arg model~).  A modal also
-    needs mounting by hand in =Main.appShell=; a drawer panel does not, because
-    =View.PanelDrawer= renders it.
+10. *Dispatch wiring* — add the Esc-key case to =Main.subscriptions= and one
+    line per Msg branch to =Main.updateInner= (~FooMsg arg -> Update.Foo.bar arg
+    model~).  =View.PanelDrawer= renders a drawer panel, so it needs no mounting
+    in =Main.appShell=; a modal does.
 11. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain helpers; the
     Update + View modules are integration-tested through the existing patterns.
 

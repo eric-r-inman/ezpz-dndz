@@ -86,15 +86,10 @@
   --space-5: 24px;
   --header-height: 56px;
 
-  /* The paired Reset / Turn face at the top of the Actions
-     column: shorter than a standard button so the pair reads as
-     chrome above the grid rather than part of it. */
-  --btn-compact-height: 22px;
-  --btn-compact-pad-x: 2px;
   --font-size-glyph: 1.25rem;
 
-  /* The Actions column's icon triggers: square enough to read as
-     a keypad, with a glyph sized to fill it. */
+  /* The editor column's control row: square enough to read as a
+     set, with a glyph sized to fill each face. */
   --action-btn-size: 30px;
   --font-size-action-glyph: 1rem;
 
@@ -218,9 +213,8 @@
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
 
-  /* One face for every trigger in the Actions column: at
-     icon size a per-button palette reads as noise rather
-     than meaning. */
+  /* The default face for a control that carries no variant of
+     its own. */
   --action-btn-bg: #f3eefc;
   --action-btn-fg: #3b2a63;
   --action-btn-bd: #a78bda;
@@ -861,18 +855,18 @@ html:has(.app-shell[data-theme="accessible"]) {
   --btn-fg: #ffffff;
 }
 
-/* Actions column buttons and the Reset / Clear confirmation
+/* The editor column's controls and the Reset / Clear confirmation
    match the creature-card treatment in Accessible — light gray
    fill, black text, black border — so each panel reads as one
    B&W set whatever colour its buttons wear elsewhere. */
-[data-theme="accessible"] .panel-actions__btn,
+[data-theme="accessible"] .drawer-controls__btn,
 [data-theme="accessible"] .control-confirm__btn {
   --btn-bg: var(--color-surface-2);
   --btn-fg: var(--color-text);
   --btn-bd: var(--color-border);
 }
 
-[data-theme="accessible"] .panel-actions__btn:hover,
+[data-theme="accessible"] .drawer-controls__btn:hover,
 [data-theme="accessible"] .control-confirm__btn:hover {
   /* Token override + direct property assignment.  The variant
      base rules (e.g. `.action-btn--blue:hover { background:
@@ -1595,14 +1589,12 @@ body {
   min-height: 0;
 }
 
-/* The drawer's track exists only while the drawer does, so a
-   closed drawer leaves no empty column and no double gap. */
+/* The drawer's track carries the editors' width only while they
+   are showing; folded, it sizes to the controls row alone. */
 .workspace--drawer {
-  grid-template-columns: auto var(--drawer-width) auto 1fr;
+  grid-template-columns: var(--drawer-width) auto 1fr;
 }
 
-/* Folded: the drawer's track goes, the fold strip stays so there
-   is something to bring it back with. */
 .workspace--drawer-folded {
   grid-template-columns: auto auto 1fr;
 }
@@ -4210,32 +4202,6 @@ body {
   min-height: 0;
 }
 
-/* Far-left action column: sized to its buttons rather than a
-   share of the row, so the queue keeps the width it had. */
-/* Carries no `overflow` on purpose: a group folds away when the
-   column runs long, so every trigger a group shows is one the
-   GM can reach without hunting for it. */
-.actions-column {
-  grid-column: 1;
-  grid-row: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  align-content: start;
-}
-
-.actions-column__controls {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.actions-column__pair {
-  display: flex;
-  gap: var(--space-1);
-}
-
 /* Sits between the drawer and the queue in either grid, so it
    is addressed from the end rather than by a fixed number. */
 .drawer-fold {
@@ -4260,20 +4226,44 @@ body {
   color: var(--color-text);
 }
 
-/* The queue takes the last column whether or not the drawer
-   claimed the middle one. */
+/* The queue takes the last column whether or not the editor
+   column is folded. */
 .panel--main {
   grid-column: -2 / -1;
   grid-row: 1;
 }
 
-/* The drawer's scrolling stack of open panels: the grid track
-   belongs to the stack, and each panel takes its natural height
-   inside it, so a newly opened panel lands below the ones
+/* The editor column: encounter controls above the editors they
+   sit with, both inside the one grid track. */
+.drawer-column {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+/* Compendium to the left, the encounter's own controls to the
+   right, so the destructive pair sits away from the reach for a
+   reference. */
+.drawer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+.drawer-controls__encounter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The drawer's scrolling stack of open panels: each takes its
+   natural height, so a newly opened panel lands below the ones
    already up. */
 .drawer-stack {
-  grid-column: 2;
-  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -4397,7 +4387,7 @@ body {
 
 /* A page whose workspace holds this panel alone: it spans the
    grid rather than sitting in the queue's column, which would
-   leave the action column's gap hanging to its left. */
+   leave the editor column's gap hanging to its left. */
 .panel--solo {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -4438,6 +4428,14 @@ body {
    space-between, which would otherwise centre the title. */
 .panel__title--drawer {
   margin-right: auto;
+  padding-left: var(--space-1);
+}
+
+/* Marks a panel as holding something unseen.  It rides the
+   title row so a folded panel, which shows nothing else, still
+   carries it. */
+.panel__title-mark {
+  color: var(--color-accent);
   padding-left: var(--space-1);
 }
 
@@ -5694,7 +5692,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Compendium-linked creature name: hover-underline cues that
-   clicking will pin the source stat block in the Actions panel.
+   clicking will pin the source stat block in the editor column.
    The underlying element was promoted from `<span>` to
    `<button>` for keyboard a11y; these resets keep the visual
    appearance unchanged. */
@@ -6176,50 +6174,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 4px;
 }
 
-/* The paired Reset / Turn face.  Declared after `.action-btn` on
-   purpose: same specificity, so source order is what lets these
+/* Geometry for every control in the row, plus the face a
+   control carrying no variant wears.  Declared before the
+   `.action-btn--*` variants these buttons also carry, which
+   share its specificity: source order is what lets those
    win. */
-.panel-actions__header-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  height: var(--btn-compact-height);
-  padding: 0 var(--btn-compact-pad-x);
-  /* Glyph-only, so the type scale that keeps the trigger labels
-     legible would leave these unreadably small — they size to
-     the button instead. */
-  font-size: var(--font-size-glyph);
-  line-height: 1;
-}
-
-/* The triggers, as a keypad.  `auto-fill` rather than a fixed
-   count so the column can be narrowed without stranding a row. */
-.actions-column__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--action-btn-size), 1fr));
-  gap: var(--space-1);
-  align-content: start;
-}
-
-.panel-actions__btn {
+.drawer-controls__btn {
   height: var(--action-btn-size);
-  min-width: 0;
+  min-width: var(--action-btn-size);
   padding: 0;
   font-size: var(--font-size-action-glyph);
   line-height: 1;
-}
-
-/* Rolls landed while the roller was closed.  A ring rather than
-   a fill, so it reads on top of the column's one face. */
-.dice-roll-btn--unread {
-  box-shadow:
-    0 0 0 2px var(--color-yellow),
-    0 0 12px rgba(245, 200, 66, 0.45);
-}
-
-/* Covers the controls row above the grid as well as the grid
-   itself. */
-.panel-actions__btn,
-.panel-actions__header-btn {
   --btn-bg: var(--action-btn-bg);
   --btn-fg: var(--action-btn-fg);
   --btn-bd: var(--action-btn-bd);
@@ -6246,8 +6211,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-surface-2);
 }
 
-.panel-actions__btn:hover,
-.panel-actions__header-btn:hover {
+/* The coloured variants hover by brightness, which does nothing
+   to this one's flat base, so it names its own hover.  The
+   variant class also keeps it out of the unvariant rule above. */
+.action-btn--plain:hover {
   background: var(--action-btn-bg-hover);
 }
 
@@ -7245,11 +7212,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
   /* Stacked, the panes fall in source order, which leaves no
      empty row behind when the drawer is closed. */
-  .actions-column {
-    grid-column: 1;
-    grid-row: auto;
-  }
-  .drawer-stack {
+  .drawer-column {
     grid-column: 1;
     grid-row: auto;
   }

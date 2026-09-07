@@ -13,7 +13,6 @@ module Update.HpChange exposing
     , manualApplySelected
     , manualApplyTarget
     , manualChanged
-    , open
     , openFor
     , rollLanded
     , undoLatest
@@ -156,31 +155,11 @@ manualApplyTo names ui model =
         }
 
 
-{-| The column trigger: clicking it while any Manage HP editor
-is expanded closes it — the button wears the open ring and
-Cancel hover text whenever the editor is open, so it must close
-regardless of which creature a card's HP value aimed it at. A
-fresh open restores the stashed draft when the last close left
-un-applied settings.
--}
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( case drawerSurface model of
-        Just (SurfaceHpChange ui) ->
-            stashAndClose ui model
-
-        _ ->
-            Model.openDrawer Model.hpChangeLens (reopened target model) model
-    , Cmd.none
-    )
-
-
 {-| A card's HP value: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. One already
 aimed here scrolls into view instead of closing — a card control
 asks to see a creature's editor, which is the opposite of what
-dismissing it would do. The Actions column's own trigger still
-toggles.
+dismissing it would do. The panel's own ✕ closes it.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
@@ -299,7 +278,7 @@ on what the input looks like:
   - parse failure → set `parseError`
 
 The editor stays open after every path so the GM can keep
-applying; the trigger toggle and Escape close it.
+applying; Escape or the panel's ✕ closes it.
 
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )

@@ -3,9 +3,9 @@ module Ui.Initiative exposing (InitiativeUi, fresh)
 {-| Initiative editor state.
 
 `target` identifies the creature the editor is aimed at — the
-active one when the column opened it, or the creature whose
-blue init-circle was clicked. The target-scoped buttons act on
-it.
+queue's default when the drawer expands it unaimed, or the
+creature whose blue init-circle was clicked. The target-scoped
+buttons act on it.
 
 `customValueText` is the raw text in the "Initiative:" input.
 Tracking the characters lets the user type a transient `-` while

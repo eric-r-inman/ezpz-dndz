@@ -217,8 +217,8 @@ exists, the call brings it to focus instead of opening a new
 one (browser-defined for tabs vs popups). A `Just` payload
 names a creature to open selected, carried on the tab's URL as
 `?creature=<id>` — which navigates an existing tab, since its
-selection can't be reached from here. Fired by the Actions
-column's Compendium Open trigger and the stat-block panel's 📖.
+selection can't be reached from here. Fired by the editor
+column's Compendium control and the stat-block panel's 📖.
 -}
 port openCompendiumTab : Maybe String -> Cmd msg
 

@@ -10,9 +10,9 @@ module Update.SaveLoad exposing
     , filenameChanged
     , listLoaded
     , loadRequested
-    , open
     , overwriteRequested
     , persistResponse
+    , primeList
     , renameCancel
     , renameChange
     , renameResponse
@@ -63,29 +63,34 @@ withUi =
     Model.mapSurface Model.saveLoadLens
 
 
-open : Model -> ( Model, Cmd Msg )
-open model =
+{-| Ready a panel that has just come on screen: the filename
+field takes the name the encounter was last saved under, so
+re-saving doesn't make the GM retype it, and the listing is
+fetched. A signed-in GM's list comes back over the wire; an
+anonymous one's is already in memory, so it lands synchronously
+rather than leaving the panel spinning.
+-}
+primeList : Model -> ( Model, Cmd Msg )
+primeList model =
     let
-        ( saves, listCmd ) =
-            case model.auth of
-                Auth.AuthAuthenticated _ ->
-                    ( ListLoading, Encounter.Wire.listSavesCmd SaveLoadListLoaded )
-
-                _ ->
-                    -- Anonymous: derive the metadata list from the
-                    -- in-memory dict synchronously so the panel
-                    -- shows the existing saves on first paint.
-                    ( ListLoaded (localSavesMetas model), Cmd.none )
-
-        baseUi =
-            SaveLoadUi.fresh model.savedAs
-
-        primedUi =
-            { baseUi | saves = saves }
+        primed saves =
+            Model.mapDrawer Model.saveLoadLens
+                (\ui ->
+                    { ui
+                        | saves = saves
+                        , filename = Maybe.withDefault ui.filename model.savedAs
+                    }
+                )
+                model
     in
-    ( Model.toggleDrawer Model.saveLoadLens primedUi model
-    , listCmd
-    )
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( primed ListLoading
+            , Encounter.Wire.listSavesCmd SaveLoadListLoaded
+            )
+
+        _ ->
+            ( primed (ListLoaded (localSavesMetas model)), Cmd.none )
 
 
 {-| Build the same metadata-list shape the server returns from

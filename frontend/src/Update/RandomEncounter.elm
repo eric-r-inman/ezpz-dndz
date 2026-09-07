@@ -1,5 +1,5 @@
 module Update.RandomEncounter exposing
-    ( open, close
+    ( close
     , difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
     , pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
     , excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
@@ -7,18 +7,16 @@ module Update.RandomEncounter exposing
     , addToEncounter
     )
 
-{-| Update handlers for the Random Encounter modal.
+{-| Update handlers for the Random Encounter panel.
 
-The party (`model.party`) is shared with the CR Calculator —
-opening the random-encounter modal seeds a default party if
-none exists, mirroring `Update.CrCalculator.open`. Difficulty
-and habitat live on the modal substate so they reset on close.
+The party (`model.party`) is shared with the CR Calculator.
+Difficulty and habitat live on the panel substate.
 
 Generation goes through `Random.generate` so the entropy comes
 from the runtime; we don't carry a seed. Re-rolling is just
 "fire `generate` again with the same params".
 
-@docs open, close
+@docs close
 @docs difficultySet, scaleSet, habitatSet, creatureTypeAt, minionsToggle, loreToggle
 @docs pinPickerToggle, pinSearchChanged, pinAdd, pinDecrement, pinRemove
 @docs excludePickerToggle, excludeSearchChanged, excludeAdd, excludeRemove
@@ -35,7 +33,7 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
-import Ui.RandomEncounter as Ui exposing (RollState(..))
+import Ui.RandomEncounter exposing (RollState(..))
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
 
@@ -50,27 +48,7 @@ drawerSurface model =
 
 
 
--- ── OPEN / CLOSE ─────────────────────────────────────────────────────────────
-
-
-open : Model -> ( Model, Cmd Msg )
-open model =
-    let
-        seeded =
-            if List.isEmpty model.party then
-                let
-                    members =
-                        List.range 1 4
-                            |> List.map (\i -> { id = i, level = 1 })
-                in
-                { model | party = members, nextPartyMemberId = 5 }
-
-            else
-                model
-    in
-    ( Model.toggleDrawer Model.randomEncounterLens Ui.fresh seeded
-    , Cmd.none
-    )
+-- ── CLOSE ────────────────────────────────────────────────────────────────────
 
 
 close : Model -> ( Model, Cmd Msg )

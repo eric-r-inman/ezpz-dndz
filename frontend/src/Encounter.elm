@@ -571,8 +571,7 @@ A `Nothing` snapshot (the app has never been saved nor loaded) is
 treated as an empty roster, so a fresh queue with creatures shows
 dirty until the first save.
 
-The Save button uses this to surface a yellow outline cue when
-the encounter has unsaved roster changes.
+The Encounter Saves panel marks its title when this is true.
 
 -}
 rosterDirty : Encounter -> Maybe Encounter -> Bool
