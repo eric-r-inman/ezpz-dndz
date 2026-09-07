@@ -295,22 +295,32 @@ historyEntry ui idx opts roll =
             ui.rerunMenuOpenFor == Just idx
 
         rowClass =
-            if opts.flash then
-                "dice-history__entry dice-history__entry--flash"
+            String.join " "
+                (List.filterMap identity
+                    [ Just "dice-history__entry"
+                    , if opts.flash then
+                        Just "dice-history__entry--flash"
 
-            else
-                "dice-history__entry"
+                      else
+                        Nothing
+                    , if opts.expanded then
+                        Just "dice-history__entry--open"
+
+                      else
+                        Nothing
+                    ]
+                )
     in
     li [ class rowClass ]
         [ View.LogRow.foldToggle opts.key opts.expanded
         , div [ class (View.LogRow.openable "dice-history__formula" opts.expanded) ]
             [ rollSource roll.source
-            , text roll.formula
+            , text (formulaWithoutType roll)
             , span [ class "dice-history__rolled" ]
                 [ text (" — " ++ rolledString roll) ]
             , case roll.expression.damageType of
                 Just damage ->
-                    span [ class "dice-history__damage" ] [ text damage ]
+                    span [ class "dice-history__damage-type" ] [ text (" " ++ damage) ]
 
                 Nothing ->
                     text ""
@@ -399,6 +409,29 @@ rollSource source =
         in
         span [ class "dice-history__source", Tooltips.attr label_ ]
             [ text label_ ]
+
+
+{-| The formula as typed, minus the damage type its tail carries,
+so the type can be shown once — after the faces, where it reads
+as what the total is. `Dice.Roll.formula` keeps the type because
+it is the wire form and the reroll label; only the row drops it.
+-}
+formulaWithoutType : Dice.Roll -> String
+formulaWithoutType roll =
+    case roll.expression.damageType of
+        Just damage ->
+            let
+                suffix =
+                    " " ++ damage
+            in
+            if String.endsWith suffix roll.formula then
+                String.dropRight (String.length suffix) roll.formula
+
+            else
+                roll.formula
+
+        Nothing ->
+            roll.formula
 
 
 {-| Format the individual face values for a Roll, with kept faces

@@ -102,7 +102,6 @@ module View.Tooltips exposing
     , queueReactivate
     , queueRemove
     , queueSelectShiftClick
-    , queueTargetIcon
     , quickAddButton
     , quickAddCreatureRow
     , quickAddSortToAlpha
@@ -311,11 +310,6 @@ flying ft =
 
 
 -- ── CREATURE CARD ROW 1 (queue actions) ──────────────────────────────────────
-
-
-queueTargetIcon : String
-queueTargetIcon =
-    "The editors are aimed at this creature — click an empty spot on the card to clear it"
 
 
 queueSelectShiftClick : String

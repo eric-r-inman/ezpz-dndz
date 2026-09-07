@@ -197,16 +197,6 @@ view ctx index creature =
                     , Tooltips.attr Tooltips.queueSelectShiftClick
                     ]
                     []
-                , if isTarget then
-                    span
-                        [ class "creature-card__target-icon"
-                        , Tooltips.attr Tooltips.queueTargetIcon
-                        , attribute "aria-label" "Editors target this creature"
-                        ]
-                        [ text "🎯" ]
-
-                  else
-                    text ""
                 , button
                     [ class "icon-btn"
                     , onClick (SetActive creature.name)

@@ -126,11 +126,21 @@ entry opts e =
                     ""
 
         rowClass =
-            if opts.flash then
-                "hp-change__log-entry hp-change__log-entry--flash"
+            String.join " "
+                (List.filterMap identity
+                    [ Just "hp-change__log-entry"
+                    , if opts.flash then
+                        Just "hp-change__log-entry--flash"
 
-            else
-                "hp-change__log-entry"
+                      else
+                        Nothing
+                    , if opts.expanded then
+                        Just "hp-change__log-entry--open"
+
+                      else
+                        Nothing
+                    ]
+                )
     in
     li [ class rowClass ]
         [ View.LogRow.foldToggle (rowKey e) opts.expanded

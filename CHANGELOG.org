@@ -116,7 +116,7 @@
 49. The Manage HP editor's log row flashes as a change lands, so an apply reads
     as having worked without looking away from the cards.  No action needed.
 50. Clicking an empty spot on a creature card picks it as the editors' target,
-    marked by a white ring and a 🎯; click again to clear it.  No action needed.
+    marked by a white ring; click again to clear it.  No action needed.
 51. The Manage HP editor's amount row is one line — the Selected checkbox,
     "HP:", and a three-character field — and its buttons read "+ Temp" and "+
     Max".  No action needed.
@@ -158,6 +158,11 @@
 15. Clicking a card's status, HP, initiative, or condition chip opens its editor
     when that editor was folded and already aimed at the creature.  No action
     needed.
+16. An unfolded log row flows as one wrapping line, so a long creature name no
+    longer breaks a letter or two at a time down a narrow column.  No action
+    needed.
+17. A roll's damage type shows once in the Dice Roller log, after the faces, as
+    plain text.  No action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a

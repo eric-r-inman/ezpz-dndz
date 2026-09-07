@@ -1074,10 +1074,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-[data-theme="accessible"] .dice-history__damage {
-  font-size: 0.9rem;
-}
-
 [data-theme="accessible"] .dice-history__source {
   font-size: 0.9rem;
 }
@@ -4791,12 +4787,6 @@ body {
 
 .creature-card--unconscious {
   box-shadow: inset 6px 0 0 0 var(--color-warn, #d97706);
-}
-
-.creature-card__target-icon {
-  font-size: var(--font-size-label);
-  line-height: 1;
-  cursor: default;
 }
 
 /* The card a dragged one would land on.  An outline rather than
@@ -8555,20 +8545,24 @@ button.creature-card__lifecycle--dead:focus-visible {
   overflow-wrap: anywhere;
 }
 
+/* Unfolded, the row flows and wraps rather than holding its
+   grid — see `.hp-change__log-entry--open`. */
+.dice-history__entry--open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
 .dice-history__rolled {
   color: var(--color-text-muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
 }
 
-.dice-history__damage {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: 0.7rem;
-  font-weight: 600;
+/* The damage type, once, after the faces — plain text in the
+   row's own colour, not a chip. */
+.dice-history__damage-type {
+  color: var(--color-text);
 }
 
 .dice-history__source {
@@ -8905,7 +8899,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
-  overflow-wrap: anywhere;
+}
+
+/* Unfolded, the row stops being a grid: its parts flow inline
+   and wrap as one line of text would, so a long name takes the
+   width it needs rather than the narrow column the folded grid
+   gives it. */
+.hp-change__log-entry--open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
 }
 
 .hp-change__log-amount {
