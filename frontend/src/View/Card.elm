@@ -101,20 +101,30 @@ holdsOpenField ctx creature =
 
 {-| A click on the card's own surface — the article, its
 column, a row, a rail — picks the creature as the editors'
-target. A click on anything inside those, a button or a chip or
-a field, is that control's business and is left alone: the
-decoder fails for it, and a failed decoder is no message. A drag
-never gets here, because a completed drag fires no click.
+target; with Shift held it toggles the creature's checkbox
+instead, so a GM can build a selection card by card without
+moving the target. A click on anything inside those, a button
+or a chip or a field, is that control's business and is left
+alone: the decoder fails for it, and a failed decoder is no
+message. A drag never gets here, because a completed drag fires
+no click.
 -}
 emptySpotClick : String -> Decode.Decoder Msg
 emptySpotClick name =
-    Decode.map2 Tuple.pair
+    Decode.map3 (\tag cls shift -> ( tag, cls, shift ))
         (Decode.at [ "target", "tagName" ] Decode.string)
         (Decode.at [ "target", "className" ] Decode.string)
+        (Decode.field "shiftKey" Decode.bool)
         |> Decode.andThen
-            (\( tag, cls ) ->
+            (\( tag, cls, shift ) ->
                 if List.member tag [ "ARTICLE", "DIV" ] && String.startsWith "creature-card" cls then
-                    Decode.succeed (TargetCreature name)
+                    Decode.succeed
+                        (if shift then
+                            ToggleSelected name
+
+                         else
+                            TargetCreature name
+                        )
 
                 else
                     Decode.fail "a control, not the card"

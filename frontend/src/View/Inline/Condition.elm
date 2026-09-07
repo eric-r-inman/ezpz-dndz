@@ -185,8 +185,7 @@ durationSection ui creatureNames =
           else
             case ui.durationKind of
                 DurKindManual ->
-                    div [ class "cond-section__caption" ]
-                        [ text "Click \"x\" on badge to remove" ]
+                    text ""
 
                 DurKindUntilTurn ->
                     durationUntilSubsection ui creatureNames

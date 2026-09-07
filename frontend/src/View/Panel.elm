@@ -51,7 +51,7 @@ view :
     }
     -> Html Msg
 view config =
-    section [ class ("panel panel--drawer " ++ config.extraClass) ]
+    section [ class (panelClass config.header.collapsed ++ " " ++ config.extraClass) ]
         (div
             ([ class (headerClass config.header.collapsed)
              , onClick config.header.toggle
@@ -133,6 +133,18 @@ closeButton msg =
         , attribute "aria-label" Tooltips.drawerRemoveStatBlock
         ]
         [ text "✕" ]
+
+
+{-| An unfolded panel is outlined so that, with several open at
+once, each reads as its own thing rather than one long column.
+-}
+panelClass : Bool -> String
+panelClass collapsed =
+    if collapsed then
+        "panel panel--drawer"
+
+    else
+        "panel panel--drawer panel--drawer-open"
 
 
 {-| A folded panel is header and nothing else, so the header's

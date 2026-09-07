@@ -213,6 +213,7 @@
   --action-btn-bg: #f3eefc;
   --action-btn-fg: #3b2a63;
   --action-btn-bd: #a78bda;
+  --color-panel-open-bd: #c9b8f0;
   --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63; /* cyan-900 */
   --btn-red-bg: var(--color-btn-red);
@@ -302,6 +303,7 @@
   --action-btn-bg: #f3eefc;
   --action-btn-fg: #3b2a63;
   --action-btn-bd: #a78bda;
+  --color-panel-open-bd: #c9b8f0;
   --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63;
   --btn-red-bg: var(--color-btn-red);
@@ -413,6 +415,7 @@
   --action-btn-bg: #2a2440;
   --action-btn-fg: #e2dcf5;
   --action-btn-bd: #6f5fa8;
+  --color-panel-open-bd: #6d5bb5;
   --action-btn-bg-hover: #332b4d;
   --btn-blue-bg-hover: var(--color-btn-blue);
   --btn-red-bg: var(--color-btn-red);
@@ -511,6 +514,7 @@
   --action-btn-bg: #ffffff;
   --action-btn-fg: #000000;
   --action-btn-bd: #4b0082;
+  --color-panel-open-bd: #000000;
   --action-btn-bg-hover: #efe6ff;
   --btn-blue-bg-hover: #001a99;
   --btn-red-bg: var(--color-btn-red);
@@ -4273,6 +4277,13 @@ body {
 .panel--drawer {
   flex: 0 0 auto;
   animation: drawer-slide-in 0.16s ease-out;
+}
+
+/* With several editors unfolded at once, a purple border keeps
+   each one legible as its own panel.  Declared after the base so
+   it wins the border colour. */
+.panel--drawer-open {
+  border-color: var(--color-panel-open-bd);
 }
 
 @keyframes drawer-slide-in {

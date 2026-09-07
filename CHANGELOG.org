@@ -128,6 +128,13 @@
     roll that lands flashes its log row.  No action needed.
 55. Every log row has a caret that unfolds it so a long entry can be read in
     full.  No action needed.
+56. Shift-clicking an empty spot on a creature card toggles its checkbox without
+    moving the target, so a selection can be built card by card.  No action
+    needed.
+57. Each unfolded editor is bordered in purple, so several open at once read as
+    separate panels.  No action needed.
+58. The Condition/Effect editor drops its "Click x on badge to remove" hint.  No
+    action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
