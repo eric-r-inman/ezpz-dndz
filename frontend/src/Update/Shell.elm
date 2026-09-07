@@ -1,6 +1,5 @@
 module Update.Shell exposing
-    ( anonymousBannerDismiss
-    , encounterLoaded
+    ( encounterLoaded
     , encounterPersisted
     , gotMe
     , noOp
@@ -148,13 +147,3 @@ when the popover is open.
 settingsClose : Model -> ( Model, Cmd Msg )
 settingsClose model =
     ( { model | settingsOpen = False }, Cmd.none )
-
-
-{-| Mark the anonymous-mode banner as dismissed for the rest of
-the session. Deliberately not persisted — the banner reappears
-on every page reload so a returning guest gets the same reminder
-that their work lives only in this browser.
--}
-anonymousBannerDismiss : Model -> ( Model, Cmd Msg )
-anonymousBannerDismiss model =
-    ( { model | anonymousBannerDismissed = True }, Cmd.none )

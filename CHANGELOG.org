@@ -135,6 +135,20 @@
     separate panels.  No action needed.
 58. The Condition/Effect editor drops its "Click x on badge to remove" hint.  No
     action needed.
+59. The "you're browsing as a guest" banner is gone; the AppBar's sign-in prompt
+    now reads "Sign in to keep changes."  No action needed.
+60. An unfolded editor's title bar tints light purple, matching its border.  No
+    action needed.
+61. The Dice Roller's log starts folded, so a freshly-opened roller leads with
+    the dice.  No action needed.
+62. Cmd+Shift-click (Alt+Shift-click on Windows) on a card's empty spot selects
+    or clears every creature's checkbox at once, based on the clicked card's own
+    state.  No action needed.
+63. The Manage HP editor's Selected checkbox now trails the HP field and reads
+    "Selected (#)" without a colon.  No action needed.
+64. The Dice Roller separates its Expression and Count rows with a divider, and
+    an empty log reads "Nothing rolls yet." in a smaller size.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -170,6 +184,13 @@
     needed.
 17. A roll's damage type shows once in the Dice Roller log, after the faces, as
     plain text.  No action needed.
+18. The Manage HP amount field no longer clips its third digit.  No action
+    needed.
+19. An unfolded Dice Roller log row shows its source (e.g. "Damage → Goblin")
+    beside the caret, with the roll details on the line below, instead of
+    splitting the source onto its own line further down.  No action needed.
+20. The divider below the Advantage / Disadvantage buttons no longer runs
+    against them.  No action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a

@@ -38,9 +38,10 @@ type alias DiceUi =
     -- (strip the constant before rolling).
     , rerunMenuOpenFor : Maybe Int
 
-    -- Whether the Recent-rolls list is showing.  Open by
-    -- default: the roller exists to answer "what did I just
-    -- roll", and the fold is for parking the panel small.
+    -- Whether the Recent-rolls list is showing.  Folded by
+    -- default so a freshly-opened roller leads with the dice
+    -- themselves; the GM unfolds it once there's something to
+    -- read.
     , historyOpen : Bool
     }
 
@@ -55,5 +56,5 @@ empty =
     , history = Dice.emptyHistory
     , unread = False
     , rerunMenuOpenFor = Nothing
-    , historyOpen = True
+    , historyOpen = False
     }

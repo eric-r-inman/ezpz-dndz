@@ -727,7 +727,7 @@ The AppBar nav adapts to auth state:
   settings.
 - *Anonymous (any route except ~/login~)* — same buttons, but the display-name
   slot is replaced with a *Sign in* link, and an italic tagline rides next to
-  the brand: *"Sign in to save your encounters and compendium changes."*
+  the brand: *"Sign in to keep changes."*
 - *Anonymous on ~/login~* — the Sign-in link is suppressed (it would link back
   to itself).
 
@@ -884,28 +884,6 @@ Success handlers clear the matching ~localStorage~ key via the
 ~clearLocalEncounter~ / ~clearLocalCompendium~ ports and push a success toast
 naming the slot.  Failures toast but leave the local snapshot in place so the
 user can retry.
-
-** Anonymous-mode banner
-
-~View.AnonymousBanner~ renders a yellow-accent strip between the AppBar and the
-page body when ~model.auth = AuthAnonymous~ and the user hasn't dismissed it for
-the session.  The message names the persistence reality explicitly:
-
-#+begin_quote
-You're browsing as a guest — your encounters and compendium
-edits live only in this browser.  Create an account to keep
-your work across devices.  ×
-#+end_quote
-
-Dismissal is session-only (~model.anonymousBannerDismissed~).  The banner
-reappears on every page reload by design — the persistence reality doesn't
-change between reloads, so the reminder shouldn't either.  Suppressed on the
-second-monitor ~QuickList~ and ~Compendium~ standalone routes since those are
-read-only references that don't accept input.
-
-Theme overrides at ~.anonymous-banner~ in ~frontend/public/style.css~ keep the
-strip legible in Dark (muted) and Accessible (high-contrast yellow with a
-heavier border).
 
 ** View-layer sign-in nudges
 

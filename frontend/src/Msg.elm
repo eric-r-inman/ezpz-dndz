@@ -1150,9 +1150,6 @@ type Msg
       -- AppBar settings popover
     | SettingsToggle
     | SettingsClose
-      -- Anonymous-mode banner dismissal.  Hides the "you're
-      -- browsing as a guest" strip for the rest of the session.
-    | AnonymousBannerDismiss
       -- Keyboard shortcuts
     | CompendiumFocusSearch
       -- Authentication.  AuthMeReceived fires once on boot from

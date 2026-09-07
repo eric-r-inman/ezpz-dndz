@@ -101,25 +101,36 @@ holdsOpenField ctx creature =
 
 {-| A click on the card's own surface — the article, its
 column, a row, a rail — picks the creature as the editors'
-target; with Shift held it toggles the creature's checkbox
+target. Shift held toggles just this creature's checkbox
 instead, so a GM can build a selection card by card without
-moving the target. A click on anything inside those, a button
-or a chip or a field, is that control's business and is left
-alone: the decoder fails for it, and a failed decoder is no
-message. A drag never gets here, because a completed drag fires
-no click.
+moving the target. Shift plus Cmd (Alt on Windows) reaches for
+`ShiftToggleSelected` — the same bulk select-all / deselect-all
+the checkbox's own shift-click already dispatches — so the whole
+queue can be selected or cleared from any card's empty space. A
+click on anything inside those surfaces, a button or a chip or a
+field, is that control's business and is left alone: the decoder
+fails for it, and a failed decoder is no message. A drag never
+gets here, because a completed drag fires no click.
 -}
 emptySpotClick : String -> Decode.Decoder Msg
 emptySpotClick name =
-    Decode.map3 (\tag cls shift -> ( tag, cls, shift ))
+    Decode.map5
+        (\tag cls shift meta alt ->
+            { tag = tag, cls = cls, shift = shift, bulk = meta || alt }
+        )
         (Decode.at [ "target", "tagName" ] Decode.string)
         (Decode.at [ "target", "className" ] Decode.string)
         (Decode.field "shiftKey" Decode.bool)
+        (Decode.field "metaKey" Decode.bool)
+        (Decode.field "altKey" Decode.bool)
         |> Decode.andThen
-            (\( tag, cls, shift ) ->
-                if List.member tag [ "ARTICLE", "DIV" ] && String.startsWith "creature-card" cls then
+            (\click ->
+                if List.member click.tag [ "ARTICLE", "DIV" ] && String.startsWith "creature-card" click.cls then
                     Decode.succeed
-                        (if shift then
+                        (if click.shift && click.bulk then
+                            ShiftToggleSelected name
+
+                         else if click.shift then
                             ToggleSelected name
 
                          else

@@ -81,6 +81,7 @@ form ui =
 
             Nothing ->
                 text ""
+        , div [ class "cond-divider" ] []
         , div [ class "dice-form__pair-row" ]
             [ label
                 [ for "dice-count", class "dice-form__pair-label" ]
@@ -271,7 +272,7 @@ history log ui =
 
                 else if List.isEmpty entries then
                     [ div [ class "dice-history__empty" ]
-                        [ text "Nothing yet. Click a die above or type an expression." ]
+                        [ text "Nothing rolls yet." ]
                     ]
 
                 else
@@ -287,6 +288,13 @@ history log ui =
 
 {-| One roll row. `key` is its identity for the fold; `flash`
 marks a roll that landed while the panel was showing.
+
+Folded, the source chip sits inline with the formula so the
+whole thing ellipses as one line. Unfolded, the source chip
+moves up beside the caret instead — it is the row's headline —
+and everything else flows on the row beneath, wrapping as a long
+formula or a long creature name needs.
+
 -}
 historyEntry : DiceUi -> Int -> { key : String, flash : Bool, expanded : Bool } -> Dice.Roll -> Html Msg
 historyEntry ui idx opts roll =
@@ -310,13 +318,9 @@ historyEntry ui idx opts roll =
                         Nothing
                     ]
                 )
-    in
-    li [ class rowClass ]
-        [ View.LogRow.foldToggle opts.key opts.expanded
-        , div [ class (View.LogRow.openable "dice-history__formula" opts.expanded) ]
-            [ rollSource roll.source
-            , text (formulaWithoutType roll)
-            , span [ class "dice-history__rolled" ]
+
+        rolledAndType =
+            [ span [ class "dice-history__rolled" ]
                 [ text (" — " ++ rolledString roll) ]
             , case roll.expression.damageType of
                 Just damage ->
@@ -325,9 +329,30 @@ historyEntry ui idx opts roll =
                 Nothing ->
                     text ""
             ]
-        , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
-        , rerunControl idx isMenuOpen roll
-        ]
+    in
+    if opts.expanded then
+        li [ class rowClass ]
+            [ div [ class "dice-history__entry-top" ]
+                [ View.LogRow.foldToggle opts.key opts.expanded
+                , rollSource roll.source
+                ]
+            , div [ class "dice-history__entry-detail" ]
+                (text (formulaWithoutType roll)
+                    :: rolledAndType
+                    ++ [ div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
+                       , rerunControl idx isMenuOpen roll
+                       ]
+                )
+            ]
+
+    else
+        li [ class rowClass ]
+            [ View.LogRow.foldToggle opts.key opts.expanded
+            , div [ class "dice-history__formula" ]
+                (rollSource roll.source :: text (formulaWithoutType roll) :: rolledAndType)
+            , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
+            , rerunControl idx isMenuOpen roll
+            ]
 
 
 {-| Re-roll trigger + dropdown for one history entry. The

@@ -129,7 +129,6 @@ import Url exposing (Url)
 import Util.Keyboard
 import View.About
 import View.Account
-import View.AnonymousBanner
 import View.AppBar
 import View.Audio
 import View.Card
@@ -587,7 +586,6 @@ init flags url key =
         , queueDrag = Nothing
         , compendiumEditDraft = Nothing
         , settingsOpen = False
-        , anonymousBannerDismissed = False
         , toasts = []
         , nextToastId = 0
         , rollPopups = []
@@ -2549,9 +2547,6 @@ updateInner msg model =
         SettingsClose ->
             Update.Shell.settingsClose model
 
-        AnonymousBannerDismiss ->
-            Update.Shell.anonymousBannerDismiss model
-
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model
 
@@ -2722,17 +2717,6 @@ appShell maybeUser model =
             , theme = model.preferences.theme
             , user = maybeUser
             , route = model.route
-            }
-    , -- Suppressed on the second-monitor tabs for the same reason
-      -- the AppBar is — the banner is a navigation-adjacent
-      -- affordance that doesn't belong on a parked reference view.
-      if model.route == QuickList || model.route == Compendium then
-        text ""
-
-      else
-        View.AnonymousBanner.view
-            { auth = model.auth
-            , dismissed = model.anonymousBannerDismissed
             }
     , viewPage model
     , View.Modal.Confirm.view model

@@ -105,17 +105,16 @@ manualField extraClass fieldId label current field =
         ]
 
 
-{-| The amount row: the scope checkbox (only while something is
-selected), then the amount itself. Enter commits as `DamageKind`
-because the expansion has four commit paths; Enter isn't safely
-overloadable across all of them. GMs who want Heal / Temp HP
-/ +Max HP click the corresponding button.
+{-| The amount row: the field itself, then the scope checkbox
+(only while something is selected) trailing it. Enter commits as
+`DamageKind` because the expansion has four commit paths; Enter
+isn't safely overloadable across all of them. GMs who want Heal
+/ Temp HP / +Max HP click the corresponding button.
 -}
 amount : Int -> HpChangeUi -> Html Msg
 amount selectedCount ui =
     div [ class "hp-change__row" ]
-        [ applyScope selectedCount ui
-        , Html.label [ class "hp-change__label", for "hp-amount" ]
+        [ Html.label [ class "hp-change__label", for "hp-amount" ]
             [ text "HP:" ]
         , input
             [ id "hp-amount"
@@ -129,6 +128,7 @@ amount selectedCount ui =
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]
             []
+        , applyScope selectedCount ui
         ]
 
 
@@ -160,7 +160,7 @@ applyScope selectedCount ui =
                 , onClick HpChangeApplyToSelectedToggle
                 ]
                 []
-            , text (" Selected (" ++ String.fromInt selectedCount ++ "):")
+            , text (" Selected (" ++ String.fromInt selectedCount ++ ")")
             ]
 
 

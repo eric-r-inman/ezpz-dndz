@@ -1219,10 +1219,10 @@ body {
   outline: none;
 }
 
-/* Italic "Sign in to save…" prompt sitting to the right of the
-   brand title.  Only rendered for anonymous sessions (the view
-   gates on `maybeUser`).  Colour comes from each theme's muted-
-   text token by default; the Accessible theme bumps to full
+/* Italic "Sign in to keep changes." prompt sitting to the right
+   of the brand title.  Only rendered for anonymous sessions (the
+   view gates on `maybeUser`).  Colour comes from each theme's
+   muted-text token by default; the Accessible theme bumps to full
    `--color-text` further down so the tagline meets AAA contrast
    alongside the rest of the AppBar copy. */
 .app-bar__tagline {
@@ -1235,74 +1235,6 @@ body {
 
 [data-theme="accessible"] .app-bar__tagline {
   color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-/* Anonymous-mode reminder strip rendered between the AppBar and
-   the page body.  Visually quiet by default — a muted accent bar
-   so it reads as a help banner rather than an error.  Dismiss
-   button (×) lives on the right edge with a small hit area so
-   the strip is easy to clear once read. */
-.anonymous-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  background: rgba(245, 200, 66, 0.12);
-  border-bottom: 1px solid rgba(245, 200, 66, 0.4);
-  color: var(--color-text);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.anonymous-banner__message {
-  flex: 1 1 auto;
-}
-
-.anonymous-banner__link {
-  color: var(--color-init-blue, #1976d2);
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.anonymous-banner__link:hover,
-.anonymous-banner__link:focus {
-  text-decoration: none;
-}
-
-.anonymous-banner__dismiss {
-  flex: 0 0 auto;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm, 6px);
-  color: var(--color-text-muted);
-}
-
-.anonymous-banner__dismiss:hover,
-.anonymous-banner__dismiss:focus {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--color-text);
-}
-
-[data-theme="dark"] .anonymous-banner {
-  background: rgba(245, 200, 66, 0.08);
-  border-bottom-color: rgba(245, 200, 66, 0.25);
-}
-
-[data-theme="dark"] .anonymous-banner__dismiss:hover,
-[data-theme="dark"] .anonymous-banner__dismiss:focus {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme="accessible"] .anonymous-banner {
-  background: rgba(245, 200, 66, 0.2);
-  border-bottom: 2px solid rgba(120, 80, 0, 0.6);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -4437,6 +4369,13 @@ body {
 
 .panel__header--collapsed {
   border-bottom: none;
+}
+
+/* Tints the title bar to match the light-purple accent already
+   used for the drawer's own action buttons, so an unfolded
+   panel's heading reads as active at a glance. */
+.panel__header--open {
+  background: var(--action-btn-bg);
 }
 
 .panel__title {
@@ -8466,6 +8405,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .dice-history {
+  /* Margin-top rather than relying on a sibling's own spacing,
+     so the divider line clears the Advantage / Disadvantage
+     buttons above it instead of running against them. */
+  margin-top: var(--space-3);
   border-top: 1px solid var(--color-border);
   padding-top: 12px;
   display: flex;
@@ -8546,22 +8489,34 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
 }
 
-/* Unfolded, the formula flows as text and wraps — anywhere,
-   because a formula is one unbreakable word. */
-.dice-history__formula--open {
-  display: block;
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: anywhere;
+/* Unfolded, the row is two stacked lines rather than its folded
+   grid: the source chip on its own line with the caret, and
+   everything else flowing beneath — see `.dice-history__entry-top`
+   / `--entry-detail` below. */
+.dice-history__entry--open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
 }
 
-/* Unfolded, the row flows and wraps rather than holding its
-   grid — see `.hp-change__log-entry--open`. */
-.dice-history__entry--open {
+.dice-history__entry-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Indented to roughly clear the caret above it, so the detail
+   text reads as belonging to this entry rather than starting a
+   new one. */
+.dice-history__entry-detail {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  padding-left: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .dice-history__rolled {
@@ -8671,6 +8626,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .dice-history__empty {
   color: var(--color-text-muted);
   font-style: italic;
+  font-size: var(--font-size-section);
   text-align: center;
   padding: 20px;
 }
@@ -8748,9 +8704,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   /* Three characters, and sized to say so, rather than stretching
-     to the editor's full width. */
+     to the editor's full width.  Wider than `3ch` because the
+     box is border-box: the field's own padding and border eat
+     into the width before any digit does. */
   flex: 0 0 auto;
-  width: 5ch;
+  width: 7ch;
 }
 
 .hp-change__error {

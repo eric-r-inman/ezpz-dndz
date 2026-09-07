@@ -149,7 +149,8 @@ panelClass collapsed =
 
 {-| A folded panel is header and nothing else, so the header's
 divider would land against the panel's own bottom border and
-read as a doubled line.
+read as a doubled line. An unfolded header also tints its
+background, matching the panel's own open-state border.
 -}
 headerClass : Bool -> String
 headerClass collapsed =
@@ -157,7 +158,7 @@ headerClass collapsed =
         "panel__header panel__header--drawer panel__header--collapsed"
 
     else
-        "panel__header panel__header--drawer"
+        "panel__header panel__header--drawer panel__header--open"
 
 
 {-| The header row is what a mouse folds the panel with, so the
