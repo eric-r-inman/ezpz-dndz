@@ -1,0 +1,543 @@
+#+title:     Bundled lore groups
+#+language:  en
+
+The Random Encounter generator's Lore-leaning toggle draws from a bundled set of
+creature compositions, and each composition carries a one-line description that
+the Compendium's detail pane shows under the members list.  The Elm module that
+ships the bundle is the source of truth for the data.  This document is the
+writer's copy: it keeps the reasoning behind each composition, which has no home
+in the code, beside the text that ships.
+
+* Voice
+
+The descriptions read like the sidebars in a Monster Manual rather than the stat
+blocks: one sentence, two at most, written by someone who has run the encounter
+and enjoyed it.  A few habits keep new entries in step with the old ones:
+
+- The line explains why these creatures are standing together, and then gives
+  the reader something to worry about.
+- The joke or the threat lands on the reader.  "You" is fair game.
+- Use plain words.  The vocabulary a text generator leans on (delve, realm,
+  tapestry, testament, and their kin) is out, and so is the "not X but Y"
+  construction.
+- Punctuation stays quiet: a semicolon or a colon now and then, an em dash
+  rarely, and no lists of three for their own sake.
+- Spelling is American, as in the source books.
+
+* Groups
+
+The headings follow the sections in the module.
+
+** Goblinoids
+
+*** Goblinoid Warband
+
+- Id :: =goblinoid-warband=
+- Members :: Goblin Warrior ×3–6 (member); Hobgoblin Warrior ×1–2 (leader)
+- Why together :: Hobgoblins are the goblinoid soldiery and goblins their
+  numerous, expendable kin; Maglubiyet's pecking order puts the one over the
+  other.
+- Text :: Hobgoblin warriors press goblin levies into a respectable warband —
+  the goblins serve as scouts and arrow-fodder for their better-trained elder
+  cousins.
+
+*** Goblin Raiding Party
+
+- Id :: =goblin-raid=
+- Members :: Goblin Warrior ×3–5 (member); Bugbear Warrior ×1–2 (leader)
+- Why together :: Bugbears are the heavies of the goblinoid family and bully
+  goblin tribes into service; the goblins scout and screen for them.
+- Text :: Goblins know to follow a bugbear's nose for plunder; in return, the
+  bugbear gets an obedient bodyguard, and a distraction while it maneuvers for
+  the ambush.
+
+*** Goblin Boss's Gang
+
+- Id :: =goblin-bosss-gang=
+- Members :: Goblin Boss ×1 (leader); Goblin Warrior ×3–6 (member); Goblin
+  Minion ×2–4 (minion)
+- Why together :: A goblin boss rules its tribe through fear and cunning, and
+  the warrior-versus-minion split is the tribe's own pecking order.
+- Text :: Through cunning, bribery, or threats, a goblin boss has climbed the
+  ranks to command jealous warriors and fawning minions to do his bidding.
+
+*** Hobgoblin Patrol
+
+- Id :: =hobgoblin-patrol=
+- Members :: Hobgoblin Captain ×1 (leader); Hobgoblin Warrior ×3–6 (member);
+  Worg ×2–3 (pet)
+- Why together :: Hobgoblin legions are drilled and disciplined; captains lead
+  patrols, and hobgoblins train worgs as trackers and war-mounts.
+- Text :: A hobgoblin captain marches his warriors towards glory, worgs loping
+  afar to flush out any ambush.
+
+*** Bugbear Ambush
+
+- Id :: =bugbear-ambush=
+- Members :: Bugbear Stalker ×2–3 (leader); Goblin Warrior ×2–4 (member)
+- Why together :: Bugbears are ambush predators, and goblins make the noise that
+  draws the eye away from them.
+- Text :: Goblins distract while the bugbears spring the trap.
+
+*** Worg Pack
+
+- Id :: =worg-pack=
+- Members :: Worg ×2–4 (member); Goblin Warrior ×3–5 (pet)
+- Why together :: Worgs are wicked, intelligent wolves that tolerate goblin
+  riders, and goblins ride them to war.
+- Text :: A worg pack lopes through the wild with goblin riders cinched to their
+  backs, on the hunt for meat and spoils.
+
+** Dragons and kobolds
+
+*** Kobold Warband
+
+- Id :: =kobold-warband=
+- Members :: Kobold Warrior ×6–12 (member)
+- Why together :: Kobolds are weak alone and swarm by instinct; pack tactics are
+  the whole point of them.
+- Text :: Kobolds in packs are dangerous indeed, and a special threat to quarry
+  that underestimates them.
+
+*** Young Dragon's Court
+
+- Id :: =wyrmlings-court=
+- Members :: Young Red Dragon ×1 (leader); Kobold Warrior ×4–8 (minion)
+- Why together :: Kobolds revere dragons as kin and gods and attach themselves
+  to any dragon that will have them; a young dragon collects them whether it
+  wants to or not.
+- Text :: A young red dragon has attracted the attention of fawning kobold
+  worshippers; annoying, perhaps, but perhaps useful...
+
+*** Adult Dragon's Tribute
+
+- Id :: =adult-dragon-tribute=
+- Members :: Adult Red Dragon ×1 (leader); Kobold Warrior ×8–12 (minion)
+- Why together :: The same devotion at scale: an adult dragon's lair is tended
+  by kobolds who bring tribute and die for it.
+- Text :: An adult red dragon's kobold worshippers will defend their lord to the
+  death. Not that their master needs defending, but if their distractions can
+  shorten an inconvenient fight, so much the better.
+
+** Drider and spiders
+
+*** Drider's Web
+
+- Id :: =drider-webs=
+- Members :: Drider ×1–2 (leader); Giant Spider ×2–4 (member); Giant Wolf Spider
+  ×1–3 (minion)
+- Why together :: Driders are drow remade by Lolth, and spiders are Lolth's own
+  creatures; they answer to her chosen.
+- Text :: If you think you've encountered a lone drider, you're wrong.
+
+** Aquatic aberrations
+
+*** Aboleth's Domain
+
+- Id :: =aboleth-throne=
+- Members :: Aboleth ×1 (leader); Chuul ×1–2 (member)
+- Why together :: Aboleths bred chuuls as servitors in the deep past, and the
+  chuuls still obey their makers.
+- Text :: The aboleth sends its children forth to project its will, and brings
+  them back to defend their creator.
+
+*** Sahuagin Raid
+
+- Id :: =sahuagin-raid=
+- Members :: Sahuagin Warrior ×3–5 (member); Hunter Shark ×1–2 (pet)
+- Why together :: Sahuagin command sharks by telepathy and raid coasts with
+  them.
+- Text :: The sahuagin with its scouts is a fearsome sea raider indeed.
+
+*** Merrow Hunters
+
+- Id :: =merrow-hunters=
+- Members :: Merrow ×2–4 (member); Giant Crocodile ×1 (pet)
+- Why together :: Merrow lair in coastal caves and river mouths where crocodiles
+  hunt, and they use whatever hunts there.
+- Text :: The ravenous merrow have many traps of ambush, some living...
+
+** Gnolls
+
+*** Gnoll Pack
+
+- Id :: =gnoll-pack=
+- Members :: Gnoll Warrior ×3–5 (member); Giant Hyena ×1–2 (pet); Hyena ×2–4
+  (pet)
+- Why together :: Gnolls are Yeenoghu's hunting packs, and hyenas run with them;
+  a hyena that feeds on a gnoll's kills becomes a gnoll.
+- Text :: A hunting gnoll pack with its loyal hyenas is all gnashing teeth,
+  slashing spears, and ruinous speed.
+
+** Giants
+
+*** Hill Giant Camp
+
+- Id :: =hill-giant-camp=
+- Members :: Hill Giant ×1–2 (leader); Ogre ×1–2 (member)
+- Why together :: Hill giants are the dimmest of the giants, and ogres are their
+  natural hangers-on; the two share a taste for food and plunder.
+- Text :: One the brains, the other the brawn, and plunder to be had.
+
+*** Frost Giant Hunt
+
+- Id :: =frost-giant-hunt=
+- Members :: Frost Giant ×1–2 (leader); Winter Wolf ×2–4 (pet)
+- Why together :: Frost giants keep winter wolves as hunting companions and
+  guards; both belong to the frozen north.
+- Text :: In the frozen wastes, the wolves' noses will pick out the prey; their
+  masters will choose the sport.
+
+*** Fire Giant's Forge
+
+- Id :: =fire-giant-forge=
+- Members :: Fire Giant ×1–2 (leader); Hell Hound ×2–4 (pet)
+- Why together :: Fire giants are the master smiths of the volcanic deeps, and
+  hell hounds are immune to fire; the giants have kept and bred them as forge
+  guards for ages.
+- Text :: A hell hound is the only hound that can bed down in a fire giant's
+  forge, so the giants have bred them for it since before most kingdoms had
+  names.
+
+*** Cloud Giant's Eyrie
+
+- Id :: =cloud-giant-eyrie=
+- Members :: Cloud Giant ×1 (leader); Griffon ×1–2 (pet)
+- Why together :: Cloud giants live for status and keep griffons among their
+  flying pets and mounts; a griffon's favorite meal is horse.
+- Text :: Griffons prefer horseflesh, but a cloud giant's griffons eat whatever
+  their master points at, and a cloud giant likes to point.
+
+*** Storm Giant Citadel
+
+- Id :: =storm-giant-citadel=
+- Members :: Storm Giant ×1 (leader); Wyvern ×1–2 (pet)
+- Why together :: Storm giants withdraw to remote mountain and cloud citadels
+  and read the weather for omens; wyverns nest in the same high crags.
+- Text :: A storm giant reads omens in the thunderheads; the wyverns on its
+  battlements read only the wind, and whatever comes riding it.
+
+*** Ogre Marauders
+
+- Id :: =ogre-marauders=
+- Members :: Ogre ×2–3 (member); Bandit ×2–4 (minion)
+- Why together :: An ogre follows anyone who keeps it fed, and bandits use ogres
+  as muscle for as long as the arrangement holds.
+- Text :: Bandits who can keep an ogre fed have the strongest arm on the road,
+  right up until the day the larder runs empty.
+
+*** Troll Lair
+
+- Id :: =troll-lair=
+- Members :: Troll ×1–2 (member); Ogre Zombie ×0–2 (minion)
+- Why together :: Trolls eat anything and leave the rest to rot; in a lair
+  steeped in that much death, or under a necromancer's hand, the leftovers rise.
+- Text :: A troll seldom finishes a meal, and in the wrong sort of cave the
+  leftovers get up again.
+
+** Undead
+
+*** Mummy Tomb Guard
+
+- Id :: =mummy-tomb=
+- Members :: Mummy ×1 (leader); Skeleton ×3–6 (member); Zombie ×2–4 (member)
+- Why together :: Mummies are made to guard tombs, and the retainers buried with
+  a noble rise as skeletons and zombies to keep the same vigil.
+- Text :: The household was buried with its master so it could serve him in the
+  next world; as it turned out, the next world was this one.
+
+*** Mummy Lord's Court
+
+- Id :: =mummy-lord-court=
+- Members :: Mummy Lord ×1 (leader); Mummy ×1–2 (member); Skeleton ×6–8 (minion)
+- Why together :: A mummy lord is a priest-king preserved by ritual, its heart
+  hidden away; it keeps a court of mummies and lesser undead and goes on
+  reigning.
+- Text :: A mummy lord never died so much as adjourned. Break the seal, and
+  court is back in session.
+
+*** Lich's Demesne
+
+- Id :: =lich-demesne=
+- Members :: Lich ×1 (leader); Ghoul ×2–4 (member); Ghast ×1–2 (member)
+- Why together :: A lich wants servants it need not feed, pay, or trust; ghouls
+  and the ghasts that lead them dispose of intruders and ask for nothing.
+- Text :: A lich has no further use for flesh, so it pays its ghouls in whatever
+  walks through the door.
+
+*** Vampire's Brood
+
+- Id :: =vampire-brood=
+- Members :: Vampire ×1 (leader); Vampire Spawn ×2–4 (member); Vampire Familiar
+  ×1–2 (pet)
+- Why together :: A vampire's spawn are bound to its will; its familiars are
+  living mortals who serve by day in the hope of being turned, and lose their
+  gifts if the master is destroyed.
+- Text :: The spawn serve because they have no choice; the familiars serve
+  because they've been promised the bite themselves, someday, if they keep
+  proving useful.
+
+*** Ghost Haunting
+
+- Id :: =ghost-haunting=
+- Members :: Ghost ×1 (leader); Shadow ×1–3 (member); Specter ×1–2 (member)
+- Why together :: A ghost is held by unfinished business, and those who die in
+  its haunt rise as shadows and specters alongside it.
+- Text :: A ghost's unfinished business has a way of becoming other people's.
+  The shadows and specters drifting after it are what became of the last few who
+  came to settle it.
+
+*** Skeleton Legion
+
+- Id :: =skeleton-legion=
+- Members :: Skeleton ×6–10 (member); Warhorse Skeleton ×1–3 (pet); Minotaur
+  Skeleton ×0–1 (leader)
+- Why together :: Skeletons obey their last command indefinitely; an army raised
+  for a war keeps marching long after the war, cavalry and champion included.
+- Text :: A skeleton keeps its last order until something breaks it, and this
+  legion's last order was to advance.
+
+*** Zombie Horde
+
+- Id :: =zombie-horde=
+- Members :: Zombie ×6–12 (member); Ogre Zombie ×1–2 (leader)
+- Why together :: Zombies shamble toward the living with no thought at all, and
+  an ogre zombie is only a bigger one.
+- Text :: A horde has no plan and no general, only a direction; the ogre zombies
+  out front are simply the ones with the longest stride.
+
+*** Wraith Host
+
+- Id :: =wraith-host=
+- Members :: Wraith ×1 (leader); Specter ×2–4 (member)
+- Why together :: A wraith raises the humanoids it kills as specters under its
+  control, so its host is made of its own victims.
+- Text :: Every specter trailing a wraith was a person once, and every one of
+  them met the wraith the same way you're about to.
+
+** Hags
+
+*** Hag Coven
+
+- Id :: =hag-coven=
+- Members :: Green Hag ×1 (member); Sea Hag ×1 (member); Night Hag ×1 (member)
+- Why together :: Hags are solitary and loathe each other, and three form a
+  coven only for shared power toward a shared end.
+- Text :: Hags can't stand one another, which is what makes a coven so worrying:
+  whatever the three of them want, they want it more than they hate each other.
+
+*** Sea Hag's Tide
+
+- Id :: =sea-hag-tide=
+- Members :: Sea Hag ×1 (leader); Sahuagin Warrior ×2–4 (member)
+- Why together :: Sea hags haunt foul coasts and feed on horror and despair;
+  sahuagin raiders work the same coasts and bring both.
+- Text :: The sahuagin raid for meat and plunder. The hag comes along to watch
+  hope go under.
+
+*** Green Hag's Grove
+
+- Id :: =green-hags-grove=
+- Members :: Green Hag ×1 (leader); Worg ×1–2 (pet); Goblin Warrior ×2–3
+  (minion)
+- Why together :: Green hags dwell in forests and swamps and keep servants;
+  goblins and worgs share the woods and fear her more than each other.
+- Text :: Goblins serve a green hag for the scraps she promises, and never quite
+  work out that they're the scraps.
+
+*** Night Hag's Bargain
+
+- Id :: =night-hag-bargain=
+- Members :: Night Hag ×1 (leader); Imp ×1–2 (pet)
+- Why together :: Night hags are fiends that harvest souls into a soul bag for
+  sale in the Lower Planes, and imps are the Nine Hells' spies and errand
+  runners.
+- Text :: A night hag deals in souls; her imps keep the books, and skim.
+
+** Fiends
+
+*** Imp & Quasit Servants
+
+- Id :: =imp-quasit-servants=
+- Members :: Imp ×1–2 (member); Quasit ×1–2 (member)
+- Why together :: Imps are devils and quasits are demons, enemies in the Blood
+  War, but both serve mortal spellcasters as familiars and a warlock or cult can
+  bind both.
+- Text :: An imp and a quasit stand on opposite sides of a war older than the
+  world, but they will share a master so long as he's mortal, since mortals can
+  be outlived.
+
+*** Devil Patrol
+
+- Id :: =devil-patrol=
+- Members :: Bearded Devil ×2–3 (member); Hell Hound ×1–2 (pet)
+- Why together :: Bearded devils are the Hells' shock troops, and devils keep
+  hell hounds as hunting and guard beasts.
+- Text :: The bearded devils follow orders, the hell hounds follow scent, and
+  between them nothing on the route goes unnoticed.
+
+*** Demon Incursion
+
+- Id :: =demon-incursion=
+- Members :: Vrock ×1–2 (leader); Dretch ×4–6 (minion)
+- Why together :: Vrocks are vulture demons that lead by screeching, and
+  dretches are the lowest of demonkind, driven ahead as fodder.
+- Text :: A vrock doesn't lead the dretches so much as fly ahead of them; they
+  keep up because being left behind in the Abyss is worse.
+
+*** Pit Fiend's Retinue
+
+- Id :: =pit-fiend-retinue=
+- Members :: Pit Fiend ×1 (leader); Bone Devil ×1–2 (member); Barbed Devil ×1–2
+  (member)
+- Why together :: Pit fiends are the generals and lords of the Hells; barbed
+  devils serve as wardens and guards, bone devils as taskmasters of lesser
+  devils, and a lord travels with both.
+- Text :: A pit fiend goes nowhere unattended; it needs no protecting, but in
+  the Nine Hells a lord without a retinue looks like one on the way down.
+
+*** Marilith's Honor Guard
+
+- Id :: =marilith-honor-guard=
+- Members :: Marilith ×1 (leader); Hezrou ×1–2 (member)
+- Why together :: Mariliths are the Abyss's tacticians, and hezrou are the
+  brutes that enforce a demon lord's will; a marilith that fails can be demoted
+  into one.
+- Text :: A marilith is the rare demon that makes plans, and hezrou are the rare
+  demons that follow them. It helps that she has six arms and a sword in each.
+
+** Humanoid bands
+
+*** Bandit Camp
+
+- Id :: =bandit-camp=
+- Members :: Bandit ×4–6 (member); Bandit Captain ×1 (leader)
+- Why together :: A bandit captain holds outlaws together by force and charisma,
+  and the loot is where that gets tested.
+- Text :: Any six bandits can stop a coach; it takes a captain to divide the
+  take without anybody getting stabbed.
+
+*** Cultist Cabal
+
+- Id :: =cultist-cabal=
+- Members :: Cultist ×3–5 (member); Cultist Fanatic ×1–2 (leader)
+- Why together :: Cultists serve a dark power under fanatics who actually wield
+  its magic.
+- Text :: The fanatics have heard their god's voice; the rest have only heard
+  the fanatics, and that has always been enough.
+
+*** Knight & Retinue
+
+- Id :: =knight-retinue=
+- Members :: Knight ×1 (leader); Guard ×3–5 (member); Scout ×0–2 (member)
+- Why together :: A knight travels with retainers: guards as men-at-arms and
+  scouts as outriders.
+- Text :: The knight trusts to honor and the guards trust to their spears. The
+  scout trusts neither, which is why the scout goes first.
+
+*** Priest's Procession
+
+- Id :: =priest-procession=
+- Members :: Priest ×1 (leader); Priest Acolyte ×3–5 (member)
+- Why together :: A priest leads acolytes in the rites and on the road between
+  shrines.
+- Text :: The priest walks in front because the road is holy, and the acolytes
+  walk behind because somebody has to carry the relics.
+
+*** Berserker Warband
+
+- Id :: =berserker-warband=
+- Members :: Berserker ×3–5 (member)
+- Why together :: Berserkers fight in a frenzy and follow no one for long.
+- Text :: A berserker warband has no chief, because a chief might one day say
+  'enough.'
+
+** Beasts
+
+*** Wolf Pack
+
+- Id :: =wolf-pack=
+- Members :: Dire Wolf ×1–2 (leader); Wolf ×3–5 (member)
+- Why together :: Wolves and dire wolves hunt as a pack, and the dire wolves
+  lead it.
+- Text :: The wolves run the quarry ragged, and the dire wolves wait where it's
+  being run to.
+
+*** Owlbear Den
+
+- Id :: =owlbear-den=
+- Members :: Owlbear ×1–3 (member)
+- Why together :: Owlbears are fiercely territorial, mate for life, and raise
+  their cubs in the den.
+- Text :: One owlbear is bad luck, two is a mated pair, and three means the cub
+  has started hunting on its own.
+
+*** Bear Family
+
+- Id :: =bear-family=
+- Members :: Brown Bear ×1 (leader); Black Bear ×1–2 (member)
+- Why together :: Brown and black bears share forest ranges and tolerate each
+  other where the fishing is good.
+- Text :: Bears keep no company by choice, but a good salmon run makes a truce
+  of sorts, and you've just walked into the middle of it.
+
+** Underdark and caves
+
+*** Carrion Crawl
+
+- Id :: =carrion-crawl=
+- Members :: Carrion Crawler ×1–2 (member); Zombie ×2–4 (minion)
+- Why together :: Carrion crawlers are scavengers that follow the smell of
+  death, and zombies leave the dead where they fall.
+- Text :: Carrion crawlers follow a knot of zombies the way gulls follow a plow:
+  something is going to get turned up.
+
+*** Cloaker Ambush
+
+- Id :: =cloaker-ambush=
+- Members :: Cloaker ×1–2 (member); Darkmantle ×2–4 (minion)
+- Why together :: Cloakers and darkmantles both hang from cave ceilings passing
+  for cloaks and stalactites, and both drop on whatever walks beneath.
+- Text :: Not everything hanging from this ceiling is stone, and none of it has
+  stopped watching you.
+
+*** Stirge Swarm
+
+- Id :: =stirge-swarm=
+- Members :: Stirge ×4–8 (member); Giant Bat ×1–2 (pet)
+- Why together :: Stirges are blood-drinking flyers that roost in the same caves
+  as bats and are easily mistaken for them.
+- Text :: Stirges roost among giant bats because bats are harmless, and a
+  hundred wings in the dark all sound alike.
+
+** Wilds
+
+*** Treant's Grove
+
+- Id :: =treants-grove=
+- Members :: Treant ×1 (leader); Awakened Tree ×1–3 (member)
+- Why together :: Treants awaken the trees of their groves to defend them, and
+  an awakened tree thinks about little else.
+- Text :: A treant wakes the trees around it for company, and finds that what
+  they mostly want to discuss is trespassers.
+
+** Elementals and fire
+
+*** Salamander Forge
+
+- Id :: =salamander-forge=
+- Members :: Salamander ×1–2 (member); Magma Mephit ×2–4 (minion)
+- Why together :: Salamanders are the smiths of the Plane of Fire, enslaved by
+  efreet and slavers in their turn; magma mephits serve any fire creature
+  stronger than themselves.
+- Text :: Salamanders are smiths by nature and slavers by habit, and magma
+  mephits are the only help that won't melt.
+
+*** Fire Elemental's Court
+
+- Id :: =fire-elemental-cult=
+- Members :: Fire Elemental ×1 (leader); Magma Mephit ×3–5 (minion)
+- Why together :: A fire elemental is flame given form and wants nothing from
+  anyone; mephits flock to greater elementals all the same.
+- Text :: A fire elemental has no more use for a court than a bonfire does, but
+  the mephits keep bowing to it anyway.

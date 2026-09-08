@@ -1533,6 +1533,11 @@ role + count range.
 Both sources flow into the generator's ~pickLoreFill~ unchanged: ~Lore.bundled
 ++ params.userLoreGroups~ is filtered + weighted-picked as a single pool.
 
+Every bundled group carries a one-line authored description, shown in the
+Compendium's group detail pane.  The text and the lore that justifies each
+composition are collected in [[file:LORE_GROUPS.org][LORE_GROUPS.org]], which is where a new bundled
+group's write-up goes.
+
 ** Recharge prompt (no-auto-roll)
 
 Recharge abilities (dragon breath weapons, beholder rays, etc.) used to
