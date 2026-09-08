@@ -8,6 +8,7 @@ module Update.Condition exposing
     , maxConditionNoteLength
     , noteChanged
     , openEdit
+    , openFor
     , pickStandard
     , presetCategoryToggle
     , presetDelete
@@ -23,6 +24,7 @@ module Update.Condition exposing
     , rollSave
     , saveAbilityChanged
     , saveAutoRollSet
+    , saveBonusAdjust
     , saveBonusChanged
     , saveDcChanged
     , saveLanded
@@ -82,23 +84,28 @@ withConditionUi =
 
 {-| A chip whose edit form is already open unfolds and scrolls
 into view, the same as every other card control: the click asks
-to see that condition.
+to see that condition. Every path scrolls the panel fully into
+view, whether that means showing what is already open, or
+opening it fresh onto the clicked condition.
 -}
 openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
 openEdit name id model =
-    case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            if ui.target == name && ui.editingId == Just id then
-                ( Model.unfoldDrawer Model.conditionLens model
-                , Effects.scrollDrawerIndex
-                    (Model.drawerIndexOf Model.conditionLens model)
-                )
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceCondition ui) ->
+                    if ui.target == name && ui.editingId == Just id then
+                        Model.unfoldDrawer Model.conditionLens model
 
-            else
-                ( openEditFresh name id model, Cmd.none )
+                    else
+                        openEditFresh name id model
 
-        _ ->
-            ( openEditFresh name id model, Cmd.none )
+                _ ->
+                    openEditFresh name id model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
+    )
 
 
 openEditFresh : String -> Int -> Model -> Model
@@ -109,6 +116,32 @@ openEditFresh name id model =
 
         Nothing ->
             model
+
+
+{-| Open the editor fresh for `target`, ready to add a new
+condition — the gear icon's entry point, distinct from `openEdit`
+which edits one the creature already carries. One already aimed
+here unfolds and scrolls into view rather than being reset, the
+same as every other editor's `openFor`.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceCondition ui) ->
+                    if ui.target == target then
+                        Model.unfoldDrawer Model.conditionLens model
+
+                    else
+                        Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
+
+                _ ->
+                    Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
+    )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -295,6 +328,33 @@ saveBonusChanged text model =
                                     String.toInt (String.trim text)
                                         |> Maybe.withDefault s.bonus
                             }
+                        )
+                        u.saveToEnd
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| The Mod field's ▲ / ▼ spinner: nudge the bonus by one and
+re-derive the text from it, matching the two-character field's
+tighter typing room with a click path that reaches -10 or 20
+either way.
+-}
+saveBonusAdjust : Int -> Model -> ( Model, Cmd Msg )
+saveBonusAdjust delta model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | saveToEnd =
+                    Maybe.map
+                        (\s ->
+                            let
+                                next =
+                                    Basics.clamp -10 20 (s.bonus + delta)
+                            in
+                            { s | bonus = next, bonusText = String.fromInt next }
                         )
                         u.saveToEnd
             }

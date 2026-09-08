@@ -147,37 +147,31 @@ manualApplyTo names ui model =
 
 
 {-| A card's HP value: it aims the editor at its own creature,
-so an editor already open for someone else re-aims. One already
-aimed here unfolds and scrolls into view — a card control asks to see a
-creature's editor.
+so an editor already open for someone else re-aims. Every path
+unfolds and scrolls the panel fully into view — a card control
+asks to see a creature's editor, whether that means showing what
+is already open, re-aiming it, or opening it fresh.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    case drawerSurface model of
-        Just (SurfaceHpChange ui) ->
-            if ui.target == target then
-                ( Model.ackHpLog (Model.unfoldDrawer Model.hpChangeLens model)
-                , Effects.scrollDrawerIndex
-                    (Model.drawerIndexOf Model.hpChangeLens model)
-                )
+    let
+        nextModel =
+            Model.ackHpLog
+                (case drawerSurface model of
+                    Just (SurfaceHpChange ui) ->
+                        if ui.target == target then
+                            Model.unfoldDrawer Model.hpChangeLens model
 
-            else
-                ( Model.ackHpLog
-                    (Model.openDrawer Model.hpChangeLens
-                        (HpChangeUi.fresh target)
-                        model
-                    )
-                , Cmd.none
-                )
+                        else
+                            Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
 
-        _ ->
-            ( Model.ackHpLog
-                (Model.openDrawer Model.hpChangeLens
-                    (HpChangeUi.fresh target)
-                    model
+                    _ ->
+                        Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
                 )
-            , Cmd.none
-            )
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.hpChangeLens nextModel)
+    )
 
 
 {-| Mirror the raw text for the controlled input. Clears any

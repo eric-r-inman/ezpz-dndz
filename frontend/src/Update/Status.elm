@@ -23,28 +23,28 @@ drawerSurface model =
 
 {-| A card's status label: it aims the editor at its own
 creature, so an editor already open for someone else re-aims.
-One already aimed here unfolds and scrolls into view — a card control asks
-to see a creature's editor.
+Every path unfolds and scrolls the panel fully into view — a card
+control asks to see a creature's editor, whether that means
+showing what is already open, re-aiming it, or opening it fresh.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    case drawerSurface model of
-        Just (SurfaceStatus ui) ->
-            if ui.target == target then
-                ( Model.unfoldDrawer Model.statusLens model
-                , Effects.scrollDrawerIndex
-                    (Model.drawerIndexOf Model.statusLens model)
-                )
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceStatus ui) ->
+                    if ui.target == target then
+                        Model.unfoldDrawer Model.statusLens model
 
-            else
-                ( Model.openDrawer Model.statusLens (prefilled target model) model
-                , Cmd.none
-                )
+                    else
+                        Model.openDrawer Model.statusLens (prefilled target model) model
 
-        _ ->
-            ( Model.openDrawer Model.statusLens (prefilled target model) model
-            , Cmd.none
-            )
+                _ ->
+                    Model.openDrawer Model.statusLens (prefilled target model) model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.statusLens nextModel)
+    )
 
 
 prefilled : String -> Model -> StatusUi

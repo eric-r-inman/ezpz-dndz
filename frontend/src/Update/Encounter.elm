@@ -1,11 +1,12 @@
 module Update.Encounter exposing
     ( addPlaceholder
     , adjustFlyHeight
+    , clearCover
     , controlCancel
     , controlConfirm
-    , cycleCover
     , fallDamageLanded
     , nextTurn
+    , openStatusAndConditionFor
     , queueDragEnd
     , queueDragOver
     , queueDragStart
@@ -53,6 +54,8 @@ import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
+import Update.Condition
+import Update.Status
 
 
 {-| Apply a change to `model.encounter`, then re-aim any editor
@@ -129,9 +132,15 @@ setActive name model =
     )
 
 
-cycleCover : String -> Model -> ( Model, Cmd Msg )
-cycleCover name model =
-    ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.nextCover c.cover })) model
+{-| The card's own cover × : clears cover directly rather than
+cycling through the other levels, since the × always means "turn
+this off." The Status editor's own cover control still cycles
+(`Update.Status.coverCycle`) — picking a specific level is what
+that form is for.
+-}
+clearCover : String -> Model -> ( Model, Cmd Msg )
+clearCover name model =
+    ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.NoCover })) model
     , Cmd.none
     )
 
@@ -387,6 +396,33 @@ targetCreature name model =
         }
     , Cmd.none
     )
+
+
+{-| The card's gear icon: aim both Status and Condition/Effect at
+this creature in one click. Reuses each editor's own `openFor`
+for the aiming (so re-open, re-aim, and fresh-open all behave
+exactly as they do from their individual triggers) but replaces
+their individual scroll Cmds with one that puts whichever of the
+two sits higher in the column at the top — "fully visible" isn't
+enough when opening a pair, since it doesn't say which end the GM
+should land on.
+-}
+openStatusAndConditionFor : String -> Model -> ( Model, Cmd Msg )
+openStatusAndConditionFor name model =
+    let
+        ( afterStatus, _ ) =
+            Update.Status.openFor name model
+
+        ( afterBoth, _ ) =
+            Update.Condition.openFor name afterStatus
+
+        scrollToTopmost =
+            Maybe.map2 Effects.scrollDrawerIndicesToTop
+                (Model.drawerIndexOf Model.statusLens afterBoth)
+                (Model.drawerIndexOf Model.conditionLens afterBoth)
+                |> Maybe.withDefault Cmd.none
+    in
+    ( afterBoth, scrollToTopmost )
 
 
 {-| A card picked up: remember the position it came from.

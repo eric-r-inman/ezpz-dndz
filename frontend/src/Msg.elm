@@ -427,7 +427,9 @@ type Msg
       -- A click on an empty spot of a card picks that creature as
       -- the editors' target, or clears it when it already was.
     | TargetCreature String
-    | CycleCover String
+      -- The card's own status ×'s: clear exactly the one flag
+      -- shown, without opening the editor.
+    | ClearCover String
     | ToggleConcentration String
     | ToggleHiding String
     | ToggleDodging String
@@ -693,6 +695,10 @@ type Msg
     | NoteEditCancel
       -- Conditions and effects, timed or open-ended.
     | ConditionOpenEdit String Int
+      -- The card's gear icon: aims Status and Condition/Effect at
+      -- the card's own creature and scrolls so the topmost of the
+      -- two sits at the top of the column.
+    | OpenStatusAndConditionFor String
     | ConditionPickStandard String
     | ConditionCustomNameChanged String
     | ConditionNoteChanged String
@@ -711,6 +717,8 @@ type Msg
     | ConditionSaveAbilityChanged String
     | ConditionSaveDcChanged String
     | ConditionSaveBonusChanged String
+      -- The Mod field's ▲ / ▼ spinner (+1 / -1).
+    | ConditionSaveBonusAdjust Int
     | ConditionSaveAutoRollSet Encounter.AutoRollMode
     | ConditionSubmit
     | ConditionSubmitSelected

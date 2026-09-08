@@ -1,6 +1,6 @@
 module Effects exposing
     ( cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
-    , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex
+    , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -27,7 +27,7 @@ import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
 @docs cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
-@docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex
+@docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -195,6 +195,45 @@ there is no panel to scroll to.
 scrollDrawerIndex : Maybe Int -> Cmd Msg
 scrollDrawerIndex =
     Maybe.map scrollDrawerPanelIntoView >> Maybe.withDefault Cmd.none
+
+
+{-| Scroll so the panel at `index` sits at the top of the column,
+rather than merely somewhere visible. For a gesture that opens
+more than one panel at once (the card's gear icon), "fully
+visible" doesn't say which end of the pair the GM should land on
+— pinning the topmost one to the top does.
+-}
+scrollDrawerIndexToTop : Int -> Cmd Msg
+scrollDrawerIndexToTop index =
+    Task.map3
+        (\containerElement panelElement containerVp ->
+            let
+                margin =
+                    8
+
+                target =
+                    containerVp.viewport.y
+                        + (panelElement.element.y - containerElement.element.y)
+                        - margin
+            in
+            Browser.Dom.setViewportOf
+                drawerStackId
+                containerVp.viewport.x
+                (Basics.max 0 target)
+        )
+        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement (drawerPanelId index))
+        (Browser.Dom.getViewportOf drawerStackId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
+{-| `scrollDrawerIndexToTop`, given the smaller of two indices —
+the topmost panel of a pair a single gesture just opened.
+-}
+scrollDrawerIndicesToTop : Int -> Int -> Cmd Msg
+scrollDrawerIndicesToTop a b =
+    scrollDrawerIndexToTop (Basics.min a b)
 
 
 {-| Scroll a compendium list row to the top region of the list.

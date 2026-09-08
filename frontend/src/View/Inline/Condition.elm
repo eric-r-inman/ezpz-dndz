@@ -332,7 +332,7 @@ saveSubsection : SaveToEndUi -> Html Msg
 saveSubsection s =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "cond-save-ability" ] [ text "Ability" ]
+            [ Html.label [ for "cond-save-ability", class "cond-save-label" ] [ text "Ability" ]
             , Html.select
                 [ id "cond-save-ability"
                 , class "cond-select"
@@ -348,63 +348,89 @@ saveSubsection s =
                     )
                     [ "STR", "DEX", "CON", "INT", "WIS", "CHA" ]
                 )
-            , Html.label [ for "cond-save-dc" ] [ text "DC" ]
+            , Html.label [ for "cond-save-dc", class "cond-save-label" ] [ text "DC" ]
             , input
                 [ id "cond-save-dc"
-                , class "cond-input cond-input--narrow"
-                , type_ "number"
-                , Attr.min "1"
-                , Attr.max "40"
+                , class "cond-input cond-input--2ch"
+                , type_ "text"
+                , maxlength 2
                 , value s.dcText
                 , onInput ConditionSaveDcChanged
                 ]
                 []
-            , Html.label [ for "cond-save-bonus" ] [ text "Bonus" ]
-            , input
-                [ id "cond-save-bonus"
-                , class "cond-input cond-input--narrow"
-                , type_ "number"
-                , Attr.min "-10"
-                , Attr.max "20"
-                , value s.bonusText
-                , onInput ConditionSaveBonusChanged
+            , Html.label [ for "cond-save-bonus", class "cond-save-label" ] [ text "Mod" ]
+            , span [ class "cond-save-bonus-wrap" ]
+                [ input
+                    [ id "cond-save-bonus"
+                    , class "cond-input cond-input--2ch"
+                    , type_ "text"
+                    , maxlength 2
+                    , value s.bonusText
+                    , onInput ConditionSaveBonusChanged
+                    ]
+                    []
+                , span [ class "cond-spin" ]
+                    [ button
+                        [ class "cond-spin__btn"
+                        , type_ "button"
+                        , onClick (ConditionSaveBonusAdjust 1)
+                        , Tooltips.attr "Increase by 1"
+                        , attribute "aria-label" "Increase modifier by 1"
+                        ]
+                        [ text "▲" ]
+                    , button
+                        [ class "cond-spin__btn"
+                        , type_ "button"
+                        , onClick (ConditionSaveBonusAdjust -1)
+                        , Tooltips.attr "Decrease by 1"
+                        , attribute "aria-label" "Decrease modifier by 1"
+                        ]
+                        [ text "▼" ]
+                    ]
                 ]
-                []
             ]
         , div [ class "cond-radio-stack" ]
             [ autoRollRadio s
                 Encounter.AutoRollManual
-                "Manual (no auto-roll — GM clicks 🎲 on the chip)"
+                "End manually (no auto-roll)"
             , autoRollRadio s
                 Encounter.AutoRollAtBegin
-                "Auto-roll at the bearer's beginning-of-turn"
+                "Auto roll-beginning of turn"
             , autoRollRadio s
                 Encounter.AutoRollAtEnd
-                "Auto-roll at the bearer's end-of-turn"
+                "Auto roll-end of turn"
             ]
-        , div [ class "cond-section__caption" ]
-            [ text (autoRollCaption s.autoRoll) ]
+        , case autoRollCaption s.autoRoll of
+            Just caption ->
+                div [ class "cond-section__caption" ] [ text caption ]
+
+            Nothing ->
+                text ""
         ]
 
 
+{-| Plain radio row — a bare dot and its label, not the bordered
+pill `.cond-radio` renders elsewhere in this editor. Three
+mutually-exclusive timing choices read as a classic radio list
+better than as a stack of chips.
+-}
 autoRollRadio : SaveToEndUi -> Encounter.AutoRollMode -> String -> Html Msg
 autoRollRadio s mode label =
     let
         isSelected =
             s.autoRoll == mode
     in
-    Html.label
-        [ class
-            (if isSelected then
-                "cond-radio cond-radio--selected"
-
-             else
-                "cond-radio"
-            )
-        ]
+    Html.label [ class "cond-radio-plain" ]
         [ input
             [ type_ "radio"
             , Attr.name "cond-save-autoroll"
+            , class
+                (if isSelected then
+                    "cond-radio-plain__dot cond-radio-plain__dot--selected"
+
+                 else
+                    "cond-radio-plain__dot"
+                )
             , checked isSelected
             , onClick (ConditionSaveAutoRollSet mode)
             ]
@@ -413,17 +439,17 @@ autoRollRadio s mode label =
         ]
 
 
-autoRollCaption : Encounter.AutoRollMode -> String
+autoRollCaption : Encounter.AutoRollMode -> Maybe String
 autoRollCaption mode =
     case mode of
         Encounter.AutoRollManual ->
-            "The 🎲 button on the chip rolls manually — a reminder, not auto-applied."
+            Nothing
 
         Encounter.AutoRollAtBegin ->
-            "Save fires at the start of the bearer's turn; success removes the condition."
+            Just "Save fires at the start of the bearer's turn; success removes the condition."
 
         Encounter.AutoRollAtEnd ->
-            "Save fires at the end of the bearer's turn; success removes the condition."
+            Just "Save fires at the end of the bearer's turn; success removes the condition."
 
 
 footer : ConditionUi -> Dict String ConditionPreset -> Int -> Html Msg
@@ -445,10 +471,10 @@ footer ui presets selectedCount =
             , presetLoadControl ui presets
             ]
 
-        -- Apply takes the row below Save / Load: two scopes and
-        -- two preset controls do not share one row inside a
-        -- drawer panel.
-        , applyControls ui canSubmit selectedCount applyLabel
+        -- Delete (when editing) precedes Apply so Apply is always
+        -- the last row — the commit action reads as the final
+        -- word on the panel, not something with more choices
+        -- beneath it.
         , div [ class "cond-footer__actions" ]
             [ case ui.editingId of
                 Just _ ->
@@ -462,6 +488,7 @@ footer ui presets selectedCount =
                 Nothing ->
                     text ""
             ]
+        , applyControls ui canSubmit selectedCount applyLabel
         ]
 
 

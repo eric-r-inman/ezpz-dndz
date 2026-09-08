@@ -53,29 +53,29 @@ withInitiative =
 
 
 {-| A card's init circle: it aims the editor at its own creature,
-so an editor already open for someone else re-aims. One already
-aimed here unfolds and scrolls into view — a card control asks to see a
-creature's editor.
+so an editor already open for someone else re-aims. Every path
+unfolds and scrolls the panel fully into view — a card control
+asks to see a creature's editor, whether that means showing what
+is already open, re-aiming it, or opening it fresh.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
-    case drawerSurface model of
-        Just (SurfaceInitiative ui) ->
-            if ui.target == target then
-                ( Model.unfoldDrawer Model.initiativeLens model
-                , Effects.scrollDrawerIndex
-                    (Model.drawerIndexOf Model.initiativeLens model)
-                )
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceInitiative ui) ->
+                    if ui.target == target then
+                        Model.unfoldDrawer Model.initiativeLens model
 
-            else
-                ( Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
-                , Cmd.none
-                )
+                    else
+                        Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
 
-        _ ->
-            ( Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
-            , Cmd.none
-            )
+                _ ->
+                    Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.initiativeLens nextModel)
+    )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )

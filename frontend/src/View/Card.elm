@@ -219,7 +219,7 @@ view ctx index creature =
                     ]
                     []
                 , button
-                    [ class "icon-btn"
+                    [ class "icon-btn creature-card__make-active"
                     , onClick (SetActive creature.name)
                     , Tooltips.attr Tooltips.queueMakeActive
                     , attribute "aria-label" "Make active"
@@ -1380,7 +1380,26 @@ hpDisplay creature =
         , hpOpener creature (String.fromInt creature.maxHp) "hp-display__max" ("Max HP for " ++ creature.name)
         , maxHpOriginal creature
         , tempHpOpener creature
+        , statusAndConditionOpener creature
         ]
+
+
+{-| Gear icon after the HP readout: opens Status and
+Condition/Effect together, aimed at this creature, and scrolls so
+the topmost of the two lands at the top of the column. Both
+editors already open individually from their own card controls;
+this is the one-click "both at once" shortcut.
+-}
+statusAndConditionOpener : Creature -> Html Msg
+statusAndConditionOpener creature =
+    button
+        [ class "hp-display__gear"
+        , type_ "button"
+        , onClick (OpenStatusAndConditionFor creature.name)
+        , Tooltips.attr Tooltips.statusAndConditionOpen
+        , attribute "aria-label" ("Open status and conditions for " ++ creature.name)
+        ]
+        [ text "⚙️" ]
 
 
 {-| One HP value on the card. Clicking any of them opens the
@@ -1529,41 +1548,43 @@ hpEditKeyDecoder =
 
 
 {-| Posture labels for the statuses the Status editor applies.
-Full names, not icons, and each label is a link that opens the
-Status editor targeting this creature — the card answers "what
-is this creature doing?" and hands off the editing.
+Full names, not icons; the label opens the Status editor
+targeting this creature, and the trailing × clears that one flag
+directly — the card answers "what is this creature doing?" and
+lets the GM either edit the whole picture or dismiss one thing on
+the spot.
 -}
 statusIcons : Creature -> Html Msg
 statusIcons creature =
     let
-        coverLabel =
+        coverEntry =
             case creature.cover of
                 Encounter.NoCover ->
                     Nothing
 
                 Encounter.HalfCover ->
-                    Just "½ cover"
+                    Just ( "½ cover", ClearCover creature.name )
 
                 Encounter.ThreeQuartersCover ->
-                    Just "¾ cover"
+                    Just ( "¾ cover", ClearCover creature.name )
 
                 Encounter.FullCover ->
-                    Just "total cover"
+                    Just ( "total cover", ClearCover creature.name )
 
-        flag isOn label =
+        flag isOn label clearMsg =
             if isOn then
-                Just label
+                Just ( label, clearMsg )
 
             else
                 Nothing
 
-        labels =
+        entries =
             List.filterMap identity
-                [ coverLabel
-                , flag creature.concentrating "concentrating"
-                , flag creature.hiding "hiding"
-                , flag creature.dodging "dodging"
-                , flag creature.flying "flying"
+                [ coverEntry
+                , flag creature.concentrating "concentrating" (ToggleConcentration creature.name)
+                , flag creature.hiding "hiding" (ToggleHiding creature.name)
+                , flag creature.dodging "dodging" (ToggleDodging creature.name)
+                , flag creature.flying "flying" (ToggleFlying creature.name)
                 ]
 
         -- The height and fall controls ride beside the flying
@@ -1582,23 +1603,33 @@ statusIcons creature =
             else
                 []
 
-        labelButton name =
-            button
-                [ class "status-icon"
-                , type_ "button"
-                , onClick (StatusOpenFor creature.name)
-                , Tooltips.attr Tooltips.statusBadgeEdit
-                , attribute "aria-label"
-                    ("Edit " ++ creature.name ++ "'s statuses (" ++ name ++ ")")
+        statusEntry ( name, clearMsg ) =
+            span [ class "status-icon-wrap" ]
+                [ button
+                    [ class "status-icon"
+                    , type_ "button"
+                    , onClick (StatusOpenFor creature.name)
+                    , Tooltips.attr Tooltips.statusBadgeEdit
+                    , attribute "aria-label"
+                        ("Edit " ++ creature.name ++ "'s statuses (" ++ name ++ ")")
+                    ]
+                    [ text name ]
+                , button
+                    [ class "status-icon__remove"
+                    , type_ "button"
+                    , stopPropagationOn "click" (Decode.succeed ( clearMsg, True ))
+                    , Tooltips.attr (Tooltips.statusClear name)
+                    , attribute "aria-label" ("Clear " ++ name ++ " for " ++ creature.name)
+                    ]
+                    [ text "×" ]
                 ]
-                [ text name ]
     in
-    if List.isEmpty labels then
+    if List.isEmpty entries then
         text ""
 
     else
         span [ class "status-icons" ]
-            (List.map labelButton labels ++ flyControls)
+            (List.map statusEntry entries ++ flyControls)
 
 
 {-| The 5e death-save tracker, rendered as a side-by-side pair of

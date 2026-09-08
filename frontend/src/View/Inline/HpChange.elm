@@ -153,7 +153,7 @@ applyScope selectedCount ui =
         text ""
 
     else
-        Html.label [ class "hp-change__checkbox" ]
+        Html.label [ class "hp-change__checkbox hp-change__checkbox--scope" ]
             [ input
                 [ type_ "checkbox"
                 , checked ui.applyToSelected

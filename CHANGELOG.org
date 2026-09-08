@@ -147,8 +147,22 @@
 63. The Manage HP editor's Selected checkbox now trails the HP field and reads
     "Selected (#)" without a colon.  No action needed.
 64. The Dice Roller separates its Expression and Count rows with a divider, and
-    an empty log reads "Nothing rolls yet." in a smaller size.  No action
-    needed.
+    an empty log reads "No rolls yet." in a smaller size.  No action needed.
+65. A creature card's status labels (dodging, hiding, etc.) each carry a small ×
+    that clears that status directly, without opening the Status editor.  No
+    action needed.
+66. A creature card's condition chips drop their badge background and border,
+    reading as plain text with a red × again — the same information, lighter
+    chrome.  No action needed.
+67. A gear icon beside a creature's HP opens its Status and Condition/Effect
+    editors together, aimed at that creature, with the topmost of the two
+    scrolled fully into view.  No action needed.
+68. The Condition/Effect editor's "Saving throw to end" auto-roll choice is
+    three plain radio buttons — "End manually (no auto-roll)", "Auto
+    roll-beginning of turn", "Auto roll-end of turn" — instead of bordered
+    pills, and its dice-button reminder text is gone.  No action needed.
+69. The Condition/Effect editor's saving-throw Mod field carries an up/down
+    spinner for one-click adjustment.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -191,6 +205,20 @@
     splitting the source onto its own line further down.  No action needed.
 20. The divider below the Advantage / Disadvantage buttons no longer runs
     against them.  No action needed.
+21. The make-active arrow sits a couple pixels lower in its column, so it no
+    longer crowds the select checkbox above it.  No action needed.
+22. Opening the Initiative, Status, Manage HP, or Condition/Effect editor now
+    always scrolls it into view, even when re-aiming it at a different creature
+    — previously only the case where it was already open on that creature
+    scrolled.  No action needed.
+23. The Manage HP editor's Selected checkbox sits a couple pixels further from
+    the HP field.  No action needed.
+24. The Condition/Effect editor's saving-throw DC and Mod fields, and their
+    labels, are narrower, so the whole row fits without wrapping.  No action
+    needed.
+25. The Condition/Effect editor's Delete button now sits above the Apply row
+    instead of below it, so Apply is always the last thing on the panel.  No
+    action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a

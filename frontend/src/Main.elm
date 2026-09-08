@@ -928,8 +928,8 @@ updateInner msg model =
         SetActive name ->
             Update.Encounter.setActive name model
 
-        CycleCover name ->
-            Update.Encounter.cycleCover name model
+        ClearCover name ->
+            Update.Encounter.clearCover name model
 
         ToggleConcentration name ->
             Update.Encounter.toggleConcentration name model
@@ -1309,6 +1309,9 @@ updateInner msg model =
         ConditionOpenEdit name id ->
             Update.Condition.openEdit name id model
 
+        OpenStatusAndConditionFor name ->
+            Update.Encounter.openStatusAndConditionFor name model
+
         ConditionPickStandard label ->
             Update.Condition.pickStandard label model
 
@@ -1347,6 +1350,9 @@ updateInner msg model =
 
         ConditionSaveBonusChanged text ->
             Update.Condition.saveBonusChanged text model
+
+        ConditionSaveBonusAdjust delta ->
+            Update.Condition.saveBonusAdjust delta model
 
         ConditionSaveAutoRollSet mode ->
             Update.Condition.saveAutoRollSet mode model

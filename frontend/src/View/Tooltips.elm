@@ -136,7 +136,9 @@ module View.Tooltips exposing
     , statBlockRoll
     , statBlockSavingThrow
     , statBlockShowInCompendium
+    , statusAndConditionOpen
     , statusBadgeEdit
+    , statusClear
     , statusOffTip
     , statusOnTip
     , tempHp
@@ -945,6 +947,14 @@ sourceFromSaved name =
     "from file: " ++ name
 
 
+{-| The card's gear icon — opens Status and Condition/Effect
+together, aimed at this creature.
+-}
+statusAndConditionOpen : String
+statusAndConditionOpen =
+    "Open status and condition/effect editors for this creature"
+
+
 {-| Card status label — opens the Status editor targeting the
 label's creature.
 -}
@@ -967,6 +977,15 @@ statusOnTip label =
 statusOffTip : String -> String
 statusOffTip label =
     "not " ++ label ++ " — click to set"
+
+
+{-| The card's own status × — clears the one flag directly,
+without opening the Status editor. `label` is the same human name
+the status chip itself shows (e.g. "hiding", "½ cover").
+-}
+statusClear : String -> String
+statusClear label =
+    "Clear " ++ label
 
 
 {-| Card row 2 Cover toggle — three-state cycle through

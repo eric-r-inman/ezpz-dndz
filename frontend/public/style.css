@@ -121,6 +121,10 @@
   --drawer-width: 296px;
   --drawer-pad-x: 4px;
 
+  /* A two-character numeric field (a DC, a modifier) in any
+     editor — shared so every such field reads the same width. */
+  --width-input-2ch: 4ch;
+
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
      the width judged at the table, not derived from the gap. */
@@ -5507,6 +5511,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   outline-offset: 2px;
 }
 
+/* Nudged down from the select checkbox above it — the two sat
+   close enough to misread as one control. */
+.creature-card__make-active {
+  margin-top: var(--space-1);
+}
+
 /* Shared bare-button reset.  Strips user-agent button styling
    so feature classes only declare what's actually unique to them
    (size, color, hover state).  Used by modal close × buttons,
@@ -5776,18 +5786,23 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Variant-specific tweaks: color, padding, border. */
 
+/* Without its badge background, the condition chip's × needs to
+   read as red on its own rather than only on hover — declared
+   after the shared group above so it wins on source order. */
+.condition-chip__remove {
+  color: var(--color-danger);
+}
+
 .condition-chip {
-  padding: 1px 6px;
+  /* No badge chrome — reads as plain text like the status labels
+     beside it, with only the trailing × as a control. */
   font-size: 0.78rem;
   font-weight: 500;
-  background: rgba(245, 200, 66, 0.1);
   /* Chip text follows the condition palette via its own token
      (`--color-condition-chip`), which each theme sets a shade
      brighter than the button colour where that colour runs
      dark, so the small chip text stays legible. */
   color: var(--color-condition-chip);
-  border: 1px solid rgba(245, 200, 66, 0.35);
-  border-radius: 999px;
   max-width: 220px;
   overflow: hidden;
 }
@@ -5959,6 +5974,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   line-height: 1;
 }
 
+/* Pairs a status label with its own × — one entry in the
+   `.status-icons` row. */
+.status-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 /* Each label is a button that opens the Status editor targeting
    its creature.  Native chrome is reset so the row reads as
    plain text until hovered. */
@@ -5975,6 +5998,28 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .status-icon:hover {
   text-decoration: underline;
+}
+
+/* Clears the one flag directly, without opening the Status
+   editor.  Red at rest, like the condition chip's ×, rather than
+   only on hover — it is a destructive-ish one-click action, not
+   a hover-discoverable affordance. */
+.status-icon__remove {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-danger);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.status-icon__remove:hover {
+  background: rgba(214, 59, 59, 0.15);
 }
 
 .status-toggle {
@@ -8756,6 +8801,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
+/* Extra breathing room after the HP field specifically — the
+   "New roll for each creature" checkbox below sits alone on its
+   own row and doesn't need it. */
+.hp-change__checkbox--scope {
+  margin-left: var(--space-2);
+}
+
 .hp-change__checkbox input[type="checkbox"] {
   accent-color: var(--color-accent);
   margin: 0;
@@ -8960,6 +9012,31 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-temp-blue);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Sits right after the vitals, so it gets its own left margin
+   rather than reusing `.hp-display__editable` — that reset is
+   tuned for tap-a-number text, not an emoji glyph. */
+.hp-display__gear {
+  appearance: none;
+  background: transparent;
+  border: none;
+  margin-left: var(--space-1);
+  padding: 0 2px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.hp-display__gear:hover {
+  background: var(--color-surface);
+}
+
+.hp-display__gear:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .hp-display__edit {
@@ -9206,6 +9283,30 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
 }
 
+/* Bare radio row — no pill chrome, just a dot and its label. */
+.cond-radio-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cond-radio-plain__dot {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-muted);
+  margin: 0;
+}
+
+.cond-radio-plain__dot--selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 /* Inset-focus form input variant used by the condition modal's
    freeform fields and the save / rename modals.  Shares the same
    flat surface + accent-glow focus shell; per-class blocks below
@@ -9290,6 +9391,49 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-input--narrow::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+/* DC and Mod: two characters, no more — matches the Save Chain
+   editor's own DC field so the two read the same width. */
+.cond-input--2ch {
+  width: var(--width-input-2ch);
+}
+
+/* "Ability" / "DC" / "Mod" — small enough that the row's three
+   fields plus their labels fit without wrapping. */
+.cond-save-label {
+  font-size: 0.72rem;
+}
+
+.cond-save-bonus-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The Mod field's ▲ / ▼: stacked rather than side-by-side, since
+   both sit to the same side of one input rather than flanking a
+   read-only value the way the fly-height spinner does. */
+.cond-spin {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 0.7;
+}
+
+.cond-spin__btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cond-spin__btn:hover {
+  color: var(--color-text);
 }
 
 .cond-subsection {
@@ -11832,7 +11976,7 @@ button.quick-list-card {
 }
 
 .save-chain__dc-input {
-  width: 4ch;
+  width: var(--width-input-2ch);
   padding: 6px var(--space-1);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-input-border);

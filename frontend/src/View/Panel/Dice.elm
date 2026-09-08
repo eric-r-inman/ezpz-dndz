@@ -272,7 +272,7 @@ history log ui =
 
                 else if List.isEmpty entries then
                     [ div [ class "dice-history__empty" ]
-                        [ text "Nothing rolls yet." ]
+                        [ text "No rolls yet." ]
                     ]
 
                 else
