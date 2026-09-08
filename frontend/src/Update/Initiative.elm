@@ -9,7 +9,6 @@ module Update.Initiative exposing
     , rollModeSet
     , rollsLanded
     , source
-    , surprisedToggle
     )
 
 {-| Update branches for the initiative editor: opening for a
@@ -92,9 +91,8 @@ quickSort model =
     )
 
 
-{-| Resolve which creatures the scope picks out, flag them
-Surprised when the editor's toggle is set, and fire one batched
-roll Cmd in the editor's chosen mode. The handler
+{-| Resolve which creatures the scope picks out and fire one
+batched roll Cmd in the editor's chosen mode. The handler
 (`InitiativeRollsLanded`) is shape-agnostic — it works for
 1-element or N-element batches and for any roll mode.
 -}
@@ -102,13 +100,7 @@ autoRoll : RollScope -> Model -> ( Model, Cmd Msg )
 autoRoll scope model =
     case drawerSurface model of
         Just (SurfaceInitiative ui) ->
-            let
-                creatures =
-                    scopeCreatures scope model
-            in
-            ( surprisedIfAsked (List.map .name creatures) ui model
-            , initiativeRollCmd ui.rollMode creatures
-            )
+            ( model, initiativeRollCmd ui.rollMode (scopeCreatures scope model) )
 
         _ ->
             ( model, Cmd.none )
@@ -140,39 +132,15 @@ applyCustomTo : (InitiativeUi -> List String) -> Model -> Model
 applyCustomTo targetsFor model =
     case drawerSurface model of
         Just (SurfaceInitiative ui) ->
-            let
-                targets =
-                    targetsFor ui
-            in
-            applyCustomInitiative targets ui (surprisedIfAsked targets ui model)
+            applyCustomInitiative (targetsFor ui) ui model
 
         _ ->
             model
 
 
-{-| The editor's Surprised toggle rides along with whichever
-action the GM clicks; the lifecycle hook clears the flag at the
-end of the surprised creature's next turn.
--}
-surprisedIfAsked : List String -> InitiativeUi -> Model -> Model
-surprisedIfAsked names ui model =
-    if ui.markSurprised then
-        flagSurprised names model
-
-    else
-        model
-
-
 rollModeSet : RollMode -> Model -> ( Model, Cmd Msg )
 rollModeSet mode model =
     ( withInitiative (\u -> { u | rollMode = mode }) model, Cmd.none )
-
-
-surprisedToggle : Model -> ( Model, Cmd Msg )
-surprisedToggle model =
-    ( withInitiative (\u -> { u | markSurprised = not u.markSurprised }) model
-    , Cmd.none
-    )
 
 
 scopeCreatures : RollScope -> Model -> List Encounter.Creature
@@ -191,21 +159,6 @@ scopeCreatures scope model =
 
         ScopeSelected ->
             List.filter .selected model.encounter.creatures
-
-
-flagSurprised : List String -> Model -> Model
-flagSurprised names model =
-    { model
-        | encounter =
-            List.foldl
-                (\name enc ->
-                    Encounter.mapCreature name
-                        (\c -> { c | surprised = True })
-                        enc
-                )
-                model.encounter
-                names
-    }
 
 
 {-| Fold each (creature name, roll) pair into a fresh `Model`:

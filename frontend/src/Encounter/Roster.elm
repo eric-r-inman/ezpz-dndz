@@ -562,7 +562,6 @@ freshPlaceholder name =
     , creatureKind = "npc"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
     , specialReactionsUsed = Set.empty
     }

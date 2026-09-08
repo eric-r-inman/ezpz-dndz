@@ -121,8 +121,11 @@ blank or unparseable field leaves its pool untouched, so the GM
 can set one pool without restating the other two.
 -}
 manualApplyTo : List String -> HpChangeUi -> Model -> Model
-manualApplyTo names ui model =
+manualApplyTo rawNames ui model =
     let
+        names =
+            Encounter.excludingPlaceholderNames model.encounter rawNames
+
         step parsed setter enc =
             case parsed of
                 Just n ->
@@ -600,13 +603,15 @@ applyAmountTo kind targets amount model =
 
 hpChangeTargets : HpChangeUi -> Encounter -> List String
 hpChangeTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
+    Encounter.excludingPlaceholderNames enc
+        (if ui.applyToSelected then
+            enc.creatures
+                |> List.filter .selected
+                |> List.map .name
 
-    else
-        [ ui.target ]
+         else
+            [ ui.target ]
+        )
 
 
 findCreature : String -> Encounter -> Maybe Creature

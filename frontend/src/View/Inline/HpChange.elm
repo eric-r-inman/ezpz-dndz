@@ -26,15 +26,16 @@ import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
 
 
-view : Int -> View.HpLog.Latest -> List HpChangeEntry -> HpChangeUi -> Html Msg
-view selectedCount latest log ui =
+view : Int -> Bool -> View.HpLog.Latest -> List HpChangeEntry -> HpChangeUi -> Html Msg
+view selectedCount placeholderWarning latest log ui =
     div [ class "creature-card__inline" ]
         [ amount selectedCount ui
         , parseErrorHint ui
         , freshRollOption selectedCount ui
         , actionButtons
+        , ApplyButton.placeholderNotice placeholderWarning
         , div [ class "cond-divider" ] []
-        , manualSection selectedCount ui
+        , manualSection selectedCount placeholderWarning ui
         , View.HpLog.latest latest log
         ]
 
@@ -44,8 +45,8 @@ rather than the change: type into any of the three, then apply
 to the target or the selection. Blank fields are left alone, so
 one pool can be set without restating the others.
 -}
-manualSection : Int -> HpChangeUi -> Html Msg
-manualSection selectedCount ui =
+manualSection : Int -> Bool -> HpChangeUi -> Html Msg
+manualSection selectedCount placeholderWarning ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row cond-row--pools" ]
             [ h3
@@ -76,6 +77,7 @@ manualSection selectedCount ui =
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
+        , ApplyButton.placeholderNotice placeholderWarning
         ]
 
 

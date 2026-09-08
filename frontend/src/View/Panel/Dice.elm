@@ -1,4 +1,4 @@
-module View.Panel.Dice exposing (view)
+module View.Panel.Dice exposing (recentBadges, view)
 
 {-| Dice roller panel; the chrome comes from `View.Panel`.
 Rendered only while `SurfaceDice` sits in the drawer stack.
@@ -33,6 +33,73 @@ type alias Log =
     , expanded : Set String
     , flashedRollSeq : Int
     }
+
+
+{-| Up to 3 most recent roll totals, rendered beside the rail's
+🎲 icon so a roll reads without opening the panel. Ordinarily the
+last 3 rolls from `history`, newest emphasized. A triple-roll
+(`override`, set by `Update.Dice.tripleRollLanded`) replaces that
+with its own 3 results instead, colour-coded by roll kind rather
+than recency, until the next single roll clears it.
+
+Both branches key by each roll's ordinal rather than its list
+position: a landing roll gets a fresh key and mounts (playing its
+flash), while an older one that merely shifted down a slot keeps
+its existing node and does not replay.
+
+-}
+recentBadges : Dice.History -> Maybe (List Dice.Roll) -> Html Msg
+recentBadges rollHistory override =
+    case override of
+        Just triple ->
+            Html.Keyed.node "span"
+                [ class "recent-rolls" ]
+                (List.indexedMap (tripleBadge rollHistory.pushed) triple)
+
+        Nothing ->
+            Html.Keyed.node "span"
+                [ class "recent-rolls" ]
+                (Dice.historyEntries rollHistory
+                    |> List.take 3
+                    |> List.indexedMap (recentBadge rollHistory.pushed)
+                )
+
+
+recentBadge : Int -> Int -> Dice.Roll -> ( String, Html Msg )
+recentBadge pushed i roll =
+    ( "roll-badge-" ++ String.fromInt (pushed - i)
+    , span
+        [ class
+            (if i == 0 then
+                "recent-roll recent-roll--latest"
+
+             else
+                "recent-roll"
+            )
+        ]
+        [ text (String.fromInt roll.total) ]
+    )
+
+
+tripleBadge : Int -> Int -> Dice.Roll -> ( String, Html Msg )
+tripleBadge pushed i roll =
+    ( "triple-badge-" ++ String.fromInt pushed ++ "-" ++ String.fromInt i
+    , span [ class ("recent-roll " ++ tripleBadgeClass roll.kind) ]
+        [ text (String.fromInt roll.total) ]
+    )
+
+
+tripleBadgeClass : Dice.RollKind -> String
+tripleBadgeClass kind =
+    case kind of
+        Dice.Advantage ->
+            "recent-roll--advantage"
+
+        Dice.Disadvantage ->
+            "recent-roll--disadvantage"
+
+        _ ->
+            "recent-roll--standard"
 
 
 view : View.Panel.Header -> Log -> DiceUi -> Html Msg

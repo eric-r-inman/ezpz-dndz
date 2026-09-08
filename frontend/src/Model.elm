@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PanelPin, PendingControl(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PanelPin, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -55,7 +55,6 @@ import Msg exposing (MeStatus)
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Set exposing (Set)
-import Ui.AbilitySave exposing (AbilitySaveUi)
 import Ui.Account exposing (AccountUi)
 import Ui.Compendium exposing (CompendiumEditUi, CompendiumPasteUi, CompendiumUi)
 import Ui.Condition as UiCondition exposing (ConditionUi)
@@ -133,7 +132,6 @@ type Surface
     | SurfaceCompendiumPaste CompendiumPasteUi
     | SurfaceSaveCompendium SaveCompendiumUi
     | SurfaceLoadCompendium LoadCompendiumUi
-    | SurfaceAbilitySave AbilitySaveUi
     | SurfaceQuickAdd QuickAddUi
     | SurfaceDuplicate DuplicateUi
     | SurfaceReplace ReplaceUi
@@ -357,9 +355,6 @@ surfaceKey surface =
 
         SurfaceLoadCompendium _ ->
             "load-compendium"
-
-        SurfaceAbilitySave _ ->
-            "ability-save"
 
         SurfaceGroupEdit _ ->
             "group-edit"
@@ -603,9 +598,6 @@ reaimWhere stale model =
                     surface
 
                 SurfaceLoadCompendium _ ->
-                    surface
-
-                SurfaceAbilitySave _ ->
                     surface
 
                 SurfaceGroupEdit _ ->
@@ -1487,8 +1479,9 @@ type alias Model =
 
 
 {-| Floating "+N" popup spawned at the cursor when an inline
-dice-link in a creature stat block is clicked. Animated up + out
-via CSS; expired by a `Process.sleep` Msg matched on `id`.
+dice-link, attack roll, ability check, or saving throw in a
+creature stat block is clicked. Animated up + out via CSS;
+expired by a `Process.sleep` Msg matched on `id`.
 
 `x` / `y` are captured at click time from the DOM event's
 `clientX` / `clientY`, so the popup anchors to where the user
@@ -1500,4 +1493,19 @@ type alias RollPopup =
     , x : Int
     , y : Int
     , total : Int
+    , color : PopupColor
     }
+
+
+{-| A popup's colour. `PopupPlain` is the original single-roll
+yellow (inline damage/dice-link clicks). The other three mark one
+member of a triple-roll (standard / advantage / disadvantage,
+fired together from one attack-roll, ability-check, or
+saving-throw click) so the three floating numbers read as a set
+rather than three unrelated rolls.
+-}
+type PopupColor
+    = PopupPlain
+    | PopupStandard
+    | PopupAdvantage
+    | PopupDisadvantage

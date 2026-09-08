@@ -134,6 +134,9 @@ applyTo names model =
     case drawerSurface model of
         Just (SurfaceStatus ui) ->
             let
+                targets =
+                    Encounter.excludingPlaceholderNames model.encounter names
+
                 stamp c =
                     { c
                         | cover = ui.cover
@@ -154,7 +157,7 @@ applyTo names model =
                     List.foldl
                         (\name enc -> Encounter.mapCreature name stamp enc)
                         model.encounter
-                        names
+                        targets
             }
 
         _ ->

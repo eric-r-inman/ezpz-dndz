@@ -638,10 +638,13 @@ silently dropped. Build a draft, then either insert it (creating)
 or update the edited condition.
 -}
 submitTo : List String -> Model -> ( Model, Cmd Msg )
-submitTo targets model =
+submitTo rawTargets model =
     case drawerSurface model of
         Just (SurfaceCondition ui) ->
             let
+                targets =
+                    Encounter.excludingPlaceholderNames model.encounter rawTargets
+
                 name =
                     String.trim ui.name
             in

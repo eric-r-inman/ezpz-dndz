@@ -7,8 +7,8 @@ mode and picking who it applies to stay separate choices.
 
 -}
 
-import Html exposing (Html, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (checked, class, for, id, type_, value)
+import Html exposing (Html, div, input, span, text)
+import Html.Attributes as Attr exposing (checked, class, for, id, maxlength, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg
     exposing
@@ -38,14 +38,10 @@ rollSection selectedCount ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
             [ Html.label [] [ text "Roll:" ]
-            , modeRadio ui ModeStandard "Standard"
-            , modeRadio ui ModeAdvantage "Advantage"
-            , modeRadio ui ModeDisadvantage "Disadvantage"
-            , surprisedToggle ui
+            , modeToggle ui ModeAdvantage "Advantage"
+            , modeToggle ui ModeDisadvantage "Disadvantage"
             ]
-        , div [ class "cond-section__caption" ]
-            [ text "Rolls 1d20 plus the creature's initiative bonus, then sorts the queue." ]
-        , ApplyButton.row "Roll for:"
+        , ApplyButton.row "Roll & sort:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
@@ -79,15 +75,13 @@ rollSection selectedCount ui =
 manualSection : Int -> InitiativeUi -> Html Msg
 manualSection selectedCount ui =
     div [ class "cond-section" ]
-        [ h3 [ class "cond-section__heading" ] [ text "Set to:" ]
-        , div [ class "cond-row" ]
-            [ Html.label [ for "init-custom-value" ] [ text "Initiative:" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ for "init-custom-value" ] [ text "Set value:" ]
             , input
                 [ id "init-custom-value"
-                , class "cond-input cond-input--w20"
-                , type_ "number"
-                , Attr.min "-99"
-                , Attr.max "99"
+                , class "cond-input cond-input--2ch"
+                , type_ "text"
+                , maxlength 2
                 , value ui.customValueText
                 , onInput InitiativeCustomChanged
                 , Html.Events.on "keydown" (Util.Keyboard.enterKey InitiativeApplyTarget)
@@ -121,7 +115,7 @@ manualSection selectedCount ui =
 sortSection : Html Msg
 sortSection =
     div [ class "cond-section" ]
-        [ div [ class "note-edit__buttons note-edit__buttons--start" ]
+        [ div [ class "note-edit__buttons init-quicksort-row" ]
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--blue"
@@ -133,11 +127,23 @@ sortSection =
         ]
 
 
-modeRadio : InitiativeUi -> RollMode -> String -> Html Msg
-modeRadio ui mode label =
+{-| Advantage / Disadvantage: re-clicking the active one clears
+it back to a standard roll instead of requiring a third
+"Standard" button to undo it. The two stay mutually exclusive
+since `rollMode` only ever holds one value.
+-}
+modeToggle : InitiativeUi -> RollMode -> String -> Html Msg
+modeToggle ui mode label =
     let
         isSelected =
             ui.rollMode == mode
+
+        nextMode =
+            if isSelected then
+                ModeStandard
+
+            else
+                mode
     in
     Html.label
         [ class
@@ -152,40 +158,8 @@ modeRadio ui mode label =
             [ type_ "radio"
             , Attr.name "initiative-roll-mode"
             , checked isSelected
-            , onClick (InitiativeRollModeSet mode)
+            , onClick (InitiativeRollModeSet nextMode)
             ]
             []
         , span [ class "cond-radio__label" ] [ text label ]
-        ]
-
-
-{-| Rides with whichever action the GM clicks, rolled or typed,
-so Surprised does not need its own copy of every button.
--}
-surprisedToggle : InitiativeUi -> Html Msg
-surprisedToggle ui =
-    Html.label
-        [ class
-            (if ui.markSurprised then
-                "cond-radio cond-radio--selected"
-
-             else
-                "cond-radio"
-            )
-        , Tooltips.attr "Also flag whoever this applies to as Surprised"
-        ]
-        [ input
-            [ type_ "checkbox"
-            , class
-                (if ui.markSurprised then
-                    "cond-check cond-check--on"
-
-                 else
-                    "cond-check"
-                )
-            , checked ui.markSurprised
-            , onClick InitiativeSurprisedToggle
-            ]
-            []
-        , span [ class "cond-radio__label" ] [ text "+ Surprised" ]
         ]

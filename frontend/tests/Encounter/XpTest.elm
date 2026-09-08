@@ -72,7 +72,6 @@ mkInstance args =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
     , specialReactionsUsed = Set.empty
     }
@@ -269,7 +268,6 @@ totalsForSuite =
                         , creatureKind = "enemy"
                         , race = ""
                         , alignment = ""
-                        , surprised = False
                         , hasSpecialReactions = False
                         , specialReactionsUsed = Set.empty
                         }

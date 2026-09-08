@@ -4176,6 +4176,79 @@ body {
   gap: var(--space-1);
 }
 
+.drawer-controls__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.recent-rolls {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.recent-roll {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The newest roll: bigger, yellow, and flashed hard enough that
+   a roll lands even when the GM's eyes are on the cards, not the
+   rail. Unlike `log-flash`'s one calm pulse, this one repeats —
+   the whole point here is to be hard to miss. Glows in
+   `currentColor` rather than a fixed hue so the same keyframe
+   also serves the triple-roll variants below, each in its own
+   colour.
+
+   Grouped with the triple-roll variants below (an attack,
+   ability check, or saving throw fired as standard + advantage +
+   disadvantage together, read by role rather than by recency) so
+   the shared size/weight/animation are written once; each
+   variant then only names its own colour. */
+.recent-roll--latest,
+.recent-roll--standard,
+.recent-roll--advantage,
+.recent-roll--disadvantage {
+  font-size: var(--font-size-readout);
+  font-weight: 800;
+  animation: recent-roll-flash 0.4s ease-in-out 5;
+}
+
+.recent-roll--latest {
+  color: var(--color-yellow);
+}
+
+.recent-roll--standard {
+  color: var(--color-text);
+}
+
+.recent-roll--advantage {
+  color: var(--color-success);
+}
+
+.recent-roll--disadvantage {
+  color: var(--color-danger);
+}
+
+@keyframes recent-roll-flash {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+
+  50% {
+    transform: scale(1.35);
+    text-shadow: 0 0 8px currentColor;
+  }
+}
+
 /* The drawer's scrolling stack of open panels: each takes its
    natural height, so a newly opened panel lands below the ones
    already up. */
@@ -6216,6 +6289,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: var(--action-btn-bd);
 }
 
+/* Start/next-turn control: 25% wider than its Clear/Reset row-
+   mates, so the button the GM reaches for every round is the
+   easiest of the three to land a click on. */
+.drawer-controls__btn--wide {
+  width: calc(var(--action-btn-size) * 1.25);
+}
+
 .action-btn:hover {
   /* Hover treatment is per-theme — Dark uses a faint white
      inset overlay (visible on dark surfaces); Modern leaves the
@@ -6513,31 +6593,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .action-btn--orange:hover {
   background: var(--btn-orange-bg-hover);
-}
-
-/* Yellow "surprised" variant — reads as a heads-up state that
-   sits visually between Disadvantage (orange) and Advantage
-   (blue) in the Initiative modal's roll grid. */
-.action-btn--yellow {
-  --btn-bg: #f5c842;
-  --btn-fg: #4a3c0a;
-  --btn-bd: #d4a82a;
-}
-
-.action-btn--yellow:hover {
-  background: #f0b820;
-}
-
-/* 😲 emoji badge that sits to the left of a Surprised creature's
-   name on the card row 1 + in the encounter-bar's active-creature
-   summary. */
-.creature-card__surprised,
-.encounter-bar__surprised {
-  display: inline-block;
-  margin-right: 4px;
-  font-size: 1rem;
-  line-height: 1;
-  user-select: none;
 }
 
 .action-btn--readied {
@@ -7399,10 +7454,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    `--modal-max-w`; the structural rule above consumes it.  Modals
    that need extra height / width handling (compendium / paste
    /condition) layer those overrides in their own block below. */
-.modal--ability-save {
-  --modal-max-w: 480px;
-}
-
 .modal--round-set {
   --modal-max-w: 380px;
 }
@@ -9162,6 +9213,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   justify-content: flex-start;
 }
 
+/* Initiative editor's Quick Sort row: centered, and closer to
+   the manual-value row above it than the shared 8px default —
+   it is a standalone shortcut, not another field in that group. */
+.init-quicksort-row {
+  justify-content: center;
+  margin-top: var(--space-0);
+}
+
 /* Names the verb once for the scope buttons that follow it, so
    each button carries only the scope. */
 .apply-row__lead {
@@ -9169,6 +9228,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-label);
   color: var(--color-text-muted);
+}
+
+/* Warns that a placeholder in the target or selection won't be
+   touched by this editor. Sits under the Apply row it explains. */
+.apply-row__placeholder-notice {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-danger);
 }
 
 /* Condition / effect modal — same .modal-backdrop / .modal /
@@ -11353,25 +11420,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
-/* Saving-throw modal: a one-line summary above three side-by-side
-   roll buttons (Roll / Advantage / Disadvantage). */
-.ability-save__summary {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--color-text);
-}
-
-.ability-save__buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: stretch;
-}
-
-.ability-save__buttons .action-btn {
-  flex: 1 1 0;
-  justify-content: center;
-}
-
 /* Picker-list pattern shared by the Quick Add and Duplicate
    modals: a vertical scrollable list of clickable rows with a
    bordered shell, hover highlight, and bottom-divider per row.
@@ -11602,6 +11650,33 @@ button.creature-card__lifecycle--dead:focus-visible {
   transform: translate(-50%, -100%);
   animation: roll-popup-float 1.2s ease-out forwards;
   will-change: transform, opacity;
+}
+
+/* Triple-roll popups (attack / ability check / saving throw fired
+   as standard + advantage + disadvantage together): white / green
+   / red instead of the single-roll yellow, so the three read as a
+   labelled set rather than three unrelated rolls. Same glyph size
+   and shadow trick as the base rule for legibility over any card
+   or stat-block background underneath. */
+.roll-popup--standard {
+  color: #ffffff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+.roll-popup--advantage {
+  color: var(--color-success);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px var(--color-success);
+}
+
+.roll-popup--disadvantage {
+  color: var(--color-danger);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px var(--color-danger);
 }
 
 @keyframes roll-popup-float {

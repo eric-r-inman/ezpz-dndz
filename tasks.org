@@ -40,8 +40,11 @@ External review asked for a UI that never hides the encounter queue behind a
 modal.  The analysis and migration plan live in [[file:docs/MODAL_MIGRATION.org][docs/MODAL_MIGRATION.org]].  In
 progress on the =modal-migration-inline= branch: the Surface rename, the inline
 and panel tiers, and the compendium browser's route conversion are implemented.
-The popover tier is unbuilt (=AbilitySave= still renders as a modal), the route
-tier still owes the compendium's edit / paste / group / lore forms plus
+The popover tier's only planned member, =AbilitySave=, was superseded rather
+than converted — clicking an attack roll, ability check, or saving throw now
+fires an instant triple-roll (standard + advantage + disadvantage at once) with
+no picker UI to anchor, so that tier is empty and closed rather than built.  The
+route tier still owes the compendium's edit / paste / group / lore forms plus
 =TreasureTable=, and the toast-plus-undo conversions remain.
 
 * DONE Give the Status editor's disabled Apply button a reachable tooltip

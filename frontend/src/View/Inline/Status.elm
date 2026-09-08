@@ -17,8 +17,8 @@ import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
 
 
-view : Int -> StatusUi -> Html Msg
-view selectedCount ui =
+view : Int -> Bool -> StatusUi -> Html Msg
+view selectedCount placeholderWarning ui =
     div [ class "creature-card__inline" ]
         [ div [ class "status-toggles" ]
             [ coverToggle ui
@@ -53,6 +53,7 @@ view selectedCount ui =
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
+        , ApplyButton.placeholderNotice placeholderWarning
         ]
 
 

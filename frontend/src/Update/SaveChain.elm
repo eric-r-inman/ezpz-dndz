@@ -868,13 +868,15 @@ saveChainSource side chain ui enc =
 
 resolveTargets : SaveChainUi -> Encounter.Encounter -> List String
 resolveTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
+    Encounter.excludingPlaceholderNames enc
+        (if ui.applyToSelected then
+            enc.creatures
+                |> List.filter .selected
+                |> List.map .name
 
-    else
-        [ ui.target ]
+         else
+            [ ui.target ]
+        )
 
 
 

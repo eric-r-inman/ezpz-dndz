@@ -26,6 +26,7 @@ import Msg
         , SaveChainSide(..)
         )
 import Ui.SaveChain exposing (AppliedPart(..), OutcomeForm, SaveChainLogEntry, SaveChainUi)
+import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
 
 
@@ -37,6 +38,7 @@ and the log renders the recent resolutions.
 type alias Context =
     { presets : Dict.Dict String SaveChain.SaveChain
     , selectedCount : Int
+    , placeholderWarning : Bool
     , log : List SaveChainLogEntry
     }
 
@@ -51,6 +53,7 @@ view ctx ui =
         , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
         , applyScope ctx.selectedCount ui
         , applyRow ui
+        , ApplyButton.placeholderNotice ctx.placeholderWarning
         , log ctx.log
         ]
 

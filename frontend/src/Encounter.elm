@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, defaultTarget, hasCreature, rosterDirty
+    , RechargeAbility, defaultTarget, excludingPlaceholderNames, hasCreature, isPlaceholderName, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -445,14 +445,6 @@ type alias Creature =
     , race : String
     , alignment : String
 
-    -- 5e Surprised: cleared automatically at the end of the
-    -- creature's first turn (handled by Encounter.Lifecycle).
-    -- A surprised creature renders a small icon next to its name
-    -- on the card + active-creature header and is excluded from
-    -- the legendary-action availability banner because the rule
-    -- bars LA use while surprised.
-    , surprised : Bool
-
     -- "Special reaction mechanics" hint copied from the
     -- compendium source.  When True, the card's reaction pip
     -- swaps its lightning glyph for a bold yellow `!` and the
@@ -657,6 +649,28 @@ mapCreature name fn enc =
                 c
     in
     { enc | creatures = List.map apply enc.creatures }
+
+
+{-| Whether the named creature is a placeholder stub. `False` for
+an unknown name, same as an editor targeting a creature that has
+since left the queue.
+-}
+isPlaceholderName : Encounter -> String -> Bool
+isPlaceholderName enc name =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.any .isPlaceholder
+
+
+{-| Drop placeholder stubs from a list of creature names an editor
+is about to act on. A placeholder has no real stat block yet, so
+HP, status, and condition edits — anything meant for a creature
+that is actually there — silently skip it rather than writing
+onto 1/1 HP AC 10 numbers nobody will use.
+-}
+excludingPlaceholderNames : Encounter -> List String -> List String
+excludingPlaceholderNames enc names =
+    List.filter (\n -> not (isPlaceholderName enc n)) names
 
 
 {-| Mark one of a creature's special reactions spent, or hand it

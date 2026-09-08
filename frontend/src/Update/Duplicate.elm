@@ -78,10 +78,13 @@ naming the copies that appeared, and leave the editor open for
 the next application.
 -}
 applyTo : List String -> Model -> ( Model, Cmd Msg )
-applyTo targets model =
+applyTo rawTargets model =
     case drawerSurface model of
         Just (SurfaceDuplicate ui) ->
             let
+                targets =
+                    Encounter.excludingPlaceholderNames model.encounter rawTargets
+
                 before =
                     Set.fromList (List.map .name model.encounter.creatures)
 

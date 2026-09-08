@@ -12,8 +12,8 @@ import Ui.Duplicate exposing (DuplicateLogEntry, DuplicateUi)
 import View.Inline.ApplyButton as ApplyButton
 
 
-view : Int -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
-view selectedCount log ui =
+view : Int -> Bool -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
+view selectedCount placeholderWarning log ui =
     div [ class "creature-card__inline" ]
         [ modeSection ui
         , ApplyButton.row "Apply to:"
@@ -37,6 +37,7 @@ view selectedCount log ui =
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
+        , ApplyButton.placeholderNotice placeholderWarning
         , latestLog log
         ]
 

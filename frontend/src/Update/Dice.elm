@@ -1,5 +1,6 @@
 module Update.Dice exposing
-    ( clearHistory
+    ( attackRollTriggered
+    , clearHistory
     , clearResponse
     , countChanged
     , flipCoin
@@ -8,6 +9,7 @@ module Update.Dice exposing
     , inputChanged
     , markRead
     , modifierChanged
+    , openPanel
     , persistResponse
     , rerun
     , rerunMenuClose
@@ -24,6 +26,8 @@ module Update.Dice exposing
     , rollPopupExpired
     , spawnRollPopup
     , statBlockRollLanded
+    , tripleRollCmd
+    , tripleRollLanded
     )
 
 {-| Update branches for the dice roller panel, and the
@@ -58,6 +62,24 @@ markRead : Model -> Model
 markRead model =
     withDice (\d -> { d | unread = False })
         { model | flashedRollSeq = model.dice.history.pushed }
+
+
+{-| The rail's 🎲 icon: unfold the Dice Roller and scroll it to
+the top of the column, whether it was already open, folded, or
+buried under other panels. It has no per-creature target, so
+there is nothing to re-aim.
+-}
+openPanel : Model -> ( Model, Cmd Msg )
+openPanel model =
+    let
+        nextModel =
+            Model.unfoldDrawer Model.diceLens model
+    in
+    ( nextModel
+    , Model.drawerIndexOf Model.diceLens nextModel
+        |> Maybe.map Effects.scrollDrawerIndexToTop
+        |> Maybe.withDefault Cmd.none
+    )
 
 
 inputChanged : String -> Model -> ( Model, Cmd Msg )
@@ -412,7 +434,7 @@ statBlockRollLanded : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 statBlockRollLanded x y roll model =
     let
         ( withPopup, popupCmd ) =
-            spawnRollPopup { x = x, y = y, total = roll.total } model
+            spawnRollPopup { x = x, y = y, total = roll.total, color = Model.PopupPlain } model
 
         ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll withPopup
@@ -425,13 +447,13 @@ statBlockRollLanded x y roll model =
 {-| Add a floating popup at the given screen position with the
 given roll total, returning the modified model + the auto-expire
 Cmd. Shared by every roll source that wants the floating-popup
-feedback (stat-block dice links, ability-save modal lands). The
-caller is responsible for any other roll-landed bookkeeping
-(push to dice history, persist, etc.) and for batching
-`popupCmd` with whatever else the source needs to fire.
+feedback (stat-block dice links, triple-rolls). The caller is
+responsible for any other roll-landed bookkeeping (push to dice
+history, persist, etc.) and for batching `popupCmd` with whatever
+else the source needs to fire.
 -}
-spawnRollPopup : { x : Int, y : Int, total : Int } -> Model -> ( Model, Cmd Msg )
-spawnRollPopup { x, y, total } model =
+spawnRollPopup : { x : Int, y : Int, total : Int, color : Model.PopupColor } -> Model -> ( Model, Cmd Msg )
+spawnRollPopup { x, y, total, color } model =
     let
         popup : RollPopup
         popup =
@@ -439,6 +461,7 @@ spawnRollPopup { x, y, total } model =
             , x = x
             , y = y
             , total = total
+            , color = color
             }
     in
     ( { model
@@ -459,6 +482,115 @@ rollPopupExpired id model =
     ( { model | rollPopups = List.filter (\p -> p.id /= id) model.rollPopups }
     , Cmd.none
     )
+
+
+{-| An attack-roll click in a stat block (the inline "+N to hit"
+link): the same standard + advantage + disadvantage triple-roll
+as an ability check or saving throw (see `Update.AbilitySave`),
+tagged "Attack" rather than an ability's check/save label.
+-}
+attackRollTriggered : String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
+attackRollTriggered creatureName mod x y model =
+    ( model, tripleRollCmd "Attack" creatureName mod x y )
+
+
+{-| Roll `1d20 + bonus` three ways at once — standard, advantage,
+and disadvantage — tagged with `feature` for the dice-history
+label ("Attack", "STR check", "DEX saving throw", …). One batched
+Cmd rather than three separate ones, so the three rolls don't
+share a same-millisecond RNG seed (see `Dice.batchRollCmd`).
+`x` / `y` are the triggering click's position, carried through to
+`TripleRollLanded` so the floating popups anchor there.
+-}
+tripleRollCmd : String -> String -> Int -> Int -> Int -> Cmd Msg
+tripleRollCmd feature creatureName bonus x y =
+    let
+        source =
+            { feature = feature, target = Just creatureName }
+    in
+    Dice.batchRollCmd (TripleRollLanded x y)
+        [ ( creatureName, source, Dice.generator (Effects.saveExpression bonus) )
+        , ( creatureName, source, Dice.advantageGenerator bonus )
+        , ( creatureName, source, Dice.disadvantageGenerator bonus )
+        ]
+
+
+{-| Result handler for a triple-roll: push all three rolls to
+history/persistence exactly as any other roll, spawn three
+floating popups colour-coded by roll mode and spread out
+side-by-side at the click position so they read as a set, and set
+the rail's badge-strip override so the three totals stay visible
+— colour-coded the same way — even after the popups fade. Any
+single roll landing after this (from any source) clears the
+override; see `Effects.pushIncomingDiceRoll`.
+-}
+tripleRollLanded : Int -> Int -> List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
+tripleRollLanded x y results model =
+    let
+        rolls =
+            List.map Tuple.second results
+
+        pushOne roll ( m, cmds ) =
+            let
+                ( pushed, broadcastCmd ) =
+                    Effects.pushDiceRoll roll m
+            in
+            ( pushed, persistRollFor m.auth roll :: broadcastCmd :: cmds )
+
+        ( afterPush, pushCmds ) =
+            List.foldl pushOne ( model, [] ) rolls
+
+        spawnOne roll ( m, cmds ) =
+            let
+                ( withPopup, popupCmd ) =
+                    spawnRollPopup
+                        { x = x + popupOffset roll.kind
+                        , y = y
+                        , total = roll.total
+                        , color = popupColor roll.kind
+                        }
+                        m
+            in
+            ( withPopup, popupCmd :: cmds )
+
+        ( afterPopups, popupCmds ) =
+            List.foldl spawnOne ( afterPush, [] ) rolls
+
+        d =
+            afterPopups.dice
+    in
+    ( { afterPopups | dice = { d | rollBadgeOverride = Just rolls } }
+    , Cmd.batch (pushCmds ++ popupCmds)
+    )
+
+
+popupColor : Dice.RollKind -> Model.PopupColor
+popupColor kind =
+    case kind of
+        Dice.Advantage ->
+            Model.PopupAdvantage
+
+        Dice.Disadvantage ->
+            Model.PopupDisadvantage
+
+        _ ->
+            Model.PopupStandard
+
+
+{-| Horizontal spread so a triple-roll's three popups float up
+side by side instead of stacked exactly on top of one another.
+-}
+popupOffset : Dice.RollKind -> Int
+popupOffset kind =
+    case kind of
+        Dice.Advantage ->
+            -36
+
+        Dice.Disadvantage ->
+            36
+
+        _ ->
+            0
 
 
 {-| Roll-popup lifetime in milliseconds. Must match the CSS

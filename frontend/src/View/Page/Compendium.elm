@@ -1246,7 +1246,7 @@ detailForSelection ui encounterIds ( chosenLore, chosenGroup, chosen ) =
                     (encounterInstancesOf creature.id encounterIds)
                     ui.selectedIds
                     (ui.badgeFlashFor == Just creature.id)
-                , View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadgesOpenInNewTab creature
+                , View.StatBlock.view RollFromStatBlock AttackRollTriggered AbilityCheckTriggered AbilitySaveTriggered View.StatBlock.TagBadgesOpenInNewTab creature
                 ]
 
         ( Nothing, Nothing, Nothing ) ->

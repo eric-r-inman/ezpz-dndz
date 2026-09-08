@@ -477,6 +477,9 @@ type Msg
     | RechargeRollLanded String String Dice.Roll
     | ToggleInactive String
       -- Dice roller.
+      -- The rail's 🎲 icon: unfold the panel and scroll it to the
+      -- top of the column, wherever it currently sits.
+    | DiceRollerOpen
     | DiceInputChanged String
     | DiceCountChanged String
     | DiceModifierChanged String
@@ -676,7 +679,6 @@ type Msg
     | InitiativeCustomChanged String
     | InitiativeQuickSort
     | InitiativeRollModeSet RollMode
-    | InitiativeSurprisedToggle
     | InitiativeAutoRoll RollScope
     | InitiativeApplyTarget
     | InitiativeApplySelected
@@ -1095,25 +1097,28 @@ type Msg
     | QuickAddSearchChanged String
     | QuickAddPick String
     | QuickAddPickPlaceholder
-      -- Ability-check / saving-throw modal triggered from
-      -- compendium stat blocks.  The two `Int`s are the
+      -- Ability-check / saving-throw / attack-roll triple-rolls
+      -- triggered from compendium stat blocks: one click fires
+      -- standard + advantage + disadvantage together (see
+      -- `Update.Dice.tripleRollCmd`).  The two `Int`s are the
       -- `clientX` / `clientY` of the original click — they ride
-      -- through the modal so the floating roll-result popup
-      -- can anchor at the cell when the dice eventually land.
-      -- `AbilityCheckOpen` fires from the six STR/DEX/... cells
-      -- (1d20 + flat modifier).  `AbilitySaveOpen` fires from
-      -- the inline chips in the Saving Throws property line
-      -- (1d20 + proficient save bonus).  Same modal lifecycle,
-      -- different labels.
-    | AbilityCheckOpen String String Int Int Int
+      -- through so the three floating roll-result popups can
+      -- anchor there when the dice land.  `AbilityCheckTriggered`
+      -- fires from the six STR/DEX/... cells (1d20 + flat
+      -- modifier).  `AbilitySaveTriggered` fires from the inline
+      -- chips in the Saving Throws property line (1d20 +
+      -- proficient save bonus).  `AttackRollTriggered` fires from
+      -- an inline "+N to hit" link in a feature description
+      -- (1d20 + attack modifier, no ability label).
+    | AbilityCheckTriggered String String Int Int Int
       -- (creatureName, abilityLabel, abilityModifier, clickX, clickY)
-    | AbilitySaveOpen String String Int Int Int
+    | AbilitySaveTriggered String String Int Int Int
       -- (creatureName, abilityLabel, saveBonus, clickX, clickY)
-    | AbilitySaveClose
-    | AbilitySaveRoll RollMode
-    | AbilitySaveLanded Int Int Dice.Roll
-      -- (clickX, clickY captured at original ability-cell click,
-      --  the resolved roll)
+    | AttackRollTriggered String Int Int Int
+      -- (creatureName, attackModifier, clickX, clickY)
+    | TripleRollLanded Int Int (List ( String, Dice.Roll ))
+      -- (clickX, clickY captured at the triggering click, the
+      --  three resolved rolls)
     | EncounterControlConfirm
     | EncounterControlCancel
     | EncounterRun

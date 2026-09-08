@@ -93,7 +93,7 @@ pinnedStatBlock creature =
             , attribute "aria-label" "Open in new window"
             ]
             [ text "↗" ]
-        , View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagIconTooltip creature
+        , View.StatBlock.view RollFromStatBlock AttackRollTriggered AbilityCheckTriggered AbilitySaveTriggered View.StatBlock.TagIconTooltip creature
         ]
 
 

@@ -86,13 +86,12 @@ panelMain model =
 
 {-| Sticky orange strip sandwiched between the encounter title
 bar and the scrolling card grid. Lists every queue member with
-un-spent legendary actions (excluding the currently-active
-creature, since you can't take an LA on your own turn-end, and
-excluding Surprised creatures, since the rule bars LA use while
-surprised). Each name is clickable to pin the creature's stat
-block; the parenthesised count is remaining pips. Empty when
-no creature qualifies, so the panel layout is unchanged for
-vanilla encounters.
+un-spent legendary actions, excluding the currently-active
+creature since you can't take an LA on your own turn-end. Each
+name is clickable to pin the creature's stat block; the
+parenthesised count is remaining pips. Empty when no creature
+qualifies, so the panel layout is unchanged for vanilla
+encounters.
 
 Lives outside `panel__body` so it doesn't scroll with the cards
 — same affordance the title bar uses.
@@ -260,16 +259,15 @@ hasAvailableLegendaryAction c =
         dead =
             Encounter.DeathSaves.isDead c.deathSaves
     in
-    -- Surprised, down, or dead creatures are suppressed from
-    -- the reminder banner: 5e bars them from using LA until
-    -- those conditions clear.  Once the lifecycle (or the GM)
-    -- clears the relevant flag, they re-appear in the banner
-    -- without any further state change.
+    -- Down or dead creatures are suppressed from the reminder
+    -- banner: 5e bars them from using LA until those conditions
+    -- clear.  Once the lifecycle (or the GM) clears the relevant
+    -- flag, they re-appear in the banner without any further
+    -- state change.
     total
         > 0
         && Set.size c.legendaryActionsUsed
         < total
-        && not c.surprised
         && not down
         && not dead
 

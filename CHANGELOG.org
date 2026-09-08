@@ -163,6 +163,25 @@
     pills, and its dice-button reminder text is gone.  No action needed.
 69. The Condition/Effect editor's saving-throw Mod field carries an up/down
     spinner for one-click adjustment.  No action needed.
+70. The Initiative editor's Roll row drops the Standard option — Advantage and
+    Disadvantage toggle on their own click and clear back to standard on a
+    second click, instead of needing a third button to undo either one.  No
+    action needed.
+71. Manage HP, Status, Condition/Effect, Duplicate, and Save Chain skip any
+    placeholder creature in their target or selection and say so in red under
+    Apply — a placeholder has no real stats yet to change.  Initiative and
+    Replace still work on them, since rolling initiative and turning a
+    placeholder into a real creature are exactly what a placeholder is for.  No
+    action needed.
+72. A 🎲 icon beside the Compendium one opens the Dice Roller and scrolls it to
+    the top of the editor column.  No action needed.
+73. The last 3 dice rolls show beside the 🎲 icon, the newest larger, yellow, and
+    flashing for a couple of seconds so a roll reads without opening the panel.
+    No action needed.
+74. Clicking an attack-roll link, ability-score cell, or Saving Throws chip in a
+    stat block rolls standard, advantage, and disadvantage together — the three
+    float up color-coded (white / green / red) and stay listed beside the 🎲
+    icon, so a missed popup is still easy to check.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -219,6 +238,15 @@
 25. The Condition/Effect editor's Delete button now sits above the Apply row
     instead of below it, so Apply is always the last thing on the panel.  No
     action needed.
+26. The start/next-turn button is a quarter wider than Clear and Reset, so it's
+    easier to hit each round.  No action needed.
+27. The Initiative editor drops an explanatory caption row and a "Set to:"
+    heading, and renames "Roll for:" to "Roll & sort:" and "Initiative:" to "Set
+    value:".  No action needed.
+28. The Initiative editor's Set value field is two characters wide, matching the
+    DC/Mod fields elsewhere.  No action needed.
+29. The Initiative editor's Quick Sort Encounter button sits closer to the row
+    above it and is centered.  No action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a
@@ -227,6 +255,15 @@
    instead.  The → button that makes a creature active stays.
 3. The Manage HP amount field takes three characters, so a formula like 2d6+3 no
    longer fits there.  Roll those in the Dice Roller and type the total.
+4. The Initiative editor's Surprised toggle, and the badge it set on a
+   creature's card, are gone — the current edition dropped the Surprised
+   condition.  If you were tracking it for house rules, use a custom
+   condition/effect instead.
+5. Ability checks and saving throws no longer open a Roll / Advantage /
+   Disadvantage picker from a stat block — clicking the ability cell or the
+   Saving Throws chip now rolls all three at once instead (see Added).  There's
+   no longer a way to fire just one mode from the stat block; use the Dice
+   Roller if you need exactly one.
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the

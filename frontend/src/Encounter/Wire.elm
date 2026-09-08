@@ -1076,7 +1076,6 @@ encodeCreature c =
         , ( "creatureKind", E.string c.creatureKind )
         , ( "race", E.string c.race )
         , ( "alignment", E.string c.alignment )
-        , ( "surprised", E.bool c.surprised )
         , ( "hasSpecialReactions", E.bool c.hasSpecialReactions )
         , ( "specialReactionsUsed", encodeStringSet c.specialReactionsUsed )
         ]
@@ -1321,7 +1320,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised hasSpecialReactions specialReactionsUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment hasSpecialReactions specialReactionsUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -1362,7 +1361,6 @@ decodeCreature =
             , creatureKind = creatureKind
             , race = race
             , alignment = alignment
-            , surprised = surprised
             , hasSpecialReactions = hasSpecialReactions
             , specialReactionsUsed = specialReactionsUsed
             }
@@ -1419,7 +1417,6 @@ decodeCreature =
         |> optional "creatureKind" D.string "enemy"
         |> optional "race" D.string ""
         |> optional "alignment" D.string ""
-        |> optional "surprised" D.bool False
         |> optional "hasSpecialReactions" D.bool False
         |> optional "specialReactionsUsed" decodeStringSet Set.empty
 

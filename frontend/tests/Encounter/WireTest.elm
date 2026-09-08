@@ -193,7 +193,6 @@ fullyPopulatedCreature =
     , creatureKind = "enemy"
     , race = "Dragon"
     , alignment = "chaotic evil"
-    , surprised = True
     , hasSpecialReactions = False
     , specialReactionsUsed = Set.empty
     }

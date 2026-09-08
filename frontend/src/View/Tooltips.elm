@@ -95,6 +95,7 @@ module View.Tooltips exposing
     , noteAdd
     , noteEdit
     , panelOpenCompendium
+    , panelOpenDiceRoller
     , panelStatBlockNewWindow
     , pinStatBlock
     , queueInactive
@@ -219,6 +220,11 @@ appBarDonate =
 panelOpenCompendium : String
 panelOpenCompendium =
     "Compendium (new tab)"
+
+
+panelOpenDiceRoller : String
+panelOpenDiceRoller =
+    "Dice Roller"
 
 
 reset : String

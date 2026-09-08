@@ -1,4 +1,4 @@
-module View.Inline.ApplyButton exposing (row, view)
+module View.Inline.ApplyButton exposing (placeholderNotice, row, view)
 
 {-| One editor's Apply button.
 
@@ -57,3 +57,16 @@ row : String -> List (Html Msg) -> Html Msg
 row lead buttons =
     div [ class "note-edit__buttons note-edit__buttons--start" ]
         (span [ class "apply-row__lead" ] [ text lead ] :: buttons)
+
+
+{-| Warns that a placeholder in the current target or selection
+will not be touched — this editor's changes have nothing to land
+on until the stub becomes a real creature (Replace does that).
+-}
+placeholderNotice : Bool -> Html Msg
+placeholderNotice show =
+    if show then
+        div [ class "apply-row__placeholder-notice" ] [ text "*Placeholders will be ignored" ]
+
+    else
+        text ""

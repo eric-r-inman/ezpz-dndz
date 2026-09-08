@@ -75,7 +75,6 @@ view mode enc savedAs =
                 ]
                 [ text ("Round " ++ String.fromInt enc.round) ]
             , sectionSep
-            , surprisedMarker active
             , activeNameLink active activeName
             , noteSpan active
             , sectionSep
@@ -335,25 +334,6 @@ hasConditions active =
 
         Nothing ->
             False
-
-
-surprisedMarker : Maybe Creature -> Html Msg
-surprisedMarker active =
-    case active of
-        Just c ->
-            if c.surprised then
-                span
-                    [ class "encounter-bar__surprised"
-                    , Tooltips.attr "Surprised — can't take reactions or use legendary actions until the end of their next turn"
-                    , attribute "aria-label" "Surprised"
-                    ]
-                    [ text "😲" ]
-
-            else
-                text ""
-
-        Nothing ->
-            text ""
 
 
 {-| Active-creature short-note slot in the title bar, sitting

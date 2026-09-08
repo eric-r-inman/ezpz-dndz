@@ -13,6 +13,7 @@ with it — an entry in `Model.defaultDrawer`.
 -}
 
 import Effects
+import Encounter
 import Html exposing (Html, button, div, text)
 import Html.Attributes as Attr exposing (class)
 import Html.Events exposing (onClick)
@@ -55,10 +56,17 @@ need the editors unfolded first.
 encounterControls : Model -> Html Msg
 encounterControls model =
     div [ class "drawer-controls" ]
-        [ controlButton "action-btn action-btn--plain"
-            CompendiumOpen
-            Tooltips.panelOpenCompendium
-            "📚"
+        [ div [ class "drawer-controls__tools" ]
+            [ controlButton "action-btn action-btn--plain"
+                CompendiumOpen
+                Tooltips.panelOpenCompendium
+                "📚"
+            , controlButton "action-btn action-btn--plain"
+                DiceRollerOpen
+                Tooltips.panelOpenDiceRoller
+                "🎲"
+            , View.Panel.Dice.recentBadges model.dice.history model.dice.rollBadgeOverride
+            ]
         , div [ class "drawer-controls__encounter" ]
             [ controlButton "action-btn action-btn--red"
                 EncounterClear
@@ -80,13 +88,13 @@ it rather than advancing it.
 turnControl : String -> Html Msg
 turnControl activeName =
     if String.isEmpty activeName then
-        controlButton "action-btn action-btn--green"
+        controlButton "action-btn action-btn--green drawer-controls__btn--wide"
             EncounterRun
             Tooltips.runEncounter
             "▶"
 
     else
-        controlButton "action-btn action-btn--green"
+        controlButton "action-btn action-btn--green drawer-controls__btn--wide"
             NextTurn
             Tooltips.nextTurn
             "⏭"
@@ -160,6 +168,19 @@ panelFor model index panel =
         selectedCount =
             List.length (List.filter .selected model.encounter.creatures)
 
+        selectedHasPlaceholder =
+            model.encounter.creatures
+                |> List.filter .selected
+                |> List.any .isPlaceholder
+
+        -- Whether the editor's current target or selection includes
+        -- a placeholder stub. These five editors act on a creature's
+        -- real stats, which a placeholder doesn't have yet — the
+        -- panel warns rather than silently doing nothing.
+        placeholderWarning targetName =
+            Encounter.isPlaceholderName model.encounter targetName
+                || selectedHasPlaceholder
+
         -- Manage HP and Save Chain still choose their scope with
         -- a checkbox, so their strip has to name the selection
         -- when it is ticked; the button-scoped editors always
@@ -205,6 +226,7 @@ panelFor model index panel =
                 editor "Manage HP"
                     (scopedLabel ui.target ui.applyToSelected)
                     (View.Inline.HpChange.view selectedCount
+                        (placeholderWarning ui.target)
                         { flashedSeq = model.flashedHpLogSeq
                         , expanded = model.expandedLogRows
                         }
@@ -215,7 +237,7 @@ panelFor model index panel =
             SurfaceStatus ui ->
                 editor "Status"
                     ("Target: " ++ ui.target)
-                    (View.Inline.Status.view selectedCount ui)
+                    (View.Inline.Status.view selectedCount (placeholderWarning ui.target) ui)
 
             SurfaceCondition ui ->
                 editor "Condition/Effect"
@@ -223,6 +245,7 @@ panelFor model index panel =
                     (View.Inline.Condition.view
                         { creatureNames = List.map .name model.encounter.creatures
                         , selectedCount = selectedCount
+                        , placeholderWarning = placeholderWarning ui.target
                         , presets = model.conditionPresets
                         , log = model.conditionLog
                         }
@@ -235,6 +258,7 @@ panelFor model index panel =
                     (View.Inline.SaveChain.view
                         { presets = model.saveChainPresets
                         , selectedCount = selectedCount
+                        , placeholderWarning = placeholderWarning ui.target
                         , log = model.saveChainLog
                         }
                         ui
@@ -257,7 +281,7 @@ panelFor model index panel =
             SurfaceDuplicate ui ->
                 editor "Duplicate"
                     ("Target: " ++ ui.target)
-                    (View.Inline.Duplicate.view selectedCount model.duplicateLog ui)
+                    (View.Inline.Duplicate.view selectedCount (placeholderWarning ui.target) model.duplicateLog ui)
 
             SurfaceCrCalculator _ ->
                 View.Panel.CrCalculator.view header model

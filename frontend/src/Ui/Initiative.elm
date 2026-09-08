@@ -13,8 +13,7 @@ typing a negative initiative without the controlled input
 clobbering it.
 
 `rollMode` is read by the roll buttons, so choosing how to roll
-is separate from choosing who to roll for. `markSurprised` rides
-with any of the editor's actions, rolled or typed.
+is separate from choosing who to roll for.
 
 @docs InitiativeUi, fresh
 
@@ -27,7 +26,6 @@ type alias InitiativeUi =
     { target : String
     , customValueText : String
     , rollMode : RollMode
-    , markSurprised : Bool
     }
 
 
@@ -36,5 +34,4 @@ fresh target =
     { target = target
     , customValueText = ""
     , rollMode = ModeStandard
-    , markSurprised = False
     }

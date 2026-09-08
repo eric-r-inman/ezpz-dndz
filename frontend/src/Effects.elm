@@ -508,6 +508,13 @@ pushIncomingDiceRoll roll model =
 
                     else
                         True
+
+                -- A triple-roll's badge override is only valid until
+                -- something newer lands. Whoever pushes last (each
+                -- triple-roll member included) wins the strip, so a
+                -- triple-roll's own handler re-sets it after its own
+                -- three pushes clear it here.
+                , rollBadgeOverride = Nothing
             }
       }
     , Cmd.none

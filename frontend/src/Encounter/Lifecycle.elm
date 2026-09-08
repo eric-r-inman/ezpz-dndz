@@ -112,9 +112,7 @@ applyBeginOfTurnHook enc =
 {-| End-of-turn hook for the named creature: tick down their own
 `DurationCountdown AtEnd` conditions, expire any
 `DurationUntilTurn AtEnd <name>` across the whole encounter, and
-decrement save notices. Also clears the creature's `surprised`
-flag — the surprised condition burns off after the surprised
-creature finishes their first turn.
+decrement save notices.
 -}
 applyEndOfTurn : String -> Encounter -> Encounter
 applyEndOfTurn name enc =
@@ -123,12 +121,6 @@ applyEndOfTurn name enc =
         |> tickSaveNoticesFor name
         |> tickTimerFor name AtEnd
         |> expireUntilTurn AtEnd name
-        |> clearSurprisedFor name
-
-
-clearSurprisedFor : String -> Encounter -> Encounter
-clearSurprisedFor name enc =
-    Encounter.mapCreature name (\c -> { c | surprised = False }) enc
 
 
 tickSaveNoticesFor : String -> Encounter -> Encounter

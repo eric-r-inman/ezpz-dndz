@@ -82,9 +82,11 @@ Every modal the app started with, and its target pattern.
 
 ** Popover anchored to the trigger
 
-- =AbilitySave= :: Already receives click coordinates and behaves like a popup;
-  formalize it as an anchored popover (roll / advantage / disadvantage) outside
-  the modal ADT.
+- =AbilitySave= :: Planned as an anchored popover (roll / advantage /
+  disadvantage) outside the modal ADT.  Superseded instead: the trigger now
+  fires all three roll modes at once as a single triple-roll (see
+  docs/ARCHITECTURE.org's "Triple-rolls" section), so there is no longer a
+  picker to anchor.  The tier has no remaining members.
 - =Duplicate= :: First reclassified as its existing dropdown menu, then promoted
   to a drawer panel beside =Replace= (the Quick Add picker's replace mode, given
   its own surface) — both with apply-to-selected scopes and recent-applies logs.
@@ -233,9 +235,11 @@ modules byte-identical; only the rendering moves.
 
 ** Later tiers, briefly
 
-- *Popovers* get a shared anchored-container helper (=View/Popover=) that
-  positions against the triggering control.  =AbilitySave= is the tier's only
-  remaining member, and already carries click coordinates.
+- *Popovers* would have gotten a shared anchored-container helper
+  (=View/Popover=) that positions against the triggering control.  =AbilitySave=
+  was the tier's only member; its picker is gone (superseded by an instant
+  triple-roll — see the "Popover anchored to the trigger" section above), so the
+  tier is empty and =View/Popover= is no longer planned.
 - *Routes* extend =Route= with the compendium family and =/saves=; the existing
   standalone-page pattern (=View/Page/*=) is the template.
 - *Toast + undo* replaces the reversible confirmations last.

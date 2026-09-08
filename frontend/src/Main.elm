@@ -135,7 +135,6 @@ import View.Card
 import View.Footer
 import View.Login
 import View.Modal
-import View.Modal.AbilitySave
 import View.Modal.Confirm
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
@@ -306,9 +305,6 @@ subscriptions model =
 
                 Just (SurfaceLoadCompendium _) ->
                     Browser.Events.onKeyDown (escKey LoadCompendiumClose)
-
-                Just (SurfaceAbilitySave _) ->
-                    Browser.Events.onKeyDown (escKey AbilitySaveClose)
 
                 _ ->
                     case Model.newestShowing model of
@@ -992,6 +988,9 @@ updateInner msg model =
             Update.Encounter.toggleInactive name model
 
         -- Dice roller lifecycle
+        DiceRollerOpen ->
+            Update.Dice.openPanel model
+
         DiceInputChanged text ->
             Update.Dice.inputChanged text model
 
@@ -1280,9 +1279,6 @@ updateInner msg model =
 
         InitiativeRollModeSet mode ->
             Update.Initiative.rollModeSet mode model
-
-        InitiativeSurprisedToggle ->
-            Update.Initiative.surprisedToggle model
 
         InitiativeApplyTarget ->
             Update.Initiative.applyTarget model
@@ -2472,20 +2468,17 @@ updateInner msg model =
         QuickAddPickPlaceholder ->
             Update.QuickAdd.pickPlaceholder model
 
-        AbilityCheckOpen creatureName ability bonus x y ->
-            Update.AbilitySave.open Ui.AbilitySave.AbilityCheck creatureName ability bonus x y model
+        AbilityCheckTriggered creatureName ability bonus x y ->
+            Update.AbilitySave.trigger Ui.AbilitySave.AbilityCheck creatureName ability bonus x y model
 
-        AbilitySaveOpen creatureName ability bonus x y ->
-            Update.AbilitySave.open Ui.AbilitySave.SavingThrow creatureName ability bonus x y model
+        AbilitySaveTriggered creatureName ability bonus x y ->
+            Update.AbilitySave.trigger Ui.AbilitySave.SavingThrow creatureName ability bonus x y model
 
-        AbilitySaveClose ->
-            Update.AbilitySave.close model
+        AttackRollTriggered creatureName mod x y ->
+            Update.Dice.attackRollTriggered creatureName mod x y model
 
-        AbilitySaveRoll mode ->
-            Update.AbilitySave.roll mode model
-
-        AbilitySaveLanded x y roll ->
-            Update.AbilitySave.landed x y roll model
+        TripleRollLanded x y results ->
+            Update.Dice.tripleRollLanded x y results model
 
         CompendiumImportClick ->
             Update.Compendium.Bulk.importClick model
@@ -2729,7 +2722,6 @@ appShell maybeUser model =
     , View.Modal.RoundSet.view model
     , View.Modal.SaveCompendium.view model
     , View.Modal.LoadCompendium.view model
-    , View.Modal.AbilitySave.view model
     , View.Modal.LoreEdit.view model
     , View.Modal.TreasureTable.view model
     , View.Toast.list model.toasts

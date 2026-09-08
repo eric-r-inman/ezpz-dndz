@@ -60,7 +60,6 @@ fixture =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
     , specialReactionsUsed = Set.empty
     }

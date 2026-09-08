@@ -29,6 +29,7 @@ and the presets dict backs the footer's Save / Load controls.
 type alias Context =
     { creatureNames : List String
     , selectedCount : Int
+    , placeholderWarning : Bool
     , presets : Dict String ConditionPreset
     , log : List ConditionLogEntry
     }
@@ -41,7 +42,7 @@ view ctx ui =
         , customAndNoteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
-        , footer ui ctx.presets ctx.selectedCount
+        , footer ui ctx.presets ctx.selectedCount ctx.placeholderWarning
         , latestLog ctx.log
         ]
 
@@ -452,8 +453,8 @@ autoRollCaption mode =
             Just "Save fires at the end of the bearer's turn; success removes the condition."
 
 
-footer : ConditionUi -> Dict String ConditionPreset -> Int -> Html Msg
-footer ui presets selectedCount =
+footer : ConditionUi -> Dict String ConditionPreset -> Int -> Bool -> Html Msg
+footer ui presets selectedCount placeholderWarning =
     let
         canSubmit =
             not (String.isEmpty (String.trim ui.name))
@@ -489,6 +490,7 @@ footer ui presets selectedCount =
                     text ""
             ]
         , applyControls ui canSubmit selectedCount applyLabel
+        , ApplyButton.placeholderNotice placeholderWarning
         ]
 
 
