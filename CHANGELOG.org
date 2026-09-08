@@ -187,8 +187,8 @@
     automatically, so the pulse is the reminder to click it yourself.  No action
     needed.
 76. Every bundled lore group's description in the Compendium's detail pane is
-    rewritten in one voice, and the reasoning behind each composition is
-    collected in a lore-groups document under docs.  No action needed.
+    rewritten, and the reasoning behind each composition is collected in a
+    lore-groups document under docs.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
