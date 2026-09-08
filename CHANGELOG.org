@@ -247,6 +247,9 @@
     DC/Mod fields elsewhere.  No action needed.
 29. The Initiative editor's Quick Sort Encounter button sits closer to the row
     above it and is centered.  No action needed.
+30. The Condition/Effect and Timer editors' footer rows (Save/Load, Delete,
+    Apply/Start Timer) actually stack now — they previously sat side by side
+    instead of on their own rows.  No action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a

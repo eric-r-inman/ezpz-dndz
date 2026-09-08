@@ -465,33 +465,46 @@ footer ui presets selectedCount placeholderWarning =
 
             else
                 "Save Changes"
-    in
-    div [ class "cond-footer" ]
-        [ div [ class "cond-footer__presets" ]
-            [ presetSaveControl ui canSubmit
-            , presetLoadControl ui presets
-            ]
 
         -- Delete (when editing) precedes Apply so Apply is always
         -- the last row — the commit action reads as the final
         -- word on the panel, not something with more choices
-        -- beneath it.
-        , div [ class "cond-footer__actions" ]
-            [ case ui.editingId of
+        -- beneath it. It's omitted entirely rather than rendered
+        -- empty when there's nothing to delete, so it doesn't
+        -- claim a row of its own in the now-stacked footer.
+        deleteRow =
+            case ui.editingId of
                 Just _ ->
-                    button
-                        [ class "action-btn action-btn--damage"
-                        , onClick ConditionDelete
-                        , Tooltips.attr Tooltips.chipRemoveModalRow
+                    [ div [ class "cond-footer__actions" ]
+                        [ button
+                            [ class "action-btn action-btn--damage"
+                            , onClick ConditionDelete
+                            , Tooltips.attr Tooltips.chipRemoveModalRow
+                            ]
+                            [ text "Delete" ]
                         ]
-                        [ text "Delete" ]
+                    ]
 
                 Nothing ->
-                    text ""
+                    []
+
+        placeholderRow =
+            if placeholderWarning then
+                [ ApplyButton.placeholderNotice True ]
+
+            else
+                []
+    in
+    div [ class "cond-footer" ]
+        ([ div [ class "cond-footer__presets" ]
+            [ presetSaveControl ui canSubmit
+            , presetLoadControl ui presets
             ]
-        , applyControls ui canSubmit selectedCount applyLabel
-        , ApplyButton.placeholderNotice placeholderWarning
-        ]
+         ]
+            ++ deleteRow
+            ++ [ applyControls ui canSubmit selectedCount applyLabel ]
+            ++ placeholderRow
+        )
 
 
 {-| The commit row. Editing an existing condition is a one-row
