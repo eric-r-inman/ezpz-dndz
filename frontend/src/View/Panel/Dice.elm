@@ -388,13 +388,14 @@ historyEntry ui idx opts roll =
 
         rolledAndType =
             [ span [ class "dice-history__rolled" ]
-                [ text (" — " ++ rolledString roll) ]
+                [ text (": " ++ rolledString roll) ]
             , case roll.expression.damageType of
                 Just damage ->
-                    span [ class "dice-history__damage-type" ] [ text (" " ++ damage) ]
+                    span [ class "dice-history__damage-type" ] [ text (" " ++ String.toLower damage) ]
 
                 Nothing ->
                     text ""
+            , text " = "
             ]
     in
     if opts.expanded then
@@ -404,7 +405,7 @@ historyEntry ui idx opts roll =
                 , rollSource roll.source
                 ]
             , div [ class "dice-history__entry-detail" ]
-                (text (formulaWithoutType roll)
+                (text (tightFormula roll)
                     :: rolledAndType
                     ++ [ div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
                        , rerunControl idx isMenuOpen roll
@@ -416,7 +417,7 @@ historyEntry ui idx opts roll =
         li [ class rowClass ]
             [ View.LogRow.foldToggle opts.key opts.expanded
             , div [ class "dice-history__formula" ]
-                (rollSource roll.source :: text (formulaWithoutType roll) :: rolledAndType)
+                (rollSource roll.source :: text (tightFormula roll) :: rolledAndType)
             , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
             , rerunControl idx isMenuOpen roll
             ]
@@ -526,9 +527,20 @@ formulaWithoutType roll =
             roll.formula
 
 
+{-| The formula minus its damage type, with every "+"/"-" operator
+tightened (no surrounding spaces) for the log's compact one-line
+display: "2d8+8" rather than "2d8 + 8".
+-}
+tightFormula : Dice.Roll -> String
+tightFormula roll =
+    formulaWithoutType roll
+        |> String.replace " + " "+"
+        |> String.replace " - " "-"
+
+
 {-| Format the individual face values for a Roll, with kept faces
-inline and dropped (advantage/disadvantage loser) ones bracketed.
-"rolled: 14, +3" or "rolled: 17 [8]" etc.
+inline and dropped (advantage/disadvantage loser) ones bracketed,
+parenthesized: "(14,3)" or "(17,[8])" etc.
 -}
 rolledString : Dice.Roll -> String
 rolledString roll =
@@ -544,16 +556,16 @@ rolledString roll =
                         else
                             "[" ++ String.fromInt d.face ++ "]"
                     )
-                |> String.join ", "
+                |> String.join ","
 
         modifierText =
             if roll.expression.constant > 0 then
-                " + " ++ String.fromInt roll.expression.constant
+                "+" ++ String.fromInt roll.expression.constant
 
             else if roll.expression.constant < 0 then
-                " − " ++ String.fromInt (abs roll.expression.constant)
+                "−" ++ String.fromInt (abs roll.expression.constant)
 
             else
                 ""
     in
-    "rolled: " ++ faces ++ modifierText
+    "(" ++ faces ++ ")" ++ modifierText

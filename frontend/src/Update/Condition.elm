@@ -730,9 +730,8 @@ removeChip name id model =
 
 
 {-| Manual click on the chip's d20 save button. Same Cmd shape
-as the auto-roll path, but flagged `wasAutoRoll = False` so a
-successful save removes the condition silently rather than posting
-a "Saved: <name>" notice on the card.
+and same landing handler as the auto-roll path — a success posts
+the same "Saved: <name>" notice either way.
 -}
 rollSave : String -> Int -> Model -> ( Model, Cmd Msg )
 rollSave name id model =
@@ -741,7 +740,7 @@ rollSave name id model =
             case cond.saveToEnd of
                 Just spec ->
                     ( model
-                    , Dice.rollCmd (ConditionSaveLanded name id spec.dc False)
+                    , Dice.rollCmd (ConditionSaveLanded name id spec.dc)
                         (Effects.saveSource cond name spec)
                         (Effects.saveExpression spec.bonus)
                     )
@@ -754,12 +753,12 @@ rollSave name id model =
 
 
 {-| Save resolves: `roll.total >= dc` means the condition ends.
-Look up the condition name BEFORE we remove it so the auto-roll
-success path can post a notice with the right label. Manual rolls
-remove silently.
+Look up the condition name BEFORE we remove it so a success can
+post a "Saved: <name>" notice with the right label, whether the
+roll was auto-fired or the GM clicked the chip's own d20.
 -}
-saveLanded : String -> Int -> Int -> Bool -> Dice.Roll -> Model -> ( Model, Cmd Msg )
-saveLanded name id dc wasAutoRoll roll model =
+saveLanded : String -> Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+saveLanded name id dc roll model =
     let
         conditionName =
             Encounter.findCondition name id model.encounter
@@ -776,14 +775,14 @@ saveLanded name id dc wasAutoRoll roll model =
                             | encounter = Encounter.removeCondition name id model.encounter
                         }
                 in
-                case ( wasAutoRoll, conditionName ) of
-                    ( True, Just label ) ->
+                case conditionName of
+                    Just label ->
                         { removed
                             | encounter =
                                 Encounter.addSaveNotice name label removed.encounter
                         }
 
-                    _ ->
+                    Nothing ->
                         removed
 
             else

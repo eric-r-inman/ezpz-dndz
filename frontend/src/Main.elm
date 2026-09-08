@@ -561,6 +561,7 @@ init flags url key =
         , savedAs = Nothing
         , dice = DiceUi.empty
         , targetName = Nothing
+        , flashManualSaveFor = Nothing
         , hpChangeLog = []
         , nextHpLogSeq = 1
         , flashedHpLogSeq = 0
@@ -917,6 +918,9 @@ updateInner msg model =
 
         NextTurn ->
             Update.Encounter.nextTurn model
+
+        ManualSaveFlashExpired ->
+            Update.Encounter.manualSaveFlashExpired model
 
         TargetCreature name ->
             Update.Encounter.targetCreature name model
@@ -1398,8 +1402,8 @@ updateInner msg model =
         ConditionRollSave name id ->
             Update.Condition.rollSave name id model
 
-        ConditionSaveLanded name id dc wasAutoRoll roll ->
-            Update.Condition.saveLanded name id dc wasAutoRoll roll model
+        ConditionSaveLanded name id dc roll ->
+            Update.Condition.saveLanded name id dc roll model
 
         ConditionUndoLatest ->
             Update.Condition.undoLatest model

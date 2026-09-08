@@ -1281,6 +1281,12 @@ type alias Model =
     -- set for "apply to selected"; this is one creature, and it
     -- is what "the target" means until the GM clears it.
     , targetName : Maybe String
+
+    -- Named whenever `nextTurn` lands on a creature carrying a
+    -- manual ("End manually") save-to-end condition, so its chip
+    -- pulses once as a reminder that nothing auto-fires the roll.
+    -- Cleared by `ManualSaveFlashExpired` once the pulse finishes.
+    , flashManualSaveFor : Maybe String
     , hpChangeLog : List HpChangeEntry
 
     -- Hands out `HpChangeEntry.seq`.  A counter rather than a

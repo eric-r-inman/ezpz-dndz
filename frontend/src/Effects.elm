@@ -371,7 +371,7 @@ autoRollCmdForCondition mode bearer cond =
             if spec.autoRoll == mode then
                 Just
                     (Dice.rollCmd
-                        (ConditionSaveLanded bearer cond.id spec.dc True)
+                        (ConditionSaveLanded bearer cond.id spec.dc)
                         (saveSource cond bearer spec)
                         (saveExpression spec.bonus)
                     )

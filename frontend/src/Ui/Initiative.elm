@@ -4,7 +4,7 @@ module Ui.Initiative exposing (InitiativeUi, fresh)
 
 `target` identifies the creature the editor is aimed at — the
 queue's default when the drawer expands it unaimed, or the
-creature whose blue init-circle was clicked. The target-scoped
+creature whose initiative badge was clicked. The target-scoped
 buttons act on it.
 
 `customValueText` is the raw text in the "Initiative:" input.

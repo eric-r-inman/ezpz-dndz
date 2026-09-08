@@ -59,6 +59,7 @@ panelMain model =
             , compendium = model.compendium.db
             , drag = model.queueDrag
             , targetName = model.targetName
+            , flashManualSaveFor = model.flashManualSaveFor
             }
     in
     section [ class "panel panel--main" ]

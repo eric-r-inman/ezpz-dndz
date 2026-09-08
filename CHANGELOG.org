@@ -182,6 +182,10 @@
     stat block rolls standard, advantage, and disadvantage together — the three
     float up color-coded (white / green / red) and stay listed beside the 🎲
     icon, so a missed popup is still easy to check.  No action needed.
+75. A creature card's condition/effect chip pulses briefly at the start of its
+    turn when its saving throw is set to "End manually" — nothing rolls that one
+    automatically, so the pulse is the reminder to click it yourself.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
@@ -250,6 +254,23 @@
 30. The Condition/Effect and Timer editors' footer rows (Save/Load, Delete,
     Apply/Start Timer) actually stack now — they previously sat side by side
     instead of on their own rows.  No action needed.
+31. The Dice Roller's log reads more like a calculation now — e.g.  "2d8+8:
+    (2,6)+8 slashing = 16" instead of "2d8 + 8 — rolled: 2, 6 + 8 Slashing 16".
+    No action needed.
+32. Clicking a creature's name scrolls its stat block to the top of the editor
+    column instead of leaving it wherever it lands.  No action needed.
+33. The Condition/Effect editor's "1 Minute" and Countdown captions are shorter,
+    and the countdown one is italic.  No action needed.
+34. A creature card's status labels (hiding, dodging, etc.) read in a dark
+    yellow instead of white.  No action needed.
+35. The Condition/Effect editor drops its "Save fires at the start/end of the
+    bearer's turn" captions.  No action needed.
+36. Rolling a condition's save manually now posts the same "Saved: <condition>"
+    badge an auto-rolled success does, instead of removing the condition
+    silently.  No action needed.
+37. The initiative value moved from the name row into the left column, between
+    the select checkbox and the make-active arrow, as a smaller rounded square
+    instead of a circle — the three now sit evenly spaced.  No action needed.
 ** Breaking
 1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
    always soaks against the temporary pool first, as 5e requires.  Adjust a

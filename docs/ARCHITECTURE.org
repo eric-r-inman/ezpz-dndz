@@ -367,7 +367,8 @@ the outgoing name is captured before the lifecycle hooks run, then
 ~Effects.autoRollCmdsFor AutoRollAtEnd outgoing newEnc~ + ~AutoRollAtBegin
 newName newEnc~ are batched.  Results land in ~ConditionSaveLanded~, which
 removes the condition on ~roll.total >= dc~ and posts a green "Saved:
-<Condition>" notice when ~wasAutoRoll = True~.
+<Condition>" notice on success — the same notice a manual chip-roll success
+posts.
 
 The pure domain layer doesn't fire Cmds; that's the right boundary.
 

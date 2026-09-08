@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, defaultTarget, excludingPlaceholderNames, hasCreature, isPlaceholderName, rosterDirty
+    , RechargeAbility, defaultTarget, excludingPlaceholderNames, hasCreature, hasManualSaveCondition, isPlaceholderName, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -866,6 +866,24 @@ findCondition target id enc =
                     |> List.head
                     |> Maybe.map (\cond -> ( c, cond ))
             )
+
+
+{-| Whether the named creature carries any condition whose
+save-to-end is "End manually" — nothing auto-fires that roll, so
+a turn-advance hook uses this to decide whether to remind the GM.
+`False` for an unknown name, same as the rest of this module's
+by-name lookups.
+-}
+hasManualSaveCondition : String -> Encounter -> Bool
+hasManualSaveCondition name enc =
+    findByName name enc.creatures
+        |> Maybe.map
+            (\c ->
+                List.any
+                    (\cond -> cond.saveToEnd |> Maybe.map (\s -> s.autoRoll == AutoRollManual) |> Maybe.withDefault False)
+                    c.conditions
+            )
+        |> Maybe.withDefault False
 
 
 {-| Render a one-line human-readable description of a duration

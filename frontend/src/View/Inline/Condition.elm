@@ -181,7 +181,7 @@ durationSection ui creatureNames =
             ]
         , if ui.useOneMinutePreset then
             div [ class "cond-section__caption" ]
-                [ text "Lasts 10 turns; expires at the end of the bearer's 10th turn." ]
+                [ text "Expires at the end of the bearer's 10th turn." ]
 
           else
             case ui.durationKind of
@@ -297,12 +297,7 @@ durationCountdownSubsection ui =
             , Html.label [] [ text "of the bearer's turn" ]
             ]
         , div [ class "cond-section__caption" ]
-            [ text
-                ("If you set 'end' while it's already this creature's turn, "
-                    ++ "the countdown skips this end-of-turn so they get a "
-                    ++ "full first turn under the effect."
-                )
-            ]
+            [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]
         ]
 
 
@@ -401,12 +396,6 @@ saveSubsection s =
                 Encounter.AutoRollAtEnd
                 "Auto roll-end of turn"
             ]
-        , case autoRollCaption s.autoRoll of
-            Just caption ->
-                div [ class "cond-section__caption" ] [ text caption ]
-
-            Nothing ->
-                text ""
         ]
 
 
@@ -438,19 +427,6 @@ autoRollRadio s mode label =
             []
         , span [ class "cond-radio__label" ] [ text label ]
         ]
-
-
-autoRollCaption : Encounter.AutoRollMode -> Maybe String
-autoRollCaption mode =
-    case mode of
-        Encounter.AutoRollManual ->
-            Nothing
-
-        Encounter.AutoRollAtBegin ->
-            Just "Save fires at the start of the bearer's turn; success removes the condition."
-
-        Encounter.AutoRollAtEnd ->
-            Just "Save fires at the end of the bearer's turn; success removes the condition."
 
 
 footer : ConditionUi -> Dict String ConditionPreset -> Int -> Bool -> Html Msg

@@ -77,8 +77,8 @@ Every modal the app started with, and its target pattern.
   side of the queue.
 - =Initiative= :: Originally mapped as a popover anchored to the clicked
   initiative badge; it took the drawer panel treatment instead, since its
-  roll-and-sort batch is too wide for an anchored container.  The card's init
-  circle still aims the editor at its own creature.
+  roll-and-sort batch is too wide for an anchored container.  The card's
+  initiative badge still aims the editor at its own creature.
 
 ** Popover anchored to the trigger
 

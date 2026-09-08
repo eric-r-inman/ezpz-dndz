@@ -4,13 +4,11 @@ module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, legenda
 
 Three rows + two side rails + an optional legendary-pip column:
 
-  - Row 1 (top): initiative circle, name (with optional
-    compendium link), note pencil / inline note, AC readout,
-    recharge chips, special-reaction badges.
-  - Row 2 (mid): HP display (click-to-edit), status readout,
-    condition / save-notice chips.
-  - Row 3 (bot): ready/readied toggle, reaction pip, memo slot,
-    timer slot.
+  - Row 1 (top): the creature's identity.
+  - Row 2 (mid): its current condition — hit points, posture,
+    and what's affecting it.
+  - Row 3 (bot): turn-economy controls the GM toggles during
+    play.
 
 The card itself is the queue's reorder handle: the whole article
 is a drag source and a drop target, so a GM moves a creature by
@@ -168,6 +166,7 @@ type alias Context =
     , compendium : CompendiumDb
     , drag : Maybe Model.DragState
     , targetName : Maybe String
+    , flashManualSaveFor : Maybe String
     }
 
 
@@ -185,6 +184,9 @@ view ctx index creature =
 
         isTarget =
             ctx.targetName == Just creature.name
+
+        flashManualSave =
+            ctx.flashManualSaveFor == Just creature.name
 
         cardClass =
             String.join " "
@@ -218,8 +220,9 @@ view ctx index creature =
                     , Tooltips.attr Tooltips.queueSelectShiftClick
                     ]
                     []
+                , initBadge creature
                 , button
-                    [ class "icon-btn creature-card__make-active"
+                    [ class "icon-btn"
                     , onClick (SetActive creature.name)
                     , Tooltips.attr Tooltips.queueMakeActive
                     , attribute "aria-label" "Make active"
@@ -229,7 +232,7 @@ view ctx index creature =
             ]
         , div [ class "creature-card__center" ]
             [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
-            , rowMid creature
+            , rowMid flashManualSave creature
             , rowBot creature (surfaceFor ctx creature)
             , inlineSurface ctx creature
             ]
@@ -516,19 +519,27 @@ selectionClickHandler name_ =
 rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> List (Html Msg) -> Html Msg
 rowTop isActive creature hpEdit renameState surface srBadges =
     div [ class "creature-card__row creature-card__row--top" ]
-        [ button
-            [ class "init-circle init-circle--clickable"
-            , onClick (InitiativeOpenFor creature.name)
-            , Tooltips.attr Tooltips.initiativeManager
-            , attribute "aria-label"
-                ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
-            ]
-            [ text (String.fromInt creature.initiative) ]
-        , creatureName creature renameState
+        [ creatureName creature renameState
         , noteOrPencil creature surface
         , acReadout creature hpEdit
         , rowTopChipCluster isActive creature srBadges
         ]
+
+
+{-| The initiative value, in the left rail between the select
+checkbox and the make-active arrow — the three read as one
+column of per-creature turn-order controls.
+-}
+initBadge : Creature -> Html Msg
+initBadge creature =
+    button
+        [ class "init-badge init-badge--clickable"
+        , onClick (InitiativeOpenFor creature.name)
+        , Tooltips.attr Tooltips.initiativeManager
+        , attribute "aria-label"
+            ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
+        ]
+        [ text (String.fromInt creature.initiative) ]
 
 
 {-| The creature name on row 1 of each card. Three render modes:
@@ -1182,23 +1193,23 @@ rowTopChipCluster isActive creature srBadges =
 a leading pipe, sitting to the right of the status readout so
 everything "happening to" the creature reads off one row.
 -}
-conditionCluster : Creature -> Html Msg
-conditionCluster creature =
+conditionCluster : Bool -> Creature -> Html Msg
+conditionCluster flashManualSave creature =
     if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (conditionChip creature.name) creature.conditions
+                :: List.map (conditionChip flashManualSave creature.name) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )
 
 
 {-| "Saved: <Condition>" notice rendered as a small green chip.
-Posted after a successful AUTO-roll save (manual chip-roll
-successes remove the condition silently). Auto-removes on the
-bearer's next end-of-turn; the × button dismisses earlier.
+Posted after any successful save-to-end roll, auto-fired or the
+GM clicking the chip's own d20. Auto-removes on the bearer's next
+end-of-turn; the × button dismisses earlier.
 -}
 saveNoticeChip : String -> Encounter.SaveNotice -> Html Msg
 saveNoticeChip target notice =
@@ -1223,8 +1234,8 @@ and the chip body itself stay minimal. Two action affordances sit
 inside the chip:
 
   - The 🎲 save-roll button — only when the condition has a
-    `saveToEnd` spec. Fires a 1d20 vs. the DC and removes the
-    condition silently on success.
+    `saveToEnd` spec. Fires a 1d20 vs. the DC and posts a "Saved:"
+    notice on success, same as an auto-fired roll.
   - The × remove button — always present. One-click chip removal
     without opening the edit modal.
 
@@ -1233,11 +1244,28 @@ also bubble up and open the edit modal (which the chip name
 itself triggers). The hover tooltip on the chip wrap composes
 the full duration + save terms via `chipTitle`.
 
+`flashManualSave` pulses the chip once at the bearer's begin-of-
+turn when the save is "End manually" — nothing auto-fires it, so
+the pulse is the GM's only reminder to click the 🎲 themselves.
+
 -}
-conditionChip : String -> Encounter.Condition -> Html Msg
-conditionChip target cond =
+conditionChip : Bool -> String -> Encounter.Condition -> Html Msg
+conditionChip flashManualSave target cond =
+    let
+        isManualSave =
+            cond.saveToEnd
+                |> Maybe.map (\s -> s.autoRoll == Encounter.AutoRollManual)
+                |> Maybe.withDefault False
+
+        chipClass =
+            if flashManualSave && isManualSave then
+                "condition-chip condition-chip--flash"
+
+            else
+                "condition-chip"
+    in
     span
-        [ class "condition-chip"
+        [ class chipClass
         , Tooltips.attr (chipTitle cond)
         ]
         [ button
@@ -1317,12 +1345,12 @@ formatBonus n =
 -- ── ROW 2 ───────────────────────────────────────────────────────────────
 
 
-rowMid : Creature -> Html Msg
-rowMid creature =
+rowMid : Bool -> Creature -> Html Msg
+rowMid flashManualSave creature =
     div [ class "creature-card__row creature-card__row--mid" ]
         [ hpDisplay creature
         , statusIcons creature
-        , conditionCluster creature
+        , conditionCluster flashManualSave creature
         ]
 
 

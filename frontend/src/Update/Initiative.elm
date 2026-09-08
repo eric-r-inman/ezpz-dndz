@@ -51,7 +51,7 @@ withInitiative =
     Model.mapSurface Model.initiativeLens
 
 
-{-| A card's init circle: it aims the editor at its own creature,
+{-| A card's initiative badge: it aims the editor at its own creature,
 so an editor already open for someone else re-aims. Every path
 unfolds and scrolls the panel fully into view — a card control
 asks to see a creature's editor, whether that means showing what

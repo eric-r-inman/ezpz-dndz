@@ -379,8 +379,14 @@ focusSearch model =
 
 panelShowCreature : String -> String -> Model -> ( Model, Cmd Msg )
 panelShowCreature creatureId creatureName model =
-    ( Model.openDrawer Model.statBlockLens
-        { id = creatureId, name = creatureName }
-        model
-    , Cmd.none
+    let
+        nextModel =
+            Model.openDrawer Model.statBlockLens
+                { id = creatureId, name = creatureName }
+                model
+    in
+    ( nextModel
+    , Model.drawerIndexOf Model.statBlockLens nextModel
+        |> Maybe.map Effects.scrollDrawerIndexToTop
+        |> Maybe.withDefault Cmd.none
     )

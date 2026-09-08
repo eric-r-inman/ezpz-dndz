@@ -423,6 +423,10 @@ type Msg
     | UrlChanged Url
     | GotMe (Result Http.Error MeInfo)
     | NextTurn
+      -- Clears the begin-of-turn manual-save reminder pulse
+      -- `nextTurn` set; fired by a `Process.sleep` once the pulse
+      -- has had time to finish playing.
+    | ManualSaveFlashExpired
     | SetActive String
       -- A click on an empty spot of a card picks that creature as
       -- the editors' target, or clears it when it already was.
@@ -743,11 +747,10 @@ type Msg
     | ConditionPresetCategoryToggle String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
-    | ConditionSaveLanded String Int Int Bool Dice.Roll
+    | ConditionSaveLanded String Int Int Dice.Roll
       -- Undo the newest condition application (the ↩ on the
       -- condition editor's log row).
     | ConditionUndoLatest
-      -- (creature, condition id, dc, wasAutoRoll, roll)
     | SaveNoticeDismiss String Int
       -- Card row 3 memo
     | MemoOpen String
