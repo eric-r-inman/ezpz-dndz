@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -134,18 +134,6 @@ port persistLocalTimerPresets : E.Value -> Cmd msg
 Fires on every Save / Delete in the Save Chain modal.
 -}
 port persistLocalSaveChainPresets : E.Value -> Cmd msg
-
-
-{-| Copy the supplied string to the system clipboard via
-`navigator.clipboard.writeText`. Fire-and-forget: the JS side
-swallows rejections (Firefox's clipboard API can refuse a write
-that isn't part of a "trusted" click gesture, and there's
-nothing sensible for the Elm side to do about it). Used by the
-Save Chain modal's "Export as Elm" button to drop a
-copy-pasteable `SaveChain` value into the GM's clipboard for
-promotion into `Encounter.SaveChain.Bundled.elm`.
--}
-port copyToClipboard : String -> Cmd msg
 
 
 {-| Persist the party roster — the level-per-character list

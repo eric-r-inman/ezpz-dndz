@@ -116,16 +116,9 @@ presetRow ui presets =
             [ class "action-btn action-btn--sm"
             , type_ "button"
             , onClick SaveChainRestoreBundled
-            , Tooltips.attr "Overwrite every bundled preset with its current definition AND remove stale duplicates left over from earlier naming (e.g. \"Hold Person (2nd)\" is dropped when \"Hold Person\" is the current bundled key).  Your own presets are untouched."
+            , Tooltips.attr "Overwrite default presets with bundled values; your new presets will not be changed."
             ]
             [ text "🔄 Restore bundled" ]
-        , button
-            [ class "action-btn action-btn--sm"
-            , type_ "button"
-            , onClick SaveChainExportBundled
-            , Tooltips.attr "Copy the currently-open form as an Elm SaveChain literal you can paste into Encounter/SaveChain/Bundled.elm to promote it into the bundled default set."
-            ]
-            [ text "📤 Export as Elm" ]
         , loadedTag
         ]
 
@@ -206,7 +199,7 @@ dcHint ui =
                 "save-chain__caption save-chain__caption--dc"
             )
         ]
-        [ text "req. for save rolls and Save-to-end; blank = enter at apply" ]
+        [ text "needed to roll saves or to apply a Save-to-end effect" ]
 
 
 abilityRadio : SaveChainUi -> Ability -> String -> Html Msg
@@ -508,6 +501,11 @@ applyScope selectedCount ui =
             ]
 
 
+{-| The apply buttons, each explaining itself while it is dead.
+A Save-to-end effect applied without a DC would land as a plain
+condition and never roll, so Fail and Pass wait for the DC along
+with the roll buttons whenever an effect opts in.
+-}
 applyRow : SaveChainUi -> Html Msg
 applyRow ui =
     let
@@ -519,50 +517,67 @@ applyRow ui =
 
         hasDc =
             chain.saveDc /= Nothing
+
+        blockedByDc =
+            not hasDc && SaveChain.needsDc chain
+
+        outcomeTip verb =
+            if isEmpty then
+                "Give the chain an outcome first"
+
+            else if blockedByDc then
+                "Enter a DC first — a Save-to-end effect needs one"
+
+            else
+                verb
+
+        rollTip verb =
+            if isEmpty then
+                "Give the chain an outcome first"
+
+            else if not hasDc then
+                "Enter a DC first"
+
+            else
+                verb
     in
     div [ class "save-chain__apply-row" ]
         [ div [ class "save-chain__apply-actions" ]
-            [ button
-                [ class "action-btn action-btn--damage"
-                , type_ "button"
-                , onClick SaveChainApplyFail
-                , disabled isEmpty
-                ]
-                [ text "Fail" ]
-            , button
-                [ class "action-btn action-btn--heal"
-                , type_ "button"
-                , onClick SaveChainApplyPass
-                , disabled isEmpty
-                ]
-                [ text "Pass" ]
-            , button
-                [ class "action-btn action-btn--roll-saves"
-                , type_ "button"
-                , onClick (SaveChainRollSaves SaveChainRollNormal)
-                , disabled (isEmpty || not hasDc)
-                , attribute "aria-label"
-                    "Roll a d20 + save modifier for every target and auto-apply fail / success"
-                ]
-                [ text "🎲 Roll saves" ]
-            , button
-                [ class "action-btn action-btn--roll-saves"
-                , type_ "button"
-                , onClick (SaveChainRollSaves SaveChainRollAdvantage)
-                , disabled (isEmpty || not hasDc)
-                , attribute "aria-label"
-                    "Roll 2d20 keep-highest + save modifier for every target and auto-apply fail / success"
-                ]
-                [ text "Roll Adv." ]
-            , button
-                [ class "action-btn action-btn--roll-saves"
-                , type_ "button"
-                , onClick (SaveChainRollSaves SaveChainRollDisadvantage)
-                , disabled (isEmpty || not hasDc)
-                , attribute "aria-label"
-                    "Roll 2d20 keep-lowest + save modifier for every target and auto-apply fail / success"
-                ]
-                [ text "Roll Disadv." ]
+            [ ApplyButton.view
+                { enabled = not isEmpty && not blockedByDc
+                , cls = "action-btn action-btn--damage"
+                , msg = SaveChainApplyFail
+                , tip = outcomeTip "Apply the failed-save outcome"
+                , label = "Fail"
+                }
+            , ApplyButton.view
+                { enabled = not isEmpty && not blockedByDc
+                , cls = "action-btn action-btn--heal"
+                , msg = SaveChainApplyPass
+                , tip = outcomeTip "Apply the successful-save outcome"
+                , label = "Pass"
+                }
+            , ApplyButton.view
+                { enabled = not isEmpty && hasDc
+                , cls = "action-btn action-btn--roll-saves"
+                , msg = SaveChainRollSaves SaveChainRollNormal
+                , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
+                , label = "🎲 Roll saves"
+                }
+            , ApplyButton.view
+                { enabled = not isEmpty && hasDc
+                , cls = "action-btn action-btn--roll-saves"
+                , msg = SaveChainRollSaves SaveChainRollAdvantage
+                , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
+                , label = "Roll Adv."
+                }
+            , ApplyButton.view
+                { enabled = not isEmpty && hasDc
+                , cls = "action-btn action-btn--roll-saves"
+                , msg = SaveChainRollSaves SaveChainRollDisadvantage
+                , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
+                , label = "Roll Disadv."
+                }
             ]
         ]
 

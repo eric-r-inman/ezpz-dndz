@@ -35,58 +35,68 @@ type alias Log =
     }
 
 
-{-| Up to 3 most recent roll totals, rendered beside the rail's
-🎲 icon so a roll reads without opening the panel. Ordinarily the
-last 3 rolls from `history`, newest emphasized. A triple-roll
-(`override`, set by `Update.Dice.tripleRollLanded`) replaces that
-with its own 3 results instead, colour-coded by roll kind rather
-than recency, until the next single roll clears it.
+{-| The most recent roll totals, rendered beside the rail's 🎲
+icon so a roll reads without opening the panel. The newest is
+emphasized in yellow; older advantage and disadvantage rolls keep
+their green and red. While a triple-roll is the newest thing
+rolled (`override`, set by `Update.Dice.tripleRollLanded`), its
+three results — the newest three entries — are coloured by roll
+mode instead, standard in plain text, so they read as the set the
+popups showed; the next single roll clears that.
 
-Both branches key by each roll's ordinal rather than its list
-position: a landing roll gets a fresh key and mounts (playing its
-flash), while an older one that merely shifted down a slot keeps
-its existing node and does not replay.
+Keyed by each roll's ordinal rather than its list position: a
+landing roll gets a fresh key and mounts (playing its flash),
+while an older one that merely shifted down a slot keeps its
+existing node and does not replay.
 
 -}
 recentBadges : Dice.History -> Maybe (List Dice.Roll) -> Html Msg
 recentBadges rollHistory override =
-    case override of
-        Just triple ->
-            Html.Keyed.node "span"
-                [ class "recent-rolls" ]
-                (List.indexedMap (tripleBadge rollHistory.pushed) triple)
+    let
+        tripleSize =
+            override
+                |> Maybe.map List.length
+                |> Maybe.withDefault 0
+    in
+    Html.Keyed.node "span"
+        [ class "recent-rolls" ]
+        (Dice.historyEntries rollHistory
+            |> List.take recentBadgeCount
+            |> List.indexedMap (recentBadge rollHistory.pushed tripleSize)
+        )
 
-        Nothing ->
-            Html.Keyed.node "span"
-                [ class "recent-rolls" ]
-                (Dice.historyEntries rollHistory
-                    |> List.take 3
-                    |> List.indexedMap (recentBadge rollHistory.pushed)
-                )
+
+recentBadgeCount : Int
+recentBadgeCount =
+    4
 
 
-recentBadge : Int -> Int -> Dice.Roll -> ( String, Html Msg )
-recentBadge pushed i roll =
+recentBadge : Int -> Int -> Int -> Dice.Roll -> ( String, Html Msg )
+recentBadge pushed tripleSize i roll =
     ( "roll-badge-" ++ String.fromInt (pushed - i)
-    , span
-        [ class
-            (if i == 0 then
-                "recent-roll recent-roll--latest"
+    , span [ class (recentBadgeClass tripleSize i roll.kind) ]
+        [ text (String.fromInt roll.total) ]
+    )
 
-             else
+
+recentBadgeClass : Int -> Int -> Dice.RollKind -> String
+recentBadgeClass tripleSize i kind =
+    if i < tripleSize then
+        "recent-roll " ++ tripleBadgeClass kind
+
+    else if i == 0 then
+        "recent-roll recent-roll--latest"
+
+    else
+        case kind of
+            Dice.Advantage ->
+                "recent-roll recent-roll--advantage"
+
+            Dice.Disadvantage ->
+                "recent-roll recent-roll--disadvantage"
+
+            _ ->
                 "recent-roll"
-            )
-        ]
-        [ text (String.fromInt roll.total) ]
-    )
-
-
-tripleBadge : Int -> Int -> Dice.Roll -> ( String, Html Msg )
-tripleBadge pushed i roll =
-    ( "triple-badge-" ++ String.fromInt pushed ++ "-" ++ String.fromInt i
-    , span [ class ("recent-roll " ++ tripleBadgeClass roll.kind) ]
-        [ text (String.fromInt roll.total) ]
-    )
 
 
 tripleBadgeClass : Dice.RollKind -> String
@@ -129,7 +139,7 @@ form ui =
                 [ id "dice-input"
                 , class "dice-form__input"
                 , type_ "text"
-                , placeholder "e.g. 2d6+3 fire damage"
+                , placeholder "e.g. 2d6+3"
                 , value ui.input
                 , onInput DiceInputChanged
                 , Html.Events.on "keydown" (Util.Keyboard.enterKey DiceRollFromInput)
@@ -149,6 +159,10 @@ form ui =
             Nothing ->
                 text ""
         , div [ class "cond-divider" ] []
+
+        -- Two characters cover every count and modifier the game
+        -- asks for; text inputs because a number input ignores
+        -- `maxlength`.
         , div [ class "dice-form__pair-row" ]
             [ label
                 [ for "dice-count", class "dice-form__pair-label" ]
@@ -156,9 +170,9 @@ form ui =
             , input
                 [ id "dice-count"
                 , class "dice-form__input dice-form__numeric"
-                , type_ "number"
-                , Attr.min "1"
-                , Attr.max "99"
+                , type_ "text"
+                , Attr.maxlength 2
+                , attribute "inputmode" "numeric"
                 , value (String.fromInt ui.count)
                 , onInput DiceCountChanged
                 ]
@@ -171,9 +185,9 @@ form ui =
             , input
                 [ id "dice-modifier"
                 , class "dice-form__input dice-form__numeric"
-                , type_ "number"
-                , Attr.min "-999"
-                , Attr.max "999"
+                , type_ "text"
+                , Attr.maxlength 2
+                , attribute "inputmode" "numeric"
                 , value ui.modifierText
                 , onInput DiceModifierChanged
                 ]
@@ -386,9 +400,11 @@ historyEntry ui idx opts roll =
                     ]
                 )
 
+        -- The colon rides on the formula text: as its own flex
+        -- item the faces span would sit a gap away from it.
         rolledAndType =
             [ span [ class "dice-history__rolled" ]
-                [ text (": " ++ rolledString roll) ]
+                [ text (rolledString roll) ]
             , case roll.expression.damageType of
                 Just damage ->
                     span [ class "dice-history__damage-type" ] [ text (" " ++ String.toLower damage) ]
@@ -405,7 +421,7 @@ historyEntry ui idx opts roll =
                 , rollSource roll.source
                 ]
             , div [ class "dice-history__entry-detail" ]
-                (text (tightFormula roll)
+                (text (tightFormula roll ++ ":")
                     :: rolledAndType
                     ++ [ div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
                        , rerunControl idx isMenuOpen roll
@@ -417,7 +433,7 @@ historyEntry ui idx opts roll =
         li [ class rowClass ]
             [ View.LogRow.foldToggle opts.key opts.expanded
             , div [ class "dice-history__formula" ]
-                (rollSource roll.source :: text (tightFormula roll) :: rolledAndType)
+                (rollSource roll.source :: text (tightFormula roll ++ ":") :: rolledAndType)
             , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
             , rerunControl idx isMenuOpen roll
             ]

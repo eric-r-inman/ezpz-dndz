@@ -97,3 +97,25 @@ The stylesheet predates CONTRIBUTING.org's "Flat selectors only" rule and
 carries many descendant and compound selectors outside the sanctioned
 theme-override exception.  Replace them with single-class rules (adding view
 classes where needed), block by block, without visual regressions.
+
+* TODO Teach the Save Chain editor the rules its presets need
+
+The bundled Save Chain presets were checked against the 2024 rules (SRD 5.2.1),
+and [[file:docs/SAVE_CHAIN_PRESETS.org][docs/SAVE_CHAIN_PRESETS.org]] records what each can only approximate today.
+The settings that would close those gaps, roughly in order of how many presets
+each unlocks:
+
+1. A duration on an applied effect — until the end of the target's next turn,
+   until the start of the caster's next turn, a countdown, one minute.  The
+   Condition editor already offers these; a chain applies everything as manual.
+2. A repeat save that escalates on a failure instead of merely continuing, or
+   deals damage again.
+3. A repeat save triggered by an event — taking damage, ending a turn out of the
+   caster's sight — rather than a turn boundary.
+4. Area effects that re-save every turn a creature stays inside, applying a
+   one-turn condition on a failure rather than a lasting one.
+5. Linked effects that end together on one save.
+6. A timed success-side immunity that expires on its own.
+7. A hit-point-maximum reduction on a failed save.
+8. Threshold outcomes — a drop to 0 hit points under a ceiling, and automatic
+   failure for a creature type.

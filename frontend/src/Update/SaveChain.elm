@@ -1,5 +1,5 @@
 module Update.SaveChain exposing
-    ( nameChanged, abilitySet, dcChanged, dcOverrideChanged
+    ( nameChanged, abilitySet, dcChanged
     , applyToSelectedToggle
     , outcomeHpKindSet, outcomeHpAmountChanged
     , outcomeEffectAdd, outcomeEffectRemove
@@ -7,7 +7,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , exportBundled, outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
+    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -22,7 +22,7 @@ users, `Effects.putSaveChainPresets` for authenticated ones —
 so update branches here return `Cmd.none` on preset mutations
 and let the diff catch it.
 
-@docs nameChanged, abilitySet, dcChanged, dcOverrideChanged
+@docs nameChanged, abilitySet, dcChanged
 @docs applyToSelectedToggle
 @docs outcomeHpKindSet, outcomeHpAmountChanged
 @docs outcomeEffectAdd, outcomeEffectRemove
@@ -40,7 +40,6 @@ import Effects
 import Encounter
 import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
 import Encounter.SaveChain.Bundled
-import Encounter.SaveChain.Export
 import Model exposing (Model, Surface(..))
 import Msg
     exposing
@@ -49,7 +48,6 @@ import Msg
         , SaveChainRollMode(..)
         , SaveChainSide(..)
         )
-import Ports
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.SaveChain as UiSaveChain exposing (OutcomeForm, SaveChainUi)
@@ -88,11 +86,6 @@ abilitySet ability model =
 dcChanged : String -> Model -> ( Model, Cmd Msg )
 dcChanged text model =
     ( withUi (\u -> { u | dcText = text }) model, Cmd.none )
-
-
-dcOverrideChanged : String -> Model -> ( Model, Cmd Msg )
-dcOverrideChanged text model =
-    ( withUi (\u -> { u | dcOverrideText = text }) model, Cmd.none )
 
 
 applyToSelectedToggle : Model -> ( Model, Cmd Msg )
@@ -341,24 +334,19 @@ presetSave model =
                 ( model, Cmd.none )
 
             else
-                let
-                    next =
+                ( { model
+                    | saveChainPresets =
                         Dict.insert trimmed { chain | name = trimmed } model.saveChainPresets
-
-                    modelWithPreset =
-                        { model
-                            | saveChainPresets = next
-                            , surface =
-                                Just
-                                    (SurfaceSaveChain
-                                        { ui
-                                            | loadedPresetName = Just trimmed
-                                            , presetPickerSelection = trimmed
-                                        }
-                                    )
-                        }
-                in
-                ( modelWithPreset, Cmd.none )
+                  }
+                    |> withUi
+                        (\u ->
+                            { u
+                                | loadedPresetName = Just trimmed
+                                , presetPickerSelection = trimmed
+                            }
+                        )
+                , Cmd.none
+                )
 
         _ ->
             ( model, Cmd.none )
@@ -386,21 +374,14 @@ presetDelete model =
                 ( model, Cmd.none )
 
             else
-                let
-                    next =
-                        Dict.remove targetName model.saveChainPresets
-                in
-                ( { model
-                    | saveChainPresets = next
-                    , surface =
-                        Just
-                            (SurfaceSaveChain
-                                { ui
-                                    | loadedPresetName = Nothing
-                                    , presetPickerSelection = ""
-                                }
-                            )
-                  }
+                ( { model | saveChainPresets = Dict.remove targetName model.saveChainPresets }
+                    |> withUi
+                        (\u ->
+                            { u
+                                | loadedPresetName = Nothing
+                                , presetPickerSelection = ""
+                            }
+                        )
                 , Cmd.none
                 )
 
@@ -424,79 +405,54 @@ reset model =
             ( model, Cmd.none )
 
 
-{-| Overwrite every bundled-named preset in
-`model.saveChainPresets` with its current bundled definition,
-AND prune any stale entries left over from a previous naming
-scheme. Non-bundled (user-authored) presets are untouched.
-
-Persists to `localStorage.saveChainPresets` (or the server,
-when authenticated) via `Main.elm`'s model-diff pass; if the
-modal has a loaded preset that happens to be a bundled name,
-re-loads its refreshed form so the checkbox / mode radio
-state reflects the freshly-restored data.
-
-Rationale: users who saved anything to the modal before a
-wire-shape refactor (e.g. the pre-`save_to_end` era) have
-stale bundled presets in their localStorage that predate the
-newer fields; loading Hold Person then shows Save-to-end
-unchecked even though the current bundled definition has it
-on. Additionally, since the earlier "strip level suffix"
-pass, users see BOTH the pre-rename entry ("Hold Person
-(2nd)") and the fresh one ("Hold Person") in the picker as
-duplicates. Pruning removes the old-suffix entries so the
-picker settles down to one entry per spell.
-
-The prune predicate is deliberately conservative — a key is
-only removed if it matches "<base> (<level suffix>)" AND
-`base` currently exists in `defaults`. A user preset named
-"My Hold Person" or a legitimate free-form preset with a
-parenthesised note is left alone.
-
+{-| Lay every bundled preset over `model.saveChainPresets`, drop
+the names the bundle has since retired, and re-load the open
+form when it holds a bundled preset so its rows show the
+restored definition. The GM's own presets are untouched. The
+persist Cmd comes from `Main.elm`'s model-diff pass, as for every
+other preset mutation here; the toast is the only feedback a
+restore that changes nothing visible would otherwise lack.
 -}
 restoreBundled : Model -> ( Model, Cmd Msg )
 restoreBundled model =
-    case drawerSurface model of
-        Just (SurfaceSaveChain ui) ->
-            let
-                bundled =
-                    Encounter.SaveChain.Bundled.defaults
+    let
+        bundled =
+            Encounter.SaveChain.Bundled.defaults
 
-                withRestored =
-                    Dict.foldl Dict.insert model.saveChainPresets bundled
+        next =
+            Dict.foldl Dict.insert model.saveChainPresets bundled
+                |> Dict.filter (\k _ -> not (isRetiredBundledKey bundled k))
 
-                next =
-                    withRestored
-                        |> Dict.filter (\k _ -> not (isRetiredBundledKey bundled k))
-
-                refreshedModal =
-                    case ui.loadedPresetName of
-                        Just name ->
-                            case Dict.get name bundled of
-                                Just chain ->
-                                    Just (SurfaceSaveChain (UiSaveChain.fromChain ui chain))
-
-                                Nothing ->
-                                    Just (SurfaceSaveChain ui)
-
-                        Nothing ->
-                            Just (SurfaceSaveChain ui)
-            in
-            ( { model | saveChainPresets = next, surface = refreshedModal }
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+        reloadIfBundled ui =
+            ui.loadedPresetName
+                |> Maybe.andThen (\name -> Dict.get name bundled)
+                |> Maybe.map (UiSaveChain.fromChain ui)
+                |> Maybe.withDefault ui
+    in
+    Update.Toast.push ToastSuccess
+        ("Restored "
+            ++ String.fromInt (Dict.size bundled)
+            ++ " bundled presets; your own presets are untouched."
+        )
+        ({ model | saveChainPresets = next } |> withUi reloadIfBundled)
 
 
-{-| True iff `key` has the shape "<base> (<level suffix>)"
-where `base` is a current bundled key. This matches the
-pre-rename bundled names ("Hold Person (2nd)", "Fireball
-(3rd)", "Sacred Flame (cantrip)", …) so `restoreBundled` can
-prune them without a hand-maintained migration list.
+{-| True for a stored key the bundle no longer ships under that
+name: one of `Bundled.retiredNames`, or the "<base> (<level
+suffix>)" shape of the earlier bundled naming ("Hold Person
+(2nd)", "Sacred Flame (cantrip)", …) whose base is a current
+bundled key. Matching the suffix shape against the current keys
+rather than a hand-maintained list keeps a GM's own
+parenthesised names safe, since their base is not bundled.
 -}
 isRetiredBundledKey : Dict.Dict String SaveChain -> String -> Bool
 isRetiredBundledKey bundled key =
+    List.member key Encounter.SaveChain.Bundled.retiredNames
+        || hasRetiredSuffix bundled key
+
+
+hasRetiredSuffix : Dict.Dict String SaveChain -> String -> Bool
+hasRetiredSuffix bundled key =
     let
         suffixes =
             [ " (cantrip)"
@@ -534,36 +490,6 @@ isRetiredBundledKey bundled key =
 
         Nothing ->
             False
-
-
-{-| Copy the currently-open Save Chain form to the clipboard as
-an Elm source snippet ready to paste into
-`Encounter.SaveChain.Bundled.elm`. Used to promote a
-user-authored preset into a bundled default without hand-
-translating the wire JSON.
-
-The snippet includes a header comment (where to paste + to
-extend `defaults`). A short "Copied…" toast confirms the
-port fired — the OS clipboard has no observable state we can
-verify from Elm, so this is the only feedback the GM sees.
-
--}
-exportBundled : Model -> ( Model, Cmd Msg )
-exportBundled model =
-    case drawerSurface model of
-        Just (SurfaceSaveChain ui) ->
-            let
-                snippet =
-                    Encounter.SaveChain.Export.asElm (UiSaveChain.toChain ui)
-            in
-            Update.Toast.push ToastSuccess
-                "Copied Elm snippet to clipboard — paste into Bundled.elm."
-                model
-                |> Tuple.mapSecond
-                    (\cmd -> Cmd.batch [ cmd, Ports.copyToClipboard snippet ])
-
-        _ ->
-            ( model, Cmd.none )
 
 
 
@@ -606,106 +532,119 @@ applySide side model =
             let
                 chain =
                     UiSaveChain.toChain ui
-
-                outcome =
-                    outcomeFor side chain
-
-                targets =
-                    resolveTargets ui model.encounter
-
-                effectCtx =
-                    buildEffectContext chain model
-
-                -- Effect list applies always fire (no dice needed).
-                withConditions =
-                    List.foldl
-                        (\name enc ->
-                            SaveChain.applyEffects effectCtx outcome name enc
-                        )
-                        model.encounter
-                        targets
-
-                modelAfterCond =
-                    { model | encounter = withConditions }
             in
-            case rawTextForResolve side chain of
-                RawEmpty ->
-                    let
-                        entries =
-                            List.map
-                                (\name ->
-                                    { target = name
-                                    , side = side
-                                    , rollNote = Nothing
-                                    , appliedParts = appliedParts outcome 0
-                                    }
-                                )
-                                targets
-                    in
-                    ( pushLog entries modelAfterCond, Cmd.none )
+            -- Defence in depth behind the disabled buttons: a
+            -- Save-to-end effect applied without a DC would land
+            -- as a plain condition and never roll.
+            if SaveChain.needsDc chain && chain.saveDc == Nothing then
+                ( model, Cmd.none )
 
-                RawInteger n ->
-                    let
-                        resolvedAmount =
-                            case ( side, outcome.hp ) of
-                                ( SaveChainSuccess, HalfFailDamage ) ->
-                                    SaveChain.halfFailDamage n
-
-                                _ ->
-                                    n
-
-                        nextEnc =
-                            List.foldl
-                                (\name enc ->
-                                    SaveChain.applyResolvedHp outcome.hp resolvedAmount name enc
-                                )
-                                withConditions
-                                targets
-
-                        entries =
-                            List.map
-                                (\name ->
-                                    { target = name
-                                    , side = side
-                                    , rollNote = Nothing
-                                    , appliedParts = appliedParts outcome resolvedAmount
-                                    }
-                                )
-                                targets
-                    in
-                    ( pushLog entries { modelAfterCond | encounter = nextEnc }, Cmd.none )
-
-                RawDice expr ->
-                    -- Log entries are pushed after the roll lands
-                    -- (see `applyRollLanded`) so the amount reflects
-                    -- the actual dice total, not the mid-flight zero.
-                    ( modelAfterCond
-                    , Dice.rollCmd (SaveChainApplyRollLanded side)
-                        (saveChainSource side chain ui model.encounter)
-                        expr
-                    )
-
-                RawUnparseable ->
-                    -- Non-empty text that's neither an integer nor
-                    -- a valid dice expression: apply the condition
-                    -- side (already done above) and leave HP alone
-                    -- rather than crashing the click.
-                    let
-                        entries =
-                            List.map
-                                (\name ->
-                                    { target = name
-                                    , side = side
-                                    , rollNote = Nothing
-                                    , appliedParts = appliedParts outcome 0
-                                    }
-                                )
-                                targets
-                    in
-                    ( pushLog entries modelAfterCond, Cmd.none )
+            else
+                applyOutcome side ui chain model
 
         _ ->
             ( model, Cmd.none )
+
+
+applyOutcome : SaveChainSide -> SaveChainUi -> SaveChain -> Model -> ( Model, Cmd Msg )
+applyOutcome side ui chain model =
+    let
+        outcome =
+            outcomeFor side chain
+
+        targets =
+            resolveTargets ui model.encounter
+
+        effectCtx =
+            buildEffectContext chain model
+
+        -- Effect list applies always fire (no dice needed).
+        withConditions =
+            List.foldl
+                (\name enc ->
+                    SaveChain.applyEffects effectCtx outcome name enc
+                )
+                model.encounter
+                targets
+
+        modelAfterCond =
+            { model | encounter = withConditions }
+    in
+    case rawTextForResolve side chain of
+        RawEmpty ->
+            let
+                entries =
+                    List.map
+                        (\name ->
+                            { target = name
+                            , side = side
+                            , rollNote = Nothing
+                            , appliedParts = appliedParts outcome 0
+                            }
+                        )
+                        targets
+            in
+            ( pushLog entries modelAfterCond, Cmd.none )
+
+        RawInteger n ->
+            let
+                resolvedAmount =
+                    case ( side, outcome.hp ) of
+                        ( SaveChainSuccess, HalfFailDamage ) ->
+                            SaveChain.halfFailDamage n
+
+                        _ ->
+                            n
+
+                nextEnc =
+                    List.foldl
+                        (\name enc ->
+                            SaveChain.applyResolvedHp outcome.hp resolvedAmount name enc
+                        )
+                        withConditions
+                        targets
+
+                entries =
+                    List.map
+                        (\name ->
+                            { target = name
+                            , side = side
+                            , rollNote = Nothing
+                            , appliedParts = appliedParts outcome resolvedAmount
+                            }
+                        )
+                        targets
+            in
+            ( pushLog entries { modelAfterCond | encounter = nextEnc }, Cmd.none )
+
+        RawDice expr ->
+            -- Log entries are pushed after the roll lands
+            -- (see `applyRollLanded`) so the amount reflects
+            -- the actual dice total, not the mid-flight zero.
+            ( modelAfterCond
+            , Dice.rollCmd (SaveChainApplyRollLanded side)
+                (saveChainSource side chain ui model.encounter)
+                expr
+            )
+
+        RawUnparseable ->
+            -- Non-empty text that's neither an integer nor
+            -- a valid dice expression: apply the condition
+            -- side (already done above) and leave HP alone
+            -- rather than crashing the click.
+            let
+                entries =
+                    List.map
+                        (\name ->
+                            { target = name
+                            , side = side
+                            , rollNote = Nothing
+                            , appliedParts = appliedParts outcome 0
+                            }
+                        )
+                        targets
+            in
+            ( pushLog entries modelAfterCond, Cmd.none )
 
 
 {-| Roll from a Save Chain apply landed. Halve if the outcome
@@ -1132,23 +1071,13 @@ savesRolled results model =
 -- ── HELPERS ─────────────────────────────────────────────────────
 
 
-{-| Pick the DC to use: chain's fixed DC wins, else the run-time
-override the modal renders when the chain's DC is blank.
-Returns `Nothing` when neither is available — the button is
-disabled in that state, but the guard is here too.
+{-| The DC the chain resolves against: `Nothing` while the DC
+field is blank. The roll buttons are disabled in that state, but
+the guard is here too.
 -}
 resolveDc : UiSaveChain.SaveChainUi -> Maybe Int
 resolveDc ui =
-    let
-        chain =
-            UiSaveChain.toChain ui
-    in
-    case chain.saveDc of
-        Just n ->
-            Just n
-
-        Nothing ->
-            String.toInt (String.trim ui.dcOverrideText)
+    (UiSaveChain.toChain ui).saveDc
 
 
 {-| Resolve the compendium view of a queue creature: prefer the

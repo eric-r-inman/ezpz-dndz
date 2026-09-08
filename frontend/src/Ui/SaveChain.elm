@@ -40,12 +40,6 @@ type alias SaveChainUi =
     , onFail : OutcomeForm
     , onSuccess : OutcomeForm
 
-    -- Run-time DC override — used when the chain itself has
-    -- `saveDc = Nothing` and the GM wants to enter a per-apply
-    -- DC (typically because the DC comes from a monster's stat
-    -- block, not the chain).  Not persisted onto the preset.
-    , dcOverrideText : String
-
     -- Preset picker state.  `presetPickerSelection` is the raw
     -- <select> value the user has clicked; `loadedPresetName`
     -- is the name of the last preset actually loaded into the
@@ -79,7 +73,6 @@ fresh target =
     , dcText = ""
     , onFail = freshOutcome
     , onSuccess = freshOutcome
-    , dcOverrideText = ""
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
     }
@@ -111,7 +104,6 @@ fromChain baseline chain =
                     ""
         , onFail = outcomeToForm chain.onFail
         , onSuccess = outcomeToForm chain.onSuccess
-        , dcOverrideText = ""
         , loadedPresetName =
             if String.isEmpty chain.name then
                 Nothing

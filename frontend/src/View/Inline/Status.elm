@@ -20,16 +20,18 @@ import View.Tooltips as Tooltips
 view : Int -> Bool -> StatusUi -> Html Msg
 view selectedCount placeholderWarning ui =
     div [ class "creature-card__inline" ]
-        [ div [ class "status-toggles" ]
-            [ coverToggle ui
-            , boolToggle "hiding" ui.hiding FlagHiding
-            , boolToggle "dodging" ui.dodging FlagDodging
-            ]
-        , div [ class "status-toggles" ]
-            [ boolToggle "concentrating" ui.concentrating FlagConcentrating
-            , span [ class "flying-group" ]
-                [ boolToggle "flying" ui.flying FlagFlying
-                , flyHeight ui
+        [ div [ class "status-toggle-rows" ]
+            [ div [ class "status-toggles" ]
+                [ coverToggle ui
+                , boolToggle "hiding" ui.hiding FlagHiding
+                , boolToggle "dodging" ui.dodging FlagDodging
+                ]
+            , div [ class "status-toggles" ]
+                [ boolToggle "concentrating" ui.concentrating FlagConcentrating
+                , span [ class "flying-group" ]
+                    [ boolToggle "flying" ui.flying FlagFlying
+                    , flyHeight ui
+                    ]
                 ]
             ]
         , ApplyButton.row "Apply to:"

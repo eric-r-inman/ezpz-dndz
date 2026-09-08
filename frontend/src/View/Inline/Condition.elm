@@ -172,10 +172,13 @@ customAndNoteSection ui =
 durationSection : ConditionUi -> List String -> Html Msg
 durationSection ui creatureNames =
     div [ class "cond-section" ]
-        [ div [ class "cond-row" ]
+        [ -- A three-column grid: the empty span holds row two's
+          -- label slot so Countdown lines up under Manual.
+          div [ class "cond-duration-grid" ]
             [ Html.label [] [ text "Duration:" ]
             , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
+            , span [] []
             , durationKindRadio ui DurKindCountdown "Countdown"
             , oneMinutePresetRadio ui
             ]

@@ -580,7 +580,6 @@ type Msg
     | SaveChainNameChanged String
     | SaveChainAbilitySet Compendium.Ability
     | SaveChainDcChanged String
-    | SaveChainDcOverrideChanged String
     | SaveChainApplyToSelectedToggle
       -- OutcomeSide + field for the shared handlers.  The tag
       -- lets one Msg cover both fail-side and success-side
@@ -614,12 +613,9 @@ type Msg
     | SaveChainReset
       -- Overwrite every bundled-named preset in
       -- `model.saveChainPresets` with the current bundled
-      -- definition, then persist.  Non-bundled presets stay.
-      -- Escape hatch for users whose stored bundled presets
-      -- are stale from before a wire-shape refactor (e.g.
-      -- Hold Person without save-to-end from pre-that-feature).
+      -- definition and drop retired bundled names, then persist.
+      -- The GM's own presets stay.
     | SaveChainRestoreBundled
-    | SaveChainExportBundled
       -- Apply
     | SaveChainApplyFail
     | SaveChainApplyPass

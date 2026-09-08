@@ -44,14 +44,14 @@ type alias DiceUi =
     -- read.
     , historyOpen : Bool
 
-    -- The rail's badge strip normally shows the last 3 rolls from
-    -- `history`, newest emphasized. A triple-roll (an attack,
+    -- The rail's badge strip shows the newest rolls from
+    -- `history`, the newest emphasized. A triple-roll (an attack,
     -- ability check, or saving throw fired at standard +
-    -- advantage + disadvantage together) overrides that with its
-    -- own 3 results instead, colour-coded by roll kind rather
+    -- advantage + disadvantage together) marks its three results
+    -- — the newest three — to be coloured by roll kind rather
     -- than recency. Any single roll landing afterward — from any
-    -- source — clears the override, so the strip falls back to
-    -- the ordinary recency view until the next triple-roll.
+    -- source — clears the mark, so the strip falls back to the
+    -- ordinary recency view until the next triple-roll.
     , rollBadgeOverride : Maybe (List Dice.Roll)
     }
 

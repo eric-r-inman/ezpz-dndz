@@ -189,6 +189,41 @@
 76. Every bundled lore group's description in the Compendium's detail pane is
     rewritten, and the reasoning behind each composition is collected in a
     lore-groups document under docs.  No action needed.
+77. Purple text in the Dark and Accessible themes — condition chips, the title
+    bar's condition list, and the roll log's condition rows — is a shade
+    lighter.  No action needed.
+78. The Condition/Effect editor's duration picker sits on two rows, Manual and
+    Next turn above Countdown and 1 Minute, with Countdown aligned under Manual.
+    No action needed.
+79. The Status editor's two toggle rows sit closer together.  No action needed.
+80. A triple-roll's three floating results spread farther apart, and the roll
+    strip beside the 🎲 icon shows the last four totals at a smaller size, a
+    triple-roll's three results among them.  No action needed.
+81. Dice-roller log rows put the colon straight after the expression, as in
+    "2d8+8: (2,6)+8 = 16".  No action needed.
+82. The Dice Roller's Count and Modifier fields take two characters, and its
+    expression field's example reads "e.g. 2d6+3".  No action needed.
+83. A dice expression may group terms in parentheses, such as "(2d6+4) + (3d9+5)
+    +6".  No action needed.
+84. A hairline separates the editor column's control row from the first editor.
+    No action needed.
+85. The Save Chain editor's Restore bundled button refreshes the open form and
+    confirms with a toast, and its Export as Elm button is gone.  No action
+    needed.
+86. A Save Chain whose effect opts into Save-to-end asks for a DC before it can
+    be applied, so the effect's manual, start-of-turn, or end-of-turn save
+    behaves as it does from the Condition editor; without a DC the condition
+    used to land with no save at all.  No action needed.
+87. The bundled Save Chain presets follow the 2024 rules: Ice Storm, Flame
+    Strike, Weird, Phantasmal Killer, Suggestion, Stinking Cloud, Sunbeam, and
+    Banishment change, Feeblemind becomes Befuddlement, Poison Spray (now a
+    spell attack) retires, and ten presets join them — Hideous Laughter, Sleep,
+    Ray of Enfeeblement, Spirit Guardians, Dominate Person, and the ghoul's
+    claw, ghast's stench, harpy's song, mummy's glare, and medusa's gaze.  Click
+    Restore bundled in the Save Chain editor to pick them up.
+88. The rules each preset can only approximate are collected in a
+    save-chain-presets document under docs, with the editor settings they call
+    for tracked in the backlog.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

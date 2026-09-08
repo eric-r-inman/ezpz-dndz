@@ -1,6 +1,6 @@
 module Encounter.SaveChain exposing
     ( SaveChain, SaveOutcome, HpEffect(..)
-    , empty, isEffectivelyEmpty
+    , empty, isEffectivelyEmpty, needsDc
     , applyResolvedHp, applyEffects, halfFailDamage
     , rawAmount
     , EffectApply, EffectContext, emptyEffect
@@ -31,7 +31,7 @@ halve the resulting integer. Independent from any prior Fail
 apply so a GM can click Pass without having clicked Fail first.
 
 @docs SaveChain, SaveOutcome, HpEffect
-@docs empty, isEffectivelyEmpty
+@docs empty, isEffectivelyEmpty, needsDc
 @docs applyResolvedHp, applyEffects, halfFailDamage
 @docs rawAmount
 
@@ -174,6 +174,16 @@ isOutcomeEmpty o =
 effectIsBlank : EffectApply -> Bool
 effectIsBlank e =
     String.isEmpty (String.trim e.name)
+
+
+{-| True iff an effect on either side opts into Save-to-end. Such
+a chain needs a DC before it can be applied: without one the
+effect would land as a plain condition and never roll.
+-}
+needsDc : SaveChain -> Bool
+needsDc chain =
+    List.any (\e -> e.saveToEnd /= Nothing)
+        (chain.onFail.effects ++ chain.onSuccess.effects)
 
 
 hpEffectIsEmpty : HpEffect -> Bool

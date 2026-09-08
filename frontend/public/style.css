@@ -105,6 +105,12 @@
   /* A number the reader is meant to land on first. */
   --font-size-readout: 1.1rem;
 
+  /* The roll strip beside the rail's 🎲 icon: small enough that
+     four totals fit beside the buttons, the emphasized ones a
+     step up. */
+  --font-size-recent-roll: 0.7rem;
+  --font-size-recent-roll-latest: 0.95rem;
+
   /* How tall a scrolling list inside a panel grows before it
      scrolls rather than pushing the rest of the panel down. */
   --scroll-list-max-h: 240px;
@@ -401,8 +407,8 @@
   --color-heal: #3cb455;
   --color-maxhp: #14b8a6;
   --color-temp: #2589e0;
-  --color-condition: #9355e0;
-  --color-condition-chip: #a26bee;
+  --color-condition: #9d66e5;
+  --color-condition-chip: #b083f1;
   --color-btn-blue: #1976d2;
   --color-btn-green: #2f9e44;
   --color-btn-red: #c62828;
@@ -501,8 +507,8 @@
   --color-heal: #006b3c;
   --color-maxhp: #0f766e;
   --color-temp: #003c8f;
-  --color-condition: #5b21b6;
-  --color-condition-chip: #6d28d9;
+  --color-condition: #6d28d9;
+  --color-condition-chip: #7c3aed;
   --color-btn-blue: #003c8f;
   --color-btn-green: #006b3c;
   --color-btn-red: #a30000;
@@ -4162,12 +4168,15 @@ body {
 
 /* Compendium to the left, the encounter's own controls to the
    right, so the destructive pair sits away from the reach for a
-   reference. */
+   reference.  The hairline underneath marks where the editors
+   begin. */
 .drawer-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .drawer-controls__encounter {
@@ -4192,7 +4201,7 @@ body {
 }
 
 .recent-roll {
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-recent-roll);
   font-weight: var(--font-weight-label);
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
@@ -4215,7 +4224,7 @@ body {
 .recent-roll--standard,
 .recent-roll--advantage,
 .recent-roll--disadvantage {
-  font-size: var(--font-size-readout);
+  font-size: var(--font-size-recent-roll-latest);
   font-weight: 800;
   animation: recent-roll-flash 0.4s ease-in-out 5;
 }
@@ -6181,6 +6190,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-0);
+}
+
+/* Both toggle rows, closer together than the editor's row gap so
+   they read as one control group. */
+.status-toggle-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 /* Wrapper around the "flying" toggle + fly-height selector so the
@@ -8300,6 +8317,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 6px;
 }
 
+/* The duration picker's two rows share one grid so the second
+   row's first chip lines up under the first row's rather than
+   under the "Duration:" label: column one holds the label (and
+   nothing on row two), columns two and three the chips. */
+.cond-duration-grid {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  align-items: center;
+  justify-items: start;
+  gap: var(--space-1) var(--space-2);
+}
+
 /* The Manage HP editor's manual row.  Tighter than the shared
    gap because the heading and its fields all have to fit a
    drawer panel's width. */
@@ -8396,7 +8425,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .dice-form__numeric {
   flex: 0 1 auto;
-  width: 8ch;
+  width: var(--width-input-2ch);
   min-width: 0;
   font-variant-numeric: tabular-nums;
 }

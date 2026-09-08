@@ -108,7 +108,7 @@ modifierChanged text model =
                 | modifierText = text
                 , modifier =
                     String.toInt (String.trim text)
-                        |> Maybe.map (Basics.max -999 >> Basics.min 999)
+                        |> Maybe.map (Basics.max -99 >> Basics.min 99)
                         |> Maybe.withDefault d.modifier
             }
         )
@@ -518,11 +518,16 @@ tripleRollCmd feature creatureName bonus x y =
 {-| Result handler for a triple-roll: push all three rolls to
 history/persistence exactly as any other roll, spawn three
 floating popups colour-coded by roll mode and spread out
-side-by-side at the click position so they read as a set, and set
-the rail's badge-strip override so the three totals stay visible
-— colour-coded the same way — even after the popups fade. Any
-single roll landing after this (from any source) clears the
-override; see `Effects.pushIncomingDiceRoll`.
+side-by-side at the click position so they read as a set, and
+mark the rail's badge strip so its newest three totals show
+colour-coded by roll mode rather than by recency, even after the
+popups fade. Any single roll landing after this (from any source)
+clears the mark; see `Effects.pushIncomingDiceRoll`.
+
+The rolls arrive standard-first but are pushed last-first, so
+the newest-first history — and the badge strip and log built
+from it — reads standard, advantage, disadvantage.
+
 -}
 tripleRollLanded : Int -> Int -> List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 tripleRollLanded x y results model =
@@ -538,7 +543,7 @@ tripleRollLanded x y results model =
             ( pushed, persistRollFor m.auth roll :: broadcastCmd :: cmds )
 
         ( afterPush, pushCmds ) =
-            List.foldl pushOne ( model, [] ) rolls
+            List.foldl pushOne ( model, [] ) (List.reverse rolls)
 
         spawnOne roll ( m, cmds ) =
             let
@@ -584,10 +589,10 @@ popupOffset : Dice.RollKind -> Int
 popupOffset kind =
     case kind of
         Dice.Advantage ->
-            -36
+            -60
 
         Dice.Disadvantage ->
-            36
+            60
 
         _ ->
             0

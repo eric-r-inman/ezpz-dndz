@@ -1,0 +1,408 @@
+#+title:     Save Chain presets
+#+language:  en
+
+The Save Chain editor's bundled presets each transcribe one saving-throw effect
+from the 2024 rules.  This document is the review behind them: what the source
+text says, what the editor can express today, and the settings it still needs.
+The Elm module that ships the presets is the source of truth for the data; the
+backlog entry "Teach the Save Chain editor the rules its presets need" in
+tasks.org tracks the settings.
+
+Sources are SRD 5.2.1 (the 2024 rules) unless an entry says otherwise.  Acid
+Splash and Toll the Dead are not in the SRD and follow the 2024 Player's
+Handbook.
+
+* What a preset can express
+
+A chain names the save ability, optionally a fixed DC, and one outcome for each
+side of the save.  An outcome may deal damage (a dice formula or an integer),
+heal, or — on the success side — deal half of the fail damage, and it may attach
+any number of named effects.  An effect may opt into Save-to-end, which gives
+the applied condition the chain's ability and DC and one of three timings:
+manual (a 🎲 on the chip), at the start of the bearer's turn, or at the end of
+it; a success ends the condition.  Everything else an applied effect needs — a
+duration, a second stage, a trigger — lives in its note for the GM to act on.
+
+Verdicts below: /exact/ when the editor models the rule fully, /approximate/
+when the note carries what it can't, /retired/ when the effect is no longer a
+save.
+
+* Cantrips
+
+** Acid Splash
+
+- Rule :: Dexterity save; 1d6 acid damage on a failure, nothing on a success.
+- Preset :: DEX; fail 1d6.
+- Verdict :: exact.
+
+** Sacred Flame
+
+- Rule :: Dexterity save; 1d8 radiant damage on a failure, nothing on a success;
+  no benefit from half or three-quarters cover.
+- Preset :: DEX; fail 1d8.
+- Verdict :: exact.
+
+** Toll the Dead
+
+- Rule :: Wisdom save; 1d8 necrotic damage, or 1d12 if the target is missing any
+  hit points.
+- Preset :: WIS; fail 1d8.
+- Verdict :: approximate — the GM overwrites the amount for a wounded target.
+
+** Poison Spray
+
+- Rule :: A ranged spell attack for 1d12 poison damage.
+- Verdict :: retired — the 2024 cantrip has no save.
+
+* Level 1
+
+** Bane
+
+- Rule :: Charisma save; a failing target subtracts 1d4 from attack rolls and
+  saves until concentration ends, with no repeat save.
+- Preset :: CHA; fail applies "Baned" with no Save-to-end.
+- Verdict :: exact — the −1d4 is the GM's to apply at each roll.
+
+** Burning Hands
+
+- Rule :: Dexterity save; 3d6 fire, half on a success.
+- Preset :: DEX; fail 3d6, success half.
+- Verdict :: exact.
+
+** Command
+
+- Rule :: Wisdom save; the target follows the one-word command on its next turn.
+- Preset :: WIS; fail applies "Commanded" with no Save-to-end.
+- Verdict :: approximate — the effect wants to end with the target's next turn;
+  the GM removes it.
+
+** Hideous Laughter
+
+- Rule :: Wisdom save; Prone and Incapacitated for the duration, repeating the
+  save at the end of each of its turns and whenever it takes damage (with
+  advantage on the damage-triggered save).
+- Preset :: WIS; fail applies Incapacitated with an end-of-turn Save-to-end and
+  Prone without one.
+- Verdict :: approximate — the damage trigger is the GM's to roll from the chip;
+  Prone outliving the laughter until the target stands is the rule.
+
+** Sleep
+
+- Rule :: Wisdom save; Incapacitated until the end of its next turn, then a
+  repeat save; a second failure makes it Unconscious for the duration.  Damage
+  or a shake ends the spell.
+- Preset :: WIS; fail applies Incapacitated with an end-of-turn Save-to-end.
+- Verdict :: approximate — a failed repeat save should escalate rather than
+  continue.
+
+** Thunderwave
+
+- Rule :: Constitution save; 2d8 thunder and a 10-foot push, half damage and no
+  push on a success.
+- Preset :: CON; fail 2d8, success half.
+- Verdict :: approximate — the push is repositioning the GM handles.
+
+* Level 2
+
+** Blindness / Deafness
+
+- Rule :: Constitution save; Blinded or Deafened for 1 minute, repeating the
+  save at the end of each of its turns.
+- Preset :: CON; fail applies Blinded with an end-of-turn Save-to-end.
+- Verdict :: exact — the GM renames the effect when the caster chose Deafened.
+
+** Hold Person
+
+- Rule :: Wisdom save; Paralyzed for the duration, repeating at the end of each
+  of its turns.
+- Preset :: WIS; fail applies Paralyzed with an end-of-turn Save-to-end.
+- Verdict :: exact.
+
+** Ray of Enfeeblement
+
+- Rule :: Constitution save.  Failure: disadvantage on Strength-based D20 tests
+  and −1d8 from damage rolls, repeating at the end of each of its turns.
+  Success: disadvantage on its next attack roll until the start of the caster's
+  next turn.
+- Preset :: CON; fail applies "Enfeebled" with an end-of-turn Save-to-end;
+  success applies "Disadv next attack".
+- Verdict :: approximate — the success effect wants to end at the start of the
+  caster's next turn.
+
+** Shatter
+
+- Rule :: Constitution save; 3d8 thunder, half on a success; a construct has
+  disadvantage.
+- Preset :: CON; fail 3d8, success half.
+- Verdict :: exact — Roll Disadv. covers constructs.
+
+** Suggestion
+
+- Rule :: Wisdom save; Charmed for up to 8 hours of concentration, ending if the
+  caster or an ally damages the target.
+- Preset :: WIS; fail applies Charmed with the spell in its note.
+- Verdict :: approximate — the duration lives in the note.
+
+** Web
+
+- Rule :: Dexterity save; Restrained while in the webs; an action to make a
+  Strength (Athletics) check against the spell DC frees the target.
+- Preset :: DEX; fail applies Restrained with the escape check in its note.
+- Verdict :: exact — the escape is a check, not a save.
+
+* Level 3
+
+** Fear
+
+- Rule :: Wisdom save; drops what it holds and is Frightened, Dashing away each
+  turn; a repeat save only when it ends a turn without line of sight to the
+  caster.
+- Preset :: WIS; fail applies Frightened with an end-of-turn Save-to-end.
+- Verdict :: approximate — the repeat save is conditional; the GM skips a roll
+  the target hasn't earned.
+
+** Fireball
+
+- Rule :: Dexterity save; 8d6 fire, half on a success.
+- Preset :: DEX; fail 8d6, success half.
+- Verdict :: exact.
+
+** Hypnotic Pattern
+
+- Rule :: Wisdom save; Charmed for the duration, and Incapacitated with a Speed
+  of 0 while Charmed; damage or a shake ends it, with no repeat save.
+- Preset :: WIS; fail applies Charmed and Incapacitated, neither with a
+  Save-to-end.
+- Verdict :: exact.
+
+** Lightning Bolt
+
+- Rule :: Dexterity save; 8d6 lightning, half on a success.
+- Preset :: DEX; fail 8d6, success half.
+- Verdict :: exact.
+
+** Slow
+
+- Rule :: Wisdom save; halved Speed, −2 to AC and Dexterity saves, no reactions,
+  one action or bonus action per turn; repeats at the end of each of its turns.
+- Preset :: WIS; fail applies "Slowed" with an end-of-turn Save-to-end.
+- Verdict :: exact.
+
+** Spirit Guardians
+
+- Rule :: Wisdom save when the emanation enters a creature's space or the
+  creature enters it or ends its turn there, once per turn; 3d8 radiant or
+  necrotic, half on a success.
+- Preset :: WIS; fail 3d8, success half.
+- Verdict :: approximate — the GM applies the chain again each turn.
+
+** Stinking Cloud
+
+- Rule :: Constitution save at the start of each turn in the cloud; on a
+  failure, Poisoned until the end of that turn and unable to take an action or
+  bonus action.
+- Preset :: CON; fail applies Poisoned with a start-of-turn Save-to-end.
+- Verdict :: approximate — a success removes the condition rather than
+  re-checking next turn, and the GM clears it when the creature leaves the
+  cloud.
+
+* Level 4
+
+** Banishment
+
+- Rule :: Charisma save; banished and Incapacitated until concentration ends,
+  with no repeat save.
+- Preset :: CHA; fail applies "Banished" with no Save-to-end.
+- Verdict :: exact — the 2024 text grants no repeat save.
+
+** Blight
+
+- Rule :: Constitution save; 8d8 necrotic, half on a success; a Plant creature
+  fails automatically.
+- Preset :: CON; fail 8d8, success half.
+- Verdict :: exact — the Fail button covers plants.
+
+** Confusion
+
+- Rule :: Wisdom save; acts by the d10 table each turn, repeating the save at
+  the end of each of its turns.
+- Preset :: WIS; fail applies "Confused" with an end-of-turn Save-to-end.
+- Verdict :: exact.
+
+** Ice Storm
+
+- Rule :: Dexterity save; 2d10 bludgeoning and 4d6 cold, half on a success.
+- Preset :: DEX; fail 2d10+4d6, success half.
+- Verdict :: exact — the 2024 text deals 2d10 bludgeoning where the 2014 spell
+  dealt 2d8.
+
+** Phantasmal Killer
+
+- Rule :: Wisdom save.  Failure: 4d10 psychic and disadvantage on ability checks
+  and attack rolls for the duration.  Success: half damage and the spell ends.
+  At the end of each of its turns the target repeats the save, taking the damage
+  again on a failure and ending the spell on a success.
+- Preset :: WIS; fail 4d10 and "Nightmare" with an end-of-turn Save-to-end;
+  success half.
+- Verdict :: approximate — the damage a failed repeat save deals is the GM's to
+  roll; the 2024 spell no longer frightens, where the 2014 one did.
+
+* Level 5
+
+** Cloudkill
+
+- Rule :: Constitution save; 5d8 poison, half on a success; the save recurs when
+  the fog moves into a creature's space and when it enters or ends its turn
+  there, once per turn.
+- Preset :: CON; fail 5d8, success half.
+- Verdict :: approximate — the GM applies the chain again each turn.
+
+** Cone of Cold
+
+- Rule :: Constitution save; 8d8 cold, half on a success.
+- Preset :: CON; fail 8d8, success half.
+- Verdict :: exact.
+
+** Dominate Person
+
+- Rule :: Wisdom save, with advantage if the caster's side is fighting the
+  target; Charmed for the duration, repeating the save whenever it takes damage.
+- Preset :: WIS; fail applies Charmed with a manual Save-to-end.
+- Verdict :: approximate — the GM rolls the chip's save when damage lands.
+
+** Flame Strike
+
+- Rule :: Dexterity save; 5d6 fire and 5d6 radiant, half on a success.
+- Preset :: DEX; fail 5d6+5d6, success half.
+- Verdict :: exact — the 2024 text deals 5d6 of each type where the 2014 spell
+  dealt 4d6.
+
+** Hold Monster
+
+- Rule :: Wisdom save; Paralyzed for the duration, repeating at the end of each
+  of its turns.
+- Preset :: WIS; fail applies Paralyzed with an end-of-turn Save-to-end.
+- Verdict :: exact.
+
+* Level 6
+
+** Chain Lightning
+
+- Rule :: Dexterity save; 10d8 lightning, half on a success.
+- Preset :: DEX; fail 10d8, success half.
+- Verdict :: exact.
+
+** Disintegrate
+
+- Rule :: Dexterity save; 10d6 + 40 force on a failure, nothing on a success; a
+  target reduced to 0 hit points is dust.
+- Preset :: DEX; fail 10d6+40.
+- Verdict :: exact.
+
+** Harm
+
+- Rule :: Constitution save; 14d6 necrotic, and the hit point maximum drops by
+  the damage taken (not below 1); half damage only on a success.
+- Preset :: CON; fail 14d6, success half.
+- Verdict :: approximate — the maximum reduction goes through the card's Manage
+  HP editor.
+
+** Sunbeam
+
+- Rule :: Constitution save; 6d8 radiant and Blinded until the start of the
+  caster's next turn; half damage only on a success.
+- Preset :: CON; fail 6d8 and Blinded with no Save-to-end; success half.
+- Verdict :: approximate — the blindness ends at the start of the caster's next
+  turn, which the GM clears.
+
+* Level 7
+
+** Finger of Death
+
+- Rule :: Constitution save; 7d8 + 30 necrotic, half on a success.
+- Preset :: CON; fail 7d8+30, success half.
+- Verdict :: exact.
+
+* Level 8
+
+** Befuddlement
+
+- Rule :: Intelligence save.  Failure: 10d12 psychic, and the target can't cast
+  spells or take the Magic action, repeating the save every 30 days.  Success:
+  half damage only.
+- Preset :: INT; fail 10d12 and "Befuddled" with no Save-to-end; success half.
+- Verdict :: exact within a fight — this is Feeblemind's 2024 name, with 10d12
+  where the 2014 spell dealt 4d6.
+
+* Level 9
+
+** Meteor Swarm
+
+- Rule :: Dexterity save; 20d6 fire and 20d6 bludgeoning, half on a success.
+- Preset :: DEX; fail 20d6+20d6, success half.
+- Verdict :: exact.
+
+** Weird
+
+- Rule :: Wisdom save.  Failure: 10d10 psychic and Frightened for the duration.
+  Success: half damage only.  A Frightened target repeats the save at the end of
+  each of its turns, taking 5d10 psychic on a failure and ending the spell on a
+  success.
+- Preset :: WIS; fail 10d10 and Frightened with an end-of-turn Save-to-end;
+  success half.
+- Verdict :: approximate — the damage a failed repeat save deals is the GM's to
+  roll; the 2024 spell also deals damage up front, where the 2014 one did not.
+
+* Monster abilities
+
+** Ghoul Claw
+
+- Rule :: Constitution save, DC 10; Paralyzed until the end of its next turn.
+  Undead and elves are unaffected.
+- Preset :: CON 10; fail applies Paralyzed with no Save-to-end.
+- Verdict :: approximate — the paralysis ends with the target's next turn, which
+  the GM clears.
+
+** Ghast Stench
+
+- Rule :: Constitution save, DC 10, for any creature that starts its turn within
+  5 feet of the ghast.  Failure: Poisoned until the start of its next turn.
+  Success: immune to this ghast's stench for 24 hours.
+- Preset :: CON 10; fail applies Poisoned with a start-of-turn Save-to-end;
+  success applies "Stench immunity".
+- Verdict :: approximate — the save recurs each turn the creature starts in
+  reach, and the immunity is a reminder rather than a timer.
+
+** Harpy Luring Song
+
+- Rule :: Wisdom save, DC 11, when the song starts.  Failure: Charmed until the
+  song ends, repeating the save at the end of each of its turns and whenever
+  another source damages it; while Charmed it is Incapacitated and moves toward
+  the harpy.  Success: immune to this harpy's song for 24 hours.
+- Preset :: WIS 11; fail applies Charmed with an end-of-turn Save-to-end;
+  success applies "Song immunity".
+- Verdict :: approximate — the damage trigger and the immunity's clock are the
+  GM's.
+
+** Mummy Dreadful Glare
+
+- Rule :: Wisdom save, DC 11.  Failure: Frightened until the end of the mummy's
+  next turn.  Success: immune to this mummy's glare for 24 hours.
+- Preset :: WIS 11; fail applies Frightened with no Save-to-end; success applies
+  "Glare immunity".
+- Verdict :: approximate — the fear ends with the mummy's next turn, which the
+  GM clears.
+
+** Medusa Petrifying Gaze
+
+- Rule :: Constitution save, DC 13.  First failure: Restrained, repeating the
+  save at the end of its next turn.  Second failure: Petrified.
+- Preset :: CON 13; fail applies Restrained with an end-of-turn Save-to-end.
+- Verdict :: approximate — a failed repeat save should escalate rather than
+  continue.
+
+* Settings the editor needs
+
+The gaps above come down to a short list of settings, tracked as the backlog
+entry "Teach the Save Chain editor the rules its presets need" in tasks.org and
+ordered there by how many presets each would move to /exact/.

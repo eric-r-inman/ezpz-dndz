@@ -1129,9 +1129,6 @@ updateInner msg model =
         SaveChainDcChanged text ->
             Update.SaveChain.dcChanged text model
 
-        SaveChainDcOverrideChanged text ->
-            Update.SaveChain.dcOverrideChanged text model
-
         SaveChainApplyToSelectedToggle ->
             Update.SaveChain.applyToSelectedToggle model
 
@@ -1176,9 +1173,6 @@ updateInner msg model =
 
         SaveChainRestoreBundled ->
             Update.SaveChain.restoreBundled model
-
-        SaveChainExportBundled ->
-            Update.SaveChain.exportBundled model
 
         SaveChainApplyFail ->
             Update.SaveChain.applyFail model
