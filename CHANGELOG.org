@@ -235,6 +235,31 @@
 91. A Save Chain can grant immunity on a successful save for a chosen duration;
     the chain then passes over a creature carrying it and logs it as immune.  No
     action needed.
+92. A repeat save can wait on the GM's judgment: an "Ask at end of turn" timing,
+    in both the Condition and Save Chain editors, flashes the chip as the
+    bearer's turn ends so the GM rolls it only when the rule's trigger applied,
+    as Fear's out-of-sight save does.  Click Restore bundled in the Save Chain
+    editor to pick up the updated Fear preset.
+93. Damage can trigger a repeat save: a condition's save can flash its chip on a
+    hit for the GM to judge, or roll at once, plain or with advantage, so
+    Hideous Laughter and Dominate Person resolve themselves when damage lands.
+    Click Restore bundled in the Save Chain editor to pick up the updated
+    presets.
+94. Area effects stay on the card: an area Save Chain marks each target with an
+    "In:" chip that rolls the chain's save again at the start or end of every
+    turn and applies the outcome, with a 🎲 for a creature that enters mid-turn
+    and a × for one that leaves.  Cloudkill, Spirit Guardians, Stinking Cloud,
+    and the ghast's stench use it; click Restore bundled in the Save Chain
+    editor to pick them up.
+95. A Save Chain effect can name a companion condition that ends with it —
+    Hypnotic Pattern's Incapacitated goes when its Charmed goes.  Click Restore
+    bundled in the Save Chain editor to pick up the updated preset.
+96. A Save Chain outcome can drain — damage that also lowers the hit point
+    maximum by the amount dealt — and Harm and a new Wight Life Drain preset use
+    it.  Click Restore bundled in the Save Chain editor to pick them up.
+97. The Condition editor and the Save Chain duration picker offer a "This turn"
+    duration that ends the condition with the target's current turn.  No action
+    needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

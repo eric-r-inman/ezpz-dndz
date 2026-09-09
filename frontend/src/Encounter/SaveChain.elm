@@ -6,6 +6,7 @@ module Encounter.SaveChain exposing
     , rawAmount
     , EffectContext, resolveDuration
     , immunityName, isImmune, grantImmunity
+    , areaName, markArea, areaRollsDue, inArea
     )
 
 {-| Save Chain: a reusable "creature makes a save; something
@@ -39,6 +40,7 @@ apply so a GM can click Pass without having clicked Fail first.
 @docs rawAmount
 @docs EffectContext, resolveDuration
 @docs immunityName, isImmune, grantImmunity
+@docs areaName, markArea, areaRollsDue, inArea
 
 -}
 
@@ -54,7 +56,10 @@ recipe, but they can still apply an unnamed chain one-shot.
 the editor asks for one before a Save-to-end effect can apply.
 `immunity` is the grant a successful save carries — the target
 can't be affected by this chain again for that long — or
-`Nothing` when the effect grants none.
+`Nothing` when the effect grants none. `area` marks a chain that
+keeps working on whoever stands in it — Cloudkill, Spirit
+Guardians — by naming the phase of each marked creature's turn
+at which the save rolls again; `Nothing` for a one-shot chain.
 -}
 type alias SaveChain =
     { name : String
@@ -63,6 +68,7 @@ type alias SaveChain =
     , onFail : SaveOutcome
     , onSuccess : SaveOutcome
     , immunity : Maybe EffectDuration
+    , area : Maybe Encounter.TurnPhase
     }
 
 
@@ -110,12 +116,17 @@ apply time.
     fires per the save's `AutoRollMode`, with its failed-save
     outcome along for the ride.
 
+`with` names a companion condition applied alongside this one
+that ends when this one ends — Hypnotic Pattern's Incapacitated
+riding on its Charmed — or is blank for none.
+
 -}
 type alias EffectApply =
     { name : String
     , note : String
     , duration : EffectDuration
     , saveToEnd : Maybe EffectSave
+    , with : String
     }
 
 
@@ -126,6 +137,9 @@ editor's choices. A preset can't name the creature an
 type EffectDuration
     = LastsUntilRemoved
     | LastsUntilTurn Encounter.TurnPhase TurnRef
+      -- Until the end of the bearer's current turn: what a
+      -- Stinking Cloud's start-of-turn save costs.
+    | LastsThisTurn
     | LastsForTurns Encounter.TurnPhase Int
     | LastsOneMinute
 
@@ -141,12 +155,14 @@ type TurnRef
     | TurnOf String
 
 
-{-| The save-to-end an effect opts into: when it rolls, and what
-a failure does beyond leaving the condition in place.
+{-| The save-to-end an effect opts into: when it rolls, what a
+failure does beyond leaving the condition in place, and what
+taking damage does to it.
 -}
 type alias EffectSave =
     { autoRoll : Encounter.AutoRollMode
     , onFail : Encounter.FailedSave
+    , onDamage : Encounter.DamageTrigger
     }
 
 
@@ -161,12 +177,16 @@ formula (`"8d6"`) rolled at apply time.
 resolves the fail's raw text (rolling if it's a formula) and
 halves the resulting integer.
 
+`DrainDamage` is damage that also lowers the target's hit point
+maximum by the amount dealt — Harm, a wight's Life Drain.
+
 -}
 type HpEffect
     = NoHpEffect
     | DealDamage String
     | HealFor String
     | HalfFailDamage
+    | DrainDamage String
 
 
 {-| Bare chain used as the modal's starting point when the GM
@@ -182,6 +202,7 @@ empty =
     , onFail = emptyOutcome
     , onSuccess = emptyOutcome
     , immunity = Nothing
+    , area = Nothing
     }
 
 
@@ -197,7 +218,7 @@ effect" button pushes a new row onto an outcome's list.
 -}
 emptyEffect : EffectApply
 emptyEffect =
-    { name = "", note = "", duration = LastsUntilRemoved, saveToEnd = Nothing }
+    { name = "", note = "", duration = LastsUntilRemoved, saveToEnd = Nothing, with = "" }
 
 
 {-| True iff a chain has no effects on either side. Used by
@@ -220,14 +241,18 @@ effectIsBlank e =
     String.isEmpty (String.trim e.name)
 
 
-{-| True iff an effect on either side opts into Save-to-end. Such
-a chain needs a DC before it can be applied: without one the
-effect would land as a plain condition and never roll.
+{-| True iff an effect on either side opts into Save-to-end, or
+the chain is an area effect. Such a chain needs a DC before it
+can be applied: without one the effect would land as a plain
+condition and never roll, and an area marker would have nothing
+to roll against.
 -}
 needsDc : SaveChain -> Bool
 needsDc chain =
-    List.any (\e -> e.saveToEnd /= Nothing)
-        (chain.onFail.effects ++ chain.onSuccess.effects)
+    chain.area
+        /= Nothing
+        || List.any (\e -> e.saveToEnd /= Nothing)
+            (chain.onFail.effects ++ chain.onSuccess.effects)
 
 
 hpEffectIsEmpty : HpEffect -> Bool
@@ -244,6 +269,9 @@ hpEffectIsEmpty h =
 
         HalfFailDamage ->
             False
+
+        DrainDamage s ->
+            String.isEmpty (String.trim s)
 
 
 {-| Extract the raw amount text (or `""`) for the parse-and-
@@ -263,6 +291,9 @@ rawAmount h =
 
         HalfFailDamage ->
             ""
+
+        DrainDamage s ->
+            s
 
 
 {-| Apply an already-resolved HP amount to a target creature.
@@ -303,11 +334,17 @@ applyResolvedHp hp amount target enc =
                 (HpChange.apply (HpChange.Damage amount))
                 enc
 
+        DrainDamage _ ->
+            Encounter.mapCreature target
+                (HpChange.apply (HpChange.Drain amount))
+                enc
+
 
 {-| Apply every effect on an outcome to a target creature,
 walking left-to-right through the list. Each non-blank entry
-becomes a fresh `ConditionDraft`; blank names are skipped so an
-editor row left half-filled doesn't leak in.
+becomes a fresh `ConditionDraft`, followed by its companion when
+it names one; blank names are skipped so an editor row left
+half-filled doesn't leak in.
 -}
 applyEffects :
     EffectContext
@@ -352,13 +389,34 @@ applyEffect ctx target effect enc =
         enc
 
     else
-        Encounter.addCondition target
-            { name = trimmedName
-            , note = String.trim effect.note
-            , duration = resolveDuration ctx.activeName target effect.duration
-            , saveToEnd = resolveSaveToEnd ctx target effect
-            }
-            enc
+        let
+            ( withPrimary, primaryId ) =
+                Encounter.addConditionWithId target
+                    { name = trimmedName
+                    , note = String.trim effect.note
+                    , duration = resolveDuration ctx.activeName target effect.duration
+                    , saveToEnd = resolveSaveToEnd ctx target effect
+                    , linkedTo = Nothing
+                    , area = Nothing
+                    }
+                    enc
+
+            companion =
+                String.trim effect.with
+        in
+        if String.isEmpty companion then
+            withPrimary
+
+        else
+            Encounter.addCondition target
+                { name = companion
+                , note = ""
+                , duration = Encounter.DurationManual
+                , saveToEnd = Nothing
+                , linkedTo = Just primaryId
+                , area = Nothing
+                }
+                withPrimary
 
 
 resolveSaveToEnd :
@@ -375,6 +433,7 @@ resolveSaveToEnd ctx target effect =
                 , bonus = ctx.bonusFor target
                 , autoRoll = save.autoRoll
                 , onFail = save.onFail
+                , onDamage = save.onDamage
                 }
 
         _ ->
@@ -421,6 +480,9 @@ resolveDuration activeName bearer duration =
             in
             Encounter.DurationUntilTurn phase target name
 
+        LastsThisTurn ->
+            Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn bearer
+
         LastsForTurns phase turns ->
             Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase)
 
@@ -438,13 +500,16 @@ chain so the chain can find it again.
 -}
 immunityName : SaveChain -> String
 immunityName chain =
-    "Immune: "
-        ++ (if String.isEmpty (String.trim chain.name) then
-                "this effect"
+    "Immune: " ++ displayName chain.name
 
-            else
-                String.trim chain.name
-           )
+
+displayName : String -> String
+displayName name =
+    if String.isEmpty (String.trim name) then
+        "this effect"
+
+    else
+        String.trim name
 
 
 {-| True iff the named creature carries this chain's immunity.
@@ -472,11 +537,86 @@ grantImmunity activeName chain target enc =
                 , note = ""
                 , duration = resolveDuration activeName target duration
                 , saveToEnd = Nothing
+                , linkedTo = Nothing
+                , area = Nothing
                 }
                 enc
 
         Nothing ->
             enc
+
+
+{-| The chip an area marker shows as, named for the chain so the
+GM can read which cloud the creature is standing in.
+-}
+areaName : SaveChain -> String
+areaName chain =
+    "In: " ++ displayName chain.name
+
+
+{-| True iff the named creature already carries this chain's area
+marker.
+-}
+inArea : SaveChain -> String -> Encounter.Encounter -> Bool
+inArea chain target enc =
+    enc.creatures
+        |> List.any
+            (\c ->
+                c.name
+                    == target
+                    && List.any (\cond -> Maybe.map .chain cond.area == Just chain.name) c.conditions
+            )
+
+
+{-| Mark a creature as standing in the chain's area, when the
+chain has one and a DC to roll against, so the save rolls again
+at the chain's phase of each of its turns. A creature already
+marked keeps the marker it has.
+-}
+markArea : EffectContext -> SaveChain -> String -> Encounter.Encounter -> Encounter.Encounter
+markArea ctx chain target enc =
+    case ( chain.area, ctx.saveDc ) of
+        ( Just phase, Just dc ) ->
+            if inArea chain target enc then
+                enc
+
+            else
+                Encounter.addCondition target
+                    { name = areaName chain
+                    , note = ""
+                    , duration = Encounter.DurationManual
+                    , saveToEnd = Nothing
+                    , linkedTo = Nothing
+                    , area =
+                        Just
+                            { chain = chain.name
+                            , ability = ctx.saveAbility
+                            , dc = dc
+                            , bonus = ctx.bonusFor target
+                            , phase = phase
+                            }
+                    }
+                    enc
+
+        _ ->
+            enc
+
+
+{-| The area markers on the named creature whose save rolls at
+this phase, less any whose chain the creature is immune to.
+-}
+areaRollsDue : Encounter.TurnPhase -> String -> Encounter.Encounter -> List ( Encounter.Condition, Encounter.AreaTracker )
+areaRollsDue phase name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.concatMap .conditions
+        |> List.filterMap (\cond -> Maybe.map (Tuple.pair cond) cond.area)
+        |> List.filter
+            (\( _, tracker ) ->
+                tracker.phase
+                    == phase
+                    && not (isImmune { empty | name = tracker.chain } name enc)
+            )
 
 
 {-| Compute "half fail damage, rounded down" the same way 5e

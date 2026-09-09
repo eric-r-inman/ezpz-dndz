@@ -30,10 +30,12 @@ the server doesn't re-model this schema.
 import Dict exposing (Dict)
 import Encounter
     exposing
-        ( AutoRollMode(..)
+        ( AreaTracker
+        , AutoRollMode(..)
         , Condition
         , Cover(..)
         , Creature
+        , DamageTrigger(..)
         , DeathSaves
         , Duration(..)
         , Encounter
@@ -1101,6 +1103,19 @@ encodeCondition cond =
         , ( "note", E.string cond.note )
         , ( "duration", encodeDuration cond.duration )
         , ( "saveToEnd", encodeMaybe encodeSaveToEnd cond.saveToEnd )
+        , ( "linkedTo", encodeMaybe E.int cond.linkedTo )
+        , ( "area", encodeMaybe encodeArea cond.area )
+        ]
+
+
+encodeArea : AreaTracker -> E.Value
+encodeArea area =
+    E.object
+        [ ( "chain", E.string area.chain )
+        , ( "ability", E.string area.ability )
+        , ( "dc", E.int area.dc )
+        , ( "bonus", E.int area.bonus )
+        , ( "phase", encodeTurnPhase area.phase )
         ]
 
 
@@ -1155,7 +1170,46 @@ encodeSaveToEnd s =
         , ( "bonus", E.int s.bonus )
         , ( "autoRoll", encodeAutoRoll s.autoRoll )
         , ( "onFail", encodeFailedSave s.onFail )
+        , ( "onDamage", encodeDamageTrigger s.onDamage )
         ]
+
+
+encodeDamageTrigger : DamageTrigger -> E.Value
+encodeDamageTrigger trigger =
+    E.string
+        (case trigger of
+            NoDamageTrigger ->
+                "none"
+
+            AskOnDamage ->
+                "ask"
+
+            RollOnDamage ->
+                "roll"
+
+            RollOnDamageWithAdvantage ->
+                "rollAdvantage"
+        )
+
+
+decodeDamageTrigger : D.Decoder DamageTrigger
+decodeDamageTrigger =
+    D.string
+        |> D.map
+            (\s ->
+                case s of
+                    "ask" ->
+                        AskOnDamage
+
+                    "roll" ->
+                        RollOnDamage
+
+                    "rollAdvantage" ->
+                        RollOnDamageWithAdvantage
+
+                    _ ->
+                        NoDamageTrigger
+            )
 
 
 encodeFailedSave : FailedSave -> E.Value
@@ -1177,6 +1231,9 @@ encodeAutoRoll a =
 
         AutoRollAtEnd ->
             E.string "atEnd"
+
+        AutoRollAskAtEnd ->
+            E.string "askAtEnd"
 
 
 encodeSaveNotice : SaveNotice -> E.Value
@@ -1444,7 +1501,7 @@ decodeStringSet =
 
 decodeCondition : D.Decoder Condition
 decodeCondition =
-    D.map5 Condition
+    D.map7 Condition
         (D.field "id" D.int)
         (D.field "name" D.string)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
@@ -1454,6 +1511,18 @@ decodeCondition =
             , D.succeed Nothing
             ]
         )
+        (D.oneOf [ D.field "linkedTo" (D.nullable D.int), D.succeed Nothing ])
+        (D.oneOf [ D.field "area" (D.nullable decodeArea), D.succeed Nothing ])
+
+
+decodeArea : D.Decoder AreaTracker
+decodeArea =
+    D.map5 AreaTracker
+        (D.field "chain" D.string)
+        (D.field "ability" D.string)
+        (D.field "dc" D.int)
+        (D.field "bonus" D.int)
+        (D.field "phase" decodeTurnPhase)
 
 
 decodeDuration : D.Decoder Duration
@@ -1518,12 +1587,13 @@ decodeTurnTarget =
 
 decodeSaveToEnd : D.Decoder SaveToEnd
 decodeSaveToEnd =
-    D.map5 SaveToEnd
+    D.map6 SaveToEnd
         (D.field "ability" D.string)
         (D.field "dc" D.int)
         (D.field "bonus" D.int)
         (D.field "autoRoll" decodeAutoRoll)
         (D.oneOf [ D.field "onFail" decodeFailedSave, D.succeed noFailedSave ])
+        (D.oneOf [ D.field "onDamage" decodeDamageTrigger, D.succeed NoDamageTrigger ])
 
 
 decodeFailedSave : D.Decoder FailedSave
@@ -1547,6 +1617,9 @@ decodeAutoRoll =
 
                     "atEnd" ->
                         D.succeed AutoRollAtEnd
+
+                    "askAtEnd" ->
+                        D.succeed AutoRollAskAtEnd
 
                     other ->
                         D.fail ("Unknown auto-roll mode: " ++ other)

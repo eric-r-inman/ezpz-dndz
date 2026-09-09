@@ -166,7 +166,7 @@ type alias Context =
     , compendium : CompendiumDb
     , drag : Maybe Model.DragState
     , targetName : Maybe String
-    , flashManualSaveFor : Maybe String
+    , flashConditions : List ( String, Int )
     }
 
 
@@ -184,9 +184,6 @@ view ctx index creature =
 
         isTarget =
             ctx.targetName == Just creature.name
-
-        flashManualSave =
-            ctx.flashManualSaveFor == Just creature.name
 
         cardClass =
             String.join " "
@@ -232,7 +229,7 @@ view ctx index creature =
             ]
         , div [ class "creature-card__center" ]
             [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
-            , rowMid flashManualSave creature
+            , rowMid ctx.flashConditions creature
             , rowBot creature (surfaceFor ctx creature)
             , inlineSurface ctx creature
             ]
@@ -1193,15 +1190,15 @@ rowTopChipCluster isActive creature srBadges =
 a leading pipe, sitting to the right of the status readout so
 everything "happening to" the creature reads off one row.
 -}
-conditionCluster : Bool -> Creature -> Html Msg
-conditionCluster flashManualSave creature =
+conditionCluster : List ( String, Int ) -> Creature -> Html Msg
+conditionCluster flashConditions creature =
     if List.isEmpty creature.conditions && List.isEmpty creature.saveNotices then
         text ""
 
     else
         span [ class "condition-chips-wrap" ]
             (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (conditionChip flashManualSave creature.name) creature.conditions
+                :: List.map (conditionChip flashConditions creature) creature.conditions
                 ++ List.map (saveNoticeChip creature.name) creature.saveNotices
             )
 
@@ -1233,9 +1230,11 @@ optional `(note)`; per the release-polish pass the duration glyph
 and the chip body itself stay minimal. Two action affordances sit
 inside the chip:
 
-  - The 🎲 save-roll button — only when the condition has a
-    `saveToEnd` spec. Fires a 1d20 vs. the DC and posts a "Saved:"
-    notice on success, same as an auto-fired roll.
+  - The 🎲 save-roll button — when the condition has a
+    `saveToEnd` spec, or is an area marker. Fires a 1d20 vs. the
+    DC and posts a "Saved:" notice on success, same as an
+    auto-fired roll; an area marker's roll resolves its chain's
+    outcome instead.
   - The × remove button — always present. One-click chip removal
     without opening the edit modal.
 
@@ -1244,21 +1243,19 @@ also bubble up and open the edit modal (which the chip name
 itself triggers). The hover tooltip on the chip wrap composes
 the full duration + save terms via `chipTitle`.
 
-`flashManualSave` pulses the chip once at the bearer's begin-of-
-turn when the save is "End manually" — nothing auto-fires it, so
-the pulse is the GM's only reminder to click the 🎲 themselves.
+A chip named in `flashConditions` pulses once — the reminder that
+the GM has to click its 🎲 themselves because nothing auto-fires
+that roll at this moment.
 
 -}
-conditionChip : Bool -> String -> Encounter.Condition -> Html Msg
-conditionChip flashManualSave target cond =
+conditionChip : List ( String, Int ) -> Creature -> Encounter.Condition -> Html Msg
+conditionChip flashConditions creature cond =
     let
-        isManualSave =
-            cond.saveToEnd
-                |> Maybe.map (\s -> s.autoRoll == Encounter.AutoRollManual)
-                |> Maybe.withDefault False
+        target =
+            creature.name
 
         chipClass =
-            if flashManualSave && isManualSave then
+            if List.member ( target, cond.id ) flashConditions then
                 "condition-chip condition-chip--flash"
 
             else
@@ -1266,7 +1263,7 @@ conditionChip flashManualSave target cond =
     in
     span
         [ class chipClass
-        , Tooltips.attr (chipTitle cond)
+        , Tooltips.attr (chipTitle creature cond)
         ]
         [ button
             [ class "condition-chip__name"
@@ -1295,24 +1292,76 @@ conditionChip flashManualSave target cond =
 
 {-| Tooltip text for the whole chip. Combines name, duration, and
 (if present) the save-to-end terms so the GM can hover for full
-context without opening the modal.
+context without opening the modal. A companion names the
+condition it ends with; an area marker describes the save it
+rolls each turn.
 -}
-chipTitle : Encounter.Condition -> String
-chipTitle cond =
-    Tooltips.chipFullTitle
-        cond.name
-        (Encounter.describeDuration cond.duration)
-        (Maybe.map (\s -> { ability = s.ability, dc = s.dc }) cond.saveToEnd)
+chipTitle : Creature -> Encounter.Condition -> String
+chipTitle creature cond =
+    case ( cond.area, companionOf creature cond ) of
+        ( Just tracker, _ ) ->
+            Tooltips.chipAreaTitle
+                { chain = tracker.chain
+                , ability = tracker.ability
+                , dc = tracker.dc
+                , phaseWord =
+                    case tracker.phase of
+                        Encounter.AtBegin ->
+                            "start"
+
+                        Encounter.AtEnd ->
+                            "end"
+                }
+
+        ( Nothing, Just primary ) ->
+            Tooltips.chipCompanionTitle cond.name primary.name
+
+        ( Nothing, Nothing ) ->
+            Tooltips.chipFullTitle
+                cond.name
+                (Encounter.describeDuration cond.duration)
+                (Maybe.map (\s -> { ability = s.ability, dc = s.dc }) cond.saveToEnd)
+
+
+{-| The condition a companion rides on, when the chip is one.
+-}
+companionOf : Creature -> Encounter.Condition -> Maybe Encounter.Condition
+companionOf creature cond =
+    cond.linkedTo
+        |> Maybe.andThen
+            (\primaryId ->
+                creature.conditions
+                    |> List.filter (\c -> c.id == primaryId)
+                    |> List.head
+            )
 
 
 {-| Inline d20 button next to a chip when the condition has a
 saving throw conditional. Click rolls 1d20 + bonus and removes
-the chip on success. Hidden when no save is configured.
+the chip on success. An area marker's d20 rolls its chain's save
+now, for a creature that entered the area mid-turn. Hidden when
+no save is configured.
 -}
 chipSaveButton : String -> Encounter.Condition -> Html Msg
 chipSaveButton target cond =
-    case cond.saveToEnd of
-        Just spec ->
+    case ( cond.area, cond.saveToEnd ) of
+        ( Just tracker, _ ) ->
+            button
+                [ class "condition-chip__save"
+                , stopPropagationOn "click"
+                    (Decode.succeed ( AreaRollNow target cond.id, True ))
+                , Tooltips.attr
+                    (Tooltips.chipAreaRollNow
+                        { ability = tracker.ability
+                        , dc = tracker.dc
+                        , bonus = formatBonus tracker.bonus
+                        }
+                    )
+                , attribute "aria-label" ("Roll area save for " ++ cond.name)
+                ]
+                [ text "🎲" ]
+
+        ( Nothing, Just spec ) ->
             button
                 [ class "condition-chip__save"
                 , stopPropagationOn "click"
@@ -1328,7 +1377,7 @@ chipSaveButton target cond =
                 ]
                 [ text "🎲" ]
 
-        Nothing ->
+        ( Nothing, Nothing ) ->
             text ""
 
 
@@ -1345,12 +1394,12 @@ formatBonus n =
 -- ── ROW 2 ───────────────────────────────────────────────────────────────
 
 
-rowMid : Bool -> Creature -> Html Msg
-rowMid flashManualSave creature =
+rowMid : List ( String, Int ) -> Creature -> Html Msg
+rowMid flashConditions creature =
     div [ class "creature-card__row creature-card__row--mid" ]
         [ hpDisplay creature
         , statusIcons creature
-        , conditionCluster flashManualSave creature
+        , conditionCluster flashConditions creature
         ]
 
 

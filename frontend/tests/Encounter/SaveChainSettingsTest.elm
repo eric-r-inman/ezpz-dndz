@@ -8,7 +8,7 @@ carries every new field back unchanged.
 
 import Compendium exposing (Ability(..))
 import Dict
-import Encounter exposing (AutoRollMode(..), Cover(..), Duration(..), TurnPhase(..), TurnTarget(..))
+import Encounter exposing (AutoRollMode(..), Cover(..), DamageTrigger(..), Duration(..), TurnPhase(..), TurnTarget(..))
 import Encounter.SaveChain as SaveChain exposing (EffectDuration(..), HpEffect(..), TurnRef(..))
 import Encounter.SaveChain.Wire as Wire
 import Expect
@@ -78,6 +78,7 @@ immunitySuite =
             , onFail = SaveChain.empty.onFail
             , onSuccess = SaveChain.empty.onSuccess
             , immunity = Just LastsUntilRemoved
+            , area = Nothing
             }
 
         goblin =
@@ -184,12 +185,15 @@ wireSuite =
                             Just
                                 { autoRoll = AutoRollAtEnd
                                 , onFail = { damage = Just "2d6", becomes = Just "Petrified" }
+                                , onDamage = RollOnDamage
                                 }
+                      , with = "Incapacitated"
                       }
                     , { name = "Marked"
                       , note = ""
-                      , duration = LastsUntilTurn AtBegin (TurnOf "Lyra")
+                      , duration = LastsThisTurn
                       , saveToEnd = Nothing
+                      , with = ""
                       }
                     ]
                 }
@@ -199,11 +203,13 @@ wireSuite =
                     [ { name = "Shaken"
                       , note = ""
                       , duration = LastsForTurns AtBegin 3
-                      , saveToEnd = Just { autoRoll = AutoRollManual, onFail = Encounter.noFailedSave }
+                      , saveToEnd = Just { autoRoll = AutoRollAskAtEnd, onFail = Encounter.noFailedSave, onDamage = AskOnDamage }
+                      , with = ""
                       }
                     ]
                 }
             , immunity = Just (LastsUntilTurn AtEnd TurnOfActive)
+            , area = Just AtEnd
             }
 
         presets =
@@ -244,12 +250,14 @@ wireSuite =
                                         [ { name = "Paralyzed"
                                           , note = ""
                                           , duration = LastsUntilRemoved
-                                          , saveToEnd = Just { autoRoll = AutoRollAtEnd, onFail = Encounter.noFailedSave }
+                                          , saveToEnd = Just { autoRoll = AutoRollAtEnd, onFail = Encounter.noFailedSave, onDamage = NoDamageTrigger }
+                                          , with = ""
                                           }
                                         ]
                                     }
                                 , onSuccess = SaveChain.empty.onSuccess
                                 , immunity = Nothing
+                                , area = Nothing
                                 }
                             )
                         )

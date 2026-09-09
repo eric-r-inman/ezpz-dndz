@@ -107,20 +107,24 @@ the condition into another or deal damage again on a failure, from either
 editor; and a chain can grant a timed immunity on success that it then honours.
 Part of [[*Teach the Save Chain editor the rules its presets need]].
 
-* TODO Teach the Save Chain editor the rules its presets need
+* DONE Give Save Chain effects event-triggered saves, areas, companions, and drain
+
+The rest of the settings the preset review asked for, save one.  A repeat save
+can wait on an event rather than a turn boundary: an "ask at end of turn" timing
+flashes the chip for the GM to roll when the rule's trigger applied, and a hit
+can flash the chip or roll the save outright, with advantage where the rules
+grant it.  An area chain marks each target with a chip that rolls the chain
+again at the chosen phase of every turn and applies the outcome, with a 🎲 for a
+creature entering mid-turn and a × for one leaving.  An effect can name a
+companion condition that ends with it, and an outcome can drain — damage that
+lowers the hit point maximum by the amount dealt.  Part of
+[[*Teach the Save Chain editor the rules its presets need]].
+
+* DONE Teach the Save Chain editor the rules its presets need
 
 The bundled Save Chain presets were checked against the 2024 rules (SRD 5.2.1),
-and [[file:docs/SAVE_CHAIN_PRESETS.org][docs/SAVE_CHAIN_PRESETS.org]] records what each can only approximate today.
-The settings still open, with the direction so far:
-
-1. A repeat save triggered by an event — taking damage, ending a turn out of the
-   caster's sight — rather than a turn boundary.  Proposed: an "ask" timing that
-   flashes the chip with a one-click roll at the turn boundary, and a
-   damage-triggered roll the app fires itself when an HP change lands.
-2. Area effects that re-save every turn a creature stays inside, applying a
-   one-turn condition on a failure rather than a lasting one.  Proposed: an area
-   tracker chip the GM places and removes from the card, rolled each turn.
-3. Linked effects that end together on one save.
-4. A hit-point-maximum reduction on a failed save.
-5. Threshold outcomes — a drop to 0 hit points under a ceiling, and automatic
-   failure for a creature type.  Few enough effects that a note may do.
+and [[file:docs/SAVE_CHAIN_PRESETS.org][docs/SAVE_CHAIN_PRESETS.org]] records what each can and cannot express.  The
+settings the review asked for have landed; the one left open is deliberately a
+note: threshold outcomes — a drop to 0 hit points under a ceiling, and automatic
+failure for a creature type — cover too few effects to earn a setting, and the
+Fail button plus the effect's note carry them.

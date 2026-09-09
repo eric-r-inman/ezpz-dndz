@@ -533,14 +533,14 @@ CASCADE~ back to ~users~), defined across the migrations under
 | ~users~                          | 0001      | One row per account; uniqueness enforced case-insensitively on email. |
 | ~dice_rolls~ (+ ~_expression_dice~ / ~_groups~ / ~_faces~ / ~_extras~ children) | 0001 | Fully normalized roll log; 30-entry cap is per-user.  Unknown top-level scalar fields round-trip via ~dice_roll_extras~. |
 | ~lore_group_sets~ → ~lore_groups~ → ~lore_group_members~ | 0002 | One of the five preset families; the ~_sets~ row is the presence parent (see below). |
-| ~condition_preset_sets~ → ~condition_presets~ | 0002, 0005 | Saved Add-Condition forms.                                        |
-| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002, 0005 | Save Chain preset recipes.                                        |
+| ~condition_preset_sets~ → ~condition_presets~ | 0002, 0005, 0006 | Saved Add-Condition forms.                                        |
+| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002, 0005, 0006 | Save Chain preset recipes.                                        |
 | ~treasure_table_sets~ → brackets / individual rows / hoard rows / name entries / flat items / roll specs | 0002 | The user's singular treasure table. |
 | ~treasure_profile_sets~ → ~treasure_profiles~ | 0002 | Named "Tune your rolls" presets.                                  |
 | ~user_creatures~ (+ 10 children: saving throws, skills, damage relations, string lists, features, legendary options, custom sections, spell levels, innate groups, spell names) | 0003 | Per-user creature edits + creations + duplicates of bundled.  Every ~Creature~ scalar is a column; the four Option packs (legendary / lair / regional / spellcasting) flatten as all-null-together groups.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
 | ~compendium_groups~ → ~compendium_group_entries~ | 0003 | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
 | ~compendium_saves~ → ~compendium_save_nodes~ | 0003 | Named compendium snapshots: typed metadata (name + timestamps) over a contractually opaque body stored as a relational JSON node tree — one row per node, numbers kept as their canonical serde token so int/float fidelity survives.  Save-name uniqueness is per-user. |
-| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004, 0005 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
+| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004, 0005, 0006 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
 | ~encounter_saves~ → ~encounter_save_nodes~ | 0004 | Named encounter saves; same metadata-over-node-tree shape as compendium saves.  Alice + Bob can both have a "Goblin Ambush". |
 
 The five preset families share a *presence-parent* pattern: ~GET~ returns ~null~
@@ -1408,6 +1408,28 @@ immunity.  A preset can't name the creature an "until turn" watches, so its
 ~Encounter.SaveChain.resolveDuration~ settles against the encounter at apply
 time, by the Condition editor's own rules for "next turn" and the countdown's
 first tick.
+
+Two save timings wait on the GM rather than a turn hook.  "Ask at end of turn"
+and the manual mode both pulse the chip — ~Model.flashConditions~ names the
+bearer-and-id pairs pulsing, which ~Update.Encounter.nextTurn~ fills from
+~Encounter.remindersAt~ and a sleep clears — so the GM rolls from the chip when
+the rule's trigger held.  A save that reacts to damage is caught by
+~Update.Condition.damageTriggered~, a pass ~Main.update~ runs on every message's
+result: a creature whose current-plus-temporary hit points fell took a hit, and
+each of its conditions with a damage trigger either pulses or rolls at once.
+The pass skips the save-landing messages themselves, or a condition whose failed
+save deals damage would roll without end, and the messages that swap in a whole
+encounter from storage, whose numbers are not hits.
+
+An area chain (~SaveChain.area~) marks each target with a condition carrying an
+~AreaTracker~ — the chain's name plus the ability, DC, and bonus fixed at apply
+time, as a save-to-end's are — and ~nextTurn~ rolls those markers at their phase
+through ~Effects.areaRollCmdsFor~.  The landing looks the chain up by name in
+the presets and resolves the earned side with the auto-rolled amounts
+~savesRolled~ uses, so a spell preset's blank DC is filled from the marker.  A
+companion effect lands as a second condition whose ~linkedTo~ names the
+primary's id; ~Encounter.removeCondition~ and the lifecycle ticks prune
+companions whose primary is gone, whichever way it went.
 
 * Per-surface preset pattern
 

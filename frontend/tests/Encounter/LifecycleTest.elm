@@ -91,6 +91,8 @@ countdownCondition =
     , note = ""
     , duration = DurationCountdown AtEnd 2 False
     , saveToEnd = Nothing
+    , linkedTo = Nothing
+    , area = Nothing
     }
 
 
@@ -320,6 +322,8 @@ untilTurnExpireSuite =
                         , note = ""
                         , duration = DurationUntilTurn AtEnd OnCurrentTurn "B"
                         , saveToEnd = Nothing
+                        , linkedTo = Nothing
+                        , area = Nothing
                         }
 
                     bearer =
@@ -342,6 +346,45 @@ untilTurnExpireSuite =
                     |> List.head
                     |> Maybe.map .conditions
                     |> Expect.equal (Just [])
+        , test "a companion goes when the condition it rides on expires with the turn" <|
+            \_ ->
+                let
+                    primary =
+                        { id = 1
+                        , name = "Charmed"
+                        , note = ""
+                        , duration = DurationUntilTurn AtEnd OnCurrentTurn "A"
+                        , saveToEnd = Nothing
+                        , linkedTo = Nothing
+                        , area = Nothing
+                        }
+
+                    companion =
+                        { primary | id = 2, name = "Incapacitated", duration = DurationManual, linkedTo = Just 1 }
+
+                    unrelated =
+                        { primary | id = 3, name = "Prone", duration = DurationManual }
+
+                    bearer =
+                        let
+                            c =
+                                mkCreature "A" 20
+                        in
+                        { c | conditions = [ primary, companion, unrelated ] }
+
+                    enc =
+                        { creatures = [ bearer, mkCreature "B" 15 ]
+                        , activeName = "A"
+                        , round = 1
+                        , treasure = Nothing
+                        , treasureSettings = Encounter.Treasure.defaultSettings
+                        }
+                in
+                Lifecycle.applyEndOfTurn "A" enc
+                    |> .creatures
+                    |> List.head
+                    |> Maybe.map (.conditions >> List.map .name)
+                    |> Expect.equal (Just [ "Prone" ])
         , test "DurationUntilTurn AtEnd does NOT expire when a different creature's turn ends" <|
             \_ ->
                 let
@@ -351,6 +394,8 @@ untilTurnExpireSuite =
                         , note = ""
                         , duration = DurationUntilTurn AtEnd OnCurrentTurn "B"
                         , saveToEnd = Nothing
+                        , linkedTo = Nothing
+                        , area = Nothing
                         }
 
                     bearer =

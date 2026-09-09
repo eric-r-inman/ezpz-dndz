@@ -24,6 +24,7 @@ without doubling the Msg surface.
 -}
 
 import Compendium exposing (Ability(..))
+import Encounter
 import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration, HpEffect(..), SaveChain, SaveOutcome)
 import Msg exposing (SaveChainSide)
 
@@ -43,6 +44,10 @@ type alias SaveChainUi =
     -- The immunity a successful save grants, for how long;
     -- `Nothing` when the chain grants none.
     , immunity : Maybe EffectDuration
+
+    -- The phase at which an area effect rolls its save again on
+    -- every marked creature's turn; `Nothing` for a one-shot chain.
+    , area : Maybe Encounter.TurnPhase
 
     -- Preset picker state.  `presetPickerSelection` is the raw
     -- <select> value the user has clicked; `loadedPresetName`
@@ -78,6 +83,7 @@ fresh target =
     , onFail = freshOutcome
     , onSuccess = freshOutcome
     , immunity = Nothing
+    , area = Nothing
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
     }
@@ -110,6 +116,7 @@ fromChain baseline chain =
         , onFail = outcomeToForm chain.onFail
         , onSuccess = outcomeToForm chain.onSuccess
         , immunity = chain.immunity
+        , area = chain.area
         , loadedPresetName =
             if String.isEmpty chain.name then
                 Nothing
@@ -128,6 +135,9 @@ outcomeToForm o =
                 s
 
             HealFor s ->
+                s
+
+            DrainDamage s ->
                 s
 
             _ ->
@@ -149,6 +159,7 @@ toChain ui =
     , onFail = formToOutcome ui.onFail
     , onSuccess = formToOutcome ui.onSuccess
     , immunity = ui.immunity
+    , area = ui.area
     }
 
 
@@ -171,6 +182,9 @@ formToOutcome f =
 
                 HalfFailDamage ->
                     HalfFailDamage
+
+                DrainDamage _ ->
+                    DrainDamage raw
     in
     { hp = hp
     , effects =
@@ -206,6 +220,7 @@ prefix / substring parse.
 type AppliedPart
     = DamagePart Int
     | HealPart Int
+    | DrainPart Int
     | EffectPart String
 
 

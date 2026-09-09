@@ -31,6 +31,9 @@ apply edit current =
         DurationKindPicked DurKindUntilTurn ->
             LastsUntilTurn phase ref
 
+        DurationKindPicked DurKindThisTurn ->
+            LastsThisTurn
+
         DurationKindPicked DurKindCountdown ->
             LastsForTurns phase turns
 
@@ -63,6 +66,9 @@ parts duration =
         LastsUntilTurn phase ref ->
             ( phase, ref, 1 )
 
+        LastsThisTurn ->
+            ( Encounter.AtEnd, TurnOfBearer, 1 )
+
         LastsForTurns phase turns ->
             ( phase, TurnOfBearer, turns )
 
@@ -82,6 +88,9 @@ kindOf duration =
 
         LastsUntilTurn _ _ ->
             DurKindUntilTurn
+
+        LastsThisTurn ->
+            DurKindThisTurn
 
         LastsForTurns _ _ ->
             DurKindCountdown

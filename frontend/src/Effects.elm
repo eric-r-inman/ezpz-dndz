@@ -8,7 +8,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , changePassword, compendiumListId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -60,6 +60,7 @@ import Json.Encode as Encode
 import Model exposing (Model)
 import Msg exposing (MeInfo, Msg(..))
 import Ports
+import Process
 import Route exposing (Route(..))
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -381,6 +382,63 @@ autoRollCmdForCondition mode bearer cond =
 
         Nothing ->
             Nothing
+
+
+{-| A save fired by a hit on the bearer: straight, or with
+advantage for an effect whose rules grant it.
+-}
+damageSaveCmd : String -> Int -> Encounter.SaveToEnd -> Bool -> Cmd Msg
+damageSaveCmd bearer id spec advantage =
+    let
+        source =
+            { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
+            , target = Just bearer
+            }
+    in
+    if advantage then
+        Dice.advantageCmd (ConditionSaveLanded bearer id spec.dc) source spec.bonus
+
+    else
+        Dice.rollCmd (ConditionSaveLanded bearer id spec.dc) source (saveExpression spec.bonus)
+
+
+{-| The save each area marker on the named creature rolls at this
+phase of its turn, landing in `AreaSaveLanded`.
+-}
+areaRollCmdsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List (Cmd Msg)
+areaRollCmdsFor phase name enc =
+    Encounter.SaveChain.areaRollsDue phase name enc
+        |> List.map (\( cond, tracker ) -> areaRollCmd name cond tracker)
+
+
+areaRollCmd : String -> Encounter.Condition -> Encounter.AreaTracker -> Cmd Msg
+areaRollCmd bearer cond tracker =
+    Dice.rollCmd (AreaSaveLanded bearer cond.id)
+        { feature =
+            "Area: "
+                ++ tracker.chain
+                ++ " ("
+                ++ tracker.ability
+                ++ " DC "
+                ++ String.fromInt tracker.dc
+                ++ ")"
+        , target = Just bearer
+        }
+        (saveExpression tracker.bonus)
+
+
+{-| Clears the save-reminder pulse once `condition-chip-flash`'s
+four 0.5s pulses have played.
+-}
+saveFlashExpiry : Cmd Msg
+saveFlashExpiry =
+    Process.sleep saveFlashMs
+        |> Task.perform (\_ -> SaveFlashExpired)
+
+
+saveFlashMs : Float
+saveFlashMs =
+    2200
 
 
 {-| Build a `Dice.rollCmd` for every expended recharge ability on

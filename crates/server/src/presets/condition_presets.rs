@@ -42,6 +42,9 @@ pub struct SaveToEnd {
   /// The failed-save outcome as typed, `""` when unset.
   pub fail_damage: String,
   pub fail_becomes: String,
+  /// What taking damage does to the save: `none` | `ask` | `roll` |
+  /// `rollAdvantage`.
+  pub on_damage: String,
 }
 
 /// The condition-presets feature: a name-keyed preset dict per user.
@@ -89,9 +92,9 @@ impl PerUserFeature for ConditionPresets {
          until_phase, countdown_turns_text, countdown_turns, \
          countdown_phase, save_ability, save_dc_text, save_dc, \
          save_bonus_text, save_bonus, save_auto_roll, category, \
-         save_fail_damage, save_fail_becomes) \
+         save_fail_damage, save_fail_becomes, save_on_damage) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, \
-         $13, $14, $15, $16, $17, $18, $19)",
+         $13, $14, $15, $16, $17, $18, $19, $20)",
       )
       .bind(user_id.as_str())
       .bind(key)
@@ -112,6 +115,7 @@ impl PerUserFeature for ConditionPresets {
       .bind(&preset.category)
       .bind(preset.save_to_end.as_ref().map(|s| s.fail_damage.clone()))
       .bind(preset.save_to_end.as_ref().map(|s| s.fail_becomes.clone()))
+      .bind(preset.save_to_end.as_ref().map(|s| s.on_damage.clone()))
       .execute(&mut *conn)
       .await?;
     }
@@ -138,7 +142,7 @@ impl PerUserFeature for ConditionPresets {
        duration_kind, until_phase, countdown_turns_text, \
        countdown_turns, countdown_phase, save_ability, save_dc_text, \
        save_dc, save_bonus_text, save_bonus, save_auto_roll, category, \
-       save_fail_damage, save_fail_becomes \
+       save_fail_damage, save_fail_becomes, save_on_damage \
        FROM condition_presets WHERE user_id = $1",
     )
     .bind(user_id.as_str())
@@ -194,6 +198,9 @@ fn save_to_end_from_row(
         fail_becomes: row
           .try_get::<Option<String>, _>("save_fail_becomes")?
           .unwrap_or_default(),
+        on_damage: row
+          .try_get::<Option<String>, _>("save_on_damage")?
+          .unwrap_or_else(|| "none".to_string()),
       })
     })
     .transpose()
@@ -221,9 +228,26 @@ fn duration_kind(
   context: &str,
 ) -> Result<String, String> {
   match req_str(map, "durationKind", context)?.as_str() {
-    kind @ ("manual" | "untilTurn" | "countdown") => Ok(kind.to_string()),
+    kind @ ("manual" | "untilTurn" | "thisTurn" | "countdown") => {
+      Ok(kind.to_string())
+    }
     other => Err(format!("{context}: unknown duration kind {other:?}")),
   }
+}
+
+/// `optional "onDamage" decodeDamageTrigger NoDamageTrigger`: an
+/// absent field falls back, but a present unknown token fails.
+fn damage_trigger(
+  map: &Map<String, Value>,
+  context: &str,
+) -> Result<String, String> {
+  map.get("onDamage").and_then(Value::as_str).map_or_else(
+    || Ok("none".to_string()),
+    |trigger| match trigger {
+      "none" | "ask" | "roll" | "rollAdvantage" => Ok(trigger.to_string()),
+      other => Err(format!("{context}: unknown damage trigger {other:?}")),
+    },
+  )
 }
 
 fn turn_phase(
@@ -256,7 +280,9 @@ fn decode_save_to_end(
         bonus_text: req_str(inner, "bonusText", &inner_context)?,
         bonus: req_i64(inner, "bonus", &inner_context)?,
         auto_roll: match req_str(inner, "autoRoll", &inner_context)?.as_str() {
-          mode @ ("manual" | "atBegin" | "atEnd") => mode.to_string(),
+          mode @ ("manual" | "atBegin" | "atEnd" | "askAtEnd") => {
+            mode.to_string()
+          }
           other => {
             return Err(format!(
               "{inner_context}: unknown auto-roll mode {other:?}"
@@ -265,6 +291,7 @@ fn decode_save_to_end(
         },
         fail_damage: opt_str_or(inner, "failDamage", ""),
         fail_becomes: opt_str_or(inner, "failBecomes", ""),
+        on_damage: damage_trigger(inner, &inner_context)?,
       }))
     }
   }
@@ -289,6 +316,7 @@ fn encode_preset(preset: &Preset) -> Value {
       "autoRoll": s.auto_roll,
       "failDamage": s.fail_damage,
       "failBecomes": s.fail_becomes,
+      "onDamage": s.on_damage,
     })),
     "category": preset.category,
   })

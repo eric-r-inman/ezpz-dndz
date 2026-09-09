@@ -16,18 +16,27 @@ Handbook.
 
 A chain names the save ability, optionally a fixed DC, and one outcome for each
 side of the save.  An outcome may deal damage (a dice formula or an integer),
-heal, or — on the success side — deal half of the fail damage, and it may attach
-any number of named effects.  Each effect carries a duration in the Condition
+drain (damage that also lowers the hit point maximum by the amount dealt), heal,
+or — on the success side — deal half of the fail damage, and it may attach any
+number of named effects.  Each effect carries a duration in the Condition
 editor's terms — until removed, until the start or end of a creature's next turn
-(the target's, the active creature's, or a named one's), a countdown of turns,
-or one minute.  An effect may opt into Save-to-end, which gives the applied
-condition the chain's ability and DC and one of three timings: manual (a 🎲 on
-the chip), at the start of the bearer's turn, or at the end of it; a success
-ends the condition, and a failure may deal damage again or turn the condition
-into another, which ends the saving.  A successful save may also grant the
-target immunity to the chain for a chosen duration, which the chain honours by
-passing over that creature.  Anything else an applied effect needs — a trigger,
-a recurring area check — lives in its note for the GM to act on.
+(the target's, the active creature's, or a named one's), until the end of the
+target's current turn, a countdown of turns, or one minute — and may name a
+companion condition applied beside it that ends when it ends.  An effect may opt
+into Save-to-end, which gives the applied condition the chain's ability and DC
+and one of four timings: manual (a 🎲 on the chip), at the start of the bearer's
+turn, at the end of it, or "ask at end of turn", where the chip flashes as the
+turn ends and the GM rolls if the rule's trigger applied; a success ends the
+condition, and a failure may deal damage again or turn the condition into
+another, which ends the saving.  Taking damage may also flash the chip for the
+GM to judge, or roll the save at once, plain or with advantage.  A successful
+save may grant the target immunity to the chain for a chosen duration, which the
+chain honours by passing over that creature.  An area effect — Cloudkill, Spirit
+Guardians — marks each target with an "In:" chip that rolls the chain's save
+again at the start or end of each of that creature's turns and applies the side
+the roll earns, with a 🎲 for a creature that enters mid-turn and a × for one
+that leaves.  Anything else an applied effect needs lives in its note for the GM
+to act on.
 
 Verdicts below: /exact/ when the editor models the rule fully, /approximate/
 when the note carries what it can't, /retired/ when the effect is no longer a
@@ -87,10 +96,11 @@ save.
 - Rule :: Wisdom save; Prone and Incapacitated for the duration, repeating the
   save at the end of each of its turns and whenever it takes damage (with
   advantage on the damage-triggered save).
-- Preset :: WIS; fail applies Incapacitated with an end-of-turn Save-to-end and
-  Prone without one.
-- Verdict :: approximate — the damage trigger is the GM's to roll from the chip;
-  Prone outliving the laughter until the target stands is the rule.
+- Preset :: WIS; fail applies Incapacitated with an end-of-turn Save-to-end that
+  also rolls with advantage whenever the target takes damage, and Prone without
+  one.
+- Verdict :: exact — Prone outliving the laughter until the target stands is the
+  rule.
 
 ** Sleep
 
@@ -163,9 +173,10 @@ save.
 - Rule :: Wisdom save; drops what it holds and is Frightened, Dashing away each
   turn; a repeat save only when it ends a turn without line of sight to the
   caster.
-- Preset :: WIS; fail applies Frightened with an end-of-turn Save-to-end.
-- Verdict :: approximate — the repeat save is conditional; the GM skips a roll
-  the target hasn't earned.
+- Preset :: WIS; fail applies Frightened with an ask-at-end Save-to-end: the
+  chip flashes as each turn ends and the GM rolls when the target lacked line of
+  sight.
+- Verdict :: exact.
 
 ** Fireball
 
@@ -177,8 +188,8 @@ save.
 
 - Rule :: Wisdom save; Charmed for the duration, and Incapacitated with a Speed
   of 0 while Charmed; damage or a shake ends it, with no repeat save.
-- Preset :: WIS; fail applies Charmed and Incapacitated, neither with a
-  Save-to-end.
+- Preset :: WIS; fail applies Charmed with Incapacitated as its companion, so
+  the two end together; neither has a Save-to-end.
 - Verdict :: exact.
 
 ** Lightning Bolt
@@ -199,17 +210,19 @@ save.
 - Rule :: Wisdom save when the emanation enters a creature's space or the
   creature enters it or ends its turn there, once per turn; 3d8 radiant or
   necrotic, half on a success.
-- Preset :: WIS; fail 3d8, success half.
-- Verdict :: approximate — the GM applies the chain again each turn.
+- Preset :: WIS; fail 3d8, success half; an area effect rolled at the end of
+  each marked creature's turn, with the chip's 🎲 for a creature that enters
+  mid-turn.
+- Verdict :: exact.
 
 ** Stinking Cloud
 
 - Rule :: Constitution save at the start of each turn in the cloud; on a
   failure, Poisoned until the end of that turn and unable to take an action or
   bonus action.
-- Preset :: CON; fail applies Poisoned with a start-of-turn Save-to-end.
-- Verdict :: approximate — a success removes the condition rather than
-  re-checking next turn, and the GM clears it when the creature leaves the
+- Preset :: CON; an area effect rolled at the start of each marked creature's
+  turn; fail applies Poisoned until the end of that turn.
+- Verdict :: exact — the GM removes the "In:" chip when the creature leaves the
   cloud.
 
 * Level 4
@@ -259,8 +272,10 @@ save.
 - Rule :: Constitution save; 5d8 poison, half on a success; the save recurs when
   the fog moves into a creature's space and when it enters or ends its turn
   there, once per turn.
-- Preset :: CON; fail 5d8, success half.
-- Verdict :: approximate — the GM applies the chain again each turn.
+- Preset :: CON; fail 5d8, success half; an area effect rolled at the end of
+  each marked creature's turn, with the chip's 🎲 for the fog reaching a creature
+  mid-turn.
+- Verdict :: exact.
 
 ** Cone of Cold
 
@@ -272,8 +287,10 @@ save.
 
 - Rule :: Wisdom save, with advantage if the caster's side is fighting the
   target; Charmed for the duration, repeating the save whenever it takes damage.
-- Preset :: WIS; fail applies Charmed with a manual Save-to-end.
-- Verdict :: approximate — the GM rolls the chip's save when damage lands.
+- Preset :: WIS; fail applies Charmed with a Save-to-end that rolls whenever the
+  target takes damage.
+- Verdict :: exact — the advantage when the caster's side is fighting the target
+  is the Roll Adv. button's.
 
 ** Flame Strike
 
@@ -308,9 +325,9 @@ save.
 
 - Rule :: Constitution save; 14d6 necrotic, and the hit point maximum drops by
   the damage taken (not below 1); half damage only on a success.
-- Preset :: CON; fail 14d6, success half.
-- Verdict :: approximate — the maximum reduction goes through the card's Manage
-  HP editor.
+- Preset :: CON; fail drains 14d6, success half.
+- Verdict :: exact — the drain lowers the maximum by the damage taken, not below
+  1, and a success leaves the maximum alone.
 
 ** Sunbeam
 
@@ -373,10 +390,11 @@ save.
 - Rule :: Constitution save, DC 10, for any creature that starts its turn within
   5 feet of the ghast.  Failure: Poisoned until the start of its next turn.
   Success: immune to this ghast's stench for 24 hours.
-- Preset :: CON 10; fail applies Poisoned until the start of the target's next
-  turn; success grants immunity to the chain.
-- Verdict :: approximate — the save recurs each turn the creature starts in
-  reach, and the immunity lasts until removed rather than 24 hours.
+- Preset :: CON 10; an area effect rolled at the start of each marked creature's
+  turn, which passes over an immune creature; fail applies Poisoned until the
+  start of the target's next turn; success grants immunity to the chain.
+- Verdict :: approximate — the immunity lasts until removed rather than 24
+  hours.
 
 ** Harpy Luring Song
 
@@ -384,10 +402,11 @@ save.
   song ends, repeating the save at the end of each of its turns and whenever
   another source damages it; while Charmed it is Incapacitated and moves toward
   the harpy.  Success: immune to this harpy's song for 24 hours.
-- Preset :: WIS 11; fail applies Charmed with an end-of-turn Save-to-end;
-  success grants immunity to the chain.
-- Verdict :: approximate — the damage trigger is the GM's, and the immunity
-  lasts until removed rather than 24 hours.
+- Preset :: WIS 11; fail applies Charmed, with Incapacitated as its companion,
+  with an end-of-turn Save-to-end whose chip flashes whenever the target takes
+  damage for the GM to judge the source; success grants immunity to the chain.
+- Verdict :: approximate — the immunity lasts until removed rather than 24
+  hours.
 
 ** Mummy Dreadful Glare
 
@@ -406,8 +425,20 @@ save.
   whose failure makes it Petrified.
 - Verdict :: exact.
 
-* Settings the editor needs
+** Wight Life Drain
 
-The gaps above come down to a short list of settings, tracked as the backlog
-entry "Teach the Save Chain editor the rules its presets need" in tasks.org and
-ordered there by how many presets each would move to /exact/.
+- Rule :: Constitution save, DC 13.  Failure: 1d8 + 2 necrotic, and the hit
+  point maximum drops by the damage taken.  Success: half damage only.
+- Preset :: CON 13; fail drains 1d8+2, success half.
+- Verdict :: exact.
+
+* What stays approximate
+
+The settings the review asked for have landed, and the verdicts above are the
+state of the editor today.  The 24-hour immunities a ghast, a harpy, and a mummy
+grant last until removed, since a fight never reaches the next day; the rest of
+the /approximate/ verdicts — a wounded target's larger cantrip damage, a push, a
+duration the note carries — are single-effect quirks the GM handles at the table
+rather than settings worth a control.  The backlog entry "Teach the Save Chain
+editor the rules its presets need" in tasks.org records why threshold outcomes
+stay a note as well.

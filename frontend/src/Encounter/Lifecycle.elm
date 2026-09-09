@@ -121,6 +121,7 @@ applyEndOfTurn name enc =
         |> tickSaveNoticesFor name
         |> tickTimerFor name AtEnd
         |> expireUntilTurn AtEnd name
+        |> Encounter.pruneOrphanedLinks
 
 
 tickSaveNoticesFor : String -> Encounter -> Encounter
@@ -173,6 +174,7 @@ applyBeginOfTurn name enc =
         |> tickCountdownFor name AtBegin
         |> tickTimerFor name AtBegin
         |> expireUntilTurn AtBegin name
+        |> Encounter.pruneOrphanedLinks
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
         |> resetSpecialReactionsFor name

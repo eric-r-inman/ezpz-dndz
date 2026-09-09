@@ -8320,10 +8320,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* The duration picker's two rows share one grid so the second
    row's first chip lines up under the first row's rather than
    under the "Duration:" label: column one holds the label (and
-   nothing on row two), columns two and three the chips. */
+   nothing on row two), the rest the chips. */
 .cond-duration-grid {
   display: grid;
-  grid-template-columns: max-content max-content max-content;
+  grid-template-columns: max-content max-content max-content max-content;
   align-items: center;
   justify-items: start;
   gap: var(--space-1) var(--space-2);

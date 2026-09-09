@@ -2,6 +2,7 @@ module Update.Condition exposing
     ( countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
+    , damageTriggered
     , delete
     , durationKindSet
     , durationOneMinute
@@ -32,6 +33,7 @@ module Update.Condition exposing
     , saveFailDamageChanged
     , saveLanded
     , saveNoticeDismiss
+    , saveOnDamageSet
     , saveToggle
     , submit
     , submitSelected
@@ -381,6 +383,15 @@ saveFailBecomesChanged : String -> Model -> ( Model, Cmd Msg )
 saveFailBecomesChanged text model =
     ( withConditionUi
         (\u -> { u | saveToEnd = Maybe.map (\s -> { s | failBecomesText = text }) u.saveToEnd })
+        model
+    , Cmd.none
+    )
+
+
+saveOnDamageSet : Encounter.DamageTrigger -> Model -> ( Model, Cmd Msg )
+saveOnDamageSet trigger model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | onDamage = trigger }) u.saveToEnd })
         model
     , Cmd.none
     )
@@ -892,6 +903,98 @@ damageBearer name amount enc =
     Encounter.mapCreature name (HpChange.apply (HpChange.Damage amount)) enc
 
 
+{-| The pass `Main.update` runs after every message: a creature
+whose hit points (temporary ones included) fell during the
+message took damage, and each of its conditions that saves again
+when damaged gets what its trigger asks for — a flash of the chip,
+or a roll fired outright. A save's own resolution is left out, or
+a condition whose failed save deals damage would roll itself
+without end; so are the messages that swap in a whole encounter
+from storage or another tab, whose numbers are not hits.
+-}
+damageTriggered : Msg -> Model -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+damageTriggered msg before ( after, cmd ) =
+    if not (canTriggerSaves msg) then
+        ( after, cmd )
+
+    else
+        let
+            damaged =
+                List.filter (tookDamage before.encounter) after.encounter.creatures
+                    |> List.map .name
+
+            flashes =
+                List.concatMap (\name -> Encounter.damageReminders name after.encounter) damaged
+
+            rolls =
+                List.concatMap
+                    (\name ->
+                        Encounter.damageRolls name after.encounter
+                            |> List.map (\( id, spec, advantage ) -> Effects.damageSaveCmd name id spec advantage)
+                    )
+                    damaged
+        in
+        if List.isEmpty flashes then
+            ( after, Cmd.batch (cmd :: rolls) )
+
+        else
+            ( { after | flashConditions = flashes ++ after.flashConditions }
+            , Cmd.batch (cmd :: Effects.saveFlashExpiry :: rolls)
+            )
+
+
+tookDamage : Encounter.Encounter -> Encounter.Creature -> Bool
+tookDamage before c =
+    before.creatures
+        |> List.filter (\b -> b.name == c.name)
+        |> List.head
+        |> Maybe.map (\b -> c.currentHp + c.tempHp < b.currentHp + b.tempHp)
+        |> Maybe.withDefault False
+
+
+canTriggerSaves : Msg -> Bool
+canTriggerSaves msg =
+    case msg of
+        ConditionSaveLanded _ _ _ _ ->
+            False
+
+        ConditionFailDamageLanded _ _ ->
+            False
+
+        EncounterLoaded _ ->
+            False
+
+        EncounterFromOtherTab _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalEncounterMigrated _ _ ->
+            False
+
+        SaveLoadLoadRequested _ ->
+            False
+
+        SaveLoadServerResponse _ _ ->
+            False
+
+        SaveLoadDeviceFileRead _ ->
+            False
+
+        EncounterReset ->
+            False
+
+        EncounterClear ->
+            False
+
+        HpChangeUndoLatest ->
+            False
+
+        _ ->
+            True
+
+
 nonBlank : String -> Maybe String
 nonBlank text =
     if String.isEmpty (String.trim text) then
@@ -967,6 +1070,7 @@ commitCondition targets ui name model =
                         { damage = nonBlank s.failDamageText
                         , becomes = nonBlank s.failBecomesText
                         }
+                    , onDamage = s.onDamage
                     }
                 )
                 ui.saveToEnd
@@ -976,6 +1080,8 @@ commitCondition targets ui name model =
             , note = String.trim ui.note
             , duration = duration
             , saveToEnd = saveToEnd
+            , linkedTo = Nothing
+            , area = Nothing
             }
     in
     case ui.editingId of
@@ -1043,6 +1149,9 @@ buildDuration ui model =
                 ui.untilPhase
                 (nextTurnTarget ui model)
                 ui.untilCreature
+
+        DurKindThisTurn ->
+            Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn ui.target
 
         DurKindCountdown ->
             let

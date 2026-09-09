@@ -57,18 +57,20 @@ encode chain =
         , ( "on_fail", encodeOutcome chain.onFail )
         , ( "on_success", encodeOutcome chain.onSuccess )
         , ( "immunity", encodeMaybe encodeDuration chain.immunity )
+        , ( "area", encodeMaybe (\phase -> E.string (phaseString phase)) chain.area )
         ]
 
 
 decode : D.Decoder SaveChain
 decode =
-    D.map6 SaveChain
+    D.map7 SaveChain
         (D.field "name" D.string)
         (D.field "save_ability" abilityDecoder)
         (optionalField "save_dc" (D.nullable D.int) Nothing)
         (optionalField "on_fail" outcomeDecoder SaveChain.empty.onFail)
         (optionalField "on_success" outcomeDecoder SaveChain.empty.onSuccess)
         (optionalField "immunity" (D.nullable durationDecoder) Nothing)
+        (optionalField "area" (D.nullable phaseDecoder) Nothing)
 
 
 {-| Backport of `Json.Decode.Pipeline.optional`. Falls back to
@@ -146,9 +148,9 @@ legacyEffectsDecoder =
 
 
 {-| `save_to_end` stays the mode string the wire has always
-carried; the failed-save outcome rides beside it as
-`on_failed_save`, an object whenever the effect opts in and null
-otherwise.
+carried; the failed-save outcome and the damage trigger ride
+beside it as `on_failed_save` and `on_damage`, each set whenever
+the effect opts in and null otherwise.
 -}
 encodeEffect : EffectApply -> E.Value
 encodeEffect e =
@@ -161,33 +163,88 @@ encodeEffect e =
         , ( "on_failed_save"
           , encodeMaybe (\s -> encodeFailedSave s.onFail) e.saveToEnd
           )
+        , ( "on_damage"
+          , encodeMaybe (\s -> E.string (damageTriggerString s.onDamage)) e.saveToEnd
+          )
         , ( "duration", encodeDuration e.duration )
+        , ( "with", E.string e.with )
         ]
 
 
 effectDecoder : D.Decoder EffectApply
 effectDecoder =
-    D.map4 EffectApply
+    D.map5 EffectApply
         (D.field "name" D.string)
         (optionalField "note" D.string "")
         (optionalField "duration" durationDecoder LastsUntilRemoved)
-        (D.map2 effectSave
+        (D.map3 effectSave
             (optionalField "save_to_end" saveToEndDecoder Nothing)
             (optionalField "on_failed_save" (D.nullable failedSaveDecoder) Nothing)
+            (optionalField "on_damage" (D.nullable damageTriggerDecoder) Nothing)
         )
+        (optionalField "with" D.string "")
 
 
-effectSave : Maybe Encounter.AutoRollMode -> Maybe Encounter.FailedSave -> Maybe EffectSave
-effectSave mode onFail =
+effectSave :
+    Maybe Encounter.AutoRollMode
+    -> Maybe Encounter.FailedSave
+    -> Maybe Encounter.DamageTrigger
+    -> Maybe EffectSave
+effectSave mode onFail onDamage =
     Maybe.map
-        (\m -> { autoRoll = m, onFail = Maybe.withDefault Encounter.noFailedSave onFail })
+        (\m ->
+            { autoRoll = m
+            , onFail = Maybe.withDefault Encounter.noFailedSave onFail
+            , onDamage = Maybe.withDefault Encounter.NoDamageTrigger onDamage
+            }
+        )
         mode
+
+
+damageTriggerString : Encounter.DamageTrigger -> String
+damageTriggerString trigger =
+    case trigger of
+        Encounter.NoDamageTrigger ->
+            "none"
+
+        Encounter.AskOnDamage ->
+            "ask"
+
+        Encounter.RollOnDamage ->
+            "roll"
+
+        Encounter.RollOnDamageWithAdvantage ->
+            "roll_advantage"
+
+
+{-| An unknown token reads as no trigger, the value every effect
+had before damage triggers existed.
+-}
+damageTriggerDecoder : D.Decoder Encounter.DamageTrigger
+damageTriggerDecoder =
+    D.string
+        |> D.map
+            (\s ->
+                case s of
+                    "ask" ->
+                        Encounter.AskOnDamage
+
+                    "roll" ->
+                        Encounter.RollOnDamage
+
+                    "roll_advantage" ->
+                        Encounter.RollOnDamageWithAdvantage
+
+                    _ ->
+                        Encounter.NoDamageTrigger
+            )
 
 
 {-| `save_to_end` on the wire accepts three shapes:
 
-  - String enum (`"manual"` / `"at_begin"` / `"at_end"`) —
-    the canonical form, parses to `Just AutoRollMode`.
+  - String enum (`"manual"` / `"at_begin"` / `"at_end"` /
+    `"ask_at_end"`) — the canonical form, parses to
+    `Just AutoRollMode`.
   - Bool (`true` / `false`) — the pre-mode wire from the
     previous refactor. `true` maps to the default
     `AutoRollAtEnd`; `false` maps to `Nothing`.
@@ -210,6 +267,9 @@ saveToEndDecoder =
 
                         "at_end" ->
                             D.succeed (Just Encounter.AutoRollAtEnd)
+
+                        "ask_at_end" ->
+                            D.succeed (Just Encounter.AutoRollAskAtEnd)
 
                         _ ->
                             D.succeed Nothing
@@ -237,6 +297,9 @@ autoRollString mode =
 
         Encounter.AutoRollAtEnd ->
             "at_end"
+
+        Encounter.AutoRollAskAtEnd ->
+            "ask_at_end"
 
 
 encodeFailedSave : Encounter.FailedSave -> E.Value
@@ -271,6 +334,9 @@ encodeDuration duration =
                  ]
                     ++ turnRefFields ref
                 )
+
+        LastsThisTurn ->
+            E.object [ ( "kind", E.string "this_turn" ) ]
 
         LastsForTurns phase turns ->
             E.object
@@ -317,6 +383,9 @@ durationDecoder =
 
                     "one_minute" ->
                         D.succeed LastsOneMinute
+
+                    "this_turn" ->
+                        D.succeed LastsThisTurn
 
                     _ ->
                         D.succeed LastsUntilRemoved
@@ -382,6 +451,9 @@ encodeHpEffect h =
         HalfFailDamage ->
             E.object [ ( "kind", E.string "half_fail" ) ]
 
+        DrainDamage s ->
+            E.object [ ( "kind", E.string "drain" ), ( "amount", E.string s ) ]
+
 
 hpEffectDecoder : D.Decoder HpEffect
 hpEffectDecoder =
@@ -397,6 +469,9 @@ hpEffectDecoder =
 
                     "half_fail" ->
                         D.succeed HalfFailDamage
+
+                    "drain" ->
+                        D.field "amount" amountDecoder |> D.map DrainDamage
 
                     _ ->
                         D.succeed NoHpEffect

@@ -12,13 +12,16 @@
 //!   pre-multi-effect `condition_name` / `condition_note` top-level
 //!   fields; a blank name means no effects.
 //! - `save_to_end` accepts three shapes: the canonical string enum
-//!   (`"manual"` / `"at_begin"` / `"at_end"`; unknown strings →
-//!   null), the pre-mode bool (`true` → `"at_end"`, `false` → null),
-//!   and null / absent.
-//! - An effect's `duration`, its `on_failed_save`, and a chain's
-//!   `immunity` may be absent: an effect then lasts until removed,
-//!   a save has no failed-save outcome, and a chain grants no
-//!   immunity.  An unknown duration kind reads as until-removed.
+//!   (`"manual"` / `"at_begin"` / `"at_end"` / `"ask_at_end"`;
+//!   unknown strings → null), the pre-mode bool (`true` →
+//!   `"at_end"`, `false` → null), and null / absent.
+//! - An effect's `duration`, its `on_failed_save`, its `on_damage`,
+//!   its `with`, and a chain's `immunity` and `area` may be absent:
+//!   an effect then lasts until removed, a save has no failed-save
+//!   outcome and no damage trigger, an effect has no companion, and
+//!   a chain grants no immunity and is not an area effect.  An
+//!   unknown duration kind reads as until-removed, an unknown damage
+//!   trigger as none.
 //! - An HP `amount` may be a string (`"8d6"`) or a legacy int.
 //!
 //! One deliberate server-side extra beyond the Elm decoder: the
@@ -29,8 +32,9 @@
 //!
 //! The encoder emits the canonical current shape: HP effects flatten
 //! to `{kind}` / `{kind, amount}` objects, `save_to_end` is the string
-//! enum or null, `on_failed_save` is an object whenever the effect has
-//! a save and null otherwise, and every effect carries its `duration`.
+//! enum or null, `on_failed_save` and `on_damage` are set whenever the
+//! effect has a save and null otherwise, and every effect carries its
+//! `duration` and `with`.
 
 use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::{json, Map, Value};
@@ -48,6 +52,9 @@ pub struct Chain {
   pub on_fail: Outcome,
   pub on_success: Outcome,
   pub immunity: Option<Duration>,
+  /// The phase at which an area effect rolls again on every marked
+  /// creature's turn: `at_begin` | `at_end`.
+  pub area: Option<String>,
 }
 
 #[derive(Default)]
@@ -63,6 +70,7 @@ pub enum HpEffect {
   Damage(String),
   Heal(String),
   HalfFail,
+  Drain(String),
 }
 
 pub struct Effect {
@@ -70,13 +78,17 @@ pub struct Effect {
   pub note: String,
   pub save_to_end: Option<EffectSave>,
   pub duration: Duration,
+  /// A companion condition applied beside this one, `""` for none.
+  pub with: String,
 }
 
-/// The save an effect opts into: when it rolls, and what a failure
-/// does beyond leaving the condition in place.
+/// The save an effect opts into: when it rolls, what a failure does
+/// beyond leaving the condition in place, and what taking damage does
+/// to it (`none` | `ask` | `roll` | `roll_advantage`).
 pub struct EffectSave {
   pub mode: String,
   pub on_failed_save: FailedSave,
+  pub on_damage: String,
 }
 
 #[derive(Default)]
@@ -100,6 +112,7 @@ pub enum Duration {
     turns: i64,
   },
   OneMinute,
+  ThisTurn,
 }
 
 pub enum TurnRef {
@@ -151,9 +164,10 @@ impl PerUserFeature for SaveChains {
         "INSERT INTO save_chains (id, user_id, preset_key, name, \
          save_ability, save_dc, fail_hp_kind, fail_hp_amount, \
          success_hp_kind, success_hp_amount, immunity_kind, \
-         immunity_phase, immunity_of, immunity_name, immunity_turns) \
+         immunity_phase, immunity_of, immunity_name, immunity_turns, \
+         area_phase) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
-         $14, $15)",
+         $14, $15, $16)",
       )
       .bind(&chain_id)
       .bind(user_id.as_str())
@@ -170,6 +184,7 @@ impl PerUserFeature for SaveChains {
       .bind(immunity.of)
       .bind(immunity.name)
       .bind(immunity.turns)
+      .bind(&chain.area)
       .execute(&mut *conn)
       .await?;
 
@@ -184,9 +199,10 @@ impl PerUserFeature for SaveChains {
             "INSERT INTO save_chain_effects (chain_id, side, \
              position, name, note, save_to_end, duration_kind, \
              duration_phase, duration_of, duration_name, \
-             duration_turns, fail_damage, fail_becomes) \
+             duration_turns, fail_damage, fail_becomes, on_damage, \
+             with_name) \
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, \
-             $12, $13)",
+             $12, $13, $14, $15)",
           )
           .bind(&chain_id)
           .bind(side)
@@ -201,6 +217,8 @@ impl PerUserFeature for SaveChains {
           .bind(duration.turns)
           .bind(save.and_then(|s| s.on_failed_save.damage.clone()))
           .bind(save.and_then(|s| s.on_failed_save.becomes.clone()))
+          .bind(save.map(|s| s.on_damage.clone()))
+          .bind(&effect.with)
           .execute(&mut *conn)
           .await?;
         }
@@ -226,7 +244,7 @@ impl PerUserFeature for SaveChains {
       "SELECT id, preset_key, name, save_ability, save_dc, \
        fail_hp_kind, fail_hp_amount, success_hp_kind, \
        success_hp_amount, immunity_kind, immunity_phase, immunity_of, \
-       immunity_name, immunity_turns \
+       immunity_name, immunity_turns, area_phase \
        FROM save_chains WHERE user_id = $1",
     )
     .bind(user_id.as_str())
@@ -262,6 +280,7 @@ impl PerUserFeature for SaveChains {
             name: row.try_get("immunity_name")?,
             turns: row.try_get("immunity_turns")?,
           }),
+          area: row.try_get("area_phase")?,
         },
       ))
     })
@@ -270,7 +289,8 @@ impl PerUserFeature for SaveChains {
     for row in sqlx::query(
       "SELECT e.chain_id, e.side, e.name, e.note, e.save_to_end, \
        e.duration_kind, e.duration_phase, e.duration_of, \
-       e.duration_name, e.duration_turns, e.fail_damage, e.fail_becomes \
+       e.duration_name, e.duration_turns, e.fail_damage, e.fail_becomes, \
+       e.on_damage, e.with_name \
        FROM save_chain_effects e \
        JOIN save_chains c ON c.id = e.chain_id \
        WHERE c.user_id = $1 ORDER BY e.position",
@@ -298,6 +318,9 @@ impl PerUserFeature for SaveChains {
                 damage: row.try_get("fail_damage")?,
                 becomes: row.try_get("fail_becomes")?,
               },
+              on_damage: damage_trigger(
+                row.try_get::<Option<String>, _>("on_damage")?.as_deref(),
+              ),
             })
           })
           .transpose()?;
@@ -313,6 +336,9 @@ impl PerUserFeature for SaveChains {
             turns: row.try_get("duration_turns")?,
           })
           .unwrap_or_default(),
+          with: row
+            .try_get::<Option<String>, _>("with_name")?
+            .unwrap_or_default(),
         });
       }
     }
@@ -332,6 +358,7 @@ fn hp_columns(hp: &HpEffect) -> (&'static str, Option<String>) {
     HpEffect::Damage(amount) => ("damage", Some(amount.clone())),
     HpEffect::Heal(amount) => ("heal", Some(amount.clone())),
     HpEffect::HalfFail => ("half_fail", None),
+    HpEffect::Drain(amount) => ("drain", Some(amount.clone())),
   }
 }
 
@@ -340,6 +367,7 @@ fn hp_from_columns(kind: &str, amount: Option<String>) -> HpEffect {
     ("damage", Some(amount)) => HpEffect::Damage(amount),
     ("heal", Some(amount)) => HpEffect::Heal(amount),
     ("half_fail", _) => HpEffect::HalfFail,
+    ("drain", Some(amount)) => HpEffect::Drain(amount),
     // "none", and defensively any unknown kind or a damage/heal row
     // that lost its amount, all read as no HP effect.
     _ => HpEffect::None,
@@ -390,6 +418,10 @@ fn duration_columns(duration: Option<&Duration>) -> DurationColumns {
       kind: Some("one_minute".to_string()),
       ..none
     },
+    Some(Duration::ThisTurn) => DurationColumns {
+      kind: Some("this_turn".to_string()),
+      ..none
+    },
   }
 }
 
@@ -404,8 +436,17 @@ fn duration_from_columns(columns: DurationColumns) -> Option<Duration> {
       turns: columns.turns.unwrap_or(1),
     },
     "one_minute" => Duration::OneMinute,
+    "this_turn" => Duration::ThisTurn,
     _ => Duration::Manual,
   })
+}
+
+/// The Elm decoder reads any token but the three triggers as none.
+fn damage_trigger(token: Option<&str>) -> String {
+  match token {
+    Some(trigger @ ("ask" | "roll" | "roll_advantage")) => trigger.to_string(),
+    _ => "none".to_string(),
+  }
 }
 
 /// The reference's token and, for a named creature, its name — the
@@ -453,6 +494,13 @@ fn decode_chain(raw: &Value, key: &str) -> Result<Chain, String> {
     on_fail: decode_outcome(map.get("on_fail")),
     on_success: decode_outcome(map.get("on_success")),
     immunity: decode_duration(map.get("immunity")),
+    // `optionalField "area" (D.nullable phaseDecoder) Nothing`: a
+    // string reads as a phase (anything but `at_begin` is the end
+    // of the turn); null, absent, and other types are no area.
+    area: map
+      .get("area")
+      .and_then(Value::as_str)
+      .map(|phase| phase_or_end(Some(phase))),
   })
 }
 
@@ -513,6 +561,7 @@ fn decode_effects(map: &Map<String, Value>) -> Vec<Effect> {
           note: opt_str_or(map, "condition_note", ""),
           save_to_end: None,
           duration: Duration::Manual,
+          with: String::new(),
         }]
       }
     })
@@ -530,9 +579,11 @@ fn decode_effect(raw: &Value) -> Option<Effect> {
         mode,
         on_failed_save: decode_failed_save(map.get("on_failed_save"))
           .unwrap_or_default(),
+        on_damage: damage_trigger(map.get("on_damage").and_then(Value::as_str)),
       }
     }),
     duration: decode_duration(map.get("duration")).unwrap_or_default(),
+    with: opt_str_or(map, "with", ""),
   })
 }
 
@@ -542,7 +593,9 @@ fn decode_effect(raw: &Value) -> Option<Effect> {
 fn decode_save_to_end(raw: Option<&Value>) -> Option<String> {
   match raw {
     Some(Value::String(s)) => match s.as_str() {
-      mode @ ("manual" | "at_begin" | "at_end") => Some(mode.to_string()),
+      mode @ ("manual" | "at_begin" | "at_end" | "ask_at_end") => {
+        Some(mode.to_string())
+      }
       _ => None,
     },
     Some(Value::Bool(true)) => Some("at_end".to_string()),
@@ -582,6 +635,7 @@ fn decode_duration(raw: Option<&Value>) -> Option<Duration> {
         turns: opt_i64_or(map, "turns", 1),
       },
       "one_minute" => Duration::OneMinute,
+      "this_turn" => Duration::ThisTurn,
       _ => Duration::Manual,
     }
   })
@@ -606,6 +660,7 @@ fn decode_hp(raw: Option<&Value>) -> HpEffect {
     Some("damage") => amount().map_or(HpEffect::None, HpEffect::Damage),
     Some("heal") => amount().map_or(HpEffect::None, HpEffect::Heal),
     Some("half_fail") => HpEffect::HalfFail,
+    Some("drain") => amount().map_or(HpEffect::None, HpEffect::Drain),
     _ => HpEffect::None,
   }
 }
@@ -620,6 +675,7 @@ fn encode_chain(chain: &Chain) -> Value {
     "on_fail": encode_outcome(&chain.on_fail),
     "on_success": encode_outcome(&chain.on_success),
     "immunity": chain.immunity.as_ref().map_or(Value::Null, encode_duration),
+    "area": chain.area,
   })
 }
 
@@ -636,6 +692,7 @@ fn encode_hp(hp: &HpEffect) -> Value {
     HpEffect::Damage(amount) => json!({ "kind": "damage", "amount": amount }),
     HpEffect::Heal(amount) => json!({ "kind": "heal", "amount": amount }),
     HpEffect::HalfFail => json!({ "kind": "half_fail" }),
+    HpEffect::Drain(amount) => json!({ "kind": "drain", "amount": amount }),
   }
 }
 
@@ -647,7 +704,9 @@ fn encode_effect(effect: &Effect) -> Value {
     "save_to_end": save.map(|s| s.mode.clone()),
     "on_failed_save": save
       .map_or(Value::Null, |s| encode_failed_save(&s.on_failed_save)),
+    "on_damage": save.map(|s| s.on_damage.clone()),
     "duration": encode_duration(&effect.duration),
+    "with": effect.with,
   })
 }
 
@@ -679,5 +738,6 @@ fn encode_duration(duration: &Duration) -> Value {
       json!({ "kind": "countdown", "phase": phase, "turns": turns })
     }
     Duration::OneMinute => json!({ "kind": "one_minute" }),
+    Duration::ThisTurn => json!({ "kind": "this_turn" }),
   }
 }

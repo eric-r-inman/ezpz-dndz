@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, defaultTarget, excludingPlaceholderNames, hasCreature, hasManualSaveCondition, isPlaceholderName, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasCreature, isPlaceholderName, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -174,6 +174,11 @@ fire from torch").
     [`Duration`](#Duration).
   - `saveToEnd` is the optional saving-throw conditional that
     can clear the condition on success. See [`SaveToEnd`](#SaveToEnd).
+  - `linkedTo` names the condition this one rides on — Hypnotic
+    Pattern's Incapacitated on its Charmed — so it goes when that
+    one goes and carries no save of its own.
+  - `area` marks the condition as an area-effect tracker. See
+    [`AreaTracker`](#AreaTracker).
 
 -}
 type alias Condition =
@@ -182,6 +187,8 @@ type alias Condition =
     , note : String
     , duration : Duration
     , saveToEnd : Maybe SaveToEnd
+    , linkedTo : Maybe Int
+    , area : Maybe AreaTracker
     }
 
 
@@ -194,6 +201,24 @@ type alias ConditionDraft =
     , note : String
     , duration : Duration
     , saveToEnd : Maybe SaveToEnd
+    , linkedTo : Maybe Int
+    , area : Maybe AreaTracker
+    }
+
+
+{-| A marker that the bearer stands in an area effect — the Save
+Chain preset named by `chain` — which rolls that chain's save at
+the `phase` of each of the bearer's turns and applies the side the
+roll earned, keeping the marker until the GM removes it. The
+ability, DC, and bonus are fixed when the marker lands, as a
+save-to-end's are.
+-}
+type alias AreaTracker =
+    { chain : String
+    , ability : String
+    , dc : Int
+    , bonus : Int
+    , phase : TurnPhase
     }
 
 
@@ -263,6 +288,7 @@ type alias SaveToEnd =
     , bonus : Int
     , autoRoll : AutoRollMode
     , onFail : FailedSave
+    , onDamage : DamageTrigger
     }
 
 
@@ -280,6 +306,18 @@ type alias FailedSave =
 noFailedSave : FailedSave
 noFailedSave =
     { damage = Nothing, becomes = Nothing }
+
+
+{-| What taking damage does to the save: nothing, a flash of the
+chip for the GM to judge (a harpy's song breaks only on damage
+from someone other than the harpy), or a roll fired at once —
+with advantage for Hideous Laughter.
+-}
+type DamageTrigger
+    = NoDamageTrigger
+    | AskOnDamage
+    | RollOnDamage
+    | RollOnDamageWithAdvantage
 
 
 {-| When the save-to-end roll fires.
@@ -302,6 +340,10 @@ type AutoRollMode
     = AutoRollManual
     | AutoRollAtBegin
     | AutoRollAtEnd
+      -- The chip flashes as the bearer's turn ends and the GM
+      -- rolls only if the effect's trigger applied — Fear's save
+      -- comes only from a turn ended out of the caster's sight.
+    | AutoRollAskAtEnd
 
 
 {-| Save-notice type re-exported from
@@ -830,6 +872,8 @@ addConditionWithId target draft enc =
             , note = draft.note
             , duration = draft.duration
             , saveToEnd = draft.saveToEnd
+            , linkedTo = draft.linkedTo
+            , area = draft.area
             }
     in
     ( mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
@@ -869,6 +913,33 @@ removeCondition target id enc =
     mapCreature target
         (\c -> { c | conditions = List.filter (\cond -> cond.id /= id) c.conditions })
         enc
+        |> pruneOrphanedLinks
+
+
+{-| Drop every companion whose condition is gone, however it went —
+a save, a duration, the GM's ×. Run after anything that removes
+conditions.
+-}
+pruneOrphanedLinks : Encounter -> Encounter
+pruneOrphanedLinks enc =
+    let
+        prune c =
+            let
+                ids =
+                    List.map .id c.conditions
+            in
+            { c
+                | conditions =
+                    List.filter
+                        (\cond ->
+                            cond.linkedTo
+                                |> Maybe.map (\primary -> List.member primary ids)
+                                |> Maybe.withDefault True
+                        )
+                        c.conditions
+            }
+    in
+    { enc | creatures = List.map prune enc.creatures }
 
 
 {-| Look up a condition by `(creatureName, conditionId)`. Returns
@@ -887,22 +958,70 @@ findCondition target id enc =
             )
 
 
-{-| Whether the named creature carries any condition whose
-save-to-end is "End manually" — nothing auto-fires that roll, so
-a turn-advance hook uses this to decide whether to remind the GM.
-`False` for an unknown name, same as the rest of this module's
-by-name lookups.
+{-| The conditions on the named creature whose save the GM has to
+roll by hand at this turn boundary — a manual save as the
+creature's turn begins, an "ask at end" save as it ends — so the
+turn-advance hook can flash their chips. Empty for an unknown
+name, same as the rest of this module's by-name lookups.
 -}
-hasManualSaveCondition : String -> Encounter -> Bool
-hasManualSaveCondition name enc =
+remindersAt : TurnPhase -> String -> Encounter -> List ( String, Int )
+remindersAt phase name enc =
+    let
+        asksAt mode =
+            case ( phase, mode ) of
+                ( AtBegin, AutoRollManual ) ->
+                    True
+
+                ( AtEnd, AutoRollAskAtEnd ) ->
+                    True
+
+                _ ->
+                    False
+    in
+    conditionsWhere (\s -> asksAt s.autoRoll) name enc
+
+
+{-| The conditions on the named creature whose save the GM has to
+judge when it takes damage.
+-}
+damageReminders : String -> Encounter -> List ( String, Int )
+damageReminders =
+    conditionsWhere (\s -> s.onDamage == AskOnDamage)
+
+
+{-| The conditions on the named creature whose save a hit fires
+outright, with whether it rolls with advantage.
+-}
+damageRolls : String -> Encounter -> List ( Int, SaveToEnd, Bool )
+damageRolls name enc =
     findByName name enc.creatures
-        |> Maybe.map
-            (\c ->
-                List.any
-                    (\cond -> cond.saveToEnd |> Maybe.map (\s -> s.autoRoll == AutoRollManual) |> Maybe.withDefault False)
-                    c.conditions
+        |> Maybe.map .conditions
+        |> Maybe.withDefault []
+        |> List.filterMap
+            (\cond ->
+                cond.saveToEnd
+                    |> Maybe.andThen
+                        (\s ->
+                            case s.onDamage of
+                                RollOnDamage ->
+                                    Just ( cond.id, s, False )
+
+                                RollOnDamageWithAdvantage ->
+                                    Just ( cond.id, s, True )
+
+                                _ ->
+                                    Nothing
+                        )
             )
-        |> Maybe.withDefault False
+
+
+conditionsWhere : (SaveToEnd -> Bool) -> String -> Encounter -> List ( String, Int )
+conditionsWhere pick name enc =
+    findByName name enc.creatures
+        |> Maybe.map .conditions
+        |> Maybe.withDefault []
+        |> List.filter (\cond -> cond.saveToEnd |> Maybe.map pick |> Maybe.withDefault False)
+        |> List.map (\cond -> ( name, cond.id ))
 
 
 {-| Render a one-line human-readable description of a duration

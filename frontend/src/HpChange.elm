@@ -80,6 +80,10 @@ type Change
       -- accidentally shrink a stat block through this path — use
       -- the inline `MaxHpField` edit for that.
     | MaxHpDelta Int
+      -- Damage that also lowers the hit point maximum by the same
+      -- amount, as Harm and a wight's Life Drain do; the maximum
+      -- never drops below 1.
+    | Drain Int
 
 
 
@@ -111,8 +115,29 @@ apply change c =
 
                 MaxHpDelta n ->
                     applyMaxHpDelta n c
+
+                Drain n ->
+                    applyDrain n c
     in
     recomputeBloodied afterChange
+
+
+{-| Drain: the damage lands as damage does, then the maximum falls
+by the same amount, keeping current HP within it.
+-}
+applyDrain : Int -> Creature -> Creature
+applyDrain n c =
+    let
+        damaged =
+            applyDamage n c
+
+        newMax =
+            Basics.max 1 (damaged.maxHp - Basics.max 0 n)
+    in
+    { damaged
+        | maxHp = newMax
+        , currentHp = Basics.min damaged.currentHp newMax
+    }
 
 
 {-| Damage: temp HP absorbs first, then current HP. Negative amounts
@@ -374,6 +399,18 @@ describe change before after =
             before.name
                 ++ " max HP +"
                 ++ String.fromInt gained
+                ++ " ("
+                ++ String.fromInt after.currentHp
+                ++ "/"
+                ++ String.fromInt after.maxHp
+                ++ ")"
+
+        Drain n ->
+            before.name
+                ++ " took "
+                ++ String.fromInt (Basics.max 0 n)
+                ++ " drain; max HP now "
+                ++ String.fromInt after.maxHp
                 ++ " ("
                 ++ String.fromInt after.currentHp
                 ++ "/"

@@ -107,6 +107,9 @@ encodeDurationKind k =
         DurKindUntilTurn ->
             E.string "untilTurn"
 
+        DurKindThisTurn ->
+            E.string "thisTurn"
+
         DurKindCountdown ->
             E.string "countdown"
 
@@ -122,6 +125,9 @@ decodeDurationKind =
 
                     "untilTurn" ->
                         D.succeed DurKindUntilTurn
+
+                    "thisTurn" ->
+                        D.succeed DurKindThisTurn
 
                     "countdown" ->
                         D.succeed DurKindCountdown
@@ -169,20 +175,63 @@ encodeSaveToEnd s =
         , ( "autoRoll", encodeAutoRoll s.autoRoll )
         , ( "failDamage", E.string s.failDamageText )
         , ( "failBecomes", E.string s.failBecomesText )
+        , ( "onDamage", encodeDamageTrigger s.onDamage )
         ]
 
 
 decodeSaveToEnd : D.Decoder SaveToEndUi
 decodeSaveToEnd =
-    D.map8 SaveToEndUi
-        (D.field "ability" D.string)
-        (D.field "dcText" D.string)
-        (D.field "dc" D.int)
-        (D.field "bonusText" D.string)
-        (D.field "bonus" D.int)
-        (D.field "autoRoll" decodeAutoRoll)
-        (D.oneOf [ D.field "failDamage" D.string, D.succeed "" ])
-        (D.oneOf [ D.field "failBecomes" D.string, D.succeed "" ])
+    D.succeed SaveToEndUi
+        |> required "ability" D.string
+        |> required "dcText" D.string
+        |> required "dc" D.int
+        |> required "bonusText" D.string
+        |> required "bonus" D.int
+        |> required "autoRoll" decodeAutoRoll
+        |> optional "failDamage" D.string ""
+        |> optional "failBecomes" D.string ""
+        |> optional "onDamage" decodeDamageTrigger Encounter.NoDamageTrigger
+
+
+encodeDamageTrigger : Encounter.DamageTrigger -> E.Value
+encodeDamageTrigger trigger =
+    E.string
+        (case trigger of
+            Encounter.NoDamageTrigger ->
+                "none"
+
+            Encounter.AskOnDamage ->
+                "ask"
+
+            Encounter.RollOnDamage ->
+                "roll"
+
+            Encounter.RollOnDamageWithAdvantage ->
+                "rollAdvantage"
+        )
+
+
+decodeDamageTrigger : D.Decoder Encounter.DamageTrigger
+decodeDamageTrigger =
+    D.string
+        |> D.andThen
+            (\s ->
+                case s of
+                    "none" ->
+                        D.succeed Encounter.NoDamageTrigger
+
+                    "ask" ->
+                        D.succeed Encounter.AskOnDamage
+
+                    "roll" ->
+                        D.succeed Encounter.RollOnDamage
+
+                    "rollAdvantage" ->
+                        D.succeed Encounter.RollOnDamageWithAdvantage
+
+                    other ->
+                        D.fail ("Unknown damage trigger: " ++ other)
+            )
 
 
 encodeAutoRoll : Encounter.AutoRollMode -> E.Value
@@ -196,6 +245,9 @@ encodeAutoRoll mode =
 
         Encounter.AutoRollAtEnd ->
             E.string "atEnd"
+
+        Encounter.AutoRollAskAtEnd ->
+            E.string "askAtEnd"
 
 
 decodeAutoRoll : D.Decoder Encounter.AutoRollMode
@@ -212,6 +264,9 @@ decodeAutoRoll =
 
                     "atEnd" ->
                         D.succeed Encounter.AutoRollAtEnd
+
+                    "askAtEnd" ->
+                        D.succeed Encounter.AutoRollAskAtEnd
 
                     other ->
                         D.fail ("Unknown auto-roll mode: " ++ other)

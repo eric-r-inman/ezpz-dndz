@@ -7,7 +7,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , immunityDurationEdit, immunityToggle, outcomeEffectAutoRollSet, outcomeEffectDurationEdit, outcomeEffectFailBecomesChanged, outcomeEffectFailDamageChanged, outcomeEffectSaveToEndToggle, restoreBundled
+    , areaRollNow, areaSaveLanded, areaSet, immunityDurationEdit, immunityToggle, markArea, outcomeEffectAutoRollSet, outcomeEffectDurationEdit, outcomeEffectFailBecomesChanged, outcomeEffectFailDamageChanged, outcomeEffectOnDamageSet, outcomeEffectSaveToEndToggle, outcomeEffectWithChanged, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -127,6 +127,9 @@ outcomeHpKindSet side kind model =
 
                 SaveChainHalfFail ->
                     HalfFailDamage
+
+                SaveChainDrain ->
+                    DrainDamage ""
     in
     ( withUi (mapSide side (\o -> { o | hpKind = hpEffect })) model
     , Cmd.none
@@ -203,6 +206,7 @@ outcomeEffectSaveToEndToggle side idx model =
                                                 Just
                                                     { autoRoll = Encounter.AutoRollAtEnd
                                                     , onFail = Encounter.noFailedSave
+                                                    , onDamage = Encounter.NoDamageTrigger
                                                     }
                                 }
                             )
@@ -268,6 +272,40 @@ outcomeEffectFailBecomesChanged side idx text model =
     ( withUi (mapSide side (mapFailedSave idx (\f -> { f | becomes = nonBlank text }))) model
     , Cmd.none
     )
+
+
+outcomeEffectOnDamageSet : SaveChainSide -> Int -> Encounter.DamageTrigger -> Model -> ( Model, Cmd Msg )
+outcomeEffectOnDamageSet side idx trigger model =
+    ( withUi
+        (mapSide side
+            (\o ->
+                { o
+                    | effects =
+                        updateAt idx
+                            (\e -> { e | saveToEnd = Maybe.map (\s -> { s | onDamage = trigger }) e.saveToEnd })
+                            o.effects
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+outcomeEffectWithChanged : SaveChainSide -> Int -> String -> Model -> ( Model, Cmd Msg )
+outcomeEffectWithChanged side idx text model =
+    ( withUi
+        (mapSide side
+            (\o -> { o | effects = updateAt idx (\e -> { e | with = text }) o.effects })
+        )
+        model
+    , Cmd.none
+    )
+
+
+areaSet : Maybe Encounter.TurnPhase -> Model -> ( Model, Cmd Msg )
+areaSet phase model =
+    ( withUi (\u -> { u | area = phase }) model, Cmd.none )
 
 
 {-| Edit the failed-save outcome of the effect at `idx`; a no-op
@@ -648,11 +686,14 @@ applyOutcome side ui chain model =
         effectCtx =
             buildEffectContext chain model
 
-        -- Effect list applies always fire (no dice needed).
+        -- Effect list applies always fire (no dice needed), and an
+        -- area chain marks each target as standing in it.
         withConditions =
             List.foldl
                 (\name enc ->
-                    SaveChain.applyEffects effectCtx outcome name enc
+                    enc
+                        |> SaveChain.applyEffects effectCtx outcome name
+                        |> SaveChain.markArea effectCtx chain name
                 )
                 model.encounter
                 targets
@@ -1110,26 +1151,10 @@ savesRolled results model =
                                 results
 
                         failResolvedAmount =
-                            case chain.onFail.hp of
-                                DealDamage s ->
-                                    parseIntOrAverage s
-
-                                _ ->
-                                    0
+                            resolvedAmountFor chain.onFail.hp 0
 
                         successResolvedAmount =
-                            case ( chain.onSuccess.hp, chain.onFail.hp ) of
-                                ( HalfFailDamage, _ ) ->
-                                    SaveChain.halfFailDamage failResolvedAmount
-
-                                ( DealDamage s, _ ) ->
-                                    parseIntOrAverage s
-
-                                ( HealFor s, _ ) ->
-                                    parseIntOrAverage s
-
-                                _ ->
-                                    0
+                            resolvedAmountFor chain.onSuccess.hp failResolvedAmount
 
                         effectCtx =
                             buildEffectContext chain model
@@ -1159,6 +1184,11 @@ savesRolled results model =
                                 (SaveChain.grantImmunity model.encounter.activeName chain)
                                 encAfterAll
                                 passNames
+                                |> (\enc ->
+                                        List.foldl (SaveChain.markArea effectCtx chain)
+                                            enc
+                                            (failNames ++ passNames)
+                                   )
 
                         entryFor ( name, roll ) =
                             let
@@ -1193,6 +1223,158 @@ savesRolled results model =
 
         _ ->
             ( model, Cmd.none )
+
+
+
+-- ── AREA EFFECTS ───────────────────────────────────────────────
+
+
+{-| Mark every target as standing in the chain's area without
+resolving anything now; the marker rolls the save at its phase of
+each creature's turn. A creature already marked keeps its marker.
+-}
+markArea : Model -> ( Model, Cmd Msg )
+markArea model =
+    case drawerSurface model of
+        Just (SurfaceSaveChain ui) ->
+            let
+                chain =
+                    UiSaveChain.toChain ui
+
+                effectCtx =
+                    buildEffectContext chain model
+            in
+            ( { model
+                | encounter =
+                    List.foldl (SaveChain.markArea effectCtx chain)
+                        model.encounter
+                        (resolveTargets chain ui model.encounter)
+              }
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The 🎲 on an area marker's chip: a creature that walked into
+the area mid-turn saves now rather than waiting for the phase.
+-}
+areaRollNow : String -> Int -> Model -> ( Model, Cmd Msg )
+areaRollNow name id model =
+    ( model
+    , Encounter.findCondition name id model.encounter
+        |> Maybe.andThen (\( _, cond ) -> Maybe.map (Tuple.pair cond) cond.area)
+        |> Maybe.map (\( cond, tracker ) -> Effects.areaRollCmd name cond tracker)
+        |> Maybe.withDefault Cmd.none
+    )
+
+
+{-| An area marker's save landed: the side the roll earned applies
+to the bearer as one more resolution of the chain the marker
+names, with an auto-rolled amount as `savesRolled` uses, and the
+marker stays for the next turn. The chain is read from the
+presets by name, so a preset the GM has since deleted leaves a
+toast rather than an outcome.
+-}
+areaSaveLanded : String -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+areaSaveLanded name id roll model =
+    let
+        ( logged, broadcastCmd ) =
+            Effects.pushDiceRoll roll model
+
+        cmds =
+            Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
+
+        tracker =
+            Encounter.findCondition name id logged.encounter
+                |> Maybe.andThen (\( _, cond ) -> cond.area)
+    in
+    case Maybe.map (\t -> ( t, Dict.get t.chain logged.saveChainPresets )) tracker of
+        Just ( t, Just chain ) ->
+            ( resolveAreaSave name t chain roll logged, cmds )
+
+        Just ( t, Nothing ) ->
+            Update.Toast.push ToastError
+                ("No Save Chain preset named \"" ++ t.chain ++ "\" to resolve " ++ name ++ "'s save against.")
+                logged
+                |> Tuple.mapSecond (\toastCmd -> Cmd.batch [ cmds, toastCmd ])
+
+        Nothing ->
+            ( logged, cmds )
+
+
+resolveAreaSave : String -> Encounter.AreaTracker -> SaveChain -> Dice.Roll -> Model -> Model
+resolveAreaSave name tracker chain roll model =
+    let
+        passed =
+            roll.total >= tracker.dc
+
+        ( side, outcome ) =
+            if passed then
+                ( SaveChainSuccess, chain.onSuccess )
+
+            else
+                ( SaveChainFail, chain.onFail )
+
+        -- The marker's own ability and DC stand in for the preset's,
+        -- which a spell preset leaves blank for the caster to fill.
+        effectCtx =
+            buildEffectContext { chain | saveDc = Just tracker.dc } model
+
+        failAmount =
+            resolvedAmountFor chain.onFail.hp 0
+
+        amount =
+            if passed then
+                resolvedAmountFor chain.onSuccess.hp failAmount
+
+            else
+                failAmount
+
+        withOutcome =
+            model.encounter
+                |> SaveChain.applyEffects effectCtx outcome name
+                |> SaveChain.applyResolvedHp outcome.hp amount name
+
+        withImmunity =
+            if passed then
+                SaveChain.grantImmunity model.encounter.activeName chain name withOutcome
+
+            else
+                withOutcome
+    in
+    pushLog
+        [ { target = name
+          , side = side
+          , rollNote = Just (rollNote roll.total tracker.dc)
+          , appliedParts = appliedParts outcome amount
+          }
+        ]
+        { model | encounter = withImmunity }
+
+
+{-| The amount an auto-rolled resolution applies for an HP effect:
+the fail side's resolved amount halved for a half-of-fail
+success, the parsed-or-averaged formula otherwise.
+-}
+resolvedAmountFor : HpEffect -> Int -> Int
+resolvedAmountFor hp failAmount =
+    case hp of
+        NoHpEffect ->
+            0
+
+        DealDamage s ->
+            parseIntOrAverage s
+
+        HealFor s ->
+            parseIntOrAverage s
+
+        HalfFailDamage ->
+            SaveChain.halfFailDamage failAmount
+
+        DrainDamage s ->
+            parseIntOrAverage s
 
 
 
@@ -1442,6 +1624,9 @@ appliedParts outcome resolvedAmount =
 
                 HalfFailDamage ->
                     [ UiSaveChain.DamagePart resolvedAmount ]
+
+                DrainDamage _ ->
+                    [ UiSaveChain.DrainPart resolvedAmount ]
 
         effectPart =
             outcome.effects

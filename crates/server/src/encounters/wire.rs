@@ -111,6 +111,20 @@ pub struct Condition {
   pub note: String,
   pub duration: Duration,
   pub save_to_end: Option<SaveToEnd>,
+  /// The id of the condition this one ends with, when it rides on
+  /// one.
+  pub linked_to: Option<i64>,
+  pub area: Option<AreaTracker>,
+}
+
+/// An area-effect marker: the Save Chain preset the bearer stands
+/// in and the save it rolls at `phase` of each of its turns.
+pub struct AreaTracker {
+  pub chain: String,
+  pub ability: String,
+  pub dc: i64,
+  pub bonus: i64,
+  pub phase: String,
 }
 
 pub enum Duration {
@@ -136,6 +150,9 @@ pub struct SaveToEnd {
   /// condition this one turns into, each unset when absent.
   pub fail_damage: Option<String>,
   pub fail_becomes: Option<String>,
+  /// What taking damage does to the save: `none` | `ask` | `roll` |
+  /// `rollAdvantage`.
+  pub on_damage: String,
 }
 
 pub struct SaveNotice {
@@ -454,7 +471,8 @@ fn req_token(
 
 const PHASES: &[&str] = &["atBegin", "atEnd"];
 const TARGETS: &[&str] = &["current", "next"];
-const AUTO_ROLLS: &[&str] = &["manual", "atBegin", "atEnd"];
+const AUTO_ROLLS: &[&str] = &["manual", "atBegin", "atEnd", "askAtEnd"];
+const DAMAGE_TRIGGERS: &[&str] = &["none", "ask", "roll", "rollAdvantage"];
 const COVERS: &[&str] = &["none", "half", "threeQuarters", "full"];
 const TREASURE_KINDS: &[&str] = &["individual", "hoard"];
 const BRACKETS: &[&str] = &["1to4", "5to10", "11to16", "17plus"];
@@ -640,6 +658,19 @@ fn decode_condition(value: &Value) -> Result<Condition, String> {
     save_to_end: map
       .get("saveToEnd")
       .and_then(|v| decode_save_to_end(v).ok()),
+    linked_to: map.get("linkedTo").and_then(as_int),
+    area: map.get("area").and_then(|v| decode_area(v).ok()),
+  })
+}
+
+fn decode_area(value: &Value) -> Result<AreaTracker, String> {
+  let map = as_object(value, "area")?;
+  Ok(AreaTracker {
+    chain: req_str(map, "chain", "area")?,
+    ability: req_str(map, "ability", "area")?,
+    dc: req_int(map, "dc", "area")?,
+    bonus: req_int(map, "bonus", "area")?,
+    phase: req_token(map, "phase", PHASES, "area")?,
   })
 }
 
@@ -679,6 +710,14 @@ fn decode_save_to_end(value: &Value) -> Result<SaveToEnd, String> {
     auto_roll: req_token(map, "autoRoll", AUTO_ROLLS, "saveToEnd")?,
     fail_damage: on_fail_text("damage"),
     fail_becomes: on_fail_text("becomes"),
+    // `D.oneOf [D.field "onDamage" decodeDamageTrigger, D.succeed
+    // NoDamageTrigger]`, and the Elm decoder reads an unknown token
+    // as none rather than failing.
+    on_damage: map
+      .get("onDamage")
+      .and_then(Value::as_str)
+      .filter(|token| DAMAGE_TRIGGERS.contains(token))
+      .map_or_else(|| "none".to_string(), str::to_string),
   })
 }
 
@@ -1014,6 +1053,18 @@ fn encode_condition(cond: &Condition) -> Value {
     "note": cond.note,
     "duration": encode_duration(&cond.duration),
     "saveToEnd": cond.save_to_end.as_ref().map_or(Value::Null, encode_save_to_end),
+    "linkedTo": cond.linked_to,
+    "area": cond.area.as_ref().map_or(Value::Null, encode_area),
+  })
+}
+
+fn encode_area(area: &AreaTracker) -> Value {
+  json!({
+    "chain": area.chain,
+    "ability": area.ability,
+    "dc": area.dc,
+    "bonus": area.bonus,
+    "phase": area.phase,
   })
 }
 
@@ -1053,6 +1104,7 @@ fn encode_save_to_end(save: &SaveToEnd) -> Value {
       "damage": save.fail_damage,
       "becomes": save.fail_becomes,
     },
+    "onDamage": save.on_damage,
   })
 }
 
@@ -1229,22 +1281,38 @@ mod tests {
               "dc": 15,
               "bonus": 4,
               "autoRoll": "atEnd",
-              "onFail": { "damage": "1d6", "becomes": null }
-            }
+              "onFail": { "damage": "1d6", "becomes": null },
+              "onDamage": "rollAdvantage"
+            },
+            "linkedTo": null,
+            "area": null
           },
           {
             "id": 2,
             "name": "Blessed",
             "note": "",
             "duration": { "kind": "untilTurn", "phase": "atBegin", "target": "next", "name": "Cleric" },
-            "saveToEnd": null
+            "saveToEnd": null,
+            "linkedTo": 1,
+            "area": null
           },
           {
             "id": 3,
             "name": "Burning",
             "note": "",
             "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 3, "skipNextTick": true },
-            "saveToEnd": null
+            "saveToEnd": null,
+            "linkedTo": null,
+            "area": null
+          },
+          {
+            "id": 4,
+            "name": "In: Cloudkill",
+            "note": "",
+            "duration": { "kind": "manual" },
+            "saveToEnd": null,
+            "linkedTo": null,
+            "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" }
           }
         ],
         "saveNotices": [

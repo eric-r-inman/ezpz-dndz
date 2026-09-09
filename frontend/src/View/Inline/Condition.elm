@@ -178,6 +178,7 @@ durationSection ui creatureNames =
             [ Html.label [] [ text "Duration:" ]
             , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
+            , durationKindRadio ui DurKindThisTurn "This turn"
             , span [] []
             , durationKindRadio ui DurKindCountdown "Countdown"
             , oneMinutePresetRadio ui
@@ -193,6 +194,10 @@ durationSection ui creatureNames =
 
                 DurKindUntilTurn ->
                     durationUntilSubsection ui creatureNames
+
+                DurKindThisTurn ->
+                    div [ class "cond-section__caption" ]
+                        [ text "Expires at the end of the target's current turn." ]
 
                 DurKindCountdown ->
                     durationCountdownSubsection ui
@@ -398,8 +403,53 @@ saveSubsection s =
             , autoRollRadio s
                 Encounter.AutoRollAtEnd
                 "Auto roll-end of turn"
+            , autoRollRadio s
+                Encounter.AutoRollAskAtEnd
+                "Ask at end of turn (chip flashes; roll if the trigger applied)"
             ]
         , failedSaveRow s
+        , onDamageRow s
+        ]
+
+
+{-| What taking damage does to the save: nothing, a flash of the
+chip for the GM to judge the trigger, or a roll fired at once.
+-}
+onDamageRow : SaveToEndUi -> Html Msg
+onDamageRow s =
+    div [ class "cond-row" ]
+        [ Html.label [ class "cond-save-label" ] [ text "When damaged:" ]
+        , div [ class "cond-radio-stack" ]
+            [ onDamageRadio s Encounter.NoDamageTrigger "Nothing"
+            , onDamageRadio s Encounter.AskOnDamage "Flash the chip (GM rolls if the trigger applied)"
+            , onDamageRadio s Encounter.RollOnDamage "Roll the save"
+            , onDamageRadio s Encounter.RollOnDamageWithAdvantage "Roll the save with advantage"
+            ]
+        ]
+
+
+onDamageRadio : SaveToEndUi -> Encounter.DamageTrigger -> String -> Html Msg
+onDamageRadio s trigger label =
+    let
+        isSelected =
+            s.onDamage == trigger
+    in
+    Html.label [ class "cond-radio-plain" ]
+        [ input
+            [ type_ "radio"
+            , Attr.name "cond-save-ondamage"
+            , class
+                (if isSelected then
+                    "cond-radio-plain__dot cond-radio-plain__dot--selected"
+
+                 else
+                    "cond-radio-plain__dot"
+                )
+            , checked isSelected
+            , onClick (ConditionSaveOnDamageSet trigger)
+            ]
+            []
+        , span [ class "cond-radio__label" ] [ text label ]
         ]
 
 

@@ -200,6 +200,7 @@ emptySave =
     , autoRoll = AutoRollAtEnd
     , failDamageText = ""
     , failBecomesText = ""
+    , onDamage = Encounter.NoDamageTrigger
     }
 
 

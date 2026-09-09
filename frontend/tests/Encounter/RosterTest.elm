@@ -357,6 +357,8 @@ duplicateCreatureSuite =
                         , note = ""
                         , duration = DurationManual
                         , saveToEnd = Nothing
+                        , linkedTo = Nothing
+                        , area = Nothing
                         }
 
                     enc =

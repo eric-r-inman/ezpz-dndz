@@ -561,7 +561,7 @@ init flags url key =
         , savedAs = Nothing
         , dice = DiceUi.empty
         , targetName = Nothing
-        , flashManualSaveFor = Nothing
+        , flashConditions = []
         , hpChangeLog = []
         , nextHpLogSeq = 1
         , flashedHpLogSeq = 0
@@ -690,8 +690,12 @@ than a one-frame gap.
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
+        -- A hit on a creature may owe a save to one of its
+        -- conditions, so every message's result passes through the
+        -- damage check before anything else reads it.
         ( next, innerCmd ) =
             updateInner msg model
+                |> Update.Condition.damageTriggered msg model
 
         encounterCmd =
             if Effects.shouldPersistAfter msg && next.encounter /= model.encounter then
@@ -919,8 +923,8 @@ updateInner msg model =
         NextTurn ->
             Update.Encounter.nextTurn model
 
-        ManualSaveFlashExpired ->
-            Update.Encounter.manualSaveFlashExpired model
+        SaveFlashExpired ->
+            Update.Encounter.saveFlashExpired model
 
         TargetCreature name ->
             Update.Encounter.targetCreature name model
@@ -1165,6 +1169,18 @@ updateInner msg model =
         SaveChainOutcomeEffectFailBecomesChanged side idx text ->
             Update.SaveChain.outcomeEffectFailBecomesChanged side idx text model
 
+        SaveChainOutcomeEffectOnDamageSet side idx trigger ->
+            Update.SaveChain.outcomeEffectOnDamageSet side idx trigger model
+
+        SaveChainOutcomeEffectWithChanged side idx text ->
+            Update.SaveChain.outcomeEffectWithChanged side idx text model
+
+        SaveChainAreaSet phase ->
+            Update.SaveChain.areaSet phase model
+
+        SaveChainMarkArea ->
+            Update.SaveChain.markArea model
+
         SaveChainImmunityToggle ->
             Update.SaveChain.immunityToggle model
 
@@ -1372,6 +1388,9 @@ updateInner msg model =
         ConditionSaveFailBecomesChanged text ->
             Update.Condition.saveFailBecomesChanged text model
 
+        ConditionSaveOnDamageSet trigger ->
+            Update.Condition.saveOnDamageSet trigger model
+
         ConditionSubmitSelected ->
             Update.Condition.submitSelected model
 
@@ -1422,6 +1441,12 @@ updateInner msg model =
 
         ConditionFailDamageLanded name roll ->
             Update.Condition.failDamageLanded name roll model
+
+        AreaRollNow name id ->
+            Update.SaveChain.areaRollNow name id model
+
+        AreaSaveLanded name id roll ->
+            Update.SaveChain.areaSaveLanded name id roll model
 
         ConditionUndoLatest ->
             Update.Condition.undoLatest model

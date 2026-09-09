@@ -5,7 +5,10 @@ module View.Tooltips exposing
     , armorClass
     , attr
     , bloodied
+    , chipAreaRollNow
+    , chipAreaTitle
     , chipClickToEdit
+    , chipCompanionTitle
     , chipDismiss
     , chipFullTitle
     , chipRemoveModalRow
@@ -1023,6 +1026,48 @@ chipFullTitle name durationText maybeSave =
                     ""
     in
     name ++ " — " ++ durationText ++ savePart
+
+
+{-| An area marker's wrapping tooltip: which chain the creature
+stands in and when its save rolls again.
+-}
+chipAreaTitle :
+    { chain : String, ability : String, dc : Int, phaseWord : String }
+    -> String
+chipAreaTitle area =
+    "In "
+        ++ area.chain
+        ++ " — "
+        ++ area.ability
+        ++ " save DC "
+        ++ String.fromInt area.dc
+        ++ " at the "
+        ++ area.phaseWord
+        ++ " of each turn; × when it leaves"
+
+
+{-| A companion chip's wrapping tooltip: the condition it ends
+with.
+-}
+chipCompanionTitle : String -> String -> String
+chipCompanionTitle name primary =
+    name ++ " — ends with " ++ primary
+
+
+{-| An area marker's 🎲: the save rolls now, for a creature that
+entered the area mid-turn.
+-}
+chipAreaRollNow :
+    { ability : String, dc : Int, bonus : String }
+    -> String
+chipAreaRollNow spec =
+    "Entered the area now: roll the "
+        ++ spec.ability
+        ++ " save (DC "
+        ++ String.fromInt spec.dc
+        ++ ", bonus "
+        ++ spec.bonus
+        ++ ") and apply the outcome"
 
 
 {-| Inline d20 button next to a condition chip. Composes the

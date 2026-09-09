@@ -51,6 +51,7 @@ view ctx ui =
         [ presetRow ui ctx.presets
         , nameRow ui
         , saveRow ui
+        , areaRow ui
         , outcomeBlock ctx.creatureNames "On failed save" SaveChainFail ui.onFail (text "")
         , outcomeBlock ctx.creatureNames
             "On successful save"
@@ -208,6 +209,41 @@ dcHint ui =
         [ text "needed to roll saves or to apply a Save-to-end effect" ]
 
 
+{-| An area effect keeps working on whoever stands in it: the
+chain marks each target with an "In:" chip whose save rolls again
+at the chosen phase of every turn, applying the side the roll
+earns, until the GM removes the chip.
+-}
+areaRow : SaveChainUi -> Html Msg
+areaRow ui =
+    div [ class "save-chain__row" ]
+        [ span
+            [ class "save-chain__field-label save-chain__field-label--tight"
+            , Tooltips.attr "Area effect: each target gets an \"In:\" chip that rolls this save again at the chosen phase of its every turn and applies the outcome; remove the chip when it leaves"
+            ]
+            [ text "Area" ]
+        , div [ class "save-chain__ability-radios" ]
+            [ areaRadio ui Nothing "None"
+            , areaRadio ui (Just Encounter.AtBegin) "Save at start of turn"
+            , areaRadio ui (Just Encounter.AtEnd) "Save at end of turn"
+            ]
+        ]
+
+
+areaRadio : SaveChainUi -> Maybe Encounter.TurnPhase -> String -> Html Msg
+areaRadio ui phase label =
+    Html.label [ class "save-chain__ability-radio" ]
+        [ input
+            [ type_ "radio"
+            , name "save-chain-area"
+            , checked (ui.area == phase)
+            , onClick (SaveChainAreaSet phase)
+            ]
+            []
+        , text label
+        ]
+
+
 abilityRadio : SaveChainUi -> Ability -> String -> Html Msg
 abilityRadio ui ability label =
     Html.label [ class "save-chain__ability-radio" ]
@@ -282,6 +318,7 @@ hpRow side form =
             [ hpKindRadio side currentKind SaveChainNoHp "None"
             , hpKindRadio side currentKind SaveChainDamage "Damage"
             , hpKindRadio side currentKind SaveChainHeal "Heal"
+            , hpKindRadio side currentKind SaveChainDrain "Drain"
             ]
                 ++ (case side of
                         SaveChainSuccess ->
@@ -331,8 +368,16 @@ hpKindRadio side current kind label =
 
                 SaveChainSuccess ->
                     "save-chain-hp-success"
+
+        tip =
+            case kind of
+                SaveChainDrain ->
+                    [ Tooltips.attr "Damage that also lowers the target's hit point maximum by the amount dealt, as Harm and a wight's Life Drain do" ]
+
+                _ ->
+                    []
     in
-    Html.label [ class "save-chain__hp-radio" ]
+    Html.label (class "save-chain__hp-radio" :: tip)
         [ input
             [ type_ "radio"
             , name groupName
@@ -358,6 +403,9 @@ asHpKind h =
 
         HalfFailDamage ->
             SaveChainHalfFail
+
+        DrainDamage _ ->
+            SaveChainDrain
 
 
 {-| Zero-or-more effect rows plus an "+ Add effect" button.
@@ -431,8 +479,70 @@ effectRow names side idx effect =
             , value = effect.duration
             , toMsg = SaveChainOutcomeEffectDurationEdit side idx
             }
+        , withRow side idx effect
         , autoRollRow side idx effect
         , failedSaveRow side idx effect
+        , onDamageRow side idx effect
+        ]
+
+
+{-| A companion condition applied beside this one that ends when
+it ends — Hypnotic Pattern's Incapacitated on its Charmed.
+-}
+withRow : SaveChainSide -> Int -> EffectApply -> Html Msg
+withRow side idx effect =
+    div [ class "save-chain__effect-subrow" ]
+        [ span [ class "save-chain__caption" ] [ text "Applies with:" ]
+        , input
+            [ type_ "text"
+            , class "save-chain__condition-input"
+            , list "save-chain-condition-list"
+            , placeholder "companion condition (optional)"
+            , value effect.with
+            , onInput (SaveChainOutcomeEffectWithChanged side idx)
+            , Tooltips.attr "A second condition applied alongside this one that ends when it ends, and carries no save of its own"
+            ]
+            []
+        ]
+
+
+{-| What taking damage does to the effect's save: nothing, a
+flash of the chip for the GM to judge the trigger, or a roll
+fired at once, plain or with advantage.
+-}
+onDamageRow : SaveChainSide -> Int -> EffectApply -> Html Msg
+onDamageRow side idx effect =
+    case effect.saveToEnd of
+        Nothing ->
+            text ""
+
+        Just save ->
+            div [ class "save-chain__effect-autoroll" ]
+                [ span [ class "save-chain__caption" ] [ text "When damaged:" ]
+                , onDamageRadio side idx save.onDamage Encounter.NoDamageTrigger "Nothing"
+                , onDamageRadio side idx save.onDamage Encounter.AskOnDamage "Flash the chip"
+                , onDamageRadio side idx save.onDamage Encounter.RollOnDamage "Roll the save"
+                , onDamageRadio side idx save.onDamage Encounter.RollOnDamageWithAdvantage "Roll with advantage"
+                ]
+
+
+onDamageRadio :
+    SaveChainSide
+    -> Int
+    -> Encounter.DamageTrigger
+    -> Encounter.DamageTrigger
+    -> String
+    -> Html Msg
+onDamageRadio side idx current trigger label =
+    Html.label [ class "save-chain__autoroll-radio" ]
+        [ input
+            [ type_ "radio"
+            , name ("save-chain-ondamage-" ++ sideKey side ++ "-" ++ String.fromInt idx)
+            , checked (current == trigger)
+            , onClick (SaveChainOutcomeEffectOnDamageSet side idx trigger)
+            ]
+            []
+        , text label
         ]
 
 
@@ -447,9 +557,9 @@ sideKey side =
 
 
 {-| Auto-roll mode picker. Only rendered when the effect's
-`saveToEnd` is `Just _` — mirrors the same three modes the
-Condition modal offers so the two entry points behave
-identically once the applied condition is on the card.
+`saveToEnd` is `Just _` — mirrors the same modes the Condition
+editor offers so the two entry points behave identically once
+the applied condition is on the card.
 -}
 autoRollRow : SaveChainSide -> Int -> EffectApply -> Html Msg
 autoRollRow side idx effect =
@@ -463,6 +573,7 @@ autoRollRow side idx effect =
                 , autoRollRadio side idx save.autoRoll Encounter.AutoRollManual "Manual"
                 , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtBegin "At begin of turn"
                 , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtEnd "At end of turn"
+                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAskAtEnd "Ask at end of turn"
                 ]
 
 
@@ -637,45 +748,69 @@ applyRow ui =
 
             else
                 verb
+
+        -- An area chain can mark its targets without resolving an
+        -- outcome, for an area that grants no save on its arrival.
+        markButton =
+            case chain.area of
+                Just _ ->
+                    [ ApplyButton.view
+                        { enabled = hasDc
+                        , cls = "action-btn"
+                        , msg = SaveChainMarkArea
+                        , tip =
+                            if hasDc then
+                                "Put the \"In:\" chip on every target without rolling now; the save rolls at each creature's turn"
+
+                            else
+                                "Enter a DC first"
+                        , label = "Mark in area"
+                        }
+                    ]
+
+                Nothing ->
+                    []
     in
     div [ class "save-chain__apply-row" ]
         [ div [ class "save-chain__apply-actions" ]
-            [ ApplyButton.view
-                { enabled = not isEmpty && not blockedByDc
-                , cls = "action-btn action-btn--damage"
-                , msg = SaveChainApplyFail
-                , tip = outcomeTip "Apply the failed-save outcome"
-                , label = "Fail"
-                }
-            , ApplyButton.view
-                { enabled = not isEmpty && not blockedByDc
-                , cls = "action-btn action-btn--heal"
-                , msg = SaveChainApplyPass
-                , tip = outcomeTip "Apply the successful-save outcome"
-                , label = "Pass"
-                }
-            , ApplyButton.view
-                { enabled = not isEmpty && hasDc
-                , cls = "action-btn action-btn--roll-saves"
-                , msg = SaveChainRollSaves SaveChainRollNormal
-                , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
-                , label = "🎲 Roll saves"
-                }
-            , ApplyButton.view
-                { enabled = not isEmpty && hasDc
-                , cls = "action-btn action-btn--roll-saves"
-                , msg = SaveChainRollSaves SaveChainRollAdvantage
-                , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
-                , label = "Roll Adv."
-                }
-            , ApplyButton.view
-                { enabled = not isEmpty && hasDc
-                , cls = "action-btn action-btn--roll-saves"
-                , msg = SaveChainRollSaves SaveChainRollDisadvantage
-                , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
-                , label = "Roll Disadv."
-                }
-            ]
+            (markButton
+                ++ [ ApplyButton.view
+                        { enabled = not isEmpty && not blockedByDc
+                        , cls = "action-btn action-btn--damage"
+                        , msg = SaveChainApplyFail
+                        , tip = outcomeTip "Apply the failed-save outcome"
+                        , label = "Fail"
+                        }
+                   , ApplyButton.view
+                        { enabled = not isEmpty && not blockedByDc
+                        , cls = "action-btn action-btn--heal"
+                        , msg = SaveChainApplyPass
+                        , tip = outcomeTip "Apply the successful-save outcome"
+                        , label = "Pass"
+                        }
+                   , ApplyButton.view
+                        { enabled = not isEmpty && hasDc
+                        , cls = "action-btn action-btn--roll-saves"
+                        , msg = SaveChainRollSaves SaveChainRollNormal
+                        , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
+                        , label = "🎲 Roll saves"
+                        }
+                   , ApplyButton.view
+                        { enabled = not isEmpty && hasDc
+                        , cls = "action-btn action-btn--roll-saves"
+                        , msg = SaveChainRollSaves SaveChainRollAdvantage
+                        , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
+                        , label = "Roll Adv."
+                        }
+                   , ApplyButton.view
+                        { enabled = not isEmpty && hasDc
+                        , cls = "action-btn action-btn--roll-saves"
+                        , msg = SaveChainRollSaves SaveChainRollDisadvantage
+                        , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
+                        , label = "Roll Disadv."
+                        }
+                   ]
+            )
         ]
 
 
@@ -768,6 +903,10 @@ appliedPartSpan part =
         HealPart n ->
             span [ class "save-chain__log-applied-part save-chain__log-applied-part--heal" ]
                 [ text (String.fromInt n ++ " healing applied") ]
+
+        DrainPart n ->
+            span [ class "save-chain__log-applied-part save-chain__log-applied-part--damage" ]
+                [ text (String.fromInt n ++ " damage applied; max HP lowered") ]
 
         EffectPart name ->
             span [ class "save-chain__log-applied-part save-chain__log-applied-part--effect" ]

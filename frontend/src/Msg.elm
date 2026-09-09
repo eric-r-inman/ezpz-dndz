@@ -148,6 +148,9 @@ type SaveChainHpKind
     | SaveChainDamage
     | SaveChainHeal
     | SaveChainHalfFail
+      -- Damage that also lowers the hit point maximum by the
+      -- amount dealt.
+    | SaveChainDrain
 
 
 {-| Roll-mode for the "🎲 Roll saves" batch. Straight = one
@@ -204,6 +207,9 @@ projected into the domain `Encounter.Duration` ADT on submit.
 type DurationKind
     = DurKindManual
     | DurKindUntilTurn
+      -- Until the end of the bearer's current turn: an area effect
+      -- rolled at the start of a turn that poisons for that turn.
+    | DurKindThisTurn
     | DurKindCountdown
 
 
@@ -437,10 +443,10 @@ type Msg
     | UrlChanged Url
     | GotMe (Result Http.Error MeInfo)
     | NextTurn
-      -- Clears the begin-of-turn manual-save reminder pulse
-      -- `nextTurn` set; fired by a `Process.sleep` once the pulse
-      -- has had time to finish playing.
-    | ManualSaveFlashExpired
+      -- Clears the save-reminder pulse a turn boundary or a hit
+      -- set on a condition chip; fired by a `Process.sleep` once
+      -- the pulse has had time to finish playing.
+    | SaveFlashExpired
     | SetActive String
       -- A click on an empty spot of a card picks that creature as
       -- the editors' target, or clears it when it already was.
@@ -626,6 +632,16 @@ type Msg
     | SaveChainOutcomeEffectFailBecomesChanged SaveChainSide Int String
     | SaveChainImmunityToggle
     | SaveChainImmunityDurationEdit DurationEdit
+      -- What a hit does to the effect's save, a companion
+      -- condition applied alongside it, and the chain's area
+      -- timing (rolled again at that phase of every marked
+      -- creature's turn).
+    | SaveChainOutcomeEffectOnDamageSet SaveChainSide Int Encounter.DamageTrigger
+    | SaveChainOutcomeEffectWithChanged SaveChainSide Int String
+    | SaveChainAreaSet (Maybe Encounter.TurnPhase)
+      -- Place the area marker on every target without resolving an
+      -- outcome: a Stinking Cloud grants no save when it is cast.
+    | SaveChainMarkArea
       -- Preset ops
     | SaveChainPresetPickerChanged String
     | SaveChainPresetLoad
@@ -747,6 +763,7 @@ type Msg
       -- condition this one turns into.
     | ConditionSaveFailDamageChanged String
     | ConditionSaveFailBecomesChanged String
+    | ConditionSaveOnDamageSet Encounter.DamageTrigger
     | ConditionSubmit
     | ConditionSubmitSelected
     | ConditionDelete
@@ -772,6 +789,11 @@ type Msg
       -- The damage roll a failed save fired, landing on the
       -- bearer named here.
     | ConditionFailDamageLanded String Dice.Roll
+      -- An area tracker's save: the chip's 🎲 asks for one now
+      -- (the creature entered the area mid-turn); the landing
+      -- carries the bearer and the tracker's condition id.
+    | AreaRollNow String Int
+    | AreaSaveLanded String Int Dice.Roll
       -- Undo the newest condition application (the ↩ on the
       -- condition editor's log row).
     | ConditionUndoLatest

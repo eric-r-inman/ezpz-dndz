@@ -38,6 +38,7 @@ view cfg =
             [ Html.label [] [ text "Duration:" ]
             , kindChip cfg DurKindManual "Manual"
             , kindChip cfg DurKindUntilTurn "Next turn"
+            , kindChip cfg DurKindThisTurn "This turn"
             , span [] []
             , kindChip cfg DurKindCountdown "Countdown"
             , radioChip cfg.groupName
@@ -91,6 +92,10 @@ subsection cfg =
         LastsOneMinute ->
             div [ class "cond-section__caption" ]
                 [ text "Expires at the end of the bearer's 10th turn." ]
+
+        LastsThisTurn ->
+            div [ class "cond-section__caption" ]
+                [ text "Expires at the end of the bearer's current turn." ]
 
         LastsUntilTurn phase ref ->
             div [ class "cond-subsection" ]

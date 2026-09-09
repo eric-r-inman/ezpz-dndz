@@ -80,6 +80,7 @@ defaults =
         , ( "Harpy Luring Song", harpyLuringSong )
         , ( "Mummy Dreadful Glare", mummyDreadfulGlare )
         , ( "Medusa Petrifying Gaze", medusaPetrifyingGaze )
+        , ( "Wight Life Drain", wightLifeDrain )
         ]
 
 
@@ -156,8 +157,7 @@ command =
 {-| Prone carries no save of its own: when the laughter ends the
 target is still on the ground until it stands, which is what
 the rules say. The repeat save also fires whenever the target
-takes damage, with advantage — the GM rolls that one from the
-chip.
+takes damage, with advantage.
 -}
 hideousLaughter : SaveChain
 hideousLaughter =
@@ -165,7 +165,9 @@ hideousLaughter =
         Wis
         Nothing
         (effectsOnly
-            [ effectSvEoT "Incapacitated" "laughing; re-save on dmg (adv)" |> lasting LastsOneMinute
+            [ effectSvEoT "Incapacitated" "laughing"
+                |> lasting LastsOneMinute
+                |> onDamage Encounter.RollOnDamageWithAdvantage
             , effect "Prone" "can't stand while laughing"
             ]
         )
@@ -278,9 +280,8 @@ web =
 
 
 {-| The repeat save only happens when the target ends its turn
-without line of sight to the caster. End-of-turn auto-roll is
-the nearest timing; the GM skips a roll the target hasn't
-earned.
+without line of sight to the caster, so the chip flashes as the
+turn ends and the GM rolls when the target has earned it.
 -}
 fear : SaveChain
 fear =
@@ -288,7 +289,7 @@ fear =
         Wis
         Nothing
         (effectsOnly
-            [ effectSvEoT "Frightened" "drop items, Dash away; save if no LoS"
+            [ effectSvAskEoT "Frightened" "drop items, Dash away; save if no LoS"
                 |> lasting LastsOneMinute
             ]
         )
@@ -300,9 +301,9 @@ fireball =
     chain "Fireball" Dex Nothing (damageOnly (DealDamage "8d6")) (damageOnly HalfFailDamage)
 
 
-{-| Charmed, and Incapacitated with a Speed of 0 while Charmed.
-Neither has a repeat save: damage or an ally's action ends the
-spell. Two rows so the card shows both conditions.
+{-| Charmed, and Incapacitated with a Speed of 0 while Charmed —
+the companion goes when the Charmed does. Neither has a repeat
+save: damage or an ally's action ends the spell.
 -}
 hypnoticPattern : SaveChain
 hypnoticPattern =
@@ -310,8 +311,9 @@ hypnoticPattern =
         Wis
         Nothing
         (effectsOnly
-            [ effect "Charmed" "ends on dmg or shake" |> lasting LastsOneMinute
-            , effect "Incapacitated" "Speed 0" |> lasting LastsOneMinute
+            [ effect "Charmed" "ends on dmg or shake"
+                |> lasting LastsOneMinute
+                |> withCompanion "Incapacitated"
             ]
         )
         noEffect
@@ -332,26 +334,29 @@ slow =
 
 
 {-| The save recurs whenever a creature enters the emanation or
-ends its turn there, once per turn; the GM applies the chain
-again each time.
+ends its turn there, once per turn: the "In:" marker rolls it at
+the end of each marked creature's turn, and its 🎲 covers a
+creature that enters mid-turn.
 -}
 spiritGuardians : SaveChain
 spiritGuardians =
     chain "Spirit Guardians" Wis Nothing (damageOnly (DealDamage "3d8")) (damageOnly HalfFailDamage)
+        |> area Encounter.AtEnd
 
 
 {-| Each creature saves at the start of its turn in the cloud and
-is Poisoned only until the end of that turn on a failure. The
-start-of-turn auto-roll re-checks a still-Poisoned creature each
-turn; the GM removes the condition when it leaves the cloud.
+is Poisoned only until the end of that turn on a failure: the
+"In:" marker rolls it at the start of each marked creature's
+turn, and the GM removes the marker when the creature leaves.
 -}
 stinkingCloud : SaveChain
 stinkingCloud =
     chain "Stinking Cloud"
         Con
         Nothing
-        (effectsOnly [ effectSvBoT "Poisoned" "Stinking Cloud; no action this turn" ])
+        (effectsOnly [ effect "Poisoned" "Stinking Cloud; no action this turn" |> lasting LastsThisTurn ])
         noEffect
+        |> area Encounter.AtBegin
 
 
 
@@ -421,11 +426,14 @@ phantasmalKiller =
 
 {-| The save recurs when the fog moves into a creature's space
 and when it enters the fog or ends its turn there, once per
-turn; the GM applies the chain again each time.
+turn: the "In:" marker rolls it at the end of each marked
+creature's turn, and its 🎲 covers the fog reaching a creature
+mid-turn.
 -}
 cloudkill : SaveChain
 cloudkill =
     chain "Cloudkill" Con Nothing (damageOnly (DealDamage "5d8")) (damageOnly HalfFailDamage)
+        |> area Encounter.AtEnd
 
 
 coneOfCold : SaveChain
@@ -434,8 +442,7 @@ coneOfCold =
 
 
 {-| The repeat save comes whenever the target takes damage rather
-than on a turn boundary, so the chip carries a manual save for
-the GM to roll at that moment.
+than on a turn boundary, so a hit rolls it.
 -}
 dominatePerson : SaveChain
 dominatePerson =
@@ -443,7 +450,10 @@ dominatePerson =
         Wis
         Nothing
         (effectsOnly
-            [ effectSvManual "Charmed" "Dominated; re-save when damaged" |> lasting LastsOneMinute ]
+            [ effectSvManual "Charmed" "Dominated"
+                |> lasting LastsOneMinute
+                |> onDamage Encounter.RollOnDamage
+            ]
         )
         noEffect
 
@@ -482,12 +492,12 @@ disintegrate =
 
 
 {-| A failed save also lowers the target's hit point maximum by
-the damage taken, which the GM enters through the card's Manage
-HP editor.
+the damage taken; a successful one takes half damage with the
+maximum untouched.
 -}
 harm : SaveChain
 harm =
-    chain "Harm" Con Nothing (damageOnly (DealDamage "14d6")) (damageOnly HalfFailDamage)
+    chain "Harm" Con Nothing (damageOnly (DrainDamage "14d6")) (damageOnly HalfFailDamage)
 
 
 {-| The blindness ends at the start of the caster's next turn,
@@ -578,8 +588,9 @@ ghoulClaw =
 
 
 {-| The save comes at the start of each turn a creature begins
-within 5 feet of the ghast; a failure poisons it until the
-start of its next turn, and a success grants a day's immunity.
+within 5 feet of the ghast: the "In:" marker rolls it then. A
+failure poisons the creature until the start of its next turn,
+and a success grants a day's immunity, which the marker honours.
 -}
 ghastStench : SaveChain
 ghastStench =
@@ -589,18 +600,26 @@ ghastStench =
         (effectsOnly [ effect "Poisoned" "Ghast Stench" |> lasting (LastsUntilTurn Encounter.AtBegin TurnOfBearer) ])
         noEffect
         |> withImmunity LastsUntilRemoved
+        |> area Encounter.AtBegin
 
 
 {-| Charmed until the song ends, repeating the save at the end of
-each turn; while Charmed the target is Incapacitated and walks
-toward the harpy. A success grants a day's immunity.
+each turn and whenever damage from someone other than the harpy
+lands — the chip flashes on a hit for the GM to judge. While
+Charmed the target is Incapacitated and walks toward the harpy.
+A success grants a day's immunity.
 -}
 harpyLuringSong : SaveChain
 harpyLuringSong =
     chain "Harpy Luring Song"
         Wis
         (Just 11)
-        (effectsOnly [ effectSvEoT "Charmed" "Luring Song; Incapacitated, walks to harpy" ])
+        (effectsOnly
+            [ effectSvEoT "Charmed" "Luring Song; walks to harpy"
+                |> withCompanion "Incapacitated"
+                |> onDamage Encounter.AskOnDamage
+            ]
+        )
         noEffect
         |> withImmunity LastsUntilRemoved
 
@@ -631,6 +650,14 @@ medusaPetrifyingGaze =
         noEffect
 
 
+{-| The necrotic damage also lowers the target's hit point maximum
+by the amount taken; a success takes half and keeps its maximum.
+-}
+wightLifeDrain : SaveChain
+wightLifeDrain =
+    chain "Wight Life Drain" Con (Just 13) (damageOnly (DrainDamage "1d8+2")) (damageOnly HalfFailDamage)
+
+
 
 -- ── Preset helpers ───────────────────────────────────────────────
 
@@ -643,6 +670,7 @@ chain name ability dc onFail onSuccess =
     , onFail = onFail
     , onSuccess = onSuccess
     , immunity = Nothing
+    , area = Nothing
     }
 
 
@@ -652,6 +680,14 @@ the duration.
 withImmunity : EffectDuration -> SaveChain -> SaveChain
 withImmunity duration c =
     { c | immunity = Just duration }
+
+
+{-| The chain keeps working on whoever stands in it, rolling its
+save again at this phase of each marked creature's turn.
+-}
+area : Encounter.TurnPhase -> SaveChain -> SaveChain
+area phase c =
+    { c | area = Just phase }
 
 
 noEffect : SaveOutcome
@@ -711,9 +747,40 @@ effectSvManual name note =
     saving Encounter.AutoRollManual (effect name note)
 
 
+{-| Twin of `effectSvEoT` for a save the rules grant only when
+some condition held as the turn ended: the chip flashes then and
+the GM rolls if it did.
+-}
+effectSvAskEoT : String -> String -> EffectApply
+effectSvAskEoT name note =
+    saving Encounter.AutoRollAskAtEnd (effect name note)
+
+
 saving : Encounter.AutoRollMode -> EffectApply -> EffectApply
 saving mode e =
-    { e | saveToEnd = Just { autoRoll = mode, onFail = Encounter.noFailedSave } }
+    { e
+        | saveToEnd =
+            Just
+                { autoRoll = mode
+                , onFail = Encounter.noFailedSave
+                , onDamage = Encounter.NoDamageTrigger
+                }
+    }
+
+
+{-| What a hit on the bearer does to the effect's save.
+-}
+onDamage : Encounter.DamageTrigger -> EffectApply -> EffectApply
+onDamage trigger e =
+    { e | saveToEnd = Maybe.map (\s -> { s | onDamage = trigger }) e.saveToEnd }
+
+
+{-| A companion condition applied beside the effect that ends when
+it ends.
+-}
+withCompanion : String -> EffectApply -> EffectApply
+withCompanion name e =
+    { e | with = name }
 
 
 {-| A failed repeat save turns the condition into another, which

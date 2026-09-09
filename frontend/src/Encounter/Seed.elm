@@ -103,7 +103,10 @@ seedCreatures =
                         , bonus = 1
                         , autoRoll = AutoRollManual
                         , onFail = Encounter.noFailedSave
+                        , onDamage = Encounter.NoDamageTrigger
                         }
+              , linkedTo = Nothing
+              , area = Nothing
               }
             ]
       , saveNotices = []

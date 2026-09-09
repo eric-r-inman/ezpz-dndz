@@ -571,7 +571,8 @@ fn full_condition_presets() -> Value {
         "bonus": 1,
         "autoRoll": "atEnd",
         "failDamage": "2d6",
-        "failBecomes": "Stunned"
+        "failBecomes": "Stunned",
+        "onDamage": "rollAdvantage"
       },
       "category": ""
     },
@@ -590,10 +591,8 @@ fn full_condition_presets() -> Value {
   })
 }
 
-/// Bundled-style Save Chain map exercising every HP-effect kind, a
-/// multi-effect outcome, all `save_to_end` enum variants, every
-/// duration kind and turn reference, a failed-save outcome with
-/// each half set and unset, and an immunity present and absent.
+/// Bundled-style Save Chain map exercising every setting the codec
+/// carries, each both set and unset where it can be.
 fn full_save_chains() -> Value {
   json!({
     "Fireball": {
@@ -608,7 +607,8 @@ fn full_save_chains() -> Value {
         "hp": { "kind": "half_fail" },
         "effects": []
       },
-      "immunity": null
+      "immunity": null,
+      "area": "at_end"
     },
     "Hold Person": {
       "name": "Hold Person",
@@ -622,22 +622,36 @@ fn full_save_chains() -> Value {
             "note": "Hold Person",
             "save_to_end": "at_end",
             "on_failed_save": { "damage": "4d10", "becomes": "Petrified" },
-            "duration": { "kind": "one_minute" }
+            "on_damage": "roll_advantage",
+            "duration": { "kind": "one_minute" },
+            "with": "Incapacitated"
           },
           {
             "name": "Marked",
             "note": "",
             "save_to_end": null,
             "on_failed_save": null,
-            "duration": { "kind": "until_turn", "phase": "at_end", "of": "bearer" }
+            "on_damage": null,
+            "duration": { "kind": "until_turn", "phase": "at_end", "of": "bearer" },
+            "with": ""
+          },
+          {
+            "name": "Winded",
+            "note": "",
+            "save_to_end": "ask_at_end",
+            "on_failed_save": { "damage": null, "becomes": null },
+            "on_damage": "ask",
+            "duration": { "kind": "this_turn" },
+            "with": ""
           }
         ]
       },
       "on_success": {
-        "hp": { "kind": "none" },
+        "hp": { "kind": "drain", "amount": "1d4" },
         "effects": []
       },
-      "immunity": { "kind": "manual" }
+      "immunity": { "kind": "manual" },
+      "area": "at_begin"
     },
     "Healing Word": {
       "name": "Healing Word",
@@ -651,14 +665,18 @@ fn full_save_chains() -> Value {
             "note": "manual save",
             "save_to_end": "manual",
             "on_failed_save": { "damage": null, "becomes": null },
-            "duration": { "kind": "countdown", "phase": "at_begin", "turns": 3 }
+            "on_damage": "none",
+            "duration": { "kind": "countdown", "phase": "at_begin", "turns": 3 },
+            "with": ""
           },
           {
             "name": "Watched",
             "note": "",
             "save_to_end": "at_begin",
             "on_failed_save": { "damage": "1d6", "becomes": null },
-            "duration": { "kind": "until_turn", "phase": "at_begin", "of": "named", "name": "Lyra" }
+            "on_damage": "roll",
+            "duration": { "kind": "until_turn", "phase": "at_begin", "of": "named", "name": "Lyra" },
+            "with": ""
           }
         ]
       },
@@ -670,11 +688,14 @@ fn full_save_chains() -> Value {
             "note": "",
             "save_to_end": null,
             "on_failed_save": null,
-            "duration": { "kind": "manual" }
+            "on_damage": null,
+            "duration": { "kind": "manual" },
+            "with": ""
           }
         ]
       },
-      "immunity": { "kind": "until_turn", "phase": "at_end", "of": "active" }
+      "immunity": { "kind": "until_turn", "phase": "at_end", "of": "active" },
+      "area": null
     }
   })
 }
@@ -1033,11 +1054,8 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
     ])
   );
 
-  // Save chains: the legacy condition_name outcome becomes a
-  // one-element effects list, bool save_to_end becomes the enum,
-  // the int amount is stringified, the ability lowercases, every
-  // effect lasts until removed, a saving effect has an empty
-  // failed-save outcome, and the chain grants no immunity.
+  // Save chains: the legacy shape reads back as the canonical
+  // encoding, with every later-added setting at its default.
   assert_eq!(
     get_json(&app, &cookie, "/api/save-chain-presets").await,
     json!({
@@ -1053,7 +1071,9 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
               "note": "legacy note",
               "save_to_end": null,
               "on_failed_save": null,
-              "duration": { "kind": "manual" }
+              "on_damage": null,
+              "duration": { "kind": "manual" },
+              "with": ""
             }
           ]
         },
@@ -1065,18 +1085,23 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
               "note": "",
               "save_to_end": "at_end",
               "on_failed_save": { "damage": null, "becomes": null },
-              "duration": { "kind": "manual" }
+              "on_damage": "none",
+              "duration": { "kind": "manual" },
+              "with": ""
             },
             {
               "name": "Slowed",
               "note": "half speed",
               "save_to_end": null,
               "on_failed_save": null,
-              "duration": { "kind": "manual" }
+              "on_damage": null,
+              "duration": { "kind": "manual" },
+              "with": ""
             }
           ]
         },
-        "immunity": null
+        "immunity": null,
+        "area": null
       }
     })
   );

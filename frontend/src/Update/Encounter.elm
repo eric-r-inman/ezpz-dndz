@@ -5,7 +5,6 @@ module Update.Encounter exposing
     , controlCancel
     , controlConfirm
     , fallDamageLanded
-    , manualSaveFlashExpired
     , nextTurn
     , openStatusAndConditionFor
     , queueDragEnd
@@ -19,6 +18,7 @@ module Update.Encounter exposing
     , rollFallDamage
     , rollRechargeNow
     , run
+    , saveFlashExpired
     , setActive
     , shiftToggleSelected
     , targetCreature
@@ -53,9 +53,7 @@ import Encounter.Lifecycle
 import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
-import Process
 import Set
-import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Update.Condition
 import Update.Status
@@ -77,13 +75,9 @@ withEncounter fn model =
 
 {-| Advance the queue one slot. Domain layer owns the queue walk,
 round bookkeeping, and condition lifecycle hooks (begin / end of
-turn). The update layer fires the side effects:
-
-  - auto-roll saves at the OUTGOING creature's end-of-turn
-    (`AutoRollAtEnd`),
-  - auto-roll saves at the INCOMING creature's begin-of-turn
-    (`AutoRollAtBegin`),
-  - and a viewport check so the active card scrolls into view.
+turn). The update layer fires the side effects the boundary owes:
+the outgoing creature's end-of-turn rolls and the incoming one's
+begin-of-turn rolls, plus the pulses and the scroll.
 
 Both auto-roll batches read the post-`nextTurn` encounter so they
 see the outgoing creature's conditions AFTER end-of-turn ticks (any
@@ -102,9 +96,11 @@ nextTurn model =
 
         endRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
+                ++ Effects.areaRollCmdsFor Encounter.AtEnd outgoingName newEnc
 
         beginRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
+                ++ Effects.areaRollCmdsFor Encounter.AtBegin newEnc.activeName newEnc
 
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
@@ -113,50 +109,35 @@ nextTurn model =
             else
                 []
 
-        -- Nothing auto-fires a manual save-to-end roll, so the
-        -- incoming creature's condition chip pulses once as the
-        -- reminder that the GM has to click it themselves.
-        flashManualSaveFor =
-            if Encounter.hasManualSaveCondition newEnc.activeName newEnc then
-                Just newEnc.activeName
-
-            else
-                Nothing
+        -- Nothing auto-fires these rolls, so the chips pulse once as
+        -- the reminder that the GM has to click them themselves.
+        flashes =
+            Encounter.remindersAt Encounter.AtEnd outgoingName newEnc
+                ++ Encounter.remindersAt Encounter.AtBegin newEnc.activeName newEnc
 
         flashCmds =
-            if flashManualSaveFor == Nothing then
+            if List.isEmpty flashes then
                 []
 
             else
-                [ Process.sleep manualSaveFlashMs
-                    |> Task.perform (\_ -> ManualSaveFlashExpired)
-                ]
+                [ Effects.saveFlashExpiry ]
     in
     -- Recharge d6s used to auto-fire here; the card now renders a
     -- blinking dice glyph on the active creature's spent recharge
     -- chip and the GM clicks to roll, so we don't include the
     -- recharge cmds in the turn-advance batch any more.
-    ( { model | encounter = newEnc, flashManualSaveFor = flashManualSaveFor }
+    ( { model | encounter = newEnc, flashConditions = flashes }
     , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ flashCmds)
     )
 
 
-{-| Clear the begin-of-turn manual-save reminder pulse. Fired by
-the `Process.sleep` `nextTurn` schedules, timed to outlast
+{-| Clear the save-reminder pulse. Fired by the `Process.sleep`
+`Effects.saveFlashExpiry` schedules, timed to outlast
 `condition-chip-flash`'s animation.
 -}
-manualSaveFlashExpired : Model -> ( Model, Cmd Msg )
-manualSaveFlashExpired model =
-    ( { model | flashManualSaveFor = Nothing }, Cmd.none )
-
-
-{-| How long the begin-of-turn manual-save reminder stays flagged
-before `manualSaveFlashExpired` clears it — long enough for
-`condition-chip-flash`'s four 0.5s pulses (2s) to finish.
--}
-manualSaveFlashMs : Float
-manualSaveFlashMs =
-    2200
+saveFlashExpired : Model -> ( Model, Cmd Msg )
+saveFlashExpired model =
+    ( { model | flashConditions = [] }, Cmd.none )
 
 
 {-| Manual jump (the right-arrow button on a card). Distinct from
