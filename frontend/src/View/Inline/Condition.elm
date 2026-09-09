@@ -358,7 +358,7 @@ saveSubsection s =
                 ]
                 []
             , Html.label [ for "cond-save-bonus", class "cond-label" ] [ text "Mod" ]
-            , span [ class "cond-save-bonus-wrap" ]
+            , span [ class "cond-spin-wrap" ]
                 [ input
                     [ id "cond-save-bonus"
                     , class "cond-input cond-input--2ch"
@@ -368,24 +368,11 @@ saveSubsection s =
                     , onInput ConditionSaveBonusChanged
                     ]
                     []
-                , span [ class "cond-spin" ]
-                    [ button
-                        [ class "cond-spin__btn"
-                        , type_ "button"
-                        , onClick (ConditionSaveBonusAdjust 1)
-                        , Tooltips.attr "Increase by 1"
-                        , attribute "aria-label" "Increase modifier by 1"
-                        ]
-                        [ text "▲" ]
-                    , button
-                        [ class "cond-spin__btn"
-                        , type_ "button"
-                        , onClick (ConditionSaveBonusAdjust -1)
-                        , Tooltips.attr "Decrease by 1"
-                        , attribute "aria-label" "Decrease modifier by 1"
-                        ]
-                        [ text "▼" ]
-                    ]
+                , Field.spin
+                    { up = ConditionSaveBonusAdjust 1
+                    , down = ConditionSaveBonusAdjust -1
+                    , what = "modifier"
+                    }
                 ]
             ]
         , div [ class "cond-row" ]

@@ -1,6 +1,6 @@
 module Ui.HpChange exposing
     ( HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
-    , HpChangeTargetSnapshot
+    , HpChangeTargetSnapshot, HpLogKind(..)
     )
 
 {-| HP-change editor state plus the inline-HP edit and the
@@ -13,6 +13,7 @@ The single field accepts either a plain integer or a dice
 formula; the apply handler parses it at commit time.
 
 @docs HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
+@docs HpChangeTargetSnapshot, HpLogKind
 
 -}
 
@@ -50,6 +51,12 @@ type alias HpChangeUi =
     , manualHpText : String
     , manualMaxHpText : String
     , manualTempHpText : String
+
+    -- A formula the Set section rolls for each target's hit
+    -- points instead — a monster's hit dice, in place of its
+    -- average.  While it holds text the pool fields stand aside.
+    , manualRollText : String
+    , manualRollError : Maybe Dice.Error
     }
 
 
@@ -61,8 +68,13 @@ state, and so undo can walk maxHp back too when a `MaxHpKind`
 entry gets reverted.
 -}
 type alias HpChangeEntry =
-    { kind : HpKind
-    , amount : Int
+    { kind : HpLogKind
+    , amount : Maybe Int
+
+    -- Whether the dice roller produced the amount.  The roller's
+    -- own log shows only those, since a typed number is not a
+    -- roll.
+    , rolled : Bool
 
     -- One snapshot per creature the application touched, in
     -- application order.  A multi-target apply is one entry, so
@@ -81,6 +93,16 @@ type alias HpChangeEntry =
     -- placing it among the rolls.
     , rollsBefore : Int
     }
+
+
+{-| What a log row records: one of the verb buttons' changes, the
+Set section writing typed pools, or the Set section rolling hit
+points.
+-}
+type HpLogKind
+    = Applied HpKind
+    | SetPools
+    | RolledHp
 
 
 {-| Per-creature before/after capture inside one log entry.
@@ -108,12 +130,11 @@ type alias HpEdit =
     }
 
 
-{-| Cap on the HP-change log size. Matches the user's request
-for "last 10 applications".
+{-| Cap on the HP-change log size.
 -}
 maxHpLogEntries : Int
 maxHpLogEntries =
-    10
+    30
 
 
 {-| Initial state for opening the Manage HP editor targeted at a
@@ -132,4 +153,6 @@ fresh target =
     , manualHpText = ""
     , manualMaxHpText = ""
     , manualTempHpText = ""
+    , manualRollText = ""
+    , manualRollError = Nothing
     }

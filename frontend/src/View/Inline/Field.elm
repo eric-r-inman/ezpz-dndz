@@ -1,18 +1,17 @@
-module View.Inline.Field exposing (checkbox, radio, radioWith)
+module View.Inline.Field exposing (checkbox, radio, radioWith, spin)
 
-{-| The two plain choice controls the editors share: a bare radio
-dot with its label, and a checkbox with its label. One shape for
-every editor keeps the drawer reading as one form rather than
-several.
+{-| The small controls the editors share. One shape for every
+editor keeps the drawer reading as one form rather than several.
 
-@docs checkbox, radio, radioWith
+@docs checkbox, radio, radioWith, spin
 
 -}
 
-import Html exposing (Html, input, span, text)
-import Html.Attributes as Attr exposing (checked, class, type_)
+import Html exposing (Html, button, input, span, text)
+import Html.Attributes as Attr exposing (attribute, checked, class, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg)
+import View.Tooltips as Tooltips
 
 
 {-| One option of a radio group: `group` keeps it apart from every
@@ -44,6 +43,32 @@ radioWith extra cfg =
             ]
             []
         , span [ class "cond-radio__label" ] [ text cfg.label ]
+        ]
+
+
+{-| The ▲ / ▼ pair beside a number field, for a click path that
+reaches any value the field takes. `what` names the number for a
+reader that cannot see the field.
+-}
+spin : { up : Msg, down : Msg, what : String } -> Html Msg
+spin cfg =
+    span [ class "cond-spin" ]
+        [ button
+            [ class "cond-spin__btn"
+            , type_ "button"
+            , onClick cfg.up
+            , Tooltips.attr "Increase by 1"
+            , attribute "aria-label" ("Increase " ++ cfg.what ++ " by 1")
+            ]
+            [ text "▲" ]
+        , button
+            [ class "cond-spin__btn"
+            , type_ "button"
+            , onClick cfg.down
+            , Tooltips.attr "Decrease by 1"
+            , attribute "aria-label" ("Decrease " ++ cfg.what ++ " by 1")
+            ]
+            [ text "▼" ]
         ]
 
 

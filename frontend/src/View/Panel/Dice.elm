@@ -20,6 +20,7 @@ import Ui.Dice exposing (DiceUi)
 import Ui.HpChange exposing (HpChangeEntry)
 import Util.Keyboard
 import View.HpLog
+import View.Inline.Field as Field
 import View.LogRow
 import View.Panel
 import View.Tooltips as Tooltips
@@ -167,31 +168,45 @@ form ui =
             [ label
                 [ for "dice-count", class "cond-label" ]
                 [ text "Count:" ]
-            , input
-                [ id "dice-count"
-                , class "cond-input cond-input--2ch"
-                , type_ "text"
-                , Attr.maxlength 2
-                , attribute "inputmode" "numeric"
-                , value (String.fromInt ui.count)
-                , onInput DiceCountChanged
+            , span [ class "cond-spin-wrap" ]
+                [ input
+                    [ id "dice-count"
+                    , class "cond-input cond-input--2ch"
+                    , type_ "text"
+                    , Attr.maxlength 2
+                    , attribute "inputmode" "numeric"
+                    , value (String.fromInt ui.count)
+                    , onInput DiceCountChanged
+                    ]
+                    []
+                , Field.spin
+                    { up = DiceCountAdjust 1
+                    , down = DiceCountAdjust -1
+                    , what = "count"
+                    }
                 ]
-                []
             , label
                 [ for "dice-modifier"
                 , class "cond-label"
                 ]
                 [ text "Modifier:" ]
-            , input
-                [ id "dice-modifier"
-                , class "cond-input cond-input--2ch"
-                , type_ "text"
-                , Attr.maxlength 2
-                , attribute "inputmode" "numeric"
-                , value ui.modifierText
-                , onInput DiceModifierChanged
+            , span [ class "cond-spin-wrap" ]
+                [ input
+                    [ id "dice-modifier"
+                    , class "cond-input cond-input--2ch"
+                    , type_ "text"
+                    , Attr.maxlength 2
+                    , attribute "inputmode" "numeric"
+                    , value ui.modifierText
+                    , onInput DiceModifierChanged
+                    ]
+                    []
+                , Field.spin
+                    { up = DiceModifierAdjust 1
+                    , down = DiceModifierAdjust -1
+                    , what = "modifier"
+                    }
                 ]
-                []
             , button
                 [ class "dice-form__reset"
                 , onClick DiceResetSliders
@@ -290,13 +305,20 @@ history log ui =
                 )
                 rolls
 
+        -- Only the changes a roll produced belong beside the rolls;
+        -- a typed number is the Manage HP editor's own record.
+        -- Undo always reverts the newest change of any kind, so
+        -- only that one offers it here.
+        newestSeq =
+            List.head log.hpChangeLog |> Maybe.map .seq
+
         hpRows =
-            List.indexedMap
-                (\i e ->
+            List.map
+                (\e ->
                     ( ( e.rollsBefore, 1 )
                     , ( "h" ++ String.fromInt e.seq
                       , View.HpLog.entry
-                            { undoable = i == 0
+                            { undoable = Just e.seq == newestSeq
                             , flash = False
                             , expanded = Set.member (View.HpLog.rowKey e) log.expanded
                             }
@@ -304,19 +326,19 @@ history log ui =
                       )
                     )
                 )
-                log.hpChangeLog
+                (List.filter .rolled log.hpChangeLog)
 
         entries =
             List.sortBy (\( ( ordinal, tie ), _ ) -> ( -ordinal, -tie ))
                 (rollRows ++ hpRows)
     in
     div [ class "dice-history" ]
-        (div [ class "dice-history__head" ]
+        (div [ class "log-head" ]
             [ button
-                [ class "dice-history__fold"
+                [ class "log-fold"
                 , type_ "button"
                 , onClick DiceHistoryToggle
-                , Tooltips.attr Tooltips.diceHistoryToggle
+                , Tooltips.attr Tooltips.logToggle
                 , attribute "aria-expanded"
                     (if ui.historyOpen then
                         "true"
@@ -325,7 +347,7 @@ history log ui =
                         "false"
                     )
                 ]
-                [ span [ class "dice-history__caret" ]
+                [ span [ class "log-fold__caret" ]
                     [ text
                         (if ui.historyOpen then
                             "▼"
@@ -334,8 +356,8 @@ history log ui =
                             "▶"
                         )
                     ]
-                , span [ class "dice-history__title" ]
-                    [ text ("Rolls and HP changes (" ++ String.fromInt (List.length entries) ++ ")") ]
+                , span [ class "log-fold__title" ]
+                    [ text ("Log (" ++ String.fromInt (List.length entries) ++ ")") ]
                 ]
             , if List.isEmpty entries then
                 text ""
@@ -352,7 +374,7 @@ history log ui =
                     []
 
                 else if List.isEmpty entries then
-                    [ div [ class "dice-history__empty" ]
+                    [ div [ class "log-empty" ]
                         [ text "No rolls yet." ]
                     ]
 
@@ -360,7 +382,7 @@ history log ui =
                     -- Keyed so a landing roll mounts a fresh row and
                     -- its flash runs, rather than patching the row
                     -- that held the previous newest.
-                    [ Html.Keyed.ul [ class "dice-history__list" ]
+                    [ Html.Keyed.ul [ class "log-list" ]
                         (List.map Tuple.second entries)
                     ]
                )

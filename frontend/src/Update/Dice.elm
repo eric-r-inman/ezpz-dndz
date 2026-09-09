@@ -2,12 +2,14 @@ module Update.Dice exposing
     ( attackRollTriggered
     , clearHistory
     , clearResponse
+    , countAdjust
     , countChanged
     , flipCoin
     , historyLoaded
     , historyToggle
     , inputChanged
     , markRead
+    , modifierAdjust
     , modifierChanged
     , openPanel
     , persistResponse
@@ -111,6 +113,31 @@ modifierChanged text model =
                         |> Maybe.map (Basics.max -99 >> Basics.min 99)
                         |> Maybe.withDefault d.modifier
             }
+        )
+        model
+    , Cmd.none
+    )
+
+
+countAdjust : Int -> Model -> ( Model, Cmd Msg )
+countAdjust delta model =
+    ( withDice (\d -> { d | count = Basics.clamp 1 99 (d.count + delta) }) model
+    , Cmd.none
+    )
+
+
+{-| The parsed modifier moves and the text follows it, so a field
+mid-edit shows the number the button made.
+-}
+modifierAdjust : Int -> Model -> ( Model, Cmd Msg )
+modifierAdjust delta model =
+    ( withDice
+        (\d ->
+            let
+                next =
+                    Basics.clamp -99 99 (d.modifier + delta)
+            in
+            { d | modifier = next, modifierText = String.fromInt next }
         )
         model
     , Cmd.none

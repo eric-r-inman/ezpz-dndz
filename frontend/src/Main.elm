@@ -547,7 +547,7 @@ init flags url key =
             flags.localDrawerLayout
                 |> Maybe.andThen
                     (Decode.decodeValue DrawerLayout.decoder >> Result.toMaybe)
-                |> Maybe.withDefault []
+                |> Maybe.withDefault { version = DrawerLayout.current, entries = [] }
     in
     ( Model.applyDrawerLayout savedLayout
         { key = key
@@ -563,6 +563,7 @@ init flags url key =
         , targetName = Nothing
         , flashConditions = []
         , hpChangeLog = []
+        , hpLogOpen = False
         , nextHpLogSeq = 1
         , flashedHpLogSeq = 0
         , flashedRollSeq = 0
@@ -1009,6 +1010,12 @@ updateInner msg model =
         DiceModifierChanged text ->
             Update.Dice.modifierChanged text model
 
+        DiceCountAdjust delta ->
+            Update.Dice.countAdjust delta model
+
+        DiceModifierAdjust delta ->
+            Update.Dice.modifierAdjust delta model
+
         DiceResetSliders ->
             Update.Dice.resetSliders model
 
@@ -1102,6 +1109,18 @@ updateInner msg model =
 
         HpChangeManualApplySelected ->
             Update.HpChange.manualApplySelected model
+
+        HpChangeManualRollChanged text ->
+            Update.HpChange.manualRollChanged text model
+
+        HpChangeManualRollClear ->
+            Update.HpChange.manualRollClear model
+
+        HpChangeManualRollLanded name roll ->
+            Update.HpChange.manualRollLanded name roll model
+
+        HpChangeLogToggle ->
+            Update.HpChange.logToggle model
 
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model

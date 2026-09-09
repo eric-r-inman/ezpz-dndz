@@ -229,12 +229,14 @@ panelFor model index panel =
             SurfaceHpChange ui ->
                 editor "Manage HP"
                     (scopedLabel ui.target ui.applyToSelected)
-                    (View.Inline.HpChange.view selectedCount
-                        (placeholderWarning ui.target)
-                        { flashedSeq = model.flashedHpLogSeq
+                    (View.Inline.HpChange.view
+                        { selectedCount = selectedCount
+                        , placeholderWarning = placeholderWarning ui.target
+                        , log = model.hpChangeLog
+                        , logOpen = model.hpLogOpen
+                        , flashedSeq = model.flashedHpLogSeq
                         , expanded = model.expandedLogRows
                         }
-                        model.hpChangeLog
                         ui
                     )
 

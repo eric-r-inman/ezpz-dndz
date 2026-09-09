@@ -507,6 +507,9 @@ type Msg
     | DiceInputChanged String
     | DiceCountChanged String
     | DiceModifierChanged String
+      -- The ▲ / ▼ beside the count and modifier fields, by one.
+    | DiceCountAdjust Int
+    | DiceModifierAdjust Int
     | DiceResetSliders
     | DiceRollFromInput
     | DiceRollFaces Int
@@ -577,6 +580,14 @@ type Msg
     | HpChangeManualChanged HpField String
     | HpChangeManualApplyTarget
     | HpChangeManualApplySelected
+      -- The Set section's roll: a formula that, applied, rolls
+      -- once per target and sets that creature's hit points to the
+      -- total; each landing names its creature.
+    | HpChangeManualRollChanged String
+    | HpChangeManualRollClear
+    | HpChangeManualRollLanded String Dice.Roll
+      -- Fold or unfold the editor's log.
+    | HpChangeLogToggle
     | HpChangeAmountChanged String
     | HpChangeApplyToSelectedToggle
       -- Commits the modal's current amount as the given kind,

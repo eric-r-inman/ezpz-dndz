@@ -61,7 +61,6 @@ module View.Tooltips exposing
     , diceCoinFlip
     , diceDisadvantage
     , diceFaceRoll
-    , diceHistoryToggle
     , diceReset
     , diceRollAgain
     , dodging
@@ -78,6 +77,8 @@ module View.Tooltips exposing
     , halfCover
     , hiding
     , hpOpenManage
+    , hpRoll
+    , hpRollClear
     , initSelectedNone
     , initiativeManager
     , inlineEditCancel
@@ -90,6 +91,7 @@ module View.Tooltips exposing
     , loadRowCompendium
     , logRowFold
     , logRowUnfold
+    , logToggle
     , memoAdd
     , memoClear
     , memoEdit
@@ -829,9 +831,23 @@ loadRowCompendium =
 -- ── DICE PANEL ───────────────────────────────────────────────────────────────
 
 
-diceHistoryToggle : String
-diceHistoryToggle =
-    "Show or hide the roll history"
+{-| The fold on every editor's log.
+-}
+logToggle : String
+logToggle =
+    "Show or hide the log"
+
+
+{-| The Manage HP editor's Roll field and the × that clears it.
+-}
+hpRoll : String
+hpRoll =
+    "Roll this for each target and set its hit points, current and maximum, to the total — a monster's hit dice in place of its average"
+
+
+hpRollClear : String
+hpRollClear =
+    "Clear the roll and set the pools by hand again"
 
 
 diceReset : String

@@ -139,6 +139,8 @@
   /* A two-character numeric field (a DC, a modifier) in any
      editor — shared so every such field reads the same width. */
   --width-input-2ch: 4ch;
+  /* Three digits and the field's own padding and border, no more. */
+  --width-input-3ch: calc(3ch + 2 * var(--space-1) + 2px);
 
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
@@ -1067,7 +1069,7 @@ html:has(.app-shell[data-theme="accessible"]) {
    and an optional source chip into a single row.  All four use
    absolute rem sizes (0.68–0.85rem); bump in Accessible so a
    low-vision GM can scan the log without leaning in. */
-[data-theme="accessible"] .dice-history__title {
+[data-theme="accessible"] .log-fold__title {
   font-size: 1rem;
 }
 
@@ -5481,7 +5483,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .panel__title,
 .stat__label,
 .ability__label,
-.dice-history__title,
+.log-fold__title,
 .hp-change__log-kind,
 .encounter-bar__hp-label,
 .encounter-bar__ac-label {
@@ -5490,6 +5492,19 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .icon-btn--danger:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-color: transparent;
+}
+
+/* Red at rest, for a control whose only job is to undo something:
+   the × that clears a field. */
+.icon-btn--red {
+  color: var(--color-danger);
+  opacity: 1;
+}
+
+.icon-btn--red:hover {
   color: var(--color-danger);
   background: var(--color-danger-soft);
   border-color: transparent;
@@ -8315,7 +8330,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 8px;
 }
 
-.dice-history__head {
+.log-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8323,7 +8338,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Wraps the caret and title so the whole strip is the fold
    control, in the disclosure vocabulary the drawer already uses. */
-.dice-history__fold {
+.log-fold {
   appearance: none;
   display: flex;
   align-items: center;
@@ -8336,19 +8351,19 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
-.dice-history__caret {
+.log-fold__caret {
   font-size: var(--font-size-caret);
   color: var(--color-text-muted);
   line-height: 1;
 }
 
-.dice-history__title {
+.log-fold__title {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
 }
 
-.dice-history__list {
+.log-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -8522,7 +8537,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   outline: none;
 }
 
-.dice-history__empty {
+.log-empty {
   color: var(--color-text-muted);
   font-style: italic;
   font-size: var(--font-size-section);
@@ -8694,6 +8709,14 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-kind--cond {
   color: var(--color-condition);
+}
+
+.hp-change__log-kind--set {
+  color: var(--color-text-muted);
+}
+
+.hp-change__log-kind--roll {
+  color: var(--color-accent);
 }
 
 /* Log rows whose first column is a real name (a condition, a
@@ -9180,12 +9203,11 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* An HP pool field, sized for the three digits that cover every
-   creature in play; the cap allows a fourth, which scrolls rather
-   than claiming width the row cannot spare.  The spinner is
-   suppressed for the same reason. */
+   creature in play, with the spinner suppressed so the digits keep
+   that width. */
 .cond-input--pool {
   flex: 0 1 auto;
-  width: 5ch;
+  width: var(--width-input-3ch);
   min-width: 0;
   padding-left: var(--space-1);
   padding-right: var(--space-1);
@@ -9283,30 +9305,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin: 0;
 }
 
-/* A section heading that folds its section: a caret and the
-   title, in the section-heading face, with no button chrome. */
-.cond-fold {
-  appearance: none;
+/* A number field with its ▲ / ▼ pair. */
+.cond-spin-wrap {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-section);
-  font-weight: var(--font-weight-label);
-  letter-spacing: 0.02em;
-  cursor: pointer;
+  gap: var(--space-0);
 }
 
-.cond-fold__caret {
-  display: inline-block;
-  width: 1ch;
-  text-align: center;
-  font-size: var(--font-size-caret);
-  line-height: 1;
+/* A row standing aside while another control has taken over its
+   job, still readable for what it holds. */
+.cond-row--muted {
+  opacity: 0.5;
 }
 
 /* The duration picker's block: the kind chips and the sub-row the
@@ -9317,13 +9326,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-1);
 }
 
-.cond-save-bonus-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-/* The Mod field's ▲ / ▼: stacked rather than side-by-side, since
+/* A number field's ▲ / ▼: stacked rather than side-by-side, since
    both sit to the same side of one input rather than flanking a
    read-only value the way the fly-height spinner does. */
 .cond-spin {

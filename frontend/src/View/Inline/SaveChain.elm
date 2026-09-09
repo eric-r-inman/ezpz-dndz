@@ -719,34 +719,38 @@ entry first — each apply prepends.
 logSection : Bool -> List SaveChainLogEntry -> Html Msg
 logSection open entries =
     div [ class "cond-section" ]
-        (button
-            [ class "cond-fold"
-            , type_ "button"
-            , onClick SaveChainLogToggle
-            , attribute "aria-expanded"
-                (if open then
-                    "true"
-
-                 else
-                    "false"
-                )
-            ]
-            [ span [ class "cond-fold__caret" ]
-                [ text
+        (div [ class "log-head" ]
+            [ button
+                [ class "log-fold"
+                , type_ "button"
+                , onClick SaveChainLogToggle
+                , Tooltips.attr Tooltips.logToggle
+                , attribute "aria-expanded"
                     (if open then
-                        "▼"
+                        "true"
 
                      else
-                        "▶"
+                        "false"
                     )
                 ]
-            , text ("Recent applies (" ++ String.fromInt (List.length entries) ++ ")")
+                [ span [ class "log-fold__caret" ]
+                    [ text
+                        (if open then
+                            "▼"
+
+                         else
+                            "▶"
+                        )
+                    ]
+                , span [ class "log-fold__title" ]
+                    [ text ("Log (" ++ String.fromInt (List.length entries) ++ ")") ]
+                ]
             ]
             :: (if not open then
                     []
 
                 else if List.isEmpty entries then
-                    [ div [ class "cond-section__caption" ] [ text "No applies yet." ] ]
+                    [ div [ class "log-empty" ] [ text "No applies yet." ] ]
 
                 else
                     [ ul [ class "save-chain__log-list" ] (List.map logEntry entries) ]

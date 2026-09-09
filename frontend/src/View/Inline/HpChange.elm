@@ -1,4 +1,4 @@
-module View.Inline.HpChange exposing (view)
+module View.Inline.HpChange exposing (Context, view)
 
 {-| Manage HP as a drawer panel — every way of changing a
 creature's pools on one surface, without covering the queue.
@@ -7,62 +7,135 @@ The verb buttons share a smart amount input: type a plain
 integer (`8`) to apply that value directly, or a dice formula
 (`2d6+3`) to roll and apply the total. Parse errors surface
 inline underneath the input, and the input decides which path a
-verb takes. Below them, the Manual section sets the pools to
-typed values instead.
+verb takes. Below them, the Set section writes the pools to
+typed values instead, or rolls a formula for each target's hit
+points.
 
-Only the newest log entry renders here (with its undo button);
-the rest of the log lives in the dice roller.
+The editor's log holds every change, behind a fold in the dice
+roller's style; the roller's own log shows only the ones a roll
+produced.
 
 -}
 
 import Dice
 import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (autofocus, class, for, id, maxlength, placeholder, type_, value)
+import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
+import Set exposing (Set)
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
 import View.Inline.Field as Field
+import View.Tooltips as Tooltips
 
 
-view : Int -> Bool -> View.HpLog.Latest -> List HpChangeEntry -> HpChangeUi -> Html Msg
-view selectedCount placeholderWarning latest log ui =
+{-| The model fragments the editor consumes beyond its own Ui
+record: the selection drives the scope controls, and the log
+renders with the fold state, the seq it last flashed, and the rows
+the GM has unfolded.
+-}
+type alias Context =
+    { selectedCount : Int
+    , placeholderWarning : Bool
+    , log : List HpChangeEntry
+    , logOpen : Bool
+    , flashedSeq : Int
+    , expanded : Set String
+    }
+
+
+view : Context -> HpChangeUi -> Html Msg
+view ctx ui =
     div [ class "creature-card__inline" ]
-        [ amount selectedCount ui
-        , parseErrorHint ui
-        , freshRollOption selectedCount ui
+        [ amount ctx.selectedCount ui
+        , parseErrorHint ui.parseError
+        , freshRollOption ctx.selectedCount ui
         , actionButtons
-        , ApplyButton.placeholderNotice placeholderWarning
+        , ApplyButton.placeholderNotice ctx.placeholderWarning
         , div [ class "cond-divider" ] []
-        , manualSection selectedCount placeholderWarning ui
-        , View.HpLog.latest latest log
+        , setSection ctx.selectedCount ctx.placeholderWarning ui
+        , View.HpLog.section
+            { open = ctx.logOpen
+            , flashedSeq = ctx.flashedSeq
+            , expanded = ctx.expanded
+            }
+            ctx.log
         ]
 
 
 {-| Direct pool entry, for the times the GM knows the number
 rather than the change: type into any of the three, then apply
 to the target or the selection. Blank fields are left alone, so
-one pool can be set without restating the others.
+one pool can be set without restating the others. A formula in
+the Roll field takes over the row: applying rolls it once per
+target and sets that creature's hit points to the total, the way
+a monster's hit dice roll stands in for its average.
 -}
-manualSection : Int -> Bool -> HpChangeUi -> Html Msg
-manualSection selectedCount placeholderWarning ui =
+setSection : Int -> Bool -> HpChangeUi -> Html Msg
+setSection selectedCount placeholderWarning ui =
+    let
+        rolling =
+            not (String.isEmpty (String.trim ui.manualRollText))
+
+        applyTip scope =
+            if rolling then
+                "Roll the formula for " ++ scope ++ " and set its hit points to the total"
+
+            else
+                "Set the typed pools on " ++ scope
+    in
     div [ class "cond-section" ]
-        [ div [ class "cond-row cond-row--pools" ]
+        [ div
+            [ class
+                (if rolling then
+                    "cond-row cond-row--pools cond-row--muted"
+
+                 else
+                    "cond-row cond-row--pools"
+                )
+            ]
             [ h3
                 [ class "cond-section__heading cond-section__heading--inline" ]
-                [ text "Manual:" ]
-            , manualField "" "manual-hp" "HP" ui.manualHpText CurrentHpField
-            , manualField split "manual-max-hp" "Max" ui.manualMaxHpText MaxHpField
-            , manualField split "manual-temp-hp" "Temp" ui.manualTempHpText TempHpField
+                [ text "Set:" ]
+            , poolField rolling "" "manual-hp" "HP" ui.manualHpText CurrentHpField
+            , poolField rolling split "manual-max-hp" "Max HP" ui.manualMaxHpText MaxHpField
+            , poolField rolling split "manual-temp-hp" "Temp HP" ui.manualTempHpText TempHpField
             ]
+        , div [ class "cond-row" ]
+            [ Html.label [ for "manual-roll", class "cond-label" ] [ text "Roll:" ]
+            , input
+                [ id "manual-roll"
+                , class "cond-input cond-input--w12"
+                , type_ "text"
+                , placeholder "e.g. 2d6+3"
+                , value ui.manualRollText
+                , onInput HpChangeManualRollChanged
+                , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeManualApplyTarget)
+                , Tooltips.attr Tooltips.hpRoll
+                ]
+                []
+            , if rolling then
+                button
+                    [ class "icon-btn icon-btn--sm icon-btn--red"
+                    , type_ "button"
+                    , onClick HpChangeManualRollClear
+                    , Tooltips.attr Tooltips.hpRollClear
+                    , attribute "aria-label" "Clear the roll"
+                    ]
+                    [ text "×" ]
+
+              else
+                text ""
+            ]
+        , parseErrorHint ui.manualRollError
         , ApplyButton.row "Apply to:"
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = HpChangeManualApplyTarget
-                , tip = "Set the typed pools on the target creature"
+                , tip = applyTip "the target creature"
                 , label = "Target"
                 }
             , ApplyButton.view
@@ -74,7 +147,7 @@ manualSection selectedCount placeholderWarning ui =
                         "Select creatures first"
 
                     else
-                        "Set the typed pools on every selected creature"
+                        applyTip "every selected creature"
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
@@ -91,8 +164,11 @@ split =
     "cond-pair--split"
 
 
-manualField : String -> String -> String -> String -> HpField -> Html Msg
-manualField extraClass fieldId label current field =
+{-| One pool field, standing aside while the Roll field holds a
+formula.
+-}
+poolField : Bool -> String -> String -> String -> String -> HpField -> Html Msg
+poolField rolling extraClass fieldId label current field =
     span [ class ("cond-pair " ++ extraClass) ]
         [ Html.label [ for fieldId, class "cond-label" ] [ text label ]
         , input
@@ -100,8 +176,9 @@ manualField extraClass fieldId label current field =
             , class "cond-input cond-input--pool"
             , type_ "number"
             , Attr.min "0"
-            , Attr.max "9999"
+            , Attr.max "999"
             , value current
+            , disabled rolling
             , onInput (HpChangeManualChanged field)
             ]
             []
@@ -135,9 +212,9 @@ amount selectedCount ui =
         ]
 
 
-parseErrorHint : HpChangeUi -> Html Msg
-parseErrorHint ui =
-    case ui.parseError of
+parseErrorHint : Maybe Dice.Error -> Html Msg
+parseErrorHint error =
+    case error of
         Just (Dice.ParseError raw) ->
             div [ class "cond-section__caption cond-section__caption--danger" ]
                 [ text ("Couldn't parse: " ++ raw) ]

@@ -225,7 +225,6 @@ defaultDrawer =
         , SurfaceHpChange (Ui.HpChange.fresh "")
         , SurfaceStatus (Ui.Status.fresh "")
         , SurfaceCondition (UiCondition.fresh "")
-        , SurfaceSaveChain (Ui.SaveChain.fresh "")
         , SurfaceInitiative (Ui.Initiative.fresh "")
         , SurfaceDuplicate (Ui.Duplicate.fresh "")
         , SurfaceReplace (Ui.Replace.fresh "")
@@ -233,11 +232,18 @@ defaultDrawer =
         , SurfaceXp
         , SurfaceSaveLoad Ui.SaveLoad.fresh
         , SurfaceQuickAdd Ui.QuickAdd.fresh
-
-        -- Panels a fight never leans on sit last.
+        , SurfaceSaveChain (Ui.SaveChain.fresh "")
         , SurfaceTreasure Ui.Treasure.fresh
         , SurfaceRandomEncounter Ui.RandomEncounter.fresh
         ]
+
+
+{-| The keys of the panels the second layout version moved to the
+bottom of the column: the ones still marked beta.
+-}
+settledLast : List String
+settledLast =
+    [ "save-chain", "treasure", "random-encounter" ]
 
 
 {-| Move the panel at `from` so it sits at `to`, or as near it
@@ -407,10 +413,35 @@ without disturbing arrangements already saved. A key the build no
 longer knows is simply absent from the result, since the panels
 come from the current drawer rather than from the layout.
 
+A layout saved before the current rules version has the panels
+those rules moved to the bottom moved there, unless the GM pinned
+one, which is as deliberate a placement as there is. The layout
+is written back at the current version on the GM's next change,
+so the move happens once.
+
 -}
-applyDrawerLayout : List DrawerLayout.Entry -> Model -> Model
-applyDrawerLayout layout model =
+applyDrawerLayout : DrawerLayout.Stored -> Model -> Model
+applyDrawerLayout stored model =
     let
+        layout =
+            stored.entries
+
+        settle panels =
+            if stored.version >= DrawerLayout.current then
+                panels
+
+            else
+                let
+                    ( moved, kept ) =
+                        List.partition
+                            (\panel ->
+                                not panel.pinned
+                                    && List.member (surfaceKey panel.surface) settledLast
+                            )
+                            panels
+                in
+                kept ++ moved
+
         entryFor panel =
             layout
                 |> List.filter (\e -> e.key == surfaceKey panel.surface)
@@ -444,7 +475,7 @@ applyDrawerLayout layout model =
         -- boot as. `List.partition` is stable, so the order
         -- within each group survives.
         ( held, loose ) =
-            List.partition .pinned ordered
+            List.partition .pinned (settle ordered)
     in
     { model | drawer = held ++ loose }
 
@@ -1297,6 +1328,10 @@ type alias Model =
     -- the pulse finishes.
     , flashConditions : List ( String, Int )
     , hpChangeLog : List HpChangeEntry
+
+    -- Whether the Manage HP editor shows its log.  It starts
+    -- folded, like the dice roller's.
+    , hpLogOpen : Bool
 
     -- Hands out `HpChangeEntry.seq`.  A counter rather than a
     -- read of the log's head, because undo and a history clear

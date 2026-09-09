@@ -277,9 +277,22 @@
      needed.
 103. The Save Chain, Treasure, and Random Encounter editors carry a small "beta"
      tag beside their titles.  No action needed.
-104. Treasure and Random Encounter sit at the bottom of a fresh editor column.
-     A column you have already arranged keeps its order, so drag them down if
-     you want the same.
+104. The Save Chain, Treasure, and Random Encounter editors move to the bottom
+     of the editor column, once, the first time a column arranged before this
+     release loads; one you pinned stays where you pinned it.  No action needed.
+105. The Dice Roller's log is titled "Log", and its Count and Modifier fields
+     carry ▲ / ▼ buttons beside typing.  No action needed.
+106. The Dice Roller's log shows only the HP changes a roll produced; a typed
+     number no longer appears there.  No action needed.
+107. The Manage HP editor's Set section gains a Roll field, where a formula such
+     as a monster's hit dice rolls for each target on Apply and sets that
+     creature's hit points, current and maximum, to the total, with the pool
+     fields standing aside until its × clears it.  No action needed.
+108. The Manage HP editor keeps its own log of the last 30 changes, rolls
+     included, behind a fold in the dice roller's style; it opens itself when a
+     change lands.  No action needed.
+109. The Manage HP editor's Set row reads Set, HP, Max HP, and Temp HP, with
+     fields three digits wide.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
