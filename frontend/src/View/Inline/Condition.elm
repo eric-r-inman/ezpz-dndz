@@ -504,15 +504,62 @@ footer ui presets selectedCount placeholderWarning =
                 []
     in
     div [ class "cond-footer" ]
-        ([ div [ class "cond-footer__presets" ]
-            [ presetSaveControl ui canSubmit
-            , presetLoadControl ui presets
-            ]
-         ]
+        (presetControls ui presets canSubmit
             ++ deleteRow
             ++ [ applyControls ui canSubmit selectedCount applyLabel ]
             ++ placeholderRow
         )
+
+
+{-| The preset rows. Naming a preset spreads its controls over
+several rows so nothing runs past the panel's edge.
+-}
+presetControls : ConditionUi -> Dict String ConditionPreset -> Bool -> List (Html Msg)
+presetControls ui presets canSubmit =
+    let
+        clearButton =
+            button
+                [ class "action-btn"
+                , onClick ConditionClear
+                , Tooltips.attr "Empty every setting and start over"
+                ]
+                [ text "Clear Settings" ]
+    in
+    case ui.pendingSaveName of
+        Nothing ->
+            [ div [ class "cond-row" ]
+                [ button
+                    [ class "action-btn"
+                    , onClick ConditionPresetSaveStart
+                    , disabled (not canSubmit)
+                    , attribute "aria-disabled"
+                        (if canSubmit then
+                            "false"
+
+                         else
+                            "true"
+                        )
+                    , Tooltips.attr
+                        (if canSubmit then
+                            "Save this configuration as a named preset"
+
+                         else
+                            "Pick a condition first, then Save the preset"
+                        )
+                    ]
+                    [ text "Save" ]
+                , presetLoadControl ui presets
+                , clearButton
+                ]
+            ]
+
+        Just typed ->
+            presetNaming ui presets canSubmit typed
+                ++ [ div [ class "cond-row" ]
+                        [ presetLoadControl ui presets
+                        , clearButton
+                        ]
+                   ]
 
 
 {-| The commit row. Editing an existing condition is a one-row
@@ -560,95 +607,90 @@ applyControls ui canSubmit selectedCount applyLabel =
             ]
 
 
-{-| Save button + inline name prompt. When `pendingSaveName` is
-`Nothing` the button reads "Save"; clicking it reveals the name
-input and switches the buttons to `[name][Save][Cancel]`.
+{-| The rows that name a preset. A name already in the list — the
+GM's own or a bundled one — makes the commit an overwrite, and
+says so.
 -}
-presetSaveControl : ConditionUi -> Bool -> Html Msg
-presetSaveControl ui canSubmit =
-    case ui.pendingSaveName of
-        Nothing ->
-            button
-                [ class "action-btn cond-footer__save"
-                , onClick ConditionPresetSaveStart
-                , disabled (not canSubmit)
-                , attribute "aria-disabled"
-                    (if canSubmit then
-                        "false"
+presetNaming : ConditionUi -> Dict String ConditionPreset -> Bool -> String -> List (Html Msg)
+presetNaming ui presets canSubmit typed =
+    let
+        trimmed =
+            String.trim typed
 
-                     else
-                        "true"
-                    )
-                , Tooltips.attr
-                    (if canSubmit then
-                        "Save this configuration as a named preset"
+        categoryPicked =
+            not (String.isEmpty (String.trim ui.pendingSaveCategory))
 
-                     else
-                        "Pick a condition first, then Save the preset"
-                    )
+        canSaveName =
+            not (String.isEmpty trimmed) && categoryPicked && canSubmit
+
+        overwriting =
+            Dict.member trimmed presets || Dict.member trimmed Bundled.defaults
+
+        commitLabel =
+            if overwriting then
+                "Overwrite existing preset"
+
+            else
+                "Save new preset"
+
+        commitTip =
+            if String.isEmpty trimmed then
+                "Type a name first"
+
+            else if not categoryPicked then
+                "Pick a category first"
+
+            else if overwriting then
+                "Replace the preset of this name with these settings"
+
+            else
+                "Save these settings under this name"
+    in
+    [ div [ class "cond-row" ]
+        [ input
+            [ class "cond-input cond-input--w20"
+            , type_ "text"
+            , value typed
+            , placeholder "Name this preset"
+            , autofocus True
+            , onInput ConditionPresetSaveNameChanged
+            , on "keydown" (enterKeyDecoder ConditionPresetSaveSubmit)
+            ]
+            []
+        ]
+    , div [ class "cond-row" ]
+        [ Html.label [ for "cond-preset-category", class "cond-label" ] [ text "Category:" ]
+        , Html.select
+            [ id "cond-preset-category"
+            , class "cond-select cond-select--grow"
+            , onInput ConditionPresetSaveCategoryChanged
+            , Tooltips.attr "Pick a category for this preset"
+            ]
+            (Html.option
+                [ value ""
+                , Attr.selected (String.isEmpty ui.pendingSaveCategory)
+                , Attr.disabled True
                 ]
-                [ text "Save" ]
-
-        Just typed ->
-            let
-                trimmed =
-                    String.trim typed
-
-                categoryPicked =
-                    not (String.isEmpty (String.trim ui.pendingSaveCategory))
-
-                canSaveName =
-                    not (String.isEmpty trimmed) && categoryPicked && canSubmit
-
-                disabledReason =
-                    if String.isEmpty trimmed then
-                        "Type a name first"
-
-                    else if not categoryPicked then
-                        "Pick a category first"
-
-                    else
-                        "Save preset"
-            in
-            div [ class "cond-footer__save-row" ]
-                [ input
-                    [ class "cond-input cond-input--w20"
-                    , type_ "text"
-                    , value typed
-                    , placeholder "Name this preset"
-                    , autofocus True
-                    , onInput ConditionPresetSaveNameChanged
-                    , on "keydown" (enterKeyDecoder ConditionPresetSaveSubmit)
-                    ]
-                    []
-                , Html.select
-                    [ class "cond-select"
-                    , onInput ConditionPresetSaveCategoryChanged
-                    , attribute "aria-label" "Category"
-                    , Tooltips.attr "Pick a category for this preset"
-                    ]
-                    (Html.option
-                        [ value ""
-                        , Attr.selected (String.isEmpty ui.pendingSaveCategory)
-                        , Attr.disabled True
-                        ]
-                        [ text "Pick category…" ]
-                        :: List.map (categoryOption ui.pendingSaveCategory) Bundled.categories
-                    )
-                , button
-                    [ class "action-btn action-btn--green"
-                    , onClick ConditionPresetSaveSubmit
-                    , disabled (not canSaveName)
-                    , Tooltips.attr disabledReason
-                    ]
-                    [ text "Save" ]
-                , button
-                    [ class "action-btn"
-                    , onClick ConditionPresetSaveCancel
-                    , Tooltips.attr "Cancel"
-                    ]
-                    [ text "Cancel" ]
-                ]
+                [ text "Pick category…" ]
+                :: List.map (categoryOption ui.pendingSaveCategory) Bundled.categories
+            )
+        ]
+    , div [ class "cond-row" ]
+        [ button
+            [ class "action-btn action-btn--green"
+            , onClick ConditionPresetSaveSubmit
+            , disabled (not canSaveName)
+            , Tooltips.attr commitTip
+            ]
+            [ text commitLabel ]
+        , button
+            [ class "action-btn"
+            , onClick ConditionPresetSaveCancel
+            , Tooltips.attr "Cancel"
+            ]
+            [ text "Cancel" ]
+        ]
+    ]
 
 
 categoryOption : String -> String -> Html Msg

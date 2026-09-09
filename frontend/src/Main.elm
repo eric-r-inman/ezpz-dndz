@@ -1430,6 +1430,9 @@ updateInner msg model =
         ConditionDelete ->
             Update.Condition.delete model
 
+        ConditionClear ->
+            Update.Condition.clear model
+
         ConditionPresetSaveStart ->
             Update.Condition.presetSaveStart model
 

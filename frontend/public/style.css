@@ -9550,27 +9550,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-top: var(--space-2);
 }
 
-/* Left-side cluster of the Add-Condition footer: Save preset and
-   Load preset buttons + the Save name-input row when active. */
-.cond-footer__presets {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .cond-footer__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* Inline name-prompt row that replaces the static Save button
-   while the user is naming a preset. */
-.cond-footer__save-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* Load button + dropdown menu container.  `position: relative`

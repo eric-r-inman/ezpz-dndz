@@ -785,6 +785,9 @@ type Msg
     | ConditionSubmit
     | ConditionSubmitSelected
     | ConditionDelete
+      -- Empty every setting of the form, keeping only what it is
+      -- aimed at.
+    | ConditionClear
       -- Save/Load presets for the Add-Condition modal.  The GM
       -- captures a fully-configured form under a user-given name
       -- so common scenarios (e.g. "Stun" with the bearer's-next-

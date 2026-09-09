@@ -1,5 +1,6 @@
 module Update.Condition exposing
-    ( countdownPhaseSet
+    ( clear
+    , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
     , damageTriggered
@@ -414,6 +415,24 @@ saveAutoRollSet mode model =
 
 
 -- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| Empty every setting, keeping the target and the condition being
+edited, if any, so the GM can rebuild the form from nothing.
+-}
+clear : Model -> ( Model, Cmd Msg )
+clear model =
+    ( withConditionUi
+        (\u ->
+            let
+                blank =
+                    ConditionUi.fresh u.target
+            in
+            { blank | editingId = u.editingId }
+        )
+        model
+    , Cmd.none
+    )
 
 
 {-| GM clicked the Save button on the Add-Condition footer. Reveal

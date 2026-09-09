@@ -69,7 +69,7 @@ view presets ui =
 footer : TimerSetupUi -> Dict String TimerPreset -> Html Msg
 footer ui presets =
     div [ class "cond-footer" ]
-        [ div [ class "cond-footer__presets" ]
+        [ div [ class "cond-row" ]
             [ presetSaveControl ui
             , presetLoadControl ui presets
             ]
@@ -91,7 +91,7 @@ presetSaveControl ui =
     case ui.pendingSaveName of
         Nothing ->
             button
-                [ class "action-btn cond-footer__save"
+                [ class "action-btn"
                 , onClick TimerPresetSaveStart
                 , Tooltips.attr "Save this configuration as a named preset"
                 ]
@@ -105,7 +105,7 @@ presetSaveControl ui =
                 canSaveName =
                     not (String.isEmpty trimmed)
             in
-            div [ class "cond-footer__save-row" ]
+            div [ class "cond-row" ]
                 [ input
                     [ class "cond-input cond-input--w20"
                     , type_ "text"

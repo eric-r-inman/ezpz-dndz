@@ -302,6 +302,11 @@
 112. Every editor spaces its rows the same distance from the lines between its
      sections and from its bottom edge.  No action needed.
 113. The Initiative editor's typed-value row reads "or Set:".  No action needed.
+114. Naming a Condition/Effect preset spreads its controls over rows that fit
+     the panel, and its Save button reads "Overwrite existing preset" when the
+     name is already taken.  No action needed.
+115. The Condition/Effect editor gains a "Clear Settings" button that empties
+     the form.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
