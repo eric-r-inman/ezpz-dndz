@@ -39,6 +39,9 @@ pub struct SaveToEnd {
   pub bonus_text: String,
   pub bonus: i64,
   pub auto_roll: String,
+  /// The failed-save outcome as typed, `""` when unset.
+  pub fail_damage: String,
+  pub fail_becomes: String,
 }
 
 /// The condition-presets feature: a name-keyed preset dict per user.
@@ -85,9 +88,10 @@ impl PerUserFeature for ConditionPresets {
          condition_name, custom_name, note, duration_kind, \
          until_phase, countdown_turns_text, countdown_turns, \
          countdown_phase, save_ability, save_dc_text, save_dc, \
-         save_bonus_text, save_bonus, save_auto_roll, category) \
+         save_bonus_text, save_bonus, save_auto_roll, category, \
+         save_fail_damage, save_fail_becomes) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, \
-         $13, $14, $15, $16, $17)",
+         $13, $14, $15, $16, $17, $18, $19)",
       )
       .bind(user_id.as_str())
       .bind(key)
@@ -106,6 +110,8 @@ impl PerUserFeature for ConditionPresets {
       .bind(preset.save_to_end.as_ref().map(|s| s.bonus))
       .bind(preset.save_to_end.as_ref().map(|s| s.auto_roll.clone()))
       .bind(&preset.category)
+      .bind(preset.save_to_end.as_ref().map(|s| s.fail_damage.clone()))
+      .bind(preset.save_to_end.as_ref().map(|s| s.fail_becomes.clone()))
       .execute(&mut *conn)
       .await?;
     }
@@ -131,7 +137,8 @@ impl PerUserFeature for ConditionPresets {
       "SELECT preset_key, condition_name, custom_name, note, \
        duration_kind, until_phase, countdown_turns_text, \
        countdown_turns, countdown_phase, save_ability, save_dc_text, \
-       save_dc, save_bonus_text, save_bonus, save_auto_roll, category \
+       save_dc, save_bonus_text, save_bonus, save_auto_roll, category, \
+       save_fail_damage, save_fail_becomes \
        FROM condition_presets WHERE user_id = $1",
     )
     .bind(user_id.as_str())
@@ -181,6 +188,12 @@ fn save_to_end_from_row(
         auto_roll: row
           .try_get::<Option<String>, _>("save_auto_roll")?
           .unwrap_or_else(|| "atEnd".to_string()),
+        fail_damage: row
+          .try_get::<Option<String>, _>("save_fail_damage")?
+          .unwrap_or_default(),
+        fail_becomes: row
+          .try_get::<Option<String>, _>("save_fail_becomes")?
+          .unwrap_or_default(),
       })
     })
     .transpose()
@@ -250,6 +263,8 @@ fn decode_save_to_end(
             ))
           }
         },
+        fail_damage: opt_str_or(inner, "failDamage", ""),
+        fail_becomes: opt_str_or(inner, "failBecomes", ""),
       }))
     }
   }
@@ -272,6 +287,8 @@ fn encode_preset(preset: &Preset) -> Value {
       "bonusText": s.bonus_text,
       "bonus": s.bonus,
       "autoRoll": s.auto_roll,
+      "failDamage": s.fail_damage,
+      "failBecomes": s.fail_becomes,
     })),
     "category": preset.category,
   })

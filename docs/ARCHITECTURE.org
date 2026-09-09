@@ -525,7 +525,7 @@ their other inputs.  No session, no user → 401 with a JSON body.
 ** Per-user data shapes
 
 Every store is a family of relational tables keyed by ~user_id~ (with ~ON DELETE
-CASCADE~ back to ~users~), defined across the four migrations under
+CASCADE~ back to ~users~), defined across the migrations under
 =crates/lib/migrations/=:
 
 | Table family                     | Migration | Notes                                                              |
@@ -533,14 +533,14 @@ CASCADE~ back to ~users~), defined across the four migrations under
 | ~users~                          | 0001      | One row per account; uniqueness enforced case-insensitively on email. |
 | ~dice_rolls~ (+ ~_expression_dice~ / ~_groups~ / ~_faces~ / ~_extras~ children) | 0001 | Fully normalized roll log; 30-entry cap is per-user.  Unknown top-level scalar fields round-trip via ~dice_roll_extras~. |
 | ~lore_group_sets~ → ~lore_groups~ → ~lore_group_members~ | 0002 | One of the five preset families; the ~_sets~ row is the presence parent (see below). |
-| ~condition_preset_sets~ → ~condition_presets~ | 0002 | Saved Add-Condition forms.                                        |
-| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002 | Save Chain preset recipes.                                        |
+| ~condition_preset_sets~ → ~condition_presets~ | 0002, 0005 | Saved Add-Condition forms.                                        |
+| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002, 0005 | Save Chain preset recipes.                                        |
 | ~treasure_table_sets~ → brackets / individual rows / hoard rows / name entries / flat items / roll specs | 0002 | The user's singular treasure table. |
 | ~treasure_profile_sets~ → ~treasure_profiles~ | 0002 | Named "Tune your rolls" presets.                                  |
 | ~user_creatures~ (+ 10 children: saving throws, skills, damage relations, string lists, features, legendary options, custom sections, spell levels, innate groups, spell names) | 0003 | Per-user creature edits + creations + duplicates of bundled.  Every ~Creature~ scalar is a column; the four Option packs (legendary / lair / regional / spellcasting) flatten as all-null-together groups.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
 | ~compendium_groups~ → ~compendium_group_entries~ | 0003 | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
 | ~compendium_saves~ → ~compendium_save_nodes~ | 0003 | Named compendium snapshots: typed metadata (name + timestamps) over a contractually opaque body stored as a relational JSON node tree — one row per node, numbers kept as their canonical serde token so int/float fidelity survives.  Save-name uniqueness is per-user. |
-| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
+| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004, 0005 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
 | ~encounter_saves~ → ~encounter_save_nodes~ | 0004 | Named encounter saves; same metadata-over-node-tree shape as compendium saves.  Alice + Bob can both have a "Goblin Ambush". |
 
 The five preset families share a *presence-parent* pattern: ~GET~ returns ~null~
@@ -1395,6 +1395,19 @@ already active, so re-clicking the same badge backs out instead of doing
 nothing.  Duration-kind and auto-roll-mode controls remain true radios (no
 deselect-on- reclick) — there's always exactly one duration kind and one roll
 mode.
+
+A save-to-end may carry a failed-save outcome — damage the bearer takes, a
+condition the chip turns into, or both — which ~Update.Condition.saveLanded~
+resolves after the roll: the rename clears the save, since a second failure that
+petrifies leaves nothing to save against, and a formula's damage rolls through
+its own landing message.  The Save Chain editor writes the same record onto the
+conditions it applies, and draws the Condition editor's duration picker
+(=View.Inline.DurationPicker=) beneath every effect and beside its success-side
+immunity.  A preset can't name the creature an "until turn" watches, so its
+~EffectDuration~ names a role — the target, the active creature — that
+~Encounter.SaveChain.resolveDuration~ settles against the encounter at apply
+time, by the Condition editor's own rules for "next turn" and the countdown's
+first tick.
 
 * Per-surface preset pattern
 

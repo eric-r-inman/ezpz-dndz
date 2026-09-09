@@ -289,9 +289,9 @@ async fn insert_condition(
      condition_id, name, note, duration_kind, duration_phase, \
      duration_target, duration_name, duration_remaining, \
      duration_skip_next, save_ability, save_dc, save_bonus, \
-     save_auto_roll) \
+     save_auto_roll, save_fail_damage, save_fail_becomes) \
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, \
-     $15)",
+     $15, $16, $17)",
   )
   .bind(row_id)
   .bind(position)
@@ -308,6 +308,8 @@ async fn insert_condition(
   .bind(save.map(|s| s.dc))
   .bind(save.map(|s| s.bonus))
   .bind(save.map(|s| s.auto_roll.clone()))
+  .bind(save.and_then(|s| s.fail_damage.clone()))
+  .bind(save.and_then(|s| s.fail_becomes.clone()))
   .execute(&mut *conn)
   .await
   .map_err(write_error)?;
@@ -851,6 +853,8 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
           .map_err(read_error)?
           .unwrap_or_default(),
         auto_roll: opt_text("save_auto_roll")?.unwrap_or_default(),
+        fail_damage: opt_text("save_fail_damage")?,
+        fail_becomes: opt_text("save_fail_becomes")?,
       })
     })
     .transpose()?;

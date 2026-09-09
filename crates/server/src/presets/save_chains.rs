@@ -15,6 +15,10 @@
 //!   (`"manual"` / `"at_begin"` / `"at_end"`; unknown strings →
 //!   null), the pre-mode bool (`true` → `"at_end"`, `false` → null),
 //!   and null / absent.
+//! - An effect's `duration`, its `on_failed_save`, and a chain's
+//!   `immunity` may be absent: an effect then lasts until removed,
+//!   a save has no failed-save outcome, and a chain grants no
+//!   immunity.  An unknown duration kind reads as until-removed.
 //! - An HP `amount` may be a string (`"8d6"`) or a legacy int.
 //!
 //! One deliberate server-side extra beyond the Elm decoder: the
@@ -24,8 +28,9 @@
 //! Elm record-field spelling.
 //!
 //! The encoder emits the canonical current shape: HP effects flatten
-//! to `{kind}` / `{kind, amount}` objects and `save_to_end` is the
-//! string enum or null.
+//! to `{kind}` / `{kind, amount}` objects, `save_to_end` is the string
+//! enum or null, `on_failed_save` is an object whenever the effect has
+//! a save and null otherwise, and every effect carries its `duration`.
 
 use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::{json, Map, Value};
@@ -33,7 +38,7 @@ use sqlx::{AnyConnection, Row};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-use super::{as_object, opt_str_or, req_str};
+use super::{as_object, opt_i64_or, opt_str_or, req_str};
 use crate::per_user_store::PerUserFeature;
 
 pub struct Chain {
@@ -42,6 +47,7 @@ pub struct Chain {
   pub save_dc: Option<i64>,
   pub on_fail: Outcome,
   pub on_success: Outcome,
+  pub immunity: Option<Duration>,
 }
 
 #[derive(Default)]
@@ -62,7 +68,44 @@ pub enum HpEffect {
 pub struct Effect {
   pub name: String,
   pub note: String,
-  pub save_to_end: Option<String>,
+  pub save_to_end: Option<EffectSave>,
+  pub duration: Duration,
+}
+
+/// The save an effect opts into: when it rolls, and what a failure
+/// does beyond leaving the condition in place.
+pub struct EffectSave {
+  pub mode: String,
+  pub on_failed_save: FailedSave,
+}
+
+#[derive(Default)]
+pub struct FailedSave {
+  pub damage: Option<String>,
+  pub becomes: Option<String>,
+}
+
+/// How long an applied effect (or a granted immunity) lasts, in
+/// the preset's relative terms.
+#[derive(Default)]
+pub enum Duration {
+  #[default]
+  Manual,
+  UntilTurn {
+    phase: String,
+    of: TurnRef,
+  },
+  Countdown {
+    phase: String,
+    turns: i64,
+  },
+  OneMinute,
+}
+
+pub enum TurnRef {
+  Bearer,
+  Active,
+  Named(String),
 }
 
 /// The Save Chain presets feature: a name-keyed chain dict per user.
@@ -103,11 +146,14 @@ impl PerUserFeature for SaveChains {
       let chain_id = Uuid::new_v4().to_string();
       let (fail_kind, fail_amount) = hp_columns(&chain.on_fail.hp);
       let (success_kind, success_amount) = hp_columns(&chain.on_success.hp);
+      let immunity = duration_columns(chain.immunity.as_ref());
       sqlx::query(
         "INSERT INTO save_chains (id, user_id, preset_key, name, \
          save_ability, save_dc, fail_hp_kind, fail_hp_amount, \
-         success_hp_kind, success_hp_amount) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+         success_hp_kind, success_hp_amount, immunity_kind, \
+         immunity_phase, immunity_of, immunity_name, immunity_turns) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, \
+         $14, $15)",
       )
       .bind(&chain_id)
       .bind(user_id.as_str())
@@ -119,6 +165,11 @@ impl PerUserFeature for SaveChains {
       .bind(fail_amount)
       .bind(success_kind)
       .bind(success_amount)
+      .bind(immunity.kind)
+      .bind(immunity.phase)
+      .bind(immunity.of)
+      .bind(immunity.name)
+      .bind(immunity.turns)
       .execute(&mut *conn)
       .await?;
 
@@ -127,17 +178,29 @@ impl PerUserFeature for SaveChains {
         ("success", &chain.on_success.effects),
       ] {
         for (i, effect) in effects.iter().enumerate() {
+          let duration = duration_columns(Some(&effect.duration));
+          let save = effect.save_to_end.as_ref();
           sqlx::query(
             "INSERT INTO save_chain_effects (chain_id, side, \
-             position, name, note, save_to_end) \
-             VALUES ($1, $2, $3, $4, $5, $6)",
+             position, name, note, save_to_end, duration_kind, \
+             duration_phase, duration_of, duration_name, \
+             duration_turns, fail_damage, fail_becomes) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, \
+             $12, $13)",
           )
           .bind(&chain_id)
           .bind(side)
           .bind(i as i64)
           .bind(&effect.name)
           .bind(&effect.note)
-          .bind(&effect.save_to_end)
+          .bind(save.map(|s| s.mode.clone()))
+          .bind(duration.kind)
+          .bind(duration.phase)
+          .bind(duration.of)
+          .bind(duration.name)
+          .bind(duration.turns)
+          .bind(save.and_then(|s| s.on_failed_save.damage.clone()))
+          .bind(save.and_then(|s| s.on_failed_save.becomes.clone()))
           .execute(&mut *conn)
           .await?;
         }
@@ -162,7 +225,8 @@ impl PerUserFeature for SaveChains {
     let mut chains: Vec<(String, String, Chain)> = sqlx::query(
       "SELECT id, preset_key, name, save_ability, save_dc, \
        fail_hp_kind, fail_hp_amount, success_hp_kind, \
-       success_hp_amount \
+       success_hp_amount, immunity_kind, immunity_phase, immunity_of, \
+       immunity_name, immunity_turns \
        FROM save_chains WHERE user_id = $1",
     )
     .bind(user_id.as_str())
@@ -191,13 +255,22 @@ impl PerUserFeature for SaveChains {
             ),
             effects: Vec::new(),
           },
+          immunity: duration_from_columns(DurationColumns {
+            kind: row.try_get("immunity_kind")?,
+            phase: row.try_get("immunity_phase")?,
+            of: row.try_get("immunity_of")?,
+            name: row.try_get("immunity_name")?,
+            turns: row.try_get("immunity_turns")?,
+          }),
         },
       ))
     })
     .collect::<Result<_, _>>()?;
 
     for row in sqlx::query(
-      "SELECT e.chain_id, e.side, e.name, e.note, e.save_to_end \
+      "SELECT e.chain_id, e.side, e.name, e.note, e.save_to_end, \
+       e.duration_kind, e.duration_phase, e.duration_of, \
+       e.duration_name, e.duration_turns, e.fail_damage, e.fail_becomes \
        FROM save_chain_effects e \
        JOIN save_chains c ON c.id = e.chain_id \
        WHERE c.user_id = $1 ORDER BY e.position",
@@ -216,10 +289,30 @@ impl PerUserFeature for SaveChains {
         } else {
           &mut chain.on_fail
         };
+        let save_to_end = row
+          .try_get::<Option<String>, _>("save_to_end")?
+          .map(|mode| {
+            Ok::<_, sqlx::Error>(EffectSave {
+              mode,
+              on_failed_save: FailedSave {
+                damage: row.try_get("fail_damage")?,
+                becomes: row.try_get("fail_becomes")?,
+              },
+            })
+          })
+          .transpose()?;
         outcome.effects.push(Effect {
           name: row.try_get("name")?,
           note: row.try_get("note")?,
-          save_to_end: row.try_get("save_to_end")?,
+          save_to_end,
+          duration: duration_from_columns(DurationColumns {
+            kind: row.try_get("duration_kind")?,
+            phase: row.try_get("duration_phase")?,
+            of: row.try_get("duration_of")?,
+            name: row.try_get("duration_name")?,
+            turns: row.try_get("duration_turns")?,
+          })
+          .unwrap_or_default(),
         });
       }
     }
@@ -253,6 +346,99 @@ fn hp_from_columns(kind: &str, amount: Option<String>) -> HpEffect {
   }
 }
 
+/// The five columns a duration spreads across.  `kind` is NULL only
+/// for an absent immunity; an effect always has a kind.
+struct DurationColumns {
+  kind: Option<String>,
+  phase: Option<String>,
+  of: Option<String>,
+  name: Option<String>,
+  turns: Option<i64>,
+}
+
+fn duration_columns(duration: Option<&Duration>) -> DurationColumns {
+  let none = DurationColumns {
+    kind: None,
+    phase: None,
+    of: None,
+    name: None,
+    turns: None,
+  };
+  match duration {
+    None => none,
+    Some(Duration::Manual) => DurationColumns {
+      kind: Some("manual".to_string()),
+      ..none
+    },
+    Some(Duration::UntilTurn { phase, of }) => {
+      let (of_token, name) = turn_ref_parts(of);
+      DurationColumns {
+        kind: Some("until_turn".to_string()),
+        phase: Some(phase.clone()),
+        of: Some(of_token.to_string()),
+        name,
+        turns: None,
+      }
+    }
+    Some(Duration::Countdown { phase, turns }) => DurationColumns {
+      kind: Some("countdown".to_string()),
+      phase: Some(phase.clone()),
+      turns: Some(*turns),
+      ..none
+    },
+    Some(Duration::OneMinute) => DurationColumns {
+      kind: Some("one_minute".to_string()),
+      ..none
+    },
+  }
+}
+
+fn duration_from_columns(columns: DurationColumns) -> Option<Duration> {
+  columns.kind.map(|kind| match kind.as_str() {
+    "until_turn" => Duration::UntilTurn {
+      phase: phase_or_end(columns.phase.as_deref()),
+      of: turn_ref(columns.of.as_deref(), columns.name),
+    },
+    "countdown" => Duration::Countdown {
+      phase: phase_or_end(columns.phase.as_deref()),
+      turns: columns.turns.unwrap_or(1),
+    },
+    "one_minute" => Duration::OneMinute,
+    _ => Duration::Manual,
+  })
+}
+
+/// The reference's token and, for a named creature, its name — the
+/// wire's `of` / `name` pair and the columns' `duration_of` /
+/// `duration_name` pair alike.
+fn turn_ref_parts(of: &TurnRef) -> (&'static str, Option<String>) {
+  match of {
+    TurnRef::Bearer => ("bearer", None),
+    TurnRef::Active => ("active", None),
+    TurnRef::Named(name) => ("named", Some(name.clone())),
+  }
+}
+
+/// The Elm decoder reads any token but `active` and `named` as the
+/// bearer.
+fn turn_ref(token: Option<&str>, name: Option<String>) -> TurnRef {
+  match token {
+    Some("active") => TurnRef::Active,
+    Some("named") => TurnRef::Named(name.unwrap_or_default()),
+    _ => TurnRef::Bearer,
+  }
+}
+
+/// The Elm decoder reads anything but `at_begin` as the end of the
+/// turn.
+fn phase_or_end(phase: Option<&str>) -> String {
+  if phase == Some("at_begin") {
+    "at_begin".to_string()
+  } else {
+    "at_end".to_string()
+  }
+}
+
 // ── decode ───────────────────────────────────────────────────────────────────
 
 fn decode_chain(raw: &Value, key: &str) -> Result<Chain, String> {
@@ -266,6 +452,7 @@ fn decode_chain(raw: &Value, key: &str) -> Result<Chain, String> {
     save_dc: map.get("save_dc").and_then(Value::as_i64),
     on_fail: decode_outcome(map.get("on_fail")),
     on_success: decode_outcome(map.get("on_success")),
+    immunity: decode_duration(map.get("immunity")),
   })
 }
 
@@ -325,6 +512,7 @@ fn decode_effects(map: &Map<String, Value>) -> Vec<Effect> {
           name,
           note: opt_str_or(map, "condition_note", ""),
           save_to_end: None,
+          duration: Duration::Manual,
         }]
       }
     })
@@ -337,7 +525,14 @@ fn decode_effect(raw: &Value) -> Option<Effect> {
   Some(Effect {
     name: map.get("name").and_then(Value::as_str)?.to_string(),
     note: opt_str_or(map, "note", ""),
-    save_to_end: decode_save_to_end(map.get("save_to_end")),
+    save_to_end: decode_save_to_end(map.get("save_to_end")).map(|mode| {
+      EffectSave {
+        mode,
+        on_failed_save: decode_failed_save(map.get("on_failed_save"))
+          .unwrap_or_default(),
+      }
+    }),
+    duration: decode_duration(map.get("duration")).unwrap_or_default(),
   })
 }
 
@@ -353,6 +548,43 @@ fn decode_save_to_end(raw: Option<&Value>) -> Option<String> {
     Some(Value::Bool(true)) => Some("at_end".to_string()),
     _ => None,
   }
+}
+
+/// An `on_failed_save` object; null, absent, or another type is no
+/// outcome.
+fn decode_failed_save(raw: Option<&Value>) -> Option<FailedSave> {
+  raw.and_then(Value::as_object).map(|map| FailedSave {
+    damage: map
+      .get("damage")
+      .and_then(Value::as_str)
+      .map(str::to_string),
+    becomes: map
+      .get("becomes")
+      .and_then(Value::as_str)
+      .map(str::to_string),
+  })
+}
+
+/// A duration object; null, absent, or another type is no duration,
+/// and an unknown kind is until-removed, as `durationDecoder` reads it.
+fn decode_duration(raw: Option<&Value>) -> Option<Duration> {
+  raw.and_then(Value::as_object).map(|map| {
+    match opt_str_or(map, "kind", "manual").as_str() {
+      "until_turn" => Duration::UntilTurn {
+        phase: phase_or_end(map.get("phase").and_then(Value::as_str)),
+        of: turn_ref(
+          map.get("of").and_then(Value::as_str),
+          map.get("name").and_then(Value::as_str).map(str::to_string),
+        ),
+      },
+      "countdown" => Duration::Countdown {
+        phase: phase_or_end(map.get("phase").and_then(Value::as_str)),
+        turns: opt_i64_or(map, "turns", 1),
+      },
+      "one_minute" => Duration::OneMinute,
+      _ => Duration::Manual,
+    }
+  })
 }
 
 /// `optionalField "hp" hpEffectDecoder NoHpEffect`: a missing kind,
@@ -387,6 +619,7 @@ fn encode_chain(chain: &Chain) -> Value {
     "save_dc": chain.save_dc,
     "on_fail": encode_outcome(&chain.on_fail),
     "on_success": encode_outcome(&chain.on_success),
+    "immunity": chain.immunity.as_ref().map_or(Value::Null, encode_duration),
   })
 }
 
@@ -407,9 +640,44 @@ fn encode_hp(hp: &HpEffect) -> Value {
 }
 
 fn encode_effect(effect: &Effect) -> Value {
+  let save = effect.save_to_end.as_ref();
   json!({
     "name": effect.name,
     "note": effect.note,
-    "save_to_end": effect.save_to_end,
+    "save_to_end": save.map(|s| s.mode.clone()),
+    "on_failed_save": save
+      .map_or(Value::Null, |s| encode_failed_save(&s.on_failed_save)),
+    "duration": encode_duration(&effect.duration),
   })
+}
+
+fn encode_failed_save(failed: &FailedSave) -> Value {
+  json!({
+    "damage": failed.damage,
+    "becomes": failed.becomes,
+  })
+}
+
+fn encode_duration(duration: &Duration) -> Value {
+  match duration {
+    Duration::Manual => json!({ "kind": "manual" }),
+    Duration::UntilTurn { phase, of } => {
+      let (of_token, name) = turn_ref_parts(of);
+      Value::Object(
+        [
+          ("kind", json!("until_turn")),
+          ("phase", json!(phase)),
+          ("of", json!(of_token)),
+        ]
+        .into_iter()
+        .chain(name.map(|n| ("name", json!(n))))
+        .map(|(key, value)| (key.to_string(), value))
+        .collect(),
+      )
+    }
+    Duration::Countdown { phase, turns } => {
+      json!({ "kind": "countdown", "phase": phase, "turns": turns })
+    }
+    Duration::OneMinute => json!({ "kind": "one_minute" }),
+  }
 }

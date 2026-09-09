@@ -5,6 +5,7 @@ module Update.Condition exposing
     , delete
     , durationKindSet
     , durationOneMinute
+    , failDamageLanded
     , maxConditionNoteLength
     , noteChanged
     , openEdit
@@ -27,6 +28,8 @@ module Update.Condition exposing
     , saveBonusAdjust
     , saveBonusChanged
     , saveDcChanged
+    , saveFailBecomesChanged
+    , saveFailDamageChanged
     , saveLanded
     , saveNoticeDismiss
     , saveToggle
@@ -49,6 +52,7 @@ import Dice
 import Dict
 import Effects
 import Encounter
+import HpChange
 import Model exposing (Model, Surface(..))
 import Msg
     exposing
@@ -359,6 +363,24 @@ saveBonusAdjust delta model =
                         u.saveToEnd
             }
         )
+        model
+    , Cmd.none
+    )
+
+
+saveFailDamageChanged : String -> Model -> ( Model, Cmd Msg )
+saveFailDamageChanged text model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | failDamageText = text }) u.saveToEnd })
+        model
+    , Cmd.none
+    )
+
+
+saveFailBecomesChanged : String -> Model -> ( Model, Cmd Msg )
+saveFailBecomesChanged text model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | failBecomesText = text }) u.saveToEnd })
         model
     , Cmd.none
     )
@@ -753,47 +775,130 @@ rollSave name id model =
 
 
 {-| Save resolves: `roll.total >= dc` means the condition ends.
-Look up the condition name BEFORE we remove it so a success can
-post a "Saved: <name>" notice with the right label, whether the
-roll was auto-fired or the GM clicked the chip's own d20.
+Look up the condition BEFORE we remove it so a success can post a
+"Saved: <name>" notice with the right label, whether the roll was
+auto-fired or the GM clicked the chip's own d20. A failure hands
+off to the condition's failed-save outcome, if it has one.
 -}
 saveLanded : String -> Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 saveLanded name id dc roll model =
     let
-        conditionName =
+        found =
             Encounter.findCondition name id model.encounter
-                |> Maybe.map (\( _, cond ) -> cond.name)
+                |> Maybe.map Tuple.second
 
-        succeeded =
-            roll.total >= dc
-
-        m1 =
-            if succeeded then
+        ( m1, failCmd ) =
+            if roll.total >= dc then
                 let
                     removed =
                         { model
                             | encounter = Encounter.removeCondition name id model.encounter
                         }
                 in
-                case conditionName of
-                    Just label ->
-                        { removed
+                case found of
+                    Just cond ->
+                        ( { removed
                             | encounter =
-                                Encounter.addSaveNotice name label removed.encounter
-                        }
+                                Encounter.addSaveNotice name cond.name removed.encounter
+                          }
+                        , Cmd.none
+                        )
 
                     Nothing ->
-                        removed
+                        ( removed, Cmd.none )
 
             else
-                model
+                failedSave name id found model
 
         ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll m1
     in
     ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd, failCmd ]
+    )
+
+
+{-| A failed repeat save: the condition becomes what the spec says
+it becomes — which also ends the saving, as a second failure that
+petrifies leaves nothing to save against — and the bearer takes
+the spec's damage, an integer at once and a formula through a
+roll of its own.
+-}
+failedSave : String -> Int -> Maybe Encounter.Condition -> Model -> ( Model, Cmd Msg )
+failedSave name id found model =
+    case Maybe.andThen .saveToEnd found of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just spec ->
+            let
+                label =
+                    found |> Maybe.map .name |> Maybe.withDefault ""
+
+                renamed =
+                    case spec.onFail.becomes of
+                        Just newName ->
+                            { model
+                                | encounter =
+                                    Encounter.updateCondition name
+                                        id
+                                        (\c -> { c | name = newName, saveToEnd = Nothing })
+                                        model.encounter
+                            }
+
+                        Nothing ->
+                            model
+            in
+            case Maybe.map String.trim spec.onFail.damage of
+                Nothing ->
+                    ( renamed, Cmd.none )
+
+                Just raw ->
+                    case String.toInt raw of
+                        Just n ->
+                            ( { renamed | encounter = damageBearer name n renamed.encounter }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            case Dice.parse raw of
+                                Ok expr ->
+                                    ( renamed
+                                    , Dice.rollCmd (ConditionFailDamageLanded name)
+                                        { feature = "Failed save: " ++ label, target = Just name }
+                                        expr
+                                    )
+
+                                Err _ ->
+                                    ( renamed, Cmd.none )
+
+
+{-| The damage roll a failed save fired has landed on the bearer.
+-}
+failDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+failDamageLanded name roll model =
+    let
+        ( pushed, broadcastCmd ) =
+            Effects.pushDiceRoll roll
+                { model | encounter = damageBearer name roll.total model.encounter }
+    in
+    ( pushed
     , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
+
+
+damageBearer : String -> Int -> Encounter.Encounter -> Encounter.Encounter
+damageBearer name amount enc =
+    Encounter.mapCreature name (HpChange.apply (HpChange.Damage amount)) enc
+
+
+nonBlank : String -> Maybe String
+nonBlank text =
+    if String.isEmpty (String.trim text) then
+        Nothing
+
+    else
+        Just (String.trim text)
 
 
 saveNoticeDismiss : String -> Int -> Model -> ( Model, Cmd Msg )
@@ -858,6 +963,10 @@ commitCondition targets ui name model =
                     , dc = s.dc
                     , bonus = s.bonus
                     , autoRoll = s.autoRoll
+                    , onFail =
+                        { damage = nonBlank s.failDamageText
+                        , becomes = nonBlank s.failBecomesText
+                        }
                     }
                 )
                 ui.saveToEnd

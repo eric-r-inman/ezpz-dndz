@@ -12203,14 +12203,24 @@ button.quick-list-card {
    beneath an effect when its Save-to-end checkbox is on.
    Indented + muted so the sub-row reads as configuration
    for the effect above it, not as a separate row. */
-.save-chain__effect-autoroll {
+.save-chain__effect-autoroll,
+.save-chain__effect-subrow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding-left: 16px;
+  padding-left: var(--space-4);
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+/* The duration picker beneath an effect, indented like the
+   sub-rows but stacked, since its grid and sub-row are blocks. */
+.save-chain__effect-duration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
 }
 
 .save-chain__autoroll-radio {

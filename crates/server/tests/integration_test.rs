@@ -1895,7 +1895,13 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
         "name": "Restrained",
         "note": "net",
         "duration": { "kind": "manual" },
-        "saveToEnd": { "ability": "STR", "dc": 15, "bonus": 4, "autoRoll": "atEnd" }
+        "saveToEnd": {
+          "ability": "STR",
+          "dc": 15,
+          "bonus": 4,
+          "autoRoll": "atEnd",
+          "onFail": { "damage": "1d6", "becomes": null }
+        }
       },
       {
         "id": 2,

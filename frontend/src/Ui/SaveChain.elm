@@ -24,7 +24,7 @@ without doubling the Msg surface.
 -}
 
 import Compendium exposing (Ability(..))
-import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration, HpEffect(..), SaveChain, SaveOutcome)
 import Msg exposing (SaveChainSide)
 
 
@@ -39,6 +39,10 @@ type alias SaveChainUi =
     , dcText : String
     , onFail : OutcomeForm
     , onSuccess : OutcomeForm
+
+    -- The immunity a successful save grants, for how long;
+    -- `Nothing` when the chain grants none.
+    , immunity : Maybe EffectDuration
 
     -- Preset picker state.  `presetPickerSelection` is the raw
     -- <select> value the user has clicked; `loadedPresetName`
@@ -73,6 +77,7 @@ fresh target =
     , dcText = ""
     , onFail = freshOutcome
     , onSuccess = freshOutcome
+    , immunity = Nothing
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
     }
@@ -104,6 +109,7 @@ fromChain baseline chain =
                     ""
         , onFail = outcomeToForm chain.onFail
         , onSuccess = outcomeToForm chain.onSuccess
+        , immunity = chain.immunity
         , loadedPresetName =
             if String.isEmpty chain.name then
                 Nothing
@@ -142,6 +148,7 @@ toChain ui =
     , saveDc = parseOptionalInt ui.dcText
     , onFail = formToOutcome ui.onFail
     , onSuccess = formToOutcome ui.onSuccess
+    , immunity = ui.immunity
     }
 
 

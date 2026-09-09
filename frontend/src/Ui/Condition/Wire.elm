@@ -167,18 +167,22 @@ encodeSaveToEnd s =
         , ( "bonusText", E.string s.bonusText )
         , ( "bonus", E.int s.bonus )
         , ( "autoRoll", encodeAutoRoll s.autoRoll )
+        , ( "failDamage", E.string s.failDamageText )
+        , ( "failBecomes", E.string s.failBecomesText )
         ]
 
 
 decodeSaveToEnd : D.Decoder SaveToEndUi
 decodeSaveToEnd =
-    D.map6 SaveToEndUi
+    D.map8 SaveToEndUi
         (D.field "ability" D.string)
         (D.field "dcText" D.string)
         (D.field "dc" D.int)
         (D.field "bonusText" D.string)
         (D.field "bonus" D.int)
         (D.field "autoRoll" decodeAutoRoll)
+        (D.oneOf [ D.field "failDamage" D.string, D.succeed "" ])
+        (D.oneOf [ D.field "failBecomes" D.string, D.succeed "" ])
 
 
 encodeAutoRoll : Encounter.AutoRollMode -> E.Value

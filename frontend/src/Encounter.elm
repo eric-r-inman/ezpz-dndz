@@ -1,6 +1,7 @@
 module Encounter exposing
     ( Cover(..), Creature, DeathSaves, Encounter
     , Condition, ConditionDraft, Duration(..), TurnPhase(..), TurnTarget(..), SaveToEnd
+    , FailedSave, noFailedSave
     , AutoRollMode(..)
     , SaveNotice
     , Timer
@@ -33,6 +34,7 @@ damage), it belongs here.
 
 @docs Cover, Creature, DeathSaves, Encounter
 @docs Condition, ConditionDraft, Duration, TurnPhase, TurnTarget, SaveToEnd
+@docs FailedSave, noFailedSave
 @docs AutoRollMode
 @docs SaveNotice
 @docs Timer
@@ -260,7 +262,24 @@ type alias SaveToEnd =
     , dc : Int
     , bonus : Int
     , autoRoll : AutoRollMode
+    , onFail : FailedSave
     }
+
+
+{-| What a failed repeat save does beyond leaving the condition in
+place: `damage` is a dice formula or integer the bearer takes,
+and `becomes` renames the condition — a second failure turning
+Restrained into Petrified — after which the saving stops.
+-}
+type alias FailedSave =
+    { damage : Maybe String
+    , becomes : Maybe String
+    }
+
+
+noFailedSave : FailedSave
+noFailedSave =
+    { damage = Nothing, becomes = Nothing }
 
 
 {-| When the save-to-end roll fires.

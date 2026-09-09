@@ -7,7 +7,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , outcomeEffectAutoRollSet, outcomeEffectSaveToEndToggle, restoreBundled
+    , immunityDurationEdit, immunityToggle, outcomeEffectAutoRollSet, outcomeEffectDurationEdit, outcomeEffectFailBecomesChanged, outcomeEffectFailDamageChanged, outcomeEffectSaveToEndToggle, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -43,13 +43,15 @@ import Encounter.SaveChain.Bundled
 import Model exposing (Model, Surface(..))
 import Msg
     exposing
-        ( Msg(..)
+        ( DurationEdit
+        , Msg(..)
         , SaveChainHpKind(..)
         , SaveChainRollMode(..)
         , SaveChainSide(..)
         )
 import Random
 import Ui.Compendium exposing (CompendiumDb(..))
+import Ui.DurationEdit
 import Ui.SaveChain as UiSaveChain exposing (OutcomeForm, SaveChainUi)
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
@@ -198,7 +200,10 @@ outcomeEffectSaveToEndToggle side idx model =
                                                 Nothing
 
                                             Nothing ->
-                                                Just Encounter.AutoRollAtEnd
+                                                Just
+                                                    { autoRoll = Encounter.AutoRollAtEnd
+                                                    , onFail = Encounter.noFailedSave
+                                                    }
                                 }
                             )
                             o.effects
@@ -223,12 +228,91 @@ outcomeEffectAutoRollSet side idx mode model =
                 { o
                     | effects =
                         updateAt idx
-                            (\e -> { e | saveToEnd = Just mode })
+                            (\e -> { e | saveToEnd = Maybe.map (\s -> { s | autoRoll = mode }) e.saveToEnd })
                             o.effects
                 }
             )
         )
         model
+    , Cmd.none
+    )
+
+
+outcomeEffectDurationEdit : SaveChainSide -> Int -> DurationEdit -> Model -> ( Model, Cmd Msg )
+outcomeEffectDurationEdit side idx edit model =
+    ( withUi
+        (mapSide side
+            (\o ->
+                { o
+                    | effects =
+                        updateAt idx
+                            (\e -> { e | duration = Ui.DurationEdit.apply edit e.duration })
+                            o.effects
+                }
+            )
+        )
+        model
+    , Cmd.none
+    )
+
+
+outcomeEffectFailDamageChanged : SaveChainSide -> Int -> String -> Model -> ( Model, Cmd Msg )
+outcomeEffectFailDamageChanged side idx text model =
+    ( withUi (mapSide side (mapFailedSave idx (\f -> { f | damage = nonBlank text }))) model
+    , Cmd.none
+    )
+
+
+outcomeEffectFailBecomesChanged : SaveChainSide -> Int -> String -> Model -> ( Model, Cmd Msg )
+outcomeEffectFailBecomesChanged side idx text model =
+    ( withUi (mapSide side (mapFailedSave idx (\f -> { f | becomes = nonBlank text }))) model
+    , Cmd.none
+    )
+
+
+{-| Edit the failed-save outcome of the effect at `idx`; a no-op
+for an effect without a save.
+-}
+mapFailedSave : Int -> (Encounter.FailedSave -> Encounter.FailedSave) -> OutcomeForm -> OutcomeForm
+mapFailedSave idx fn o =
+    { o
+        | effects =
+            updateAt idx
+                (\e -> { e | saveToEnd = Maybe.map (\s -> { s | onFail = fn s.onFail }) e.saveToEnd })
+                o.effects
+    }
+
+
+nonBlank : String -> Maybe String
+nonBlank text =
+    if String.isEmpty (String.trim text) then
+        Nothing
+
+    else
+        Just text
+
+
+immunityToggle : Model -> ( Model, Cmd Msg )
+immunityToggle model =
+    ( withUi
+        (\u ->
+            { u
+                | immunity =
+                    if u.immunity == Nothing then
+                        Just SaveChain.LastsUntilRemoved
+
+                    else
+                        Nothing
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+immunityDurationEdit : DurationEdit -> Model -> ( Model, Cmd Msg )
+immunityDurationEdit edit model =
+    ( withUi (\u -> { u | immunity = Maybe.map (Ui.DurationEdit.apply edit) u.immunity }) model
     , Cmd.none
     )
 
@@ -553,7 +637,13 @@ applyOutcome side ui chain model =
             outcomeFor side chain
 
         targets =
-            resolveTargets ui model.encounter
+            resolveTargets chain ui model.encounter
+
+        -- Creatures carrying the chain's immunity sit this one
+        -- out; the log says so rather than leaving them unmentioned.
+        immuneEntries =
+            immuneTargets chain ui model.encounter
+                |> List.map (immuneEntry side)
 
         effectCtx =
             buildEffectContext chain model
@@ -569,22 +659,24 @@ applyOutcome side ui chain model =
 
         modelAfterCond =
             { model | encounter = withConditions }
+
+        entriesAt amount =
+            List.map
+                (\name ->
+                    { target = name
+                    , side = side
+                    , rollNote = Nothing
+                    , appliedParts = appliedParts outcome amount
+                    }
+                )
+                targets
+
+        finish amount m =
+            pushLog (immuneEntries ++ entriesAt amount) (grantImmunities side chain targets m)
     in
     case rawTextForResolve side chain of
         RawEmpty ->
-            let
-                entries =
-                    List.map
-                        (\name ->
-                            { target = name
-                            , side = side
-                            , rollNote = Nothing
-                            , appliedParts = appliedParts outcome 0
-                            }
-                        )
-                        targets
-            in
-            ( pushLog entries modelAfterCond, Cmd.none )
+            ( finish 0 modelAfterCond, Cmd.none )
 
         RawInteger n ->
             let
@@ -603,25 +695,14 @@ applyOutcome side ui chain model =
                         )
                         withConditions
                         targets
-
-                entries =
-                    List.map
-                        (\name ->
-                            { target = name
-                            , side = side
-                            , rollNote = Nothing
-                            , appliedParts = appliedParts outcome resolvedAmount
-                            }
-                        )
-                        targets
             in
-            ( pushLog entries { modelAfterCond | encounter = nextEnc }, Cmd.none )
+            ( finish resolvedAmount { modelAfterCond | encounter = nextEnc }, Cmd.none )
 
         RawDice expr ->
             -- Log entries are pushed after the roll lands
             -- (see `applyRollLanded`) so the amount reflects
             -- the actual dice total, not the mid-flight zero.
-            ( modelAfterCond
+            ( pushLog immuneEntries modelAfterCond
             , Dice.rollCmd (SaveChainApplyRollLanded side)
                 (saveChainSource side chain ui model.encounter)
                 expr
@@ -632,19 +713,7 @@ applyOutcome side ui chain model =
             -- a valid dice expression: apply the condition
             -- side (already done above) and leave HP alone
             -- rather than crashing the click.
-            let
-                entries =
-                    List.map
-                        (\name ->
-                            { target = name
-                            , side = side
-                            , rollNote = Nothing
-                            , appliedParts = appliedParts outcome 0
-                            }
-                        )
-                        targets
-            in
-            ( pushLog entries modelAfterCond, Cmd.none )
+            ( finish 0 modelAfterCond, Cmd.none )
 
 
 {-| Roll from a Save Chain apply landed. Halve if the outcome
@@ -668,7 +737,7 @@ applyRollLanded side roll model =
                     outcomeFor side chain
 
                 targets =
-                    resolveTargets ui logged.encounter
+                    resolveTargets chain ui logged.encounter
 
                 resolvedAmount =
                     case ( side, outcome.hp ) of
@@ -697,7 +766,7 @@ applyRollLanded side roll model =
                         )
                         targets
             in
-            ( pushLog entries { logged | encounter = nextEnc }
+            ( pushLog entries (grantImmunities side chain targets { logged | encounter = nextEnc })
             , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
             )
 
@@ -794,7 +863,7 @@ saveChainSource side chain ui enc =
         targetLabel =
             let
                 names =
-                    resolveTargets ui enc
+                    resolveTargets chain ui enc
             in
             if List.isEmpty names then
                 ui.target
@@ -805,8 +874,26 @@ saveChainSource side chain ui enc =
     { feature = feature, target = Just targetLabel }
 
 
-resolveTargets : SaveChainUi -> Encounter.Encounter -> List String
-resolveTargets ui enc =
+{-| The creatures the chain acts on: the target, or the selection
+when that scope is on, less placeholders and less any creature
+carrying this chain's immunity.
+-}
+resolveTargets : SaveChain -> SaveChainUi -> Encounter.Encounter -> List String
+resolveTargets chain ui enc =
+    scopedTargets ui enc
+        |> List.filter (\name -> not (SaveChain.isImmune chain name enc))
+
+
+{-| The creatures in scope the chain must leave alone.
+-}
+immuneTargets : SaveChain -> SaveChainUi -> Encounter.Encounter -> List String
+immuneTargets chain ui enc =
+    scopedTargets ui enc
+        |> List.filter (\name -> SaveChain.isImmune chain name enc)
+
+
+scopedTargets : SaveChainUi -> Encounter.Encounter -> List String
+scopedTargets ui enc =
     Encounter.excludingPlaceholderNames enc
         (if ui.applyToSelected then
             enc.creatures
@@ -816,6 +903,35 @@ resolveTargets ui enc =
          else
             [ ui.target ]
         )
+
+
+immuneEntry : SaveChainSide -> String -> UiSaveChain.SaveChainLogEntry
+immuneEntry side name =
+    { target = name
+    , side = side
+    , rollNote = Just "immune"
+    , appliedParts = []
+    }
+
+
+{-| The success side's last step. The chain's immunity, when it
+grants one, lands after the outcome so a formula heal or a half
+damage still reaches the target this apply.
+-}
+grantImmunities : SaveChainSide -> SaveChain -> List String -> Model -> Model
+grantImmunities side chain targets model =
+    case side of
+        SaveChainSuccess ->
+            { model
+                | encounter =
+                    List.foldl
+                        (SaveChain.grantImmunity model.encounter.activeName chain)
+                        model.encounter
+                        targets
+            }
+
+        SaveChainFail ->
+            model
 
 
 
@@ -854,12 +970,18 @@ rollSaves mode model =
                     let
                         specs =
                             buildSaveSpecs mode ui model
+
+                        -- Creatures carrying the chain's immunity
+                        -- don't roll; the log says why they sat out.
+                        skipped =
+                            immuneTargets (UiSaveChain.toChain ui) ui model.encounter
+                                |> List.map (immuneEntry SaveChainSuccess)
                     in
                     if List.isEmpty specs then
-                        ( model, Cmd.none )
+                        ( pushLog skipped model, Cmd.none )
 
                     else
-                        ( model, Dice.batchRollCmd SaveChainSavesRolled specs )
+                        ( pushLog skipped model, Dice.batchRollCmd SaveChainSavesRolled specs )
 
         _ ->
             ( model, Cmd.none )
@@ -889,7 +1011,7 @@ buildSaveSpecs mode ui model =
             currentCompendium model.compendium.db
 
         targets =
-            resolveTargets ui model.encounter
+            resolveTargets chain ui model.encounter
 
         abilityLabel =
             saveAbilityLabel chain.saveAbility
@@ -1032,6 +1154,12 @@ savesRolled results model =
                                 encAfterFail
                                 passNames
 
+                        encWithImmunity =
+                            List.foldl
+                                (SaveChain.grantImmunity model.encounter.activeName chain)
+                                encAfterAll
+                                passNames
+
                         entryFor ( name, roll ) =
                             let
                                 passed =
@@ -1059,7 +1187,7 @@ savesRolled results model =
                         entries =
                             List.map entryFor results
                     in
-                    ( pushLog entries { modelWithHistory | encounter = encAfterAll }
+                    ( pushLog entries { modelWithHistory | encounter = encWithImmunity }
                     , Cmd.batch historyCmds
                     )
 
@@ -1146,6 +1274,7 @@ buildEffectContext chain model =
             findCreatureRecord db targetName model.encounter
                 |> Maybe.map (saveModifier chain.saveAbility)
                 |> Maybe.withDefault 0
+    , activeName = model.encounter.activeName
     }
 
 

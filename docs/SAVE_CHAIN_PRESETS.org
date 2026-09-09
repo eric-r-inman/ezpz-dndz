@@ -17,11 +17,17 @@ Handbook.
 A chain names the save ability, optionally a fixed DC, and one outcome for each
 side of the save.  An outcome may deal damage (a dice formula or an integer),
 heal, or — on the success side — deal half of the fail damage, and it may attach
-any number of named effects.  An effect may opt into Save-to-end, which gives
-the applied condition the chain's ability and DC and one of three timings:
-manual (a 🎲 on the chip), at the start of the bearer's turn, or at the end of
-it; a success ends the condition.  Everything else an applied effect needs — a
-duration, a second stage, a trigger — lives in its note for the GM to act on.
+any number of named effects.  Each effect carries a duration in the Condition
+editor's terms — until removed, until the start or end of a creature's next turn
+(the target's, the active creature's, or a named one's), a countdown of turns,
+or one minute.  An effect may opt into Save-to-end, which gives the applied
+condition the chain's ability and DC and one of three timings: manual (a 🎲 on
+the chip), at the start of the bearer's turn, or at the end of it; a success
+ends the condition, and a failure may deal damage again or turn the condition
+into another, which ends the saving.  A successful save may also grant the
+target immunity to the chain for a chosen duration, which the chain honours by
+passing over that creature.  Anything else an applied effect needs — a trigger,
+a recurring area check — lives in its note for the GM to act on.
 
 Verdicts below: /exact/ when the editor models the rule fully, /approximate/
 when the note carries what it can't, /retired/ when the effect is no longer a
@@ -72,9 +78,9 @@ save.
 ** Command
 
 - Rule :: Wisdom save; the target follows the one-word command on its next turn.
-- Preset :: WIS; fail applies "Commanded" with no Save-to-end.
-- Verdict :: approximate — the effect wants to end with the target's next turn;
-  the GM removes it.
+- Preset :: WIS; fail applies "Commanded" until the end of the target's next
+  turn.
+- Verdict :: exact.
 
 ** Hideous Laughter
 
@@ -91,9 +97,9 @@ save.
 - Rule :: Wisdom save; Incapacitated until the end of its next turn, then a
   repeat save; a second failure makes it Unconscious for the duration.  Damage
   or a shake ends the spell.
-- Preset :: WIS; fail applies Incapacitated with an end-of-turn Save-to-end.
-- Verdict :: approximate — a failed repeat save should escalate rather than
-  continue.
+- Preset :: WIS; fail applies Incapacitated for a minute with an end-of-turn
+  Save-to-end whose failure makes it Unconscious.
+- Verdict :: exact — damage or a shake ending it early is the GM's to apply.
 
 ** Thunderwave
 
@@ -125,9 +131,9 @@ save.
   Success: disadvantage on its next attack roll until the start of the caster's
   next turn.
 - Preset :: CON; fail applies "Enfeebled" with an end-of-turn Save-to-end;
-  success applies "Disadv next attack".
-- Verdict :: approximate — the success effect wants to end at the start of the
-  caster's next turn.
+  success applies "Disadv next attack" until the start of the active creature's
+  next turn.
+- Verdict :: exact.
 
 ** Shatter
 
@@ -242,10 +248,9 @@ save.
   and attack rolls for the duration.  Success: half damage and the spell ends.
   At the end of each of its turns the target repeats the save, taking the damage
   again on a failure and ending the spell on a success.
-- Preset :: WIS; fail 4d10 and "Nightmare" with an end-of-turn Save-to-end;
-  success half.
-- Verdict :: approximate — the damage a failed repeat save deals is the GM's to
-  roll; the 2024 spell no longer frightens, where the 2014 one did.
+- Preset :: WIS; fail 4d10 and "Nightmare" with an end-of-turn Save-to-end that
+  deals 4d10 again on a failure; success half.
+- Verdict :: exact — the 2024 spell no longer frightens, where the 2014 one did.
 
 * Level 5
 
@@ -311,9 +316,9 @@ save.
 
 - Rule :: Constitution save; 6d8 radiant and Blinded until the start of the
   caster's next turn; half damage only on a success.
-- Preset :: CON; fail 6d8 and Blinded with no Save-to-end; success half.
-- Verdict :: approximate — the blindness ends at the start of the caster's next
-  turn, which the GM clears.
+- Preset :: CON; fail 6d8 and Blinded until the start of the active creature's
+  next turn; success half.
+- Verdict :: exact.
 
 * Level 7
 
@@ -348,10 +353,10 @@ save.
   Success: half damage only.  A Frightened target repeats the save at the end of
   each of its turns, taking 5d10 psychic on a failure and ending the spell on a
   success.
-- Preset :: WIS; fail 10d10 and Frightened with an end-of-turn Save-to-end;
-  success half.
-- Verdict :: approximate — the damage a failed repeat save deals is the GM's to
-  roll; the 2024 spell also deals damage up front, where the 2014 one did not.
+- Preset :: WIS; fail 10d10 and Frightened with an end-of-turn Save-to-end that
+  deals 5d10 on a failure; success half.
+- Verdict :: exact — the 2024 spell also deals damage up front, where the 2014
+  one did not.
 
 * Monster abilities
 
@@ -359,19 +364,19 @@ save.
 
 - Rule :: Constitution save, DC 10; Paralyzed until the end of its next turn.
   Undead and elves are unaffected.
-- Preset :: CON 10; fail applies Paralyzed with no Save-to-end.
-- Verdict :: approximate — the paralysis ends with the target's next turn, which
-  the GM clears.
+- Preset :: CON 10; fail applies Paralyzed until the end of the target's next
+  turn.
+- Verdict :: exact.
 
 ** Ghast Stench
 
 - Rule :: Constitution save, DC 10, for any creature that starts its turn within
   5 feet of the ghast.  Failure: Poisoned until the start of its next turn.
   Success: immune to this ghast's stench for 24 hours.
-- Preset :: CON 10; fail applies Poisoned with a start-of-turn Save-to-end;
-  success applies "Stench immunity".
+- Preset :: CON 10; fail applies Poisoned until the start of the target's next
+  turn; success grants immunity to the chain.
 - Verdict :: approximate — the save recurs each turn the creature starts in
-  reach, and the immunity is a reminder rather than a timer.
+  reach, and the immunity lasts until removed rather than 24 hours.
 
 ** Harpy Luring Song
 
@@ -380,26 +385,26 @@ save.
   another source damages it; while Charmed it is Incapacitated and moves toward
   the harpy.  Success: immune to this harpy's song for 24 hours.
 - Preset :: WIS 11; fail applies Charmed with an end-of-turn Save-to-end;
-  success applies "Song immunity".
-- Verdict :: approximate — the damage trigger and the immunity's clock are the
-  GM's.
+  success grants immunity to the chain.
+- Verdict :: approximate — the damage trigger is the GM's, and the immunity
+  lasts until removed rather than 24 hours.
 
 ** Mummy Dreadful Glare
 
 - Rule :: Wisdom save, DC 11.  Failure: Frightened until the end of the mummy's
   next turn.  Success: immune to this mummy's glare for 24 hours.
-- Preset :: WIS 11; fail applies Frightened with no Save-to-end; success applies
-  "Glare immunity".
-- Verdict :: approximate — the fear ends with the mummy's next turn, which the
-  GM clears.
+- Preset :: WIS 11; fail applies Frightened until the end of the active
+  creature's next turn; success grants immunity to the chain.
+- Verdict :: approximate — the immunity lasts until removed rather than 24
+  hours.
 
 ** Medusa Petrifying Gaze
 
 - Rule :: Constitution save, DC 13.  First failure: Restrained, repeating the
   save at the end of its next turn.  Second failure: Petrified.
-- Preset :: CON 13; fail applies Restrained with an end-of-turn Save-to-end.
-- Verdict :: approximate — a failed repeat save should escalate rather than
-  continue.
+- Preset :: CON 13; fail applies Restrained with an end-of-turn Save-to-end
+  whose failure makes it Petrified.
+- Verdict :: exact.
 
 * Settings the editor needs
 

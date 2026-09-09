@@ -8,11 +8,11 @@ Each preset transcribes one saving-throw effect from the 2024
 rules — SRD 5.2.1 where the effect is in it — as far as the
 editor can express it: the save ability, a DC when the source
 fixes one (a monster's ability does; a spell's comes from the
-caster), and what each side of the save does. Where the rules
-ask for something the editor has no setting for, such as a
-duration that ends on someone's turn or a second failure that
-escalates, the effect's note carries the reminder, and
-`docs/SAVE_CHAIN_PRESETS.org` records the gap.
+caster), what each side of the save does, how long it lasts,
+and what a failed repeat save adds. Where the rules ask for
+something the editor still has no setting for, the effect's
+note carries the reminder, and `docs/SAVE_CHAIN_PRESETS.org`
+records the gap.
 
 Damage amounts are the dice formulas from the source text. The
 editor parses each at apply time and rolls it once, applying
@@ -29,7 +29,7 @@ bundled preset and it stays gone until the GM restores.
 import Compendium exposing (Ability(..))
 import Dict exposing (Dict)
 import Encounter
-import Encounter.SaveChain as SaveChain exposing (HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration(..), HpEffect(..), SaveChain, SaveOutcome, TurnRef(..))
 
 
 defaults : Dict String SaveChain
@@ -103,22 +103,12 @@ retiredNames =
 
 acidSplash : SaveChain
 acidSplash =
-    { name = "Acid Splash"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "1d6")
-    , onSuccess = noEffect
-    }
+    chain "Acid Splash" Dex Nothing (damageOnly (DealDamage "1d6")) noEffect
 
 
 sacredFlame : SaveChain
 sacredFlame =
-    { name = "Sacred Flame"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "1d8")
-    , onSuccess = noEffect
-    }
+    chain "Sacred Flame" Dex Nothing (damageOnly (DealDamage "1d8")) noEffect
 
 
 {-| The damage is 1d12 rather than 1d8 when the target is missing
@@ -127,52 +117,40 @@ that case.
 -}
 tollTheDead : SaveChain
 tollTheDead =
-    { name = "Toll the Dead"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "1d8")
-    , onSuccess = noEffect
-    }
+    chain "Toll the Dead" Wis Nothing (damageOnly (DealDamage "1d8")) noEffect
 
 
 
 -- ── Level 1 ─────────────────────────────────────────────────────
 
 
-{-| No repeat save: the penalty lasts until the caster's
-concentration ends.
+{-| No repeat save: the penalty runs out with the caster's
+concentration, a minute at most.
 -}
 bane : SaveChain
 bane =
-    { name = "Bane"
-    , saveAbility = Cha
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Baned" "−1d4 attacks & saves" ]
-    , onSuccess = noEffect
-    }
+    chain "Bane"
+        Cha
+        Nothing
+        (effectsOnly [ effect "Baned" "−1d4 attacks & saves" |> lasting LastsOneMinute ])
+        noEffect
 
 
 burningHands : SaveChain
 burningHands =
-    { name = "Burning Hands"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "3d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Burning Hands" Dex Nothing (damageOnly (DealDamage "3d6")) (damageOnly HalfFailDamage)
 
 
-{-| The target obeys on its next turn only, so the GM removes the
-condition once it has acted.
+{-| The target obeys on its next turn only, so the condition ends
+with that turn.
 -}
 command : SaveChain
 command =
-    { name = "Command"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Commanded" "next turn only" ]
-    , onSuccess = noEffect
-    }
+    chain "Command"
+        Wis
+        Nothing
+        (effectsOnly [ effect "Commanded" "Command" |> lasting (LastsUntilTurn Encounter.AtEnd TurnOfBearer) ])
+        noEffect
 
 
 {-| Prone carries no save of its own: when the laughter ends the
@@ -183,31 +161,32 @@ chip.
 -}
 hideousLaughter : SaveChain
 hideousLaughter =
-    { name = "Hideous Laughter"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail =
-        effectsOnly
-            [ effectSvEoT "Incapacitated" "laughing; re-save on dmg (adv)"
+    chain "Hideous Laughter"
+        Wis
+        Nothing
+        (effectsOnly
+            [ effectSvEoT "Incapacitated" "laughing; re-save on dmg (adv)" |> lasting LastsOneMinute
             , effect "Prone" "can't stand while laughing"
             ]
-    , onSuccess = noEffect
-    }
+        )
+        noEffect
 
 
-{-| A second failed save turns the Incapacitated target
-Unconscious for the rest of the duration; the editor can end a
-condition on a save but not escalate it, so the note carries
-that step.
+{-| A second failed save leaves the target Unconscious for the
+rest of the minute; damage or a shake ends it early.
 -}
 sleep : SaveChain
 sleep =
-    { name = "Sleep"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Incapacitated" "Sleep; 2nd fail → Unconscious" ]
-    , onSuccess = noEffect
-    }
+    chain "Sleep"
+        Wis
+        Nothing
+        (effectsOnly
+            [ effectSvEoT "Incapacitated" "Sleep"
+                |> lasting LastsOneMinute
+                |> onFailBecomes "Unconscious"
+            ]
+        )
+        noEffect
 
 
 {-| The 10-foot push on a failed save is repositioning, not a
@@ -215,12 +194,7 @@ condition, and stays with the GM.
 -}
 thunderwave : SaveChain
 thunderwave =
-    { name = "Thunderwave"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "2d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Thunderwave" Con Nothing (damageOnly (DealDamage "2d8")) (damageOnly HalfFailDamage)
 
 
 
@@ -232,36 +206,38 @@ effect before applying when it's the latter.
 -}
 blindnessDeafness : SaveChain
 blindnessDeafness =
-    { name = "Blindness / Deafness"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Blinded" "or Deafened" ]
-    , onSuccess = noEffect
-    }
+    chain "Blindness / Deafness"
+        Con
+        Nothing
+        (effectsOnly [ effectSvEoT "Blinded" "or Deafened" |> lasting LastsOneMinute ])
+        noEffect
 
 
 holdPerson : SaveChain
 holdPerson =
-    { name = "Hold Person"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Paralyzed" "" ]
-    , onSuccess = noEffect
-    }
+    chain "Hold Person"
+        Wis
+        Nothing
+        (effectsOnly [ effectSvEoT "Paralyzed" "" |> lasting LastsOneMinute ])
+        noEffect
 
 
 {-| Both sides do something: a failed save enfeebles until the
 target saves at the end of a turn, while a successful one still
-costs it disadvantage on its next attack roll.
+costs it disadvantage on its next attack roll, until the start
+of the caster's next turn.
 -}
 rayOfEnfeeblement : SaveChain
 rayOfEnfeeblement =
-    { name = "Ray of Enfeeblement"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Enfeebled" "disadv STR tests; −1d8 dmg" ]
-    , onSuccess = effectsOnly [ effect "Disadv next attack" "until caster's next turn" ]
-    }
+    chain "Ray of Enfeeblement"
+        Con
+        Nothing
+        (effectsOnly [ effectSvEoT "Enfeebled" "disadv STR tests; −1d8 dmg" |> lasting LastsOneMinute ])
+        (effectsOnly
+            [ effect "Disadv next attack" "Ray of Enfeeblement"
+                |> lasting (LastsUntilTurn Encounter.AtBegin TurnOfActive)
+            ]
+        )
 
 
 {-| Constructs have disadvantage on the save; the Roll Disadv.
@@ -269,12 +245,7 @@ button covers that when the targets are all constructs.
 -}
 shatter : SaveChain
 shatter =
-    { name = "Shatter"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "3d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Shatter" Con Nothing (damageOnly (DealDamage "3d8")) (damageOnly HalfFailDamage)
 
 
 {-| The 2024 text makes the target Charmed for the duration, so
@@ -283,12 +254,11 @@ early if the caster or an ally damages the target.
 -}
 suggestion : SaveChain
 suggestion =
-    { name = "Suggestion"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Charmed" "Suggestion; up to 8 hr" ]
-    , onSuccess = noEffect
-    }
+    chain "Suggestion"
+        Wis
+        Nothing
+        (effectsOnly [ effect "Charmed" "Suggestion; up to 8 hr" ])
+        noEffect
 
 
 {-| Escaping is a Strength (Athletics) check against the spell
@@ -296,12 +266,11 @@ DC, not a save, so the effect has no Save-to-end.
 -}
 web : SaveChain
 web =
-    { name = "Web"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Restrained" "Athletics chk vs DC to escape" ]
-    , onSuccess = noEffect
-    }
+    chain "Web"
+        Dex
+        Nothing
+        (effectsOnly [ effect "Restrained" "Athletics chk vs DC to escape" ])
+        noEffect
 
 
 
@@ -315,22 +284,20 @@ earned.
 -}
 fear : SaveChain
 fear =
-    { name = "Fear"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Frightened" "drop items, Dash away; save if no LoS" ]
-    , onSuccess = noEffect
-    }
+    chain "Fear"
+        Wis
+        Nothing
+        (effectsOnly
+            [ effectSvEoT "Frightened" "drop items, Dash away; save if no LoS"
+                |> lasting LastsOneMinute
+            ]
+        )
+        noEffect
 
 
 fireball : SaveChain
 fireball =
-    { name = "Fireball"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "8d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Fireball" Dex Nothing (damageOnly (DealDamage "8d6")) (damageOnly HalfFailDamage)
 
 
 {-| Charmed, and Incapacitated with a Speed of 0 while Charmed.
@@ -339,36 +306,29 @@ spell. Two rows so the card shows both conditions.
 -}
 hypnoticPattern : SaveChain
 hypnoticPattern =
-    { name = "Hypnotic Pattern"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail =
-        effectsOnly
-            [ effect "Charmed" "ends on dmg or shake"
-            , effect "Incapacitated" "Speed 0"
+    chain "Hypnotic Pattern"
+        Wis
+        Nothing
+        (effectsOnly
+            [ effect "Charmed" "ends on dmg or shake" |> lasting LastsOneMinute
+            , effect "Incapacitated" "Speed 0" |> lasting LastsOneMinute
             ]
-    , onSuccess = noEffect
-    }
+        )
+        noEffect
 
 
 lightningBolt : SaveChain
 lightningBolt =
-    { name = "Lightning Bolt"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "8d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Lightning Bolt" Dex Nothing (damageOnly (DealDamage "8d6")) (damageOnly HalfFailDamage)
 
 
 slow : SaveChain
 slow =
-    { name = "Slow"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Slowed" "½ speed, −2 AC/DEX, 1 action" ]
-    , onSuccess = noEffect
-    }
+    chain "Slow"
+        Wis
+        Nothing
+        (effectsOnly [ effectSvEoT "Slowed" "½ speed, −2 AC/DEX, 1 action" |> lasting LastsOneMinute ])
+        noEffect
 
 
 {-| The save recurs whenever a creature enters the emanation or
@@ -377,12 +337,7 @@ again each time.
 -}
 spiritGuardians : SaveChain
 spiritGuardians =
-    { name = "Spirit Guardians"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "3d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Spirit Guardians" Wis Nothing (damageOnly (DealDamage "3d8")) (damageOnly HalfFailDamage)
 
 
 {-| Each creature saves at the start of its turn in the cloud and
@@ -392,12 +347,11 @@ turn; the GM removes the condition when it leaves the cloud.
 -}
 stinkingCloud : SaveChain
 stinkingCloud =
-    { name = "Stinking Cloud"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvBoT "Poisoned" "Stinking Cloud; no action this turn" ]
-    , onSuccess = noEffect
-    }
+    chain "Stinking Cloud"
+        Con
+        Nothing
+        (effectsOnly [ effectSvBoT "Poisoned" "Stinking Cloud; no action this turn" ])
+        noEffect
 
 
 
@@ -409,12 +363,11 @@ until the caster's concentration ends.
 -}
 banishment : SaveChain
 banishment =
-    { name = "Banishment"
-    , saveAbility = Cha
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effect "Banished" "Incapacitated; conc. 1 min" ]
-    , onSuccess = noEffect
-    }
+    chain "Banishment"
+        Cha
+        Nothing
+        (effectsOnly [ effect "Banished" "Incapacitated" |> lasting LastsOneMinute ])
+        noEffect
 
 
 {-| A Plant creature fails the save automatically — the GM
@@ -422,22 +375,16 @@ clicks Fail for those.
 -}
 blight : SaveChain
 blight =
-    { name = "Blight"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "8d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Blight" Con Nothing (damageOnly (DealDamage "8d8")) (damageOnly HalfFailDamage)
 
 
 confusion : SaveChain
 confusion =
-    { name = "Confusion"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Confused" "roll d10 each turn" ]
-    , onSuccess = noEffect
-    }
+    chain "Confusion"
+        Wis
+        Nothing
+        (effectsOnly [ effectSvEoT "Confused" "roll d10 each turn" |> lasting LastsOneMinute ])
+        noEffect
 
 
 {-| The 2024 text deals 2d10 bludgeoning rather than 2d8; the
@@ -445,31 +392,27 @@ formula sums both damage types and the GM narrates the split.
 -}
 iceStorm : SaveChain
 iceStorm =
-    { name = "Ice Storm"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "2d10+4d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Ice Storm" Dex Nothing (damageOnly (DealDamage "2d10+4d6")) (damageOnly HalfFailDamage)
 
 
 {-| The 2024 spell no longer frightens: a failed save costs the
 target disadvantage on ability checks and attack rolls, and
-each failed end-of-turn save deals the damage again, which the
-editor can't roll on its own. A successful first save still
-takes half damage.
+each failed end-of-turn save deals the damage again. A
+successful first save still takes half damage.
 -}
 phantasmalKiller : SaveChain
 phantasmalKiller =
-    { name = "Phantasmal Killer"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail =
+    chain "Phantasmal Killer"
+        Wis
+        Nothing
         { hp = DealDamage "4d10"
-        , effects = [ effectSvEoT "Nightmare" "disadv checks & attacks; 4d10 per failed save" ]
+        , effects =
+            [ effectSvEoT "Nightmare" "disadv checks & attacks"
+                |> lasting LastsOneMinute
+                |> onFailDamage "4d10"
+            ]
         }
-    , onSuccess = damageOnly HalfFailDamage
-    }
+        (damageOnly HalfFailDamage)
 
 
 
@@ -482,22 +425,12 @@ turn; the GM applies the chain again each time.
 -}
 cloudkill : SaveChain
 cloudkill =
-    { name = "Cloudkill"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "5d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Cloudkill" Con Nothing (damageOnly (DealDamage "5d8")) (damageOnly HalfFailDamage)
 
 
 coneOfCold : SaveChain
 coneOfCold =
-    { name = "Cone of Cold"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "8d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Cone of Cold" Con Nothing (damageOnly (DealDamage "8d8")) (damageOnly HalfFailDamage)
 
 
 {-| The repeat save comes whenever the target takes damage rather
@@ -506,34 +439,29 @@ the GM to roll at that moment.
 -}
 dominatePerson : SaveChain
 dominatePerson =
-    { name = "Dominate Person"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvManual "Charmed" "Dominated; re-save when damaged" ]
-    , onSuccess = noEffect
-    }
+    chain "Dominate Person"
+        Wis
+        Nothing
+        (effectsOnly
+            [ effectSvManual "Charmed" "Dominated; re-save when damaged" |> lasting LastsOneMinute ]
+        )
+        noEffect
 
 
 {-| The 2024 text deals 5d6 of each damage type rather than 4d6.
 -}
 flameStrike : SaveChain
 flameStrike =
-    { name = "Flame Strike"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "5d6+5d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Flame Strike" Dex Nothing (damageOnly (DealDamage "5d6+5d6")) (damageOnly HalfFailDamage)
 
 
 holdMonster : SaveChain
 holdMonster =
-    { name = "Hold Monster"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail = effectsOnly [ effectSvEoT "Paralyzed" "" ]
-    , onSuccess = noEffect
-    }
+    chain "Hold Monster"
+        Wis
+        Nothing
+        (effectsOnly [ effectSvEoT "Paralyzed" "" |> lasting LastsOneMinute ])
+        noEffect
 
 
 
@@ -542,12 +470,7 @@ holdMonster =
 
 chainLightning : SaveChain
 chainLightning =
-    { name = "Chain Lightning"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "10d8")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Chain Lightning" Dex Nothing (damageOnly (DealDamage "10d8")) (damageOnly HalfFailDamage)
 
 
 {-| Nothing on a successful save; a target the damage brings to
@@ -555,12 +478,7 @@ chainLightning =
 -}
 disintegrate : SaveChain
 disintegrate =
-    { name = "Disintegrate"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "10d6+40")
-    , onSuccess = noEffect
-    }
+    chain "Disintegrate" Dex Nothing (damageOnly (DealDamage "10d6+40")) noEffect
 
 
 {-| A failed save also lowers the target's hit point maximum by
@@ -569,29 +487,21 @@ HP editor.
 -}
 harm : SaveChain
 harm =
-    { name = "Harm"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "14d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Harm" Con Nothing (damageOnly (DealDamage "14d6")) (damageOnly HalfFailDamage)
 
 
 {-| The blindness ends at the start of the caster's next turn,
-not on a save, so the effect carries the timing as a note for
-the GM to clear.
+not on a save.
 -}
 sunbeam : SaveChain
 sunbeam =
-    { name = "Sunbeam"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail =
+    chain "Sunbeam"
+        Con
+        Nothing
         { hp = DealDamage "6d8"
-        , effects = [ effect "Blinded" "until caster's next turn" ]
+        , effects = [ effect "Blinded" "Sunbeam" |> lasting (LastsUntilTurn Encounter.AtBegin TurnOfActive) ]
         }
-    , onSuccess = damageOnly HalfFailDamage
-    }
+        (damageOnly HalfFailDamage)
 
 
 
@@ -600,12 +510,7 @@ sunbeam =
 
 fingerOfDeath : SaveChain
 fingerOfDeath =
-    { name = "Finger of Death"
-    , saveAbility = Con
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "7d8+30")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Finger of Death" Con Nothing (damageOnly (DealDamage "7d8+30")) (damageOnly HalfFailDamage)
 
 
 
@@ -618,15 +523,13 @@ Save-to-end.
 -}
 befuddlement : SaveChain
 befuddlement =
-    { name = "Befuddlement"
-    , saveAbility = Int_
-    , saveDc = Nothing
-    , onFail =
+    chain "Befuddlement"
+        Int_
+        Nothing
         { hp = DealDamage "10d12"
         , effects = [ effect "Befuddled" "no spells or Magic action" ]
         }
-    , onSuccess = damageOnly HalfFailDamage
-    }
+        (damageOnly HalfFailDamage)
 
 
 
@@ -635,29 +538,25 @@ befuddlement =
 
 meteorSwarm : SaveChain
 meteorSwarm =
-    { name = "Meteor Swarm"
-    , saveAbility = Dex
-    , saveDc = Nothing
-    , onFail = damageOnly (DealDamage "20d6+20d6")
-    , onSuccess = damageOnly HalfFailDamage
-    }
+    chain "Meteor Swarm" Dex Nothing (damageOnly (DealDamage "20d6+20d6")) (damageOnly HalfFailDamage)
 
 
 {-| The 2024 spell deals 10d10 up front (half on a success) and
-5d10 more on each failed end-of-turn save, which the editor
-can't roll on its own.
+5d10 more on each failed end-of-turn save.
 -}
 weird : SaveChain
 weird =
-    { name = "Weird"
-    , saveAbility = Wis
-    , saveDc = Nothing
-    , onFail =
+    chain "Weird"
+        Wis
+        Nothing
         { hp = DealDamage "10d10"
-        , effects = [ effectSvEoT "Frightened" "5d10 psychic per failed save" ]
+        , effects =
+            [ effectSvEoT "Frightened" "Weird"
+                |> lasting LastsOneMinute
+                |> onFailDamage "5d10"
+            ]
         }
-    , onSuccess = damageOnly HalfFailDamage
-    }
+        (damageOnly HalfFailDamage)
 
 
 
@@ -666,33 +565,30 @@ weird =
 -- condition's save is ready without typing.
 
 
-{-| Paralysis until the end of the target's next turn: it ends
-by the clock, not by a save, so the effect has no Save-to-end
-and the GM clears it. Undead and elves are immune.
+{-| Paralysis until the end of the target's next turn. Undead and
+elves are immune.
 -}
 ghoulClaw : SaveChain
 ghoulClaw =
-    { name = "Ghoul Claw"
-    , saveAbility = Con
-    , saveDc = Just 10
-    , onFail = effectsOnly [ effect "Paralyzed" "Ghoul; until end of its next turn" ]
-    , onSuccess = noEffect
-    }
+    chain "Ghoul Claw"
+        Con
+        (Just 10)
+        (effectsOnly [ effect "Paralyzed" "Ghoul" |> lasting (LastsUntilTurn Encounter.AtEnd TurnOfBearer) ])
+        noEffect
 
 
 {-| The save comes at the start of each turn a creature begins
 within 5 feet of the ghast; a failure poisons it until the
-start of its next turn, and a success grants a day's immunity,
-which the success side records on the card.
+start of its next turn, and a success grants a day's immunity.
 -}
 ghastStench : SaveChain
 ghastStench =
-    { name = "Ghast Stench"
-    , saveAbility = Con
-    , saveDc = Just 10
-    , onFail = effectsOnly [ effectSvBoT "Poisoned" "Ghast stench; until its next turn" ]
-    , onSuccess = effectsOnly [ effect "Stench immunity" "this ghast; 24 hr" ]
-    }
+    chain "Ghast Stench"
+        Con
+        (Just 10)
+        (effectsOnly [ effect "Poisoned" "Ghast Stench" |> lasting (LastsUntilTurn Encounter.AtBegin TurnOfBearer) ])
+        noEffect
+        |> withImmunity LastsUntilRemoved
 
 
 {-| Charmed until the song ends, repeating the save at the end of
@@ -701,44 +597,61 @@ toward the harpy. A success grants a day's immunity.
 -}
 harpyLuringSong : SaveChain
 harpyLuringSong =
-    { name = "Harpy Luring Song"
-    , saveAbility = Wis
-    , saveDc = Just 11
-    , onFail = effectsOnly [ effectSvEoT "Charmed" "Luring Song; Incapacitated, walks to harpy" ]
-    , onSuccess = effectsOnly [ effect "Song immunity" "this harpy; 24 hr" ]
-    }
+    chain "Harpy Luring Song"
+        Wis
+        (Just 11)
+        (effectsOnly [ effectSvEoT "Charmed" "Luring Song; Incapacitated, walks to harpy" ])
+        noEffect
+        |> withImmunity LastsUntilRemoved
 
 
-{-| Frightened until the end of the mummy's next turn — by the
-clock, so no Save-to-end. A success grants a day's immunity.
+{-| Frightened until the end of the mummy's next turn, the mummy
+being the active creature when its glare applies. A success
+grants a day's immunity.
 -}
 mummyDreadfulGlare : SaveChain
 mummyDreadfulGlare =
-    { name = "Mummy Dreadful Glare"
-    , saveAbility = Wis
-    , saveDc = Just 11
-    , onFail = effectsOnly [ effect "Frightened" "until end of mummy's next turn" ]
-    , onSuccess = effectsOnly [ effect "Glare immunity" "this mummy; 24 hr" ]
-    }
+    chain "Mummy Dreadful Glare"
+        Wis
+        (Just 11)
+        (effectsOnly [ effect "Frightened" "Dreadful Glare" |> lasting (LastsUntilTurn Encounter.AtEnd TurnOfActive) ])
+        noEffect
+        |> withImmunity LastsUntilRemoved
 
 
 {-| A first failure restrains the target, which repeats the save
 at the end of its next turn; a second failure petrifies it.
-The editor ends the condition on a success but can't escalate
-on a failure, so the note carries that step.
 -}
 medusaPetrifyingGaze : SaveChain
 medusaPetrifyingGaze =
-    { name = "Medusa Petrifying Gaze"
-    , saveAbility = Con
-    , saveDc = Just 13
-    , onFail = effectsOnly [ effectSvEoT "Restrained" "Petrifying Gaze; 2nd fail → Petrified" ]
-    , onSuccess = noEffect
+    chain "Medusa Petrifying Gaze"
+        Con
+        (Just 13)
+        (effectsOnly [ effectSvEoT "Restrained" "Petrifying Gaze" |> onFailBecomes "Petrified" ])
+        noEffect
+
+
+
+-- ── Preset helpers ───────────────────────────────────────────────
+
+
+chain : String -> Ability -> Maybe Int -> SaveOutcome -> SaveOutcome -> SaveChain
+chain name ability dc onFail onSuccess =
+    { name = name
+    , saveAbility = ability
+    , saveDc = dc
+    , onFail = onFail
+    , onSuccess = onSuccess
+    , immunity = Nothing
     }
 
 
-
--- ── Outcome helpers ──────────────────────────────────────────────
+{-| A successful save leaves the target immune to the chain for
+the duration.
+-}
+withImmunity : EffectDuration -> SaveChain -> SaveChain
+withImmunity duration c =
+    { c | immunity = Just duration }
 
 
 noEffect : SaveOutcome
@@ -751,37 +664,68 @@ damageOnly hp =
     { hp = hp, effects = [] }
 
 
-effectsOnly : List SaveChain.EffectApply -> SaveOutcome
+effectsOnly : List EffectApply -> SaveOutcome
 effectsOnly es =
     { hp = NoHpEffect, effects = es }
 
 
-effect : String -> String -> SaveChain.EffectApply
+{-| An effect that lasts until removed and has no save of its own.
+-}
+effect : String -> String -> EffectApply
 effect name note =
-    { name = name, note = note, saveToEnd = Nothing }
+    let
+        blank =
+            SaveChain.emptyEffect
+    in
+    { blank | name = name, note = note }
+
+
+lasting : EffectDuration -> EffectApply -> EffectApply
+lasting duration e =
+    { e | duration = duration }
 
 
 {-| An effect whose applied condition inherits the chain's save
 and DC and rolls at the end of each of the bearer's turns — the
 usual "repeats the save at the end of each of its turns" shape.
 -}
-effectSvEoT : String -> String -> SaveChain.EffectApply
+effectSvEoT : String -> String -> EffectApply
 effectSvEoT name note =
-    { name = name, note = note, saveToEnd = Just Encounter.AutoRollAtEnd }
+    saving Encounter.AutoRollAtEnd (effect name note)
 
 
 {-| Twin of `effectSvEoT` for saves the rules place at the start
 of the bearer's turn.
 -}
-effectSvBoT : String -> String -> SaveChain.EffectApply
+effectSvBoT : String -> String -> EffectApply
 effectSvBoT name note =
-    { name = name, note = note, saveToEnd = Just Encounter.AutoRollAtBegin }
+    saving Encounter.AutoRollAtBegin (effect name note)
 
 
 {-| Twin of `effectSvEoT` for a repeat save with no turn timing,
 such as one made whenever the target takes damage: the chip
 carries the save for the GM to roll when the trigger comes.
 -}
-effectSvManual : String -> String -> SaveChain.EffectApply
+effectSvManual : String -> String -> EffectApply
 effectSvManual name note =
-    { name = name, note = note, saveToEnd = Just Encounter.AutoRollManual }
+    saving Encounter.AutoRollManual (effect name note)
+
+
+saving : Encounter.AutoRollMode -> EffectApply -> EffectApply
+saving mode e =
+    { e | saveToEnd = Just { autoRoll = mode, onFail = Encounter.noFailedSave } }
+
+
+{-| A failed repeat save turns the condition into another, which
+also ends the saving.
+-}
+onFailBecomes : String -> EffectApply -> EffectApply
+onFailBecomes newName e =
+    { e | saveToEnd = Maybe.map (\s -> { s | onFail = { damage = s.onFail.damage, becomes = Just newName } }) e.saveToEnd }
+
+
+{-| A failed repeat save deals the formula's damage to the bearer.
+-}
+onFailDamage : String -> EffectApply -> EffectApply
+onFailDamage formula e =
+    { e | saveToEnd = Maybe.map (\s -> { s | onFail = { damage = Just formula, becomes = s.onFail.becomes } }) e.saveToEnd }

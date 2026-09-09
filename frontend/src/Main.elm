@@ -1156,6 +1156,21 @@ updateInner msg model =
         SaveChainOutcomeEffectAutoRollSet side idx mode ->
             Update.SaveChain.outcomeEffectAutoRollSet side idx mode model
 
+        SaveChainOutcomeEffectDurationEdit side idx edit ->
+            Update.SaveChain.outcomeEffectDurationEdit side idx edit model
+
+        SaveChainOutcomeEffectFailDamageChanged side idx text ->
+            Update.SaveChain.outcomeEffectFailDamageChanged side idx text model
+
+        SaveChainOutcomeEffectFailBecomesChanged side idx text ->
+            Update.SaveChain.outcomeEffectFailBecomesChanged side idx text model
+
+        SaveChainImmunityToggle ->
+            Update.SaveChain.immunityToggle model
+
+        SaveChainImmunityDurationEdit edit ->
+            Update.SaveChain.immunityDurationEdit edit model
+
         SaveChainPresetPickerChanged text ->
             Update.SaveChain.presetPickerChanged text model
 
@@ -1351,6 +1366,12 @@ updateInner msg model =
         ConditionSaveAutoRollSet mode ->
             Update.Condition.saveAutoRollSet mode model
 
+        ConditionSaveFailDamageChanged text ->
+            Update.Condition.saveFailDamageChanged text model
+
+        ConditionSaveFailBecomesChanged text ->
+            Update.Condition.saveFailBecomesChanged text model
+
         ConditionSubmitSelected ->
             Update.Condition.submitSelected model
 
@@ -1398,6 +1419,9 @@ updateInner msg model =
 
         ConditionSaveLanded name id dc roll ->
             Update.Condition.saveLanded name id dc roll model
+
+        ConditionFailDamageLanded name roll ->
+            Update.Condition.failDamageLanded name roll model
 
         ConditionUndoLatest ->
             Update.Condition.undoLatest model

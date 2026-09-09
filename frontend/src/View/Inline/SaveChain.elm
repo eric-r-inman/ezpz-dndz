@@ -13,7 +13,7 @@ the survivors.
 import Compendium exposing (Ability(..))
 import Dict
 import Encounter
-import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..))
+import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration, HpEffect(..))
 import Html exposing (Html, button, div, input, li, option, p, select, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
 import Html.Events exposing (on, onClick, onInput)
@@ -27,6 +27,7 @@ import Msg
         )
 import Ui.SaveChain exposing (AppliedPart(..), OutcomeForm, SaveChainLogEntry, SaveChainUi)
 import View.Inline.ApplyButton as ApplyButton
+import View.Inline.DurationPicker as DurationPicker
 import View.Tooltips as Tooltips
 
 
@@ -40,6 +41,7 @@ type alias Context =
     , selectedCount : Int
     , placeholderWarning : Bool
     , log : List SaveChainLogEntry
+    , creatureNames : List String
     }
 
 
@@ -49,8 +51,12 @@ view ctx ui =
         [ presetRow ui ctx.presets
         , nameRow ui
         , saveRow ui
-        , outcomeBlock "On failed save" SaveChainFail ui.onFail
-        , outcomeBlock "On successful save" SaveChainSuccess ui.onSuccess
+        , outcomeBlock ctx.creatureNames "On failed save" SaveChainFail ui.onFail (text "")
+        , outcomeBlock ctx.creatureNames
+            "On successful save"
+            SaveChainSuccess
+            ui.onSuccess
+            (immunitySection ctx.creatureNames ui.immunity)
         , applyScope ctx.selectedCount ui
         , applyRow ui
         , ApplyButton.placeholderNotice ctx.placeholderWarning
@@ -220,12 +226,49 @@ abilityRadio ui ability label =
 -- ── Outcome block ───────────────────────────────────────────────
 
 
-outcomeBlock : String -> SaveChainSide -> OutcomeForm -> Html Msg
-outcomeBlock heading side form =
+{-| One side's block; `extra` is the success side's immunity
+section, nothing on the fail side.
+-}
+outcomeBlock : List String -> String -> SaveChainSide -> OutcomeForm -> Html Msg -> Html Msg
+outcomeBlock names heading side form extra =
     div [ class "save-chain__outcome" ]
         [ div [ class "save-chain__outcome-heading" ] [ text heading ]
         , hpRow side form
-        , effectsSection side form
+        , effectsSection names side form
+        , extra
+        ]
+
+
+{-| A successful save may leave the target immune to the chain for
+a while; the chain then passes over that creature until the
+immunity lapses.
+-}
+immunitySection : List String -> Maybe EffectDuration -> Html Msg
+immunitySection names immunity =
+    div [ class "save-chain__effects" ]
+        [ Html.label
+            [ class "save-chain__effect-save-to-end"
+            , Tooltips.attr "A creature that succeeds becomes immune to this chain for the duration below, and the chain skips it until then"
+            ]
+            [ input
+                [ type_ "checkbox"
+                , checked (immunity /= Nothing)
+                , onClick SaveChainImmunityToggle
+                ]
+                []
+            , text " Grants immunity"
+            ]
+        , case immunity of
+            Just duration ->
+                DurationPicker.view
+                    { groupName = "save-chain-immunity"
+                    , creatureNames = names
+                    , value = duration
+                    , toMsg = SaveChainImmunityDurationEdit
+                    }
+
+            Nothing ->
+                text ""
         ]
 
 
@@ -325,12 +368,12 @@ datalist suggestions on the name input but the field stays
 free-form so spells like Banishment / Slow / Confusion can
 use custom effect names.
 -}
-effectsSection : SaveChainSide -> OutcomeForm -> Html Msg
-effectsSection side form =
+effectsSection : List String -> SaveChainSide -> OutcomeForm -> Html Msg
+effectsSection names side form =
     div [ class "save-chain__effects" ]
         [ span [ class "save-chain__field-label" ] [ text "Effects" ]
         , div [ class "save-chain__effect-list" ]
-            (List.indexedMap (effectRow side) form.effects)
+            (List.indexedMap (effectRow names side) form.effects)
         , button
             [ class "action-btn action-btn--sm"
             , type_ "button"
@@ -341,8 +384,8 @@ effectsSection side form =
         ]
 
 
-effectRow : SaveChainSide -> Int -> EffectApply -> Html Msg
-effectRow side idx effect =
+effectRow : List String -> SaveChainSide -> Int -> EffectApply -> Html Msg
+effectRow names side idx effect =
     div [ class "save-chain__effect-block" ]
         [ div [ class "save-chain__effect-row" ]
             [ input
@@ -382,8 +425,25 @@ effectRow side idx effect =
                 ]
                 [ text "×" ]
             ]
+        , DurationPicker.view
+            { groupName = "save-chain-duration-" ++ sideKey side ++ "-" ++ String.fromInt idx
+            , creatureNames = names
+            , value = effect.duration
+            , toMsg = SaveChainOutcomeEffectDurationEdit side idx
+            }
         , autoRollRow side idx effect
+        , failedSaveRow side idx effect
         ]
+
+
+sideKey : SaveChainSide -> String
+sideKey side =
+    case side of
+        SaveChainFail ->
+            "fail"
+
+        SaveChainSuccess ->
+            "success"
 
 
 {-| Auto-roll mode picker. Only rendered when the effect's
@@ -397,12 +457,49 @@ autoRollRow side idx effect =
         Nothing ->
             text ""
 
-        Just mode ->
+        Just save ->
             div [ class "save-chain__effect-autoroll" ]
                 [ span [ class "save-chain__caption" ] [ text "Auto-roll:" ]
-                , autoRollRadio side idx mode Encounter.AutoRollManual "Manual"
-                , autoRollRadio side idx mode Encounter.AutoRollAtBegin "At begin of turn"
-                , autoRollRadio side idx mode Encounter.AutoRollAtEnd "At end of turn"
+                , autoRollRadio side idx save.autoRoll Encounter.AutoRollManual "Manual"
+                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtBegin "At begin of turn"
+                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtEnd "At end of turn"
+                ]
+
+
+{-| What a failed repeat save does besides leaving the condition
+in place; both fields blank by default, and only shown while the
+effect has a save to fail.
+-}
+failedSaveRow : SaveChainSide -> Int -> EffectApply -> Html Msg
+failedSaveRow side idx effect =
+    case effect.saveToEnd of
+        Nothing ->
+            text ""
+
+        Just save ->
+            div [ class "save-chain__effect-subrow" ]
+                [ span [ class "save-chain__caption" ] [ text "On a failed save:" ]
+                , span [ class "save-chain__caption" ] [ text "takes" ]
+                , input
+                    [ type_ "text"
+                    , class "cond-input cond-input--narrow"
+                    , placeholder "4d10"
+                    , value (Maybe.withDefault "" save.onFail.damage)
+                    , onInput (SaveChainOutcomeEffectFailDamageChanged side idx)
+                    , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
+                    ]
+                    []
+                , span [ class "save-chain__caption" ] [ text "becomes" ]
+                , input
+                    [ type_ "text"
+                    , class "save-chain__condition-input"
+                    , list "save-chain-condition-list"
+                    , placeholder "e.g. Petrified"
+                    , value (Maybe.withDefault "" save.onFail.becomes)
+                    , onInput (SaveChainOutcomeEffectFailBecomesChanged side idx)
+                    , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
+                    ]
+                    []
                 ]
 
 

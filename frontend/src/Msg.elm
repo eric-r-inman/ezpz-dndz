@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), FlatCategory(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -205,6 +205,20 @@ type DurationKind
     = DurKindManual
     | DurKindUntilTurn
     | DurKindCountdown
+
+
+{-| One change to a duration picker. The Save Chain editor's
+pickers all share this shape, so one Msg per picker covers every
+control; the "until" reference travels as the picker's own option
+value.
+-}
+type DurationEdit
+    = DurationKindPicked DurationKind
+    | DurationOneMinutePicked
+    | DurationUntilRefPicked String
+    | DurationUntilPhasePicked Encounter.TurnPhase
+    | DurationTurnsTyped String
+    | DurationCountdownPhasePicked Encounter.TurnPhase
 
 
 
@@ -605,6 +619,13 @@ type Msg
       -- Mirrors the auto-roll radio group in the standard
       -- Condition modal.
     | SaveChainOutcomeEffectAutoRollSet SaveChainSide Int Encounter.AutoRollMode
+      -- Per-effect duration and failed-save fields, and the
+      -- success side's immunity grant with its own duration.
+    | SaveChainOutcomeEffectDurationEdit SaveChainSide Int DurationEdit
+    | SaveChainOutcomeEffectFailDamageChanged SaveChainSide Int String
+    | SaveChainOutcomeEffectFailBecomesChanged SaveChainSide Int String
+    | SaveChainImmunityToggle
+    | SaveChainImmunityDurationEdit DurationEdit
       -- Preset ops
     | SaveChainPresetPickerChanged String
     | SaveChainPresetLoad
@@ -722,6 +743,10 @@ type Msg
       -- The Mod field's ▲ / ▼ spinner (+1 / -1).
     | ConditionSaveBonusAdjust Int
     | ConditionSaveAutoRollSet Encounter.AutoRollMode
+      -- The failed-save outcome: damage the bearer takes, and the
+      -- condition this one turns into.
+    | ConditionSaveFailDamageChanged String
+    | ConditionSaveFailBecomesChanged String
     | ConditionSubmit
     | ConditionSubmitSelected
     | ConditionDelete
@@ -744,6 +769,9 @@ type Msg
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Dice.Roll
+      -- The damage roll a failed save fired, landing on the
+      -- bearer named here.
+    | ConditionFailDamageLanded String Dice.Roll
       -- Undo the newest condition application (the ↩ on the
       -- condition editor's log row).
     | ConditionUndoLatest

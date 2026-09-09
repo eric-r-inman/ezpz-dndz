@@ -399,6 +399,43 @@ saveSubsection s =
                 Encounter.AutoRollAtEnd
                 "Auto roll-end of turn"
             ]
+        , failedSaveRow s
+        ]
+
+
+{-| What a failed save does besides leaving the condition in
+place; both fields blank by default.
+-}
+failedSaveRow : SaveToEndUi -> Html Msg
+failedSaveRow s =
+    div [ class "cond-row" ]
+        [ Html.label [ class "cond-save-label" ] [ text "On a failed save:" ]
+        , Html.label [ for "cond-fail-damage", class "cond-save-label" ] [ text "takes" ]
+        , input
+            [ id "cond-fail-damage"
+            , class "cond-input cond-input--narrow"
+            , type_ "text"
+            , placeholder "4d10"
+            , value s.failDamageText
+            , onInput ConditionSaveFailDamageChanged
+            , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
+            ]
+            []
+        , Html.label [ for "cond-fail-becomes", class "cond-save-label" ] [ text "becomes" ]
+        , input
+            [ id "cond-fail-becomes"
+            , class "cond-input cond-input--w20"
+            , type_ "text"
+            , placeholder "e.g. Petrified"
+            , value s.failBecomesText
+            , onInput ConditionSaveFailBecomesChanged
+            , attribute "list" "cond-fail-becomes-list"
+            , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
+            ]
+            []
+        , Html.node "datalist"
+            [ id "cond-fail-becomes-list" ]
+            (List.map (\c -> Html.option [ value c ] []) Encounter.standardConditions)
         ]
 
 

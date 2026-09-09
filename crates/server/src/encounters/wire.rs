@@ -132,6 +132,10 @@ pub struct SaveToEnd {
   pub dc: i64,
   pub bonus: i64,
   pub auto_roll: String,
+  /// The failed-save outcome: damage the bearer takes and the
+  /// condition this one turns into, each unset when absent.
+  pub fail_damage: Option<String>,
+  pub fail_becomes: Option<String>,
 }
 
 pub struct SaveNotice {
@@ -659,11 +663,22 @@ fn decode_duration(value: &Value) -> Result<Duration, String> {
 
 fn decode_save_to_end(value: &Value) -> Result<SaveToEnd, String> {
   let map = as_object(value, "saveToEnd")?;
+  // Added after `autoRoll`; older saves lack it, and either half may
+  // be null on its own.
+  let on_fail = map.get("onFail").and_then(Value::as_object);
+  let on_fail_text = |key: &str| {
+    on_fail
+      .and_then(|fields| fields.get(key))
+      .and_then(Value::as_str)
+      .map(str::to_string)
+  };
   Ok(SaveToEnd {
     ability: req_str(map, "ability", "saveToEnd")?,
     dc: req_int(map, "dc", "saveToEnd")?,
     bonus: req_int(map, "bonus", "saveToEnd")?,
     auto_roll: req_token(map, "autoRoll", AUTO_ROLLS, "saveToEnd")?,
+    fail_damage: on_fail_text("damage"),
+    fail_becomes: on_fail_text("becomes"),
   })
 }
 
@@ -1034,6 +1049,10 @@ fn encode_save_to_end(save: &SaveToEnd) -> Value {
     "dc": save.dc,
     "bonus": save.bonus,
     "autoRoll": save.auto_roll,
+    "onFail": {
+      "damage": save.fail_damage,
+      "becomes": save.fail_becomes,
+    },
   })
 }
 
@@ -1205,7 +1224,13 @@ mod tests {
             "name": "Restrained",
             "note": "net",
             "duration": { "kind": "manual" },
-            "saveToEnd": { "ability": "STR", "dc": 15, "bonus": 4, "autoRoll": "atEnd" }
+            "saveToEnd": {
+              "ability": "STR",
+              "dc": 15,
+              "bonus": 4,
+              "autoRoll": "atEnd",
+              "onFail": { "damage": "1d6", "becomes": null }
+            }
           },
           {
             "id": 2,

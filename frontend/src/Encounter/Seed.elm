@@ -96,7 +96,14 @@ seedCreatures =
               , name = "Frightened"
               , note = "of Lyra"
               , duration = DurationCountdown AtEnd 3 False
-              , saveToEnd = Just { ability = "WIS", dc = 13, bonus = 1, autoRoll = AutoRollManual }
+              , saveToEnd =
+                    Just
+                        { ability = "WIS"
+                        , dc = 13
+                        , bonus = 1
+                        , autoRoll = AutoRollManual
+                        , onFail = Encounter.noFailedSave
+                        }
               }
             ]
       , saveNotices = []

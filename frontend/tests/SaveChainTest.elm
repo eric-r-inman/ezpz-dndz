@@ -55,7 +55,7 @@ emptyDetectorSuite =
                     fail =
                         base.onFail
                 in
-                { base | onFail = { fail | effects = [ { name = "Blinded", note = "", saveToEnd = Nothing } ] } }
+                { base | onFail = { fail | effects = [ { name = "Blinded", note = "", saveToEnd = Nothing, duration = SaveChain.LastsUntilRemoved } ] } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal False
         , test "false when the success side does something (edge case)" <|
@@ -79,7 +79,7 @@ emptyDetectorSuite =
                     fail =
                         base.onFail
                 in
-                { base | onFail = { fail | effects = [ { name = "   ", note = "", saveToEnd = Nothing } ] } }
+                { base | onFail = { fail | effects = [ { name = "   ", note = "", saveToEnd = Nothing, duration = SaveChain.LastsUntilRemoved } ] } }
                     |> SaveChain.isEffectivelyEmpty
                     |> Expect.equal True
         , test "multiple effects on one side flip the detector" <|
@@ -95,8 +95,8 @@ emptyDetectorSuite =
                     | onFail =
                         { fail
                             | effects =
-                                [ { name = "Charmed", note = "", saveToEnd = Nothing }
-                                , { name = "Incapacitated", note = "speed 0", saveToEnd = Nothing }
+                                [ { name = "Charmed", note = "", saveToEnd = Nothing, duration = SaveChain.LastsUntilRemoved }
+                                , { name = "Incapacitated", note = "speed 0", saveToEnd = Nothing, duration = SaveChain.LastsUntilRemoved }
                                 ]
                         }
                 }

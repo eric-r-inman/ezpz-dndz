@@ -260,6 +260,7 @@ panelFor model index panel =
                         , selectedCount = selectedCount
                         , placeholderWarning = placeholderWarning ui.target
                         , log = model.saveChainLog
+                        , creatureNames = List.map .name model.encounter.creatures
                         }
                         ui
                     )

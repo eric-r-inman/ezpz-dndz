@@ -224,6 +224,17 @@
 88. The rules each preset can only approximate are collected in a
     save-chain-presets document under docs, with the editor settings they call
     for tracked in the backlog.  No action needed.
+89. Save Chain effects carry a duration in the Condition editor's terms, and the
+    bundled presets use it, so a ghoul's paralysis now ends with the target's
+    next turn on its own.  Click Restore bundled in the Save Chain editor to
+    pick up the updated presets.
+90. A repeat save can do something on a failure — turn the condition into
+    another (Restrained to Petrified, Sleep to Unconscious) or deal damage again
+    (Phantasmal Killer, Weird) — from both the Save Chain editor and the
+    Condition editor's saving-throw section.  No action needed.
+91. A Save Chain can grant immunity on a successful save for a chosen duration;
+    the chain then passes over a creature carrying it and logs it as immune.  No
+    action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

@@ -102,6 +102,10 @@ type alias SaveToEndUi =
     , bonusText : String
     , bonus : Int
     , autoRoll : Encounter.AutoRollMode
+
+    -- The failed-save outcome as typed, blank meaning none.
+    , failDamageText : String
+    , failBecomesText : String
     }
 
 
@@ -119,6 +123,8 @@ freshSaveToEnd =
     , bonusText = "0"
     , bonus = 0
     , autoRoll = Encounter.AutoRollManual
+    , failDamageText = ""
+    , failBecomesText = ""
     }
 
 
@@ -197,6 +203,8 @@ fromCondition target cond =
                         , bonusText = String.fromInt s.bonus
                         , bonus = s.bonus
                         , autoRoll = s.autoRoll
+                        , failDamageText = Maybe.withDefault "" s.onFail.damage
+                        , failBecomesText = Maybe.withDefault "" s.onFail.becomes
                         }
                     )
     in

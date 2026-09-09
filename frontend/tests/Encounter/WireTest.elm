@@ -148,6 +148,7 @@ fullyPopulatedCreature =
                     , dc = 16
                     , bonus = 3
                     , autoRoll = AutoRollAtEnd
+                    , onFail = { damage = Just "1d6", becomes = Just "Petrified" }
                     }
           }
         , { id = 2

@@ -15,7 +15,7 @@ saved chains survive across reloads. Payload is written to
 import Compendium exposing (Ability(..))
 import Dict exposing (Dict)
 import Encounter
-import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
+import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration(..), EffectSave, HpEffect(..), SaveChain, SaveOutcome, TurnRef(..))
 import Json.Decode as D
 import Json.Encode as E
 
@@ -56,17 +56,19 @@ encode chain =
           )
         , ( "on_fail", encodeOutcome chain.onFail )
         , ( "on_success", encodeOutcome chain.onSuccess )
+        , ( "immunity", encodeMaybe encodeDuration chain.immunity )
         ]
 
 
 decode : D.Decoder SaveChain
 decode =
-    D.map5 SaveChain
+    D.map6 SaveChain
         (D.field "name" D.string)
         (D.field "save_ability" abilityDecoder)
         (optionalField "save_dc" (D.nullable D.int) Nothing)
         (optionalField "on_fail" outcomeDecoder SaveChain.empty.onFail)
         (optionalField "on_success" outcomeDecoder SaveChain.empty.onSuccess)
+        (optionalField "immunity" (D.nullable durationDecoder) Nothing)
 
 
 {-| Backport of `Json.Decode.Pipeline.optional`. Falls back to
@@ -79,6 +81,16 @@ optionalField key inner default =
         [ D.field key inner
         , D.succeed default
         ]
+
+
+encodeMaybe : (a -> E.Value) -> Maybe a -> E.Value
+encodeMaybe enc m =
+    case m of
+        Just v ->
+            enc v
+
+        Nothing ->
+            E.null
 
 
 
@@ -121,36 +133,55 @@ legacyEffectsDecoder =
         (optionalField "condition_note" D.string "")
         |> D.map
             (\( name, note ) ->
+                let
+                    blank =
+                        SaveChain.emptyEffect
+                in
                 if String.isEmpty (String.trim name) then
                     []
 
                 else
-                    [ { name = name, note = note, saveToEnd = Nothing } ]
+                    [ { blank | name = name, note = note } ]
             )
 
 
+{-| `save_to_end` stays the mode string the wire has always
+carried; the failed-save outcome rides beside it as
+`on_failed_save`, an object whenever the effect opts in and null
+otherwise.
+-}
 encodeEffect : EffectApply -> E.Value
 encodeEffect e =
     E.object
         [ ( "name", E.string e.name )
         , ( "note", E.string e.note )
         , ( "save_to_end"
-          , case e.saveToEnd of
-                Just mode ->
-                    E.string (autoRollString mode)
-
-                Nothing ->
-                    E.null
+          , encodeMaybe (\s -> E.string (autoRollString s.autoRoll)) e.saveToEnd
           )
+        , ( "on_failed_save"
+          , encodeMaybe (\s -> encodeFailedSave s.onFail) e.saveToEnd
+          )
+        , ( "duration", encodeDuration e.duration )
         ]
 
 
 effectDecoder : D.Decoder EffectApply
 effectDecoder =
-    D.map3 EffectApply
+    D.map4 EffectApply
         (D.field "name" D.string)
         (optionalField "note" D.string "")
-        (optionalField "save_to_end" saveToEndDecoder Nothing)
+        (optionalField "duration" durationDecoder LastsUntilRemoved)
+        (D.map2 effectSave
+            (optionalField "save_to_end" saveToEndDecoder Nothing)
+            (optionalField "on_failed_save" (D.nullable failedSaveDecoder) Nothing)
+        )
+
+
+effectSave : Maybe Encounter.AutoRollMode -> Maybe Encounter.FailedSave -> Maybe EffectSave
+effectSave mode onFail =
+    Maybe.map
+        (\m -> { autoRoll = m, onFail = Maybe.withDefault Encounter.noFailedSave onFail })
+        mode
 
 
 {-| `save_to_end` on the wire accepts three shapes:
@@ -206,6 +237,130 @@ autoRollString mode =
 
         Encounter.AutoRollAtEnd ->
             "at_end"
+
+
+encodeFailedSave : Encounter.FailedSave -> E.Value
+encodeFailedSave f =
+    E.object
+        [ ( "damage", encodeMaybe E.string f.damage )
+        , ( "becomes", encodeMaybe E.string f.becomes )
+        ]
+
+
+failedSaveDecoder : D.Decoder Encounter.FailedSave
+failedSaveDecoder =
+    D.map2 Encounter.FailedSave
+        (optionalField "damage" (D.nullable D.string) Nothing)
+        (optionalField "becomes" (D.nullable D.string) Nothing)
+
+
+
+-- ── EffectDuration ───────────────────────────────────────────────
+
+
+encodeDuration : EffectDuration -> E.Value
+encodeDuration duration =
+    case duration of
+        LastsUntilRemoved ->
+            E.object [ ( "kind", E.string "manual" ) ]
+
+        LastsUntilTurn phase ref ->
+            E.object
+                ([ ( "kind", E.string "until_turn" )
+                 , ( "phase", E.string (phaseString phase) )
+                 ]
+                    ++ turnRefFields ref
+                )
+
+        LastsForTurns phase turns ->
+            E.object
+                [ ( "kind", E.string "countdown" )
+                , ( "phase", E.string (phaseString phase) )
+                , ( "turns", E.int turns )
+                ]
+
+        LastsOneMinute ->
+            E.object [ ( "kind", E.string "one_minute" ) ]
+
+
+turnRefFields : TurnRef -> List ( String, E.Value )
+turnRefFields ref =
+    case ref of
+        TurnOfBearer ->
+            [ ( "of", E.string "bearer" ) ]
+
+        TurnOfActive ->
+            [ ( "of", E.string "active" ) ]
+
+        TurnOf name ->
+            [ ( "of", E.string "named" ), ( "name", E.string name ) ]
+
+
+{-| An unknown kind reads as "until removed", the value every
+effect had before durations existed.
+-}
+durationDecoder : D.Decoder EffectDuration
+durationDecoder =
+    optionalField "kind" D.string "manual"
+        |> D.andThen
+            (\kind ->
+                case kind of
+                    "until_turn" ->
+                        D.map2 LastsUntilTurn
+                            (optionalField "phase" phaseDecoder Encounter.AtEnd)
+                            turnRefDecoder
+
+                    "countdown" ->
+                        D.map2 LastsForTurns
+                            (optionalField "phase" phaseDecoder Encounter.AtEnd)
+                            (optionalField "turns" D.int 1)
+
+                    "one_minute" ->
+                        D.succeed LastsOneMinute
+
+                    _ ->
+                        D.succeed LastsUntilRemoved
+            )
+
+
+turnRefDecoder : D.Decoder TurnRef
+turnRefDecoder =
+    optionalField "of" D.string "bearer"
+        |> D.andThen
+            (\of_ ->
+                case of_ of
+                    "active" ->
+                        D.succeed TurnOfActive
+
+                    "named" ->
+                        D.map TurnOf (optionalField "name" D.string "")
+
+                    _ ->
+                        D.succeed TurnOfBearer
+            )
+
+
+phaseString : Encounter.TurnPhase -> String
+phaseString phase =
+    case phase of
+        Encounter.AtBegin ->
+            "at_begin"
+
+        Encounter.AtEnd ->
+            "at_end"
+
+
+phaseDecoder : D.Decoder Encounter.TurnPhase
+phaseDecoder =
+    D.string
+        |> D.map
+            (\s ->
+                if s == "at_begin" then
+                    Encounter.AtBegin
+
+                else
+                    Encounter.AtEnd
+            )
 
 
 

@@ -569,7 +569,9 @@ fn full_condition_presets() -> Value {
         "dc": 15,
         "bonusText": "+1",
         "bonus": 1,
-        "autoRoll": "atEnd"
+        "autoRoll": "atEnd",
+        "failDamage": "2d6",
+        "failBecomes": "Stunned"
       },
       "category": ""
     },
@@ -589,7 +591,9 @@ fn full_condition_presets() -> Value {
 }
 
 /// Bundled-style Save Chain map exercising every HP-effect kind, a
-/// multi-effect outcome, and all `save_to_end` enum variants.
+/// multi-effect outcome, all `save_to_end` enum variants, every
+/// duration kind and turn reference, a failed-save outcome with
+/// each half set and unset, and an immunity present and absent.
 fn full_save_chains() -> Value {
   json!({
     "Fireball": {
@@ -603,7 +607,8 @@ fn full_save_chains() -> Value {
       "on_success": {
         "hp": { "kind": "half_fail" },
         "effects": []
-      }
+      },
+      "immunity": null
     },
     "Hold Person": {
       "name": "Hold Person",
@@ -612,14 +617,27 @@ fn full_save_chains() -> Value {
       "on_fail": {
         "hp": { "kind": "none" },
         "effects": [
-          { "name": "Paralyzed", "note": "Hold Person", "save_to_end": "at_end" },
-          { "name": "Marked", "note": "", "save_to_end": null }
+          {
+            "name": "Paralyzed",
+            "note": "Hold Person",
+            "save_to_end": "at_end",
+            "on_failed_save": { "damage": "4d10", "becomes": "Petrified" },
+            "duration": { "kind": "one_minute" }
+          },
+          {
+            "name": "Marked",
+            "note": "",
+            "save_to_end": null,
+            "on_failed_save": null,
+            "duration": { "kind": "until_turn", "phase": "at_end", "of": "bearer" }
+          }
         ]
       },
       "on_success": {
         "hp": { "kind": "none" },
         "effects": []
-      }
+      },
+      "immunity": { "kind": "manual" }
     },
     "Healing Word": {
       "name": "Healing Word",
@@ -628,14 +646,35 @@ fn full_save_chains() -> Value {
       "on_fail": {
         "hp": { "kind": "none" },
         "effects": [
-          { "name": "Inspired", "note": "manual save", "save_to_end": "manual" },
-          { "name": "Watched", "note": "", "save_to_end": "at_begin" }
+          {
+            "name": "Inspired",
+            "note": "manual save",
+            "save_to_end": "manual",
+            "on_failed_save": { "damage": null, "becomes": null },
+            "duration": { "kind": "countdown", "phase": "at_begin", "turns": 3 }
+          },
+          {
+            "name": "Watched",
+            "note": "",
+            "save_to_end": "at_begin",
+            "on_failed_save": { "damage": "1d6", "becomes": null },
+            "duration": { "kind": "until_turn", "phase": "at_begin", "of": "named", "name": "Lyra" }
+          }
         ]
       },
       "on_success": {
         "hp": { "kind": "heal", "amount": "1d4+2" },
-        "effects": []
-      }
+        "effects": [
+          {
+            "name": "Blessed",
+            "note": "",
+            "save_to_end": null,
+            "on_failed_save": null,
+            "duration": { "kind": "manual" }
+          }
+        ]
+      },
+      "immunity": { "kind": "until_turn", "phase": "at_end", "of": "active" }
     }
   })
 }
@@ -996,7 +1035,9 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
 
   // Save chains: the legacy condition_name outcome becomes a
   // one-element effects list, bool save_to_end becomes the enum,
-  // the int amount is stringified, the ability lowercases.
+  // the int amount is stringified, the ability lowercases, every
+  // effect lasts until removed, a saving effect has an empty
+  // failed-save outcome, and the chain grants no immunity.
   assert_eq!(
     get_json(&app, &cookie, "/api/save-chain-presets").await,
     json!({
@@ -1007,16 +1048,35 @@ async fn test_preset_import_serves_canonical_modern_encoding() {
         "on_fail": {
           "hp": { "kind": "damage", "amount": "22" },
           "effects": [
-            { "name": "Paralyzed", "note": "legacy note", "save_to_end": null }
+            {
+              "name": "Paralyzed",
+              "note": "legacy note",
+              "save_to_end": null,
+              "on_failed_save": null,
+              "duration": { "kind": "manual" }
+            }
           ]
         },
         "on_success": {
           "hp": { "kind": "half_fail" },
           "effects": [
-            { "name": "Shaken", "note": "", "save_to_end": "at_end" },
-            { "name": "Slowed", "note": "half speed", "save_to_end": null }
+            {
+              "name": "Shaken",
+              "note": "",
+              "save_to_end": "at_end",
+              "on_failed_save": { "damage": null, "becomes": null },
+              "duration": { "kind": "manual" }
+            },
+            {
+              "name": "Slowed",
+              "note": "half speed",
+              "save_to_end": null,
+              "on_failed_save": null,
+              "duration": { "kind": "manual" }
+            }
           ]
-        }
+        },
+        "immunity": null
       }
     })
   );

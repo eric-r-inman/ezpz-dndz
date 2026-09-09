@@ -1,9 +1,11 @@
 module Encounter.SaveChain exposing
     ( SaveChain, SaveOutcome, HpEffect(..)
-    , empty, isEffectivelyEmpty, needsDc
+    , EffectApply, EffectDuration(..), TurnRef(..), EffectSave
+    , empty, isEffectivelyEmpty, needsDc, emptyEffect
     , applyResolvedHp, applyEffects, halfFailDamage
     , rawAmount
-    , EffectApply, EffectContext, emptyEffect
+    , EffectContext, resolveDuration
+    , immunityName, isImmune, grantImmunity
     )
 
 {-| Save Chain: a reusable "creature makes a save; something
@@ -31,9 +33,12 @@ halve the resulting integer. Independent from any prior Fail
 apply so a GM can click Pass without having clicked Fail first.
 
 @docs SaveChain, SaveOutcome, HpEffect
-@docs empty, isEffectivelyEmpty, needsDc
+@docs EffectApply, EffectDuration, TurnRef, EffectSave
+@docs empty, isEffectivelyEmpty, needsDc, emptyEffect
 @docs applyResolvedHp, applyEffects, halfFailDamage
 @docs rawAmount
+@docs EffectContext, resolveDuration
+@docs immunityName, isImmune, grantImmunity
 
 -}
 
@@ -46,7 +51,10 @@ import HpChange
 `""` on a fresh new chain — the GM must fill it in to save the
 recipe, but they can still apply an unnamed chain one-shot.
 `saveDc` is `Nothing` for chains authored without a fixed DC;
-the modal prompts for the DC at apply-time in that case.
+the editor asks for one before a Save-to-end effect can apply.
+`immunity` is the grant a successful save carries — the target
+can't be affected by this chain again for that long — or
+`Nothing` when the effect grants none.
 -}
 type alias SaveChain =
     { name : String
@@ -54,6 +62,7 @@ type alias SaveChain =
     , saveDc : Maybe Int
     , onFail : SaveOutcome
     , onSuccess : SaveOutcome
+    , immunity : Maybe EffectDuration
     }
 
 
@@ -85,25 +94,59 @@ Curse", etc.) for spells whose in-game effect isn't part of
 the 5e condition list. Note is optional flavour or a
 reminder of the ongoing mechanic.
 
+`duration` is how long the applied condition lasts, in the
+Condition editor's terms but relative to the creatures at hand,
+since a preset can't name them; `resolveDuration` settles it at
+apply time.
+
 `saveToEnd` opts this effect into the save-to-end mechanic:
 
   - `Nothing` — no automatic re-save; the applied condition
-    lives on `DurationManual` until the GM removes it. Used
+    lasts out its duration or until the GM removes it. Used
     for effects like Hypnotic Pattern's Charmed (ends on
     damage, not a save) or Suggestion (no re-save at all).
-  - `Just mode` — the applied condition inherits the chain's
+  - `Just save` — the applied condition inherits the chain's
     save ability + DC (Hold Person's WIS DC 15, etc.) and
-    fires per the chosen `AutoRollMode`. The three modes
-    mirror the Condition modal: manual (the GM clicks 🎲
-    on the chip when they want to roll), at-begin (fires
-    at the start of the bearer's turn), or at-end (the
-    canonical 5e "save at end of each turn to end").
+    fires per the save's `AutoRollMode`, with its failed-save
+    outcome along for the ride.
 
 -}
 type alias EffectApply =
     { name : String
     , note : String
-    , saveToEnd : Maybe Encounter.AutoRollMode
+    , duration : EffectDuration
+    , saveToEnd : Maybe EffectSave
+    }
+
+
+{-| How long an applied effect lasts, mirroring the Condition
+editor's choices. A preset can't name the creature an
+"until turn" refers to, so it names a role instead.
+-}
+type EffectDuration
+    = LastsUntilRemoved
+    | LastsUntilTurn Encounter.TurnPhase TurnRef
+    | LastsForTurns Encounter.TurnPhase Int
+    | LastsOneMinute
+
+
+{-| Whose turn an "until turn" duration watches: the creature
+the effect lands on, the creature whose turn it is when the
+chain applies (the caster, for a monster's own ability), or a
+named creature for a one-off chain.
+-}
+type TurnRef
+    = TurnOfBearer
+    | TurnOfActive
+    | TurnOf String
+
+
+{-| The save-to-end an effect opts into: when it rolls, and what
+a failure does beyond leaving the condition in place.
+-}
+type alias EffectSave =
+    { autoRoll : Encounter.AutoRollMode
+    , onFail : Encounter.FailedSave
     }
 
 
@@ -138,6 +181,7 @@ empty =
     , saveDc = Nothing
     , onFail = emptyOutcome
     , onSuccess = emptyOutcome
+    , immunity = Nothing
     }
 
 
@@ -153,7 +197,7 @@ effect" button pushes a new row onto an outcome's list.
 -}
 emptyEffect : EffectApply
 emptyEffect =
-    { name = "", note = "", saveToEnd = Nothing }
+    { name = "", note = "", duration = LastsUntilRemoved, saveToEnd = Nothing }
 
 
 {-| True iff a chain has no effects on either side. Used by
@@ -262,20 +306,8 @@ applyResolvedHp hp amount target enc =
 
 {-| Apply every effect on an outcome to a target creature,
 walking left-to-right through the list. Each non-blank entry
-becomes a fresh `ConditionDraft` with `DurationManual`.
-Blank names are skipped so an editor row left half-filled
-doesn't leak in.
-
-The `saveToEndFor` argument is the update layer's way of
-supplying a per-target save-to-end spec (the applied
-condition's `SaveToEnd` needs the target's own save
-modifier, which requires a compendium lookup the domain
-doesn't own). Effects with `saveToEnd = True` on this
-list get the result of `saveToEndFor target`; effects with
-`saveToEnd = False` always get `Nothing` regardless of the
-resolver — so the domain never accidentally attaches a
-save-to-end to an effect the GM didn't opt in.
-
+becomes a fresh `ConditionDraft`; blank names are skipped so an
+editor row left half-filled doesn't leak in.
 -}
 applyEffects :
     EffectContext
@@ -290,16 +322,18 @@ applyEffects ctx outcome target enc =
 {-| The update layer's per-apply context supplied to the
 domain: the chain's save ability (as an uppercase string
 matching the Condition modal's `saveToEnd.ability`), an
-optional DC, and a per-target save-bonus resolver. When the
-chain has no DC (`saveDc = Nothing`) the domain refuses to
-build a `SaveToEnd` even if the effect opts in — better to
-skip silently than attach a DC-less save-to-end that would
-never resolve.
+optional DC, a per-target save-bonus resolver, and the active
+creature's name, which an "until the active creature's turn"
+duration resolves against. When the chain has no DC
+(`saveDc = Nothing`) the domain refuses to build a `SaveToEnd`
+even if the effect opts in — better to skip silently than
+attach a DC-less save-to-end that would never resolve.
 -}
 type alias EffectContext =
     { saveAbility : String
     , saveDc : Maybe Int
     , bonusFor : String -> Int
+    , activeName : String
     }
 
 
@@ -321,7 +355,7 @@ applyEffect ctx target effect enc =
         Encounter.addCondition target
             { name = trimmedName
             , note = String.trim effect.note
-            , duration = Encounter.DurationManual
+            , duration = resolveDuration ctx.activeName target effect.duration
             , saveToEnd = resolveSaveToEnd ctx target effect
             }
             enc
@@ -334,16 +368,115 @@ resolveSaveToEnd :
     -> Maybe Encounter.SaveToEnd
 resolveSaveToEnd ctx target effect =
     case ( effect.saveToEnd, ctx.saveDc ) of
-        ( Just mode, Just dc ) ->
+        ( Just save, Just dc ) ->
             Just
                 { ability = ctx.saveAbility
                 , dc = dc
                 , bonus = ctx.bonusFor target
-                , autoRoll = mode
+                , autoRoll = save.autoRoll
+                , onFail = save.onFail
                 }
 
         _ ->
             Nothing
+
+
+{-| Settle a preset's duration against the creatures at hand —
+the bearer the effect lands on and whoever is active — into the
+concrete duration the card tracks. An "until turn" watched on
+the active creature's own end of turn means its next one, not
+the one about to end; a countdown ticking at the end of the
+bearer's own turn skips the end that is moments away. Both are
+the Condition editor's rules.
+-}
+resolveDuration : String -> String -> EffectDuration -> Encounter.Duration
+resolveDuration activeName bearer duration =
+    case duration of
+        LastsUntilRemoved ->
+            Encounter.DurationManual
+
+        LastsUntilTurn phase ref ->
+            let
+                name =
+                    case ref of
+                        TurnOfBearer ->
+                            bearer
+
+                        TurnOfActive ->
+                            if String.isEmpty activeName then
+                                bearer
+
+                            else
+                                activeName
+
+                        TurnOf named ->
+                            named
+
+                target =
+                    if name == activeName && phase == Encounter.AtEnd then
+                        Encounter.OnNextTurn
+
+                    else
+                        Encounter.OnCurrentTurn
+            in
+            Encounter.DurationUntilTurn phase target name
+
+        LastsForTurns phase turns ->
+            Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase)
+
+        LastsOneMinute ->
+            Encounter.DurationCountdown Encounter.AtEnd 10 (skipsFirstTick activeName bearer Encounter.AtEnd)
+
+
+skipsFirstTick : String -> String -> Encounter.TurnPhase -> Bool
+skipsFirstTick activeName bearer phase =
+    phase == Encounter.AtEnd && bearer == activeName
+
+
+{-| The condition a granted immunity lives on as, named for the
+chain so the chain can find it again.
+-}
+immunityName : SaveChain -> String
+immunityName chain =
+    "Immune: "
+        ++ (if String.isEmpty (String.trim chain.name) then
+                "this effect"
+
+            else
+                String.trim chain.name
+           )
+
+
+{-| True iff the named creature carries this chain's immunity.
+-}
+isImmune : SaveChain -> String -> Encounter.Encounter -> Bool
+isImmune chain target enc =
+    enc.creatures
+        |> List.any
+            (\c ->
+                c.name
+                    == target
+                    && List.any (\cond -> cond.name == immunityName chain) c.conditions
+            )
+
+
+{-| Grant the chain's immunity, if it has one, to a creature that
+just succeeded on the save.
+-}
+grantImmunity : String -> SaveChain -> String -> Encounter.Encounter -> Encounter.Encounter
+grantImmunity activeName chain target enc =
+    case chain.immunity of
+        Just duration ->
+            Encounter.addCondition target
+                { name = immunityName chain
+                , note = ""
+                , duration = resolveDuration activeName target duration
+                , saveToEnd = Nothing
+                }
+                enc
+
+        Nothing ->
+            enc
 
 
 {-| Compute "half fail damage, rounded down" the same way 5e

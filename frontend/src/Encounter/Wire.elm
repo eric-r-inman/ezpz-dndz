@@ -37,11 +37,13 @@ import Encounter
         , DeathSaves
         , Duration(..)
         , Encounter
+        , FailedSave
         , SaveNotice
         , SaveToEnd
         , Timer
         , TurnPhase(..)
         , TurnTarget(..)
+        , noFailedSave
         )
 import Encounter.Treasure
 import Encounter.Treasure.Tables
@@ -1152,6 +1154,15 @@ encodeSaveToEnd s =
         , ( "dc", E.int s.dc )
         , ( "bonus", E.int s.bonus )
         , ( "autoRoll", encodeAutoRoll s.autoRoll )
+        , ( "onFail", encodeFailedSave s.onFail )
+        ]
+
+
+encodeFailedSave : FailedSave -> E.Value
+encodeFailedSave f =
+    E.object
+        [ ( "damage", encodeMaybe E.string f.damage )
+        , ( "becomes", encodeMaybe E.string f.becomes )
         ]
 
 
@@ -1507,11 +1518,19 @@ decodeTurnTarget =
 
 decodeSaveToEnd : D.Decoder SaveToEnd
 decodeSaveToEnd =
-    D.map4 SaveToEnd
+    D.map5 SaveToEnd
         (D.field "ability" D.string)
         (D.field "dc" D.int)
         (D.field "bonus" D.int)
         (D.field "autoRoll" decodeAutoRoll)
+        (D.oneOf [ D.field "onFail" decodeFailedSave, D.succeed noFailedSave ])
+
+
+decodeFailedSave : D.Decoder FailedSave
+decodeFailedSave =
+    D.map2 FailedSave
+        (D.oneOf [ D.field "damage" (D.nullable D.string), D.succeed Nothing ])
+        (D.oneOf [ D.field "becomes" (D.nullable D.string), D.succeed Nothing ])
 
 
 decodeAutoRoll : D.Decoder AutoRollMode
