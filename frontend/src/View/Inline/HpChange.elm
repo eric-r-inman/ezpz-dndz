@@ -17,13 +17,14 @@ the rest of the log lives in the dice roller.
 
 import Dice
 import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (autofocus, checked, class, for, id, maxlength, placeholder, type_, value)
+import Html.Attributes as Attr exposing (autofocus, class, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
+import View.Inline.Field as Field
 
 
 view : Int -> Bool -> View.HpLog.Latest -> List HpChangeEntry -> HpChangeUi -> Html Msg
@@ -87,13 +88,13 @@ another field, so it goes without.
 -}
 split : String
 split =
-    "hp-change__manual-field--split"
+    "cond-pair--split"
 
 
 manualField : String -> String -> String -> String -> HpField -> Html Msg
 manualField extraClass fieldId label current field =
-    span [ class ("hp-change__manual-field " ++ extraClass) ]
-        [ Html.label [ for fieldId, class "hp-change__manual-label" ] [ text label ]
+    span [ class ("cond-pair " ++ extraClass) ]
+        [ Html.label [ for fieldId, class "cond-label" ] [ text label ]
         , input
             [ id fieldId
             , class "cond-input cond-input--pool"
@@ -115,12 +116,12 @@ isn't safely overloadable across all of them. GMs who want Heal
 -}
 amount : Int -> HpChangeUi -> Html Msg
 amount selectedCount ui =
-    div [ class "hp-change__row" ]
-        [ Html.label [ class "hp-change__label", for "hp-amount" ]
+    div [ class "cond-row" ]
+        [ Html.label [ class "cond-label", for "hp-amount" ]
             [ text "HP:" ]
         , input
             [ id "hp-amount"
-            , class "hp-change__input"
+            , class "cond-input cond-input--narrow"
             , type_ "text"
             , placeholder "12"
             , maxlength 3
@@ -138,7 +139,7 @@ parseErrorHint : HpChangeUi -> Html Msg
 parseErrorHint ui =
     case ui.parseError of
         Just (Dice.ParseError raw) ->
-            div [ class "hp-change__error" ]
+            div [ class "cond-section__caption cond-section__caption--danger" ]
                 [ text ("Couldn't parse: " ++ raw) ]
 
         Nothing ->
@@ -155,15 +156,12 @@ applyScope selectedCount ui =
         text ""
 
     else
-        Html.label [ class "hp-change__checkbox hp-change__checkbox--scope" ]
-            [ input
-                [ type_ "checkbox"
-                , checked ui.applyToSelected
-                , onClick HpChangeApplyToSelectedToggle
-                ]
-                []
-            , text (" Selected (" ++ String.fromInt selectedCount ++ ")")
-            ]
+        Field.checkbox
+            { checked = ui.applyToSelected
+            , msg = HpChangeApplyToSelectedToggle
+            , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
+            , extra = []
+            }
 
 
 {-| When the amount reads as a dice formula and a selection is
@@ -174,16 +172,13 @@ reroll.
 freshRollOption : Int -> HpChangeUi -> Html Msg
 freshRollOption selectedCount ui =
     if selectedCount > 0 && isFormula ui.amountText then
-        div [ class "hp-change__row" ]
-            [ Html.label [ class "hp-change__checkbox" ]
-                [ input
-                    [ type_ "checkbox"
-                    , checked ui.freshRollPerTarget
-                    , onClick HpChangeFreshRollToggle
-                    ]
-                    []
-                , text " New roll for each creature"
-                ]
+        div [ class "cond-row" ]
+            [ Field.checkbox
+                { checked = ui.freshRollPerTarget
+                , msg = HpChangeFreshRollToggle
+                , label = "New roll for each creature"
+                , extra = []
+                }
             ]
 
     else
@@ -218,7 +213,7 @@ damage / heal / temp affordances.
 -}
 actionButtons : Html Msg
 actionButtons =
-    div [ class "hp-change__actions" ]
+    div [ class "cond-row" ]
         [ button
             [ class "action-btn action-btn--damage"
             , onClick (HpChangeApplyAs DamageKind)

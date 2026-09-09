@@ -57,9 +57,9 @@ view db selectedCount log ui =
 searchRow : ReplaceUi -> Html Msg
 searchRow ui =
     div [ class "cond-row" ]
-        [ Html.label [] [ text "Replace with:" ]
+        [ Html.label [ class "cond-label" ] [ text "Replace with:" ]
         , input
-            [ class "cond-input cond-input--search"
+            [ class "cond-input cond-input--w20"
             , type_ "text"
             , value ui.searchText
             , placeholder "Search the compendium"

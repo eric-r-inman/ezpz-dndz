@@ -1,6 +1,7 @@
 module Update.PanelDrawer exposing
     ( clearCreature, foldNewest, toggleCollapse, togglePin
     , dragStart, dragOver, drop, dragEnd
+    , foldAll
     )
 
 {-| Drawer-wide handlers that belong to no single panel.
@@ -52,6 +53,11 @@ the top of the rest when releasing.
 togglePin : Int -> Model -> ( Model, Cmd Msg )
 togglePin index model =
     ( Model.togglePinnedAt index model, Cmd.none )
+
+
+foldAll : Model -> ( Model, Cmd Msg )
+foldAll model =
+    ( Model.foldAllDrawer model, Cmd.none )
 
 
 {-| Esc means "dismiss what I am looking at", which

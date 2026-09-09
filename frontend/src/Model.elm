@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PanelPin, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PanelPin, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -231,9 +231,11 @@ defaultDrawer =
         , SurfaceReplace (Ui.Replace.fresh "")
         , SurfaceCrCalculator Ui.CrCalculator.fresh
         , SurfaceXp
-        , SurfaceTreasure Ui.Treasure.fresh
         , SurfaceSaveLoad Ui.SaveLoad.fresh
         , SurfaceQuickAdd Ui.QuickAdd.fresh
+
+        -- Panels a fight never leans on sit last.
+        , SurfaceTreasure Ui.Treasure.fresh
         , SurfaceRandomEncounter Ui.RandomEncounter.fresh
         ]
 
@@ -820,6 +822,13 @@ newestShowing model =
         |> List.head
 
 
+{-| Fold every panel in the stack at once.
+-}
+foldAllDrawer : Model -> Model
+foldAllDrawer model =
+    { model | drawer = List.map (\panel -> { panel | collapsed = True }) model.drawer }
+
+
 {-| Fold the panel at `index`, where `toggleCollapsedAt` would
 flip it. Saying which one is meant keeps the caller readable.
 -}
@@ -1320,6 +1329,11 @@ type alias Model =
     -- flipping between modals.  Capped at
     -- `Ui.SaveChain.maxSaveChainLogEntries`.
     , saveChainLog : List Ui.SaveChain.SaveChainLogEntry
+
+    -- Whether the Save Chain editor shows its recent-applies log.
+    -- It starts folded and opens itself when an apply lands, so
+    -- the log takes no room until there is something to read.
+    , saveChainLogOpen : Bool
     , hpEdit : Maybe HpEdit
     , compendium : CompendiumUi
     , surface : Maybe Surface

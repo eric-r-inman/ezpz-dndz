@@ -568,6 +568,7 @@ init flags url key =
         , flashedRollSeq = 0
         , expandedLogRows = Set.empty
         , saveChainLog = []
+        , saveChainLogOpen = False
         , hpEdit = Nothing
         , compendium = compendiumFromUrl url
         , surface = Nothing
@@ -1180,6 +1181,12 @@ updateInner msg model =
 
         SaveChainMarkArea ->
             Update.SaveChain.markArea model
+
+        SaveChainLogToggle ->
+            Update.SaveChain.logToggle model
+
+        SaveChainClear ->
+            Update.SaveChain.clear model
 
         SaveChainImmunityToggle ->
             Update.SaveChain.immunityToggle model
@@ -1835,6 +1842,9 @@ updateInner msg model =
 
         DrawerPinToggle index ->
             Update.PanelDrawer.togglePin index model
+
+        DrawerFoldAll ->
+            Update.PanelDrawer.foldAll model
 
         LogRowToggle key ->
             Update.LogRow.toggle key model

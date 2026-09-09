@@ -157,10 +157,10 @@
 67. A gear icon beside a creature's HP opens its Status and Condition/Effect
     editors together, aimed at that creature, with the topmost of the two
     scrolled fully into view.  No action needed.
-68. The Condition/Effect editor's "Saving throw to end" auto-roll choice is
-    three plain radio buttons — "End manually (no auto-roll)", "Auto
-    roll-beginning of turn", "Auto roll-end of turn" — instead of bordered
-    pills, and its dice-button reminder text is gone.  No action needed.
+68. The Condition/Effect editor's "Saving throw to end" auto-roll choice is a
+    row of plain radio buttons — Manual, Start of turn, End of turn — instead of
+    bordered pills, and its dice-button reminder text is gone.  No action
+    needed.
 69. The Condition/Effect editor's saving-throw Mod field carries an up/down
     spinner for one-click adjustment.  No action needed.
 70. The Initiative editor's Roll row drops the Standard option — Advantage and
@@ -260,6 +260,26 @@
 97. The Condition editor and the Save Chain duration picker offer a "This turn"
     duration that ends the condition with the target's current turn.  No action
     needed.
+98. The Save Chain editor is laid out like the Condition editor: dashed rules
+    between sections instead of boxed panes, the HP choice on one row with its
+    label, and the scope checkbox tight above the apply buttons.  No action
+    needed.
+99. The Save Chain editor's preset row reads New, Clear, Delete, Restore, and
+    Clear empties every setting while keeping the name and loaded preset.  No
+    action needed.
+100. The Save Chain editor's recent-applies log starts folded and unfolds itself
+     when an apply lands; click its heading to fold it again.  No action needed.
+101. Shift-click the heading row of an open editor to fold every open editor at
+     once.  No action needed.
+102. Every editor's fields, labels, choice controls, and hints share one compact
+     size and shape, the Condition editor's, and a row that runs out of room
+     moves its next item to a new line instead of clipping it.  No action
+     needed.
+103. The Save Chain, Treasure, and Random Encounter editors carry a small "beta"
+     tag beside their titles.  No action needed.
+104. Treasure and Random Encounter sit at the bottom of a fresh editor column.
+     A column you have already arranged keeps its order, so drag them down if
+     you want the same.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

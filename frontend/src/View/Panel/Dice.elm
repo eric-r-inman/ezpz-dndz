@@ -133,11 +133,11 @@ view header log ui =
 form : DiceUi -> Html Msg
 form ui =
     div [ class "dice-form" ]
-        [ div [ class "dice-form__row" ]
-            [ label [ for "dice-input" ] [ text "Expression" ]
+        [ div [ class "cond-row" ]
+            [ label [ for "dice-input", class "cond-label" ] [ text "Expression:" ]
             , input
                 [ id "dice-input"
-                , class "dice-form__input"
+                , class "cond-input cond-input--grow"
                 , type_ "text"
                 , placeholder "e.g. 2d6+3"
                 , value ui.input
@@ -153,7 +153,7 @@ form ui =
             ]
         , case ui.inputError of
             Just (Dice.ParseError raw) ->
-                div [ class "dice-form__error" ]
+                div [ class "cond-section__caption cond-section__caption--danger" ]
                     [ text ("Couldn't parse: " ++ raw) ]
 
             Nothing ->
@@ -163,13 +163,13 @@ form ui =
         -- Two characters cover every count and modifier the game
         -- asks for; text inputs because a number input ignores
         -- `maxlength`.
-        , div [ class "dice-form__pair-row" ]
+        , div [ class "cond-row" ]
             [ label
-                [ for "dice-count", class "dice-form__pair-label" ]
-                [ text "Count" ]
+                [ for "dice-count", class "cond-label" ]
+                [ text "Count:" ]
             , input
                 [ id "dice-count"
-                , class "dice-form__input dice-form__numeric"
+                , class "cond-input cond-input--2ch"
                 , type_ "text"
                 , Attr.maxlength 2
                 , attribute "inputmode" "numeric"
@@ -179,12 +179,12 @@ form ui =
                 []
             , label
                 [ for "dice-modifier"
-                , class "dice-form__pair-label dice-form__pair-label--split"
+                , class "cond-label"
                 ]
-                [ text "Modifier" ]
+                [ text "Modifier:" ]
             , input
                 [ id "dice-modifier"
-                , class "dice-form__input dice-form__numeric"
+                , class "cond-input cond-input--2ch"
                 , type_ "text"
                 , Attr.maxlength 2
                 , attribute "inputmode" "numeric"

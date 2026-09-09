@@ -151,6 +151,7 @@ panelFor model index panel =
         header =
             { collapsed = panel.collapsed
             , toggle = DrawerCollapseToggle index
+            , foldAll = DrawerFoldAll
 
             -- The heading row is the drag handle; the body keeps
             -- its clicks and selections to itself.
@@ -193,10 +194,13 @@ panelFor model index panel =
                 "Target: " ++ targetName
 
         editor title subtitle body =
+            editorTagged title Nothing subtitle body
+
+        editorTagged title trail subtitle body =
             View.Panel.view
                 { close = Nothing
                 , title = title
-                , titleTrail = Nothing
+                , titleTrail = trail
                 , subtitle = Just subtitle
                 , header = header
                 , extraClass = "panel-drawer--editor"
@@ -253,13 +257,15 @@ panelFor model index panel =
                     )
 
             SurfaceSaveChain ui ->
-                editor "Save Chain"
+                editorTagged "Save Chain"
+                    (Just View.Panel.betaTag)
                     (scopedLabel ui.target ui.applyToSelected)
                     (View.Inline.SaveChain.view
                         { presets = model.saveChainPresets
                         , selectedCount = selectedCount
                         , placeholderWarning = placeholderWarning ui.target
                         , log = model.saveChainLog
+                        , logOpen = model.saveChainLogOpen
                         , creatureNames = List.map .name model.encounter.creatures
                         }
                         ui

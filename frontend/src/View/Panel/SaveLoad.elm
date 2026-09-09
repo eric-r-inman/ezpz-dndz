@@ -121,10 +121,10 @@ name, save — never needs the mouse.
 -}
 saveRow : SaveLoadUi -> Html Msg
 saveRow ui =
-    div [ class "save-load__save-row" ]
+    div [ class "cond-row" ]
         [ input
             [ id "save-load-filename"
-            , class "save-load__filename"
+            , class "cond-input cond-input--grow"
             , type_ "text"
             , placeholder "Encounter name"
             , value ui.filename
@@ -242,7 +242,7 @@ renameRow : SaveLoadUi -> String -> Html Msg
 renameRow ui draft =
     li [ class "save-load__row" ]
         [ input
-            [ class "save-load__filename"
+            [ class "cond-input cond-input--grow"
             , type_ "text"
             , value draft
             , maxlength SaveLoadUi.maxNameLength
@@ -339,7 +339,7 @@ errorBanner : SaveLoadUi -> Html Msg
 errorBanner ui =
     case ui.error of
         Just err ->
-            div [ class "save-load__error" ] [ text err ]
+            div [ class "cond-section__caption cond-section__caption--danger" ] [ text err ]
 
         Nothing ->
             text ""

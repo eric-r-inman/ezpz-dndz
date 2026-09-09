@@ -1,4 +1,4 @@
-module View.Panel exposing (Header, onClickWithoutFolding, titleMarkIf, view)
+module View.Panel exposing (Header, betaTag, onClickWithoutFolding, titleMarkIf, view)
 
 {-| Shared chrome for whatever the editor column has open.
 
@@ -15,13 +15,13 @@ or cue rendered just after the title.
 whether the body is folded, where the panel sits in the order,
 and the controls that change either.
 
-@docs Header, onClickWithoutFolding, titleMarkIf, view
+@docs Header, betaTag, onClickWithoutFolding, titleMarkIf, view
 
 -}
 
 import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
-import Html.Events exposing (onClick, stopPropagationOn)
+import Html.Events exposing (on, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg)
 import View.Tooltips as Tooltips
@@ -34,6 +34,7 @@ passed through the panel modules untouched.
 type alias Header =
     { collapsed : Bool
     , toggle : Msg
+    , foldAll : Msg
     , dragAttrs : List (Html.Attribute Msg)
     , pinned : Bool
     , pinToggle : Msg
@@ -54,7 +55,7 @@ view config =
     section [ class (panelClass config.header.collapsed ++ " " ++ config.extraClass) ]
         (div
             ([ class (headerClass config.header.collapsed)
-             , onClick config.header.toggle
+             , on "click" (headerClick config.header)
              ]
                 ++ config.header.dragAttrs
             )
@@ -173,7 +174,7 @@ collapseToggle header =
     button
         [ class "panel-drawer__collapse"
         , type_ "button"
-        , onClickWithoutFolding header.toggle
+        , stopPropagationOn "click" (Decode.map (\msg -> ( msg, True )) (headerClick header))
         , attribute "aria-label" Tooltips.drawerCollapse
         , attribute "aria-expanded"
             (if header.collapsed then
@@ -191,6 +192,30 @@ collapseToggle header =
                 "▼"
             )
         ]
+
+
+{-| What a click on the heading row does: fold or unfold this
+panel, or — shift-held on an open panel — fold every panel, the
+quick way back to a bare column.
+-}
+headerClick : Header -> Decode.Decoder Msg
+headerClick header =
+    Decode.field "shiftKey" Decode.bool
+        |> Decode.map
+            (\shift ->
+                if shift && not header.collapsed then
+                    header.foldAll
+
+                else
+                    header.toggle
+            )
+
+
+{-| The tag a panel wears while its feature is still settling.
+-}
+betaTag : Html Msg
+betaTag =
+    span [ class "panel__title-beta" ] [ text "beta" ]
 
 
 {-| The cue a panel wears when it holds something the GM hasn't

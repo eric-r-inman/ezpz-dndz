@@ -118,6 +118,9 @@ module View.Tooltips exposing
     , reset
     , roundSet
     , runEncounter
+    , saveAskAtEnd
+    , saveChainArea
+    , saveFlashOnDamage
     , saveLoadConfirmCancel
     , saveLoadConfirmGo
     , saveLoadRenameCancel
@@ -1026,6 +1029,28 @@ chipFullTitle name durationText maybeSave =
                     ""
     in
     name ++ " — " ++ durationText ++ savePart
+
+
+{-| The "Ask at end of turn" save timing, in both editors.
+-}
+saveAskAtEnd : String
+saveAskAtEnd =
+    "The chip flashes as the bearer's turn ends; roll it yourself if the rule's trigger applied"
+
+
+{-| The "Flash the chip" damage trigger, in both editors.
+-}
+saveFlashOnDamage : String
+saveFlashOnDamage =
+    "The chip flashes when the bearer takes damage; roll it yourself if the rule's trigger applied"
+
+
+{-| The Save Chain editor's Area label. An area effect is one a
+creature keeps saving against for as long as it stands in it.
+-}
+saveChainArea : String
+saveChainArea =
+    "For an effect that fills an area, like Cloudkill or Spirit Guardians. Applying the chain puts an \"In:\" chip on each target; at the start or end of each of that creature's turns the app rolls this save again and applies Fail or Pass. Click the chip's × when the creature leaves the area."
 
 
 {-| An area marker's wrapping tooltip: which chain the creature

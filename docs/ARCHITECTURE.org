@@ -1431,6 +1431,29 @@ companion effect lands as a second condition whose ~linkedTo~ names the
 primary's id; ~Encounter.removeCondition~ and the lifecycle ticks prune
 companions whose primary is gone, whichever way it went.
 
+* Editor vocabulary
+
+Every editor in the drawer is drawn from one set of classes, the Condition
+editor's: a ~cond-section~ per group of settings, separated by a dashed rule; a
+~cond-row~ for each line, which wraps whole items to the next line rather than
+clipping or breaking a label mid-text; ~cond-label~ for the words beside a
+field; ~cond-input~ and ~cond-select~ for the fields, at one size, with width
+modifiers for the two-character, short, name-length, and take-the-room cases;
+~cond-checkbox~ and ~cond-radio-plain~ for the choice controls, built by
+=View.Inline.Field= so their markup matches too; ~cond-section__caption~ for a
+hint, with a warn and a danger variant; and ~cond-fold~ for a section heading
+that folds its section, the Save Chain editor's recent-applies log being the
+first.  A panel keeps a class of its own only for what it alone has — a treasure
+row, a die button, a party list.  Adding an editor means composing these, not
+minting a parallel set.
+
+The heading row of every panel folds it on a click and, with shift held on an
+open panel, folds every panel: ~View.Panel.headerClick~ reads the modifier and
+picks between the panel's own toggle and ~DrawerFoldAll~, and the caret button
+shares the decoder.  The tag a panel wears while its feature is still beta is
+~View.Panel.betaTag~ on its ~titleTrail~; those panels also sit last in
+~Model.defaultDrawer~, though a stored layout keeps whatever order the GM left.
+
 * Per-surface preset pattern
 
 The Condition and Timer editors each carry a Save / Load footer that remembers

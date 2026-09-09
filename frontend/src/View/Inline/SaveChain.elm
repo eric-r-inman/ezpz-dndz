@@ -8,16 +8,19 @@ Applying never closes the editor. A GM usually runs both sides
 on the same open — fail for the creatures that missed, pass for
 the survivors.
 
+The body is laid out in the Condition editor's vocabulary — the
+same sections, rows, fields, and choice controls — so the two
+editors read as one form.
+
 -}
 
 import Compendium exposing (Ability(..))
 import Dict
 import Encounter
 import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration, HpEffect(..))
-import Html exposing (Html, button, div, input, li, option, p, select, span, text, ul)
-import Html.Attributes as Attr exposing (attribute, checked, class, disabled, name, placeholder, selected, type_, value)
-import Html.Events exposing (on, onClick, onInput)
-import Json.Decode as Decode
+import Html exposing (Html, button, div, input, li, option, select, span, text, ul)
+import Html.Attributes as Attr exposing (attribute, class, disabled, placeholder, selected, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Msg
     exposing
         ( Msg(..)
@@ -28,19 +31,21 @@ import Msg
 import Ui.SaveChain exposing (AppliedPart(..), OutcomeForm, SaveChainLogEntry, SaveChainUi)
 import View.Inline.ApplyButton as ApplyButton
 import View.Inline.DurationPicker as DurationPicker
+import View.Inline.Field as Field
 import View.Tooltips as Tooltips
 
 
 {-| The model fragments the expansion consumes beyond its own
 Ui record: the presets dict backs the picker row, the selected
 count drives the apply-to-selected scope and the header title,
-and the log renders the recent resolutions.
+and the log renders the recent resolutions behind its fold.
 -}
 type alias Context =
     { presets : Dict.Dict String SaveChain.SaveChain
     , selectedCount : Int
     , placeholderWarning : Bool
     , log : List SaveChainLogEntry
+    , logOpen : Bool
     , creatureNames : List String
     }
 
@@ -48,33 +53,26 @@ type alias Context =
 view : Context -> SaveChainUi -> Html Msg
 view ctx ui =
     div [ class "creature-card__inline" ]
-        [ presetRow ui ctx.presets
-        , nameRow ui
-        , saveRow ui
-        , areaRow ui
-        , outcomeBlock ctx.creatureNames "On failed save" SaveChainFail ui.onFail (text "")
-        , outcomeBlock ctx.creatureNames
+        [ presetSection ui ctx.presets
+        , identitySection ui
+        , outcomeSection ctx.creatureNames "On failed save" SaveChainFail ui.onFail []
+        , outcomeSection ctx.creatureNames
             "On successful save"
             SaveChainSuccess
             ui.onSuccess
-            (immunitySection ctx.creatureNames ui.immunity)
-        , applyScope ctx.selectedCount ui
-        , applyRow ui
-        , ApplyButton.placeholderNotice ctx.placeholderWarning
-        , log ctx.log
+            [ immunityRows ctx.creatureNames ui.immunity ]
+        , applySection ctx ui
+        , logSection ctx.logOpen ctx.log
         ]
 
 
 
--- ── Preset picker ───────────────────────────────────────────────
+-- ── Presets ─────────────────────────────────────────────────────
 
 
-presetRow : SaveChainUi -> Dict.Dict String SaveChain.SaveChain -> Html Msg
-presetRow ui presets =
+presetSection : SaveChainUi -> Dict.Dict String SaveChain.SaveChain -> Html Msg
+presetSection ui presets =
     let
-        names =
-            Dict.keys presets
-
         placeholderOption =
             option [ value "" ] [ text "— pick a saved chain —" ]
 
@@ -88,99 +86,96 @@ presetRow ui presets =
                             ]
                             [ text n ]
                     )
-                    names
+                    (Dict.keys presets)
 
         loadedTag =
             case ui.loadedPresetName of
                 Just n ->
-                    span [ class "save-chain__loaded-tag" ]
+                    span [ class "cond-section__caption" ]
                         [ text ("Loaded: " ++ n) ]
 
                 Nothing ->
                     text ""
     in
-    div [ class "save-chain__preset-row" ]
-        [ span [ class "save-chain__field-label" ] [ text "Preset" ]
-        , select
-            [ class "save-chain__preset-picker"
-            , onInput SaveChainPresetPickerChanged
-            ]
-            options
-        , button
-            [ class "action-btn action-btn--sm action-btn--red"
-            , type_ "button"
-            , onClick SaveChainPresetDelete
-            , disabled (ui.loadedPresetName == Nothing && String.isEmpty ui.presetPickerSelection)
-            ]
-            [ text "Delete" ]
-        , button
-            [ class "action-btn action-btn--sm"
-            , type_ "button"
-            , onClick SaveChainReset
-            ]
-            [ text "+ New" ]
-        , button
-            [ class "action-btn action-btn--sm"
-            , type_ "button"
-            , onClick SaveChainRestoreBundled
-            , Tooltips.attr "Overwrite default presets with bundled values; your new presets will not be changed."
-            ]
-            [ text "🔄 Restore bundled" ]
-        , loadedTag
-        ]
-
-
-
--- ── Name + Save ability + DC ────────────────────────────────────
-
-
-nameRow : SaveChainUi -> Html Msg
-nameRow ui =
-    div [ class "save-chain__row" ]
-        [ span
-            [ class "save-chain__field-label save-chain__field-label--tight" ]
-            [ text "Name" ]
-        , input
-            [ type_ "text"
-            , class "save-chain__name-input"
-            , value ui.name
-            , placeholder "e.g., Hold Person"
-            , onInput SaveChainNameChanged
-            ]
-            []
-        , button
-            [ class "action-btn action-btn--sm action-btn--green"
-            , type_ "button"
-            , onClick SaveChainPresetSave
-            , disabled (String.isEmpty (String.trim ui.name))
-            ]
-            [ text "Save preset" ]
-        ]
-
-
-saveRow : SaveChainUi -> Html Msg
-saveRow ui =
-    div [ class "save-chain__row save-chain__row--save" ]
-        [ div [ class "save-chain__ability-group" ]
-            [ span
-                [ class "save-chain__field-label save-chain__field-label--tight" ]
-                [ text "Save" ]
-            , div [ class "save-chain__ability-radios" ]
-                [ abilityRadio ui Str "STR"
-                , abilityRadio ui Dex "DEX"
-                , abilityRadio ui Con "CON"
-                , abilityRadio ui Int_ "INT"
-                , abilityRadio ui Wis "WIS"
-                , abilityRadio ui Cha "CHA"
+    div [ class "cond-section" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Preset:" ]
+            , select
+                [ class "cond-select cond-select--grow"
+                , onInput SaveChainPresetPickerChanged
                 ]
+                options
+            , loadedTag
             ]
-        , div [ class "save-chain__dc-group" ]
-            [ span
-                [ class "save-chain__field-label save-chain__field-label--tight" ]
-                [ text "DC" ]
+        , div [ class "cond-row" ]
+            [ button
+                [ class "action-btn"
+                , type_ "button"
+                , onClick SaveChainReset
+                , Tooltips.attr "Start a new chain from nothing"
+                ]
+                [ text "New" ]
+            , button
+                [ class "action-btn"
+                , type_ "button"
+                , onClick SaveChainClear
+                , Tooltips.attr "Empty every setting but keep the name and the loaded preset"
+                ]
+                [ text "Clear" ]
+            , button
+                [ class "action-btn action-btn--red"
+                , type_ "button"
+                , onClick SaveChainPresetDelete
+                , disabled (ui.loadedPresetName == Nothing && String.isEmpty ui.presetPickerSelection)
+                , Tooltips.attr "Delete the loaded preset"
+                ]
+                [ text "Delete" ]
+            , button
+                [ class "action-btn"
+                , type_ "button"
+                , onClick SaveChainRestoreBundled
+                , Tooltips.attr "Overwrite the bundled presets with their shipped values; your own presets are not changed"
+                ]
+                [ text "Restore" ]
+            ]
+        ]
+
+
+
+-- ── Name, save, DC, area ────────────────────────────────────────
+
+
+identitySection : SaveChainUi -> Html Msg
+identitySection ui =
+    div [ class "cond-section" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Name:" ]
             , input
                 [ type_ "text"
-                , class "save-chain__dc-input"
+                , class "cond-input cond-input--w20"
+                , value ui.name
+                , placeholder "e.g. Hold Person"
+                , onInput SaveChainNameChanged
+                ]
+                []
+            , button
+                [ class "action-btn action-btn--green"
+                , type_ "button"
+                , onClick SaveChainPresetSave
+                , disabled (String.isEmpty (String.trim ui.name))
+                ]
+                [ text "Save preset" ]
+            ]
+        , div [ class "cond-row" ]
+            (Html.label [ class "cond-label" ] [ text "Save:" ]
+                :: List.map (abilityRadio ui)
+                    [ ( Str, "STR" ), ( Dex, "DEX" ), ( Con, "CON" ), ( Int_, "INT" ), ( Wis, "WIS" ), ( Cha, "CHA" ) ]
+            )
+        , div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "DC:" ]
+            , input
+                [ type_ "text"
+                , class "cond-input cond-input--2ch"
                 , value ui.dcText
                 , Attr.maxlength 2
                 , onInput SaveChainDcChanged
@@ -188,112 +183,87 @@ saveRow ui =
                 []
             ]
         , dcHint ui
+        , div [ class "cond-row" ]
+            [ Html.label
+                [ class "cond-label"
+                , Tooltips.attr Tooltips.saveChainArea
+                ]
+                [ text "Area:" ]
+            , areaRadio ui Nothing "None"
+            , areaRadio ui (Just Encounter.AtBegin) "Re-save at turn start"
+            , areaRadio ui (Just Encounter.AtEnd) "Re-save at turn end"
+            ]
         ]
 
 
-{-| The DC's caption, trailing the field on the same row. It
-takes the row's leftover width and wraps inside it, so the
-sentence can never push past the panel's edge.
+{-| The DC's caption: a line of its own under the field, so it
+never wraps mid-sentence beside it.
 -}
 dcHint : SaveChainUi -> Html Msg
 dcHint ui =
-    span
+    div
         [ class
             (if String.toInt (String.trim ui.dcText) == Nothing then
-                "save-chain__caption save-chain__caption--dc save-chain__caption--warn"
+                "cond-section__caption cond-section__caption--warn"
 
              else
-                "save-chain__caption save-chain__caption--dc"
+                "cond-section__caption"
             )
         ]
-        [ text "needed to roll saves or to apply a Save-to-end effect" ]
-
-
-{-| An area effect keeps working on whoever stands in it: the
-chain marks each target with an "In:" chip whose save rolls again
-at the chosen phase of every turn, applying the side the roll
-earns, until the GM removes the chip.
--}
-areaRow : SaveChainUi -> Html Msg
-areaRow ui =
-    div [ class "save-chain__row" ]
-        [ span
-            [ class "save-chain__field-label save-chain__field-label--tight"
-            , Tooltips.attr "Area effect: each target gets an \"In:\" chip that rolls this save again at the chosen phase of its every turn and applies the outcome; remove the chip when it leaves"
-            ]
-            [ text "Area" ]
-        , div [ class "save-chain__ability-radios" ]
-            [ areaRadio ui Nothing "None"
-            , areaRadio ui (Just Encounter.AtBegin) "Save at start of turn"
-            , areaRadio ui (Just Encounter.AtEnd) "Save at end of turn"
-            ]
-        ]
+        [ text "A DC is needed to roll saves or to apply a Save-to-end or area effect." ]
 
 
 areaRadio : SaveChainUi -> Maybe Encounter.TurnPhase -> String -> Html Msg
 areaRadio ui phase label =
-    Html.label [ class "save-chain__ability-radio" ]
-        [ input
-            [ type_ "radio"
-            , name "save-chain-area"
-            , checked (ui.area == phase)
-            , onClick (SaveChainAreaSet phase)
-            ]
-            []
-        , text label
-        ]
+    Field.radio
+        { group = "save-chain-area"
+        , selected = ui.area == phase
+        , msg = SaveChainAreaSet phase
+        , label = label
+        }
 
 
-abilityRadio : SaveChainUi -> Ability -> String -> Html Msg
-abilityRadio ui ability label =
-    Html.label [ class "save-chain__ability-radio" ]
-        [ input
-            [ type_ "radio"
-            , name "save-chain-ability"
-            , checked (ui.saveAbility == ability)
-            , onClick (SaveChainAbilitySet ability)
-            ]
-            []
-        , text label
-        ]
+abilityRadio : SaveChainUi -> ( Ability, String ) -> Html Msg
+abilityRadio ui ( ability, label ) =
+    Field.radio
+        { group = "save-chain-ability"
+        , selected = ui.saveAbility == ability
+        , msg = SaveChainAbilitySet ability
+        , label = label
+        }
 
 
 
--- ── Outcome block ───────────────────────────────────────────────
+-- ── Outcomes ────────────────────────────────────────────────────
 
 
-{-| One side's block; `extra` is the success side's immunity
-section, nothing on the fail side.
+{-| One side's section; `extra` is the success side's immunity
+rows, nothing on the fail side.
 -}
-outcomeBlock : List String -> String -> SaveChainSide -> OutcomeForm -> Html Msg -> Html Msg
-outcomeBlock names heading side form extra =
-    div [ class "save-chain__outcome" ]
-        [ div [ class "save-chain__outcome-heading" ] [ text heading ]
-        , hpRow side form
-        , effectsSection names side form
-        , extra
-        ]
+outcomeSection : List String -> String -> SaveChainSide -> OutcomeForm -> List (Html Msg) -> Html Msg
+outcomeSection names heading side form extra =
+    div [ class "cond-section" ]
+        ([ Html.h3 [ class "cond-section__heading" ] [ text heading ]
+         , hpRow side form
+         , effectsRows names side form
+         ]
+            ++ extra
+        )
 
 
 {-| A successful save may leave the target immune to the chain for
 a while; the chain then passes over that creature until the
 immunity lapses.
 -}
-immunitySection : List String -> Maybe EffectDuration -> Html Msg
-immunitySection names immunity =
-    div [ class "save-chain__effects" ]
-        [ Html.label
-            [ class "save-chain__effect-save-to-end"
-            , Tooltips.attr "A creature that succeeds becomes immune to this chain for the duration below, and the chain skips it until then"
-            ]
-            [ input
-                [ type_ "checkbox"
-                , checked (immunity /= Nothing)
-                , onClick SaveChainImmunityToggle
-                ]
-                []
-            , text " Grants immunity"
-            ]
+immunityRows : List String -> Maybe EffectDuration -> Html Msg
+immunityRows names immunity =
+    div [ class "cond-row" ]
+        [ Field.checkbox
+            { checked = immunity /= Nothing
+            , msg = SaveChainImmunityToggle
+            , label = "Grants immunity"
+            , extra = [ Tooltips.attr "A creature that succeeds becomes immune to this chain for the duration below, and the chain skips it until then" ]
+            }
         , case immunity of
             Just duration ->
                 DurationPicker.view
@@ -308,6 +278,10 @@ immunitySection names immunity =
         ]
 
 
+{-| The HP choice and, once one is picked, its amount — all on one
+wrapping row, so the label stays beside the first choice however
+narrow the panel.
+-}
 hpRow : SaveChainSide -> OutcomeForm -> Html Msg
 hpRow side form =
     let
@@ -331,62 +305,48 @@ hpRow side form =
         amountInput =
             case form.hpKind of
                 NoHpEffect ->
-                    text ""
+                    []
 
                 HalfFailDamage ->
-                    span [ class "save-chain__caption" ]
+                    [ span [ class "cond-section__caption" ]
                         [ text "(rolls / halves the Fail amount at apply)" ]
+                    ]
 
                 _ ->
-                    div [ class "save-chain__amount-cluster" ]
-                        [ input
-                            [ type_ "text"
-                            , class "save-chain__amount-input"
-                            , value form.hpAmountText
-                            , placeholder "12 or 2d6+3"
-                            , onInput (SaveChainOutcomeHpAmountChanged side)
-                            ]
-                            []
-                        , span [ class "save-chain__caption save-chain__caption--warn" ]
-                            [ text "req. to apply dmg" ]
+                    [ input
+                        [ type_ "text"
+                        , class "cond-input cond-input--w12 cond-input--amount"
+                        , value form.hpAmountText
+                        , placeholder "12 or 2d6+3"
+                        , onInput (SaveChainOutcomeHpAmountChanged side)
                         ]
+                        []
+                    , span [ class "cond-section__caption cond-section__caption--warn" ]
+                        [ text "req. to apply dmg" ]
+                    ]
     in
-    div [ class "save-chain__hp-row" ]
-        [ span [ class "save-chain__field-label" ] [ text "HP" ]
-        , div [ class "save-chain__hp-radios" ] radios
-        , amountInput
-        ]
+    div [ class "cond-row" ]
+        (Html.label [ class "cond-label" ] [ text "HP:" ] :: radios ++ amountInput)
 
 
 hpKindRadio : SaveChainSide -> SaveChainHpKind -> SaveChainHpKind -> String -> Html Msg
 hpKindRadio side current kind label =
     let
-        groupName =
-            case side of
-                SaveChainFail ->
-                    "save-chain-hp-fail"
-
-                SaveChainSuccess ->
-                    "save-chain-hp-success"
-
-        tip =
-            case kind of
-                SaveChainDrain ->
-                    [ Tooltips.attr "Damage that also lowers the target's hit point maximum by the amount dealt, as Harm and a wight's Life Drain do" ]
-
-                _ ->
-                    []
+        radio =
+            Field.radio
+                { group = "save-chain-hp-" ++ sideKey side
+                , selected = current == kind
+                , msg = SaveChainOutcomeHpKindSet side kind
+                , label = label
+                }
     in
-    Html.label (class "save-chain__hp-radio" :: tip)
-        [ input
-            [ type_ "radio"
-            , name groupName
-            , checked (current == kind)
-            , onClick (SaveChainOutcomeHpKindSet side kind)
-            ]
-            []
-        , text label
-        ]
+    case kind of
+        SaveChainDrain ->
+            span [ Tooltips.attr "Damage that also lowers the target's hit point maximum by the amount dealt, as Harm and a wight's Life Drain do" ]
+                [ radio ]
+
+        _ ->
+            radio
 
 
 asHpKind : HpEffect -> SaveChainHpKind
@@ -408,37 +368,38 @@ asHpKind h =
             SaveChainDrain
 
 
-{-| Zero-or-more effect rows plus an "+ Add effect" button.
-Each row is a `[name] [note] [×]` triplet. When the list is
-empty, the section is just the button — clicking it pushes a
-first row. Standard 5e condition names are offered as
-datalist suggestions on the name input but the field stays
-free-form so spells like Banishment / Slow / Confusion can
-use custom effect names.
+{-| Zero-or-more effect blocks plus an "+ Add effect" button.
+When the list is empty, the section is just the button —
+clicking it pushes a first block. Standard 5e condition names
+are offered as datalist suggestions on the name input but the
+field stays free-form so spells like Banishment / Slow /
+Confusion can use custom effect names.
 -}
-effectsSection : List String -> SaveChainSide -> OutcomeForm -> Html Msg
-effectsSection names side form =
-    div [ class "save-chain__effects" ]
-        [ span [ class "save-chain__field-label" ] [ text "Effects" ]
-        , div [ class "save-chain__effect-list" ]
-            (List.indexedMap (effectRow names side) form.effects)
-        , button
-            [ class "action-btn action-btn--sm"
-            , type_ "button"
-            , onClick (SaveChainOutcomeEffectAdd side)
-            ]
-            [ text "+ Add effect" ]
-        , conditionDatalist
-        ]
+effectsRows : List String -> SaveChainSide -> OutcomeForm -> Html Msg
+effectsRows names side form =
+    div [ class "cond-radio-stack" ]
+        (List.indexedMap (effectBlock names side) form.effects
+            ++ [ div [ class "cond-row" ]
+                    [ Html.label [ class "cond-label" ] [ text "Effects:" ]
+                    , button
+                        [ class "action-btn"
+                        , type_ "button"
+                        , onClick (SaveChainOutcomeEffectAdd side)
+                        ]
+                        [ text "+ Add effect" ]
+                    ]
+               , conditionDatalist
+               ]
+        )
 
 
-effectRow : List String -> SaveChainSide -> Int -> EffectApply -> Html Msg
-effectRow names side idx effect =
-    div [ class "save-chain__effect-block" ]
-        [ div [ class "save-chain__effect-row" ]
+effectBlock : List String -> SaveChainSide -> Int -> EffectApply -> Html Msg
+effectBlock names side idx effect =
+    div [ class "cond-subsection" ]
+        ([ div [ class "cond-row" ]
             [ input
                 [ type_ "text"
-                , class "save-chain__condition-input"
+                , class "cond-input cond-input--grow"
                 , list "save-chain-condition-list"
                 , value effect.name
                 , placeholder "condition or effect name"
@@ -447,43 +408,37 @@ effectRow names side idx effect =
                 []
             , input
                 [ type_ "text"
-                , class "save-chain__condition-note-input"
+                , class "cond-input cond-input--w12"
                 , value effect.note
                 , placeholder "note (optional)"
                 , onInput (SaveChainOutcomeEffectNoteChanged side idx)
                 ]
                 []
-            , Html.label
-                [ class "save-chain__effect-save-to-end"
-                , Tooltips.attr "Save-to-end: applied condition inherits the chain's Save ability + DC.  Auto-roll options appear below when checked."
-                ]
-                [ input
-                    [ type_ "checkbox"
-                    , checked (effect.saveToEnd /= Nothing)
-                    , onClick (SaveChainOutcomeEffectSaveToEndToggle side idx)
-                    ]
-                    []
-                , text " Save-to-end"
-                ]
+            , Field.checkbox
+                { checked = effect.saveToEnd /= Nothing
+                , msg = SaveChainOutcomeEffectSaveToEndToggle side idx
+                , label = "Save-to-end"
+                , extra = [ Tooltips.attr "Save-to-end: the applied condition inherits the chain's save ability and DC, and rolls again as the timing below says" ]
+                }
             , button
-                [ class "icon-btn icon-btn--sm save-chain__effect-remove"
+                [ class "icon-btn icon-btn--sm"
                 , type_ "button"
                 , onClick (SaveChainOutcomeEffectRemove side idx)
+                , Tooltips.attr "Remove this effect"
                 , attribute "aria-label" "Remove effect"
                 ]
                 [ text "×" ]
             ]
-        , DurationPicker.view
+         , DurationPicker.view
             { groupName = "save-chain-duration-" ++ sideKey side ++ "-" ++ String.fromInt idx
             , creatureNames = names
             , value = effect.duration
             , toMsg = SaveChainOutcomeEffectDurationEdit side idx
             }
-        , withRow side idx effect
-        , autoRollRow side idx effect
-        , failedSaveRow side idx effect
-        , onDamageRow side idx effect
-        ]
+         , withRow side idx effect
+         ]
+            ++ saveRows side idx effect
+        )
 
 
 {-| A companion condition applied beside this one that ends when
@@ -491,11 +446,11 @@ it ends — Hypnotic Pattern's Incapacitated on its Charmed.
 -}
 withRow : SaveChainSide -> Int -> EffectApply -> Html Msg
 withRow side idx effect =
-    div [ class "save-chain__effect-subrow" ]
-        [ span [ class "save-chain__caption" ] [ text "Applies with:" ]
+    div [ class "cond-row" ]
+        [ Html.label [ class "cond-label" ] [ text "Applies with:" ]
         , input
             [ type_ "text"
-            , class "save-chain__condition-input"
+            , class "cond-input cond-input--w20"
             , list "save-chain-condition-list"
             , placeholder "companion condition (optional)"
             , value effect.with
@@ -506,44 +461,72 @@ withRow side idx effect =
         ]
 
 
-{-| What taking damage does to the effect's save: nothing, a
-flash of the chip for the GM to judge the trigger, or a roll
-fired at once, plain or with advantage.
+{-| The rows a save adds beneath an effect; nothing while the
+effect has no save.
 -}
-onDamageRow : SaveChainSide -> Int -> EffectApply -> Html Msg
-onDamageRow side idx effect =
+saveRows : SaveChainSide -> Int -> EffectApply -> List (Html Msg)
+saveRows side idx effect =
     case effect.saveToEnd of
         Nothing ->
-            text ""
+            []
 
         Just save ->
-            div [ class "save-chain__effect-autoroll" ]
-                [ span [ class "save-chain__caption" ] [ text "When damaged:" ]
-                , onDamageRadio side idx save.onDamage Encounter.NoDamageTrigger "Nothing"
-                , onDamageRadio side idx save.onDamage Encounter.AskOnDamage "Flash the chip"
-                , onDamageRadio side idx save.onDamage Encounter.RollOnDamage "Roll the save"
-                , onDamageRadio side idx save.onDamage Encounter.RollOnDamageWithAdvantage "Roll with advantage"
+            let
+                autoRoll extra mode label =
+                    Field.radioWith extra
+                        { group = "save-chain-autoroll-" ++ sideKey side ++ "-" ++ String.fromInt idx
+                        , selected = save.autoRoll == mode
+                        , msg = SaveChainOutcomeEffectAutoRollSet side idx mode
+                        , label = label
+                        }
+
+                onDamage extra trigger label =
+                    Field.radioWith extra
+                        { group = "save-chain-ondamage-" ++ sideKey side ++ "-" ++ String.fromInt idx
+                        , selected = save.onDamage == trigger
+                        , msg = SaveChainOutcomeEffectOnDamageSet side idx trigger
+                        , label = label
+                        }
+            in
+            [ div [ class "cond-row" ]
+                [ Html.label [ class "cond-label" ] [ text "Auto-roll:" ]
+                , autoRoll [] Encounter.AutoRollManual "Manual"
+                , autoRoll [] Encounter.AutoRollAtBegin "Start of turn"
+                , autoRoll [] Encounter.AutoRollAtEnd "End of turn"
+                , autoRoll [ Tooltips.attr Tooltips.saveAskAtEnd ] Encounter.AutoRollAskAtEnd "Ask at end of turn"
                 ]
-
-
-onDamageRadio :
-    SaveChainSide
-    -> Int
-    -> Encounter.DamageTrigger
-    -> Encounter.DamageTrigger
-    -> String
-    -> Html Msg
-onDamageRadio side idx current trigger label =
-    Html.label [ class "save-chain__autoroll-radio" ]
-        [ input
-            [ type_ "radio"
-            , name ("save-chain-ondamage-" ++ sideKey side ++ "-" ++ String.fromInt idx)
-            , checked (current == trigger)
-            , onClick (SaveChainOutcomeEffectOnDamageSet side idx trigger)
+            , div [ class "cond-row" ]
+                [ Html.label [ class "cond-label" ] [ text "On a failed save:" ]
+                , Html.label [ class "cond-label" ] [ text "takes" ]
+                , input
+                    [ type_ "text"
+                    , class "cond-input cond-input--narrow"
+                    , placeholder "4d10"
+                    , value (Maybe.withDefault "" save.onFail.damage)
+                    , onInput (SaveChainOutcomeEffectFailDamageChanged side idx)
+                    , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
+                    ]
+                    []
+                , Html.label [ class "cond-label" ] [ text "becomes" ]
+                , input
+                    [ type_ "text"
+                    , class "cond-input cond-input--w12"
+                    , list "save-chain-condition-list"
+                    , placeholder "e.g. Petrified"
+                    , value (Maybe.withDefault "" save.onFail.becomes)
+                    , onInput (SaveChainOutcomeEffectFailBecomesChanged side idx)
+                    , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
+                    ]
+                    []
+                ]
+            , div [ class "cond-row" ]
+                [ Html.label [ class "cond-label" ] [ text "When damaged:" ]
+                , onDamage [] Encounter.NoDamageTrigger "Nothing"
+                , onDamage [ Tooltips.attr Tooltips.saveFlashOnDamage ] Encounter.AskOnDamage "Flash the chip"
+                , onDamage [] Encounter.RollOnDamage "Roll the save"
+                , onDamage [] Encounter.RollOnDamageWithAdvantage "Roll with advantage"
+                ]
             ]
-            []
-        , text label
-        ]
 
 
 sideKey : SaveChainSide -> String
@@ -554,93 +537,6 @@ sideKey side =
 
         SaveChainSuccess ->
             "success"
-
-
-{-| Auto-roll mode picker. Only rendered when the effect's
-`saveToEnd` is `Just _` — mirrors the same modes the Condition
-editor offers so the two entry points behave identically once
-the applied condition is on the card.
--}
-autoRollRow : SaveChainSide -> Int -> EffectApply -> Html Msg
-autoRollRow side idx effect =
-    case effect.saveToEnd of
-        Nothing ->
-            text ""
-
-        Just save ->
-            div [ class "save-chain__effect-autoroll" ]
-                [ span [ class "save-chain__caption" ] [ text "Auto-roll:" ]
-                , autoRollRadio side idx save.autoRoll Encounter.AutoRollManual "Manual"
-                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtBegin "At begin of turn"
-                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAtEnd "At end of turn"
-                , autoRollRadio side idx save.autoRoll Encounter.AutoRollAskAtEnd "Ask at end of turn"
-                ]
-
-
-{-| What a failed repeat save does besides leaving the condition
-in place; both fields blank by default, and only shown while the
-effect has a save to fail.
--}
-failedSaveRow : SaveChainSide -> Int -> EffectApply -> Html Msg
-failedSaveRow side idx effect =
-    case effect.saveToEnd of
-        Nothing ->
-            text ""
-
-        Just save ->
-            div [ class "save-chain__effect-subrow" ]
-                [ span [ class "save-chain__caption" ] [ text "On a failed save:" ]
-                , span [ class "save-chain__caption" ] [ text "takes" ]
-                , input
-                    [ type_ "text"
-                    , class "cond-input cond-input--narrow"
-                    , placeholder "4d10"
-                    , value (Maybe.withDefault "" save.onFail.damage)
-                    , onInput (SaveChainOutcomeEffectFailDamageChanged side idx)
-                    , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
-                    ]
-                    []
-                , span [ class "save-chain__caption" ] [ text "becomes" ]
-                , input
-                    [ type_ "text"
-                    , class "save-chain__condition-input"
-                    , list "save-chain-condition-list"
-                    , placeholder "e.g. Petrified"
-                    , value (Maybe.withDefault "" save.onFail.becomes)
-                    , onInput (SaveChainOutcomeEffectFailBecomesChanged side idx)
-                    , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
-                    ]
-                    []
-                ]
-
-
-autoRollRadio :
-    SaveChainSide
-    -> Int
-    -> Encounter.AutoRollMode
-    -> Encounter.AutoRollMode
-    -> String
-    -> Html Msg
-autoRollRadio side idx current mode label =
-    let
-        groupName =
-            case side of
-                SaveChainFail ->
-                    "save-chain-autoroll-fail-" ++ String.fromInt idx
-
-                SaveChainSuccess ->
-                    "save-chain-autoroll-success-" ++ String.fromInt idx
-    in
-    Html.label [ class "save-chain__autoroll-radio" ]
-        [ input
-            [ type_ "radio"
-            , name groupName
-            , checked (current == mode)
-            , onClick (SaveChainOutcomeEffectAutoRollSet side idx mode)
-            ]
-            []
-        , text label
-        ]
 
 
 {-| Attribute helper — `Attr.list` isn't in the core exposing
@@ -683,30 +579,30 @@ commonConditions =
 
 
 
--- ── Apply scope + action buttons ────────────────────────────────
+-- ── Apply ───────────────────────────────────────────────────────
 
 
-applyScope : Int -> SaveChainUi -> Html Msg
-applyScope selectedCount ui =
-    if selectedCount == 0 then
-        text ""
+applySection : Context -> SaveChainUi -> Html Msg
+applySection ctx ui =
+    div [ class "cond-section" ]
+        ((if ctx.selectedCount == 0 then
+            []
 
-    else
-        div [ class "save-chain__row" ]
-            [ Html.label [ class "save-chain__checkbox" ]
-                [ input
-                    [ type_ "checkbox"
-                    , checked ui.applyToSelected
-                    , onClick SaveChainApplyToSelectedToggle
-                    ]
-                    []
-                , text
-                    (" Apply to all selected creatures ("
-                        ++ String.fromInt selectedCount
-                        ++ ")"
-                    )
+          else
+            [ div [ class "cond-row" ]
+                [ Field.checkbox
+                    { checked = ui.applyToSelected
+                    , msg = SaveChainApplyToSelectedToggle
+                    , label = "Apply to all selected creatures (" ++ String.fromInt ctx.selectedCount ++ ")"
+                    , extra = []
+                    }
                 ]
             ]
+         )
+            ++ [ applyRow ui
+               , ApplyButton.placeholderNotice ctx.placeholderWarning
+               ]
+        )
 
 
 {-| The apply buttons, each explaining itself while it is dead.
@@ -771,76 +667,91 @@ applyRow ui =
                 Nothing ->
                     []
     in
-    div [ class "save-chain__apply-row" ]
-        [ div [ class "save-chain__apply-actions" ]
-            (markButton
-                ++ [ ApplyButton.view
-                        { enabled = not isEmpty && not blockedByDc
-                        , cls = "action-btn action-btn--damage"
-                        , msg = SaveChainApplyFail
-                        , tip = outcomeTip "Apply the failed-save outcome"
-                        , label = "Fail"
-                        }
-                   , ApplyButton.view
-                        { enabled = not isEmpty && not blockedByDc
-                        , cls = "action-btn action-btn--heal"
-                        , msg = SaveChainApplyPass
-                        , tip = outcomeTip "Apply the successful-save outcome"
-                        , label = "Pass"
-                        }
-                   , ApplyButton.view
-                        { enabled = not isEmpty && hasDc
-                        , cls = "action-btn action-btn--roll-saves"
-                        , msg = SaveChainRollSaves SaveChainRollNormal
-                        , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
-                        , label = "🎲 Roll saves"
-                        }
-                   , ApplyButton.view
-                        { enabled = not isEmpty && hasDc
-                        , cls = "action-btn action-btn--roll-saves"
-                        , msg = SaveChainRollSaves SaveChainRollAdvantage
-                        , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
-                        , label = "Roll Adv."
-                        }
-                   , ApplyButton.view
-                        { enabled = not isEmpty && hasDc
-                        , cls = "action-btn action-btn--roll-saves"
-                        , msg = SaveChainRollSaves SaveChainRollDisadvantage
-                        , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
-                        , label = "Roll Disadv."
-                        }
-                   ]
-            )
-        ]
+    div [ class "cond-row" ]
+        (markButton
+            ++ [ ApplyButton.view
+                    { enabled = not isEmpty && not blockedByDc
+                    , cls = "action-btn action-btn--damage"
+                    , msg = SaveChainApplyFail
+                    , tip = outcomeTip "Apply the failed-save outcome"
+                    , label = "Fail"
+                    }
+               , ApplyButton.view
+                    { enabled = not isEmpty && not blockedByDc
+                    , cls = "action-btn action-btn--heal"
+                    , msg = SaveChainApplyPass
+                    , tip = outcomeTip "Apply the successful-save outcome"
+                    , label = "Pass"
+                    }
+               , ApplyButton.view
+                    { enabled = not isEmpty && hasDc
+                    , cls = "action-btn action-btn--roll-saves"
+                    , msg = SaveChainRollSaves SaveChainRollNormal
+                    , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
+                    , label = "🎲 Roll saves"
+                    }
+               , ApplyButton.view
+                    { enabled = not isEmpty && hasDc
+                    , cls = "action-btn action-btn--roll-saves"
+                    , msg = SaveChainRollSaves SaveChainRollAdvantage
+                    , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
+                    , label = "Roll Adv."
+                    }
+               , ApplyButton.view
+                    { enabled = not isEmpty && hasDc
+                    , cls = "action-btn action-btn--roll-saves"
+                    , msg = SaveChainRollSaves SaveChainRollDisadvantage
+                    , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
+                    , label = "Roll Disadv."
+                    }
+               ]
+        )
 
 
 
 -- ── Log ─────────────────────────────────────────────────────────
 
 
-{-| Recent-applies log at the bottom of the modal. Mirrors
-the "Recent HP changes" log's structure: a small title, an
-empty state when nothing's landed yet, and a compact list of
-rows otherwise. Newest entry first — each apply prepends.
+{-| Recent-applies log at the editor's foot, behind a fold. It
+starts folded and unfolds itself when an apply lands. Newest
+entry first — each apply prepends.
 -}
-log : List SaveChainLogEntry -> Html Msg
-log entries =
-    div [ class "save-chain__log" ]
-        [ div [ class "save-chain__log-title" ]
-            [ text
-                ("Recent applies ("
-                    ++ String.fromInt (List.length entries)
-                    ++ ")"
+logSection : Bool -> List SaveChainLogEntry -> Html Msg
+logSection open entries =
+    div [ class "cond-section" ]
+        (button
+            [ class "cond-fold"
+            , type_ "button"
+            , onClick SaveChainLogToggle
+            , attribute "aria-expanded"
+                (if open then
+                    "true"
+
+                 else
+                    "false"
                 )
             ]
-        , if List.isEmpty entries then
-            div [ class "save-chain__log-empty" ]
-                [ text "No applies yet." ]
+            [ span [ class "cond-fold__caret" ]
+                [ text
+                    (if open then
+                        "▼"
 
-          else
-            ul [ class "save-chain__log-list" ]
-                (List.map logEntry entries)
-        ]
+                     else
+                        "▶"
+                    )
+                ]
+            , text ("Recent applies (" ++ String.fromInt (List.length entries) ++ ")")
+            ]
+            :: (if not open then
+                    []
+
+                else if List.isEmpty entries then
+                    [ div [ class "cond-section__caption" ] [ text "No applies yet." ] ]
+
+                else
+                    [ ul [ class "save-chain__log-list" ] (List.map logEntry entries) ]
+               )
+        )
 
 
 {-| One row: side badge · target · optional roll note · applied

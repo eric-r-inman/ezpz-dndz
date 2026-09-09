@@ -46,7 +46,7 @@ modeSection : DuplicateUi -> Html Msg
 modeSection ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [] [ text "Copy as:" ]
+            [ Html.label [ class "cond-label" ] [ text "Copy as:" ]
             , modeRadio ui DupExact "Exact"
             , modeRadio ui DupFresh "Fresh"
             , modeRadio ui DupMinionHalf "Minion (½ max hp)"

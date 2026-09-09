@@ -2,7 +2,7 @@ module Ui.SaveChain exposing
     ( SaveChainUi, OutcomeForm
     , fresh, fromChain, toChain
     , OutcomeSide(..)
-    , AppliedPart(..), SaveChainLogEntry, maxSaveChainLogEntries
+    , AppliedPart(..), SaveChainLogEntry, cleared, maxSaveChainLogEntries
     )
 
 {-| Surface UI state for the Save Chain feature.
@@ -86,6 +86,24 @@ fresh target =
     , area = Nothing
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
+    }
+
+
+{-| The form with every setting emptied and only its identity
+kept: the target and scope it is aimed at, and the name and
+preset it was loaded from.
+-}
+cleared : SaveChainUi -> SaveChainUi
+cleared ui =
+    let
+        blank =
+            fresh ui.target
+    in
+    { blank
+        | applyToSelected = ui.applyToSelected
+        , name = ui.name
+        , presetPickerSelection = ui.presetPickerSelection
+        , loadedPresetName = ui.loadedPresetName
     }
 
 

@@ -37,7 +37,7 @@ rollSection : Int -> InitiativeUi -> Html Msg
 rollSection selectedCount ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [] [ text "Roll:" ]
+            [ Html.label [ class "cond-label" ] [ text "Roll:" ]
             , modeToggle ui ModeAdvantage "Advantage"
             , modeToggle ui ModeDisadvantage "Disadvantage"
             ]
@@ -76,7 +76,7 @@ manualSection : Int -> InitiativeUi -> Html Msg
 manualSection selectedCount ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "init-custom-value" ] [ text "Set value:" ]
+            [ Html.label [ for "init-custom-value", class "cond-label" ] [ text "Set value:" ]
             , input
                 [ id "init-custom-value"
                 , class "cond-input cond-input--2ch"

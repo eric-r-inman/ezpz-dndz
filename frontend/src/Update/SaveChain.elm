@@ -7,7 +7,7 @@ module Update.SaveChain exposing
     , presetPickerChanged, presetLoad, presetSave, presetDelete, reset
     , applyFail, applyPass, applyRollLanded
     , rollSaves, savesRolled
-    , areaRollNow, areaSaveLanded, areaSet, immunityDurationEdit, immunityToggle, markArea, outcomeEffectAutoRollSet, outcomeEffectDurationEdit, outcomeEffectFailBecomesChanged, outcomeEffectFailDamageChanged, outcomeEffectOnDamageSet, outcomeEffectSaveToEndToggle, outcomeEffectWithChanged, restoreBundled
+    , areaRollNow, areaSaveLanded, areaSet, clear, immunityDurationEdit, immunityToggle, logToggle, markArea, outcomeEffectAutoRollSet, outcomeEffectDurationEdit, outcomeEffectFailBecomesChanged, outcomeEffectFailDamageChanged, outcomeEffectOnDamageSet, outcomeEffectSaveToEndToggle, outcomeEffectWithChanged, restoreBundled
     )
 
 {-| Update branches for the Save Chain modal.
@@ -509,6 +509,20 @@ presetDelete model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Empty every setting while keeping the name and the loaded
+preset, so the GM can rebuild a preset from nothing and save it
+back under its own name.
+-}
+clear : Model -> ( Model, Cmd Msg )
+clear model =
+    ( withUi UiSaveChain.cleared model, Cmd.none )
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | saveChainLogOpen = not model.saveChainLogOpen }, Cmd.none )
 
 
 {-| Reset the form to a blank chain without closing the modal.
@@ -1650,7 +1664,8 @@ appliedParts outcome resolvedAmount =
 `Ui.SaveChain.maxSaveChainLogEntries`. New entries are
 built in target order, then reversed so the last-applied
 target renders newest-first alongside the incoming entries
-from a prior apply.
+from a prior apply. A landing unfolds the log, so the GM sees
+what just happened without asking.
 -}
 pushLog : List UiSaveChain.SaveChainLogEntry -> Model -> Model
 pushLog entries model =
@@ -1662,6 +1677,7 @@ pushLog entries model =
                         (UiSaveChain.maxSaveChainLogEntries - List.length entries)
                     )
                     model.saveChainLog
+        , saveChainLogOpen = model.saveChainLogOpen || not (List.isEmpty entries)
     }
 
 

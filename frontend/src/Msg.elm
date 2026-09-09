@@ -639,6 +639,12 @@ type Msg
     | SaveChainOutcomeEffectOnDamageSet SaveChainSide Int Encounter.DamageTrigger
     | SaveChainOutcomeEffectWithChanged SaveChainSide Int String
     | SaveChainAreaSet (Maybe Encounter.TurnPhase)
+      -- Fold or unfold the recent-applies log at the editor's foot.
+    | SaveChainLogToggle
+      -- Empty every setting but keep the name and the loaded
+      -- preset, so a preset can be rebuilt and saved under its
+      -- own name; New starts over entirely.
+    | SaveChainClear
       -- Place the area marker on every target without resolving an
       -- outcome: a Stinking Cloud grants no save when it is cast.
     | SaveChainMarkArea
@@ -1319,6 +1325,9 @@ type Msg
     | DrawerCollapseToggle Int
       -- Pin one panel to the top of the column, or release it.
     | DrawerPinToggle Int
+      -- Shift-click on an open panel's heading row: fold every
+      -- panel at once.
+    | DrawerFoldAll
       -- Esc, which dismisses what is showing rather than
       -- deleting a panel the GM cannot put back.
     | DrawerFoldNewest

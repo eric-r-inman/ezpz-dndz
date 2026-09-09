@@ -27,7 +27,7 @@ view : Dict String TimerPreset -> TimerSetupUi -> Html Msg
 view presets ui =
     div [ class "creature-card__inline" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "timer-turns-input" ]
+            [ Html.label [ for "timer-turns-input", class "cond-label" ]
                 [ text "Timer lasts" ]
             , input
                 [ id "timer-turns-input"
@@ -41,16 +41,16 @@ view presets ui =
                 , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
                 ]
                 []
-            , Html.label [] [ text "turns, ticking at" ]
+            , Html.label [ class "cond-label" ] [ text "turns, ticking at" ]
             , View.PhaseToggle.view "timer-phase" ui.phase TimerSetupPhaseSet
-            , Html.label [] [ text "of the bearer's turn" ]
+            , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
             ]
         , div [ class "cond-row" ]
-            [ Html.label [ for "timer-note-input" ]
+            [ Html.label [ for "timer-note-input", class "cond-label" ]
                 [ text "Label" ]
             , input
                 [ id "timer-note-input"
-                , class "cond-input"
+                , class "cond-input cond-input--w12"
                 , type_ "text"
                 , Attr.maxlength 10
                 , Attr.placeholder "optional (10 chars)"
@@ -107,7 +107,7 @@ presetSaveControl ui =
             in
             div [ class "cond-footer__save-row" ]
                 [ input
-                    [ class "cond-input cond-footer__save-input"
+                    [ class "cond-input cond-input--w20"
                     , type_ "text"
                     , value typed
                     , placeholder "Name this preset"

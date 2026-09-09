@@ -84,7 +84,7 @@ view header model =
             View.Panel.view
                 { close = Nothing
                 , title = "Treasure"
-                , titleTrail = Nothing
+                , titleTrail = Just View.Panel.betaTag
                 , subtitle = Nothing
                 , header = header
                 , extraClass = "panel-drawer--treasure"
@@ -295,7 +295,7 @@ previous tuning.
 presetRow : Html Msg
 presetRow =
     div [ class "treasure__settings-presets" ]
-        [ span [ class "treasure__settings-presets-label" ]
+        [ span [ class "cond-label" ]
             [ text "Presets:" ]
         , presetChip Msg.PresetCoinsOnly
             "Coins only"
@@ -340,7 +340,7 @@ profileRow profiles draft =
     in
     div [ class "treasure__settings-profile-row" ]
         [ div [ class "treasure__settings-profile-load" ]
-            [ span [ class "treasure__settings-profile-label" ]
+            [ span [ class "cond-label" ]
                 [ text "Load profile:" ]
             , if List.isEmpty sortedNames then
                 span [ class "treasure__settings-profile-empty" ]
@@ -352,7 +352,7 @@ profileRow profiles draft =
             ]
         , div [ class "treasure__settings-profile-save" ]
             [ Html.input
-                [ class "treasure__settings-profile-input"
+                [ class "cond-input cond-input--grow"
                 , type_ "text"
                 , value draft
                 , Attr.placeholder "Save current as…"
@@ -412,7 +412,7 @@ scrollChanceRow current magicNone =
         , Html.label [ class "treasure__settings-scroll" ]
             [ span [ class "treasure__settings-axis" ] [ text "Swap chance" ]
             , Html.input
-                [ class "treasure__settings-scroll-input"
+                [ class "cond-input cond-input--narrow"
                 , type_ "number"
                 , Attr.min "0"
                 , Attr.max "100"
@@ -838,9 +838,9 @@ multiplierNotice kind enemyCount toggles =
 controlRow : TreasureUi -> Int -> Html Msg
 controlRow ui expectedGp =
     div [ class "treasure__controls" ]
-        [ label [ class "treasure__field" ]
-            [ span [ class "treasure__field-label" ] [ text "Roll:" ]
-            , select [ class "treasure__select", onInput TreasureKindSet ]
+        [ label [ class "cond-pair" ]
+            [ span [ class "cond-label" ] [ text "Roll:" ]
+            , select [ class "cond-select", onInput TreasureKindSet ]
                 (List.map (kindOption ui.kind) Treasure.kindOptions)
             ]
         , button

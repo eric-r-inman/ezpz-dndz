@@ -58,6 +58,7 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
+import View.Inline.Field as Field
 import View.Panel
 import View.Tooltips as Tooltips
 
@@ -69,7 +70,7 @@ view header model =
             View.Panel.view
                 { close = Nothing
                 , title = "Random Encounter"
-                , titleTrail = Nothing
+                , titleTrail = Just View.Panel.betaTag
                 , subtitle = Nothing
                 , header = header
                 , extraClass = "panel-drawer--random-encounter"
@@ -127,12 +128,12 @@ partySection party =
 
 partyRow : Int -> PartyMember -> Html Msg
 partyRow index member =
-    div [ class "random-encounter__party-row" ]
+    div [ class "cond-row" ]
         [ span [ class "random-encounter__party-index" ]
             [ text ("Player " ++ String.fromInt (index + 1)) ]
-        , label [ class "random-encounter__party-level-label" ] [ text "Level" ]
+        , label [ class "cond-label" ] [ text "Level:" ]
         , select
-            [ class "random-encounter__party-level"
+            [ class "cond-select"
             , onInput (CrCalculatorPartyLevelSet member.id)
             , attribute "aria-label" ("Level for Player " ++ String.fromInt (index + 1))
             ]
@@ -178,8 +179,8 @@ difficultyRow model ui =
         budget =
             RE.budgetFor model.party ui.difficulty
     in
-    div [ class "random-encounter__param-row" ]
-        [ label [ class "random-encounter__param-label" ] [ text "Difficulty" ]
+    div [ class "cond-row" ]
+        [ label [ class "cond-label" ] [ text "Difficulty:" ]
         , div
             [ class "random-encounter__difficulty-group"
             , attribute "role" "radiogroup"
@@ -234,8 +235,8 @@ difficultyWire t =
 
 scaleRow : RandomEncounterUi -> Html Msg
 scaleRow ui =
-    div [ class "random-encounter__param-row" ]
-        [ label [ class "random-encounter__param-label" ] [ text "Scale" ]
+    div [ class "cond-row" ]
+        [ label [ class "cond-label" ] [ text "Scale:" ]
         , div
             [ class "random-encounter__difficulty-group"
             , attribute "role" "radiogroup"
@@ -275,15 +276,15 @@ scaleButton current option_ =
 
 habitatRow : RandomEncounterUi -> Html Msg
 habitatRow ui =
-    div [ class "random-encounter__param-row" ]
+    div [ class "cond-row" ]
         [ label
-            [ class "random-encounter__param-label"
+            [ class "cond-label"
             , Attr.for "random-encounter-habitat"
             ]
-            [ text "Habitat" ]
+            [ text "Habitat:" ]
         , select
             [ Attr.id "random-encounter-habitat"
-            , class "random-encounter__habitat-select"
+            , class "cond-select cond-select--grow"
             , onInput RandomEncounterHabitatSet
             ]
             (anyOption "Any" (ui.habitat == Nothing)
@@ -336,18 +337,18 @@ creatureTypeSlot { isFirst, index, current } =
             else
                 ""
     in
-    div [ class "random-encounter__param-row" ]
-        [ label [ class "random-encounter__param-label" ]
+    div [ class "cond-row" ]
+        [ label [ class "cond-label" ]
             [ text
                 (if isFirst then
-                    "Type"
+                    "Type:"
 
                  else
                     ""
                 )
             ]
         , select
-            [ class "random-encounter__habitat-select"
+            [ class "cond-select cond-select--grow"
             , onInput (RandomEncounterCreatureTypeAt index)
             , attribute "aria-label"
                 ("Creature type filter " ++ String.fromInt (index + 1))
@@ -360,34 +361,28 @@ creatureTypeSlot { isFirst, index, current } =
 
 minionsRow : RandomEncounterUi -> Html Msg
 minionsRow ui =
-    label [ class "random-encounter__minions-row" ]
-        [ input
-            [ type_ "checkbox"
-            , checked ui.includeMinions
-            , onClick RandomEncounterMinionsToggle
-            , class "random-encounter__minions-checkbox"
-            ]
-            []
-        , span [ class "random-encounter__minions-label" ]
-            [ text "Include minions" ]
-        , span [ class "random-encounter__minions-hint" ]
+    div [ class "cond-row" ]
+        [ Field.checkbox
+            { checked = ui.includeMinions
+            , msg = RandomEncounterMinionsToggle
+            , label = "Include minions"
+            , extra = []
+            }
+        , span [ class "cond-section__caption" ]
             [ text "(adds 2–6 low-CR creatures from the same habitat)" ]
         ]
 
 
 loreRow : RandomEncounterUi -> Html Msg
 loreRow ui =
-    label [ class "random-encounter__minions-row" ]
-        [ input
-            [ type_ "checkbox"
-            , checked ui.loreLeaning
-            , onClick RandomEncounterLoreToggle
-            , class "random-encounter__minions-checkbox"
-            ]
-            []
-        , span [ class "random-encounter__minions-label" ]
-            [ text "Lore-leaning" ]
-        , span [ class "random-encounter__minions-hint" ]
+    div [ class "cond-row" ]
+        [ Field.checkbox
+            { checked = ui.loreLeaning
+            , msg = RandomEncounterLoreToggle
+            , label = "Lore-leaning"
+            , extra = []
+            }
+        , span [ class "cond-section__caption" ]
             [ text "(prefer canonical groupings — goblinoid warbands, hag covens, dragon-and-kobolds, …)" ]
         ]
 
@@ -781,11 +776,11 @@ resultBody : RandomEncounterUi -> Html Msg
 resultBody ui =
     case ui.roll of
         RollIdle ->
-            p [ class "random-encounter__hint" ]
+            p [ class "cond-section__caption" ]
                 [ text "Hit Generate to roll." ]
 
         RollEmptyPool ->
-            p [ class "random-encounter__hint random-encounter__hint--warn" ]
+            p [ class "cond-section__caption cond-section__caption--warn" ]
                 [ text
                     ("No creatures match that habitat at the chosen budget. "
                         ++ "Try Any, a different habitat, or a lower difficulty."

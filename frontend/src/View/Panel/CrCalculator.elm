@@ -107,12 +107,12 @@ partySection party =
 
 partyRow : Int -> PartyMember -> Html Msg
 partyRow index member =
-    div [ class "cr-calc__party-row" ]
+    div [ class "cond-row" ]
         [ span [ class "cr-calc__party-index" ]
             [ text ("Player " ++ String.fromInt (index + 1)) ]
-        , label [ class "cr-calc__party-level-label" ] [ text "Level" ]
+        , label [ class "cond-label" ] [ text "Level:" ]
         , select
-            [ class "cr-calc__party-level"
+            [ class "cond-select"
             , onInput (CrCalculatorPartyLevelSet member.id)
             , attribute "aria-label" ("Level for Player " ++ String.fromInt (index + 1))
             ]

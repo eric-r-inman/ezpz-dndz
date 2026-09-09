@@ -96,6 +96,15 @@
      shape still spell the values out; converting them is
      tracked in `tasks.org`. */
   --font-size-label: 0.78rem;
+  /* The one size an editor's fields, their labels, and their choice
+     controls share. */
+  --font-size-field: 0.85rem;
+  /* The gap inside a row of fields, and between a choice control's
+     box and its label. */
+  --gap-field: 6px;
+  /* The width past which a take-the-room field wraps rather than
+     shrinks. */
+  --width-input-grow-min: 10ch;
 
   /* The type scale an editor section reads at, heading and
      contents alike. */
@@ -1704,32 +1713,6 @@ body {
   flex-wrap: wrap;
 }
 
-.treasure__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.treasure__field-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.treasure__select {
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.85rem;
-  min-width: 110px;
-  max-width: 100%;
-}
-
 .treasure__roll {
   align-self: flex-end;
 }
@@ -1791,12 +1774,6 @@ body {
   margin-bottom: 4px;
 }
 
-.treasure__settings-presets-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  margin-right: 4px;
-}
-
 .treasure__settings-preset-chip {
   appearance: none;
   background: var(--color-surface);
@@ -1839,11 +1816,6 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-}
-
-.treasure__settings-profile-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
 }
 
 .treasure__settings-profile-empty {
@@ -1901,17 +1873,6 @@ body {
 .treasure__settings-profile-save {
   display: flex;
   gap: 6px;
-}
-
-.treasure__settings-profile-input {
-  flex: 1;
-  padding: 4px 8px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 0.85rem;
-  background: var(--color-surface);
-  color: var(--color-text);
 }
 
 .treasure__settings-profile-save-btn {
@@ -2299,19 +2260,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-
-.treasure__settings-scroll-input {
-  width: 4em;
-  padding: 2px 6px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 0.85rem;
-  text-align: right;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
 }
 
 .treasure__settings-scroll-unit {
@@ -3222,31 +3170,10 @@ body {
   gap: 6px;
 }
 
-.cr-calc__party-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .cr-calc__party-index {
   font-size: 0.85rem;
   font-weight: 600;
   min-width: 48px;
-}
-
-.cr-calc__party-level-label {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.cr-calc__party-level {
-  padding: 4px 8px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
 }
 
 .cr-calc__party-remove {
@@ -3583,17 +3510,11 @@ body {
   color: var(--color-text-muted);
 }
 
-.random-encounter__empty,
-.random-encounter__hint {
+.random-encounter__empty {
   margin: 0;
   font-size: 0.9rem;
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-.random-encounter__hint--warn {
-  color: #c98c1d;
-  font-style: normal;
 }
 
 /* Party rows — same shape as CR Calculator. */
@@ -3603,50 +3524,14 @@ body {
   gap: 6px;
 }
 
-.random-encounter__party-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .random-encounter__party-index {
   font-size: 0.85rem;
   font-weight: 600;
   min-width: 48px;
 }
 
-.random-encounter__party-level-label {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.random-encounter__party-level {
-  padding: 4px 8px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
-}
-
 .random-encounter__party-remove {
   margin-left: auto;
-}
-
-/* Parameter rows (difficulty pills + habitat select). */
-.random-encounter__param-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.random-encounter__param-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  min-width: 80px;
-  color: var(--color-text-muted);
 }
 
 .random-encounter__difficulty-group {
@@ -3688,17 +3573,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.random-encounter__habitat-select {
-  flex: 1 1 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
 }
 
 /* Result list — one row per group + total. */
@@ -3821,32 +3695,6 @@ body {
   gap: 8px;
   justify-content: flex-end;
   padding-top: 8px;
-}
-
-.random-encounter__minions-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0 2px 0;
-  cursor: pointer;
-}
-
-.random-encounter__minions-checkbox {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  cursor: pointer;
-}
-
-.random-encounter__minions-label {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.random-encounter__minions-hint {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-  font-style: italic;
 }
 
 /* Specific-creatures section: pinned list + inline picker. */
@@ -4483,6 +4331,18 @@ body {
 .panel__title-mark {
   color: var(--color-accent);
   padding-left: var(--space-1);
+}
+
+/* The tag a panel wears while its feature is still settling.  It
+   undoes the title's small caps so it reads as an aside. */
+.panel__title-beta {
+  padding-left: var(--space-1);
+  font-size: var(--font-size-label);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-orange);
 }
 
 .panel__count {
@@ -8302,31 +8162,16 @@ button.creature-card__lifecycle--dead:focus-visible {
 .dice-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-1);
 }
 
-/* Shared form-row pattern: a wrapping flex row with a leading
-   label.  Per-feature class blocks below set only their own
-   label-width overrides. */
-.dice-form__row,
-.hp-change__row,
+/* The editors' row: fields and labels laid left to right, each
+   moving whole to the next line when the row runs out of room. */
 .cond-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* The duration picker's two rows share one grid so the second
-   row's first chip lines up under the first row's rather than
-   under the "Duration:" label: column one holds the label (and
-   nothing on row two), the rest the chips. */
-.cond-duration-grid {
-  display: grid;
-  grid-template-columns: max-content max-content max-content max-content;
-  align-items: center;
-  justify-items: start;
-  gap: var(--space-1) var(--space-2);
+  gap: var(--gap-field);
 }
 
 /* The Manage HP editor's manual row.  Tighter than the shared
@@ -8337,97 +8182,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-1);
 }
 
-/* One label-plus-input pair.  The gap inside a pair is deliberately
-   tighter than the one between pairs, so a label reads as belonging
-   to the input beside it rather than the one it trails.
-   `min-width: 0` lets a pair shrink past its input's intrinsic
-   width when the row runs out of room. */
-.hp-change__manual-field {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-0);
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.hp-change__manual-field--split {
-  margin-left: var(--space-1);
-}
-
-.hp-change__manual-label {
-  flex: 0 0 auto;
-  font-size: var(--font-size-section);
-  white-space: nowrap;
-}
-
 /* Hairline between the Custom and Note rows of the condition
    editor, so the two free-text fields don't read as one. */
 .cond-divider {
   height: 1px;
   background: var(--color-border);
   margin: 4px 0;
-}
-
-.dice-form__row label {
-  color: var(--color-text-muted);
-  min-width: 72px;
-  font-size: var(--font-size-label);
-}
-
-.hp-change__label {
-  color: var(--color-text);
-  font-size: 0.85rem;
-}
-
-.dice-form__pair-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: var(--space-1);
-}
-
-.dice-form__pair-label {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-label);
-  white-space: nowrap;
-}
-
-.dice-form__pair-label--split {
-  margin-left: var(--space-2);
-}
-
-/* Shared form-input chrome used by .dice-form__input,
-   .hp-change__input.  The two are structurally identical (the
-   sole behavior diff is font-size / tabular-nums for the numeric
-   variant).  Each individual class below adds only its size /
-   numeric-formatting overrides. */
-.dice-form__input,
-.hp-change__input {
-  flex: 1 1 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  font-family: inherit;
-  min-width: 0;
-}
-
-.dice-form__input:focus,
-.hp-change__input:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.dice-form__input {
-  font-size: 0.9rem;
-}
-
-.dice-form__numeric {
-  flex: 0 1 auto;
-  width: var(--width-input-2ch);
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
 }
 
 .dice-form__reset {
@@ -8456,12 +8216,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 1;
   background: var(--color-surface-2);
   border-color: var(--color-border);
-}
-
-.dice-form__error {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-  font-family: ui-monospace, "Menlo", monospace;
 }
 
 .die-btn-grid {
@@ -8841,29 +8595,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: #ffffff;
 }
 
-/* HP-change modal — reuses the dice modal's chrome (.modal-backdrop /
-   .modal / .modal__header / .modal__body) for layout, with its own
-   form / preview / footer styles. */
-
-.hp-change__input {
-  font-size: 0.85rem;
-  font-variant-numeric: tabular-nums;
-  /* Three characters, and sized to say so, rather than stretching
-     to the editor's full width.  Wider than `3ch` because the
-     box is border-box: the field's own padding and border eat
-     into the width before any digit does. */
-  flex: 0 0 auto;
-  width: 7ch;
-}
-
-.hp-change__error {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-  font-family: ui-monospace, "Menlo", monospace;
-  padding-left: 110px;
-  margin-top: 4px;
-}
-
 .hp-change__mode {
   display: inline-flex;
   border: 1px solid var(--color-border);
@@ -8890,38 +8621,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-weight: 600;
-}
-
-.hp-change__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-/* Extra breathing room after the HP field specifically — the
-   "New roll for each creature" checkbox below sits alone on its
-   own row and doesn't need it. */
-.hp-change__checkbox--scope {
-  margin-left: var(--space-2);
-}
-
-.hp-change__checkbox input[type="checkbox"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-/* Merged-modal action-button row: Cancel + Damage + Heal +
-   Temp HP + +Max HP.  Wraps on narrow modals so the row doesn't
-   overflow the panel edge; small top padding matches the space
-   the old preview block used to leave above the footer. */
-.hp-change__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 4px;
 }
 
 .hp-change__log-list {
@@ -9324,6 +9023,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: italic;
 }
 
+/* A caption the GM should act on: a setting still missing, or an
+   input that did not parse. */
+.cond-section__caption--warn {
+  color: var(--color-orange-dark);
+  font-style: normal;
+}
+
+.cond-section__caption--danger {
+  color: var(--color-danger);
+  font-style: normal;
+}
+
 .cond-radio-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -9403,8 +9114,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-radio-plain {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-field);
   padding: 2px 0;
+  font-size: var(--font-size-field);
   cursor: pointer;
   user-select: none;
 }
@@ -9447,7 +9159,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-input {
-  font-size: 0.85rem;
+  font-size: var(--font-size-field);
   background: var(--color-surface);
   padding: 3px 6px;
 }
@@ -9475,7 +9187,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 0 1 auto;
   width: 5ch;
   min-width: 0;
-  font-size: var(--font-size-section);
   padding-left: var(--space-1);
   padding-right: var(--space-1);
   appearance: textfield;
@@ -9489,13 +9200,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-input--pool::-webkit-inner-spin-button {
   appearance: none;
   margin: 0;
-}
-
-/* The Replace editor's compendium search, sized to sit beside
-   its label instead of stretching to the row's full width. */
-.cond-input--search {
-  flex: 0 1 auto;
-  width: 26ch;
 }
 
 .cond-input--narrow {
@@ -9515,10 +9219,102 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: var(--width-input-2ch);
 }
 
-/* "Ability" / "DC" / "Mod" — small enough that the row's three
-   fields plus their labels fit without wrapping. */
-.cond-save-label {
-  font-size: 0.72rem;
+/* A short free-text field: an amount, a note, a name it turns
+   into. */
+.cond-input--w12 {
+  flex: 0 0 auto;
+  width: 12ch;
+  max-width: 100%;
+}
+
+/* A field that takes the room its row has left, down to a floor
+   that keeps a placeholder legible, past which it wraps. */
+.cond-input--grow {
+  flex: 1 1 var(--width-input-grow-min);
+  width: auto;
+  min-width: var(--width-input-grow-min);
+}
+
+/* The amount a Save Chain outcome needs before it can apply, lit
+   so it pops under both outcome headings. */
+.cond-input--amount {
+  border-color: var(--color-yellow);
+  box-shadow: 0 0 0 1px var(--color-yellow);
+}
+
+/* A label at the head of a row, or between fields.  It never
+   wraps inside itself: a row short of room moves it whole to the
+   next line. */
+.cond-label {
+  flex: 0 0 auto;
+  font-size: var(--font-size-field);
+  white-space: nowrap;
+}
+
+/* One label-plus-field pair.  The gap inside a pair is tighter
+   than the row's, so a label reads as belonging to the field
+   beside it rather than the one it trails.  `min-width: 0` lets a
+   pair shrink past its field's intrinsic width. */
+.cond-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Extra air before a pair, separating it from the pair it
+   follows. */
+.cond-pair--split {
+  margin-left: var(--space-1);
+}
+
+.cond-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-field);
+  font-size: var(--font-size-field);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cond-checkbox__box {
+  accent-color: var(--color-accent);
+  margin: 0;
+}
+
+/* A section heading that folds its section: a caret and the
+   title, in the section-heading face, with no button chrome. */
+.cond-fold {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-section);
+  font-weight: var(--font-weight-label);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.cond-fold__caret {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font-size: var(--font-size-caret);
+  line-height: 1;
+}
+
+/* The duration picker's block: the kind chips and the sub-row the
+   picked kind opens. */
+.cond-duration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .cond-save-bonus-wrap {
@@ -9561,14 +9357,22 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+/* A select in the same chrome as `.cond-input`, so a row mixing
+   the two reads as one line of fields. */
 .cond-select {
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--font-size-field);
   color: var(--color-text);
-  background: var(--color-surface-2);
+  background: var(--color-surface);
   border: 1px solid var(--color-input-border);
-  border-radius: 4px;
-  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  max-width: 100%;
+}
+
+.cond-select--grow {
+  flex: 1 1 var(--width-input-grow-min);
+  min-width: var(--width-input-grow-min);
 }
 
 /* Two-button begin / end phase toggle inside duration / save
@@ -9729,10 +9533,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 6px;
 }
 
-.cond-footer__save-input {
-  width: 180px;
-}
-
 /* Load button + dropdown menu container.  `position: relative`
    anchors the absolute-positioned menu below it. */
 .cond-footer__load-wrap {
@@ -9863,14 +9663,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-direction: column;
   gap: 2px;
   padding-left: 8px;
-}
-
-/* Category dropdown that sits between the name input and the
-   Save button in the preset-save row.  Sized just wide enough
-   for "Monster Abilities" without overflowing the footer. */
-.cond-footer__save-category {
-  flex: 0 0 auto;
-  min-width: 160px;
 }
 
 .compendium__filter-bar {
@@ -11223,24 +11015,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-2);
 }
 
-.save-load__save-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.save-load__filename {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: var(--space-1);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: var(--font-size-label);
-}
-
 .save-load__saves {
   display: flex;
   flex-direction: column;
@@ -11300,11 +11074,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .save-load__confirm-msg {
   font-size: var(--font-size-label);
-}
-
-.save-load__error {
-  font-size: var(--font-size-label);
-  color: var(--color-danger);
 }
 
 /* Save / Load modals — reuse the standard .modal chrome.  Both
@@ -11593,25 +11362,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .quick-add__sort-row {
   display: flex;
   justify-content: flex-end;
-}
-
-/* Top row of Quick Add: search input on the left grows to fill,
-   sort toggle on the right stays its natural width. */
-.quick-add__controls-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quick-add__search {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 0.9rem;
 }
 
 .quick-add__sort-toggle {
@@ -12017,345 +11767,6 @@ button.quick-list-card {
   --modal-max-w: 680px;
 }
 
-.save-chain__preset-row,
-.save-chain__row,
-.save-chain__apply-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.save-chain__row--save {
-  gap: 24px;
-}
-
-.save-chain__field-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  min-width: 60px;
-}
-
-.save-chain__field-label--tight {
-  min-width: 0;
-}
-
-.save-chain__preset-picker {
-  min-width: 220px;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.88rem;
-}
-
-.save-chain__loaded-tag {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.save-chain__name-input {
-  flex: 1 1 200px;
-  min-width: 160px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__ability-group {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.save-chain__dc-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.save-chain__ability-radios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.save-chain__ability-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.save-chain__dc-input {
-  width: var(--width-input-2ch);
-  padding: 6px var(--space-1);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-/* Outcome block: a bordered card with a small heading and two
-   rows (HP + condition).  The border groups the two rows so the
-   fail and success blocks read as distinct clusters. */
-.save-chain__outcome {
-  margin: 8px 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.save-chain__outcome-heading {
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  margin-bottom: 2px;
-}
-
-.save-chain__hp-row,
-.save-chain__condition-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Effect list — zero or more `[name] [note] [×]` rows plus an
-   "+ Add effect" button.  Column layout so multi-condition
-   spells (Hypnotic Pattern) stack cleanly; the button sits
-   below the list at flex-start. */
-.save-chain__effects {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.save-chain__effect-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-
-.save-chain__effect-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.save-chain__effect-remove {
-  font-size: 1rem;
-  padding: 2px 8px;
-}
-
-/* "Save EoT" checkbox on each effect row.  Opts the applied
-   condition into a save-at-end-of-turn using the chain's own
-   Save ability + DC.  Compact so the row still fits on one
-   line for the typical single-effect case. */
-.save-chain__effect-save-to-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.save-chain__effect-save-to-end input[type="checkbox"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-/* An "effect block" wraps the top row (name + note + toggles +
-   remove) and the optional auto-roll sub-row below.  Column
-   layout with a tighter internal gap so the sub-row hugs the
-   parent effect visually. */
-.save-chain__effect-block {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-/* Auto-roll mode picker: three inline radios that appear
-   beneath an effect when its Save-to-end checkbox is on.
-   Indented + muted so the sub-row reads as configuration
-   for the effect above it, not as a separate row. */
-.save-chain__effect-autoroll,
-.save-chain__effect-subrow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding-left: var(--space-4);
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-/* The duration picker beneath an effect, indented like the
-   sub-rows but stacked, since its grid and sub-row are blocks. */
-.save-chain__effect-duration {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding-left: var(--space-4);
-}
-
-.save-chain__autoroll-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.save-chain__autoroll-radio input[type="radio"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-.save-chain__hp-radios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.save-chain__hp-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-/* Yellow highlight so the amount box pops under both outcome
-   headings — it only renders once Damage or Heal is picked, and
-   an amount is required before the chain can apply, so the cue
-   points the GM at the one field still waiting on input. */
-.save-chain__amount-input {
-  width: 140px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-yellow);
-  box-shadow: 0 0 0 1px var(--color-yellow);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__amount-cluster {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.save-chain__condition-input {
-  flex: 1 1 180px;
-  min-width: 140px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__condition-note-input {
-  flex: 1 1 160px;
-  min-width: 100px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.save-chain__caption {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-}
-
-/* Trails the DC field on its row: takes the leftover width and
-   wraps within it rather than pushing past the panel's edge. */
-.save-chain__caption--dc {
-  flex: 1 1 12ch;
-  min-width: 0;
-}
-
-.save-chain__caption--warn {
-  color: var(--color-warning, #b9602a);
-}
-
-/* Danger variant of the caption — used for validation
-   errors the GM MUST fix before applying (e.g. Save-to-end
-   is opted in on some effect but the chain has no DC to
-   inherit).  Red so it reads distinctly from the
-   `--warn` orange advisory. */
-.save-chain__caption--danger {
-  color: var(--color-danger, #dc2626);
-  font-weight: 600;
-}
-
-/* Recent-applies log at the bottom of the Save Chain modal.
-   Mirrors the HP-change modal's log chrome: bordered card
-   with a small heading, empty state, and a list of rows.
-   Each row is `[SIDE badge] [target] [roll note] [applied]`
-   in one line. */
-.save-chain__log {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.save-chain__log-title {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-.save-chain__log-empty {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
 .save-chain__log-list {
   list-style: none;
   margin: 0;
@@ -12432,25 +11843,4 @@ button.quick-list-card {
 
 .save-chain__log-applied-sep {
   color: var(--color-text-muted);
-}
-
-.save-chain__apply-row {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-  justify-content: space-between;
-}
-
-.save-chain__apply-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* Small variant of the shared action-btn for the preset picker
-   row — the Load / Delete / + New / Save preset row would
-   otherwise overflow the modal with normal-sized buttons. */
-.action-btn--sm {
-  padding: 4px 10px;
-  font-size: 0.8rem;
 }

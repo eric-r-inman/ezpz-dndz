@@ -33,13 +33,12 @@ type alias Config =
 
 view : Config -> Html Msg
 view cfg =
-    div [ class "save-chain__effect-duration" ]
-        [ div [ class "cond-duration-grid" ]
-            [ Html.label [] [ text "Duration:" ]
+    div [ class "cond-duration" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Duration:" ]
             , kindChip cfg DurKindManual "Manual"
             , kindChip cfg DurKindUntilTurn "Next turn"
             , kindChip cfg DurKindThisTurn "This turn"
-            , span [] []
             , kindChip cfg DurKindCountdown "Countdown"
             , radioChip cfg.groupName
                 (DurationEdit.isOneMinute cfg.value)
@@ -100,17 +99,17 @@ subsection cfg =
         LastsUntilTurn phase ref ->
             div [ class "cond-subsection" ]
                 [ div [ class "cond-row" ]
-                    [ Html.label [] [ text "At" ]
+                    [ Html.label [ class "cond-label" ] [ text "At" ]
                     , View.PhaseToggle.view (cfg.groupName ++ "-until-phase")
                         phase
                         (DurationUntilPhasePicked >> cfg.toMsg)
-                    , Html.label [] [ text "of" ]
+                    , Html.label [ class "cond-label" ] [ text "of" ]
                     , Html.select
                         [ class "cond-select"
                         , onInput (DurationUntilRefPicked >> cfg.toMsg)
                         ]
                         (refOptions cfg.creatureNames ref)
-                    , Html.label [] [ text "'s next turn" ]
+                    , Html.label [ class "cond-label" ] [ text "'s next turn" ]
                     ]
                 ]
 
@@ -121,7 +120,7 @@ subsection cfg =
             in
             div [ class "cond-subsection" ]
                 [ div [ class "cond-row" ]
-                    [ Html.label [ for turnsId ] [ text "Lasts" ]
+                    [ Html.label [ for turnsId, class "cond-label" ] [ text "Lasts" ]
                     , input
                         [ id turnsId
                         , class "cond-input cond-input--narrow"
@@ -132,11 +131,11 @@ subsection cfg =
                         , onInput (DurationTurnsTyped >> cfg.toMsg)
                         ]
                         []
-                    , Html.label [] [ text "turns, ticking at" ]
+                    , Html.label [ class "cond-label" ] [ text "turns, ticking at" ]
                     , View.PhaseToggle.view (cfg.groupName ++ "-countdown-phase")
                         phase
                         (DurationCountdownPhasePicked >> cfg.toMsg)
-                    , Html.label [] [ text "of the bearer's turn" ]
+                    , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
                     ]
                 , div [ class "cond-section__caption" ]
                     [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]

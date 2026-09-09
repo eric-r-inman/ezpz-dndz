@@ -75,9 +75,9 @@ controlsRow ui =
                 SortByCr ->
                     ( "Sort: CR ↑", Tooltips.quickAddSortToAlpha )
     in
-    div [ class "quick-add__controls-row" ]
+    div [ class "cond-row" ]
         [ input
-            [ class "quick-add__search"
+            [ class "cond-input cond-input--grow"
             , type_ "search"
             , placeholder "🔍 Search…"
             , value ui.searchText

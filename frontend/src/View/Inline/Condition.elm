@@ -17,6 +17,7 @@ import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, S
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
 import View.Inline.ApplyButton as ApplyButton
+import View.Inline.Field as Field
 import View.PhaseToggle
 import View.Tooltips as Tooltips
 
@@ -139,7 +140,7 @@ customAndNoteSection ui =
 
           else
             [ div [ class "cond-row" ]
-                [ Html.label [] [ text "Custom:" ]
+                [ Html.label [ class "cond-label" ] [ text "Custom:" ]
                 , input
                     [ class "cond-input cond-input--w20"
                     , type_ "text"
@@ -154,7 +155,7 @@ customAndNoteSection ui =
             ]
          )
             ++ [ div [ class "cond-row" ]
-                    [ Html.label [] [ text "Note:" ]
+                    [ Html.label [ class "cond-label" ] [ text "Note:" ]
                     , input
                         [ class "cond-input cond-input--w20"
                         , type_ "text"
@@ -172,14 +173,11 @@ customAndNoteSection ui =
 durationSection : ConditionUi -> List String -> Html Msg
 durationSection ui creatureNames =
     div [ class "cond-section" ]
-        [ -- A three-column grid: the empty span holds row two's
-          -- label slot so Countdown lines up under Manual.
-          div [ class "cond-duration-grid" ]
-            [ Html.label [] [ text "Duration:" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Duration:" ]
             , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
             , durationKindRadio ui DurKindThisTurn "This turn"
-            , span [] []
             , durationKindRadio ui DurKindCountdown "Countdown"
             , oneMinutePresetRadio ui
             ]
@@ -262,9 +260,9 @@ durationUntilSubsection : ConditionUi -> List String -> Html Msg
 durationUntilSubsection ui creatureNames =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
-            [ Html.label [] [ text "At" ]
+            [ Html.label [ class "cond-label" ] [ text "At" ]
             , View.PhaseToggle.view "until-phase" ui.untilPhase ConditionUntilPhaseSet
-            , Html.label [] [ text "of" ]
+            , Html.label [ class "cond-label" ] [ text "of" ]
             , Html.select
                 [ class "cond-select"
                 , onInput ConditionUntilCreatureChanged
@@ -279,7 +277,7 @@ durationUntilSubsection ui creatureNames =
                     )
                     creatureNames
                 )
-            , Html.label [] [ text "'s next turn" ]
+            , Html.label [ class "cond-label" ] [ text "'s next turn" ]
             ]
         ]
 
@@ -288,7 +286,7 @@ durationCountdownSubsection : ConditionUi -> Html Msg
 durationCountdownSubsection ui =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "cond-countdown-turns" ]
+            [ Html.label [ for "cond-countdown-turns", class "cond-label" ]
                 [ text "Lasts" ]
             , input
                 [ id "cond-countdown-turns"
@@ -300,9 +298,9 @@ durationCountdownSubsection ui =
                 , onInput ConditionCountdownTurnsChanged
                 ]
                 []
-            , Html.label [] [ text "turns, ticking at" ]
+            , Html.label [ class "cond-label" ] [ text "turns, ticking at" ]
             , View.PhaseToggle.view "countdown-phase" ui.countdownPhase ConditionCountdownPhaseSet
-            , Html.label [] [ text "of the bearer's turn" ]
+            , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
             ]
         , div [ class "cond-section__caption" ]
             [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]
@@ -313,15 +311,12 @@ saveSection : ConditionUi -> Html Msg
 saveSection ui =
     div [ class "cond-section" ]
         [ h3 [ class "cond-section__heading" ]
-            [ Html.label []
-                [ input
-                    [ type_ "checkbox"
-                    , checked (ui.saveToEnd /= Nothing)
-                    , onClick ConditionSaveToggle
-                    ]
-                    []
-                , text " Saving throw to end"
-                ]
+            [ Field.checkbox
+                { checked = ui.saveToEnd /= Nothing
+                , msg = ConditionSaveToggle
+                , label = "Saving throw to end"
+                , extra = []
+                }
             ]
         , case ui.saveToEnd of
             Nothing ->
@@ -336,7 +331,7 @@ saveSubsection : SaveToEndUi -> Html Msg
 saveSubsection s =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "cond-save-ability", class "cond-save-label" ] [ text "Ability" ]
+            [ Html.label [ for "cond-save-ability", class "cond-label" ] [ text "Ability" ]
             , Html.select
                 [ id "cond-save-ability"
                 , class "cond-select"
@@ -352,7 +347,7 @@ saveSubsection s =
                     )
                     [ "STR", "DEX", "CON", "INT", "WIS", "CHA" ]
                 )
-            , Html.label [ for "cond-save-dc", class "cond-save-label" ] [ text "DC" ]
+            , Html.label [ for "cond-save-dc", class "cond-label" ] [ text "DC" ]
             , input
                 [ id "cond-save-dc"
                 , class "cond-input cond-input--2ch"
@@ -362,7 +357,7 @@ saveSubsection s =
                 , onInput ConditionSaveDcChanged
                 ]
                 []
-            , Html.label [ for "cond-save-bonus", class "cond-save-label" ] [ text "Mod" ]
+            , Html.label [ for "cond-save-bonus", class "cond-label" ] [ text "Mod" ]
             , span [ class "cond-save-bonus-wrap" ]
                 [ input
                     [ id "cond-save-bonus"
@@ -393,19 +388,12 @@ saveSubsection s =
                     ]
                 ]
             ]
-        , div [ class "cond-radio-stack" ]
-            [ autoRollRadio s
-                Encounter.AutoRollManual
-                "End manually (no auto-roll)"
-            , autoRollRadio s
-                Encounter.AutoRollAtBegin
-                "Auto roll-beginning of turn"
-            , autoRollRadio s
-                Encounter.AutoRollAtEnd
-                "Auto roll-end of turn"
-            , autoRollRadio s
-                Encounter.AutoRollAskAtEnd
-                "Ask at end of turn (chip flashes; roll if the trigger applied)"
+        , div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Auto-roll:" ]
+            , autoRollRadio s [] Encounter.AutoRollManual "Manual"
+            , autoRollRadio s [] Encounter.AutoRollAtBegin "Start of turn"
+            , autoRollRadio s [] Encounter.AutoRollAtEnd "End of turn"
+            , autoRollRadio s [ Tooltips.attr Tooltips.saveAskAtEnd ] Encounter.AutoRollAskAtEnd "Ask at end of turn"
             ]
         , failedSaveRow s
         , onDamageRow s
@@ -418,39 +406,22 @@ chip for the GM to judge the trigger, or a roll fired at once.
 onDamageRow : SaveToEndUi -> Html Msg
 onDamageRow s =
     div [ class "cond-row" ]
-        [ Html.label [ class "cond-save-label" ] [ text "When damaged:" ]
-        , div [ class "cond-radio-stack" ]
-            [ onDamageRadio s Encounter.NoDamageTrigger "Nothing"
-            , onDamageRadio s Encounter.AskOnDamage "Flash the chip (GM rolls if the trigger applied)"
-            , onDamageRadio s Encounter.RollOnDamage "Roll the save"
-            , onDamageRadio s Encounter.RollOnDamageWithAdvantage "Roll the save with advantage"
-            ]
+        [ Html.label [ class "cond-label" ] [ text "When damaged:" ]
+        , onDamageRadio s [] Encounter.NoDamageTrigger "Nothing"
+        , onDamageRadio s [ Tooltips.attr Tooltips.saveFlashOnDamage ] Encounter.AskOnDamage "Flash the chip"
+        , onDamageRadio s [] Encounter.RollOnDamage "Roll the save"
+        , onDamageRadio s [] Encounter.RollOnDamageWithAdvantage "Roll with advantage"
         ]
 
 
-onDamageRadio : SaveToEndUi -> Encounter.DamageTrigger -> String -> Html Msg
-onDamageRadio s trigger label =
-    let
-        isSelected =
-            s.onDamage == trigger
-    in
-    Html.label [ class "cond-radio-plain" ]
-        [ input
-            [ type_ "radio"
-            , Attr.name "cond-save-ondamage"
-            , class
-                (if isSelected then
-                    "cond-radio-plain__dot cond-radio-plain__dot--selected"
-
-                 else
-                    "cond-radio-plain__dot"
-                )
-            , checked isSelected
-            , onClick (ConditionSaveOnDamageSet trigger)
-            ]
-            []
-        , span [ class "cond-radio__label" ] [ text label ]
-        ]
+onDamageRadio : SaveToEndUi -> List (Html.Attribute Msg) -> Encounter.DamageTrigger -> String -> Html Msg
+onDamageRadio s extra trigger label =
+    Field.radioWith extra
+        { group = "cond-save-ondamage"
+        , selected = s.onDamage == trigger
+        , msg = ConditionSaveOnDamageSet trigger
+        , label = label
+        }
 
 
 {-| What a failed save does besides leaving the condition in
@@ -459,8 +430,8 @@ place; both fields blank by default.
 failedSaveRow : SaveToEndUi -> Html Msg
 failedSaveRow s =
     div [ class "cond-row" ]
-        [ Html.label [ class "cond-save-label" ] [ text "On a failed save:" ]
-        , Html.label [ for "cond-fail-damage", class "cond-save-label" ] [ text "takes" ]
+        [ Html.label [ class "cond-label" ] [ text "On a failed save:" ]
+        , Html.label [ for "cond-fail-damage", class "cond-label" ] [ text "takes" ]
         , input
             [ id "cond-fail-damage"
             , class "cond-input cond-input--narrow"
@@ -471,7 +442,7 @@ failedSaveRow s =
             , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
             ]
             []
-        , Html.label [ for "cond-fail-becomes", class "cond-save-label" ] [ text "becomes" ]
+        , Html.label [ for "cond-fail-becomes", class "cond-label" ] [ text "becomes" ]
         , input
             [ id "cond-fail-becomes"
             , class "cond-input cond-input--w20"
@@ -489,34 +460,18 @@ failedSaveRow s =
         ]
 
 
-{-| Plain radio row — a bare dot and its label, not the bordered
-pill `.cond-radio` renders elsewhere in this editor. Three
-mutually-exclusive timing choices read as a classic radio list
-better than as a stack of chips.
+{-| Plain radio — a bare dot and its label, not the bordered pill
+`.cond-radio` renders elsewhere in this editor. The timing choices
+read as a classic radio row better than as a row of chips.
 -}
-autoRollRadio : SaveToEndUi -> Encounter.AutoRollMode -> String -> Html Msg
-autoRollRadio s mode label =
-    let
-        isSelected =
-            s.autoRoll == mode
-    in
-    Html.label [ class "cond-radio-plain" ]
-        [ input
-            [ type_ "radio"
-            , Attr.name "cond-save-autoroll"
-            , class
-                (if isSelected then
-                    "cond-radio-plain__dot cond-radio-plain__dot--selected"
-
-                 else
-                    "cond-radio-plain__dot"
-                )
-            , checked isSelected
-            , onClick (ConditionSaveAutoRollSet mode)
-            ]
-            []
-        , span [ class "cond-radio__label" ] [ text label ]
-        ]
+autoRollRadio : SaveToEndUi -> List (Html.Attribute Msg) -> Encounter.AutoRollMode -> String -> Html Msg
+autoRollRadio s extra mode label =
+    Field.radioWith extra
+        { group = "cond-save-autoroll"
+        , selected = s.autoRoll == mode
+        , msg = ConditionSaveAutoRollSet mode
+        , label = label
+        }
 
 
 footer : ConditionUi -> Dict String ConditionPreset -> Int -> Bool -> Html Msg
@@ -670,7 +625,7 @@ presetSaveControl ui canSubmit =
             in
             div [ class "cond-footer__save-row" ]
                 [ input
-                    [ class "cond-input cond-footer__save-input"
+                    [ class "cond-input cond-input--w20"
                     , type_ "text"
                     , value typed
                     , placeholder "Name this preset"
@@ -680,7 +635,7 @@ presetSaveControl ui canSubmit =
                     ]
                     []
                 , Html.select
-                    [ class "cond-input cond-footer__save-category"
+                    [ class "cond-select"
                     , onInput ConditionPresetSaveCategoryChanged
                     , attribute "aria-label" "Category"
                     , Tooltips.attr "Pick a category for this preset"
