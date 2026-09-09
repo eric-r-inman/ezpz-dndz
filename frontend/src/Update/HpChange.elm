@@ -17,6 +17,7 @@ module Update.HpChange exposing
     , manualRollLanded
     , openFor
     , rollLanded
+    , setToggle
     , undoLatest
     )
 
@@ -216,6 +217,11 @@ manualRollClear model =
 logToggle : Model -> ( Model, Cmd Msg )
 logToggle model =
     ( { model | hpLogOpen = not model.hpLogOpen }, Cmd.none )
+
+
+setToggle : Model -> ( Model, Cmd Msg )
+setToggle model =
+    ( { model | hpSetOpen = not model.hpSetOpen }, Cmd.none )
 
 
 {-| A card's HP value: it aims the editor at its own creature,

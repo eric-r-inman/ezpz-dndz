@@ -24,11 +24,9 @@ import View.Tooltips as Tooltips
 
 view : Int -> InitiativeUi -> Html Msg
 view selectedCount ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ rollSection selectedCount ui
-        , div [ class "cond-divider" ] []
         , manualSection selectedCount ui
-        , div [ class "cond-divider" ] []
         , sortSection
         ]
 
@@ -76,7 +74,7 @@ manualSection : Int -> InitiativeUi -> Html Msg
 manualSection selectedCount ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "init-custom-value", class "cond-label" ] [ text "Set value:" ]
+            [ Html.label [ for "init-custom-value", class "cond-label" ] [ text "or Set:" ]
             , input
                 [ id "init-custom-value"
                 , class "cond-input cond-input--2ch"

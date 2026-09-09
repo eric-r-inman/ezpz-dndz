@@ -1441,9 +1441,15 @@ field; ~cond-input~ and ~cond-select~ for the fields, at one size, with width
 modifiers for the two-character, short, name-length, and take-the-room cases;
 ~cond-checkbox~, ~cond-radio-plain~, and the ~cond-spin~ pair for the choice and
 nudge controls, built by =View.Inline.Field= so their markup matches too;
-~cond-section__caption~ for a hint, with a warn and a danger variant; and the
-~log-head~ / ~log-fold~ / ~log-list~ set for a log behind a fold.  A panel keeps
-a class of its own only for what it alone has — a treasure row, a die button, a
+~cond-section__caption~ for a hint, with a warn and a danger variant; and
+=View.Inline.Field='s fold heading — the ~fold-head~ row with its ~fold-toggle~
+— for a section that folds, with ~log-list~ under it when the section is a log.
+An editor's body is an ~editor-body~, which adds no chrome of its own: the panel
+body pads it, and each section carries the air on either side of the dashed rule
+between sections, so the first row, every rule, and the last row sit the same
+distance from what is around them in every editor.  The encounter-level panels
+keep their own section classes but follow the same rhythm.  A panel keeps a
+class of its own only for what it alone has — a treasure row, a die button, a
 party list.  Adding an editor means composing these, not minting a parallel set.
 
 The HP change log lives on the model once and is read two ways: the Manage HP

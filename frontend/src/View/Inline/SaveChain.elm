@@ -52,7 +52,7 @@ type alias Context =
 
 view : Context -> SaveChainUi -> Html Msg
 view ctx ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ presetSection ui ctx.presets
         , identitySection ui
         , outcomeSection ctx.creatureNames "On failed save" SaveChainFail ui.onFail []
@@ -719,33 +719,12 @@ entry first — each apply prepends.
 logSection : Bool -> List SaveChainLogEntry -> Html Msg
 logSection open entries =
     div [ class "cond-section" ]
-        (div [ class "log-head" ]
-            [ button
-                [ class "log-fold"
-                , type_ "button"
-                , onClick SaveChainLogToggle
-                , Tooltips.attr Tooltips.logToggle
-                , attribute "aria-expanded"
-                    (if open then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                ]
-                [ span [ class "log-fold__caret" ]
-                    [ text
-                        (if open then
-                            "▼"
-
-                         else
-                            "▶"
-                        )
-                    ]
-                , span [ class "log-fold__title" ]
-                    [ text ("Log (" ++ String.fromInt (List.length entries) ++ ")") ]
-                ]
-            ]
+        (Field.foldHead
+            { open = open
+            , title = "Log (" ++ String.fromInt (List.length entries) ++ ")"
+            , msg = SaveChainLogToggle
+            , trail = []
+            }
             :: (if not open then
                     []
 

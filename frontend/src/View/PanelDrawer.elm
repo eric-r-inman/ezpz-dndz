@@ -234,6 +234,7 @@ panelFor model index panel =
                         , placeholderWarning = placeholderWarning ui.target
                         , log = model.hpChangeLog
                         , logOpen = model.hpLogOpen
+                        , setOpen = model.hpSetOpen
                         , flashedSeq = model.flashedHpLogSeq
                         , expanded = model.expandedLogRows
                         }

@@ -14,7 +14,7 @@ import View.Inline.ApplyButton as ApplyButton
 
 view : Int -> Bool -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
 view selectedCount placeholderWarning log ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ modeSection ui
         , ApplyButton.row "Apply to:"
             [ ApplyButton.view

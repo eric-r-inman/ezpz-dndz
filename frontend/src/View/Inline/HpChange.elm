@@ -7,18 +7,17 @@ The verb buttons share a smart amount input: type a plain
 integer (`8`) to apply that value directly, or a dice formula
 (`2d6+3`) to roll and apply the total. Parse errors surface
 inline underneath the input, and the input decides which path a
-verb takes. Below them, the Set section writes the pools to
-typed values instead, or rolls a formula for each target's hit
-points.
+verb takes. Below them, behind a fold, the Roll or Set section
+rolls a formula for each target's hit points or writes the pools
+to typed values instead.
 
-The editor's log holds every change, behind a fold in the dice
-roller's style; the roller's own log shows only the ones a roll
-produced.
+The editor's log holds every change, behind a fold of its own;
+the dice roller's log shows only the ones a roll produced.
 
 -}
 
 import Dice
-import Html exposing (Html, button, div, h3, input, span, text)
+import Html exposing (Html, button, div, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
@@ -41,6 +40,7 @@ type alias Context =
     , placeholderWarning : Bool
     , log : List HpChangeEntry
     , logOpen : Bool
+    , setOpen : Bool
     , flashedSeq : Int
     , expanded : Set String
     }
@@ -48,14 +48,15 @@ type alias Context =
 
 view : Context -> HpChangeUi -> Html Msg
 view ctx ui =
-    div [ class "creature-card__inline" ]
-        [ amount ctx.selectedCount ui
-        , parseErrorHint ui.parseError
-        , freshRollOption ctx.selectedCount ui
-        , actionButtons
-        , ApplyButton.placeholderNotice ctx.placeholderWarning
-        , div [ class "cond-divider" ] []
-        , setSection ctx.selectedCount ctx.placeholderWarning ui
+    div [ class "editor-body" ]
+        [ div [ class "cond-section" ]
+            [ amount ctx.selectedCount ui
+            , parseErrorHint ui.parseError
+            , freshRollOption ctx.selectedCount ui
+            , actionButtons
+            , ApplyButton.placeholderNotice ctx.placeholderWarning
+            ]
+        , rollOrSetSection ctx ui
         , View.HpLog.section
             { open = ctx.logOpen
             , flashedSeq = ctx.flashedSeq
@@ -65,16 +66,16 @@ view ctx ui =
         ]
 
 
-{-| Direct pool entry, for the times the GM knows the number
-rather than the change: type into any of the three, then apply
-to the target or the selection. Blank fields are left alone, so
-one pool can be set without restating the others. A formula in
-the Roll field takes over the row: applying rolls it once per
-target and sets that creature's hit points to the total, the way
-a monster's hit dice roll stands in for its average.
+{-| Hit points set outright rather than changed, behind a fold.
+A formula in the Roll field, applied, rolls once per target and
+sets that creature's hit points to the total, the way a monster's
+hit dice roll stands in for its average; while it holds one the
+pool fields below stand aside. Otherwise the pools are set to
+what was typed, a blank field leaving its pool alone so one can
+be set without restating the others.
 -}
-setSection : Int -> Bool -> HpChangeUi -> Html Msg
-setSection selectedCount placeholderWarning ui =
+rollOrSetSection : Context -> HpChangeUi -> Html Msg
+rollOrSetSection ctx ui =
     let
         rolling =
             not (String.isEmpty (String.trim ui.manualRollText))
@@ -87,72 +88,82 @@ setSection selectedCount placeholderWarning ui =
                 "Set the typed pools on " ++ scope
     in
     div [ class "cond-section" ]
-        [ div
-            [ class
-                (if rolling then
-                    "cond-row cond-row--pools cond-row--muted"
+        (Field.foldHead
+            { open = ctx.setOpen
+            , title = "Roll or Set"
+            , msg = HpChangeSetToggle
+            , trail = []
+            }
+            :: (if not ctx.setOpen then
+                    []
 
-                 else
-                    "cond-row cond-row--pools"
-                )
-            ]
-            [ h3
-                [ class "cond-section__heading cond-section__heading--inline" ]
-                [ text "Set:" ]
-            , poolField rolling "" "manual-hp" "HP" ui.manualHpText CurrentHpField
-            , poolField rolling split "manual-max-hp" "Max HP" ui.manualMaxHpText MaxHpField
-            , poolField rolling split "manual-temp-hp" "Temp HP" ui.manualTempHpText TempHpField
-            ]
-        , div [ class "cond-row" ]
-            [ Html.label [ for "manual-roll", class "cond-label" ] [ text "Roll:" ]
-            , input
-                [ id "manual-roll"
-                , class "cond-input cond-input--w12"
-                , type_ "text"
-                , placeholder "e.g. 2d6+3"
-                , value ui.manualRollText
-                , onInput HpChangeManualRollChanged
-                , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeManualApplyTarget)
-                , Tooltips.attr Tooltips.hpRoll
-                ]
-                []
-            , if rolling then
-                button
-                    [ class "icon-btn icon-btn--sm icon-btn--red"
-                    , type_ "button"
-                    , onClick HpChangeManualRollClear
-                    , Tooltips.attr Tooltips.hpRollClear
-                    , attribute "aria-label" "Clear the roll"
+                else
+                    [ div [ class "cond-row" ]
+                        [ Html.label [ for "manual-roll", class "cond-label" ] [ text "Roll:" ]
+                        , input
+                            [ id "manual-roll"
+                            , class "cond-input cond-input--w12"
+                            , type_ "text"
+                            , placeholder "e.g. 2d6+3"
+                            , value ui.manualRollText
+                            , onInput HpChangeManualRollChanged
+                            , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeManualApplyTarget)
+                            , Tooltips.attr Tooltips.hpRoll
+                            ]
+                            []
+                        , if rolling then
+                            button
+                                [ class "icon-btn icon-btn--sm icon-btn--red"
+                                , type_ "button"
+                                , onClick HpChangeManualRollClear
+                                , Tooltips.attr Tooltips.hpRollClear
+                                , attribute "aria-label" "Clear the roll"
+                                ]
+                                [ text "×" ]
+
+                          else
+                            text ""
+                        ]
+                    , parseErrorHint ui.manualRollError
+                    , div
+                        [ class
+                            (if rolling then
+                                "cond-row cond-row--pools cond-row--muted"
+
+                             else
+                                "cond-row cond-row--pools"
+                            )
+                        ]
+                        [ Html.label [ class "cond-label" ] [ text "or Set:" ]
+                        , poolField rolling "" "manual-hp" "HP" ui.manualHpText CurrentHpField
+                        , poolField rolling split "manual-max-hp" "Max HP" ui.manualMaxHpText MaxHpField
+                        , poolField rolling split "manual-temp-hp" "Temp HP" ui.manualTempHpText TempHpField
+                        ]
+                    , ApplyButton.row "Apply to:"
+                        [ ApplyButton.view
+                            { enabled = True
+                            , cls = "action-btn action-btn--green"
+                            , msg = HpChangeManualApplyTarget
+                            , tip = applyTip "the target creature"
+                            , label = "Target"
+                            }
+                        , ApplyButton.view
+                            { enabled = ctx.selectedCount > 0
+                            , cls = "action-btn action-btn--green"
+                            , msg = HpChangeManualApplySelected
+                            , tip =
+                                if ctx.selectedCount == 0 then
+                                    "Select creatures first"
+
+                                else
+                                    applyTip "every selected creature"
+                            , label = "Selected (" ++ String.fromInt ctx.selectedCount ++ ")"
+                            }
+                        ]
+                    , ApplyButton.placeholderNotice ctx.placeholderWarning
                     ]
-                    [ text "×" ]
-
-              else
-                text ""
-            ]
-        , parseErrorHint ui.manualRollError
-        , ApplyButton.row "Apply to:"
-            [ ApplyButton.view
-                { enabled = True
-                , cls = "action-btn action-btn--green"
-                , msg = HpChangeManualApplyTarget
-                , tip = applyTip "the target creature"
-                , label = "Target"
-                }
-            , ApplyButton.view
-                { enabled = selectedCount > 0
-                , cls = "action-btn action-btn--green"
-                , msg = HpChangeManualApplySelected
-                , tip =
-                    if selectedCount == 0 then
-                        "Select creatures first"
-
-                    else
-                        applyTip "every selected creature"
-                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
-                }
-            ]
-        , ApplyButton.placeholderNotice placeholderWarning
-        ]
+               )
+        )
 
 
 {-| Extra air before a pair, separating it from the pair it

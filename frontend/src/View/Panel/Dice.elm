@@ -333,43 +333,23 @@ history log ui =
                 (rollRows ++ hpRows)
     in
     div [ class "dice-history" ]
-        (div [ class "log-head" ]
-            [ button
-                [ class "log-fold"
-                , type_ "button"
-                , onClick DiceHistoryToggle
-                , Tooltips.attr Tooltips.logToggle
-                , attribute "aria-expanded"
-                    (if ui.historyOpen then
-                        "true"
+        (Field.foldHead
+            { open = ui.historyOpen
+            , title = "Log (" ++ String.fromInt (List.length entries) ++ ")"
+            , msg = DiceHistoryToggle
+            , trail =
+                if List.isEmpty entries then
+                    []
 
-                     else
-                        "false"
-                    )
-                ]
-                [ span [ class "log-fold__caret" ]
-                    [ text
-                        (if ui.historyOpen then
-                            "▼"
-
-                         else
-                            "▶"
-                        )
+                else
+                    [ button
+                        [ class "dice-history__rerun"
+                        , onClick DiceClearHistory
+                        , Tooltips.attr Tooltips.diceClearHistory
+                        ]
+                        [ text "Clear" ]
                     ]
-                , span [ class "log-fold__title" ]
-                    [ text ("Log (" ++ String.fromInt (List.length entries) ++ ")") ]
-                ]
-            , if List.isEmpty entries then
-                text ""
-
-              else
-                button
-                    [ class "dice-history__rerun"
-                    , onClick DiceClearHistory
-                    , Tooltips.attr Tooltips.diceClearHistory
-                    ]
-                    [ text "Clear" ]
-            ]
+            }
             :: (if not ui.historyOpen then
                     []
 

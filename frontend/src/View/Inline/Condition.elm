@@ -38,7 +38,7 @@ type alias Context =
 
 view : Context -> ConditionUi -> Html Msg
 view ctx ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ standardSection ui
         , customAndNoteSection ui
         , durationSection ui ctx.creatureNames

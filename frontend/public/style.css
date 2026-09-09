@@ -1069,7 +1069,7 @@ html:has(.app-shell[data-theme="accessible"]) {
    and an optional source chip into a single row.  All four use
    absolute rem sizes (0.68–0.85rem); bump in Accessible so a
    low-vision GM can scan the log without leaning in. */
-[data-theme="accessible"] .log-fold__title {
+[data-theme="accessible"] .fold-toggle__title {
   font-size: 1rem;
 }
 
@@ -1729,8 +1729,7 @@ body {
 .treasure__results {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 12px;
+  padding-top: var(--space-2);
 }
 
 .treasure__summary {
@@ -1903,8 +1902,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   border-top: 1px solid var(--color-border);
+}
+
+.treasure__section:last-child {
+  padding-bottom: 0;
 }
 
 .treasure__section-header {
@@ -2115,7 +2118,7 @@ body {
      within the modal instead of crowding the GM's tuning controls off
      the screen. */
   flex-shrink: 0;
-  margin-top: 10px;
+  margin-top: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -2356,7 +2359,7 @@ body {
 /* ── Sum (all Enemies): per-creature contributions accordion ─────── */
 
 .treasure__contributions {
-  margin-top: 14px;
+  margin-top: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -2472,8 +2475,8 @@ body {
 /* ── Main Treasure modal: "Edit treasure table…" link ────────────── */
 
 .treasure__edit-table-row {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
@@ -3126,7 +3129,7 @@ body {
 
 .cr-calc__blurb {
   margin: 0;
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -3135,11 +3138,20 @@ body {
 }
 
 .cr-calc__section {
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.cr-calc__section:first-child {
+  padding-top: 0;
+}
+
+.cr-calc__section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .cr-calc__section-header {
@@ -3480,7 +3492,7 @@ body {
    `random-encounter__` to keep search-by-prefix tidy. */
 .random-encounter__blurb {
   margin: 0;
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -3489,11 +3501,20 @@ body {
 }
 
 .random-encounter__section {
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.random-encounter__section:first-child {
+  padding-top: 0;
+}
+
+.random-encounter__section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .random-encounter__section-header {
@@ -5483,7 +5504,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .panel__title,
 .stat__label,
 .ability__label,
-.log-fold__title,
+.fold-toggle__title,
 .hp-change__log-kind,
 .encounter-bar__hp-label,
 .encounter-bar__ac-label {
@@ -6313,10 +6334,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* ── Card inline surfaces ─────────────────────────────────────────── */
 
-/* Expansion section under card row 3 hosting the Manage-HP and
-   condition editors.  Reuses the retired modals' form classes
-   (.hp-change__*, .cond-*) so the controls keep their look; this
-   block only supplies the in-card frame around them. */
+/* Expansion section under a card's rows, hosting an editor the card
+   itself opens.  The controls inside are the drawer editors' own;
+   this block only supplies the in-card frame around them. */
 .creature-card__inline {
   margin-top: 4px;
   padding: 6px 4px 8px;
@@ -6326,6 +6346,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* An editor's body in the drawer.  It adds nothing of its own —
+   the panel body pads it and its sections space themselves — so
+   every editor's first row and last row sit the same distance
+   from the panel's edges. */
+.editor-body {
+  display: flex;
+  flex-direction: column;
 }
 
 .creature-card__inline-title {
@@ -8322,15 +8351,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   /* Margin-top rather than relying on a sibling's own spacing,
      so the divider line clears the Advantage / Disadvantage
      buttons above it instead of running against them. */
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   border-top: 1px solid var(--color-border);
-  padding-top: 12px;
+  padding-top: var(--space-2);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.log-head {
+.fold-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8338,7 +8367,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Wraps the caret and title so the whole strip is the fold
    control, in the disclosure vocabulary the drawer already uses. */
-.log-fold {
+.fold-toggle {
   appearance: none;
   display: flex;
   align-items: center;
@@ -8351,13 +8380,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
-.log-fold__caret {
+.fold-toggle__caret {
   font-size: var(--font-size-caret);
   color: var(--color-text-muted);
   line-height: 1;
 }
 
-.log-fold__title {
+.fold-toggle__title {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
@@ -8989,7 +9018,7 @@ button.creature-card__lifecycle--dead:focus-visible {
    it is a standalone shortcut, not another field in that group. */
 .init-quicksort-row {
   justify-content: center;
-  margin-top: var(--space-0);
+  margin-top: 0;
 }
 
 /* Names the verb once for the scope buttons that follow it, so
@@ -9013,12 +9042,20 @@ button.creature-card__lifecycle--dead:focus-visible {
    .modal__header chrome as the others. The body holds five
    sections (standard radios, custom name, note, duration,
    save-to-end) with a flex footer pinned at the bottom. */
+/* One group of an editor's settings.  The padding is the air on
+   each side of the dashed rule between groups; the first group
+   sits flush with the body's own padding above it, and the last
+   ends flush with the padding below. */
 .cond-section {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 4px 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px dashed var(--color-border);
+}
+
+.cond-section:first-child {
+  padding-top: 0;
 }
 
 .cond-section:last-child {
@@ -9510,7 +9547,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: var(--space-2);
 }
 
 /* Left-side cluster of the Add-Condition footer: Save preset and

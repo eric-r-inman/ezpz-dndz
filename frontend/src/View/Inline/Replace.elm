@@ -18,7 +18,7 @@ import View.Inline.ApplyButton as ApplyButton
 
 view : CompendiumDb -> Int -> List ReplaceLogEntry -> ReplaceUi -> Html Msg
 view db selectedCount log ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ searchRow ui
         , pickerList db ui
         , ApplyButton.row "Apply to:"

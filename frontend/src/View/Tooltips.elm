@@ -73,6 +73,7 @@ module View.Tooltips exposing
     , flyHeightDown
     , flyHeightUp
     , flying
+    , foldToggle
     , fullCover
     , halfCover
     , hiding
@@ -91,7 +92,6 @@ module View.Tooltips exposing
     , loadRowCompendium
     , logRowFold
     , logRowUnfold
-    , logToggle
     , memoAdd
     , memoClear
     , memoEdit
@@ -831,11 +831,11 @@ loadRowCompendium =
 -- ── DICE PANEL ───────────────────────────────────────────────────────────────
 
 
-{-| The fold on every editor's log.
+{-| The fold on a section of an editor.
 -}
-logToggle : String
-logToggle =
-    "Show or hide the log"
+foldToggle : String
+foldToggle =
+    "Show or hide this section"
 
 
 {-| The Manage HP editor's Roll field and the × that clears it.

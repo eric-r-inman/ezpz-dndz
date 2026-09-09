@@ -19,7 +19,7 @@ import View.Tooltips as Tooltips
 
 view : Int -> Bool -> StatusUi -> Html Msg
 view selectedCount placeholderWarning ui =
-    div [ class "creature-card__inline" ]
+    div [ class "editor-body" ]
         [ div [ class "status-toggle-rows" ]
             [ div [ class "status-toggles" ]
                 [ coverToggle ui

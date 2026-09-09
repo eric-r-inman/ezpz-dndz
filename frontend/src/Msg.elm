@@ -586,8 +586,9 @@ type Msg
     | HpChangeManualRollChanged String
     | HpChangeManualRollClear
     | HpChangeManualRollLanded String Dice.Roll
-      -- Fold or unfold the editor's log.
+      -- Fold or unfold the editor's log, or its Roll or Set section.
     | HpChangeLogToggle
+    | HpChangeSetToggle
     | HpChangeAmountChanged String
     | HpChangeApplyToSelectedToggle
       -- Commits the modal's current amount as the given kind,

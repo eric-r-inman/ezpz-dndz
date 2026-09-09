@@ -7,12 +7,13 @@ mounts can't drift apart.
 -}
 
 import Html exposing (Html, button, div, li, span, text)
-import Html.Attributes exposing (attribute, class, type_)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Html.Keyed
 import Msg exposing (HpKind(..), Msg(..))
 import Set exposing (Set)
 import Ui.HpChange exposing (HpChangeEntry, HpLogKind(..))
+import View.Inline.Field as Field
 import View.LogRow
 import View.Tooltips as Tooltips
 
@@ -47,33 +48,12 @@ section opts entries =
                 entries
     in
     div [ class "cond-section" ]
-        (div [ class "log-head" ]
-            [ button
-                [ class "log-fold"
-                , type_ "button"
-                , onClick HpChangeLogToggle
-                , Tooltips.attr Tooltips.logToggle
-                , attribute "aria-expanded"
-                    (if opts.open then
-                        "true"
-
-                     else
-                        "false"
-                    )
-                ]
-                [ span [ class "log-fold__caret" ]
-                    [ text
-                        (if opts.open then
-                            "▼"
-
-                         else
-                            "▶"
-                        )
-                    ]
-                , span [ class "log-fold__title" ]
-                    [ text ("Log (" ++ String.fromInt (List.length entries) ++ ")") ]
-                ]
-            ]
+        (Field.foldHead
+            { open = opts.open
+            , title = "Log (" ++ String.fromInt (List.length entries) ++ ")"
+            , msg = HpChangeLogToggle
+            , trail = []
+            }
             :: (if not opts.open then
                     []
 

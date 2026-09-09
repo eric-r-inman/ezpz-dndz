@@ -564,6 +564,7 @@ init flags url key =
         , flashConditions = []
         , hpChangeLog = []
         , hpLogOpen = False
+        , hpSetOpen = False
         , nextHpLogSeq = 1
         , flashedHpLogSeq = 0
         , flashedRollSeq = 0
@@ -1121,6 +1122,9 @@ updateInner msg model =
 
         HpChangeLogToggle ->
             Update.HpChange.logToggle model
+
+        HpChangeSetToggle ->
+            Update.HpChange.setToggle model
 
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model

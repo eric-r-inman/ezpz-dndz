@@ -1,13 +1,13 @@
-module View.Inline.Field exposing (checkbox, radio, radioWith, spin)
+module View.Inline.Field exposing (checkbox, foldHead, radio, radioWith, spin)
 
 {-| The small controls the editors share. One shape for every
 editor keeps the drawer reading as one form rather than several.
 
-@docs checkbox, radio, radioWith, spin
+@docs checkbox, foldHead, radio, radioWith, spin
 
 -}
 
-import Html exposing (Html, button, input, span, text)
+import Html exposing (Html, button, div, input, span, text)
 import Html.Attributes as Attr exposing (attribute, checked, class, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg)
@@ -44,6 +44,41 @@ radioWith extra cfg =
             []
         , span [ class "cond-radio__label" ] [ text cfg.label ]
         ]
+
+
+{-| The heading row of a section that folds: a caret and the title
+as one button, with `trail` — a control the row also holds, such
+as a log's Clear — after it.
+-}
+foldHead : { open : Bool, title : String, msg : Msg, trail : List (Html Msg) } -> Html Msg
+foldHead cfg =
+    div [ class "fold-head" ]
+        (button
+            [ class "fold-toggle"
+            , type_ "button"
+            , onClick cfg.msg
+            , Tooltips.attr Tooltips.foldToggle
+            , attribute "aria-expanded"
+                (if cfg.open then
+                    "true"
+
+                 else
+                    "false"
+                )
+            ]
+            [ span [ class "fold-toggle__caret" ]
+                [ text
+                    (if cfg.open then
+                        "▼"
+
+                     else
+                        "▶"
+                    )
+                ]
+            , span [ class "fold-toggle__title" ] [ text cfg.title ]
+            ]
+            :: cfg.trail
+        )
 
 
 {-| The ▲ / ▼ pair beside a number field, for a click path that

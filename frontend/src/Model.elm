@@ -1329,9 +1329,10 @@ type alias Model =
     , flashConditions : List ( String, Int )
     , hpChangeLog : List HpChangeEntry
 
-    -- Whether the Manage HP editor shows its log.  It starts
-    -- folded, like the dice roller's.
+    -- Whether the Manage HP editor shows its log, and its Roll or
+    -- Set section.  Both start folded, like the dice roller's log.
     , hpLogOpen : Bool
+    , hpSetOpen : Bool
 
     -- Hands out `HpChangeEntry.seq`.  A counter rather than a
     -- read of the log's head, because undo and a history clear

@@ -293,6 +293,15 @@
      change lands.  No action needed.
 109. The Manage HP editor's Set row reads Set, HP, Max HP, and Temp HP, with
      fields three digits wide.  No action needed.
+110. The Manage HP editor's Roll and Set rows sit behind a "Roll or Set" fold
+     under the verb buttons, closed like its log until you open it, with Roll
+     above "or Set".  No action needed.
+111. The line between an editor's Target strip and its first row is gone, so the
+     Status and Condition/Effect editors start higher and stand shorter.  No
+     action needed.
+112. Every editor spaces its rows the same distance from the lines between its
+     sections and from its bottom edge.  No action needed.
+113. The Initiative editor's typed-value row reads "or Set:".  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
