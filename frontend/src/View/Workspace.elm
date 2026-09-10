@@ -19,6 +19,7 @@ import Msg exposing (Msg(..), QueuePanel(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
+import View.Card.StatBlock
 import View.EncounterBar
 import View.Inline.QueueReference
 import View.Inline.SpellList
@@ -60,6 +61,7 @@ panelMain model =
             , drag = model.queueDrag
             , targetName = model.targetName
             , flashConditions = model.flashConditions
+            , openStatBlocks = model.openStatBlocks
             }
     in
     section [ class "panel panel--main" ]
@@ -75,22 +77,35 @@ panelMain model =
         , panelIf model.queuePanels.spells
             (View.Inline.SpellList.view enc model.compendium.db)
         , div
-            [ class "panel__body"
+            [ class "panel__body panel__body--encounter"
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class "creature-grid" ]
-                (List.indexedMap (View.Card.view cardContext) enc.creatures)
+                (List.concat (List.indexedMap (cardWithStatBlock cardContext model) enc.creatures))
             , quickAddRow
             ]
         ]
+
+
+{-| A card, and under it the stat block the GM unfolded there.
+-}
+cardWithStatBlock : View.Card.Context -> Model -> Int -> Creature -> List (Html Msg)
+cardWithStatBlock ctx model index creature =
+    View.Card.view ctx index creature
+        :: (if Set.member creature.name model.openStatBlocks then
+                [ View.Card.StatBlock.view (creature.name == model.encounter.activeName) model.compendium.db creature ]
+
+            else
+                []
+           )
 
 
 {-| Sticky orange strip sandwiched between the encounter title
 bar and the scrolling card grid. Lists every queue member with
 un-spent legendary actions, excluding the currently-active
 creature since you can't take an LA on your own turn-end. Each
-name is clickable to pin the creature's stat block; the
-parenthesised count is remaining pips. Empty when no creature
+name is clickable to unfold the creature's stat block under its
+card; the parenthesised count is remaining pips. Empty when no creature
 qualifies, so the panel layout is unchanged for vanilla
 encounters.
 
@@ -328,20 +343,20 @@ dropTrailingComma nodes =
 nameNode : Creature -> Html Msg
 nameNode c =
     case c.creatureId of
-        Just creatureId ->
+        Just _ ->
             button
                 [ class "legendary-banner__name"
                 , type_ "button"
-                , onClick (PanelShowCreature creatureId c.name)
-                , Tooltips.attr (Tooltips.pinStatBlock c.name)
+                , onClick (StatBlockShow c.name)
+                , Tooltips.attr (Tooltips.statBlockShow c.name)
                 , attribute "aria-label"
                     ("Show stat block for " ++ c.name)
                 ]
                 [ text c.name ]
 
         Nothing ->
-            -- Placeholder rows have no compendium id to pin, so
-            -- the name stays plain text.
+            -- Placeholder rows have no compendium source to show,
+            -- so the name stays plain text.
             span [ class "legendary-banner__name legendary-banner__name--plain" ]
                 [ text c.name ]
 

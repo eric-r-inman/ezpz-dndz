@@ -213,17 +213,17 @@ one (browser-defined for tabs vs popups). A `Just` payload
 names a creature to open selected, carried on the tab's URL as
 `?creature=<id>` — which navigates an existing tab, since its
 selection can't be reached from here. Fired by the editor
-column's Compendium control and the stat-block panel's 📖.
+column's Compendium control and the 📖 in a stat block's bar.
 -}
 port openCompendiumTab : Maybe String -> Cmd msg
 
 
 {-| Cross-tab request from the QuickList (`/quick-list`) tab to
-the main encounter tab: "the GM clicked creature X, please pin
-its stat block + scroll to it in the queue." The JS host
-posts the payload on the `ezpz-dndz-panel-show` BroadcastChannel
-and calls `window.opener.focus()` so the main tab surfaces to
-the front. Payload shape: `{ id: String, name: String }`.
+the main encounter tab: "the GM clicked creature X, please
+unfold its stat block under its card and scroll to it." The JS
+host posts the payload on the `ezpz-dndz-panel-show`
+BroadcastChannel and calls `window.opener.focus()` so the main
+tab surfaces to the front. Payload shape: `{ name: String }`.
 -}
 port broadcastPanelShow : E.Value -> Cmd msg
 

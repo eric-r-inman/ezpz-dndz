@@ -141,6 +141,9 @@
   --width-input-2ch: 4ch;
   /* Three digits and the field's own padding and border, no more. */
   --width-input-3ch: calc(3ch + 2 * var(--space-1) + 2px);
+  /* The square controls on a stat block: the ↗ link on its name
+     row and the buttons in the bar under a card. */
+  --size-statblock-tool: 28px;
 
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
@@ -1007,6 +1010,12 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card--active {
   border-width: 4px;
   border-color: #000000 !important;
+}
+
+[data-theme="accessible"] .card-statblock--active {
+  border-width: 4px;
+  border-top: 0;
+  border-color: var(--color-text);
 }
 
 /* Encounter title-bar condition pills — the existing Accessible
@@ -4214,35 +4223,6 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* Control rendered just after a drawer panel's title — the
-   stat-block panel's 📖 jump to the full compendium. */
-.panel-drawer__title-trail {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0 0 0 var(--space-1);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: var(--font-size-label);
-  line-height: 1;
-}
-
-.panel-drawer__close {
-  appearance: none;
-  background: none;
-  border: none;
-  padding: 0 var(--space-1);
-  cursor: pointer;
-  color: var(--color-text-muted);
-  font-family: inherit;
-  font-size: var(--font-size-label);
-  line-height: 1;
-}
-
-.panel-drawer__close:hover {
-  color: var(--color-text);
-}
-
 /* An unpinned tack is dimmed and tilted so its state reads from
    the glyph alone — the pin is the header control whose meaning
    is a state rather than an action, and there is no room for a
@@ -4387,10 +4367,20 @@ body {
   padding: var(--space-2) var(--drawer-pad-x);
 }
 
+/* The encounter scroller carries no top padding of its own, and
+   the grid supplies that air instead: Chrome and Safari inset a
+   sticky box from the scroller's content edge rather than its
+   visible edge, so padding there would hold a stat block's bar
+   that far below the top while the block scrolls under it. */
+.panel__body--encounter {
+  padding-top: 0;
+}
+
 .creature-grid {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding-top: var(--space-4);
 }
 
 /* Full-width "+" row that one-click-appends a Placeholder N stub
@@ -4715,6 +4705,138 @@ body {
 .creature-card--drop {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
+}
+
+/* The stat block a card unfolds beneath itself.  It closes the
+   grid's gap to hang off the card's bottom edge, squares the
+   joint, and takes the card's border, so the two read as one
+   piece.  Its bar holds to the top of the scroller while a long
+   block scrolls under it, keeping the minimize control in reach
+   from anywhere in the block. */
+.creature-card--statblock-open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.card-statblock {
+  margin-top: calc(-1 * var(--space-3));
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.card-statblock--active {
+  border-width: 2px;
+  border-top: 0;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.card-statblock__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-2);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+/* The elbow tying the bar to the card above: a stem down from
+   the card's edge, turning toward the title. */
+.card-statblock__elbow {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin: 0 0 var(--space-1) var(--space-1);
+  border-left: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.card-statblock__title {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+}
+
+.card-statblock__title-kind {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+  font-weight: normal;
+}
+
+.card-statblock__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.card-statblock__open {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-statblock-tool);
+  height: var(--size-statblock-tool);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.card-statblock__open:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.card-statblock__minimize {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--size-statblock-tool);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.card-statblock__minimize:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-text-muted);
+}
+
+/* The window-chrome minimize glyph: a bar in a box. */
+.card-statblock__minimize-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.card-statblock__body {
+  padding: var(--space-2);
 }
 
 .creature-card--inactive {
@@ -5649,7 +5771,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Compendium-linked creature name: hover-underline cues that
-   clicking will pin the source stat block in the editor column.
+   clicking unfolds the source stat block under the card.
    The underlying element was promoted from `<span>` to
    `<button>` for keyboard a11y; these resets keep the visual
    appearance unchanged. */
@@ -6823,17 +6945,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.9rem;
 }
 
-/* Used by `TagIconTooltip` mode in the right-rail Compendium
-   panel: the 🏷 icon sits immediately after the name with a
-   small gap, so it reads as "this creature has tags" rather
-   than floating in space at the row's right edge. */
-.statblock__name--inline-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .statblock__tags {
   display: flex;
   flex-wrap: wrap;
@@ -6856,13 +6967,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* ↗ open-in-new-tab anchor inline in the stat-block name row.
-   Mirrors the side-panel `.panel-statblock__open` button visual
-   style but flows in normal layout rather than absolute. */
+   Same visual as the `.card-statblock__open` controls in the bar
+   of the block under a creature card. */
 .statblock__open {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: var(--size-statblock-tool);
+  height: var(--size-statblock-tool);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -6892,12 +7003,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 500;
   border: 1px solid rgba(245, 200, 66, 0.55);
   white-space: nowrap;
-}
-
-.statblock__tag-icon {
-  font-size: 0.95rem;
-  cursor: help;
-  user-select: none;
 }
 
 .statblock__type {
@@ -9328,6 +9433,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-left: var(--space-1);
 }
 
+/* A pair that takes the rest of its row, so the field inside it
+   can grow into the space. */
+.cond-pair--grow {
+  flex: 1 1 auto;
+  gap: var(--gap-field);
+}
+
 .cond-checkbox {
   display: inline-flex;
   align-items: center;
@@ -10808,47 +10920,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 auto;
 }
 
-/* Side-panel stat block wrapper: holds the rendered stat block
-   plus an absolutely-positioned ↗ link in the top-right that
-   opens the same creature in a new tab via the SPA's
-   /compendium/creatures/:id route. */
-.panel-statblock {
-  position: relative;
-}
-
-.panel-statblock__open {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background 0.1s ease,
-    color 0.1s ease,
-    border-color 0.1s ease;
-}
-
-.panel-statblock__open:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  border-color: var(--color-text-muted);
-}
-
 /* Standalone single-creature route at /compendium/creatures/:id —
    centered max-width column, restful background, no encounter
-   panels. Used as the deep link for the stat-block panel's ↗
-   button so the GM can keep a creature's stat block open in
-   another window for easy reference. */
+   panels. Used as the deep link for the ↗ on a stat block — in
+   the bar under a card or on the compendium page — so the GM can
+   keep a creature's stat block open in another window for easy
+   reference. */
 .workspace--standalone {
   display: grid;
   place-items: start center;

@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PanelPin, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, closeDrawer, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statBlockLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -87,20 +87,6 @@ import Ui.TreasureTable exposing (TreasureTableUi)
 import Url exposing (Url)
 
 
-{-| The creature a card put in the drawer's stat-block panel
-(`SurfaceStatBlock`). Carries both the compendium `id` (for the
-canonical UUID lookup) and the encounter creature's display
-`name` (so we can fall back to a name match when an old saved
-encounter's `creatureId` no longer matches anything in the
-current bundled compendium — otherwise the panel would silently
-revert to the placeholder mock).
--}
-type alias PanelPin =
-    { id : String
-    , name : String
-    }
-
-
 {-| Which destructive action the confirmation modal
 (`SurfaceConfirm`) is staging, so a mis-click on Reset or Clear
 can't drop combat state. Cleared by the user picking Confirm or
@@ -156,8 +142,6 @@ type Surface
       -- The XP-scope picker.  Also a marker — the scope
       -- outlives a close, so it lives on `model.xpScope`.
     | SurfaceXp
-      -- The stat block a card put there.
-    | SurfaceStatBlock PanelPin
       -- The Reset / Clear confirmation.  A modal, not a drawer
       -- panel.
     | SurfaceConfirm PendingControl
@@ -335,9 +319,6 @@ surfaceKey surface =
         SurfaceXp ->
             "xp"
 
-        SurfaceStatBlock _ ->
-            "stat-block"
-
         -- Modal and card-inline surfaces never enter the stack.
         -- Enumerated rather than caught by a wildcard: these keys
         -- are persisted, so a new drawer-eligible surface has to
@@ -492,13 +473,14 @@ property to preserve when adding one, because an editor already
 unfolded is never unfolded again: without this it keeps a
 departed creature's name on its target strip, and Apply silently
 resolves nothing. Writes that only change a creature in place
-need no call.
+need no call. A stat block unfolded under a departed creature's
+card goes the same way.
 
 -}
 reaimStale : Model -> Model
 reaimStale model =
     reaimWhere (\aimed -> not (Encounter.hasCreature aimed model.encounter))
-        (dropDeadTarget model)
+        (dropDeadTarget (dropStaleStatBlocks model))
 
 
 {-| Point every per-creature editor at the current default target,
@@ -543,6 +525,18 @@ dropDeadTarget model =
 
         Nothing ->
             model
+
+
+{-| A stat block whose creature has left the queue has no card to
+hang under.
+-}
+dropStaleStatBlocks : Model -> Model
+dropStaleStatBlocks model =
+    { model
+        | openStatBlocks =
+            Set.filter (\name -> Encounter.hasCreature name model.encounter)
+                model.openStatBlocks
+    }
 
 
 reaimWhere : (String -> Bool) -> Model -> Model
@@ -607,9 +601,6 @@ reaimWhere stale model =
                     surface
 
                 SurfaceQuickAdd _ ->
-                    surface
-
-                SurfaceStatBlock _ ->
                     surface
 
                 SurfaceNoteEdit _ ->
@@ -827,16 +818,6 @@ setFolded folded lens model =
 foldDrawer : SurfaceLens a -> Model -> Model
 foldDrawer =
     setFolded True
-
-
-closeDrawer : SurfaceLens a -> Model -> Model
-closeDrawer lens model =
-    { model
-        | drawer =
-            List.filter
-                (\panel -> lens.extract panel.surface == Nothing)
-                model.drawer
-    }
 
 
 {-| The panel a dismissal acts on: the last one still showing
@@ -1062,20 +1043,6 @@ xpLens =
                 _ ->
                     Nothing
     , wrap = \() -> SurfaceXp
-    }
-
-
-statBlockLens : SurfaceLens PanelPin
-statBlockLens =
-    { extract =
-        \m ->
-            case m of
-                SurfaceStatBlock pin ->
-                    Just pin
-
-                _ ->
-                    Nothing
-    , wrap = SurfaceStatBlock
     }
 
 
@@ -1327,6 +1294,9 @@ type alias Model =
     -- save nothing auto-fires.  Cleared by `SaveFlashExpired` once
     -- the pulse finishes.
     , flashConditions : List ( String, Int )
+
+    -- The creatures whose stat block is unfolded under their card.
+    , openStatBlocks : Set String
     , hpChangeLog : List HpChangeEntry
 
     -- Whether the Manage HP editor shows its log, and its Roll or

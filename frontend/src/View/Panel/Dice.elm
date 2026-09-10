@@ -116,8 +116,7 @@ tripleBadgeClass kind =
 view : View.Panel.Header -> Log -> DiceUi -> Html Msg
 view header log ui =
     View.Panel.view
-        { close = Nothing
-        , title = "Dice Roller"
+        { title = "Dice Roller"
         , titleTrail = View.Panel.titleMarkIf ui.unread
         , subtitle = Nothing
         , header = header

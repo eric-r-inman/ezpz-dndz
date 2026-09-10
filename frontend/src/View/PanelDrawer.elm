@@ -34,7 +34,6 @@ import View.Panel.Dice
 import View.Panel.QuickAdd
 import View.Panel.RandomEncounter
 import View.Panel.SaveLoad
-import View.Panel.StatBlock
 import View.Panel.Treasure
 import View.Panel.Xp
 import View.Tooltips as Tooltips
@@ -198,8 +197,7 @@ panelFor model index panel =
 
         editorTagged title trail subtitle body =
             View.Panel.view
-                { close = Nothing
-                , title = title
+                { title = title
                 , titleTrail = trail
                 , subtitle = Just subtitle
                 , header = header
@@ -318,9 +316,6 @@ panelFor model index panel =
 
             SurfaceXp ->
                 View.Panel.Xp.view header model.encounter model.compendium.db model.xpScope
-
-            SurfaceStatBlock pin ->
-                View.Panel.StatBlock.view header model.compendium.db pin
 
             -- Modal and card-inline variants never enter the stack —
             -- their Update modules write `model.surface`, and the

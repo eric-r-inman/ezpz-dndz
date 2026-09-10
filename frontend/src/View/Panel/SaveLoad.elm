@@ -39,8 +39,7 @@ view header model =
     case Model.drawerGet Model.saveLoadLens model of
         Just ui ->
             View.Panel.view
-                { close = Nothing
-                , title = "Encounter Saves"
+                { title = "Encounter Saves"
                 , titleTrail =
                     View.Panel.titleMarkIf
                         (Encounter.rosterDirty model.encounter model.savedSnapshot)

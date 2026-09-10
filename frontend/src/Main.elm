@@ -117,6 +117,7 @@ import Update.SaveChain
 import Update.SaveCompendium
 import Update.SaveLoad
 import Update.Shell
+import Update.StatBlock
 import Update.Status
 import Update.Tabs
 import Update.Timer
@@ -335,9 +336,7 @@ subscriptions model =
 
 {-| Esc folds the newest panel that is showing its body — the
 editors the drawer boots with have no trigger to reopen them, so
-dismissing one must not delete it. The stat block is the
-exception: a card put it there, and removing it is what dismisses
-it.
+dismissing one must not delete it.
 -}
 drawerEscSub : Surface -> Sub Msg
 drawerEscSub newest =
@@ -352,9 +351,6 @@ drawerEscSub newest =
 
             else
                 Browser.Events.onKeyDown (escKey DrawerFoldNewest)
-
-        SurfaceStatBlock _ ->
-            Browser.Events.onKeyDown (escKey PanelClearCreature)
 
         _ ->
             Browser.Events.onKeyDown (escKey DrawerFoldNewest)
@@ -562,6 +558,7 @@ init flags url key =
         , dice = DiceUi.empty
         , targetName = Nothing
         , flashConditions = []
+        , openStatBlocks = Set.empty
         , hpChangeLog = []
         , hpLogOpen = False
         , hpSetOpen = False
@@ -2331,30 +2328,20 @@ updateInner msg model =
         CompendiumPasteApply ->
             Update.Compendium.Paste.apply model
 
-        PanelShowCreature creatureId creatureName ->
-            Update.Compendium.Browser.panelShowCreature creatureId creatureName model
+        StatBlockShow creatureName ->
+            Update.StatBlock.show creatureName model
 
-        PanelClearCreature ->
-            Update.PanelDrawer.clearCreature model
+        StatBlockToggle creatureName ->
+            Update.StatBlock.toggle creatureName model
 
-        QuickListRowClick creatureId creatureName ->
-            -- Fires from the QuickList tab.  Broadcast the
-            -- (id, name) so the main tab pins the stat block +
-            -- scrolls its card into view, and let the JS side
-            -- of the port also try `window.opener.focus()` so
-            -- the main tab comes to front.  This tab itself
-            -- doesn't need to update — the GM is done with it.
-            ( model
-            , Ports.broadcastPanelShow
-                (Encode.object
-                    [ ( "id", Encode.string creatureId )
-                    , ( "name", Encode.string creatureName )
-                    ]
-                )
-            )
+        StatBlockMinimize creatureName ->
+            Update.StatBlock.minimize creatureName model
 
-        IncomingPanelShow creatureId creatureName ->
-            Update.Tabs.incomingPanelShow creatureId creatureName model
+        QuickListRowClick creatureName ->
+            Update.Tabs.broadcastShow creatureName model
+
+        IncomingPanelShow creatureName ->
+            Update.Tabs.incomingPanelShow creatureName model
 
         ToggleSpecialReaction name reaction ->
             Update.LegendaryPip.toggleSpecialReaction name reaction model

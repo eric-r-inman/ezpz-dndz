@@ -167,6 +167,7 @@ type alias Context =
     , drag : Maybe Model.DragState
     , targetName : Maybe String
     , flashConditions : List ( String, Int )
+    , openStatBlocks : Set String
     }
 
 
@@ -185,12 +186,21 @@ view ctx index creature =
         isTarget =
             ctx.targetName == Just creature.name
 
+        statBlockOpen =
+            Set.member creature.name ctx.openStatBlocks
+
         cardClass =
             String.join " "
                 ("creature-card"
                     :: dropCueClasses index ctx.drag
                     ++ (if isTarget then
                             [ "creature-card--target" ]
+
+                        else
+                            []
+                       )
+                    ++ (if statBlockOpen then
+                            [ "creature-card--statblock-open" ]
 
                         else
                             []
@@ -228,7 +238,7 @@ view ctx index creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop isActive creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
+            [ rowTop isActive statBlockOpen creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
             , rowMid ctx.flashConditions creature
             , rowBot creature (surfaceFor ctx creature)
             , inlineSurface ctx creature
@@ -513,10 +523,10 @@ selectionClickHandler name_ =
 -- ── ROW 1 ───────────────────────────────────────────────────────────────
 
 
-rowTop : Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> List (Html Msg) -> Html Msg
-rowTop isActive creature hpEdit renameState surface srBadges =
+rowTop : Bool -> Bool -> Creature -> Maybe HpEdit -> Maybe PlaceholderRenameState -> Maybe Surface -> List (Html Msg) -> Html Msg
+rowTop isActive statBlockOpen creature hpEdit renameState surface srBadges =
     div [ class "creature-card__row creature-card__row--top" ]
-        [ creatureName creature renameState
+        [ creatureName statBlockOpen creature renameState
         , noteOrPencil creature surface
         , acReadout creature hpEdit
         , rowTopChipCluster isActive creature srBadges
@@ -541,8 +551,8 @@ initBadge creature =
 
 {-| The creature name on row 1 of each card. Three render modes:
 
-  - Compendium-linked: a `<button>` that pins the source stat
-    block in the editor column.
+  - Compendium-linked: a `<button>` that unfolds the source stat
+    block under the card, or folds it away again.
   - Placeholder (name matches `Placeholder N` and no
     compendium link): a clickable `<button>` that opens the
     inline rename — OR, when this creature is currently being
@@ -552,22 +562,34 @@ initBadge creature =
     behavior.
 
 -}
-creatureName : Creature -> Maybe PlaceholderRenameState -> Html Msg
-creatureName creature renameState =
+creatureName : Bool -> Creature -> Maybe PlaceholderRenameState -> Html Msg
+creatureName statBlockOpen creature renameState =
     case creature.creatureId of
-        Just id_ ->
-            -- Clickable name (pins the compendium stat block in
-            -- the editor column) is a real `<button>` so keyboard
-            -- users can Tab to it and press Enter/Space.  Native
-            -- button chrome is reset by the existing
-            -- `.creature-name--linked` styling.
+        Just _ ->
+            let
+                label =
+                    if statBlockOpen then
+                        Tooltips.statBlockMinimize
+
+                    else
+                        Tooltips.showStatBlock
+            in
+            -- A real `<button>` so keyboard users can Tab to it and
+            -- press Enter/Space.  Native button chrome is reset by
+            -- the existing `.creature-name--linked` styling.
             button
                 [ class "creature-name creature-name--default creature-name--linked"
                 , type_ "button"
-                , onClick (PanelShowCreature id_ creature.name)
-                , Tooltips.attr Tooltips.showStatBlock
-                , attribute "aria-label"
-                    (Tooltips.pinStatBlock creature.name)
+                , onClick (StatBlockToggle creature.name)
+                , Tooltips.attr label
+                , attribute "aria-label" label
+                , attribute "aria-expanded"
+                    (if statBlockOpen then
+                        "true"
+
+                     else
+                        "false"
+                    )
                 ]
                 [ text creature.name ]
 

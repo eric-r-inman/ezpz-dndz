@@ -959,8 +959,9 @@ affordance the title bar uses):
 - *Legendary Action available* — ~legendaryActionStrip~.  Lists every queue
   member with un-spent legendary-action pips, comma-separated, with the
   remaining-pip count in parentheses.  Each name is a button that fires
-  ~PanelShowCreature~ to pin the stat block.  Filters: not the currently-active
-  creature (rule: LA fires on OTHER creatures' turn-ends), not down, not dead.
+  ~StatBlockShow~ to unfold the stat block under the creature's card.  Filters:
+  not the currently-active creature (rule: LA fires on OTHER creatures'
+  turn-ends), not down, not dead.
 - *Special reactions* — ~specialReactionsStrip~.  Lists every queue member whose
   source creature has ~hasSpecialReactions = True~ — Hydra, Marilith, Vampire,
   mephits, and the named-reaction folks the LA strip doesn't cover.  Same
@@ -1003,36 +1004,33 @@ The shared behaviour: any branch that mutates ~model.encounter~ flows through
 the encounter actually changed.  The save/load Msgs themselves are exempt to
 avoid an obvious infinite loop.
 
-* Pinned stat block
+* Stat block under a card
 
-The drawer pins one compendium creature's stat block, chosen by clicking a
-creature card's name in the encounter pane.  Lookup is *id-then-name*:
-=View.Panel.StatBlock.resolvePin= first calls ~Compendium.find pin.id~ and on
-miss falls back to ~Compendium.findByName~ on the encounter creature's display
-name (stripped of the numeric instance suffix via
-~Encounter.Roster.instanceBaseName~).
+Clicking a creature card's name unfolds the compendium creature's stat block
+directly beneath that card in the encounter pane, attached to it and scrolling
+with the queue.  A bar across its top names the creature and holds the Minimize
+button, and stays at the top of the scroller while a long block scrolls under
+it.  Several cards can have theirs unfolded at once: the set lives in
+~model.openStatBlocks~, keyed by creature name, and ~Model.reaimStale~ prunes a
+name whose creature has left the queue.  The strips and lists that name a
+creature from elsewhere fire ~StatBlockShow~, which also scrolls the card into
+view; the card's own name fires ~StatBlockToggle~.
 
-The fallback exists because old saved encounters can carry ~creatureId~ values
-that no longer match the bundled compendium UUIDs (e.g. a creature was
-originally pasted under a provisional id).  Without it, the panel previously
-fell through to a hardcoded "Brakka, Ogre Brute" placeholder, which read as if
-the panel were stuck on the wrong creature.
-
-When neither lookup matches, the panel shows an explicit empty-state message
+Lookup is *id-then-name*: =View.Card.StatBlock= first calls ~Compendium.find~ on
+the card's compendium id and on a miss falls back to ~Compendium.findByName~ on
+the encounter creature's display name (stripped of the numeric instance suffix
+via ~Encounter.Roster.instanceBaseName~).  The fallback exists because old saved
+encounters can carry ~creatureId~ values that no longer match the bundled
+compendium UUIDs (e.g. a creature was originally pasted under a provisional id).
+When neither lookup matches, the block shows an explicit empty-state message
 (loading / failed / "isn't in your compendium yet") rather than any placeholder.
-The legacy =View.StatBlockEmbed= module that defined the Brakka mock has been
-deleted.
 
 ** Stat-block meta-tag rendering modes
 
-~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges
-| TagIconTooltip~) because the same renderer needs to behave
-differently in two contexts.  In the compendium page and the standalone view,
-where there's room on the name row, user tags render as a right-justified strip
-of small badges (=.statblock__tag-badge=).  In the pinned right-rail panel,
-where vertical space is at a premium, the same tags collapse to a single 🏷 icon
-(=.statblock__tag-icon=) carrying a ~title=~ tooltip with the full
-comma-separated list.  Both modes render nothing when ~tags~ is empty.
+~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges |
+TagBadgesOpenInNewTab~) because only the compendium page wants the ↗ link on the
+name row; every mount renders user tags as a right-justified strip of small
+badges (=.statblock__tag-badge=), and nothing when ~tags~ is empty.
 
 2024 MM Habitat / Treasure tags render at the very bottom of the stat block —
 below custom sections and lore — via ~viewMetaTags~.  The function emits a
@@ -1314,10 +1312,9 @@ view-side — the underlying ~bloodied~ flag is recomputed on every
 ** Stat-block kind badge
 
 =View.StatBlock.kindBadge= renders a small coloured chip (Player / Enemy / NPC)
-next to the creature name in every ~TagDisplay~ mode (compendium page, pinned
-stat-block panel, standalone view).  CSS variants in =style.css= colour them
-blue (Player), red (Enemy), and yellow (NPC) so the GM can pick a creature out
-of the queue at a glance.
+next to the creature name in every ~TagDisplay~ mode.  CSS variants in
+=style.css= colour them blue (Player), red (Enemy), and yellow (NPC) so the GM
+can pick a creature out of the queue at a glance.
 
 * Quick Add panel
 
@@ -1816,13 +1813,12 @@ dependency order:
    panel (a modal's takes no ~Header~, having no heading row in a stack) that
    pattern-matches ~model.surface~ and falls through to ~text ""~; the chrome
    comes from =View.Panel.view= or =View.Modal.view=, whose fields line up but
-   for ~close~ — optional on a panel, required on a modal.  The ~Header~ is
-   passed straight through to =View.Panel.view=, which owns the heading row and
-   decides whether the body renders at all.  That row folds the panel when
-   clicked and is the drag handle for reordering, so a control placed in
-   ~titleTrail~ takes its handler from ~View.Panel.onClickWithoutFolding~ rather
-   than ~onClick~ — a plain ~onClick~ there folds the panel as a side effect of
-   doing its own job.
+   for ~close~, which only a modal takes.  The ~Header~ is passed straight
+   through to =View.Panel.view=, which owns the heading row and decides whether
+   the body renders at all.  That row folds the panel when clicked and is the
+   drag handle for reordering, so a control placed in ~titleTrail~ takes its
+   handler from ~View.Panel.onClickWithoutFolding~ rather than ~onClick~ — a
+   plain ~onClick~ there folds the panel as a side effect of doing its own job.
 8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
    render arm in ~View.PanelDrawer.panelFor~, an arm in ~Model.surfaceKey~, and
    — when the drawer boots with it — an entry in ~Model.defaultDrawer~; those
@@ -1831,18 +1827,17 @@ dependency order:
    chosen once and never renamed.  ~Main.drawerEscSub~ needs an arm only for a
    panel Esc should treat specially; the rest fold.  Panels live in the
    ~model.drawer~ stack — many open at once, newest at the bottom — and their
-   Update modules open, close, and edit them through ~Model.openDrawer~ /
-   ~foldDrawer~ / ~mapDrawer~.  ~closeDrawer~ takes a panel out of the stack,
-   which is only right for one the GM can put back — in practice the stat block
-   a card put there.  The stack is partitioned: panels the GM has pinned hold
-   the top in their own order, and ~Model.drawerDropIndex~ clamps every move to
-   the side of that boundary it started on, so no reorder can interleave the two
-   groups.  A per-creature editor takes a narrower shape: its body lives in
-   =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper supplies the
-   chrome, so every editor's target strip and heading row stay identical.  It
-   also needs an arm in ~Model.reaimStale~ that actually re-aims — the compiler
-   accepts a fall-through, and a fall-through silently strands the editor on a
-   creature that has left the queue.
+   Update modules open, fold, and edit them through ~Model.openDrawer~ /
+   ~foldDrawer~ / ~mapDrawer~; nothing takes a panel out of the stack, since
+   none has a trigger to put it back.  The stack is partitioned: panels the GM
+   has pinned hold the top in their own order, and ~Model.drawerDropIndex~
+   clamps every move to the side of that boundary it started on, so no reorder
+   can interleave the two groups.  A per-creature editor takes a narrower shape:
+   its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~
+   helper supplies the chrome, so every editor's target strip and heading row
+   stay identical.  It also needs an arm in ~Model.reaimStale~ that actually
+   re-aims — the compiler accepts a fall-through, and a fall-through silently
+   strands the editor on a creature that has left the queue.
 9. *Tooltips* — every hover string the view sets goes through a constant in
    =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
    the native ~title~ attribute.

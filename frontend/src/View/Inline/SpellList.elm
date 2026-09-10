@@ -72,12 +72,12 @@ casterHeader c sc =
     let
         nameNode =
             case c.creatureId of
-                Just creatureId ->
+                Just _ ->
                     button
                         [ class "spell-list__name"
                         , type_ "button"
-                        , onClick (PanelShowCreature creatureId c.name)
-                        , Tooltips.attr (Tooltips.pinStatBlock c.name)
+                        , onClick (StatBlockShow c.name)
+                        , Tooltips.attr (Tooltips.statBlockShow c.name)
                         , attribute "aria-label"
                             ("Show stat block for " ++ c.name)
                         ]

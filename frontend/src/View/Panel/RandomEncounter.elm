@@ -68,8 +68,7 @@ view header model =
     case Model.drawerGet Model.randomEncounterLens model of
         Just ui ->
             View.Panel.view
-                { close = Nothing
-                , title = "Random Encounter"
+                { title = "Random Encounter"
                 , titleTrail = Just View.Panel.betaTag
                 , subtitle = Nothing
                 , header = header

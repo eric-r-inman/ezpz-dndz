@@ -437,9 +437,9 @@ if (
   app.ports.broadcastEncounter.subscribe(function () {});
 }
 
-// Cross-tab "pin creature + scroll" request: the QuickList
-// tab fires this when the GM clicks a row so the main tab
-// pins the stat block, scrolls the card into view, and
+// Cross-tab "show creature" request: the QuickList tab fires
+// this when the GM clicks a row so the main tab unfolds the
+// stat block under the card, scrolls the card into view, and
 // (best-effort) surfaces itself via window.opener.focus().
 // Same BroadcastChannel discipline as the encounter channel
 // above — no self-echo, no loops.
@@ -462,7 +462,7 @@ if (
     // QuickList link is opened WITHOUT rel="noopener"; if
     // the opener is missing (main tab was reloaded since
     // this QuickList tab opened) the focus is a no-op and
-    // the pin + scroll still lands on the main tab as
+    // the show + scroll still lands on the main tab as
     // soon as the GM navigates there.
     try {
       if (window.opener && !window.opener.closed) {

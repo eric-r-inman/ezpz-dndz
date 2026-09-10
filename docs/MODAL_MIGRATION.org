@@ -117,12 +117,12 @@ All of these landed in one frame rather than a drawer per tier: the editor
 column gathers the encounter's own controls, and the stack below them holds
 every editor, folded to its heading row.  =QuickAdd= went there too — the
 popover the tier above mapped it to would have been the only one of its kind —
-and so did the pinned stat block and the XP scope, which is what let the two
-right-hand panes go away entirely.  The Reset / Clear confirmation is the
-exception the policy above reserves: a destructive must-decide-now interruption,
-so it stayed a modal.  =View.Panel= carries the shared chrome, with its shell
-fields lined up against =View.Modal='s, so moving a feature between the two is
-mostly a matter of swapping the wrapper.
+and so did the stat block (since moved under its creature's card) and the XP
+scope, which is what let the two right-hand panes go away entirely.  The Reset /
+Clear confirmation is the exception the policy above reserves: a destructive
+must-decide-now interruption, so it stayed a modal.  =View.Panel= carries the
+shared chrome, with its shell fields lined up against =View.Modal='s, so moving
+a feature between the two is mostly a matter of swapping the wrapper.
 
 ** Route / full page
 

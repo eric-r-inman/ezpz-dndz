@@ -54,8 +54,7 @@ view header model =
     case Model.drawerGet Model.crCalculatorLens model of
         Just ui ->
             View.Panel.view
-                { close = Nothing
-                , title = "Encounter Difficulty"
+                { title = "Encounter Difficulty"
                 , titleTrail = Nothing
                 , subtitle = Nothing
                 , header = header

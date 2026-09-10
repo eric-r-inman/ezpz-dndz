@@ -82,8 +82,7 @@ view header model =
                     expectedGpFor ui.kind brackets
             in
             View.Panel.view
-                { close = Nothing
-                , title = "Treasure"
+                { title = "Treasure"
                 , titleTrail = Just View.Panel.betaTag
                 , subtitle = Nothing
                 , header = header

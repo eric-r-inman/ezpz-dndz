@@ -52,27 +52,19 @@ import View.Tooltips as Tooltips
 rendered in the stat-block header.
 
   - `TagBadges` puts each tag as a right-justified badge on the
-    name row. Used by the standalone single-creature page and
-    the paste-modal preview, where there's room for badges but
-    no need for the ↗ link (the standalone view IS the new tab;
-    paste-preview creatures don't have a server id yet).
+    name row, for any mount that supplies no ↗ link of its own.
   - `TagBadgesOpenInNewTab` is the same plus an ↗ anchor at the
     far right of the name row that opens the standalone view in
     a new tab. Used by the compendium page.
-  - `TagIconTooltip` collapses tags to a single 🏷 icon next to
-    the name, with the full list in a hover tooltip. Used by
-    the pinned right-rail panel — which renders its own ↗ link
-    as a sibling absolute-positioned over the stat block.
 
 When a creature has no tags, the tag affordance is omitted in
-all three modes; the ↗ link still appears in
+both modes; the ↗ link still appears in
 `TagBadgesOpenInNewTab`.
 
 -}
 type TagDisplay
     = TagBadges
     | TagBadgesOpenInNewTab
-    | TagIconTooltip
 
 
 {-| Render a creature stat block.
@@ -155,15 +147,8 @@ viewHead tagDisplay c =
         ]
 
 
-{-| Name row layout depends on the `TagDisplay` choice.
-
-  - `TagBadges`: name on the left, badge strip right-justified
-    in a flex row — the compendium page has room for both.
-  - `TagIconTooltip`: name and 🏷 icon sit inline together (no
-    flex spacing), so the icon reads as "this creature has tags"
-    immediately to the right of the name in the cramped right-rail
-    panel.
-
+{-| Name on the left, badge strip right-justified in a flex row,
+with the ↗ link at the row's end when the mode asks for it.
 -}
 nameRow : TagDisplay -> Creature -> Html msg
 nameRow tagDisplay c =
@@ -186,14 +171,6 @@ nameRow tagDisplay c =
                     , openInNewTabLink c.id
                     ]
                 ]
-
-        TagIconTooltip ->
-            div [ class "statblock__name statblock__name--inline-tags" ]
-                (text c.name
-                    :: kindBadge c.kind
-                    :: bundledBadge c.isBundled
-                    :: inlineTagIcon c.tags
-                )
 
 
 {-| Padlock chip rendered next to the kind badge when the creature
@@ -259,7 +236,7 @@ openInNewTabLink id =
         , href ("/compendium/creatures/" ++ id)
         , target "_blank"
         , attribute "rel" "noopener"
-        , Tooltips.attr Tooltips.panelStatBlockNewWindow
+        , Tooltips.attr Tooltips.statBlockNewTab
         , attribute "aria-label" "Open in new window"
         ]
         [ text "↗" ]
@@ -273,34 +250,6 @@ tagBadges tags =
     else
         div [ class "statblock__tags" ]
             (List.map tagBadge tags)
-
-
-{-| Single 🏷 icon next to the creature name with an instant
-tooltip carrying the full tag list. `data-tooltip-delay="0"`
-asks the tooltip portal to show without its default 300ms gate
-— the icon has no other affordance and the user is already
-hovering deliberately. Returns an empty list when the creature
-has no tags so the caller can splice it into the name row
-without conditional plumbing.
--}
-inlineTagIcon : List String -> List (Html msg)
-inlineTagIcon tags =
-    if List.isEmpty tags then
-        []
-
-    else
-        let
-            joined =
-                String.join ", " tags
-        in
-        [ span
-            [ class "statblock__tag-icon"
-            , attribute "data-tooltip" joined
-            , attribute "data-tooltip-delay" "0"
-            , attribute "aria-label" ("Tags: " ++ joined)
-            ]
-            [ text "🏷" ]
-        ]
 
 
 tagBadge : String -> Html msg

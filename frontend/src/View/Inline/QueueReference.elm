@@ -5,7 +5,7 @@ special-reaction strips.
 
 Each strip names who has the feature; these panels say what the
 feature does, so the GM can resolve it without leaving the queue
-or pinning a whole stat block. Creature names stay clickable for
+or unfolding a whole stat block. Creature names stay clickable for
 the times the whole block is what's wanted.
 
 @docs legendaryActions, specialReactions
@@ -159,12 +159,12 @@ entryHeader c meta =
 nameNode : Creature -> Html Msg
 nameNode c =
     case c.creatureId of
-        Just creatureId ->
+        Just _ ->
             button
                 [ class "queue-panel__name"
                 , type_ "button"
-                , onClick (PanelShowCreature creatureId c.name)
-                , Tooltips.attr (Tooltips.pinStatBlock c.name)
+                , onClick (StatBlockShow c.name)
+                , Tooltips.attr (Tooltips.statBlockShow c.name)
                 , attribute "aria-label" ("Show stat block for " ++ c.name)
                 ]
                 [ text c.name ]

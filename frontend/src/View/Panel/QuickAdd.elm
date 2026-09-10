@@ -42,8 +42,7 @@ view header model =
                             "Quick Add"
             in
             View.Panel.view
-                { close = Nothing
-                , title = title
+                { title = title
                 , titleTrail = Nothing
                 , subtitle = Nothing
                 , header = header

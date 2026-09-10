@@ -1,12 +1,12 @@
 module Update.PanelDrawer exposing
-    ( clearCreature, foldNewest, toggleCollapse, togglePin
+    ( foldNewest, toggleCollapse, togglePin
     , dragStart, dragOver, drop, dragEnd
     , foldAll
     )
 
 {-| Drawer-wide handlers that belong to no single panel.
 
-@docs clearCreature, foldNewest, toggleCollapse, togglePin
+@docs foldNewest, toggleCollapse, togglePin
 @docs dragStart, dragOver, drop, dragEnd
 
 -}
@@ -15,13 +15,6 @@ import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Update.Dice
 import Update.SaveLoad
-
-
-{-| Close the stat-block panel, clearing its creature.
--}
-clearCreature : Model -> ( Model, Cmd Msg )
-clearCreature model =
-    ( Model.closeDrawer Model.statBlockLens model, Cmd.none )
 
 
 {-| Fold one panel's body away, or open it back up. The panel

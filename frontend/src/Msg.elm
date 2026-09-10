@@ -1070,22 +1070,23 @@ type Msg
     | CompendiumPasteCancel
     | CompendiumPasteTextChanged String
     | CompendiumPasteApply
-      -- Show a compendium creature's stat block in the drawer.
-    | PanelShowCreature String String
-      -- (compendium id, encounter creature display name)
-      --
-      -- Remove it again, closing the drawer's stat block.
-    | PanelClearCreature
+      -- The stat block that unfolds under a creature's card.
+      -- `StatBlockShow` opens it and brings the card into view,
+      -- for the strips and lists that name a creature from
+      -- elsewhere; the card's own name click toggles instead.
+    | StatBlockShow String
+    | StatBlockToggle String
+    | StatBlockMinimize String
       -- QuickList (`/quick-list`) row click: fires from the
-      -- standalone quick-view tab.  Broadcasts a panel-show
-      -- request across the BroadcastChannel so the main tab
-      -- shows the stat block + scrolls the card into view, and
-      -- brings itself to front via `window.opener.focus()`.
-    | QuickListRowClick String String
+      -- standalone quick-view tab.  Broadcasts a show request
+      -- across the BroadcastChannel so the main tab unfolds the
+      -- stat block under the card and scrolls to it, and brings
+      -- itself to front via `window.opener.focus()`.
+    | QuickListRowClick String
       -- Payload from the main tab's `incomingPanelShow`
-      -- subscription — a QuickList tab asked us to show +
-      -- scroll to (id, name).
-    | IncomingPanelShow String String
+      -- subscription — a QuickList tab asked us to show a
+      -- creature's stat block.
+    | IncomingPanelShow String
       -- Legendary action / legendary resistance pip toggles,
       -- and the card's special-reaction badges
     | ToggleLegendaryActionPip String Int

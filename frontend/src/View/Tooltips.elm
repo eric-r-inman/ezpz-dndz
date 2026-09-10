@@ -66,7 +66,6 @@ module View.Tooltips exposing
     , dodging
     , drawerCollapse
     , drawerPinPanel
-    , drawerRemoveStatBlock
     , drawerUnpinPanel
     , encounterBarSpellList
     , fallDamage
@@ -101,8 +100,6 @@ module View.Tooltips exposing
     , noteEdit
     , panelOpenCompendium
     , panelOpenDiceRoller
-    , panelStatBlockNewWindow
-    , pinStatBlock
     , queueInactive
     , queueMakeActive
     , queueReactivate
@@ -142,8 +139,11 @@ module View.Tooltips exposing
     , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
+    , statBlockMinimize
+    , statBlockNewTab
     , statBlockRoll
     , statBlockSavingThrow
+    , statBlockShow
     , statBlockShowInCompendium
     , statusAndConditionOpen
     , statusBadgeEdit
@@ -568,12 +568,17 @@ timerCancel =
 
 
 
--- ── STAT-BLOCK PANEL ─────────────────────────────────────────────────────────
+-- ── STAT BLOCK CONTROLS ──────────────────────────────────────────────────────
 
 
-panelStatBlockNewWindow : String
-panelStatBlockNewWindow =
+statBlockNewTab : String
+statBlockNewTab =
     "Open stat block in new tab"
+
+
+statBlockMinimize : String
+statBlockMinimize =
+    "Minimize stat block"
 
 
 statBlockShowInCompendium : String
@@ -592,7 +597,7 @@ quickListOpen =
 
 
 
--- ── STAT BLOCK (drawer panel + popouts) ──────────────────────────────────────
+-- ── STAT BLOCK ROLLS ─────────────────────────────────────────────────────────
 --
 -- See helpers `statBlockSavingThrow` and `statBlockRoll` for the
 -- per-ability / per-die-expression dynamic forms.
@@ -932,11 +937,6 @@ drawerUnpinPanel =
     "Unpin from the top of the column"
 
 
-drawerRemoveStatBlock : String
-drawerRemoveStatBlock =
-    "Remove this stat block"
-
-
 drawerCollapse : String
 drawerCollapse =
     "Fold this panel away, or open it back up"
@@ -963,11 +963,12 @@ toastDismiss =
 -- survey above isn't broken up by template logic.
 
 
-{-| Names the creature whose stat block a click will pin.
+{-| Names the creature whose stat block a click will unfold under
+its card.
 -}
-pinStatBlock : String -> String
-pinStatBlock name =
-    "Pin " ++ name ++ "'s stat block in the editor column"
+statBlockShow : String -> String
+statBlockShow name =
+    "Show " ++ name ++ "'s stat block under its card"
 
 
 sourceFromSaved : String -> String

@@ -21,8 +21,7 @@ import View.Panel
 view : View.Panel.Header -> Encounter -> CompendiumDb -> XpScope -> Html Msg
 view header enc db current =
     View.Panel.view
-        { close = Nothing
-        , title = "Encounter XP"
+        { title = "Encounter XP"
         , titleTrail = Nothing
         , subtitle = Nothing
         , header = header

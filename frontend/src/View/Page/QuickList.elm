@@ -88,17 +88,17 @@ creatureCard activeName creature =
             , lineTwo creature
             ]
     in
-    -- Placeholder rows have no compendium id to pin — render
+    -- Placeholder rows have no compendium source to show — render
     -- them as a static div rather than a button so the empty
-    -- click doesn't try to broadcast a no-op panel-show.
+    -- click doesn't try to broadcast a no-op show request.
     case creature.creatureId of
-        Just cid ->
+        Just _ ->
             button
                 (type_ "button"
-                    :: onClick (QuickListRowClick cid creature.name)
+                    :: onClick (QuickListRowClick creature.name)
                     :: attribute "aria-label"
                         ("Show " ++ creature.name ++ "'s stat block in the main tab")
-                    :: Tooltips.attr "Click to jump to this creature in the main tab (pins stat block + scrolls to card)"
+                    :: Tooltips.attr "Click to jump to this creature in the main tab (unfolds its stat block under its card and scrolls to it)"
                     :: baseAttrs
                 )
                 children

@@ -42,8 +42,7 @@ type alias Header =
 
 
 view :
-    { close : Maybe Msg
-    , title : String
+    { title : String
     , titleTrail : Maybe (Html Msg)
     , subtitle : Maybe String
     , extraClass : String
@@ -65,7 +64,6 @@ view config =
                 , Maybe.withDefault (text "") config.titleTrail
                 ]
             , pinButton config.header
-            , Maybe.withDefault (text "") (Maybe.map closeButton config.close)
             ]
             :: (if config.header.collapsed then
                     []
@@ -117,23 +115,6 @@ pinClass pinned =
 
     else
         "panel-drawer__pin"
-
-
-{-| Only a panel the GM can put back offers this — in practice
-the stat block a card put there. The editors the drawer boots
-with have no trigger left to reopen them, so they fold instead of
-closing and never render it.
--}
-closeButton : Msg -> Html Msg
-closeButton msg =
-    button
-        [ class "panel-drawer__close"
-        , type_ "button"
-        , onClickWithoutFolding msg
-        , Tooltips.attr Tooltips.drawerRemoveStatBlock
-        , attribute "aria-label" Tooltips.drawerRemoveStatBlock
-        ]
-        [ text "✕" ]
 
 
 {-| An unfolded panel is outlined so that, with several open at

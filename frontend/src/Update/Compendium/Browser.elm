@@ -1,6 +1,6 @@
 module Update.Compendium.Browser exposing
     ( addedToggle, focusSearch, kindToggled, loaded
-    , open, panelShowCreature, searchChanged, searchId, select
+    , open, searchChanged, searchId, select
     , sortChanged, withCompendium
     , bulkMenuClose, bulkMenuToggle, exportClick, rowToggle, showCreature, tagFilterChanged
     )
@@ -15,7 +15,7 @@ own tab. `withCompendium` is therefore a flat field lens, not a
 surface lens.
 
 @docs addedToggle, focusSearch, kindToggled, loaded
-@docs open, panelShowCreature, searchChanged, searchId, select
+@docs open, searchChanged, searchId, select
 @docs sortChanged, withCompendium
 
 -}
@@ -189,8 +189,8 @@ open model =
 
 
 {-| Open the /compendium browser tab on a specific creature —
-the drawer's stat-block panel hands off to the full browser
-with its creature already selected.
+the block under a card hands off to the full browser with its
+creature already selected.
 -}
 showCreature : String -> Model -> ( Model, Cmd Msg )
 showCreature id model =
@@ -374,19 +374,4 @@ focusSearch model =
     ( model
     , Browser.Dom.focus searchId
         |> Task.attempt (\_ -> NoOp)
-    )
-
-
-panelShowCreature : String -> String -> Model -> ( Model, Cmd Msg )
-panelShowCreature creatureId creatureName model =
-    let
-        nextModel =
-            Model.openDrawer Model.statBlockLens
-                { id = creatureId, name = creatureName }
-                model
-    in
-    ( nextModel
-    , Model.drawerIndexOf Model.statBlockLens nextModel
-        |> Maybe.map Effects.scrollDrawerIndexToTop
-        |> Maybe.withDefault Cmd.none
     )

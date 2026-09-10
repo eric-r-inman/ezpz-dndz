@@ -100,7 +100,7 @@ betaFeaturesSection =
             [ text "The Dice Roller sits in the editor column and accepts formula or manual values. The dice roller also serves as an auto-roller for stat block rolls (ability checks, saving throws, actions). It's wired into creature cards too, for initiative rolls, healing, damage, and falling damage. The last 30 rolls are recorded in the roller itself." ]
         , h3 [] [ text "Stat Block" ]
         , p []
-            [ text "Clicking a creature's name in a creature card — or selecting it in the Compendium (see Compendium below) — pins its stat block in the editor column. Abilities, saving throws, and actions are clickable for generating an auto-roll using the dice roller." ]
+            [ text "Clicking a creature's name in a creature card unfolds its stat block right under the card, with a Minimize button to fold it away; the Compendium (see below) shows the stat block of any creature you select there. Abilities, saving throws, and actions are clickable for generating an auto-roll using the dice roller." ]
         , h3 [] [ text "Compendium" ]
         , p []
             [ text "The Compendium contains the database of creatures, creature groups, and lore groupings used to build encounters. Open the Compendium with the 📚 button at the top of the editor column; it opens in its own browser tab, handy for a second monitor." ]

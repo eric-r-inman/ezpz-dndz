@@ -429,18 +429,20 @@ failedSaveRow s =
             , Tooltips.attr "Damage the bearer takes on each failed save — a dice formula or a number"
             ]
             []
-        , Html.label [ for "cond-fail-becomes", class "cond-label" ] [ text "becomes" ]
-        , input
-            [ id "cond-fail-becomes"
-            , class "cond-input cond-input--w20"
-            , type_ "text"
-            , placeholder "e.g. Petrified"
-            , value s.failBecomesText
-            , onInput ConditionSaveFailBecomesChanged
-            , attribute "list" "cond-fail-becomes-list"
-            , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
+        , span [ class "cond-pair cond-pair--grow" ]
+            [ Html.label [ for "cond-fail-becomes", class "cond-label" ] [ text "& becomes" ]
+            , input
+                [ id "cond-fail-becomes"
+                , class "cond-input cond-input--grow"
+                , type_ "text"
+                , placeholder "e.g. Petrified (optional)"
+                , value s.failBecomesText
+                , onInput ConditionSaveFailBecomesChanged
+                , attribute "list" "cond-fail-becomes-list"
+                , Tooltips.attr "The condition this one turns into on a failed save, which ends the saving"
+                ]
+                []
             ]
-            []
         , Html.node "datalist"
             [ id "cond-fail-becomes-list" ]
             (List.map (\c -> Html.option [ value c ] []) Encounter.standardConditions)

@@ -307,6 +307,12 @@
      name is already taken.  No action needed.
 115. The Condition/Effect editor gains a "Clear Settings" button that empties
      the form.  No action needed.
+116. The Condition/Effect editor's failed-save row reads "& becomes", and its
+     field shows the whole "e.g. Petrified (optional)" hint.  No action needed.
+117. Clicking a creature's name unfolds its stat block under the card in the
+     encounter queue, attached to it and scrolling with it, with a Minimize
+     button in its bar; the editor column no longer holds a stat block.  No
+     action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.
