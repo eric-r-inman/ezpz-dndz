@@ -77,13 +77,16 @@ type alias ConditionUi =
     }
 
 
-{-| One row of the condition editor's recent-applies log: the
-condition that was added, and each creature-plus-condition-id it
-landed on so undo can remove exactly those instances.
+{-| One row of the condition editor's log. `targets` holds each
+creature-plus-condition-id the application landed on, so undo
+removes exactly those instances, and `seq` is the row's identity,
+handed out by `Model.nextConditionLogSeq`.
 -}
 type alias ConditionLogEntry =
-    { conditionName : String
+    { seq : Int
+    , conditionName : String
     , note : String
+    , summary : String
     , targets : List { name : String, conditionId : Int }
     }
 
@@ -92,7 +95,7 @@ type alias ConditionLogEntry =
 -}
 maxConditionLogEntries : Int
 maxConditionLogEntries =
-    10
+    30
 
 
 type alias SaveToEndUi =

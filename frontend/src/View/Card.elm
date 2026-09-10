@@ -546,7 +546,7 @@ initBadge creature =
         , attribute "aria-label"
             ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
         ]
-        [ text (String.fromInt creature.initiative) ]
+        [ text ("(" ++ String.fromInt creature.initiative ++ ")") ]
 
 
 {-| The creature name on row 1 of each card. Three render modes:

@@ -253,6 +253,8 @@ panelFor model index panel =
                         , placeholderWarning = placeholderWarning ui.target
                         , presets = model.conditionPresets
                         , log = model.conditionLog
+                        , logOpen = model.conditionLogOpen
+                        , expanded = model.expandedLogRows
                         }
                         ui
                     )

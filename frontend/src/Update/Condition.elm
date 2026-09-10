@@ -8,6 +8,7 @@ module Update.Condition exposing
     , durationKindSet
     , durationOneMinute
     , failDamageLanded
+    , logToggle
     , maxConditionNoteLength
     , noteChanged
     , openEdit
@@ -717,6 +718,8 @@ submitTo rawTargets model =
                                             :: List.take
                                                 (ConditionUi.maxConditionLogEntries - 1)
                                                 committed.conditionLog
+                                    , nextConditionLogSeq = committed.nextConditionLogSeq + 1
+                                    , conditionLogOpen = True
                                 }
 
                             Nothing ->
@@ -726,6 +729,11 @@ submitTo rawTargets model =
 
         _ ->
             ( model, Cmd.none )
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | conditionLogOpen = not model.conditionLogOpen }, Cmd.none )
 
 
 {-| Undo the newest condition application: remove every condition
@@ -1142,11 +1150,44 @@ commitCondition targets ui name model =
 
               else
                 Just
-                    { conditionName = draft.name
+                    { seq = model.nextConditionLogSeq
+                    , conditionName = draft.name
                     , note = draft.note
+                    , summary = summarize draft.duration saveToEnd
                     , targets = List.reverse result.applied
                     }
             )
+
+
+{-| The log row's one-line account of what was applied: the
+duration, and the save that can end it sooner.
+-}
+summarize : Encounter.Duration -> Maybe { a | ability : String, dc : Int, autoRoll : Encounter.AutoRollMode } -> String
+summarize duration saveToEnd =
+    Encounter.describeDuration duration
+        ++ (case saveToEnd of
+                Just spec ->
+                    " · DC " ++ String.fromInt spec.dc ++ " " ++ spec.ability ++ " save" ++ saveTiming spec.autoRoll
+
+                Nothing ->
+                    ""
+           )
+
+
+saveTiming : Encounter.AutoRollMode -> String
+saveTiming mode =
+    case mode of
+        Encounter.AutoRollManual ->
+            ", rolled by hand"
+
+        Encounter.AutoRollAtBegin ->
+            " at start of turn"
+
+        Encounter.AutoRollAtEnd ->
+            " at end of turn"
+
+        Encounter.AutoRollAskAtEnd ->
+            ", asked at end of turn"
 
 
 {-| Build the domain `Duration` from the UI's three sub-states.

@@ -7,15 +7,16 @@ it in.
 
 import Dict exposing (Dict)
 import Encounter
-import Html exposing (Html, button, div, h3, input, li, span, text, ul)
+import Html exposing (Html, button, div, h3, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (DurationKind(..), Msg(..))
-import Set
+import Set exposing (Set)
 import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
+import View.ConditionLog
 import View.Inline.ApplyButton as ApplyButton
 import View.Inline.Field as Field
 import View.PhaseToggle
@@ -25,7 +26,8 @@ import View.Tooltips as Tooltips
 {-| The model fragments the expansion consumes beyond its own
 Ui record: the queue's creature names feed the "until X's turn"
 select, the selected count drives the apply-to-selected scope,
-and the presets dict backs the footer's Save / Load controls.
+and the presets dict backs the Load row and the footer's Save
+control.
 -}
 type alias Context =
     { creatureNames : List String
@@ -33,59 +35,31 @@ type alias Context =
     , placeholderWarning : Bool
     , presets : Dict String ConditionPreset
     , log : List ConditionLogEntry
+    , logOpen : Bool
+    , expanded : Set String
     }
 
 
 view : Context -> ConditionUi -> Html Msg
 view ctx ui =
     div [ class "editor-body" ]
-        [ standardSection ui
+        [ loadRow ui ctx.presets
+        , standardSection ui
         , customAndNoteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
         , footer ui ctx.presets ctx.selectedCount ctx.placeholderWarning
-        , latestLog ctx.log
+        , View.ConditionLog.section { open = ctx.logOpen, expanded = ctx.expanded } ctx.log
         ]
 
 
-{-| Newest condition application, in the HP editor's log row
-style, with the undo that removes exactly the instances that
-application created.
+{-| The preset picker comes first, under the target strip, so a
+saved recipe is the first thing to reach for.
 -}
-latestLog : List ConditionLogEntry -> Html Msg
-latestLog entries =
-    case entries of
-        newest :: _ ->
-            let
-                names =
-                    String.join ", " (List.map .name newest.targets)
-            in
-            ul [ class "hp-change__log-list hp-change__log-list--latest" ]
-                [ li [ class "hp-change__log-entry hp-change__log-entry--wide" ]
-                    [ span [ class "hp-change__log-kind hp-change__log-kind--cond" ]
-                        [ text newest.conditionName ]
-                    , span [ class "hp-change__log-target" ] [ text names ]
-                    , span [ class "hp-change__log-trans" ]
-                        [ text
-                            (if String.isEmpty newest.note then
-                                ""
-
-                             else
-                                "(" ++ newest.note ++ ")"
-                            )
-                        ]
-                    , button
-                        [ class "icon-btn icon-btn--sm hp-change__log-undo"
-                        , onClick ConditionUndoLatest
-                        , Tooltips.attr ("Undo: remove " ++ newest.conditionName ++ " from " ++ names)
-                        , attribute "aria-label" ("Undo " ++ newest.conditionName ++ " on " ++ names)
-                        ]
-                        [ text "↩" ]
-                    ]
-                ]
-
-        [] ->
-            text ""
+loadRow : ConditionUi -> Dict String ConditionPreset -> Html Msg
+loadRow ui presets =
+    div [ class "cond-section" ]
+        [ div [ class "cond-row" ] [ presetLoadControl ui presets ] ]
 
 
 standardSection : ConditionUi -> Html Msg
@@ -550,18 +524,13 @@ presetControls ui presets canSubmit =
                         )
                     ]
                     [ text "Save" ]
-                , presetLoadControl ui presets
                 , clearButton
                 ]
             ]
 
         Just typed ->
             presetNaming ui presets canSubmit typed
-                ++ [ div [ class "cond-row" ]
-                        [ presetLoadControl ui presets
-                        , clearButton
-                        ]
-                   ]
+                ++ [ div [ class "cond-row" ] [ clearButton ] ]
 
 
 {-| The commit row. Editing an existing condition is a one-row
@@ -775,7 +744,7 @@ presetLoadControl ui userPresets =
             [ text "Load ▼" ]
         , if ui.loadMenuOpen && not empty then
             div
-                [ class "cond-footer__load-menu"
+                [ class "cond-footer__load-menu cond-footer__load-menu--below"
                 , attribute "role" "listbox"
                 ]
                 (List.map (presetMenuItem True) userNames ++ categorizedSections)

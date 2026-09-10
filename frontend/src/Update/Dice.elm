@@ -631,7 +631,7 @@ alive through the full float-and-fade animation.
 -}
 popupLifetimeMs : Float
 popupLifetimeMs =
-    1200
+    2400
 
 
 {-| Parse a string into an int, clamping to `lo..hi` and falling

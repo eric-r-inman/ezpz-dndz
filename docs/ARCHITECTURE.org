@@ -1467,7 +1467,7 @@ pinned one where the GM put it.
 
 * Per-surface preset pattern
 
-The Condition and Timer editors each carry a Save / Load footer that remembers
+The Condition and Timer editors each carry Save / Load controls that remember
 full configurations under user-chosen names.  Both follow the same templatable
 shape so a new surface can adopt the pattern without re-inventing it.
 
@@ -1498,7 +1498,8 @@ For a surface =Foo= the pieces are:
    writes to ~Model.fooPresets~ AND flips ~loadedPresetName~; ~presetLoad~
    delegates to ~Ui.Foo.applyPreset~; ~presetDelete~ also clears
    ~loadedPresetName~ when the deleted preset was the active one.
-8. *View* — =View/Modal/Foo.elm= renders a footer built from two controls:
+8. *View* — =View/Modal/Foo.elm= renders two controls, Save in the footer and
+   Load where the editor wants it:
    - The Save control — a single ~Save~ button when ~pendingSaveName ==
      Nothing~; otherwise the naming rows, one each for the name, its category,
      and the commit with Cancel beside it.  The commit reads as an overwrite

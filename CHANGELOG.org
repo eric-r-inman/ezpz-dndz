@@ -313,6 +313,21 @@
      encounter queue, attached to it and scrolling with it, with a Minimize
      button in its bar; the editor column no longer holds a stat block.  No
      action needed.
+118. The bar of a stat block under a card names the creature in neon pink, with
+     the Compendium, new-tab, and Minimize controls right beside the name.  No
+     action needed.
+119. A stat block's ability cells put the abbreviation, score, and modifier on
+     one line when the block is wide enough, in slightly larger type, and stack
+     them again when it is not.  No action needed.
+120. The floating number from an auto-roll drifts up more slowly and stays on
+     screen longer before fading.  No action needed.
+121. A creature card's initiative score sits in its left column as a bare figure
+     in parentheses, white on the Dark theme, with no background.  No action
+     needed.
+122. The Condition/Effect editor's Load button sits in its own row directly
+     under the target row, and its menu opens downward.  No action needed.
+123. The Condition/Effect editor's log takes the Manage HP log's shape, folding
+     over the last 30 applications with undo on the newest.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

@@ -144,6 +144,8 @@
   /* The square controls on a stat block: the ↗ link on its name
      row and the buttons in the bar under a card. */
   --size-statblock-tool: 28px;
+  /* The title in the bar of the stat block under a card. */
+  --color-neon-pink: #ff2d95;
 
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
@@ -227,6 +229,7 @@
   --color-sr-badge-fg: #c2620c;
 
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
 
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
@@ -320,6 +323,7 @@
   --color-btn-orange: #854d0e;
   --color-dirty-outline: #fde68a;
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
@@ -428,6 +432,7 @@
   --color-btn-red: #c62828;
   --color-btn-orange: #d97706;
   --card-btn-fg: #000;
+  --init-score-fg: #ffffff;
 
   /* Hover bg tokens collapse to the same value as the bg so the
      base `:hover { filter: brightness(1.15) }` does the
@@ -530,6 +535,7 @@
   --color-dirty-outline: #ffd700;
 
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
 
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
@@ -4760,11 +4766,11 @@ body {
 .card-statblock__title {
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-label);
+  color: var(--color-neon-pink);
 }
 
 .card-statblock__title-kind {
   margin-left: var(--space-1);
-  color: var(--color-text-muted);
   font-weight: normal;
 }
 
@@ -4772,7 +4778,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: auto;
+  margin-left: var(--space-2);
 }
 
 .card-statblock__open {
@@ -5699,15 +5705,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
 }
 
+/* The initiative score, a bare figure in parentheses beside the
+   checkbox. */
 .init-badge {
-  width: 22px;
+  min-width: 22px;
   height: 22px;
+  padding: 0 var(--space-0);
   border-radius: var(--radius-sm);
-  /* Filled with the Status trigger's blue so the badge reads
-     as part of the same control family in every theme. */
-  background: var(--btn-blue-bg);
-  border: 1.5px solid var(--btn-blue-bg);
-  color: var(--btn-blue-fg);
+  background: none;
+  border: none;
+  color: var(--init-score-fg);
   display: inline-grid;
   place-items: center;
   font-weight: 700;
@@ -7025,6 +7032,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability-row {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-2);
@@ -7065,7 +7073,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability__label {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
@@ -7076,9 +7084,20 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability__mod {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Each cell lays its parts on one line once the row is wide
+   enough for every cell to; narrower, they stack. */
+@container (min-width: 600px) {
+  .ability {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: var(--space-1);
+  }
 }
 
 .statblock__traits {
@@ -8860,6 +8879,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
 }
 
+/* A condition row's name track sizes to its word rather than to
+   the HP chips' fixed width. */
+.hp-change__log-entry--cond {
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
+}
+
 .hp-change__log-entry--flash {
   animation: log-flash 0.9s ease-out 1;
 }
@@ -9690,6 +9715,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* The menu opens upward from a footer; the Condition editor's
+   Load sits at the top of its body, so its menu opens downward. */
+.cond-footer__load-menu--below {
+  top: calc(100% + var(--space-1));
+  bottom: auto;
 }
 
 .cond-footer__load-item {
@@ -11547,7 +11579,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   pointer-events: none;
   letter-spacing: 0.02em;
   transform: translate(-50%, -100%);
-  animation: roll-popup-float 1.2s ease-out forwards;
+  animation: roll-popup-float 2.4s ease-out forwards;
   will-change: transform, opacity;
 }
 
@@ -11578,13 +11610,19 @@ button.creature-card__lifecycle--dead:focus-visible {
     0 0 6px var(--color-danger);
 }
 
+/* The number drifts up slowly and holds at full strength for most
+   of its life, fading only over the last stretch. */
 @keyframes roll-popup-float {
   0% {
     transform: translate(-50%, -100%) translateY(0);
     opacity: 1;
   }
-  20% {
+  15% {
     transform: translate(-50%, -100%) translateY(-12px);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-50%, -100%) translateY(-44px);
     opacity: 1;
   }
   100% {

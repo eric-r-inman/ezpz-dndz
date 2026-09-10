@@ -1350,6 +1350,14 @@ type alias Model =
     -- instances one application added.
     , conditionLog : List UiCondition.ConditionLogEntry
 
+    -- Whether the condition editor shows its log; it starts
+    -- folded and unfolds when an application lands.
+    , conditionLogOpen : Bool
+
+    -- Hands out `ConditionLogEntry.seq`, for the reason
+    -- `nextHpLogSeq` gives.
+    , nextConditionLogSeq : Int
+
     -- Same pattern for the Duplicate and Replace editors:
     -- newest first, capped in their Update modules.
     , duplicateLog : List Ui.Duplicate.DuplicateLogEntry

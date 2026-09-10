@@ -572,6 +572,8 @@ init flags url key =
         , compendium = compendiumFromUrl url
         , surface = Nothing
         , conditionLog = []
+        , conditionLogOpen = False
+        , nextConditionLogSeq = 1
         , duplicateLog = []
         , replaceLog = []
         , modalChrome = Ui.ModalChrome.fresh
@@ -1480,6 +1482,9 @@ updateInner msg model =
 
         ConditionUndoLatest ->
             Update.Condition.undoLatest model
+
+        ConditionLogToggle ->
+            Update.Condition.logToggle model
 
         SaveNoticeDismiss name id ->
             Update.Condition.saveNoticeDismiss name id model

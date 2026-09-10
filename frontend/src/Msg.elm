@@ -818,6 +818,7 @@ type Msg
       -- Undo the newest condition application (the ↩ on the
       -- condition editor's log row).
     | ConditionUndoLatest
+    | ConditionLogToggle
     | SaveNoticeDismiss String Int
       -- Card row 3 memo
     | MemoOpen String
