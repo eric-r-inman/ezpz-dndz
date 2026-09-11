@@ -98,6 +98,7 @@ module View.Tooltips exposing
     , noteEdit
     , panelOpenCompendium
     , panelOpenDiceRoller
+    , queueActiveTurn
     , queueInactive
     , queueMakeActive
     , queueReactivate
@@ -330,6 +331,11 @@ flying ft =
 queueSelectShiftClick : String
 queueSelectShiftClick =
     "Shift-click to select / deselect all"
+
+
+queueActiveTurn : String
+queueActiveTurn =
+    "It is this creature's turn"
 
 
 queueMakeActive : String

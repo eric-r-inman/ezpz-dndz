@@ -2,8 +2,8 @@ module View.Inline.Status exposing (view)
 
 {-| Status editor body: the posture toggles (cover,
 concentrating, hiding, dodging, flying + flight height) editing
-a draft, with two Apply buttons writing it to the target
-creature or the selection.
+a draft, with two Apply buttons adding it to the target creature
+or the selection.
 -}
 
 import Encounter exposing (Cover(..))
@@ -39,7 +39,7 @@ view selectedCount placeholderWarning ui =
                 { enabled = True
                 , cls = "action-btn action-btn--green"
                 , msg = StatusApplyTarget
-                , tip = "Write these statuses onto the target creature"
+                , tip = "Add these statuses to the target creature"
                 , label = "Target"
                 }
             , ApplyButton.view
@@ -51,7 +51,7 @@ view selectedCount placeholderWarning ui =
                         "Select creatures first"
 
                     else
-                        "Write these statuses onto every selected creature"
+                        "Add these statuses to every selected creature"
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]

@@ -355,6 +355,13 @@
      and offers a Cancel button beside it.  No action needed.
 136. The editor column's controls sit further above the rule beneath them.  No
      action needed.
+137. Applying statuses adds them without clearing the ones the creature already
+     has; the × beside a status on the card is what removes it.  No action
+     needed.
+138. The roll strip colours and enlarges only the roll that just landed, or the
+     three of a triple roll.  No action needed.
+139. The active creature's arrow takes the accent colour a size up, and says "It
+     is this creature's turn" on hover.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

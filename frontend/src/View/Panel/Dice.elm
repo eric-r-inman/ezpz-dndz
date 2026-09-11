@@ -38,8 +38,8 @@ type alias Log =
 
 {-| The most recent roll totals, rendered beside the rail's 🎲
 icon so a roll reads without opening the panel. The newest is
-emphasized in yellow; older advantage and disadvantage rolls keep
-their green and red. While a triple-roll is the newest thing
+emphasized in yellow; older rolls drop to plain text however they
+were rolled. While a triple-roll is the newest thing
 rolled (`override`, set by `Update.Dice.tripleRollLanded`), its
 three results — the newest three entries — are coloured by roll
 mode instead, standard in plain text, so they read as the set the
@@ -89,15 +89,9 @@ recentBadgeClass tripleSize i kind =
         "recent-roll recent-roll--latest"
 
     else
-        case kind of
-            Dice.Advantage ->
-                "recent-roll recent-roll--advantage"
-
-            Dice.Disadvantage ->
-                "recent-roll recent-roll--disadvantage"
-
-            _ ->
-                "recent-roll"
+        -- Size and colour mark what just landed, so an older
+        -- roll gives them up however it was rolled.
+        "recent-roll"
 
 
 tripleBadgeClass : Dice.RollKind -> String

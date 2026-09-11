@@ -225,13 +225,7 @@ view ctx index creature =
                     ]
                     []
                 , initBadge creature
-                , button
-                    [ class "icon-btn"
-                    , onClick (SetActive creature.name)
-                    , Tooltips.attr Tooltips.queueMakeActive
-                    , attribute "aria-label" "Make active"
-                    ]
-                    [ text "→" ]
+                , turnArrow isActive creature.name
                 ]
             ]
         , div [ class "creature-card__center" ]
@@ -1517,6 +1511,36 @@ statusIcons creature =
 
     else
         span [ class "status-icons" ] (List.map statusEntry entries)
+
+
+{-| The left rail's arrow. On the active creature it is the
+queue's turn marker rather than a control, and says as much on
+hover — the click still lands, and re-picking the creature whose
+turn it already is costs nothing.
+-}
+turnArrow : Bool -> String -> Html Msg
+turnArrow isActive name =
+    let
+        tip =
+            if isActive then
+                Tooltips.queueActiveTurn
+
+            else
+                Tooltips.queueMakeActive
+    in
+    button
+        [ class
+            (if isActive then
+                "icon-btn icon-btn--active-turn"
+
+             else
+                "icon-btn"
+            )
+        , onClick (SetActive name)
+        , Tooltips.attr tip
+        , attribute "aria-label" tip
+        ]
+        [ text "→" ]
 
 
 {-| The 5e death-save tracker, rendered as a side-by-side pair of

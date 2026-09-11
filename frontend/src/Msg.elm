@@ -720,8 +720,8 @@ type Msg
     | ReplacePick String
     | ReplaceApply
     | ReplaceApplySelected
-      -- Status.  The toggles edit a draft; the Apply buttons
-      -- stamp it onto the target or the selection.
+      -- Status.  The toggles edit a draft; the Apply buttons add
+      -- it to the target or the selection.
     | StatusOpenFor String
     | StatusCoverCycle
     | StatusToggle StatusFlag

@@ -1,8 +1,8 @@
 module Update.Status exposing (applySelected, applyTarget, coverCycle, flyHeightAdjust, openFor, toggleFlag)
 
 {-| Update branches for the Status editor. The toggles edit a
-draft; the two Apply buttons write the whole draft onto the
-active creature or onto every selected creature.
+draft; the two Apply buttons add what it holds to the target
+creature or to every selected creature.
 -}
 
 import Effects
@@ -97,8 +97,8 @@ flyHeightAdjust delta model =
     )
 
 
-{-| Write the draft onto the creature the editor is aimed at —
-the one the target strip names, which is not always the active
+{-| Add the draft to the creature the editor is aimed at — the
+one the target strip names, which is not always the active
 creature since a card's status label can re-aim the editor.
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
@@ -125,9 +125,12 @@ applySelected model =
     )
 
 
-{-| Stamp every draft field onto each named creature. A grounded
-draft zeroes the flight height so a later re-fly starts at 0,
-matching the card toggles' old behaviour.
+{-| Add the draft's statuses to each named creature, leaving
+what it does not name alone. Applying is how a status goes on
+and the × beside it on the card is how it comes off, so a toggle
+the GM left off cannot take away one the creature already has —
+which matters most when applying to a selection, where one draft
+lands on creatures in different states.
 -}
 applyTo : List String -> Model -> Model
 applyTo names model =
@@ -137,25 +140,30 @@ applyTo names model =
                 targets =
                     Encounter.excludingPlaceholderNames model.encounter names
 
-                stamp c =
+                add c =
                     { c
-                        | cover = ui.cover
-                        , concentrating = ui.concentrating
-                        , hiding = ui.hiding
-                        , dodging = ui.dodging
-                        , flying = ui.flying
+                        | cover =
+                            if ui.cover == Encounter.NoCover then
+                                c.cover
+
+                            else
+                                ui.cover
+                        , concentrating = c.concentrating || ui.concentrating
+                        , hiding = c.hiding || ui.hiding
+                        , dodging = c.dodging || ui.dodging
+                        , flying = c.flying || ui.flying
                         , flyHeight =
                             if ui.flying then
                                 ui.flyHeight
 
                             else
-                                0
+                                c.flyHeight
                     }
             in
             { model
                 | encounter =
                     List.foldl
-                        (\name enc -> Encounter.mapCreature name stamp enc)
+                        (\name enc -> Encounter.mapCreature name add enc)
                         model.encounter
                         targets
             }

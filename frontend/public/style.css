@@ -5579,6 +5579,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: transparent;
 }
 
+/* The active creature's arrow reads as the queue's turn marker
+   rather than a control. */
+.icon-btn--active-turn {
+  color: var(--color-accent);
+  font-size: var(--font-size-readout);
+  font-weight: var(--font-weight-label);
+}
+
 .icon-btn--sm {
   width: 22px;
   height: 22px;
