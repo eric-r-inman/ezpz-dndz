@@ -328,6 +328,15 @@
      under the target row, and its menu opens downward.  No action needed.
 123. The Condition/Effect editor's log takes the Manage HP log's shape, folding
      over the last 30 applications with undo on the newest.  No action needed.
+124. The bar of a stat block under a card reads "[creature] information", the
+     line joining it to the card is the bar's pink, and Minimize is its icon
+     alone.  No action needed.
+125. A creature card's Ready and Reaction toggles sit beside the HP readout,
+     left of the gear, as icons alone, the hands reading "Ready an Action" and
+     "Action Readied" on hover.  No action needed.
+126. A spent reaction turns its button red.  No action needed.
+127. A card's HP values read "Manage HP" on hover.  No action needed.
+128. A card's conditions are separated by pipes.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

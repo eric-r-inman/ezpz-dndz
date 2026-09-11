@@ -424,7 +424,7 @@ center column rows 1–3:
     revealing the pip strip eagerly is noise. Clicking the button
     flips the toggle and the pips become visible. Healing back above
     0 resets BOTH the counts and the toggle via the HP-change engine.
-  - `readied` — row 3 readied-action toggle.
+  - `readied` — row 2 readied-action toggle.
 
 `note` is a short free-text label edited via the row 1 pencil
 button; it surfaces inline next to the creature name when set

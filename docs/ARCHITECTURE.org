@@ -349,11 +349,10 @@ support placeholder stubs and stat-block-style metadata:
   strip.
 - ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
 - ~hasSpecialReactions : Bool~ — copied from the compendium template at spawn
-  time.  When set, the card's reaction pip drops the lightning glyph for a
-  pulsing bright-blue ~!~ and the creature shows up in the "Special reactions:
-  …" sticky strip beneath the title bar.  Toggleable per-creature via a checkbox
-  in the compendium editor; auto-set on 22 bundled SRD creatures (Hydra,
-  Marilith, Vampire, mephits, …).
+  time.  When set, the creature shows up in the "Special reactions: …" sticky
+  strip beneath the title bar.  Toggleable per-creature via a checkbox in the
+  compendium editor; auto-set on 22 bundled SRD creatures (Hydra, Marilith,
+  Vampire, mephits, …).
 - ~specialReactionsUsed : Set String~ — names of the reactions the GM has struck
   through on the card's badges.  Cleared at the bearer's begin-of-turn, the way
   the single reaction pip is.
@@ -1726,7 +1725,7 @@ Wire status today:
   sort, shortcut overrides) are wire-defined but not yet read by any feature;
   they round-trip through ~Preferences.default~.
 
-The ~Readied~ status toggle on row 3 of every creature card also animates
+The ~Readied~ status toggle on row 2 of every creature card also animates
 per-theme via a triple-effect keyframe (opacity dip + 1.05× scale + orange glow
 ring on a 0.9s cycle); the animation respects ~prefers-reduced-motion: reduce~
 and falls back to a static highlight.

@@ -5,10 +5,9 @@ module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, legenda
 Three rows + two side rails + an optional legendary-pip column:
 
   - Row 1 (top): the creature's identity.
-  - Row 2 (mid): its current condition — hit points, posture,
-    and what's affecting it.
-  - Row 3 (bot): turn-economy controls the GM toggles during
-    play.
+  - Row 2 (mid): its current condition — hit points, the
+    turn-economy toggles, posture, and what's affecting it.
+  - Row 3 (bot): the memo and timer slots.
 
 The card itself is the queue's reorder handle: the whole article
 is a drag source and a drop target, so a GM moves a creature by
@@ -1209,8 +1208,9 @@ rowTopChipCluster isActive creature srBadges =
 
 
 {-| Row 2 chip cluster: the condition / save-notice chips behind
-a leading pipe, sitting to the right of the status readout so
-everything "happening to" the creature reads off one row.
+a leading pipe, with a pipe between each pair, sitting to the
+right of the status readout so everything "happening to" the
+creature reads off one row.
 -}
 conditionCluster : List ( String, Int ) -> Creature -> Html Msg
 conditionCluster flashConditions creature =
@@ -1219,10 +1219,17 @@ conditionCluster flashConditions creature =
 
     else
         span [ class "condition-chips-wrap" ]
-            (span [ class "row-top__sep" ] [ text "|" ]
-                :: List.map (conditionChip flashConditions creature) creature.conditions
-                ++ List.map (saveNoticeChip creature.name) creature.saveNotices
+            (pipe
+                :: List.intersperse pipe
+                    (List.map (conditionChip flashConditions creature) creature.conditions
+                        ++ List.map (saveNoticeChip creature.name) creature.saveNotices
+                    )
             )
+
+
+pipe : Html Msg
+pipe =
+    span [ class "row-top__sep" ] [ text "|" ]
 
 
 {-| "Saved: <Condition>" notice rendered as a small green chip.
@@ -1420,6 +1427,9 @@ rowMid : List ( String, Int ) -> Creature -> Html Msg
 rowMid flashConditions creature =
     div [ class "creature-card__row creature-card__row--mid" ]
         [ hpDisplay creature
+        , readiedToggle creature
+        , reactionPip creature
+        , statusAndConditionOpener creature
         , statusIcons creature
         , conditionCluster flashConditions creature
         ]
@@ -1459,12 +1469,11 @@ hpDisplay creature =
         , hpOpener creature (String.fromInt creature.maxHp) "hp-display__max" ("Max HP for " ++ creature.name)
         , maxHpOriginal creature
         , tempHpOpener creature
-        , statusAndConditionOpener creature
         ]
 
 
-{-| Gear icon after the HP readout: opens Status and
-Condition/Effect together, aimed at this creature, and scrolls so
+{-| Gear icon after the HP readout and its toggles: opens Status
+and Condition/Effect together, aimed at this creature, and scrolls so
 the topmost of the two lands at the top of the column. Both
 editors already open individually from their own card controls;
 this is the one-click "both at once" shortcut.
@@ -1856,9 +1865,7 @@ deathSavePip kind filled onToggle kindLabel ordinal =
 rowBot : Creature -> Maybe Surface -> Html Msg
 rowBot creature surface =
     div [ class "creature-card__row creature-card__row--bot" ]
-        [ readiedToggle creature
-        , reactionPip creature
-        , memoSlot creature surface
+        [ memoSlot creature surface
         , timerSlot creature surface
         ]
 
@@ -2036,22 +2043,17 @@ timerTooltip t =
             }
 
 
+{-| The open hand offers to ready an action; the fist holds one.
+-}
 readiedToggle : Creature -> Html Msg
 readiedToggle creature =
     let
-        ( iconGlyph, wordLabel, cls ) =
+        ( iconGlyph, cls, tooltip ) =
             if creature.readied then
-                ( "✊", "Readied", "action-btn action-btn--readied" )
+                ( "✊", "action-btn action-btn--icon action-btn--readied", Tooltips.releaseReadied )
 
             else
-                ( "✋", "Ready", "action-btn action-btn--ready" )
-
-        tooltip =
-            if creature.readied then
-                Tooltips.releaseReadied
-
-            else
-                Tooltips.readyAction
+                ( "✋", "action-btn action-btn--icon action-btn--ready", Tooltips.readyAction )
     in
     button
         [ class cls
@@ -2066,26 +2068,13 @@ readiedToggle creature =
                 "false"
             )
         ]
-        -- Icon prefix wrapped in its own span so the Accessible
-        -- theme can drop the unicode glyph and let the word stand
-        -- on its own.  Modern / Dark leave the span visible.
-        [ span [ class "action-btn__icon-prefix" ] [ text (iconGlyph ++ " ") ]
-        , text wordLabel
-        ]
+        [ text iconGlyph ]
 
 
-{-| One-per-round reaction pip. ⚡ when available, gray ⚡ when
-expended. When the source creature has `hasSpecialReactions =
-True`, the lightning glyph is replaced with a bold yellow `!`
-and the tooltip points the GM at the stat block — the standard
-single-reaction UX can't model Hydra's extra heads, Marilith's
-per-turn reactions, Vampire's Misty Escape, etc.
-
-Mirrors the legendary-resistance pip pattern but with a single
-slot. Auto-resets at the start of the creature's next turn via
-`Encounter.Lifecycle.applyBeginOfTurn`; the click is wired
-manually so the GM can flip it ad-hoc.
-
+{-| One-per-round reaction pip: ⚡ while available, on a red
+button once spent. Auto-resets at the start of the creature's
+next turn via `Encounter.Lifecycle.applyBeginOfTurn`; the click is
+wired manually so the GM can flip it ad-hoc.
 -}
 reactionPip : Creature -> Html Msg
 reactionPip creature =
@@ -2095,12 +2084,12 @@ reactionPip creature =
         -- above the queue, not by restyling this toggle.
         ( cls, tooltip ) =
             if creature.reactionUsed then
-                ( "action-btn action-btn--reaction action-btn--reaction-spent"
+                ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
                 )
 
             else
-                ( "action-btn action-btn--reaction action-btn--reaction-ready"
+                ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
                 )
     in
@@ -2117,9 +2106,4 @@ reactionPip creature =
                 "false"
             )
         ]
-        -- Same icon-prefix split as `readiedToggle` so the
-        -- Accessible theme hides the glyph and the word
-        -- "Reaction" stands on its own.
-        [ span [ class "action-btn__icon-prefix" ] [ text "⚡ " ]
-        , text "Reaction"
-        ]
+        [ text "⚡" ]

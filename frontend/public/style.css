@@ -854,22 +854,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   --btn-bd: #000000;
 }
 
-/* Drop the warning-orange override and the strikethrough/opacity
-   decorations that the reaction-ready / reaction-spent variants
-   layer on by default — Accessible relies on plain text contrast,
-   not glyph color or struck-out styling, to convey state. */
-[data-theme="accessible"] .creature-card .action-btn--reaction-spent {
-  text-decoration: none;
-  opacity: 1;
-}
-
-/* Drop the leading unicode glyph on Ready / Reaction in
-   Accessible: low-vision users get a cleaner word-only label
-   instead of a small icon-then-text pair. */
-[data-theme="accessible"] .creature-card .action-btn__icon-prefix {
-  display: none;
-}
-
 /* Unified Accessible hover: every B&W action button flips to
    black-on-white on hover.  Inverted-button feedback is
    unambiguous for low-vision users and matches the "high
@@ -4716,12 +4700,14 @@ body {
 /* The stat block a card unfolds beneath itself.  It closes the
    grid's gap to hang off the card's bottom edge, squares the
    joint, and takes the card's border, so the two read as one
-   piece.  Its bar holds to the top of the scroller while a long
-   block scrolls under it, keeping the minimize control in reach
-   from anywhere in the block. */
+   piece; the joint itself is drawn in the bar's title colour.
+   The bar holds to the top of the scroller while a long block
+   scrolls under it, keeping the minimize control in reach from
+   anywhere in the block. */
 .creature-card--statblock-open {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
+  border-bottom-color: var(--color-neon-pink);
 }
 
 .card-statblock {
@@ -4812,9 +4798,10 @@ body {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  justify-content: center;
+  width: var(--size-statblock-tool);
   height: var(--size-statblock-tool);
-  padding: 0 var(--space-2);
+  padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -5389,8 +5376,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
-/* Spent, in the same struck-through muted shape the reaction
-   pip uses; cleared at the bearer's begin-of-turn. */
+/* Spent: struck through and muted; cleared at the bearer's
+   begin-of-turn. */
 .sr-badge--used {
   color: var(--color-text-muted);
   text-decoration: line-through;
@@ -6549,11 +6536,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Reaction pip (5e: one reaction per round).  Ready state reads
-   as a normal card button so it sits inline with the action
-   row; spent state goes muted + strikethrough so the GM can
-   tell at a glance that the creature has burned its reaction
-   for this round.  Auto-resets at the start of the creature's
-   next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
+   as a normal card button; spent state fills the button red so
+   the GM can tell at a glance that the creature has burned its
+   reaction for this round.  Auto-resets at the start of the
+   creature's next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
 .action-btn--reaction-ready {
   --btn-fg: var(--color-warn, #d97706);
 }
@@ -6563,54 +6549,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .action-btn--reaction-spent {
-  --btn-bg: var(--color-surface-2);
-  --btn-fg: var(--color-text-muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--color-text-muted);
-  opacity: 0.75;
-}
-
-.action-btn--reaction-spent:hover {
-  --btn-fg: var(--color-text);
-  opacity: 1;
-}
-
-/* Reaction pip on a creature with special reaction mechanics
-   (Hydra, Marilith, Vampire, mephits, …).  The icon-prefix
-   glyph reads bold yellow `!` and gently pulses so the GM
-   doesn't miss the cue.  Respects the OS reduced-motion
-   preference. */
-.action-btn--reaction-special .action-btn__icon-prefix {
-  /* inline-block so the keyframe `transform: scale(...)` lands;
-     inline <span>s ignore transforms. */
-  display: inline-block;
-  transform-origin: center;
-  color: #2563eb;
-  font-weight: 800;
-  animation: reaction-special-pulse 1.4s ease-in-out infinite;
-}
-
-[data-theme="dark"] .action-btn--reaction-special .action-btn__icon-prefix {
-  color: #7dd3fc;
-}
-
-@keyframes reaction-special-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(1.18);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .action-btn--reaction-special .action-btn__icon-prefix {
-    animation: none;
-  }
+  --btn-bg: var(--color-btn-red);
 }
 
 /* Editor checkbox row that tags a creature with special-
@@ -6688,8 +6627,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.95rem;
 }
 
-/* Row-3 outline buttons (Ready, Reaction, Memo, Timer in their
-   empty states) inherit `--btn-bd: var(--color-border)` and a
+/* The card's outline buttons (Ready, Reaction, Memo, Timer in
+   their empty states) inherit `--btn-bd: var(--color-border)` and a
    muted foreground from the base rule.  Against both the light
    Modern card surface and the dark Dark card surface, that
    default produced a barely-visible outline.  Override the

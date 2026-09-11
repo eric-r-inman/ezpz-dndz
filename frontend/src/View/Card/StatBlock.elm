@@ -59,7 +59,7 @@ bar creature source =
         [ span [ class "card-statblock__elbow" ] []
         , span [ class "card-statblock__title" ]
             [ text creature.name
-            , span [ class "card-statblock__title-kind" ] [ text "stat block" ]
+            , span [ class "card-statblock__title-kind" ] [ text "information" ]
             ]
         , div [ class "card-statblock__tools" ]
             (Maybe.withDefault [] (Maybe.map (\c -> jumpLinks c.id) source)
@@ -102,9 +102,7 @@ minimizeButton name =
         , Tooltips.attr Tooltips.statBlockMinimize
         , attribute "aria-label" Tooltips.statBlockMinimize
         ]
-        [ span [ class "card-statblock__minimize-glyph" ] [ text "−" ]
-        , text "Minimize"
-        ]
+        [ span [ class "card-statblock__minimize-glyph" ] [ text "−" ] ]
 
 
 resolve : Creature -> CompendiumDb -> Maybe Compendium.Creature

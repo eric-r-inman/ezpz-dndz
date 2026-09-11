@@ -435,12 +435,12 @@ fallDamage =
 
 readyAction : String
 readyAction =
-    "Ready an action — click to set"
+    "Ready an Action"
 
 
 releaseReadied : String
 releaseReadied =
-    "Action readied — click to release"
+    "Action Readied"
 
 
 reactionReady : String
@@ -464,7 +464,7 @@ clickToEdit =
 
 hpOpenManage : String
 hpOpenManage =
-    "Open Manage HP for this creature"
+    "Manage HP"
 
 
 bloodied : String
