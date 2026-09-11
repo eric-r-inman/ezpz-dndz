@@ -5,8 +5,9 @@ special-reaction strips.
 
 Each strip names who has the feature; these panels say what the
 feature does, so the GM can resolve it without leaving the queue
-or unfolding a whole stat block. Creature names stay clickable for
-the times the whole block is what's wanted.
+or unfolding a whole stat block. A creature's name brings its card
+to the top of the queue, for resolving the thing on the card
+itself.
 
 @docs legendaryActions, specialReactions
 
@@ -158,20 +159,14 @@ entryHeader c meta =
 
 nameNode : Creature -> Html Msg
 nameNode c =
-    case c.creatureId of
-        Just _ ->
-            button
-                [ class "queue-panel__name"
-                , type_ "button"
-                , onClick (StatBlockShow c.name)
-                , Tooltips.attr (Tooltips.statBlockShow c.name)
-                , attribute "aria-label" ("Show stat block for " ++ c.name)
-                ]
-                [ text c.name ]
-
-        Nothing ->
-            span [ class "queue-panel__name queue-panel__name--plain" ]
-                [ text c.name ]
+    button
+        [ class "queue-panel__name"
+        , type_ "button"
+        , onClick (QueueScrollTo c.name)
+        , Tooltips.attr (Tooltips.queueScrollTo c.name)
+        , attribute "aria-label" (Tooltips.queueScrollTo c.name)
+        ]
+        [ text c.name ]
 
 
 item : String -> String -> Html Msg

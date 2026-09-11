@@ -69,7 +69,7 @@ recentBadges rollHistory override =
 
 recentBadgeCount : Int
 recentBadgeCount =
-    4
+    5
 
 
 recentBadge : Int -> Int -> Int -> Dice.Roll -> ( String, Html Msg )

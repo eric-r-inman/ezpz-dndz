@@ -19,11 +19,14 @@ module Update.Condition exposing
     , presetLoad
     , presetLoadMenuClose
     , presetLoadMenuToggle
+    , presetOverwriteCancel
+    , presetOverwriteConfirmed
     , presetSaveCancel
     , presetSaveCategoryChanged
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
+    , quickApply
     , removeChip
     , rollSave
     , saveAbilityChanged
@@ -57,7 +60,7 @@ import Dict
 import Effects
 import Encounter
 import HpChange
-import Model exposing (Model, Surface(..))
+import Model exposing (Model, PendingControl(..), Surface(..))
 import Msg
     exposing
         ( DurationKind(..)
@@ -447,8 +450,9 @@ presetSaveStart : Model -> ( Model, Cmd Msg )
 presetSaveStart model =
     let
         -- Pre-fill the category dropdown with the loaded preset's
-        -- category when there is one, so "tweak + re-save" stays a
-        -- single click in the dropdown.  Looks up via the merged
+        -- category when there is one, so "tweak + re-save" is a
+        -- click on the commit and nothing else — the name fills in
+        -- from the loaded preset too.  Looks up via the merged
         -- view (user dict first, then bundled defaults) so a
         -- bundled preset loaded for tweaking still surfaces its
         -- canonical category.  Falls back to "" when no preset is
@@ -467,7 +471,7 @@ presetSaveStart model =
     ( withConditionUi
         (\u ->
             { u
-                | pendingSaveName = Just ""
+                | pendingSaveName = Just (Maybe.withDefault "" u.loadedPresetName)
                 , pendingSaveCategory = prefillCategory
                 , loadMenuOpen = False
             }
@@ -502,14 +506,11 @@ presetSaveCancel model =
 
 {-| Commit the current form state to the presets dict under the
 user's typed name. Trimmed name; empty / whitespace-only names
-are rejected (the input stays open so the GM can correct it).
-Overwrites silently if a preset with the same name already
-exists, per the user's spec — they explicitly didn't want a
-confirm-prompt on overwrite.
-
-Side effect: stamps the just-saved name into `loadedPresetName`
-so the title bar shows it immediately, mirroring the load flow.
-
+are rejected (the input stays open so the GM can correct it). A
+name already in the list — the GM's own or a bundled one — stages
+the confirmation modal instead of writing, since the save is
+silent and a preset is work the GM would rather not lose to a
+mistyped name.
 -}
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
@@ -530,29 +531,63 @@ presetSaveSubmit model =
             if String.isEmpty trimmed || String.isEmpty category then
                 ( model, Cmd.none )
 
-            else
-                let
-                    preset =
-                        ConditionUi.toPreset ui
-                            |> (\p -> { p | category = category })
-
-                    newPresets =
-                        Dict.insert trimmed preset model.conditionPresets
-                in
-                ( { model | conditionPresets = newPresets }
-                    |> withConditionUi
-                        (\u ->
-                            { u
-                                | pendingSaveName = Nothing
-                                , pendingSaveCategory = ""
-                                , loadedPresetName = Just trimmed
-                            }
-                        )
+            else if Dict.member trimmed model.conditionPresets || Dict.member trimmed Bundled.defaults then
+                ( { model | surface = Just (SurfaceConfirm (PendingPresetOverwrite trimmed)) }
                 , Cmd.none
                 )
 
+            else
+                ( writePreset trimmed category ui model, Cmd.none )
+
         _ ->
             ( model, Cmd.none )
+
+
+{-| The GM answered the overwrite modal: write the preset the save
+staged.
+-}
+presetOverwriteConfirmed : Model -> ( Model, Cmd Msg )
+presetOverwriteConfirmed model =
+    case ( model.surface, drawerSurface model ) of
+        ( Just (SurfaceConfirm (PendingPresetOverwrite name)), Just (SurfaceCondition ui) ) ->
+            ( writePreset name
+                (String.trim ui.pendingSaveCategory)
+                ui
+                { model | surface = Nothing }
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Drop the staged overwrite. The naming rows are untouched, so
+the GM lands back on the name they typed and can change it.
+-}
+presetOverwriteCancel : Model -> ( Model, Cmd Msg )
+presetOverwriteCancel model =
+    ( { model | surface = Nothing }, Cmd.none )
+
+
+{-| Stamps the saved name into `loadedPresetName` so the title bar
+shows it immediately, mirroring the load flow.
+-}
+writePreset : String -> String -> ConditionUi -> Model -> Model
+writePreset name category ui model =
+    { model
+        | conditionPresets =
+            Dict.insert name
+                (ConditionUi.toPreset ui |> (\p -> { p | category = category }))
+                model.conditionPresets
+    }
+        |> withConditionUi
+            (\u ->
+                { u
+                    | pendingSaveName = Nothing
+                    , pendingSaveCategory = ""
+                    , loadedPresetName = Just name
+                }
+            )
 
 
 presetLoadMenuToggle : Model -> ( Model, Cmd Msg )
@@ -686,15 +721,55 @@ submitSelected model =
         model
 
 
-{-| Validate that there's a name; empty-name conditions are
-silently dropped. Build a draft, then either insert it (creating)
-or update the edited condition.
+{-| `submitWith`, reading the form as the GM filled it in.
 -}
 submitTo : List String -> Model -> ( Model, Cmd Msg )
-submitTo rawTargets model =
+submitTo =
+    submitWith identity
+
+
+{-| Apply the picked condition and nothing else: manual duration,
+no note, no save. Quick apply exists for the common "they are
+prone now" case, so it commits and folds the editor in one go
+rather than leaving the form up the way Apply does.
+-}
+quickApply : Model -> ( Model, Cmd Msg )
+quickApply model =
     case drawerSurface model of
         Just (SurfaceCondition ui) ->
+            submitWith plainCondition [ ui.target ] model
+                |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The form as Quick apply reads it.
+-}
+plainCondition : ConditionUi -> ConditionUi
+plainCondition ui =
+    { ui
+        | note = ""
+        , durationKind = DurKindManual
+        , useOneMinutePreset = False
+        , saveToEnd = Nothing
+    }
+
+
+{-| Validate that there's a name; empty-name conditions are
+silently dropped. Build a draft, then either insert it (creating)
+or update the edited condition. `prepare` has the say in what the
+form counts as, which is how Quick apply commits a stripped-down
+reading of it.
+-}
+submitWith : (ConditionUi -> ConditionUi) -> List String -> Model -> ( Model, Cmd Msg )
+submitWith prepare rawTargets model =
+    case drawerSurface model of
+        Just (SurfaceCondition raw) ->
             let
+                ui =
+                    prepare raw
+
                 targets =
                     Encounter.excludingPlaceholderNames model.encounter rawTargets
 

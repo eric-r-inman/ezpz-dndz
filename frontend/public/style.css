@@ -3363,10 +3363,6 @@ body {
   text-decoration: underline;
 }
 
-.queue-panel__name--plain {
-  color: var(--color-text);
-}
-
 .queue-panel__meta {
   font-weight: 400;
   font-size: 0.82rem;
@@ -4438,13 +4434,6 @@ body {
   outline: none;
 }
 
-.legendary-banner__name--plain {
-  color: var(--color-text);
-  font-weight: 600;
-  text-decoration: none;
-  cursor: default;
-}
-
 /* ── Accessible-theme overrides for the LA + Special reactions strips
    ─────────────────────────────────────────────────────────────────────
    The default strip styling assumes Modern's transparent amber surface
@@ -4700,14 +4689,14 @@ body {
 /* The stat block a card unfolds beneath itself.  It closes the
    grid's gap to hang off the card's bottom edge, squares the
    joint, and takes the card's border, so the two read as one
-   piece; the joint itself is drawn in the bar's title colour.
-   The bar holds to the top of the scroller while a long block
-   scrolls under it, keeping the minimize control in reach from
-   anywhere in the block. */
+   piece, with the joint dashed so the card still reads as its
+   own thing.  The bar holds to the top of the scroller while a
+   long block scrolls under it, keeping the minimize control in
+   reach from anywhere in the block. */
 .creature-card--statblock-open {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  border-bottom-color: var(--color-neon-pink);
+  border-bottom-style: dashed;
 }
 
 .card-statblock {
@@ -4750,9 +4739,15 @@ body {
 }
 
 .card-statblock__title {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-label);
   color: var(--color-neon-pink);
+  cursor: pointer;
 }
 
 .card-statblock__title-kind {
@@ -6222,25 +6217,26 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: nowrap;
 }
 
+/* The readout carries no chrome of its own and takes the colour
+   of the "flying" label it follows, so the pair reads as one
+   status rather than a label and a control beside it.  The gap
+   sits below the spacing scale on purpose: the height, its unit
+   and the arrows have to read as one readout rather than three
+   things. */
 .fly-height {
   display: inline-flex;
   align-items: center;
-  /* A hairline below the spacing scale on purpose: the widget
-     rides inside a card's status row, and the arrows, height and
-     unit have to read as one control rather than four. */
   gap: 1px;
-  margin-left: var(--space-0);
-  padding: 1px var(--space-0);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  color: var(--color-yellow);
+  font-size: var(--font-size-label);
 }
 
+/* A button does not inherit its font size, so the arrows have to
+   be told to match the height they change. */
 .fly-height__btn {
-  padding: 0 2px;
-  font-size: var(--font-size-caret);
-  color: var(--color-text-muted);
+  padding: 0;
+  font-size: inherit;
+  color: var(--color-yellow);
   line-height: 1;
 }
 
@@ -6248,22 +6244,26 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
+/* Reserving the width of two digits keeps the arrows still while
+   the height crosses ten feet. */
 .fly-height__value {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  min-width: 24px;
-  text-align: center;
-  color: var(--color-text);
+  min-width: 16px;
+  text-align: right;
 }
 
 .fly-height__unit {
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
   margin-left: 2px;
 }
 
 .fly-height__fall {
-  margin-left: 4px;
+  width: auto;
+  height: auto;
+  margin-left: 3px;
+  font-size: var(--font-size-label);
+  color: var(--color-yellow);
+  opacity: 1;
 }
 
 .creature-card__row--bot {
@@ -9170,6 +9170,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 4px;
 }
 
+/* Quick apply takes the grid cell beside the last condition the
+   way a chip does, rather than sizing to its own label. */
+.cond-quick-apply {
+  width: 100%;
+}
+
 .cond-radio-row {
   display: flex;
   flex-wrap: wrap;
@@ -9291,6 +9297,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: var(--font-size-field);
   background: var(--color-surface);
   padding: 3px 6px;
+}
+
+/* The fields a save-to-end turns on, outlined in the status
+   yellow so they read as the part of the form the checkbox above
+   just opened. */
+.cond-input--save {
+  border-color: var(--color-yellow);
 }
 
 /* The round is a small number, so the field says so rather
@@ -9484,6 +9497,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-radius: var(--radius-sm);
   padding: 2px 6px;
   max-width: 100%;
+}
+
+.cond-select--save {
+  border-color: var(--color-yellow);
 }
 
 .cond-select--grow {

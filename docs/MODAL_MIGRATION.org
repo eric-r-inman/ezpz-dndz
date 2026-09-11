@@ -46,11 +46,13 @@ it:
 A true modal remains acceptable only for a destructive, must-decide-now
 interruption, and the toast + undo pattern should eliminate most of those.
 
-One surface sits outside that rule by the operator's call: the round-setter
-(=View/Modal/RoundSet.elm=), reached from the title bar's round readout.  It is
+Two surfaces sit outside that rule by the operator's call.  The round-setter
+(=View/Modal/RoundSet.elm=), reached from the title bar's round readout, is
 neither destructive nor must-decide-now, so the policy would place it in the
-drawer; it is recorded here rather than left to contradict the plan silently,
-and moving it is a wrapper swap if the call changes.
+drawer.  The Condition editor's preset-overwrite confirmation is destructive but
+reversible in principle, so the policy would answer it with a toast and an undo.
+Both are recorded here rather than left to contradict the plan silently, and
+moving either is a wrapper swap if the call changes.
 
 * Mapping
 

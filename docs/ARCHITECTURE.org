@@ -958,8 +958,8 @@ affordance the title bar uses):
 - *Legendary Action available* — ~legendaryActionStrip~.  Lists every queue
   member with un-spent legendary-action pips, comma-separated, with the
   remaining-pip count in parentheses.  Each name is a button that fires
-  ~StatBlockShow~ to unfold the stat block under the creature's card.  Filters:
-  not the currently-active creature (rule: LA fires on OTHER creatures'
+  ~QueueScrollTo~ to bring the creature's card to the top of the queue.
+  Filters: not the currently-active creature (rule: LA fires on OTHER creatures'
   turn-ends), not down, not dead.
 - *Special reactions* — ~specialReactionsStrip~.  Lists every queue member whose
   source creature has ~hasSpecialReactions = True~ — Hydra, Marilith, Vampire,
@@ -1011,9 +1011,10 @@ with the queue.  A bar across its top names the creature and holds the Minimize
 button, and stays at the top of the scroller while a long block scrolls under
 it.  Several cards can have theirs unfolded at once: the set lives in
 ~model.openStatBlocks~, keyed by creature name, and ~Model.reaimStale~ prunes a
-name whose creature has left the queue.  The strips and lists that name a
-creature from elsewhere fire ~StatBlockShow~, which also scrolls the card into
-view; the card's own name fires ~StatBlockToggle~.
+name whose creature has left the queue.  The spell list, which names a creature
+from elsewhere, fires ~StatBlockShow~, which also scrolls the card into view;
+the card's own name fires ~StatBlockToggle~ and the bar's title
+~StatBlockMinimize~.
 
 Lookup is *id-then-name*: =View.Card.StatBlock= first calls ~Compendium.find~ on
 the card's compendium id and on a miss falls back to ~Compendium.findByName~ on
@@ -1467,7 +1468,9 @@ pinned one where the GM put it.
 * Per-surface preset pattern
 
 The Condition and Timer editors each carry Save / Load controls that remember
-full configurations under user-chosen names.  Both follow the same templatable
+full configurations under user-chosen names.  The Condition editor adds one step
+the shape below leaves out: a name already in the list stages ~SurfaceConfirm~,
+so a save cannot quietly replace a preset.  Both follow the same templatable
 shape so a new surface can adopt the pattern without re-inventing it.
 
 For a surface =Foo= the pieces are:
@@ -1488,7 +1491,7 @@ For a surface =Foo= the pieces are:
    the ~localFooPresets~ boot flag (see the anonymous-mode boot-flag table).
 5. *Port* — ~Ports.persistLocalFooPresets : E.Value -> Cmd msg~ with a matching
    JS subscriber in =app.js= that writes to ~localStorage.fooPresets~.
-6. *Msg family* — eight constructors mirroring the Condition family verbatim:
+6. *Msg family* — eight constructors, the core of the Condition family:
    ~FooPresetSaveStart~ / ~FooPresetSaveNameChanged String~ /
    ~FooPresetSaveCancel~ / ~FooPresetSaveSubmit~ / ~FooPresetLoadMenuToggle~ /
    ~FooPresetLoadMenuClose~ / ~FooPresetLoad String~ / ~FooPresetDelete String~.

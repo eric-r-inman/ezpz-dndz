@@ -66,8 +66,30 @@ standardSection : ConditionUi -> Html Msg
 standardSection ui =
     div [ class "cond-section" ]
         [ div [ class "cond-radio-grid" ]
-            (List.map (standardRadio ui) Encounter.standardConditions)
+            (List.map (standardRadio ui) Encounter.standardConditions
+                ++ [ quickApplyButton ui ]
+            )
         ]
+
+
+{-| Commits the picked condition on its own, from the cell beside
+the last chip — the fast way out of a grid the GM is already
+looking at.
+-}
+quickApplyButton : ConditionUi -> Html Msg
+quickApplyButton ui =
+    ApplyButton.view
+        { enabled = not (String.isEmpty (String.trim ui.name))
+        , cls = "action-btn action-btn--green cond-quick-apply"
+        , msg = ConditionQuickApply
+        , tip =
+            if String.isEmpty (String.trim ui.name) then
+                "Pick a condition first"
+
+            else
+                "Apply this condition alone, with a Manual duration and no save, and close the editor"
+        , label = "Quick apply"
+        }
 
 
 standardRadio : ConditionUi -> String -> Html Msg
@@ -308,7 +330,7 @@ saveSubsection s =
             [ Html.label [ for "cond-save-ability", class "cond-label" ] [ text "Ability" ]
             , Html.select
                 [ id "cond-save-ability"
-                , class "cond-select"
+                , class "cond-select cond-select--save"
                 , onInput ConditionSaveAbilityChanged
                 ]
                 (List.map
@@ -324,7 +346,7 @@ saveSubsection s =
             , Html.label [ for "cond-save-dc", class "cond-label" ] [ text "DC" ]
             , input
                 [ id "cond-save-dc"
-                , class "cond-input cond-input--2ch"
+                , class "cond-input cond-input--2ch cond-input--save"
                 , type_ "text"
                 , maxlength 2
                 , value s.dcText
@@ -335,7 +357,7 @@ saveSubsection s =
             , span [ class "cond-spin-wrap" ]
                 [ input
                     [ id "cond-save-bonus"
-                    , class "cond-input cond-input--2ch"
+                    , class "cond-input cond-input--2ch cond-input--save"
                     , type_ "text"
                     , maxlength 2
                     , value s.bonusText

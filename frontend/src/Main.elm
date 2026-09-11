@@ -35,7 +35,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Model, Surface(..))
+import Model exposing (Model, PendingControl(..), Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
@@ -274,6 +274,9 @@ subscriptions model =
 
         primary =
             case model.surface of
+                Just (SurfaceConfirm (PendingPresetOverwrite _)) ->
+                    Browser.Events.onKeyDown (escKey ConditionPresetOverwriteCancel)
+
                 Just (SurfaceConfirm _) ->
                     Browser.Events.onKeyDown (escKey EncounterControlCancel)
 
@@ -1423,6 +1426,9 @@ updateInner msg model =
         ConditionSubmitSelected ->
             Update.Condition.submitSelected model
 
+        ConditionQuickApply ->
+            Update.Condition.quickApply model
+
         ConditionSubmit ->
             Update.Condition.submit model
 
@@ -1446,6 +1452,12 @@ updateInner msg model =
 
         ConditionPresetSaveSubmit ->
             Update.Condition.presetSaveSubmit model
+
+        ConditionPresetOverwriteConfirm ->
+            Update.Condition.presetOverwriteConfirmed model
+
+        ConditionPresetOverwriteCancel ->
+            Update.Condition.presetOverwriteCancel model
 
         ConditionPresetLoadMenuToggle ->
             Update.Condition.presetLoadMenuToggle model
@@ -2341,6 +2353,9 @@ updateInner msg model =
 
         StatBlockMinimize creatureName ->
             Update.StatBlock.minimize creatureName model
+
+        QueueScrollTo creatureName ->
+            Update.Encounter.scrollToCard creatureName model
 
         QuickListRowClick creatureName ->
             Update.Tabs.broadcastShow creatureName model

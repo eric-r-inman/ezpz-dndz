@@ -19,6 +19,7 @@ module Update.Encounter exposing
     , rollRechargeNow
     , run
     , saveFlashExpired
+    , scrollToCard
     , setActive
     , shiftToggleSelected
     , targetCreature
@@ -151,6 +152,16 @@ setActive name model =
     ( withEncounter (Encounter.setActive name) model
     , Effects.scrollActiveIntoView name
     )
+
+
+{-| Put a creature's card at the top of the queue without
+touching whose turn it is. What a reminder strip's name does: the
+GM is reading about that creature and wants its card, not its
+initiative.
+-}
+scrollToCard : String -> Model -> ( Model, Cmd Msg )
+scrollToCard name model =
+    ( model, Effects.scrollCardToTop name )
 
 
 {-| The card's own cover × : clears cover directly rather than

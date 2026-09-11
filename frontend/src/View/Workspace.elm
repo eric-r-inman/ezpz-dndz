@@ -104,8 +104,8 @@ cardWithStatBlock ctx model index creature =
 bar and the scrolling card grid. Lists every queue member with
 un-spent legendary actions, excluding the currently-active
 creature since you can't take an LA on your own turn-end. Each
-name is clickable to unfold the creature's stat block under its
-card; the parenthesised count is remaining pips. Empty when no creature
+name is clickable to bring that creature's card to the top of the
+queue; the parenthesised count is remaining pips. Empty when no creature
 qualifies, so the panel layout is unchanged for vanilla
 encounters.
 
@@ -342,23 +342,14 @@ dropTrailingComma nodes =
 
 nameNode : Creature -> Html Msg
 nameNode c =
-    case c.creatureId of
-        Just _ ->
-            button
-                [ class "legendary-banner__name"
-                , type_ "button"
-                , onClick (StatBlockShow c.name)
-                , Tooltips.attr (Tooltips.statBlockShow c.name)
-                , attribute "aria-label"
-                    ("Show stat block for " ++ c.name)
-                ]
-                [ text c.name ]
-
-        Nothing ->
-            -- Placeholder rows have no compendium source to show,
-            -- so the name stays plain text.
-            span [ class "legendary-banner__name legendary-banner__name--plain" ]
-                [ text c.name ]
+    button
+        [ class "legendary-banner__name"
+        , type_ "button"
+        , onClick (QueueScrollTo c.name)
+        , Tooltips.attr (Tooltips.queueScrollTo c.name)
+        , attribute "aria-label" (Tooltips.queueScrollTo c.name)
+        ]
+        [ text c.name ]
 
 
 {-| Full-width "+" row appended below the last creature card in

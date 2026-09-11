@@ -1,5 +1,5 @@
 module Effects exposing
-    ( cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
+    ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
@@ -26,7 +26,7 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, compendiumRowId, scrollActiveIntoView, scrollCompendiumRowIntoView
+@docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
@@ -335,6 +335,36 @@ scrollActiveIntoView name =
         (Browser.Dom.getViewportOf encounterPanelBodyId)
         |> Task.andThen identity
         |> Task.attempt ActiveCardScrollChecked
+
+
+{-| Scroll the queue so the named creature's card sits at the top
+of the pane, rather than merely somewhere in view. A reminder
+strip names a creature the GM is about to act on, so the card
+wants the spot they are already looking at.
+-}
+scrollCardToTop : String -> Cmd Msg
+scrollCardToTop name =
+    Task.map3
+        (\containerElement cardElement containerVp ->
+            let
+                margin =
+                    16
+
+                target =
+                    containerVp.viewport.y
+                        + (cardElement.element.y - containerElement.element.y)
+                        - margin
+            in
+            Browser.Dom.setViewportOf
+                encounterPanelBodyId
+                containerVp.viewport.x
+                (Basics.max 0 target)
+        )
+        (Browser.Dom.getElement encounterPanelBodyId)
+        (Browser.Dom.getElement (cardId name))
+        (Browser.Dom.getViewportOf encounterPanelBodyId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
 
 
 

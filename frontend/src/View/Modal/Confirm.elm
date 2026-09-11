@@ -1,13 +1,13 @@
 module View.Modal.Confirm exposing (view)
 
-{-| Two-step confirmation for Reset and Clear.
+{-| Two-step confirmation for an action that cannot be undone.
 
-Both wipe combat state, so the trigger only stages the action
-and this asks before anything is touched. A modal rather than a
-drawer panel: it is the one interruption the GM has to answer
-before doing anything else, which is what the modal tier is
-for. The confirm button keeps the colour of the button that
-staged it, so the visual association survives the trip.
+The trigger only stages the action and this asks before anything
+is touched. A modal rather than a drawer panel: it is the one
+interruption the GM has to answer before doing anything else,
+which is what the modal tier is for. The confirm button keeps the
+colour of the button that staged it, so the visual association
+survives the trip.
 
 -}
 
@@ -36,40 +36,55 @@ prompt chrome pending =
         -- The title carries the verb and its scope; the button
         -- carries the verb alone, so it reads as the answer to
         -- the question above it.
-        ( message, ( title, confirmLabel ), confirmClass ) =
+        spec =
             case pending of
                 PendingReset ->
-                    ( "Reset every creature's HP to full and clear all conditions / status?"
-                    , ( "Reset Encounter", "Reset" )
-                    , "action-btn action-btn--orange"
-                    )
+                    { message = "Reset every creature's HP to full and clear all conditions / status?"
+                    , title = "Reset Encounter"
+                    , confirmLabel = "Reset"
+                    , confirmClass = "action-btn action-btn--orange"
+                    , confirm = EncounterControlConfirm
+                    , cancel = EncounterControlCancel
+                    }
 
                 PendingClear ->
-                    ( "Remove every creature and reset round to 1?"
-                    , ( "Clear Encounter", "Clear" )
-                    , "action-btn action-btn--red"
-                    )
+                    { message = "Remove every creature and reset round to 1?"
+                    , title = "Clear Encounter"
+                    , confirmLabel = "Clear"
+                    , confirmClass = "action-btn action-btn--red"
+                    , confirm = EncounterControlConfirm
+                    , cancel = EncounterControlCancel
+                    }
+
+                PendingPresetOverwrite name ->
+                    { message = "Replace the saved preset \"" ++ name ++ "\" with these settings?"
+                    , title = "Overwrite Preset"
+                    , confirmLabel = "Overwrite"
+                    , confirmClass = "action-btn action-btn--green"
+                    , confirm = ConditionPresetOverwriteConfirm
+                    , cancel = ConditionPresetOverwriteCancel
+                    }
     in
     View.Modal.view
-        { close = EncounterControlCancel
+        { close = spec.cancel
         , noOp = NoOp
-        , title = title
+        , title = spec.title
         , extraClass = "modal--confirm"
         , chrome = chrome
         , body =
             [ div [ class "control-confirm" ]
-                [ p [ class "control-confirm__msg" ] [ text message ]
+                [ p [ class "control-confirm__msg" ] [ text spec.message ]
                 , div [ class "control-confirm__actions" ]
                     [ button
                         [ class "action-btn control-confirm__btn"
-                        , onClick EncounterControlCancel
+                        , onClick spec.cancel
                         ]
                         [ text "Cancel" ]
                     , button
-                        [ class (confirmClass ++ " control-confirm__btn")
-                        , onClick EncounterControlConfirm
+                        [ class (spec.confirmClass ++ " control-confirm__btn")
+                        , onClick spec.confirm
                         ]
-                        [ text confirmLabel ]
+                        [ text spec.confirmLabel ]
                     ]
                 ]
             ]

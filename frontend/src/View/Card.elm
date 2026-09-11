@@ -1675,9 +1675,9 @@ statusIcons creature =
                 , flag creature.flying "flying" (ToggleFlying creature.name)
                 ]
 
-        -- The height and fall controls ride beside the flying
-        -- label and write straight to the creature, so a flier
-        -- can be nudged without opening the editor.
+        -- The height and fall controls write straight to the
+        -- creature, so a flier can be nudged without opening the
+        -- editor.
         flyControls =
             if creature.flying then
                 [ View.FlyHeight.view
@@ -1691,9 +1691,19 @@ statusIcons creature =
             else
                 []
 
+        -- The flight readout belongs to the "flying" label, so it
+        -- sits inside that entry and the × clears the whole thing
+        -- from its right edge.
+        extrasFor name =
+            if name == "flying" then
+                flyControls
+
+            else
+                []
+
         statusEntry ( name, clearMsg ) =
             span [ class "status-icon-wrap" ]
-                [ button
+                ([ button
                     [ class "status-icon"
                     , type_ "button"
                     , onClick (StatusOpenFor creature.name)
@@ -1702,22 +1712,24 @@ statusIcons creature =
                         ("Edit " ++ creature.name ++ "'s statuses (" ++ name ++ ")")
                     ]
                     [ text name ]
-                , button
-                    [ class "status-icon__remove"
-                    , type_ "button"
-                    , stopPropagationOn "click" (Decode.succeed ( clearMsg, True ))
-                    , Tooltips.attr (Tooltips.statusClear name)
-                    , attribute "aria-label" ("Clear " ++ name ++ " for " ++ creature.name)
-                    ]
-                    [ text "×" ]
-                ]
+                 ]
+                    ++ extrasFor name
+                    ++ [ button
+                            [ class "status-icon__remove"
+                            , type_ "button"
+                            , stopPropagationOn "click" (Decode.succeed ( clearMsg, True ))
+                            , Tooltips.attr (Tooltips.statusClear name)
+                            , attribute "aria-label" ("Clear " ++ name ++ " for " ++ creature.name)
+                            ]
+                            [ text "×" ]
+                       ]
+                )
     in
     if List.isEmpty entries then
         text ""
 
     else
-        span [ class "status-icons" ]
-            (List.map statusEntry entries ++ flyControls)
+        span [ class "status-icons" ] (List.map statusEntry entries)
 
 
 {-| The 5e death-save tracker, rendered as a side-by-side pair of

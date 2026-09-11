@@ -88,13 +88,15 @@ import Url exposing (Url)
 
 
 {-| Which destructive action the confirmation modal
-(`SurfaceConfirm`) is staging, so a mis-click on Reset or Clear
-can't drop combat state. Cleared by the user picking Confirm or
-Cancel.
+(`SurfaceConfirm`) is staging, so a mis-click can't drop combat
+state or a saved preset. Cleared by the user picking Confirm or
+Cancel. `PendingPresetOverwrite` carries the preset name the save
+would replace.
 -}
 type PendingControl
     = PendingReset
     | PendingClear
+    | PendingPresetOverwrite String
 
 
 {-| One constructor per surface, each carrying its UI state.

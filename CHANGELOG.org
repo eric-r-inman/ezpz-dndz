@@ -197,7 +197,7 @@
     No action needed.
 79. The Status editor's two toggle rows sit closer together.  No action needed.
 80. A triple-roll's three floating results spread farther apart, and the roll
-    strip beside the 🎲 icon shows the last four totals at a smaller size, a
+    strip beside the 🎲 icon shows the last five totals at a smaller size, a
     triple-roll's three results among them.  No action needed.
 81. Dice-roller log rows put the colon straight after the expression, as in
     "2d8+8: (2,6)+8 = 16".  No action needed.
@@ -328,15 +328,28 @@
      under the target row, and its menu opens downward.  No action needed.
 123. The Condition/Effect editor's log takes the Manage HP log's shape, folding
      over the last 30 applications with undo on the newest.  No action needed.
-124. The bar of a stat block under a card reads "[creature] information", the
-     line joining it to the card is the bar's pink, and Minimize is its icon
-     alone.  No action needed.
+124. A stat block under a card joins it with a dashed line in the card's own
+     border colour, and its bar's title folds the block away as Minimize does.
+     No action needed.
 125. A creature card's Ready and Reaction toggles sit beside the HP readout,
      left of the gear, as icons alone, the hands reading "Ready an Action" and
      "Action Readied" on hover.  No action needed.
 126. A spent reaction turns its button red.  No action needed.
 127. A card's HP values read "Manage HP" on hover.  No action needed.
 128. A card's conditions are separated by pipes.  No action needed.
+129. A name in the legendary-action or special-reaction strip brings that
+     creature's card to the top of the queue instead of opening its stat block.
+     No action needed.
+130. A card's flight readout reads "15 ft" in the flying label's yellow, with
+     its arrows and the clear × after it and no box of its own.  No action
+     needed.
+131. The Condition/Effect editor gains a "Quick apply" button beside the last
+     condition, applying the picked one with a Manual duration and no save and
+     folding the editor.  No action needed.
+132. The Condition/Effect editor outlines the ability, DC, and Mod fields in
+     yellow while a save ends the condition.  No action needed.
+133. Saving a Condition/Effect preset fills the name from the loaded one and
+     asks before replacing a preset that already exists.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

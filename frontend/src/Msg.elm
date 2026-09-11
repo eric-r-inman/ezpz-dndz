@@ -784,6 +784,9 @@ type Msg
     | ConditionSaveOnDamageSet Encounter.DamageTrigger
     | ConditionSubmit
     | ConditionSubmitSelected
+      -- Apply the picked condition on its own — manual duration,
+      -- nothing else the form is carrying — and fold the editor.
+    | ConditionQuickApply
     | ConditionDelete
       -- Empty every setting of the form, keeping only what it is
       -- aimed at.
@@ -799,6 +802,10 @@ type Msg
     | ConditionPresetSaveCategoryChanged String
     | ConditionPresetSaveCancel
     | ConditionPresetSaveSubmit
+      -- Answers to the "replace the saved preset?" modal a save
+      -- under an existing name stages.
+    | ConditionPresetOverwriteConfirm
+    | ConditionPresetOverwriteCancel
     | ConditionPresetLoadMenuToggle
     | ConditionPresetLoadMenuClose
     | ConditionPresetLoad String
@@ -1073,11 +1080,15 @@ type Msg
     | CompendiumPasteApply
       -- The stat block that unfolds under a creature's card.
       -- `StatBlockShow` opens it and brings the card into view,
-      -- for the strips and lists that name a creature from
+      -- for the spell list, which names a creature from
       -- elsewhere; the card's own name click toggles instead.
     | StatBlockShow String
     | StatBlockToggle String
     | StatBlockMinimize String
+      -- Bring a creature's card to the top of the queue, for the
+      -- reminder strips that name a creature the GM is about to
+      -- act on.
+    | QueueScrollTo String
       -- QuickList (`/quick-list`) row click: fires from the
       -- standalone quick-view tab.  Broadcasts a show request
       -- across the BroadcastChannel so the main tab unfolds the

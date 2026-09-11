@@ -57,9 +57,15 @@ bar : Creature -> Maybe Compendium.Creature -> Html Msg
 bar creature source =
     div [ class "card-statblock__bar" ]
         [ span [ class "card-statblock__elbow" ] []
-        , span [ class "card-statblock__title" ]
+        , button
+            [ class "card-statblock__title"
+            , type_ "button"
+            , onClick (StatBlockMinimize creature.name)
+            , Tooltips.attr Tooltips.statBlockMinimize
+            , attribute "aria-label" Tooltips.statBlockMinimize
+            ]
             [ text creature.name
-            , span [ class "card-statblock__title-kind" ] [ text "information" ]
+            , span [ class "card-statblock__title-kind" ] [ text "stat block" ]
             ]
         , div [ class "card-statblock__tools" ]
             (Maybe.withDefault [] (Maybe.map (\c -> jumpLinks c.id) source)

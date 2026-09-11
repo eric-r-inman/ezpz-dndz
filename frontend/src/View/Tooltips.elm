@@ -104,6 +104,7 @@ module View.Tooltips exposing
     , queueMakeActive
     , queueReactivate
     , queueRemove
+    , queueScrollTo
     , queueSelectShiftClick
     , quickAddButton
     , quickAddCreatureRow
@@ -961,6 +962,14 @@ toastDismiss =
 --
 -- One per parameterised tooltip.  Kept thin so the static
 -- survey above isn't broken up by template logic.
+
+
+{-| Names the creature whose card a click will bring to the top of
+the queue.
+-}
+queueScrollTo : String -> String
+queueScrollTo name =
+    "Scroll to " ++ name ++ "'s card"
 
 
 {-| Names the creature whose stat block a click will unfold under
