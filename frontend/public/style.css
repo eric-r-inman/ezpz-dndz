@@ -9170,12 +9170,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 4px;
 }
 
-/* Quick apply takes the grid cell beside the last condition the
-   way a chip does, rather than sizing to its own label. */
-.cond-quick-apply {
-  width: 100%;
-}
-
 .cond-radio-row {
   display: flex;
   flex-wrap: wrap;

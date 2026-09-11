@@ -343,8 +343,8 @@
 130. A card's flight readout reads "15 ft" in the flying label's yellow, with
      its arrows and the clear × after it and no box of its own.  No action
      needed.
-131. The Condition/Effect editor gains a "Quick apply" button beside the last
-     condition, applying the picked one with a Manual duration and no save and
+131. The Condition/Effect editor gains a "▲ Quick apply ▲" button under the Note
+     row, applying everything above it with a Manual duration and no save, then
      folding the editor.  No action needed.
 132. The Condition/Effect editor outlines the ability, DC, and Mod fields in
      yellow while a save ends the condition.  No action needed.

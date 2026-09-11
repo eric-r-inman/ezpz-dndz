@@ -728,10 +728,10 @@ submitTo =
     submitWith identity
 
 
-{-| Apply the picked condition and nothing else: manual duration,
-no note, no save. Quick apply exists for the common "they are
-prone now" case, so it commits and folds the editor in one go
-rather than leaving the form up the way Apply does.
+{-| Apply the picked condition with a manual duration and no save.
+Quick apply exists for the common "they are prone now" case, so
+it commits and folds the editor in one go rather than leaving the
+form up the way Apply does.
 -}
 quickApply : Model -> ( Model, Cmd Msg )
 quickApply model =
@@ -744,13 +744,13 @@ quickApply model =
             ( model, Cmd.none )
 
 
-{-| The form as Quick apply reads it.
+{-| The form as Quick apply reads it: the rows above the button,
+with none of the duration or save below.
 -}
 plainCondition : ConditionUi -> ConditionUi
 plainCondition ui =
     { ui
-        | note = ""
-        , durationKind = DurKindManual
+        | durationKind = DurKindManual
         , useOneMinutePreset = False
         , saveToEnd = Nothing
     }
