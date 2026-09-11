@@ -183,28 +183,36 @@ ac active =
 {-| Active-creature state icons in the encounter title bar.
 Renders one icon per actual non-default state (cover, concentrating,
 hiding, dodging, flying) — purely indicative, no click handlers.
-Hidden when nothing is active.
+Renders nothing when there is no icon to show.
 
-Cover uses the same ◐ / ◕ / ● glyph vocabulary as the card row 2
-toggle so the title bar reads consistently with the card.
+Cover reads as ◐ / ◕ / ● so the bar says how much of it there is,
+where the Status editor's toggle only says that there is some.
 
 -}
 stateIcons : Maybe Creature -> Html Msg
 stateIcons active =
-    case active of
-        Just c ->
-            div [ class "encounter-bar__states" ]
-                (List.filterMap identity
-                    [ coverIcon c
-                    , stateIconIf c.concentrating "🧠" Tooltips.concentrating
-                    , stateIconIf c.hiding "👤" Tooltips.hiding
-                    , stateIconIf c.dodging "🤸" Tooltips.dodging
-                    , flyingIcon c
-                    ]
-                )
+    let
+        icons =
+            case active of
+                Just c ->
+                    List.filterMap identity
+                        [ coverIcon c
+                        , stateIconIf c.concentrating "🧠" Tooltips.concentrating
+                        , stateIconIf c.hiding "👤" Tooltips.hiding
+                        , stateIconIf c.dodging "🤸" Tooltips.dodging
+                        , flyingIcon c
+                        ]
 
-        Nothing ->
-            text ""
+                Nothing ->
+                    []
+    in
+    -- An empty container would still take a gap on each side of
+    -- itself, pushing the sections around it apart.
+    if List.isEmpty icons then
+        text ""
+
+    else
+        div [ class "encounter-bar__states" ] icons
 
 
 {-| Single state icon, shown only when `on` is True. Tooltip

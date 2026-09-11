@@ -7111,7 +7111,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  margin-left: 8px;
 }
 
 .encounter-bar__ac-label {
@@ -7149,7 +7148,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-2);
   font-size: 0.95rem;
   line-height: 1;
-  margin-left: var(--space-2);
 }
 
 .encounter-bar__state {
@@ -8719,8 +8717,19 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-maxhp);
 }
 
+/* A condition's name, not one of the HP log's short tags, so it
+   can outrun the track it sits in. */
 .hp-change__log-kind--cond {
   color: var(--color-condition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hp-change__log-kind--open {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .hp-change__log-kind--set {
@@ -8738,10 +8747,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
 }
 
-/* A condition row's name track sizes to its word rather than to
-   the HP chips' fixed width. */
+/* A condition row's three texts share the width in proportion,
+   the way the HP row's fixed kind column leaves its own room:
+   without a bound the condition's name would take the line and
+   leave the rest a few characters. */
 .hp-change__log-entry--cond {
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr) minmax(0, 3fr) auto;
 }
 
 .hp-change__log-entry--flash {

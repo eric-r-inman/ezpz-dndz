@@ -362,6 +362,13 @@
      three of a triple roll.  No action needed.
 139. The active creature's arrow takes the accent colour a size up, and says "It
      is this creature's turn" on hover.  No action needed.
+140. The Status editor's cover toggle marks itself with an up-caret, so the
+     clicks that raise the cover read as raising it.  No action needed.
+141. The encounter title bar spaces every section the same distance from the
+     pipe beside it.  No action needed.
+142. A Condition/Effect log row shares its width between the condition, who got
+     it, and the rest, so the folded row reads the way the Manage HP log's does.
+     No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

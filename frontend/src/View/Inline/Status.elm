@@ -103,13 +103,16 @@ boolToggle label isOn flag =
 coverToggle : StatusUi -> Html Msg
 coverToggle ui =
     let
+        -- The caret says the toggle climbs through the cover
+        -- levels rather than flipping between two, which a filled
+        -- dot would not; past total it wraps back to none.
         ( dotGlyph, dotClass ) =
             case ui.cover of
                 NoCover ->
                     ( "○", "status-toggle__dot" )
 
                 _ ->
-                    ( "●", "status-toggle__dot status-toggle__dot--on" )
+                    ( "▲", "status-toggle__dot status-toggle__dot--on" )
 
         ( bodyText, label, modifier ) =
             case ui.cover of
