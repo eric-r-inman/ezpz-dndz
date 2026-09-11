@@ -784,9 +784,6 @@ type Msg
     | ConditionSaveOnDamageSet Encounter.DamageTrigger
     | ConditionSubmit
     | ConditionSubmitSelected
-      -- Apply the picked condition on its own — manual duration,
-      -- nothing else the form is carrying — and fold the editor.
-    | ConditionQuickApply
     | ConditionDelete
       -- Empty every setting of the form, keeping only what it is
       -- aimed at.
@@ -1099,10 +1096,11 @@ type Msg
       -- subscription — a QuickList tab asked us to show a
       -- creature's stat block.
     | IncomingPanelShow String
-      -- Legendary action / legendary resistance pip toggles,
-      -- and the card's special-reaction badges
-    | ToggleLegendaryActionPip String Int
-    | ToggleLegendaryResistancePip String Int
+      -- Spend one legendary action or resistance, or refill the
+      -- pool when the readout is already at zero.  The card's
+      -- special-reaction badges toggle the same way.
+    | LegendaryActionUse String
+    | LegendaryResistanceUse String
     | ToggleSpecialReaction String String
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))

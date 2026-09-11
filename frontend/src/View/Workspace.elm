@@ -306,10 +306,10 @@ legendaryActionBanner creatures panelOpen =
         )
 
 
-{-| Render `<Name> (N),` where N is the count of un-spent
-legendary-action pips on this creature. The trailing comma /
-space is stripped off the last entry by `dropTrailingComma`
-below so the banner reads cleanly.
+{-| Render `<Name> (N),` where N is how many legendary actions
+this creature has left. The trailing comma / space is stripped
+off the last entry by `dropTrailingComma` below so the banner
+reads cleanly.
 -}
 nameWithCount : Creature -> List (Html Msg)
 nameWithCount c =

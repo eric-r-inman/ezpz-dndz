@@ -1,23 +1,21 @@
-module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, legendaryColumns, lifecycleBadge, lifecycleClasses, view)
+module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, lifecycleBadge, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
-Three rows + two side rails + an optional legendary-pip column:
+Three rows plus two side rails:
 
   - Row 1 (top): the creature's identity.
   - Row 2 (mid): its current condition — hit points, the
     turn-economy toggles, posture, and what's affecting it.
-  - Row 3 (bot): the memo and timer slots.
+  - Row 3 (bot): the memo and timer slots, and the legendary
+    pools when the creature has any.
 
 The card itself is the queue's reorder handle: the whole article
 is a drag source and a drop target, so a GM moves a creature by
 dragging its card. A card with an open inline field is a target
 but not a source — see `dragAttrs`.
 
-The legendary-pip column lives between the center column and
-the right rail, and is only present when the creature's
-compendium source declared `legendary_actions` or has a
-"Legendary Resistance" trait. To its left, a death-save
+Between the center column and the right rail, a death-save
 column appears whenever the creature is at 0 HP.
 
 -}
@@ -243,7 +241,6 @@ view ctx index creature =
             , inlineSurface ctx creature
             ]
         , deathSaveColumn creature
-        , legendaryColumns isActive creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -797,84 +794,6 @@ compactEditor cfg =
         ]
 
 
-
--- ── LEGENDARY PIP COLUMN ────────────────────────────────────────────────
-
-
-{-| Two narrow vertical columns of pips on the creature card,
-between the center column and the right rail. Each column has a
-bold header letter ("LA" / "LR") followed by 4 toggleable circular
-pips. The 4th pip is the in-lair bonus and renders with a thinner
-border to mark it as optional.
-
-Conditional rendering — both columns spawn only when the
-creature's compendium source has the matching feature, and the
-flag was baked into the encounter creature at spawn time
-(`Compendium.draftToInstance`):
-
-  - `hasLegendaryActions = True` (compendium source had
-    `legendary_actions /= Nothing`) → orange LA column.
-  - `hasLegendaryResistance = True` (compendium source had a
-    trait whose name contains "Legendary Resistance") → yellow
-    LR column.
-
-The LA pips reset to "all available" at the start of the
-creature's turn — `Encounter.applyBeginOfTurn` clears the
-`legendaryActionsUsed` set as part of the begin-of-turn hook.
-LR pips do NOT auto-reset (legendary resistance is per long rest
-in 5e, not per turn). While the creature is the active one, the
-LA pips render locked (greyed, unclickable) — 5e bars a creature
-from using legendary actions on its own turn.
-
-When the creature has neither feature, returns `text ""` so the
-card flex row stays compact.
-
--}
-legendaryColumns : Bool -> Creature -> Html Msg
-legendaryColumns isActive creature =
-    let
-        hasLA =
-            creature.legendaryActionsCount > 0
-
-        hasLR =
-            creature.legendaryResistanceCount > 0
-    in
-    if not hasLA && not hasLR then
-        text ""
-
-    else
-        div [ class "creature-card__legendary" ]
-            [ if hasLA then
-                legendaryColumn
-                    { creatureName = creature.name
-                    , kind = "la"
-                    , label = "LA"
-                    , baseCount = creature.legendaryActionsCount
-                    , lairBonus = creature.legendaryActionsLairBonus
-                    , used = creature.legendaryActionsUsed
-                    , onToggle = ToggleLegendaryActionPip creature.name
-                    , locked = isActive
-                    }
-
-              else
-                text ""
-            , if hasLR then
-                legendaryColumn
-                    { creatureName = creature.name
-                    , kind = "lr"
-                    , label = "LR"
-                    , baseCount = creature.legendaryResistanceCount
-                    , lairBonus = creature.legendaryResistanceLairBonus
-                    , used = creature.legendaryResistanceUsed
-                    , onToggle = ToggleLegendaryResistancePip creature.name
-                    , locked = False
-                    }
-
-              else
-                text ""
-            ]
-
-
 {-| Orange name badges for row 1's chip cluster, one per
 special-reaction feature on the creature's compendium source
 ("Redirect Attack", "Misty Escape", …), so the GM can see which
@@ -896,8 +815,8 @@ specialReactionBadges ctx creature =
 
 
 {-| One badge, clickable to mark its reaction spent and back
-again — the same bookkeeping the legendary pips carry, and
-cleared at the creature's begin-of-turn the same way.
+again, and cleared at the creature's begin-of-turn the way the
+legendary actions are.
 -}
 srBadge : Creature -> String -> Html Msg
 srBadge creature name =
@@ -1049,138 +968,6 @@ rechargePromptChip bearer ability rangeLabel =
             , span [ class "recharge-chip__range" ] [ text (" " ++ rangeLabel) ]
             ]
         ]
-
-
-legendaryColumn :
-    { creatureName : String
-    , kind : String
-    , label : String
-    , baseCount : Int
-    , lairBonus : Int
-    , used : Set Int
-    , onToggle : Int -> Msg
-    , locked : Bool
-    }
-    -> Html Msg
-legendaryColumn cfg =
-    let
-        pipClass { filled, isLair } =
-            "legendary-col__pip"
-                ++ (if filled then
-                        " legendary-col__pip--filled"
-
-                    else
-                        ""
-                   )
-                ++ (if isLair then
-                        " legendary-col__pip--lair"
-
-                    else
-                        ""
-                   )
-
-        ariaLabel idx isLair =
-            cfg.label
-                ++ " pip "
-                ++ String.fromInt (idx + 1)
-                ++ (if isLair then
-                        " (lair bonus)"
-
-                    else
-                        ""
-                   )
-
-        -- Locked pips (LA during the bearer's own turn) render as
-        -- inert spans rather than disabled buttons: Chrome blocks
-        -- mouse events on disabled form controls, which would keep
-        -- the tooltip portal from explaining WHY the pip is dead.
-        pip { idx, isLair } =
-            let
-                filled =
-                    Set.member idx cfg.used
-
-                lairTip =
-                    if isLair then
-                        ": Lair bonus"
-
-                    else
-                        ""
-            in
-            if cfg.locked then
-                span
-                    [ class (pipClass { filled = filled, isLair = isLair } ++ " legendary-col__pip--locked")
-                    , Tooltips.attr Tooltips.legendaryPipLocked
-                    , attribute "aria-label" (ariaLabel idx isLair ++ " (unavailable on own turn)")
-                    , attribute "aria-disabled" "true"
-                    ]
-                    []
-
-            else
-                button
-                    [ class (pipClass { filled = filled, isLair = isLair })
-                    , onClick (cfg.onToggle idx)
-                    , Tooltips.attr
-                        (cfg.label
-                            ++ " pip "
-                            ++ String.fromInt (idx + 1)
-                            ++ lairTip
-                            ++ (if filled then
-                                    " (used)"
-
-                                else
-                                    " (available)"
-                               )
-                        )
-                    , attribute "aria-label" (ariaLabel idx isLair)
-                    , attribute "aria-pressed"
-                        (if filled then
-                            "true"
-
-                         else
-                            "false"
-                        )
-                    ]
-                    []
-
-        basePips =
-            List.range 0 (cfg.baseCount - 1)
-                |> List.map (\i -> pip { idx = i, isLair = False })
-
-        lairPips =
-            if cfg.lairBonus > 0 then
-                List.range cfg.baseCount (cfg.baseCount + cfg.lairBonus - 1)
-                    |> List.map (\i -> pip { idx = i, isLair = True })
-
-            else
-                []
-    in
-    div [ class ("legendary-col legendary-col--" ++ cfg.kind) ]
-        (div
-            [ class "legendary-col__header"
-            , Tooltips.attr (headerTooltipFor cfg.label)
-            ]
-            [ text cfg.label ]
-            :: basePips
-            ++ lairPips
-        )
-
-
-{-| Map the column's bold-header letter to the static tooltip
-that describes what the pips count. Tooltips live in
-=View.Tooltips=; the helper here picks the right one without
-making the column-builder caller pass it in.
--}
-headerTooltipFor : String -> String
-headerTooltipFor label =
-    case label of
-        "LA" ->
-            Tooltips.legendaryActionColumn
-
-        "LR" ->
-            Tooltips.legendaryResistanceColumn
-
-        _ ->
-            ""
 
 
 
@@ -1877,9 +1664,79 @@ deathSavePip kind filled onToggle kindLabel ordinal =
 rowBot : Creature -> Maybe Surface -> Html Msg
 rowBot creature surface =
     div [ class "creature-card__row creature-card__row--bot" ]
-        [ memoSlot creature surface
-        , timerSlot creature surface
+        (memoSlot creature surface
+            :: timerSlot creature surface
+            :: legendaryReadouts creature
+        )
+
+
+{-| The legendary pools as readouts rather than pips: "LA: 3(4)"
+says what is left of what there was, and one click spends one.
+Clicking a spent pool refills it, which is the long rest for
+resistance and a correction for actions the turn hook already
+refreshes. A pool the creature does not have renders nothing.
+-}
+legendaryReadouts : Creature -> List (Html Msg)
+legendaryReadouts creature =
+    List.filterMap identity
+        [ legendaryReadout
+            { label = "LA"
+            , what = "Legendary Action"
+            , cls = "legendary-use legendary-use--la"
+            , capacity = creature.legendaryActionsCount + creature.legendaryActionsLairBonus
+            , spent = Set.size creature.legendaryActionsUsed
+            , msg = LegendaryActionUse creature.name
+            }
+        , legendaryReadout
+            { label = "LR"
+            , what = "Legendary Resistance"
+            , cls = "legendary-use legendary-use--lr"
+            , capacity = creature.legendaryResistanceCount + creature.legendaryResistanceLairBonus
+            , spent = Set.size creature.legendaryResistanceUsed
+            , msg = LegendaryResistanceUse creature.name
+            }
         ]
+
+
+legendaryReadout :
+    { label : String
+    , what : String
+    , cls : String
+    , capacity : Int
+    , spent : Int
+    , msg : Msg
+    }
+    -> Maybe (Html Msg)
+legendaryReadout cfg =
+    if cfg.capacity <= 0 then
+        Nothing
+
+    else
+        let
+            remaining =
+                Basics.max 0 (cfg.capacity - cfg.spent)
+
+            tip =
+                Tooltips.legendaryRemaining cfg.what remaining cfg.capacity
+        in
+        Just
+            (button
+                [ class cfg.cls
+                , type_ "button"
+                , onClick cfg.msg
+                , Tooltips.attr tip
+                , attribute "aria-label" tip
+                ]
+                [ text
+                    (cfg.label
+                        ++ ": "
+                        ++ String.fromInt remaining
+                        ++ "("
+                        ++ String.fromInt cfg.capacity
+                        ++ ")"
+                    )
+                ]
+            )
 
 
 {-| Append the open-editor highlight to a trigger's class list

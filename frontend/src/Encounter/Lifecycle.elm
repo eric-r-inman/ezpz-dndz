@@ -160,7 +160,7 @@ tickTimerFor name phase enc =
 {-| Begin-of-turn hook for the named creature. Symmetric to
 `applyEndOfTurn` but for `AtBegin` durations, plus:
 
-  - **Legendary-action reset** — the LA pip column returns to "all
+  - **Legendary-action reset** — the LA readout returns to "all
     available", mirroring the 5e rule that a legendary creature
     regains expended legendary actions at the start of its turn.
     Legendary resistances do NOT reset (per long rest).

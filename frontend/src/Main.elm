@@ -98,7 +98,7 @@ import Update.Duplicate
 import Update.Encounter
 import Update.HpChange
 import Update.Initiative
-import Update.LegendaryPip
+import Update.Legendary
 import Update.LoadCompendium
 import Update.LogRow
 import Update.LoreEdit
@@ -1426,9 +1426,6 @@ updateInner msg model =
         ConditionSubmitSelected ->
             Update.Condition.submitSelected model
 
-        ConditionQuickApply ->
-            Update.Condition.quickApply model
-
         ConditionSubmit ->
             Update.Condition.submit model
 
@@ -2364,13 +2361,13 @@ updateInner msg model =
             Update.Tabs.incomingPanelShow creatureName model
 
         ToggleSpecialReaction name reaction ->
-            Update.LegendaryPip.toggleSpecialReaction name reaction model
+            Update.Legendary.toggleSpecialReaction name reaction model
 
-        ToggleLegendaryActionPip name idx ->
-            Update.LegendaryPip.toggleAction name idx model
+        LegendaryActionUse name ->
+            Update.Legendary.useAction name model
 
-        ToggleLegendaryResistancePip name idx ->
-            Update.LegendaryPip.toggleResistance name idx model
+        LegendaryResistanceUse name ->
+            Update.Legendary.useResistance name model
 
         EncounterLoaded result ->
             Update.Shell.encounterLoaded result model

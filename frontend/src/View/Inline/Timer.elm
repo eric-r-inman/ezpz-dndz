@@ -2,8 +2,8 @@ module View.Inline.Timer exposing (view)
 
 {-| Timer setup as an inline card expansion. The GM picks a turn
 count (1..99) and a phase (begin/end of bearer's turn). Start
-Timer writes the timer; Escape or re-clicking the trigger
-discards.
+Timer writes the timer; Cancel, Escape, and re-clicking the
+trigger all discard.
 
 Mirrors the per-surface preset pattern from
 `View.Inline.Condition`: a footer Save/Load row backed by
@@ -60,8 +60,6 @@ view presets ui =
                 ]
                 []
             ]
-        , div [ class "cond-section__caption" ]
-            [ text "When it reaches 0 the card flashes a 0 and the page plays a ping. Click × on the timer to dismiss." ]
         , footer ui presets
         ]
 
@@ -73,15 +71,17 @@ footer ui presets =
             [ presetSaveControl ui
             , presetLoadControl ui presets
             ]
-        , div [ class "note-edit__buttons" ]
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
             [ button
                 [ class "action-btn action-btn--green"
                 , onClick TimerSetupApply
                 ]
                 [ text "Start Timer" ]
-
-            -- No Cancel button: Escape and re-clicking the
-            -- ⏱ button both cancel.
+            , button
+                [ class "action-btn"
+                , onClick TimerSetupCancel
+                ]
+                [ text "Cancel" ]
             ]
         ]
 

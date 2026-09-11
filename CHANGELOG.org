@@ -12,8 +12,7 @@
 3. When applying a dice-formula HP change to a selection, a "New roll for each
    creature" option rolls independently per creature.  No action needed.
 4. Creature cards name each special reaction in an orange badge on the card's
-   top row, and grey out legendary-action pips during the creature's own turn
-   (5e bars using them then).  No action needed.
+   top row.  No action needed.
 5. A creature card's status labels open the Status editor targeting that
    creature.  No action needed.
 6. The initiative manager is one of those editors now, opened by a card's
@@ -341,15 +340,21 @@
      creature's card to the top of the queue instead of opening its stat block.
      No action needed.
 130. A card's flight readout reads "15 ft" in the flying label's yellow, with
-     its arrows and the clear × after it and no box of its own.  No action
+     its grey arrows and the clear × after it and no box of its own.  No action
      needed.
-131. The Condition/Effect editor gains a "▲ Quick apply ▲" button under the Note
-     row, applying everything above it with a Manual duration and no save, then
-     folding the editor.  No action needed.
-132. The Condition/Effect editor outlines the ability, DC, and Mod fields in
+131. The Condition/Effect editor outlines the ability, DC, and Mod fields in
      yellow while a save ends the condition.  No action needed.
-133. Saving a Condition/Effect preset fills the name from the loaded one and
+132. Saving a Condition/Effect preset fills the name from the loaded one and
      asks before replacing a preset that already exists.  No action needed.
+133. A creature card counts its legendary actions and resistances on the bottom
+     row as "LA: 3(4)", clicked to spend one and clicked again at zero to
+     refill.  No action needed.
+134. The editors' longest text fields, and a card's memo field, are as wide as
+     the twenty characters they hold.  No action needed.
+135. The timer editor drops its explanatory line, left-justifies Start Timer,
+     and offers a Cancel button beside it.  No action needed.
+136. The editor column's controls sit further above the rule beneath them.  No
+     action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

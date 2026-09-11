@@ -141,6 +141,10 @@
   --width-input-2ch: 4ch;
   /* Three digits and the field's own padding and border, no more. */
   --width-input-3ch: calc(3ch + 2 * var(--space-1) + 2px);
+  /* An editor's longest text field.  Declared in characters, so
+     the rules that use it switch to content-box against the
+     sheet's border-box default. */
+  --width-input-20ch: 20ch;
   /* The square controls on a stat block: the ↗ link on its name
      row and the buttons in the bar under a card. */
   --size-statblock-tool: 28px;
@@ -161,11 +165,11 @@
   --color-orange: #ea580c;
   --color-blue: #2563eb;
 
-  /* LA (legendary actions) + LR (legendary resistance) pip
-     tints.  Stepped one tier darker than `--color-orange` /
-     `--color-yellow` on Modern so the pips read with more
-     gravity against the off-white card.  Dark overrides these
-     below to its existing brighter values. */
+  /* LA (legendary actions) + LR (legendary resistance) tints.
+     Stepped one tier darker than `--color-orange` /
+     `--color-yellow` on Modern so the readouts hold their own
+     against the off-white card.  Dark overrides these below to
+     its existing brighter values. */
   --color-la: #c2410c; /* orange-700 */
   --color-lr: #a16207; /* yellow-700 */
 
@@ -717,17 +721,14 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-/* Creature-card side columns: LA (legendary actions), LR
-   (legendary resistance), and the two death-save columns
-   (success / failure).  Bump header glyphs + pip diameter so
-   each pip lands inside the WCAG 2.5.5 target zone and the
-   "LA / LR / ✓ / ×" labels are legible at low vision. */
-[data-theme="accessible"] .legendary-col__header,
+/* The death-save columns (success / failure).  Bump the header
+   glyphs and pip diameter so each pip lands inside the WCAG
+   2.5.5 target zone and the "✓ / ×" labels are legible at low
+   vision. */
 [data-theme="accessible"] .death-save-col__header {
   font-size: 1.1rem;
 }
 
-[data-theme="accessible"] .legendary-col__pip,
 [data-theme="accessible"] .death-save-col__pip {
   width: 20px;
   height: 20px;
@@ -4041,7 +4042,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-1);
-  padding-bottom: var(--space-1);
+  /* Off the spacing scale by three: the controls sat too close
+     to the rule below them for the row to read as its own band. */
+  padding-bottom: calc(var(--space-1) + 3px);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -4604,8 +4607,7 @@ body {
 }
 
 .creature-card--dead .creature-card__center,
-.creature-card--dead .deathsave-col,
-.creature-card--dead .creature-card__legendary {
+.creature-card--dead .deathsave-col {
   filter: grayscale(0.85);
 }
 
@@ -4622,8 +4624,7 @@ body {
 }
 
 .creature-card--dead.creature-card--active .creature-card__center,
-.creature-card--dead.creature-card--active .deathsave-col,
-.creature-card--dead.creature-card--active .creature-card__legendary {
+.creature-card--dead.creature-card--active .deathsave-col {
   filter: grayscale(0.6);
 }
 
@@ -4635,8 +4636,7 @@ body {
 }
 
 .creature-card--inactive .creature-card__center,
-.creature-card--inactive .deathsave-col,
-.creature-card--inactive .creature-card__legendary {
+.creature-card--inactive .deathsave-col {
   filter: grayscale(0.5);
 }
 
@@ -5273,83 +5273,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-/* Legendary columns wrapper: a flex strip sitting between the
-   center column and the right rail.  Renders nothing when the
-   creature has neither Legendary Actions nor Legendary
-   Resistance. */
-.creature-card__legendary {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.legendary-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  min-width: 28px;
-  padding: 4px 2px;
-}
-
-.legendary-col__header {
-  font-weight: 700;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-}
-
-/* Orange for legendary-action pips ("LA"); auto-reset at the
-   start of the creature's turn.  `--color-la` is theme-aware:
-   slightly darker on Modern, the existing bright orange on Dark. */
-.legendary-col--la .legendary-col__header {
-  color: var(--color-la);
-}
-
-.legendary-col--la .legendary-col__pip {
-  border-color: var(--color-la);
-}
-
-.legendary-col--la .legendary-col__pip--filled {
-  background: var(--color-la);
-}
-
-/* Yellow for legendary-resistance pips ("LR"); GM clears
-   manually (rules: per long rest, not per turn).  Same Modern /
-   Dark token strategy as LA. */
-.legendary-col--lr .legendary-col__header {
-  color: var(--color-lr);
-}
-
-.legendary-col--lr .legendary-col__pip {
-  border-color: var(--color-lr);
-}
-
-.legendary-col--lr .legendary-col__pip--filled {
-  background: var(--color-lr);
-}
-
-.legendary-col__pip {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  transition:
-    background 0.1s ease,
-    transform 0.05s ease;
-}
-
-/* The 4th pip in each column is the "lair" pip: only used when
-   the creature is in its lair (5e gives a bonus legendary action
-   and an extra legendary-resistance use in-lair).  A thinner
-   border marks it as the optional one. */
-.legendary-col__pip--lair {
-  border-width: 1px;
-}
-
 /* Special-reaction name badges, one pill per qualifying feature
    on the creature's source stat block.  They flow inline after
    the recharge chips in row 1's chip cluster, in the chip
@@ -5384,42 +5307,35 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 1;
 }
 
-.legendary-col__pip:hover {
-  /* `transform` would create a containing block for the
-     `[data-tooltip]::after` pseudo-element on this pip, which
-     would trap its anchor positioning to the pip's own bounding
-     box and put the tooltip directly under the cursor instead
-     of above the trigger.  Use a ring instead — same visual
-     "the pip is highlighted" cue, no containing-block side
-     effect. */
-  box-shadow: 0 0 0 2px currentColor;
+/* The legendary pools read as text on row 3 — "LA: 3(4)" — and
+   keep the colours their pips had, so the pair still reads as
+   two pools at a glance. */
+.legendary-use {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 var(--space-1);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.legendary-col__pip:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+.legendary-use--la {
+  color: var(--color-la);
 }
 
-/* LA pips while the bearer is the active creature: 5e bars
-   legendary actions on the creature's own turn, so the pips go
-   inert (they are spans, not buttons, in this state).  Sits
-   after the base :hover rule so the no-highlight override wins
-   the cascade at equal specificity. */
-.legendary-col__pip--locked {
-  display: inline-block;
-  opacity: 0.35;
-  cursor: default;
+.legendary-use--lr {
+  color: var(--color-lr);
 }
 
-.legendary-col__pip--locked:hover {
-  box-shadow: none;
-}
-
-/* Death-save tracker — two side-by-side vertical columns (✓ / ✗)
-   mirroring the legendary "LA"/"LR" pair, but only present when
-   the creature is at 0 HP. Each column has its own header and 3
-   pips; below the pair sits a shared 🎲 roll button (or a 🛡 / 💀
-   stable / dead badge once the run resolves). */
+/* Death-save tracker — two side-by-side vertical columns (✓ / ✗),
+   present only while the creature is at 0 HP.  Each column has
+   its own header and 3 pips; below the pair sits a shared 🎲
+   roll button (or a 🛡 / 💀 stable / dead badge once the run
+   resolves). */
 .death-save-cols {
   display: flex;
   flex-direction: column;
@@ -5483,10 +5399,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .death-save-col__pip:hover {
-  /* `box-shadow` ring instead of `transform: scale` — same
-     reason as `.legendary-col__pip:hover`: transform creates a
-     containing block that breaks the tooltip's anchor
-     positioning. */
+  /* `box-shadow` ring instead of `transform: scale`: a
+     transform creates a containing block that breaks the
+     tooltip's anchor positioning. */
   box-shadow: 0 0 0 2px currentColor;
 }
 
@@ -6232,11 +6147,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* A button does not inherit its font size, so the arrows have to
-   be told to match the height they change. */
+   be told to match the height they change.  They stay grey while
+   the rest of the readout is yellow: they are controls beside a
+   status, not part of what it says. */
 .fly-height__btn {
   padding: 0;
   font-size: inherit;
-  color: var(--color-yellow);
+  color: var(--color-text-muted);
   line-height: 1;
 }
 
@@ -6255,6 +6172,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .fly-height__unit {
   margin-left: 2px;
+  margin-right: var(--space-0);
 }
 
 .fly-height__fall {
@@ -6485,12 +6403,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 .creature-card__inline--compact {
   flex-direction: row;
   align-items: center;
-}
-
-.note-edit__input--in-place {
-  width: 160px;
-  padding: 2px 6px;
-  font-size: 0.85rem;
 }
 
 /* Ring on any trigger (button, pill, note text) whose inline
@@ -9064,6 +8976,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   box-sizing: border-box;
 }
 
+/* Same sizing as the drawer editors' longest fields, and the
+   same reason for content-box. */
+.note-edit__input--in-place {
+  box-sizing: content-box;
+  width: var(--width-input-20ch);
+  padding: 2px 6px;
+  font-size: 0.85rem;
+}
+
 .note-edit__input:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 2px rgba(120, 170, 255, 0.25);
@@ -9307,11 +9228,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: 6ch;
 }
 
-/* Sized to the 20-character cap its fields carry rather than
-   flexing to the editor width. */
+/* An editor's longest text field, sized to its twenty
+   characters rather than flexing to the editor width. */
 .cond-input--w20 {
+  box-sizing: content-box;
   flex: 0 0 auto;
-  width: 22ch;
+  width: var(--width-input-20ch);
   max-width: 100%;
 }
 

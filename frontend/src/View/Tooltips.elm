@@ -82,10 +82,8 @@ module View.Tooltips exposing
     , initSelectedNone
     , initiativeManager
     , inlineEditCancel
-    , legendaryActionColumn
     , legendaryActionsPanel
-    , legendaryPipLocked
-    , legendaryResistanceColumn
+    , legendaryRemaining
     , lifecycleDeadToDown
     , lifecycleDownToDead
     , loadRowCompendium
@@ -370,19 +368,16 @@ specialReactionsPanel =
     "Show what each creature's special reactions do"
 
 
-legendaryActionColumn : String
-legendaryActionColumn =
-    "Legendary Action (3, +1 Lair)"
-
-
-legendaryResistanceColumn : String
-legendaryResistanceColumn =
-    "Legendary Resistance (3, +1 Lair)"
-
-
-legendaryPipLocked : String
-legendaryPipLocked =
-    "Legendary actions can't be used on the creature's own turn"
+{-| A card's LA / LR readout.
+-}
+legendaryRemaining : String -> Int -> Int -> String
+legendaryRemaining what remaining capacity =
+    what
+        ++ ": "
+        ++ String.fromInt remaining
+        ++ " of "
+        ++ String.fromInt capacity
+        ++ " remaining. Click to use. Resets after 0."
 
 
 specialReactionSpent : String

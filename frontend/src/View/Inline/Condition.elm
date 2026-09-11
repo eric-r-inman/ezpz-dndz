@@ -70,26 +70,6 @@ standardSection ui =
         ]
 
 
-{-| Commits what the rows above it hold and nothing below them.
-The carets say which way that is: the GM reads up from the button
-to see what a click will apply.
--}
-quickApplyButton : ConditionUi -> Html Msg
-quickApplyButton ui =
-    ApplyButton.view
-        { enabled = not (String.isEmpty (String.trim ui.name))
-        , cls = "action-btn action-btn--green"
-        , msg = ConditionQuickApply
-        , tip =
-            if String.isEmpty (String.trim ui.name) then
-                "Pick a condition or type a custom one first"
-
-            else
-                "Apply what is set above, with a Manual duration and no save, and close the editor"
-        , label = "▲ Quick apply ▲"
-        }
-
-
 standardRadio : ConditionUi -> String -> Html Msg
 standardRadio ui label =
     let
@@ -117,11 +97,10 @@ standardRadio ui label =
 
 
 {-| Free-text condition name and note, each on its own labelled
-row (an input wraps under its label when the editor is narrow),
-and Quick apply under them. The custom row hides while a
-standard-condition radio is selected — the radio owns the name
-then, and re-clicking the selected radio clears it to bring the
-row back.
+row (an input wraps under its label when the editor is narrow).
+The custom row hides while a standard-condition radio is
+selected — the radio owns the name then, and re-clicking the
+selected radio clears it to bring the row back.
 -}
 customAndNoteSection : ConditionUi -> Html Msg
 customAndNoteSection ui =
@@ -161,7 +140,6 @@ customAndNoteSection ui =
                         ]
                         []
                     ]
-               , div [ class "cond-row" ] [ quickApplyButton ui ]
                ]
         )
 

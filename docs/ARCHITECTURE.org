@@ -956,11 +956,10 @@ siblings of ~panel__body~ (so they stay put while the cards scroll, same
 affordance the title bar uses):
 
 - *Legendary Action available* — ~legendaryActionStrip~.  Lists every queue
-  member with un-spent legendary-action pips, comma-separated, with the
-  remaining-pip count in parentheses.  Each name is a button that fires
-  ~QueueScrollTo~ to bring the creature's card to the top of the queue.
-  Filters: not the currently-active creature (rule: LA fires on OTHER creatures'
-  turn-ends), not down, not dead.
+  member with legendary actions left, comma-separated, with the remaining count
+  in parentheses.  Each name is a button that fires ~QueueScrollTo~ to bring the
+  creature's card to the top of the queue.  Filters: not the currently-active
+  creature (rule: LA fires on OTHER creatures' turn-ends), not down, not dead.
 - *Special reactions* — ~specialReactionsStrip~.  Lists every queue member whose
   source creature has ~hasSpecialReactions = True~ — Hydra, Marilith, Vampire,
   mephits, and the named-reaction folks the LA strip doesn't cover.  Same

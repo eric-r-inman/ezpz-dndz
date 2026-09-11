@@ -26,7 +26,6 @@ module Update.Condition exposing
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
-    , quickApply
     , removeChip
     , rollSave
     , saveAbilityChanged
@@ -721,55 +720,15 @@ submitSelected model =
         model
 
 
-{-| `submitWith`, reading the form as the GM filled it in.
--}
-submitTo : List String -> Model -> ( Model, Cmd Msg )
-submitTo =
-    submitWith identity
-
-
-{-| Apply the picked condition with a manual duration and no save.
-Quick apply exists for the common "they are prone now" case, so
-it commits and folds the editor in one go rather than leaving the
-form up the way Apply does.
--}
-quickApply : Model -> ( Model, Cmd Msg )
-quickApply model =
-    case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            submitWith plainCondition [ ui.target ] model
-                |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
-
-        _ ->
-            ( model, Cmd.none )
-
-
-{-| The form as Quick apply reads it: the rows above the button,
-with none of the duration or save below.
--}
-plainCondition : ConditionUi -> ConditionUi
-plainCondition ui =
-    { ui
-        | durationKind = DurKindManual
-        , useOneMinutePreset = False
-        , saveToEnd = Nothing
-    }
-
-
 {-| Validate that there's a name; empty-name conditions are
 silently dropped. Build a draft, then either insert it (creating)
-or update the edited condition. `prepare` has the say in what the
-form counts as, which is how Quick apply commits a stripped-down
-reading of it.
+or update the edited condition.
 -}
-submitWith : (ConditionUi -> ConditionUi) -> List String -> Model -> ( Model, Cmd Msg )
-submitWith prepare rawTargets model =
+submitTo : List String -> Model -> ( Model, Cmd Msg )
+submitTo rawTargets model =
     case drawerSurface model of
-        Just (SurfaceCondition raw) ->
+        Just (SurfaceCondition ui) ->
             let
-                ui =
-                    prepare raw
-
                 targets =
                     Encounter.excludingPlaceholderNames model.encounter rawTargets
 

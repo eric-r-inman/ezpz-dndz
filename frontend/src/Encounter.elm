@@ -476,19 +476,18 @@ type alias Creature =
     , timer : Maybe Timer
     , creatureId : Maybe String
 
-    -- Legendary Actions: how many pips show on the card.
+    -- Legendary Actions: how large a pool the card counts down.
     -- `legendaryActionsCount` is the base count from the stat
-    -- block (e.g. 3 for most legendary creatures); `lairBonus`
-    -- is the extra pips that appear with a slightly larger
-    -- gap, labeled "Lair bonus" on hover.  A count of 0 means
-    -- the creature has no LA — the column doesn't render.
+    -- block (e.g. 3 for most legendary creatures) and `lairBonus`
+    -- the extra the creature has in its lair.  A count of 0 means
+    -- the creature has no LA — the readout doesn't render.
     , legendaryActionsCount : Int
     , legendaryActionsLairBonus : Int
     , legendaryActionsUsed : Set Int
 
     -- Legendary Resistance: same shape as LA but parsed from
     -- the creature's "Legendary Resistance (N/Day, or M/Day
-    -- in Lair)" trait name.  Unlike LA, the column doesn't
+    -- in Lair)" trait name.  Unlike LA, the pool doesn't
     -- auto-reset at turn start — LR is per long rest in 5e
     -- and the GM controls it manually.
     , legendaryResistanceCount : Int
