@@ -3,6 +3,10 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+* v0.3.0
+** Added
 1. Combat bookkeeping moved out of pop-up dialogs: every encounter control
    except the destructive Reset / Clear confirmation now opens into a panel
    beside the queue instead of over it.  No action needed.
