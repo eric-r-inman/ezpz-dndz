@@ -14,7 +14,7 @@ test fails with a structural mismatch.
 
 -}
 
-import Encounter exposing (AutoRollMode(..), Cover(..), Duration(..), TurnPhase(..), TurnTarget(..))
+import Encounter exposing (AutoRollMode(..), Cover(..), DamageTrigger(..), Duration(..), TurnPhase(..), TurnTarget(..))
 import Encounter.Treasure
 import Encounter.Wire as Wire
 import Expect
@@ -148,13 +148,27 @@ fullyPopulatedCreature =
                     , dc = 16
                     , bonus = 3
                     , autoRoll = AutoRollAtEnd
+                    , onFail = { damage = Just "1d6", becomes = Just "Petrified" }
+                    , onDamage = RollOnDamageWithAdvantage
                     }
+          , linkedTo = Nothing
+          , area = Nothing
           }
         , { id = 2
           , name = "Slowed"
           , note = "ice patch"
           , duration = DurationUntilTurn AtEnd OnNextTurn "Lyra"
           , saveToEnd = Nothing
+          , linkedTo = Just 1
+          , area = Nothing
+          }
+        , { id = 3
+          , name = "In: Cloudkill"
+          , note = ""
+          , duration = DurationManual
+          , saveToEnd = Nothing
+          , linkedTo = Nothing
+          , area = Just { chain = "Cloudkill", ability = "CON", dc = 15, bonus = 2, phase = AtEnd }
           }
         ]
     , saveNotices =
@@ -162,6 +176,7 @@ fullyPopulatedCreature =
     , selected = True
     , cover = ThreeQuartersCover
     , concentrating = True
+    , concentrationNote = ""
     , hiding = True
     , dodging = True
     , flying = True
@@ -193,8 +208,8 @@ fullyPopulatedCreature =
     , creatureKind = "enemy"
     , race = "Dragon"
     , alignment = "chaotic evil"
-    , surprised = True
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

@@ -24,19 +24,31 @@ dismiss it.
 
 import Dict
 import Encounter exposing (TurnPhase)
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Ui.Timer as TimerUi exposing (TimerSetupUi)
 
 
 withTimerSetup : (TimerSetupUi -> TimerSetupUi) -> Model -> Model
 withTimerSetup =
-    Model.mapModal Model.timerLens
+    Model.mapSurface Model.timerLens
 
 
+{-| Opening is a toggle: clicking the card's ⏱ button while its
+own timer setup is already expanded closes it (a cancel).
+-}
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
-    ( { model | modal = Just (ModalTimerSetup (TimerUi.fresh name)) }
+    ( case model.surface of
+        Just (SurfaceTimerSetup ui) ->
+            if ui.target == name then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
+
+        _ ->
+            { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
     , Cmd.none
     )
 
@@ -77,8 +89,8 @@ noteChanged text model =
 
 apply : Model -> ( Model, Cmd Msg )
 apply model =
-    case model.modal of
-        Just (ModalTimerSetup ui) ->
+    case model.surface of
+        Just (SurfaceTimerSetup ui) ->
             let
                 newTimer =
                     { remaining = ui.turns
@@ -87,12 +99,15 @@ apply model =
                     , note = String.trim ui.note
                     }
             in
+            -- Starting the timer also closes the editor — unlike
+            -- the drawer editors, there's nothing left to tweak
+            -- once the countdown is running.
             ( { model
                 | encounter =
                     Encounter.mapCreature ui.target
                         (\c -> { c | timer = Just newTimer })
                         model.encounter
-                , modal = Nothing
+                , surface = Nothing
               }
             , Cmd.none
             )
@@ -103,7 +118,7 @@ apply model =
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Dismiss whether ringing or still counting; the GM gets to cancel
@@ -154,8 +169,8 @@ presetSaveCancel model =
 
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
-    case model.modal of
-        Just (ModalTimerSetup ui) ->
+    case model.surface of
+        Just (SurfaceTimerSetup ui) ->
             let
                 trimmed =
                     Maybe.withDefault "" ui.pendingSaveName

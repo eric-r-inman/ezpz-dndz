@@ -20,6 +20,8 @@ accepted, so port plans stay one-for-one:
 
   - Standard: `1d6`, `2d8+3`, `3d10-2`
   - Compound: `1d8 + 2d6`, `2d6 - 1d4 + 5`
+  - Grouped: `(2d6+4) + (3d9+5) + 6` — a sign before a group
+    applies to everything inside it
   - Damage tagged: `2d6+3 fire damage`, `1d8 piercing`
   - Stat-block avg: `7 (1d8 + 3)` — the leading "7" and parens are
     stripped; the inner formula becomes the parsed expression.
@@ -215,11 +217,16 @@ type Error
 -- HISTORY
 
 
-{-| Bounded list of recent rolls, newest first.
+{-| Bounded list of recent rolls, newest first. `pushed` counts
+every roll the history has ever taken, including the ones the cap
+has since dropped, so a log kept alongside this one can record
+which rolls preceded each of its own entries and the two can be
+interleaved without a shared clock.
 -}
 type alias History =
     { entries : List Roll
     , max : Int
+    , pushed : Int
     }
 
 
@@ -234,14 +241,17 @@ maxHistoryEntries =
 -}
 emptyHistory : History
 emptyHistory =
-    { entries = [], max = maxHistoryEntries }
+    { entries = [], max = maxHistoryEntries, pushed = 0 }
 
 
 {-| Push a fresh roll onto the history; truncate to `max`.
 -}
 push : Roll -> History -> History
 push roll h =
-    { h | entries = roll :: List.take (h.max - 1) h.entries }
+    { h
+        | entries = roll :: List.take (h.max - 1) h.entries
+        , pushed = h.pushed + 1
+    }
 
 
 {-| Read the entries (newest first).
@@ -316,11 +326,14 @@ averageWrapParser =
 
 
 {-| What one term of an expression resolves to before we fold it into
-the accumulator. Either a dice group or a bare integer.
+the accumulator: a dice group, a bare integer, or a parenthesised
+run of terms, which folds in as a unit so a sign in front of it
+applies to everything inside.
 -}
 type Term
     = TermDice Dice
     | TermConstant Int
+    | TermGroup Acc
 
 
 {-| Loop accumulator while we're walking the expression. `first` flips
@@ -341,13 +354,32 @@ emptyAcc =
 
 expressionParser : Parser Expression
 expressionParser =
-    Parser.succeed identity
+    Parser.succeed
+        (\acc damageType ->
+            { dice = List.reverse acc.dice
+            , constant = acc.constant
+            , damageType = damageType
+            }
+        )
         |. Parser.spaces
-        |= Parser.loop emptyAcc loopStep
+        |= termsParser
+        |= damageTypeParser
+        |. Parser.end
 
 
-loopStep : Acc -> Parser (Parser.Step Acc Expression)
-loopStep acc =
+{-| A run of signed terms: the whole of "2d6 + 3 - 1d4", or the
+inside of one pair of parentheses. It stops without consuming when
+the next thing isn't a sign and a term, leaving the caller to decide
+what may follow — the damage type at the top level, the closing
+parenthesis in a group.
+-}
+termsParser : Parser Acc
+termsParser =
+    Parser.loop emptyAcc termsStep
+
+
+termsStep : Acc -> Parser (Parser.Step Acc Acc)
+termsStep acc =
     Parser.oneOf
         -- The "consume another term" branch is wrapped in
         -- Parser.backtrackable so a missing trailing sign (e.g. " fire")
@@ -359,16 +391,7 @@ loopStep acc =
                 |. Parser.spaces
                 |= termParser
             )
-        , Parser.succeed
-            (\damageType ->
-                Parser.Done
-                    { dice = List.reverse acc.dice
-                    , constant = acc.constant
-                    , damageType = damageType
-                    }
-            )
-            |= damageTypeParser
-            |. Parser.end
+        , Parser.succeed (Parser.Done acc)
         ]
 
 
@@ -396,7 +419,20 @@ termParser =
     Parser.oneOf
         [ Parser.backtrackable diceParser |> Parser.map TermDice
         , Parser.int |> Parser.map TermConstant
+        , groupParser |> Parser.map TermGroup
         ]
+
+
+{-| One parenthesised run of terms. `Parser.lazy` breaks the
+recursion between a group and the terms it contains.
+-}
+groupParser : Parser Acc
+groupParser =
+    Parser.succeed identity
+        |. Parser.symbol "("
+        |= Parser.lazy (\_ -> termsParser)
+        |. Parser.spaces
+        |. Parser.symbol ")"
 
 
 diceParser : Parser Dice
@@ -425,6 +461,15 @@ foldTerm sign term acc =
                 , first = False
             }
 
+        -- Both lists are newest-first, so the group's terms go in
+        -- front of what came before them.
+        TermGroup inner ->
+            { acc
+                | dice = List.map (signedDice sign) inner.dice ++ acc.dice
+                , constant = acc.constant + signedInt sign inner.constant
+                , first = False
+            }
+
 
 signedInt : Sign -> Int -> Int
 signedInt sign n =
@@ -434,6 +479,21 @@ signedInt sign n =
 
         Negative ->
             -n
+
+
+{-| A minus in front of a group flips every die inside it.
+-}
+signedDice : Sign -> Dice -> Dice
+signedDice sign d =
+    case ( sign, d.sign ) of
+        ( Negative, Positive ) ->
+            { d | sign = Negative }
+
+        ( Negative, Negative ) ->
+            { d | sign = Positive }
+
+        ( Positive, _ ) ->
+            d
 
 
 {-| The damage-type tail. Restricted to alpha + spaces so we don't

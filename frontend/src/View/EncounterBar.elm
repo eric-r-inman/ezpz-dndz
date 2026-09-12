@@ -7,30 +7,21 @@ name + active HP readout + active AC readout + active state
 icons (cover, concentrating, hiding, flying) + active conditions
 text.
 
-Right cluster: total XP for the encounter, summed via the
-compendium creatureId lookup and filtered by the GM's chosen
-scope (Enemies & NPCs / Enemies Only / NPCs Only / Selected Only).
-The scope dropdown is the sole click target here; everything
-else is a glanceable summary.
+Right cluster: the ↗ link to the standalone Quick-List page.
 
 `Mode` toggles the right cluster: `FullBar` is the main
-encounter page; `QuickListBar` omits the XP readout, Difficulty
-button, and the Quick-List ↗ link — the standalone Quick-List
-tab is read-only and shouldn't navigate back into the busy
-workspace surfaces.
+encounter page; `QuickListBar` omits it entirely, since the
+link would point at the page the reader is already on.
 
 @docs Mode, view
 
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter)
-import Encounter.Xp as Xp exposing (XpScope(..))
-import Html exposing (Html, a, button, div, li, span, text, ul)
+import Html exposing (Html, a, button, div, span, text)
 import Html.Attributes exposing (attribute, class, href, tabindex, target, type_)
-import Html.Events exposing (onClick, stopPropagationOn)
-import Json.Decode as Decode
+import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
-import Ui.Compendium exposing (CompendiumDb(..))
 import View.Tooltips as Tooltips
 
 
@@ -39,8 +30,8 @@ type Mode
     | QuickListBar
 
 
-view : Mode -> Encounter -> Maybe String -> CompendiumDb -> XpScope -> Bool -> Html Msg
-view mode enc savedAs db xpScope xpFilterOpen =
+view : Mode -> Encounter -> Maybe String -> Html Msg
+view mode enc savedAs =
     let
         active =
             Encounter.activeCreature enc
@@ -61,34 +52,7 @@ view mode enc savedAs db xpScope xpFilterOpen =
             case mode of
                 FullBar ->
                     div [ class "encounter-bar__group encounter-bar__right" ]
-                        [ xpReadout enc db xpScope
-                        , xpFilter xpScope xpFilterOpen
-                        , button
-                            [ class "encounter-bar__difficulty"
-                            , type_ "button"
-                            , onClick CrCalculatorOpen
-                            , Tooltips.attr Tooltips.encounterBarDifficulty
-                            , attribute "aria-label" Tooltips.encounterBarDifficulty
-                            ]
-                            [ text "Difficulty" ]
-                        , button
-                            [ class "encounter-bar__icon-btn"
-                            , type_ "button"
-                            , onClick SpellListOpen
-                            , Tooltips.attr Tooltips.encounterBarSpellList
-                            , attribute "aria-label" Tooltips.encounterBarSpellList
-                            ]
-                            [ text "📜" ]
-                        , button
-                            [ class "encounter-bar__treasure"
-                            , type_ "button"
-                            , onClick TreasureOpen
-                            , Tooltips.attr Tooltips.encounterBarTreasure
-                            , attribute "aria-label" Tooltips.encounterBarTreasure
-                            ]
-                            [ text "Treasure" ]
-                        , quickListLink
-                        ]
+                        [ quickListLink ]
 
                 QuickListBar ->
                     text ""
@@ -102,17 +66,25 @@ view mode enc savedAs db xpScope xpFilterOpen =
                 , tabindex 0
                 ]
                 [ text "ⓘ" ]
-            , span [ class "encounter-bar__round" ]
+            , button
+                [ class "encounter-bar__round"
+                , type_ "button"
+                , onClick RoundSetOpen
+                , Tooltips.attr Tooltips.roundSet
+                , attribute "aria-label" Tooltips.roundSet
+                ]
                 [ text ("Round " ++ String.fromInt enc.round) ]
-            , span [ class "encounter-bar__sep" ] [ text "|" ]
-            , surprisedMarker active
+            , sectionSep
             , activeNameLink active activeName
-            , bloodiedMarker active
+            , noteSpan active
+            , sectionSep
             , hp active
             , span [ class "encounter-bar__hp-label" ] [ text "HP" ]
+            , sectionSep
             , ac active
-            , noteSpan active
+            , sectionSepBefore (hasStates active)
             , stateIcons active
+            , sectionSepBefore (hasConditions active)
             , conditionsText active
             ]
         , rightCluster
@@ -140,55 +112,6 @@ quickListLink =
         [ text "↗" ]
 
 
-xpReadout : Encounter -> CompendiumDb -> XpScope -> Html Msg
-xpReadout enc db scope =
-    case db of
-        CompendiumDbLoaded loaded ->
-            let
-                totals =
-                    Xp.totalsFor scope enc loaded
-            in
-            span [ class "encounter-bar__xp-group" ]
-                [ span
-                    [ class "encounter-bar__xp"
-                    , Tooltips.attr (xpScopeTooltip scope)
-                    ]
-                    [ text (Xp.formatThousands totals.total ++ " XP") ]
-                , if totals.lairTotal > totals.total then
-                    span
-                        [ class "encounter-bar__xp-lair"
-                        , Tooltips.attr Tooltips.xpLairTotal
-                        ]
-                        [ text ("(" ++ Xp.formatThousands totals.lairTotal ++ " w/Lair)") ]
-
-                  else
-                    text ""
-                ]
-
-        _ ->
-            span
-                [ class "encounter-bar__xp"
-                , Tooltips.attr (xpScopeTooltip scope)
-                ]
-                [ text "— XP" ]
-
-
-xpScopeTooltip : XpScope -> String
-xpScopeTooltip scope =
-    case scope of
-        ScopeXpEnemiesAndNpcs ->
-            Tooltips.xpScopeEnemiesAndNpcs
-
-        ScopeXpEnemiesOnly ->
-            Tooltips.xpScopeEnemiesOnly
-
-        ScopeXpNpcsOnly ->
-            Tooltips.xpScopeNpcsOnly
-
-        ScopeXpSelectedOnly ->
-            Tooltips.xpScopeSelectedOnly
-
-
 {-| HP readout for the encounter title bar. Reuses the same
 .hp-display\* classes the card row 2 uses so the green/muted/blue
 colors line up exactly. Renders an em-dash when no creature is
@@ -199,7 +122,22 @@ hp active =
     case active of
         Just c ->
             span [ class "hp-display" ]
-                [ span [ class "hp-display__current" ]
+                [ span
+                    [ class
+                        (if c.bloodied then
+                            "hp-display__current hp-display__current--bloodied"
+
+                         else
+                            "hp-display__current"
+                        )
+                    , Tooltips.attr
+                        (if c.bloodied then
+                            Tooltips.bloodied
+
+                         else
+                            ""
+                        )
+                    ]
                     [ text (String.fromInt c.currentHp) ]
                 , span [ class "hp-display__sep" ] [ text "/" ]
                 , span [ class "hp-display__max" ]
@@ -242,105 +180,39 @@ ac active =
             text ""
 
 
-{-| Hand-rolled controlled dropdown. Replaced the native
-`<details>/<summary>` pair so we can drive the open state from
-the model — the global Esc / click-outside subscriptions in
-`Main.subscriptions` need a single source of truth to close
-against.
-
-`stopPropagationOn "mousedown"` on the wrapper keeps the global
-mousedown subscription from immediately closing the dropdown
-when the user clicks the toggle button.
-
--}
-xpFilter : XpScope -> Bool -> Html Msg
-xpFilter current isOpen =
-    let
-        wrapperClass =
-            if isOpen then
-                "xp-filter xp-filter--open"
-
-            else
-                "xp-filter"
-    in
-    div
-        [ class wrapperClass
-        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
-        ]
-        [ button
-            [ class "xp-filter__summary"
-            , type_ "button"
-            , attribute "aria-haspopup" "listbox"
-            , attribute "aria-expanded"
-                (if isOpen then
-                    "true"
-
-                 else
-                    "false"
-                )
-            , attribute "aria-label" Tooltips.xpFilter
-            , Tooltips.attr Tooltips.xpFilter
-            , onClick XpFilterToggle
-            ]
-            [ text "▾" ]
-        , if isOpen then
-            ul
-                [ class "xp-filter__menu"
-                , attribute "role" "listbox"
-                ]
-                [ xpFilterItem current ScopeXpEnemiesAndNpcs "Enemies & NPCs"
-                , xpFilterItem current ScopeXpEnemiesOnly "Enemies Only"
-                , xpFilterItem current ScopeXpNpcsOnly "NPCs Only"
-                , xpFilterItem current ScopeXpSelectedOnly "Selected Only"
-                ]
-
-          else
-            text ""
-        ]
-
-
-xpFilterItem : XpScope -> XpScope -> String -> Html Msg
-xpFilterItem current scope label =
-    li
-        [ class "xp-filter__item"
-        , attribute "role" "option"
-        , attribute "aria-selected"
-            (if current == scope then
-                "true"
-
-             else
-                "false"
-            )
-        , onClick (XpScopeSet scope)
-        ]
-        [ text label ]
-
-
 {-| Active-creature state icons in the encounter title bar.
 Renders one icon per actual non-default state (cover, concentrating,
 hiding, dodging, flying) — purely indicative, no click handlers.
-Hidden when nothing is active.
+Renders nothing when there is no icon to show.
 
-Cover uses the same ◐ / ◕ / ● glyph vocabulary as the card row 2
-toggle so the title bar reads consistently with the card.
+Cover reads as ◐ / ◕ / ● so the bar says how much of it there is,
+where the Status editor's toggle only says that there is some.
 
 -}
 stateIcons : Maybe Creature -> Html Msg
 stateIcons active =
-    case active of
-        Just c ->
-            div [ class "encounter-bar__states" ]
-                (List.filterMap identity
-                    [ coverIcon c
-                    , stateIconIf c.concentrating "🧠" Tooltips.concentrating
-                    , stateIconIf c.hiding "👤" Tooltips.hiding
-                    , stateIconIf c.dodging "🤸" Tooltips.dodging
-                    , flyingIcon c
-                    ]
-                )
+    let
+        icons =
+            case active of
+                Just c ->
+                    List.filterMap identity
+                        [ coverIcon c
+                        , stateIconIf c.concentrating "🧠" Tooltips.concentrating
+                        , stateIconIf c.hiding "👤" Tooltips.hiding
+                        , stateIconIf c.dodging "🤸" Tooltips.dodging
+                        , flyingIcon c
+                        ]
 
-        Nothing ->
-            text ""
+                Nothing ->
+                    []
+    in
+    -- An empty container would still take a gap on each side of
+    -- itself, pushing the sections around it apart.
+    if List.isEmpty icons then
+        text ""
+
+    else
+        div [ class "encounter-bar__states" ] icons
 
 
 {-| Single state icon, shown only when `on` is True. Tooltip
@@ -391,7 +263,7 @@ flyingIcon c =
                 , Tooltips.attr (Tooltips.flying c.flyHeight)
                 , attribute "aria-label" "Flying"
                 ]
-                [ text ("🪽 " ++ String.fromInt c.flyHeight) ]
+                [ text ("🪽; " ++ String.fromInt c.flyHeight) ]
             )
 
     else
@@ -434,57 +306,47 @@ activeNameLink active activeName =
             span [ class "encounter-bar__active" ] [ text activeName ]
 
 
-{-| Bloodied drop next to the active creature's name. Mirrors
-the row-2 `.bloodied` marker on the card so the GM can see the
-"below half HP" signal in the title bar without finding the
-card in the queue. Hidden when nothing is active, or when the
-active creature isn't bloodied.
+{-| The gray pipe that divides the bar's readouts. The two that
+precede optional sections render only when their section does,
+so the row never ends on a dangling divider.
 -}
-bloodiedMarker : Maybe Creature -> Html Msg
-bloodiedMarker active =
+sectionSep : Html Msg
+sectionSep =
+    span [ class "encounter-bar__sep" ] [ text "|" ]
+
+
+sectionSepBefore : Bool -> Html Msg
+sectionSepBefore present =
+    if present then
+        sectionSep
+
+    else
+        text ""
+
+
+hasStates : Maybe Creature -> Bool
+hasStates active =
     case active of
         Just c ->
-            if c.bloodied then
-                span
-                    [ class "encounter-bar__bloodied"
-                    , Tooltips.attr Tooltips.bloodied
-                    , attribute "aria-label" "Bloodied"
-                    ]
-                    [ text "🩸" ]
-
-            else
-                text ""
+            c.cover /= NoCover || c.concentrating || c.hiding || c.dodging || c.flying
 
         Nothing ->
-            text ""
+            False
 
 
-surprisedMarker : Maybe Creature -> Html Msg
-surprisedMarker active =
+hasConditions : Maybe Creature -> Bool
+hasConditions active =
     case active of
         Just c ->
-            if c.surprised then
-                span
-                    [ class "encounter-bar__surprised"
-                    , Tooltips.attr "Surprised — can't take reactions or use legendary actions until the end of their next turn"
-                    , attribute "aria-label" "Surprised"
-                    ]
-                    [ text "😲" ]
-
-            else
-                text ""
+            not (List.isEmpty c.conditions)
 
         Nothing ->
-            text ""
+            False
 
 
-{-| Active-creature short-note slot in the title bar. Mirrors
-the inline note on the card's top row, surfaced here so the GM
-can read it without finding the card in the queue. Prefixed
-with a flashing red `!` (text, not icon) because the title bar
-already implies "active creature" — the marker emphasises that
-the note belongs to whoever's acting right now. Hidden when
-the note is empty.
+{-| Active-creature short-note slot in the title bar, sitting
+right of the name in the same parenthesised italics the card
+uses. Hidden when the note is empty.
 -}
 noteSpan : Maybe Creature -> Html Msg
 noteSpan active =
@@ -495,18 +357,16 @@ noteSpan active =
 
             else
                 span [ class "encounter-bar__note" ]
-                    [ span [ class "encounter-bar__note-bang" ] [ text "!" ]
-                    , text c.note
-                    ]
+                    [ text ("(" ++ String.trim c.note ++ ")") ]
 
         Nothing ->
             text ""
 
 
-{-| Active-creature conditions slot in the title bar. Plain
-purple text separated by " | ", not chips — the GM uses this as
-a glanceable summary; the editable chips are on the card itself.
-Hidden when there are no conditions.
+{-| Active-creature conditions slot in the title bar: a
+comma-separated list rather than chips, since the GM reads this
+as a glanceable summary and edits on the card itself. Hidden
+when there are no conditions.
 -}
 conditionsText : Maybe Creature -> Html Msg
 conditionsText active =
@@ -517,16 +377,7 @@ conditionsText active =
 
             else
                 span [ class "encounter-bar__conditions" ]
-                    (List.intersperse
-                        (span [ class "encounter-bar__cond-sep" ] [ text "|" ])
-                        (List.map
-                            (\cond ->
-                                span [ class "encounter-bar__cond" ]
-                                    [ text cond.name ]
-                            )
-                            c.conditions
-                        )
-                    )
+                    [ text (String.join ", " (List.map .name c.conditions)) ]
 
         Nothing ->
             text ""

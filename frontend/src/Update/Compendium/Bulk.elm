@@ -2,7 +2,7 @@ module Update.Compendium.Bulk exposing
     ( deleteFromBrowser, importClick, importFileChosen
     , importFileRead, importResponse, pendingCancel, pendingConfirm
     , resetClick, resetResponse
-    , clearAll, clearResponse, clearSelected, deleteSelected
+    , clearAll, clearClick, clearResponse, clearSelected, deleteSelected
     )
 
 {-| Bulk import / reset / per-row delete flow for the compendium
@@ -10,9 +10,9 @@ browser. All three actions go through a "pending" confirmation
 banner before the wire call fires so a mis-click can't replace
 the library or wipe a creature without one final yes.
 
-`PendingReset`, `PendingImport`, `PendingDelete` (an ADT in
-`Ui.Compendium`) identify which destructive action the GM has
-queued; `pendingConfirm` dispatches to the right Cmd.
+`Ui.Compendium.PendingAction` identifies which destructive
+action the GM has queued; `pendingConfirm` dispatches to the
+right Cmd.
 
 @docs deleteFromBrowser, importClick, importFileChosen
 @docs importFileRead, importResponse, pendingCancel, pendingConfirm
@@ -153,6 +153,9 @@ pendingCancel model =
 pendingConfirm : Model -> ( Model, Cmd Msg )
 pendingConfirm model =
     case model.compendium.pending of
+        -- PendingClear resolves through its own scope buttons
+        -- (`clearAll` / `clearSelected`), never this generic
+        -- confirm, so it falls through to the no-op arm.
         Just PendingReset ->
             case model.auth of
                 Auth.AuthAuthenticated _ ->
@@ -188,6 +191,9 @@ pendingConfirm model =
 
                 _ ->
                     applyLocalCompendiumDelete id model
+
+        Just PendingClear ->
+            ( model, Cmd.none )
 
         Nothing ->
             ( model, Cmd.none )
@@ -294,29 +300,36 @@ applyLocalCompendiumDelete id model =
         |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
-{-| Wholesale-replace the compendium with an empty list.
+{-| The Clear trigger: stage the dialog that picks a scope.
+-}
+clearClick : Model -> ( Model, Cmd Msg )
+clearClick model =
+    ( withCompendium
+        (\ui -> { ui | pending = Just PendingClear, bulkError = Nothing })
+        model
+    , Cmd.none
+    )
+
+
+{-| Clear All, from the staged dialog's own button.
 Routes through `Effects.clearCompendiumCreatures` so the
 response lands in `clearResponse` and keeps the library marked
-dirty (the GM just discarded everything; Export should still
-flag as having unsaved changes).
-
-Closes the Clear dropdown synchronously; the user shouldn't
-see the dropdown still hovering after the destructive op
-fires.
-
+dirty — the GM just discarded everything, so Export should
+still flag unsaved changes.
 -}
 clearAll : Model -> ( Model, Cmd Msg )
 clearAll model =
     case model.auth of
         Auth.AuthAuthenticated _ ->
             ( withCompendium
-                (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                (\ui -> { ui | pending = Nothing, bulkBusy = True })
                 model
             , Effects.clearCompendiumCreatures []
             )
 
         _ ->
-            applyLocalClear [] model
+            applyLocalClear []
+                (withCompendium (\ui -> { ui | pending = Nothing }) model)
 
 
 {-| Replace the compendium with the kept set — every creature
@@ -337,16 +350,17 @@ clearSelected model =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
                     ( withCompendium
-                        (\ui -> { ui | bulkMenu = Nothing, bulkBusy = True })
+                        (\ui -> { ui | pending = Nothing, bulkBusy = True })
                         model
                     , Effects.clearCompendiumCreatures kept
                     )
 
                 _ ->
-                    applyLocalClear kept model
+                    applyLocalClear kept
+                        (withCompendium (\ui -> { ui | pending = Nothing }) model)
 
         _ ->
-            ( withCompendium (\ui -> { ui | bulkMenu = Nothing }) model
+            ( withCompendium (\ui -> { ui | pending = Nothing }) model
             , Cmd.none
             )
 

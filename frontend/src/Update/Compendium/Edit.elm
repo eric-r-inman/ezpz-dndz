@@ -103,7 +103,7 @@ import Compendium
 import Compendium.Wire
 import Effects
 import Http
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
@@ -128,8 +128,19 @@ import Util.Http
 
 
 withCompendiumEdit : (CompendiumEditUi -> CompendiumEditUi) -> Model -> Model
-withCompendiumEdit =
-    Model.mapModal Model.compendiumEditLens
+withCompendiumEdit fn model =
+    let
+        next =
+            Model.mapSurface Model.compendiumEditLens fn model
+    in
+    -- Mirror the form into the draft on every edit, so however
+    -- the editor later closes, the work is already kept.
+    case Maybe.andThen Model.compendiumEditLens.extract next.surface of
+        Just ui ->
+            { next | compendiumEditDraft = Just ui }
+
+        Nothing ->
+            next
 
 
 
@@ -138,17 +149,44 @@ withCompendiumEdit =
 
 new : Model -> ( Model, Cmd Msg )
 new model =
-    ( { model | modal = Just (ModalCompendiumEdit CompendiumUi.blankEdit) }
+    let
+        restoredOrBlank =
+            case model.compendiumEditDraft of
+                Just draft ->
+                    case draft.mode of
+                        CompendiumUi.CreateMode ->
+                            draft
+
+                        CompendiumUi.EditExisting _ ->
+                            CompendiumUi.blankEdit
+
+                Nothing ->
+                    CompendiumUi.blankEdit
+    in
+    ( { model | surface = Just (SurfaceCompendiumEdit restoredOrBlank) }
     , Cmd.none
     )
 
 
 existing : Model -> ( Model, Cmd Msg )
 existing model =
+    let
+        restoredOrFresh creature =
+            case model.compendiumEditDraft of
+                Just draft ->
+                    if draft.mode == CompendiumUi.EditExisting { id = creature.id, createdAt = creature.createdAt } then
+                        draft
+
+                    else
+                        CompendiumUi.editFromCreature creature
+
+                Nothing ->
+                    CompendiumUi.editFromCreature creature
+    in
     ( { model
-        | modal =
+        | surface =
             currentlySelectedCreature model
-                |> Maybe.map (CompendiumUi.editFromCreature >> ModalCompendiumEdit)
+                |> Maybe.map (restoredOrFresh >> SurfaceCompendiumEdit)
       }
     , Cmd.none
     )
@@ -157,9 +195,9 @@ existing model =
 duplicate : Model -> ( Model, Cmd Msg )
 duplicate model =
     ( { model
-        | modal =
+        | surface =
             currentlySelectedCreature model
-                |> Maybe.map (editFromDuplicate >> ModalCompendiumEdit)
+                |> Maybe.map (editFromDuplicate >> SurfaceCompendiumEdit)
       }
     , Cmd.none
     )
@@ -193,7 +231,9 @@ editFromDuplicate source =
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing, compendiumEditDraft = Nothing }
+    , Cmd.none
+    )
 
 
 fieldChanged : CompendiumField -> String -> Model -> ( Model, Cmd Msg )
@@ -1328,8 +1368,8 @@ spellcastingInnateSpellsChanged idx text model =
 
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalCompendiumEdit ui) ->
+    case model.surface of
+        Just (SurfaceCompendiumEdit ui) ->
             case CompendiumUi.validateEdit ui of
                 Err message ->
                     ( withCompendiumEdit (\u -> { u | submitError = Just message }) model
@@ -1398,7 +1438,8 @@ applyLocalCreatureSubmit mode incoming model =
                     other
     in
     { withId
-        | modal = Nothing
+        | surface = Nothing
+        , compendiumEditDraft = Nothing
         , compendium =
             { compendium
                 | db = newDb
@@ -1421,7 +1462,8 @@ submitResponse result model =
 
         Ok creature ->
             { model
-                | modal = Nothing
+                | surface = Nothing
+                , compendiumEditDraft = Nothing
                 , compendium =
                     let
                         ui =
@@ -1442,8 +1484,8 @@ submitResponse result model =
 
 delete : Model -> ( Model, Cmd Msg )
 delete model =
-    case model.modal of
-        Just (ModalCompendiumEdit { mode }) ->
+    case model.surface of
+        Just (SurfaceCompendiumEdit { mode }) ->
             case mode of
                 EditExisting { id } ->
                     case model.auth of
@@ -1456,7 +1498,12 @@ delete model =
                             applyLocalCreatureDelete id model
 
                 CreateMode ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( { model
+                        | surface = Nothing
+                        , compendiumEditDraft = Nothing
+                      }
+                    , Cmd.none
+                    )
 
         _ ->
             ( model, Cmd.none )
@@ -1495,7 +1542,11 @@ applyLocalCreatureDelete deletedId model =
                 , compendiumDirty = True
             }
     in
-    { model | modal = Nothing, compendium = clearedSelection }
+    { model
+        | surface = Nothing
+        , compendiumEditDraft = Nothing
+        , compendium = clearedSelection
+    }
         |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
@@ -1532,7 +1583,8 @@ deleteResponse deletedId result model =
                     }
             in
             { model
-                | modal = Nothing
+                | surface = Nothing
+                , compendiumEditDraft = Nothing
                 , compendium = clearedSelection model.compendium
             }
                 |> Update.Toast.pushWith ToastSuccess

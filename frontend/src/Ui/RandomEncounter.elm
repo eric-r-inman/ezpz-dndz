@@ -3,7 +3,7 @@ module Ui.RandomEncounter exposing
     , fresh
     )
 
-{-| Modal-local UI state for the Random Encounter generator.
+{-| Surface-local UI state for the Random Encounter generator.
 
 The party (`model.party`) is shared with the CR Calculator and
 lives on `Model` so the GM doesn't have to re-enter it. What's
@@ -68,9 +68,8 @@ type alias RandomEncounterUi =
 
     -- Whether the inline pin picker (search input + scrollable
     -- compendium list) is open.  Closed by default so the
-    -- modal stays compact — a "➕ Pin a creature" button toggles
-    -- it open / closed, mirroring the "➕ Quick Add" pattern in
-    -- the Encounter Controls panel.
+    -- panel stays compact — a "➕ Pin a creature" button toggles
+    -- it open / closed.
     , pinPickerOpen : Bool
 
     -- Creatures the GM has explicitly excluded from the roll.

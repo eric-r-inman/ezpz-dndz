@@ -1,108 +1,27 @@
-module Update.AbilitySave exposing (close, landed, open, roll)
+module Update.AbilitySave exposing (trigger)
 
-{-| Update branches for the ability-save modal opened by clicking
-an ability cell (STR, DEX, …) in the compendium stat block.
-
-The modal is essentially three roll buttons (Roll / Advantage /
-Disadvantage) wrapped around a captured save bonus. Submitting
-fires a normal dice-history Cmd tagged `<ABILITY> Save → <name>`
-so the result lands in the dice modal alongside everything else.
-
+{-| An ability-check or saving-throw click in a compendium stat
+block. Both fire the same triple-roll (standard + advantage +
+disadvantage together) as an attack-roll link — see
+`Update.Dice.tripleRollCmd` — differing only in the dice-history
+label `RollKind` produces ("STR check" vs "STR saving throw").
 -}
 
-import Dice
-import Effects
-import Model exposing (Modal(..), Model)
-import Msg exposing (Msg(..), RollMode(..))
-import Ui.AbilitySave as AbilitySave exposing (AbilitySaveUi, RollKind)
+import Model exposing (Model)
+import Msg exposing (Msg)
+import Ui.AbilitySave exposing (RollKind, kindWord)
 import Update.Dice
 
 
-open : RollKind -> String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
-open kind creatureName ability bonus clickX clickY model =
-    ( { model
-        | modal =
-            Just
-                (ModalAbilitySave
-                    (AbilitySave.fresh kind creatureName ability bonus clickX clickY)
-                )
-      }
-    , Cmd.none
-    )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
-
-
-{-| Fire a save roll in the requested mode and close the modal.
-The roll lands in `AbilitySaveLanded`, which routes it into the
-shared dice history just like any other source.
+{-| `ability` is the label shown in the stat block (e.g. `"STR"`);
+`bonus` is the flat ability modifier for a check or the
+proficient save bonus for a save, captured at the call site so
+this doesn't have to re-derive it. `x` / `y` are the triggering
+click's position, carried through so the floating popups anchor
+at the cell.
 -}
-roll : RollMode -> Model -> ( Model, Cmd Msg )
-roll mode model =
-    case model.modal of
-        Just (ModalAbilitySave ui) ->
-            ( { model | modal = Nothing }
-            , rollCmd mode ui
-            )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-{-| Build the right Dice cmd for the chosen mode. Standard uses
-the full `1d20 + bonus` expression; advantage / disadvantage
-delegate to the dedicated 2d20 helpers so the kept-die labelling
-shows up correctly in the history.
-
-The result-handler Msg is partial-applied with the original
-ability-cell click position so the floating popup spawns at the
-cell when the dice land — even though the modal has already
-closed by then.
-
--}
-rollCmd : RollMode -> AbilitySaveUi -> Cmd Msg
-rollCmd mode ui =
-    let
-        src =
-            { feature = ui.ability ++ " " ++ AbilitySave.kindWord ui.kind
-            , target = Just ui.creatureName
-            }
-
-        landedCtor =
-            AbilitySaveLanded ui.clickX ui.clickY
-    in
-    case mode of
-        ModeStandard ->
-            Dice.rollCmd landedCtor src (Effects.saveExpression ui.bonus)
-
-        ModeAdvantage ->
-            Dice.advantageCmd landedCtor src ui.bonus
-
-        ModeDisadvantage ->
-            Dice.disadvantageCmd landedCtor src ui.bonus
-
-
-{-| Roll landed. Reuse the shared dice-history pipeline so the
-"unread rolls" indicator and the server-side persistence happen
-exactly the same way as a manual roll from the dice modal, AND
-spawn a floating roll-result popup at the original ability-cell
-click position so the GM gets the same inline feedback they
-already get from clicking an inline dice link in a stat block.
--}
-landed : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
-landed x y roll_ model =
-    let
-        ( withPopup, popupCmd ) =
-            Update.Dice.spawnRollPopup
-                { x = x, y = y, total = roll_.total }
-                model
-
-        ( pushed, flashCmd ) =
-            Effects.pushDiceRoll roll_ withPopup
-    in
-    ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll_, popupCmd, flashCmd ]
+trigger : RollKind -> String -> String -> Int -> Int -> Int -> Model -> ( Model, Cmd Msg )
+trigger kind creatureName ability bonus x y model =
+    ( model
+    , Update.Dice.tripleRollCmd (ability ++ " " ++ kindWord kind) creatureName bonus x y
     )

@@ -1,13 +1,10 @@
-module Ui.HpChange exposing (HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh)
+module Ui.HpChange exposing
+    ( HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
+    , HpChangeTargetSnapshot, HpLogKind(..)
+    )
 
-{-| HP-change modal state plus the inline-HP edit and the
+{-| HP-change editor state plus the inline-HP edit and the
 recent-changes log entries.
-
-The HP-modal `Open ↔ closed` distinction lives at the
-`Model.hpChange : Maybe HpChangeUi` field rather than as a flag
-inside this record, so `Encounter.mapCreature` deleting the
-targeted creature can't leave a stale modal pointing at
-something that no longer exists.
 
 `amountText` mirrors the `<input>` characters so a transient
 mid-typing state (a bare `-` or the `2d` prefix of a formula
@@ -16,6 +13,7 @@ The single field accepts either a plain integer or a dice
 formula; the apply handler parses it at commit time.
 
 @docs HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
+@docs HpChangeTargetSnapshot, HpLogKind
 
 -}
 
@@ -26,10 +24,9 @@ import Msg exposing (HpField(..), HpKind(..))
 type alias HpChangeUi =
     { target : String
 
-    -- Tracks the last-committed kind so a keyboard-cancelled
-    -- modal can still be reopened at whatever kind the GM
-    -- was last dabbling with.  Starts at `DamageKind` on
-    -- fresh open; only mutates when one of the four footer
+    -- Tracks the last-committed kind, so folding the editor and
+    -- coming back finds it where the GM left it.  Starts at
+    -- `DamageKind`; only mutates when one of the four footer
     -- action buttons commits.
     , kind : HpKind
 
@@ -40,22 +37,78 @@ type alias HpChangeUi =
     -- routing.
     , amountText : String
     , parseError : Maybe Dice.Error
-    , ignoreTemp : Bool
     , applyToSelected : Bool
+
+    -- When applying a dice formula to a selection, roll fresh
+    -- per creature instead of one shared total.  Only consulted
+    -- on the formula path with `applyToSelected` set; the
+    -- default False keeps 5e's single-roll AOE convention.
+    , freshRollPerTarget : Bool
+
+    -- Direct pool overrides, typed rather than computed from a
+    -- verb.  Each is applied only when it parses, so a blank
+    -- field leaves its pool alone.
+    , manualHpText : String
+    , manualMaxHpText : String
+    , manualTempHpText : String
+
+    -- A formula the Set section rolls for each target's hit
+    -- points instead — a monster's hit dice, in place of its
+    -- average.  While it holds text the pool fields stand aside.
+    , manualRollText : String
+    , manualRollError : Maybe Dice.Error
     }
 
 
 {-| One row in the recent-HP-changes log shown at the bottom of
-the Manage HP modal. Captures who, what kind, the input amount,
+the Manage HP editor. Captures who, what kind, the input amount,
 and the before/after snapshot so the row can render
 "27/59 (+0) → 14/59 (+0)" without re-querying the encounter
 state, and so undo can walk maxHp back too when a `MaxHpKind`
 entry gets reverted.
 -}
 type alias HpChangeEntry =
-    { kind : HpKind
-    , target : String
-    , amount : Int
+    { kind : HpLogKind
+    , amount : Maybe Int
+
+    -- Whether the dice roller produced the amount.  The roller's
+    -- own log shows only those, since a typed number is not a
+    -- roll.
+    , rolled : Bool
+
+    -- One snapshot per creature the application touched, in
+    -- application order.  A multi-target apply is one entry, so
+    -- the log reads "Damage  A, B, C  8" and undo reverts the
+    -- whole application rather than one creature of it.
+    , targets : List HpChangeTargetSnapshot
+
+    -- Identifies this application, so the newest row can be keyed
+    -- on it and remount — which is what replays the flash for two
+    -- identical applies in a row.  Comes from `Model.nextHpLogSeq`.
+    , seq : Int
+
+    -- The roll count at the moment this was logged, which is what
+    -- orders it against the dice history in the shared log.  A
+    -- manual apply rolls nothing, so this is the only thing
+    -- placing it among the rolls.
+    , rollsBefore : Int
+    }
+
+
+{-| What a log row records: one of the verb buttons' changes, the
+Set section writing typed pools, or the Set section rolling hit
+points.
+-}
+type HpLogKind
+    = Applied HpKind
+    | SetPools
+    | RolledHp
+
+
+{-| Per-creature before/after capture inside one log entry.
+-}
+type alias HpChangeTargetSnapshot =
+    { name : String
     , beforeHp : Int
     , beforeTemp : Int
     , beforeMax : Int
@@ -77,15 +130,14 @@ type alias HpEdit =
     }
 
 
-{-| Cap on the HP-change log size. Matches the user's request
-for "last 10 applications".
+{-| Cap on the HP-change log size.
 -}
 maxHpLogEntries : Int
 maxHpLogEntries =
-    10
+    30
 
 
-{-| Initial state for opening the Manage HP modal targeted at a
+{-| Initial state for opening the Manage HP editor targeted at a
 creature. Kind defaults to `DamageKind` — the most-common
 first action; the four footer buttons let the GM commit as
 whichever kind actually applies without a mid-flow radio pick.
@@ -96,6 +148,11 @@ fresh target =
     , kind = DamageKind
     , amountText = ""
     , parseError = Nothing
-    , ignoreTemp = False
     , applyToSelected = False
+    , freshRollPerTarget = False
+    , manualHpText = ""
+    , manualMaxHpText = ""
+    , manualTempHpText = ""
+    , manualRollText = ""
+    , manualRollError = Nothing
     }

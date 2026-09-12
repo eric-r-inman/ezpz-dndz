@@ -30,18 +30,22 @@ the server doesn't re-model this schema.
 import Dict exposing (Dict)
 import Encounter
     exposing
-        ( AutoRollMode(..)
+        ( AreaTracker
+        , AutoRollMode(..)
         , Condition
         , Cover(..)
         , Creature
+        , DamageTrigger(..)
         , DeathSaves
         , Duration(..)
         , Encounter
+        , FailedSave
         , SaveNotice
         , SaveToEnd
         , Timer
         , TurnPhase(..)
         , TurnTarget(..)
+        , noFailedSave
         )
 import Encounter.Treasure
 import Encounter.Treasure.Tables
@@ -1051,6 +1055,7 @@ encodeCreature c =
         , ( "selected", E.bool c.selected )
         , ( "cover", encodeCover c.cover )
         , ( "concentrating", E.bool c.concentrating )
+        , ( "concentrationNote", E.string c.concentrationNote )
         , ( "hiding", E.bool c.hiding )
         , ( "dodging", E.bool c.dodging )
         , ( "flying", E.bool c.flying )
@@ -1076,14 +1081,19 @@ encodeCreature c =
         , ( "creatureKind", E.string c.creatureKind )
         , ( "race", E.string c.race )
         , ( "alignment", E.string c.alignment )
-        , ( "surprised", E.bool c.surprised )
         , ( "hasSpecialReactions", E.bool c.hasSpecialReactions )
+        , ( "specialReactionsUsed", encodeStringSet c.specialReactionsUsed )
         ]
 
 
 encodeIntSet : Set Int -> E.Value
 encodeIntSet s =
     E.list E.int (Set.toList s)
+
+
+encodeStringSet : Set String -> E.Value
+encodeStringSet s =
+    E.list E.string (Set.toList s)
 
 
 encodeCondition : Condition -> E.Value
@@ -1094,6 +1104,19 @@ encodeCondition cond =
         , ( "note", E.string cond.note )
         , ( "duration", encodeDuration cond.duration )
         , ( "saveToEnd", encodeMaybe encodeSaveToEnd cond.saveToEnd )
+        , ( "linkedTo", encodeMaybe E.int cond.linkedTo )
+        , ( "area", encodeMaybe encodeArea cond.area )
+        ]
+
+
+encodeArea : AreaTracker -> E.Value
+encodeArea area =
+    E.object
+        [ ( "chain", E.string area.chain )
+        , ( "ability", E.string area.ability )
+        , ( "dc", E.int area.dc )
+        , ( "bonus", E.int area.bonus )
+        , ( "phase", encodeTurnPhase area.phase )
         ]
 
 
@@ -1147,6 +1170,54 @@ encodeSaveToEnd s =
         , ( "dc", E.int s.dc )
         , ( "bonus", E.int s.bonus )
         , ( "autoRoll", encodeAutoRoll s.autoRoll )
+        , ( "onFail", encodeFailedSave s.onFail )
+        , ( "onDamage", encodeDamageTrigger s.onDamage )
+        ]
+
+
+encodeDamageTrigger : DamageTrigger -> E.Value
+encodeDamageTrigger trigger =
+    E.string
+        (case trigger of
+            NoDamageTrigger ->
+                "none"
+
+            AskOnDamage ->
+                "ask"
+
+            RollOnDamage ->
+                "roll"
+
+            RollOnDamageWithAdvantage ->
+                "rollAdvantage"
+        )
+
+
+decodeDamageTrigger : D.Decoder DamageTrigger
+decodeDamageTrigger =
+    D.string
+        |> D.map
+            (\s ->
+                case s of
+                    "ask" ->
+                        AskOnDamage
+
+                    "roll" ->
+                        RollOnDamage
+
+                    "rollAdvantage" ->
+                        RollOnDamageWithAdvantage
+
+                    _ ->
+                        NoDamageTrigger
+            )
+
+
+encodeFailedSave : FailedSave -> E.Value
+encodeFailedSave f =
+    E.object
+        [ ( "damage", encodeMaybe E.string f.damage )
+        , ( "becomes", encodeMaybe E.string f.becomes )
         ]
 
 
@@ -1161,6 +1232,9 @@ encodeAutoRoll a =
 
         AutoRollAtEnd ->
             E.string "atEnd"
+
+        AutoRollAskAtEnd ->
+            E.string "askAtEnd"
 
 
 encodeSaveNotice : SaveNotice -> E.Value
@@ -1315,7 +1389,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment surprised hasSpecialReactions ->
+        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating concentrationNote hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment hasSpecialReactions specialReactionsUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -1331,6 +1405,7 @@ decodeCreature =
             , selected = selected
             , cover = cover
             , concentrating = concentrating
+            , concentrationNote = concentrationNote
             , hiding = hiding
             , dodging = dodging
             , flying = flying
@@ -1356,8 +1431,8 @@ decodeCreature =
             , creatureKind = creatureKind
             , race = race
             , alignment = alignment
-            , surprised = surprised
             , hasSpecialReactions = hasSpecialReactions
+            , specialReactionsUsed = specialReactionsUsed
             }
         )
         |> required "name" D.string
@@ -1375,6 +1450,7 @@ decodeCreature =
         |> optional "selected" D.bool False
         |> optional "cover" decodeCover NoCover
         |> optional "concentrating" D.bool False
+        |> optional "concentrationNote" D.string ""
         |> optional "hiding" D.bool False
         |> optional "dodging" D.bool False
         |> optional "flying" D.bool False
@@ -1412,8 +1488,8 @@ decodeCreature =
         |> optional "creatureKind" D.string "enemy"
         |> optional "race" D.string ""
         |> optional "alignment" D.string ""
-        |> optional "surprised" D.bool False
         |> optional "hasSpecialReactions" D.bool False
+        |> optional "specialReactionsUsed" decodeStringSet Set.empty
 
 
 decodeIntSet : D.Decoder (Set Int)
@@ -1421,9 +1497,14 @@ decodeIntSet =
     D.list D.int |> D.map Set.fromList
 
 
+decodeStringSet : D.Decoder (Set String)
+decodeStringSet =
+    D.list D.string |> D.map Set.fromList
+
+
 decodeCondition : D.Decoder Condition
 decodeCondition =
-    D.map5 Condition
+    D.map7 Condition
         (D.field "id" D.int)
         (D.field "name" D.string)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
@@ -1433,6 +1514,18 @@ decodeCondition =
             , D.succeed Nothing
             ]
         )
+        (D.oneOf [ D.field "linkedTo" (D.nullable D.int), D.succeed Nothing ])
+        (D.oneOf [ D.field "area" (D.nullable decodeArea), D.succeed Nothing ])
+
+
+decodeArea : D.Decoder AreaTracker
+decodeArea =
+    D.map5 AreaTracker
+        (D.field "chain" D.string)
+        (D.field "ability" D.string)
+        (D.field "dc" D.int)
+        (D.field "bonus" D.int)
+        (D.field "phase" decodeTurnPhase)
 
 
 decodeDuration : D.Decoder Duration
@@ -1497,11 +1590,20 @@ decodeTurnTarget =
 
 decodeSaveToEnd : D.Decoder SaveToEnd
 decodeSaveToEnd =
-    D.map4 SaveToEnd
+    D.map6 SaveToEnd
         (D.field "ability" D.string)
         (D.field "dc" D.int)
         (D.field "bonus" D.int)
         (D.field "autoRoll" decodeAutoRoll)
+        (D.oneOf [ D.field "onFail" decodeFailedSave, D.succeed noFailedSave ])
+        (D.oneOf [ D.field "onDamage" decodeDamageTrigger, D.succeed NoDamageTrigger ])
+
+
+decodeFailedSave : D.Decoder FailedSave
+decodeFailedSave =
+    D.map2 FailedSave
+        (D.oneOf [ D.field "damage" (D.nullable D.string), D.succeed Nothing ])
+        (D.oneOf [ D.field "becomes" (D.nullable D.string), D.succeed Nothing ])
 
 
 decodeAutoRoll : D.Decoder AutoRollMode
@@ -1518,6 +1620,9 @@ decodeAutoRoll =
 
                     "atEnd" ->
                         D.succeed AutoRollAtEnd
+
+                    "askAtEnd" ->
+                        D.succeed AutoRollAskAtEnd
 
                     other ->
                         D.fail ("Unknown auto-roll mode: " ++ other)

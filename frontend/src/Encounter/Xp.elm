@@ -3,9 +3,9 @@ module Encounter.Xp exposing
     , formatThousands, totalsFor
     )
 
-{-| XP totals for the title bar (and any future CR-calculator
-panel). Pure rules code — what XP each creature is worth and how
-the GM's chosen scope filters them. No `Html`, no `Msg`.
+{-| XP totals for the encounter. Pure rules code — what XP each
+creature is worth and how the GM's chosen scope filters them.
+No `Html`, no `Msg`.
 
 `XpScope` lives here rather than in `Msg.elm` because it is a
 domain concept (a filter over the creature queue), not a message
@@ -20,7 +20,7 @@ import Compendium exposing (Db)
 import Encounter exposing (Creature, Encounter)
 
 
-{-| The four GM-pickable scopes for the title-bar XP readout.
+{-| The four GM-pickable scopes for the XP readout.
 
   - `ScopeXpEnemiesAndNpcs` — every non-Player creature. Default.
   - `ScopeXpEnemiesOnly` — Enemy-tagged creatures only.
@@ -41,8 +41,8 @@ type XpScope
   - `lairTotal` — sum of `xpInLair` if non-zero, otherwise `xp`,
     so a mixed party (some with lair XP, some without) sums
     correctly. Equal to `total` when nothing in scope has a
-    lair-XP variant; the view uses that equality to decide whether
-    to render the secondary `(N w/Lair)` chip.
+    lair-XP variant, which is how the view knows to leave the
+    in-lair figure out.
 
 -}
 type alias Totals =

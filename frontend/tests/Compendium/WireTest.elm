@@ -28,6 +28,7 @@ import Compendium.Wire as Wire
 import Expect
 import Json.Decode as D
 import Json.Encode as E
+import Set
 import Test exposing (Test, describe, test)
 
 

@@ -4,12 +4,12 @@ module Update.Compendium.Lore exposing
     )
 
 {-| Handlers for the Lore-groups section in the Compendium
-modal's browser list.
+page's browser list.
 
 The Lore section is a peer of the user-Groups section: it has
 its own disclosure, its own per-row expand state, and its own
 selection axis. Selection drives the right-pane action bar
-(Add / Edit / Delete) in `View.Modal.Compendium`.
+(Add / Edit / Delete) in `View.Page.Compendium`.
 
 `add` materializes the selected lore group into the encounter
 by rolling a count in `[countMin, countMax]` for each member
@@ -65,7 +65,14 @@ expandToggle id model =
 selections so the right pane reads as the lore detail.
 -}
 select : String -> Model -> ( Model, Cmd Msg )
-select id model =
+select id rawModel =
+    let
+        -- A selection mid-edit parks the creature editor: its
+        -- draft is already mirrored, so this pauses the edit
+        -- rather than discarding it.
+        model =
+            Model.parkCreatureEditor rawModel
+    in
     ( withCompendium
         (\ui ->
             { ui

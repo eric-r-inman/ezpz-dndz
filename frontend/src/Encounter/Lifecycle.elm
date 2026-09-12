@@ -50,7 +50,7 @@ combat round, so `round` increments.
   - explicitly marked inactive (via the card's ∅ toggle).
 
 The marker keeps walking past skipped creatures on every
-subsequent Next Turn. Dead state isn't cleared automatically;
+subsequent turn advance. Dead state isn't cleared automatically;
 inactive state only clears when the user toggles the button
 back off; the downed-without-opt-in state clears via the heal /
 opt-in paths just described. An iteration cap of `length creatures`
@@ -58,7 +58,7 @@ protects the all-skipped edge case (TPK, or all-inactive while the
 GM is setting up an encounter).
 
 In addition to the queue walk, this fires two condition hooks
-once per Next Turn click: end-of-turn for the OUTGOING active
+once per turn advance: end-of-turn for the OUTGOING active
 creature, then begin-of-turn for the INCOMING (post-skip) active
 creature.
 
@@ -112,9 +112,7 @@ applyBeginOfTurnHook enc =
 {-| End-of-turn hook for the named creature: tick down their own
 `DurationCountdown AtEnd` conditions, expire any
 `DurationUntilTurn AtEnd <name>` across the whole encounter, and
-decrement save notices. Also clears the creature's `surprised`
-flag — the surprised condition burns off after the surprised
-creature finishes their first turn.
+decrement save notices.
 -}
 applyEndOfTurn : String -> Encounter -> Encounter
 applyEndOfTurn name enc =
@@ -123,12 +121,7 @@ applyEndOfTurn name enc =
         |> tickSaveNoticesFor name
         |> tickTimerFor name AtEnd
         |> expireUntilTurn AtEnd name
-        |> clearSurprisedFor name
-
-
-clearSurprisedFor : String -> Encounter -> Encounter
-clearSurprisedFor name enc =
-    Encounter.mapCreature name (\c -> { c | surprised = False }) enc
+        |> Encounter.pruneOrphanedLinks
 
 
 tickSaveNoticesFor : String -> Encounter -> Encounter
@@ -167,7 +160,7 @@ tickTimerFor name phase enc =
 {-| Begin-of-turn hook for the named creature. Symmetric to
 `applyEndOfTurn` but for `AtBegin` durations, plus:
 
-  - **Legendary-action reset** — the LA pip column returns to "all
+  - **Legendary-action reset** — the LA readout returns to "all
     available", mirroring the 5e rule that a legendary creature
     regains expended legendary actions at the start of its turn.
     Legendary resistances do NOT reset (per long rest).
@@ -181,8 +174,10 @@ applyBeginOfTurn name enc =
         |> tickCountdownFor name AtBegin
         |> tickTimerFor name AtBegin
         |> expireUntilTurn AtBegin name
+        |> Encounter.pruneOrphanedLinks
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
+        |> resetSpecialReactionsFor name
         |> markSpentRechargesPendingFor name
 
 
@@ -197,6 +192,13 @@ resetReactionFor : String -> Encounter -> Encounter
 resetReactionFor name enc =
     Encounter.mapCreature name
         (\c -> { c | reactionUsed = False })
+        enc
+
+
+resetSpecialReactionsFor : String -> Encounter -> Encounter
+resetSpecialReactionsFor name enc =
+    Encounter.mapCreature name
+        (\c -> { c | specialReactionsUsed = Set.empty })
         enc
 
 

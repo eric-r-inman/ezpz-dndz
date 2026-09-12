@@ -28,31 +28,23 @@ uses so it's instantly recognisable as "whose turn it is."
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter, Timer)
-import Encounter.Xp as Xp
 import Html exposing (Html, button, div, section, span, text)
 import Html.Attributes exposing (attribute, class, classList, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
-import Ui.Compendium exposing (CompendiumDb(..))
 import View.EncounterBar
 import View.Tooltips as Tooltips
 
 
-view : Encounter -> Maybe String -> CompendiumDb -> Html Msg
-view enc savedAs db =
+view : Encounter -> Maybe String -> Html Msg
+view enc savedAs =
     div [ class "workspace workspace--quick-list" ]
         [ section [ class "panel panel--quick-list" ]
             [ div [ class "panel__header panel__header--encounter" ]
-                [ -- XpScope / xpFilterOpen values are ignored by the
-                  -- bar in QuickListBar mode but the function still
-                  -- takes them.  Pass safe defaults.
-                  View.EncounterBar.view
+                [ View.EncounterBar.view
                     View.EncounterBar.QuickListBar
                     enc
                     savedAs
-                    db
-                    Xp.ScopeXpEnemiesAndNpcs
-                    False
                 ]
             , div [ class "panel__body quick-list__body" ]
                 (if List.isEmpty enc.creatures then
@@ -96,17 +88,17 @@ creatureCard activeName creature =
             , lineTwo creature
             ]
     in
-    -- Placeholder rows have no compendium id to pin — render
+    -- Placeholder rows have no compendium source to show — render
     -- them as a static div rather than a button so the empty
-    -- click doesn't try to broadcast a no-op panel-show.
+    -- click doesn't try to broadcast a no-op show request.
     case creature.creatureId of
-        Just cid ->
+        Just _ ->
             button
                 (type_ "button"
-                    :: onClick (QuickListRowClick cid creature.name)
+                    :: onClick (QuickListRowClick creature.name)
                     :: attribute "aria-label"
                         ("Show " ++ creature.name ++ "'s stat block in the main tab")
-                    :: Tooltips.attr "Click to jump to this creature in the main tab (pins stat block + scrolls to card)"
+                    :: Tooltips.attr "Click to jump to this creature in the main tab (unfolds its stat block under its card and scrolls to it)"
                     :: baseAttrs
                 )
                 children

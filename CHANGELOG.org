@@ -3,8 +3,495 @@
 
 * Upcoming
 ** Added
+1. Combat bookkeeping moved out of pop-up dialogs: every encounter control
+   except the destructive Reset / Clear confirmation now opens into a panel
+   beside the queue instead of over it.  No action needed.
+2. The panel editors target the active creature or the current selection; they
+   stay open after applying and keep recent-applies logs (undo-able for HP and
+   conditions).  No action needed.
+3. When applying a dice-formula HP change to a selection, a "New roll for each
+   creature" option rolls independently per creature.  No action needed.
+4. Creature cards name each special reaction in an orange badge on the card's
+   top row.  No action needed.
+5. A creature card's status labels open the Status editor targeting that
+   creature.  No action needed.
+6. The initiative manager is one of those editors now, opened by a card's
+   initiative circle.  No action needed.
+7. The status, condition, replace, and duplicate editors choose their scope with
+   a pair of buttons rather than an apply-scope checkbox.  No action needed.
+8. The encounter queue lists its spellcasters in a reminder strip alongside the
+   legendary-action and special-reaction ones, and each strip's icon drops down
+   a panel detailing what those actions, reactions, or spells do.  No action
+   needed.
+9. A creature reads as bloodied through red current HP rather than a droplet
+   icon.  No action needed.
+10. Notes render in italic parentheses on both the creature card and the
+    encounter title bar.  No action needed.
+11. Card HP values no longer edit in place: clicking one opens the Manage HP
+    editor aimed at that creature, whose new Manual section sets the pools
+    directly.  No action needed.
+12. A creature card's special-reaction badges and its Reaction toggle track each
+    other, both clearing at the start of that creature's turn.  No action
+    needed.
+13. The encounter title bar divides its readouts with separators and lists
+    conditions inline, comma-separated.  No action needed.
+14. The initiative editor picks how to roll and who to roll for separately,
+    replacing its grid of one button per combination.  No action needed.
+15. The encounter title bar's flying readout punctuates its height, so the
+    number reads as the wing icon's rather than a neighbouring value.  No action
+    needed.
+16. The Encounter Controls and Compendium panes are gone — everything they held,
+    down to the dice roller and the pinned stat block, is in the editor column
+    on the left instead.  No action needed.
+17. The Compendium always opens in its own browser tab, titled "Compendium",
+    with no creature pre-selected; the in-page dialog it used to fall back to is
+    gone, and its title-bar "From file" tag went with it.  No action needed.
+18. The stat-block panel's title carries a 📖 button that hands the creature off
+    to the Compendium tab, opened with that creature selected and scrolled into
+    view.  No action needed.
+19. Drawer panels stack: opening an editor no longer closes the one already up —
+    each new panel opens below it.  No action needed.
+20. A denser layout overall: buttons, editor panels, and their spacing all
+    tightened, and the editor column slimmed, so more of the screen goes to the
+    queue.  No action needed.
+21. Reset and Clear confirm in a dialog.  No action needed.
+22. The round counter in the encounter title bar is clickable, opening a dialog
+    that sets the round directly.  No action needed.
+23. The XP total, Difficulty, and Treasure moved out of the encounter title bar
+    into their own panels.  No action needed.
+24. Clicking an open drawer panel's heading row folds it down to that row alone,
+    so several panels can stay open without filling the column.  No action
+    needed.
+25. The Manage HP editor sets all three pools from a single Manual row, each
+    label grouped with the field it names.  No action needed.
+26. Editor button rows name the verb once — "Apply to:" or "Roll for:" — and
+    each button carries only its scope, so three scopes fit where two used to.
+    No action needed.
+27. Opening an editor scrolls the editor column to it, and a creature card's
+    controls scroll to the editor they aim at instead of closing it.  No action
+    needed.
+28. Drawer panels reorder by dragging their heading rows, and the stat-block
+    panel's 📖 button sits after the creature's name.  No action needed.
+29. The Dice Roller's Recent rolls fold away, its Count and Modifier share one
+    row, and its title drops the die icon.  No action needed.
+30. The Compendium's Reset and Clear ask in a dialog before touching the
+    library.  No action needed.
+31. Adding a creature to the encounter flashes its "in Encounter" badge.  No
+    action needed.
+32. Encounter groups and Lore groupings can be created, edited, and deleted
+    without signing in; the bundled ones stay read-only.  No action needed.
+33. Creating, pasting, editing, and duplicating creatures — and creating groups
+    — happens in the Compendium's detail pane instead of a dialog.  No action
+    needed.
+34. The creature editor keeps unsaved work: selecting anything else closes it
+    without losing changes, reopening restores them, and only Cancel or a save
+    lets them go.  No action needed.
+35. Save and Load are one "Encounter Saves" panel.  No action needed.
+36. The recent dice totals read from the Dice Roller panel.  No action needed.
+37. The editor column opens with every editor already in it, folded to its
+    heading row.  No action needed.
+38. Folding an editor keeps its work, and Esc folds the last editor you opened.
+    No action needed.
+39. The encounter's own controls — Compendium, Clear, Reset, and Turn — sit in a
+    row at the top of the editor column, still reachable while the editors are
+    folded away.  No action needed.
+40. The Dice Roller marks its title when rolls land while it is out of sight,
+    and clears the mark when you open it.  No action needed.
+41. Quick Add stays up after adding a creature, so a whole encounter goes in
+    without reopening it.  No action needed.
+42. The XP panel is titled "Encounter XP" and the Treasure panel's title drops
+    its coin icon.  No action needed.
+43. The Dice Roller's log carries HP changes alongside the rolls, in the order
+    they happened, and Clear empties both.  No action needed.
+44. A thumbtack in each editor's heading row holds it at the top of the column,
+    above the unpinned ones.  No action needed.
+45. The stat block panel's ✕ now reads "Remove this stat block", so it no longer
+    collides with the new pin.  No action needed.
+46. The editor column remembers how you arranged it — the order you dragged the
+    panels into and which ones you pinned — in that browser.  No action needed.
+47. Creature cards reorder by dragging them.  No action needed.
+48. The per-creature editors re-aim at the active creature when the one they
+    were pointed at leaves the queue.  No action needed.
+49. The Manage HP editor's log row flashes as a change lands, so an apply reads
+    as having worked without looking away from the cards.  No action needed.
+50. Clicking an empty spot on a creature card picks it as the editors' target,
+    marked by a white ring; click again to clear it.  No action needed.
+51. The Manage HP editor's amount row is one line — the Selected checkbox,
+    "HP:", and a three-character field — and its buttons read "+ Temp" and "+
+    Max".  No action needed.
+52. The Status editor's toggles sit in two rows without separators.  No action
+    needed.
+53. A flying creature's card carries its height and fall controls beside the
+    status.  No action needed.
+54. The Dice Roller's faces are one row of eight, the coin among them, and a
+    roll that lands flashes its log row.  No action needed.
+55. Every log row has a caret that unfolds it so a long entry can be read in
+    full.  No action needed.
+56. Shift-clicking an empty spot on a creature card toggles its checkbox without
+    moving the target, so a selection can be built card by card.  No action
+    needed.
+57. Each unfolded editor is bordered in purple, so several open at once read as
+    separate panels.  No action needed.
+58. The Condition/Effect editor drops its "Click x on badge to remove" hint.  No
+    action needed.
+59. The "you're browsing as a guest" banner is gone; the AppBar's sign-in prompt
+    now reads "Sign in to keep changes."  No action needed.
+60. An unfolded editor's title bar tints light purple, matching its border.  No
+    action needed.
+61. The Dice Roller's log starts folded, so a freshly-opened roller leads with
+    the dice.  No action needed.
+62. Cmd+Shift-click (Alt+Shift-click on Windows) on a card's empty spot selects
+    or clears every creature's checkbox at once, based on the clicked card's own
+    state.  No action needed.
+63. The Manage HP editor's Selected checkbox now trails the HP field and reads
+    "Selected (#)" without a colon.  No action needed.
+64. The Dice Roller separates its Expression and Count rows with a divider, and
+    an empty log reads "No rolls yet." in a smaller size.  No action needed.
+65. A creature card's status labels (dodging, hiding, etc.) each carry a small ×
+    that clears that status directly, without opening the Status editor.  No
+    action needed.
+66. A creature card's condition chips drop their badge background and border,
+    reading as plain text with a red × again — the same information, lighter
+    chrome.  No action needed.
+67. A gear icon beside a creature's HP opens its Status and Condition/Effect
+    editors together, aimed at that creature, with the topmost of the two
+    scrolled fully into view.  No action needed.
+68. The Condition/Effect editor's "Saving throw to end" auto-roll choice is a
+    row of plain radio buttons — Manual, Start of turn, End of turn — instead of
+    bordered pills, and its dice-button reminder text is gone.  No action
+    needed.
+69. The Condition/Effect editor's saving-throw Mod field carries an up/down
+    spinner for one-click adjustment.  No action needed.
+70. The Initiative editor's Roll row drops the Standard option — Advantage and
+    Disadvantage toggle on their own click and clear back to standard on a
+    second click, instead of needing a third button to undo either one.  No
+    action needed.
+71. Manage HP, Status, Condition/Effect, Duplicate, and Save Chain skip any
+    placeholder creature in their target or selection and say so in red under
+    Apply — a placeholder has no real stats yet to change.  Initiative and
+    Replace still work on them, since rolling initiative and turning a
+    placeholder into a real creature are exactly what a placeholder is for.  No
+    action needed.
+72. A 🎲 icon beside the Compendium one opens the Dice Roller and scrolls it to
+    the top of the editor column.  No action needed.
+73. The last 3 dice rolls show beside the 🎲 icon, the newest larger, yellow, and
+    flashing for a couple of seconds so a roll reads without opening the panel.
+    No action needed.
+74. Clicking an attack-roll link, ability-score cell, or Saving Throws chip in a
+    stat block rolls standard, advantage, and disadvantage together — the three
+    float up color-coded (white / green / red) and stay listed beside the 🎲
+    icon, so a missed popup is still easy to check.  No action needed.
+75. A creature card's condition/effect chip pulses briefly at the start of its
+    turn when its saving throw is set to "End manually" — nothing rolls that one
+    automatically, so the pulse is the reminder to click it yourself.  No action
+    needed.
+76. Every bundled lore group's description in the Compendium's detail pane is
+    rewritten, and the reasoning behind each composition is collected in a
+    lore-groups document under docs.  No action needed.
+77. Purple text in the Dark and Accessible themes — condition chips, the title
+    bar's condition list, and the roll log's condition rows — is a shade
+    lighter.  No action needed.
+78. The Condition/Effect editor's duration picker sits on two rows, Manual and
+    Next turn above Countdown and 1 Minute, with Countdown aligned under Manual.
+    No action needed.
+79. The Status editor's two toggle rows sit closer together.  No action needed.
+80. A triple-roll's three floating results spread farther apart, and the roll
+    strip beside the 🎲 icon shows the last three totals at a smaller size, a
+    triple-roll's three results among them.  No action needed.
+81. Dice-roller log rows put the colon straight after the expression, as in
+    "2d8+8: (2,6)+8 = 16".  No action needed.
+82. The Dice Roller's Count and Modifier fields take two characters, and its
+    expression field's example reads "e.g. 2d6+3".  No action needed.
+83. A dice expression may group terms in parentheses, such as "(2d6+4) + (3d9+5)
+    +6".  No action needed.
+84. A hairline separates the editor column's control row from the first editor.
+    No action needed.
+85. The Save Chain editor's Restore bundled button refreshes the open form and
+    confirms with a toast, and its Export as Elm button is gone.  No action
+    needed.
+86. A Save Chain whose effect opts into Save-to-end asks for a DC before it can
+    be applied, so the effect's manual, start-of-turn, or end-of-turn save
+    behaves as it does from the Condition editor; without a DC the condition
+    used to land with no save at all.  No action needed.
+87. The bundled Save Chain presets follow the 2024 rules: Ice Storm, Flame
+    Strike, Weird, Phantasmal Killer, Suggestion, Stinking Cloud, Sunbeam, and
+    Banishment change, Feeblemind becomes Befuddlement, Poison Spray (now a
+    spell attack) retires, and ten presets join them — Hideous Laughter, Sleep,
+    Ray of Enfeeblement, Spirit Guardians, Dominate Person, and the ghoul's
+    claw, ghast's stench, harpy's song, mummy's glare, and medusa's gaze.  Click
+    Restore bundled in the Save Chain editor to pick them up.
+88. The rules each preset can only approximate are collected in a
+    save-chain-presets document under docs, with the editor settings they call
+    for tracked in the backlog.  No action needed.
+89. Save Chain effects carry a duration in the Condition editor's terms, and the
+    bundled presets use it, so a ghoul's paralysis now ends with the target's
+    next turn on its own.  Click Restore bundled in the Save Chain editor to
+    pick up the updated presets.
+90. A repeat save can do something on a failure — turn the condition into
+    another (Restrained to Petrified, Sleep to Unconscious) or deal damage again
+    (Phantasmal Killer, Weird) — from both the Save Chain editor and the
+    Condition editor's saving-throw section.  No action needed.
+91. A Save Chain can grant immunity on a successful save for a chosen duration;
+    the chain then passes over a creature carrying it and logs it as immune.  No
+    action needed.
+92. A repeat save can wait on the GM's judgment: an "Ask at end of turn" timing,
+    in both the Condition and Save Chain editors, flashes the chip as the
+    bearer's turn ends so the GM rolls it only when the rule's trigger applied,
+    as Fear's out-of-sight save does.  Click Restore bundled in the Save Chain
+    editor to pick up the updated Fear preset.
+93. Damage can trigger a repeat save: a condition's save can flash its chip on a
+    hit for the GM to judge, or roll at once, plain or with advantage, so
+    Hideous Laughter and Dominate Person resolve themselves when damage lands.
+    Click Restore bundled in the Save Chain editor to pick up the updated
+    presets.
+94. Area effects stay on the card: an area Save Chain marks each target with an
+    "In:" chip that rolls the chain's save again at the start or end of every
+    turn and applies the outcome, with a 🎲 for a creature that enters mid-turn
+    and a × for one that leaves.  Cloudkill, Spirit Guardians, Stinking Cloud,
+    and the ghast's stench use it; click Restore bundled in the Save Chain
+    editor to pick them up.
+95. A Save Chain effect can name a companion condition that ends with it —
+    Hypnotic Pattern's Incapacitated goes when its Charmed goes.  Click Restore
+    bundled in the Save Chain editor to pick up the updated preset.
+96. A Save Chain outcome can drain — damage that also lowers the hit point
+    maximum by the amount dealt — and Harm and a new Wight Life Drain preset use
+    it.  Click Restore bundled in the Save Chain editor to pick them up.
+97. The Condition editor and the Save Chain duration picker offer a "This turn"
+    duration that ends the condition with the target's current turn.  No action
+    needed.
+98. The Save Chain editor is laid out like the Condition editor: dashed rules
+    between sections instead of boxed panes, the HP choice on one row with its
+    label, and the scope checkbox tight above the apply buttons.  No action
+    needed.
+99. The Save Chain editor's preset row reads New, Clear, Delete, Restore, and
+    Clear empties every setting while keeping the name and loaded preset.  No
+    action needed.
+100. The Save Chain editor's recent-applies log starts folded and unfolds itself
+     when an apply lands; click its heading to fold it again.  No action needed.
+101. Shift-click the heading row of an open editor to fold every open editor at
+     once.  No action needed.
+102. Every editor's fields, labels, choice controls, and hints share one compact
+     size and shape, the Condition editor's, and a row that runs out of room
+     moves its next item to a new line instead of clipping it.  No action
+     needed.
+103. The Save Chain, Treasure, and Random Encounter editors carry a small "beta"
+     tag beside their titles.  No action needed.
+104. The Save Chain, Treasure, and Random Encounter editors move to the bottom
+     of the editor column, once, the first time a column arranged before this
+     release loads; one you pinned stays where you pinned it.  No action needed.
+105. The Dice Roller's log is titled "Log", and its Count and Modifier fields
+     carry ▲ / ▼ buttons beside typing.  No action needed.
+106. The Dice Roller's log shows only the HP changes a roll produced; a typed
+     number no longer appears there.  No action needed.
+107. The Manage HP editor's Set section gains a Roll field, where a formula such
+     as a monster's hit dice rolls for each target on Apply and sets that
+     creature's hit points, current and maximum, to the total, with the pool
+     fields standing aside until its × clears it.  No action needed.
+108. The Manage HP editor keeps its own log of the last 30 changes, rolls
+     included, behind a fold in the dice roller's style; it opens itself when a
+     change lands.  No action needed.
+109. The Manage HP editor's Set row reads Set, HP, Max HP, and Temp HP, with
+     fields three digits wide.  No action needed.
+110. The Manage HP editor's Roll and Set rows sit behind a "Roll or Set" fold
+     under the verb buttons, closed like its log until you open it, with Roll
+     above "or Set".  No action needed.
+111. The line between an editor's Target strip and its first row is gone, so the
+     Status and Condition/Effect editors start higher and stand shorter.  No
+     action needed.
+112. Every editor spaces its rows the same distance from the lines between its
+     sections and from its bottom edge.  No action needed.
+113. The Initiative editor's typed-value row reads "or Set:".  No action needed.
+114. Naming a Condition/Effect preset asks for the name and its category
+     together.  No action needed.
+115. The Condition/Effect editor gains a "Clear Settings" button that empties
+     the form.  No action needed.
+116. The Condition/Effect editor's failed-save row reads "& becomes", and its
+     field shows the whole "e.g. Petrified (optional)" hint.  No action needed.
+117. Clicking a creature's name unfolds its stat block under the card in the
+     encounter queue, attached to it and scrolling with it, with a Minimize
+     button in its bar; the editor column no longer holds a stat block.  No
+     action needed.
+118. The bar of a stat block under a card names the creature in neon pink, with
+     the Compendium, new-tab, and Minimize controls right beside the name.  No
+     action needed.
+119. A stat block's ability cells put the abbreviation, score, and modifier on
+     one line when the block is wide enough, in slightly larger type, and stack
+     them again when it is not.  No action needed.
+120. The floating number from an auto-roll drifts up more slowly and stays on
+     screen longer before fading.  No action needed.
+121. A creature card's initiative score sits in its left column as a bare figure
+     in parentheses, white on the Dark theme, with no background.  No action
+     needed.
+122. The Condition/Effect editor's Load button sits in its own row directly
+     under the target row, and its menu opens downward.  No action needed.
+123. The Condition/Effect editor's log takes the Manage HP log's shape, folding
+     over the last 30 applications with undo on the newest.  No action needed.
+124. A stat block under a card joins it with a dashed line in the card's own
+     border colour, and its bar's title folds the block away as Minimize does.
+     No action needed.
+125. A creature card's Ready and Reaction toggles sit beside the HP readout,
+     left of the gear, as icons alone, the hands reading "Ready an Action" and
+     "Action Readied" on hover.  No action needed.
+126. A spent reaction turns its button red.  No action needed.
+127. A card's HP values read "Manage HP" on hover.  No action needed.
+128. A card's conditions are separated by pipes.  No action needed.
+129. A name in the legendary-action or special-reaction strip brings that
+     creature's card to the top of the queue instead of opening its stat block.
+     No action needed.
+130. A card's flight readout reads "15 ft" in the flying label's yellow, with
+     its grey arrows and the clear × after it and no box of its own.  No action
+     needed.
+131. The Condition/Effect editor outlines the ability, DC, and Mod fields in
+     yellow while a save ends the condition.  No action needed.
+132. Saving a Condition/Effect preset fills the name from the loaded one.  No
+     action needed.
+133. A creature card counts its legendary actions and resistances on the bottom
+     row as "LA: 3(4)", clicked to spend one and clicked again at zero to
+     refill.  No action needed.
+134. The editors' longest text fields, and a card's memo field, are as wide as
+     the twenty characters they hold.  No action needed.
+135. The timer editor drops its explanatory line, left-justifies Start Timer,
+     and offers a Cancel button beside it.  No action needed.
+136. The editor column's controls sit further above the rule beneath them.  No
+     action needed.
+137. Applying statuses adds them without clearing the ones the creature already
+     has; the × beside a status on the card is what removes it.  No action
+     needed.
+138. The roll strip colours and enlarges only the roll that just landed, or the
+     three of a triple roll.  No action needed.
+139. The active creature's arrow takes the accent colour a size up, and says "It
+     is this creature's turn" on hover.  No action needed.
+140. The Status editor's cover toggle marks itself with an up-caret, so the
+     clicks that raise the cover read as raising it.  No action needed.
+141. The encounter title bar spaces every section the same distance from the
+     pipe beside it.  No action needed.
+142. A Condition/Effect log row shares its width between the condition, who got
+     it, and the rest, so the folded row reads the way the Manage HP log's does.
+     No action needed.
+143. The Status editor opens with nothing selected whatever the creature already
+     carries, and empties again once applied.  No action needed.
+144. The undo on an unfolded log row sits at the end of its line, clear of the
+     text that wrapped above it.  No action needed.
+145. Picking a condition, or typing a custom one, puts a green caret beside it
+     that applies that condition alone to the target, with a duration the GM
+     ends by hand, and folds the editor away.  No action needed.
+146. Applying a condition a creature already carries is refused, with a modal
+     saying so.  No action needed.
+147. A creature card's gear sits in a badge like the memo and timer ones.  No
+     action needed.
+148. The Status editor fits cover, hiding, dodging, and flying on one row.  No
+     action needed.
+149. Concentration carries a note of up to fifteen characters, shown on the card
+     in grey italics beside a status that now reads "concen.".  No action
+     needed.
+150. A "20" button beside the editor column's dice icon rolls a d20 straight,
+     with advantage, and with disadvantage.  No action needed.
+151. The Condition/Effect editor commits an edit with "Apply Changes" and opens
+     its preset form with "Save Settings".  No action needed.
+152. Naming a Condition/Effect preset happens in a modal, whose button says
+     whether it will replace a preset of that name.  No action needed.
 ** Fixes
+1. The make-active arrow's hover text no longer repeats the word "active".  No
+   action needed.
+2. A dirty save cue no longer reads as an open-panel ring — unsaved roster
+   changes mark the Encounter Saves panel's title instead.  No action needed.
+3. A creature card's inline numeric fields close when you click anywhere outside
+   them.  No action needed.
+4. The Nix build fetches crates again.  No action needed.
+5. An encounter never sits at round 0 — new, reset, cleared, and loaded
+   encounters all start at round 1.  No action needed.
+6. Reset's hover text describes what it actually does — restore HP and clear
+   conditions, not revert to the last save.  No action needed.
+7. Disclosure carets are large enough to see.  No action needed.
+8. The Manage HP and Initiative editors no longer leave extra empty space below
+   their buttons.  No action needed.
+9. Input fields draw a stronger border, the same one in every editor.  No action
+   needed.
+10. The Save Chain editor's ability buttons and its Fail / Pass / Roll row wrap
+    instead of running past the panel's edge.  No action needed.
+11. The Save Chain editor's Name and DC fields sit beside their labels, the DC
+    two characters wide with its caption alongside.  No action needed.
+12. The Condition editor's apply buttons take the row below Save and Load rather
+    than crowding them.  No action needed.
+13. The Dice Roller's die buttons fit the panel instead of running past its
+    edge, with air before the Advantage row.  No action needed.
+14. A spent reaction button greys its background, not just its label.  No action
+    needed.
+15. Clicking a card's status, HP, initiative, or condition chip opens its editor
+    when that editor was folded and already aimed at the creature.  No action
+    needed.
+16. An unfolded log row flows as one wrapping line, so a long creature name no
+    longer breaks a letter or two at a time down a narrow column.  No action
+    needed.
+17. A roll's damage type shows once in the Dice Roller log, after the faces, as
+    plain text.  No action needed.
+18. The Manage HP amount field no longer clips its third digit.  No action
+    needed.
+19. An unfolded Dice Roller log row shows its source (e.g. "Damage → Goblin")
+    beside the caret, with the roll details on the line below, instead of
+    splitting the source onto its own line further down.  No action needed.
+20. The divider below the Advantage / Disadvantage buttons no longer runs
+    against them.  No action needed.
+21. The make-active arrow sits a couple pixels lower in its column, so it no
+    longer crowds the select checkbox above it.  No action needed.
+22. Opening the Initiative, Status, Manage HP, or Condition/Effect editor now
+    always scrolls it into view, even when re-aiming it at a different creature
+    — previously only the case where it was already open on that creature
+    scrolled.  No action needed.
+23. The Manage HP editor's Selected checkbox sits a couple pixels further from
+    the HP field.  No action needed.
+24. The Condition/Effect editor's saving-throw DC and Mod fields, and their
+    labels, are narrower, so the whole row fits without wrapping.  No action
+    needed.
+25. The Condition/Effect editor's Delete button now sits above the Apply row
+    instead of below it, so Apply is always the last thing on the panel.  No
+    action needed.
+26. The start/next-turn button is a quarter wider than Clear and Reset, so it's
+    easier to hit each round.  No action needed.
+27. The Initiative editor drops an explanatory caption row and a "Set to:"
+    heading, and renames "Roll for:" to "Roll & sort:" and "Initiative:" to "Set
+    value:".  No action needed.
+28. The Initiative editor's Set value field is two characters wide, matching the
+    DC/Mod fields elsewhere.  No action needed.
+29. The Initiative editor's Quick Sort Encounter button sits closer to the row
+    above it and is centered.  No action needed.
+30. The Condition/Effect and Timer editors' footer rows (Save/Load, Delete,
+    Apply/Start Timer) actually stack now — they previously sat side by side
+    instead of on their own rows.  No action needed.
+31. The Dice Roller's log reads more like a calculation now — e.g.  "2d8+8:
+    (2,6)+8 slashing = 16" instead of "2d8 + 8 — rolled: 2, 6 + 8 Slashing 16".
+    No action needed.
+32. Clicking a creature's name scrolls its stat block to the top of the editor
+    column instead of leaving it wherever it lands.  No action needed.
+33. The Condition/Effect editor's "1 Minute" and Countdown captions are shorter,
+    and the countdown one is italic.  No action needed.
+34. A creature card's status labels (hiding, dodging, etc.) read in a dark
+    yellow instead of white.  No action needed.
+35. The Condition/Effect editor drops its "Save fires at the start/end of the
+    bearer's turn" captions.  No action needed.
+36. Rolling a condition's save manually now posts the same "Saved: <condition>"
+    badge an auto-rolled success does, instead of removing the condition
+    silently.  No action needed.
+37. The initiative value moved from the name row into the left column, between
+    the select checkbox and the make-active arrow, as a smaller rounded square
+    instead of a circle — the three now sit evenly spaced.  No action needed.
 ** Breaking
+1. The Manage HP editor's "Ignore temporary HP" option is gone — damage now
+   always soaks against the temporary pool first, as 5e requires.  Adjust a
+   creature's temporary pool by hand if you relied on that bypass.
+2. The ↑ / ↓ buttons are gone from the creature cards; drag a card to move it
+   instead.  The → button that makes a creature active stays.
+3. The Manage HP amount field takes three characters, so a formula like 2d6+3 no
+   longer fits there.  Roll those in the Dice Roller and type the total.
+4. The Initiative editor's Surprised toggle, and the badge it set on a
+   creature's card, are gone — the current edition dropped the Surprised
+   condition.  If you were tracking it for house rules, use a custom
+   condition/effect instead.
+5. Ability checks and saving throws no longer open a Roll / Advantage /
+   Disadvantage picker from a stat block — clicking the ability cell or the
+   Saving Throws chip now rolls all three at once instead (see Added).  There's
+   no longer a way to fire just one mode from the stat block; use the Dice
+   Roller if you need exactly one.
 * v0.2.0
 ** Fixes
 1. Brings the repository back into ~rust-template~ compliance, and drops the

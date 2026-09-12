@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl)
+module Route exposing (Route(..), compendiumCreatureQuery, fromUrl)
 
 {-| URL routing for the SPA shell.
 
@@ -6,12 +6,13 @@ Pulled out of `Main.elm` so `Model` (which has a `route :
 Route` field) can live in its own module without dragging the
 URL-parsing machinery along with it.
 
-@docs Route, fromUrl
+@docs Route, compendiumCreatureQuery, fromUrl
 
 -}
 
 import Url exposing (Url)
-import Url.Parser exposing ((</>), Parser, oneOf, top)
+import Url.Parser exposing ((</>), (<?>), Parser, oneOf, top)
+import Url.Parser.Query as Query
 
 
 {-| Every URL the SPA recognizes.
@@ -23,13 +24,12 @@ import Url.Parser exposing ((</>), Parser, oneOf, top)
   - `About` — static "about this app" page, linked from the
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
-    block, opened via the ↗ link in the side panel.
-  - `Compendium` — standalone full-page compendium browser,
-    opened via the ↗ button in the Compendium modal header.
-    Same interactive surface as the modal body (search, sort,
-    filters, paste, edit) but laid out as a full page so the
-    GM can park it on a second monitor. The AppBar is
-    suppressed on this route, matching `QuickList`.
+    block, opened via the ↗ link on a stat block.
+  - `Compendium` — the full-page compendium browser, opened
+    from the editor column's Compendium trigger and laid
+    out as a full page so the GM can park it on a second
+    monitor. The AppBar is suppressed on this route, matching
+    `QuickList`.
   - `QuickList` — standalone read-only condensed view of the
     combat queue, opened via the ↗ button in the encounter
     title bar. Cross-tab synced through the
@@ -71,3 +71,17 @@ fromUrl : Url -> Route
 fromUrl url =
     Url.Parser.parse parser url
         |> Maybe.withDefault NotFound
+
+
+{-| The creature the compendium page should open selected, from
+the tab's own URL (=/compendium?creature=<id>=).
+
+A query parameter rather than a route payload so `Route` stays
+a flat enum the shell can compare with ~==~; the seed is read
+once at init and never navigated to within the page.
+
+-}
+compendiumCreatureQuery : Url -> Maybe String
+compendiumCreatureQuery url =
+    Url.Parser.parse (Url.Parser.s "compendium" <?> Query.string "creature") url
+        |> Maybe.andThen identity

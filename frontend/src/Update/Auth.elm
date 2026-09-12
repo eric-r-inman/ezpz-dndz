@@ -107,13 +107,14 @@ meReceived result model =
                 compendiumMigrationCmd =
                     migrateLocalCompendiumCmd model.localCompendiumRaw
             in
-            ( { model
-                | auth = AuthAuthenticated user
-                , encounter = liveEncounter
-                , localEncounterRaw = Nothing
-                , localDiceHistoryRaw = Nothing
-                , localCompendiumRaw = Nothing
-              }
+            ( Model.reaimStale
+                { model
+                    | auth = AuthAuthenticated user
+                    , encounter = liveEncounter
+                    , localEncounterRaw = Nothing
+                    , localDiceHistoryRaw = Nothing
+                    , localCompendiumRaw = Nothing
+                }
             , Cmd.batch
                 [ fetchOrSeedActiveCmd
                 , Compendium.Wire.fetchAll CompendiumLoaded
@@ -220,8 +221,16 @@ applyLocalDiceHistory raw model =
                         | dice =
                             { dice
                                 | history =
+                                    -- The count only ever grows,
+                                    -- because the HP log is
+                                    -- stamped against it and
+                                    -- rewinding would reorder
+                                    -- rows already logged.
                                     { entries = entries
                                     , max = Dice.maxHistoryEntries
+                                    , pushed =
+                                        dice.history.pushed
+                                            + List.length entries
                                     }
                             }
                     }

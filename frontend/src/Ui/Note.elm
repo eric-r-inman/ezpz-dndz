@@ -11,7 +11,7 @@ have to truncate on commit.
 -}
 
 
-{-| Modal state.
+{-| Surface state.
 -}
 type alias NoteEditUi =
     { target : String

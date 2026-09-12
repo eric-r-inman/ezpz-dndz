@@ -11,7 +11,7 @@ module Compendium exposing
     , crToFloat
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
-    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, syncLegendaryFields
+    , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionLabels, specialReactionNames, specialReactions, syncLegendaryFields
     )
 
 {-| Pure domain layer for the compendium.
@@ -22,7 +22,7 @@ client-side search / filter / sort helpers. No `Html`,
 `Browser`, or `Url` imports — this is the rules-engine layer
 matching the discipline of `Encounter`, `Dice`, and `HpChange`.
 
-Display logic (the browser modal, the stat-block renderer, etc.)
+Display logic (the browser page, the stat-block renderer, etc.)
 lives in `View/` modules and consumes this domain.
 
 @docs Creature, CreatureKind, Size
@@ -876,6 +876,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , selected = False
     , cover = Encounter.NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False
@@ -913,8 +914,8 @@ draftToInstance { displayName, initiativeRoll } c =
     , creatureKind = kindKey c.kind
     , race = c.race
     , alignment = c.alignment
-    , surprised = False
     , hasSpecialReactions = c.hasSpecialReactions
+    , specialReactionsUsed = Set.empty
     }
 
 
@@ -1040,6 +1041,120 @@ findLegendaryResistanceTrait c =
         |> List.filter
             (\t -> String.contains "legendary resistance" (String.toLower t.name))
         |> List.head
+
+
+{-| Names of the features behind the special-reaction flag, for
+the surfaces that only label them.
+-}
+specialReactionNames : Creature -> List String
+specialReactionNames =
+    List.map .name << specialReactions
+
+
+{-| What a queue creature's special-reaction badges are called.
+
+The labels double as the keys of the creature's spent set, so
+the card and the reaction pip have to agree on them; a flagged
+creature whose source names nothing still gets one generic
+badge to mark.
+
+-}
+specialReactionLabels : Db -> Encounter.Creature -> List String
+specialReactionLabels db c =
+    if not c.hasSpecialReactions then
+        []
+
+    else
+        c.creatureId
+            |> Maybe.andThen (\id -> find id db)
+            |> Maybe.map specialReactionNames
+            |> Maybe.withDefault []
+            |> orGenericLabel
+
+
+orGenericLabel : List String -> List String
+orGenericLabel names =
+    if List.isEmpty names then
+        [ genericSpecialReactionLabel ]
+
+    else
+        names
+
+
+genericSpecialReactionLabel : String
+genericSpecialReactionLabel =
+    "Special Reaction"
+
+
+{-| The features behind the special-reaction flag. Three signals
+qualify one:
+
+1.  A trait whose name matches one of the known "extra
+    reaction" / "on-death" / "Misty Escape" patterns.
+2.  A trait whose description references taking an extra
+    reaction or firing on zero HP.
+3.  A reaction entry whose name isn't in the trivial-reaction
+    whitelist below — predictable defensive bumps don't warrant
+    a heads-up, but anything else (Ink Cloud, Whirlwind of
+    Sand, Reactive, …) does.
+
+Lives in the domain layer so every consumer shares one
+definition of "special". Can be empty for a flagged creature —
+the flag is also a manual toggle in the compendium editor.
+
+-}
+specialReactions : Creature -> List Feature
+specialReactions c =
+    List.filter (\r -> reactionNameIsSpecial r.name) c.reactions
+        ++ List.filter
+            (\t ->
+                traitNameIsSpecial t.name
+                    || traitDescriptionIsSpecial t.description
+            )
+            c.traits
+
+
+traitNameIsSpecial : String -> Bool
+traitNameIsSpecial name =
+    let
+        n =
+            String.toLower (String.trim name)
+    in
+    List.any (\needle -> String.contains needle n)
+        [ "reactive"
+        , "misty escape"
+        , "death throes"
+        , "death burst"
+        ]
+
+
+traitDescriptionIsSpecial : String -> Bool
+traitDescriptionIsSpecial desc =
+    let
+        d =
+            String.toLower desc
+    in
+    List.any (\needle -> String.contains needle d)
+        [ "extra reaction"
+        , "one reaction on every"
+        , "explodes when it dies"
+        , "reduced to 0 hit points"
+        ]
+
+
+reactionNameIsSpecial : String -> Bool
+reactionNameIsSpecial name =
+    let
+        n =
+            String.toLower (String.trim name)
+
+        boring =
+            -- Predictable defensive AC bumps + the spellcaster
+            -- "Shield + Counterspell" reaction.  These don't
+            -- need a heads-up; anything else does.
+            [ "parry", "protective magic", "shield" ]
+    in
+    not (List.member n boring) && not (String.isEmpty n)
 
 
 {-| Pull every run of consecutive digit characters out of a

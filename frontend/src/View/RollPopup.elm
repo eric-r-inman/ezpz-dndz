@@ -1,10 +1,11 @@
 module View.RollPopup exposing (list)
 
 {-| Floating "+N" popups spawned at the cursor when an inline
-dice-link in a creature stat block is clicked. Each popup
-animates upward + fades to nothing via a CSS keyframe animation
-on `.roll-popup` (see `style.css`); the model entry is removed
-on a matching `Process.sleep`-driven `RollPopupExpired` Msg.
+dice-link, attack roll, ability check, or saving throw in a
+creature stat block is clicked. Each popup animates upward +
+fades to nothing via a CSS keyframe animation on `.roll-popup`
+(see `style.css`); the model entry is removed on a matching
+`Process.sleep`-driven `RollPopupExpired` Msg.
 
 Renders nothing when no popups are active.
 
@@ -49,8 +50,27 @@ fight a positioning transform on the same element.
 one : RollPopup -> Html Msg
 one popup =
     div
-        [ class "roll-popup"
+        [ class ("roll-popup " ++ colorClass popup.color)
         , style "left" (String.fromInt popup.x ++ "px")
         , style "top" (String.fromInt popup.y ++ "px")
         ]
         [ text (String.fromInt popup.total) ]
+
+
+{-| `PopupPlain` keeps the base `.roll-popup` yellow with no
+modifier class; the other three mark one member of a triple-roll.
+-}
+colorClass : Model.PopupColor -> String
+colorClass color =
+    case color of
+        Model.PopupPlain ->
+            ""
+
+        Model.PopupStandard ->
+            "roll-popup--standard"
+
+        Model.PopupAdvantage ->
+            "roll-popup--advantage"
+
+        Model.PopupDisadvantage ->
+            "roll-popup--disadvantage"

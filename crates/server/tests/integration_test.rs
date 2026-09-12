@@ -1895,21 +1895,34 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
         "name": "Restrained",
         "note": "net",
         "duration": { "kind": "manual" },
-        "saveToEnd": { "ability": "STR", "dc": 15, "bonus": 4, "autoRoll": "atEnd" }
+        "saveToEnd": {
+          "ability": "STR",
+          "dc": 15,
+          "bonus": 4,
+          "autoRoll": "atEnd",
+          "onFail": { "damage": "1d6", "becomes": null },
+          "onDamage": "ask"
+        },
+        "linkedTo": null,
+        "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" }
       },
       {
         "id": 2,
         "name": "Blessed",
         "note": "",
         "duration": { "kind": "untilTurn", "phase": "atBegin", "target": "next", "name": "Cleric" },
-        "saveToEnd": null
+        "saveToEnd": null,
+        "linkedTo": 1,
+        "area": null
       },
       {
         "id": 3,
         "name": "Burning",
         "note": "",
         "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 3, "skipNextTick": true },
-        "saveToEnd": null
+        "saveToEnd": null,
+        "linkedTo": null,
+        "area": null
       }
     ],
     "saveNotices": [

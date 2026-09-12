@@ -92,6 +92,17 @@ try {
   }
 } catch (_) {}
 
+// The editor column's arrangement: the order the GM dragged the
+// panels into, and which ones they pinned to the top.  Browser-
+// local, so an account doesn't carry it between machines.
+var localDrawerLayout = null;
+try {
+  var drawerLayoutRaw = localStorage.getItem("drawerLayout");
+  if (drawerLayoutRaw) {
+    localDrawerLayout = JSON.parse(drawerLayoutRaw);
+  }
+} catch (_) {}
+
 // User-named timer presets — twin of conditionPresets.
 var localTimerPresets = null;
 try {
@@ -165,6 +176,7 @@ var app = Elm.Main.init({
     localCompendium: localCompendium,
     localEncounterSaves: localEncounterSaves,
     localConditionPresets: localConditionPresets,
+    localDrawerLayout: localDrawerLayout,
     localTimerPresets: localTimerPresets,
     localSaveChainPresets: localSaveChainPresets,
     localParty: localParty,
@@ -260,6 +272,16 @@ if (app.ports && app.ports.persistLocalConditionPresets) {
   });
 }
 
+// Editor-column arrangement writer.  Fires whenever the GM drags
+// a panel to a new slot or pins one.
+if (app.ports && app.ports.persistLocalDrawerLayout) {
+  app.ports.persistLocalDrawerLayout.subscribe(function (value) {
+    try {
+      localStorage.setItem("drawerLayout", JSON.stringify(value));
+    } catch (_) {}
+  });
+}
+
 // Twin port for the timer presets dict.
 if (app.ports && app.ports.persistLocalTimerPresets) {
   app.ports.persistLocalTimerPresets.subscribe(function (value) {
@@ -282,20 +304,6 @@ if (app.ports && app.ports.persistLocalSaveChainPresets) {
         "saveChainPresets",
         JSON.stringify(value),
       );
-    } catch (_) {}
-  });
-}
-
-// Copy an arbitrary string to the clipboard.  Fire-and-
-// forget: Firefox can reject an untrusted write, but
-// there's nothing the Elm side would do about it — the
-// button caller shows a toast synchronously.
-if (app.ports && app.ports.copyToClipboard) {
-  app.ports.copyToClipboard.subscribe(function (value) {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(String(value)).catch(function () {});
-      }
     } catch (_) {}
   });
 }
@@ -429,9 +437,9 @@ if (
   app.ports.broadcastEncounter.subscribe(function () {});
 }
 
-// Cross-tab "pin creature + scroll" request: the QuickList
-// tab fires this when the GM clicks a row so the main tab
-// pins the stat block, scrolls the card into view, and
+// Cross-tab "show creature" request: the QuickList tab fires
+// this when the GM clicks a row so the main tab unfolds the
+// stat block under the card, scrolls the card into view, and
 // (best-effort) surfaces itself via window.opener.focus().
 // Same BroadcastChannel discipline as the encounter channel
 // above — no self-echo, no loops.
@@ -454,7 +462,7 @@ if (
     // QuickList link is opened WITHOUT rel="noopener"; if
     // the opener is missing (main tab was reloaded since
     // this QuickList tab opened) the focus is a no-op and
-    // the pin + scroll still lands on the main tab as
+    // the show + scroll still lands on the main tab as
     // soon as the GM navigates there.
     try {
       if (window.opener && !window.opener.closed) {
@@ -475,18 +483,22 @@ if (
 // single window reference; opening twice from the same main
 // tab refocuses the existing window rather than spawning a
 // duplicate.  When the user closes that tab, the next click
-// notices `closed === true` and falls back to opening the
-// modal in place.
+// opens a fresh one.
 var compendiumWindow = null;
 
 if (app.ports && app.ports.openCompendiumTab) {
-  app.ports.openCompendiumTab.subscribe(function () {
+  app.ports.openCompendiumTab.subscribe(function (creatureId) {
     try {
-      if (compendiumWindow && !compendiumWindow.closed) {
+      // A requested creature rides the URL, so an existing tab
+      // is re-navigated (its Elm app reboots on the new query);
+      // a plain open just focuses whatever is already there.
+      if (compendiumWindow && !compendiumWindow.closed && !creatureId) {
         compendiumWindow.focus();
       } else {
         compendiumWindow = window.open(
-          "/compendium",
+          creatureId
+            ? "/compendium?creature=" + encodeURIComponent(creatureId)
+            : "/compendium",
           "ezpz-dndz-compendium",
         );
         if (compendiumWindow) {
@@ -495,26 +507,6 @@ if (app.ports && app.ports.openCompendiumTab) {
       }
     } catch (_) {
       compendiumWindow = null;
-    }
-  });
-}
-
-if (
-  app.ports &&
-  app.ports.tryFocusCompendiumTab &&
-  app.ports.compendiumTabMissing
-) {
-  app.ports.tryFocusCompendiumTab.subscribe(function () {
-    try {
-      if (compendiumWindow && !compendiumWindow.closed) {
-        compendiumWindow.focus();
-      } else {
-        compendiumWindow = null;
-        app.ports.compendiumTabMissing.send(null);
-      }
-    } catch (_) {
-      compendiumWindow = null;
-      app.ports.compendiumTabMissing.send(null);
     }
   });
 }
@@ -665,6 +657,25 @@ if (
   document.addEventListener("scroll", hide, true);
   window.addEventListener("resize", hide);
 })();
+
+// Elm's event decoders can read a `dragstart` but can't call
+// `dataTransfer.setData` on it, and Firefox refuses to begin a
+// drag whose dragstart set no transfer data.  Both reorderable
+// lists — the editor column's panels and the creature cards —
+// would be dead there without this.  Capture phase so it runs
+// before Elm's own handler, and only when nothing has set data
+// already, so a real payload is never clobbered.
+document.addEventListener(
+  "dragstart",
+  function (e) {
+    try {
+      if (e.dataTransfer && e.dataTransfer.types.length === 0) {
+        e.dataTransfer.setData("text/plain", "");
+      }
+    } catch (_) {}
+  },
+  true,
+);
 
 // Modal focus-trap.  When Tab walks past the last focusable
 // element inside a modal it lands on the END sentinel

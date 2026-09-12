@@ -170,18 +170,18 @@ tree, and Cmd helper lives in its own module.
 |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
 | Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=                                                          |
 | Auth            | =Auth.elm= (~AuthState~ ADT + ~User~ + decoder)                                                                                          |
-| Domain          | =Encounter.elm= + =Encounter/{DeathSaves,Difficulty,Lifecycle,RandomEncounter,Roster,SaveChain,SaveNotice,Seed,Treasure,Wire,Xp}= (plus the =RandomEncounter/Lore=, =SaveChain/{Bundled,Export,Wire}=, and =Treasure/*= sub-modules) |
+| Domain          | =Encounter.elm= + =Encounter/{DeathSaves,Difficulty,Lifecycle,RandomEncounter,Roster,SaveChain,SaveNotice,Seed,Treasure,Wire,Xp}= (plus the =RandomEncounter/Lore=, =SaveChain/{Bundled,Wire}=, and =Treasure/*= sub-modules) |
 | Domain          | =Compendium.elm= + =Compendium/{Group,GroupWire,Parser,Reference,SpellcastingText,Wire}= |
-| Domain          | =Dice.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
-| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / About / CompendiumCreaturePage / Compendium / QuickList / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ten ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, clipboard, and the cross-tab BroadcastChannel ports) |
-| UI substate     | =Ui/{AbilitySave,Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,Save,SaveChain,SaveCompendium,Timer,Toast,Treasure,TreasureTable}.elm= |
-| Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings + control-menu popovers, ~NoOp~), =Update/Tabs.elm= (cross-tab BroadcastChannel receive paths — ~encounterFromOtherTab~, ~panelShowFromOtherTab~, ~incomingPanelShow~) |
+| Domain          | =Dice.elm=, =DrawerLayout.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
+| Routing / Cmd   | =Route.elm= (~Home / Login / Me / Donate / About / CompendiumCreaturePage / Compendium / QuickList / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, and the cross-tab BroadcastChannel ports) |
+| UI substate     | =Ui/{Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,SaveChain,SaveCompendium,SaveLoad,Timer,Toast,Treasure,TreasureTable}.elm= |
+| Update / shell  | =Update/Shell.elm= (URL routing, ~/me~, encounter persist response, settings popover, ~NoOp~), =Update/Tabs.elm= (cross-tab BroadcastChannel receive paths — ~encounterFromOtherTab~, ~panelShowFromOtherTab~, ~incomingPanelShow~) |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
-| Update / domain | =Update/{AbilitySave,Account,Condition,CrCalculator,DeathSave,Dice,Duplicate,Encounter,HpChange,Initiative,LegendaryPip,Load,LoadCompendium,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,Preferences,QuickAdd,RandomEncounter,Save,SaveChain,SaveCompendium,SpellList,Timer,Toast,Treasure,TreasureTable}.elm= |
+| Update / domain | =Update/*.elm= — one module per feature, each exposing one function per Msg branch |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Lore,Paste}.elm=                                                               |
-| View / modals   | =View/Modal/{AbilitySave,Compendium,CompendiumEdit,CompendiumPaste,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,Load,LoadCompendium,LoreEdit,Memo,Note,QuickAdd,RandomEncounter,Save,SaveChain,SaveCompendium,SpellList,Timer,Treasure,TreasureTable}.elm= |
+| View / surfaces | =View/Modal/*.elm= for what still opens over the page and =View/Panel/*.elm= for what opens in the editor column's drawer; =View/Modal.elm= and =View/Panel.elm= carry the two shells, whose fields line up but for the optional panel ~close~ |
 | View / pages    | =View/Page/{Loading,Donate,NotFound,Compendium,CompendiumStandalone,QuickList}.elm= — the page trees ~Main.viewPage~ dispatches to (formerly inline in =Main.elm=) |
-| View / shell    | =View/{About,Account,AnonymousBanner,AppBar,Audio,AuthGate,Card,Chip,EncounterBar,Footer,Login,Modal,PanelControls,PanelDetail,PhaseToggle,RollPopup,StatBlock,Toast,Tooltips,Workspace}.elm=.  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
+| View / shell    | =View/*.elm= — the chrome around the surfaces, and the renderers they share.  =View/AuthGate.elm= holds the ~clickWhenAuthed~ / ~tooltipWhenAuthed~ helpers for sign-in-nudging server-only controls. |
 | Util            | =Util/{Http,Keyboard,Number}.elm=                                                                                                       |
 
 Tests live under =frontend/tests/= as a flat ~Test~ suite per domain module:
@@ -234,7 +234,6 @@ type Modal
     | ModalLoad LoadUi
     | ModalSaveCompendium SaveCompendiumUi
     | ModalLoadCompendium LoadCompendiumUi
-    | ModalAbilitySave AbilitySaveUi
     | ModalQuickAdd QuickAddUi
     | ModalDuplicate DuplicateUi
     | ModalGroupEdit GroupEditUi
@@ -255,39 +254,32 @@ scoped to the workspace shell rather than to a single feature:
 
 - ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ — the most recent
   persisted state of the encounter and the name it was saved under.  Set by Save
-  / Load success and consumed by Reset (which restores from the snapshot and
-  forces ~round = 0~).
-- ~pendingControl : Maybe PendingControl~ — two-step confirmation state for the
-  destructive Encounter Controls actions (~PendingReset~ / ~PendingClear~).
-  When ~Just~, the controls panel renders an inline confirmation banner in place
-  of the button grid so a misclick can't drop combat state.
-- ~panelCreaturePin : Maybe { id, name }~ — the side-panel pinned creature.
+  / Load success and consumed by the Encounter Saves panel, which marks its
+  title when the live roster differs from the snapshot.
+- ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
   whose ~creatureId~ no longer matches anything in the bundled compendium).
-- ~xpScope : XpScope~ + ~xpFilterOpen : Bool~ — encounter-bar XP scope filter
-  (Enemies & NPCs / Enemies Only / NPCs Only / Selected Only) and the controlled
-  open state of its dropdown.  The dropdown was migrated off native
-  ~<details>/<summary>~ to a controlled ~<div>~ so global Esc + click-outside
-  subscriptions in =Main.subscriptions= can close it.
+- ~xpScope : XpScope~ — which creatures the XP total counts.  The scope is
+  picked in the XP panel, which is also where the readout lives; the picker's
+  open state is the ~SurfaceXp~ marker in the drawer stack, not a field.
 - ~settingsOpen : Bool~ — AppBar settings popover (theme picker today; density /
-  sound when those land).  Same controlled- ~<div>~ + Esc + click-outside
-  pattern as the XP filter.
-- ~controlMenu : Maybe ControlMenu~ — which Encounter Controls split-button
-  dropdown (Save / Load) is currently showing its Server / Device picker.
-  ~Maybe~-of-ADT enforces the "only one open at a time" invariant in the type
-  system; ~Nothing~ collapses both.  Compendium-modal popovers (Clear / Import /
-  Export) follow the same shape but live on the compendium UI substate as
-  ~bulkMenu : Maybe CompendiumBulkMenu~.
+  sound when those land).  A controlled ~<div>~ rather than a native
+  ~<details>/<summary>~, so global Esc + click-outside subscriptions in
+  =Main.subscriptions= can close it.
+- Compendium-modal popovers (Clear / Import / Export) live on the compendium UI
+  substate as ~bulkMenu : Maybe CompendiumBulkMenu~.
 - ~preferences : Preferences~ — see [[*Preferences][Preferences]] below.
 - ~auth : Auth.AuthState~ + ~loginUi : Ui.Login.LoginUi~ — authentication status
   (Loading / Anonymous / Authenticated) and the login / register form's typing
   state.  See [[*Authentication and per-user storage][Authentication and per-user storage]] for the boot flow.
 
-Two modals — the dice roller and the compendium browser — sit *outside* the ADT
-because their substate has to survive a modal close (dice history, compendium
-browser cache + filter).  They expose ~open : Bool~ on their own substate and
-live as =Model.dice : DiceUi= / =Model.compendium : CompendiumUi=.
+Two surfaces — the dice roller and the compendium browser — keep their substate
+*outside* the ADT because it has to survive a close (dice history, compendium
+cache + filter).  They live as =Model.dice : DiceUi= / =Model.compendium :
+CompendiumUi=; the roller's openness is the ~SurfaceDice~ marker's presence in
+the drawer stack, while the browser renders as the standalone =/compendium= tab
+and so has no open state at all.
 
 The compendium UI substate also carries ~savedAs : Maybe String~
 + ~compendiumDirty : Bool~ — last saved-snapshot name, and "library has unsaved
@@ -322,16 +314,16 @@ highest.  The app models this with three fields on =Encounter=:
 - ~activeName : String~ — whose turn it currently is.
 - ~round : Int~ — 1-indexed round counter.
 
-~round = 0~ is the pre-combat sentinel: the queue is set up but no one has acted
-yet.  Reset / Clear / Load all force the live encounter to round 0.  In this
-state the green action button on the controls panel reads "Run Encounter" and
-dispatches ~EncounterRun~, which calls ~Encounter.run~ — bumps round to 1 and
-sets the active creature to the queue head (highest initiative).  Once round >=
-1 the same button reverts to "Next Turn".
+An empty ~activeName~ is the pre-combat sentinel: the queue is set up but no one
+has acted yet.  Reset / Clear / Load all return the live encounter to round 1
+with nobody active.  In that state the editor column's Turn button dispatches
+~EncounterRun~, which calls ~Encounter.run~ — it sets the active creature to the
+queue head (highest initiative).  Once someone is active the same button
+dispatches ~NextTurn~ instead.
 
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
-~Update.Encounter.nextTurn~ when the user clicks ⏭ Next Turn.  The lifecycle
-module owns:
+~Update.Encounter.nextTurn~ when the user presses the Turn button.  The
+lifecycle module owns:
 
 1. *Dead-skip rule* — creatures with three failed death saves
    (~Encounter.isDeathSaveDead~) are skipped permanently.  The iteration cap
@@ -342,22 +334,10 @@ module owns:
    expires every ~DurationUntilTurn AtEnd <name>~ across the encounter; the
    begin-of-turn pass does the same for the ~AtBegin~ phase.
 
-The 5e Surprised state was reintroduced in 2026-06 as a per- creature ~surprised
-: Bool~ flag.  Initiative-modal entry points ("Disadv. & Surprised" and "Apply &
-Sort w/Surprised") flip the flag on whichever creatures are in scope before the
-roll / apply runs.  Card row 1 and the encounter title-bar active-creature
-summary both render a 😲 badge to the left of the name while surprised.  The
-end-of-turn lifecycle hook (~applyEndOfTurn~) clears the flag for the outgoing
-creature, so Surprised burns off after the surprised creature finishes their
-first turn — matching the rule.  Surprised creatures are suppressed from the
-LA-availability reminder strip but not the Special Reactions strip (the rule
-only bars LA use, not ordinary reactions).
-
 ** Creature record extensions
 
-~Encounter.Creature~ gained six fields beyond the original combat core to
-support placeholder stubs, stat-block-style metadata, and the reintroduced
-Surprised + Special-Reactions hints:
+~Encounter.Creature~ gained several fields beyond the original combat core to
+support placeholder stubs and stat-block-style metadata:
 
 - ~isPlaceholder : Bool~ — flags stubs spawned via
   ~Encounter.Roster.appendPlaceholder~.  Preserved across ~renameCreature~ so
@@ -368,27 +348,26 @@ Surprised + Special-Reactions hints:
 - ~race : String~ — free-form (e.g. ~"Dragon"~), rendered in the stat-block meta
   strip.
 - ~alignment : String~ — free-form (e.g. ~"lawful evil"~), same.
-- ~surprised : Bool~ — set by the initiative-modal "Disadv. & Surprised" /
-  "Apply & Sort w/Surprised" entry points and cleared by ~applyEndOfTurn~ after
-  the creature's first turn.  Drives a 😲 badge on the card + title bar and
-  suppresses the creature from the LA-availability strip.
 - ~hasSpecialReactions : Bool~ — copied from the compendium template at spawn
-  time.  When set, the card's reaction pip drops the lightning glyph for a
-  pulsing bright-blue ~!~ and the creature shows up in the "Special reactions:
-  …" sticky strip beneath the title bar.  Toggleable per-creature via a checkbox
-  in the compendium editor; auto-set on 22 bundled SRD creatures (Hydra,
-  Marilith, Vampire, mephits, …).
+  time.  When set, the creature shows up in the "Special reactions: …" sticky
+  strip beneath the title bar.  Toggleable per-creature via a checkbox in the
+  compendium editor; auto-set on 22 bundled SRD creatures (Hydra, Marilith,
+  Vampire, mephits, …).
+- ~specialReactionsUsed : Set String~ — names of the reactions the GM has struck
+  through on the card's badges.  Cleared at the bearer's begin-of-turn, the way
+  the single reaction pip is.
 
-=Encounter.Wire= encodes all six; the decoder uses ~optional~ with safe defaults
-(~False~ / ~""~) so legacy persisted encounters and saved snapshots round-trip
-cleanly.
+=Encounter.Wire= encodes them all; the decoder uses ~optional~ with safe
+defaults (~False~ / ~""~) so legacy persisted encounters and saved snapshots
+round-trip cleanly.
 
 The auto-roll save path lives in =Update/Encounter.elm=: when ~nextTurn~ fires,
 the outgoing name is captured before the lifecycle hooks run, then
 ~Effects.autoRollCmdsFor AutoRollAtEnd outgoing newEnc~ + ~AutoRollAtBegin
 newName newEnc~ are batched.  Results land in ~ConditionSaveLanded~, which
 removes the condition on ~roll.total >= dc~ and posts a green "Saved:
-<Condition>" notice when ~wasAutoRoll = True~.
+<Condition>" notice on success — the same notice a manual chip-roll success
+posts.
 
 The pure domain layer doesn't fire Cmds; that's the right boundary.
 
@@ -425,10 +404,9 @@ of the feature's Msg surface.  =Update/Compendium/= is the canonical example:
 domain feature — URL routing (~urlRequested~ / ~urlChanged~), the ~/me~ identity
 badge (~gotMe~), encounter persist response (~encounterLoaded~ /
 ~encounterPersisted~), the AppBar settings popover (~settingsToggle~ /
-~settingsClose~), the Encounter-Controls split-button popovers
-(~controlMenuToggle~ / ~controlMenuClose~), and ~NoOp~.  Anything that's pure UI
-plumbing at the boundary between the Elm runtime and the workspace shell goes
-here rather than inflating =Main.elm=.
+~settingsClose~), and ~NoOp~.  Anything that's pure UI plumbing at the boundary
+between the Elm runtime and the workspace shell goes here rather than inflating
+=Main.elm=.
 
 =Update/Tabs.elm= is its sibling for the cross-tab BroadcastChannel receive
 paths: ~encounterFromOtherTab~ (adopt an encounter another tab broadcast),
@@ -546,7 +524,7 @@ their other inputs.  No session, no user → 401 with a JSON body.
 ** Per-user data shapes
 
 Every store is a family of relational tables keyed by ~user_id~ (with ~ON DELETE
-CASCADE~ back to ~users~), defined across the four migrations under
+CASCADE~ back to ~users~), defined across the migrations under
 =crates/lib/migrations/=:
 
 | Table family                     | Migration | Notes                                                              |
@@ -554,14 +532,14 @@ CASCADE~ back to ~users~), defined across the four migrations under
 | ~users~                          | 0001      | One row per account; uniqueness enforced case-insensitively on email. |
 | ~dice_rolls~ (+ ~_expression_dice~ / ~_groups~ / ~_faces~ / ~_extras~ children) | 0001 | Fully normalized roll log; 30-entry cap is per-user.  Unknown top-level scalar fields round-trip via ~dice_roll_extras~. |
 | ~lore_group_sets~ → ~lore_groups~ → ~lore_group_members~ | 0002 | One of the five preset families; the ~_sets~ row is the presence parent (see below). |
-| ~condition_preset_sets~ → ~condition_presets~ | 0002 | Saved Add-Condition forms.                                        |
-| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002 | Save Chain preset recipes.                                        |
+| ~condition_preset_sets~ → ~condition_presets~ | 0002, 0005, 0006 | Saved Add-Condition forms.                                        |
+| ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002, 0005, 0006 | Save Chain preset recipes.                                        |
 | ~treasure_table_sets~ → brackets / individual rows / hoard rows / name entries / flat items / roll specs | 0002 | The user's singular treasure table. |
 | ~treasure_profile_sets~ → ~treasure_profiles~ | 0002 | Named "Tune your rolls" presets.                                  |
 | ~user_creatures~ (+ 10 children: saving throws, skills, damage relations, string lists, features, legendary options, custom sections, spell levels, innate groups, spell names) | 0003 | Per-user creature edits + creations + duplicates of bundled.  Every ~Creature~ scalar is a column; the four Option packs (legendary / lair / regional / spellcasting) flatten as all-null-together groups.  See [[*Compendium: bundled vs per-user][Compendium: bundled vs per-user]]. |
 | ~compendium_groups~ → ~compendium_group_entries~ | 0003 | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
 | ~compendium_saves~ → ~compendium_save_nodes~ | 0003 | Named compendium snapshots: typed metadata (name + timestamps) over a contractually opaque body stored as a relational JSON node tree — one row per node, numbers kept as their canonical serde token so int/float fidelity survives.  Save-name uniqueness is per-user. |
-| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
+| ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004, 0005, 0006 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
 | ~encounter_saves~ → ~encounter_save_nodes~ | 0004 | Named encounter saves; same metadata-over-node-tree shape as compendium saves.  Alice + Bob can both have a "Goblin Ambush". |
 
 The five preset families share a *presence-parent* pattern: ~GET~ returns ~null~
@@ -732,7 +710,7 @@ The AppBar nav adapts to auth state:
   settings.
 - *Anonymous (any route except ~/login~)* — same buttons, but the display-name
   slot is replaced with a *Sign in* link, and an italic tagline rides next to
-  the brand: *"Sign in to save your encounters and compendium changes."*
+  the brand: *"Sign in to keep changes."*
 - *Anonymous on ~/login~* — the Sign-in link is suppressed (it would link back
   to itself).
 
@@ -783,6 +761,7 @@ analogue; ~model.auth~ picks at write time, the boot path picks at read time.
 | Save Chain presets | =PUT /api/save-chain-presets=        | =saveChainPresets=              |
 | Timer presets      | (localStorage in both modes)         | =timerPresets=                  |
 | Party (Difficulty) | (localStorage in both modes)         | =party=                         |
+| Editor-column layout | (localStorage in both modes)       | =drawerLayout=                  |
 | Lore groups        | =PUT /api/lore-groups=               | =userLoreGroups=                |
 | Treasure table     | =PUT /api/treasure-table=            | =userTreasureTable=             |
 | Treasure profiles  | =PUT /api/treasure-profiles=         | (not persisted anonymously)     |
@@ -812,7 +791,12 @@ partyCmd               = if next.party /= model.party ...
 userLoreGroupsCmd      = if next.userLoreGroups /= model.userLoreGroups ...
 userTreasureTableCmd   = if next.userTreasureTable /= model.userTreasureTable ...
 userTreasureProfilesCmd = if next.userTreasureProfiles /= model.userTreasureProfiles ...
+drawerLayoutCmd        = if Model.drawerLayout next /= Model.drawerLayout model ...
 #+end_src
+
+The layout branch is the one that diffs a derived value rather than a ~Model~
+field: the panels carry more than the arrangement, so comparing them whole would
+fire on every fold and re-aim.
 
 The wrapper stays in =Main.elm= (it needs the before/after models), but every
 predicate and Cmd helper it calls lives in =Effects.elm= — ~shouldPersistAfter~
@@ -854,6 +838,7 @@ the stylesheet loads.)
 | =localTimerPresets=      | =timerPresets=         | ~Model.timerPresets~ (Dict)            |
 | =localSaveChainPresets=  | =saveChainPresets=     | ~Model.saveChainPresets~ (Dict)        |
 | =localParty=             | =party=                | ~Model.party~ + ~nextPartyMemberId~    |
+| =localDrawerLayout=      | =drawerLayout=         | ~Model.drawer~ via ~Model.applyDrawerLayout~ |
 | =localUserLoreGroups=    | =userLoreGroups=       | ~Model.userLoreGroups~                 |
 | =localUserTreasureTable= | =userTreasureTable=    | ~Model.userTreasureTable~              |
 | =migrationDateLabel=     | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
@@ -883,28 +868,6 @@ Success handlers clear the matching ~localStorage~ key via the
 naming the slot.  Failures toast but leave the local snapshot in place so the
 user can retry.
 
-** Anonymous-mode banner
-
-~View.AnonymousBanner~ renders a yellow-accent strip between the AppBar and the
-page body when ~model.auth = AuthAnonymous~ and the user hasn't dismissed it for
-the session.  The message names the persistence reality explicitly:
-
-#+begin_quote
-You're browsing as a guest — your encounters and compendium
-edits live only in this browser.  Create an account to keep
-your work across devices.  ×
-#+end_quote
-
-Dismissal is session-only (~model.anonymousBannerDismissed~).  The banner
-reappears on every page reload by design — the persistence reality doesn't
-change between reloads, so the reminder shouldn't either.  Suppressed on the
-second-monitor ~QuickList~ and ~Compendium~ standalone routes since those are
-read-only references that don't accept input.
-
-Theme overrides at ~.anonymous-banner~ in ~frontend/public/style.css~ keep the
-strip legible in Dark (muted) and Accessible (high-contrast yellow with a
-heavier border).
-
 ** View-layer sign-in nudges
 
 A handful of controls have no anonymous analogue today — server-side named
@@ -921,11 +884,10 @@ tooltipWhenAuthed auth normalTooltip signInTooltip = ...
 #+end_src
 
 The gated control stays visible (so the affordance doesn't appear/disappear with
-auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The
-PanelControls Save/Load "To Server" / "From Server" menu items use a different
-shape — labels rename to "To Browser" / "From Browser" anonymously (via
-~saveToServerLabel auth~) and the click dispatches the real Save modal, which
-then routes through =Update.Save= / =Update.Load='s auth-branched mutators.
+auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The saves
+panel's storage toggle uses a different shape — the server button reads
+"Browser" anonymously, and the handlers in =Update.SaveLoad= branch on
+~model.auth~ to pick the backend.
 
 * Persistence
 
@@ -946,7 +908,7 @@ maintains.
 |-----------------------------------+-------------------------------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
 | ~/api/auth/{register,login,me}~   | ~users~                                               | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
 | ~/api/encounter~ GET / PUT        | ~encounters~ + children                               | yes       | Live encounter state, fully typed; auto-saved on every mutation.  GET returns ~null~ before the first PUT; a body that fails the wire decoder 400s. |
-| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (Save / Load modal).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (the saves panel).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
 | ~/api/compendium/*~               | ~user_creatures~ + children                           | yes       | Per-user creatures; the bundled bestiary merges in at request time from the binary.                                                               |
 | ~/api/compendium/saves(/:name)*~  | ~compendium_saves~ + ~compendium_save_nodes~          | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
 | ~/api/compendium/groups(/:id)*~   | ~compendium_groups~ + ~compendium_group_entries~      | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
@@ -994,91 +956,80 @@ siblings of ~panel__body~ (so they stay put while the cards scroll, same
 affordance the title bar uses):
 
 - *Legendary Action available* — ~legendaryActionStrip~.  Lists every queue
-  member with un-spent legendary-action pips, comma-separated, with the
-  remaining-pip count in parentheses.  Each name is a button that fires
-  ~PanelShowCreature~ to pin the stat block.  Filters: not the currently-active
-  creature (rule: LA fires on OTHER creatures' turn-ends), not Surprised, not
-  down, not dead.
+  member with legendary actions left, comma-separated, with the remaining count
+  in parentheses.  Each name is a button that fires ~QueueScrollTo~ to bring the
+  creature's card to the top of the queue.  Filters: not the currently-active
+  creature (rule: LA fires on OTHER creatures' turn-ends), not down, not dead.
 - *Special reactions* — ~specialReactionsStrip~.  Lists every queue member whose
   source creature has ~hasSpecialReactions = True~ — Hydra, Marilith, Vampire,
   mephits, and the named-reaction folks the LA strip doesn't cover.  Same
-  name-button affordance.  Filters: not down, not dead.  Does NOT filter
-  Surprised or the active creature — ordinary reactions can fire on the bearer's
-  own turn and aren't barred by Surprised.
+  name-button affordance.  Filters: not down, not dead.  Does NOT filter the
+  active creature — ordinary reactions can fire on the bearer's own turn.
 
 Both strips disappear entirely (~text ""~) when no creature qualifies, so
 vanilla encounters keep their existing title-bar / card-grid layout.
 
-* Encounter Controls panel
+* Encounter controls
 
-The middle pane's button grid runs a small set of named flows that the rest of
-the app routes through:
+The editor column runs a small set of named flows that the rest of the app
+routes through:
 
-- *Save / Load* are split-button dropdowns ("💾 Save ▾" / "📁 Load ▾"); the
-  trigger toggles a popover whose menu items pick destination (Server / Device).
-  ~Maybe ControlMenu~ on ~Model~ tracks which popover is open; subscriptions in
-  =Main.subscriptions= close on Esc / click-outside.  Picks dispatch into the
-  destination-aware modal:
+- *Saves* — one drawer panel, =View.Panel.SaveLoad=, covering both directions.
+  The row affordances are shared because they hit the same endpoints.
 
-  - *Save → Server / Device* — opens =View.Modal.Save= pre-set to the chosen
-    radio.  Filename input, list of existing server saves with inline rename /
-    overwrite / delete.  Server uploads PUT to ~/api/encounter/saves/:name~
-    (server returns 409 on a name collision, surfaced as an inline
-    overwrite-confirm banner; ~?overwrite=true~ upserts on confirm).  Device
-    downloads go through ~File.Download.string~.
-  - *Load → Server / Device* — Server opens =View.Modal.Load= (list of saves,
-    click-to-load with confirm); Device fires ~File.Select.file~ directly
-    without the modal.  Either path replaces the live encounter and forces
-    ~round = 0~ + ~activeName = ""~ so the GM lands in pre-combat mode.
-    Successful loads also populate ~savedSnapshot~ + ~savedAs~.
+  - Server uploads PUT to ~/api/encounter/saves/:name~ (the server returns 409
+    on a name collision, surfaced as the panel's overwrite-confirm banner;
+    ~?overwrite=true~ upserts on confirm).  Device writes go through
+    ~File.Download.string~ and reads through ~File.Select.file~.
+  - Loading replaces the live encounter and forces ~round = 1~ + ~activeName =
+    ""~ so the GM lands in pre-combat mode.  Successful loads also populate
+    ~savedSnapshot~ + ~savedAs~.
 
-- *Reset* / *Clear* — staged through ~pendingControl~ so a misclick can't drop
-  combat state.  First click swaps the button grid for an inline confirmation
-  banner (Cancel / coloured Confirm); second click applies.
+- *Reset* / *Clear* — staged as ~SurfaceConfirm~ so a misclick can't drop combat
+  state.  The first click opens the confirmation modal (Cancel / coloured
+  Confirm); the second applies.
   - *Reset* — keeps every creature in the roster but strips per-fight state: HP
     to full, no temp HP, no conditions / save notices / death saves, every
     status toggle off (cover, concentration, hiding, dodging, flying, readied,
     inactive, bloodied), legendary actions / resistances refilled, timers
     cleared.  Identity + combat baselines (name, kind, initiative, AC, max HP,
-    note, memo, compendium id) preserved.  Round → 0, active creature → none, so
-    the GM lands back in the pre-combat "Run Encounter" state.
+    note, memo, compendium id) preserved.  Round → 1, active creature → none, so
+    the GM lands back in the pre-combat state.
   - *Clear* — empties the queue.
 
 The shared behaviour: any branch that mutates ~model.encounter~ flows through
 ~Main.update~'s diff-and-persist wrapper, which fires a ~/api/encounter~ PUT iff
-the encounter actually changed.  The Save / Load Msgs themselves are exempt to
+the encounter actually changed.  The save/load Msgs themselves are exempt to
 avoid an obvious infinite loop.
 
-* Compendium side panel
+* Stat block under a card
 
-The right-hand panel pins one compendium creature's stat block, chosen by
-clicking a creature card's name in the encounter pane.  Lookup is
-*id-then-name*: =View.PanelDetail.resolvePin= first calls ~Compendium.find
-pin.id~ and on miss falls back to ~Compendium.findByName~ on the encounter
-creature's display name (stripped of the numeric instance suffix via
-~Encounter.Roster.instanceBaseName~).
+Clicking a creature card's name unfolds the compendium creature's stat block
+directly beneath that card in the encounter pane, attached to it and scrolling
+with the queue.  A bar across its top names the creature and holds the Minimize
+button, and stays at the top of the scroller while a long block scrolls under
+it.  Several cards can have theirs unfolded at once: the set lives in
+~model.openStatBlocks~, keyed by creature name, and ~Model.reaimStale~ prunes a
+name whose creature has left the queue.  The spell list, which names a creature
+from elsewhere, fires ~StatBlockShow~, which also scrolls the card into view;
+the card's own name fires ~StatBlockToggle~ and the bar's title
+~StatBlockMinimize~.
 
-The fallback exists because old saved encounters can carry ~creatureId~ values
-that no longer match the bundled compendium UUIDs (e.g. a creature was
-originally pasted under a provisional id).  Without it, the panel previously
-fell through to a hardcoded "Brakka, Ogre Brute" placeholder, which read as if
-the panel were stuck on the wrong creature.
-
-When neither lookup matches, the panel shows an explicit empty-state message
+Lookup is *id-then-name*: =View.Card.StatBlock= first calls ~Compendium.find~ on
+the card's compendium id and on a miss falls back to ~Compendium.findByName~ on
+the encounter creature's display name (stripped of the numeric instance suffix
+via ~Encounter.Roster.instanceBaseName~).  The fallback exists because old saved
+encounters can carry ~creatureId~ values that no longer match the bundled
+compendium UUIDs (e.g. a creature was originally pasted under a provisional id).
+When neither lookup matches, the block shows an explicit empty-state message
 (loading / failed / "isn't in your compendium yet") rather than any placeholder.
-The legacy =View.StatBlockEmbed= module that defined the Brakka mock has been
-deleted.
 
 ** Stat-block meta-tag rendering modes
 
-~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges
-| TagIconTooltip~) because the same renderer needs to behave
-differently in two contexts.  In the compendium modal and the standalone view,
-where there's room on the name row, user tags render as a right-justified strip
-of small badges (=.statblock__tag-badge=).  In the pinned right-rail panel,
-where vertical space is at a premium, the same tags collapse to a single 🏷 icon
-(=.statblock__tag-icon=) carrying a ~title=~ tooltip with the full
-comma-separated list.  Both modes render nothing when ~tags~ is empty.
+~View.StatBlock.view~ takes a ~TagDisplay~ parameter (~TagBadges |
+TagBadgesOpenInNewTab~) because only the compendium page wants the ↗ link on the
+name row; every mount renders user tags as a right-justified strip of small
+badges (=.statblock__tag-badge=), and nothing when ~tags~ is empty.
 
 2024 MM Habitat / Treasure tags render at the very bottom of the stat block —
 below custom sections and lore — via ~viewMetaTags~.  The function emits a
@@ -1089,7 +1040,7 @@ mirrors the printed book format.
 
 * Compendium browser bulk actions
 
-The Compendium modal's toolbar is split into two rows.
+The Compendium page's toolbar is split into two rows.
 
 *Top row (filters):* search box, kind chips (Player / Enemy / NPC / Groups), the
 Sort picker, and the Tag picker.  The Groups chip toggles
@@ -1108,11 +1059,10 @@ bulk-action cluster (Import / Export / Reset / Clear) on the right via
 ~margin-left: auto~.
 
 Three of the four bulk-action triggers are split-button dropdowns following the
-same pattern as the Encounter Controls Save / Load triggers.  Mediating state
-lives on the compendium UI substate as ~bulkMenu : Maybe CompendiumBulkMenu~
-(~ClearMenu | ImportMenu | ExportMenu~), so only one popover is open at a time
-and the global Esc / click-outside subscriptions have a single handler to close
-them all.
+same anchored-popover pattern.  Mediating state lives on the compendium UI
+substate as ~bulkMenu : Maybe CompendiumBulkMenu~ (~ClearMenu | ImportMenu |
+ExportMenu~), so only one popover is open at a time and the global Esc /
+click-outside subscriptions have a single handler to close them all.
 
 - *Import* — From Server (opens =View.Modal.LoadCompendium=) / From Device
   (~CompendiumImportClick~ → file picker → parse → pending-confirm banner →
@@ -1128,10 +1078,10 @@ them all.
 - *Reset* — single button (no popover); restores the bundled creature set via
   ~/api/compendium/reset~.
 
-The Save / Load Compendium modals themselves mirror the encounter Save / Load
-modals: filename input, list of existing snapshots, inline overwrite-confirm
-banner.  The MVP omits per-row rename / delete affordances — re-saving under an
-existing name fires the overwrite-confirm prompt, which covers the common case.
+The Save / Load Compendium modals themselves mirror the encounter saves panel:
+filename input, list of existing snapshots, inline overwrite-confirm banner.
+The MVP omits per-row rename / delete affordances — re-saving under an existing
+name fires the overwrite-confirm prompt, which covers the common case.
 Successful save / load clears ~compendiumDirty~ and stamps the snapshot's name
 into ~CompendiumUi.savedAs~ so the next Save modal opens pre-populated.
 
@@ -1217,8 +1167,8 @@ body id), serde / IO failures → 500.
 ** UI surface
 
 - *Compendium list rendering* — groups render at the top of the list as
-  expandable rows (~▸~/~▾~ disclosure) above the creature rows.
-  =View.Modal.Compendium.groupListItem= produces a header + an optional list of
+  expandable rows (~▶~/~▼~ disclosure) above the creature rows.
+  =View.Page.Compendium.groupListItem= produces a header + an optional list of
   child entry rows (read-only — to edit contents the GM re-opens the Edit
   modal).  The Groups filter chip on the toolbar hides them entirely.  Groups
   don't carry bulk-selection checkboxes; the group is the unit.
@@ -1228,9 +1178,9 @@ body id), serde / IO failures → 500.
   manual-value number input shown only when "Shared manual" is picked),
   per-entry rows with creature picker + count + minion-type select + remove ×,
   and a "+ Add Entry" button.
-- *Add to encounter* — clicking a group row pins it in the right pane with an
-  action bar (➕ Add Group to Encounter / ✏️ Edit / 🗑 Delete).  Add dispatches
-  =Update.Compendium.AddGroup.addGroup= which:
+- *Add to encounter* — clicking a group row pins it in the editor column's panel
+  with an action bar (➕ Add Group to Encounter / ✏️ Edit / 🗑 Delete).  Add
+  dispatches =Update.Compendium.AddGroup.addGroup= which:
   1. Expands the group's entries into a flat list of ~Skeleton~ records (one per
      spawned instance), name- disambiguating against the existing roster as it
      goes.
@@ -1250,26 +1200,42 @@ disabled-for-launch and never grew a finished widget set, so the whole feature
 was deleted rather than carried as dead plumbing.  See git history if it
 returns.
 
-* Saving-throw modal
+* Triple-rolls: attack / ability check / saving throw
 
-Clicking an ability cell (STR / DEX / CON / INT / WIS / CHA) on a stat block
-opens =View.Modal.AbilitySave= — three roll buttons (Roll / Advantage /
-Disadvantage) wrapped around a captured save bonus (proficient if the creature
-has a ~savingThrows~ entry for that ability, otherwise the flat ability
-modifier).  Every button fires an ~AbilitySaveRoll RollMode~ that builds the
-matching dice Cmd (~rollCmd~ / ~advantageCmd~ / ~disadvantageCmd~), tags the
-history entry as ~"<ABILITY> Save → <Creature>"~, and lands the result through
-the shared ~Effects.pushDiceRoll~ + ~persistDiceRoll~ pipeline so the dice modal
-sees it on next open.  No HP mutation; the GM applies effects manually based on
-the result.
+Three click targets on a stat block — an inline "+N to hit" attack link, one of
+the six ability cells (STR / DEX / CON / INT / WIS / CHA), and a chip in the
+Saving Throws property line — fire the same triple-roll, and so does the editor
+column's "20" button, which stands for no creature and adds no bonus:
+~Update.Dice.tripleRollWith~ rolls ~1d20 + bonus~ three ways at once (standard,
+advantage, disadvantage) as a single ~Dice.batchRollCmd~ so the three don't
+share a same-millisecond RNG seed, landing together in ~TripleRollLanded~.  The
+bonus is the attack modifier, the flat ability modifier, or the proficient save
+bonus (~savingThrows~ entry when the creature has one) depending on which of the
+three fired it; the ability/saving-throw paths route through
+=Update.AbilitySave.trigger=, which only adds the dice-history label
+(~"<ABILITY> check"~ vs ~"<ABILITY> saving throw"~) before delegating — the
+attack path tags its own rolls ~"Attack"~ directly.
+
+The landing handler (~Update.Dice.tripleRollLanded~) pushes all three rolls
+through the shared ~Effects.pushDiceRoll~ + ~persistDiceRoll~ pipeline like any
+other roll, spawns three colour-coded floating popups spread out side-by-side at
+the click position (white / green / red for standard / advantage / disadvantage
+— ~Model.PopupColor~), and sets ~Ui.Dice.rollBadgeOverride~ so the rail's badge
+strip next to the 🎲 icon — the three most recent totals — shows the same three,
+its newest three entries, in the same colours even after the popups fade.  Any
+single roll landing afterward — from any source — clears the override via
+~Effects.pushIncomingDiceRoll~, so the strip reverts to its ordinary recency
+view, the newest total emphasized and advantage or disadvantage rolls keeping
+their colour, until the next triple-roll.  No HP mutation; the GM applies
+effects manually based on the result.
 
 * Inline dice in stat blocks
 
-Every clickable inline-dice link in a stat block routes through
+Every clickable dice-formula link in a stat block (damage rolls, generic inline
+notation — everything except the attack link covered above) routes through
 ~Update.Dice.rollFromStatBlock~, which fires the roll into the shared dice
-history *without* opening the dice modal.  The panel's Roll button picks up its
-"unread rolls" indicator so the user can open the log when they want to see the
-breakdown.
+history *without* opening the dice panel.  The Dice Roller marks its title as
+unread so the GM can open the log when they want to see the breakdown.
 
 The =Dice.scan= parser also captures a trailing 5e damage type (~"5 (1d6 + 2)
 Slashing damage"~ → ~damageType = Just "Slashing"~) as long as the alpha word
@@ -1279,9 +1245,9 @@ matches the closed set of 13 damage types — ~acid~, ~bludgeoning~, ~cold~,
 like ~"1d6 from the spell"~ still captures just ~1d6~ with no spurious damage
 type.
 
-** Rerun dropdown in the dice modal
+** Rerun dropdown in the dice panel
 
-Each history row in the dice modal carries a ↻ rerun button.  The button is now
+Each history row in the dice panel carries a ↻ rerun button.  The button is now
 a two-item dropdown (~Ui.Dice.rerunMenuOpenFor : Maybe Int~ holds the open row,
 Esc / click-outside close):
 
@@ -1292,38 +1258,34 @@ Esc / click-outside close):
 Three new Msgs in =Msg.elm=: ~DiceRerunMenuToggle Int~, ~DiceRerunMenuClose~,
 ~DiceRerunNoModifier Dice.Roll~.
 
-* Encounter title-bar XP totals
+* Encounter XP totals
 
-The right cluster of the encounter title bar runs a real XP total, not a
-placeholder.  =View.EncounterBar.totalXp= walks the encounter, resolves each
-creature through ~Compendium.find creatureId~, and sums two parallel running
-totals: ~total~ (every in-scope creature's base ~xp~) and ~lairTotal~
-(~xpInLair~ when present, falling back to ~xp~).  Players are always excluded;
-missing-from-compendium entries are silently skipped.  When ~lairTotal > total~
-the view renders a muted secondary chip "(N w/Lair)" alongside the base figure.
+The XP panel's headline reports the encounter's XP total.
+~Encounter.Xp.totalsFor~ walks the encounter, resolving each creature through
+~Compendium.find creatureId~, and sums two parallel running totals: ~total~
+(every in-scope creature's base ~xp~) and ~lairTotal~ (~xpInLair~ when present,
+falling back to ~xp~).  Players are always excluded; missing-from-compendium
+entries are silently skipped.
 
-The four scope options drive the dropdown filter via the ~Encounter.Xp.XpScope~
-enum (~Enemies & NPCs~ / ~Enemies Only~ / ~NPCs Only~ / ~Selected Only~).
-~Selected Only~ uses the row 1 multi-select checkboxes; the other three resolve
-via the compendium creature's ~kind~ tag.
+The four scope options come from the ~Encounter.Xp.XpScope~ enum (~Enemies &
+NPCs~ / ~Enemies Only~ / ~NPCs Only~ / ~Selected Only~).  ~Selected Only~ uses
+the row 1 multi-select checkboxes; the other three resolve via the compendium
+creature's ~kind~ tag.
 
 The XP totals computation itself lives in =Encounter/Xp.elm= (domain module —
 pure rules, no ~Html~, no ~Cmd~) exposing ~totalsFor : XpScope -> Encounter ->
-Compendium.Db -> Totals~ + ~formatThousands~.  =View.EncounterBar= unwraps the
+Compendium.Db -> Totals~ + ~formatThousands~.  =View.Panel.Xp= unwraps the
 ~CompendiumDb~ loading wrapper at the boundary then calls into the domain
 helper.  Behavior is locked by the dedicated ~Encounter/XpTest~ suite (14 cases
 covering empty queues, scope filters, lair-XP fallback / preference, and the
 thousand- separator math).
 
-The dropdown itself was migrated from native ~<details>/<summary>~ to a
-controlled ~<div>~ because the native element couldn't be closed by Esc or by
-clicking outside.  ~Model.xpFilterOpen~ holds the open state; new
-~XpFilterToggle~ / ~XpFilterClose~ Msgs flip / clear it; the existing
-~XpScopeSet~ also closes on selection.  When open, =Main.subscriptions= layers
-two extra subs in via ~Sub.batch~: ~Browser.Events.onKeyDown (escKey
-XpFilterClose)~ and ~Browser.Events.onMouseDown (Decode.succeed XpFilterClose)~.
-An internal ~stopPropagationOn "mousedown"~ on the dropdown wrapper keeps the
-toggle click from auto-closing.
+The scope is picked in the XP panel (=View/Panel/Xp.elm=), which carries the
+total alongside it so the effect of a pick is visible while making it.  The
+~SurfaceXp~ marker in the drawer stack is the panel's open state;
+~Model.defaultDrawer~ supplies it at boot, and ~XpScopeSet~ deliberately leaves
+it unfolded.  Esc folds it through the drawer's shared path; a click-outside sub
+would fire on every click landing in the queue beside the panel.
 
 Lair XP is plumbed end-to-end:
 
@@ -1350,12 +1312,11 @@ view-side — the underlying ~bloodied~ flag is recomputed on every
 ** Stat-block kind badge
 
 =View.StatBlock.kindBadge= renders a small coloured chip (Player / Enemy / NPC)
-next to the creature name in every ~TagDisplay~ mode (compendium modal, pinned
-right rail, standalone view).  CSS variants in =style.css= colour them blue
-(Player), red (Enemy), and yellow (NPC) so the GM can pick a creature out of the
-queue at a glance.
+next to the creature name in every ~TagDisplay~ mode.  CSS variants in
+=style.css= colour them blue (Player), red (Enemy), and yellow (NPC) so the GM
+can pick a creature out of the queue at a glance.
 
-* Quick Add modal
+* Quick Add panel
 
 Lightweight one-click sister to the full Compendium browser.  Replaces the
 panel's "Add Creature" button with "Quick Add", opens =Ui.QuickAdd= via the
@@ -1368,14 +1329,14 @@ single-instance roll spec, and fires ~Dice.batchRollCmd
 ~Update.Compendium.Add.initiativeRolled~ handler — same
 ~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~ → toast
 pipeline as the full browser, just with a count of one and a different opener
-UI.  Esc closes.
+UI.  Esc folds the panel.
 
-The Quick Add modal has two extra surfaces beyond compendium picks:
+The Quick Add panel has two extra surfaces beyond compendium picks:
 
 - A pinned "Placeholder" entry at the top of the list (styled italic, sticky) —
   ~Update.QuickAdd.pickPlaceholder~ → ~Encounter.Roster.appendPlaceholder~.  See
   [[*Placeholder combatants][Placeholder combatants]].
-- Replace mode — ~Ui.QuickAdd.freshForReplace oldName~ flips the modal title to
+- Replace mode — ~Ui.QuickAdd.freshForReplace oldName~ flips the panel title to
   ~"Replace <old> with…"~ and routes the pick through
   ~Encounter.Roster.replaceCreature~ instead of appending, preserving the old
   initiative value but using the new creature's HP / AC.  See
@@ -1408,7 +1369,7 @@ UI surfaces:
 - *Queue bottom* — =View.Workspace.addPlaceholderRow= renders a full-width
   dashed ~+~ row beneath the last card; click fires
   ~Encounter.Roster.appendPlaceholder~.
-- *Quick Add modal* — the pinned italic ~Placeholder~ entry at the top of the
+- *Quick Add panel* — the pinned italic ~Placeholder~ entry at the top of the
   list goes through ~Update.QuickAdd.pickPlaceholder~ (same domain call).
 - *Inline rename* — =Ui.PlaceholderRename= + =Update.PlaceholderRename= drive
   click-to-rename on placeholder cards.  ~isPlaceholder~ is the gate: once a
@@ -1432,14 +1393,88 @@ nothing.  Duration-kind and auto-roll-mode controls remain true radios (no
 deselect-on- reclick) — there's always exactly one duration kind and one roll
 mode.
 
-* Per-modal preset pattern
+A save-to-end may carry a failed-save outcome — damage the bearer takes, a
+condition the chip turns into, or both — which ~Update.Condition.saveLanded~
+resolves after the roll: the rename clears the save, since a second failure that
+petrifies leaves nothing to save against, and a formula's damage rolls through
+its own landing message.  The Save Chain editor writes the same record onto the
+conditions it applies, and draws the Condition editor's duration picker
+(=View.Inline.DurationPicker=) beneath every effect and beside its success-side
+immunity.  A preset can't name the creature an "until turn" watches, so its
+~EffectDuration~ names a role — the target, the active creature — that
+~Encounter.SaveChain.resolveDuration~ settles against the encounter at apply
+time, by the Condition editor's own rules for "next turn" and the countdown's
+first tick.
 
-The Condition modal and Timer modal each carry a Save / Load footer that
-remembers full configurations under user-chosen names.  Both modals follow the
-same templatable shape so new modals can adopt the pattern without re-inventing
-it.
+Two save timings wait on the GM rather than a turn hook.  "Ask at end of turn"
+and the manual mode both pulse the chip — ~Model.flashConditions~ names the
+bearer-and-id pairs pulsing, which ~Update.Encounter.nextTurn~ fills from
+~Encounter.remindersAt~ and a sleep clears — so the GM rolls from the chip when
+the rule's trigger held.  A save that reacts to damage is caught by
+~Update.Condition.damageTriggered~, a pass ~Main.update~ runs on every message's
+result: a creature whose current-plus-temporary hit points fell took a hit, and
+each of its conditions with a damage trigger either pulses or rolls at once.
+The pass skips the save-landing messages themselves, or a condition whose failed
+save deals damage would roll without end, and the messages that swap in a whole
+encounter from storage, whose numbers are not hits.
 
-For a modal =Foo= the pieces are:
+An area chain (~SaveChain.area~) marks each target with a condition carrying an
+~AreaTracker~ — the chain's name plus the ability, DC, and bonus fixed at apply
+time, as a save-to-end's are — and ~nextTurn~ rolls those markers at their phase
+through ~Effects.areaRollCmdsFor~.  The landing looks the chain up by name in
+the presets and resolves the earned side with the auto-rolled amounts
+~savesRolled~ uses, so a spell preset's blank DC is filled from the marker.  A
+companion effect lands as a second condition whose ~linkedTo~ names the
+primary's id; ~Encounter.removeCondition~ and the lifecycle ticks prune
+companions whose primary is gone, whichever way it went.
+
+* Editor vocabulary
+
+Every editor in the drawer is drawn from one set of classes, the Condition
+editor's: a ~cond-section~ per group of settings, separated by a dashed rule; a
+~cond-row~ for each line, which wraps whole items to the next line rather than
+clipping or breaking a label mid-text; ~cond-label~ for the words beside a
+field; ~cond-input~ and ~cond-select~ for the fields, at one size, with width
+modifiers for the two-character, short, name-length, and take-the-room cases;
+~cond-checkbox~, ~cond-radio-plain~, and the ~cond-spin~ pair for the choice and
+nudge controls, built by =View.Inline.Field= so their markup matches too;
+~cond-section__caption~ for a hint, with a warn and a danger variant; and
+=View.Inline.Field='s fold heading — the ~fold-head~ row with its ~fold-toggle~
+— for a section that folds, with ~log-list~ under it when the section is a log.
+An editor's body is an ~editor-body~, which adds no chrome of its own: the panel
+body pads it, and each section carries the air on either side of the dashed rule
+between sections, so the first row, every rule, and the last row sit the same
+distance from what is around them in every editor.  The encounter-level panels
+keep their own section classes but follow the same rhythm.  A panel keeps a
+class of its own only for what it alone has — a treasure row, a die button, a
+party list.  Adding an editor means composing these, not minting a parallel set.
+
+The HP change log lives on the model once and is read two ways: the Manage HP
+editor shows every entry, and the dice roller interleaves only the entries a
+roll produced with its rolls, on the ~rolled~ flag each entry carries.  Undo
+always reverts the newest entry, whichever mount offers it.
+
+The heading row of every panel folds it on a click and, with shift held on an
+open panel, folds every panel: ~View.Panel.headerClick~ reads the modifier and
+picks between the panel's own toggle and ~DrawerFoldAll~, and the caret button
+shares the decoder.  The tag a panel wears while its feature is still beta is
+~View.Panel.betaTag~ on its ~titleTrail~; those panels also sit last in
+~Model.defaultDrawer~.  A stored layout carries the version of the arrangement
+rules it was saved under (=DrawerLayout=), and ~Model.applyDrawerLayout~ moves
+the beta panels to the bottom of a layout saved before version 2 — once, since
+the GM's next change writes the layout back at the current version — leaving a
+pinned one where the GM put it.
+
+* Per-surface preset pattern
+
+The Condition and Timer editors each carry Save / Load controls that remember
+full configurations under user-chosen names.  The Condition editor adds one step
+the shape below leaves out: naming happens in a modal
+(=View/Modal/ConditionPreset.elm=), whose commit says whether it will replace a
+preset of that name.  Both follow the same templatable shape so a new surface
+can adopt the pattern without re-inventing it.
+
+For a surface =Foo= the pieces are:
 
 1. *Preset body type* — a small record alias on =Ui/Foo.elm= (~FooPreset~)
    holding only the fields the preset cares about, plus a pair of projections:
@@ -1457,7 +1492,7 @@ For a modal =Foo= the pieces are:
    the ~localFooPresets~ boot flag (see the anonymous-mode boot-flag table).
 5. *Port* — ~Ports.persistLocalFooPresets : E.Value -> Cmd msg~ with a matching
    JS subscriber in =app.js= that writes to ~localStorage.fooPresets~.
-6. *Msg family* — eight constructors mirroring the Condition family verbatim:
+6. *Msg family* — eight constructors, the core of the Condition family:
    ~FooPresetSaveStart~ / ~FooPresetSaveNameChanged String~ /
    ~FooPresetSaveCancel~ / ~FooPresetSaveSubmit~ / ~FooPresetLoadMenuToggle~ /
    ~FooPresetLoadMenuClose~ / ~FooPresetLoad String~ / ~FooPresetDelete String~.
@@ -1466,10 +1501,13 @@ For a modal =Foo= the pieces are:
    writes to ~Model.fooPresets~ AND flips ~loadedPresetName~; ~presetLoad~
    delegates to ~Ui.Foo.applyPreset~; ~presetDelete~ also clears
    ~loadedPresetName~ when the deleted preset was the active one.
-8. *View* — =View/Modal/Foo.elm= renders a footer row built from two helpers:
-   - ~presetSaveControl~ — toggles between a single ~Save~ button (when
-     ~pendingSaveName == Nothing~) and a ~[name input][Save][Cancel]~ trio.
-   - ~presetLoadControl~ — disabled ~Load ▾~ when the dict is empty; otherwise
+8. *View* — =View/Modal/Foo.elm= renders two controls, Save in the footer and
+   Load where the editor wants it:
+   - The Save control — one button that sets ~pendingSaveName~, which is what
+     the naming form reads to know it is wanted.  The commit reads as an
+     overwrite when the name is already in the list, the GM's own or a bundled
+     one.
+   - ~presetLoadControl~ — disabled ~Load ▼~ when the dict is empty; otherwise
      opens a dropdown of preset names sorted case-insensitively (~Dict.keys
      presets |> List.sortBy String.toLower~).  Each row is a ~[name][×]~ pair
      where the × uses ~stopPropagationOn "click"~ so a misclick on delete inside
@@ -1493,10 +1531,10 @@ each branch a true one-liner in =Main.updateInner=.
 
 * Random Encounter generator
 
-The 🎲 Random Encounter modal (opened from the Compendium side panel) builds an
-encounter to a party's XP budget and drops it into the queue.  The pure domain
-lives in =frontend/src/Encounter/RandomEncounter.elm=; the UI substate in
-=Ui/RandomEncounter.elm=; the modal view in =View/Modal/RandomEncounter.elm=.
+The 🎲 Random Encounter panel builds an encounter to a party's XP budget and
+drops it into the queue.  The pure domain lives in
+=frontend/src/Encounter/RandomEncounter.elm=; the UI substate in
+=Ui/RandomEncounter.elm=; the panel view in =View/Panel/RandomEncounter.elm=.
 Bundled lore content lives in =Encounter/RandomEncounter/Lore.elm=;
 user-authored lore lives on =model.userLoreGroups= and persists via ~PUT
 /api/lore-groups~ when signed in and =localStorage.userLoreGroups= anonymously
@@ -1572,6 +1610,11 @@ role + count range.
 Both sources flow into the generator's ~pickLoreFill~ unchanged: ~Lore.bundled
 ++ params.userLoreGroups~ is filtered + weighted-picked as a single pool.
 
+Every bundled group carries a one-line authored description, shown in the
+Compendium's group detail pane.  The text and the lore that justifies each
+composition are collected in [[file:LORE_GROUPS.org][LORE_GROUPS.org]], which is where a new bundled
+group's write-up goes.
+
 ** Recharge prompt (no-auto-roll)
 
 Recharge abilities (dragon breath weapons, beholder rays, etc.) used to
@@ -1623,9 +1666,8 @@ Creature~ entry point so the arithmetic doesn't drift between code paths.
 
 ~Change~ is an ADT:
 
-- ~Damage { amount, ignoreTemp }~ — temp HP soaks first (skippable via
-  ~ignoreTemp~); current HP clamps at 0.  The death-save tracker auto-appears
-  once ~currentHp == 0~ (view-side gate).
+- ~Damage Int~ — temp HP soaks first; current HP clamps at 0.  The death-save
+  tracker auto-appears once ~currentHp == 0~ (view-side gate).
 - ~Heal Int~ — caps at maxHp; clears the death-save counters via
   ~Encounter.emptyDeathSaves~ when reviving from 0.
 - ~TempHp Int~ — replace-if-higher (5e never-stacks rule).
@@ -1634,10 +1676,10 @@ Creature~ entry point so the arithmetic doesn't drift between code paths.
 the row 2 🩸 chip stays honest without anyone touching it manually.
 
 The engine also exposes ~setCurrentHp~ / ~setMaxHp~ / ~setArmorClass~ that skip
-the rule-flavored side effects.  The inline click-to-edit on row 1 (AC) and row
-2 (current / max HP) of each card all flow through these via the shared ~HpEdit~
-/ ~HpField~ / ~HpEditStart~ machinery — same Msg constructors, different field
-discriminator.
+the rule-flavored side effects.  Row 1's AC reaches them through the inline
+click-to-edit machinery (~HpEdit~ / ~HpField~ / ~HpEditStart~); row 2's HP
+values open the Manage HP editor instead, whose Manual section calls the same
+setters.
 
 The recent-HP-changes log on the Damage / Heal / Temp HP modal keeps a snapshot
 per entry (target, kind, amount, before-/after- HP, before-/after-tempHP) so the
@@ -1672,7 +1714,7 @@ Wire status today:
   - *Auto* — resolves to Modern or Dark per OS ~prefers-color-scheme~ via
     media-query override.
   - *Accessible* (~[data-theme="accessible"]~) — WCAG AAA- target high-contrast
-    palette, bumped font sizes across every panel + stat block + dice modal + CR
+    palette, bumped font sizes across every panel + stat block + dice panel + CR
     calc, B&W creature-card buttons with black-fill / white-text on hover, 24px
     checkboxes, 3px focus rings, larger touch targets, and
     ~prefers-reduced-motion~ honored globally.  Theme persists via
@@ -1687,7 +1729,7 @@ Wire status today:
   sort, shortcut overrides) are wire-defined but not yet read by any feature;
   they round-trip through ~Preferences.default~.
 
-The ~Readied~ status toggle on row 3 of every creature card also animates
+The ~Readied~ status toggle on row 2 of every creature card also animates
 per-theme via a triple-effect keyframe (opacity dip + 1.05× scale + orange glow
 ring on a 0.9s cycle); the animation respects ~prefers-reduced-motion: reduce~
 and falls back to a static highlight.
@@ -1748,41 +1790,69 @@ every domain feature, every CLI subcommand has a canonical home now.  Don't grow
 =Main.elm= beyond the dispatch table or inline new helpers there; that work has
 already been undone once.
 
-** Frontend: a new modal feature
+** Frontend: a new surface
 
-Most new features in the GM-side UI are modal-shaped.  The canonical layout, in
+Most new features in the GM-side UI open a surface.  The canonical layout, in
 dependency order:
 
 1. *Domain rules* — pure functions in =Foo.elm= or =Encounter/Foo.elm=.  No
    ~import Html~, ~Browser~, or ~Url~.  If the feature has rules-y logic (queue
    walks, HP arithmetic, condition lifecycle), this is where it lives.
-2. *UI substate* — =Ui/Foo.elm= defines the modal's record alias and a ~fresh :
-   ... -> FooUi~ constructor.  Only fields the modal cares about; transient
+2. *UI substate* — =Ui/Foo.elm= defines the surface's record alias and a ~fresh
+   : ... -> FooUi~ constructor.  Only fields the surface cares about; transient
    typing state is fine here.
-3. *Modal ADT* — add ~ModalFoo FooUi~ to the ~Modal~ ADT in =Model.elm=.  *Do
-   not* add a separate ~Maybe FooUi~ field on ~Model~.  The ADT is what
-   type-enforces "only one modal open at a time."
+3. *Surface ADT* — add ~SurfaceFoo FooUi~ to the ~Surface~ ADT in =Model.elm=.
+   *Do not* add a separate ~Maybe FooUi~ field on ~Model~.  The ADT is what
+   type-enforces "only one surface open at a time."
 4. *Msg constructors* — add to =Msg.elm=.  Aux types (Kind enums, RollMode,
    etc.) live here too.
 5. *Update branches* — =Update/Foo.elm= exposes one function per Msg branch.
    Each function takes ~Model -> ( Model, Cmd Msg )~.  Open/close write to
-   ~model.modal~; the ~withFooUi~ lens pattern-matches on ~Just (ModalFoo ui)~
-   and is private to the module.
+   ~model.surface~; ~mapSurface~ plus the variant's lens carries the rest.
 6. *Cmd-emitting helpers* — go in =Effects.elm= (or =Util/Http.elm= for HTTP
    boilerplate).  Update modules don't ~import Http~ directly.
-7. *View* — =View/Modal/Foo.elm=.  Entry point is ~view : Model -> Html Msg~
-   that pattern-matches on ~model.modal~ for ~Just (ModalFoo ui)~ and falls
-   through to ~text ""~.  Use =View.Modal.view= for the chrome (backdrop,
-   header, ✕ close, click-out, Esc-close).
-8. *Tooltips* — every ~title~ attribute the view sets goes through a constant in
-   =View/Tooltips.elm=.  No inline ~title "..."~ literals.
-9. *Dispatch wiring* — add one line each to =Main.view= (call the new view),
-   =Main.subscriptions= (the modal's Esc-key case), and =Main.updateInner= (each
-   Msg branch is a one-liner: ~FooMsg arg -> Update.Foo.bar arg model~).
-10. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain helpers; the
+7. *View* — =View/Panel/Foo.elm= for a workspace surface, which is nearly all of
+   them; =View/Modal/Foo.elm= only for something that genuinely has to cover the
+   page.  Entry point is ~view : View.Panel.Header -> Model -> Html Msg~ for a
+   panel (a modal's takes no ~Header~, having no heading row in a stack) that
+   pattern-matches ~model.surface~ and falls through to ~text ""~; the chrome
+   comes from =View.Panel.view= or =View.Modal.view=, whose fields line up but
+   for ~close~, which only a modal takes.  The ~Header~ is passed straight
+   through to =View.Panel.view=, which owns the heading row and decides whether
+   the body renders at all.  That row folds the panel when clicked and is the
+   drag handle for reordering, so a control placed in ~titleTrail~ takes its
+   handler from ~View.Panel.onClickWithoutFolding~ rather than ~onClick~ — a
+   plain ~onClick~ there folds the panel as a side effect of doing its own job.
+8. *Drawer registration* — a panel also needs a ~SurfaceLens~ in =Model.elm=, a
+   render arm in ~View.PanelDrawer.panelFor~, an arm in ~Model.surfaceKey~, and
+   — when the drawer boots with it — an entry in ~Model.defaultDrawer~; those
+   four move together.  The compiler forces the ~surfaceKey~ arm but not the
+   care it needs: those strings are the persisted column layout, so a key is
+   chosen once and never renamed.  ~Main.drawerEscSub~ needs an arm only for a
+   panel Esc should treat specially; the rest fold.  Panels live in the
+   ~model.drawer~ stack — many open at once, newest at the bottom — and their
+   Update modules open, fold, and edit them through ~Model.openDrawer~ /
+   ~foldDrawer~ / ~mapDrawer~; nothing takes a panel out of the stack, since
+   none has a trigger to put it back.  The stack is partitioned: panels the GM
+   has pinned hold the top in their own order, and ~Model.drawerDropIndex~
+   clamps every move to the side of that boundary it started on, so no reorder
+   can interleave the two groups.  A per-creature editor takes a narrower shape:
+   its body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~
+   helper supplies the chrome, so every editor's target strip and heading row
+   stay identical.  It also needs an arm in ~Model.reaimStale~ that actually
+   re-aims — the compiler accepts a fall-through, and a fall-through silently
+   strands the editor on a creature that has left the queue.
+9. *Tooltips* — every hover string the view sets goes through a constant in
+   =View/Tooltips.elm= and =View.Tooltips.attr=.  No inline literals, and never
+   the native ~title~ attribute.
+10. *Dispatch wiring* — one line per Msg branch in =Main.updateInner= (~FooMsg
+    arg -> Update.Foo.bar arg model~).  Esc needs no wiring unless the panel
+    should treat it specially; see step 8.  =View.PanelDrawer= renders a drawer
+    panel, so it needs no mounting in =Main.appShell=; a modal does.
+11. *Tests* — =frontend/tests/Foo/BarTest.elm= for the domain helpers; the
     Update + View modules are integration-tested through the existing patterns.
 
-** Frontend: a non-modal feature (e.g. a card row, a panel piece)
+** Frontend: a feature with no surface (e.g. a card row, a strip)
 
 Same idea, narrower:
 

@@ -1,16 +1,18 @@
 module Update.Condition exposing
-    ( applyToSelectedToggle
-    , close
+    ( clear
     , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
+    , damageTriggered
     , delete
     , durationKindSet
     , durationOneMinute
+    , failDamageLanded
+    , logToggle
     , maxConditionNoteLength
     , noteChanged
     , openEdit
-    , openNew
+    , openFor
     , pickStandard
     , presetCategoryToggle
     , presetDelete
@@ -22,16 +24,23 @@ module Update.Condition exposing
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
+    , quickApply
     , removeChip
     , rollSave
     , saveAbilityChanged
     , saveAutoRollSet
+    , saveBonusAdjust
     , saveBonusChanged
     , saveDcChanged
+    , saveFailBecomesChanged
+    , saveFailDamageChanged
     , saveLanded
     , saveNoticeDismiss
+    , saveOnDamageSet
     , saveToggle
     , submit
+    , submitSelected
+    , undoLatest
     , untilCreatureChanged
     , untilPhaseSet
     )
@@ -48,7 +57,8 @@ import Dice
 import Dict
 import Effects
 import Encounter
-import Model exposing (Modal(..), Model)
+import HpChange
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( DurationKind(..)
@@ -57,43 +67,91 @@ import Msg
 import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
 import Ui.Condition.Bundled as Bundled
+import Update.Notice
 
 
-{-| Hard cap on the chip-note text. Ten characters keeps the chip
-small and prevents wrap-overflow on the card row 1.
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.conditionLens model
+        |> Maybe.map SurfaceCondition
+
+
+{-| Hard cap on the chip-note text, keeping the chip compact
+enough that card row 1 doesn't wrap-overflow.
 -}
 maxConditionNoteLength : Int
 maxConditionNoteLength =
-    10
+    20
 
 
 withConditionUi : (ConditionUi -> ConditionUi) -> Model -> Model
 withConditionUi =
-    Model.mapModal Model.conditionLens
+    Model.mapSurface Model.conditionLens
 
 
-openNew : String -> Model -> ( Model, Cmd Msg )
-openNew name model =
-    ( { model | modal = Just (ModalCondition (ConditionUi.fresh name)) }
-    , Cmd.none
+{-| A chip whose edit form is already open unfolds and scrolls
+into view, the same as every other card control: the click asks
+to see that condition. Every path scrolls the panel fully into
+view, whether that means showing what is already open, or
+opening it fresh onto the clicked condition.
+-}
+openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
+openEdit name id model =
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceCondition ui) ->
+                    if ui.target == name && ui.editingId == Just id then
+                        Model.unfoldDrawer Model.conditionLens model
+
+                    else
+                        openEditFresh name id model
+
+                _ ->
+                    openEditFresh name id model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
     )
 
 
-openEdit : String -> Int -> Model -> ( Model, Cmd Msg )
-openEdit name id model =
-    ( case Encounter.findCondition name id model.encounter of
+openEditFresh : String -> Int -> Model -> Model
+openEditFresh name id model =
+    case Encounter.findCondition name id model.encounter of
         Just ( _, cond ) ->
-            { model | modal = Just (ModalCondition (ConditionUi.fromCondition name cond)) }
+            Model.openDrawer Model.conditionLens (ConditionUi.fromCondition name cond) model
 
         Nothing ->
             model
-    , Cmd.none
+
+
+{-| Open the editor fresh for `target`, ready to add a new
+condition — the gear icon's entry point, distinct from `openEdit`
+which edits one the creature already carries. One already aimed
+here unfolds and scrolls into view rather than being reset, the
+same as every other editor's `openFor`.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceCondition ui) ->
+                    if ui.target == target then
+                        Model.unfoldDrawer Model.conditionLens model
+
+                    else
+                        Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
+
+                _ ->
+                    Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
     )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
 
 
 pickStandard : String -> Model -> ( Model, Cmd Msg )
@@ -122,7 +180,11 @@ user last touched).
 -}
 customNameChanged : String -> Model -> ( Model, Cmd Msg )
 customNameChanged text model =
-    ( withConditionUi (\u -> { u | name = text, customName = text }) model
+    let
+        clamped =
+            String.left maxConditionNoteLength text
+    in
+    ( withConditionUi (\u -> { u | name = clamped, customName = clamped }) model
     , Cmd.none
     )
 
@@ -285,6 +347,60 @@ saveBonusChanged text model =
     )
 
 
+{-| The Mod field's ▲ / ▼ spinner: nudge the bonus by one and
+re-derive the text from it, matching the two-character field's
+tighter typing room with a click path that reaches -10 or 20
+either way.
+-}
+saveBonusAdjust : Int -> Model -> ( Model, Cmd Msg )
+saveBonusAdjust delta model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | saveToEnd =
+                    Maybe.map
+                        (\s ->
+                            let
+                                next =
+                                    Basics.clamp -10 20 (s.bonus + delta)
+                            in
+                            { s | bonus = next, bonusText = String.fromInt next }
+                        )
+                        u.saveToEnd
+            }
+        )
+        model
+    , Cmd.none
+    )
+
+
+saveFailDamageChanged : String -> Model -> ( Model, Cmd Msg )
+saveFailDamageChanged text model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | failDamageText = text }) u.saveToEnd })
+        model
+    , Cmd.none
+    )
+
+
+saveFailBecomesChanged : String -> Model -> ( Model, Cmd Msg )
+saveFailBecomesChanged text model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | failBecomesText = text }) u.saveToEnd })
+        model
+    , Cmd.none
+    )
+
+
+saveOnDamageSet : Encounter.DamageTrigger -> Model -> ( Model, Cmd Msg )
+saveOnDamageSet trigger model =
+    ( withConditionUi
+        (\u -> { u | saveToEnd = Maybe.map (\s -> { s | onDamage = trigger }) u.saveToEnd })
+        model
+    , Cmd.none
+    )
+
+
 saveAutoRollSet : Encounter.AutoRollMode -> Model -> ( Model, Cmd Msg )
 saveAutoRollSet mode model =
     ( withConditionUi
@@ -300,15 +416,26 @@ saveAutoRollSet mode model =
     )
 
 
-applyToSelectedToggle : Model -> ( Model, Cmd Msg )
-applyToSelectedToggle model =
-    ( withConditionUi (\u -> { u | applyToSelected = not u.applyToSelected }) model
-    , Cmd.none
-    )
-
-
 
 -- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| Empty every setting, keeping the target and the condition being
+edited, if any, so the GM can rebuild the form from nothing.
+-}
+clear : Model -> ( Model, Cmd Msg )
+clear model =
+    ( withConditionUi
+        (\u ->
+            let
+                blank =
+                    ConditionUi.fresh u.target
+            in
+            { blank | editingId = u.editingId }
+        )
+        model
+    , Cmd.none
+    )
 
 
 {-| GM clicked the Save button on the Add-Condition footer. Reveal
@@ -322,15 +449,16 @@ presetSaveStart : Model -> ( Model, Cmd Msg )
 presetSaveStart model =
     let
         -- Pre-fill the category dropdown with the loaded preset's
-        -- category when there is one, so "tweak + re-save" stays a
-        -- single click in the dropdown.  Looks up via the merged
+        -- category when there is one, so "tweak + re-save" is a
+        -- click on the commit and nothing else — the name fills in
+        -- from the loaded preset too.  Looks up via the merged
         -- view (user dict first, then bundled defaults) so a
         -- bundled preset loaded for tweaking still surfaces its
         -- canonical category.  Falls back to "" when no preset is
         -- loaded.
         prefillCategory =
-            case model.modal of
-                Just (ModalCondition ui) ->
+            case drawerSurface model of
+                Just (SurfaceCondition ui) ->
                     ui.loadedPresetName
                         |> Maybe.andThen (\name -> lookupPreset name model)
                         |> Maybe.map .category
@@ -342,7 +470,7 @@ presetSaveStart model =
     ( withConditionUi
         (\u ->
             { u
-                | pendingSaveName = Just ""
+                | pendingSaveName = Just (Maybe.withDefault "" u.loadedPresetName)
                 , pendingSaveCategory = prefillCategory
                 , loadMenuOpen = False
             }
@@ -377,19 +505,14 @@ presetSaveCancel model =
 
 {-| Commit the current form state to the presets dict under the
 user's typed name. Trimmed name; empty / whitespace-only names
-are rejected (the input stays open so the GM can correct it).
-Overwrites silently if a preset with the same name already
-exists, per the user's spec — they explicitly didn't want a
-confirm-prompt on overwrite.
-
-Side effect: stamps the just-saved name into `loadedPresetName`
-so the title bar shows it immediately, mirroring the load flow.
-
+are rejected (the modal stays open so the GM can correct it).
+The modal's own commit button says whether the name is taken, so
+it is the confirmation and the write needs no second one.
 -}
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
             let
                 trimmed =
                     Maybe.withDefault "" ui.pendingSaveName
@@ -406,28 +529,31 @@ presetSaveSubmit model =
                 ( model, Cmd.none )
 
             else
-                let
-                    preset =
-                        ConditionUi.toPreset ui
-                            |> (\p -> { p | category = category })
-
-                    newPresets =
-                        Dict.insert trimmed preset model.conditionPresets
-                in
-                ( { model | conditionPresets = newPresets }
-                    |> withConditionUi
-                        (\u ->
-                            { u
-                                | pendingSaveName = Nothing
-                                , pendingSaveCategory = ""
-                                , loadedPresetName = Just trimmed
-                            }
-                        )
-                , Cmd.none
-                )
+                ( writePreset trimmed category ui model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Stamps the saved name into `loadedPresetName` so the title bar
+shows it immediately, mirroring the load flow.
+-}
+writePreset : String -> String -> ConditionUi -> Model -> Model
+writePreset name category ui model =
+    { model
+        | conditionPresets =
+            Dict.insert name
+                (ConditionUi.toPreset ui |> (\p -> { p | category = category }))
+                model.conditionPresets
+    }
+        |> withConditionUi
+            (\u ->
+                { u
+                    | pendingSaveName = Nothing
+                    , pendingSaveCategory = ""
+                    , loadedPresetName = Just name
+                }
+            )
 
 
 presetLoadMenuToggle : Model -> ( Model, Cmd Msg )
@@ -454,9 +580,9 @@ presetLoadMenuClose model =
 
 {-| Pick a preset from the load menu. Overlay its body onto the
 current form state via `ConditionUi.applyPreset`, which preserves
-target / editingId / applyToSelected and re-aims `untilCreature`
-at the current target. No-op when the name isn't in the dict
-(stale click after a delete, for example).
+target / editingId and re-aims `untilCreature` at the current
+target. No-op when the name isn't in the dict (stale click after
+a delete, for example).
 -}
 presetLoad : String -> Model -> ( Model, Cmd Msg )
 presetLoad name model =
@@ -536,25 +662,148 @@ presetCategoryToggle category model =
     )
 
 
-{-| Validate that there's a name; empty-name conditions are
-silently dropped (close the modal). Build a draft, then either
-insert (creating) or update (editing).
+{-| Apply the form to the editor's own target.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
+            submitTo [ ui.target ] model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Apply the condition's name to the target and fold the editor
+away, for the GM who wants it on that creature and nothing more
+said about it. Only the Apply buttons read the rest of the form,
+so the caret cannot carry settings the GM made for something else
+and then forgot.
+-}
+quickApply : Model -> ( Model, Cmd Msg )
+quickApply model =
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
+            submitWith nameOnly [ ui.target ] model
+                |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The form as the caret reads it: the condition's name, and a
+duration the GM ends by hand.
+-}
+nameOnly : ConditionUi -> ConditionUi
+nameOnly ui =
+    { ui
+        | note = ""
+        , durationKind = DurKindManual
+        , saveToEnd = Nothing
+    }
+
+
+{-| Apply the form to every selected creature; each one gets its
+own copy of the condition.
+-}
+submitSelected : Model -> ( Model, Cmd Msg )
+submitSelected model =
+    submitTo
+        (model.encounter.creatures
+            |> List.filter .selected
+            |> List.map .name
+        )
+        model
+
+
+submitTo : List String -> Model -> ( Model, Cmd Msg )
+submitTo =
+    submitWith identity
+
+
+{-| Validate that there's a name; empty-name conditions are
+silently dropped. Build a draft, then either insert it (creating)
+or update the edited condition. `prepare` has the say in what the
+form counts as, which is how the caret commits a name alone.
+-}
+submitWith : (ConditionUi -> ConditionUi) -> List String -> Model -> ( Model, Cmd Msg )
+submitWith prepare rawTargets model =
+    case drawerSurface model of
+        Just (SurfaceCondition raw) ->
             let
+                ui =
+                    prepare raw
+
+                targets =
+                    Encounter.excludingPlaceholderNames model.encounter rawTargets
+
                 name =
                     String.trim ui.name
             in
             if String.isEmpty name then
-                ( { model | modal = Nothing }, Cmd.none )
+                ( Model.foldDrawer Model.conditionLens model, Cmd.none )
+
+            else if ui.editingId == Nothing && List.any (\t -> Encounter.hasConditionNamed t name model.encounter) targets then
+                -- Editing is exempt: the condition being edited
+                -- already carries the name, and matching itself
+                -- is not a duplicate.
+                ( { model | surface = Just (SurfaceNotice Update.Notice.alreadyHasCondition) }
+                , Cmd.none
+                )
 
             else
-                ( commitCondition ui name model, Cmd.none )
+                let
+                    ( committed, logEntry ) =
+                        commitCondition targets ui name model
+
+                    withLog =
+                        case logEntry of
+                            Just entry ->
+                                { committed
+                                    | conditionLog =
+                                        entry
+                                            :: List.take
+                                                (ConditionUi.maxConditionLogEntries - 1)
+                                                committed.conditionLog
+                                    , nextConditionLogSeq = committed.nextConditionLogSeq + 1
+                                    , conditionLogOpen = True
+                                }
+
+                            Nothing ->
+                                committed
+                in
+                ( withLog, Cmd.none )
 
         _ ->
+            ( model, Cmd.none )
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | conditionLogOpen = not model.conditionLogOpen }, Cmd.none )
+
+
+{-| Undo the newest condition application: remove every condition
+instance that application created (by the ids captured at add
+time), then drop the entry so the next undo chains backwards.
+Instances the GM already removed by hand no-op harmlessly.
+-}
+undoLatest : Model -> ( Model, Cmd Msg )
+undoLatest model =
+    case model.conditionLog of
+        entry :: rest ->
+            ( { model
+                | encounter =
+                    List.foldl
+                        (\t enc -> Encounter.removeCondition t.name t.conditionId enc)
+                        model.encounter
+                        entry.targets
+                , conditionLog = rest
+              }
+            , Cmd.none
+            )
+
+        [] ->
             ( model, Cmd.none )
 
 
@@ -562,19 +811,19 @@ submit model =
 -}
 delete : Model -> ( Model, Cmd Msg )
 delete model =
-    case model.modal of
-        Just (ModalCondition ui) ->
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
             case ui.editingId of
                 Just id ->
                     ( { model
                         | encounter = Encounter.removeCondition ui.target id model.encounter
-                        , modal = Nothing
+                        , surface = Nothing
                       }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( Model.foldDrawer Model.conditionLens model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -588,9 +837,8 @@ removeChip name id model =
 
 
 {-| Manual click on the chip's d20 save button. Same Cmd shape
-as the auto-roll path, but flagged `wasAutoRoll = False` so a
-successful save removes the condition silently rather than posting
-a "Saved: <name>" notice on the card.
+and same landing handler as the auto-roll path — a success posts
+the same "Saved: <name>" notice either way.
 -}
 rollSave : String -> Int -> Model -> ( Model, Cmd Msg )
 rollSave name id model =
@@ -599,7 +847,7 @@ rollSave name id model =
             case cond.saveToEnd of
                 Just spec ->
                     ( model
-                    , Dice.rollCmd (ConditionSaveLanded name id spec.dc False)
+                    , Dice.rollCmd (ConditionSaveLanded name id spec.dc)
                         (Effects.saveSource cond name spec)
                         (Effects.saveExpression spec.bonus)
                     )
@@ -612,47 +860,222 @@ rollSave name id model =
 
 
 {-| Save resolves: `roll.total >= dc` means the condition ends.
-Look up the condition name BEFORE we remove it so the auto-roll
-success path can post a notice with the right label. Manual rolls
-remove silently.
+Look up the condition BEFORE we remove it so a success can post a
+"Saved: <name>" notice with the right label, whether the roll was
+auto-fired or the GM clicked the chip's own d20. A failure hands
+off to the condition's failed-save outcome, if it has one.
 -}
-saveLanded : String -> Int -> Int -> Bool -> Dice.Roll -> Model -> ( Model, Cmd Msg )
-saveLanded name id dc wasAutoRoll roll model =
+saveLanded : String -> Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+saveLanded name id dc roll model =
     let
-        conditionName =
+        found =
             Encounter.findCondition name id model.encounter
-                |> Maybe.map (\( _, cond ) -> cond.name)
+                |> Maybe.map Tuple.second
 
-        succeeded =
-            roll.total >= dc
-
-        m1 =
-            if succeeded then
+        ( m1, failCmd ) =
+            if roll.total >= dc then
                 let
                     removed =
                         { model
                             | encounter = Encounter.removeCondition name id model.encounter
                         }
                 in
-                case ( wasAutoRoll, conditionName ) of
-                    ( True, Just label ) ->
-                        { removed
+                case found of
+                    Just cond ->
+                        ( { removed
                             | encounter =
-                                Encounter.addSaveNotice name label removed.encounter
-                        }
+                                Encounter.addSaveNotice name cond.name removed.encounter
+                          }
+                        , Cmd.none
+                        )
 
-                    _ ->
-                        removed
+                    Nothing ->
+                        ( removed, Cmd.none )
 
             else
-                model
+                failedSave name id found model
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll m1
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd, failCmd ]
     )
+
+
+{-| A failed repeat save: the condition becomes what the spec says
+it becomes — which also ends the saving, as a second failure that
+petrifies leaves nothing to save against — and the bearer takes
+the spec's damage, an integer at once and a formula through a
+roll of its own.
+-}
+failedSave : String -> Int -> Maybe Encounter.Condition -> Model -> ( Model, Cmd Msg )
+failedSave name id found model =
+    case Maybe.andThen .saveToEnd found of
+        Nothing ->
+            ( model, Cmd.none )
+
+        Just spec ->
+            let
+                label =
+                    found |> Maybe.map .name |> Maybe.withDefault ""
+
+                renamed =
+                    case spec.onFail.becomes of
+                        Just newName ->
+                            { model
+                                | encounter =
+                                    Encounter.updateCondition name
+                                        id
+                                        (\c -> { c | name = newName, saveToEnd = Nothing })
+                                        model.encounter
+                            }
+
+                        Nothing ->
+                            model
+            in
+            case Maybe.map String.trim spec.onFail.damage of
+                Nothing ->
+                    ( renamed, Cmd.none )
+
+                Just raw ->
+                    case String.toInt raw of
+                        Just n ->
+                            ( { renamed | encounter = damageBearer name n renamed.encounter }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            case Dice.parse raw of
+                                Ok expr ->
+                                    ( renamed
+                                    , Dice.rollCmd (ConditionFailDamageLanded name)
+                                        { feature = "Failed save: " ++ label, target = Just name }
+                                        expr
+                                    )
+
+                                Err _ ->
+                                    ( renamed, Cmd.none )
+
+
+{-| The damage roll a failed save fired has landed on the bearer.
+-}
+failDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+failDamageLanded name roll model =
+    let
+        ( pushed, broadcastCmd ) =
+            Effects.pushDiceRoll roll
+                { model | encounter = damageBearer name roll.total model.encounter }
+    in
+    ( pushed
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
+    )
+
+
+damageBearer : String -> Int -> Encounter.Encounter -> Encounter.Encounter
+damageBearer name amount enc =
+    Encounter.mapCreature name (HpChange.apply (HpChange.Damage amount)) enc
+
+
+{-| The pass `Main.update` runs after every message: a creature
+whose hit points (temporary ones included) fell during the
+message took damage, and each of its conditions that saves again
+when damaged gets what its trigger asks for — a flash of the chip,
+or a roll fired outright. A save's own resolution is left out, or
+a condition whose failed save deals damage would roll itself
+without end; so are the messages that swap in a whole encounter
+from storage or another tab, whose numbers are not hits.
+-}
+damageTriggered : Msg -> Model -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+damageTriggered msg before ( after, cmd ) =
+    if not (canTriggerSaves msg) then
+        ( after, cmd )
+
+    else
+        let
+            damaged =
+                List.filter (tookDamage before.encounter) after.encounter.creatures
+                    |> List.map .name
+
+            flashes =
+                List.concatMap (\name -> Encounter.damageReminders name after.encounter) damaged
+
+            rolls =
+                List.concatMap
+                    (\name ->
+                        Encounter.damageRolls name after.encounter
+                            |> List.map (\( id, spec, advantage ) -> Effects.damageSaveCmd name id spec advantage)
+                    )
+                    damaged
+        in
+        if List.isEmpty flashes then
+            ( after, Cmd.batch (cmd :: rolls) )
+
+        else
+            ( { after | flashConditions = flashes ++ after.flashConditions }
+            , Cmd.batch (cmd :: Effects.saveFlashExpiry :: rolls)
+            )
+
+
+tookDamage : Encounter.Encounter -> Encounter.Creature -> Bool
+tookDamage before c =
+    before.creatures
+        |> List.filter (\b -> b.name == c.name)
+        |> List.head
+        |> Maybe.map (\b -> c.currentHp + c.tempHp < b.currentHp + b.tempHp)
+        |> Maybe.withDefault False
+
+
+canTriggerSaves : Msg -> Bool
+canTriggerSaves msg =
+    case msg of
+        ConditionSaveLanded _ _ _ _ ->
+            False
+
+        ConditionFailDamageLanded _ _ ->
+            False
+
+        EncounterLoaded _ ->
+            False
+
+        EncounterFromOtherTab _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalEncounterMigrated _ _ ->
+            False
+
+        SaveLoadLoadRequested _ ->
+            False
+
+        SaveLoadServerResponse _ _ ->
+            False
+
+        SaveLoadDeviceFileRead _ ->
+            False
+
+        EncounterReset ->
+            False
+
+        EncounterClear ->
+            False
+
+        HpChangeUndoLatest ->
+            False
+
+        _ ->
+            True
+
+
+nonBlank : String -> Maybe String
+nonBlank text =
+    if String.isEmpty (String.trim text) then
+        Nothing
+
+    else
+        Just (String.trim text)
 
 
 saveNoticeDismiss : String -> Int -> Model -> ( Model, Cmd Msg )
@@ -704,8 +1127,8 @@ the existing condition's fields (when editing). The "skip first
 end-of-turn tick" rule is applied here for AtEnd countdowns
 created on the currently-active creature.
 -}
-commitCondition : ConditionUi -> String -> Model -> Model
-commitCondition ui name model =
+commitCondition : List String -> ConditionUi -> String -> Model -> ( Model, Maybe ConditionUi.ConditionLogEntry )
+commitCondition targets ui name model =
     let
         duration =
             buildDuration ui model
@@ -717,6 +1140,11 @@ commitCondition ui name model =
                     , dc = s.dc
                     , bonus = s.bonus
                     , autoRoll = s.autoRoll
+                    , onFail =
+                        { damage = nonBlank s.failDamageText
+                        , becomes = nonBlank s.failBecomesText
+                        }
+                    , onDamage = s.onDamage
                     }
                 )
                 ui.saveToEnd
@@ -726,11 +1154,13 @@ commitCondition ui name model =
             , note = String.trim ui.note
             , duration = duration
             , saveToEnd = saveToEnd
+            , linkedTo = Nothing
+            , area = Nothing
             }
     in
     case ui.editingId of
         Just id ->
-            { model
+            ( { model
                 | encounter =
                     Encounter.updateCondition ui.target
                         id
@@ -743,37 +1173,68 @@ commitCondition ui name model =
                             }
                         )
                         model.encounter
-                , modal = Nothing
-            }
+              }
+            , Nothing
+            )
 
         Nothing ->
             let
-                targets =
-                    conditionTargets ui model.encounter
+                addOne tgt acc =
+                    let
+                        ( withAdded, newId ) =
+                            Encounter.addConditionWithId tgt draft acc.encounter
+                    in
+                    { encounter = withAdded
+                    , applied = { name = tgt, conditionId = newId } :: acc.applied
+                    }
 
-                addOne tgt enc =
-                    Encounter.addCondition tgt draft enc
+                result =
+                    List.foldl addOne { encounter = model.encounter, applied = [] } targets
             in
-            { model
-                | encounter = List.foldl addOne model.encounter targets
-                , modal = Nothing
-            }
+            ( { model | encounter = result.encounter }
+            , if List.isEmpty result.applied then
+                Nothing
+
+              else
+                Just
+                    { seq = model.nextConditionLogSeq
+                    , conditionName = draft.name
+                    , note = draft.note
+                    , summary = summarize draft.duration saveToEnd
+                    , targets = List.reverse result.applied
+                    }
+            )
 
 
-{-| Resolve which creatures a new condition applies to. When
-`applyToSelected` is True, every creature with `selected = True`
-gets a fresh copy (each gets its own id via `addCondition`).
-Otherwise just the modal's `target`.
+{-| The log row's one-line account of what was applied: the
+duration, and the save that can end it sooner.
 -}
-conditionTargets : ConditionUi -> Encounter.Encounter -> List String
-conditionTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
+summarize : Encounter.Duration -> Maybe { a | ability : String, dc : Int, autoRoll : Encounter.AutoRollMode } -> String
+summarize duration saveToEnd =
+    Encounter.describeDuration duration
+        ++ (case saveToEnd of
+                Just spec ->
+                    " · DC " ++ String.fromInt spec.dc ++ " " ++ spec.ability ++ " save" ++ saveTiming spec.autoRoll
 
-    else
-        [ ui.target ]
+                Nothing ->
+                    ""
+           )
+
+
+saveTiming : Encounter.AutoRollMode -> String
+saveTiming mode =
+    case mode of
+        Encounter.AutoRollManual ->
+            ", rolled by hand"
+
+        Encounter.AutoRollAtBegin ->
+            " at start of turn"
+
+        Encounter.AutoRollAtEnd ->
+            " at end of turn"
+
+        Encounter.AutoRollAskAtEnd ->
+            ", asked at end of turn"
 
 
 {-| Build the domain `Duration` from the UI's three sub-states.
@@ -795,6 +1256,9 @@ buildDuration ui model =
                 ui.untilPhase
                 (nextTurnTarget ui model)
                 ui.untilCreature
+
+        DurKindThisTurn ->
+            Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn ui.target
 
         DurKindCountdown ->
             let

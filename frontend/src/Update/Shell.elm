@@ -1,8 +1,5 @@
 module Update.Shell exposing
-    ( anonymousBannerDismiss
-    , controlMenuClose
-    , controlMenuToggle
-    , encounterLoaded
+    ( encounterLoaded
     , encounterPersisted
     , gotMe
     , noOp
@@ -104,7 +101,7 @@ encounterLoaded : Result Http.Error (Maybe Encounter) -> Model -> ( Model, Cmd M
 encounterLoaded result model =
     case result of
         Ok (Just encounter) ->
-            ( { model | encounter = encounter }, Cmd.none )
+            ( Model.reaimStale { model | encounter = encounter }, Cmd.none )
 
         Ok Nothing ->
             ( model, Cmd.none )
@@ -150,40 +147,3 @@ when the popover is open.
 settingsClose : Model -> ( Model, Cmd Msg )
 settingsClose model =
     ( { model | settingsOpen = False }, Cmd.none )
-
-
-{-| Mark the anonymous-mode banner as dismissed for the rest of
-the session. Deliberately not persisted — the banner reappears
-on every page reload so a returning guest gets the same reminder
-that their work lives only in this browser.
--}
-anonymousBannerDismiss : Model -> ( Model, Cmd Msg )
-anonymousBannerDismiss model =
-    ( { model | anonymousBannerDismissed = True }, Cmd.none )
-
-
-{-| Open or toggle one of the Encounter-Controls split-button
-dropdowns (Save / Load). Clicking the same button again
-closes; clicking the other swaps to it.
--}
-controlMenuToggle : Msg.ControlMenu -> Model -> ( Model, Cmd Msg )
-controlMenuToggle which model =
-    let
-        next =
-            if model.controlMenu == Just which then
-                Nothing
-
-            else
-                Just which
-    in
-    ( { model | controlMenu = next }, Cmd.none )
-
-
-{-| Close whichever control-menu dropdown is open. Fired by
-Esc + click-outside subs in `Main.subscriptions`, and by any
-dropdown-item handler so the menu doesn't linger after the user
-commits.
--}
-controlMenuClose : Model -> ( Model, Cmd Msg )
-controlMenuClose model =
-    ( { model | controlMenu = Nothing }, Cmd.none )

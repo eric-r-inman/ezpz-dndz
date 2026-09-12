@@ -43,6 +43,19 @@
   /* Borders + dividers — hairline, low contrast */
   --color-border: #e4e4e7;
 
+  /* A shade stronger than --color-border: a field's edge has to
+     read as an edge you can type inside, which the same hairline
+     used for panel and divider rules does not manage.  The
+     Accessible theme keeps its black, already at full contrast. */
+  --color-input-border: #d4d4d8;
+  --color-target-ring: #ffffff;
+
+  /* Ring around a card button whose inline editor is open.
+     Deliberately white in every theme — the point is maximum
+     contrast against the card so the open editor's trigger is
+     findable after scrolling away and back. */
+  --color-editor-open: #ffffff;
+
   /* Accent — indigo (Linear-style) */
   --color-link: #5b5bd6;
   --color-accent: #5b5bd6;
@@ -66,12 +79,82 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+  --space-0: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --header-height: 56px;
+
+  /* The editor column's control row: square enough to read as a
+     set, with a glyph sized to fill each face. */
+  --action-btn-size: 30px;
+  --font-size-action-glyph: 1rem;
+
+  /* Type for the muted group label.  Most rules wearing that
+     shape still spell the values out; converting them is
+     tracked in `tasks.org`. */
+  --font-size-label: 0.78rem;
+  /* The one size an editor's fields, their labels, and their choice
+     controls share. */
+  --font-size-field: 0.85rem;
+  /* The gap inside a row of fields, and between a choice control's
+     box and its label. */
+  --gap-field: 6px;
+  /* The width past which a take-the-room field wraps rather than
+     shrinks. */
+  --width-input-grow-min: 10ch;
+
+  /* The type scale an editor section reads at, heading and
+     contents alike. */
+  --font-size-section: 0.8rem;
+  --font-weight-label: 600;
+
+  /* A number the reader is meant to land on first. */
+  --font-size-readout: 1.1rem;
+
+  /* The roll strip beside the rail's 🎲 icon: small enough that
+     four totals fit beside the buttons, the emphasized ones a
+     step up. */
+  --font-size-recent-roll: 0.7rem;
+  --font-size-recent-roll-latest: 0.95rem;
+
+  /* How tall a scrolling list inside a panel grows before it
+     scrolls rather than pushing the rest of the panel down. */
+  --scroll-list-max-h: 240px;
+
+  /* Triangle glyphs.  Sized well above the text they sit
+     beside because a triangle's ink fills far less of its em box
+     than a letter's does — at the surrounding text's size they
+     read as specks. */
+  --font-size-caret: 1rem;
+
+  /* Wide enough for a stat block's two-column header without
+     crowding the queue beside it, with one shared horizontal
+     inset for every piece of a drawer panel's chrome. */
+  --drawer-width: 296px;
+  --drawer-pad-x: 4px;
+
+  /* A two-character numeric field (a DC, a modifier) in any
+     editor — shared so every such field reads the same width. */
+  --width-input-2ch: 4ch;
+  /* Three digits and the field's own padding and border, no more. */
+  --width-input-3ch: calc(3ch + 2 * var(--space-1) + 2px);
+  /* An editor's longest text field.  Declared in characters, so
+     the rules that use it switch to content-box against the
+     sheet's border-box default. */
+  --width-input-20ch: 20ch;
+  /* The square controls on a stat block: the ↗ link on its name
+     row and the buttons in the bar under a card. */
+  --size-statblock-tool: 28px;
+  /* The title in the bar of the stat block under a card. */
+  --color-neon-pink: #ff2d95;
+
+  /* How far the drawer reaches into the workspace's column gaps
+     on each side, tightening both seams by the same amount —
+     the width judged at the table, not derived from the gap. */
+  --drawer-bleed: 10px;
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
@@ -82,11 +165,11 @@
   --color-orange: #ea580c;
   --color-blue: #2563eb;
 
-  /* LA (legendary actions) + LR (legendary resistance) pip
-     tints.  Stepped one tier darker than `--color-orange` /
-     `--color-yellow` on Modern so the pips read with more
-     gravity against the off-white card.  Dark overrides these
-     below to its existing brighter values. */
+  /* LA (legendary actions) + LR (legendary resistance) tints.
+     Stepped one tier darker than `--color-orange` /
+     `--color-yellow` on Modern so the readouts hold their own
+     against the off-white card.  Dark overrides these below to
+     its existing brighter values. */
   --color-la: #c2410c; /* orange-700 */
   --color-lr: #a16207; /* yellow-700 */
 
@@ -107,19 +190,62 @@
      single "primary CTA" accent on top of the earth-tone field. */
   --color-damage: #9a3412; /* rust  — orange-800 */
   --color-heal: #3f6212; /* olive — lime-800 */
+  --color-maxhp: #0f766e; /* teal-700 */
   --color-temp: #155e75; /* teal  — cyan-800 */
   --color-condition: #854d0e; /* amber — yellow-800 */
+  /* Chip text on cards; sits a shade brighter than the button
+     token where the theme's condition colour is dark, so the
+     small chip text stays legible. */
+  --color-condition-chip: #854d0e;
   --color-btn-blue: #155e75; /* teal — same as Temp HP */
   --color-btn-green: #3f6212; /* same as heal */
   --color-btn-red: #9a3412; /* same as damage */
   --color-btn-orange: #854d0e; /* same as condition */
   --color-dirty-outline: #fde68a;
 
+  /* Card-row vertical padding: outer rows (top / bot) share one
+     value and the mid row takes a smaller one, which keeps the
+     two inter-row gaps equal while pulling the mid row up
+     toward the top row. */
+  --card-row-pad-outer: 3px;
+  --card-row-pad-mid: 2px;
+
+  /* Bottom padding shared by the surfaces that dock under the
+     queue's strips. */
+  --docked-panel-pad-bottom: 10px;
+
+  /* Rule struck through a spent affordance. */
+  --strike-thickness: 1.5px;
+
+  /* Amber warning pair shared by the queue's legendary-actions
+     banner and the card's special-reaction badges, so the two
+     read as one visual family.  Deliberately NOT named
+     `--color-warning`: two dozen legacy declarations reference
+     that name with a different `#b9602a` fallback, so defining
+     it here would silently recolour them all. */
+  --banner-warn-bg: rgba(245, 158, 11, 0.18);
+  --banner-warn-bd: #f59e0b;
+  /* Lighter rule for the card badges, whose ring sits inches
+     from the card border rather than spanning the pane. */
+  --banner-warn-bd-soft: rgba(245, 158, 11, 0.45);
+  /* Medium orange, dark enough to read on the badge's own
+     wash in every theme. */
+  --color-sr-badge-fg: #c2620c;
+
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
 
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
+
+  /* The default face for a control that carries no variant of
+     its own. */
+  --action-btn-bg: #f3eefc;
+  --action-btn-fg: #3b2a63;
+  --action-btn-bd: #a78bda;
+  --color-panel-open-bd: #c9b8f0;
+  --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63; /* cyan-900 */
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -163,6 +289,9 @@
   --color-text: #18181b;
   --color-text-muted: #71717a;
   --color-border: #e4e4e7;
+
+  --color-input-border: #d4d4d8;
+  --color-target-ring: #ffffff;
   --color-link: #5b5bd6;
   --color-accent: #5b5bd6;
   --color-accent-hover: #4f46e5;
@@ -188,17 +317,26 @@
   --active-creature-weight: 800;
   --color-damage: #9a3412;
   --color-heal: #3f6212;
+  --color-maxhp: #0f766e;
   --color-temp: #155e75;
   --color-condition: #854d0e;
+  --color-condition-chip: #854d0e;
   --color-btn-blue: #155e75;
   --color-btn-green: #3f6212;
   --color-btn-red: #9a3412;
   --color-btn-orange: #854d0e;
   --color-dirty-outline: #fde68a;
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: transparent;
+
+  --action-btn-bg: #f3eefc;
+  --action-btn-fg: #3b2a63;
+  --action-btn-bd: #a78bda;
+  --color-panel-open-bd: #c9b8f0;
+  --action-btn-bg-hover: #e7ddf8;
   --btn-blue-bg-hover: #164e63;
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -254,6 +392,9 @@
   --color-text-muted: #8e95a8;
   --color-link: #8aa9ff;
   --color-border: #2a2f3a;
+
+  --color-input-border: #3a4150;
+  --color-target-ring: #ffffff;
   --color-accent: #8a6cff;
   --color-accent-hover: #9c81ff;
   --color-accent-soft: rgba(138, 108, 255, 0.18);
@@ -286,13 +427,16 @@
      theme had before the light-theme overhaul. */
   --color-damage: #d63b3b;
   --color-heal: #3cb455;
+  --color-maxhp: #14b8a6;
   --color-temp: #2589e0;
-  --color-condition: #9355e0;
+  --color-condition: #9d66e5;
+  --color-condition-chip: #b083f1;
   --color-btn-blue: #1976d2;
   --color-btn-green: #2f9e44;
   --color-btn-red: #c62828;
   --color-btn-orange: #d97706;
   --card-btn-fg: #000;
+  --init-score-fg: #ffffff;
 
   /* Hover bg tokens collapse to the same value as the bg so the
      base `:hover { filter: brightness(1.15) }` does the
@@ -300,6 +444,12 @@
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: var(--card-btn-fg);
   --btn-blue-bd: transparent;
+
+  --action-btn-bg: #2a2440;
+  --action-btn-fg: #e2dcf5;
+  --action-btn-bd: #6f5fa8;
+  --color-panel-open-bd: #6d5bb5;
+  --action-btn-bg-hover: #332b4d;
   --btn-blue-bg-hover: var(--color-btn-blue);
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: var(--card-btn-fg);
@@ -338,6 +488,9 @@
   --color-text: #000000;
   --color-text-muted: #3a3a3a;
   --color-border: #000000;
+
+  --color-input-border: #000000;
+  --color-target-ring: #ffffff;
   --color-link: #0033cc;
   --color-accent: #0033cc;
   --color-accent-hover: #001a99;
@@ -375,8 +528,10 @@
      against white when used as button fill with white text. */
   --color-damage: #a30000;
   --color-heal: #006b3c;
+  --color-maxhp: #0f766e;
   --color-temp: #003c8f;
-  --color-condition: #5b21b6;
+  --color-condition: #6d28d9;
+  --color-condition-chip: #7c3aed;
   --color-btn-blue: #003c8f;
   --color-btn-green: #006b3c;
   --color-btn-red: #a30000;
@@ -384,10 +539,17 @@
   --color-dirty-outline: #ffd700;
 
   --card-btn-fg: #ffffff;
+  --init-score-fg: var(--color-text);
 
   --btn-blue-bg: var(--color-btn-blue);
   --btn-blue-fg: #ffffff;
   --btn-blue-bd: #000000;
+
+  --action-btn-bg: #ffffff;
+  --action-btn-fg: #000000;
+  --action-btn-bd: #4b0082;
+  --color-panel-open-bd: #000000;
+  --action-btn-bg-hover: #efe6ff;
   --btn-blue-bg-hover: #001a99;
   --btn-red-bg: var(--color-btn-red);
   --btn-red-fg: #ffffff;
@@ -538,16 +700,10 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.1rem;
 }
 
-/* Inline-pill displays the GM consults mid-combat: notes,
-   conditions / save-notices, memo, and timer.  Each shipped
-   with a small absolute rem size; bump under Accessible so the
-   text reads at low vision.  Covers the per-card row-1 note
-   text, the row-2 / row-3 condition chips + auto-roll save
-   notices, the row-3 memo and timer pills, AND the title-bar
-   note text mirror (`encounter-bar__note-text`) so the same
-   note reads larger in both places. */
-[data-theme="accessible"] .creature-note,
-[data-theme="accessible"] .encounter-bar__note-text {
+/* Each inline-pill display the GM consults mid-combat ships a
+   small absolute rem size, so each needs its own Accessible bump
+   to read at low vision. */
+[data-theme="accessible"] .creature-note {
   font-size: 1.05rem;
 }
 
@@ -565,28 +721,21 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-/* Creature-card side columns: LA (legendary actions), LR
-   (legendary resistance), and the two death-save columns
-   (success / failure).  Bump header glyphs + pip diameter so
-   each pip lands inside the WCAG 2.5.5 target zone and the
-   "LA / LR / ✓ / ×" labels are legible at low vision. */
-[data-theme="accessible"] .legendary-col__header,
+/* The death-save columns (success / failure).  Bump the header
+   glyphs and pip diameter so each pip lands inside the WCAG
+   2.5.5 target zone and the "✓ / ×" labels are legible at low
+   vision. */
 [data-theme="accessible"] .death-save-col__header {
   font-size: 1.1rem;
 }
 
-[data-theme="accessible"] .legendary-col__pip,
 [data-theme="accessible"] .death-save-col__pip {
   width: 20px;
   height: 20px;
   border-width: 2.5px;
 }
 
-[data-theme="accessible"] .legendary-col__sep {
-  width: 20px;
-}
-
-/* Stat-block text (every renderer — compendium modal, pinned
+/* Stat-block text (every renderer — compendium page, pinned
    panel, standalone single-creature page, paste preview).  Each
    `.statblock__*` class that ships with an absolute `rem` size
    gets an Accessible override so the description / property
@@ -621,22 +770,19 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.05rem;
 }
 
-[data-theme="accessible"] .creature-card__row--top .init-circle,
-[data-theme="accessible"] .creature-card__row--top .condition-chip {
+[data-theme="accessible"] .init-badge,
+[data-theme="accessible"] .condition-chip {
   font-size: 1rem;
 }
 
-[data-theme="accessible"] .creature-card__row--top .init-circle {
-  /* Init circle needs to grow with its number to stay legible. */
-  width: 34px;
-  height: 34px;
+[data-theme="accessible"] .init-badge {
+  /* Init badge needs to grow with its number to stay legible. */
+  width: 28px;
+  height: 28px;
 }
 
-/* Row-2 absolute-rem children: HP display is the headline number
-   in this row; status toggles, bloodied marker, fly-height, and
-   the AC readout all sit alongside it.  Each gets its own
-   explicit bump because their absolute rem sizes ignore the
-   row-level base. */
+/* Row-2 children carry absolute rem sizes, which ignore the
+   row-level base, so each one needs its own Accessible bump. */
 [data-theme="accessible"] .creature-card__row--mid .hp-display {
   font-size: 1.2rem;
 }
@@ -645,7 +791,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1rem;
 }
 
-[data-theme="accessible"] .creature-card__row--mid .bloodied,
 [data-theme="accessible"] .creature-card__row--mid .fly-height,
 [data-theme="accessible"] .creature-card__row--mid .ac-readout {
   font-size: 1.05rem;
@@ -658,12 +803,10 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-weight: 800;
 }
 
-/* Title-bar note + condition-chip mirror.  Earlier Accessible
-   bumps put these at 1.05rem (note) and 0.95rem (chip) for
-   row-1 / card-side use; the title-bar copies of the same
-   widgets need a touch more so the at-a-glance status reads
-   across the bar. */
-[data-theme="accessible"] .encounter-bar .encounter-bar__note-text {
+/* Title-bar note + condition-chip mirror.  The title-bar copies
+   run a touch larger than their card-side counterparts so the
+   at-a-glance status reads across the bar. */
+[data-theme="accessible"] .encounter-bar__note {
   font-size: 1.15rem;
 }
 
@@ -676,19 +819,19 @@ html:has(.app-shell[data-theme="accessible"]) {
    vision.  `:not(.action-btn)` exempts the "+ Add character"
    button, which already sizes well via the shared `.action-btn`
    rule. */
-[data-theme="accessible"] .modal--cr-calculator,
+[data-theme="accessible"] .panel-drawer--cr-calculator,
 [data-theme="accessible"]
-  .modal--cr-calculator
+  .panel-drawer--cr-calculator
   *:not(.action-btn):not(.action-btn *) {
   font-size: 1.1rem;
 }
 
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__section-title {
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__section-title {
   font-size: 1.3rem;
 }
 
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__result-value,
-[data-theme="accessible"] .modal--cr-calculator .cr-calc__budget-tier {
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__result-value,
+[data-theme="accessible"] .panel-drawer--cr-calculator .cr-calc__budget-tier {
   font-size: 1.2rem;
 }
 
@@ -702,8 +845,6 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card .action-btn--damage,
 [data-theme="accessible"] .creature-card .action-btn--heal,
 [data-theme="accessible"] .creature-card .action-btn--temp,
-[data-theme="accessible"] .creature-card .action-btn--manage-hp,
-[data-theme="accessible"] .creature-card .action-btn--save-chain,
 [data-theme="accessible"] .creature-card .action-btn--condition,
 [data-theme="accessible"] .creature-card .action-btn--ready,
 [data-theme="accessible"] .creature-card .action-btn--readied,
@@ -714,31 +855,14 @@ html:has(.app-shell[data-theme="accessible"]) {
   --btn-bd: #000000;
 }
 
-/* Drop the warning-orange override and the strikethrough/opacity
-   decorations that the reaction-ready / reaction-spent variants
-   layer on by default — Accessible relies on plain text contrast,
-   not glyph color or struck-out styling, to convey state. */
-[data-theme="accessible"] .creature-card .action-btn--reaction-spent {
-  text-decoration: none;
-  opacity: 1;
-}
-
-/* Drop the leading unicode glyph on Ready / Reaction in
-   Accessible: low-vision users get a cleaner word-only label
-   instead of a small icon-then-text pair. */
-[data-theme="accessible"] .creature-card .action-btn__icon-prefix {
-  display: none;
-}
-
-/* Unified Accessible hover: every B&W action button (card row 3,
-   Encounter Controls panel, Compendium panel) flips to black-on-
-   white on hover.  Inverted-button feedback is unambiguous for
-   low-vision users and matches the "high contrast" idiom — the
-   button reads as "pressed/active" the moment focus lands. */
+/* Unified Accessible hover: every B&W action button flips to
+   black-on-white on hover.  Inverted-button feedback is
+   unambiguous for low-vision users and matches the "high
+   contrast" idiom — the button reads as "pressed/active" the
+   moment focus lands. */
 [data-theme="accessible"] .creature-card .action-btn--damage:hover,
 [data-theme="accessible"] .creature-card .action-btn--heal:hover,
 [data-theme="accessible"] .creature-card .action-btn--temp:hover,
-[data-theme="accessible"] .creature-card .action-btn--manage-hp:hover,
 [data-theme="accessible"] .creature-card .action-btn--condition:hover,
 [data-theme="accessible"] .creature-card .action-btn--ready:hover,
 [data-theme="accessible"] .creature-card .action-btn--readied:hover,
@@ -748,56 +872,30 @@ html:has(.app-shell[data-theme="accessible"]) {
   --btn-fg: #ffffff;
 }
 
-/* Encounter Controls panel buttons match the creature-card
-   treatment in Accessible — light gray fill, black text, black
-   border.  Every variant used in the panel
-   (`--blue`, `--green`, `--red`, `--orange`, `--dirty`) gets
-   the same override. */
-[data-theme="accessible"] .panel--controls .action-btn--blue,
-[data-theme="accessible"] .panel--controls .action-btn--green,
-[data-theme="accessible"] .panel--controls .action-btn--red,
-[data-theme="accessible"] .panel--controls .action-btn--orange {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
+/* The editor column's controls and the Reset / Clear confirmation
+   match the creature-card treatment in Accessible — light gray
+   fill, black text, black border — so each panel reads as one
+   B&W set whatever colour its buttons wear elsewhere. */
+[data-theme="accessible"] .drawer-controls__btn,
+[data-theme="accessible"] .control-confirm__btn {
+  --btn-bg: var(--color-surface-2);
+  --btn-fg: var(--color-text);
+  --btn-bd: var(--color-border);
 }
 
-[data-theme="accessible"] .panel--controls .action-btn--blue:hover,
-[data-theme="accessible"] .panel--controls .action-btn--green:hover,
-[data-theme="accessible"] .panel--controls .action-btn--red:hover,
-[data-theme="accessible"] .panel--controls .action-btn--orange:hover {
+[data-theme="accessible"] .drawer-controls__btn:hover,
+[data-theme="accessible"] .control-confirm__btn:hover {
   /* Token override + direct property assignment.  The variant
      base rules (e.g. `.action-btn--blue:hover { background:
      var(--btn-blue-bg-hover); }`) set `background` directly,
-     bypassing `--btn-bg`, so the token swap alone wasn't winning
-     the cascade.  Also setting `background` / `color` directly
-     here forces the black-fill flip regardless of which variant
-     the button carries. */
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
-  color: #ffffff;
-}
-
-/* Catch the unvariant `.action-btn` (Cancel button in the
-   Reset/Clear confirm flow).  Same B&W base + black-fill-on-
-   hover as the variant buttons in the Encounter Controls so the
-   whole panel reads as one B&W set.  The `:not()` selector
-   matches an action-btn that lacks any `--*` modifier class. */
-[data-theme="accessible"]
-  .panel--controls
-  .action-btn:not([class*="action-btn--"]) {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
-}
-
-[data-theme="accessible"]
-  .panel--controls
-  .action-btn:not([class*="action-btn--"]):hover {
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
+     bypassing `--btn-bg`, so the token swap alone doesn't win
+     the cascade.  Setting `background` / `color` here as well
+     forces the inverted fill whichever variant the button
+     carries. */
+  --btn-bg: var(--color-text);
+  --btn-fg: var(--color-surface);
+  background: var(--color-text);
+  color: var(--color-surface);
 }
 
 /* Card row 1 condition chip — dark bold orange text on the
@@ -809,21 +907,11 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-weight: 700;
 }
 
-/* Title-bar "Difficulty" button — slightly larger than the
-   default 0.82rem so it doesn't shrink relative to the bumped
-   bar text under Accessible.  Stays inside the .encounter-bar
-   colour-uniformity rule (black text on the surface tone). */
-[data-theme="accessible"] .encounter-bar__difficulty {
-  font-size: 1rem;
-}
-
-/* Title-bar conditions list — the plain `.encounter-bar__cond`
-   spans (one per active condition, pipe-separated) get bold
-   weight under Accessible so the at-a-glance status reads
-   clearly alongside the other bumped bar text.  Colour stays
-   on the bar-wide `var(--color-text)` (pure black for
-   Accessible) per the rule near line 588. */
-[data-theme="accessible"] .encounter-bar__cond {
+/* Title-bar conditions list gets bold weight under Accessible so
+   the at-a-glance status reads clearly alongside the other
+   bumped bar text.  Colour stays on the bar-wide
+   `var(--color-text)` (pure black for Accessible). */
+[data-theme="accessible"] .encounter-bar__conditions {
   font-weight: 700;
 }
 
@@ -845,55 +933,35 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.25rem;
 }
 
-/* Accessible mode keeps a near-black on white palette; the
-   default medium-grey title-meta colour reads too light against
-   that contrast.  Drop it to a darker grey while staying off
-   pure black so the line still parses as metadata rather than
-   competing with the bold title to its left. */
-[data-theme="accessible"] .modal__title-meta {
-  color: #2a2a2a;
+/* Card inline surfaces (Manage HP, condition editor) get the
+   same body-text bump the modals above receive, so moving a
+   surface onto the card doesn't shrink it for low-vision GMs. */
+[data-theme="accessible"] .creature-card__inline,
+[data-theme="accessible"]
+  .creature-card__inline
+  *:not(.action-btn):not(.action-btn *) {
+  font-size: 1.1rem;
 }
 
-/* Dark mode does the opposite — the same default grey vanishes
-   against the dark surface.  Lift the value so the "From file:"
-   tag reads at a glance while still ranking below the title in
-   the visual hierarchy. */
-[data-theme="dark"] .modal__title-meta {
-  color: #c4c4cc;
-}
-
-/* Add-Condition modal — the condition picker grid uses a fixed
+/* Condition editor — the condition picker grid uses a fixed
    120px column minimum, which clips longer labels ("Incapacitated",
-   "Concentration", etc.) once the Accessible modal-body bump
-   pushes the label font to 1.1rem.  Widen the columns and the
-   badge padding so every condition name reads in full.  Also
-   widen the modal frame itself so the bigger grid fits without
-   forcing a horizontal scroll. */
-[data-theme="accessible"] .modal--condition {
-  --modal-max-w: 780px;
-}
-
-[data-theme="accessible"] .modal--condition .cond-radio-grid {
+   "Concentration", etc.) once the Accessible body bump pushes
+   the label font to 1.1rem.  Widen the columns and the badge
+   padding so every condition name reads in full. */
+[data-theme="accessible"] .cond-radio-grid {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 6px;
 }
 
-[data-theme="accessible"] .modal--condition .cond-radio {
+[data-theme="accessible"] .cond-radio {
   padding: 6px 12px;
 }
 
-/* Dark theme — card row 1 condition chip text matches the
-   brighter purple-400 used by `.encounter-bar__cond` in the
-   title bar (see View/EncounterBar.elm:conditionsText) so the
-   card chip and the title-bar mirror read as the same colour.
-   The base `.condition-chip` rule resolves to `--color-condition`
-   (`#9355e0`, purple-600) which reads as flat on dark surfaces;
-   `#c084fc` pops against the dark card background the way the
-   title-bar text does against the bar.  Scoped to `data-theme=
-   "dark"` only — Modern keeps its own `--color-condition`
-   resolution. */
-[data-theme="dark"] .creature-card__row--top .condition-chip {
-  color: #c084fc;
+/* Manage HP pool fields.  The same body bump leaves the row no
+   room to hold its fields legibly on one line, and legibility
+   over density is the trade this theme exists to make. */
+[data-theme="accessible"] .cond-row--pools {
+  flex-wrap: wrap;
 }
 
 /* Readied-action flash.  When a creature has readied an action,
@@ -923,26 +991,6 @@ html:has(.app-shell[data-theme="accessible"]) {
   animation: readied-flash 0.9s ease-in-out infinite;
 }
 
-/* Compendium-panel buttons (Open, CR Calculator) match the
-   creature-card + encounter-controls B&W treatment in
-   Accessible. */
-[data-theme="accessible"] .panel--detail .action-btn--blue {
-  --btn-bg: #f0f0f0;
-  --btn-fg: #000000;
-  --btn-bd: #000000;
-}
-
-[data-theme="accessible"] .panel--detail .action-btn--blue:hover {
-  /* `.action-btn--blue:hover` sets `background` directly via
-     `--btn-blue-bg-hover`, bypassing the `--btn-bg` token.  Set
-     both the token AND `background` / `color` here so the
-     black-fill flip wins the cascade. */
-  --btn-bg: #000000;
-  --btn-fg: #ffffff;
-  background: #000000;
-  color: #ffffff;
-}
-
 /* Active creature card — 4 px solid black border under
    Accessible so the "whose turn is it" signal hits at a glance
    for low-vision GMs.  Overrides the theme-default 2 px border
@@ -953,6 +1001,12 @@ html:has(.app-shell[data-theme="accessible"]) {
 [data-theme="accessible"] .creature-card--active {
   border-width: 4px;
   border-color: #000000 !important;
+}
+
+[data-theme="accessible"] .card-statblock--active {
+  border-width: 4px;
+  border-top: 0;
+  border-color: var(--color-text);
 }
 
 /* Encounter title-bar condition pills — the existing Accessible
@@ -1015,7 +1069,7 @@ html:has(.app-shell[data-theme="accessible"]) {
    and an optional source chip into a single row.  All four use
    absolute rem sizes (0.68–0.85rem); bump in Accessible so a
    low-vision GM can scan the log without leaning in. */
-[data-theme="accessible"] .dice-history__title {
+[data-theme="accessible"] .fold-toggle__title {
   font-size: 1rem;
 }
 
@@ -1027,12 +1081,22 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.05rem;
 }
 
-[data-theme="accessible"] .dice-history__rolled {
+/* HP-change rows sit in that same log, so the bump has to reach
+   them too or the list renders at two scales at once. */
+[data-theme="accessible"] .hp-change__log-entry {
+  font-size: 1.05rem;
+}
+
+[data-theme="accessible"] .hp-change__log-kind {
+  font-size: 0.9rem;
+}
+
+[data-theme="accessible"] .hp-change__log-trans {
   font-size: 1rem;
 }
 
-[data-theme="accessible"] .dice-history__damage {
-  font-size: 0.9rem;
+[data-theme="accessible"] .dice-history__rolled {
+  font-size: 1rem;
 }
 
 [data-theme="accessible"] .dice-history__source {
@@ -1176,10 +1240,10 @@ body {
   outline: none;
 }
 
-/* Italic "Sign in to save…" prompt sitting to the right of the
-   brand title.  Only rendered for anonymous sessions (the view
-   gates on `maybeUser`).  Colour comes from each theme's muted-
-   text token by default; the Accessible theme bumps to full
+/* Italic "Sign in to keep changes." prompt sitting to the right
+   of the brand title.  Only rendered for anonymous sessions (the
+   view gates on `maybeUser`).  Colour comes from each theme's
+   muted-text token by default; the Accessible theme bumps to full
    `--color-text` further down so the tagline meets AAA contrast
    alongside the rest of the AppBar copy. */
 .app-bar__tagline {
@@ -1192,74 +1256,6 @@ body {
 
 [data-theme="accessible"] .app-bar__tagline {
   color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-/* Anonymous-mode reminder strip rendered between the AppBar and
-   the page body.  Visually quiet by default — a muted accent bar
-   so it reads as a help banner rather than an error.  Dismiss
-   button (×) lives on the right edge with a small hit area so
-   the strip is easy to clear once read. */
-.anonymous-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  background: rgba(245, 200, 66, 0.12);
-  border-bottom: 1px solid rgba(245, 200, 66, 0.4);
-  color: var(--color-text);
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.anonymous-banner__message {
-  flex: 1 1 auto;
-}
-
-.anonymous-banner__link {
-  color: var(--color-init-blue, #1976d2);
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.anonymous-banner__link:hover,
-.anonymous-banner__link:focus {
-  text-decoration: none;
-}
-
-.anonymous-banner__dismiss {
-  flex: 0 0 auto;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm, 6px);
-  color: var(--color-text-muted);
-}
-
-.anonymous-banner__dismiss:hover,
-.anonymous-banner__dismiss:focus {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--color-text);
-}
-
-[data-theme="dark"] .anonymous-banner {
-  background: rgba(245, 200, 66, 0.08);
-  border-bottom-color: rgba(245, 200, 66, 0.25);
-}
-
-[data-theme="dark"] .anonymous-banner__dismiss:hover,
-[data-theme="dark"] .anonymous-banner__dismiss:focus {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme="accessible"] .anonymous-banner {
-  background: rgba(245, 200, 66, 0.2);
-  border-bottom: 2px solid rgba(120, 80, 0, 0.6);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -1359,7 +1355,7 @@ body {
 .auth-login__input {
   appearance: none;
   background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   color: var(--color-text);
   font: inherit;
   padding: 8px 10px;
@@ -1547,8 +1543,8 @@ body {
 .workspace {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: 1fr;
   gap: var(--space-4);
   /* Bottom padding makes room for the fixed-position
      `.app-footer`; without it, scrollable panel bodies would
@@ -1556,6 +1552,10 @@ body {
   padding: var(--space-4) var(--space-4)
     calc(var(--space-4) + var(--app-footer-height, 32px)) var(--space-4);
   min-height: 0;
+}
+
+.workspace--drawer {
+  grid-template-columns: var(--drawer-width) 1fr;
 }
 
 /* ── Account page (`/me`) ──────────────────────────────────────────── */
@@ -1626,7 +1626,7 @@ body {
 
 .account-card__input {
   padding: 8px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -1704,82 +1704,15 @@ body {
   color: var(--color-danger, #d63b3b);
 }
 
-/* ── CR Calculator (encounter-bar entry + modal) ──────────────────────── */
-.encounter-bar__difficulty,
-.encounter-bar__treasure,
-.encounter-bar__icon-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 2px 10px;
-  margin-left: 8px;
-  font: inherit;
-  font-size: 0.82rem;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.encounter-bar__icon-btn {
-  /* Square-ish icon button (📜) sits next to the text-labelled
-     Difficulty / Treasure buttons; tighter padding keeps the glyph
-     visually centred without inheriting the text-button width. */
-  padding: 2px 8px;
-  line-height: 1.1;
-}
-
-.encounter-bar__difficulty:hover,
-.encounter-bar__difficulty:focus-visible,
-.encounter-bar__treasure:hover,
-.encounter-bar__treasure:focus-visible,
-.encounter-bar__icon-btn:hover,
-.encounter-bar__icon-btn:focus-visible {
-  border-color: var(--color-accent, #4a90e2);
-  color: var(--color-accent, #4a90e2);
-}
-
-.modal--cr-calculator {
-  --modal-max-w: 640px;
-}
-
 /* ── Treasure modal ───────────────────────────────────────── */
-
-.modal--treasure {
-  --modal-max-w: 720px;
-}
 
 .treasure__controls {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   align-items: flex-end;
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
-}
-
-.treasure__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.treasure__field-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.treasure__select {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
-  min-width: 140px;
 }
 
 .treasure__roll {
@@ -1796,8 +1729,7 @@ body {
 .treasure__results {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 12px;
+  padding-top: var(--space-2);
 }
 
 .treasure__summary {
@@ -1843,12 +1775,6 @@ body {
   margin-bottom: 4px;
 }
 
-.treasure__settings-presets-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  margin-right: 4px;
-}
-
 .treasure__settings-preset-chip {
   appearance: none;
   background: var(--color-surface);
@@ -1891,11 +1817,6 @@ body {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-}
-
-.treasure__settings-profile-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
 }
 
 .treasure__settings-profile-empty {
@@ -1955,17 +1876,6 @@ body {
   gap: 6px;
 }
 
-.treasure__settings-profile-input {
-  flex: 1;
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 0.85rem;
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
 .treasure__settings-profile-save-btn {
   appearance: none;
   background: var(--color-surface);
@@ -1992,8 +1902,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   border-top: 1px solid var(--color-border);
+}
+
+.treasure__section:last-child {
+  padding-bottom: 0;
 }
 
 .treasure__section-header {
@@ -2204,7 +2118,7 @@ body {
      within the modal instead of crowding the GM's tuning controls off
      the screen. */
   flex-shrink: 0;
-  margin-top: 10px;
+  margin-top: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -2258,7 +2172,7 @@ body {
 
 .treasure__settings-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure__settings-label {
@@ -2353,19 +2267,6 @@ body {
   gap: 4px;
 }
 
-.treasure__settings-scroll-input {
-  width: 4em;
-  padding: 2px 6px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font: inherit;
-  font-size: 0.85rem;
-  text-align: right;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-
 .treasure__settings-scroll-unit {
   font-size: 0.78rem;
   color: var(--color-text-muted);
@@ -2458,7 +2359,7 @@ body {
 /* ── Sum (all Enemies): per-creature contributions accordion ─────── */
 
 .treasure__contributions {
-  margin-top: 14px;
+  margin-top: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -2500,7 +2401,7 @@ body {
 
 .treasure__contributions-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure__contributions-label {
@@ -2574,8 +2475,8 @@ body {
 /* ── Main Treasure modal: "Edit treasure table…" link ────────────── */
 
 .treasure__edit-table-row {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
@@ -2662,7 +2563,7 @@ body {
 
 .treasure-table__section-caret {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .treasure-table__section-label {
@@ -2747,7 +2648,7 @@ body {
 .treasure-table__field-input {
   width: 4em;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -2820,7 +2721,7 @@ body {
 .treasure-table__num-input {
   width: 3.5em;
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.82rem;
@@ -2832,7 +2733,7 @@ body {
 
 .treasure-table__sub-tier {
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.82rem;
@@ -2919,7 +2820,7 @@ body {
 
 .treasure-table__name-input {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.88rem;
@@ -2979,7 +2880,7 @@ body {
 
 .treasure-table__flat-name {
   padding: 4px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.88rem;
@@ -2989,7 +2890,7 @@ body {
 
 .treasure-table__flat-value {
   padding: 4px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.85rem;
@@ -3228,7 +3129,7 @@ body {
 
 .cr-calc__blurb {
   margin: 0;
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -3237,11 +3138,20 @@ body {
 }
 
 .cr-calc__section {
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.cr-calc__section:first-child {
+  padding-top: 0;
+}
+
+.cr-calc__section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .cr-calc__section-header {
@@ -3274,31 +3184,10 @@ body {
   gap: 6px;
 }
 
-.cr-calc__party-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .cr-calc__party-index {
   font-size: 0.85rem;
   font-weight: 600;
   min-width: 48px;
-}
-
-.cr-calc__party-level-label {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.cr-calc__party-level {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
 }
 
 .cr-calc__party-remove {
@@ -3428,15 +3317,80 @@ body {
   background: rgba(214, 59, 59, 0.1);
 }
 
-/* ── Spell List modal ────────────────────────────────────────────────
-   Read-only popup grouping every encounter caster's at-will / per-day /
-   slot spells under their name.  Compact and scannable; the body is
-   the only scrollable region. */
+/* ── Queue reference panels ──────────────────────────────────────────
+   Read-only drop-downs under the queue's reminder strips: what each
+   creature's legendary actions, special reactions, or spells
+   actually do.  Compact and scannable, and capped so a party of
+   casters cannot push the queue off screen. */
 
-.modal--spell-list {
-  --modal-max-w: 640px;
+.queue-panel {
+  flex: 0 0 auto;
+  max-height: 50vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-text-muted);
+  padding: 0 var(--space-3) var(--docked-panel-pad-bottom);
 }
 
+.queue-panel__entry {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.queue-panel__entry:last-child {
+  border-bottom: none;
+}
+
+.queue-panel__header {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.queue-panel__name {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.queue-panel__name:hover,
+.queue-panel__name:focus-visible {
+  text-decoration: underline;
+}
+
+.queue-panel__meta {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.queue-panel__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+}
+
+.queue-panel__item-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-right: var(--space-2);
+}
+
+.queue-panel__item-body {
+  font-size: 0.9rem;
+}
+
+.queue-panel__empty,
 .spell-list__empty,
 .spell-list__empty-spells {
   margin: 8px 0;
@@ -3490,17 +3444,16 @@ body {
   color: var(--color-text-muted);
 }
 
+/* One grid per caster, holding every group's heading and spells
+   as cells, so the spells hug their headings and the headings
+   still line up.  The indent hangs the block under the creature
+   name. */
 .spell-list__groups {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.spell-list__group {
   display: grid;
-  grid-template-columns: minmax(140px, 180px) 1fr;
-  gap: 12px;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2);
   align-items: baseline;
+  padding-left: var(--space-4);
 }
 
 .spell-list__group-label {
@@ -3533,13 +3486,9 @@ body {
    Shares the calc-modal layout (party rows, action sections), then
    adds parameter pickers and a result list.  Class prefix is
    `random-encounter__` to keep search-by-prefix tidy. */
-.modal--random-encounter {
-  --modal-max-w: 640px;
-}
-
 .random-encounter__blurb {
   margin: 0;
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -3548,11 +3497,20 @@ body {
 }
 
 .random-encounter__section {
-  padding: 12px 18px;
+  padding: var(--space-2) 18px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.random-encounter__section:first-child {
+  padding-top: 0;
+}
+
+.random-encounter__section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .random-encounter__section-header {
@@ -3571,17 +3529,11 @@ body {
   color: var(--color-text-muted);
 }
 
-.random-encounter__empty,
-.random-encounter__hint {
+.random-encounter__empty {
   margin: 0;
   font-size: 0.9rem;
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-.random-encounter__hint--warn {
-  color: #c98c1d;
-  font-style: normal;
 }
 
 /* Party rows — same shape as CR Calculator. */
@@ -3591,50 +3543,14 @@ body {
   gap: 6px;
 }
 
-.random-encounter__party-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .random-encounter__party-index {
   font-size: 0.85rem;
   font-weight: 600;
   min-width: 48px;
 }
 
-.random-encounter__party-level-label {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.random-encounter__party-level {
-  padding: 4px 8px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
-}
-
 .random-encounter__party-remove {
   margin-left: auto;
-}
-
-/* Parameter rows (difficulty pills + habitat select). */
-.random-encounter__param-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.random-encounter__param-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  min-width: 80px;
-  color: var(--color-text-muted);
 }
 
 .random-encounter__difficulty-group {
@@ -3678,17 +3594,6 @@ body {
   gap: 4px;
 }
 
-.random-encounter__habitat-select {
-  flex: 1 1 200px;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
-}
-
 /* Result list — one row per group + total. */
 .random-encounter__groups {
   display: flex;
@@ -3698,7 +3603,7 @@ body {
 
 .random-encounter__group-row {
   display: grid;
-  grid-template-columns: 40px 1fr auto auto auto auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -3811,32 +3716,6 @@ body {
   padding-top: 8px;
 }
 
-.random-encounter__minions-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 0 2px 0;
-  cursor: pointer;
-}
-
-.random-encounter__minions-checkbox {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  cursor: pointer;
-}
-
-.random-encounter__minions-label {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.random-encounter__minions-hint {
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
 /* Specific-creatures section: pinned list + inline picker. */
 .random-encounter__pinned-hint {
   margin: 0 0 4px 0;
@@ -3856,7 +3735,7 @@ body {
 
 .random-encounter__pinned-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -3995,7 +3874,7 @@ body {
 
 .random-encounter__pin-search {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -4139,28 +4018,258 @@ body {
 }
 
 .panel--main {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-}
-
-.panel--controls {
   grid-column: 2;
   grid-row: 1;
-  /* The controls panel's body holds a fixed-size button grid;
-     it has no content that scrolls.  Letting absolute children
-     escape both clipping ancestors lets the Save / Load
-     split-button popovers extend past the panel boundary
-     instead of getting cropped to "first item only". */
-  overflow: visible;
 }
 
-.panel--controls .panel__body {
-  overflow: visible;
+/* The editor column: encounter controls above the editors they
+   sit with, both inside the one grid track. */
+.drawer-column {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
 }
 
-.panel--detail {
-  grid-column: 2;
-  grid-row: 2;
+/* Compendium to the left, the encounter's own controls to the
+   right, so the destructive pair sits away from the reach for a
+   reference.  The hairline underneath marks where the editors
+   begin. */
+.drawer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  /* Off the spacing scale by three: the controls sat too close
+     to the rule below them for the row to read as its own band. */
+  padding-bottom: calc(var(--space-1) + 3px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.drawer-controls__encounter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.drawer-controls__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.recent-rolls {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.recent-roll {
+  font-size: var(--font-size-recent-roll);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The newest roll: bigger, yellow, and flashed hard enough that
+   a roll lands even when the GM's eyes are on the cards, not the
+   rail. Unlike `log-flash`'s one calm pulse, this one repeats —
+   the whole point here is to be hard to miss. Glows in
+   `currentColor` rather than a fixed hue so the same keyframe
+   also serves the triple-roll variants below, each in its own
+   colour.
+
+   Grouped with the triple-roll variants below (an attack,
+   ability check, or saving throw fired as standard + advantage +
+   disadvantage together, read by role rather than by recency) so
+   the shared size/weight/animation are written once; each
+   variant then only names its own colour. */
+.recent-roll--latest,
+.recent-roll--standard,
+.recent-roll--advantage,
+.recent-roll--disadvantage {
+  font-size: var(--font-size-recent-roll-latest);
+  font-weight: 800;
+  animation: recent-roll-flash 0.4s ease-in-out 5;
+}
+
+.recent-roll--latest {
+  color: var(--color-yellow);
+}
+
+.recent-roll--standard {
+  color: var(--color-text);
+}
+
+.recent-roll--advantage {
+  color: var(--color-success);
+}
+
+.recent-roll--disadvantage {
+  color: var(--color-danger);
+}
+
+@keyframes recent-roll-flash {
+  0%,
+  100% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+
+  50% {
+    transform: scale(1.35);
+    text-shadow: 0 0 8px currentColor;
+  }
+}
+
+/* The drawer's scrolling stack of open panels: each takes its
+   natural height, so a newly opened panel lands below the ones
+   already up. */
+.drawer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  min-height: 0;
+  margin: 0 calc(var(--drawer-bleed) * -1);
+}
+
+/* Carries the scroll-into-view id for one panel.  Must stay
+   transparent to layout, so the stack's column rules reach the
+   panel through it.  A slot holding nothing leaves the flex row
+   entirely rather than contributing the stack's gap. */
+.drawer-stack__slot {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.drawer-stack__slot:empty {
+  display: none;
+}
+
+/* The slot the dragged panel would land in — not always the one
+   under the pointer.  An inset line rather than an outline so
+   the cue can't be clipped by the stack's scroll box. */
+.drawer-stack__slot--drop {
+  box-shadow: inset 0 2px 0 var(--color-accent);
+}
+
+.panel--drawer {
+  flex: 0 0 auto;
+  animation: drawer-slide-in 0.16s ease-out;
+}
+
+/* With several editors unfolded at once, a purple border keeps
+   each one legible as its own panel.  Declared after the base so
+   it wins the border colour. */
+.panel--drawer-open {
+  border-color: var(--color-panel-open-bd);
+}
+
+@keyframes drawer-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Names the creature an editor is aimed at, directly under the
+   panel title.  In a column the editor is detached from its
+   target, so it has to say which one it means. */
+.panel-drawer__target {
+  flex: 0 0 auto;
+  padding: var(--space-1) var(--drawer-pad-x);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.xp-panel__total {
+  font-size: var(--font-size-readout);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+/* Secondary in-lair figure under the headline total; muted so
+   the base number still leads. */
+.xp-panel__lair {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+/* An unpinned tack is dimmed and tilted so its state reads from
+   the glyph alone — the pin is the header control whose meaning
+   is a state rather than an action, and there is no room for a
+   label. */
+.panel-drawer__pin {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  opacity: 0.45;
+  transform: rotate(45deg);
+}
+
+.panel-drawer__pin:hover {
+  opacity: 0.8;
+}
+
+.panel-drawer__pin--on {
+  opacity: 1;
+  transform: none;
+}
+
+/* Declared after the plain `:hover`, which outranks the modifier
+   on specificity and would otherwise dim a pinned tack on hover
+   — the opposite of what every other header control does. */
+.panel-drawer__pin--on:hover {
+  opacity: 1;
+}
+
+/* Mirrors the close button, so the caret and the close read as a
+   matched pair bracketing the title. */
+.panel-drawer__collapse {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--font-size-caret);
+  line-height: 1;
+}
+
+.panel-drawer__collapse:hover {
+  color: var(--color-text);
+}
+
+/* A page whose workspace holds this panel alone: it spans the
+   grid rather than sitting in the queue's column, which would
+   leave the editor column's gap hanging to its left. */
+.panel--solo {
+  grid-column: 1 / -1;
+  grid-row: 1;
 }
 
 .panel__header {
@@ -4173,10 +4282,59 @@ body {
   background: var(--color-surface-2);
 }
 
+/* Drawer panels run denser chrome than the workspace panes:
+   the stack multiplies every pixel of header and body padding
+   by however many panels are up. */
+/* The whole row folds the panel, so a drag across the title
+   should not leave the GM with a selection instead. */
+.panel__header--drawer {
+  padding: 6px var(--drawer-pad-x);
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel__header--collapsed {
+  border-bottom: none;
+}
+
+/* Tints the title bar to match the light-purple accent already
+   used for the drawer's own action buttons, so an unfolded
+   panel's heading reads as active at a glance. */
+.panel__header--open {
+  background: var(--action-btn-bg);
+}
+
 .panel__title {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
+}
+
+/* The caret makes three items of a header laid out
+   space-between, which would otherwise centre the title. */
+.panel__title--drawer {
+  margin-right: auto;
+  padding-left: var(--space-1);
+}
+
+/* Marks a panel as holding something unseen.  It rides the
+   title row so a folded panel, which shows nothing else, still
+   carries it. */
+.panel__title-mark {
+  color: var(--color-accent);
+  padding-left: var(--space-1);
+}
+
+/* The tag a panel wears while its feature is still settling.  It
+   undoes the title's small caps so it reads as an aside. */
+.panel__title-beta {
+  padding-left: var(--space-1);
+  font-size: var(--font-size-label);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-orange);
 }
 
 .panel__count {
@@ -4194,10 +4352,24 @@ body {
   padding: var(--space-4);
 }
 
+.panel__body--drawer {
+  padding: var(--space-2) var(--drawer-pad-x);
+}
+
+/* The encounter scroller carries no top padding of its own, and
+   the grid supplies that air instead: Chrome and Safari inset a
+   sticky box from the scroller's content edge rather than its
+   visible edge, so padding there would hold a stat block's bar
+   that far below the top while the block scrolls under it. */
+.panel__body--encounter {
+  padding-top: 0;
+}
+
 .creature-grid {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding-top: var(--space-4);
 }
 
 /* Full-width "+" row that one-click-appends a Placeholder N stub
@@ -4221,12 +4393,29 @@ body {
   align-items: center;
   gap: 4px;
   padding: 4px 12px;
-  background: rgba(245, 158, 11, 0.18);
+  background: var(--banner-warn-bg);
   border-bottom: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-warning, #f59e0b);
+  border-left: 3px solid var(--banner-warn-bd);
   color: var(--color-text);
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+/* A strip's drop-down toggle, sitting between its label and its
+   creature names.  Chrome reset so it reads as part of the
+   sentence, not a control bolted onto it. */
+.legendary-banner__panel-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.legendary-banner__panel-btn:hover {
+  filter: brightness(1.15);
 }
 
 .legendary-banner__name {
@@ -4248,13 +4437,6 @@ body {
   outline: none;
 }
 
-.legendary-banner__name--plain {
-  color: var(--color-text);
-  font-weight: 600;
-  text-decoration: none;
-  cursor: default;
-}
-
 /* ── Accessible-theme overrides for the LA + Special reactions strips
    ─────────────────────────────────────────────────────────────────────
    The default strip styling assumes Modern's transparent amber surface
@@ -4263,9 +4445,8 @@ body {
    and the medium font weight reads as "decorative" rather than the
    load-bearing GM heads-up the strip is meant to be.  This block
    bumps surface contrast, text size + weight, and rail thickness, and
-   gives the Special-reactions strip a distinct blue rail so the two
-   strips remain distinguishable beyond their leading text label
-   (mirrors the bright-blue pulsing `!` pip on creature cards).
+   gives each strip a distinct rail colour so they remain
+   distinguishable beyond their leading text label.
    Dark / Modern themes keep their existing treatment.
 */
 [data-theme="accessible"] .legendary-banner {
@@ -4290,6 +4471,13 @@ body {
      leading text.  Surface stays cream so the pairing still reads
      as one "GM heads-up" family. */
   border-left-color: var(--color-blue, #003c8f);
+}
+
+[data-theme="accessible"] .legendary-banner--spells {
+  /* Purple rail, distinct from the other strips' rails, so the
+     reminders stay separable at low vision without reading their
+     leading labels. */
+  border-left-color: var(--color-condition);
 }
 
 [data-theme="accessible"] .legendary-banner__name {
@@ -4337,11 +4525,13 @@ body {
   display: flex;
   align-items: stretch;
   gap: var(--space-3);
-  padding: var(--space-3);
+  /* The pip columns stop short of the card's bottom edge, so
+     the bottom padding runs slimmer than the top. */
+  padding: var(--space-2) var(--space-1) var(--space-0);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  min-height: 132px;
+  min-height: 104px;
   transition:
     border-color 0.12s ease,
     box-shadow 0.12s ease;
@@ -4349,6 +4539,20 @@ body {
 
 .creature-card:hover {
   border-color: var(--color-text-muted);
+}
+
+/* The creature the editors are aimed at.  A bright white ring
+   drawn as an inset outline, since `box-shadow` is the lifecycle
+   stripes' and a targeted corpse keeps its stripe.  The card's
+   own border darkens to a hairline of text colour just outside
+   the ring, so the white still reads against a light card.
+   Declared ahead of the active card's rule so an active target
+   keeps its accent border, and ahead of the drop cue, which
+   shares `outline` and wins for the length of a drag. */
+.creature-card--target {
+  outline: 3px solid var(--color-target-ring);
+  outline-offset: -3px;
+  border-color: var(--color-text);
 }
 
 .creature-card--active {
@@ -4371,8 +4575,14 @@ body {
    buttons, drawing the GM's eye to whose turn it is.  Hover
    restores full opacity so the dimmed buttons still feel
    responsive when targeted directly.  Applies to both themes
-   because it works on the structural class, not theme tokens. */
-.creature-card:not(.creature-card--active) .action-btn {
+   because it works on the structural class, not theme tokens.
+   The Ready and Reaction toggles are exempt — their state
+   (readied, reaction spent) is information the GM reads across
+   the whole queue, not just on the active card. */
+.creature-card:not(.creature-card--active)
+  .action-btn:not(.action-btn--ready):not(.action-btn--readied):not(
+    .action-btn--reaction-ready
+  ):not(.action-btn--reaction-spent) {
   opacity: 0.65;
 }
 
@@ -4397,8 +4607,7 @@ body {
 }
 
 .creature-card--dead .creature-card__center,
-.creature-card--dead .deathsave-col,
-.creature-card--dead .creature-card__legendary {
+.creature-card--dead .deathsave-col {
   filter: grayscale(0.85);
 }
 
@@ -4407,7 +4616,7 @@ body {
 }
 
 /* If a dead creature somehow has the active marker (e.g. died
-   on their own turn before the GM clicked Next Turn), the active
+   on their own turn before the GM advanced it), the active
    highlight wins on border but the grey filter still applies so
    it's obvious they're dead. */
 .creature-card--dead.creature-card--active {
@@ -4415,8 +4624,7 @@ body {
 }
 
 .creature-card--dead.creature-card--active .creature-card__center,
-.creature-card--dead.creature-card--active .deathsave-col,
-.creature-card--dead.creature-card--active .creature-card__legendary {
+.creature-card--dead.creature-card--active .deathsave-col {
   filter: grayscale(0.6);
 }
 
@@ -4428,8 +4636,7 @@ body {
 }
 
 .creature-card--inactive .creature-card__center,
-.creature-card--inactive .deathsave-col,
-.creature-card--inactive .creature-card__legendary {
+.creature-card--inactive .deathsave-col {
   filter: grayscale(0.5);
 }
 
@@ -4468,6 +4675,156 @@ body {
 
 .creature-card--unconscious {
   box-shadow: inset 6px 0 0 0 var(--color-warn, #d97706);
+}
+
+/* The card a dragged one would land on.  An outline rather than
+   a box-shadow, because the lifecycle stripes above already own
+   that property and a dying creature should keep its stripe
+   while the GM drags something past it. */
+.creature-card--drop {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* The stat block a card unfolds beneath itself.  It closes the
+   grid's gap to hang off the card's bottom edge, squares the
+   joint, and takes the card's border, so the two read as one
+   piece, with the joint dashed so the card still reads as its
+   own thing.  The bar holds to the top of the scroller while a
+   long block scrolls under it, keeping the minimize control in
+   reach from anywhere in the block. */
+.creature-card--statblock-open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-style: dashed;
+}
+
+.card-statblock {
+  margin-top: calc(-1 * var(--space-3));
+  border: 1px solid var(--color-border);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--color-surface-2);
+}
+
+.card-statblock--active {
+  border-width: 2px;
+  border-top: 0;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+.card-statblock__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-2);
+  border-bottom: 1px dashed var(--color-border);
+}
+
+/* The elbow tying the bar to the card above: a stem down from
+   the card's edge, turning toward the title. */
+.card-statblock__elbow {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  margin: 0 0 var(--space-1) var(--space-1);
+  border-left: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.card-statblock__title {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-neon-pink);
+  cursor: pointer;
+}
+
+.card-statblock__title-kind {
+  margin-left: var(--space-1);
+  font-weight: normal;
+}
+
+.card-statblock__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+}
+
+.card-statblock__open {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-statblock-tool);
+  height: var(--size-statblock-tool);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.card-statblock__open:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.card-statblock__minimize {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-statblock-tool);
+  height: var(--size-statblock-tool);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  cursor: pointer;
+}
+
+.card-statblock__minimize:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-text-muted);
+}
+
+/* The window-chrome minimize glyph: a bar in a box. */
+.card-statblock__minimize-glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.card-statblock__body {
+  padding: var(--space-2);
 }
 
 .creature-card--inactive {
@@ -4681,11 +5038,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* `space-evenly` distributes the icons with equal gaps before
-     the first, between each pair, and after the last — looks
-     balanced for both the 2-icon left rail (move up / down) and
-     the 4-icon right rail (×, inactive, replace, duplicate). */
-  justify-content: space-evenly;
+  /* Both rails pin their icon cluster to the top of the card:
+     an open inline editor makes the card tall, and a
+     distributed layout would spread the icons away from the
+     row content they operate on. */
+  justify-content: flex-start;
   gap: 6px;
   min-width: 36px;
 }
@@ -4694,7 +5051,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  /* Even spacing between the select checkbox, initiative badge,
+     and make-active arrow — three per-creature turn-order
+     controls that read as one column. */
+  gap: var(--space-2);
 }
 
 .creature-card__select {
@@ -4756,7 +5116,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
   /* Each of the three rows takes its own content height (top
      row wraps to two lines when it fills up; mid + bot stay
@@ -4913,114 +5273,69 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-/* Legendary columns wrapper: a flex strip sitting between the
-   center column and the right rail.  Renders nothing when the
-   creature has neither Legendary Actions nor Legendary
-   Resistance. */
-.creature-card__legendary {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.legendary-col {
-  display: flex;
-  flex-direction: column;
+/* Special-reaction name badges, one pill per qualifying feature
+   on the creature's source stat block.  They flow inline after
+   the recharge chips in row 1's chip cluster, in the chip
+   family's shape but wearing the legendary-actions banner's
+   amber wash so the two reaction cues read identically. */
+.sr-badge {
+  appearance: none;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-width: 28px;
-  padding: 4px 2px;
-}
-
-.legendary-col__header {
-  font-weight: 700;
+  background: var(--banner-warn-bg);
+  color: var(--color-sr-badge-fg);
+  border: 1px solid var(--banner-warn-bd-soft);
+  border-radius: 999px;
+  padding: 1px 6px;
+  font: inherit;
   font-size: 0.78rem;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-/* Orange for legendary-action pips ("LA"); auto-reset at the
-   start of the creature's turn.  `--color-la` is theme-aware:
-   slightly darker on Modern, the existing bright orange on Dark. */
-.legendary-col--la .legendary-col__header {
+/* Spent: struck through and muted; cleared at the bearer's
+   begin-of-turn. */
+.sr-badge--used {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: var(--strike-thickness);
+  opacity: 0.75;
+}
+
+.sr-badge--used:hover {
+  opacity: 1;
+}
+
+/* The legendary pools read as text on row 3 — "LA: 3(4)" — and
+   keep the colours their pips had, so the pair still reads as
+   two pools at a glance. */
+.legendary-use {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 var(--space-1);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.legendary-use--la {
   color: var(--color-la);
 }
 
-.legendary-col--la .legendary-col__pip {
-  border-color: var(--color-la);
-}
-
-.legendary-col--la .legendary-col__pip--filled {
-  background: var(--color-la);
-}
-
-/* Yellow for legendary-resistance pips ("LR"); GM clears
-   manually (rules: per long rest, not per turn).  Same Modern /
-   Dark token strategy as LA. */
-.legendary-col--lr .legendary-col__header {
+.legendary-use--lr {
   color: var(--color-lr);
 }
 
-.legendary-col--lr .legendary-col__pip {
-  border-color: var(--color-lr);
-}
-
-.legendary-col--lr .legendary-col__pip--filled {
-  background: var(--color-lr);
-}
-
-.legendary-col__pip {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  transition:
-    background 0.1s ease,
-    transform 0.05s ease;
-}
-
-/* The 4th pip in each column is the "lair" pip: only used when
-   the creature is in its lair (5e gives a bonus legendary action
-   and an extra legendary-resistance use in-lair).  Render with a
-   thinner border, and precede it with a faint horizontal divider
-   so the lair pip reads as visually separate from the regular
-   per-turn pips. */
-.legendary-col__pip--lair {
-  border-width: 1px;
-}
-
-.legendary-col__sep {
-  width: 14px;
-  height: 1px;
-  background: var(--color-border);
-  opacity: 0.6;
-  margin: 1px 0;
-}
-
-.legendary-col__pip:hover {
-  /* `transform` would create a containing block for the
-     `[data-tooltip]::after` pseudo-element on this pip, which
-     would trap its anchor positioning to the pip's own bounding
-     box and put the tooltip directly under the cursor instead
-     of above the trigger.  Use a ring instead — same visual
-     "the pip is highlighted" cue, no containing-block side
-     effect. */
-  box-shadow: 0 0 0 2px currentColor;
-}
-
-.legendary-col__pip:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
-}
-
-/* Death-save tracker — two side-by-side vertical columns (✓ / ✗)
-   mirroring the legendary "LA"/"LR" pair, but only present when
-   the creature is at 0 HP. Each column has its own header and 3
-   pips; below the pair sits a shared 🎲 roll button (or a 🛡 / 💀
-   stable / dead badge once the run resolves). */
+/* Death-save tracker — two side-by-side vertical columns (✓ / ✗),
+   present only while the creature is at 0 HP.  Each column has
+   its own header and 3 pips; below the pair sits a shared 🎲
+   roll button (or a 🛡 / 💀 stable / dead badge once the run
+   resolves). */
 .death-save-cols {
   display: flex;
   flex-direction: column;
@@ -5084,10 +5399,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .death-save-col__pip:hover {
-  /* `box-shadow` ring instead of `transform: scale` — same
-     reason as `.legendary-col__pip:hover`: transform creates a
-     containing block that breaks the tooltip's anchor
-     positioning. */
+  /* `box-shadow` ring instead of `transform: scale`: a
+     transform creates a containing block that breaks the
+     tooltip's anchor positioning. */
   box-shadow: 0 0 0 2px currentColor;
 }
 
@@ -5146,7 +5460,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .creature-card__row {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 5px 12px;
   background: var(--color-surface);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-sm);
@@ -5215,10 +5529,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 .panel__title,
 .stat__label,
 .ability__label,
-.dice-history__title,
-.hp-change__log-title,
+.fold-toggle__title,
 .hp-change__log-kind,
-.init-section__heading,
 .encounter-bar__hp-label,
 .encounter-bar__ac-label {
   text-transform: uppercase;
@@ -5226,6 +5538,19 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .icon-btn--danger:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-color: transparent;
+}
+
+/* Red at rest, for a control whose only job is to undo something:
+   the × that clears a field. */
+.icon-btn--red {
+  color: var(--color-danger);
+  opacity: 1;
+}
+
+.icon-btn--red:hover {
   color: var(--color-danger);
   background: var(--color-danger-soft);
   border-color: transparent;
@@ -5254,6 +5579,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: transparent;
 }
 
+/* The active creature's arrow reads as the queue's turn marker
+   rather than a control. */
+.icon-btn--active-turn {
+  color: var(--color-accent);
+  font-size: var(--font-size-readout);
+  font-weight: var(--font-weight-label);
+}
+
 .icon-btn--sm {
   width: 22px;
   height: 22px;
@@ -5271,28 +5604,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: normal;
   letter-spacing: 0;
   color: var(--color-text);
-  padding: 4px 0;
+  padding: var(--card-row-pad-outer) 0;
   font-size: 0.85rem;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
 
-.init-circle {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  /* Transparent fill with a dark outline.  `var(--color-text)`
-     resolves to near-black on Modern and near-white on Dark,
-     so the outline reads as crisp in both themes.  Mirrors the
-     "outlined chip" idiom used in modern dashboards. */
-  background: transparent;
-  border: 1.5px solid var(--color-text);
-  color: var(--color-text);
+/* The initiative score, a bare figure in parentheses beside the
+   checkbox. */
+.init-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--space-0);
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--init-score-fg);
   display: inline-grid;
   place-items: center;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-size: 1.15rem;
+  font-size: 0.7rem;
   flex: 0 0 auto;
   line-height: 1;
 }
@@ -5351,7 +5683,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Compendium-linked creature name: hover-underline cues that
-   clicking will pin the source stat block in the side panel.
+   clicking unfolds the source stat block under the card.
    The underlying element was promoted from `<span>` to
    `<button>` for keyboard a11y; these resets keep the visual
    appearance unchanged. */
@@ -5461,21 +5793,47 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* Variant-specific tweaks: color, padding, border. */
 
+/* Without its badge background, the condition chip's × needs to
+   read as red on its own rather than only on hover — declared
+   after the shared group above so it wins on source order. */
+.condition-chip__remove {
+  color: var(--color-danger);
+}
+
 .condition-chip {
-  padding: 1px 6px;
+  /* No badge chrome — reads as plain text like the status labels
+     beside it, with only the trailing × as a control. */
   font-size: 0.78rem;
   font-weight: 500;
-  background: rgba(245, 200, 66, 0.1);
-  /* Chip text matches the Condition/Effect button's background
-     token (`--color-condition`) so card chips, title-bar chips,
-     and the rail button all read as one visual family. Each
-     theme already defines `--color-condition`, so this rule
-     follows the palette without per-theme overrides. */
-  color: var(--color-condition);
-  border: 1px solid rgba(245, 200, 66, 0.35);
-  border-radius: 999px;
+  /* Chip text follows the condition palette via its own token
+     (`--color-condition-chip`), which each theme sets a shade
+     brighter than the button colour where that colour runs
+     dark, so the small chip text stays legible. */
+  color: var(--color-condition-chip);
   max-width: 220px;
   overflow: hidden;
+}
+
+/* A manual-roll ("End manually") condition doesn't clear itself —
+   the GM has to remember to click the chip's own 🎲. This pulses
+   the chip at the bearer's begin-of-turn as that reminder, the
+   same "few pulses, not a standing alarm" treatment `save-notice`
+   uses for the opposite (successful) moment. */
+.condition-chip--flash {
+  animation: condition-chip-flash 0.5s ease-in-out 4;
+}
+
+@keyframes condition-chip-flash {
+  0%,
+  100% {
+    color: var(--color-condition-chip);
+    transform: scale(1);
+  }
+
+  50% {
+    color: var(--color-yellow);
+    transform: scale(1.15);
+  }
 }
 
 .condition-chip__name {
@@ -5548,7 +5906,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-style: normal;
   letter-spacing: 0;
   color: var(--color-text);
-  padding: 4px 0;
+  padding: var(--card-row-pad-mid) 0;
   font-size: 0.85rem;
   gap: 6px;
   flex-wrap: wrap;
@@ -5564,13 +5922,52 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-right: var(--space-2);
 }
 
-.hp-display__current,
-.hp-display__editable.hp-display__current {
-  /* Compound selector beats the later `.hp-display__editable
-     { color: inherit }` rule in the cascade — without it the
-     click-to-edit `<button>` would inherit the row's white
-     text and clobber the green/muted split. */
+/* Shared reset for the HP row's triggers.  The hover ring stays
+   faint so none of them reads as a permanent input. */
+.hp-display__editable {
+  /* Reset native button chrome so the click-to-edit trigger
+     looks like inline text — the underlying element was promoted
+     from `<span>` to `<button>` for keyboard a11y, but the visual
+     should still read as "tap-the-number." */
+  appearance: none;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: text;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition:
+    background 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+/* An HP value opens the Manage HP editor rather than an input in
+   place, so it takes the hand the rest of the app's links use;
+   the AC readout beside it keeps the caret it earns. */
+.hp-display__opener {
+  cursor: pointer;
+}
+
+.hp-display__editable:hover {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+/* The editable reset above precedes the per-slot colours, so the
+   flat single-class rules below win on source order — no compound
+   selectors needed for the click-to-edit buttons to keep their
+   colours. */
+.hp-display__current {
   color: var(--color-success);
+}
+
+/* Below half HP.  Sits after the base rule so the flat pair
+   resolves by source order. */
+.hp-display__current--bloodied {
+  color: var(--color-danger);
 }
 
 .hp-display__sep {
@@ -5578,8 +5975,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 400;
 }
 
-.hp-display__max,
-.hp-display__editable.hp-display__max {
+.hp-display__max {
   color: var(--color-text-muted);
 }
 
@@ -5595,11 +5991,75 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-left: 2px;
 }
 
-.bloodied {
-  font-size: 0.95rem;
-  margin-right: var(--space-2);
+/* Posture labels mirroring what the Status editor applied,
+   sitting to the right of the vitals. */
+.status-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--color-text);
   line-height: 1;
-  cursor: help;
+}
+
+/* Pairs a status label with its own × — one entry in the
+   `.status-icons` row. */
+.status-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Each label is a button that opens the Status editor targeting
+   its creature.  Native chrome is reset so the row reads as
+   plain text until hovered. A status is an active, ongoing thing
+   the creature is doing, so it gets its own colour rather than
+   the row's default text colour — the same reasoning `--color-yellow`
+   already carries elsewhere for "notice me" state. */
+.status-icon {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-yellow);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* What a creature is concentrating on, in the voice a condition
+   chip's note uses so the two read alike. */
+.status-icon__note {
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.status-icon:hover {
+  text-decoration: underline;
+}
+
+/* Clears the one flag directly, without opening the Status
+   editor.  Red at rest, like the condition chip's ×, rather than
+   only on hover — it is a destructive-ish one-click action, not
+   a hover-discoverable affordance. */
+.status-icon__remove {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-danger);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.status-icon__remove:hover {
+  background: rgba(214, 59, 59, 0.15);
 }
 
 .status-toggle {
@@ -5608,7 +6068,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 2px 8px;
+  padding: 2px var(--space-1);
   font-size: 0.85rem;
   line-height: 1;
   font-family: inherit;
@@ -5660,10 +6120,29 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-yellow);
 }
 
-.status-toggles__sep {
-  color: var(--color-text-muted);
-  user-select: none;
-  margin: 0 2px;
+/* One row of status toggles.  Tighter than the shared
+   `.cond-row` gap: the toggles carry their own padding, and the
+   row has to hold three of them beside the drawer's width. */
+.status-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-0);
+}
+
+/* The note takes what the concentration toggle leaves of its
+   row, since the spell's name is the part worth reading. */
+.status-toggles__note {
+  flex: 1 1 var(--width-input-grow-min);
+  min-width: var(--width-input-grow-min);
+}
+
+/* Both toggle rows, closer together than the editor's row gap so
+   they read as one control group. */
+.status-toggle-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 /* Wrapper around the "flying" toggle + fly-height selector so the
@@ -5676,21 +6155,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: nowrap;
 }
 
+/* The readout carries no chrome of its own and takes the colour
+   of the "flying" label it follows, so the pair reads as one
+   status rather than a label and a control beside it.  The gap
+   sits below the spacing scale on purpose: the height, its unit
+   and the arrows have to read as one readout rather than three
+   things. */
 .fly-height {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-left: 4px;
-  padding: 2px 6px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  gap: 1px;
+  color: var(--color-yellow);
+  font-size: var(--font-size-label);
 }
 
+/* A button does not inherit its font size, so the arrows have to
+   be told to match the height they change.  They stay grey while
+   the rest of the readout is yellow: they are controls beside a
+   status, not part of what it says. */
 .fly-height__btn {
-  padding: 0 2px;
-  font-size: 0.7rem;
+  padding: 0;
+  font-size: inherit;
   color: var(--color-text-muted);
   line-height: 1;
 }
@@ -5699,22 +6184,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
+/* Reserving the width of two digits keeps the arrows still while
+   the height crosses ten feet. */
 .fly-height__value {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  min-width: 24px;
-  text-align: center;
-  color: var(--color-text);
+  min-width: 16px;
+  text-align: right;
 }
 
 .fly-height__unit {
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
   margin-left: 2px;
+  margin-right: var(--space-0);
 }
 
 .fly-height__fall {
-  margin-left: 4px;
+  width: auto;
+  height: auto;
+  margin-left: 3px;
+  font-size: var(--font-size-label);
+  color: var(--color-yellow);
+  opacity: 1;
 }
 
 .creature-card__row--bot {
@@ -5722,7 +6212,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: none;
   font-style: normal;
   letter-spacing: 0;
-  padding: 4px 0;
+  padding: var(--card-row-pad-outer) 0;
   font-size: 0.85rem;
   color: var(--color-text);
   gap: 6px;
@@ -5745,7 +6235,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid var(--btn-bd);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 0 10px;
+  padding: 0 8px;
   font-size: 0.78rem;
   /* Typography polish — Modern uses 500 weight + negative
      tracking; Dark / classic uses 600 + 0.02em.  Tokens set
@@ -5766,11 +6256,41 @@ button.creature-card__lifecycle--dead:focus-visible {
     color 0.1s ease,
     border-color 0.1s ease;
   white-space: nowrap;
-  height: 26px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+/* Geometry for every control in the row, plus the face a
+   control carrying no variant wears.  Declared before the
+   `.action-btn--*` variants these buttons also carry, which
+   share its specificity: source order is what lets those
+   win. */
+.drawer-controls__btn {
+  height: var(--action-btn-size);
+  min-width: var(--action-btn-size);
+  padding: 0;
+  font-size: var(--font-size-action-glyph);
+  line-height: 1;
+  --btn-bg: var(--action-btn-bg);
+  --btn-fg: var(--action-btn-fg);
+  --btn-bd: var(--action-btn-bd);
+}
+
+/* Start/next-turn control: 25% wider than its Clear/Reset row-
+   mates, so the button the GM reaches for every round is the
+   easiest of the three to land a click on. */
+.drawer-controls__btn--wide {
+  width: calc(var(--action-btn-size) * 1.25);
+}
+
+/* The d20's label is digits where its neighbours are glyphs, so
+   it takes the weight that keeps it reading as a control. */
+.drawer-controls__d20 {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .action-btn:hover {
@@ -5792,6 +6312,13 @@ button.creature-card__lifecycle--dead:focus-visible {
    also have an `action-btn--*` modifier class". */
 .action-btn:not([class*="action-btn--"]):hover {
   background: var(--color-surface-2);
+}
+
+/* The coloured variants hover by brightness, which does nothing
+   to this one's flat base, so it names its own hover.  The
+   variant class also keeps it out of the unvariant rule above. */
+.action-btn--plain:hover {
+  background: var(--action-btn-bg-hover);
 }
 
 .action-btn:active {
@@ -5838,28 +6365,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
-/* Save Chain card button — sits right of Condition/Effect.
-   Mid-blue so it reads as a distinct kind of action from the
-   calm Manage HP (green) to its left.  Same neutral chrome
-   as the other card buttons in Accessible theme via the
-   .creature-card override at the top of the theme block. */
-.action-btn--save-chain {
-  --btn-bg: #2563eb;
-  --btn-fg: var(--card-btn-fg);
-  --btn-bd: transparent;
-}
-
-/* Combined "Manage HP" card button — sits where the old
-   Damage / Heal / Temp HP row was, and opens the merged modal
-   with all four actions in its footer.  Uses the same green
-   token as the Encounter Controls "Next Turn" button so it
-   reads as the card's primary action affordance. */
-.action-btn--manage-hp {
-  --btn-bg: var(--color-btn-green);
-  --btn-fg: var(--card-btn-fg);
-  --btn-bd: transparent;
-}
-
 /* +Max HP button in the modal footer.  Distinct from Temp HP
    (blue) and Heal (green) so the GM doesn't misclick when the
    verbs sit side-by-side; teal reads as "boost" without
@@ -5881,6 +6386,89 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
+/* Replace editor's compendium picker — the Quick Add list
+   restyled for the docked editor: capped height with its own
+   scroll, and a picked-row highlight since selection here is a
+   two-step pick-then-Apply rather than click-to-add. */
+.quick-add__row--picked {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
+  background: var(--color-surface-2);
+}
+
+/* ── Card inline surfaces ─────────────────────────────────────────── */
+
+/* Expansion section under a card's rows, hosting an editor the card
+   itself opens.  The controls inside are the drawer editors' own;
+   this block only supplies the in-card frame around them. */
+.creature-card__inline {
+  margin-top: 4px;
+  padding: 6px 4px 8px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* An editor's body in the drawer.  It adds nothing of its own —
+   the panel body pads it and its sections space themselves — so
+   every editor's first row and last row sit the same distance
+   from the panel's edges. */
+.editor-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.creature-card__inline-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Compact single-row variant of the expansion strip, used by the
+   memo / name-note editors: title, short input, ✓ save.  The
+   trigger button stays in its row (highlighted) and doubles as
+   the cancel toggle, so the strip needs no buttons beyond ✓. */
+.creature-card__inline--compact {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Ring on any trigger (button, pill, note text) whose inline
+   editor is currently open — the "which editor is open" marker
+   that survives scrolling away and back. */
+.card-editor-open {
+  outline: 1px solid var(--color-editor-open);
+  outline-offset: 1px;
+}
+
+/* A row that just landed flashes as it mounts — an apply in the
+   HP editor, a roll in the dice roller — so the action reads as
+   having worked even when the GM's eyes are on the cards.  One
+   pulse, not a repeat: it confirms something the GM just did, it
+   is not a standing alarm.  Both logs' rows rest on
+   `--color-surface-2`, which is where the pulse settles.  Honours
+   the global reduced-motion block. */
+@keyframes log-flash {
+  0% {
+    background: var(--color-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+
+  100% {
+    background: var(--color-surface-2);
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+}
+
+/* Newest-entry-only variant rendered in the card expansion —
+   the full list keeps its own spacing in the dice roller. */
+.hp-change__log-list--latest {
+  margin: 0;
+  padding: 0;
+}
+
 .action-btn--ready {
   --btn-fg: var(--color-text-muted);
 }
@@ -5890,11 +6478,10 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* Reaction pip (5e: one reaction per round).  Ready state reads
-   as a normal card button so it sits inline with the action
-   row; spent state goes muted + strikethrough so the GM can
-   tell at a glance that the creature has burned its reaction
-   for this round.  Auto-resets at the start of the creature's
-   next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
+   as a normal card button; spent state fills the button red so
+   the GM can tell at a glance that the creature has burned its
+   reaction for this round.  Auto-resets at the start of the
+   creature's next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
 .action-btn--reaction-ready {
   --btn-fg: var(--color-warn, #d97706);
 }
@@ -5904,53 +6491,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .action-btn--reaction-spent {
-  --btn-fg: var(--color-text-muted);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--color-text-muted);
-  opacity: 0.75;
-}
-
-.action-btn--reaction-spent:hover {
-  --btn-fg: var(--color-text);
-  opacity: 1;
-}
-
-/* Reaction pip on a creature with special reaction mechanics
-   (Hydra, Marilith, Vampire, mephits, …).  The icon-prefix
-   glyph reads bold yellow `!` and gently pulses so the GM
-   doesn't miss the cue.  Respects the OS reduced-motion
-   preference. */
-.action-btn--reaction-special .action-btn__icon-prefix {
-  /* inline-block so the keyframe `transform: scale(...)` lands;
-     inline <span>s ignore transforms. */
-  display: inline-block;
-  transform-origin: center;
-  color: #2563eb;
-  font-weight: 800;
-  animation: reaction-special-pulse 1.4s ease-in-out infinite;
-}
-
-[data-theme="dark"] .action-btn--reaction-special .action-btn__icon-prefix {
-  color: #7dd3fc;
-}
-
-@keyframes reaction-special-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.55;
-    transform: scale(1.18);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .action-btn--reaction-special .action-btn__icon-prefix {
-    animation: none;
-  }
+  --btn-bg: var(--color-btn-red);
 }
 
 /* Editor checkbox row that tags a creature with special-
@@ -6005,31 +6546,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--btn-orange-bg-hover);
 }
 
-/* Yellow "surprised" variant — reads as a heads-up state that
-   sits visually between Disadvantage (orange) and Advantage
-   (blue) in the Initiative modal's roll grid. */
-.action-btn--yellow {
-  --btn-bg: #f5c842;
-  --btn-fg: #4a3c0a;
-  --btn-bd: #d4a82a;
-}
-
-.action-btn--yellow:hover {
-  background: #f0b820;
-}
-
-/* 😲 emoji badge that sits to the left of a Surprised creature's
-   name on the card row 1 + in the encounter-bar's active-creature
-   summary. */
-.creature-card__surprised,
-.encounter-bar__surprised {
-  display: inline-block;
-  margin-right: 4px;
-  font-size: 1rem;
-  line-height: 1;
-  user-select: none;
-}
-
 .action-btn--readied {
   --btn-bg: var(--color-btn-orange);
   --btn-fg: #fff;
@@ -6047,23 +6563,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
-/* Save button when the encounter has unsaved roster changes
-   (creatures added or removed since the last save / load).  The
-   light-yellow outline cues the GM that combat state will be
-   lost on Reset / Clear without overpowering the button face. */
-.action-btn--dirty {
-  outline: 1px solid var(--color-dirty-outline);
-  outline-offset: 1px;
-}
-
 .action-btn--icon {
   width: 30px;
   padding: 0;
   font-size: 0.95rem;
 }
 
-/* Row-3 outline buttons (Ready, Reaction, Memo, Timer in their
-   empty states) inherit `--btn-bd: var(--color-border)` and a
+/* The card's outline buttons (Ready, Reaction, Memo, Timer in
+   their empty states) inherit `--btn-bd: var(--color-border)` and a
    muted foreground from the base rule.  Against both the light
    Modern card surface and the dark Dark card surface, that
    default produced a barely-visible outline.  Override the
@@ -6127,41 +6634,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   box-shadow: none;
 }
 
-.btn-glyph {
-  font-size: 1.25em;
-  line-height: 1;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-/* The Open / CR Calculator strip pins to the top of the
-   compendium panel's scroll area so a long stat block doesn't
-   carry the buttons off-screen.
-
-   The detail panel zeroes its panel-body's padding-top (override
-   below) so the toolbar can pin flush directly under the
-   "Compendium" header row.  Negative left/right margins extend
-   the bar edge-to-edge inside the panel; padding restores the
-   button breathing room.  An opaque background + high z-index
-   prevent the stat block scrolling beneath it from peeking
-   through.  The grid is overridden to two columns since the
-   default `.btn-grid` defines three (the third column was
-   transparent and let stat-block text show through). */
-.panel--detail .panel__body {
-  padding-top: 0;
-}
-
-.compendium-toolbar.btn-grid {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: var(--color-surface);
-  margin: 0 calc(var(--space-4) * -1) var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  grid-template-columns: 1fr 1fr;
-}
-
 .stat {
   display: flex;
   flex-direction: column;
@@ -6204,10 +6676,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: grid;
   gap: var(--space-2);
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.btn-grid--two-rows {
-  grid-template-rows: auto auto;
 }
 
 .btn-grid > .action-btn {
@@ -6365,17 +6833,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.9rem;
 }
 
-/* Used by `TagIconTooltip` mode in the right-rail Compendium
-   panel: the 🏷 icon sits immediately after the name with a
-   small gap, so it reads as "this creature has tags" rather
-   than floating in space at the row's right edge. */
-.statblock__name--inline-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .statblock__tags {
   display: flex;
   flex-wrap: wrap;
@@ -6398,13 +6855,13 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 /* ↗ open-in-new-tab anchor inline in the stat-block name row.
-   Mirrors the side-panel `.panel-statblock__open` button visual
-   style but flows in normal layout rather than absolute. */
+   Same visual as the `.card-statblock__open` controls in the bar
+   of the block under a creature card. */
 .statblock__open {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: var(--size-statblock-tool);
+  height: var(--size-statblock-tool);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -6436,12 +6893,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
 }
 
-.statblock__tag-icon {
-  font-size: 0.95rem;
-  cursor: help;
-  user-select: none;
-}
-
 .statblock__type {
   font-size: 0.82rem;
   color: var(--color-text-muted);
@@ -6462,6 +6913,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability-row {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-2);
@@ -6502,7 +6954,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability__label {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
 }
 
@@ -6513,9 +6965,20 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .ability__mod {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Each cell lays its parts on one line once the row is wide
+   enough for every cell to; narrower, they stack. */
+@container (min-width: 600px) {
+  .ability {
+    flex-direction: row;
+    justify-content: center;
+    align-items: baseline;
+    gap: var(--space-1);
+  }
 }
 
 .statblock__traits {
@@ -6586,25 +7049,19 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .encounter-bar__round {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
   color: var(--color-text);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
 
-/* Active-creature bloodied marker — mirrors the row-2 `.bloodied`
-   drop on the card.  Inline-flex baseline so the glyph sits on
-   the same line as the active creature name; small margin so it
-   doesn't crowd the name on the left or the HP readout on the
-   right. */
-.encounter-bar__bloodied {
-  font-size: 0.95rem;
-  line-height: 1;
-  margin: 0 2px 0 4px;
-  cursor: help;
-}
-
 .encounter-bar__sep {
-  color: var(--color-border);
+  color: var(--color-text-muted);
   user-select: none;
 }
 
@@ -6676,7 +7133,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  margin-left: 8px;
 }
 
 .encounter-bar__ac-label {
@@ -6690,64 +7146,37 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
-/* Active creature's note, echoed up into the title bar to the
-   right of AC.  The leading `!` is a text character (not an
-   icon glyph) per the design request, animated with a 1 s
-   opacity pulse to draw the eye.  The note body itself stays
-   solid so the text remains readable. */
+/* Active creature's note, echoed up into the title bar beside
+   the name in the same parenthesised italics the card uses, and
+   close enough to it to read as its note rather than a
+   neighbouring field. */
 .encounter-bar__note {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  margin-left: 10px;
+  margin-left: var(--space-0);
   font-size: 0.88rem;
   color: var(--color-text);
   max-width: 22ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.encounter-bar__note-bang {
-  color: var(--color-danger, #c92a2a);
-  font-weight: 800;
-  animation: encounter-bar-bang-pulse 1s ease-in-out infinite;
-}
-
-.encounter-bar__note-text {
   font-style: italic;
   opacity: 0.9;
 }
 
-@keyframes encounter-bar-bang-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
-}
-
 .encounter-bar__states {
   display: flex;
-  gap: 4px;
+  gap: var(--space-2);
   font-size: 0.95rem;
   line-height: 1;
-  margin-left: var(--space-2);
 }
 
 .encounter-bar__state {
-  min-width: 24px;
-  height: 24px;
-  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border-radius: 6px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
   cursor: default;
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
@@ -6771,7 +7200,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .encounter-bar__conditions {
   display: inline-flex;
   align-items: center;
-  margin-left: var(--space-2);
+  color: var(--color-condition-chip);
   font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
@@ -6780,85 +7209,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
 }
 
-.encounter-bar__cond {
-  color: #c084fc;
-}
-
-.encounter-bar__cond-sep {
-  color: var(--color-text-muted);
-  opacity: 0.6;
-  user-select: none;
-  padding: 0 10px;
-}
-
-.encounter-bar__xp-group {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.encounter-bar__xp {
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: help;
-}
-
-/* Optional secondary "(N w/Lair)" chip rendered to the right of
-   the base XP total when any in-scope creature has a non-zero
-   `xpInLair`.  Smaller / muted so the base total still leads. */
-.encounter-bar__xp-lair {
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  cursor: help;
-}
-
-.xp-filter {
-  position: relative;
-}
-
-.xp-filter__summary {
-  appearance: none;
-  font-family: inherit;
-  cursor: pointer;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1;
-}
-
-.xp-filter__summary:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-}
-
-.xp-filter--open > .xp-filter__summary {
-  border-color: var(--color-accent);
-  color: var(--color-text);
-}
-
 .xp-filter__menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 4px;
-  min-width: 200px;
-  z-index: 10;
   list-style: none;
   margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -6883,30 +7237,26 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 @media (max-width: 1100px) {
-  .workspace {
-    grid-template-columns: 1.6fr 1fr;
-  }
   .btn-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 820px) {
-  .workspace {
+  .workspace,
+  .workspace--drawer {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto;
+  }
+  /* Stacked, the panes fall in source order, which leaves no
+     empty row behind when the drawer is closed. */
+  .drawer-column {
+    grid-column: 1;
+    grid-row: auto;
   }
   .panel--main {
     grid-column: 1;
-    grid-row: 1;
-  }
-  .panel--controls {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .panel--detail {
-    grid-column: 1;
-    grid-row: 3;
+    grid-row: auto;
   }
 }
 
@@ -7048,48 +7398,17 @@ button.creature-card__lifecycle--dead:focus-visible {
    `--modal-max-w`; the structural rule above consumes it.  Modals
    that need extra height / width handling (compendium / paste
    /condition) layer those overrides in their own block below. */
-.modal--note-edit {
+.modal--round-set {
+  --modal-max-w: 380px;
+}
+
+.modal--confirm {
   --modal-max-w: 420px;
-}
-
-.modal--hp-change,
-.modal--ability-save {
-  --modal-max-w: 480px;
-}
-
-/* Wider than the other small modals so the four-button
-   auto-roll row + "& Surprised" custom-init siblings fit on
-   one line instead of wrapping. */
-.modal--initiative {
-  --modal-max-w: 680px;
-}
-
-.modal--duplicate,
-.modal--quick-add {
-  --modal-max-w: 520px;
 }
 
 .modal--save,
 .modal--load {
   --modal-max-w: 560px;
-}
-
-.modal--condition {
-  --modal-max-w: 480px;
-}
-
-.modal--compendium-edit {
-  --modal-max-w: 800px;
-  max-height: calc(100vh - 32px);
-}
-
-.modal--compendium {
-  --modal-max-w: 1100px;
-  height: calc(100vh - 32px);
-}
-
-.modal--group-edit {
-  --modal-max-w: 680px;
 }
 
 /* ── Group-edit modal form ─────────────────────────────────────────── */
@@ -7113,7 +7432,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__input {
   flex: 1 1 auto;
   padding: 8px 12px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7136,7 +7455,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__manual-initiative {
   width: 70px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7181,7 +7500,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__creature {
   flex: 1 1 auto;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7191,7 +7510,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__count {
   width: 56px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7201,7 +7520,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__minion {
   width: 140px;
   padding: 6px 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7287,7 +7606,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .group-edit__lore-disclosure-caret {
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
 }
 
 .group-edit__lore-list {
@@ -7344,7 +7663,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .group-edit__lore-row-caret {
-  font-size: 0.85rem;
+  font-size: var(--font-size-caret);
   color: var(--color-text-muted);
 }
 
@@ -7470,7 +7789,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .group-edit__lore-role-select {
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7486,7 +7805,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .group-edit__lore-count-input {
   width: 50px;
   padding: 2px 4px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
@@ -7612,7 +7931,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: transparent;
   border: none;
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-caret);
   cursor: pointer;
   padding: 0 6px;
   line-height: 1;
@@ -7770,16 +8089,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   pointer-events: none;
 }
 
-/* Clickable-but-locked — visually greyed AND clickable so the
-   GM can click through to the sign-in page.  Cursor stays as
-   pointer because a click DOES do something (navigates to
-   /login); the tooltip explains why. */
-.compendium__edit-btn--locked,
-.compendium__delete-btn--locked,
-.compendium__lore-new--locked {
-  opacity: 0.55;
-}
-
 .compendium__group-detail {
   padding: 16px 18px;
 }
@@ -7806,11 +8115,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-bottom: 1px solid var(--color-border);
 }
 
-.modal--compendium-paste {
-  --modal-max-w: 1200px;
-  max-height: calc(100vh - 32px);
-}
-
 .modal__header {
   display: flex;
   align-items: center;
@@ -7827,37 +8131,15 @@ button.creature-card__lifecycle--dead:focus-visible {
      to <h2> is for screen-reader heading hierarchy; the visual
      appearance stays unchanged.
 
-     `flex: 0 0 auto` keeps the title intrinsic-width so the
-     `modal__title-meta` sibling (e.g. the Compendium's "From
-     file: …" tag) can sit immediately to its right.  The
-     remaining slack is absorbed by `modal__title-meta`'s own
-     `flex: 1`, which still pushes the button cluster (× close +
-     any `viewWithExtras` siblings) all the way to the right
-     edge. */
+     `flex: 0 0 auto` keeps the title intrinsic-width, so the
+     close button is pushed to the right edge rather than the
+     title stretching to meet it. */
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
   font-weight: 700;
   font-size: 1rem;
   letter-spacing: 0.04em;
-}
-
-/* Secondary label rendered to the immediate right of the modal
-   title.  Used by the Compendium modal to display "From file:
-   <save name>" so the GM can see at a glance which snapshot the
-   current library was loaded from.  Visually muted (smaller,
-   lighter) so it reads as metadata next to the heading rather
-   than competing with it. */
-.modal__title-meta {
-  flex: 1 1 auto;
-  margin-left: 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--color-muted, #6b6b6b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Focus-trap sentinel at the END of each modal.  Invisible
@@ -7885,32 +8167,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .modal__close:hover {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
-/* Sibling of .modal__close — extra header buttons (currently
-   the Compendium modal's ↗ "open in new tab" affordance) get
-   the same hit area + hover treatment so they read as a pair
-   to the left of the × close button. */
-.modal__open-in-tab {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 1.05rem;
-  color: var(--color-text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: inline-grid;
-  place-items: center;
-  line-height: 1;
-  margin-right: 4px;
-}
-
-.modal__open-in-tab:hover {
   background: var(--color-surface);
   color: var(--color-text);
 }
@@ -7953,86 +8209,32 @@ button.creature-card__lifecycle--dead:focus-visible {
 .dice-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-1);
 }
 
-/* Shared form-row pattern: a wrapping flex row with a leading
-   label.  Used by the dice / HP-change / initiative modals (with
-   slightly different gap + label widths) and the condition modal
-   (no label child, smaller gap).  Per-feature class blocks below
-   only set the gap + label-width overrides. */
-.dice-form__row,
-.hp-change__row,
-.init-section__row,
+/* The editors' row: fields and labels laid left to right, each
+   moving whole to the next line when the row runs out of room. */
 .cond-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--gap-field);
 }
 
-.dice-form__row {
-  gap: 8px;
+/* The Manage HP editor's manual row.  Tighter than the shared
+   gap because the heading and its fields all have to fit a
+   drawer panel's width. */
+.cond-row--pools {
+  flex-wrap: nowrap;
+  gap: var(--space-1);
 }
 
-.cond-row {
-  gap: 6px;
-}
-
-.dice-form__row label,
-.hp-change__row label,
-.init-section__row label {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  min-width: 100px;
-}
-
-.dice-form__row label {
-  min-width: 72px;
-  font-size: 0.82rem;
-}
-
-.init-section__row label {
-  min-width: 130px;
-}
-
-.dice-form__row-spacer {
-  margin-left: 12px;
-}
-
-/* Shared form-input chrome used by .dice-form__input,
-   .hp-change__input, .init-section__input.  These three are
-   structurally identical (the sole behavior diff is font-size /
-   tabular-nums for the numeric variants).  Each individual class
-   below adds only its size / numeric-formatting overrides. */
-.dice-form__input,
-.hp-change__input,
-.init-section__input {
-  flex: 1 1 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  font-family: inherit;
-  min-width: 0;
-}
-
-.dice-form__input:focus,
-.hp-change__input:focus,
-.init-section__input:focus {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.dice-form__input {
-  font-size: 0.9rem;
-}
-
-.dice-form__numeric {
-  flex: 0 0 auto;
-  width: 80px;
-  font-variant-numeric: tabular-nums;
+/* Hairline between the Custom and Note rows of the condition
+   editor, so the two free-text fields don't read as one. */
+.cond-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
 }
 
 .dice-form__reset {
@@ -8063,16 +8265,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: var(--color-border);
 }
 
-.dice-form__error {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-  font-family: ui-monospace, "Menlo", monospace;
-}
-
 .die-btn-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  /* Eight faces in one row: the seven dice and the coin. */
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin-top: var(--space-3);
 }
 
 .die-btn {
@@ -8084,15 +8282,25 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 12px 6px;
-  font-size: 0.9rem;
+  /* Compact face: a grid track never shrinks below its content,
+     so a face wide enough for "d100" decides whether seven dice
+     fit a drawer panel at all. */
+  padding: var(--space-2) var(--space-0);
+  min-width: 0;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #ffffff;
   font-family: inherit;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   transition:
     filter 0.1s ease,
     transform 0.05s ease;
+}
+
+/* The coin sits with the dice as an eighth face. */
+.die-btn--coin {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .die-btn:hover {
@@ -8139,29 +8347,55 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: var(--space-2);
 }
 
 .dice-history {
+  /* Margin-top rather than relying on a sibling's own spacing,
+     so the divider line clears the Advantage / Disadvantage
+     buttons above it instead of running against them. */
+  margin-top: var(--space-2);
   border-top: 1px solid var(--color-border);
-  padding-top: 12px;
+  padding-top: var(--space-2);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.dice-history__head {
+.fold-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.dice-history__title {
+/* Wraps the caret and title so the whole strip is the fold
+   control, in the disclosure vocabulary the drawer already uses. */
+.fold-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fold-toggle__caret {
+  font-size: var(--font-size-caret);
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+.fold-toggle__title {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
 }
 
-.dice-history__list {
+.log-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -8174,7 +8408,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .dice-history__entry {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  /* The leading track is the fold caret. */
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   padding: 8px 10px;
@@ -8182,6 +8417,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
+}
+
+.dice-history__entry--flash {
+  animation: log-flash 0.9s ease-out 1;
 }
 
 .dice-history__formula {
@@ -8196,20 +8435,46 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-width: 0;
 }
 
+/* Unfolded, the row is two stacked lines rather than its folded
+   grid: the source chip on its own line with the caret, and
+   everything else flowing beneath — see `.dice-history__entry-top`
+   / `--entry-detail` below. */
+.dice-history__entry--open {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.dice-history__entry-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Indented to roughly clear the caret above it, so the detail
+   text reads as belonging to this entry rather than starting a
+   new one. */
+.dice-history__entry-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  padding-left: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .dice-history__rolled {
   color: var(--color-text-muted);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
 }
 
-.dice-history__damage {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: 0.7rem;
-  font-weight: 600;
+/* The damage type, once, after the faces — plain text in the
+   row's own colour, not a chip. */
+.dice-history__damage-type {
+  color: var(--color-text);
 }
 
 .dice-history__source {
@@ -8304,9 +8569,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   outline: none;
 }
 
-.dice-history__empty {
+.log-empty {
   color: var(--color-text-muted);
   font-style: italic;
+  font-size: var(--font-size-section);
   text-align: center;
   padding: 20px;
 }
@@ -8318,12 +8584,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 
   to {
     opacity: 1;
-  }
-}
-
-@media (max-width: 600px) {
-  .die-btn-grid {
-    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -8382,39 +8642,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: #ffffff;
 }
 
-/* HP-change modal — reuses the dice modal's chrome (.modal-backdrop /
-   .modal / .modal__header / .modal__body) for layout, with its own
-   form / preview / footer styles. */
-
-.hp-change__caption {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-  flex-basis: 100%;
-}
-
-/* Variant that keeps the caption on the same line as its
-   sibling label instead of wrapping to the next row.  Used
-   by the "Ignore temporary HP" row where the parenthetical
-   ("(applies to Damage only)") is short enough that it reads
-   as a hint on the toggle, not its own line item. */
-.hp-change__caption--inline {
-  flex-basis: auto;
-}
-
-.hp-change__input {
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.hp-change__error {
-  color: var(--color-danger);
-  font-size: 0.8rem;
-  font-family: ui-monospace, "Menlo", monospace;
-  padding-left: 110px;
-  margin-top: 4px;
-}
-
 .hp-change__mode {
   display: inline-flex;
   border: 1px solid var(--color-border);
@@ -8443,59 +8670,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
-/* Checkbox label inside an .hp-change__row.  The row-label
-   selector (`.hp-change__row label`) sets `min-width: 100px` on
-   plain text labels; this rule's higher specificity overrides
-   that for the checkbox label specifically — no !important
-   needed. */
-.hp-change__row label.hp-change__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--color-text);
-  cursor: pointer;
-  min-width: 0;
-}
-
-.hp-change__checkbox input[type="checkbox"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-/* Merged-modal action-button row: Cancel + Damage + Heal +
-   Temp HP + +Max HP.  Wraps on narrow modals so the row doesn't
-   overflow the panel edge; small top padding matches the space
-   the old preview block used to leave above the footer. */
-.hp-change__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.hp-change__log {
-  border-top: 1px solid var(--color-border);
-  padding-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hp-change__log-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.hp-change__log-empty {
-  color: var(--color-text-muted);
-  font-style: italic;
-  font-size: 0.82rem;
-  padding: 8px 0;
-  text-align: center;
-}
-
 .hp-change__log-list {
   list-style: none;
   margin: 0;
@@ -8509,7 +8683,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .hp-change__log-entry {
   display: grid;
-  grid-template-columns: 64px 1fr auto auto auto;
+  /* The leading track is the fold caret. */
+  grid-template-columns: auto 64px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -8525,7 +8700,11 @@ button.creature-card__lifecycle--dead:focus-visible {
    a saturated yellow so the single actionable control on the
    row pops against the muted log chrome.  Hover inverts to a
    yellow fill with dark text. */
+/* An open row wraps its texts onto lines of their own, so the
+   undo takes the end of whatever line it lands on rather than
+   sitting against the text that wrapped before it. */
 .hp-change__log-undo {
+  margin-left: auto;
   opacity: 1;
   color: var(--color-yellow);
   border-color: var(--color-yellow);
@@ -8540,29 +8719,70 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 1;
 }
 
+/* Plain coloured text, no badge chrome — the kind word carries
+   the colour itself so the log rows stay quiet. */
 .hp-change__log-kind {
   font-size: 0.65rem;
   font-weight: 700;
   text-align: center;
-  padding: 2px 6px;
-  border-radius: 999px;
-  color: #ffffff;
 }
 
 .hp-change__log-kind--damage {
-  background: #d63b3b;
+  color: var(--color-damage);
 }
 
 .hp-change__log-kind--heal {
-  background: #3cb455;
+  color: var(--color-heal);
 }
 
 .hp-change__log-kind--temp {
-  background: var(--color-temp-blue);
+  color: var(--color-temp-blue);
 }
 
 .hp-change__log-kind--max {
-  background: #14b8a6;
+  color: var(--color-maxhp);
+}
+
+/* A condition's name, not one of the HP log's short tags, so it
+   can outrun the track it sits in. */
+.hp-change__log-kind--cond {
+  color: var(--color-condition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hp-change__log-kind--open {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.hp-change__log-kind--set {
+  color: var(--color-text-muted);
+}
+
+.hp-change__log-kind--roll {
+  color: var(--color-accent);
+}
+
+/* Log rows whose first column is a real name (a condition, a
+   duplicate flavor) rather than a fixed-width verb — let the
+   column size to its text while keeping the shared 8px gap. */
+.hp-change__log-entry--wide {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+/* A condition row's three texts share the width in proportion,
+   the way the HP row's fixed kind column leaves its own room:
+   without a bound the condition's name would take the line and
+   leave the rest a few characters. */
+.hp-change__log-entry--cond {
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr) minmax(0, 3fr) auto;
+}
+
+.hp-change__log-entry--flash {
+  animation: log-flash 0.9s ease-out 1;
 }
 
 .hp-change__log-target {
@@ -8571,6 +8791,23 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.hp-change__log-target--open {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Unfolded, the row stops being a grid: its parts flow inline
+   and wrap as one line of text would, so a long name takes the
+   width it needs rather than the narrow column the folded grid
+   gives it. */
+.hp-change__log-entry--open {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
 }
 
 .hp-change__log-amount {
@@ -8587,107 +8824,44 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
 }
 
-/* Initiative manager modal — same .modal chrome as the others, with
-   per-section blocks separated by orange section headings, and
-   block-level button rows (each row a full-width action-btn). */
-
-.init-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-border);
+.hp-change__log-trans--open {
+  white-space: normal;
 }
 
-.init-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.init-section__heading {
-  margin: 4px 0 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--color-orange-dark);
-}
-
-.init-section__caption {
-  font-size: 0.78rem;
+/* The caret at a log row's left edge that unfolds it.  Bare
+   glyph, no chrome: it is the row's disclosure, not a button in
+   its own right. */
+.log-row__fold {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   color: var(--color-text-muted);
-  font-style: italic;
+  font-family: inherit;
+  font-size: var(--font-size-caret);
+  line-height: 1;
 }
 
-.init-section__input {
-  font-size: 0.95rem;
-  font-variant-numeric: tabular-nums;
+.log-row__fold:hover {
+  color: var(--color-text);
 }
 
-/* Stretch action-btns inside the modal to fill the row width. */
-.init-btn-block {
-  width: 100%;
-  justify-content: center;
+/* Wrapper around a docked editor's unavailable Apply button.  It
+   owns the tooltip trigger, since the disabled button inside
+   swallows mouse events in Chrome, and takes the button's place
+   as the flex item. */
+.inline-btn-wrap {
+  display: inline-flex;
+  cursor: default;
 }
 
-/* Paired "<main button> + Advantage" row in the Auto-roll section.
-   Main button takes whatever space it needs, Advantage sits to the
-   right at its natural width. */
-.init-btn-row {
-  display: flex;
-  gap: 6px;
-  align-items: stretch;
+.inline-btn-inert {
+  pointer-events: none;
 }
 
-.init-btn-row .init-btn-block {
-  flex: 1 1 auto;
-  width: auto;
-}
-
-/* Four-column grid for the Auto-roll section: main button |
-   Advantage | Disadvantage | Disadv. & Surprised.  Column 1
-   sizes to fit the widest main label so all three "Roll
-   initiative & Sort: …" buttons align flush, with the
-   right three columns at their natural widths. */
-.init-btn-grid {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 6px;
-  align-items: stretch;
-}
-
-/* Custom Initiative apply rows: green primary on the left,
-   yellow "& Surprised" sibling on the right.  Flex row so the
-   two buttons share the row width without the wider yellow
-   label pushing the green one out of alignment. */
-.init-custom-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.init-custom-row .init-btn-block {
-  flex: 1 1 auto;
-  width: auto;
-}
-
-.init-btn-grid .init-btn-block {
-  width: auto;
-}
-
-.init-btn-adv {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-.init-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 4px;
-}
-
-/* Make the init-circle look interactive (pointer + subtle hover). */
-.init-circle--clickable {
+/* Make the init-badge look interactive (pointer + subtle hover). */
+.init-badge--clickable {
   appearance: none;
   border: none;
   font-family: inherit;
@@ -8697,52 +8871,24 @@ button.creature-card__lifecycle--dead:focus-visible {
     box-shadow 0.1s ease;
 }
 
-.init-circle--clickable:hover {
+.init-badge--clickable:hover {
   box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
-.init-circle--clickable:active {
+.init-badge--clickable:active {
   transform: translateY(1px);
 }
 
-.init-circle--clickable:focus-visible {
+.init-badge--clickable:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
 .hp-display__temp {
-  margin-left: 4px;
+  margin-left: 0;
   color: var(--color-temp-blue);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-/* Click-to-edit affordance on the current/max HP values. The hover
-   ring is faint until you mouse over so it doesn't look like a
-   permanent input. */
-.hp-display__editable {
-  /* Reset native button chrome so the click-to-edit trigger
-     looks like inline text — the underlying element was promoted
-     from `<span>` to `<button>` for keyboard a11y, but the visual
-     should still read as "tap-the-number." */
-  appearance: none;
-  background: none;
-  border: none;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-align: inherit;
-  cursor: text;
-  border-radius: 3px;
-  padding: 0 2px;
-  transition:
-    background 0.1s ease,
-    box-shadow 0.1s ease;
-}
-
-.hp-display__editable:hover {
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .hp-display__edit {
@@ -8842,12 +8988,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 1rem;
   color: var(--color-text);
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: 4px;
   padding: 6px 8px;
   margin-top: 4px;
   outline: none;
   box-sizing: border-box;
+}
+
+/* Same sizing as the drawer editors' longest fields, and the
+   same reason for content-box. */
+.note-edit__input--in-place {
+  box-sizing: content-box;
+  width: var(--width-input-20ch);
+  padding: 2px 6px;
+  font-size: 0.85rem;
 }
 
 .note-edit__input:focus {
@@ -8857,39 +9012,97 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .note-edit__buttons {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.note-edit__buttons--start {
+  justify-content: flex-start;
+}
+
+/* Initiative editor's Quick Sort row: centered, and closer to
+   the manual-value row above it than the shared 8px default —
+   it is a standalone shortcut, not another field in that group. */
+.init-quicksort-row {
+  justify-content: center;
+  margin-top: 0;
+}
+
+/* Names the verb once for the scope buttons that follow it, so
+   each button carries only the scope. */
+.apply-row__lead {
+  flex: 0 0 auto;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-text-muted);
+}
+
+/* Warns that a placeholder in the target or selection won't be
+   touched by this editor. Sits under the Apply row it explains. */
+.apply-row__placeholder-notice {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  color: var(--color-danger);
 }
 
 /* Condition / effect modal — same .modal-backdrop / .modal /
    .modal__header chrome as the others. The body holds five
    sections (standard radios, custom name, note, duration,
    save-to-end) with a flex footer pinned at the bottom. */
+/* One group of an editor's settings.  The padding is the air on
+   each side of the dashed rule between groups; the first group
+   sits flush with the body's own padding above it, and the last
+   ends flush with the padding below. */
 .cond-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 0;
+  gap: 4px;
+  padding: var(--space-2) 0;
   border-bottom: 1px dashed var(--color-border);
+}
+
+.cond-section:first-child {
+  padding-top: 0;
 }
 
 .cond-section:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
 .cond-section__heading {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--font-size-section);
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: 0.02em;
+}
+
+/* A heading that leads its section's row instead of sitting
+   above it, so the fields beside it must not squeeze it. */
+.cond-section__heading--inline {
+  flex: 0 0 auto;
 }
 
 .cond-section__caption {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   font-style: italic;
+}
+
+/* A caption the GM should act on: a setting still missing, or an
+   input that did not parse. */
+.cond-section__caption--warn {
+  color: var(--color-orange-dark);
+  font-style: normal;
+}
+
+.cond-section__caption--danger {
+  color: var(--color-danger);
+  font-style: normal;
 }
 
 .cond-radio-grid {
@@ -8947,8 +9160,65 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-color: var(--color-accent);
 }
 
+/* A pill holding a checkbox is an independent toggle, so its
+   indicator is square where the one-of-many radios are round. */
+.cond-check {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--color-text-muted);
+  margin: 0;
+}
+
+.cond-check--on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* The caret that commits the condition it names.  It is a button
+   so that, inside a chip's label, its own activation keeps the
+   click from reaching the radio. */
+.cond-quick-apply {
+  appearance: none;
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0 0 0 var(--space-1);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  color: var(--color-success);
+  cursor: pointer;
+}
+
 .cond-radio__label {
   white-space: nowrap;
+}
+
+/* Bare radio row — no pill chrome, just a dot and its label. */
+.cond-radio-plain {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-field);
+  padding: 2px 0;
+  font-size: var(--font-size-field);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cond-radio-plain__dot {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-muted);
+  margin: 0;
+}
+
+.cond-radio-plain__dot--selected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 /* Inset-focus form input variant used by the condition modal's
@@ -8961,7 +9231,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: 100%;
   font-family: inherit;
   color: var(--color-text);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-sm);
   outline: none;
   box-sizing: border-box;
@@ -8975,9 +9245,54 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-input {
-  font-size: 0.95rem;
+  font-size: var(--font-size-field);
   background: var(--color-surface);
-  padding: 5px 8px;
+  padding: 3px 6px;
+}
+
+/* The fields a save-to-end turns on, outlined in the status
+   yellow so they read as the part of the form the checkbox above
+   just opened. */
+.cond-input--save {
+  border-color: var(--color-yellow);
+}
+
+/* The round is a small number, so the field says so rather
+   than stretching to the row. */
+.round-set__input {
+  flex: 0 0 auto;
+  width: 6ch;
+}
+
+/* An editor's longest text field, sized to its twenty
+   characters rather than flexing to the editor width. */
+.cond-input--w20 {
+  box-sizing: content-box;
+  flex: 0 0 auto;
+  width: var(--width-input-20ch);
+  max-width: 100%;
+}
+
+/* An HP pool field, sized for the three digits that cover every
+   creature in play, with the spinner suppressed so the digits keep
+   that width. */
+.cond-input--pool {
+  flex: 0 1 auto;
+  width: var(--width-input-3ch);
+  min-width: 0;
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  appearance: textfield;
+}
+
+.cond-input--pool::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.cond-input--pool::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 .cond-input--narrow {
@@ -8991,6 +9306,129 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin: 0;
 }
 
+/* DC and Mod: two characters, no more — matches the Save Chain
+   editor's own DC field so the two read the same width. */
+.cond-input--2ch {
+  width: var(--width-input-2ch);
+}
+
+/* A short free-text field: an amount, a note, a name it turns
+   into. */
+.cond-input--w12 {
+  flex: 0 0 auto;
+  width: 12ch;
+  max-width: 100%;
+}
+
+/* A field that takes the room its row has left, down to a floor
+   that keeps a placeholder legible, past which it wraps. */
+.cond-input--grow {
+  flex: 1 1 var(--width-input-grow-min);
+  width: auto;
+  min-width: var(--width-input-grow-min);
+}
+
+/* The amount a Save Chain outcome needs before it can apply, lit
+   so it pops under both outcome headings. */
+.cond-input--amount {
+  border-color: var(--color-yellow);
+  box-shadow: 0 0 0 1px var(--color-yellow);
+}
+
+/* A label at the head of a row, or between fields.  It never
+   wraps inside itself: a row short of room moves it whole to the
+   next line. */
+.cond-label {
+  flex: 0 0 auto;
+  font-size: var(--font-size-field);
+  white-space: nowrap;
+}
+
+/* One label-plus-field pair.  The gap inside a pair is tighter
+   than the row's, so a label reads as belonging to the field
+   beside it rather than the one it trails.  `min-width: 0` lets a
+   pair shrink past its field's intrinsic width. */
+.cond-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Extra air before a pair, separating it from the pair it
+   follows. */
+.cond-pair--split {
+  margin-left: var(--space-1);
+}
+
+/* A pair that takes the rest of its row, so the field inside it
+   can grow into the space. */
+.cond-pair--grow {
+  flex: 1 1 auto;
+  gap: var(--gap-field);
+}
+
+.cond-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-field);
+  font-size: var(--font-size-field);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cond-checkbox__box {
+  accent-color: var(--color-accent);
+  margin: 0;
+}
+
+/* A number field with its ▲ / ▼ pair. */
+.cond-spin-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+/* A row standing aside while another control has taken over its
+   job, still readable for what it holds. */
+.cond-row--muted {
+  opacity: 0.5;
+}
+
+/* The duration picker's block: the kind chips and the sub-row the
+   picked kind opens. */
+.cond-duration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* A number field's ▲ / ▼: stacked rather than side-by-side, since
+   both sit to the same side of one input rather than flanking a
+   read-only value the way the fly-height spinner does. */
+.cond-spin {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 0.7;
+}
+
+.cond-spin__btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 0.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cond-spin__btn:hover {
+  color: var(--color-text);
+}
+
 .cond-subsection {
   display: flex;
   flex-direction: column;
@@ -9000,14 +9438,26 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-radius: var(--radius-sm);
 }
 
+/* A select in the same chrome as `.cond-input`, so a row mixing
+   the two reads as one line of fields. */
 .cond-select {
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--font-size-field);
   color: var(--color-text);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 3px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  max-width: 100%;
+}
+
+.cond-select--save {
+  border-color: var(--color-yellow);
+}
+
+.cond-select--grow {
+  flex: 1 1 var(--width-input-grow-min);
+  min-width: var(--width-input-grow-min);
 }
 
 /* Two-button begin / end phase toggle inside duration / save
@@ -9106,6 +9556,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .timer-pill__count {
   min-width: 1.2em;
   text-align: center;
+  color: var(--color-yellow);
 }
 
 /* Optional 10-char label set in the timer modal.  Renders to
@@ -9117,29 +9568,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   opacity: 0.85;
 }
 
-/* Active-creature note read in the encounter title bar.  Slot
-   sits between AC and the state icons.  The leading "!" is
-   styled separately as a red, flashing attention mark — the
-   note body itself stays the regular title-bar text colour. */
-.encounter-bar__note {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-}
-
-.encounter-bar__note-bang {
-  color: var(--color-danger);
-  font-weight: 800;
-  animation: encounter-bar-note-blink 0.8s steps(1, end) infinite;
-}
-
-@keyframes encounter-bar-note-blink {
-  50% {
-    opacity: 0.15;
-  }
-}
-
 .timer-pill--ringing {
   background: rgba(214, 59, 59, 0.2);
   border-color: var(--color-danger);
@@ -9148,6 +9576,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .timer-pill--ringing .timer-pill__count {
   animation: timer-flash 0.6s steps(1, end) infinite;
+  /* The count's resting yellow would otherwise out-rank the
+     pill-level alarm colour. */
+  color: var(--color-danger);
 }
 
 @keyframes timer-flash {
@@ -9158,37 +9589,16 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .cond-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  padding-top: 4px;
-}
-
-/* Left-side cluster of the Add-Condition footer: Save preset and
-   Load preset buttons + the Save name-input row when active. */
-.cond-footer__presets {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  padding-top: var(--space-2);
 }
 
 .cond-footer__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* Inline name-prompt row that replaces the static Save button
-   while the user is naming a preset. */
-.cond-footer__save-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.cond-footer__save-input {
-  width: 180px;
 }
 
 /* Load button + dropdown menu container.  `position: relative`
@@ -9213,6 +9623,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* The menu opens upward from a footer; the Condition editor's
+   Load sits at the top of its body, so its menu opens downward. */
+.cond-footer__load-menu--below {
+  top: calc(100% + var(--space-1));
+  bottom: auto;
 }
 
 .cond-footer__load-item {
@@ -9303,7 +9720,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: inline-block;
   width: 1ch;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--font-size-caret);
 }
 
 .cond-footer__load-category-label {
@@ -9321,136 +9738,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-direction: column;
   gap: 2px;
   padding-left: 8px;
-}
-
-/* Category dropdown that sits between the name input and the
-   Save button in the preset-save row.  Sized just wide enough
-   for "Monster Abilities" without overflowing the footer. */
-.cond-footer__save-category {
-  flex: 0 0 auto;
-  min-width: 160px;
-}
-
-/* Dice "Roll" button cluster in the encounter-controls panel
-   header. The cluster groups the latest-total readout with the
-   button so they share a single flex baseline regardless of the
-   total's width. */
-.dice-roll-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dice-last-total {
-  font-weight: 700;
-  color: var(--color-text);
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  min-width: 1.2em;
-  text-align: right;
-}
-
-/* Previous-roll trail to the LEFT of `.dice-last-total`.  Up to
-   three entries, oldest-first, in muted text so the eye lands
-   on the headline current total but the recent history is still
-   glanceable.  Gap is smaller than `.dice-roll-cluster`'s 8px so
-   the trail reads as one group rather than three separate
-   readouts. */
-.dice-previous-totals {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.dice-previous-total {
-  color: var(--color-text-muted);
-  font-weight: 500;
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-
-/* Hard on/off blink on the panel-header "last roll total"
-   readout whenever a stat-block roll lands a floating popup.
-   Three visible/invisible cycles over 700ms — sharp opacity
-   transitions (adjacent keyframes 1% apart, `linear` timing)
-   so the text reads as actually disappearing and reappearing
-   rather than smoothly tinting.  Duration matches
-   `Update.Dice.flashDurationMs` so the CSS resting state
-   arrives just as Elm clears the flag. */
-.dice-last-total--flash {
-  animation: dice-last-total-blink 0.7s linear;
-}
-
-@keyframes dice-last-total-blink {
-  0%,
-  14% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  15%,
-  28% {
-    opacity: 0;
-  }
-  29%,
-  42% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  43%,
-  56% {
-    opacity: 0;
-  }
-  57%,
-  70% {
-    opacity: 1;
-    color: #facc15;
-    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
-  }
-  71%,
-  84% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-    color: var(--color-text);
-    text-shadow: none;
-  }
-}
-
-.dice-arrow {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  user-select: none;
-  line-height: 1;
-}
-
-/* Yellow border indicator: rolls landed while the modal was
-   closed. Cleared when the modal opens. The 2px outset stays
-   inside the existing button rhythm so the surrounding layout
-   doesn't reflow when the indicator toggles. */
-.dice-roll-btn--unread {
-  box-shadow:
-    0 0 0 2px var(--color-yellow),
-    0 0 12px rgba(245, 200, 66, 0.45);
-}
-
-/* Compendium browser modal — the only modal that's wide and
-   tall enough to host a two-column body. Filter bar across the
-   top, list + detail below.
-
-   `height` (not `max-height`) is fixed so the modal doesn't
-   shrink down around a small creature's stat block — that
-   height-jump made the UI feel jumpy when switching between
-   creatures with very different stat-block lengths. The detail
-   pane internally has `overflow-y: auto`, so taller stat blocks
-   scroll within the fixed-size frame. */
-.modal--compendium .modal__body {
-  padding: 0;
-  gap: 0;
 }
 
 .compendium__filter-bar {
@@ -9517,7 +9804,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 240px;
   padding: 8px 12px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -9547,7 +9834,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .compendium__sort {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -9562,7 +9849,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .compendium__tag-filter {
   padding: 6px 10px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
@@ -9715,6 +10002,50 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 18px 22px;
 }
 
+/* An editor occupying the detail pane in place of the stat
+   block.  The pane provides the scroll, so the editor only has
+   to stack its sections. */
+.compendium__editor-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.compendium__editor-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-2);
+}
+
+.compendium__editor-pane-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.compendium__editor-pane-close {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.compendium__editor-pane-close:hover {
+  color: var(--color-text);
+}
+
+.compendium__editor-pane-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .compendium__action-bar {
   display: flex;
   align-items: center;
@@ -9757,6 +10088,27 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-success-soft);
   color: var(--color-success);
   font-weight: 600;
+}
+
+/* One bright pulse when an add lands, so the count change is
+   acknowledged where the eye already is.  Honors the global
+   reduced-motion block, which zeroes animation durations. */
+.compendium__in-encounter--flash {
+  animation: badge-flash 0.7s ease-out;
+}
+
+@keyframes badge-flash {
+  0% {
+    background: var(--color-success);
+    color: var(--color-surface);
+    transform: scale(1.15);
+  }
+
+  100% {
+    background: var(--color-success-soft);
+    color: var(--color-success);
+    transform: scale(1);
+  }
 }
 
 /* Small green dot rendered to the right of a creature's name in
@@ -9886,60 +10238,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .compendium__bulk-menu__item:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-  opacity: 0.6;
-}
-
-/* Encounter-controls split-button dropdown for Save / Load (server
-   vs. device).  Same anchoring + popover pattern as the compendium
-   clear-menu, but the trigger fills its grid cell so the menu sits
-   in the existing two-row controls grid. */
-.control-menu {
-  position: relative;
-  display: flex;
-}
-
-.control-menu__trigger {
-  width: 100%;
-}
-
-.control-menu__list {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 6px;
-  min-width: 160px;
-  padding: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.control-menu__item {
-  appearance: none;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  color: var(--color-text);
-  text-align: left;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-}
-
-.control-menu__item:hover:not(:disabled) {
-  background: var(--color-accent-soft, rgba(59, 130, 246, 0.12));
-  color: var(--color-accent, #3b82f6);
-}
-
-.control-menu__item:disabled {
   cursor: not-allowed;
   color: var(--color-text-muted);
   opacity: 0.6;
@@ -10163,13 +10461,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-/* Compendium edit / create modal — tall, narrow, scrollable form
-   with section fieldsets and inline numeric inputs. */
-.modal--compendium-edit .modal__body {
-  padding: 16px 20px;
-  gap: 12px;
-}
-
 .edit-section {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -10270,7 +10561,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .edit-field__input {
   padding: 6px 8px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
@@ -10488,13 +10779,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 auto;
 }
 
-/* Paste-stat-block modal — wide two-column layout: textarea on
-   the left, live-parsed preview on the right. */
-.modal--compendium-paste .modal__body {
-  padding: 0;
-  gap: 0;
-}
-
 .paste-modal__columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -10522,7 +10806,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-height: 360px;
   padding: 8px 10px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-input-border);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -10576,47 +10860,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex: 1 1 auto;
 }
 
-/* Side-panel stat block wrapper: holds the rendered stat block
-   plus an absolutely-positioned ↗ link in the top-right that
-   opens the same creature in a new tab via the SPA's
-   /compendium/creatures/:id route. */
-.panel-statblock {
-  position: relative;
-}
-
-.panel-statblock__open {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 1;
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background 0.1s ease,
-    color 0.1s ease,
-    border-color 0.1s ease;
-}
-
-.panel-statblock__open:hover {
-  background: var(--color-surface-2);
-  color: var(--color-text);
-  border-color: var(--color-text-muted);
-}
-
 /* Standalone single-creature route at /compendium/creatures/:id —
    centered max-width column, restful background, no encounter
-   panels. Used as the deep link for the side panel's ↗ button
-   so the GM can keep a creature's stat block open in another
-   window for easy reference. */
+   panels. Used as the deep link for the ↗ on a stat block — in
+   the bar under a card or on the compendium page — so the GM can
+   keep a creature's stat block open in another window for easy
+   reference. */
 .workspace--standalone {
   display: grid;
   place-items: start center;
@@ -10788,6 +11037,85 @@ button.creature-card__lifecycle--dead:focus-visible {
   margin-top: 6px;
 }
 
+/* ── Encounter save/load panel ──────────────────────────────────── */
+
+.save-load__storage {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.save-load__storage-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.save-load__server {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.save-load__saves {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.save-load__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: var(--scroll-list-max-h);
+  overflow-y: auto;
+}
+
+/* A row stacks its name above its actions: four affordances and
+   a name do not share a drawer panel's width. */
+.save-load__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.save-load__row-name {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  overflow-wrap: anywhere;
+}
+
+.save-load__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.save-load__device {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.save-load__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.save-load__confirm-msg {
+  font-size: var(--font-size-label);
+}
+
 /* Save / Load modals — reuse the standard .modal chrome.  Both
    modals share the same row / list / confirm presentation; the
    .save-modal__* classes are the canonical names and the load
@@ -10950,25 +11278,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
-/* Saving-throw modal: a one-line summary above three side-by-side
-   roll buttons (Roll / Advantage / Disadvantage). */
-.ability-save__summary {
-  margin: 0;
-  font-size: 1rem;
-  color: var(--color-text);
-}
-
-.ability-save__buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: stretch;
-}
-
-.ability-save__buttons .action-btn {
-  flex: 1 1 0;
-  justify-content: center;
-}
-
 /* Picker-list pattern shared by the Quick Add and Duplicate
    modals: a vertical scrollable list of clickable rows with a
    bordered shell, hover highlight, and bottom-divider per row.
@@ -10996,13 +11305,25 @@ button.creature-card__lifecycle--dead:focus-visible {
   overflow-y: auto;
 }
 
+/* The Replace editor's docked copy of the list: five rows (8px
+   vertical padding + ~19px text line + 1px border each, plus the
+   2px flex gaps), so the editor's Apply button stays a short
+   scroll away.  Must sit after the base rule above — at equal
+   specificity, the base 60vh cap would win the cascade
+   otherwise. */
+.quick-add__list--docked {
+  max-height: 188px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 .duplicate__row,
 .quick-add__row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 5px 8px;
   cursor: pointer;
   border-bottom: 1px solid var(--color-border);
   transition:
@@ -11083,25 +11404,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   justify-content: flex-end;
 }
 
-/* Top row of Quick Add: search input on the left grows to fill,
-   sort toggle on the right stays its natural width. */
-.quick-add__controls-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quick-add__search {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 0.9rem;
-}
-
 .quick-add__sort-toggle {
   flex: 0 0 auto;
 }
@@ -11132,10 +11434,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 16px 0;
 }
 
-/* Inline confirmation strip rendered in the Encounter Controls
-   panel when Reset or Clear is pending.  Replaces the button
-   grid, so the user has to pick Confirm or Cancel before any
-   other panel action becomes available. */
+/* Body of the confirmation modal shown while Reset or Clear is
+   pending, so the user picks Confirm or Cancel before anything
+   is touched. */
 .control-confirm {
   display: flex;
   flex-direction: column;
@@ -11186,17 +11487,50 @@ button.creature-card__lifecycle--dead:focus-visible {
   pointer-events: none;
   letter-spacing: 0.02em;
   transform: translate(-50%, -100%);
-  animation: roll-popup-float 1.2s ease-out forwards;
+  animation: roll-popup-float 2.4s ease-out forwards;
   will-change: transform, opacity;
 }
 
+/* Triple-roll popups (attack / ability check / saving throw fired
+   as standard + advantage + disadvantage together): white / green
+   / red instead of the single-roll yellow, so the three read as a
+   labelled set rather than three unrelated rolls. Same glyph size
+   and shadow trick as the base rule for legibility over any card
+   or stat-block background underneath. */
+.roll-popup--standard {
+  color: #ffffff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+.roll-popup--advantage {
+  color: var(--color-success);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px var(--color-success);
+}
+
+.roll-popup--disadvantage {
+  color: var(--color-danger);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 0 6px var(--color-danger);
+}
+
+/* The number drifts up slowly and holds at full strength for most
+   of its life, fading only over the last stretch. */
 @keyframes roll-popup-float {
   0% {
     transform: translate(-50%, -100%) translateY(0);
     opacity: 1;
   }
-  20% {
+  15% {
     transform: translate(-50%, -100%) translateY(-12px);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-50%, -100%) translateY(-44px);
     opacity: 1;
   }
   100% {
@@ -11479,317 +11813,6 @@ button.quick-list-card {
   --modal-max-w: 680px;
 }
 
-.save-chain__preset-row,
-.save-chain__row,
-.save-chain__apply-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-
-.save-chain__row--save {
-  gap: 24px;
-}
-
-.save-chain__field-label {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  min-width: 60px;
-}
-
-.save-chain__preset-picker {
-  min-width: 220px;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 0.88rem;
-}
-
-.save-chain__loaded-tag {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.save-chain__name-input {
-  flex: 1 1 200px;
-  min-width: 160px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__ability-group,
-.save-chain__dc-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.save-chain__ability-radios {
-  display: flex;
-  gap: 10px;
-}
-
-.save-chain__ability-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.save-chain__dc-input {
-  width: 200px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-/* Outcome block: a bordered card with a small heading and two
-   rows (HP + condition).  The border groups the two rows so the
-   fail and success blocks read as distinct clusters. */
-.save-chain__outcome {
-  margin: 8px 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.save-chain__outcome-heading {
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-  margin-bottom: 2px;
-}
-
-.save-chain__hp-row,
-.save-chain__condition-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Effect list — zero or more `[name] [note] [×]` rows plus an
-   "+ Add effect" button.  Column layout so multi-condition
-   spells (Hypnotic Pattern) stack cleanly; the button sits
-   below the list at flex-start. */
-.save-chain__effects {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.save-chain__effect-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-
-.save-chain__effect-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.save-chain__effect-remove {
-  font-size: 1rem;
-  padding: 2px 8px;
-}
-
-/* "Save EoT" checkbox on each effect row.  Opts the applied
-   condition into a save-at-end-of-turn using the chain's own
-   Save ability + DC.  Compact so the row still fits on one
-   line for the typical single-effect case. */
-.save-chain__effect-save-to-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.save-chain__effect-save-to-end input[type="checkbox"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-/* An "effect block" wraps the top row (name + note + toggles +
-   remove) and the optional auto-roll sub-row below.  Column
-   layout with a tighter internal gap so the sub-row hugs the
-   parent effect visually. */
-.save-chain__effect-block {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-/* Auto-roll mode picker: three inline radios that appear
-   beneath an effect when its Save-to-end checkbox is on.
-   Indented + muted so the sub-row reads as configuration
-   for the effect above it, not as a separate row. */
-.save-chain__effect-autoroll {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding-left: 16px;
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.save-chain__autoroll-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-}
-
-.save-chain__autoroll-radio input[type="radio"] {
-  accent-color: var(--color-accent);
-  margin: 0;
-}
-
-.save-chain__hp-radios {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.save-chain__hp-radio {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-/* Yellow highlight so the amount box pops under both outcome
-   headings — it only renders once Damage or Heal is picked, and
-   an amount is required before the chain can apply, so the cue
-   points the GM at the one field still waiting on input. */
-.save-chain__amount-input {
-  width: 140px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-yellow);
-  box-shadow: 0 0 0 1px var(--color-yellow);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__amount-cluster {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.save-chain__condition-input {
-  flex: 1 1 180px;
-  min-width: 140px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__condition-note-input {
-  flex: 1 1 160px;
-  min-width: 100px;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font: inherit;
-}
-
-.save-chain__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.save-chain__caption {
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-}
-
-.save-chain__caption--warn {
-  color: var(--color-warning, #b9602a);
-}
-
-/* Danger variant of the caption — used for validation
-   errors the GM MUST fix before applying (e.g. Save-to-end
-   is opted in on some effect but the chain has no DC to
-   inherit).  Red so it reads distinctly from the
-   `--warn` orange advisory. */
-.save-chain__caption--danger {
-  color: var(--color-danger, #dc2626);
-  font-weight: 600;
-}
-
-/* Recent-applies log at the bottom of the Save Chain modal.
-   Mirrors the HP-change modal's log chrome: bordered card
-   with a small heading, empty state, and a list of rows.
-   Each row is `[SIDE badge] [target] [roll note] [applied]`
-   in one line. */
-.save-chain__log {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.save-chain__log-title {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
-}
-
-.save-chain__log-empty {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
 .save-chain__log-list {
   list-style: none;
   margin: 0;
@@ -11866,24 +11889,4 @@ button.quick-list-card {
 
 .save-chain__log-applied-sep {
   color: var(--color-text-muted);
-}
-
-.save-chain__apply-row {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--color-border);
-  justify-content: space-between;
-}
-
-.save-chain__apply-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* Small variant of the shared action-btn for the preset picker
-   row — the Load / Delete / + New / Save preset row would
-   otherwise overflow the modal with normal-sized buttons. */
-.action-btn--sm {
-  padding: 4px 10px;
-  font-size: 0.8rem;
 }

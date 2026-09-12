@@ -7,19 +7,31 @@ a separate "delete" action.
 -}
 
 import Encounter
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Ui.Note as NoteUi exposing (NoteEditUi)
 
 
 withNoteEdit : (NoteEditUi -> NoteEditUi) -> Model -> Model
 withNoteEdit =
-    Model.mapModal Model.noteLens
+    Model.mapSurface Model.noteLens
 
 
+{-| Opening is a toggle: clicking the note affordance while its
+own in-place input is already showing closes it (a cancel).
+-}
 open : String -> String -> Model -> ( Model, Cmd Msg )
 open name current model =
-    ( { model | modal = Just (ModalNoteEdit (NoteUi.fresh name current)) }
+    ( case model.surface of
+        Just (SurfaceNoteEdit ui) ->
+            if ui.target == name then
+                { model | surface = Nothing }
+
+            else
+                { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
+
+        _ ->
+            { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
     , Cmd.none
     )
 
@@ -41,8 +53,8 @@ without a separate "delete" action.
 -}
 commit : Model -> ( Model, Cmd Msg )
 commit model =
-    case model.modal of
-        Just (ModalNoteEdit ui) ->
+    case model.surface of
+        Just (SurfaceNoteEdit ui) ->
             let
                 trimmed =
                     String.trim ui.text
@@ -52,7 +64,7 @@ commit model =
                     Encounter.mapCreature ui.target
                         (\c -> { c | note = trimmed })
                         model.encounter
-                , modal = Nothing
+                , surface = Nothing
               }
             , Cmd.none
             )
@@ -63,4 +75,4 @@ commit model =
 
 cancel : Model -> ( Model, Cmd Msg )
 cancel model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )

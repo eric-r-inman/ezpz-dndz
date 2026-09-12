@@ -2,10 +2,10 @@ module Ui.SaveChain exposing
     ( SaveChainUi, OutcomeForm
     , fresh, fromChain, toChain
     , OutcomeSide(..)
-    , AppliedPart(..), SaveChainLogEntry, maxSaveChainLogEntries
+    , AppliedPart(..), SaveChainLogEntry, cleared, maxSaveChainLogEntries
     )
 
-{-| Modal UI state for the Save Chain feature.
+{-| Surface UI state for the Save Chain feature.
 
 Mirrors `Encounter.SaveChain` closely but keeps the input
 values as raw text (`dcText`, `hpAmountText`) so a
@@ -24,7 +24,8 @@ without doubling the Msg surface.
 -}
 
 import Compendium exposing (Ability(..))
-import Encounter.SaveChain as SaveChain exposing (EffectApply, HpEffect(..), SaveChain, SaveOutcome)
+import Encounter
+import Encounter.SaveChain as SaveChain exposing (EffectApply, EffectDuration, HpEffect(..), SaveChain, SaveOutcome)
 import Msg exposing (SaveChainSide)
 
 
@@ -40,11 +41,13 @@ type alias SaveChainUi =
     , onFail : OutcomeForm
     , onSuccess : OutcomeForm
 
-    -- Run-time DC override — used when the chain itself has
-    -- `saveDc = Nothing` and the GM wants to enter a per-apply
-    -- DC (typically because the DC comes from a monster's stat
-    -- block, not the chain).  Not persisted onto the preset.
-    , dcOverrideText : String
+    -- The immunity a successful save grants, for how long;
+    -- `Nothing` when the chain grants none.
+    , immunity : Maybe EffectDuration
+
+    -- The phase at which an area effect rolls its save again on
+    -- every marked creature's turn; `Nothing` for a one-shot chain.
+    , area : Maybe Encounter.TurnPhase
 
     -- Preset picker state.  `presetPickerSelection` is the raw
     -- <select> value the user has clicked; `loadedPresetName`
@@ -79,9 +82,28 @@ fresh target =
     , dcText = ""
     , onFail = freshOutcome
     , onSuccess = freshOutcome
-    , dcOverrideText = ""
+    , immunity = Nothing
+    , area = Nothing
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
+    }
+
+
+{-| The form with every setting emptied and only its identity
+kept: the target and scope it is aimed at, and the name and
+preset it was loaded from.
+-}
+cleared : SaveChainUi -> SaveChainUi
+cleared ui =
+    let
+        blank =
+            fresh ui.target
+    in
+    { blank
+        | applyToSelected = ui.applyToSelected
+        , name = ui.name
+        , presetPickerSelection = ui.presetPickerSelection
+        , loadedPresetName = ui.loadedPresetName
     }
 
 
@@ -111,7 +133,8 @@ fromChain baseline chain =
                     ""
         , onFail = outcomeToForm chain.onFail
         , onSuccess = outcomeToForm chain.onSuccess
-        , dcOverrideText = ""
+        , immunity = chain.immunity
+        , area = chain.area
         , loadedPresetName =
             if String.isEmpty chain.name then
                 Nothing
@@ -132,6 +155,9 @@ outcomeToForm o =
             HealFor s ->
                 s
 
+            DrainDamage s ->
+                s
+
             _ ->
                 ""
     , effects = o.effects
@@ -150,6 +176,8 @@ toChain ui =
     , saveDc = parseOptionalInt ui.dcText
     , onFail = formToOutcome ui.onFail
     , onSuccess = formToOutcome ui.onSuccess
+    , immunity = ui.immunity
+    , area = ui.area
     }
 
 
@@ -172,6 +200,9 @@ formToOutcome f =
 
                 HalfFailDamage ->
                     HalfFailDamage
+
+                DrainDamage _ ->
+                    DrainDamage raw
     in
     { hp = hp
     , effects =
@@ -207,6 +238,7 @@ prefix / substring parse.
 type AppliedPart
     = DamagePart Int
     | HealPart Int
+    | DrainPart Int
     | EffectPart String
 
 

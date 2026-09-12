@@ -17,13 +17,17 @@ draws from groups whose members match the active habitat /
 type / exclude filters, falling back to the per-slot fill
 when no group fits.
 
-This module ships ~45 hand-authored groups covering the
-iconic associations across the 2024 SRD bundle. The bundle
+This module ships several dozen hand-authored groups covering
+the iconic associations across the 2024 SRD bundle. The bundle
 references creatures by **name** so the data is independent of
 the compendium's uuid scheme; lookups happen at generation
 time via `Compendium.findByName`. Members whose names don't
 resolve are silently dropped (the bundle stays usable even if
 a creature is renamed or removed).
+
+Each group carries a one-line lore description. The reasoning
+behind each composition, which has no home here, is collected
+in `docs/LORE_GROUPS.org` beside the shipped text.
 
 Each member carries a count range; the materialiser rolls
 within the range and scales the result down if total XP would
@@ -82,11 +86,11 @@ type alias Group =
     , weight : Int
     , source : Source
 
-    -- Optional free-form paragraph the GM can attach to a
-    -- custom grouping — surfaces in the Compendium detail pane
-    -- below the members list.  Empty string for bundled groups
-    -- (they don't carry authored lore today) and for groups
-    -- saved by an older client that didn't know the field.
+    -- Holds the lore paragraph shown in the Compendium detail pane
+    -- below the members list.  Bundled groups ship with authored text;
+    -- a custom grouping holds whatever the GM wrote, which is the
+    -- empty string when they wrote nothing or saved the group
+    -- from a client that predates the field.
     , description : String
     }
 
@@ -215,7 +219,7 @@ bundled =
         [ member "Aboleth" Leader 1 1
         , member "Chuul" Member 1 2
         ]
-        |> withLore "The aboleth sends it children forth to project its will, and brings them back to defend their creator."
+        |> withLore "The aboleth sends its children forth to project its will, and brings them back to defend their creator."
     , grp "sahuagin-raid"
         "Sahuagin Raid"
         4
@@ -262,35 +266,35 @@ bundled =
         [ member "Fire Giant" Leader 1 2
         , member "Hell Hound" Pet 2 4
         ]
-        |> withLore "Fire giants keep hell hounds as forge-watchers and hunting hounds — the hounds' breath does not melt the slag-piles, but it does keep slaves from creeping out the wrong door."
+        |> withLore "Fire-immune hell hounds guard their fire giant masters' blazing forges."
     , grp "cloud-giant-eyrie"
         "Cloud Giant's Eyrie"
         1
         [ member "Cloud Giant" Leader 1 1
         , member "Griffon" Pet 1 2
         ]
-        |> withLore "Mounts and messengers for the Cloud Giants, Griffons serve, and defend, their masters faithfully."
+        |> withLore "The noble Griffon... mounts, familiars, and soldiers for their temperamental cloud giant masters."
     , grp "storm-giant-citadel"
         "Storm Giant Citadel"
         1
         [ member "Storm Giant" Leader 1 1
         , member "Wyvern" Pet 1 2
         ]
-        |> withLore "A storm giant needs no defenders, but its pets do like to play."
+        |> withLore "A storm giant reads omens in the thunderheads; his pets sniff the wind for prey."
     , grp "ogre-marauders"
         "Ogre Marauders"
         3
         [ member "Ogre" Member 2 3
         , member "Bandit" Minion 2 4
         ]
-        |> withLore "Ogres are the brains, bandits bring the muscle... or, was it the other way 'round? No matter, attack!"
+        |> withLore "Keep 'em well-fed, let 'em think they're in charge, and you've got yourself some big dumb meat shields."
     , grp "troll-lair"
         "Troll Lair"
         2
         [ member "Troll" Member 1 2
         , member "Ogre Zombie" Minion 0 2
         ]
-        |> withLore "Too rotten even for the Trolls that share the lair, a half-eaten meal festers, and stirs..."
+        |> withLore "Hope the trolls have finished their meals, for in the wrong sort of cave, the leftovers may rise."
 
     -- ── Undead ───────────────────────────────────────────────
     , grp "mummy-tomb"
@@ -300,7 +304,7 @@ bundled =
         , member "Skeleton" Member 3 6
         , member "Zombie" Member 2 4
         ]
-        |> withLore "The forgotten dead must stand their own vigil."
+        |> withLore "Its retinue was buried with their master to serve in the next world; sometimes, the next world is this one."
     , grp "mummy-lord-court"
         "Mummy Lord's Court"
         1
@@ -308,7 +312,7 @@ bundled =
         , member "Mummy" Member 1 2
         , member "Skeleton" Minion 6 8
         ]
-        |> withLore "Lord in life, lord in death. Those who pledged their service in life serve now in death."
+        |> withLore "...are you my mummy?"
     , grp "lich-demesne"
         "Lich's Demesne"
         1
@@ -316,7 +320,7 @@ bundled =
         , member "Ghoul" Member 2 4
         , member "Ghast" Member 1 2
         ]
-        |> withLore "Stand thy deathless vigil, let none pass who live."
+        |> withLore "A lich has no further use for flesh, except to feed its ravening guards."
     , grp "vampire-brood"
         "Vampire's Brood"
         2
@@ -324,7 +328,7 @@ bundled =
         , member "Vampire Spawn" Member 2 4
         , member "Vampire Familiar" Pet 1 2
         ]
-        |> withLore "A vampire and its spawn hold deathly court, while unblinking familiars stand watchful vigil."
+        |> withLore "Ah, the family's all here..."
     , grp "ghost-haunting"
         "Ghost Haunting"
         3
@@ -332,7 +336,7 @@ bundled =
         , member "Shadow" Member 1 3
         , member "Specter" Member 1 2
         ]
-        |> withLore "Boo!"
+        |> withLore "A restless ghost rends the souls of any who would stand in the way of its unfinished business."
     , grp "skeleton-legion"
         "Skeleton Legion"
         3
@@ -340,21 +344,21 @@ bundled =
         , member "Warhorse Skeleton" Pet 1 3
         , member "Minotaur Skeleton" Leader 0 1
         ]
-        |> withLore "Raised long ago for some forgotten war, a forgotten legion still fights a forgotten enemy."
+        |> withLore "A skeleton pursues its final order before death... and that order was not likely tea service and a foot rub."
     , grp "zombie-horde"
         "Zombie Horde"
         3
         [ member "Zombie" Member 6 12
         , member "Ogre Zombie" Leader 1 2
         ]
-        |> withLore "If you want to avoid them eating your flesh, I suggest you shoot them in the brain. - Leslie Hall"
+        |> withLore "Remember, head-shots."
     , grp "wraith-host"
         "Wraith Host"
         2
         [ member "Wraith" Leader 1 1
         , member "Specter" Member 2 4
         ]
-        |> withLore "A wraith — the bound spirit of a powerful evil — gathers lesser specters in its deathly wake, and feeds on their lingering despair. But its true hunger, only the living can sate."
+        |> withLore "The specters trailing the wraith were people once, unlucky enough to cross paths with their tormentor, as you're about to do..."
 
     -- ── Hags ─────────────────────────────────────────────────
     , grp "hag-coven"
@@ -364,14 +368,14 @@ bundled =
         , member "Sea Hag" Member 1 1
         , member "Night Hag" Member 1 1
         ]
-        |> withLore "'Double, double toil and trouble; Fire burn, and cauldron bubble. By the pricking of my thumbs, something wicked this way comes!'"
+        |> withLore "Hags can't stand other hags, so whatever this 'coven' wants, they want it more than they hate each other."
     , grp "sea-hag-tide"
         "Sea Hag's Tide"
         2
         [ member "Sea Hag" Leader 1 1
         , member "Sahuagin Warrior" Member 2 4
         ]
-        |> withLore "While you scan the horizon for pirates, something far more sinister is hunting from below."
+        |> withLore "The sahuagin raid for meat and plunder. The hag rides along to watch hope go under."
     , grp "green-hags-grove"
         "Green Hag's Grove"
         2
@@ -379,14 +383,14 @@ bundled =
         , member "Worg" Pet 1 2
         , member "Goblin Warrior" Minion 2 3
         ]
-        |> withLore "'The plump one for me, the rest for thee!'"
+        |> withLore "Goblins serve a green hag for the scraps she promises, though never quite working out that they're the scraps."
     , grp "night-hag-bargain"
         "Night Hag's Bargain"
         1
         [ member "Night Hag" Leader 1 1
         , member "Imp" Pet 1 2
         ]
-        |> withLore "Can the Witch of Nightmares ever be surprised, when her messengers have spied your very dreams?"
+        |> withLore "A night hag procures the valuable souls, while her imps set up the trades."
 
     -- ── Fiends ───────────────────────────────────────────────
     , grp "imp-quasit-servants"
@@ -395,21 +399,21 @@ bundled =
         [ member "Imp" Member 1 2
         , member "Quasit" Member 1 2
         ]
-        |> withLore "Imps and quasits like a little sport to break up their mundane servitude."
+        |> withLore "Imps and quasits stand on opposite sides of an old, endless war. But it was never their war, and where there's chaos, there's opportunity for unlikely business partners."
     , grp "devil-patrol"
         "Devil Patrol"
         3
         [ member "Bearded Devil" Member 2 3
         , member "Hell Hound" Pet 1 2
         ]
-        |> withLore "Bearded devils and hell hounds form a deadly patrol along the outer rims of their hellish realms."
+        |> withLore "Bearded devils drive hell hounds before them, shock troops of the Nine Hells."
     , grp "demon-incursion"
         "Demon Incursion"
         2
         [ member "Vrock" Leader 1 2
         , member "Dretch" Minion 4 6
         ]
-        |> withLore "Vrocks and their unwilling Dretch recruits swarm forth from their hellish realm in a riot of rage."
+        |> withLore "Uh oh, who left a window to the Abyss open..."
     , grp "pit-fiend-retinue"
         "Pit Fiend's Retinue"
         1
@@ -417,14 +421,14 @@ bundled =
         , member "Bone Devil" Member 1 2
         , member "Barbed Devil" Member 1 2
         ]
-        |> withLore "A pit fiend's retinue — a bone devil as advisor, barbed devils as bodyguard — all bound to the pit fiend by infernal contract and centuries of fearful service."
+        |> withLore "A pit fiend rolls out with his crew."
     , grp "marilith-honor-guard"
         "Marilith's Honor Guard"
         1
         [ member "Marilith" Leader 1 1
         , member "Hezrou" Member 1 2
         ]
-        |> withLore "A marilith's honor guard of hezrou — the bloated frog-demons enjoy her violence and serve her with a kind of cult devotion no other demon would tolerate."
+        |> withLore "Mariliths are the rare demons that make careful plans, and hezrou are the rare demons that follow them. If you're facing off, you're part of the plan."
 
     -- ── Humanoid bands ──────────────────────────────────────
     , grp "bandit-camp"
@@ -433,14 +437,14 @@ bundled =
         [ member "Bandit" Member 4 6
         , member "Bandit Captain" Leader 1 1
         ]
-        |> withLore "Bandits in a road-camp with their captain — most of them deserters or runaways, the captain the one who keeps them from murdering each other over the spoils."
+        |> withLore "Smart-looking fella first, or the dumb-looking ones?"
     , grp "cultist-cabal"
         "Cultist Cabal"
         4
         [ member "Cultist" Member 3 5
         , member "Cultist Fanatic" Leader 1 2
         ]
-        |> withLore "A cabal of cultists with fanatics in the lead — the fanatics handle the rites, the rank-and-file the recruiting and the bookkeeping that pays for incense and ritual blades."
+        |> withLore "They think their gods have spoken to them, and you know how testy people like that can get."
     , grp "knight-retinue"
         "Knight & Retinue"
         2
@@ -448,20 +452,20 @@ bundled =
         , member "Guard" Member 3 5
         , member "Scout" Member 0 2
         ]
-        |> withLore "A knight on the road with his retinue — guards as muscle, sometimes a scout or two ahead.  Honourable on a good day, mercenary on a bad one."
+        |> withLore "The knight has her just cause, the guards have their discipline, and the scouts have their mettle. May I suggest Fireball?"
     , grp "priest-procession"
         "Priest's Procession"
         2
         [ member "Priest" Leader 1 1
         , member "Priest Acolyte" Member 3 5
         ]
-        |> withLore "A priest leads acolytes in slow procession — to or from a shrine, a pilgrimage, or a funeral they consider too important to leave to the laity."
+        |> withLore "Bring out your dead!"
     , grp "berserker-warband"
         "Berserker Warband"
         2
         [ member "Berserker" Member 3 5
         ]
-        |> withLore "Berserkers without a leader — drunk on grog and fury, they pick fights with anything that crosses their path and stagger off looking for the next when they win or fall."
+        |> withLore "Careful, they're berserking your way..."
 
     -- ── Beasts ───────────────────────────────────────────────
     , grp "wolf-pack"
@@ -470,20 +474,20 @@ bundled =
         [ member "Dire Wolf" Leader 1 2
         , member "Wolf" Member 3 5
         ]
-        |> withLore "A wolf pack with one or two dire wolves as alpha and the smaller wolves as the hunting line — the pack hunts cooperatively and rarely starts a fight it can't finish."
+        |> withLore "You'll be tempted to go for the big fella first, but he's counting on that..."
     , grp "owlbear-den"
         "Owlbear Den"
         3
         [ member "Owlbear" Member 1 3
         ]
-        |> withLore "Owlbears around their den — usually a mated pair and sometimes a half-grown cub.  They are not territorial as cousins; they are territorial as a household."
+        |> withLore "There are no good dens to stumble into in D&D, as these owlbears are about to remind you."
     , grp "bear-family"
         "Bear Family"
         2
         [ member "Brown Bear" Leader 1 1
         , member "Black Bear" Member 1 2
         ]
-        |> withLore "A brown bear matriarch and her smaller black-bear cousins — not actually relatives, but cohabiting a forest range and tolerating each other's company near a good salmon run."
+        |> withLore "Different bear species will cooperate only to hunt. Wonder who these fellas are hunting, then?"
 
     -- ── Underdark / cave ────────────────────────────────────
     , grp "carrion-crawl"
@@ -492,21 +496,21 @@ bundled =
         [ member "Carrion Crawler" Member 1 2
         , member "Zombie" Minion 2 4
         ]
-        |> withLore "A carrion crawler trails behind a knot of zombies, drawn by the moving meat — the crawler doesn't mind sharing the kill, since the zombies don't eat what they catch."
+        |> withLore "Zombies are too fetid for even a carrion crawler, but their rank odor is an irresistible lure nonetheless."
     , grp "cloaker-ambush"
         "Cloaker Ambush"
         2
         [ member "Cloaker" Member 1 2
         , member "Darkmantle" Minion 2 4
         ]
-        |> withLore "A cloaker drifts on cave-currents above a ceiling crusted with darkmantles — the cloaker chooses its victims, the darkmantles drop on whatever the cloaker has already wounded."
+        |> withLore "Don't look up."
     , grp "stirge-swarm"
         "Stirge Swarm"
         3
         [ member "Stirge" Member 4 8
         , member "Giant Bat" Pet 1 2
         ]
-        |> withLore "A stirge swarm in some bat-haunted cave, the stirges feeding on whatever blood the giant bats leave behind — and on each other when nothing else is bleeding."
+        |> withLore "Stirges follow giant bats like remoras follow sharks, feasting off the gore and weakened victims from the bats' feeding."
 
     -- ── Wilds ────────────────────────────────────────────────
     , grp "treants-grove"
@@ -515,7 +519,7 @@ bundled =
         [ member "Treant" Leader 1 1
         , member "Awakened Tree" Member 1 3
         ]
-        |> withLore "A treant tends a grove of awakened trees as students and lieutenants — the treant is patient, the awakened trees are not, and intruders are dealt with by whichever is closer."
+        |> withLore "A treant finds tedious its awakened brethren's constant harping about trespassers, but sometimes they're right, and the trespassers must be removed."
 
     -- ── Elementals / fire ──────────────────────────────────
     , grp "salamander-forge"
@@ -524,14 +528,14 @@ bundled =
         [ member "Salamander" Member 1 2
         , member "Magma Mephit" Minion 2 4
         ]
-        |> withLore "Salamanders work a hidden forge in the heart of an active volcano, with magma mephits as bellows-tenders and errand-runners — a working partnership of fire-creatures with nowhere cooler to be."
+        |> withLore "Salamanders are smiths by nature and slavers by habit, and magma mephits are the only help that won't melt."
     , grp "fire-elemental-cult"
         "Fire Elemental's Court"
         2
         [ member "Fire Elemental" Leader 1 1
         , member "Magma Mephit" Minion 3 5
         ]
-        |> withLore "A fire elemental holds court in a chamber of burning rock, with magma mephits as petitioners, jesters, and a kind of impish nobility that flits about its larger cousin."
+        |> withLore "A fire elemental has learned to tolerate the jabbering on of worshipful mephits, for their usefulness in alerting to trespassers."
     ]
 
 

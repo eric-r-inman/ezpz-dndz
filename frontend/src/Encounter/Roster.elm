@@ -1,5 +1,5 @@
 module Encounter.Roster exposing
-    ( moveUp, moveDown
+    ( moveCreature
     , sortByInitiative
     , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
@@ -18,7 +18,7 @@ the lifecycle hooks, so an `update` branch can pipe queue
 mutations through these and lifecycle ticks through
 `Encounter.Lifecycle` interchangeably.
 
-@docs moveUp, moveDown
+@docs moveCreature
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
@@ -30,57 +30,42 @@ import Encounter exposing (Cover(..), Creature, Encounter)
 import Set
 
 
-{-| Swap a creature with its predecessor in the queue. No-op
-when the named creature is already at the top, or isn't in the
-queue at all.
+{-| Move the creature at `from` so it sits at `to`, shifting the
+ones between. A `from` outside the queue leaves it unchanged; a
+`to` past the end lands the creature at the bottom, which is what
+a drop below the last card means.
 
-This is purely a queue-position move — initiative isn't touched.
-A subsequent `sortByInitiative` will re-order the queue back to
-initiative order, which is the documented contract: manual moves
+A pure position move: initiative values are untouched, so a
+subsequent `sortByInitiative` re-orders the queue back to
+initiative order. That is the documented contract — manual moves
 are temporary, and the next sort wipes them.
 
 -}
-moveUp : String -> Encounter -> Encounter
-moveUp name enc =
-    { enc | creatures = swapWithPrev name enc.creatures }
+moveCreature : Int -> Int -> Encounter -> Encounter
+moveCreature from to enc =
+    case
+        if from < 0 then
+            -- `List.drop` treats a negative count as zero, so
+            -- without this the head comes back as a creature that
+            -- `rest` also still holds, and the move duplicates it.
+            Nothing
 
+        else
+            enc.creatures |> List.drop from |> List.head
+    of
+        Just moved ->
+            let
+                rest =
+                    List.take from enc.creatures
+                        ++ List.drop (from + 1) enc.creatures
+            in
+            { enc
+                | creatures =
+                    List.take to rest ++ moved :: List.drop to rest
+            }
 
-swapWithPrev : String -> List Creature -> List Creature
-swapWithPrev name creatures =
-    case creatures of
-        a :: b :: rest ->
-            if b.name == name then
-                b :: a :: rest
-
-            else
-                a :: swapWithPrev name (b :: rest)
-
-        _ ->
-            creatures
-
-
-{-| Swap a creature with its successor in the queue. No-op when
-the named creature is already at the bottom, or isn't in the
-queue. Same caveat as `moveUp`: pure position move, no
-initiative change.
--}
-moveDown : String -> Encounter -> Encounter
-moveDown name enc =
-    { enc | creatures = swapWithNext name enc.creatures }
-
-
-swapWithNext : String -> List Creature -> List Creature
-swapWithNext name creatures =
-    case creatures of
-        a :: b :: rest ->
-            if a.name == name then
-                b :: a :: rest
-
-            else
-                a :: swapWithNext name (b :: rest)
-
-        _ ->
-            creatures
+        Nothing ->
+            enc
 
 
 {-| Re-order the encounter queue by descending initiative.
@@ -552,6 +537,7 @@ freshPlaceholder name =
     , selected = False
     , cover = NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False
@@ -577,8 +563,8 @@ freshPlaceholder name =
     , creatureKind = "npc"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 

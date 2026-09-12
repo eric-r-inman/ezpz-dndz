@@ -9,6 +9,7 @@ import Compendium
 import Compendium.GroupWire
 import Compendium.Wire
 import Dict
+import DrawerLayout
 import Effects
 import Encounter
     exposing
@@ -34,12 +35,11 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
         , CompendiumSort(..)
-        , ControlMenu(..)
         , DurationKind(..)
         , FeatureGroup(..)
         , HpField(..)
@@ -54,6 +54,7 @@ import Msg
 import Ports
 import Preferences
 import Route exposing (Route(..))
+import Set
 import Task
 import Ui.AbilitySave
 import Ui.Account
@@ -75,6 +76,7 @@ import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi, HpEdit)
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
+import Ui.QueuePanels
 import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
@@ -96,63 +98,52 @@ import Update.Duplicate
 import Update.Encounter
 import Update.HpChange
 import Update.Initiative
-import Update.LegendaryPip
-import Update.Load
+import Update.Legendary
 import Update.LoadCompendium
+import Update.LogRow
 import Update.LoreEdit
 import Update.Memo
 import Update.ModalChrome
 import Update.Note
+import Update.Notice
+import Update.PanelDrawer
 import Update.PlaceholderRename
 import Update.Preferences
+import Update.QueuePanels
 import Update.QuickAdd
 import Update.RandomEncounter
-import Update.Save
+import Update.Replace
+import Update.RoundSet
 import Update.SaveChain
 import Update.SaveCompendium
+import Update.SaveLoad
 import Update.Shell
-import Update.SpellList
+import Update.StatBlock
+import Update.Status
 import Update.Tabs
 import Update.Timer
 import Update.Toast
 import Update.Treasure
 import Update.TreasureTable
 import Update.UserSync
+import Update.Xp
 import Url exposing (Url)
 import Util.Keyboard
 import View.About
 import View.Account
-import View.AnonymousBanner
 import View.AppBar
 import View.Audio
 import View.Card
 import View.Footer
 import View.Login
 import View.Modal
-import View.Modal.AbilitySave
-import View.Modal.Compendium
-import View.Modal.CompendiumEdit
-import View.Modal.CompendiumPaste
-import View.Modal.Condition
-import View.Modal.CrCalculator
-import View.Modal.Dice
-import View.Modal.Duplicate
-import View.Modal.GroupEdit
-import View.Modal.HpChange
-import View.Modal.Initiative
-import View.Modal.Load
+import View.Modal.ConditionPreset
+import View.Modal.Confirm
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
-import View.Modal.Memo
-import View.Modal.Note
-import View.Modal.QuickAdd
-import View.Modal.RandomEncounter
-import View.Modal.Save
-import View.Modal.SaveChain
+import View.Modal.Notice
+import View.Modal.RoundSet
 import View.Modal.SaveCompendium
-import View.Modal.SpellList
-import View.Modal.Timer
-import View.Modal.Treasure
 import View.Modal.TreasureTable
 import View.Page.Compendium
 import View.Page.CompendiumStandalone
@@ -191,27 +182,12 @@ main =
         }
 
 
-{-| Subscribe to keyboard events while the dice modal is open so Esc
+{-| Subscribe to keyboard events while a surface is open so Esc
 can close it. Other routes don't need any subscriptions yet.
-
-The XP-filter dropdown overlays whatever else is on the page;
-when it's open we layer in two extra subscriptions on top of the
-modal-stack handlers — Esc closes it, and any document-level click
-that isn't stopped by the dropdown internals also closes it.
-
 -}
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
-        xpFilterSubs =
-            if model.xpFilterOpen then
-                [ Browser.Events.onKeyDown (escKey XpFilterClose)
-                , Browser.Events.onMouseDown (Decode.succeed XpFilterClose)
-                ]
-
-            else
-                []
-
         settingsSubs =
             if model.settingsOpen then
                 [ Browser.Events.onKeyDown (escKey SettingsClose)
@@ -230,19 +206,9 @@ subscriptions model =
             else
                 []
 
-        controlMenuSubs =
-            case model.controlMenu of
-                Just _ ->
-                    [ Browser.Events.onKeyDown (escKey ControlMenuClose)
-                    , Browser.Events.onMouseDown (Decode.succeed ControlMenuClose)
-                    ]
-
-                Nothing ->
-                    []
-
         conditionPresetLoadMenuSubs =
-            case model.modal of
-                Just (ModalCondition ui) ->
+            case Model.drawerGet Model.conditionLens model of
+                Just ui ->
                     if ui.loadMenuOpen then
                         [ Browser.Events.onKeyDown (escKey ConditionPresetLoadMenuClose)
                         , Browser.Events.onMouseDown (Decode.succeed ConditionPresetLoadMenuClose)
@@ -255,8 +221,8 @@ subscriptions model =
                     []
 
         timerPresetLoadMenuSubs =
-            case model.modal of
-                Just (ModalTimerSetup ui) ->
+            case model.surface of
+                Just (SurfaceTimerSetup ui) ->
                     if ui.loadMenuOpen then
                         [ Browser.Events.onKeyDown (escKey TimerPresetLoadMenuClose)
                         , Browser.Events.onMouseDown (Decode.succeed TimerPresetLoadMenuClose)
@@ -266,6 +232,17 @@ subscriptions model =
                         []
 
                 _ ->
+                    []
+
+        -- A card's inline numeric field closes on a mousedown
+        -- anywhere outside it.  A blur handler alone would miss
+        -- clicks that never move focus.
+        hpEditSubs =
+            case model.hpEdit of
+                Just _ ->
+                    [ Browser.Events.onMouseDown (Decode.succeed HpEditCommit) ]
+
+                Nothing ->
                     []
 
         -- Esc on the Login route cancels back to the encounter
@@ -279,7 +256,7 @@ subscriptions model =
             else
                 []
 
-        -- Modal chrome drag / resize subscriptions.  Only active
+        -- Surface chrome drag / resize subscriptions.  Only active
         -- while a gesture is in flight — the rest of the time
         -- mousemove / mouseup go through the browser's default
         -- handling.
@@ -299,69 +276,96 @@ subscriptions model =
                     []
 
         primary =
-            if model.dice.open then
-                Browser.Events.onKeyDown (escKey CloseDice)
+            case model.surface of
+                Just (SurfaceConfirm _) ->
+                    Browser.Events.onKeyDown (escKey EncounterControlCancel)
 
-            else
-                case model.modal of
-                    Just (ModalCompendiumPaste _) ->
-                        Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
+                Just (SurfaceNotice _) ->
+                    Browser.Events.onKeyDown (escKey NoticeDismiss)
 
-                    Just (ModalCompendiumEdit _) ->
-                        Browser.Events.onKeyDown (escKey CompendiumEditCancel)
+                Just (SurfaceRoundSet _) ->
+                    Browser.Events.onKeyDown (escKey RoundSetClose)
 
-                    Just (ModalNoteEdit _) ->
-                        Browser.Events.onKeyDown (escKey NoteEditCancel)
+                Just (SurfaceCompendiumPaste _) ->
+                    Browser.Events.onKeyDown (escKey CompendiumPasteCancel)
 
-                    Just (ModalSave _) ->
-                        Browser.Events.onKeyDown (escKey SaveClose)
+                Just (SurfaceCompendiumEdit _) ->
+                    Browser.Events.onKeyDown (escKey CompendiumEditCancel)
 
-                    Just (ModalLoad _) ->
-                        Browser.Events.onKeyDown (escKey LoadClose)
+                Just (SurfaceNoteEdit _) ->
+                    Browser.Events.onKeyDown (escKey NoteEditCancel)
 
-                    Just (ModalSaveCompendium _) ->
-                        Browser.Events.onKeyDown (escKey SaveCompendiumClose)
+                Just (SurfaceMemoEdit _) ->
+                    Browser.Events.onKeyDown (escKey MemoCancel)
 
-                    Just (ModalLoadCompendium _) ->
-                        Browser.Events.onKeyDown (escKey LoadCompendiumClose)
+                Just (SurfaceTimerSetup ui) ->
+                    -- Same menu-first Esc split as `drawerEscSub`'s
+                    -- condition arm.
+                    if ui.loadMenuOpen then
+                        Sub.none
 
-                    Just (ModalAbilitySave _) ->
-                        Browser.Events.onKeyDown (escKey AbilitySaveClose)
+                    else
+                        Browser.Events.onKeyDown (escKey TimerSetupCancel)
 
-                    Just (ModalQuickAdd _) ->
-                        Browser.Events.onKeyDown (escKey QuickAddClose)
+                Just (SurfaceSaveCompendium _) ->
+                    Browser.Events.onKeyDown (escKey SaveCompendiumClose)
 
-                    Just (ModalDuplicate _) ->
-                        Browser.Events.onKeyDown (escKey DuplicateClose)
+                Just (SurfaceLoadCompendium _) ->
+                    Browser.Events.onKeyDown (escKey LoadCompendiumClose)
 
-                    _ ->
-                        if model.compendium.open then
-                            Browser.Events.onKeyDown compendiumKeyDecoder
+                _ ->
+                    case Model.newestShowing model of
+                        Just ( _, panel ) ->
+                            drawerEscSub panel.surface
 
-                        else
-                            Sub.none
+                        Nothing ->
+                            if model.route == Compendium then
+                                Browser.Events.onKeyDown compendiumKeyDecoder
+
+                            else
+                                Sub.none
     in
     Sub.batch
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
             :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
-            :: Ports.compendiumTabMissing (\_ -> CompendiumTabMissing)
-            :: xpFilterSubs
-            ++ settingsSubs
+            :: settingsSubs
             ++ clearMenuSubs
-            ++ controlMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
             ++ chromeSubs
+            ++ hpEditSubs
         )
 
 
-{-| Browser-modal keyboard decoder: `Esc` closes, `/` focuses
-the search input. Both shortcuts ignore events whose target is
-already an input/textarea so the GM doesn't trip them while
-typing in the search box, the count input, or anywhere else.
+{-| Esc folds the newest panel that is showing its body — the
+editors the drawer boots with have no trigger to reopen them, so
+dismissing one must not delete it.
+-}
+drawerEscSub : Surface -> Sub Msg
+drawerEscSub newest =
+    case newest of
+        SurfaceCondition ui ->
+            -- While the preset Load menu is open, Esc belongs to
+            -- `conditionPresetLoadMenuSubs` (closing just the
+            -- menu); claiming it here too would fold the whole
+            -- editor on the same keypress.
+            if ui.loadMenuOpen then
+                Sub.none
+
+            else
+                Browser.Events.onKeyDown (escKey DrawerFoldNewest)
+
+        _ ->
+            Browser.Events.onKeyDown (escKey DrawerFoldNewest)
+
+
+{-| Compendium-page keyboard decoder: `/` focuses the search
+input. Ignores events whose target is already an input/textarea
+so the GM doesn't trip it while typing in the search box, the
+count input, or anywhere else.
 -}
 compendiumKeyDecoder : Decode.Decoder Msg
 compendiumKeyDecoder =
@@ -371,11 +375,13 @@ compendiumKeyDecoder =
         |> Decode.andThen
             (\( key, tagName ) ->
                 case ( key, isFormTag tagName ) of
-                    ( "Escape", _ ) ->
-                        Decode.succeed CompendiumClose
-
                     ( "/", False ) ->
                         Decode.succeed CompendiumFocusSearch
+
+                    -- Backs out of a staged Reset / Clear dialog;
+                    -- a no-op when nothing is staged.
+                    ( "Escape", _ ) ->
+                        Decode.succeed CompendiumPendingCancel
 
                     _ ->
                         Decode.fail "ignored key"
@@ -493,6 +499,7 @@ type alias Flags =
     , localCompendium : Maybe Decode.Value
     , localEncounterSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
+    , localDrawerLayout : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
     , localSaveChainPresets : Maybe Decode.Value
     , localParty : Maybe Decode.Value
@@ -500,6 +507,19 @@ type alias Flags =
     , localUserTreasureTable : Maybe Decode.Value
     , bootMs : Int
     }
+
+
+{-| The compendium UI, seeded with the creature named in the
+tab's URL so the page opens with that row selected. Every other
+route parses no creature and boots the compendium unselected.
+-}
+compendiumFromUrl : Url -> CompendiumUi.CompendiumUi
+compendiumFromUrl url =
+    let
+        ui =
+            CompendiumUi.emptyCompendium
+    in
+    { ui | selectedId = Route.compendiumCreatureQuery url }
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -520,54 +540,79 @@ init flags url key =
                     (Decode.decodeValue Difficulty.decodePartyState
                         >> Result.toMaybe
                     )
-                |> Maybe.withDefault { members = [], nextId = 1 }
+                |> Maybe.withDefault Difficulty.defaultParty
+
+        -- Applied to the built model rather than folded into the
+        -- record: the layout reorders the boot drawer, so it has
+        -- to run against a drawer that already exists.
+        savedLayout =
+            flags.localDrawerLayout
+                |> Maybe.andThen
+                    (Decode.decodeValue DrawerLayout.decoder >> Result.toMaybe)
+                |> Maybe.withDefault { version = DrawerLayout.current, entries = [] }
     in
-    ( { key = key
-      , url = url
-      , route = route
-      , me = Loading
-      , auth = Auth.AuthLoading
-      , loginUi = LoginUi.empty
-      , encounter = Encounter.empty
-      , savedSnapshot = Nothing
-      , savedAs = Nothing
-      , dice = DiceUi.empty
-      , hpChangeLog = []
-      , saveChainLog = []
-      , hpEdit = Nothing
-      , compendium = CompendiumUi.emptyCompendium
-      , modal = Nothing
-      , modalChrome = Ui.ModalChrome.fresh
-      , placeholderRename = Nothing
-      , panelCreaturePin = Nothing
-      , pendingControl = Nothing
-      , xpScope = ScopeXpEnemiesAndNpcs
-      , xpFilterOpen = False
-      , settingsOpen = False
-      , anonymousBannerDismissed = False
-      , controlMenu = Nothing
-      , toasts = []
-      , nextToastId = 0
-      , rollPopups = []
-      , nextRollPopupId = 0
-      , preferences = prefs
-      , accountUi = Ui.Account.empty
-      , party = partyFromFlags.members
-      , nextPartyMemberId = partyFromFlags.nextId
-      , localEncounterRaw = flags.localEncounter
-      , migrationDateLabel = flags.migrationDateLabel
-      , localDiceHistoryRaw = flags.localDiceHistory
-      , localCompendiumRaw = flags.localCompendium
-      , pendingBundleMerge = False
-      , nextLocalCreatureId = 1
-      , localEncounterSaves =
+    ( Model.applyDrawerLayout savedLayout
+        { key = key
+        , url = url
+        , route = route
+        , me = Loading
+        , auth = Auth.AuthLoading
+        , loginUi = LoginUi.empty
+        , encounter = Encounter.empty
+        , savedSnapshot = Nothing
+        , savedAs = Nothing
+        , dice = DiceUi.empty
+        , targetName = Nothing
+        , flashConditions = []
+        , openStatBlocks = Set.empty
+        , hpChangeLog = []
+        , hpLogOpen = False
+        , hpSetOpen = False
+        , nextHpLogSeq = 1
+        , flashedHpLogSeq = 0
+        , flashedRollSeq = 0
+        , expandedLogRows = Set.empty
+        , saveChainLog = []
+        , saveChainLogOpen = False
+        , hpEdit = Nothing
+        , compendium = compendiumFromUrl url
+        , surface = Nothing
+        , conditionLog = []
+        , conditionLogOpen = False
+        , nextConditionLogSeq = 1
+        , duplicateLog = []
+        , replaceLog = []
+        , modalChrome = Ui.ModalChrome.fresh
+        , placeholderRename = Nothing
+        , xpScope = ScopeXpEnemiesAndNpcs
+        , queuePanels = Ui.QueuePanels.fresh
+        , drawer = Model.defaultDrawer
+        , drawerDrag = Nothing
+        , queueDrag = Nothing
+        , compendiumEditDraft = Nothing
+        , settingsOpen = False
+        , toasts = []
+        , nextToastId = 0
+        , rollPopups = []
+        , nextRollPopupId = 0
+        , preferences = prefs
+        , accountUi = Ui.Account.empty
+        , party = partyFromFlags.members
+        , nextPartyMemberId = partyFromFlags.nextId
+        , localEncounterRaw = flags.localEncounter
+        , migrationDateLabel = flags.migrationDateLabel
+        , localDiceHistoryRaw = flags.localDiceHistory
+        , localCompendiumRaw = flags.localCompendium
+        , pendingBundleMerge = False
+        , nextLocalCreatureId = 1
+        , localEncounterSaves =
             flags.localEncounterSaves
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
-      , conditionPresets =
+        , conditionPresets =
             case flags.localConditionPresets of
                 Just raw ->
                     -- localStorage.conditionPresets exists (even
@@ -584,37 +629,37 @@ init flags url key =
                     -- in the Load menu are populated out of the
                     -- box.
                     Ui.Condition.Bundled.defaults
-      , timerPresets =
+        , timerPresets =
             flags.localTimerPresets
                 |> Maybe.andThen
                     (Decode.decodeValue Ui.Timer.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Dict.empty
-      , saveChainPresets =
+        , saveChainPresets =
             flags.localSaveChainPresets
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.SaveChain.Wire.decodePresets
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Encounter.SaveChain.Bundled.defaults
-      , userLoreGroups =
+        , userLoreGroups =
             flags.localUserLoreGroups
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.RandomEncounter.Lore.Wire.decodeGroups
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault []
-      , userTreasureTable =
+        , userTreasureTable =
             flags.localUserTreasureTable
                 |> Maybe.andThen
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-      , userTreasureProfiles = Dict.empty
-      , userTreasureProfileNameDraft = ""
-      , bootMs = flags.bootMs
-      }
+        , userTreasureProfiles = Dict.empty
+        , userTreasureProfileNameDraft = ""
+        , bootMs = flags.bootMs
+        }
       -- The auth-dependent data fetches (encounter, compendium,
       -- groups, dice history) all live in
       -- `Update.Auth.meReceived` because each one's destination —
@@ -653,8 +698,12 @@ than a one-frame gap.
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
+        -- A hit on a creature may owe a save to one of its
+        -- conditions, so every message's result passes through the
+        -- damage check before anything else reads it.
         ( next, innerCmd ) =
             updateInner msg model
+                |> Update.Condition.damageTriggered msg model
 
         encounterCmd =
             if Effects.shouldPersistAfter msg && next.encounter /= model.encounter then
@@ -711,6 +760,14 @@ update msg model =
                     _ ->
                         Ports.persistLocalConditionPresets
                             (Ui.Condition.Wire.encodePresets next.conditionPresets)
+
+            else
+                Cmd.none
+
+        drawerLayoutCmd =
+            if Effects.shouldPersistAfter msg && Model.drawerLayout model /= Model.drawerLayout next then
+                Ports.persistLocalDrawerLayout
+                    (DrawerLayout.encode (Model.drawerLayout next))
 
             else
                 Cmd.none
@@ -791,7 +848,7 @@ update msg model =
             else
                 Cmd.none
 
-        -- Modal-open focus management.  When the active modal
+        -- Surface-open focus management.  When the active modal
         -- transitions from `Nothing` to `Just _` (any modal
         -- opened by any path), fire `View.Modal.focusInitial`
         -- so keyboard / SR users land on the modal close button
@@ -800,8 +857,22 @@ update msg model =
         -- so we don't have to plumb the focus Cmd through ~20
         -- modal Update modules.
         modalFocusCmd =
-            if model.modal == Nothing && next.modal /= Nothing then
+            if model.surface == Nothing && next.surface /= Nothing then
                 View.Modal.focusInitial (\_ -> NoOp)
+
+            else
+                Cmd.none
+
+        -- Drawer-open feedback.  A panel opens at the bottom of
+        -- a stack that may already overflow the column, so
+        -- without scrolling it into view the only sign anything
+        -- happened is a shorter scrollbar.  Keyed off the stack
+        -- growing rather than off each opener, so a toggle that
+        -- closed a panel doesn't scroll and future openers get
+        -- the behaviour for free.
+        drawerScrollCmd =
+            if List.length next.drawer > List.length model.drawer then
+                Effects.scrollDrawerPanelIntoView (List.length next.drawer - 1)
 
             else
                 Cmd.none
@@ -811,12 +882,10 @@ update msg model =
         -- freshly opened modal starts centered and at its CSS
         -- default size.  Without this, a user who drags or
         -- resizes one modal would inherit that geometry for the
-        -- next modal they open.  Three modal-open surfaces are
-        -- covered: the unified `model.modal` ADT, plus the Dice
-        -- Roller and Compendium Browser which carry their own
-        -- `open : Bool` flags outside the ADT.
+        -- next modal they open.  Drawer panels carry no chrome,
+        -- so only `model.surface` counts.
         anyModalOpen m =
-            m.modal /= Nothing || m.dice.open || m.compendium.open
+            m.surface /= Nothing
 
         nextWithChromeReset =
             if not (anyModalOpen model) && anyModalOpen next then
@@ -840,7 +909,9 @@ update msg model =
         , userLoreGroupsCmd
         , userTreasureTableCmd
         , userTreasureProfilesCmd
+        , drawerLayoutCmd
         , modalFocusCmd
+        , drawerScrollCmd
         ]
     )
 
@@ -860,11 +931,17 @@ updateInner msg model =
         NextTurn ->
             Update.Encounter.nextTurn model
 
+        SaveFlashExpired ->
+            Update.Encounter.saveFlashExpired model
+
+        TargetCreature name ->
+            Update.Encounter.targetCreature name model
+
         SetActive name ->
             Update.Encounter.setActive name model
 
-        CycleCover name ->
-            Update.Encounter.cycleCover name model
+        ClearCover name ->
+            Update.Encounter.clearCover name model
 
         ToggleConcentration name ->
             Update.Encounter.toggleConcentration name model
@@ -926,12 +1003,9 @@ updateInner msg model =
         ToggleInactive name ->
             Update.Encounter.toggleInactive name model
 
-        -- Dice modal lifecycle
-        OpenDice ->
-            Update.Dice.open model
-
-        CloseDice ->
-            Update.Dice.close model
+        -- Dice roller lifecycle
+        DiceRollerOpen ->
+            Update.Dice.openPanel model
 
         DiceInputChanged text ->
             Update.Dice.inputChanged text model
@@ -941,6 +1015,12 @@ updateInner msg model =
 
         DiceModifierChanged text ->
             Update.Dice.modifierChanged text model
+
+        DiceCountAdjust delta ->
+            Update.Dice.countAdjust delta model
+
+        DiceModifierAdjust delta ->
+            Update.Dice.modifierAdjust delta model
 
         DiceResetSliders ->
             Update.Dice.resetSliders model
@@ -971,6 +1051,9 @@ updateInner msg model =
 
         DiceRerunNoModifier roll ->
             Update.Dice.rerunNoModifier roll model
+
+        DiceHistoryToggle ->
+            Update.Dice.historyToggle model
 
         DiceClearHistory ->
             Update.Dice.clearHistory model
@@ -1020,21 +1103,36 @@ updateInner msg model =
         RollPopupExpired id ->
             Update.Dice.rollPopupExpired id model
 
-        DiceLastTotalFlashCleared ->
-            Update.Dice.lastTotalFlashCleared model
+        -- HP change panel lifecycle
+        HpChangeOpenFor target ->
+            Update.HpChange.openFor target model
 
-        -- HP change modal lifecycle
-        HpChangeOpen target ->
-            Update.HpChange.open target model
+        HpChangeManualChanged field text ->
+            Update.HpChange.manualChanged field text model
 
-        HpChangeClose ->
-            Update.HpChange.close model
+        HpChangeManualApplyTarget ->
+            Update.HpChange.manualApplyTarget model
+
+        HpChangeManualApplySelected ->
+            Update.HpChange.manualApplySelected model
+
+        HpChangeManualRollChanged text ->
+            Update.HpChange.manualRollChanged text model
+
+        HpChangeManualRollClear ->
+            Update.HpChange.manualRollClear model
+
+        HpChangeManualRollLanded name roll ->
+            Update.HpChange.manualRollLanded name roll model
+
+        HpChangeLogToggle ->
+            Update.HpChange.logToggle model
+
+        HpChangeSetToggle ->
+            Update.HpChange.setToggle model
 
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model
-
-        HpChangeIgnoreTempToggle ->
-            Update.HpChange.ignoreTempToggle model
 
         HpChangeApplyToSelectedToggle ->
             Update.HpChange.applyToSelectedToggle model
@@ -1045,16 +1143,16 @@ updateInner msg model =
         HpChangeRollLanded roll ->
             Update.HpChange.rollLanded roll model
 
+        HpChangeFreshRollToggle ->
+            Update.HpChange.freshRollToggle model
+
+        HpChangeFreshRollLanded kind target roll ->
+            Update.HpChange.freshRollLanded kind target roll model
+
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model
 
-        -- Save Chain modal
-        SaveChainOpen target ->
-            Update.SaveChain.open target model
-
-        SaveChainClose ->
-            Update.SaveChain.close model
-
+        -- Save Chain panel
         SaveChainNameChanged text ->
             Update.SaveChain.nameChanged text model
 
@@ -1063,9 +1161,6 @@ updateInner msg model =
 
         SaveChainDcChanged text ->
             Update.SaveChain.dcChanged text model
-
-        SaveChainDcOverrideChanged text ->
-            Update.SaveChain.dcOverrideChanged text model
 
         SaveChainApplyToSelectedToggle ->
             Update.SaveChain.applyToSelectedToggle model
@@ -1094,6 +1189,39 @@ updateInner msg model =
         SaveChainOutcomeEffectAutoRollSet side idx mode ->
             Update.SaveChain.outcomeEffectAutoRollSet side idx mode model
 
+        SaveChainOutcomeEffectDurationEdit side idx edit ->
+            Update.SaveChain.outcomeEffectDurationEdit side idx edit model
+
+        SaveChainOutcomeEffectFailDamageChanged side idx text ->
+            Update.SaveChain.outcomeEffectFailDamageChanged side idx text model
+
+        SaveChainOutcomeEffectFailBecomesChanged side idx text ->
+            Update.SaveChain.outcomeEffectFailBecomesChanged side idx text model
+
+        SaveChainOutcomeEffectOnDamageSet side idx trigger ->
+            Update.SaveChain.outcomeEffectOnDamageSet side idx trigger model
+
+        SaveChainOutcomeEffectWithChanged side idx text ->
+            Update.SaveChain.outcomeEffectWithChanged side idx text model
+
+        SaveChainAreaSet phase ->
+            Update.SaveChain.areaSet phase model
+
+        SaveChainMarkArea ->
+            Update.SaveChain.markArea model
+
+        SaveChainLogToggle ->
+            Update.SaveChain.logToggle model
+
+        SaveChainClear ->
+            Update.SaveChain.clear model
+
+        SaveChainImmunityToggle ->
+            Update.SaveChain.immunityToggle model
+
+        SaveChainImmunityDurationEdit edit ->
+            Update.SaveChain.immunityDurationEdit edit model
+
         SaveChainPresetPickerChanged text ->
             Update.SaveChain.presetPickerChanged text model
 
@@ -1111,9 +1239,6 @@ updateInner msg model =
 
         SaveChainRestoreBundled ->
             Update.SaveChain.restoreBundled model
-
-        SaveChainExportBundled ->
-            Update.SaveChain.exportBundled model
 
         SaveChainApplyFail ->
             Update.SaveChain.applyFail model
@@ -1146,45 +1271,69 @@ updateInner msg model =
         ToggleSelected name ->
             Update.Encounter.toggleSelected name model
 
-        ShiftToggleSelected ->
-            Update.Encounter.shiftToggleSelected model
+        ShiftToggleSelected name ->
+            Update.Encounter.shiftToggleSelected name model
 
-        MoveCreatureUp name ->
-            Update.Encounter.moveCreatureUp name model
+        QueueDragStart index ->
+            Update.Encounter.queueDragStart index model
 
-        MoveCreatureDown name ->
-            Update.Encounter.moveCreatureDown name model
+        QueueDragOver index ->
+            Update.Encounter.queueDragOver index model
+
+        QueueDrop index ->
+            Update.Encounter.queueDrop index model
+
+        QueueDragEnd ->
+            Update.Encounter.queueDragEnd model
 
         RemoveCreature name ->
             Update.Encounter.removeCreature name model
 
-        DuplicateOpen name ->
-            Update.Duplicate.open name model
+        DuplicateModeSet mode ->
+            Update.Duplicate.modeSet mode model
 
-        DuplicateClose ->
-            Update.Duplicate.close model
+        DuplicateApplySelected ->
+            Update.Duplicate.applySelected model
 
-        DuplicateExact ->
-            Update.Duplicate.exact model
+        DuplicateApply ->
+            Update.Duplicate.apply model
 
-        DuplicateFresh ->
-            Update.Duplicate.fresh model
+        ReplaceSearchChanged text ->
+            Update.Replace.searchChanged text model
 
-        DuplicateMinionHalf ->
-            Update.Duplicate.minionHalf model
+        ReplacePick creatureId ->
+            Update.Replace.pick creatureId model
 
-        DuplicateMinionOne ->
-            Update.Duplicate.minionOne model
+        ReplaceApplySelected ->
+            Update.Replace.applySelected model
 
-        DuplicatePudding ->
-            Update.Duplicate.pudding model
+        ReplaceApply ->
+            Update.Replace.apply model
+
+        StatusOpenFor name ->
+            Update.Status.openFor name model
+
+        StatusConcentrationNoteChanged text ->
+            Update.Status.concentrationNoteChanged text model
+
+        StatusCoverCycle ->
+            Update.Status.coverCycle model
+
+        StatusToggle flag ->
+            Update.Status.toggleFlag flag model
+
+        StatusFlyHeightAdjust delta ->
+            Update.Status.flyHeightAdjust delta model
+
+        StatusApplyTarget ->
+            Update.Status.applyTarget model
+
+        StatusApplySelected ->
+            Update.Status.applySelected model
 
         -- Initiative manager
-        InitiativeOpen target ->
-            Update.Initiative.open target model
-
-        InitiativeClose ->
-            Update.Initiative.close model
+        InitiativeOpenFor name ->
+            Update.Initiative.openFor name model
 
         InitiativeCustomChanged text ->
             Update.Initiative.customChanged text model
@@ -1192,23 +1341,17 @@ updateInner msg model =
         InitiativeQuickSort ->
             Update.Initiative.quickSort model
 
-        InitiativeAutoRoll scope mode ->
-            Update.Initiative.autoRoll scope mode model
+        InitiativeAutoRoll scope ->
+            Update.Initiative.autoRoll scope model
+
+        InitiativeRollModeSet mode ->
+            Update.Initiative.rollModeSet mode model
 
         InitiativeApplyTarget ->
             Update.Initiative.applyTarget model
 
         InitiativeApplySelected ->
             Update.Initiative.applySelected model
-
-        InitiativeAutoRollSurprised scope ->
-            Update.Initiative.autoRollSurprised scope model
-
-        InitiativeApplyTargetSurprised ->
-            Update.Initiative.applyTargetSurprised model
-
-        InitiativeApplySelectedSurprised ->
-            Update.Initiative.applySelectedSurprised model
 
         InitiativeRollsLanded results ->
             Update.Initiative.rollsLanded results model
@@ -1225,15 +1368,12 @@ updateInner msg model =
         NoteEditCancel ->
             Update.Note.cancel model
 
-        -- Condition / effect modal lifecycle
-        ConditionOpenNew name ->
-            Update.Condition.openNew name model
-
+        -- Condition / effect panel lifecycle
         ConditionOpenEdit name id ->
             Update.Condition.openEdit name id model
 
-        ConditionClose ->
-            Update.Condition.close model
+        OpenStatusAndConditionFor name ->
+            Update.Encounter.openStatusAndConditionFor name model
 
         ConditionPickStandard label ->
             Update.Condition.pickStandard label model
@@ -1274,17 +1414,35 @@ updateInner msg model =
         ConditionSaveBonusChanged text ->
             Update.Condition.saveBonusChanged text model
 
+        ConditionSaveBonusAdjust delta ->
+            Update.Condition.saveBonusAdjust delta model
+
         ConditionSaveAutoRollSet mode ->
             Update.Condition.saveAutoRollSet mode model
 
-        ConditionApplyToSelectedToggle ->
-            Update.Condition.applyToSelectedToggle model
+        ConditionSaveFailDamageChanged text ->
+            Update.Condition.saveFailDamageChanged text model
+
+        ConditionSaveFailBecomesChanged text ->
+            Update.Condition.saveFailBecomesChanged text model
+
+        ConditionSaveOnDamageSet trigger ->
+            Update.Condition.saveOnDamageSet trigger model
+
+        ConditionSubmitSelected ->
+            Update.Condition.submitSelected model
+
+        ConditionQuickApply ->
+            Update.Condition.quickApply model
 
         ConditionSubmit ->
             Update.Condition.submit model
 
         ConditionDelete ->
             Update.Condition.delete model
+
+        ConditionClear ->
+            Update.Condition.clear model
 
         ConditionPresetSaveStart ->
             Update.Condition.presetSaveStart model
@@ -1322,8 +1480,26 @@ updateInner msg model =
         ConditionRollSave name id ->
             Update.Condition.rollSave name id model
 
-        ConditionSaveLanded name id dc wasAutoRoll roll ->
-            Update.Condition.saveLanded name id dc wasAutoRoll roll model
+        ConditionSaveLanded name id dc roll ->
+            Update.Condition.saveLanded name id dc roll model
+
+        ConditionFailDamageLanded name roll ->
+            Update.Condition.failDamageLanded name roll model
+
+        AreaRollNow name id ->
+            Update.SaveChain.areaRollNow name id model
+
+        AreaSaveLanded name id roll ->
+            Update.SaveChain.areaSaveLanded name id roll model
+
+        ConditionUndoLatest ->
+            Update.Condition.undoLatest model
+
+        ConditionLogToggle ->
+            Update.Condition.logToggle model
+
+        NoticeDismiss ->
+            Update.Notice.dismiss model
 
         SaveNoticeDismiss name id ->
             Update.Condition.saveNoticeDismiss name id model
@@ -1401,19 +1577,10 @@ updateInner msg model =
             Update.Compendium.Browser.loaded result model
 
         CompendiumOpen ->
-            -- If the standalone /compendium tab is open, focus
-            -- it; otherwise JS calls back via
-            -- `compendiumTabMissing` and the modal opens.
-            ( model, Ports.tryFocusCompendiumTab () )
-
-        CompendiumTabMissing ->
             Update.Compendium.Browser.open model
 
-        CompendiumOpenInTab ->
-            Update.Compendium.Browser.openInTab model
-
-        CompendiumClose ->
-            Update.Compendium.Browser.close model
+        CompendiumShowCreature id ->
+            Update.Compendium.Browser.showCreature id model
 
         CompendiumSearchChanged text ->
             Update.Compendium.Browser.searchChanged text model
@@ -1435,6 +1602,9 @@ updateInner msg model =
 
         CompendiumAddToQueue creatureId ->
             Update.Compendium.Add.addToQueue creatureId model
+
+        CompendiumBadgeFlashCleared ->
+            Update.Compendium.Add.badgeFlashCleared model
 
         CompendiumAddSelectedToQueue ->
             Update.Compendium.Add.addSelectedToQueue model
@@ -1629,12 +1799,6 @@ updateInner msg model =
         CompendiumGroupDeleted groupId result ->
             Update.Compendium.Group.deleteResponse groupId result model
 
-        CrCalculatorOpen ->
-            Update.CrCalculator.open model
-
-        CrCalculatorClose ->
-            Update.CrCalculator.close model
-
         CrCalculatorScopeSet scope ->
             Update.CrCalculator.scopeSet scope model
 
@@ -1646,12 +1810,6 @@ updateInner msg model =
 
         CrCalculatorPartyLevelSet memberId raw ->
             Update.CrCalculator.partyMemberLevelSet memberId raw model
-
-        RandomEncounterOpen ->
-            Update.RandomEncounter.open model
-
-        RandomEncounterClose ->
-            Update.RandomEncounter.close model
 
         RandomEncounterDifficultySet raw ->
             Update.RandomEncounter.difficultySet raw model
@@ -1707,17 +1865,35 @@ updateInner msg model =
         RandomEncounterAddToEncounter ->
             Update.RandomEncounter.addToEncounter model
 
-        TreasureOpen ->
-            Update.Treasure.open model
+        QueuePanelToggle panel ->
+            Update.QueuePanels.toggle panel model
 
-        TreasureClose ->
-            Update.Treasure.close model
+        DrawerDragStart index ->
+            Update.PanelDrawer.dragStart index model
 
-        SpellListOpen ->
-            Update.SpellList.open model
+        DrawerDragOver index ->
+            Update.PanelDrawer.dragOver index model
 
-        SpellListClose ->
-            Update.SpellList.close model
+        DrawerDrop index ->
+            Update.PanelDrawer.drop index model
+
+        DrawerDragEnd ->
+            Update.PanelDrawer.dragEnd model
+
+        DrawerCollapseToggle index ->
+            Update.PanelDrawer.toggleCollapse index model
+
+        DrawerPinToggle index ->
+            Update.PanelDrawer.togglePin index model
+
+        DrawerFoldAll ->
+            Update.PanelDrawer.foldAll model
+
+        LogRowToggle key ->
+            Update.LogRow.toggle key model
+
+        DrawerFoldNewest ->
+            Update.PanelDrawer.foldNewest model
 
         TreasureKindSet raw ->
             Update.Treasure.kindSet raw model
@@ -2172,33 +2348,32 @@ updateInner msg model =
         CompendiumPasteApply ->
             Update.Compendium.Paste.apply model
 
-        PanelShowCreature creatureId creatureName ->
-            Update.Compendium.Browser.panelShowCreature creatureId creatureName model
+        StatBlockShow creatureName ->
+            Update.StatBlock.show creatureName model
 
-        QuickListRowClick creatureId creatureName ->
-            -- Fires from the QuickList tab.  Broadcast the
-            -- (id, name) so the main tab pins the stat block +
-            -- scrolls its card into view, and let the JS side
-            -- of the port also try `window.opener.focus()` so
-            -- the main tab comes to front.  This tab itself
-            -- doesn't need to update — the GM is done with it.
-            ( model
-            , Ports.broadcastPanelShow
-                (Encode.object
-                    [ ( "id", Encode.string creatureId )
-                    , ( "name", Encode.string creatureName )
-                    ]
-                )
-            )
+        StatBlockToggle creatureName ->
+            Update.StatBlock.toggle creatureName model
 
-        IncomingPanelShow creatureId creatureName ->
-            Update.Tabs.incomingPanelShow creatureId creatureName model
+        StatBlockMinimize creatureName ->
+            Update.StatBlock.minimize creatureName model
 
-        ToggleLegendaryActionPip name idx ->
-            Update.LegendaryPip.toggleAction name idx model
+        QueueScrollTo creatureName ->
+            Update.Encounter.scrollToCard creatureName model
 
-        ToggleLegendaryResistancePip name idx ->
-            Update.LegendaryPip.toggleResistance name idx model
+        QuickListRowClick creatureName ->
+            Update.Tabs.broadcastShow creatureName model
+
+        IncomingPanelShow creatureName ->
+            Update.Tabs.incomingPanelShow creatureName model
+
+        ToggleSpecialReaction name reaction ->
+            Update.Legendary.toggleSpecialReaction name reaction model
+
+        LegendaryActionUse name ->
+            Update.Legendary.useAction name model
+
+        LegendaryResistanceUse name ->
+            Update.Legendary.useResistance name model
 
         EncounterLoaded result ->
             Update.Shell.encounterLoaded result model
@@ -2206,110 +2381,65 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
-        SaveOpen destination ->
-            Update.Save.open destination model
+        SaveLoadStorageSet storage ->
+            Update.SaveLoad.storageSet storage model
 
-        SaveClose ->
-            Update.Save.close model
+        SaveLoadFilenameChanged text ->
+            Update.SaveLoad.filenameChanged text model
 
-        SaveDestinationSet dest ->
-            Update.Save.destinationSet dest model
+        SaveLoadSaveSubmit ->
+            Update.SaveLoad.submit model
 
-        SaveFilenameChanged text ->
-            Update.Save.filenameChanged text model
+        SaveLoadListLoaded result ->
+            Update.SaveLoad.listLoaded result model
 
-        SaveSubmit ->
-            Update.Save.submit model
+        SaveLoadPersistResponse name result ->
+            Update.SaveLoad.persistResponse name result model
 
-        SaveListLoaded result ->
-            Update.Save.listLoaded result model
+        SaveLoadLoadRequested name ->
+            Update.SaveLoad.loadRequested name model
 
-        SavePersistResponse name result ->
-            Update.Save.persistResponse name result model
+        SaveLoadOverwriteRequested name ->
+            Update.SaveLoad.overwriteRequested name model
 
-        SaveOverwriteRequested name ->
-            Update.Save.overwriteRequested name model
+        SaveLoadDeleteRequested name ->
+            Update.SaveLoad.deleteRequested name model
 
-        SaveDeleteRequested name ->
-            Update.Save.deleteRequested name model
+        SaveLoadConfirmCancel ->
+            Update.SaveLoad.confirmCancel model
 
-        SaveConfirmCancel ->
-            Update.Save.confirmCancel model
+        SaveLoadConfirmConfirm ->
+            Update.SaveLoad.confirmConfirm model
 
-        SaveConfirmConfirm ->
-            Update.Save.confirmConfirm model
+        SaveLoadServerResponse name result ->
+            Update.SaveLoad.serverResponse name result model
 
-        SaveDeleteResponse name result ->
-            Update.Save.deleteResponse name result model
+        SaveLoadDeleteResponse name result ->
+            Update.SaveLoad.deleteResponse name result model
 
-        SaveRenameStart name ->
-            Update.Save.renameStart name model
+        SaveLoadRenameStart name ->
+            Update.SaveLoad.renameStart name model
 
-        SaveRenameChange text ->
-            Update.Save.renameChange text model
+        SaveLoadRenameChange text ->
+            Update.SaveLoad.renameChange text model
 
-        SaveRenameSubmit ->
-            Update.Save.renameSubmit model
+        SaveLoadRenameSubmit ->
+            Update.SaveLoad.renameSubmit model
 
-        SaveRenameCancel ->
-            Update.Save.renameCancel model
+        SaveLoadRenameCancel ->
+            Update.SaveLoad.renameCancel model
 
-        SaveRenameResponse names result ->
-            Update.Save.renameResponse names result model
+        SaveLoadRenameResponse names result ->
+            Update.SaveLoad.renameResponse names result model
 
-        LoadOpen ->
-            Update.Load.open model
+        SaveLoadDeviceImportClick ->
+            Update.SaveLoad.deviceImportClick model
 
-        LoadClose ->
-            Update.Load.close model
+        SaveLoadDeviceFileChosen file ->
+            Update.SaveLoad.deviceFileChosen file model
 
-        LoadSourceSet source ->
-            Update.Load.sourceSet source model
-
-        LoadFromServerRequested name ->
-            Update.Load.fromServerRequested name model
-
-        LoadConfirmCancel ->
-            Update.Load.confirmCancel model
-
-        LoadConfirmConfirm ->
-            Update.Load.confirmConfirm model
-
-        LoadServerResponse name result ->
-            Update.Load.serverResponse name result model
-
-        LoadDeleteRequested name ->
-            Update.Load.deleteRequested name model
-
-        LoadDeleteResponse name result ->
-            Update.Load.deleteResponse name result model
-
-        LoadRenameStart name ->
-            Update.Load.renameStart name model
-
-        LoadRenameChange text ->
-            Update.Load.renameChange text model
-
-        LoadRenameSubmit ->
-            Update.Load.renameSubmit model
-
-        LoadRenameCancel ->
-            Update.Load.renameCancel model
-
-        LoadRenameResponse names result ->
-            Update.Load.renameResponse names result model
-
-        LoadListLoaded result ->
-            Update.Load.listLoaded result model
-
-        LoadFromDeviceClick ->
-            Update.Load.fromDeviceClick model
-
-        LoadFromDeviceFileChosen file ->
-            Update.Load.fromDeviceFileChosen file model
-
-        LoadFromDeviceFileRead raw ->
-            Update.Load.fromDeviceFileRead raw model
+        SaveLoadDeviceFileRead raw ->
+            Update.SaveLoad.deviceFileRead raw model
 
         SaveCompendiumOpen destination ->
             Update.SaveCompendium.open destination model
@@ -2365,6 +2495,21 @@ updateInner msg model =
         LoadCompendiumServerResponse name result ->
             Update.LoadCompendium.serverResponse name result model
 
+        RoundSetOpen ->
+            Update.RoundSet.open model
+
+        RoundSetClose ->
+            Update.RoundSet.close model
+
+        RoundSetTextChanged text ->
+            Update.RoundSet.textChanged text model
+
+        RoundSetToOne ->
+            Update.RoundSet.setToOne model
+
+        RoundSetApply ->
+            Update.RoundSet.apply model
+
         EncounterReset ->
             Update.Encounter.requestReset model
 
@@ -2396,22 +2541,13 @@ updateInner msg model =
             Update.Encounter.run model
 
         XpScopeSet scope ->
-            ( { model | xpScope = scope, xpFilterOpen = False }, Cmd.none )
-
-        XpFilterToggle ->
-            ( { model | xpFilterOpen = not model.xpFilterOpen }, Cmd.none )
-
-        XpFilterClose ->
-            ( { model | xpFilterOpen = False }, Cmd.none )
+            Update.Xp.scopeSet scope model
 
         QuickAddOpen ->
             Update.QuickAdd.open model
 
         QuickAddOpenForReplace oldName ->
             Update.QuickAdd.openForReplace oldName model
-
-        QuickAddClose ->
-            Update.QuickAdd.close model
 
         QuickAddSortToggle ->
             Update.QuickAdd.sortToggle model
@@ -2425,20 +2561,20 @@ updateInner msg model =
         QuickAddPickPlaceholder ->
             Update.QuickAdd.pickPlaceholder model
 
-        AbilityCheckOpen creatureName ability bonus x y ->
-            Update.AbilitySave.open Ui.AbilitySave.AbilityCheck creatureName ability bonus x y model
+        AbilityCheckTriggered creatureName ability bonus x y ->
+            Update.AbilitySave.trigger Ui.AbilitySave.AbilityCheck creatureName ability bonus x y model
 
-        AbilitySaveOpen creatureName ability bonus x y ->
-            Update.AbilitySave.open Ui.AbilitySave.SavingThrow creatureName ability bonus x y model
+        AbilitySaveTriggered creatureName ability bonus x y ->
+            Update.AbilitySave.trigger Ui.AbilitySave.SavingThrow creatureName ability bonus x y model
 
-        AbilitySaveClose ->
-            Update.AbilitySave.close model
+        AttackRollTriggered creatureName mod x y ->
+            Update.Dice.attackRollTriggered creatureName mod x y model
 
-        AbilitySaveRoll mode ->
-            Update.AbilitySave.roll mode model
+        QuickD20Triggered x y ->
+            Update.Dice.quickD20 x y model
 
-        AbilitySaveLanded x y roll ->
-            Update.AbilitySave.landed x y roll model
+        TripleRollLanded x y results ->
+            Update.Dice.tripleRollLanded x y results model
 
         CompendiumImportClick ->
             Update.Compendium.Bulk.importClick model
@@ -2479,6 +2615,9 @@ updateInner msg model =
         CompendiumBulkMenuClose ->
             Update.Compendium.Browser.bulkMenuClose model
 
+        CompendiumClearClick ->
+            Update.Compendium.Bulk.clearClick model
+
         CompendiumClearAll ->
             Update.Compendium.Bulk.clearAll model
 
@@ -2502,15 +2641,6 @@ updateInner msg model =
 
         SettingsClose ->
             Update.Shell.settingsClose model
-
-        AnonymousBannerDismiss ->
-            Update.Shell.anonymousBannerDismiss model
-
-        ControlMenuToggle which ->
-            Update.Shell.controlMenuToggle which model
-
-        ControlMenuClose ->
-            Update.Shell.controlMenuClose model
 
         CompendiumFocusSearch ->
             Update.Compendium.Browser.focusSearch model
@@ -2604,12 +2734,10 @@ updateInner msg model =
 -- VIEW
 
 
-{-| Browser tab title. Defaults to the app name but switches to
-the creature's display name on the standalone single-creature
-page (`/compendium/creatures/:id`) so GMs who park multiple
-stat-block tabs can tell them apart at a glance. Falls back to
-the app name when the compendium hasn't loaded yet or the id
-doesn't match any creature.
+{-| Browser tab title. The routes a GM parks on a second
+monitor name themselves, so a row of tabs can be told apart at
+a glance; everything else falls back to the app name, as does a
+named route whose creature the compendium can't resolve.
 -}
 documentTitle : Model -> String
 documentTitle model =
@@ -2628,12 +2756,12 @@ documentTitle model =
                 _ ->
                     default
 
+        Compendium ->
+            "Compendium"
+
         QuickList ->
-            -- Standalone quick-view tab (opened via ↗ from the
-            -- encounter title bar).  Distinct title so a GM
-            -- parking multiple tabs (main workspace + several
-            -- stat-block tabs) can pick this one out at a
-            -- glance without reading the URL.
+            -- Standalone quick-view tab, opened via ↗ from the
+            -- encounter title bar.
             "eZpZ Quick View"
 
         _ ->
@@ -2685,47 +2813,15 @@ appShell maybeUser model =
             , user = maybeUser
             , route = model.route
             }
-    , -- Suppressed on the second-monitor tabs for the same reason
-      -- the AppBar is — the banner is a navigation-adjacent
-      -- affordance that doesn't belong on a parked reference view.
-      if model.route == QuickList || model.route == Compendium then
-        text ""
-
-      else
-        View.AnonymousBanner.view
-            { auth = model.auth
-            , dismissed = model.anonymousBannerDismissed
-            }
     , viewPage model
-    , View.Modal.Dice.view model.modalChrome model.dice
-    , View.Modal.HpChange.view model
-    , View.Modal.Initiative.view model
-    , View.Modal.Note.view model
-    , View.Modal.Condition.view model
-    , View.Modal.Memo.view model
-    , View.Modal.Timer.view model
-    , View.Modal.Compendium.view model.modalChrome
-        model.auth
-        model.compendium
-        model.userLoreGroups
-        (List.filterMap .creatureId model.encounter.creatures)
-    , View.Modal.CompendiumEdit.view model
-    , View.Modal.CompendiumPaste.view model
-    , View.Modal.Save.view model
-    , View.Modal.Load.view model
+    , View.Modal.Confirm.view model
+    , View.Modal.ConditionPreset.view model
+    , View.Modal.Notice.view model
+    , View.Modal.RoundSet.view model
     , View.Modal.SaveCompendium.view model
     , View.Modal.LoadCompendium.view model
-    , View.Modal.AbilitySave.view model
-    , View.Modal.QuickAdd.view model
-    , View.Modal.Duplicate.view model
-    , View.Modal.GroupEdit.view model
     , View.Modal.LoreEdit.view model
-    , View.Modal.CrCalculator.view model
-    , View.Modal.RandomEncounter.view model
-    , View.Modal.Treasure.view model.modalChrome model
     , View.Modal.TreasureTable.view model
-    , View.Modal.SpellList.view model
-    , View.Modal.SaveChain.view model
     , View.Toast.list model.toasts
     , View.RollPopup.list model.rollPopups
     , View.Audio.ringer model
@@ -2755,13 +2851,14 @@ viewPage model =
             View.Page.CompendiumStandalone.view model.compendium.db id
 
         QuickList ->
-            View.Page.QuickList.view model.encounter model.savedAs model.compendium.db
+            View.Page.QuickList.view model.encounter model.savedAs
 
         Compendium ->
             View.Page.Compendium.view model.auth
                 model.compendium
                 model.userLoreGroups
                 (List.filterMap .creatureId model.encounter.creatures)
+                (View.Page.Compendium.editorPane model)
 
         NotFound ->
             View.Page.NotFound.view

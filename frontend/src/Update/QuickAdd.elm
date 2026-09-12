@@ -1,44 +1,58 @@
-module Update.QuickAdd exposing (close, open, openForReplace, pick, pickPlaceholder, searchChanged, sortToggle)
+module Update.QuickAdd exposing (open, openForReplace, pick, pickPlaceholder, searchChanged, sortToggle)
 
-{-| Update branches for the Quick Add modal — a one-click picker
+{-| Update branches for the Quick Add panel — a one-click picker
 that lists every compendium creature and adds the chosen one to
 the encounter as a single instance.
 
 The pick path materialises the creature at initiative 0 — the GM
-sets the value manually on the card after the modal closes, which
-avoids spending a dice-roll telemetry entry on every add and keeps
-the queue's ordering predictable when several creatures are added
+sets the value manually on the card, which avoids spending a
+dice-roll telemetry entry on every add and keeps the queue's
+ordering predictable when several creatures are added
 back-to-back.
 
 -}
 
 import Compendium
+import Effects
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
 
 
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.quickAddLens model
+        |> Maybe.map SurfaceQuickAdd
+
+
+{-| The queue's "+" row sits far from the panel's heading, so an
+open that lands off screen reads as nothing having happened.
+-}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (ModalQuickAdd QuickAddUi.fresh) }, Cmd.none )
+    let
+        next =
+            Model.openDrawer Model.quickAddLens QuickAddUi.fresh model
+    in
+    ( next
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.quickAddLens next)
+    )
 
 
-{-| Open the Quick Add modal in "replace this creature" mode.
+{-| Open the Quick Add panel in "replace this creature" mode.
 The pick path then swaps the named creature in place rather
 than appending — see `pick` / `pickPlaceholder` below.
 -}
 openForReplace : String -> Model -> ( Model, Cmd Msg )
 openForReplace oldName model =
-    ( { model | modal = Just (ModalQuickAdd (QuickAddUi.freshForReplace oldName)) }
+    ( Model.openDrawer Model.quickAddLens (QuickAddUi.freshForReplace oldName) model
     , Cmd.none
     )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
 
 
 sortToggle : Model -> ( Model, Cmd Msg )
@@ -53,14 +67,26 @@ searchChanged text model =
 
 withQuickAddUi : (QuickAddUi -> QuickAddUi) -> Model -> Model
 withQuickAddUi =
-    Model.mapModal Model.quickAddLens
+    Model.mapSurface Model.quickAddLens
+
+
+{-| A pick leaves the panel up — it is one of the editors the
+drawer boots with, and a GM adding a party's worth of monsters
+should not have to reopen it. Only replace mode ends, because
+the creature it was aimed at has just been swapped; the search
+text survives so the next pick starts where this one left off.
+-}
+addDone : Model -> Model
+addDone =
+    Model.mapDrawer Model.quickAddLens
+        (\ui -> { ui | replaceTarget = Nothing })
 
 
 {-| One-click placeholder: append a stub combatant via
-`Encounter.Roster.appendPlaceholder` and close the modal. No
-initiative roll, no compendium lookup — placeholder rules apply
-directly. Mirrors the queue-bottom "+" button on the Workspace
-so the user has two equivalent surfaces for the same gesture.
+`Encounter.Roster.appendPlaceholder`. No initiative roll, no
+compendium lookup — placeholder rules apply directly. Mirrors
+the queue-bottom "+" button on the Workspace so the user has two
+equivalent surfaces for the same gesture.
 
 In replace mode (`ui.replaceTarget == Just oldName`) the
 placeholder swaps in for the named creature instead, preserving
@@ -78,7 +104,9 @@ pickPlaceholder model =
                 Nothing ->
                     Encounter.Roster.appendPlaceholder model.encounter
     in
-    ( { model | modal = Nothing, encounter = nextEncounter }, Cmd.none )
+    ( addDone (Model.reaimStale { model | encounter = nextEncounter })
+    , Cmd.none
+    )
 
 
 {-| Add one instance of the chosen creature to the encounter.
@@ -90,8 +118,8 @@ initiative value.
 
 In normal mode (append) the creature lands at initiative 0; the
 GM types the value on the card afterwards. No batched dice Cmd,
-no dice-history entry, no toast — the modal close + new card
-appearing is the feedback.
+no dice-history entry, no toast — the new card appearing is the
+feedback.
 
 -}
 pick : String -> Model -> ( Model, Cmd Msg )
@@ -108,15 +136,15 @@ pick creatureId model =
                             appendAtZero source model
 
                 Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+                    ( model, Cmd.none )
 
         _ ->
-            ( { model | modal = Nothing }, Cmd.none )
+            ( model, Cmd.none )
 
 
 {-| Synchronous swap path — used by both `pick` and
 `pickPlaceholder` in replace mode (with different newCreature
-builders). Closes the modal as a side-effect.
+builders).
 -}
 replaceInPlace : String -> Compendium.Creature -> Model -> ( Model, Cmd Msg )
 replaceInPlace oldName source model =
@@ -135,11 +163,15 @@ replaceInPlace oldName source model =
                 { displayName = provisionalName, initiativeRoll = 0 }
                 source
     in
-    ( { model
-        | modal = Nothing
-        , encounter =
-            Encounter.Roster.replaceCreature oldName newCreature model.encounter
-      }
+    ( addDone
+        (Model.reaimStale
+            { model
+                | encounter =
+                    Encounter.Roster.replaceCreature oldName
+                        newCreature
+                        model.encounter
+            }
+        )
     , Cmd.none
     )
 
@@ -158,22 +190,22 @@ appendAtZero source model =
                 { displayName = name, initiativeRoll = 0 }
                 source
     in
-    ( { model
-        | modal = Nothing
-        , encounter =
-            Encounter.Roster.appendCreatures [ newCreature ] model.encounter
-      }
+    ( addDone
+        { model
+            | encounter =
+                Encounter.Roster.appendCreatures [ newCreature ] model.encounter
+        }
     , Cmd.none
     )
 
 
 {-| Peek at the QuickAdd UI's `replaceTarget` field — present
-only when the modal was opened via `QuickAddOpenForReplace`.
+only when the panel was opened via `QuickAddOpenForReplace`.
 -}
 currentReplaceTarget : Model -> Maybe String
 currentReplaceTarget model =
-    case model.modal of
-        Just (ModalQuickAdd ui) ->
+    case drawerSurface model of
+        Just (SurfaceQuickAdd ui) ->
             ui.replaceTarget
 
         _ ->

@@ -36,7 +36,7 @@ view compendiumDb id =
                 CompendiumDbLoaded db ->
                     case Compendium.find id db of
                         Just creature ->
-                            View.StatBlock.view RollFromStatBlock AbilityCheckOpen AbilitySaveOpen View.StatBlock.TagBadges creature
+                            View.StatBlock.view RollFromStatBlock AttackRollTriggered AbilityCheckTriggered AbilitySaveTriggered View.StatBlock.TagBadges creature
 
                         Nothing ->
                             p [ class "empty" ]

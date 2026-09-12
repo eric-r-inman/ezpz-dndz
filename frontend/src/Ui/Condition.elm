@@ -1,14 +1,15 @@
 module Ui.Condition exposing
     ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
-    , ConditionPreset, applyPreset, toPreset
+    , ConditionLogEntry, ConditionPreset, applyPreset, maxConditionLogEntries, toPreset
     )
 
-{-| Condition / effect modal state.
+{-| Condition / effect editor state.
 
-`target` is the creature whose Condition/Effect button (or chip)
-was clicked. `editingId` is `Nothing` when creating a new
-condition and `Just id` when editing an existing one — the
-latter unlocks a "Delete" button in the modal footer.
+`target` is the creature the editor is aimed at — the queue's
+default when the drawer expands it unaimed, or the creature
+whose chip was clicked. `editingId` is `Nothing` when creating a
+new condition and `Just id` when editing an existing one — the
+latter unlocks a "Delete" button in the editor footer.
 
 The remaining fields mirror the rendered form. We track raw
 text inputs alongside parsed integers (the same trick as the
@@ -34,7 +35,7 @@ import Msg exposing (DurationKind(..))
 import Set exposing (Set)
 
 
-{-| Modal state for the Add / Edit Condition dialog.
+{-| Surface state for the Add / Edit Condition dialog.
 
 The "until turn" duration shape no longer carries an explicit
 "current vs next" choice — every condition expires when the
@@ -59,7 +60,6 @@ type alias ConditionUi =
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
-    , applyToSelected : Bool
     , loadMenuOpen : Bool
     , pendingSaveName : Maybe String
     , pendingSaveCategory : String
@@ -77,6 +77,27 @@ type alias ConditionUi =
     }
 
 
+{-| One row of the condition editor's log. `targets` holds each
+creature-plus-condition-id the application landed on, so undo
+removes exactly those instances, and `seq` is the row's identity,
+handed out by `Model.nextConditionLogSeq`.
+-}
+type alias ConditionLogEntry =
+    { seq : Int
+    , conditionName : String
+    , note : String
+    , summary : String
+    , targets : List { name : String, conditionId : Int }
+    }
+
+
+{-| Cap on the condition log, matching the HP log's depth.
+-}
+maxConditionLogEntries : Int
+maxConditionLogEntries =
+    30
+
+
 type alias SaveToEndUi =
     { ability : String
     , dcText : String
@@ -84,6 +105,11 @@ type alias SaveToEndUi =
     , bonusText : String
     , bonus : Int
     , autoRoll : Encounter.AutoRollMode
+
+    -- The failed-save outcome as typed, blank meaning none.
+    , failDamageText : String
+    , failBecomesText : String
+    , onDamage : Encounter.DamageTrigger
     }
 
 
@@ -101,10 +127,13 @@ freshSaveToEnd =
     , bonusText = "0"
     , bonus = 0
     , autoRoll = Encounter.AutoRollManual
+    , failDamageText = ""
+    , failBecomesText = ""
+    , onDamage = Encounter.NoDamageTrigger
     }
 
 
-{-| Fresh condition-modal state for creating a new condition on
+{-| Fresh condition-editor state for creating a new condition on
 `target`. The "until X's turn" reference defaults to the target
 itself — common for self-effects like "Concentrating until end
 of my next turn".
@@ -123,7 +152,6 @@ fresh target =
     , countdownTurns = 1
     , countdownPhase = Encounter.AtEnd
     , saveToEnd = Nothing
-    , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -133,7 +161,7 @@ fresh target =
     }
 
 
-{-| Pre-fill the modal's form fields from an existing condition
+{-| Pre-fill the editor's form fields from an existing condition
 so the GM can edit it. Reverse of the form-→-domain projection
 the update layer does on submit: break a stored Condition apart
 into the raw text states the form needs.
@@ -152,7 +180,7 @@ fromCondition target cond =
                     }
 
                 Encounter.DurationUntilTurn phase _ ref ->
-                    -- Discard the saved TurnTarget; the modal no longer
+                    -- Discard the saved TurnTarget; the editor no longer
                     -- exposes the current/next choice and `buildDuration`
                     -- recomputes it from current encounter state on submit.
                     { kind = DurKindUntilTurn
@@ -180,6 +208,9 @@ fromCondition target cond =
                         , bonusText = String.fromInt s.bonus
                         , bonus = s.bonus
                         , autoRoll = s.autoRoll
+                        , failDamageText = Maybe.withDefault "" s.onFail.damage
+                        , failBecomesText = Maybe.withDefault "" s.onFail.becomes
+                        , onDamage = s.onDamage
                         }
                     )
     in
@@ -200,7 +231,6 @@ fromCondition target cond =
     , countdownTurns = durFields.countdownTurns
     , countdownPhase = durFields.countdownPhase
     , saveToEnd = saveUi
-    , applyToSelected = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -216,7 +246,7 @@ same condition shape (DM uses Stun a lot? save the whole config).
 
 Excludes everything that's context-specific to one application:
 
-  - `target` / `editingId` / `applyToSelected` — per-creature.
+  - `target` / `editingId` — per-creature.
   - `untilCreature` — references a specific name; on load the
     handler defaults it to the current target so "Until self's
     next turn" comes through correctly.
@@ -261,11 +291,11 @@ toPreset ui =
 
 
 {-| Overlay a saved preset on the current form state. Keeps the
-form's per-application context (`target`, `editingId`,
-`applyToSelected`) and reuses the current target as the
-`untilCreature` default — that's the natural fit for self-effect
-presets like "Until self's next turn", which is what Stun and
-many other 5e conditions look like in practice.
+form's per-application context (`target`, `editingId`) and reuses
+the current target as the `untilCreature` default — that's the
+natural fit for self-effect presets like "Until self's next
+turn", which is what Stun and many other 5e conditions look like
+in practice.
 
 Stashes the preset name in `loadedPresetName` so the title bar
 shows "(loaded: Stun)". Closes any open load menu and clears the

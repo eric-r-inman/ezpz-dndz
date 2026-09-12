@@ -110,7 +110,7 @@ signInTagline maybeUser =
 
         Nothing ->
             span [ class "app-bar__tagline" ]
-                [ text "Sign in to save your encounters and compendium changes." ]
+                [ text "Sign in to keep changes." ]
 
 
 {-| Identity slot in the AppBar.

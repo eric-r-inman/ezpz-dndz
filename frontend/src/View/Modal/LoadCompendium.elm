@@ -12,7 +12,7 @@ changes shape based on which is picked.
     surfaces.
   - **Device** — a file-picker button that kicks off the
     existing `CompendiumImportClick` parse → confirm → replace
-    flow inside the parent Compendium modal.
+    flow on the compendium page.
 
 The destructive replace-the-library step still goes through
 the inline confirmation banner; that hasn't changed.
@@ -33,8 +33,8 @@ import Html.Attributes
         , type_
         )
 import Html.Events exposing (onClick)
-import Model exposing (Modal(..), Model)
-import Msg exposing (LoadSource(..), Msg(..))
+import Model exposing (Model, Surface(..))
+import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.LoadCompendium as LoadCompendiumUi
     exposing
         ( ConfirmAction(..)
@@ -47,8 +47,8 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    case model.modal of
-        Just (ModalLoadCompendium ui) ->
+    case model.surface of
+        Just (SurfaceLoadCompendium ui) ->
             View.Modal.view
                 { close = LoadCompendiumClose
                 , noOp = NoOp
@@ -75,7 +75,7 @@ share the predicate.
 -}
 serverNeedsSignIn : Auth.AuthState -> LoadCompendiumUi -> Bool
 serverNeedsSignIn auth ui =
-    ui.source == LoadSourceServer && not (Auth.isAuthenticated auth)
+    ui.source == StorageServer && not (Auth.isAuthenticated auth)
 
 
 sourceSection : LoadCompendiumUi -> Html Msg
@@ -83,13 +83,13 @@ sourceSection ui =
     div [ class "save-modal__row save-modal__row--destination" ]
         [ label [ class "save-modal__label" ] [ text "Load from" ]
         , div [ class "save-modal__radio-group", attribute "role" "radiogroup" ]
-            [ sourceRadio ui LoadSourceServer "Server" "load-cmp-src-server"
-            , sourceRadio ui LoadSourceDevice "Device" "load-cmp-src-device"
+            [ sourceRadio ui StorageServer "Server" "load-cmp-src-server"
+            , sourceRadio ui StorageDevice "Device" "load-cmp-src-device"
             ]
         ]
 
 
-sourceRadio : LoadCompendiumUi -> LoadSource -> String -> String -> Html Msg
+sourceRadio : LoadCompendiumUi -> SaveStorage -> String -> String -> Html Msg
 sourceRadio ui source label_ idAttr =
     Html.label [ class "save-modal__radio" ]
         [ input
@@ -164,7 +164,7 @@ single file-picker button that reuses the existing
 bodyForSource : Auth.AuthState -> LoadCompendiumUi -> Html Msg
 bodyForSource auth ui =
     case ui.source of
-        LoadSourceServer ->
+        StorageServer ->
             if Auth.isAuthenticated auth then
                 savesSection ui
 
@@ -175,7 +175,7 @@ bodyForSource auth ui =
                 -- "Couldn't load saves: Server returned 401" strip.
                 text ""
 
-        LoadSourceDevice ->
+        StorageDevice ->
             deviceRow
 
 

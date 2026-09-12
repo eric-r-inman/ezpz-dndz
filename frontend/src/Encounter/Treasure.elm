@@ -16,7 +16,7 @@ This module owns the rules side of the treasure generator: types,
 the random `Generator` that produces a fresh roll, and the small
 helpers the modal uses to display things ("how much is this stack
 worth in gp?"). No `Html`, no `Update`, no UI state — those
-live in `View.Modal.Treasure`, `Ui.Treasure`, and
+live in `View.Panel.Treasure`, `Ui.Treasure`, and
 `Update.Treasure` respectively.
 
 The treasure flow:

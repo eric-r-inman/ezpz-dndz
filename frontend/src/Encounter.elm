@@ -1,6 +1,7 @@
 module Encounter exposing
     ( Cover(..), Creature, DeathSaves, Encounter
     , Condition, ConditionDraft, Duration(..), TurnPhase(..), TurnTarget(..), SaveToEnd
+    , FailedSave, noFailedSave
     , AutoRollMode(..)
     , SaveNotice
     , Timer
@@ -8,13 +9,13 @@ module Encounter exposing
     , empty
     , run
     , setActive, activeCreature
-    , mapCreature, nextCover
+    , mapCreature, nextCover, toggleReaction, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
-    , addCondition, updateCondition, removeCondition, findCondition
+    , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , RechargeAbility, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -33,6 +34,7 @@ damage), it belongs here.
 
 @docs Cover, Creature, DeathSaves, Encounter
 @docs Condition, ConditionDraft, Duration, TurnPhase, TurnTarget, SaveToEnd
+@docs FailedSave, noFailedSave
 @docs AutoRollMode
 @docs SaveNotice
 @docs Timer
@@ -46,9 +48,9 @@ damage), it belongs here.
 
 # Combat startup
 
-`round = 0` is the pre-combat sentinel: the queue is set up
-but no one has taken a turn. [`run`](#run) flips the encounter
-into round 1 and picks the first creature as active.
+An empty `activeName` is the pre-combat sentinel: the queue is
+set up but no one has taken a turn. [`run`](#run) picks the
+first creature as active and the fight is underway.
 
 @docs run
 
@@ -67,7 +69,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # State helpers
 
-@docs mapCreature, nextCover
+@docs mapCreature, nextCover, toggleReaction, toggleSpecialReaction
 
 
 # Death saves
@@ -78,7 +80,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # Conditions / effects
 
-@docs addCondition, updateCondition, removeCondition, findCondition
+@docs addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
 @docs describeDuration
 
 
@@ -172,6 +174,11 @@ fire from torch").
     [`Duration`](#Duration).
   - `saveToEnd` is the optional saving-throw conditional that
     can clear the condition on success. See [`SaveToEnd`](#SaveToEnd).
+  - `linkedTo` names the condition this one rides on — Hypnotic
+    Pattern's Incapacitated on its Charmed — so it goes when that
+    one goes and carries no save of its own.
+  - `area` marks the condition as an area-effect tracker. See
+    [`AreaTracker`](#AreaTracker).
 
 -}
 type alias Condition =
@@ -180,6 +187,8 @@ type alias Condition =
     , note : String
     , duration : Duration
     , saveToEnd : Maybe SaveToEnd
+    , linkedTo : Maybe Int
+    , area : Maybe AreaTracker
     }
 
 
@@ -192,6 +201,24 @@ type alias ConditionDraft =
     , note : String
     , duration : Duration
     , saveToEnd : Maybe SaveToEnd
+    , linkedTo : Maybe Int
+    , area : Maybe AreaTracker
+    }
+
+
+{-| A marker that the bearer stands in an area effect — the Save
+Chain preset named by `chain` — which rolls that chain's save at
+the `phase` of each of the bearer's turns and applies the side the
+roll earned, keeping the marker until the GM removes it. The
+ability, DC, and bonus are fixed when the marker lands, as a
+save-to-end's are.
+-}
+type alias AreaTracker =
+    { chain : String
+    , ability : String
+    , dc : Int
+    , bonus : Int
+    , phase : TurnPhase
     }
 
 
@@ -260,7 +287,37 @@ type alias SaveToEnd =
     , dc : Int
     , bonus : Int
     , autoRoll : AutoRollMode
+    , onFail : FailedSave
+    , onDamage : DamageTrigger
     }
+
+
+{-| What a failed repeat save does beyond leaving the condition in
+place: `damage` is a dice formula or integer the bearer takes,
+and `becomes` renames the condition — a second failure turning
+Restrained into Petrified — after which the saving stops.
+-}
+type alias FailedSave =
+    { damage : Maybe String
+    , becomes : Maybe String
+    }
+
+
+noFailedSave : FailedSave
+noFailedSave =
+    { damage = Nothing, becomes = Nothing }
+
+
+{-| What taking damage does to the save: nothing, a flash of the
+chip for the GM to judge (a harpy's song breaks only on damage
+from someone other than the harpy), or a roll fired at once —
+with advantage for Hideous Laughter.
+-}
+type DamageTrigger
+    = NoDamageTrigger
+    | AskOnDamage
+    | RollOnDamage
+    | RollOnDamageWithAdvantage
 
 
 {-| When the save-to-end roll fires.
@@ -283,6 +340,10 @@ type AutoRollMode
     = AutoRollManual
     | AutoRollAtBegin
     | AutoRollAtEnd
+      -- The chip flashes as the bearer's turn ends and the GM
+      -- rolls only if the effect's trigger applied — Fear's save
+      -- comes only from a turn ended out of the caster's sight.
+    | AutoRollAskAtEnd
 
 
 {-| Save-notice type re-exported from
@@ -363,7 +424,7 @@ center column rows 1–3:
     revealing the pip strip eagerly is noise. Clicking the button
     flips the toggle and the pips become visible. Healing back above
     0 resets BOTH the counts and the toggle via the HP-change engine.
-  - `readied` — row 3 readied-action toggle.
+  - `readied` — row 2 readied-action toggle.
 
 `note` is a short free-text label edited via the row 1 pencil
 button; it surfaces inline next to the creature name when set
@@ -399,6 +460,10 @@ type alias Creature =
     , selected : Bool
     , cover : Cover
     , concentrating : Bool
+
+    -- What the creature is concentrating on, shown beside the
+    -- status so the GM knows which spell a failed save drops.
+    , concentrationNote : String
     , hiding : Bool
     , dodging : Bool
     , flying : Bool
@@ -415,19 +480,18 @@ type alias Creature =
     , timer : Maybe Timer
     , creatureId : Maybe String
 
-    -- Legendary Actions: how many pips show on the card.
+    -- Legendary Actions: how large a pool the card counts down.
     -- `legendaryActionsCount` is the base count from the stat
-    -- block (e.g. 3 for most legendary creatures); `lairBonus`
-    -- is the extra pips that appear with a slightly larger
-    -- gap, labeled "Lair bonus" on hover.  A count of 0 means
-    -- the creature has no LA — the column doesn't render.
+    -- block (e.g. 3 for most legendary creatures) and `lairBonus`
+    -- the extra the creature has in its lair.  A count of 0 means
+    -- the creature has no LA — the readout doesn't render.
     , legendaryActionsCount : Int
     , legendaryActionsLairBonus : Int
     , legendaryActionsUsed : Set Int
 
     -- Legendary Resistance: same shape as LA but parsed from
     -- the creature's "Legendary Resistance (N/Day, or M/Day
-    -- in Lair)" trait name.  Unlike LA, the column doesn't
+    -- in Lair)" trait name.  Unlike LA, the pool doesn't
     -- auto-reset at turn start — LR is per long rest in 5e
     -- and the GM controls it manually.
     , legendaryResistanceCount : Int
@@ -445,14 +509,6 @@ type alias Creature =
     , race : String
     , alignment : String
 
-    -- 5e Surprised: cleared automatically at the end of the
-    -- creature's first turn (handled by Encounter.Lifecycle).
-    -- A surprised creature renders a small icon next to its name
-    -- on the card + active-creature header and is excluded from
-    -- the legendary-action availability banner because the rule
-    -- bars LA use while surprised.
-    , surprised : Bool
-
     -- "Special reaction mechanics" hint copied from the
     -- compendium source.  When True, the card's reaction pip
     -- swaps its lightning glyph for a bold yellow `!` and the
@@ -462,6 +518,11 @@ type alias Creature =
     -- reactions all need a GM heads-up that the standard
     -- "one reaction per round" UX doesn't cover.
     , hasSpecialReactions : Bool
+
+    -- Names of the special reactions the GM has marked spent,
+    -- struck through on the card's badges.  Cleared at the
+    -- creature's begin-of-turn like the single reaction pip.
+    , specialReactionsUsed : Set String
     }
 
 
@@ -493,26 +554,28 @@ fixture (see `Encounter.Seed.initialEncounter`) — but the running
 app starts empty and either loads a persisted encounter from the
 server or waits for the user to add creatures from the compendium.
 
-`round = 0` is the pre-combat sentinel — see [`run`](#run).
+An encounter starts at round 1 with nobody active; the empty
+`activeName` is the pre-combat sentinel — see [`run`](#run).
 
 -}
 empty : Encounter
 empty =
     { creatures = []
     , activeName = ""
-    , round = 0
+    , round = 1
     , treasure = Nothing
     , treasureSettings = Encounter.Treasure.defaultSettings
     }
 
 
-{-| Begin combat: bump round from 0 to 1 and pick the first
-creature in the queue as active. The queue is in initiative
-order, so "first" is the highest-initiative combatant.
+{-| Begin combat: pick the first creature in the queue as
+active. The queue is in initiative order, so "first" is the
+highest-initiative combatant. The round is left alone — a GM
+who set it before starting meant it.
 
-This is the "Run Encounter" half of the round-0 sentinel: the
-GM lays out the encounter pre-combat (round 0, no one active),
-then clicks Run to begin and the queue starts ticking.
+This is the begin-combat half of the empty-`activeName`
+sentinel: the GM lays out the encounter with nobody active,
+then starts it and the queue begins ticking.
 
 -}
 run : Encounter -> Encounter
@@ -526,7 +589,43 @@ run enc =
                 Nothing ->
                     ""
     in
-    { enc | round = 1, activeName = firstActiveName }
+    { enc | activeName = firstActiveName }
+
+
+{-| The creature an editor aims at when nothing named one: the
+active creature, or the top of the queue before combat starts.
+Empty only when the queue is.
+-}
+defaultTarget : Encounter -> String
+defaultTarget enc =
+    if String.isEmpty enc.activeName then
+        enc.creatures
+            |> List.head
+            |> Maybe.map .name
+            |> Maybe.withDefault ""
+
+    else
+        enc.activeName
+
+
+{-| Whether a name still belongs to a creature in the queue. An
+editor aimed at one that has left is aimed at nothing.
+-}
+hasCreature : String -> Encounter -> Bool
+hasCreature name enc =
+    List.any (\c -> c.name == name) enc.creatures
+
+
+{-| Whether the named creature already carries a condition of
+this name. Matched without case, since "Prone" and "prone" are
+one condition to the GM.
+-}
+hasConditionNamed : String -> String -> Encounter -> Bool
+hasConditionNamed creatureName conditionName enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == creatureName)
+        |> List.concatMap .conditions
+        |> List.any (\cond -> String.toLower cond.name == String.toLower conditionName)
 
 
 {-| `True` when the current encounter's roster differs from the
@@ -540,8 +639,7 @@ A `Nothing` snapshot (the app has never been saved nor loaded) is
 treated as an empty roster, so a fresh queue with creatures shows
 dirty until the first save.
 
-The Save button uses this to surface a yellow outline cue when
-the encounter has unsaved roster changes.
+The Encounter Saves panel marks its title when this is true.
 
 -}
 rosterDirty : Encounter -> Maybe Encounter -> Bool
@@ -629,6 +727,65 @@ mapCreature name fn enc =
     { enc | creatures = List.map apply enc.creatures }
 
 
+{-| Whether the named creature is a placeholder stub. `False` for
+an unknown name, same as an editor targeting a creature that has
+since left the queue.
+-}
+isPlaceholderName : Encounter -> String -> Bool
+isPlaceholderName enc name =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.any .isPlaceholder
+
+
+{-| Drop placeholder stubs from a list of creature names an editor
+is about to act on. A placeholder has no real stat block yet, so
+HP, status, and condition edits — anything meant for a creature
+that is actually there — silently skip it rather than writing
+onto 1/1 HP AC 10 numbers nobody will use.
+-}
+excludingPlaceholderNames : Encounter -> List String -> List String
+excludingPlaceholderNames enc names =
+    List.filter (\n -> not (isPlaceholderName enc n)) names
+
+
+{-| Mark one of a creature's special reactions spent, or hand it
+back. A special reaction costs the creature's reaction for the
+round, so the two track each other: the reaction reads as spent
+while any special one is, and handing the last one back returns
+it. `Encounter.Lifecycle.applyBeginOfTurn` clears both at the
+start of the creature's turn.
+-}
+toggleSpecialReaction : String -> Creature -> Creature
+toggleSpecialReaction reaction c =
+    let
+        used =
+            if Set.member reaction c.specialReactionsUsed then
+                Set.remove reaction c.specialReactionsUsed
+
+            else
+                Set.insert reaction c.specialReactionsUsed
+    in
+    { c
+        | specialReactionsUsed = used
+        , reactionUsed = not (Set.isEmpty used)
+    }
+
+
+{-| Flip the creature's one-per-round reaction, carrying its
+special reactions with it — spending the reaction spends them,
+and handing it back returns them. `names` is what the card's
+badges show, since the set only holds the ones marked spent.
+-}
+toggleReaction : List String -> Creature -> Creature
+toggleReaction names c =
+    if c.reactionUsed then
+        { c | reactionUsed = False, specialReactionsUsed = Set.empty }
+
+    else
+        { c | reactionUsed = True, specialReactionsUsed = Set.fromList names }
+
+
 {-| Look a creature up by name. Returns `Nothing` if absent.
 -}
 findByName : String -> List Creature -> Maybe Creature
@@ -708,6 +865,15 @@ the contract of [`mapCreature`](#mapCreature)).
 -}
 addCondition : String -> ConditionDraft -> Encounter -> Encounter
 addCondition target draft enc =
+    Tuple.first (addConditionWithId target draft enc)
+
+
+{-| `addCondition`, also handing back the id the new condition
+was assigned — for callers that must reference the instance
+later (the condition log's undo removes by id).
+-}
+addConditionWithId : String -> ConditionDraft -> Encounter -> ( Encounter, Int )
+addConditionWithId target draft enc =
     let
         nextId =
             allConditionIds enc
@@ -721,9 +887,13 @@ addCondition target draft enc =
             , note = draft.note
             , duration = draft.duration
             , saveToEnd = draft.saveToEnd
+            , linkedTo = draft.linkedTo
+            , area = draft.area
             }
     in
-    mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
+    ( mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
+    , nextId
+    )
 
 
 {-| Apply `fn` to one specific condition, identified by its id, on
@@ -758,6 +928,33 @@ removeCondition target id enc =
     mapCreature target
         (\c -> { c | conditions = List.filter (\cond -> cond.id /= id) c.conditions })
         enc
+        |> pruneOrphanedLinks
+
+
+{-| Drop every companion whose condition is gone, however it went —
+a save, a duration, the GM's ×. Run after anything that removes
+conditions.
+-}
+pruneOrphanedLinks : Encounter -> Encounter
+pruneOrphanedLinks enc =
+    let
+        prune c =
+            let
+                ids =
+                    List.map .id c.conditions
+            in
+            { c
+                | conditions =
+                    List.filter
+                        (\cond ->
+                            cond.linkedTo
+                                |> Maybe.map (\primary -> List.member primary ids)
+                                |> Maybe.withDefault True
+                        )
+                        c.conditions
+            }
+    in
+    { enc | creatures = List.map prune enc.creatures }
 
 
 {-| Look up a condition by `(creatureName, conditionId)`. Returns
@@ -774,6 +971,72 @@ findCondition target id enc =
                     |> List.head
                     |> Maybe.map (\cond -> ( c, cond ))
             )
+
+
+{-| The conditions on the named creature whose save the GM has to
+roll by hand at this turn boundary — a manual save as the
+creature's turn begins, an "ask at end" save as it ends — so the
+turn-advance hook can flash their chips. Empty for an unknown
+name, same as the rest of this module's by-name lookups.
+-}
+remindersAt : TurnPhase -> String -> Encounter -> List ( String, Int )
+remindersAt phase name enc =
+    let
+        asksAt mode =
+            case ( phase, mode ) of
+                ( AtBegin, AutoRollManual ) ->
+                    True
+
+                ( AtEnd, AutoRollAskAtEnd ) ->
+                    True
+
+                _ ->
+                    False
+    in
+    conditionsWhere (\s -> asksAt s.autoRoll) name enc
+
+
+{-| The conditions on the named creature whose save the GM has to
+judge when it takes damage.
+-}
+damageReminders : String -> Encounter -> List ( String, Int )
+damageReminders =
+    conditionsWhere (\s -> s.onDamage == AskOnDamage)
+
+
+{-| The conditions on the named creature whose save a hit fires
+outright, with whether it rolls with advantage.
+-}
+damageRolls : String -> Encounter -> List ( Int, SaveToEnd, Bool )
+damageRolls name enc =
+    findByName name enc.creatures
+        |> Maybe.map .conditions
+        |> Maybe.withDefault []
+        |> List.filterMap
+            (\cond ->
+                cond.saveToEnd
+                    |> Maybe.andThen
+                        (\s ->
+                            case s.onDamage of
+                                RollOnDamage ->
+                                    Just ( cond.id, s, False )
+
+                                RollOnDamageWithAdvantage ->
+                                    Just ( cond.id, s, True )
+
+                                _ ->
+                                    Nothing
+                        )
+            )
+
+
+conditionsWhere : (SaveToEnd -> Bool) -> String -> Encounter -> List ( String, Int )
+conditionsWhere pick name enc =
+    findByName name enc.creatures
+        |> Maybe.map .conditions
+        |> Maybe.withDefault []
+        |> List.filter (\cond -> cond.saveToEnd |> Maybe.map pick |> Maybe.withDefault False)
+        |> List.map (\cond -> ( name, cond.id ))
 
 
 {-| Render a one-line human-readable description of a duration

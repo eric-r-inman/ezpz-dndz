@@ -188,11 +188,11 @@ rollLanded name d20Roll model =
         afterRule =
             { model | encounter = Encounter.mapCreature name applyRule model.encounter }
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll d20Roll afterRule
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll d20Roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll d20Roll, broadcastCmd ]
     )
 
 

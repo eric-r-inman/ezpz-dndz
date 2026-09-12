@@ -4,8 +4,7 @@ module Ui.Treasure exposing (TreasureUi, fresh)
 
 The user-facing flow:
 
-  - Open the modal from the "Treasure" button in the encounter
-    title bar.
+  - It sits in the editor column, folded until opened.
   - Pick a Kind (Sum-all-Enemies / Hoard).
   - Hit Roll — the generator derives each enemy's CR bracket
     from the encounter automatically; the materialised

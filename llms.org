@@ -691,18 +691,42 @@ architectural structure* — or, if a clean fit doesn't exist yet, embrace the
 *ideals* of the structure.  The shape is already there; extend it, don't
 recreate it.
 
-For a new modal feature, the canonical layout is:
+For a new feature that opens a surface, the canonical layout is:
 
   - Domain rules → =Foo.elm= or =Encounter/Foo.elm= (pure; no =Html=).
   - UI substate → =Ui/Foo.elm= (record alias + ~fresh~ constructor).
   - Update branches → =Update/Foo.elm= (one function per Msg branch,
-    pattern-matching on the ~Modal~ ADT).
-  - Modal ADT → add ~ModalFoo FooUi~ to ~Modal~ in =Model.elm=; do NOT add a
-    separate ~Maybe FooUi~ field on ~Model~.
-  - View → =View/Modal/Foo.elm= (entry point pattern-matches on ~model.modal~).
+    pattern-matching on the ~Surface~ ADT).
+  - Surface ADT → add ~SurfaceFoo FooUi~ to ~Surface~ in =Model.elm=; do NOT add
+    a separate ~Maybe FooUi~ field on ~Model~.
+  - View → =View/Panel/Foo.elm= for the editor column's drawer, which is where a
+    workspace surface belongs; =View/Modal/Foo.elm= only for something that
+    genuinely has to cover the page.  The two shells share most of their fields,
+    so moving a surface between the tiers is mostly a matter of swapping the
+    wrapper — the exception is ~close~, which only a modal takes, since a panel
+    folds rather than closes.
+  - A drawer panel also needs a ~SurfaceLens~ in =Model.elm=, a render arm in
+    ~View.PanelDrawer.panelFor~, an arm in ~Model.surfaceKey~, and — when the
+    drawer boots with it — an entry in ~Model.defaultDrawer~; those four move
+    together.  The compiler forces the ~surfaceKey~ arm but not the care it
+    needs: those strings are the persisted column layout, so a key is chosen
+    once and never renamed.  An editor that aims at a creature needs a further
+    arm in ~Model.reaimStale~ that actually re-aims — the compiler accepts a
+    fall-through, and a fall-through silently strands the editor on a creature
+    that has left the queue.  ~Main.drawerEscSub~ needs an arm only for a panel
+    Esc should treat specially; the rest fold.  Panels live in the
+    ~model.drawer~ stack — many open at once, newest at the bottom — and their
+    Update modules open, fold, and edit them through the ~Model.openDrawer~ /
+    ~foldDrawer~ / ~mapDrawer~ helpers; nothing takes a panel out of the stack,
+    since none has a trigger to put it back.  The stack is partitioned: panels
+    the GM has pinned hold the top in their own order, and
+    ~Model.drawerDropIndex~ clamps every move to the side of that boundary it
+    started on, so no reorder can interleave the two groups.
   - Cmd helpers → =Effects.elm= or =Util/Http.elm=.  Update modules don't
     ~import Http~ directly.
-  - Wire the dispatch as one-liners in =Main=' s =view= and =updateInner=.
+  - Wire the dispatch as one-liners in =Main='s =updateInner=.
+    =View.PanelDrawer= renders a drawer panel, so it needs no mounting; a modal
+    has to be mounted by hand in =Main='s =appShell=.
 
 For a new backend feature: =JsonFileStore<T>= for persistence, =aide::ApiRouter=
 for routes, semantic ~thiserror~ variants naming the operation.  CLI subcommands
@@ -712,7 +736,7 @@ See [[file:docs/ARCHITECTURE.org][docs/ARCHITECTURE.org]] for the full pattern w
 
 The honest version: if you're tempted to write a one-off helper inline in
 =Main.elm=, stop — find the right home first.  The structure isn't decoration;
-it's load-bearing for swappable UI layouts and for the modal-state invariants
+it's load-bearing for swappable UI layouts and for the surface-state invariants
 the type system enforces.
 
 * Where to look for context

@@ -90,14 +90,14 @@ materialise spawns rolls model =
                         (\spawn -> spawnToCreature spawn db)
                         spawns
 
-                ( m1, flashCmds ) =
+                ( m1, broadcastCmds ) =
                     List.foldl
                         (\r ( m, cs ) ->
                             let
-                                ( pushed, flashCmd ) =
+                                ( pushed, broadcastCmd ) =
                                     Effects.pushDiceRoll r m
                             in
-                            ( pushed, flashCmd :: cs )
+                            ( pushed, broadcastCmd :: cs )
                         )
                         ( model, [] )
                         rolls
@@ -121,7 +121,7 @@ materialise spawns rolls model =
                     toastMessage
                     (Cmd.batch
                         (List.map Effects.persistDiceRoll rolls
-                            ++ flashCmds
+                            ++ broadcastCmds
                         )
                     )
 

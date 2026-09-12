@@ -1,0 +1,252 @@
+#+title:     Modal migration plan
+#+language:  en
+
+Status: in progress on the =modal-migration-inline= branch.  This document
+records the plan for moving the frontend away from modal dialogs, prompted by
+external review feedback.  The foundation rename and the inline and panel tiers
+are implemented there; =main= is untouched until the branch is reviewed and
+merged.  Each phase lands as its own change set.
+
+* Why step away from modals
+
+The app is a live combat tracker: the encounter queue — initiative order, HP,
+conditions, whose turn it is — is the one surface a GM needs visible at all
+times, and every modal covers it.  Applying damage through a modal hides the
+other creature cards; opening the Compendium hides the fight.  A tool whose
+purpose is "less bookkeeping, more attention on the table" should not repeatedly
+blank the table.
+
+The supporting reasons:
+
+- Modal flows cost open → act → close on actions that repeat dozens of times per
+  session.
+- The ~Modal~ ADT enforces one open modal, so switching tools mid-flow loses or
+  hides in-progress work.
+- Modals are the hardest common widget to make accessible (focus traps, escape
+  handling, scroll locking, screen-reader announcement).
+- On a tablet propped at the table, modals are especially clumsy.
+- Current design guidance treats modals as a last resort for genuine
+  interruptions, not as the default container for features.
+
+* The tiered policy
+
+Rather than a flat ban, each surface uses the least disruptive pattern that fits
+it:
+
+1. *Inline* on the creature card — for high-frequency, per-creature actions.
+   Extends the existing inline-edit idiom (the AC readout).
+2. *Popover* anchored to the triggering control — for small, pick-one
+   interactions.
+3. *Docked panel / drawer* beside the queue — for combat tools that need real
+   estate but must not hide the queue.
+4. *Route / full page* — for destinations: prep-time surfaces that do not need
+   the encounter on screen at all.
+5. *Toast + undo* — replacing blocking confirmations with reversibility.
+
+A true modal was acceptable only for a destructive, must-decide-now
+interruption, and the toast + undo pattern was to eliminate most of those.  The
+operator has since lifted that restriction: a modal is now built where they ask
+for one and nowhere else, which is the rule this section's remaining plan should
+be read against.  The surfaces outside the original policy — the round-setter,
+the Condition editor's preset naming, and the notice that refuses a duplicate
+condition — stand by that call rather than by the tiering below, and moving any
+of them is a wrapper swap.
+
+* Mapping
+
+Every modal the app started with, and its target pattern.
+
+** Inline on the creature card
+
+- =HpChange= (Damage / Heal / Temp HP) :: Converted as a card expansion, then
+  re-homed twice: its trigger sits on the creature card and the editor opens in
+  the drawer, targeting the active creature.  The ten-entry log shrinks to "last
+  change + undo" in the editor; the full log lives in the dice panel.
+- =Condition= :: Same journey as =HpChange= — drawer panel, active-creature
+  default, with a second button applying to the selection.  The biggest payoff
+  of the migration: conditions get set while watching the fight.
+- =Memo= (the row-three note) :: Clicking the icon becomes an in-place text
+  input; no surface at all.
+- =Note= (the name note) :: Identical treatment, completing the existing
+  inline-edit idiom.
+- =Timer= :: Originally mapped as a popover, but converted with this group so
+  every card-button editor shares one UX; it may still shrink to a popover once
+  that tier's anchored container exists.
+- =SaveChain= :: Originally mapped as a right-rail panel; it shares the drawer
+  panel home of =HpChange= and =Condition=, which is that panel on the other
+  side of the queue.
+- =Initiative= :: Originally mapped as a popover anchored to the clicked
+  initiative badge; it took the drawer panel treatment instead, since its
+  roll-and-sort batch is too wide for an anchored container.  The card's
+  initiative badge still aims the editor at its own creature.
+
+** Popover anchored to the trigger
+
+- =AbilitySave= :: Planned as an anchored popover (roll / advantage /
+  disadvantage) outside the modal ADT.  Superseded instead: the trigger now
+  fires all three roll modes at once as a single triple-roll (see
+  docs/ARCHITECTURE.org's "Triple-rolls" section), so there is no longer a
+  picker to anchor.  The tier has no remaining members.
+- =Duplicate= :: First reclassified as its existing dropdown menu, then promoted
+  to a drawer panel beside =Replace= (the Quick Add picker's replace mode, given
+  its own surface) — both with apply-to-selected scopes and recent-applies logs.
+- =QuickAdd= :: Mapped as an anchored popover under the button; landed as a
+  drawer panel with the same search box and capped-height scroll, since it would
+  have been the tier's only member.
+
+** Docked panel / drawer
+
+- =Dice= :: The strongest panel candidate — a GM plausibly wants it persistently
+  open.  Mapped as a right-rail dock beside the stat block; landed in the editor
+  column's drawer with it, stacked in whatever order the GM opened them.
+- =Treasure= (the roller) :: Rolls against the current queue's enemies; a drawer
+  keeps them visible while results generate.
+- =CrCalculator= :: Reads the live queue by design; as a panel, the difficulty
+  updates visibly as creatures are added or removed.
+- =RandomEncounter= :: Its entire output is creatures appearing in the queue; a
+  drawer means seeing them land.
+- =SpellList= :: Mapped as a right-rail drawer, landed as a drop-down under the
+  queue's spellcaster strip, so the reminder naming the casters and the
+  reference listing their spells are one affordance.
+- =Save= :: Mapped as a three-way split — a one-click quick-save button with a
+  toast, a small "save as" drawer, and a =/saves= management route.  Only the
+  drawer landed, carrying the whole form; the quick-save button and the route
+  are still ahead.
+
+All of these landed in one frame rather than a drawer per tier: the editor
+column gathers the encounter's own controls, and the stack below them holds
+every editor, folded to its heading row.  =QuickAdd= went there too — the
+popover the tier above mapped it to would have been the only one of its kind —
+and so did the stat block (since moved under its creature's card) and the XP
+scope, which is what let the two right-hand panes go away entirely.  The Reset /
+Clear confirmation is the exception the policy above reserves: a destructive
+must-decide-now interruption, so it stayed a modal.  =View.Panel= carries the
+shared chrome, with its shell fields lined up against =View.Modal='s, so moving
+a feature between the two is mostly a matter of swapping the wrapper.
+
+** Route / full page
+
+- =Compendium= (browser) :: The flagship conversion: a =/compendium= section.
+  It is a database UI, not an interruption, and its selection-plus-detail layout
+  wants the space.  Landed: the browser lives only in its own tab now, opened
+  with nothing selected, and the in-page modal that used to be its fallback is
+  gone.
+- =CompendiumEdit= :: =/compendium/edit/:id=.  The deepest form in the app; a
+  page gives it room and normal browser behavior (back button, refresh-safe).
+- =CompendiumPaste= :: A step under the compendium route; paste → parse preview
+  → save is a linear flow suited to a page.
+- =GroupEdit= :: Nested compendium route; group building is prep work.
+- =LoreEdit= :: Nested compendium route.
+- =TreasureTable= (the table editor, distinct from the roller) :: Prep-time
+  editing of reference data; the roller drawer links to it.
+- =Load= :: Mapped as a =/saves= management page (rename, delete, server/local)
+  with a "recent saves" popover for the common case; landed as a drawer panel
+  beside =Save=, since the two share a shape and splitting them across tiers
+  would have been the odder half of the pair.
+- =SaveCompendium= / =LoadCompendium= :: Fold both into the compendium route as
+  its import/export screen; they share the file-management shape of encounter
+  save/load.
+
+** Toast + undo
+
+The overwrite confirmation inside Save becomes a non-blocking toast with an Undo
+action — faster at the table, and undo is the honest answer where the action is
+reversible.  The Reset / Clear confirmation is the one that stays a dialog,
+under the policy's carve-out above.
+
+* Sequencing
+
+1. Rename the ~Modal~ ADT to a ~Surface~ ADT with ~Inline~ / ~Popover~ / ~Panel~
+   / ~Route~ variants.  Pure refactor, no behavior change; every later phase
+   builds on it.
+2. Convert the combat-critical four — =HpChange=, =Condition=, =SaveChain=,
+   =Dice= — which deliver nearly all the at-the-table value.
+3. Move the compendium family (browser, editor, paste, groups, lore,
+   import/export) to routes.
+4. Sweep the small popovers and the toast + undo conversions last.
+
+The =Update/*= modules barely change throughout: this is almost entirely
+=View/*= and ~Model.modal~ plumbing, which is what the frontend layering (see
+[[file:ARCHITECTURE.org][ARCHITECTURE.org]]) was built to absorb.  The panel-based layout is also
+effectively the second UI layout the domain/view split was designed to enable.
+
+* Engineering plan
+
+How the phases above translate into concrete changes.  Rollback strategy: all
+work lands on the =modal-migration-inline= branch, pushed to GitHub, so
+switching between the old and new UI is a =git switch= (plus =just dev= to
+rebuild) in either direction.  The branch merges to =main= via squash — its
+published polish-chain history collapses to the one-commit-per-PR shape the
+conventions ask for.
+
+** Foundation: the Surface rename
+
+A mechanical, behavior-preserving rename, verified entirely by the compiler:
+
+- ~type Modal~ becomes ~type Surface~, and each ~ModalX~ constructor becomes
+  ~SurfaceX~.
+- ~Model.modal~ becomes ~Model.surface~; ~ModalLens~ / ~mapModal~ become
+  ~SurfaceLens~ / ~mapSurface~.
+
+Three things deliberately keep their names.  ~Ui.ModalChrome~ and the =.modal*=
+CSS classes describe the floating-window chrome, which remains real for every
+surface still rendered as an overlay.  The =View.Modal.*= module namespace
+shrinks one module at a time as features convert — each conversion moves its
+view to the namespace matching its new pattern (=View/Inline/*=, later
+=View/Popover/*= and =View/Panel/*=), so the module path always tells the truth
+about how the surface renders.
+
+The tier a variant belongs to is expressed by where its view is mounted (the
+overlay stack in =Main.appShell=, a card expansion, a rail panel, a route), not
+by a reified kind enum — a ~kindOf~ function would be a second copy of the
+mapping in this document, drifting the moment a variant converts.
+
+** Inline tier mechanics
+
+The four inline conversions keep their Ui records, Msg families, and Update
+modules byte-identical; only the rendering moves.
+
+- *State threading.* =View.Card.view= gains a context record (built in
+  =View.Workspace=) carrying the open surface, the selected-creature count, the
+  condition presets, the queue's creature names, and the newest HP-log entry —
+  the model fragments the transplanted bodies already consumed.
+- *Expansion slot.* When the open surface targets a card's creature, the card
+  renders a =.creature-card__inline= section under row 3 with the transplanted
+  form body (HP change, condition) and a header close button.  The
+  one-open-at-a-time invariant carries over unchanged: opening any surface
+  replaces the previous one, so at most one card is ever expanded.
+- *Compact editors.* Memo and note get a one-row strip below the card rows
+  (title, short input, ✓ save) instead of the full expansion.  Their triggers
+  stay exactly where they are, highlighted while the editor is open — a row must
+  never reflow around an editor, and the visible trigger is what makes the
+  cancel toggle reachable.  Enter or ✓ commits; Escape or the trigger cancels.
+  Deliberately no blur-commit (unlike the AC edit): committing on blur would
+  fire before a cancel click could land.
+- *Toggle-to-close.* The button that opened an inline editor closes it again
+  unchanged — once the editor lives on the card, its trigger reads as a toggle,
+  and re-clicking it is the natural cancel gesture.  This replaces the footer
+  Cancel buttons, which the editors therefore drop.
+- *Escape coverage.* The subscription table in =Main= gains cases for the three
+  converted surfaces that previously had no Esc handling (HP change, condition,
+  memo), closing an inconsistency the modal era left behind.
+- *The HP log.* The card expansion shows only the newest entry with its undo
+  button.  The full ten-entry list moves to the dice panel through a shared
+  =View/HpLog= module, so the rendering exists once.
+
+** Later tiers, briefly
+
+- *Popovers* would have gotten a shared anchored-container helper
+  (=View/Popover=) that positions against the triggering control.  =AbilitySave=
+  was the tier's only member; its picker is gone (superseded by an instant
+  triple-roll — see the "Popover anchored to the trigger" section above), so the
+  tier is empty and =View/Popover= is no longer planned.
+- *Routes* extend =Route= with the compendium family and =/saves=; the existing
+  standalone-page pattern (=View/Page/*=) is the template.
+- *Toast + undo* replaces the reversible confirmations last.
+
+** Verification
+
+Every step must pass ~elm make~ and ~elm-test~ before it lands; behavioral
+phases also get a manual =just dev= pass.  The four inline features have no
+view-layer tests today — their domain logic (=HpChange=, condition durations) is
+covered by the existing pure suites, which must stay green untouched.

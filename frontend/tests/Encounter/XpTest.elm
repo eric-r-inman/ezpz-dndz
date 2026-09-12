@@ -47,6 +47,7 @@ mkInstance args =
     , selected = args.selected
     , cover = NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False
@@ -72,8 +73,8 @@ mkInstance args =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 
@@ -243,6 +244,7 @@ totalsForSuite =
                         , selected = False
                         , cover = NoCover
                         , concentrating = False
+                        , concentrationNote = ""
                         , hiding = False
                         , dodging = False
                         , flying = False
@@ -268,8 +270,8 @@ totalsForSuite =
                         , creatureKind = "enemy"
                         , race = ""
                         , alignment = ""
-                        , surprised = False
                         , hasSpecialReactions = False
+                        , specialReactionsUsed = Set.empty
                         }
 
                     enc =

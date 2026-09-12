@@ -1,116 +1,120 @@
 module View.Workspace exposing (view)
 
-{-| Three-pane workspace layout for the Home route: encounter pane
-on the left (creature cards under the encounter title bar), control
-buttons in the middle, compendium / detail pane on the right.
+{-| Workspace layout for the Home route.
 
 Each pane is a separate `View/` module — this module just wires
 them together with the model fragments each one needs.
 
 -}
 
+import Compendium.Casters as Casters
 import Effects
 import Encounter exposing (Creature, Encounter)
 import Encounter.DeathSaves
-import Encounter.Xp exposing (XpScope)
 import Html exposing (Html, button, div, main_, section, span, text)
 import Html.Attributes exposing (attribute, class, id, type_)
 import Html.Events exposing (onClick)
 import Model exposing (Model)
-import Msg exposing (Msg(..))
+import Msg exposing (Msg(..), QueuePanel(..))
 import Set
-import Ui.Compendium exposing (CompendiumDb)
-import Ui.HpChange exposing (HpEdit)
-import Ui.PlaceholderRename exposing (PlaceholderRenameState)
+import Ui.Compendium exposing (CompendiumDb(..))
 import View.Card
+import View.Card.StatBlock
 import View.EncounterBar
-import View.PanelControls
-import View.PanelDetail
+import View.Inline.QueueReference
+import View.Inline.SpellList
+import View.PanelDrawer
 import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
 view model =
     main_
-        [ class "workspace"
+        [ class "workspace workspace--drawer"
         , id "main"
         , attribute "tabindex" "-1"
         ]
-        [ panelMain
-            model.encounter
-            model.hpEdit
-            model.placeholderRename
-            model.savedAs
-            model.compendium.db
-            model.xpScope
-            model.xpFilterOpen
-        , View.PanelControls.view
-            model.auth
-            model.dice
-            model.pendingControl
-            model.encounter.round
-            (Encounter.rosterDirty model.encounter model.savedSnapshot)
-            model.controlMenu
-        , View.PanelDetail.view model
+        [ View.PanelDrawer.view model
+        , panelMain model
         ]
 
 
-{-| The encounter pane. `hpEdit` is threaded through so any open
-inline-edit input (current/max HP) renders on the right card.
-`savedAs` lights up the title-bar info icon with the source
-filename when the encounter was loaded from / saved to a name.
-The compendium DB + XP scope let the title bar's right cluster
-compute the real XP total; `xpFilterOpen` controls the
-hand-rolled XP-scope dropdown's visibility so the global
-Esc / click-outside handlers in `Main.subscriptions` can close
-it without touching DOM state.
+{-| The encounter pane. Builds the card context each card render
+needs (inline-edit and rename states, the open surface, timer
+presets), then stacks the stationary strips above the scrolling
+card grid. `savedAs` lights up the title-bar info icon with the
+source filename.
 -}
-panelMain :
-    Encounter
-    -> Maybe HpEdit
-    -> Maybe PlaceholderRenameState
-    -> Maybe String
-    -> CompendiumDb
-    -> XpScope
-    -> Bool
-    -> Html Msg
-panelMain enc hpEdit renameState savedAs db xpScope xpFilterOpen =
+panelMain : Model -> Html Msg
+panelMain model =
     let
-        renderCard =
-            View.Card.view enc.activeName hpEdit renameState
+        enc =
+            model.encounter
+
+        cardContext =
+            { activeName = enc.activeName
+            , hpEdit = model.hpEdit
+            , renameState = model.placeholderRename
+            , surface = model.surface
+            , timerPresets = model.timerPresets
+            , compendium = model.compendium.db
+            , drag = model.queueDrag
+            , targetName = model.targetName
+            , flashConditions = model.flashConditions
+            , openStatBlocks = model.openStatBlocks
+            }
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view View.EncounterBar.FullBar enc savedAs db xpScope xpFilterOpen ]
-        , legendaryActionStrip enc
-        , specialReactionsStrip enc
+            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs ]
+        , legendaryActionStrip enc model.queuePanels.legendaryActions
+        , specialReactionsStrip enc model.queuePanels.specialReactions
+        , spellcasterStrip enc model.compendium.db model.queuePanels.spells
+        , panelIf model.queuePanels.legendaryActions
+            (View.Inline.QueueReference.legendaryActions enc model.compendium.db)
+        , panelIf model.queuePanels.specialReactions
+            (View.Inline.QueueReference.specialReactions enc model.compendium.db)
+        , panelIf model.queuePanels.spells
+            (View.Inline.SpellList.view enc model.compendium.db)
         , div
-            [ class "panel__body"
+            [ class "panel__body panel__body--encounter"
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class "creature-grid" ]
-                (List.map renderCard enc.creatures)
+                (List.concat (List.indexedMap (cardWithStatBlock cardContext model) enc.creatures))
             , quickAddRow
             ]
         ]
 
 
+{-| A card, and under it the stat block the GM unfolded there.
+-}
+cardWithStatBlock : View.Card.Context -> Model -> Int -> Creature -> List (Html Msg)
+cardWithStatBlock ctx model index creature =
+    View.Card.view ctx index creature
+        :: (if Set.member creature.name model.openStatBlocks then
+                [ View.Card.StatBlock.view (creature.name == model.encounter.activeName) model.compendium.db creature ]
+
+            else
+                []
+           )
+
+
 {-| Sticky orange strip sandwiched between the encounter title
 bar and the scrolling card grid. Lists every queue member with
-un-spent legendary actions (excluding the currently-active
-creature, since you can't take an LA on your own turn-end, and
-excluding Surprised creatures, since the rule bars LA use while
-surprised). Each name is clickable to pin the creature's stat
-block; the parenthesised count is remaining pips. Empty when
-no creature qualifies, so the panel layout is unchanged for
-vanilla encounters.
+un-spent legendary actions, excluding the currently-active
+creature since you can't take an LA on your own turn-end. Each
+name is clickable to bring that creature's card to the top of the
+queue; the parenthesised count is remaining pips. Empty when no creature
+qualifies, so the panel layout is unchanged for vanilla
+encounters.
 
 Lives outside `panel__body` so it doesn't scroll with the cards
 — same affordance the title bar uses.
 
 -}
-legendaryActionStrip : Encounter -> Html Msg
-legendaryActionStrip enc =
+legendaryActionStrip : Encounter -> Bool -> Html Msg
+legendaryActionStrip enc panelOpen =
     let
         eligible =
             enc.creatures
@@ -121,7 +125,7 @@ legendaryActionStrip enc =
         text ""
 
     else
-        legendaryActionBanner eligible
+        legendaryActionBanner eligible panelOpen
 
 
 {-| Sticky orange strip that sits directly under the LA strip.
@@ -136,8 +140,8 @@ reactions can fire on the creature's own turn (e.g. an OA on
 a fleeing target).
 
 -}
-specialReactionsStrip : Encounter -> Html Msg
-specialReactionsStrip enc =
+specialReactionsStrip : Encounter -> Bool -> Html Msg
+specialReactionsStrip enc panelOpen =
     let
         eligible =
             List.filter specialReactionsEligible enc.creatures
@@ -146,7 +150,86 @@ specialReactionsStrip enc =
         text ""
 
     else
-        specialReactionsBanner eligible
+        specialReactionsBanner eligible panelOpen
+
+
+{-| Sticky orange strip under the special-reactions one, naming
+every queue member whose source can cast. The spell-list button
+sits inside the strip rather than in the title bar, so the
+reminder and the reference it opens read as one affordance.
+Counts stay out of it — the compendium pane has the detail once
+the GM clicks a name.
+-}
+spellcasterStrip : Encounter -> CompendiumDb -> Bool -> Html Msg
+spellcasterStrip enc db listOpen =
+    case db of
+        CompendiumDbLoaded loaded ->
+            let
+                casters =
+                    enc.creatures
+                        |> List.filterMap (Casters.resolve loaded)
+                        |> List.map .creature
+            in
+            if List.isEmpty casters then
+                text ""
+
+            else
+                div
+                    [ class "legendary-banner legendary-banner--spells"
+                    , attribute "role" "note"
+                    ]
+                    (text "Spells: "
+                        :: stripButton SpellsPanel listOpen "📜" Tooltips.encounterBarSpellList
+                        :: (casters
+                                |> List.map nameNode
+                                |> List.intersperse (text ", ")
+                           )
+                    )
+
+        _ ->
+            text ""
+
+
+{-| One strip's drop-down toggle, sitting between the strip's
+label and its creature names. Wears the shared open-editor ring
+so an open panel is as visible as an open editor.
+-}
+stripButton : QueuePanel -> Bool -> String -> String -> Html Msg
+stripButton panel open glyph openTip =
+    button
+        [ class (View.Card.editorTriggerClass "legendary-banner__panel-btn" open)
+        , type_ "button"
+        , onClick (QueuePanelToggle panel)
+        , Tooltips.attr
+            (if open then
+                Tooltips.inlineEditCancel
+
+             else
+                openTip
+            )
+        , attribute "aria-label" openTip
+        , attribute "aria-expanded"
+            (if open then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text glyph ]
+
+
+{-| The reference drop-downs render below every strip, so the
+strips stay together, and in the strips' own order when more
+than one is open.
+-}
+panelIf : Bool -> Html Msg -> Html Msg
+panelIf open panel =
+    if open then
+        panel
+
+    else
+        text ""
 
 
 specialReactionsEligible : Creature -> Bool
@@ -161,13 +244,14 @@ specialReactionsEligible c =
     c.hasSpecialReactions && not down && not dead
 
 
-specialReactionsBanner : List Creature -> Html Msg
-specialReactionsBanner creatures =
+specialReactionsBanner : List Creature -> Bool -> Html Msg
+specialReactionsBanner creatures panelOpen =
     div
         [ class "legendary-banner legendary-banner--special-reactions"
         , attribute "role" "note"
         ]
         (text "Special reactions: "
+            :: stripButton SpecialReactionsPanel panelOpen "⚡" Tooltips.specialReactionsPanel
             :: (creatures
                     |> List.map nameNode
                     |> List.intersperse (text ", ")
@@ -191,22 +275,21 @@ hasAvailableLegendaryAction c =
         dead =
             Encounter.DeathSaves.isDead c.deathSaves
     in
-    -- Surprised, down, or dead creatures are suppressed from
-    -- the reminder banner: 5e bars them from using LA until
-    -- those conditions clear.  Once the lifecycle (or the GM)
-    -- clears the relevant flag, they re-appear in the banner
-    -- without any further state change.
+    -- Down or dead creatures are suppressed from the reminder
+    -- banner: 5e bars them from using LA until those conditions
+    -- clear.  Once the lifecycle (or the GM) clears the relevant
+    -- flag, they re-appear in the banner without any further
+    -- state change.
     total
         > 0
         && Set.size c.legendaryActionsUsed
         < total
-        && not c.surprised
         && not down
         && not dead
 
 
-legendaryActionBanner : List Creature -> Html Msg
-legendaryActionBanner creatures =
+legendaryActionBanner : List Creature -> Bool -> Html Msg
+legendaryActionBanner creatures panelOpen =
     let
         nameNodes =
             creatures
@@ -217,13 +300,16 @@ legendaryActionBanner creatures =
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
-        (text "⚜ Legendary Action available: " :: nameNodes)
+        (text "Legendary actions: "
+            :: stripButton LegendaryActionsPanel panelOpen "⚜" Tooltips.legendaryActionsPanel
+            :: nameNodes
+        )
 
 
-{-| Render `<Name> (N),` where N is the count of un-spent
-legendary-action pips on this creature. The trailing comma /
-space is stripped off the last entry by `dropTrailingComma`
-below so the banner reads cleanly.
+{-| Render `<Name> (N),` where N is how many legendary actions
+this creature has left. The trailing comma / space is stripped
+off the last entry by `dropTrailingComma` below so the banner
+reads cleanly.
 -}
 nameWithCount : Creature -> List (Html Msg)
 nameWithCount c =
@@ -256,32 +342,21 @@ dropTrailingComma nodes =
 
 nameNode : Creature -> Html Msg
 nameNode c =
-    case c.creatureId of
-        Just creatureId ->
-            button
-                [ class "legendary-banner__name"
-                , type_ "button"
-                , onClick (PanelShowCreature creatureId c.name)
-                , Tooltips.attr ("Pin " ++ c.name ++ "'s stat block to the side panel")
-                , attribute "aria-label"
-                    ("Show stat block for " ++ c.name)
-                ]
-                [ text c.name ]
-
-        Nothing ->
-            -- Placeholder rows have no compendium id to pin, so
-            -- the name stays plain text.
-            span [ class "legendary-banner__name legendary-banner__name--plain" ]
-                [ text c.name ]
+    button
+        [ class "legendary-banner__name"
+        , type_ "button"
+        , onClick (QueueScrollTo c.name)
+        , Tooltips.attr (Tooltips.queueScrollTo c.name)
+        , attribute "aria-label" (Tooltips.queueScrollTo c.name)
+        ]
+        [ text c.name ]
 
 
 {-| Full-width "+" row appended below the last creature card in
-the queue. Opens the Quick Add modal — same affordance as the
-"+ Quick Add" button in the encounter-controls panel, surfaced
-inside the queue itself so the GM doesn't have to track across to
-the middle column to add another creature. Hover text doubles as
-the aria-label so screen-reader users hear the intent rather than
-just "+".
+the queue. Opens the Quick Add panel from inside the queue
+itself, so the GM doesn't have to track across to add another
+creature. The glyph carries an aria-label, since "+" alone
+reads as nothing.
 -}
 quickAddRow : Html Msg
 quickAddRow =

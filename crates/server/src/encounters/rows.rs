@@ -26,9 +26,9 @@ use uuid::Uuid;
 
 use super::error::EncounterStoreError;
 use super::wire::{
-  CategoryToggles, Coins, Condition, Contribution, Creature, Duration,
-  Encounter, MagicItem, RechargeAbility, RowSource, SaveNotice, SaveToEnd,
-  Spec, Timer, TreasureRoll, TreasureSettings, ValuedItem,
+  AreaTracker, CategoryToggles, Coins, Condition, Contribution, Creature,
+  Duration, Encounter, MagicItem, RechargeAbility, RowSource, SaveNotice,
+  SaveToEnd, Spec, Timer, TreasureRoll, TreasureSettings, ValuedItem,
 };
 
 fn read_error(source: sqlx::Error) -> EncounterStoreError {
@@ -284,14 +284,17 @@ async fn insert_condition(
       ),
     };
   let save = cond.save_to_end.as_ref();
+  let area = cond.area.as_ref();
   sqlx::query(
     "INSERT INTO encounter_creature_conditions (creature_row_id, position, \
      condition_id, name, note, duration_kind, duration_phase, \
      duration_target, duration_name, duration_remaining, \
      duration_skip_next, save_ability, save_dc, save_bonus, \
-     save_auto_roll) \
+     save_auto_roll, save_fail_damage, save_fail_becomes, \
+     save_on_damage, linked_to, area_chain, area_ability, area_dc, \
+     area_bonus, area_phase) \
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, \
-     $15)",
+     $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)",
   )
   .bind(row_id)
   .bind(position)
@@ -308,6 +311,15 @@ async fn insert_condition(
   .bind(save.map(|s| s.dc))
   .bind(save.map(|s| s.bonus))
   .bind(save.map(|s| s.auto_roll.clone()))
+  .bind(save.and_then(|s| s.fail_damage.clone()))
+  .bind(save.and_then(|s| s.fail_becomes.clone()))
+  .bind(save.map(|s| s.on_damage.clone()))
+  .bind(cond.linked_to)
+  .bind(area.map(|a| a.chain.clone()))
+  .bind(area.map(|a| a.ability.clone()))
+  .bind(area.map(|a| a.dc))
+  .bind(area.map(|a| a.bonus))
+  .bind(area.map(|a| a.phase.clone()))
   .execute(&mut *conn)
   .await
   .map_err(write_error)?;
@@ -814,6 +826,9 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
   let opt_text = |name: &str| -> Result<Option<String>, EncounterStoreError> {
     row.try_get(name).map_err(read_error)
   };
+  let opt_int = |name: &str| -> Result<Option<i64>, EncounterStoreError> {
+    row.try_get(name).map_err(read_error)
+  };
   let kind: String = row.try_get("duration_kind").map_err(read_error)?;
   let duration = match kind.as_str() {
     "manual" => Duration::Manual,
@@ -851,6 +866,21 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
           .map_err(read_error)?
           .unwrap_or_default(),
         auto_roll: opt_text("save_auto_roll")?.unwrap_or_default(),
+        fail_damage: opt_text("save_fail_damage")?,
+        fail_becomes: opt_text("save_fail_becomes")?,
+        on_damage: opt_text("save_on_damage")?
+          .unwrap_or_else(|| "none".to_string()),
+      })
+    })
+    .transpose()?;
+  let area = opt_text("area_chain")?
+    .map(|chain| -> Result<AreaTracker, EncounterStoreError> {
+      Ok(AreaTracker {
+        chain,
+        ability: opt_text("area_ability")?.unwrap_or_default(),
+        dc: opt_int("area_dc")?.unwrap_or_default(),
+        bonus: opt_int("area_bonus")?.unwrap_or_default(),
+        phase: opt_text("area_phase")?.unwrap_or_else(|| "atEnd".to_string()),
       })
     })
     .transpose()?;
@@ -860,6 +890,8 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
     note: row.try_get("note").map_err(read_error)?,
     duration,
     save_to_end,
+    linked_to: opt_int("linked_to")?,
+    area,
   })
 }
 

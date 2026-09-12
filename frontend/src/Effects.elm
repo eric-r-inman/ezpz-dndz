@@ -1,5 +1,6 @@
 module Effects exposing
-    ( cardId, scrollActiveIntoView
+    ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+    , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -7,7 +8,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , changePassword, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -16,16 +17,17 @@ Centralized here so per-feature `Update/*` modules can call into
 them without importing `Main.elm` (which would be a cycle: Main
 imports Update.Foo, Update.Foo would import Main).
 
-Each function in this module has the shape `... -> Cmd Msg` (or
-`... -> Model -> Model` for the dice-history push, which mutates
-state but is conceptually part of the same "roll lands" flow).
+Each function in this module has the shape `... -> Cmd Msg`. The
+dice-history push is the exception: it mutates state, but
+belongs to the same "roll lands" flow.
 
 Imports `Msg` for the constructors that Cmds dispatch back into,
 and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, scrollActiveIntoView
+@docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+@docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -105,12 +107,168 @@ encounterPanelBodyId =
     "encounter-panel-body"
 
 
+{-| DOM id of the compendium page's scrollable creature list.
+-}
+compendiumListId : String
+compendiumListId =
+    "compendium-list"
+
+
+{-| Stable HTML id for one compendium list row, keyed by the
+creature's compendium id.
+-}
+compendiumRowId : String -> String
+compendiumRowId id =
+    "compendium-row-" ++ id
+
+
+{-| DOM id of the editor column's scroll container. The stack
+scrolls independently of the page, so bringing a panel into view
+means moving this element's viewport rather than the window's.
+-}
+drawerStackId : String
+drawerStackId =
+    "drawer-stack"
+
+
+{-| Stable id for one drawer panel, keyed by its position in the
+stack. Position is what a click on a panel's own chrome already
+identifies it by, so nothing has to carry an identity of its own.
+-}
+drawerPanelId : Int -> String
+drawerPanelId index =
+    "drawer-panel-" ++ String.fromInt index
+
+
+{-| Scroll the drawer panel at `index` into view when it sits
+outside the stack's visible region, leaving one that already fits
+alone. A newly opened panel lands at the bottom of a stack that
+may already be taller than the column, so without this the only
+feedback for opening one is a scrollbar that got shorter.
+
+Same geometry as `scrollActiveIntoView`. Failure means the panel
+or the stack isn't in the DOM yet, which is benign.
+
+-}
+scrollDrawerPanelIntoView : Int -> Cmd Msg
+scrollDrawerPanelIntoView index =
+    Task.map3
+        (\containerElement panelElement containerVp ->
+            let
+                margin =
+                    8
+
+                overflowBelow =
+                    (panelElement.element.y + panelElement.element.height)
+                        - (containerElement.element.y
+                            + containerElement.element.height
+                            - margin
+                          )
+
+                overflowAbove =
+                    (containerElement.element.y + margin) - panelElement.element.y
+            in
+            if overflowBelow > 0 then
+                Browser.Dom.setViewportOf
+                    drawerStackId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y + overflowBelow)
+
+            else if overflowAbove > 0 then
+                Browser.Dom.setViewportOf
+                    drawerStackId
+                    containerVp.viewport.x
+                    (containerVp.viewport.y - overflowAbove)
+
+            else
+                Task.succeed ()
+        )
+        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement (drawerPanelId index))
+        (Browser.Dom.getViewportOf drawerStackId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
+{-| Scroll the panel at `index` into view, or do nothing when
+there is no panel to scroll to.
+-}
+scrollDrawerIndex : Maybe Int -> Cmd Msg
+scrollDrawerIndex =
+    Maybe.map scrollDrawerPanelIntoView >> Maybe.withDefault Cmd.none
+
+
+{-| Scroll so the panel at `index` sits at the top of the column,
+rather than merely somewhere visible. For a gesture that opens
+more than one panel at once (the card's gear icon), "fully
+visible" doesn't say which end of the pair the GM should land on
+— pinning the topmost one to the top does.
+-}
+scrollDrawerIndexToTop : Int -> Cmd Msg
+scrollDrawerIndexToTop index =
+    Task.map3
+        (\containerElement panelElement containerVp ->
+            let
+                margin =
+                    8
+
+                target =
+                    containerVp.viewport.y
+                        + (panelElement.element.y - containerElement.element.y)
+                        - margin
+            in
+            Browser.Dom.setViewportOf
+                drawerStackId
+                containerVp.viewport.x
+                (Basics.max 0 target)
+        )
+        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement (drawerPanelId index))
+        (Browser.Dom.getViewportOf drawerStackId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
+{-| `scrollDrawerIndexToTop`, given the smaller of two indices —
+the topmost panel of a pair a single gesture just opened.
+-}
+scrollDrawerIndicesToTop : Int -> Int -> Cmd Msg
+scrollDrawerIndicesToTop a b =
+    scrollDrawerIndexToTop (Basics.min a b)
+
+
+{-| Scroll a compendium list row to the top region of the list.
+Fired once, after the library loads in a tab whose URL names a
+creature — an alphabetically late creature would otherwise be
+selected but out of sight. Failure means the row isn't in the
+DOM (filtered out, or an unknown id), which is benign.
+-}
+scrollCompendiumRowIntoView : String -> Cmd Msg
+scrollCompendiumRowIntoView creatureId =
+    Task.map3
+        (\containerElement rowElement containerVp ->
+            Browser.Dom.setViewportOf
+                compendiumListId
+                containerVp.viewport.x
+                (containerVp.viewport.y
+                    + rowElement.element.y
+                    - containerElement.element.y
+                    - 16
+                )
+        )
+        (Browser.Dom.getElement compendiumListId)
+        (Browser.Dom.getElement (compendiumRowId creatureId))
+        (Browser.Dom.getViewportOf compendiumListId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
 {-| Scroll the named creature card into view if it sits outside
 the encounter panel's visible region. Two cases:
 
   - Card's bottom is past the panel's bottom edge → scroll _down_
-    by the overflow. Covers the "Next Turn moved past where I
-    was looking" case.
+    by the overflow. Covers the "turn moved past where I was
+    looking" case.
   - Card's top is above the panel's top edge → scroll _up_ by
     the underflow. Covers the "round just wrapped and the active
     creature is now back at the top of the queue, which is above
@@ -179,6 +337,36 @@ scrollActiveIntoView name =
         |> Task.attempt ActiveCardScrollChecked
 
 
+{-| Scroll the queue so the named creature's card sits at the top
+of the pane, rather than merely somewhere in view. A reminder
+strip names a creature the GM is about to act on, so the card
+wants the spot they are already looking at.
+-}
+scrollCardToTop : String -> Cmd Msg
+scrollCardToTop name =
+    Task.map3
+        (\containerElement cardElement containerVp ->
+            let
+                margin =
+                    16
+
+                target =
+                    containerVp.viewport.y
+                        + (cardElement.element.y - containerElement.element.y)
+                        - margin
+            in
+            Browser.Dom.setViewportOf
+                encounterPanelBodyId
+                containerVp.viewport.x
+                (Basics.max 0 target)
+        )
+        (Browser.Dom.getElement encounterPanelBodyId)
+        (Browser.Dom.getElement (cardId name))
+        (Browser.Dom.getViewportOf encounterPanelBodyId)
+        |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
 
 -- ── AUTO-ROLL SAVES ──────────────────────────────────────────────────────────
 
@@ -214,7 +402,7 @@ autoRollCmdForCondition mode bearer cond =
             if spec.autoRoll == mode then
                 Just
                     (Dice.rollCmd
-                        (ConditionSaveLanded bearer cond.id spec.dc True)
+                        (ConditionSaveLanded bearer cond.id spec.dc)
                         (saveSource cond bearer spec)
                         (saveExpression spec.bonus)
                     )
@@ -224,6 +412,63 @@ autoRollCmdForCondition mode bearer cond =
 
         Nothing ->
             Nothing
+
+
+{-| A save fired by a hit on the bearer: straight, or with
+advantage for an effect whose rules grant it.
+-}
+damageSaveCmd : String -> Int -> Encounter.SaveToEnd -> Bool -> Cmd Msg
+damageSaveCmd bearer id spec advantage =
+    let
+        source =
+            { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
+            , target = Just bearer
+            }
+    in
+    if advantage then
+        Dice.advantageCmd (ConditionSaveLanded bearer id spec.dc) source spec.bonus
+
+    else
+        Dice.rollCmd (ConditionSaveLanded bearer id spec.dc) source (saveExpression spec.bonus)
+
+
+{-| The save each area marker on the named creature rolls at this
+phase of its turn, landing in `AreaSaveLanded`.
+-}
+areaRollCmdsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List (Cmd Msg)
+areaRollCmdsFor phase name enc =
+    Encounter.SaveChain.areaRollsDue phase name enc
+        |> List.map (\( cond, tracker ) -> areaRollCmd name cond tracker)
+
+
+areaRollCmd : String -> Encounter.Condition -> Encounter.AreaTracker -> Cmd Msg
+areaRollCmd bearer cond tracker =
+    Dice.rollCmd (AreaSaveLanded bearer cond.id)
+        { feature =
+            "Area: "
+                ++ tracker.chain
+                ++ " ("
+                ++ tracker.ability
+                ++ " DC "
+                ++ String.fromInt tracker.dc
+                ++ ")"
+        , target = Just bearer
+        }
+        (saveExpression tracker.bonus)
+
+
+{-| Clears the save-reminder pulse once `condition-chip-flash`'s
+four 0.5s pulses have played.
+-}
+saveFlashExpiry : Cmd Msg
+saveFlashExpiry =
+    Process.sleep saveFlashMs
+        |> Task.perform (\_ -> SaveFlashExpired)
+
+
+saveFlashMs : Float
+saveFlashMs =
+    2200
 
 
 {-| Build a `Dice.rollCmd` for every expended recharge ability on
@@ -302,13 +547,11 @@ saveExpression bonus =
 
 
 {-| Land one roll into the dice history. Single chokepoint so
-the "unread" indicator on the encounter-controls Roll button
-stays in sync — every Cmd that returns a Roll funnels through
-here.
+the Dice Roller panel's unread mark stays in sync — every Cmd
+that returns a Roll funnels through here.
 
-`unread = True` only when the modal is closed at land time.
-When the modal is already open, the user can already see the
-roll, so no indicator is needed.
+The mark goes up when a roll lands where the GM cannot see it;
+a roll landing in an open panel is already on screen.
 
 Also broadcasts the roll to peer tabs via the dice
 BroadcastChannel so a stat block opened in its own tab and the
@@ -321,12 +564,12 @@ mutation but without the broadcast Cmd, so we don't loop.
 pushDiceRoll : Dice.Roll -> Model -> ( Model, Cmd Msg )
 pushDiceRoll roll model =
     let
-        ( next, flashCmd ) =
+        ( next, incomingCmd ) =
             pushIncomingDiceRoll roll model
     in
     ( next
     , Cmd.batch
-        [ flashCmd
+        [ incomingCmd
         , Ports.broadcastDiceRoll (Dice.encodeRoll roll)
         ]
     )
@@ -348,31 +591,22 @@ pushIncomingDiceRoll roll model =
             { d
                 | history = Dice.push roll d.history
                 , unread =
-                    if d.open then
+                    if Model.drawerShows Model.diceLens model then
                         d.unread
 
                     else
                         True
-                , flashLatest = True
+
+                -- A triple-roll's badge override is only valid until
+                -- something newer lands. Whoever pushes last (each
+                -- triple-roll member included) wins the strip, so a
+                -- triple-roll's own handler re-sets it after its own
+                -- three pushes clear it here.
+                , rollBadgeOverride = Nothing
             }
       }
-    , Process.sleep flashDurationMs
-        |> Task.perform (\_ -> DiceLastTotalFlashCleared)
+    , Cmd.none
     )
-
-
-{-| Duration in milliseconds for the panel-header
-"last-roll-total" yellow blink. Should match the CSS
-`animation-duration` on `.dice-last-total--flash`. Lives here
-(rather than in `Update.Dice`) because `pushDiceRoll` is the
-universal "a roll just landed" entry point, and putting the
-flash trigger right alongside it means every roll source gets
-the flash automatically without each handler remembering to
-fire it.
--}
-flashDurationMs : Float
-flashDurationMs =
-    700
 
 
 {-| GET the persisted dice history. Result lands in

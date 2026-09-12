@@ -1,17 +1,16 @@
 module Update.Treasure exposing
-    ( open, close
+    ( open
     , kindSet
     , roll, rolled
     , categoryRolled, rerollCategory
     , armorRemove, artRemove, coinRemove, contributionsToggle, gemRemove, magicRemove, mundaneRemove, profileDelete, profileLoad, profileNameChanged, profileSave, settingsCountSet, settingsNoneSet, settingsPresetApply, settingsReset, settingsScrollChanceSet, settingsToggle, settingsValueSet, weaponsRemove
     )
 
-{-| Msg handlers for the Treasure modal.
+{-| Msg handlers for the Treasure panel.
 
-The modal owns:
+The panel owns:
 
-  - The dropdown selections (Kind + Bracket), which live on
-    `Ui.Treasure.TreasureUi`.
+  - The Kind picker, which lives on `Ui.Treasure.TreasureUi`.
   - A pure handler that fires the random `Generator` and lands
     the result into `model.encounter.treasure`.
 
@@ -20,8 +19,8 @@ The treasure result persists with the encounter (it's a field on
 update wrapper round-trips it to the server or localStorage
 without anything extra from this module.
 
-@docs open, close
-@docs kindSet, bracketSet
+@docs open
+@docs kindSet
 @docs roll, rolled
 @docs categoryRolled, rerollCategory
 
@@ -29,6 +28,7 @@ without anything extra from this module.
 
 import Compendium
 import Dict
+import Effects
 import Encounter
 import Encounter.Treasure as Treasure exposing (Bracket, EnemyInfo, RollContext)
 import Model exposing (Model)
@@ -40,25 +40,34 @@ import Ui.Treasure
 import Update.Toast
 
 
-{-| Open the modal. UI state is now bracket-free; the bracket
-each enemy uses falls out of their own CR at roll time, so the
-modal opens straight into the Kind picker.
+{-| UI state is bracket-free; the bracket each enemy uses falls
+out of their own CR at roll time, so the panel opens straight
+into the Kind picker. The scroll is what tells a GM who asked
+from the table editor that the roller is up.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
-    ( { model | modal = Just (Model.ModalTreasure Ui.Treasure.fresh) }
-    , Cmd.none
+    let
+        next =
+            Model.openDrawer Model.treasureLens Ui.Treasure.fresh model
+    in
+    ( next
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.treasureLens next)
     )
 
 
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Model.Surface
+drawerSurface model =
+    Model.drawerGet Model.treasureLens model
+        |> Maybe.map Model.SurfaceTreasure
 
 
 contributionsToggle : Model -> ( Model, Cmd Msg )
 contributionsToggle model =
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | contributionsExpanded = not ui.contributionsExpanded })
         model
     , Cmd.none
@@ -67,7 +76,7 @@ contributionsToggle model =
 
 settingsToggle : Model -> ( Model, Cmd Msg )
 settingsToggle model =
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | settingsExpanded = not ui.settingsExpanded })
         model
     , Cmd.none
@@ -98,7 +107,7 @@ kindSet wire model =
                 _ ->
                     Treasure.Hoard
     in
-    ( Model.mapModal Model.treasureLens (\ui -> { ui | kind = kind }) model
+    ( Model.mapSurface Model.treasureLens (\ui -> { ui | kind = kind }) model
     , Cmd.none
     )
 
@@ -109,8 +118,8 @@ standard `Random.generate` glue.
 -}
 roll : Model -> ( Model, Cmd Msg )
 roll model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case drawerSurface model of
+        Just (Model.SurfaceTreasure ui) ->
             ( model
             , Random.generate TreasureRolled
                 (Treasure.generate
@@ -245,7 +254,7 @@ rolled treasureRoll model =
         withRoll =
             { model | encounter = { encounter | treasure = Just treasureRoll } }
     in
-    ( Model.mapModal Model.treasureLens
+    ( Model.mapSurface Model.treasureLens
         (\ui -> { ui | contributionsExpanded = False })
         withRoll
     , Cmd.none
@@ -452,8 +461,8 @@ Individual still works the way the GM left it.
 -}
 settingsPresetApply : Msg.TreasurePreset -> Model -> ( Model, Cmd Msg )
 settingsPresetApply preset model =
-    case model.modal of
-        Just (Model.ModalTreasure ui) ->
+    case drawerSurface model of
+        Just (Model.SurfaceTreasure ui) ->
             let
                 settings =
                     model.encounter.treasureSettings

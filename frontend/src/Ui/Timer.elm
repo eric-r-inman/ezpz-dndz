@@ -8,8 +8,8 @@ module Ui.Timer exposing
 optional label. Apply writes the timer onto the creature;
 cancel discards.
 
-The Save / Load row in the modal footer mirrors the
-Condition/Effect modal's preset flow: the GM can save the
+The Save / Load row in the editor footer mirrors the
+Condition editor's preset flow: the GM can save the
 current configuration under a user-given name and reload it
 later. Per-application context (`target`) is excluded from the
 preset; the form's transient menu / save-name / loaded-name

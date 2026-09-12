@@ -2,26 +2,34 @@ module Update.HpChange exposing
     ( amountChanged
     , applyAs
     , applyToSelectedToggle
-    , close
     , editCancel
     , editChange
     , editCommit
     , editStart
-    , ignoreTempToggle
-    , open
+    , freshRollLanded
+    , freshRollToggle
+    , logToggle
+    , manualApplySelected
+    , manualApplyTarget
+    , manualChanged
+    , manualRollChanged
+    , manualRollClear
+    , manualRollLanded
+    , openFor
     , rollLanded
+    , setToggle
     , undoLatest
     )
 
-{-| Update branches for the HP-change modal (Manage HP) and
-the inline HP edit pencil on each creature card.
+{-| Update branches for the Manage HP editor and the inline AC
+edit on each creature card.
 
-Now uses a single smart amount input: on apply, the raw text
-is either parsed as an integer (applied immediately) or as a
-dice expression (rolled, then the total is applied). Parse
-errors are surfaced next to the input. The previous
-Manual/Roll-dice mode toggle is gone — the parse itself
-decides which path to take.
+The verb buttons share one smart amount input: on apply, the raw
+text is either parsed as an integer (applied immediately) or as
+a dice expression (rolled, then the total is applied), so the
+parse itself decides the path. Parse errors are surfaced next to
+the input. The Manual section bypasses the verbs entirely and
+writes the typed pools straight onto its targets.
 
 -}
 
@@ -29,34 +37,219 @@ import Dice
 import Effects
 import Encounter exposing (Creature, Encounter)
 import HpChange
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( HpField(..)
         , HpKind(..)
         , Msg(..)
         )
-import Ui.HpChange as HpChangeUi exposing (HpChangeUi)
+import Ui.HpChange as HpChangeUi exposing (HpChangeUi, HpLogKind(..))
 
 
-{-| Apply `fn` to the open HP-change modal. No-op when the modal
-is closed (or a different modal is open).
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
 -}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.hpChangeLens model
+        |> Maybe.map SurfaceHpChange
+
+
 withHpChange : (HpChangeUi -> HpChangeUi) -> Model -> Model
 withHpChange =
-    Model.mapModal Model.hpChangeLens
+    Model.mapSurface Model.hpChangeLens
 
 
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( { model | modal = Just (ModalHpChange (HpChangeUi.fresh target)) }
+{-| Type into one of the three manual pool fields. `HpField`
+names which; the card's inline AC edit reuses the same
+discriminator, and `ArmorClassField` has no manual row here.
+-}
+manualChanged : HpField -> String -> Model -> ( Model, Cmd Msg )
+manualChanged field text model =
+    ( withHpChange
+        (\u ->
+            case field of
+                CurrentHpField ->
+                    { u | manualHpText = text }
+
+                MaxHpField ->
+                    { u | manualMaxHpText = text }
+
+                TempHpField ->
+                    { u | manualTempHpText = text }
+
+                ArmorClassField ->
+                    u
+        )
+        model
     , Cmd.none
     )
 
 
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
+{-| Apply the Set section to the editor's own target.
+-}
+manualApplyTarget : Model -> ( Model, Cmd Msg )
+manualApplyTarget model =
+    case drawerSurface model of
+        Just (SurfaceHpChange ui) ->
+            manualApplyTo [ ui.target ] ui model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Apply the Set section to every selected creature.
+-}
+manualApplySelected : Model -> ( Model, Cmd Msg )
+manualApplySelected model =
+    case drawerSurface model of
+        Just (SurfaceHpChange ui) ->
+            manualApplyTo
+                (model.encounter.creatures
+                    |> List.filter .selected
+                    |> List.map .name
+                )
+                ui
+                model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The Set section's apply: with a formula in the Roll field,
+roll it once per named creature and let each landing set that
+creature's hit points; otherwise stamp whichever typed pools
+parsed onto each of them. A blank or unparseable pool field
+leaves its pool untouched, so the GM can set one pool without
+restating the other two.
+-}
+manualApplyTo : List String -> HpChangeUi -> Model -> ( Model, Cmd Msg )
+manualApplyTo rawNames ui model =
+    let
+        names =
+            Encounter.excludingPlaceholderNames model.encounter rawNames
+
+        rollText =
+            String.trim ui.manualRollText
+    in
+    if String.isEmpty rollText then
+        ( setPools names ui model, Cmd.none )
+
+    else
+        case Dice.parse rollText of
+            Ok expr ->
+                ( model
+                , names
+                    |> List.map
+                        (\name ->
+                            Dice.rollCmd (HpChangeManualRollLanded name)
+                                { feature = "HP roll", target = Just name }
+                                expr
+                        )
+                    |> Cmd.batch
+                )
+
+            Err err ->
+                ( withHpChange (\u -> { u | manualRollError = Just err }) model
+                , Cmd.none
+                )
+
+
+setPools : List String -> HpChangeUi -> Model -> Model
+setPools names ui model =
+    let
+        parse =
+            String.toInt << String.trim
+
+        setters =
+            List.filterMap identity
+                [ Maybe.map HpChange.setMaxHp (parse ui.manualMaxHpText)
+                , Maybe.map HpChange.setCurrentHp (parse ui.manualHpText)
+                , Maybe.map HpChange.setTempHp (parse ui.manualTempHpText)
+                ]
+    in
+    if List.isEmpty setters then
+        model
+
+    else
+        applyTransform SetPools
+            Nothing
+            False
+            names
+            (\creature -> List.foldl (\set c -> set c) creature setters)
+            model
+
+
+{-| One landing of the Set section's roll: the creature's hit
+points become the total, both current and maximum, as a monster
+rolled instead of taking its average. The roll joins the dice
+history like any other.
+-}
+manualRollLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+manualRollLanded name roll model =
+    let
+        ( logged, broadcastCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    ( applyTransform RolledHp
+        (Just roll.total)
+        True
+        [ name ]
+        (HpChange.setMaxHp roll.total >> HpChange.setCurrentHp roll.total)
+        logged
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
+    )
+
+
+manualRollChanged : String -> Model -> ( Model, Cmd Msg )
+manualRollChanged text model =
+    ( withHpChange (\u -> { u | manualRollText = text, manualRollError = Nothing }) model
+    , Cmd.none
+    )
+
+
+manualRollClear : Model -> ( Model, Cmd Msg )
+manualRollClear model =
+    manualRollChanged "" model
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | hpLogOpen = not model.hpLogOpen }, Cmd.none )
+
+
+setToggle : Model -> ( Model, Cmd Msg )
+setToggle model =
+    ( { model | hpSetOpen = not model.hpSetOpen }, Cmd.none )
+
+
+{-| A card's HP value: it aims the editor at its own creature,
+so an editor already open for someone else re-aims. Every path
+unfolds and scrolls the panel fully into view — a card control
+asks to see a creature's editor, whether that means showing what
+is already open, re-aiming it, or opening it fresh.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
+    let
+        nextModel =
+            Model.ackHpLog
+                (case drawerSurface model of
+                    Just (SurfaceHpChange ui) ->
+                        if ui.target == target then
+                            Model.unfoldDrawer Model.hpChangeLens model
+
+                        else
+                            Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
+
+                    _ ->
+                        Model.openDrawer Model.hpChangeLens (HpChangeUi.fresh target) model
+                )
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.hpChangeLens nextModel)
+    )
 
 
 {-| Mirror the raw text for the controlled input. Clears any
@@ -70,13 +263,6 @@ amountChanged text model =
     )
 
 
-ignoreTempToggle : Model -> ( Model, Cmd Msg )
-ignoreTempToggle model =
-    ( withHpChange (\u -> { u | ignoreTemp = not u.ignoreTemp }) model
-    , Cmd.none
-    )
-
-
 applyToSelectedToggle : Model -> ( Model, Cmd Msg )
 applyToSelectedToggle model =
     ( withHpChange (\u -> { u | applyToSelected = not u.applyToSelected }) model
@@ -84,33 +270,43 @@ applyToSelectedToggle model =
     )
 
 
-{-| Footer action-button click: commit the modal's amount text
+freshRollToggle : Model -> ( Model, Cmd Msg )
+freshRollToggle model =
+    ( withHpChange (\u -> { u | freshRollPerTarget = not u.freshRollPerTarget }) model
+    , Cmd.none
+    )
+
+
+{-| Footer action-button click: commit the editor's amount text
 as `kind`. Sets `ui.kind = kind` first (so the dice-source
 label + log entry reflect the chosen kind), then routes based
 on what the input looks like:
 
   - integer → apply immediately with that value
   - dice formula → roll, land in `rollLanded`, apply the total
-  - parse failure → set `parseError`, leave modal open
+  - parse failure → set `parseError`
+
+The editor stays open after every path so the GM can keep
+applying.
 
 -}
 applyAs : HpKind -> Model -> ( Model, Cmd Msg )
 applyAs kind model =
-    case model.modal of
-        Just (ModalHpChange ui) ->
+    case drawerSurface model of
+        Just (SurfaceHpChange ui) ->
             let
                 withKind =
                     { ui | kind = kind }
 
                 modelWithKind =
-                    { model | modal = Just (ModalHpChange withKind) }
+                    Model.openDrawer Model.hpChangeLens withKind model
 
                 trimmed =
                     String.trim withKind.amountText
             in
             case String.toInt trimmed of
                 Just n ->
-                    ( applyHpChangeAndClose withKind n modelWithKind
+                    ( applyHpChange withKind n False modelWithKind
                     , Cmd.none
                     )
 
@@ -122,18 +318,37 @@ applyAs kind model =
                         -- creature reference — the previous
                         -- behaviour when `amountText = "0"`
                         -- was the default.
-                        ( applyHpChangeAndClose withKind 0 modelWithKind
+                        ( applyHpChange withKind 0 False modelWithKind
                         , Cmd.none
                         )
 
                     else
                         case Dice.parse trimmed of
                             Ok expr ->
-                                ( modelWithKind
-                                , Dice.rollCmd HpChangeRollLanded
-                                    (hpChangeSource withKind modelWithKind.encounter)
-                                    expr
-                                )
+                                if withKind.applyToSelected && withKind.freshRollPerTarget then
+                                    -- One independent roll per selected
+                                    -- creature.  Each landing carries
+                                    -- everything it needs to apply on
+                                    -- its own, so the editor is free to
+                                    -- close (or not) in the meantime.
+                                    ( modelWithKind
+                                    , hpChangeTargets withKind modelWithKind.encounter
+                                        |> List.map
+                                            (\name ->
+                                                Dice.rollCmd
+                                                    (HpChangeFreshRollLanded kind name)
+                                                    { feature = kindLabel kind, target = Just name }
+                                                    expr
+                                            )
+                                        |> Cmd.batch
+                                    )
+
+                                else
+                                    ( modelWithKind
+                                    , Dice.rollCmd HpChangeRollLanded
+                                        (hpChangeSource withKind modelWithKind.encounter)
+                                        expr
+                                    )
 
                             Err err ->
                                 ( withHpChange (\u -> { u | parseError = Just err }) modelWithKind
@@ -147,26 +362,43 @@ applyAs kind model =
 {-| The dice-mode path lands here. We commit the change with
 `roll.total`, log the roll to the dice history (so the user has a
 record), and persist it server-side through the same
-`/api/dice/history` pipe the dice modal uses. If the modal got
-closed mid-flight (defensive), still log/persist so we don't drop
+`/api/dice/history` pipe the dice roller uses. If the editor is
+gone mid-flight (defensive), still log/persist so we don't drop
 rolls on the floor.
 -}
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
     let
-        ( logged, flashCmd ) =
+        ( logged, broadcastCmd ) =
             Effects.pushDiceRoll roll model
 
         committed =
-            case logged.modal of
-                Just (ModalHpChange ui) ->
-                    applyHpChangeAndClose ui roll.total logged
+            case drawerSurface logged of
+                Just (SurfaceHpChange ui) ->
+                    applyHpChange ui roll.total True logged
 
                 _ ->
                     logged
     in
     ( committed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
+    )
+
+
+{-| One landing of a fresh-per-creature roll batch. Everything
+needed to commit rides in the message itself — the editor may
+have been closed between dispatch and landing — so each landing
+applies, logs, and persists its own roll independently of its
+siblings.
+-}
+freshRollLanded : HpKind -> String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
+freshRollLanded kind target roll model =
+    let
+        ( logged, broadcastCmd ) =
+            Effects.pushDiceRoll roll model
+    in
+    ( applyAmountTo kind [ target ] roll.total True logged
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
 
@@ -258,17 +490,29 @@ undoLatest : Model -> ( Model, Cmd Msg )
 undoLatest model =
     case model.hpChangeLog of
         entry :: rest ->
-            ( { model
-                | encounter =
-                    Encounter.mapCreature entry.target
+            let
+                restoreOne snapshot enc =
+                    Encounter.mapCreature snapshot.name
                         (HpChange.restoreHp
-                            { hp = entry.beforeHp
-                            , tempHp = entry.beforeTemp
-                            , maxHp = entry.beforeMax
+                            { hp = snapshot.beforeHp
+                            , tempHp = snapshot.beforeTemp
+                            , maxHp = snapshot.beforeMax
                             }
                         )
-                        model.encounter
+                        enc
+            in
+            ( { model
+                | encounter =
+                    List.foldl restoreOne model.encounter entry.targets
                 , hpChangeLog = rest
+
+                -- Undo uncovers an older row, which remounts under
+                -- a different key.  Acknowledging it here is what
+                -- stops that remount reading as a fresh apply.
+                , flashedHpLogSeq =
+                    List.head rest
+                        |> Maybe.map .seq
+                        |> Maybe.withDefault model.flashedHpLogSeq
               }
             , Cmd.none
             )
@@ -287,20 +531,6 @@ history reads "Damage → Brakka" or "Heal → Aria, Brakka".
 hpChangeSource : HpChangeUi -> Encounter -> Dice.Source
 hpChangeSource ui enc =
     let
-        feature =
-            case ui.kind of
-                DamageKind ->
-                    "Damage"
-
-                HealKind ->
-                    "Heal"
-
-                TempHpKind ->
-                    "Temp HP"
-
-                MaxHpKind ->
-                    "+Max HP"
-
         targetLabel =
             if ui.applyToSelected then
                 let
@@ -316,15 +546,31 @@ hpChangeSource ui enc =
             else
                 ui.target
     in
-    { feature = feature, target = Just targetLabel }
+    { feature = kindLabel ui.kind, target = Just targetLabel }
 
 
-{-| Resolve the modal's kind + flags into an `HpChange.Change`,
+kindLabel : HpKind -> String
+kindLabel kind =
+    case kind of
+        DamageKind ->
+            "Damage"
+
+        HealKind ->
+            "Heal"
+
+        TempHpKind ->
+            "Temp HP"
+
+        MaxHpKind ->
+            "+Max HP"
+
+
+{-| Resolve the editor's kind into an `HpChange.Change`,
 hand it to the engine, write the updated creature back through
 `Encounter.mapCreature`, push a log entry capturing the before/after
-snapshot, and close the modal. The caller decides the amount — it
-comes from the manual input on the manual path or from the rolled
-total on the dice path.
+snapshot. The caller decides the amount — it comes from the manual
+input on the manual path or from the rolled total on the dice
+path.
 
 When `ui.applyToSelected` is True, the change is applied to every
 selected creature (`Creature.selected = True`). Same amount across
@@ -336,22 +582,31 @@ target takes that much, not 8d6 per target).
 When `applyToSelected` is False, only `ui.target` is affected (the
 original single-card flow).
 
-If no creatures match (no selection), the modal still closes
-without applying to anyone — better than silently falling back to
-`ui.target`, which would surprise the GM who explicitly checked the
-multi-target toggle.
+If no creatures match (no selection), nothing is applied — better
+than silently falling back to `ui.target`, which would surprise
+the GM who explicitly checked the multi-target toggle.
 
 -}
-applyHpChangeAndClose : HpChangeUi -> Int -> Model -> Model
-applyHpChangeAndClose ui amount model =
+applyHpChange : HpChangeUi -> Int -> Bool -> Model -> Model
+applyHpChange ui amount rolled model =
+    applyAmountTo ui.kind
+        (hpChangeTargets ui model.encounter)
+        amount
+        rolled
+        model
+
+
+{-| The verb buttons' commit: resolve the kind into an
+`HpChange.Change` and write it through the engine for each target.
+`rolled` says whether the dice roller produced the amount.
+-}
+applyAmountTo : HpKind -> List String -> Int -> Bool -> Model -> Model
+applyAmountTo kind targets amount rolled model =
     let
         change =
-            case ui.kind of
+            case kind of
                 DamageKind ->
-                    HpChange.Damage
-                        { amount = amount
-                        , ignoreTemp = ui.ignoreTemp
-                        }
+                    HpChange.Damage amount
 
                 HealKind ->
                     HpChange.Heal amount
@@ -361,27 +616,33 @@ applyHpChangeAndClose ui amount model =
 
                 MaxHpKind ->
                     HpChange.MaxHpDelta amount
+    in
+    applyTransform (Applied kind) (Just amount) rolled targets (HpChange.apply change) model
 
-        targets =
-            hpChangeTargets ui model.encounter
 
+{-| The commit core shared by every apply path: write `transform`
+through `Encounter.mapCreature` for each target, and push one log
+entry capturing the before/after snapshots — which unfolds the
+log, so the GM sees what just landed.
+-}
+applyTransform : HpLogKind -> Maybe Int -> Bool -> List String -> (Creature -> Creature) -> Model -> Model
+applyTransform kind amount rolled targets transform model =
+    let
         applyOne name acc =
             let
                 before =
                     findCreature name acc.encounter
 
                 newEnc =
-                    Encounter.mapCreature name (HpChange.apply change) acc.encounter
+                    Encounter.mapCreature name transform acc.encounter
 
                 after =
                     findCreature name newEnc
 
-                entry =
+                snapshot =
                     Maybe.map2
                         (\b a ->
-                            { kind = ui.kind
-                            , target = name
-                            , amount = amount
+                            { name = name
                             , beforeHp = b.currentHp
                             , beforeTemp = b.tempHp
                             , beforeMax = b.maxHp
@@ -394,36 +655,51 @@ applyHpChangeAndClose ui amount model =
                         after
             in
             { encounter = newEnc
-            , log =
-                case entry of
-                    Just e ->
-                        e :: acc.log
+            , snapshots =
+                case snapshot of
+                    Just s ->
+                        s :: acc.snapshots
 
                     Nothing ->
-                        acc.log
+                        acc.snapshots
             }
 
         result =
-            List.foldl applyOne { encounter = model.encounter, log = [] } targets
+            List.foldl applyOne { encounter = model.encounter, snapshots = [] } targets
     in
-    { model
-        | encounter = result.encounter
-        , modal = Nothing
-        , hpChangeLog =
-            List.reverse result.log
-                ++ List.take (Basics.max 0 (HpChangeUi.maxHpLogEntries - List.length result.log)) model.hpChangeLog
-    }
+    -- One entry per application, however many creatures it
+    -- touched; nothing is logged when no target resolved.
+    if List.isEmpty result.snapshots then
+        { model | encounter = result.encounter }
+
+    else
+        { model
+            | encounter = result.encounter
+            , nextHpLogSeq = model.nextHpLogSeq + 1
+            , hpLogOpen = True
+            , hpChangeLog =
+                { kind = kind
+                , amount = amount
+                , rolled = rolled
+                , targets = List.reverse result.snapshots
+                , rollsBefore = model.dice.history.pushed
+                , seq = model.nextHpLogSeq
+                }
+                    :: List.take (HpChangeUi.maxHpLogEntries - 1) model.hpChangeLog
+        }
 
 
 hpChangeTargets : HpChangeUi -> Encounter -> List String
 hpChangeTargets ui enc =
-    if ui.applyToSelected then
-        enc.creatures
-            |> List.filter .selected
-            |> List.map .name
+    Encounter.excludingPlaceholderNames enc
+        (if ui.applyToSelected then
+            enc.creatures
+                |> List.filter .selected
+                |> List.map .name
 
-    else
-        [ ui.target ]
+         else
+            [ ui.target ]
+        )
 
 
 findCreature : String -> Encounter -> Maybe Creature

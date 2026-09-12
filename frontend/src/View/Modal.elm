@@ -1,13 +1,10 @@
-module View.Modal exposing
-    ( view, closeBtnId, focusInitial
-    , viewWithExtras
-    )
+module View.Modal exposing (view, closeBtnId, focusInitial)
 
 {-| Shared modal chrome.
 
-Every modal in the app — dice, HP change, initiative, note, memo,
-timer, condition — wraps its body in the same backdrop / dialog
-shell with a header bar carrying a title and a close button.
+Every modal in the app wraps its body in the same backdrop /
+dialog shell with a header bar carrying a title and a close
+button.
 This helper extracts that shell so per-modal view code only
 declares the body content.
 
@@ -17,7 +14,7 @@ a focus-management contract:
 
   - `closeBtnId` — stable id for the modal `×` button. `Main`
     wraps `update` to fire `focusInitial` whenever
-    `model.modal` transitions from `Nothing` to `Just _`, so
+    `model.surface` transitions from `Nothing` to `Just _`, so
     keyboard / SR users land inside the dialog the moment it
     appears.
   - A focus sentinel `<div class="modal__focus-sentinel">` at
@@ -37,7 +34,7 @@ along the perimeter). Drag and resize state lives on
 transform / inline width / height. The chrome-Msg constructors
 are imported directly from `Msg` rather than threaded through
 the config record because every modal needs the same handlers —
-threading them through 20 call sites would be pure noise.
+threading them through every call site would be pure noise.
 
 @docs view, closeBtnId, focusInitial
 
@@ -88,9 +85,9 @@ and accidentally close the dialog.
     no-Cmd-needed side effect from the caller's POV; see the
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
-  - `extraClass` — extra class on the inner `.modal` div, used
-    for per-modal sizing (`"modal--initiative"`,
-    `"modal--condition"`, etc.).
+  - `extraClass` — extra class on the inner `.surface` div, used
+    for per-modal sizing (`"modal--group-edit"`,
+    `"modal--compendium-edit"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
   - `chrome` — drag / resize state. Use `Ui.ModalChrome.fresh`
     or the model's `modalChrome` field. The view applies the
@@ -108,25 +105,6 @@ view :
     }
     -> Html Msg
 view config =
-    viewWithExtras config []
-
-
-{-| Like `view`, but accepts extra header buttons that render
-to the left of the × close button. The Compendium modal uses
-this to slot a ↗ "open in new tab" button without every other
-modal having to grow a new config field.
--}
-viewWithExtras :
-    { close : Msg
-    , noOp : Msg
-    , title : String
-    , extraClass : String
-    , body : List (Html Msg)
-    , chrome : ModalChrome
-    }
-    -> List (Html Msg)
-    -> Html Msg
-viewWithExtras config headerExtras =
     div
         [ class "modal-backdrop"
         , onClick config.close
@@ -151,7 +129,6 @@ viewWithExtras config headerExtras =
                             ]
                             [ text config.title ]
                          ]
-                            ++ headerExtras
                             ++ [ button
                                     [ class "modal__close"
                                     , id closeBtnId
@@ -217,7 +194,7 @@ and cursors live in CSS (`.modal__resize-*`).
 
 The handle's mousedown decoder reads `currentTarget.parentElement.
 offsetWidth / offsetHeight` to capture the LIVE rendered size of
-the parent `.modal` element. Doing it this way (instead of
+the parent `.surface` element. Doing it this way (instead of
 passing a guess from the Elm side) is what keeps the modal from
 snapping to a fallback size the moment the user clicks a handle
 on a freshly-opened modal — `chrome.size` is `Nothing` until the
@@ -264,7 +241,7 @@ position, and the modal's LIVE rendered size (read from the DOM
 via `currentTarget.parentElement.offsetWidth / offsetHeight`).
 
 The parent-element walk depends on the markup contract that
-each `.modal__resize` handle is a direct child of the `.modal`
+each `.modal__resize` handle is a direct child of the `.surface`
 div (see `resizeHandles`). `offsetWidth / offsetHeight` give the
 rounded integer pixel size including padding+border, which is
 what the resize math wants.

@@ -35,6 +35,7 @@ fixture =
     , selected = False
     , cover = Encounter.NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False
@@ -60,8 +61,8 @@ fixture =
     , creatureKind = "enemy"
     , race = ""
     , alignment = ""
-    , surprised = False
     , hasSpecialReactions = False
+    , specialReactionsUsed = Set.empty
     }
 
 
@@ -71,35 +72,27 @@ damageSuite =
         [ test "subtracts from currentHp" <|
             \_ ->
                 fixture
-                    |> HpChange.apply (HpChange.Damage { amount = 5, ignoreTemp = False })
+                    |> HpChange.apply (HpChange.Damage 5)
                     |> .currentHp
                     |> Expect.equal 25
         , test "clamps currentHp at zero (never negative)" <|
             \_ ->
                 fixture
-                    |> HpChange.apply (HpChange.Damage { amount = 999, ignoreTemp = False })
+                    |> HpChange.apply (HpChange.Damage 999)
                     |> .currentHp
                     |> Expect.equal 0
         , test "soaks against tempHp first" <|
             \_ ->
                 { fixture | tempHp = 7 }
-                    |> HpChange.apply (HpChange.Damage { amount = 5, ignoreTemp = False })
+                    |> HpChange.apply (HpChange.Damage 5)
                     |> Expect.all
                         [ \c -> c.currentHp |> Expect.equal 30
                         , \c -> c.tempHp |> Expect.equal 2
                         ]
-        , test "ignoreTemp = True bypasses the temp-HP buffer" <|
-            \_ ->
-                { fixture | tempHp = 7 }
-                    |> HpChange.apply (HpChange.Damage { amount = 5, ignoreTemp = True })
-                    |> Expect.all
-                        [ \c -> c.currentHp |> Expect.equal 25
-                        , \c -> c.tempHp |> Expect.equal 7
-                        ]
         , test "auto-sets bloodied when dropping below half HP" <|
             \_ ->
                 fixture
-                    |> HpChange.apply (HpChange.Damage { amount = 10, ignoreTemp = False })
+                    |> HpChange.apply (HpChange.Damage 10)
                     |> .bloodied
                     |> Expect.equal True
         ]

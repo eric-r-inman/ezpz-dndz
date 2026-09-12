@@ -5,7 +5,7 @@ module View.StatBlock exposing
 
 {-| Read-only stat-block renderer for `Compendium.Creature`.
 
-Shared between the Compendium browser modal (Phase 3) and the
+Shared between the Compendium browser page and the
 per-card Quick View (Phase 7). The renderer is purely
 presentational — it has no Msgs of its own — but inline dice
 notation in feature descriptions is wired to a caller-supplied
@@ -52,27 +52,19 @@ import View.Tooltips as Tooltips
 rendered in the stat-block header.
 
   - `TagBadges` puts each tag as a right-justified badge on the
-    name row. Used by the standalone single-creature page and
-    the paste-modal preview, where there's room for badges but
-    no need for the ↗ link (the standalone view IS the new tab;
-    paste-preview creatures don't have a server id yet).
+    name row, for any mount that supplies no ↗ link of its own.
   - `TagBadgesOpenInNewTab` is the same plus an ↗ anchor at the
     far right of the name row that opens the standalone view in
-    a new tab. Used by the compendium modal.
-  - `TagIconTooltip` collapses tags to a single 🏷 icon next to
-    the name, with the full list in a hover tooltip. Used by
-    the pinned right-rail panel — which renders its own ↗ link
-    as a sibling absolute-positioned over the stat block.
+    a new tab. Used by the compendium page.
 
 When a creature has no tags, the tag affordance is omitted in
-all three modes; the ↗ link still appears in
+both modes; the ↗ link still appears in
 `TagBadgesOpenInNewTab`.
 
 -}
 type TagDisplay
     = TagBadges
     | TagBadgesOpenInNewTab
-    | TagIconTooltip
 
 
 {-| Render a creature stat block.
@@ -84,27 +76,34 @@ type TagDisplay
     spawned floating popup anchors to where the user clicked).
     Pass `RollFromStatBlock` from `Main` to get the same
     roll-and-log behavior used elsewhere.
+  - `onAttackRoll` — handler for an inline "+N to hit" attack
+    link. Receives the creature's display name, the flat attack
+    modifier, and the click position. Pass `AttackRollTriggered`
+    from `Main` to fire the standard + advantage + disadvantage
+    triple-roll.
   - `onAbilityCheck` — handler for clicking one of the six
     ability cells (STR / DEX / CON / INT / WIS / CHA). Receives
     the creature's display name, the ability label (e.g. `"STR"`),
     and the flat ability modifier (`(score − 10) // 2`). Pass
-    `AbilityCheckOpen` from `Main` to get the ability-check modal.
+    `AbilityCheckTriggered` from `Main` to fire the same
+    triple-roll.
   - `onSavingThrow` — handler for clicking one of the inline
     chips in the Saving Throws property line. Receives the same
     shape as `onAbilityCheck`, but the bonus is the proficient
     save bonus straight from the creature's `savingThrows`
-    record. Pass `AbilitySaveOpen` from `Main` to get the
-    saving-throw modal.
+    record. Pass `AbilitySaveTriggered` from `Main` to fire the
+    same triple-roll.
 
 -}
 view :
     (String -> Dice.Expression -> Int -> Int -> msg)
+    -> (String -> Int -> Int -> Int -> msg)
     -> (String -> String -> Int -> Int -> Int -> msg)
     -> (String -> String -> Int -> Int -> Int -> msg)
     -> TagDisplay
     -> Creature
     -> Html msg
-view onRoll onAbilityCheck onSavingThrow tagDisplay c =
+view onRoll onAttackRoll onAbilityCheck onSavingThrow tagDisplay c =
     div [ class "statblock" ]
         ([ viewHead tagDisplay c
          , hr [ class "statblock__divider" ] []
@@ -115,13 +114,13 @@ view onRoll onAbilityCheck onSavingThrow tagDisplay c =
          ]
             ++ viewProperties onSavingThrow c
             ++ [ hr [ class "statblock__divider" ] [] ]
-            ++ viewTraits onRoll c
-            ++ viewActionGroup onRoll c.name "Actions" c.actions
-            ++ viewActionGroup onRoll c.name "Bonus Actions" c.bonusActions
-            ++ viewActionGroup onRoll c.name "Reactions" c.reactions
-            ++ viewLegendaryActions onRoll c.name c.legendaryActions
-            ++ viewLairActions onRoll c.name c.lairActions
-            ++ viewRegionalEffects onRoll c.name c.regionalEffects
+            ++ viewTraits onRoll onAttackRoll c
+            ++ viewActionGroup onRoll onAttackRoll c.name "Actions" c.actions
+            ++ viewActionGroup onRoll onAttackRoll c.name "Bonus Actions" c.bonusActions
+            ++ viewActionGroup onRoll onAttackRoll c.name "Reactions" c.reactions
+            ++ viewLegendaryActions onRoll onAttackRoll c.name c.legendaryActions
+            ++ viewLairActions onRoll onAttackRoll c.name c.lairActions
+            ++ viewRegionalEffects onRoll onAttackRoll c.name c.regionalEffects
             ++ viewSpellcasting c.spellcasting
             ++ viewCustomSections c.customSections
             ++ viewLoot c.loot
@@ -148,15 +147,8 @@ viewHead tagDisplay c =
         ]
 
 
-{-| Name row layout depends on the `TagDisplay` choice.
-
-  - `TagBadges`: name on the left, badge strip right-justified
-    in a flex row — the compendium modal has room for both.
-  - `TagIconTooltip`: name and 🏷 icon sit inline together (no
-    flex spacing), so the icon reads as "this creature has tags"
-    immediately to the right of the name in the cramped right-rail
-    panel.
-
+{-| Name on the left, badge strip right-justified in a flex row,
+with the ↗ link at the row's end when the mode asks for it.
 -}
 nameRow : TagDisplay -> Creature -> Html msg
 nameRow tagDisplay c =
@@ -179,14 +171,6 @@ nameRow tagDisplay c =
                     , openInNewTabLink c.id
                     ]
                 ]
-
-        TagIconTooltip ->
-            div [ class "statblock__name statblock__name--inline-tags" ]
-                (text c.name
-                    :: kindBadge c.kind
-                    :: bundledBadge c.isBundled
-                    :: inlineTagIcon c.tags
-                )
 
 
 {-| Padlock chip rendered next to the kind badge when the creature
@@ -252,7 +236,7 @@ openInNewTabLink id =
         , href ("/compendium/creatures/" ++ id)
         , target "_blank"
         , attribute "rel" "noopener"
-        , Tooltips.attr Tooltips.panelStatBlockNewWindow
+        , Tooltips.attr Tooltips.statBlockNewTab
         , attribute "aria-label" "Open in new window"
         ]
         [ text "↗" ]
@@ -266,34 +250,6 @@ tagBadges tags =
     else
         div [ class "statblock__tags" ]
             (List.map tagBadge tags)
-
-
-{-| Single 🏷 icon next to the creature name with an instant
-tooltip carrying the full tag list. `data-tooltip-delay="0"`
-asks the tooltip portal to show without its default 300ms gate
-— the icon has no other affordance and the user is already
-hovering deliberately. Returns an empty list when the creature
-has no tags so the caller can splice it into the name row
-without conditional plumbing.
--}
-inlineTagIcon : List String -> List (Html msg)
-inlineTagIcon tags =
-    if List.isEmpty tags then
-        []
-
-    else
-        let
-            joined =
-                String.join ", " tags
-        in
-        [ span
-            [ class "statblock__tag-icon"
-            , attribute "data-tooltip" joined
-            , attribute "data-tooltip-delay" "0"
-            , attribute "aria-label" ("Tags: " ++ joined)
-            ]
-            [ text "🏷" ]
-        ]
 
 
 tagBadge : String -> Html msg
@@ -518,7 +474,7 @@ viewProperty label value =
 {-| Saving-Throws property line with per-save click-to-roll
 buttons. Mirrors the ability-cell affordance up top: the bonus
 value `+N` is a real `<button>` that fires the same
-`AbilitySaveOpen` Msg with the save's bonus (instead of the
+`AbilitySaveTriggered` Msg with the save's bonus (instead of the
 flat ability modifier the ability cells default to when the
 creature isn't proficient).
 
@@ -760,27 +716,27 @@ proficiencyLine n =
 -- ── TRAITS ───────────────────────────────────────────────────────────────────
 
 
-viewTraits : (String -> Dice.Expression -> Int -> Int -> msg) -> Creature -> List (Html msg)
-viewTraits onRoll c =
+viewTraits : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> Creature -> List (Html msg)
+viewTraits onRoll onAttackRoll c =
     if List.isEmpty c.traits then
         []
 
     else
-        List.map (viewFeature onRoll c.name) c.traits
+        List.map (viewFeature onRoll onAttackRoll c.name) c.traits
 
 
 
 -- ── ACTION-LIKE GROUPS (Actions / Bonus Actions / Reactions) ─────────────────
 
 
-viewActionGroup : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> String -> List Feature -> List (Html msg)
-viewActionGroup onRoll creatureName heading features =
+viewActionGroup : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> String -> List Feature -> List (Html msg)
+viewActionGroup onRoll onAttackRoll creatureName heading features =
     if List.isEmpty features then
         []
 
     else
         sectionHeading heading
-            :: List.map (viewFeature onRoll creatureName) features
+            :: List.map (viewFeature onRoll onAttackRoll creatureName) features
 
 
 sectionHeading : String -> Html msg
@@ -792,8 +748,8 @@ sectionHeading t =
 -- ── LEGENDARY / LAIR / REGIONAL ──────────────────────────────────────────────
 
 
-viewLegendaryActions : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe LegendaryActions -> List (Html msg)
-viewLegendaryActions onRoll creatureName maybeLa =
+viewLegendaryActions : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> Maybe LegendaryActions -> List (Html msg)
+viewLegendaryActions onRoll onAttackRoll creatureName maybeLa =
     case maybeLa of
         Nothing ->
             []
@@ -801,7 +757,7 @@ viewLegendaryActions onRoll creatureName maybeLa =
         Just la ->
             sectionHeading "Legendary Actions"
                 :: descriptionParagraph (legendaryPreamble la)
-                :: List.map (viewLegendaryOption onRoll creatureName) la.options
+                :: List.map (viewLegendaryOption onRoll onAttackRoll creatureName) la.options
 
 
 {-| Compose the SRD-format "Legendary Action Uses: N (M in Lair)."
@@ -836,8 +792,8 @@ legendaryPreamble la =
             ++ " Immediately after another creature's turn, this creature can expend a use to take one of the following actions. This creature regains all expended uses at the start of each of its turns."
 
 
-viewLegendaryOption : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> LegendaryOption -> Html msg
-viewLegendaryOption onRoll creatureName opt =
+viewLegendaryOption : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> LegendaryOption -> Html msg
+viewLegendaryOption onRoll onAttackRoll creatureName opt =
     p [ class "statblock__feature" ]
         (strong []
             [ text
@@ -850,12 +806,12 @@ viewLegendaryOption onRoll creatureName opt =
                        )
                 )
             ]
-            :: List.map (viewSegment onRoll creatureName) (Dice.scan opt.description)
+            :: List.map (viewSegment onRoll onAttackRoll creatureName) (Dice.scan opt.description)
         )
 
 
-viewLairActions : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe LairActions -> List (Html msg)
-viewLairActions onRoll creatureName maybeLa =
+viewLairActions : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> Maybe LairActions -> List (Html msg)
+viewLairActions onRoll onAttackRoll creatureName maybeLa =
     case maybeLa of
         Nothing ->
             []
@@ -863,11 +819,11 @@ viewLairActions onRoll creatureName maybeLa =
         Just la ->
             sectionHeading "Lair Actions"
                 :: descriptionParagraph la.description
-                :: List.map (viewFeature onRoll creatureName) la.options
+                :: List.map (viewFeature onRoll onAttackRoll creatureName) la.options
 
 
-viewRegionalEffects : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Maybe RegionalEffects -> List (Html msg)
-viewRegionalEffects onRoll creatureName maybeRe =
+viewRegionalEffects : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> Maybe RegionalEffects -> List (Html msg)
+viewRegionalEffects onRoll onAttackRoll creatureName maybeRe =
     case maybeRe of
         Nothing ->
             []
@@ -875,7 +831,7 @@ viewRegionalEffects onRoll creatureName maybeRe =
         Just re ->
             sectionHeading "Regional Effects"
                 :: descriptionParagraph re.description
-                :: List.map (viewFeature onRoll creatureName) re.effects
+                :: List.map (viewFeature onRoll onAttackRoll creatureName) re.effects
                 ++ (if String.isEmpty re.fadeAfter then
                         []
 
@@ -1031,12 +987,12 @@ viewLoot loot =
 -- ── FEATURE / SEGMENT ────────────────────────────────────────────────────────
 
 
-viewFeature : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Feature -> Html msg
-viewFeature onRoll creatureName f =
+viewFeature : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> Feature -> Html msg
+viewFeature onRoll onAttackRoll creatureName f =
     p [ class "statblock__feature" ]
         (strong []
             [ text (f.name ++ usageSuffix f.usage ++ ". ") ]
-            :: List.map (viewSegment onRoll creatureName) (Dice.scan f.description)
+            :: List.map (viewSegment onRoll onAttackRoll creatureName) (Dice.scan f.description)
         )
 
 
@@ -1066,8 +1022,8 @@ usageSuffix maybeUsage =
             " (" ++ String.fromInt n ++ "/Long Rest)"
 
 
-viewSegment : (String -> Dice.Expression -> Int -> Int -> msg) -> String -> Dice.Segment -> Html msg
-viewSegment onRoll creatureName segment =
+viewSegment : (String -> Dice.Expression -> Int -> Int -> msg) -> (String -> Int -> Int -> Int -> msg) -> String -> Dice.Segment -> Html msg
+viewSegment onRoll onAttackRoll creatureName segment =
     case segment of
         Dice.Literal s ->
             text s
@@ -1088,25 +1044,13 @@ viewSegment onRoll creatureName segment =
             button
                 [ class "dice-link attack-link"
                 , Html.Events.on "click"
-                    (Decode.map2 (onRoll creatureName (attackExpression mod))
+                    (Decode.map2 (onAttackRoll creatureName mod)
                         (Decode.field "clientX" Decode.int)
                         (Decode.field "clientY" Decode.int)
                     )
                 , Tooltips.attr (Tooltips.statBlockAttack shown mod)
                 ]
                 [ text shown ]
-
-
-{-| `1d20 + mod` expression for an attack-roll click. The sign
-of `mod` flows into `constant` as-is; negative values render as
-`1d20 - 1` via `expressionToString`.
--}
-attackExpression : Int -> Dice.Expression
-attackExpression mod =
-    { dice = [ { count = 1, faces = 20, sign = Dice.Positive } ]
-    , constant = mod
-    , damageType = Nothing
-    }
 
 
 descriptionParagraph : String -> Html msg

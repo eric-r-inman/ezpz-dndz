@@ -11,8 +11,8 @@ module Update.LoreEdit exposing
 {-| Update handlers for the standalone **Edit Lore Group** modal.
 
 The modal owns its own `LoreEditUi` substate (see `Ui.LoreEdit`);
-this module pattern-matches on `model.modal == Just (ModalLoreEdit _)`
-and threads draft mutations through `mapModal loreEditLens`.
+this module pattern-matches on `model.surface == Just (SurfaceLoreEdit _)`
+and threads draft mutations through `mapSurface loreEditLens`.
 
 Save commits the validated draft into `model.userLoreGroups`, the
 same field the random-encounter generator and the soon-to-be-
@@ -32,7 +32,7 @@ extra Cmd is fired here.
 import Compendium
 import Encounter.RandomEncounter.Lore as Lore
 import Encounter.RandomEncounter.Lore.Suggest as Suggest
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Ui.Compendium as CompendiumUi
 import Ui.GroupEdit as GroupEdit exposing (LoreDraft, LoreMemberDraft)
@@ -41,7 +41,7 @@ import Ui.LoreEdit as LoreEdit
 
 openNew : Model -> ( Model, Cmd Msg )
 openNew model =
-    ( { model | modal = Just (ModalLoreEdit LoreEdit.freshForNew) }
+    ( { model | surface = Just (SurfaceLoreEdit LoreEdit.freshForNew) }
     , Cmd.none
     )
 
@@ -55,7 +55,7 @@ openExisting : String -> Model -> ( Model, Cmd Msg )
 openExisting groupId model =
     case List.filter (\g -> g.id == groupId) model.userLoreGroups of
         g :: _ ->
-            ( { model | modal = Just (ModalLoreEdit (LoreEdit.freshForExisting g)) }
+            ( { model | surface = Just (SurfaceLoreEdit (LoreEdit.freshForExisting g)) }
             , Cmd.none
             )
 
@@ -65,7 +65,7 @@ openExisting groupId model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Validate + commit the draft into `model.userLoreGroups`. The
@@ -76,7 +76,7 @@ for the modal banner.
 -}
 save : Model -> ( Model, Cmd Msg )
 save model =
-    case Maybe.andThen Model.loreEditLens.extract model.modal of
+    case Maybe.andThen Model.loreEditLens.extract model.surface of
         Just ui ->
             case GroupEdit.validateLoreDraft ui.draft of
                 Ok newGroup ->
@@ -102,13 +102,13 @@ save model =
                     in
                     ( { model
                         | userLoreGroups = replaced
-                        , modal = Nothing
+                        , surface = Nothing
                       }
                     , Cmd.none
                     )
 
                 Err err ->
-                    ( Model.mapModal Model.loreEditLens
+                    ( Model.mapSurface Model.loreEditLens
                         (\u -> { u | submitError = Just err })
                         model
                     , Cmd.none
@@ -141,7 +141,7 @@ weightChanged raw model =
 
 addSearchChanged : String -> Model -> ( Model, Cmd Msg )
 addSearchChanged raw model =
-    ( Model.mapModal Model.loreEditLens
+    ( Model.mapSurface Model.loreEditLens
         (\ui -> { ui | addSearch = raw })
         model
     , Cmd.none
@@ -218,7 +218,7 @@ the existing submitError banner already surfaces that.
 -}
 test : Model -> ( Model, Cmd Msg )
 test model =
-    case Maybe.andThen Model.loreEditLens.extract model.modal of
+    case Maybe.andThen Model.loreEditLens.extract model.surface of
         Just ui ->
             case GroupEdit.validateLoreDraft ui.draft of
                 Ok group ->
@@ -231,7 +231,7 @@ test model =
                                 _ ->
                                     []
                     in
-                    ( Model.mapModal Model.loreEditLens
+                    ( Model.mapSurface Model.loreEditLens
                         (\u -> { u | testResult = Just (Suggest.suggestFor pool group) })
                         model
                     , Cmd.none
@@ -250,7 +250,7 @@ test model =
 
 mutateDraft : (LoreDraft -> LoreDraft) -> Model -> ( Model, Cmd Msg )
 mutateDraft fn model =
-    ( Model.mapModal Model.loreEditLens (LoreEdit.withDraft fn) model
+    ( Model.mapSurface Model.loreEditLens (LoreEdit.withDraft fn) model
     , Cmd.none
     )
 

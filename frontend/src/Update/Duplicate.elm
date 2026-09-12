@@ -1,143 +1,209 @@
-module Update.Duplicate exposing
-    ( close, exact, fresh, minionHalf, minionOne, open
-    , pudding
-    )
+module Update.Duplicate exposing (apply, applySelected, modeSet)
 
-{-| Update branches for the creature-card Duplicate picker modal.
+{-| Update branches for the Duplicate editor.
 
-The card's ⧉ button now opens this modal instead of duplicating
-inline; the modal exposes four options:
+Five flavors, applied to the active creature or the selection:
 
-  - **Exact** — clone the creature with all current state (HP,
-    conditions, notes, etc.). Delegates to the existing
-    `Encounter.Roster.duplicateCreature`.
+  - **Exact** — clone with all current state (HP, conditions,
+    notes, etc.). Delegates to `Encounter.Roster.duplicateCreature`.
   - **Fresh** — re-instance from the compendium with unmodified
-    state. Looks up the source creature's `creatureId` in
-    `model.compendium.db` and runs `Compendium.draftToInstance`,
-    preserving the source's initiative roll.
+    state, preserving the source's initiative roll.
   - **Minion (½ max hp)** — Fresh, then halve max HP and match
     current to the new max.
   - **Minion (1 hp)** — Fresh, then set max HP to 1 and match
     current to it.
+  - **Pudding** — split into two half-HP copies and remove the
+    original.
 
-Falls back to Exact for any creature without a `creatureId` or
-whose compendium source has been deleted (defensive — the view
-disables the affected buttons but the dispatch path is robust
-to a stale modal).
-
-@docs close, exact, fresh, minionHalf, minionOne, open
+Fresh-family flavors fall back to Exact for any creature without
+a `creatureId` or whose compendium source has been deleted.
 
 -}
 
 import Compendium
 import Encounter exposing (Creature)
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
-import Msg exposing (Msg)
+import Model exposing (Model, Surface(..))
+import Msg exposing (DuplicateMode(..), Msg)
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
-import Ui.Duplicate as DuplicateUi
+import Ui.Duplicate as DuplicateUi exposing (DuplicateUi)
 
 
-open : String -> Model -> ( Model, Cmd Msg )
-open creatureName model =
-    ( { model | modal = Just (ModalDuplicate (DuplicateUi.fresh creatureName)) }
-    , Cmd.none
-    )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
-
-
-{-| Exact mode: full clone via the existing Roster helper.
-Picks up current HP / conditions / save notices / cover / etc.
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
 -}
-exact : Model -> ( Model, Cmd Msg )
-exact model =
-    case sourceName model of
-        Just name ->
-            ( { model
-                | modal = Nothing
-                , encounter = Encounter.Roster.duplicateCreature name model.encounter
-              }
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.duplicateLens model
+        |> Maybe.map SurfaceDuplicate
+
+
+withUi : (DuplicateUi -> DuplicateUi) -> Model -> Model
+withUi =
+    Model.mapSurface Model.duplicateLens
+
+
+modeSet : DuplicateMode -> Model -> ( Model, Cmd Msg )
+modeSet mode model =
+    ( withUi (\u -> { u | mode = mode }) model, Cmd.none )
+
+
+{-| Apply the chosen flavor to the editor's target.
+-}
+apply : Model -> ( Model, Cmd Msg )
+apply model =
+    case drawerSurface model of
+        Just (SurfaceDuplicate ui) ->
+            applyTo [ ui.target ] model
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Apply the chosen flavor to every selected creature.
+-}
+applySelected : Model -> ( Model, Cmd Msg )
+applySelected model =
+    applyTo
+        (model.encounter.creatures
+            |> List.filter .selected
+            |> List.map .name
+        )
+        model
+
+
+{-| Apply the chosen flavor to every named target, log one entry
+naming the copies that appeared, and leave the editor open for
+the next application.
+-}
+applyTo : List String -> Model -> ( Model, Cmd Msg )
+applyTo rawTargets model =
+    case drawerSurface model of
+        Just (SurfaceDuplicate ui) ->
+            let
+                targets =
+                    Encounter.excludingPlaceholderNames model.encounter rawTargets
+
+                before =
+                    Set.fromList (List.map .name model.encounter.creatures)
+
+                afterModel =
+                    List.foldl (applyModeTo ui.mode) model targets
+
+                created =
+                    afterModel.encounter.creatures
+                        |> List.map .name
+                        |> List.filter (\n -> not (Set.member n before))
+
+                entry =
+                    { modeLabel = modeLabel ui.mode
+                    , sources = targets
+                    , created = created
+                    }
+            in
+            ( if List.isEmpty created then
+                afterModel
+
+              else
+                { afterModel
+                    | duplicateLog =
+                        entry
+                            :: List.take
+                                (DuplicateUi.maxDuplicateLogEntries - 1)
+                                afterModel.duplicateLog
+                }
             , Cmd.none
             )
 
-        Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+        _ ->
+            ( model, Cmd.none )
 
 
-{-| Fresh mode: build from compendium with unmodified state.
+modeLabel : DuplicateMode -> String
+modeLabel mode =
+    case mode of
+        DupExact ->
+            "Exact"
+
+        DupFresh ->
+            "Fresh"
+
+        DupMinionHalf ->
+            "Minion (½)"
+
+        DupMinionOne ->
+            "Minion (1 hp)"
+
+        DupPudding ->
+            "Pudding"
+
+
+applyModeTo : DuplicateMode -> String -> Model -> Model
+applyModeTo mode name model =
+    case mode of
+        DupExact ->
+            exactFor name model
+
+        DupFresh ->
+            freshLikeFor InstanceName identity name model
+
+        DupMinionHalf ->
+            freshLikeFor MinionName
+                (\c ->
+                    let
+                        halved =
+                            max 1 (c.maxHp // 2)
+                    in
+                    { c | maxHp = halved, originalMaxHp = halved, currentHp = halved }
+                )
+                name
+                model
+
+        DupMinionOne ->
+            freshLikeFor MinionName
+                (\c -> { c | maxHp = 1, originalMaxHp = 1, currentHp = 1 })
+                name
+                model
+
+        DupPudding ->
+            puddingFor name model
+
+
+{-| Exact mode: full clone via the existing Roster helper.
 -}
-fresh : Model -> ( Model, Cmd Msg )
-fresh =
-    freshLike InstanceName identity
-
-
-{-| Minion variant: halve the source's max HP (rounded down) and
-match current HP to the new max. Fresh state otherwise.
--}
-minionHalf : Model -> ( Model, Cmd Msg )
-minionHalf =
-    freshLike MinionName
-        (\c ->
-            let
-                halved =
-                    max 1 (c.maxHp // 2)
-            in
-            { c | maxHp = halved, originalMaxHp = halved, currentHp = halved }
-        )
-
-
-{-| Minion variant: max HP locked to 1. Fresh state otherwise.
--}
-minionOne : Model -> ( Model, Cmd Msg )
-minionOne =
-    freshLike MinionName
-        (\c -> { c | maxHp = 1, originalMaxHp = 1, currentHp = 1 })
+exactFor : String -> Model -> Model
+exactFor name model =
+    { model | encounter = Encounter.Roster.duplicateCreature name model.encounter }
 
 
 {-| Pudding split: replace the source with two new instances,
 each carrying half the source's current and max HP (rounded
 down). Conditions, save notices, and posture statuses are
 cleared on both halves; initiative is preserved so they act in
-the same slot of the queue, immediately after where the source
-sat.
-
-If the source has no creatureId we still split — Pudding doesn't
-need a compendium reference, just the source's HP values.
-
+the same slot of the queue.
 -}
-pudding : Model -> ( Model, Cmd Msg )
-pudding model =
-    case sourceName model of
+puddingFor : String -> Model -> Model
+puddingFor name model =
+    case findCreature name model.encounter.creatures of
         Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+            model
 
-        Just name ->
-            case findCreature name model.encounter.creatures of
-                Nothing ->
-                    ( { model | modal = Nothing }, Cmd.none )
+        Just src ->
+            let
+                ( copyA, copyB ) =
+                    puddingPair src model.encounter
 
-                Just src ->
-                    let
-                        ( copyA, copyB ) =
-                            puddingPair src model.encounter
+                afterFirst =
+                    Encounter.Roster.insertCopyAfter name copyA model.encounter
 
-                        afterFirst =
-                            Encounter.Roster.insertCopyAfter name copyA model.encounter
-
-                        afterSecond =
-                            Encounter.Roster.insertCopyAfter copyA.name copyB afterFirst
-
-                        finalEnc =
-                            Encounter.Roster.removeCreature name afterSecond
-                    in
-                    ( { model | modal = Nothing, encounter = finalEnc }
-                    , Cmd.none
-                    )
+                afterSecond =
+                    Encounter.Roster.insertCopyAfter copyA.name copyB afterFirst
+            in
+            Model.reaimStale
+                { model
+                    | encounter = Encounter.Roster.removeCreature name afterSecond
+                }
 
 
 {-| Build the two pudding halves from the source. Each gets
@@ -186,6 +252,7 @@ puddingHalf src =
         , conditions = []
         , saveNotices = []
         , concentrating = False
+        , concentrationNote = ""
         , hiding = False
         , dodging = False
         , flying = False
@@ -201,6 +268,7 @@ puddingHalf src =
         , selected = False
         , legendaryActionsUsed = Set.empty
         , legendaryResistanceUsed = Set.empty
+        , specialReactionsUsed = Set.empty
     }
 
 
@@ -224,79 +292,51 @@ creature in the queue + the compendium, build a fresh instance
 preserving the source's initiative, apply `tweak`, and insert
 after the source. Falls back to Exact when any lookup fails.
 -}
-freshLike : NameMode -> (Creature -> Creature) -> Model -> ( Model, Cmd Msg )
-freshLike nameMode tweak model =
-    case sourceName model of
-        Nothing ->
-            ( { model | modal = Nothing }, Cmd.none )
+freshLikeFor : NameMode -> (Creature -> Creature) -> String -> Model -> Model
+freshLikeFor nameMode tweak name model =
+    case ( findCreature name model.encounter.creatures, compendiumDb model ) of
+        ( Just src, Just db ) ->
+            case Maybe.andThen (\id -> Compendium.find id db) src.creatureId of
+                Just source ->
+                    let
+                        existingNames =
+                            List.map .name model.encounter.creatures
 
-        Just name ->
-            case ( findCreature name model.encounter.creatures, compendiumDb model ) of
-                ( Just src, Just db ) ->
-                    case Maybe.andThen (\id -> Compendium.find id db) src.creatureId of
-                        Just source ->
-                            let
-                                existingNames =
-                                    List.map .name model.encounter.creatures
+                        newName =
+                            case nameMode of
+                                InstanceName ->
+                                    Encounter.Roster.uniqueInstanceName
+                                        (Encounter.Roster.instanceBaseName src.name)
+                                        existingNames
 
-                                newName =
-                                    case nameMode of
-                                        InstanceName ->
-                                            Encounter.Roster.uniqueInstanceName
-                                                (Encounter.Roster.instanceBaseName src.name)
-                                                existingNames
+                                MinionName ->
+                                    Encounter.Roster.uniqueMinionName
+                                        src.name
+                                        existingNames
 
-                                        MinionName ->
-                                            Encounter.Roster.uniqueMinionName
-                                                src.name
-                                                existingNames
+                        copy =
+                            Compendium.draftToInstance
+                                { displayName = newName
+                                , initiativeRoll = src.initiative
+                                }
+                                source
+                                |> tweak
+                    in
+                    { model
+                        | encounter =
+                            Encounter.Roster.insertCopyAfter name copy model.encounter
+                    }
 
-                                copy =
-                                    Compendium.draftToInstance
-                                        { displayName = newName
-                                        , initiativeRoll = src.initiative
-                                        }
-                                        source
-                                        |> tweak
-                            in
-                            ( { model
-                                | modal = Nothing
-                                , encounter =
-                                    Encounter.Roster.insertCopyAfter name copy model.encounter
-                              }
-                            , Cmd.none
-                            )
+                Nothing ->
+                    -- Compendium source is gone (deleted / never
+                    -- had an id); fall back to Exact.
+                    exactFor name model
 
-                        Nothing ->
-                            -- Compendium source is gone (deleted /
-                            -- never had an id); fall back to Exact.
-                            exactInline name model
-
-                ( Just _, _ ) ->
-                    exactInline name model
-
-                _ ->
-                    ( { model | modal = Nothing }, Cmd.none )
-
-
-exactInline : String -> Model -> ( Model, Cmd Msg )
-exactInline name model =
-    ( { model
-        | modal = Nothing
-        , encounter = Encounter.Roster.duplicateCreature name model.encounter
-      }
-    , Cmd.none
-    )
-
-
-sourceName : Model -> Maybe String
-sourceName model =
-    case model.modal of
-        Just (ModalDuplicate ui) ->
-            Just ui.creatureName
+        ( Just _, _ ) ->
+            exactFor name model
 
         _ ->
-            Nothing
+            model
 
 
 findCreature : String -> List Creature -> Maybe Creature

@@ -67,12 +67,12 @@ emptyPaste =
 
 
 
--- ── BROWSER MODAL ────────────────────────────────────────────────────────────
+-- ── BROWSER ──────────────────────────────────────────────────────────────────
 
 
-{-| Compendium browser state. Always present (we fetch the
-library on app boot regardless of whether the modal is open
-yet); the `open` flag controls visibility.
+{-| Compendium browser state. Always present — the library is
+fetched on app boot, and the browser itself renders as the
+standalone /compendium tab.
 
 `db` is `RemoteData`-shaped because the boot fetch can fail or
 still be in flight when the user clicks "Open". The browser
@@ -84,13 +84,11 @@ they apply to a derived `Db` view at render time, not to the
 canonical list.
 
 `selectedId` tracks which creature's stat block is in the right
-pane. Defaults to the first item in the rendered list on open;
-a click on a row updates it.
+pane. Nothing is selected until the GM clicks a row.
 
 -}
 type alias CompendiumUi =
-    { open : Bool
-    , db : CompendiumDb
+    { db : CompendiumDb
     , searchText : String
     , kindFilter : Set String
     , sort : CompendiumSort
@@ -103,6 +101,11 @@ type alias CompendiumUi =
     -- the Clear-Selected action.  Independent of `selectedId`
     -- (which picks the right-pane stat block).
     , selectedIds : Set String
+
+    -- Compendium id whose "[N] in Encounter" badge is mid-flash.
+    -- Set by an add, cleared by a timed message, so the count
+    -- change is visibly acknowledged where the eye already is.
+    , badgeFlashFor : Maybe String
 
     -- Bulk-action split-button popover state.  At most one of
     -- the Clear / Import / Export dropdowns is open at a time;
@@ -184,6 +187,7 @@ confirmation message.
 -}
 type PendingAction
     = PendingReset
+    | PendingClear
     | PendingImport (List Compendium.Creature) (List Group) Int
     | PendingDelete String String
 
@@ -196,8 +200,7 @@ type CompendiumDb
 
 emptyCompendium : CompendiumUi
 emptyCompendium =
-    { open = False
-    , db = CompendiumDbLoading
+    { db = CompendiumDbLoading
     , searchText = ""
     , kindFilter = Set.empty
     , sort = SortName
@@ -206,6 +209,7 @@ emptyCompendium =
     , showOnlyAdded = False
     , pending = Nothing
     , selectedIds = Set.empty
+    , badgeFlashFor = Nothing
     , bulkMenu = Nothing
     , compendiumDirty = False
     , bulkBusy = False
@@ -407,7 +411,7 @@ kindToString k =
 
 {-| Edit / create modal state. Lives at the model root rather
 than inside `CompendiumUi` because the form is a self-contained
-modal that can be opened on top of the browser modal (or
+modal that can be opened from the compendium page (or
 directly).
 
 `mode` carries the path the modal will follow on submit:

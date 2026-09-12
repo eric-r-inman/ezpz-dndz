@@ -1,13 +1,16 @@
 module Update.Encounter exposing
     ( addPlaceholder
     , adjustFlyHeight
+    , clearCover
     , controlCancel
     , controlConfirm
-    , cycleCover
     , fallDamageLanded
-    , moveCreatureDown
-    , moveCreatureUp
     , nextTurn
+    , openStatusAndConditionFor
+    , queueDragEnd
+    , queueDragOver
+    , queueDragStart
+    , queueDrop
     , rechargeRollLanded
     , removeCreature
     , requestClear
@@ -15,8 +18,11 @@ module Update.Encounter exposing
     , rollFallDamage
     , rollRechargeNow
     , run
+    , saveFlashExpired
+    , scrollToCard
     , setActive
     , shiftToggleSelected
+    , targetCreature
     , toggleConcentration
     , toggleDodging
     , toggleFlying
@@ -40,6 +46,7 @@ already moved into `Encounter.Lifecycle.nextTurn`, leaving only the
 
 -}
 
+import Compendium
 import Dice
 import Effects
 import Encounter exposing (Encounter)
@@ -48,26 +55,30 @@ import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
 import Set
+import Ui.Compendium exposing (CompendiumDb(..))
+import Update.Condition
+import Update.Status
 
 
-{-| Local lens for `model.encounter`. Kept private to this module —
-other Update modules either don't touch the encounter or own their
-own narrower lens.
+{-| Apply a change to `model.encounter`, then re-aim any editor
+left pointing at a creature the change removed. Every roster
+mutation in this module goes through here, which is what keeps
+that invariant from depending on the caller remembering it.
+
+Kept private to this module — other Update modules either don't
+touch the encounter or own their own narrower lens.
+
 -}
 withEncounter : (Encounter -> Encounter) -> Model -> Model
 withEncounter fn model =
-    { model | encounter = fn model.encounter }
+    Model.reaimStale { model | encounter = fn model.encounter }
 
 
 {-| Advance the queue one slot. Domain layer owns the queue walk,
 round bookkeeping, and condition lifecycle hooks (begin / end of
-turn). The update layer fires the side effects:
-
-  - auto-roll saves at the OUTGOING creature's end-of-turn
-    (`AutoRollAtEnd`),
-  - auto-roll saves at the INCOMING creature's begin-of-turn
-    (`AutoRollAtBegin`),
-  - and a viewport check so the active card scrolls into view.
+turn). The update layer fires the side effects the boundary owes:
+the outgoing creature's end-of-turn rolls and the incoming one's
+begin-of-turn rolls, plus the pulses and the scroll.
 
 Both auto-roll batches read the post-`nextTurn` encounter so they
 see the outgoing creature's conditions AFTER end-of-turn ticks (any
@@ -86,9 +97,11 @@ nextTurn model =
 
         endRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
+                ++ Effects.areaRollCmdsFor Encounter.AtEnd outgoingName newEnc
 
         beginRolls =
             Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
+                ++ Effects.areaRollCmdsFor Encounter.AtBegin newEnc.activeName newEnc
 
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
@@ -96,14 +109,36 @@ nextTurn model =
 
             else
                 []
+
+        -- Nothing auto-fires these rolls, so the chips pulse once as
+        -- the reminder that the GM has to click them themselves.
+        flashes =
+            Encounter.remindersAt Encounter.AtEnd outgoingName newEnc
+                ++ Encounter.remindersAt Encounter.AtBegin newEnc.activeName newEnc
+
+        flashCmds =
+            if List.isEmpty flashes then
+                []
+
+            else
+                [ Effects.saveFlashExpiry ]
     in
     -- Recharge d6s used to auto-fire here; the card now renders a
     -- blinking dice glyph on the active creature's spent recharge
     -- chip and the GM clicks to roll, so we don't include the
     -- recharge cmds in the turn-advance batch any more.
-    ( { model | encounter = newEnc }
-    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls)
+    ( { model | encounter = newEnc, flashConditions = flashes }
+    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ flashCmds)
     )
+
+
+{-| Clear the save-reminder pulse. Fired by the `Process.sleep`
+`Effects.saveFlashExpiry` schedules, timed to outlast
+`condition-chip-flash`'s animation.
+-}
+saveFlashExpired : Model -> ( Model, Cmd Msg )
+saveFlashExpired model =
+    ( { model | flashConditions = [] }, Cmd.none )
 
 
 {-| Manual jump (the right-arrow button on a card). Distinct from
@@ -119,9 +154,25 @@ setActive name model =
     )
 
 
-cycleCover : String -> Model -> ( Model, Cmd Msg )
-cycleCover name model =
-    ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.nextCover c.cover })) model
+{-| Put a creature's card at the top of the queue without
+touching whose turn it is. What a reminder strip's name does: the
+GM is reading about that creature and wants its card, not its
+initiative.
+-}
+scrollToCard : String -> Model -> ( Model, Cmd Msg )
+scrollToCard name model =
+    ( model, Effects.scrollCardToTop name )
+
+
+{-| The card's own cover × : clears cover directly rather than
+cycling through the other levels, since the × always means "turn
+this off." The Status editor's own cover control still cycles
+(`Update.Status.coverCycle`) — picking a specific level is what
+that form is for.
+-}
+clearCover : String -> Model -> ( Model, Cmd Msg )
+clearCover name model =
+    ( withEncounter (Encounter.mapCreature name (\c -> { c | cover = Encounter.NoCover })) model
     , Cmd.none
     )
 
@@ -168,18 +219,30 @@ toggleReadied name model =
     )
 
 
-{-| Toggle the per-creature reaction pip. Every creature gets one
-reaction per round in 5e (opportunity attack, Counterspell,
-Shield, Hellish Rebuke…); the pip flips back to "available"
-automatically at the start of the creature's next turn — see
-`Encounter.Lifecycle.applyBeginOfTurn` for the reset. Click is
-also wired manually so the GM can adjust if they need to undo
-or pre-spend.
+{-| Toggle the per-creature reaction pip. The badge labels come
+from the compendium so the pip marks exactly what the card
+shows. Every creature gets one reaction per round in 5e
+(opportunity attack, Counterspell, Shield, Hellish Rebuke…); the
+pip flips back to "available" automatically at the start of the
+creature's next turn — see `Encounter.Lifecycle.applyBeginOfTurn`
+for the reset. Click is also wired manually so the GM can adjust
+if they need to undo or pre-spend.
 -}
 toggleReaction : String -> Model -> ( Model, Cmd Msg )
 toggleReaction name model =
+    let
+        labels c =
+            case model.compendium.db of
+                CompendiumDbLoaded db ->
+                    Compendium.specialReactionLabels db c
+
+                _ ->
+                    []
+    in
     ( withEncounter
-        (Encounter.mapCreature name (\c -> { c | reactionUsed = not c.reactionUsed }))
+        (Encounter.mapCreature name
+            (\c -> Encounter.toggleReaction (labels c) c)
+        )
         model
     , Cmd.none
     )
@@ -290,10 +353,10 @@ rechargeRollLanded creatureName abilityName roll model =
                 )
                 model.encounter
 
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll { model | encounter = nextEncounter }
     in
-    ( pushed, flashCmd )
+    ( pushed, broadcastCmd )
 
 
 {-| Toggle the per-creature `inactive` flag. An inactive
@@ -317,18 +380,23 @@ toggleSelected name model =
     )
 
 
-{-| Bulk: if every creature is already selected, deselect all;
-otherwise select all. The clicked creature ends up in the resulting
-bulk state regardless of where it started.
+{-| Bulk: shift-clicking a selected creature's box clears the
+whole selection; shift-clicking an unselected one selects
+everyone. The clicked box's own state decides the direction, so
+the gesture always inverts what the GM is pointing at.
 -}
-shiftToggleSelected : Model -> ( Model, Cmd Msg )
-shiftToggleSelected model =
+shiftToggleSelected : String -> Model -> ( Model, Cmd Msg )
+shiftToggleSelected name model =
     let
-        allSelected =
-            List.all .selected model.encounter.creatures
+        clickedSelected =
+            model.encounter.creatures
+                |> List.filter (\c -> c.name == name)
+                |> List.head
+                |> Maybe.map .selected
+                |> Maybe.withDefault False
 
         newValue =
-            not allSelected
+            not clickedSelected
     in
     ( withEncounter
         (\enc ->
@@ -343,18 +411,94 @@ shiftToggleSelected model =
     )
 
 
-{-| Manual queue reordering (the up/down arrows on each card). Pure
-position swaps; initiative isn't touched. A later `sortByInitiative`
-wipes the manual order, which matches the documented contract.
+{-| Pick a creature as the editors' target, or clear the pick
+when it is already the target. Either way every per-creature
+editor re-aims: at the pick, or back at the active creature.
 -}
-moveCreatureUp : String -> Model -> ( Model, Cmd Msg )
-moveCreatureUp name model =
-    ( withEncounter (Encounter.Roster.moveUp name) model, Cmd.none )
+targetCreature : String -> Model -> ( Model, Cmd Msg )
+targetCreature name model =
+    ( Model.aimEditorsAtTarget
+        { model
+            | targetName =
+                if model.targetName == Just name then
+                    Nothing
+
+                else
+                    Just name
+        }
+    , Cmd.none
+    )
 
 
-moveCreatureDown : String -> Model -> ( Model, Cmd Msg )
-moveCreatureDown name model =
-    ( withEncounter (Encounter.Roster.moveDown name) model, Cmd.none )
+{-| The card's gear icon: aim both Status and Condition/Effect at
+this creature in one click. Reuses each editor's own `openFor`
+for the aiming (so re-open, re-aim, and fresh-open all behave
+exactly as they do from their individual triggers) but replaces
+their individual scroll Cmds with one that puts whichever of the
+two sits higher in the column at the top — "fully visible" isn't
+enough when opening a pair, since it doesn't say which end the GM
+should land on.
+-}
+openStatusAndConditionFor : String -> Model -> ( Model, Cmd Msg )
+openStatusAndConditionFor name model =
+    let
+        ( afterStatus, _ ) =
+            Update.Status.openFor name model
+
+        ( afterBoth, _ ) =
+            Update.Condition.openFor name afterStatus
+
+        scrollToTopmost =
+            Maybe.map2 Effects.scrollDrawerIndicesToTop
+                (Model.drawerIndexOf Model.statusLens afterBoth)
+                (Model.drawerIndexOf Model.conditionLens afterBoth)
+                |> Maybe.withDefault Cmd.none
+    in
+    ( afterBoth, scrollToTopmost )
+
+
+{-| A card picked up: remember the position it came from.
+-}
+queueDragStart : Int -> Model -> ( Model, Cmd Msg )
+queueDragStart index model =
+    ( { model | queueDrag = Just { from = index, over = Nothing } }
+    , Cmd.none
+    )
+
+
+{-| The pointer crossed a card; that card wears the drop cue.
+-}
+queueDragOver : Int -> Model -> ( Model, Cmd Msg )
+queueDragOver index model =
+    ( { model
+        | queueDrag =
+            Maybe.map (\d -> { d | over = Just index }) model.queueDrag
+      }
+    , Cmd.none
+    )
+
+
+{-| Dropped on a card: commit the reorder and clear the drag.
+-}
+queueDrop : Int -> Model -> ( Model, Cmd Msg )
+queueDrop index model =
+    ( model.queueDrag
+        |> Maybe.map
+            (\d ->
+                withEncounter (Encounter.Roster.moveCreature d.from index)
+                    { model | queueDrag = Nothing }
+            )
+        |> Maybe.withDefault model
+    , Cmd.none
+    )
+
+
+{-| The drag ended anywhere but a card: clear the cue without
+reordering.
+-}
+queueDragEnd : Model -> ( Model, Cmd Msg )
+queueDragEnd model =
+    ( { model | queueDrag = Nothing }, Cmd.none )
 
 
 removeCreature : String -> Model -> ( Model, Cmd Msg )
@@ -370,14 +514,27 @@ addPlaceholder model =
     ( withEncounter Encounter.Roster.appendPlaceholder model, Cmd.none )
 
 
-{-| First click of Reset: stage the pending state so the panel
-renders the confirmation banner. The actual revert happens in
+{-| First click of Reset: stage the pending state so the
+confirmation modal opens. The actual revert happens in
 [`controlConfirm`](#controlConfirm); this branch is purely
 about asking "are you sure?" before touching the encounter.
 -}
 requestReset : Model -> ( Model, Cmd Msg )
 requestReset model =
-    ( { model | pendingControl = Just PendingReset }, Cmd.none )
+    ( stage PendingReset model, Cmd.none )
+
+
+{-| Stage the action in the confirmation modal. Re-clicking the
+staging button un-stages it; clicking the other one re-aims the
+open confirmation rather than opening a second.
+-}
+stage : PendingControl -> Model -> Model
+stage pending model =
+    if model.surface == Just (Model.SurfaceConfirm pending) then
+        { model | surface = Nothing }
+
+    else
+        { model | surface = Just (Model.SurfaceConfirm pending) }
 
 
 {-| First click of Clear — see [`requestReset`](#requestReset);
@@ -385,7 +542,7 @@ the only difference is the pending tag.
 -}
 requestClear : Model -> ( Model, Cmd Msg )
 requestClear model =
-    ( { model | pendingControl = Just PendingClear }, Cmd.none )
+    ( stage PendingClear model, Cmd.none )
 
 
 {-| Apply whichever destructive action is currently staged.
@@ -397,19 +554,18 @@ requestClear model =
     inactive), legendary actions / resistances refilled, timers
     cleared. Identity + combat baselines (name, kind, initiative,
     AC, max HP, note, memo, compendium back-reference) survive
-    untouched. Round counter goes back to 0 and `activeName`
+    untouched. Round counter goes back to 1 and `activeName`
     clears so the GM is back in pre-combat mode with the same
     cast.
-  - `PendingClear` — drop every creature; force `round = 0`.
+  - `PendingClear` — drop every creature; back to round 1.
 
-In both cases the pending state is cleared so the panel returns
-to its normal button grid.
+In both cases the pending state is cleared so the modal closes.
 
 -}
 controlConfirm : Model -> ( Model, Cmd Msg )
 controlConfirm model =
-    case model.pendingControl of
-        Just PendingReset ->
+    case model.surface of
+        Just (Model.SurfaceConfirm PendingReset) ->
             let
                 enc =
                     model.encounter
@@ -417,27 +573,25 @@ controlConfirm model =
                 resetEnc =
                     { enc
                         | creatures = List.map resetCreatureState enc.creatures
-                        , round = 0
+                        , round = 1
                         , activeName = ""
                     }
             in
-            ( { model | encounter = resetEnc, pendingControl = Nothing }
+            ( withEncounter (always resetEnc) { model | surface = Nothing }
             , Cmd.none
             )
 
-        Just PendingClear ->
-            ( { model
-                | encounter = Encounter.empty
-                , pendingControl = Nothing
-              }
+        Just (Model.SurfaceConfirm PendingClear) ->
+            ( withEncounter (always Encounter.empty)
+                { model | surface = Nothing }
             , Cmd.none
             )
 
-        Nothing ->
+        _ ->
             ( model, Cmd.none )
 
 
-{-| Strip a creature back to "round 0" state. Identity + combat
+{-| Strip a creature back to pre-combat state. Identity + combat
 baselines (name, kind, initiative, ability stats, AC, max HP,
 note, memo, compendium id, legendary capability flags, selection
 checkbox) are preserved; everything that can change mid-fight is
@@ -452,6 +606,7 @@ resetCreatureState c =
         , saveNotices = []
         , cover = Encounter.NoCover
         , concentrating = False
+        , concentrationNote = ""
         , hiding = False
         , dodging = False
         , flying = False
@@ -473,6 +628,7 @@ resetCreatureState c =
         , timer = Nothing
         , legendaryActionsUsed = Set.empty
         , legendaryResistanceUsed = Set.empty
+        , specialReactionsUsed = Set.empty
     }
 
 
@@ -529,11 +685,11 @@ open. No HP mutation — see `rollFallDamage`.
 fallDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 fallDamageLanded _ roll model =
     let
-        ( pushed, flashCmd ) =
+        ( pushed, broadcastCmd ) =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, flashCmd ]
+    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
     )
 
 
@@ -554,11 +710,10 @@ fallExpression count =
     }
 
 
-{-| "Run Encounter": flip the round-0 sentinel to round 1 and
-pick the highest-initiative creature as active. Domain rules
-live in [`Encounter.run`](Encounter#run); this branch handles
-the scroll-into-view side-effect so the new active card is
-visible.
+{-| Begin combat: pick the highest-initiative creature as
+active. Domain rules live in [`Encounter.run`](Encounter#run);
+this branch handles the scroll-into-view side-effect so the new
+active card is visible.
 -}
 run : Model -> ( Model, Cmd Msg )
 run model =
@@ -579,4 +734,4 @@ run model =
 -}
 controlCancel : Model -> ( Model, Cmd Msg )
 controlCancel model =
-    ( { model | pendingControl = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )

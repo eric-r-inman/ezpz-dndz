@@ -71,6 +71,48 @@ parserSuite =
 
                     Err _ ->
                         Expect.pass
+        , test "parenthesised groups fold into one expression" <|
+            \_ ->
+                case Dice.parse "(2d6+4) + (3d9+5) +6" of
+                    Ok expr ->
+                        Expect.all
+                            [ \_ -> List.map .faces expr.dice |> Expect.equal [ 6, 9 ]
+                            , \_ -> expr.constant |> Expect.equal 15
+                            ]
+                            ()
+
+                    Err _ ->
+                        Expect.fail "expected parenthesised groups to parse"
+        , test "a minus before a group flips every die inside it" <|
+            \_ ->
+                case Dice.parse "2d6 - (1d4 + 1)" of
+                    Ok expr ->
+                        Expect.all
+                            [ \_ ->
+                                List.map .sign expr.dice
+                                    |> Expect.equal [ Dice.Positive, Dice.Negative ]
+                            , \_ -> expr.constant |> Expect.equal -1
+                            ]
+                            ()
+
+                    Err _ ->
+                        Expect.fail "expected a negated group to parse"
+        , test "a damage type still follows a parenthesised group" <|
+            \_ ->
+                case Dice.parse "(1d8+2) fire" of
+                    Ok expr ->
+                        expr.damageType |> Expect.equal (Just "fire")
+
+                    Err _ ->
+                        Expect.fail "expected a tagged group to parse"
+        , test "an unclosed group returns Err" <|
+            \_ ->
+                case Dice.parse "(2d6+4" of
+                    Ok _ ->
+                        Expect.fail "expected an unclosed group to fail"
+
+                    Err _ ->
+                        Expect.pass
         ]
 
 

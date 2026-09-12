@@ -21,7 +21,6 @@ shell).
 | Per-user card layouts              | shipped                               |
 | Per-user dice history              | shipped (each user's own roll log)    |
 | Frontend login / register UI       | shipped — in-Elm screen at app boot   |
-| Anonymous-mode banner              | shipped — top-of-page reminder for guests |
 | Operator password reset (CLI)      | shipped — ~ezpz-dndz-cli users reset-password~ |
 
 * Setup

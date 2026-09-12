@@ -1,31 +1,29 @@
 module Update.Initiative exposing
     ( applySelected
-    , applySelectedSurprised
     , applyTarget
-    , applyTargetSurprised
     , autoRoll
-    , autoRollSurprised
-    , close
     , customChanged
     , initiativeExpression
-    , open
+    , openFor
     , quickSort
+    , rollModeSet
     , rollsLanded
     , source
     )
 
-{-| Update branches for the initiative manager modal: opening for a
+{-| Update branches for the initiative editor: opening for a
 specific creature, custom-value entry, the "sort by current
-initiative" shortcut, the auto-roll batch (target / all / selected),
-and the result handler that stamps rolled values onto creatures and
-re-sorts the queue.
+initiative" shortcut, the auto-roll batch (target / all /
+selected), and the result handler that stamps rolled values onto
+creatures and re-sorts the queue. Applying leaves the editor
+open, as the other drawer editors do.
 -}
 
 import Dice
 import Effects
 import Encounter exposing (Creature)
 import Encounter.Roster
-import Model exposing (Modal(..), Model)
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( Msg(..)
@@ -36,24 +34,47 @@ import Random
 import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 
 
-{-| Apply `fn` to the open initiative-manager modal. No-op when
-the modal is closed (or a different modal is open).
+{-| The editor's own drawer entry, in the `Maybe Surface`
+shape the pattern matches below were written against.
+-}
+drawerSurface : Model -> Maybe Surface
+drawerSurface model =
+    Model.drawerGet Model.initiativeLens model
+        |> Maybe.map SurfaceInitiative
+
+
+{-| Apply `fn` to the open initiative editor. No-op when it is
+closed (or a different surface is open).
 -}
 withInitiative : (InitiativeUi -> InitiativeUi) -> Model -> Model
 withInitiative =
-    Model.mapModal Model.initiativeLens
+    Model.mapSurface Model.initiativeLens
 
 
-open : String -> Model -> ( Model, Cmd Msg )
-open target model =
-    ( { model | modal = Just (ModalInitiative (InitiativeUi.fresh target)) }
-    , Cmd.none
+{-| A card's initiative badge: it aims the editor at its own creature,
+so an editor already open for someone else re-aims. Every path
+unfolds and scrolls the panel fully into view — a card control
+asks to see a creature's editor, whether that means showing what
+is already open, re-aiming it, or opening it fresh.
+-}
+openFor : String -> Model -> ( Model, Cmd Msg )
+openFor target model =
+    let
+        nextModel =
+            case drawerSurface model of
+                Just (SurfaceInitiative ui) ->
+                    if ui.target == target then
+                        Model.unfoldDrawer Model.initiativeLens model
+
+                    else
+                        Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+
+                _ ->
+                    Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
+    in
+    ( nextModel
+    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.initiativeLens nextModel)
     )
-
-
-close : Model -> ( Model, Cmd Msg )
-close model =
-    ( { model | modal = Nothing }, Cmd.none )
 
 
 customChanged : String -> Model -> ( Model, Cmd Msg )
@@ -65,131 +86,69 @@ customChanged text model =
 
 quickSort : Model -> ( Model, Cmd Msg )
 quickSort model =
-    ( { model
-        | encounter = Encounter.Roster.sortByInitiative model.encounter
-        , modal = Nothing
-      }
+    ( { model | encounter = Encounter.Roster.sortByInitiative model.encounter }
     , Cmd.none
     )
 
 
 {-| Resolve which creatures the scope picks out and fire one
-batched roll Cmd. Mode picks the per-creature generator
-(standard 1d20+bonus vs. 2d20-keep-high+bonus). The handler
+batched roll Cmd in the editor's chosen mode. The handler
 (`InitiativeRollsLanded`) is shape-agnostic — it works for
-1-element or N-element batches and for either roll mode.
+1-element or N-element batches and for any roll mode.
 -}
-autoRoll : RollScope -> RollMode -> Model -> ( Model, Cmd Msg )
-autoRoll scope mode model =
-    let
-        creatures =
-            case scope of
-                ScopeTarget ->
-                    case model.modal of
-                        Just (ModalInitiative ui) ->
-                            List.filter
-                                (\c -> c.name == ui.target)
-                                model.encounter.creatures
+autoRoll : RollScope -> Model -> ( Model, Cmd Msg )
+autoRoll scope model =
+    case drawerSurface model of
+        Just (SurfaceInitiative ui) ->
+            ( model, initiativeRollCmd ui.rollMode (scopeCreatures scope model) )
 
-                        _ ->
-                            []
-
-                ScopeAll ->
-                    model.encounter.creatures
-
-                ScopeSelected ->
-                    List.filter .selected model.encounter.creatures
-    in
-    ( model, initiativeRollCmd mode creatures )
+        _ ->
+            ( model, Cmd.none )
 
 
-{-| Manual override for one creature. Closes the modal whether or
-not the value parsed; an unparsable input gets silently discarded
-(same UX as the HP edit).
+{-| Manual override for the editor's own target.
 -}
 applyTarget : Model -> ( Model, Cmd Msg )
 applyTarget model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
-            ( applyCustomInitiative [ ui.target ] ui model
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+    ( applyCustomTo (\ui -> [ ui.target ]) model, Cmd.none )
 
 
+{-| Manual override for every selected creature.
+-}
 applySelected : Model -> ( Model, Cmd Msg )
 applySelected model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
-            let
-                targets =
-                    List.filter .selected model.encounter.creatures
-                        |> List.map .name
-            in
-            ( applyCustomInitiative targets ui model
-            , Cmd.none
-            )
+    ( applyCustomTo
+        (\_ ->
+            model.encounter.creatures
+                |> List.filter .selected
+                |> List.map .name
+        )
+        model
+    , Cmd.none
+    )
+
+
+applyCustomTo : (InitiativeUi -> List String) -> Model -> Model
+applyCustomTo targetsFor model =
+    case drawerSurface model of
+        Just (SurfaceInitiative ui) ->
+            applyCustomInitiative (targetsFor ui) ui model
 
         _ ->
-            ( model, Cmd.none )
+            model
 
 
-{-| "Disadv. & Surprised" yellow buttons. Marks each
-in-scope creature surprised before firing the disadvantage
-roll batch — the lifecycle hook clears the flag at the end of
-the surprised creature's next turn.
--}
-autoRollSurprised : RollScope -> Model -> ( Model, Cmd Msg )
-autoRollSurprised scope model =
-    let
-        creatures =
-            scopeCreatures scope model
-
-        names =
-            List.map .name creatures
-    in
-    autoRoll scope ModeDisadvantage (flagSurprised names model)
-
-
-applyTargetSurprised : Model -> ( Model, Cmd Msg )
-applyTargetSurprised model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
-            ( applyCustomInitiative [ ui.target ]
-                ui
-                (flagSurprised [ ui.target ] model)
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-applySelectedSurprised : Model -> ( Model, Cmd Msg )
-applySelectedSurprised model =
-    case model.modal of
-        Just (ModalInitiative ui) ->
-            let
-                targets =
-                    List.filter .selected model.encounter.creatures
-                        |> List.map .name
-            in
-            ( applyCustomInitiative targets ui (flagSurprised targets model)
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
+rollModeSet : RollMode -> Model -> ( Model, Cmd Msg )
+rollModeSet mode model =
+    ( withInitiative (\u -> { u | rollMode = mode }) model, Cmd.none )
 
 
 scopeCreatures : RollScope -> Model -> List Encounter.Creature
 scopeCreatures scope model =
     case scope of
         ScopeTarget ->
-            case model.modal of
-                Just (ModalInitiative ui) ->
+            case drawerSurface model of
+                Just (SurfaceInitiative ui) ->
                     List.filter (\c -> c.name == ui.target) model.encounter.creatures
 
                 _ ->
@@ -202,25 +161,10 @@ scopeCreatures scope model =
             List.filter .selected model.encounter.creatures
 
 
-flagSurprised : List String -> Model -> Model
-flagSurprised names model =
-    { model
-        | encounter =
-            List.foldl
-                (\name enc ->
-                    Encounter.mapCreature name
-                        (\c -> { c | surprised = True })
-                        enc
-                )
-                model.encounter
-                names
-    }
-
-
 {-| Fold each (creature name, roll) pair into a fresh `Model`:
 stamp the rolled total onto the creature's initiative, push the
-roll into the dice history. Then sort the queue, close the modal,
-and persist all the rolls server-side. `mapCreature` silently
+roll into the dice history. Then sort the queue and persist all
+the rolls server-side. `mapCreature` silently
 no-ops on unknown names so a stale roll (defensive) won't blow up.
 -}
 rollsLanded : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
@@ -236,23 +180,20 @@ rollsLanded results model =
                                 m.encounter
                     }
 
-                ( pushed, flashCmd ) =
+                ( pushed, broadcastCmd ) =
                     Effects.pushDiceRoll roll stamped
             in
-            ( pushed, flashCmd :: cs )
+            ( pushed, broadcastCmd :: cs )
 
-        ( m1, flashCmds ) =
+        ( m1, broadcastCmds ) =
             List.foldl applyOne ( model, [] ) results
 
         rolls =
             List.map Tuple.second results
     in
-    ( { m1
-        | encounter = Encounter.Roster.sortByInitiative m1.encounter
-        , modal = Nothing
-      }
+    ( { m1 | encounter = Encounter.Roster.sortByInitiative m1.encounter }
     , Cmd.batch
-        (List.map Effects.persistDiceRoll rolls ++ flashCmds)
+        (List.map Effects.persistDiceRoll rolls ++ broadcastCmds)
     )
 
 
@@ -326,10 +267,10 @@ source name =
     { feature = "Initiative", target = Just name }
 
 
-{-| Custom-initiative apply path: parse the modal's text input, set
-each named creature's initiative to that value, sort the queue,
-close the modal. An unparseable text just closes the modal without
-mutating anything.
+{-| Custom-initiative apply path: parse the editor's text input, set
+each named creature's initiative to that value and sort the
+queue. An unparseable text is silently discarded, the same way
+the card's inline HP edit treats one.
 -}
 applyCustomInitiative : List String -> InitiativeUi -> Model -> Model
 applyCustomInitiative names ui model =
@@ -347,10 +288,7 @@ applyCustomInitiative names ui model =
                 m1 =
                     List.foldl applyOne model names
             in
-            { m1
-                | encounter = Encounter.Roster.sortByInitiative m1.encounter
-                , modal = Nothing
-            }
+            { m1 | encounter = Encounter.Roster.sortByInitiative m1.encounter }
 
         Nothing ->
-            { model | modal = Nothing }
+            model

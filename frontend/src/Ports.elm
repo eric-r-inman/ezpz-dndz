@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, compendiumTabMissing, copyToClipboard, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable, tryFocusCompendiumTab
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -89,8 +89,8 @@ port clearLocalCompendium : () -> Cmd msg
 
 {-| Persist the anonymous named-encounter-saves dict
 (`{ name → { encounter, created_at, updated_at } }`) to
-localStorage. Fired by `Update.Save` / `Update.Load` after any
-local mutation.
+localStorage. Fired by `Update.SaveLoad` after any local
+mutation.
 -}
 port persistLocalEncounterSaves : E.Value -> Cmd msg
 
@@ -113,6 +113,13 @@ payload shape can be reused as the wire body.
 port persistLocalConditionPresets : E.Value -> Cmd msg
 
 
+{-| Persist the editor column's arrangement — the order the GM
+dragged the panels into, and which ones they pinned. Local to the
+browser: an account does not carry it between machines.
+-}
+port persistLocalDrawerLayout : E.Value -> Cmd msg
+
+
 {-| Persist the user-named timer presets dict to
 `localStorage.timerPresets`. Same dual-session usage and wire
 contract as `persistLocalConditionPresets` but for the
@@ -127,18 +134,6 @@ port persistLocalTimerPresets : E.Value -> Cmd msg
 Fires on every Save / Delete in the Save Chain modal.
 -}
 port persistLocalSaveChainPresets : E.Value -> Cmd msg
-
-
-{-| Copy the supplied string to the system clipboard via
-`navigator.clipboard.writeText`. Fire-and-forget: the JS side
-swallows rejections (Firefox's clipboard API can refuse a write
-that isn't part of a "trusted" click gesture, and there's
-nothing sensible for the Elm side to do about it). Used by the
-Save Chain modal's "Export as Elm" button to drop a
-copy-pasteable `SaveChain` value into the GM's clipboard for
-promotion into `Encounter.SaveChain.Bundled.elm`.
--}
-port copyToClipboard : String -> Cmd msg
 
 
 {-| Persist the party roster — the level-per-character list
@@ -214,35 +209,21 @@ port incomingEncounter : (D.Value -> msg) -> Sub msg
 {-| Ask the JS host to open the standalone `/compendium` route
 in a named browser window. If a window with that name already
 exists, the call brings it to focus instead of opening a new
-one (browser-defined for tabs vs popups). Fired by the ↗
-button in the Compendium modal header.
+one (browser-defined for tabs vs popups). A `Just` payload
+names a creature to open selected, carried on the tab's URL as
+`?creature=<id>` — which navigates an existing tab, since its
+selection can't be reached from here. Fired by the editor
+column's Compendium control and the 📖 in a stat block's bar.
 -}
-port openCompendiumTab : () -> Cmd msg
-
-
-{-| Ask the JS host to focus the standalone compendium window
-if it's already open. JS uses its retained `window.open`
-reference to check `.closed`; if there's no live reference,
-it fires [`compendiumTabMissing`](#compendiumTabMissing) so
-the main tab can fall back to opening the modal in place.
--}
-port tryFocusCompendiumTab : () -> Cmd msg
-
-
-{-| Subscription that fires after `tryFocusCompendiumTab`
-when JS has no live reference (the tab was never opened, was
-closed by the user, or the main tab was reloaded since
-opening it). Triggers a normal `CompendiumOpen` modal flow.
--}
-port compendiumTabMissing : (() -> msg) -> Sub msg
+port openCompendiumTab : Maybe String -> Cmd msg
 
 
 {-| Cross-tab request from the QuickList (`/quick-list`) tab to
-the main encounter tab: "the GM clicked creature X, please pin
-its stat block + scroll to it in the queue." The JS host
-posts the payload on the `ezpz-dndz-panel-show` BroadcastChannel
-and calls `window.opener.focus()` so the main tab surfaces to
-the front. Payload shape: `{ id: String, name: String }`.
+the main encounter tab: "the GM clicked creature X, please
+unfold its stat block under its card and scroll to it." The JS
+host posts the payload on the `ezpz-dndz-panel-show`
+BroadcastChannel and calls `window.opener.focus()` so the main
+tab surfaces to the front. Payload shape: `{ name: String }`.
 -}
 port broadcastPanelShow : E.Value -> Cmd msg
 

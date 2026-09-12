@@ -13,7 +13,7 @@ module Update.SaveCompendium exposing
 
 {-| Update branches for the Save-compendium modal.
 
-Mirrors the encounter `Update.Save` for snapshotting the
+Mirrors the encounter `Update.SaveLoad` for snapshotting the
 creature library to the server (under a name) or to the user's
 local device (as a JSON download). The modal is opened with
 its destination preselected via `Compendium → Export → Server /
@@ -35,8 +35,8 @@ import Compendium.Wire
 import File.Download
 import Http
 import Json.Encode as E
-import Model exposing (Modal(..), Model)
-import Msg exposing (Msg(..), SaveDestination(..))
+import Model exposing (Model, Surface(..))
+import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.Compendium as CompendiumUi
 import Ui.SaveCompendium as SaveCompendiumUi
     exposing
@@ -49,23 +49,23 @@ import Update.Toast
 import Util.Http
 
 
-{-| Lens over the SaveCompendiumUi inside `model.modal`.
+{-| Lens over the SaveCompendiumUi inside `model.surface`.
 -}
 withSaveUi : (SaveCompendiumUi -> SaveCompendiumUi) -> Model -> Model
 withSaveUi =
-    Model.mapModal Model.saveCompendiumLens
+    Model.mapSurface Model.saveCompendiumLens
 
 
-open : SaveDestination -> Model -> ( Model, Cmd Msg )
+open : SaveStorage -> Model -> ( Model, Cmd Msg )
 open destination model =
     let
         suggested =
             model.compendium.savedAs
     in
     ( { model
-        | modal =
+        | surface =
             Just
-                (ModalSaveCompendium
+                (SurfaceSaveCompendium
                     (SaveCompendiumUi.fresh destination suggested)
                 )
         , compendium =
@@ -77,10 +77,10 @@ open destination model =
 
 close : Model -> ( Model, Cmd Msg )
 close model =
-    ( { model | modal = Nothing }, Cmd.none )
+    ( { model | surface = Nothing }, Cmd.none )
 
 
-destinationSet : SaveDestination -> Model -> ( Model, Cmd Msg )
+destinationSet : SaveStorage -> Model -> ( Model, Cmd Msg )
 destinationSet dest model =
     ( withSaveUi
         (\ui -> { ui | destination = dest, error = Nothing })
@@ -123,8 +123,8 @@ listLoaded result model =
 
 submit : Model -> ( Model, Cmd Msg )
 submit model =
-    case model.modal of
-        Just (ModalSaveCompendium ui) ->
+    case model.surface of
+        Just (SurfaceSaveCompendium ui) ->
             let
                 trimmed =
                     String.trim ui.filename
@@ -138,7 +138,7 @@ submit model =
 
             else
                 case ui.destination of
-                    SaveDestinationServer ->
+                    StorageServer ->
                         ( withSaveUi
                             (\u -> { u | busy = True, error = Nothing })
                             model
@@ -149,8 +149,8 @@ submit model =
                             (CompendiumUi.groupsList model.compendium)
                         )
 
-                    SaveDestinationDevice ->
-                        ( { model | modal = Nothing }
+                    StorageDevice ->
+                        ( { model | surface = Nothing }
                         , downloadCompendium trimmed
                             (CompendiumUi.currentCreatures model.compendium)
                             (CompendiumUi.groupsList model.compendium)
@@ -203,7 +203,7 @@ persistResponse name result model =
                     { model
                         | compendium =
                             CompendiumUi.markSaved name model.compendium
-                        , modal = Nothing
+                        , surface = Nothing
                     }
             in
             Update.Toast.push ToastSuccess
@@ -257,8 +257,8 @@ confirmCancel model =
 
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case model.modal of
-        Just (ModalSaveCompendium ui) ->
+    case model.surface of
+        Just (SurfaceSaveCompendium ui) ->
             case ui.confirm of
                 Just (ConfirmOverwrite name) ->
                     ( withSaveUi

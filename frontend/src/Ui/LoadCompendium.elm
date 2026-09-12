@@ -6,7 +6,7 @@ module Ui.LoadCompendium exposing
 
 {-| Load-compendium modal state.
 
-Mirrors `Ui.Load` for the compendium snapshot flow: list
+Mirrors `Ui.SaveLoad` for the compendium snapshot flow: list
 server-side snapshots, let the user pick one (which replaces the
 current creature library, hence the load-confirm prompt) or
 import a snapshot from a local file.
@@ -18,7 +18,7 @@ import a snapshot from a local file.
 -}
 
 import Compendium.Wire exposing (SavedCompendiumMeta)
-import Msg exposing (LoadSource(..))
+import Msg exposing (SaveStorage(..))
 
 
 type LoadListState
@@ -39,7 +39,7 @@ type alias RenameDraft =
 
 
 type alias LoadCompendiumUi =
-    { source : LoadSource
+    { source : SaveStorage
     , saves : LoadListState
     , busy : Bool
     , error : Maybe String
@@ -54,7 +54,7 @@ can flip to Device with one click, same flow either way.
 -}
 fresh : LoadCompendiumUi
 fresh =
-    { source = LoadSourceServer
+    { source = StorageServer
     , saves = LoadsLoading
     , busy = False
     , error = Nothing

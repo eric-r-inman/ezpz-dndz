@@ -97,7 +97,7 @@ type alias ResizeState =
 
 
 {-| Floor for resize. Mirrors the CSS `min-width` / `min-height`
-on `.modal` — keeps the resize handles reachable and the header
+on `.surface` — keeps the resize handles reachable and the header
 content from collapsing into illegibility.
 -}
 minWidth : Int

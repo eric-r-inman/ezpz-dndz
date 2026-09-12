@@ -2,11 +2,13 @@ module View.Tooltips exposing
     ( appBarAccount
     , appBarDonate
     , appBarSettings
-    , applyCondition
     , armorClass
     , attr
     , bloodied
+    , chipAreaRollNow
+    , chipAreaTitle
     , chipClickToEdit
+    , chipCompanionTitle
     , chipDismiss
     , chipFullTitle
     , chipRemoveModalRow
@@ -18,8 +20,6 @@ module View.Tooltips exposing
     , compendiumAddedFilterOff
     , compendiumAddedFilterOn
     , compendiumClear
-    , compendiumClearSelectedNone
-    , compendiumClearSelectedReady
     , compendiumClearTagFilter
     , compendiumCreateGroup
     , compendiumCreateGroupFromSelected
@@ -35,6 +35,7 @@ module View.Tooltips exposing
     , compendiumEditRemoveSection
     , compendiumEditRemoveSkill
     , compendiumEditRemoveTag
+    , compendiumEditorClose
     , compendiumExport
     , compendiumExportDirty
     , compendiumGroupAdd
@@ -46,11 +47,19 @@ module View.Tooltips exposing
     , compendiumInEncounter
     , compendiumInstanceCount
     , compendiumNewCreature
-    , compendiumOpenInTab
     , compendiumPasteStatBlock
     , compendiumReset
     , compendiumRowSelect
     , concentrating
+    , conditionPresetCancel
+    , conditionPresetCategory
+    , conditionPresetNameFirst
+    , conditionPresetOverwrite
+    , conditionPresetPickFirst
+    , conditionPresetSave
+    , conditionPresetSaveStart
+    , conditionPresetSaveStartBlocked
+    , conditionQuickApply
     , coverCycleTip
     , deathBegin
     , deathDead
@@ -64,32 +73,31 @@ module View.Tooltips exposing
     , diceReset
     , diceRollAgain
     , dodging
-    , encounterBarDifficulty
+    , drawerCollapse
+    , drawerPinPanel
+    , drawerUnpinPanel
     , encounterBarSpellList
-    , encounterBarTreasure
     , fallDamage
     , flyHeightDown
     , flyHeightUp
     , flying
+    , foldToggle
     , fullCover
     , halfCover
     , hiding
-    , initRollAdvantage
-    , initRollDisadvantage
-    , initRollStandard
-    , initSelectedMany
+    , hpOpenManage
+    , hpRoll
+    , hpRollClear
     , initSelectedNone
-    , initSelectedOne
     , initiativeManager
-    , lastRollTotal
-    , legendaryActionColumn
-    , legendaryResistanceColumn
+    , inlineEditCancel
+    , legendaryActionsPanel
+    , legendaryRemaining
     , lifecycleDeadToDown
     , lifecycleDownToDead
-    , loadButton
     , loadRowCompendium
-    , loadRowEncounter
-    , manageHp
+    , logRowFold
+    , logRowUnfold
     , memoAdd
     , memoClear
     , memoEdit
@@ -98,32 +106,35 @@ module View.Tooltips exposing
     , noteAdd
     , noteEdit
     , panelOpenCompendium
-    , panelRandomEncounter
-    , panelStatBlockNewWindow
-    , queueDuplicate
+    , panelOpenDiceRoller
+    , queueActiveTurn
     , queueInactive
     , queueMakeActive
-    , queueMoveDown
-    , queueMoveUp
     , queueReactivate
     , queueRemove
+    , queueScrollTo
     , queueSelectShiftClick
     , quickAddButton
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , quickD20
     , quickListOpen
     , reactionReady
     , reactionSpent
     , readyAction
     , releaseReadied
     , reset
-    , rollDice
-    , rollDiceUnread
+    , roundSet
     , runEncounter
-    , saveButton
-    , saveButtonDirty
-    , saveChain
+    , saveAskAtEnd
+    , saveChainArea
+    , saveFlashOnDamage
+    , saveLoadConfirmCancel
+    , saveLoadConfirmGo
+    , saveLoadRenameCancel
+    , saveLoadRenameSubmit
+    , saveLoadRowLoad
     , saveNoticeDismiss
     , saveRowDelete
     , saveRowOverwrite
@@ -132,11 +143,21 @@ module View.Tooltips exposing
     , showStatBlock
     , sourceFromSaved
     , sourceUnsaved
+    , specialReactionBadge
+    , specialReactionSpent
+    , specialReactionsPanel
     , statBlockAbilityCheck
     , statBlockAttack
     , statBlockHabitat
+    , statBlockMinimize
+    , statBlockNewTab
     , statBlockRoll
     , statBlockSavingThrow
+    , statBlockShow
+    , statBlockShowInCompendium
+    , statusAndConditionOpen
+    , statusBadgeEdit
+    , statusClear
     , statusOffTip
     , statusOnTip
     , tempHp
@@ -146,12 +167,6 @@ module View.Tooltips exposing
     , timerRunning
     , timerSet
     , toastDismiss
-    , xpFilter
-    , xpLairTotal
-    , xpScopeEnemiesAndNpcs
-    , xpScopeEnemiesOnly
-    , xpScopeNpcsOnly
-    , xpScopeSelectedOnly
     )
 
 {-| Centralised tooltip strings.
@@ -173,10 +188,7 @@ Layout:
     up by combinators.
 
 If you're reviewing or rewording: the section comments group
-tooltips by where they appear in the UI (App bar, Encounter
-Controls panel, Card rows, Compendium modal, etc.); see
-`docs/TOOLTIPS.org` for each tooltip's user-visible context and
-back-links to the call site.
+tooltips by where they appear in the UI.
 
 -}
 
@@ -220,45 +232,32 @@ appBarDonate =
 
 
 
--- ── ENCOUNTER CONTROLS PANEL (right pane, top) ───────────────────────────────
+-- ── ENCOUNTER CONTROLS ───────────────────────────────────────────────────────
 
 
-quickAddButton : String
-quickAddButton =
-    "Quick-add a creature from the Compendium"
+panelOpenCompendium : String
+panelOpenCompendium =
+    "Compendium (new tab)"
 
 
-{-| Save split-button trigger when there are no unsaved roster
-changes. See `saveButtonDirty` for the dirty variant.
--}
-saveButton : String
-saveButton =
-    "Save the encounter"
-
-
-saveButtonDirty : String
-saveButtonDirty =
-    "Save the encounter (unsaved roster changes)"
-
-
-loadButton : String
-loadButton =
-    "Load a saved encounter"
+panelOpenDiceRoller : String
+panelOpenDiceRoller =
+    "Dice Roller"
 
 
 reset : String
 reset =
-    "Revert encounter to its last-saved state and reset round to 1"
+    "Reset every creature to full HP and clear conditions / status"
 
 
 clear : String
 clear =
-    "Remove every creature and reset round to 1"
+    "Clear encounter"
 
 
 runEncounter : String
 runEncounter =
-    "Begin combat — round 1, highest-initiative creature acts"
+    "Begin combat — highest-initiative creature acts"
 
 
 nextTurn : String
@@ -266,68 +265,18 @@ nextTurn =
     "Advance to next creature in initiative order"
 
 
-rollDice : String
-rollDice =
-    "Roll dice"
-
-
-rollDiceUnread : String
-rollDiceUnread =
-    "Roll dice (new entries since last open)"
-
-
-lastRollTotal : String
-lastRollTotal =
-    "Last roll total"
-
-
 
 -- ── ENCOUNTER TITLE BAR (above the creature grid) ────────────────────────────
+
+
+roundSet : String
+roundSet =
+    "Set the round number"
 
 
 sourceUnsaved : String
 sourceUnsaved =
     "from file: (unsaved)"
-
-
-xpScopeEnemiesAndNpcs : String
-xpScopeEnemiesAndNpcs =
-    "Total XP for enemies and NPCs"
-
-
-xpScopeEnemiesOnly : String
-xpScopeEnemiesOnly =
-    "Total XP for enemies only"
-
-
-xpScopeNpcsOnly : String
-xpScopeNpcsOnly =
-    "Total XP for NPCs only"
-
-
-xpScopeSelectedOnly : String
-xpScopeSelectedOnly =
-    "Total XP for selected creatures only"
-
-
-xpLairTotal : String
-xpLairTotal =
-    "Total XP if creature(s) fought in lair"
-
-
-xpFilter : String
-xpFilter =
-    "Filter XP total"
-
-
-encounterBarDifficulty : String
-encounterBarDifficulty =
-    "Open the encounter-difficulty calculator (2024 XP budgets)"
-
-
-encounterBarTreasure : String
-encounterBarTreasure =
-    "Roll random treasure for this encounter (SRD individual or hoard tables)"
 
 
 encounterBarSpellList : String
@@ -394,29 +343,19 @@ queueSelectShiftClick =
     "Shift-click to select / deselect all"
 
 
-queueMoveUp : String
-queueMoveUp =
-    "Move up in queue (ignores initiative)"
-
-
-queueMoveDown : String
-queueMoveDown =
-    "Move down in queue (ignores initiative)"
+queueActiveTurn : String
+queueActiveTurn =
+    "It is this creature's turn"
 
 
 queueMakeActive : String
 queueMakeActive =
-    "Set as active creature active"
+    "Set as active creature"
 
 
 queueRemove : String
 queueRemove =
     "Remove from encounter"
-
-
-queueDuplicate : String
-queueDuplicate =
-    "Duplicate creature"
 
 
 {-| Tooltip on the per-card ∅ toggle. Reads asymmetrically: the
@@ -435,14 +374,36 @@ queueReactivate =
     "Make active (returns creature to queue)"
 
 
-legendaryActionColumn : String
-legendaryActionColumn =
-    "Legendary Action (3, +1 Lair)"
+legendaryActionsPanel : String
+legendaryActionsPanel =
+    "Show what each creature's legendary actions do"
 
 
-legendaryResistanceColumn : String
-legendaryResistanceColumn =
-    "Legendary Resistance (3, +1 Lair)"
+specialReactionsPanel : String
+specialReactionsPanel =
+    "Show what each creature's special reactions do"
+
+
+{-| A card's LA / LR readout.
+-}
+legendaryRemaining : String -> Int -> Int -> String
+legendaryRemaining what remaining capacity =
+    what
+        ++ ": "
+        ++ String.fromInt remaining
+        ++ " of "
+        ++ String.fromInt capacity
+        ++ " remaining. Click to use. Resets after 0."
+
+
+specialReactionSpent : String
+specialReactionSpent =
+    "Spent — click to hand it back (clears at the start of their turn)"
+
+
+specialReactionBadge : String
+specialReactionBadge =
+    "Special reactions — this creature's reactions go beyond one per round; see the stat block"
 
 
 
@@ -451,7 +412,7 @@ legendaryResistanceColumn =
 
 initiativeManager : String
 initiativeManager =
-    "Initiative manager"
+    "Manage Initiative"
 
 
 showStatBlock : String
@@ -486,12 +447,12 @@ fallDamage =
 
 readyAction : String
 readyAction =
-    "Ready an action — click to set"
+    "Ready an Action"
 
 
 releaseReadied : String
 releaseReadied =
-    "Action readied — click to release"
+    "Action Readied"
 
 
 reactionReady : String
@@ -513,19 +474,9 @@ clickToEdit =
     "Click to edit"
 
 
-manageHp : String
-manageHp =
-    "Manage HP — Damage, Heal, Temp HP, or +Max HP"
-
-
-applyCondition : String
-applyCondition =
-    "Apply condition or effect"
-
-
-saveChain : String
-saveChain =
-    "Save Chain — reusable save + effect recipe (damage / heal / apply condition on fail or success)"
+hpOpenManage : String
+hpOpenManage =
+    "Manage HP"
 
 
 bloodied : String
@@ -586,6 +537,51 @@ chipRemoveModalRow =
     "Remove this condition"
 
 
+conditionPresetCancel : String
+conditionPresetCancel =
+    "Cancel"
+
+
+conditionPresetCategory : String
+conditionPresetCategory =
+    "Pick a category for this preset"
+
+
+conditionPresetNameFirst : String
+conditionPresetNameFirst =
+    "Type a name first"
+
+
+conditionPresetOverwrite : String
+conditionPresetOverwrite =
+    "Replace the preset of this name with these settings"
+
+
+conditionPresetPickFirst : String
+conditionPresetPickFirst =
+    "Pick a category first"
+
+
+conditionPresetSave : String
+conditionPresetSave =
+    "Save these settings under this name"
+
+
+conditionPresetSaveStart : String
+conditionPresetSaveStart =
+    "Save this configuration as a named preset"
+
+
+conditionPresetSaveStartBlocked : String
+conditionPresetSaveStartBlocked =
+    "Pick a condition first, then Save the preset"
+
+
+conditionQuickApply : String
+conditionQuickApply =
+    "Quick apply to target"
+
+
 saveNoticeDismiss : String
 saveNoticeDismiss =
     "Dismiss"
@@ -593,6 +589,14 @@ saveNoticeDismiss =
 
 
 -- ── CREATURE CARD MEMO / TIMER ───────────────────────────────────────────────
+
+
+{-| Shown on any inline-editor trigger while its own editor is
+open — the trigger doubles as the cancel toggle.
+-}
+inlineEditCancel : String
+inlineEditCancel =
+    "Cancel (closes without saving)"
 
 
 memoAdd : String
@@ -621,27 +625,32 @@ timerCancel =
 
 
 
--- ── SIDE DETAIL PANEL ────────────────────────────────────────────────────────
+-- ── STAT BLOCK CONTROLS ──────────────────────────────────────────────────────
 
 
-panelOpenCompendium : String
-panelOpenCompendium =
-    "Open Creature Compendium"
-
-
-panelRandomEncounter : String
-panelRandomEncounter =
-    "Choose parameters & generate encounter"
-
-
-panelStatBlockNewWindow : String
-panelStatBlockNewWindow =
+statBlockNewTab : String
+statBlockNewTab =
     "Open stat block in new tab"
+
+
+statBlockMinimize : String
+statBlockMinimize =
+    "Minimize stat block"
+
+
+statBlockShowInCompendium : String
+statBlockShowInCompendium =
+    "Show this creature in the Compendium tab"
 
 
 statBlockHabitat : String
 statBlockHabitat =
     "Inferred from online public sources"
+
+
+quickD20 : String
+quickD20 =
+    "Roll a d20 — straight, with advantage, and with disadvantage"
 
 
 quickListOpen : String
@@ -650,11 +659,11 @@ quickListOpen =
 
 
 
--- ── STAT BLOCK (right pane + popouts) ────────────────────────────────────────
+-- ── STAT BLOCK ROLLS ─────────────────────────────────────────────────────────
 --
 -- See helpers `statBlockSavingThrow` and `statBlockRoll` for the
 -- per-ability / per-die-expression dynamic forms.
--- ── COMPENDIUM BROWSER MODAL ─────────────────────────────────────────────────
+-- ── COMPENDIUM BROWSER PAGE ──────────────────────────────────────────────────
 
 
 compendiumInEncounter : String
@@ -757,11 +766,6 @@ compendiumNewCreature =
     "Create a new creature"
 
 
-compendiumOpenInTab : String
-compendiumOpenInTab =
-    "Open compendium in a new tab"
-
-
 compendiumPasteStatBlock : String
 compendiumPasteStatBlock =
     "Paste a 5e stat block to import into Compendium"
@@ -777,6 +781,11 @@ compendiumImport =
     "Replace the current Compenidum with a saved Compendium file"
 
 
+compendiumEditorClose : String
+compendiumEditorClose =
+    "Close this editor without saving"
+
+
 compendiumExport : String
 compendiumExport =
     "Save the current Compendium"
@@ -790,16 +799,6 @@ compendiumExportDirty =
 compendiumClear : String
 compendiumClear =
     "Clear all creatures, or just the checked ones"
-
-
-compendiumClearSelectedNone : String
-compendiumClearSelectedNone =
-    "No creatures are checked"
-
-
-compendiumClearSelectedReady : String
-compendiumClearSelectedReady =
-    "Remove checked creatures"
 
 
 compendiumClearTagFilter : String
@@ -847,7 +846,7 @@ compendiumEditRemoveTag =
 
 
 
--- ── SAVE / LOAD MODAL ROW ICONS ──────────────────────────────────────────────
+-- ── SAVE / LOAD PANEL ROW ICONS ──────────────────────────────────────────────
 
 
 saveRowOverwrite : String
@@ -860,14 +859,34 @@ saveRowRename =
     "Rename"
 
 
+saveLoadRenameSubmit : String
+saveLoadRenameSubmit =
+    "Save the new name"
+
+
+saveLoadRenameCancel : String
+saveLoadRenameCancel =
+    "Keep the old name"
+
+
+saveLoadConfirmCancel : String
+saveLoadConfirmCancel =
+    "Back out"
+
+
+saveLoadConfirmGo : String
+saveLoadConfirmGo =
+    "Go ahead"
+
+
+saveLoadRowLoad : String
+saveLoadRowLoad =
+    "Replace the current encounter with this save"
+
+
 saveRowDelete : String
 saveRowDelete =
     "Delete"
-
-
-loadRowEncounter : String
-loadRowEncounter =
-    "Load this encounter"
 
 
 loadRowCompendium : String
@@ -876,7 +895,26 @@ loadRowCompendium =
 
 
 
--- ── DICE MODAL ───────────────────────────────────────────────────────────────
+-- ── DICE PANEL ───────────────────────────────────────────────────────────────
+
+
+{-| The fold on a section of an editor.
+-}
+foldToggle : String
+foldToggle =
+    "Show or hide this section"
+
+
+{-| The Manage HP editor's Roll field and the × that clears it.
+-}
+hpRoll : String
+hpRoll =
+    "Roll this for each target and set its hit points, current and maximum, to the total — a monster's hit dice in place of its average"
+
+
+hpRollClear : String
+hpRollClear =
+    "Clear the roll and set the pools by hand again"
 
 
 diceReset : String
@@ -901,7 +939,7 @@ diceCoinFlip =
 
 diceClearHistory : String
 diceClearHistory =
-    "Clear roll history"
+    "Clear the log"
 
 
 diceRollAgain : String
@@ -910,22 +948,7 @@ diceRollAgain =
 
 
 
--- ── INITIATIVE MODAL ─────────────────────────────────────────────────────────
-
-
-initRollStandard : String
-initRollStandard =
-    "Roll 1d20 + initiative bonus"
-
-
-initRollAdvantage : String
-initRollAdvantage =
-    "Roll 2d20, keep highest, + initiative bonus"
-
-
-initRollDisadvantage : String
-initRollDisadvantage =
-    "Roll 2d20, keep lowest, + initiative bonus"
+-- ── INITIATIVE EDITOR ────────────────────────────────────────────────────────
 
 
 initSelectedNone : String
@@ -933,13 +956,13 @@ initSelectedNone =
     "No creatures are selected — tick the checkbox for the creatures you want first"
 
 
-initSelectedOne : String
-initSelectedOne =
-    "1 creature selected"
+
+-- ── QUICK ADD PANEL ──────────────────────────────────────────────────────────
 
 
-
--- ── QUICK ADD MODAL ──────────────────────────────────────────────────────────
+quickAddButton : String
+quickAddButton =
+    "Quick add creature"
 
 
 quickAddSortToAlpha : String
@@ -950,6 +973,35 @@ quickAddSortToAlpha =
 quickAddSortToCr : String
 quickAddSortToCr =
     "Switch to challenge rating order"
+
+
+
+-- ── DRAWER PANEL CHROME ─────────────────────────────────────────────────────
+
+
+logRowUnfold : String
+logRowUnfold =
+    "Show the whole entry"
+
+
+logRowFold : String
+logRowFold =
+    "Fold the entry back to one line"
+
+
+drawerPinPanel : String
+drawerPinPanel =
+    "Pin to the top of the column"
+
+
+drawerUnpinPanel : String
+drawerUnpinPanel =
+    "Unpin from the top of the column"
+
+
+drawerCollapse : String
+drawerCollapse =
+    "Fold this panel away, or open it back up"
 
 
 
@@ -973,14 +1025,46 @@ toastDismiss =
 -- survey above isn't broken up by template logic.
 
 
+{-| Names the creature whose card a click will bring to the top of
+the queue.
+-}
+queueScrollTo : String -> String
+queueScrollTo name =
+    "Scroll to " ++ name ++ "'s card"
+
+
+{-| Names the creature whose stat block a click will unfold under
+its card.
+-}
+statBlockShow : String -> String
+statBlockShow name =
+    "Show " ++ name ++ "'s stat block under its card"
+
+
 sourceFromSaved : String -> String
 sourceFromSaved name =
     "from file: " ++ name
 
 
-{-| Card row 2 status toggle (concentrate / hide / dodge etc.) —
-on-state hover label. `label` is the human name of the state
-(e.g. "Concentrating").
+{-| The card's gear icon — opens Status and Condition/Effect
+together, aimed at this creature.
+-}
+statusAndConditionOpen : String
+statusAndConditionOpen =
+    "Open status and condition/effect editors for this creature"
+
+
+{-| Card status label — opens the Status editor targeting the
+label's creature.
+-}
+statusBadgeEdit : String
+statusBadgeEdit =
+    "Click to edit this creature's statuses"
+
+
+{-| Status-editor posture toggle (concentrate / hide / dodge
+etc.) — on-state hover label. `label` is the human name of the
+state (e.g. "Concentrating").
 -}
 statusOnTip : String -> String
 statusOnTip label =
@@ -992,6 +1076,15 @@ statusOnTip label =
 statusOffTip : String -> String
 statusOffTip label =
     "not " ++ label ++ " — click to set"
+
+
+{-| The card's own status × — clears the one flag directly,
+without opening the Status editor. `label` is the same human name
+the status chip itself shows (e.g. "hiding", "½ cover").
+-}
+statusClear : String -> String
+statusClear label =
+    "Clear " ++ label
 
 
 {-| Card row 2 Cover toggle — three-state cycle through
@@ -1023,6 +1116,70 @@ chipFullTitle name durationText maybeSave =
                     ""
     in
     name ++ " — " ++ durationText ++ savePart
+
+
+{-| The "Ask at end of turn" save timing, in both editors.
+-}
+saveAskAtEnd : String
+saveAskAtEnd =
+    "The chip flashes as the bearer's turn ends; roll it yourself if the rule's trigger applied"
+
+
+{-| The "Flash the chip" damage trigger, in both editors.
+-}
+saveFlashOnDamage : String
+saveFlashOnDamage =
+    "The chip flashes when the bearer takes damage; roll it yourself if the rule's trigger applied"
+
+
+{-| The Save Chain editor's Area label. An area effect is one a
+creature keeps saving against for as long as it stands in it.
+-}
+saveChainArea : String
+saveChainArea =
+    "For an effect that fills an area, like Cloudkill or Spirit Guardians. Applying the chain puts an \"In:\" chip on each target; at the start or end of each of that creature's turns the app rolls this save again and applies Fail or Pass. Click the chip's × when the creature leaves the area."
+
+
+{-| An area marker's wrapping tooltip: which chain the creature
+stands in and when its save rolls again.
+-}
+chipAreaTitle :
+    { chain : String, ability : String, dc : Int, phaseWord : String }
+    -> String
+chipAreaTitle area =
+    "In "
+        ++ area.chain
+        ++ " — "
+        ++ area.ability
+        ++ " save DC "
+        ++ String.fromInt area.dc
+        ++ " at the "
+        ++ area.phaseWord
+        ++ " of each turn; × when it leaves"
+
+
+{-| A companion chip's wrapping tooltip: the condition it ends
+with.
+-}
+chipCompanionTitle : String -> String -> String
+chipCompanionTitle name primary =
+    name ++ " — ends with " ++ primary
+
+
+{-| An area marker's 🎲: the save rolls now, for a creature that
+entered the area mid-turn.
+-}
+chipAreaRollNow :
+    { ability : String, dc : Int, bonus : String }
+    -> String
+chipAreaRollNow spec =
+    "Entered the area now: roll the "
+        ++ spec.ability
+        ++ " save (DC "
+        ++ String.fromInt spec.dc
+        ++ ", bonus "
+        ++ spec.bonus
+        ++ ") and apply the outcome"
 
 
 {-| Inline d20 button next to a condition chip. Composes the
@@ -1145,15 +1302,6 @@ statBlockAttack shown mod =
 quickAddCreatureRow : String -> String
 quickAddCreatureRow creatureName =
     "Add " ++ creatureName ++ " to encounter"
-
-
-{-| Initiative modal "Apply & Sort: Selected" button — title
-varies by selection count. See `initSelectedNone` and
-`initSelectedOne` for the special-cased zero / one strings.
--}
-initSelectedMany : Int -> String
-initSelectedMany n =
-    String.fromInt n ++ " creatures selected"
 
 
 {-| Dice modal main face button (d4 / d6 / d8 / …).
