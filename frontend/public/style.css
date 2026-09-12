@@ -9184,9 +9184,10 @@ button.creature-card__lifecycle--dead:focus-visible {
    click from reaching the radio. */
 .cond-quick-apply {
   appearance: none;
+  margin-left: auto;
   background: none;
   border: none;
-  padding: 0 0 0 var(--space-0);
+  padding: 0 0 0 var(--space-1);
   font-family: inherit;
   font-size: var(--font-size-label);
   line-height: 1;

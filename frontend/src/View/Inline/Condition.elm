@@ -101,9 +101,10 @@ standardRadio ui label =
         ]
 
 
-{-| Applies the picked condition alone and folds the editor,
-sitting beside whatever names the condition so the fast path is
-where the GM's eye already is.
+{-| Applies the picked condition alone and folds the editor. It
+takes the right edge of whatever names the condition, so the fast
+path is a column of its own rather than something crowding the
+name.
 -}
 quickApplyCaret : Html Msg
 quickApplyCaret =
@@ -114,7 +115,7 @@ quickApplyCaret =
         , Tooltips.attr "Quick apply"
         , attribute "aria-label" "Quick apply"
         ]
-        [ text "◀" ]
+        [ text "▶" ]
 
 
 {-| Free-text condition name and note, each on its own labelled
