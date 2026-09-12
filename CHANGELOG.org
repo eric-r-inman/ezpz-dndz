@@ -369,6 +369,12 @@
 142. A Condition/Effect log row shares its width between the condition, who got
      it, and the rest, so the folded row reads the way the Manage HP log's does.
      No action needed.
+143. The Status editor opens with nothing selected whatever the creature already
+     carries, and empties again once applied.  No action needed.
+144. The undo on an unfolded log row sits at the end of its line, clear of the
+     text that wrapped above it.  No action needed.
+145. Picking a condition, or typing a custom one, puts a green caret beside it
+     that applies it to the target and closes the editor.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

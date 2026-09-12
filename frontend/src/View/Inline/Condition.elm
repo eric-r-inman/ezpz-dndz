@@ -93,7 +93,28 @@ standardRadio ui label =
             ]
             []
         , span [ class "cond-radio__label" ] [ text label ]
+        , if isSelected then
+            quickApplyCaret
+
+          else
+            text ""
         ]
+
+
+{-| Applies what the form holds and folds the editor, sitting
+beside whatever names the condition so the fast path is where the
+GM's eye already is.
+-}
+quickApplyCaret : Html Msg
+quickApplyCaret =
+    button
+        [ class "cond-quick-apply"
+        , type_ "button"
+        , onClick ConditionQuickApply
+        , Tooltips.attr "Quick apply"
+        , attribute "aria-label" "Quick apply"
+        ]
+        [ text "◀" ]
 
 
 {-| Free-text condition name and note, each on its own labelled
@@ -124,6 +145,11 @@ customAndNoteSection ui =
                     , onInput ConditionCustomNameChanged
                     ]
                     []
+                , if String.isEmpty (String.trim ui.customName) then
+                    text ""
+
+                  else
+                    quickApplyCaret
                 ]
             , div [ class "cond-divider" ] []
             ]

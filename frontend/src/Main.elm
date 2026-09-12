@@ -1426,6 +1426,9 @@ updateInner msg model =
         ConditionSubmitSelected ->
             Update.Condition.submitSelected model
 
+        ConditionQuickApply ->
+            Update.Condition.quickApply model
+
         ConditionSubmit ->
             Update.Condition.submit model
 

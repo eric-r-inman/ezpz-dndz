@@ -784,6 +784,9 @@ type Msg
     | ConditionSaveOnDamageSet Encounter.DamageTrigger
     | ConditionSubmit
     | ConditionSubmitSelected
+      -- Apply what the form holds to its target and fold the
+      -- editor.
+    | ConditionQuickApply
     | ConditionDelete
       -- Empty every setting of the form, keeping only what it is
       -- aimed at.

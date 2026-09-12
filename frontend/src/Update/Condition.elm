@@ -26,6 +26,7 @@ module Update.Condition exposing
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
+    , quickApply
     , removeChip
     , rollSave
     , saveAbilityChanged
@@ -705,6 +706,16 @@ submit model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Apply the form to its target and fold the editor away, for
+the GM who wants this condition on this creature and nothing more
+said about it.
+-}
+quickApply : Model -> ( Model, Cmd Msg )
+quickApply model =
+    submit model
+        |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
 
 
 {-| Apply the form to every selected creature; each one gets its

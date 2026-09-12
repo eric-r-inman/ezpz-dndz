@@ -23,6 +23,9 @@ drawerSurface model =
 
 {-| A card's status label: it aims the editor at its own
 creature, so an editor already open for someone else re-aims.
+Aiming it anywhere starts an empty draft whatever that creature
+already carries; showing an editor already aimed there keeps what
+the GM has toggled.
 Every path unfolds and scrolls the panel fully into view — a card
 control asks to see a creature's editor, whether that means
 showing what is already open, re-aiming it, or opening it fresh.
@@ -37,23 +40,14 @@ openFor target model =
                         Model.unfoldDrawer Model.statusLens model
 
                     else
-                        Model.openDrawer Model.statusLens (prefilled target model) model
+                        Model.openDrawer Model.statusLens (StatusUi.fresh target) model
 
                 _ ->
-                    Model.openDrawer Model.statusLens (prefilled target model) model
+                    Model.openDrawer Model.statusLens (StatusUi.fresh target) model
     in
     ( nextModel
     , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.statusLens nextModel)
     )
-
-
-prefilled : String -> Model -> StatusUi
-prefilled target model =
-    model.encounter.creatures
-        |> List.filter (\c -> c.name == target)
-        |> List.head
-        |> Maybe.map StatusUi.fromCreature
-        |> Maybe.withDefault (StatusUi.fresh target)
 
 
 withUi : (StatusUi -> StatusUi) -> Model -> Model
@@ -130,7 +124,8 @@ what it does not name alone. Applying is how a status goes on
 and the × beside it on the card is how it comes off, so a toggle
 the GM left off cannot take away one the creature already has —
 which matters most when applying to a selection, where one draft
-lands on creatures in different states.
+lands on creatures in different states. The draft empties
+afterwards, ready for the next thing to add.
 -}
 applyTo : List String -> Model -> Model
 applyTo names model =
@@ -160,13 +155,14 @@ applyTo names model =
                                 c.flyHeight
                     }
             in
-            { model
-                | encounter =
-                    List.foldl
-                        (\name enc -> Encounter.mapCreature name add enc)
-                        model.encounter
-                        targets
-            }
+            withUi (\u -> StatusUi.fresh u.target)
+                { model
+                    | encounter =
+                        List.foldl
+                            (\name enc -> Encounter.mapCreature name add enc)
+                            model.encounter
+                            targets
+                }
 
         _ ->
             model

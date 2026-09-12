@@ -8678,7 +8678,11 @@ button.creature-card__lifecycle--dead:focus-visible {
    a saturated yellow so the single actionable control on the
    row pops against the muted log chrome.  Hover inverts to a
    yellow fill with dark text. */
+/* An open row wraps its texts onto lines of their own, so the
+   undo takes the end of whatever line it lands on rather than
+   sitting against the text that wrapped before it. */
 .hp-change__log-undo {
+  margin-left: auto;
   opacity: 1;
   color: var(--color-yellow);
   border-color: var(--color-yellow);
@@ -9173,6 +9177,21 @@ button.creature-card__lifecycle--dead:focus-visible {
 .cond-check--on {
   background: var(--color-accent);
   border-color: var(--color-accent);
+}
+
+/* The caret that commits the condition it names.  It is a button
+   so that, inside a chip's label, its own activation keeps the
+   click from reaching the radio. */
+.cond-quick-apply {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 0 0 var(--space-0);
+  font-family: inherit;
+  font-size: var(--font-size-label);
+  line-height: 1;
+  color: var(--color-success);
+  cursor: pointer;
 }
 
 .cond-radio__label {
