@@ -708,14 +708,33 @@ submit model =
             ( model, Cmd.none )
 
 
-{-| Apply the form to its target and fold the editor away, for
-the GM who wants this condition on this creature and nothing more
-said about it.
+{-| Apply the condition's name to the target and fold the editor
+away, for the GM who wants it on that creature and nothing more
+said about it. Only the Apply buttons read the rest of the form,
+so the caret cannot carry settings the GM made for something else
+and then forgot.
 -}
 quickApply : Model -> ( Model, Cmd Msg )
 quickApply model =
-    submit model
-        |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
+            submitWith nameOnly [ ui.target ] model
+                |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| The form as the caret reads it: the condition's name, and a
+duration the GM ends by hand.
+-}
+nameOnly : ConditionUi -> ConditionUi
+nameOnly ui =
+    { ui
+        | note = ""
+        , durationKind = DurKindManual
+        , saveToEnd = Nothing
+    }
 
 
 {-| Apply the form to every selected creature; each one gets its
@@ -731,15 +750,24 @@ submitSelected model =
         model
 
 
+submitTo : List String -> Model -> ( Model, Cmd Msg )
+submitTo =
+    submitWith identity
+
+
 {-| Validate that there's a name; empty-name conditions are
 silently dropped. Build a draft, then either insert it (creating)
-or update the edited condition.
+or update the edited condition. `prepare` has the say in what the
+form counts as, which is how the caret commits a name alone.
 -}
-submitTo : List String -> Model -> ( Model, Cmd Msg )
-submitTo rawTargets model =
+submitWith : (ConditionUi -> ConditionUi) -> List String -> Model -> ( Model, Cmd Msg )
+submitWith prepare rawTargets model =
     case drawerSurface model of
-        Just (SurfaceCondition ui) ->
+        Just (SurfaceCondition raw) ->
             let
+                ui =
+                    prepare raw
+
                 targets =
                     Encounter.excludingPlaceholderNames model.encounter rawTargets
 

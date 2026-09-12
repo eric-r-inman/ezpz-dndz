@@ -374,7 +374,8 @@
 144. The undo on an unfolded log row sits at the end of its line, clear of the
      text that wrapped above it.  No action needed.
 145. Picking a condition, or typing a custom one, puts a green caret beside it
-     that applies it to the target and closes the editor.  No action needed.
+     that applies that condition alone to the target, with a duration the GM
+     ends by hand, and folds the editor away.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

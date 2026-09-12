@@ -101,9 +101,9 @@ standardRadio ui label =
         ]
 
 
-{-| Applies what the form holds and folds the editor, sitting
-beside whatever names the condition so the fast path is where the
-GM's eye already is.
+{-| Applies the picked condition alone and folds the editor,
+sitting beside whatever names the condition so the fast path is
+where the GM's eye already is.
 -}
 quickApplyCaret : Html Msg
 quickApplyCaret =
