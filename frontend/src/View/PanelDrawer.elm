@@ -64,6 +64,7 @@ encounterControls model =
                 DiceRollerOpen
                 Tooltips.panelOpenDiceRoller
                 "🎲"
+            , quickD20Button
             , View.Panel.Dice.recentBadges model.dice.history model.dice.rollBadgeOverride
             ]
         , div [ class "drawer-controls__encounter" ]
@@ -78,6 +79,26 @@ encounterControls model =
             , turnControl model.encounter.activeName
             ]
         ]
+
+
+{-| A d20 the GM can reach without opening the roller. It carries
+the click's position so the three results float where the pointer
+already is, the way a stat block's do.
+-}
+quickD20Button : Html Msg
+quickD20Button =
+    button
+        [ class "action-btn action-btn--plain drawer-controls__btn drawer-controls__d20"
+        , Attr.type_ "button"
+        , Html.Events.on "click"
+            (Decode.map2 QuickD20Triggered
+                (Decode.field "clientX" Decode.int)
+                (Decode.field "clientY" Decode.int)
+            )
+        , Tooltips.attr Tooltips.quickD20
+        , Attr.attribute "aria-label" Tooltips.quickD20
+        ]
+        [ text "20" ]
 
 
 {-| An empty active creature is the pre-combat sentinel: the

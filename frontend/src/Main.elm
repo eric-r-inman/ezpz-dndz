@@ -35,7 +35,7 @@ import Html.Events exposing (onClick, onInput, preventDefaultOn, stopPropagation
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Model exposing (Model, PendingControl(..), Surface(..))
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( CompendiumField(..)
@@ -105,6 +105,7 @@ import Update.LoreEdit
 import Update.Memo
 import Update.ModalChrome
 import Update.Note
+import Update.Notice
 import Update.PanelDrawer
 import Update.PlaceholderRename
 import Update.Preferences
@@ -136,9 +137,11 @@ import View.Card
 import View.Footer
 import View.Login
 import View.Modal
+import View.Modal.ConditionPreset
 import View.Modal.Confirm
 import View.Modal.LoadCompendium
 import View.Modal.LoreEdit
+import View.Modal.Notice
 import View.Modal.RoundSet
 import View.Modal.SaveCompendium
 import View.Modal.TreasureTable
@@ -274,11 +277,11 @@ subscriptions model =
 
         primary =
             case model.surface of
-                Just (SurfaceConfirm (PendingPresetOverwrite _)) ->
-                    Browser.Events.onKeyDown (escKey ConditionPresetOverwriteCancel)
-
                 Just (SurfaceConfirm _) ->
                     Browser.Events.onKeyDown (escKey EncounterControlCancel)
+
+                Just (SurfaceNotice _) ->
+                    Browser.Events.onKeyDown (escKey NoticeDismiss)
 
                 Just (SurfaceRoundSet _) ->
                     Browser.Events.onKeyDown (escKey RoundSetClose)
@@ -1310,6 +1313,9 @@ updateInner msg model =
         StatusOpenFor name ->
             Update.Status.openFor name model
 
+        StatusConcentrationNoteChanged text ->
+            Update.Status.concentrationNoteChanged text model
+
         StatusCoverCycle ->
             Update.Status.coverCycle model
 
@@ -1453,12 +1459,6 @@ updateInner msg model =
         ConditionPresetSaveSubmit ->
             Update.Condition.presetSaveSubmit model
 
-        ConditionPresetOverwriteConfirm ->
-            Update.Condition.presetOverwriteConfirmed model
-
-        ConditionPresetOverwriteCancel ->
-            Update.Condition.presetOverwriteCancel model
-
         ConditionPresetLoadMenuToggle ->
             Update.Condition.presetLoadMenuToggle model
 
@@ -1497,6 +1497,9 @@ updateInner msg model =
 
         ConditionLogToggle ->
             Update.Condition.logToggle model
+
+        NoticeDismiss ->
+            Update.Notice.dismiss model
 
         SaveNoticeDismiss name id ->
             Update.Condition.saveNoticeDismiss name id model
@@ -2567,6 +2570,9 @@ updateInner msg model =
         AttackRollTriggered creatureName mod x y ->
             Update.Dice.attackRollTriggered creatureName mod x y model
 
+        QuickD20Triggered x y ->
+            Update.Dice.quickD20 x y model
+
         TripleRollLanded x y results ->
             Update.Dice.tripleRollLanded x y results model
 
@@ -2809,6 +2815,8 @@ appShell maybeUser model =
             }
     , viewPage model
     , View.Modal.Confirm.view model
+    , View.Modal.ConditionPreset.view model
+    , View.Modal.Notice.view model
     , View.Modal.RoundSet.view model
     , View.Modal.SaveCompendium.view model
     , View.Modal.LoadCompendium.view model

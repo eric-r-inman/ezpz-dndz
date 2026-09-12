@@ -1,17 +1,17 @@
 module View.Inline.Status exposing (view)
 
-{-| Status editor body: the posture toggles (cover,
-concentrating, hiding, dodging, flying + flight height) editing
-a draft, with two Apply buttons adding it to the target creature
-or the selection.
+{-| Status editor body: the posture toggles editing a draft, with
+two Apply buttons adding it to the target creature or the
+selection.
 -}
 
 import Encounter exposing (Cover(..))
-import Html exposing (Html, button, div, span, text)
-import Html.Attributes exposing (attribute, class)
-import Html.Events exposing (onClick)
+import Html exposing (Html, button, div, input, span, text)
+import Html.Attributes exposing (attribute, class, maxlength, placeholder, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..), StatusFlag(..))
 import Ui.Status exposing (StatusUi)
+import Update.Status
 import View.FlyHeight
 import View.Inline.ApplyButton as ApplyButton
 import View.Tooltips as Tooltips
@@ -25,13 +25,23 @@ view selectedCount placeholderWarning ui =
                 [ coverToggle ui
                 , boolToggle "hiding" ui.hiding FlagHiding
                 , boolToggle "dodging" ui.dodging FlagDodging
-                ]
-            , div [ class "status-toggles" ]
-                [ boolToggle "concentrating" ui.concentrating FlagConcentrating
                 , span [ class "flying-group" ]
                     [ boolToggle "flying" ui.flying FlagFlying
                     , flyHeight ui
                     ]
+                ]
+            , div [ class "status-toggles" ]
+                [ boolToggle "concentrating" ui.concentrating FlagConcentrating
+                , input
+                    [ class "cond-input status-toggles__note"
+                    , type_ "text"
+                    , value ui.concentrationNote
+                    , maxlength Update.Status.maxConcentrationNoteLength
+                    , placeholder "note, e.g. Bless"
+                    , onInput StatusConcentrationNoteChanged
+                    , attribute "aria-label" "What the creature is concentrating on"
+                    ]
+                    []
                 ]
             ]
         , ApplyButton.row "Apply to:"

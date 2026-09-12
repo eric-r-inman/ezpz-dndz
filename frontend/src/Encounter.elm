@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasCreature, isPlaceholderName, pruneOrphanedLinks, remindersAt, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -460,6 +460,10 @@ type alias Creature =
     , selected : Bool
     , cover : Cover
     , concentrating : Bool
+
+    -- What the creature is concentrating on, shown beside the
+    -- status so the GM knows which spell a failed save drops.
+    , concentrationNote : String
     , hiding : Bool
     , dodging : Bool
     , flying : Bool
@@ -610,6 +614,18 @@ editor aimed at one that has left is aimed at nothing.
 hasCreature : String -> Encounter -> Bool
 hasCreature name enc =
     List.any (\c -> c.name == name) enc.creatures
+
+
+{-| Whether the named creature already carries a condition of
+this name. Matched without case, since "Prone" and "prone" are
+one condition to the GM.
+-}
+hasConditionNamed : String -> String -> Encounter -> Bool
+hasConditionNamed creatureName conditionName enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == creatureName)
+        |> List.concatMap .conditions
+        |> List.any (\cond -> String.toLower cond.name == String.toLower conditionName)
 
 
 {-| `True` when the current encounter's roster differs from the

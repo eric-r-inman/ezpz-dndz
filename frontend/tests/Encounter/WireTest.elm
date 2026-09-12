@@ -176,6 +176,7 @@ fullyPopulatedCreature =
     , selected = True
     , cover = ThreeQuartersCover
     , concentrating = True
+    , concentrationNote = ""
     , hiding = True
     , dodging = True
     , flying = True

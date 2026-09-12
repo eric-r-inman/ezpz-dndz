@@ -6028,6 +6028,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
+/* What a creature is concentrating on, in the voice a condition
+   chip's note uses so the two read alike. */
+.status-icon__note {
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
 .status-icon:hover {
   text-decoration: underline;
 }
@@ -6060,7 +6068,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 2px 8px;
+  padding: 2px var(--space-1);
   font-size: 0.85rem;
   line-height: 1;
   font-family: inherit;
@@ -6120,6 +6128,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-0);
+}
+
+/* The note takes what the concentration toggle leaves of its
+   row, since the spell's name is the part worth reading. */
+.status-toggles__note {
+  flex: 1 1 var(--width-input-grow-min);
+  min-width: var(--width-input-grow-min);
 }
 
 /* Both toggle rows, closer together than the editor's row gap so
@@ -6269,6 +6284,13 @@ button.creature-card__lifecycle--dead:focus-visible {
    easiest of the three to land a click on. */
 .drawer-controls__btn--wide {
   width: calc(var(--action-btn-size) * 1.25);
+}
+
+/* The d20's label is digits where its neighbours are glyphs, so
+   it takes the weight that keeps it reading as a control. */
+.drawer-controls__d20 {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .action-btn:hover {
@@ -8867,31 +8889,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-temp-blue);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-/* Sits right after the vitals, so it gets its own left margin
-   rather than reusing `.hp-display__editable` — that reset is
-   tuned for tap-a-number text, not an emoji glyph. */
-.hp-display__gear {
-  appearance: none;
-  background: transparent;
-  border: none;
-  margin-left: var(--space-1);
-  padding: 0 2px;
-  border-radius: var(--radius-sm);
-  font-size: 0.85em;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.1s ease;
-}
-
-.hp-display__gear:hover {
-  background: var(--color-surface);
-}
-
-.hp-display__gear:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
 }
 
 .hp-display__edit {

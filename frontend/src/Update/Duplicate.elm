@@ -252,6 +252,7 @@ puddingHalf src =
         , conditions = []
         , saveNotices = []
         , concentrating = False
+        , concentrationNote = ""
         , hiding = False
         , dodging = False
         , flying = False

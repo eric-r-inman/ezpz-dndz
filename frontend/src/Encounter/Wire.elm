@@ -1055,6 +1055,7 @@ encodeCreature c =
         , ( "selected", E.bool c.selected )
         , ( "cover", encodeCover c.cover )
         , ( "concentrating", E.bool c.concentrating )
+        , ( "concentrationNote", E.string c.concentrationNote )
         , ( "hiding", E.bool c.hiding )
         , ( "dodging", E.bool c.dodging )
         , ( "flying", E.bool c.flying )
@@ -1388,7 +1389,7 @@ decodeEncounter =
 decodeCreature : D.Decoder Creature
 decodeCreature =
     D.succeed
-        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment hasSpecialReactions specialReactionsUsed ->
+        (\name kind initiative initiativeBonus currentHp maxHp originalMaxHpMaybe tempHp armorClass speed conditions saveNotices selected cover concentrating concentrationNote hiding dodging flying flyHeight bloodied deathSaves acceptingDeathSaves reactionUsed rechargeAbilities readied inactive note memo timer creatureId laCount laLairBonus laUsed lrCount lrLairBonus lrUsed isPlaceholder creatureKind race alignment hasSpecialReactions specialReactionsUsed ->
             { name = name
             , kind = kind
             , initiative = initiative
@@ -1404,6 +1405,7 @@ decodeCreature =
             , selected = selected
             , cover = cover
             , concentrating = concentrating
+            , concentrationNote = concentrationNote
             , hiding = hiding
             , dodging = dodging
             , flying = flying
@@ -1448,6 +1450,7 @@ decodeCreature =
         |> optional "selected" D.bool False
         |> optional "cover" decodeCover NoCover
         |> optional "concentrating" D.bool False
+        |> optional "concentrationNote" D.string ""
         |> optional "hiding" D.bool False
         |> optional "dodging" D.bool False
         |> optional "flying" D.bool False

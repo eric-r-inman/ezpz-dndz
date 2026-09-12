@@ -1,8 +1,7 @@
 module Ui.Status exposing (StatusUi, fresh)
 
 {-| Status editor state — the drawer panel for the posture
-toggles (cover, concentrating, hiding, dodging, flying + flight
-height). The editor edits this draft; the Apply buttons add it to
+toggles. The editor edits this draft; the Apply buttons add it to
 the target creature or the selection.
 
 @docs StatusUi, fresh
@@ -16,6 +15,7 @@ type alias StatusUi =
     { target : String
     , cover : Cover
     , concentrating : Bool
+    , concentrationNote : String
     , hiding : Bool
     , dodging : Bool
     , flying : Bool
@@ -30,6 +30,7 @@ fresh target =
     { target = target
     , cover = NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False

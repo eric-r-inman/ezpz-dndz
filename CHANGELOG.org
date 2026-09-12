@@ -196,7 +196,7 @@
     No action needed.
 79. The Status editor's two toggle rows sit closer together.  No action needed.
 80. A triple-roll's three floating results spread farther apart, and the roll
-    strip beside the 🎲 icon shows the last five totals at a smaller size, a
+    strip beside the 🎲 icon shows the last three totals at a smaller size, a
     triple-roll's three results among them.  No action needed.
 81. Dice-roller log rows put the colon straight after the expression, as in
     "2d8+8: (2,6)+8 = 16".  No action needed.
@@ -301,9 +301,8 @@
 112. Every editor spaces its rows the same distance from the lines between its
      sections and from its bottom edge.  No action needed.
 113. The Initiative editor's typed-value row reads "or Set:".  No action needed.
-114. Naming a Condition/Effect preset spreads its controls over rows that fit
-     the panel, and its Save button reads "Overwrite existing preset" when the
-     name is already taken.  No action needed.
+114. Naming a Condition/Effect preset asks for the name and its category
+     together.  No action needed.
 115. The Condition/Effect editor gains a "Clear Settings" button that empties
      the form.  No action needed.
 116. The Condition/Effect editor's failed-save row reads "& becomes", and its
@@ -344,8 +343,8 @@
      needed.
 131. The Condition/Effect editor outlines the ability, DC, and Mod fields in
      yellow while a save ends the condition.  No action needed.
-132. Saving a Condition/Effect preset fills the name from the loaded one and
-     asks before replacing a preset that already exists.  No action needed.
+132. Saving a Condition/Effect preset fills the name from the loaded one.  No
+     action needed.
 133. A creature card counts its legendary actions and resistances on the bottom
      row as "LA: 3(4)", clicked to spend one and clicked again at zero to
      refill.  No action needed.
@@ -376,6 +375,21 @@
 145. Picking a condition, or typing a custom one, puts a green caret beside it
      that applies that condition alone to the target, with a duration the GM
      ends by hand, and folds the editor away.  No action needed.
+146. Applying a condition a creature already carries is refused, with a modal
+     saying so.  No action needed.
+147. A creature card's gear sits in a badge like the memo and timer ones.  No
+     action needed.
+148. The Status editor fits cover, hiding, dodging, and flying on one row.  No
+     action needed.
+149. Concentration carries a note of up to fifteen characters, shown on the card
+     in grey italics beside a status that now reads "concen.".  No action
+     needed.
+150. A "20" button beside the editor column's dice icon rolls a d20 straight,
+     with advantage, and with disadvantage.  No action needed.
+151. The Condition/Effect editor commits an edit with "Apply Changes" and opens
+     its preset form with "Save Settings".  No action needed.
+152. Naming a Condition/Effect preset happens in a modal, whose button says
+     whether it will replace a preset of that name.  No action needed.
 ** Fixes
 1. The make-active arrow's hover text no longer repeats the word "active".  No
    action needed.

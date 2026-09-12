@@ -19,8 +19,6 @@ module Update.Condition exposing
     , presetLoad
     , presetLoadMenuClose
     , presetLoadMenuToggle
-    , presetOverwriteCancel
-    , presetOverwriteConfirmed
     , presetSaveCancel
     , presetSaveCategoryChanged
     , presetSaveNameChanged
@@ -60,7 +58,7 @@ import Dict
 import Effects
 import Encounter
 import HpChange
-import Model exposing (Model, PendingControl(..), Surface(..))
+import Model exposing (Model, Surface(..))
 import Msg
     exposing
         ( DurationKind(..)
@@ -69,6 +67,7 @@ import Msg
 import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
 import Ui.Condition.Bundled as Bundled
+import Update.Notice
 
 
 {-| The editor's own drawer entry, in the `Maybe Surface`
@@ -506,11 +505,9 @@ presetSaveCancel model =
 
 {-| Commit the current form state to the presets dict under the
 user's typed name. Trimmed name; empty / whitespace-only names
-are rejected (the input stays open so the GM can correct it). A
-name already in the list — the GM's own or a bundled one — stages
-the confirmation modal instead of writing, since the save is
-silent and a preset is work the GM would rather not lose to a
-mistyped name.
+are rejected (the modal stays open so the GM can correct it).
+The modal's own commit button says whether the name is taken, so
+it is the confirmation and the write needs no second one.
 -}
 presetSaveSubmit : Model -> ( Model, Cmd Msg )
 presetSaveSubmit model =
@@ -531,42 +528,11 @@ presetSaveSubmit model =
             if String.isEmpty trimmed || String.isEmpty category then
                 ( model, Cmd.none )
 
-            else if Dict.member trimmed model.conditionPresets || Dict.member trimmed Bundled.defaults then
-                ( { model | surface = Just (SurfaceConfirm (PendingPresetOverwrite trimmed)) }
-                , Cmd.none
-                )
-
             else
                 ( writePreset trimmed category ui model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
-
-
-{-| The GM answered the overwrite modal: write the preset the save
-staged.
--}
-presetOverwriteConfirmed : Model -> ( Model, Cmd Msg )
-presetOverwriteConfirmed model =
-    case ( model.surface, drawerSurface model ) of
-        ( Just (SurfaceConfirm (PendingPresetOverwrite name)), Just (SurfaceCondition ui) ) ->
-            ( writePreset name
-                (String.trim ui.pendingSaveCategory)
-                ui
-                { model | surface = Nothing }
-            , Cmd.none
-            )
-
-        _ ->
-            ( model, Cmd.none )
-
-
-{-| Drop the staged overwrite. The naming rows are untouched, so
-the GM lands back on the name they typed and can change it.
--}
-presetOverwriteCancel : Model -> ( Model, Cmd Msg )
-presetOverwriteCancel model =
-    ( { model | surface = Nothing }, Cmd.none )
 
 
 {-| Stamps the saved name into `loadedPresetName` so the title bar
@@ -776,6 +742,14 @@ submitWith prepare rawTargets model =
             in
             if String.isEmpty name then
                 ( Model.foldDrawer Model.conditionLens model, Cmd.none )
+
+            else if ui.editingId == Nothing && List.any (\t -> Encounter.hasConditionNamed t name model.encounter) targets then
+                -- Editing is exempt: the condition being edited
+                -- already carries the name, and matching itself
+                -- is not a duplicate.
+                ( { model | surface = Just (SurfaceNotice Update.Notice.alreadyHasCondition) }
+                , Cmd.none
+                )
 
             else
                 let

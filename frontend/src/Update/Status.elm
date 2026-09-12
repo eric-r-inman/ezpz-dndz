@@ -1,4 +1,4 @@
-module Update.Status exposing (applySelected, applyTarget, coverCycle, flyHeightAdjust, openFor, toggleFlag)
+module Update.Status exposing (applySelected, applyTarget, concentrationNoteChanged, coverCycle, flyHeightAdjust, maxConcentrationNoteLength, openFor, toggleFlag)
 
 {-| Update branches for the Status editor. The toggles edit a
 draft; the two Apply buttons add what it holds to the target
@@ -53,6 +53,24 @@ openFor target model =
 withUi : (StatusUi -> StatusUi) -> Model -> Model
 withUi =
     Model.mapDrawer Model.statusLens
+
+
+{-| The note is only ever read while `concentrating` is set, so
+it survives the toggle going off and comes back with it.
+-}
+concentrationNoteChanged : String -> Model -> ( Model, Cmd Msg )
+concentrationNoteChanged text model =
+    ( withUi (\u -> { u | concentrationNote = String.left maxConcentrationNoteLength text }) model
+    , Cmd.none
+    )
+
+
+{-| What the card can show beside the status without pushing the
+row's other readouts out of line.
+-}
+maxConcentrationNoteLength : Int
+maxConcentrationNoteLength =
+    15
 
 
 coverCycle : Model -> ( Model, Cmd Msg )
@@ -144,6 +162,12 @@ applyTo names model =
                             else
                                 ui.cover
                         , concentrating = c.concentrating || ui.concentrating
+                        , concentrationNote =
+                            if ui.concentrating && not (String.isEmpty (String.trim ui.concentrationNote)) then
+                                String.trim ui.concentrationNote
+
+                            else
+                                c.concentrationNote
                         , hiding = c.hiding || ui.hiding
                         , dodging = c.dodging || ui.dodging
                         , flying = c.flying || ui.flying

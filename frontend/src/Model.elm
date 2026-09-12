@@ -89,14 +89,11 @@ import Url exposing (Url)
 
 {-| Which destructive action the confirmation modal
 (`SurfaceConfirm`) is staging, so a mis-click can't drop combat
-state or a saved preset. Cleared by the user picking Confirm or
-Cancel. `PendingPresetOverwrite` carries the preset name the save
-would replace.
+state. Cleared by the user picking Confirm or Cancel.
 -}
 type PendingControl
     = PendingReset
     | PendingClear
-    | PendingPresetOverwrite String
 
 
 {-| One constructor per surface, each carrying its UI state.
@@ -149,6 +146,9 @@ type Surface
     | SurfaceConfirm PendingControl
       -- Round-setter: correct the round counter directly.
     | SurfaceRoundSet RoundSetUi
+      -- A refusal the GM has to read: the message it carries is
+      -- what the modal says.
+    | SurfaceNotice String
 
 
 {-| Something being dragged to a new position in a list: where it
@@ -361,6 +361,9 @@ surfaceKey surface =
 
         SurfaceRoundSet _ ->
             "round-set"
+
+        SurfaceNotice _ ->
+            "notice"
 
 
 {-| Mark the HP log as shown. The newest row flashes only past
@@ -636,6 +639,9 @@ reaimWhere stale model =
                     surface
 
                 SurfaceRoundSet _ ->
+                    surface
+
+                SurfaceNotice _ ->
                     surface
     in
     { model

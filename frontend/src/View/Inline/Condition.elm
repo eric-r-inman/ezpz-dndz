@@ -8,8 +8,8 @@ it in.
 import Dict exposing (Dict)
 import Encounter
 import Html exposing (Html, button, div, h3, input, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
-import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
+import Html.Attributes as Attr exposing (attribute, checked, class, disabled, for, id, maxlength, placeholder, type_, value)
+import Html.Events exposing (onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (DurationKind(..), Msg(..))
 import Set exposing (Set)
@@ -26,8 +26,7 @@ import View.Tooltips as Tooltips
 {-| The model fragments the expansion consumes beyond its own
 Ui record: the queue's creature names feed the "until X's turn"
 select, the selected count drives the apply-to-selected scope,
-and the presets dict backs the Load row and the footer's Save
-control.
+and the presets dict backs the Load row.
 -}
 type alias Context =
     { creatureNames : List String
@@ -48,7 +47,7 @@ view ctx ui =
         , customAndNoteSection ui
         , durationSection ui ctx.creatureNames
         , saveSection ui
-        , footer ui ctx.presets ctx.selectedCount ctx.placeholderWarning
+        , footer ui ctx.selectedCount ctx.placeholderWarning
         , View.ConditionLog.section { open = ctx.logOpen, expanded = ctx.expanded } ctx.log
         ]
 
@@ -464,8 +463,8 @@ autoRollRadio s extra mode label =
         }
 
 
-footer : ConditionUi -> Dict String ConditionPreset -> Int -> Bool -> Html Msg
-footer ui presets selectedCount placeholderWarning =
+footer : ConditionUi -> Int -> Bool -> Html Msg
+footer ui selectedCount placeholderWarning =
     let
         canSubmit =
             not (String.isEmpty (String.trim ui.name))
@@ -475,7 +474,7 @@ footer ui presets selectedCount placeholderWarning =
                 "Target"
 
             else
-                "Save Changes"
+                "Apply Changes"
 
         -- Delete (when editing) precedes Apply so Apply is always
         -- the last row — the commit action reads as the final
@@ -507,18 +506,18 @@ footer ui presets selectedCount placeholderWarning =
                 []
     in
     div [ class "cond-footer" ]
-        (presetControls ui presets canSubmit
+        (presetControls canSubmit
             ++ deleteRow
             ++ [ applyControls ui canSubmit selectedCount applyLabel ]
             ++ placeholderRow
         )
 
 
-{-| The preset rows. Naming a preset spreads its controls over
-several rows so nothing runs past the panel's edge.
+{-| The preset row. Naming one happens in a modal, so the editor
+keeps only what opens it.
 -}
-presetControls : ConditionUi -> Dict String ConditionPreset -> Bool -> List (Html Msg)
-presetControls ui presets canSubmit =
+presetControls : Bool -> List (Html Msg)
+presetControls canSubmit =
     let
         clearButton =
             button
@@ -528,36 +527,30 @@ presetControls ui presets canSubmit =
                 ]
                 [ text "Clear Settings" ]
     in
-    case ui.pendingSaveName of
-        Nothing ->
-            [ div [ class "cond-row" ]
-                [ button
-                    [ class "action-btn"
-                    , onClick ConditionPresetSaveStart
-                    , disabled (not canSubmit)
-                    , attribute "aria-disabled"
-                        (if canSubmit then
-                            "false"
+    [ div [ class "cond-row" ]
+        [ button
+            [ class "action-btn"
+            , onClick ConditionPresetSaveStart
+            , disabled (not canSubmit)
+            , attribute "aria-disabled"
+                (if canSubmit then
+                    "false"
 
-                         else
-                            "true"
-                        )
-                    , Tooltips.attr
-                        (if canSubmit then
-                            "Save this configuration as a named preset"
+                 else
+                    "true"
+                )
+            , Tooltips.attr
+                (if canSubmit then
+                    Tooltips.conditionPresetSaveStart
 
-                         else
-                            "Pick a condition first, then Save the preset"
-                        )
-                    ]
-                    [ text "Save" ]
-                , clearButton
-                ]
+                 else
+                    Tooltips.conditionPresetSaveStartBlocked
+                )
             ]
-
-        Just typed ->
-            presetNaming ui presets canSubmit typed
-                ++ [ div [ class "cond-row" ] [ clearButton ] ]
+            [ text "Save Settings" ]
+        , clearButton
+        ]
+    ]
 
 
 {-| The commit row. Editing an existing condition is a one-row
@@ -603,114 +596,6 @@ applyControls ui canSubmit selectedCount applyLabel =
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
-
-
-{-| The rows that name a preset. A name already in the list — the
-GM's own or a bundled one — makes the commit an overwrite, and
-says so.
--}
-presetNaming : ConditionUi -> Dict String ConditionPreset -> Bool -> String -> List (Html Msg)
-presetNaming ui presets canSubmit typed =
-    let
-        trimmed =
-            String.trim typed
-
-        categoryPicked =
-            not (String.isEmpty (String.trim ui.pendingSaveCategory))
-
-        canSaveName =
-            not (String.isEmpty trimmed) && categoryPicked && canSubmit
-
-        overwriting =
-            Dict.member trimmed presets || Dict.member trimmed Bundled.defaults
-
-        commitLabel =
-            if overwriting then
-                "Overwrite existing preset"
-
-            else
-                "Save new preset"
-
-        commitTip =
-            if String.isEmpty trimmed then
-                "Type a name first"
-
-            else if not categoryPicked then
-                "Pick a category first"
-
-            else if overwriting then
-                "Replace the preset of this name with these settings"
-
-            else
-                "Save these settings under this name"
-    in
-    [ div [ class "cond-row" ]
-        [ input
-            [ class "cond-input cond-input--w20"
-            , type_ "text"
-            , value typed
-            , placeholder "Name this preset"
-            , autofocus True
-            , onInput ConditionPresetSaveNameChanged
-            , on "keydown" (enterKeyDecoder ConditionPresetSaveSubmit)
-            ]
-            []
-        ]
-    , div [ class "cond-row" ]
-        [ Html.label [ for "cond-preset-category", class "cond-label" ] [ text "Category:" ]
-        , Html.select
-            [ id "cond-preset-category"
-            , class "cond-select cond-select--grow"
-            , onInput ConditionPresetSaveCategoryChanged
-            , Tooltips.attr "Pick a category for this preset"
-            ]
-            (Html.option
-                [ value ""
-                , Attr.selected (String.isEmpty ui.pendingSaveCategory)
-                , Attr.disabled True
-                ]
-                [ text "Pick category…" ]
-                :: List.map (categoryOption ui.pendingSaveCategory) Bundled.categories
-            )
-        ]
-    , div [ class "cond-row" ]
-        [ button
-            [ class "action-btn action-btn--green"
-            , onClick ConditionPresetSaveSubmit
-            , disabled (not canSaveName)
-            , Tooltips.attr commitTip
-            ]
-            [ text commitLabel ]
-        , button
-            [ class "action-btn"
-            , onClick ConditionPresetSaveCancel
-            , Tooltips.attr "Cancel"
-            ]
-            [ text "Cancel" ]
-        ]
-    ]
-
-
-categoryOption : String -> String -> Html Msg
-categoryOption pickedCategory category =
-    Html.option
-        [ value category
-        , Attr.selected (pickedCategory == category)
-        ]
-        [ text category ]
-
-
-enterKeyDecoder : Msg -> Decode.Decoder Msg
-enterKeyDecoder msg =
-    Decode.field "key" Decode.string
-        |> Decode.andThen
-            (\key ->
-                if key == "Enter" then
-                    Decode.succeed msg
-
-                else
-                    Decode.fail "ignored key"
-            )
 
 
 {-| Load button + dropdown menu. Button stays disabled when the

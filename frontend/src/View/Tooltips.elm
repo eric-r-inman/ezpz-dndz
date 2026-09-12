@@ -51,6 +51,14 @@ module View.Tooltips exposing
     , compendiumReset
     , compendiumRowSelect
     , concentrating
+    , conditionPresetCancel
+    , conditionPresetCategory
+    , conditionPresetNameFirst
+    , conditionPresetOverwrite
+    , conditionPresetPickFirst
+    , conditionPresetSave
+    , conditionPresetSaveStart
+    , conditionPresetSaveStartBlocked
     , conditionQuickApply
     , coverCycleTip
     , deathBegin
@@ -110,6 +118,7 @@ module View.Tooltips exposing
     , quickAddCreatureRow
     , quickAddSortToAlpha
     , quickAddSortToCr
+    , quickD20
     , quickListOpen
     , reactionReady
     , reactionSpent
@@ -528,6 +537,46 @@ chipRemoveModalRow =
     "Remove this condition"
 
 
+conditionPresetCancel : String
+conditionPresetCancel =
+    "Cancel"
+
+
+conditionPresetCategory : String
+conditionPresetCategory =
+    "Pick a category for this preset"
+
+
+conditionPresetNameFirst : String
+conditionPresetNameFirst =
+    "Type a name first"
+
+
+conditionPresetOverwrite : String
+conditionPresetOverwrite =
+    "Replace the preset of this name with these settings"
+
+
+conditionPresetPickFirst : String
+conditionPresetPickFirst =
+    "Pick a category first"
+
+
+conditionPresetSave : String
+conditionPresetSave =
+    "Save these settings under this name"
+
+
+conditionPresetSaveStart : String
+conditionPresetSaveStart =
+    "Save this configuration as a named preset"
+
+
+conditionPresetSaveStartBlocked : String
+conditionPresetSaveStartBlocked =
+    "Pick a condition first, then Save the preset"
+
+
 conditionQuickApply : String
 conditionQuickApply =
     "Quick apply to target"
@@ -597,6 +646,11 @@ statBlockShowInCompendium =
 statBlockHabitat : String
 statBlockHabitat =
     "Inferred from online public sources"
+
+
+quickD20 : String
+quickD20 =
+    "Roll a d20 — straight, with advantage, and with disadvantage"
 
 
 quickListOpen : String

@@ -876,6 +876,7 @@ draftToInstance { displayName, initiativeRoll } c =
     , selected = False
     , cover = Encounter.NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False

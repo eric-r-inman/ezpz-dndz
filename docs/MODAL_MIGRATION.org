@@ -43,16 +43,14 @@ it:
    the encounter on screen at all.
 5. *Toast + undo* — replacing blocking confirmations with reversibility.
 
-A true modal remains acceptable only for a destructive, must-decide-now
-interruption, and the toast + undo pattern should eliminate most of those.
-
-Two surfaces sit outside that rule by the operator's call.  The round-setter
-(=View/Modal/RoundSet.elm=), reached from the title bar's round readout, is
-neither destructive nor must-decide-now, so the policy would place it in the
-drawer.  The Condition editor's preset-overwrite confirmation is destructive but
-reversible in principle, so the policy would answer it with a toast and an undo.
-Both are recorded here rather than left to contradict the plan silently, and
-moving either is a wrapper swap if the call changes.
+A true modal was acceptable only for a destructive, must-decide-now
+interruption, and the toast + undo pattern was to eliminate most of those.  The
+operator has since lifted that restriction: a modal is now built where they ask
+for one and nowhere else, which is the rule this section's remaining plan should
+be read against.  The surfaces outside the original policy — the round-setter,
+the Condition editor's preset naming, and the notice that refuses a duplicate
+condition — stand by that call rather than by the tiering below, and moving any
+of them is a wrapper swap.
 
 * Mapping
 

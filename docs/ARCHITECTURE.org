@@ -1204,8 +1204,9 @@ returns.
 
 Three click targets on a stat block — an inline "+N to hit" attack link, one of
 the six ability cells (STR / DEX / CON / INT / WIS / CHA), and a chip in the
-Saving Throws property line — all fire the same triple-roll:
-~Update.Dice.tripleRollCmd~ rolls ~1d20 + bonus~ three ways at once (standard,
+Saving Throws property line — fire the same triple-roll, and so does the editor
+column's "20" button, which stands for no creature and adds no bonus:
+~Update.Dice.tripleRollWith~ rolls ~1d20 + bonus~ three ways at once (standard,
 advantage, disadvantage) as a single ~Dice.batchRollCmd~ so the three don't
 share a same-millisecond RNG seed, landing together in ~TripleRollLanded~.  The
 bonus is the attack modifier, the flat ability modifier, or the proficient save
@@ -1220,7 +1221,7 @@ through the shared ~Effects.pushDiceRoll~ + ~persistDiceRoll~ pipeline like any
 other roll, spawns three colour-coded floating popups spread out side-by-side at
 the click position (white / green / red for standard / advantage / disadvantage
 — ~Model.PopupColor~), and sets ~Ui.Dice.rollBadgeOverride~ so the rail's badge
-strip next to the 🎲 icon — the four most recent totals — shows the same three,
+strip next to the 🎲 icon — the three most recent totals — shows the same three,
 its newest three entries, in the same colours even after the popups fade.  Any
 single roll landing afterward — from any source — clears the override via
 ~Effects.pushIncomingDiceRoll~, so the strip reverts to its ordinary recency
@@ -1468,9 +1469,10 @@ pinned one where the GM put it.
 
 The Condition and Timer editors each carry Save / Load controls that remember
 full configurations under user-chosen names.  The Condition editor adds one step
-the shape below leaves out: a name already in the list stages ~SurfaceConfirm~,
-so a save cannot quietly replace a preset.  Both follow the same templatable
-shape so a new surface can adopt the pattern without re-inventing it.
+the shape below leaves out: naming happens in a modal
+(=View/Modal/ConditionPreset.elm=), whose commit says whether it will replace a
+preset of that name.  Both follow the same templatable shape so a new surface
+can adopt the pattern without re-inventing it.
 
 For a surface =Foo= the pieces are:
 
@@ -1501,10 +1503,10 @@ For a surface =Foo= the pieces are:
    ~loadedPresetName~ when the deleted preset was the active one.
 8. *View* — =View/Modal/Foo.elm= renders two controls, Save in the footer and
    Load where the editor wants it:
-   - The Save control — a single ~Save~ button when ~pendingSaveName ==
-     Nothing~; otherwise the naming rows, one each for the name, its category,
-     and the commit with Cancel beside it.  The commit reads as an overwrite
-     when the name is already in the list, the GM's own or a bundled one.
+   - The Save control — one button that sets ~pendingSaveName~, which is what
+     the naming form reads to know it is wanted.  The commit reads as an
+     overwrite when the name is already in the list, the GM's own or a bundled
+     one.
    - ~presetLoadControl~ — disabled ~Load ▼~ when the dict is empty; otherwise
      opens a dropdown of preset names sorted case-insensitively (~Dict.keys
      presets |> List.sortBy String.toLower~).  Each row is a ~[name][×]~ pair

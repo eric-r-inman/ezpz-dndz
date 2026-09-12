@@ -724,6 +724,7 @@ type Msg
       -- it to the target or the selection.
     | StatusOpenFor String
     | StatusCoverCycle
+    | StatusConcentrationNoteChanged String
     | StatusToggle StatusFlag
     | StatusFlyHeightAdjust Int
     | StatusApplyTarget
@@ -802,10 +803,6 @@ type Msg
     | ConditionPresetSaveCategoryChanged String
     | ConditionPresetSaveCancel
     | ConditionPresetSaveSubmit
-      -- Answers to the "replace the saved preset?" modal a save
-      -- under an existing name stages.
-    | ConditionPresetOverwriteConfirm
-    | ConditionPresetOverwriteCancel
     | ConditionPresetLoadMenuToggle
     | ConditionPresetLoadMenuClose
     | ConditionPresetLoad String
@@ -827,6 +824,8 @@ type Msg
     | ConditionUndoLatest
     | ConditionLogToggle
     | SaveNoticeDismiss String Int
+      -- Close the modal that says why something was not applied.
+    | NoticeDismiss
       -- Card row 3 memo
     | MemoOpen String
     | MemoChange String
@@ -1203,6 +1202,11 @@ type Msg
     | TripleRollLanded Int Int (List ( String, Dice.Roll ))
       -- (clickX, clickY captured at the triggering click, the
       --  three resolved rolls)
+      --
+      -- The editor column's d20: the same triple, with no
+      -- creature and no modifier behind it.  The Ints are the
+      -- click's position.
+    | QuickD20Triggered Int Int
     | EncounterControlConfirm
     | EncounterControlCancel
     | EncounterRun

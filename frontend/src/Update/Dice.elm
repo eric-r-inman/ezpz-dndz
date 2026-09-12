@@ -13,6 +13,7 @@ module Update.Dice exposing
     , modifierChanged
     , openPanel
     , persistResponse
+    , quickD20
     , rerun
     , rerunMenuClose
     , rerunMenuToggle
@@ -531,14 +532,30 @@ share a same-millisecond RNG seed (see `Dice.batchRollCmd`).
 -}
 tripleRollCmd : String -> String -> Int -> Int -> Int -> Cmd Msg
 tripleRollCmd feature creatureName bonus x y =
-    let
-        source =
-            { feature = feature, target = Just creatureName }
-    in
+    tripleRollWith { feature = feature, target = Just creatureName }
+        creatureName
+        bonus
+        x
+        y
+
+
+{-| The editor column's d20, rolled the three ways a stat block's
+ability cell rolls, so a GM can settle a check without opening the
+roller.
+It belongs to no creature, which is why the source carries no
+target.
+-}
+quickD20 : Int -> Int -> Model -> ( Model, Cmd Msg )
+quickD20 x y model =
+    ( model, tripleRollWith { feature = "d20", target = Nothing } "" 0 x y )
+
+
+tripleRollWith : Dice.Source -> String -> Int -> Int -> Int -> Cmd Msg
+tripleRollWith source label bonus x y =
     Dice.batchRollCmd (TripleRollLanded x y)
-        [ ( creatureName, source, Dice.generator (Effects.saveExpression bonus) )
-        , ( creatureName, source, Dice.advantageGenerator bonus )
-        , ( creatureName, source, Dice.disadvantageGenerator bonus )
+        [ ( label, source, Dice.generator (Effects.saveExpression bonus) )
+        , ( label, source, Dice.advantageGenerator bonus )
+        , ( label, source, Dice.disadvantageGenerator bonus )
         ]
 
 

@@ -65,6 +65,7 @@ mkCreature name initiative =
     , selected = False
     , cover = NoCover
     , concentrating = False
+    , concentrationNote = ""
     , hiding = False
     , dodging = False
     , flying = False

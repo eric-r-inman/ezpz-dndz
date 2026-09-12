@@ -55,15 +55,6 @@ prompt chrome pending =
                     , confirm = EncounterControlConfirm
                     , cancel = EncounterControlCancel
                     }
-
-                PendingPresetOverwrite name ->
-                    { message = "Replace the saved preset \"" ++ name ++ "\" with these settings?"
-                    , title = "Overwrite Preset"
-                    , confirmLabel = "Overwrite"
-                    , confirmClass = "action-btn action-btn--green"
-                    , confirm = ConditionPresetOverwriteConfirm
-                    , cancel = ConditionPresetOverwriteCancel
-                    }
     in
     View.Modal.view
         { close = spec.cancel
