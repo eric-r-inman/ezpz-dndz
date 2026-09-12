@@ -101,20 +101,101 @@
       rustPackages = foundation.lib.mkRustPackages {
         inherit self pkgs craneLib crates commonArgs;
       };
+      # The Linux variants' target triples differ from the Nix system
+      # only in the vendor and environment fields, so this carries what
+      # the two have in common.
+      linuxArch = nixpkgs.lib.head (nixpkgs.lib.splitString "-" system);
+      # The musl helper selects its target with `CARGO_BUILD_TARGET` and
+      # nothing else, where its sibling helpers also point the `cc` crate
+      # at a compiler for the target they build.  So a dependency whose
+      # build script compiles C — the bundled SQLite this workspace links
+      # through sqlx — gets nixpkgs' glibc compiler, and the objects it
+      # emits call glibc-only symbols that the musl runtime does not
+      # carry, which fails the link.  zig compiles those same sources
+      # against musl for the same triple.  This comes out when the musl
+      # helper sets the variables itself; see the entry in tasks.org.
+      muslZigCc = pkgs.writeShellScript "zigcc-musl" ''
+        export PATH="${pkgs.zig}/bin:$PATH"
+        exec ${pkgs.cargo-zigbuild}/bin/cargo-zigbuild zig cc \
+          -- -target ${linuxArch}-linux-musl "$@"
+      '';
+      muslZigCxx = pkgs.writeShellScript "zigcxx-musl" ''
+        export PATH="${pkgs.zig}/bin:$PATH"
+        exec ${pkgs.cargo-zigbuild}/bin/cargo-zigbuild zig c++ \
+          -- -target ${linuxArch}-linux-musl "$@"
+      '';
+      muslCommonArgs =
+        commonArgs
+        // {
+          "CC_${linuxArch}_unknown_linux_musl" = "${muslZigCc}";
+          "CXX_${linuxArch}_unknown_linux_musl" = "${muslZigCxx}";
+          nativeBuildInputs =
+            (commonArgs.nativeBuildInputs or [])
+            ++ [
+              # zig compiles the C sources for the musl target, and
+              # cargo-zigbuild is the driver the wrappers above call.
+              pkgs.cargo-zigbuild
+              pkgs.zig
+            ];
+          # Both tools cache under a writable home, and crane hands the
+          # build a read-only one.
+          preBuild =
+            (commonArgs.preBuild or "")
+            + ''
+              export HOME="$TMPDIR"
+              export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-cache"
+            '';
+        };
       # On Linux each binary also gets a statically-linked `<name>-musl`
-      # variant; on other systems mkMuslPackages returns an empty set.  It
-      # threads the same commonArgs, so a project's native dependencies
-      # reach the musl build as they do the native one.
+      # variant; on other systems mkMuslPackages returns an empty set.
       muslPackages = foundation.lib.mkMuslPackages {
-        inherit self pkgs system crates crane commonArgs;
+        inherit self pkgs system crates crane;
+        commonArgs = muslCommonArgs;
       };
+      # These arguments serve the variants whose cargo runs through
+      # cargo-zigbuild, which hands its own linker to the invocation it
+      # drives and to no other.  crane's dependency build runs a check
+      # pass and then the build command, so those two see different
+      # environments, and cargo re-runs every build script into the
+      # output directory the check pass has already filled.  The
+      # bundled SQLite does not survive that: it installs its
+      # pre-generated bindings by copying them out of the read-only
+      # vendor store, so the copy it left behind is read-only too and
+      # the second one cannot replace it.
+      # Dropping the check pass leaves a single invocation, and so a
+      # single run of each build script.  It costs nothing here, since
+      # a cross variant only repackages sources the native build
+      # compiles and the workspace checks gate.  The musl variant needs
+      # none of this: it reaches zig as a C compiler alone, so both of
+      # its cargo invocations see one environment.  This comes out when
+      # the helpers skip the check pass themselves; see the entry in
+      # tasks.org.
+      cargoZigbuildArgs = commonArgs // {cargoCheckCommand = "true";};
       # On Linux each binary also gets a portable `<name>-gnu` variant: a
       # dynamic glibc build that runs off the Nix store (FHS interpreter,
       # glibc 2.17 floor) and links the host's shared libraries.  Pick
       # this over musl for a tool that must use a host library with a
       # runtime plugin/dlopen ecosystem.  Empty on other systems.
+      # This variant builds for the host's own triple, so cargo hands
+      # that target's toolchain to the host artifacts as well, a proc
+      # macro the compiler has to load back among them.  zig compiles C
+      # with its undefined-behaviour checks on and nothing supplies the
+      # handlers they call, so the macro library links with those
+      # undefined and then cannot be loaded.  The macOS variant bakes
+      # the switch into its own compiler wrapper; the portable one has
+      # to be reached through the flags the `cc` crate appends, because
+      # the helper's wrapper wins over anything passed in.  This comes
+      # out when the helper turns the checks off itself; see the entry
+      # in tasks.org.
+      gnuPortableArgs =
+        cargoZigbuildArgs
+        // {
+          "CFLAGS_${linuxArch}_unknown_linux_gnu" = "-fno-sanitize=all";
+          "CXXFLAGS_${linuxArch}_unknown_linux_gnu" = "-fno-sanitize=all";
+        };
       gnuPortablePackages = foundation.lib.mkGnuPortablePackages {
-        inherit self pkgs system crates crane commonArgs;
+        inherit self pkgs system crates crane;
+        commonArgs = gnuPortableArgs;
       };
       # The x86_64-linux build cross-compiles macOS `<key>-<arch>-darwin`
       # variants via zig so a release needs no macOS runner; empty on
@@ -132,7 +213,8 @@
         (builtins.fromJSON (builtins.readFile ./rust-template.json)).apple-frameworks
         or false;
       darwinCrossPackages = foundation.lib.mkDarwinCrossPackages {
-        inherit self pkgs system crates crane commonArgs;
+        inherit self pkgs system crates crane;
+        commonArgs = cargoZigbuildArgs;
         appleSdk =
           if appleFrameworksEnabled
           then (foundation.lib.pkgsUnfreeFor {inherit nixpkgs system overlays;}).apple-sdk.src
@@ -167,13 +249,32 @@
           then foundation.lib.xwinSdk {inherit pkgs;}
           else null;
       };
+      # Every variant helper sets `src = craneLib.cleanCargoSource
+      # self` over whatever the caller passed, which drops this
+      # workspace's SRD creature bundle and fails the build on the
+      # `include_str!` that embeds it.  Put the filtered source back
+      # on the finished derivation: the deps-only build crane runs
+      # first uses a stub source and needs nothing from the bundle,
+      # so only the package build has to see it.  The wrapping
+      # happens once here because the checks below build these same
+      # derivations and would otherwise get the ones that cannot
+      # compile.  This comes out when the foundation helpers respect
+      # the caller's `src`; see the entry in tasks.org.
+      withProjectSource =
+        nixpkgs.lib.mapAttrs
+        (_: p: p.overrideAttrs (_: {inherit (commonArgs) src;}));
+      muslVariants = withProjectSource muslPackages;
+      gnuPortableVariants = withProjectSource gnuPortablePackages;
+      darwinVariants = withProjectSource darwinCrossPackages;
+      windowsVariants = withProjectSource windowsCrossPackages;
+      windowsMsvcVariants = withProjectSource windowsMsvcCrossPackages;
       packages =
         rustPackages.packages
-        // muslPackages
-        // gnuPortablePackages
-        // darwinCrossPackages
-        // windowsCrossPackages
-        // windowsMsvcCrossPackages
+        // muslVariants
+        // gnuPortableVariants
+        // darwinVariants
+        // windowsVariants
+        // windowsMsvcVariants
         // {
           # Whole-workspace convenience build.  It compiles the server
           # crate too, whose rust_embed Frontend needs an asset dir at
@@ -193,7 +294,7 @@
       aarch64DarwinPackages =
         nixpkgs.lib.filterAttrs
         (name: _: nixpkgs.lib.hasSuffix "-aarch64-darwin" name)
-        darwinCrossPackages;
+        darwinVariants;
       # The x86_64 subset of the Windows cross outputs, smoke-tested
       # under wine.  Non-empty on every host (the Windows helper is
       # host-agnostic), so the wine check below is gated on
@@ -202,7 +303,7 @@
       windowsX86Packages =
         nixpkgs.lib.filterAttrs
         (name: _: nixpkgs.lib.hasSuffix "-x86_64-windows" name)
-        windowsCrossPackages;
+        windowsVariants;
     in {
       inherit packages;
       inherit (rustPackages) apps;

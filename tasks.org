@@ -73,6 +73,57 @@ Superseded by the drawer becoming a stack: every drawer panel is a ~Surface~
 variant in ~model.drawer~ now, and the runtime reconciler is gone with the
 one-panel-at-a-time invariant it enforced.
 
+* TODO Drop the cross-build source wrapper once the foundation keeps the source
+
+Each variant helper in ~rust-template~ builds its crane arguments as ~commonArgs
+// {src = craneLib.cleanCargoSource self; ...}~, so the source a project passes
+is discarded and only Cargo files survive.  This workspace extends that filter
+to keep =crates/lib/data/bundled-creatures.json=, which the server crate embeds
+with ~include_str!~, so every release binary failed to compile from v0.2.0 until
+=flake.nix= put the filtered source back on the finished derivations.
+
+The fix belongs upstream, where the helpers should read ~commonArgs.src or
+(craneLib.cleanCargoSource self)~ rather than overwriting it — every downstream
+project that filters its source meets the same wall, and =CONTRIBUTING.org= says
+these helpers need no per-crate configuration, which the local wrapper makes
+untrue.  rust-template carries that shape from v0.121.0, so the wrapper comes
+out on the ~foundation~ bump that reaches it, alongside
+[[*Drop the cross-build environment wiring once the foundation supplies it]].
+
+* TODO Drop the cross-build environment wiring once the foundation supplies it
+
+The variant helpers leave parts of the build environment they need unset, and
+=flake.nix= fills those in for them.
+
+~mkMuslPackages~ selects its target with ~CARGO_BUILD_TARGET~ and nothing else,
+where its sibling helpers each also name a ~CC~ and ~CXX~ for the target they
+build.  A dependency whose build script compiles C is therefore compiled against
+the host's glibc and cannot link against musl, which is where the bundled SQLite
+that sqlx carries left the static release binaries.  The helper should name them
+itself; the glibc-floored variant writes the same pair of zig wrappers a few
+lines away, so only the target triple differs.
+
+The portable-glibc helper compiles C through zig without turning zig's
+undefined-behaviour checks off, where the macOS helper's compiler wrapper does
+turn them off.  Nothing supplies the handlers those checks call, so a proc-macro
+library links with them undefined and the compiler cannot load it back.  That
+variant builds for the host's own triple, which is why the target's toolchain
+reaches a host artifact at all.  =flake.nix= appends the switch through the
+flags the ~cc~ crate reads, the helper's own wrapper not being overridable.
+
+The helpers that build through cargo-zigbuild leave crane's dependency check
+pass running under an environment their build command does not share, since
+cargo-zigbuild supplies its own linker to its own invocation alone.  Cargo reads
+that as a reason to re-run every build script, and the bundled SQLite cannot
+replace the read-only bindings its first run copied out of the vendor store.
+Those helpers already skip the test phase because a cross variant repackages
+sources the native build has gated, and the check pass is redundant for the same
+reason.
+
+Propose both against rust-template, then delete the local wiring on the
+~foundation~ bump that carries them — the same bump that clears
+[[*Drop the cross-build source wrapper once the foundation keeps the source]].
+
 * TODO Sweep the "modal" wording out of the migrated editors
 
 Doc comments across the Ui and Update modules still call their surfaces modals,

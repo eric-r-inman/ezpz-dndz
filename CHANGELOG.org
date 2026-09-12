@@ -4,6 +4,8 @@
 * Upcoming
 ** Added
 ** Fixes
+1. The cross-compiled release binaries build again, having failed since v0.2.0.
+   No action needed.
 ** Breaking
 * v0.3.0
 ** Added
