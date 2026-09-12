@@ -112,8 +112,8 @@ quickApplyCaret =
         [ class "cond-quick-apply"
         , type_ "button"
         , onClick ConditionQuickApply
-        , Tooltips.attr "Quick apply"
-        , attribute "aria-label" "Quick apply"
+        , Tooltips.attr Tooltips.conditionQuickApply
+        , attribute "aria-label" Tooltips.conditionQuickApply
         ]
         [ text "▶" ]
 

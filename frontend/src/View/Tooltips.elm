@@ -51,6 +51,7 @@ module View.Tooltips exposing
     , compendiumReset
     , compendiumRowSelect
     , concentrating
+    , conditionQuickApply
     , coverCycleTip
     , deathBegin
     , deathDead
@@ -525,6 +526,11 @@ chipDismiss =
 chipRemoveModalRow : String
 chipRemoveModalRow =
     "Remove this condition"
+
+
+conditionQuickApply : String
+conditionQuickApply =
+    "Quick apply to target"
 
 
 saveNoticeDismiss : String
