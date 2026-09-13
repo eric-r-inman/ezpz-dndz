@@ -3,15 +3,17 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.7.0
+** Added
 1. ~llms.org~ sets out what a summary owes its reader.  No action needed.
 2. The build tooling tracks the current revision of the template this project is
    generated from.  No action needed.
 3. Code review runs on its own when an assistant turn ends, and on demand
    through ~just review~ for anyone else.  No action needed.
-** Fixes
-** Breaking
-** Maintenance
-** Security
 * v0.6.0
 ** Maintenance
 1. Bump aho-corasick from 1.1.4 to 1.1.5
