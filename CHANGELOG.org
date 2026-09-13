@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. Code review and every subagent run on Opus regardless of the model the
+   session itself is on.  No action needed.
 ** Fixes
 1. The documented long-form run commands work as written.  No action needed.
 ** Breaking
