@@ -34,6 +34,28 @@ most payloads as opaque JSON so the frontend owned those schemas outright;
 normalization means future Elm wire changes to persisted shapes need a matching
 server migration.
 
+* TODO Finish the compliance sync against rust-template v0.121.0
+
+The structural checker passes but for the retired review gate, and the
+~foundation~ input still names the revision before it.
+
+Moving that pin to the current template revision in both lockfiles is the
+mechanical half, and it also retires the local cross-build source wrapper, whose
+upstream fix rides in on the same bump.
+
+The judgment half is the review gate.  The template retires the Claude Code Stop
+hook, the script it execs, and the ~template-compliance~ subagent definition,
+and drops the =CONTRIBUTING.org= section describing them.  Its replacement is an
+on-demand reviewer the foundation exposes as a package, meant to run when a
+piece of work is done rather than at the end of every turn.  Because this
+project's own documents require the gate the template now forbids, it waits on
+the operator.  The recommendation is to follow the template and wire the
+replacement into the dev shell and a ~just~ recipe, so the review survives the
+change of trigger rather than being lost with it.
+
+~template_sync_hashes~ in =rust-template.json= gains the synced revision once
+both halves land, since that record claims a completed sync.
+
 * TODO Migrate the frontend off modal dialogs
 
 External review asked for a UI that never hides the encounter queue behind a

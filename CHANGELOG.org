@@ -3,6 +3,7 @@
 
 * Upcoming
 ** Added
+1. ~llms.org~ sets out what a summary owes its reader.  No action needed.
 ** Fixes
 ** Breaking
 * v0.3.0
