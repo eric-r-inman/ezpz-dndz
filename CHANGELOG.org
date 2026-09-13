@@ -15,6 +15,10 @@
    creature through the ✕ on its chip.  No action needed.
 6. A downed creature's death saves sit along the top of its card, beside the
    DOWN badge, rather than in a column at the card's edge.  No action needed.
+7. The Initiative editor's Quick Sort button sits at the left of its row.  No
+   action needed.
+8. The Status editor's concentration note prompts with "on...".  No action
+   needed.
 ** Fixes
 1. A creature card's gear button is outlined like the toggles beside it.  No
    action needed.
