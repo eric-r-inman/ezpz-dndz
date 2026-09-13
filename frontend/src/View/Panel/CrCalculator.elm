@@ -143,8 +143,8 @@ scopeSection ui =
     section [ class "cr-calc__section" ]
         [ Html.h2 [ class "cr-calc__section-title" ] [ text "Scope" ]
         , div [ class "cr-calc__scope-group", attribute "role" "radiogroup" ]
-            [ scopeButton ui.scope ScopeXpEnemiesAndNpcs "Enemies & NPCs"
-            , scopeButton ui.scope ScopeXpEnemiesOnly "Enemies only"
+            [ scopeButton ui.scope ScopeXpEnemiesOnly "Enemies only"
+            , scopeButton ui.scope ScopeXpEnemiesAndNpcs "Enemies & NPCs"
             , scopeButton ui.scope ScopeXpNpcsOnly "NPCs only"
             , scopeButton ui.scope ScopeXpSelectedOnly "Selected only"
             ]

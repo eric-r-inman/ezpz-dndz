@@ -19,6 +19,8 @@
    action needed.
 8. The Status editor's concentration note prompts with "on...".  No action
    needed.
+9. The Encounter XP and Encounter Difficulty editors count enemies only until
+   you widen the scope.  Pick another scope for the previous totals.
 ** Fixes
 1. A creature card's gear button is outlined like the toggles beside it.  No
    action needed.

@@ -22,8 +22,8 @@ import Encounter exposing (Creature, Encounter)
 
 {-| The four GM-pickable scopes for the XP readout.
 
-  - `ScopeXpEnemiesAndNpcs` — every non-Player creature. Default.
-  - `ScopeXpEnemiesOnly` — Enemy-tagged creatures only.
+  - `ScopeXpEnemiesAndNpcs` — every non-Player creature.
+  - `ScopeXpEnemiesOnly` — Enemy-tagged creatures only. Default.
   - `ScopeXpNpcsOnly` — NPC-tagged creatures only.
   - `ScopeXpSelectedOnly` — whichever creatures the GM has ticked.
 

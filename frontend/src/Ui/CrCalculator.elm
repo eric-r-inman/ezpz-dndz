@@ -20,5 +20,5 @@ type alias CrCalculatorUi =
 
 fresh : CrCalculatorUi
 fresh =
-    { scope = ScopeXpEnemiesAndNpcs
+    { scope = ScopeXpEnemiesOnly
     }
