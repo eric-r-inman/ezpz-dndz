@@ -9,7 +9,8 @@ module Ui.Condition exposing
 default when the drawer expands it unaimed, or the creature
 whose chip was clicked. `editingId` is `Nothing` when creating a
 new condition and `Just id` when editing an existing one — the
-latter unlocks a "Delete" button in the editor footer.
+latter makes an apply write back onto that condition rather than
+adding a second one.
 
 The remaining fields mirror the rendered form. We track raw
 text inputs alongside parsed integers (the same trick as the
