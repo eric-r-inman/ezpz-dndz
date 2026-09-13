@@ -221,6 +221,38 @@ assuming the work can survive independently.
 In the event that you can't resolve these notions, halt and ask the operator for
 direction.
 
+*** Branch and pull request cadence
+
+Work in short-lived branches.  Branch from ~main~, carry the work to a stopping
+point, open the pull request, see it landed, and branch again for the next
+piece.  The cost of skipping that cycle is not paid on the branch.  It is paid
+at the merge, and by everything queued behind it.
+
+A /stopping point/ is not "the operator stopped asking".  It is the first moment
+all of these hold:
+
+- The work in hand stands on its own, and the application runs.
+- The change has been through whatever "Verification" below demands of it.
+- The changelog entry is written and compliance passes.
+
+Reaching that moment is a trigger rather than an opportunity.  A branch that
+passes a stopping point without landing has already missed one, and that is how
+a long branch actually forms: not from a single oversized task, but from a run
+of small ones against one surface, each of which could have shipped alone.
+
+Saying the branch is ready is always yours to do and never waits to be asked,
+because an operator deep in the work is the least likely person to notice the
+branch has grown long.  Whether to commit, push, and merge stays with whatever
+standing instructions the operator has given.
+
+When a fresh request arrives while a branch is unmerged, land that branch first
+and start a new one rather than append to it.  Appending needs a reason, and the
+good reason is that the request repairs the unmerged work — fold such a repair
+into the commit it repairs, as "History Hygiene" above requires.
+
+Prefer the smaller slice whenever the choice is open.  Two pull requests that
+each stand alone beat one that carries both.
+
 ** Code
 
 *** Initialisms

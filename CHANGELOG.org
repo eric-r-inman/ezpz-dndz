@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. ~llms.org~, the instruction set every coding session loads, now sets out how
+   work is sliced into branches and pull requests.  No action needed.
 ** Fixes
 ** Breaking
 * v0.4.0
