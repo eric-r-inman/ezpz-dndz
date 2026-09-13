@@ -146,8 +146,11 @@ dependency-bump *args:
 # Exit code 1 means the review ran and found something; 2 means it could not
 # run at all.  `just` calls either a failed recipe, so read the code: a 1 with
 # findings printed above it is the tool working.
+#
+# The nested reviewer is pinned to Opus, as the Stop hook's is, so the two
+# judge alike, whatever model the session itself is on.
 review *args:
-    rust-template-review-cli {{args}}
+    rust-template-review-cli --reviewer-model opus {{args}}
 
 # Reclaim disk from stale build artifacts.
 #

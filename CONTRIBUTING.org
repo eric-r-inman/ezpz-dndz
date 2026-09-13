@@ -362,6 +362,12 @@ addressing a finding costs a fraction of the first.  Both drive a nested
 assistant session, so both want that assistant's CLI on ~PATH~ beside the
 binaries the dev shell supplies.
 
+Those nested sessions, and every subagent a Claude Code session launches here,
+run on Opus, whatever model the session itself is on.  The reviewers name it on
+their command lines and the project's Claude Code settings name it for
+subagents.  Left to the default they would follow the session's model, and a
+review's judgment should not drift with a choice made for other reasons.
+
 The template retires the Stop hook, on the grounds that a review at the end of
 every turn judges work that is still being written.  This project keeps it.  A
 review that runs unasked is the one that catches a contradiction while the
