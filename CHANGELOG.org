@@ -3,17 +3,21 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.8.0
+** Added
 1. Code review and every subagent run on Opus regardless of the model the
    session itself is on.  No action needed.
 ** Fixes
 1. The documented long-form run commands work as written.  No action needed.
-** Breaking
 ** Maintenance
 1. An unused HTTP middleware dependency is gone from the workspace manifest.  No
    action needed.
 2. The build cache action in CI moves to its current major version.  No action
    needed.
-** Security
 * v0.7.0
 ** Added
 1. ~llms.org~ sets out what a summary owes its reader.  No action needed.
