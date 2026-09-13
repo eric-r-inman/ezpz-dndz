@@ -88,14 +88,13 @@ nix develop --command bash -c \
 nix develop --command \
   cargo run -p ezpz-dndz-server -- \
     --listen 127.0.0.1:4040 \
-    --base-url http://127.0.0.1:4040 \
-    --frontend-path frontend/public
+    --base-url http://127.0.0.1:4040
 #+end_src
 
-Persistence lives in whatever ~--data-dir~ resolves to.  Without the flag, the
-server writes its JSON store files into the current directory (~./users.json~,
-~./encounter.json~, etc., all gitignored).  For a clean scratch dir, pass
-~--data-dir /tmp/ezpz-scratch~ on the ~cargo run~ line.
+Persistence lives in whatever ~--data-dir~ resolves to.  Without the flag the
+server writes its store files into the current directory, where they are
+gitignored.  For a clean scratch dir, pass ~--data-dir /tmp/ezpz-scratch~ on the
+~cargo run~ line.
 
 ** Trying it out
 
