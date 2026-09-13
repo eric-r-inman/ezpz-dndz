@@ -3,10 +3,12 @@
 
 * Upcoming
 ** Added
-1. ~llms.org~, the instruction set every coding session loads, now sets out how
-   work is sliced into branches and pull requests.  No action needed.
 ** Fixes
 ** Breaking
+* v0.5.0
+** Added
+1. ~llms.org~, the instruction set every coding session loads, now sets out how
+   work is sliced into branches and pull requests.  No action needed.
 * v0.4.0
 ** Fixes
 1. The cross-compiled release binaries build again, having failed since v0.2.0.
