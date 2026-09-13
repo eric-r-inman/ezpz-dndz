@@ -34,6 +34,24 @@ most payloads as opaque JSON so the frontend owned those schemas outright;
 normalization means future Elm wire changes to persisted shapes need a matching
 server migration.
 
+* DONE Finish the compliance sync against rust-template v0.122.0
+
+The structural checker and the diff from the previously recorded revision
+bounded the work.  The pin now names the current template revision in both
+lockfiles, which retired the local cross-build source wrapper with it, and
+~llms.org~ carries the template's guidance on writing a summary.
+
+The judgment half was the review gate.  The template retires the Claude Code
+Stop hook, the script it execs, and the ~template-compliance~ subagent
+definition, on the grounds that a review at the end of every turn judges work
+that is still being written.  The subagent went, since the gate binary now runs
+its own review and nothing else invoked it.  The hook stayed, at the operator's
+direction: a review that runs unasked is the one that catches a contradiction
+while the change is still in hand, and per-turn batches are what keep each pass
+cheap.  ~rust-template.json~ declares that one deviation so the checker reports
+it as chosen.  The on-demand reviewer the foundation exposes is wired up beside
+it, reached through a ~just~ recipe, for anyone working without that gate.
+
 * TODO Migrate the frontend off modal dialogs
 
 External review asked for a UI that never hides the encounter queue behind a
@@ -73,7 +91,7 @@ Superseded by the drawer becoming a stack: every drawer panel is a ~Surface~
 variant in ~model.drawer~ now, and the runtime reconciler is gone with the
 one-panel-at-a-time invariant it enforced.
 
-* TODO Drop the cross-build source wrapper once the foundation keeps the source
+* DONE Drop the cross-build source wrapper once the foundation keeps the source
 
 Each variant helper in ~rust-template~ builds its crane arguments as ~commonArgs
 // {src = craneLib.cleanCargoSource self; ...}~, so the source a project passes
@@ -86,9 +104,10 @@ The fix belongs upstream, where the helpers should read ~commonArgs.src or
 (craneLib.cleanCargoSource self)~ rather than overwriting it — every downstream
 project that filters its source meets the same wall, and =CONTRIBUTING.org= says
 these helpers need no per-crate configuration, which the local wrapper makes
-untrue.  rust-template carries that shape from v0.121.0, so the wrapper comes
-out on the ~foundation~ bump that reaches it, alongside
-[[*Drop the cross-build environment wiring once the foundation supplies it]].
+untrue.  rust-template carries that shape from v0.121.0, and the ~foundation~
+bump to it took the wrapper out.  Its sibling
+[[*Drop the cross-build environment wiring once the foundation supplies it]] still
+stands: that bump fixed the source and none of the rest.
 
 * TODO Drop the cross-build environment wiring once the foundation supplies it
 

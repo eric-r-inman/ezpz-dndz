@@ -342,40 +342,32 @@ automatically discovers credentials at runtime without extra configuration.
 
 See [[file:docs/systemd.org][docs/systemd.org]] for the full pattern and how to add new secrets.
 
-* Code-review Stop hook
+* Code review
 
-Claude Code sessions in this project run a deterministic code-review gate: the
-Stop hook at =.claude/hooks/review-stop.sh= blocks a turn from ending while
-un-reviewed changes sit in the working tree, first until the workspace passes
-the clippy gate CI enforces (for Rust changes), then until the
-=template-compliance= subagent has run and reported =COMPLIANCE: PASS=.  Plan
-mode, being read-only, never triggers it.
+Every change set is judged against this document and ~llms.org~ before it lands.
+A Claude Code session meets that on its own: the Stop hook at
+=.claude/hooks/review-stop.sh= runs the gate the foundation ships, and the gate
+blocks the turn from ending while the tree holds anything the review has not
+cleared.  Where the change touches Rust it runs the clippy gate CI enforces
+first, so a lint failure never reaches the reviewer.
 
-The gate itself is the =rust-template-review-stop= binary; the hook script only
-execs it.  The binary comes from the template repository's flake — the
-=foundation= input — through this project's dev shell, so inside =nix develop=
-(or with direnv) it is already on =PATH=, and a fix to the gate reaches this
-project on a =foundation= bump rather than a file sync.  Its behaviour and tests
-live in that repository's =review-stop= crate; do not fork the logic into the
-hook script — a hook that stops delegating to the binary is flagged by
-compliance.
-
-*Running an LLM coding agent outside the Nix dev shell* — Claude Code today, and
-any other agent that honours the same hook — requires you to put
-=rust-template-review-stop= on =PATH= yourself.  The hook does not fetch or
-build it, and how it gets there is not something this project can dictate.  Two
-routes that work: the template repository's GitHub releases carry a binary for
-every mainstream target, and cargo can build the same version the flake pins:
+Anyone can ask for the same review directly:
 
 #+begin_src sh :results none :exports code
-cargo install --git https://github.com/LoganBarnett/rust-template.git \
-  --tag v<version> rust-template-review-stop
+just review
 #+end_src
 
-Whichever route, keep it at the same version as the =foundation= input so the
-gate and the reviewer agent stay in step.  When the binary is missing, the exec
-fails and Claude Code reports the hook error on every Stop rather than silently
-skipping the gate — the loud failure is deliberate.
+Both judge only what has moved since they last looked, so a second pass after
+addressing a finding costs a fraction of the first.  Both drive a nested
+assistant session, so both want that assistant's CLI on ~PATH~ beside the
+binaries the dev shell supplies.
+
+The template retires the Stop hook, on the grounds that a review at the end of
+every turn judges work that is still being written.  This project keeps it.  A
+review that runs unasked is the one that catches a contradiction while the
+change is still in hand, and reviewing every turn is what keeps each pass small
+enough to be cheap.  ~rust-template.json~ declares the deviation so the
+compliance checker reports it as chosen rather than missed.
 
 * Logging levels
 

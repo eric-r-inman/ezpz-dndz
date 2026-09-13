@@ -3,6 +3,11 @@
 
 * Upcoming
 ** Added
+1. ~llms.org~ sets out what a summary owes its reader.  No action needed.
+2. The build tooling tracks the current revision of the template this project is
+   generated from.  No action needed.
+3. Code review runs on its own when an assistant turn ends, and on demand
+   through ~just review~ for anyone else.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
