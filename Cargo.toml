@@ -124,7 +124,7 @@ tower-sessions = { version = "0.15", features = ["memory-store"] }
 # stack.  `-native-roots` (over the alias's webpki default) also puts
 # Postgres TLS on the OS trust store, matching foundation's reqwest,
 # so a self-hosted CA is trusted by both halves of the process.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
 
 # Shared library
 ezpz-dndz-lib = { path = "crates/lib" }
