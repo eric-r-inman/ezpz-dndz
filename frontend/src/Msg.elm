@@ -714,12 +714,14 @@ type Msg
     | DuplicateModeSet DuplicateMode
     | DuplicateApply
     | DuplicateApplySelected
+    | DuplicateLogToggle
       -- Replace.  Swaps a creature for a compendium pick,
       -- preserving its queue position and initiative.
     | ReplaceSearchChanged String
     | ReplacePick String
     | ReplaceApply
     | ReplaceApplySelected
+    | ReplaceLogToggle
       -- Status.  The toggles edit a draft; the Apply buttons add
       -- it to the target or the selection.
     | StatusOpenFor String

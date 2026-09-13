@@ -1332,7 +1332,7 @@ type alias Model =
     , flashedRollSeq : Int
 
     -- Log rows the GM has unfolded to read in full, by the row
-    -- key each log builds.  One set for both logs, since a row
+    -- key each log builds.  One set for every log, since a row
     -- has one identity wherever it renders.
     , expandedLogRows : Set String
 
@@ -1370,6 +1370,15 @@ type alias Model =
     -- newest first, capped in their Update modules.
     , duplicateLog : List Ui.Duplicate.DuplicateLogEntry
     , replaceLog : List Ui.Replace.ReplaceLogEntry
+
+    -- Each starts folded and unfolds when an application lands,
+    -- as the condition log does.
+    , duplicateLogOpen : Bool
+    , replaceLogOpen : Bool
+
+    -- Hand out the stable fold key each entry type documents.
+    , nextDuplicateLogSeq : Int
+    , nextReplaceLogSeq : Int
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
     , xpScope : XpScope

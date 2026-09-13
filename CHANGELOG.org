@@ -5,6 +5,9 @@
 ** Added
 1. A Condition/Effect log row reads as one sentence, clipping with an ellipsis
    when folded.  No action needed.
+2. The Duplicate and Replace editors keep a log of recent applications that
+   opens on each apply, as the Manage HP and Condition/Effect logs do.  No
+   action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

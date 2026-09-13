@@ -1,12 +1,12 @@
-module View.LogRow exposing (foldToggle, openable)
+module View.LogRow exposing (foldToggle, openable, sentence)
 
-{-| The parts a log row in either panel shares.
+{-| The parts the editors' log rows share.
 
-@docs foldToggle, openable
+@docs foldToggle, openable, sentence
 
 -}
 
-import Html exposing (Html, button, text)
+import Html exposing (Html, button, li, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
@@ -65,3 +65,38 @@ openable base expanded =
 
     else
         base
+
+
+{-| A row that reads as one sentence, clipped to a single line
+until the GM unfolds it. `trail` sits beside the text either way.
+-}
+sentence :
+    { key : String
+    , expanded : Bool
+    , kind : String
+    , names : String
+    , detail : String
+    , trail : List (Html Msg)
+    }
+    -> Html Msg
+sentence row =
+    li
+        [ class
+            (if row.expanded then
+                "hp-change__log-entry hp-change__log-entry--sentence hp-change__log-entry--open"
+
+             else
+                "hp-change__log-entry hp-change__log-entry--sentence"
+            )
+        ]
+        (foldToggle row.key row.expanded
+            :: span [ class (openable "hp-change__log-text" row.expanded) ]
+                [ span [ class (openable "hp-change__log-kind" row.expanded ++ " hp-change__log-kind--cond") ]
+                    [ text row.kind ]
+                , text " "
+                , span [ class (openable "hp-change__log-target" row.expanded) ] [ text row.names ]
+                , text " "
+                , span [ class (openable "hp-change__log-trans" row.expanded) ] [ text row.detail ]
+                ]
+            :: row.trail
+        )

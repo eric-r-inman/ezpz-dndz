@@ -1,23 +1,25 @@
 module View.Inline.Replace exposing (view)
 
-{-| Replace editor body: a compendium search + picker list (the
-Quick Add row styling), the two apply buttons, and the newest
-log row. The swap preserves each replaced creature's queue
-position and initiative.
+{-| Replace editor body. A swap preserves each replaced
+creature's queue position and initiative.
 -}
 
 import Compendium
 import Html exposing (Html, div, input, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, class, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
+import Html.Keyed
 import Msg exposing (Msg(..))
+import Set exposing (Set)
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Replace exposing (ReplaceLogEntry, ReplaceUi)
 import View.Inline.ApplyButton as ApplyButton
+import View.Inline.Field as Field
+import View.LogRow
 
 
-view : CompendiumDb -> Int -> List ReplaceLogEntry -> ReplaceUi -> Html Msg
-view db selectedCount log ui =
+view : CompendiumDb -> Int -> { open : Bool, expanded : Set String } -> List ReplaceLogEntry -> ReplaceUi -> Html Msg
+view db selectedCount logOpts log ui =
     div [ class "editor-body" ]
         [ searchRow ui
         , pickerList db ui
@@ -50,7 +52,7 @@ view db selectedCount log ui =
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
                 }
             ]
-        , latestLog log
+        , logSection logOpts log
         ]
 
 
@@ -131,20 +133,42 @@ crLabel raw =
         "CR " ++ String.trim raw
 
 
-latestLog : List ReplaceLogEntry -> Html Msg
-latestLog entries =
-    case entries of
-        newest :: _ ->
-            ul [ class "hp-change__log-list hp-change__log-list--latest" ]
-                [ li [ class "hp-change__log-entry hp-change__log-entry--wide" ]
-                    [ span [ class "hp-change__log-kind hp-change__log-kind--cond" ]
-                        [ text "Replace" ]
-                    , span [ class "hp-change__log-target" ]
-                        [ text (String.join ", " newest.olds) ]
-                    , span [ class "hp-change__log-trans" ]
-                        [ text ("→ " ++ String.join ", " newest.news) ]
-                    ]
-                ]
+logSection : { open : Bool, expanded : Set String } -> List ReplaceLogEntry -> Html Msg
+logSection opts entries =
+    div [ class "cond-section" ]
+        (Field.foldHead
+            { open = opts.open
+            , title = "Log (" ++ String.fromInt (List.length entries) ++ ")"
+            , msg = ReplaceLogToggle
+            , trail = []
+            }
+            :: (if not opts.open then
+                    []
 
-        [] ->
-            text ""
+                else if List.isEmpty entries then
+                    [ div [ class "log-empty" ] [ text "Nothing replaced yet." ] ]
+
+                else
+                    [ Html.Keyed.ul [ class "log-list" ]
+                        (List.map (logRow opts.expanded) entries)
+                    ]
+               )
+        )
+
+
+logRow : Set String -> ReplaceLogEntry -> ( String, Html Msg )
+logRow expanded e =
+    let
+        key =
+            "rep-" ++ String.fromInt e.seq
+    in
+    ( key
+    , View.LogRow.sentence
+        { key = key
+        , expanded = Set.member key expanded
+        , kind = "Replace"
+        , names = String.join ", " e.olds
+        , detail = "→ " ++ String.join ", " e.news
+        , trail = []
+        }
+    )

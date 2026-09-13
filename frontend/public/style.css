@@ -8761,13 +8761,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-accent);
 }
 
-/* Log rows whose first column is a real name (a condition, a
-   duplicate flavor) rather than a fixed-width verb — let the
-   column size to its text while keeping the shared 8px gap. */
-.hp-change__log-entry--wide {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
-}
-
 .hp-change__log-entry--flash {
   animation: log-flash 0.9s ease-out 1;
 }
@@ -8797,16 +8790,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-1) var(--space-2);
 }
 
-/* A condition row reads as one sentence rather than a set of
-   columns, so its parts share a single box.  Folded, that box
-   clips once at its end; unfolded, it wraps inside a row that
-   still holds the undo beside it.  Column tracks would give each
-   part its own ellipsis and stretch the gaps between them.
+/* A sentence row's parts share a single box rather than a set of
+   columns.  Folded, that box clips once at its end; unfolded, it
+   wraps inside a row that still holds any trailing control beside
+   it.  Column tracks would give each part its own ellipsis and
+   stretch the gaps between them.
 
    This block has to stay below `.hp-change__log-entry--open`:
    an unfolded row carries both classes, and the `nowrap` here
    wins over that rule's `wrap` only on document order. */
-.hp-change__log-entry--cond {
+.hp-change__log-entry--sentence {
   display: flex;
   flex-wrap: nowrap;
   align-items: baseline;
