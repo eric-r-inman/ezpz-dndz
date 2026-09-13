@@ -4,6 +4,7 @@
 * Upcoming
 ** Added
 ** Fixes
+1. The documented long-form run commands work as written.  No action needed.
 ** Breaking
 ** Maintenance
 1. An unused HTTP middleware dependency is gone from the workspace manifest.  No

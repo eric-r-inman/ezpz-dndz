@@ -57,8 +57,7 @@ nix develop --command \
   cargo run -p ezpz-dndz-server -- \
     --listen 127.0.0.1:4040 \
     --data-dir /tmp/auth-scratch \
-    --base-url http://127.0.0.1:4040 \
-    --frontend-path frontend/public
+    --base-url http://127.0.0.1:4040
 #+end_src
 
 In another shell:
