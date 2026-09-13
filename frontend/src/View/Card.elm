@@ -1262,7 +1262,7 @@ this is the one-click "both at once" shortcut.
 statusAndConditionOpener : Creature -> Html Msg
 statusAndConditionOpener creature =
     button
-        [ class "action-btn action-btn--icon"
+        [ class "action-btn action-btn--icon action-btn--gear"
         , type_ "button"
         , onClick (OpenStatusAndConditionFor creature.name)
         , Tooltips.attr Tooltips.statusAndConditionOpen
@@ -1480,7 +1480,9 @@ statusIcons creature =
                 flyControls
 
             else if name == "concen." && not (String.isEmpty creature.concentrationNote) then
-                [ span [ class "status-icon__note" ] [ text creature.concentrationNote ] ]
+                [ span [ class "status-icon__note" ]
+                    [ text ("(" ++ creature.concentrationNote ++ ")") ]
+                ]
 
             else
                 []
