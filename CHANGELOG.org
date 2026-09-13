@@ -13,6 +13,8 @@
 4. A creature card's badge row sits tighter.  No action needed.
 5. The Condition/Effect editor drops its Delete button; a condition comes off a
    creature through the ✕ on its chip.  No action needed.
+6. A downed creature's death saves sit along the top of its card, beside the
+   DOWN badge, rather than in a column at the card's edge.  No action needed.
 ** Fixes
 1. A creature card's gear button is outlined like the toggles beside it.  No
    action needed.
