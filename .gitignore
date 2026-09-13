@@ -78,15 +78,19 @@ dice-history.json
 # the source-side `frontend/src/Compendium/` module directory.
 /compendium/
 
-# Claude Code project config (Stop hook, compliance subagent, shared settings)
-# is part of the project and must be checked in.  A user-global or system-wide
-# ignore (e.g. /etc/gitignore) often excludes .claude/ wholesale; re-include
-# it.  Personal overrides go in .claude/settings.local.json, which Claude Code
-# itself treats as the local-only file — that one stays ignored below.
+# Claude Code project config is part of the project and must be checked in.
+# A user-global or system-wide ignore (e.g. /etc/gitignore) often excludes
+# .claude/ wholesale; re-include it.  Personal overrides go in
+# .claude/settings.local.json, which Claude Code itself treats as the
+# local-only file — that one stays ignored below.
 !.claude/
 
 # Per-user Claude Code overrides (the shared .claude/settings.json IS checked in).
 .claude/settings.local.json
+
+# Verdict cache the code review keeps so a re-run judges only what moved.  It
+# names working-tree revisions on one machine, so it is local by nature.
+review.json*
 
 # Claude Code session memory — must never be committed even if a session
 # accidentally writes there instead of ~/.claude/projects/.

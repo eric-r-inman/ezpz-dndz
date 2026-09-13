@@ -136,6 +136,19 @@ dependabot-combine *args:
 dependency-bump *args:
     dependency-bump {{args}}
 
+# Review the current change set against this project's conventions.
+#
+# Run it when a piece of work is done, which is the point the branch is ready
+# to become a pull request.  It judges only what it has not judged already, so
+# addressing one file does not re-review the rest, and it reads the same
+# convention documents a contributor does.
+#
+# Exit code 1 means the review ran and found something; 2 means it could not
+# run at all.  `just` calls either a failed recipe, so read the code: a 1 with
+# findings printed above it is the tool working.
+review *args:
+    rust-template-review-cli {{args}}
+
 # Reclaim disk from stale build artifacts.
 #
 # Cargo names every artifact after a hash of its inputs and never

@@ -249,32 +249,13 @@
           then foundation.lib.xwinSdk {inherit pkgs;}
           else null;
       };
-      # Every variant helper sets `src = craneLib.cleanCargoSource
-      # self` over whatever the caller passed, which drops this
-      # workspace's SRD creature bundle and fails the build on the
-      # `include_str!` that embeds it.  Put the filtered source back
-      # on the finished derivation: the deps-only build crane runs
-      # first uses a stub source and needs nothing from the bundle,
-      # so only the package build has to see it.  The wrapping
-      # happens once here because the checks below build these same
-      # derivations and would otherwise get the ones that cannot
-      # compile.  This comes out when the foundation helpers respect
-      # the caller's `src`; see the entry in tasks.org.
-      withProjectSource =
-        nixpkgs.lib.mapAttrs
-        (_: p: p.overrideAttrs (_: {inherit (commonArgs) src;}));
-      muslVariants = withProjectSource muslPackages;
-      gnuPortableVariants = withProjectSource gnuPortablePackages;
-      darwinVariants = withProjectSource darwinCrossPackages;
-      windowsVariants = withProjectSource windowsCrossPackages;
-      windowsMsvcVariants = withProjectSource windowsMsvcCrossPackages;
       packages =
         rustPackages.packages
-        // muslVariants
-        // gnuPortableVariants
-        // darwinVariants
-        // windowsVariants
-        // windowsMsvcVariants
+        // muslPackages
+        // gnuPortablePackages
+        // darwinCrossPackages
+        // windowsCrossPackages
+        // windowsMsvcCrossPackages
         // {
           # Whole-workspace convenience build.  It compiles the server
           # crate too, whose rust_embed Frontend needs an asset dir at
@@ -294,7 +275,7 @@
       aarch64DarwinPackages =
         nixpkgs.lib.filterAttrs
         (name: _: nixpkgs.lib.hasSuffix "-aarch64-darwin" name)
-        darwinVariants;
+        darwinCrossPackages;
       # The x86_64 subset of the Windows cross outputs, smoke-tested
       # under wine.  Non-empty on every host (the Windows helper is
       # host-agnostic), so the wine check below is gated on
@@ -303,7 +284,7 @@
       windowsX86Packages =
         nixpkgs.lib.filterAttrs
         (name: _: nixpkgs.lib.hasSuffix "-x86_64-windows" name)
-        windowsVariants;
+        windowsCrossPackages;
     in {
       inherit packages;
       inherit (rustPackages) apps;
@@ -340,6 +321,11 @@
             rust
             pkgs.cargo-sweep
             pkgs.jq
+            # macOS resolves a bare `git` to an Xcode shim that fails
+            # unless the command line tools are selected, so a shell
+            # without git here leaves every tool that shells out to it
+            # reporting no repository rather than an error.
+            pkgs.git
             # Elm toolchain — frontend lives in frontend/ and is not part
             # of any Cargo build.
             pkgs.elmPackages.elm
@@ -371,8 +357,11 @@
             # locally as `just dependency-bump` to bump and compose
             # changelog entries in the working tree for review.
             foundation.packages.${system}.dependency-bump
-            # Blocks a Claude Code turn from ending on un-reviewed changes
-            # until the template-compliance review passes.
+            # Reviews a finished change set against this project's
+            # conventions, which is what `just review` runs.
+            foundation.packages.${system}.review-cli
+            # The same review as a Claude Code Stop hook, which is what
+            # .claude/hooks/review-stop.sh execs.
             foundation.packages.${system}.review-stop
             # ABI baseline check; provided so `cargo semver-checks` can
             # run locally.  `doCheck = false` skips upstream's
@@ -384,39 +373,46 @@
           ];
           shellHook = ''
             ${foundation.lib.cargoHuskyHookSnippet pkgs}
-            echo "ezpz-dndz development environment"
-            echo ""
-            echo "Available Cargo packages (use 'cargo build -p <name>'):"
-            cargo metadata --no-deps --format-version 1 2>/dev/null | \
-              jq --raw-output '.packages[].name' | \
-              sort | \
-              sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
+            # The greeting is a diagnostic rather than output.  A tool
+            # that runs `nix develop --command ...` and reads stdout
+            # would otherwise be handed this banner ahead of whatever it
+            # asked for, and the code-review Stop hook is one such
+            # reader whose protocol is stdout.
+            {
+              echo "ezpz-dndz development environment"
+              echo ""
+              echo "Available Cargo packages (use 'cargo build -p <name>'):"
+              cargo metadata --no-deps --format-version 1 2>/dev/null | \
+                jq --raw-output '.packages[].name' | \
+                sort | \
+                sed 's/^/  • /' || echo "  Run 'cargo init' to get started"
 
-            echo ""
-            echo "Elm frontend (frontend/):"
-            echo "  Build:   cd frontend && elm make src/Main.elm --output public/elm.js"
-            echo "  Format:  treefmt"
-            echo "  After changing elm.json dependency versions, regenerate Nix files:"
-            echo "    cd frontend"
-            echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
-            echo "    elm2nix snapshot"
-            echo "    git add elm-srcs.nix registry.dat && git commit"
+              echo ""
+              echo "Elm frontend (frontend/):"
+              echo "  Build:   cd frontend && elm make src/Main.elm --output public/elm.js"
+              echo "  Format:  treefmt"
+              echo "  After changing elm.json dependency versions, regenerate Nix files:"
+              echo "    cd frontend"
+              echo "    elm2nix convert 2>/dev/null > elm-srcs.nix"
+              echo "    elm2nix snapshot"
+              echo "    git add elm-srcs.nix registry.dat && git commit"
 
-            # Nudge when the build cache is overdue for a sweep.
-            # Cargo never garbage-collects superseded artifacts, so
-            # target/ grows without bound (8.5 GB after three
-            # months here, 97% of it stale duplicates).  This only
-            # stats a marker file — measuring the tree would add
-            # seconds to every direnv-triggered shell entry — and
-            # never deletes anything on its own; `just sweep` is
-            # always the explicit action.
-            if [ -d target ]; then
-              if [ ! -e target/.last-sweep ] \
-                || [ -n "$(find target/.last-sweep -mtime +14 2>/dev/null)" ]; then
-                echo ""
-                echo "  ⚠ Build cache not swept in over 14 days — run 'just sweep'."
+              # Nudge when the build cache is overdue for a sweep.
+              # Cargo never garbage-collects superseded artifacts, so
+              # target/ grows without bound (8.5 GB after three
+              # months here, 97% of it stale duplicates).  This only
+              # stats a marker file — measuring the tree would add
+              # seconds to every direnv-triggered shell entry — and
+              # never deletes anything on its own; `just sweep` is
+              # always the explicit action.
+              if [ -d target ]; then
+                if [ ! -e target/.last-sweep ] \
+                  || [ -n "$(find target/.last-sweep -mtime +14 2>/dev/null)" ]; then
+                  echo ""
+                  echo "  ⚠ Build cache not swept in over 14 days — run 'just sweep'."
+                fi
               fi
-            fi
+            } >&2
           '';
           # A runtime marker identifying this as the project's default
           # dev shell.  A compliance check reads it back with `nix eval`
