@@ -69,7 +69,7 @@ axum = "0.8"
 tokio = { version = "1.52", features = ["full"] }
 tokio-listener = { version = "0.5", features = ["axum08"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["trace", "cors"] }
+tower-http = { version = "0.7", features = ["trace", "cors"] }
 
 # Embeds the compiled Elm frontend into the server binary: nix builds
 # hand the asset directory to the server crate's build.rs and release
