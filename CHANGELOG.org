@@ -6,6 +6,10 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. An unused HTTP middleware dependency is gone from the workspace manifest.  No
+   action needed.
+2. The build cache action in CI moves to its current major version.  No action
+   needed.
 ** Security
 * v0.7.0
 ** Added

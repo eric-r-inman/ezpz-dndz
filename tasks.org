@@ -52,6 +52,27 @@ cheap.  ~rust-template.json~ declares that one deviation so the checker reports
 it as chosen.  The on-demand reviewer the foundation exposes is wired up beside
 it, reached through a ~just~ recipe, for anyone working without that gate.
 
+* TODO Take sqlx 0.9, and the toolchain and hashing bumps it drags along
+
+The database layer sits on sqlx 0.8.  Moving to 0.9 is not a bump but a
+migration, and it does not arrive alone.
+
+sqlx 0.9 needs a newer rustc than the flake pins, and the toolchain input has
+run well ahead of what this workspace builds with, so taking it is a compiler
+upgrade for everything at once.  Against that toolchain the server crate does
+not compile: borrowed data escapes the functions that build queries, and 0.9
+refuses a dynamically built SQL string without an audit at the call site.  Both
+are real signals about the query-building code rather than mechanical breakage.
+
+The ~sha2~ bump belongs to the same move.  On its own it changes what a digest
+returns, so the hex formatting stops compiling, and it leaves two copies of the
+crate in the tree while sqlx 0.8 holds the older one.  Taking it with sqlx is
+what collapses that back to one.
+
+Dependabot has an open pull request for each half; they stay open as the
+reminder.  This is a piece of work with its own branch, not something to fold
+into a dependency sweep.
+
 * TODO Migrate the frontend off modal dialogs
 
 External review asked for a UI that never hides the encounter queue behind a
