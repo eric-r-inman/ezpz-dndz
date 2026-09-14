@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. The bundled lore-group write-ups no longer ship as a separate document.  No
+   action needed.
 ** Security
 * v0.10.0
 ** Added

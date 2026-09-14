@@ -106,6 +106,10 @@ docs/SCRATCH.md
 docs/SRD_CC_v5.2.1.pdf
 docs/SRD_CC_v5.2.1.textClipping
 
+# The maintainer's working notes on the bundled lore groups, with the reasoning
+# behind each composition.  Kept locally; not part of the project.
+docs/LORE_GROUPS.org
+
 # Local screen recordings the operator captured for their own reference.
 # Live in a `recordings/` folder at the repo root; not part of the project.
 /recordings/
