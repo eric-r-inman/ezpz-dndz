@@ -9112,6 +9112,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   cursor: pointer;
 }
 
+/* The condition editor's With toggle keeps to the Note row's right
+   edge, clear of the note it shares the row with. */
+.cond-companions-toggle {
+  margin-left: auto;
+}
+
 .cond-radio__label {
   white-space: nowrap;
 }

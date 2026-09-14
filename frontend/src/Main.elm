@@ -1388,6 +1388,18 @@ updateInner msg model =
         ConditionNoteChanged text ->
             Update.Condition.noteChanged text model
 
+        ConditionCompanionsToggle ->
+            Update.Condition.companionsToggle model
+
+        ConditionCompanionDraftChanged text ->
+            Update.Condition.companionDraftChanged text model
+
+        ConditionCompanionAdd ->
+            Update.Condition.companionAdd model
+
+        ConditionCompanionRemove index ->
+            Update.Condition.companionRemove index model
+
         ConditionDurationKindSet kind ->
             Update.Condition.durationKindSet kind model
 

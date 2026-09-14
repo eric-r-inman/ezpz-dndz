@@ -762,6 +762,12 @@ type Msg
     | ConditionPickStandard String
     | ConditionCustomNameChanged String
     | ConditionNoteChanged String
+      -- Further conditions applied with the named one and ending
+      -- with it.
+    | ConditionCompanionsToggle
+    | ConditionCompanionDraftChanged String
+    | ConditionCompanionAdd
+    | ConditionCompanionRemove Int
     | ConditionDurationKindSet DurationKind
       -- 1-Minute preset radio that sits alongside Countdown.
       -- Selecting it sets durationKind=Countdown, turns=10,
