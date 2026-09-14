@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.10.0
+** Added
 1. A Condition/Effect log row reads as one sentence, clipping with an ellipsis
    when folded.  No action needed.
 2. The Duplicate and Replace editors keep a log of recent applications that
@@ -26,9 +32,6 @@
 ** Fixes
 1. A creature card's gear button is outlined like the toggles beside it.  No
    action needed.
-** Breaking
-** Maintenance
-** Security
 * v0.9.0
 ** Maintenance
 1. Bump lru-slab from 0.1.2 to 0.1.3
