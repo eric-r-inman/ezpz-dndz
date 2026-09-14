@@ -33,8 +33,8 @@ view header enc db current =
                 [ class "xp-filter__menu"
                 , attribute "role" "listbox"
                 ]
-                [ item current ScopeXpEnemiesAndNpcs "Enemies & NPCs"
-                , item current ScopeXpEnemiesOnly "Enemies Only"
+                [ item current ScopeXpEnemiesOnly "Enemies Only"
+                , item current ScopeXpEnemiesAndNpcs "Enemies & NPCs"
                 , item current ScopeXpNpcsOnly "NPCs Only"
                 , item current ScopeXpSelectedOnly "Selected Only"
                 ]
