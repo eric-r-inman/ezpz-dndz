@@ -1,11 +1,12 @@
 module Ui.Condition.Bundled exposing
-    ( defaults
+    ( defaults, retiredNames
     , categories
     , categoryPlayer, categorySpell, categoryMonster, categoryItem, categoryEnvironment
     )
 
 {-| Bundled Add-Condition presets seeded into a fresh visitor's
-`Model.conditionPresets` on the very first boot.
+`Model.conditionPresets` on the very first boot, and laid over a
+stored copy by the Load menu's "Restore bundled presets" item.
 
 The Load dropdown in the Add-Condition modal groups these into
 five collapsible categories below the user's own saves:
@@ -18,14 +19,19 @@ Seeding fires from `Main.init` when the `localConditionPresets`
 boot flag is `Nothing` — i.e. no `localStorage.conditionPresets`
 key exists. Once any change writes to that key (delete a
 bundled, save a new one, edit one), the flag is `Just _` on
-every subsequent boot and seeding does not re-fire — so a GM
-who deletes the bundled Hold Person doesn't get it back.
+every subsequent boot and seeding does not re-fire, so a stored
+copy keeps the settings it was seeded with, shadowing the
+shipped preset of its name, until the GM restores the bundled
+presets.
 
-DC values are best-defaults from SRD 5.2.1 stat blocks; the GM
-adjusts per cast (Stunning Strike's DC scales with Monk Wisdom,
-dragon Frightful Presence by CR, etc.).
+Each preset follows the 2024 rules (SRD 5.2.1 where the effect is
+in it) as far as the editor can express them; where it cannot,
+the note carries the reminder and `docs/CONDITION_PRESETS.org`
+records the gap. DC values are best-defaults; the GM adjusts per
+cast (Stunning Strike's DC scales with Monk Wisdom, a dragon's
+Fear with its CR, and so on).
 
-@docs defaults
+@docs defaults, retiredNames
 @docs categories
 @docs categoryPlayer, categorySpell, categoryMonster, categoryItem, categoryEnvironment
 
@@ -114,7 +120,7 @@ defaults =
         , ( "Disarming Attack (Battle Master)", disarmingAttack )
         , ( "Pushing Attack (Battle Master)", pushingAttack )
         , ( "Patient Defense (Monk)", patientDefense )
-        , ( "Branding Smite (Paladin)", brandingSmite )
+        , ( "Shining Smite (Paladin)", shiningSmite )
         , ( "Pass Without Trace (Druid/Ranger)", passWithoutTrace )
         , ( "Ensnaring Strike (Ranger)", ensnaringStrike )
         , ( "Sneak Attack (Rogue)", sneakAttack )
@@ -138,7 +144,7 @@ defaults =
         , ( "Slow", slow )
         , ( "Web", web )
         , ( "Entangle", entangle )
-        , ( "Evard's Black Tentacles", blackTentacles )
+        , ( "Black Tentacles", blackTentacles )
         , ( "Faerie Fire", faerieFire )
         , ( "Blindness", blindness )
         , ( "Banishment", banishment )
@@ -149,8 +155,8 @@ defaults =
         , ( "Petrifying Gaze (Medusa)", petrifyingGaze )
         , ( "Mind Blast (Mind Flayer)", mindBlast )
         , ( "Frightful Presence (Dragon)", frightfulPresence )
-        , ( "Horrifying Visage (Ghost)", horrifyingVisage )
-        , ( "Paralyzing Touch (Ghoul)", paralyzingTouch )
+        , ( "Horrific Visage (Ghost)", horrificVisage )
+        , ( "Claw (Ghoul)", ghoulClaw )
         , ( "Vampire Charm", vampireCharm )
         , ( "Luring Song (Harpy)", luringSong )
         , ( "Web (Giant Spider)", giantSpiderWeb )
@@ -179,8 +185,31 @@ defaults =
         , ( "On Fire", onFire )
         , ( "Extreme Cold", extremeCold )
         , ( "Extreme Heat", extremeHeat )
-        , ( "Pit Trap (Restrained)", pitTrap )
+        , ( "Pit Trap", pitTrap )
         ]
+
+
+{-| Bundled names no longer shipped, which a restore drops from a
+stored copy so the Load menu doesn't offer both an old entry and
+its replacement.
+-}
+retiredNames : List String
+retiredNames =
+    [ -- The 2024 rules replace it with Shining Smite.
+      "Branding Smite (Paladin)"
+
+    -- The SRD drops the wizard's name from the spell.
+    , "Evard's Black Tentacles"
+
+    -- The SRD ghost's action is Horrific Visage.
+    , "Horrifying Visage (Ghost)"
+
+    -- Paralyzing Touch is the lich's; the ghoul's is its Claw.
+    , "Paralyzing Touch (Ghoul)"
+
+    -- A pit leaves its victim Prone, not Restrained.
+    , "Pit Trap (Restrained)"
+    ]
 
 
 
@@ -208,6 +237,19 @@ emptySave =
 save : String -> Int -> AutoRollMode -> SaveToEndUi
 save ability dc autoRoll =
     { emptySave | ability = ability, dc = dc, dcText = String.fromInt dc, autoRoll = autoRoll }
+
+
+{-| One minute: the ten rounds an effect lasting "up to 1 minute"
+runs, ending as the bearer's tenth turn ends.
+-}
+lastsOneMinute : ConditionPreset -> ConditionPreset
+lastsOneMinute preset =
+    { preset
+        | durationKind = DurKindCountdown
+        , countdownTurnsText = "10"
+        , countdownTurns = 10
+        , countdownPhase = AtEnd
+    }
 
 
 {-| Bare-bones preset with `Manual` duration and no save. Each
@@ -257,19 +299,6 @@ environmentBase =
 -- ── PLAYER CLASSES ───────────────────────────────────────────────────────
 
 
-heroism : ConditionPreset
-heroism =
-    { playerBase
-        | customName = "Heroism"
-        , note = "+mod temp HP/turn"
-        , durationKind = DurKindCountdown
-        , countdownTurnsText = "10"
-        , countdownTurns = 10
-        , countdownPhase = AtEnd
-        , companions = [ "Immunity: Frightened" ]
-    }
-
-
 stunningStrike : ConditionPreset
 stunningStrike =
     { playerBase
@@ -300,55 +329,56 @@ menacingAttack =
 
 wrathfulSmite : ConditionPreset
 wrathfulSmite =
-    { playerBase
-        | conditionName = "Frightened"
-        , note = "Wrath"
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Frightened"
+            , note = "Wrath"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        }
 
 
 searingSmite : ConditionPreset
 searingSmite =
-    { playerBase
-        | customName = "Searing Smite"
-        , note = "1d6 fire"
-        , saveToEnd = Just (save "CON" 13 AutoRollAtBegin)
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Searing Smite"
+            , note = "1d6 fire, then save"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtBegin)
+        }
 
 
 turnUndead : ConditionPreset
 turnUndead =
-    { playerBase
-        | conditionName = "Frightened"
-        , note = "Turned"
-        , durationKind = DurKindCountdown
-        , countdownTurnsText = "10"
-        , countdownTurns = 10
-        , countdownPhase = AtEnd
-    }
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Frightened"
+            , note = "ends on any damage"
+            , companions = [ "Incapacitated" ]
+        }
 
 
 bardicInspiration : ConditionPreset
 bardicInspiration =
     { playerBase
         | customName = "Inspired +d6"
-        , note = "Bard"
+        , note = "on failed D20 Test"
     }
 
 
 bless : ConditionPreset
 bless =
-    { playerBase
-        | customName = "Bless +d4"
-        , note = "Cleric"
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Bless +d4"
+            , note = "atk & saves, conc"
+        }
 
 
 bardicInspirationD8 : ConditionPreset
 bardicInspirationD8 =
     { playerBase
         | customName = "Inspired +d8"
-        , note = "Bard"
+        , note = "on failed D20 Test"
     }
 
 
@@ -356,7 +386,7 @@ hex : ConditionPreset
 hex =
     { playerBase
         | customName = "Hexed"
-        , note = "dis abil"
+        , note = "+1d6, dis checks"
     }
 
 
@@ -364,7 +394,7 @@ huntersMark : ConditionPreset
 huntersMark =
     { playerBase
         | customName = "Marked"
-        , note = "+d6 dmg"
+        , note = "+d6 Force dmg, conc"
     }
 
 
@@ -372,7 +402,7 @@ goadingAttack : ConditionPreset
 goadingAttack =
     { playerBase
         | customName = "Goaded"
-        , note = "dis atk"
+        , note = "Dis atk vs others"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -381,9 +411,10 @@ goadingAttack =
 staggeringSmite : ConditionPreset
 staggeringSmite =
     { playerBase
-        | customName = "Staggered"
-        , note = "dis atk"
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        | conditionName = "Stunned"
+        , note = "Staggering Smite"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
     }
 
 
@@ -391,7 +422,7 @@ bardicInspirationD10 : ConditionPreset
 bardicInspirationD10 =
     { playerBase
         | customName = "Inspired +d10"
-        , note = "Bard"
+        , note = "on failed D20 Test"
     }
 
 
@@ -399,7 +430,7 @@ rage : ConditionPreset
 rage =
     { playerBase
         | customName = "Raging"
-        , note = "+dmg, resist"
+        , note = "Res B/P/S, Adv STR"
     }
 
 
@@ -407,7 +438,7 @@ recklessAttack : ConditionPreset
 recklessAttack =
     { playerBase
         | customName = "Reckless"
-        , note = "adv↔dis atk"
+        , note = "Adv STR atk & vs it"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtBegin
     }
@@ -425,25 +456,27 @@ viciousMockery =
 
 guidance : ConditionPreset
 guidance =
-    { playerBase
-        | customName = "Guidance"
-        , note = "+d4 chk"
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Guidance"
+            , note = "+d4 one skill, conc"
+        }
 
 
 sanctuary : ConditionPreset
 sanctuary =
-    { playerBase
-        | customName = "Sanctuary"
-        , note = "atkr WIS save"
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Sanctuary"
+            , note = "atkr WIS save"
+        }
 
 
 shieldOfFaith : ConditionPreset
 shieldOfFaith =
     { playerBase
         | customName = "Shield of Faith"
-        , note = "+2 AC"
+        , note = "+2 AC, conc"
     }
 
 
@@ -451,7 +484,7 @@ wildShape : ConditionPreset
 wildShape =
     { playerBase
         | customName = "Wild Shape"
-        , note = "beast form"
+        , note = "THP = Druid level"
     }
 
 
@@ -459,7 +492,7 @@ spikeGrowth : ConditionPreset
 spikeGrowth =
     { playerBase
         | customName = "Spike Growth"
-        , note = "diff terr"
+        , note = "2d4/5ft moved, conc"
     }
 
 
@@ -467,9 +500,8 @@ actionSurge : ConditionPreset
 actionSurge =
     { playerBase
         | customName = "Surged"
-        , note = "+1 action"
-        , durationKind = DurKindUntilTurn
-        , untilPhase = AtEnd
+        , note = "+1 action, not Magic"
+        , durationKind = DurKindThisTurn
     }
 
 
@@ -485,7 +517,8 @@ pushingAttack : ConditionPreset
 pushingAttack =
     { playerBase
         | customName = "Pushed"
-        , note = "15 ft back"
+        , note = "up to 15 ft away"
+        , durationKind = DurKindThisTurn
     }
 
 
@@ -493,51 +526,56 @@ patientDefense : ConditionPreset
 patientDefense =
     { playerBase
         | customName = "Dodge"
-        , note = "Monk"
+        , note = "Dis vs it, Adv DEX"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtBegin
     }
 
 
-brandingSmite : ConditionPreset
-brandingSmite =
-    { playerBase
-        | customName = "Branded"
-        , note = "no invis"
-    }
+shiningSmite : ConditionPreset
+shiningSmite =
+    lastsOneMinute
+        { playerBase
+            | customName = "Shining Smite"
+            , note = "Adv vs it, conc"
+            , companions = [ "Can't be Invisible" ]
+        }
 
 
 passWithoutTrace : ConditionPreset
 passWithoutTrace =
     { playerBase
-        | customName = "Pass w/o T"
-        , note = "+10 stealth"
+        | customName = "Pass w/o Trace"
+        , note = "+10 Stealth, conc"
     }
 
 
 ensnaringStrike : ConditionPreset
 ensnaringStrike =
-    { playerBase
-        | conditionName = "Restrained"
-        , note = "Ensnare"
-        , saveToEnd = Just (save "STR" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Restrained"
+            , note = "1d6 prc/turn, conc"
+            , saveToEnd = Just (save "STR" 13 AutoRollManual)
+        }
 
 
 sneakAttack : ConditionPreset
 sneakAttack =
     { playerBase
-        | customName = "Sneak Atk"
-        , note = "+xd6 dmg"
+        | customName = "Sneak Atk used"
+        , note = "once per turn"
+        , durationKind = DurKindThisTurn
     }
 
 
 hexbladeCurse : ConditionPreset
 hexbladeCurse =
-    { playerBase
-        | customName = "Hex Curse"
-        , note = "+PB dmg"
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Hexblade's Curse"
+            , note = "+PB dmg, crit 19-20"
+        }
 
 
 shieldSpell : ConditionPreset
@@ -552,10 +590,21 @@ shieldSpell =
 
 haste : ConditionPreset
 haste =
-    { playerBase
-        | customName = "Hasted"
-        , note = "+2 AC, +spd"
-    }
+    lastsOneMinute
+        { playerBase
+            | customName = "Hasted"
+            , note = "+2 AC, Adv DEX, conc"
+        }
+
+
+heroism : ConditionPreset
+heroism =
+    lastsOneMinute
+        { playerBase
+            | customName = "Heroism"
+            , note = "+mod temp HP/turn"
+            , companions = [ "Immunity: Frightened" ]
+        }
 
 
 
@@ -564,47 +613,56 @@ haste =
 
 bane : ConditionPreset
 bane =
-    { spellBase
-        | customName = "Bane −d4"
-        , note = "Cleric"
-    }
+    lastsOneMinute
+        { spellBase
+            | customName = "Bane −d4"
+            , note = "attacks & saves"
+        }
 
 
 holdPerson : ConditionPreset
 holdPerson =
-    { spellBase
-        | conditionName = "Paralyzed"
-        , note = "Hold P."
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Paralyzed"
+            , note = "Hold Person"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        }
 
 
 holdMonster : ConditionPreset
 holdMonster =
-    { spellBase
-        | conditionName = "Paralyzed"
-        , note = "Hold M."
-        , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Paralyzed"
+            , note = "Hold Monster"
+            , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
+        }
 
 
 sleep : ConditionPreset
 sleep =
-    { spellBase
-        | conditionName = "Unconscious"
-        , note = "Sleep"
-        , durationKind = DurKindCountdown
-        , countdownTurnsText = "10"
-        , countdownTurns = 10
-        , countdownPhase = AtEnd
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Incapacitated"
+            , note = "ends on dmg or shake"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollAtEnd
+                        , failBecomesText = "Unconscious"
+                    }
+        }
 
 
 charmPerson : ConditionPreset
 charmPerson =
     { spellBase
         | conditionName = "Charmed"
-        , note = "Charm P."
+        , note = "caster/ally dmg ends"
     }
 
 
@@ -620,124 +678,146 @@ command =
 
 causeFear : ConditionPreset
 causeFear =
-    { spellBase
-        | conditionName = "Frightened"
-        , note = "C.Fear"
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Frightened"
+            , note = "Cause Fear"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        }
 
 
 fear : ConditionPreset
 fear =
-    { spellBase
-        | conditionName = "Frightened"
-        , note = "Fear"
-        , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Frightened"
+            , note = "Dash; save if no LoS"
+            , saveToEnd = Just (save "WIS" 14 AutoRollAskAtEnd)
+        }
 
 
 hypnoticPattern : ConditionPreset
 hypnoticPattern =
-    { spellBase
-        | conditionName = "Incapacitated"
-        , note = "HypPat"
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Charmed"
+            , note = "ends on dmg or shake"
+            , companions = [ "Incapacitated", "Speed 0" ]
+        }
 
 
 hideousLaughter : ConditionPreset
 hideousLaughter =
-    { spellBase
-        | conditionName = "Incapacitated"
-        , note = "HidLgh"
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Incapacitated"
+            , note = "laughing; can't rise"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollAtEnd
+                        , onDamage = Encounter.RollOnDamageWithAdvantage
+                    }
+            , companions = [ "Prone" ]
+        }
 
 
 suggestion : ConditionPreset
 suggestion =
     { spellBase
         | conditionName = "Charmed"
-        , note = "Sugg"
+        , note = "caster/ally dmg ends"
     }
 
 
 slow : ConditionPreset
 slow =
-    { spellBase
-        | customName = "Slowed"
-        , note = "Slow"
-        , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | customName = "Slowed"
+            , note = "−2 AC/DEX, no reacts"
+            , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
+        }
 
 
 web : ConditionPreset
 web =
     { spellBase
         | conditionName = "Restrained"
-        , note = "Web"
-        , saveToEnd = Just (save "STR" 13 AutoRollAtBegin)
+        , note = "action: Athletics"
+        , saveToEnd = Just (save "STR" 13 AutoRollManual)
     }
 
 
 entangle : ConditionPreset
 entangle =
-    { spellBase
-        | conditionName = "Restrained"
-        , note = "Tangle"
-        , saveToEnd = Just (save "STR" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Restrained"
+            , note = "action: Athletics"
+            , saveToEnd = Just (save "STR" 13 AutoRollManual)
+        }
 
 
 blackTentacles : ConditionPreset
 blackTentacles =
-    { spellBase
-        | conditionName = "Restrained"
-        , note = "B.Tent"
-        , saveToEnd = Just (save "STR" 14 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Restrained"
+            , note = "turn end: save/3d6"
+            , saveToEnd = Just (save "STR" 14 AutoRollManual)
+        }
 
 
 faerieFire : ConditionPreset
 faerieFire =
-    { spellBase
-        | customName = "Faerie Fire"
-        , note = "Adv vs"
-    }
+    lastsOneMinute
+        { spellBase
+            | customName = "Faerie Fire"
+            , note = "Adv vs it, conc"
+            , companions = [ "Can't be Invisible" ]
+        }
 
 
 blindness : ConditionPreset
 blindness =
-    { spellBase
-        | conditionName = "Blinded"
-        , note = "Blind"
-        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Blinded"
+            , note = "Blindness/Deafness"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+        }
 
 
 banishment : ConditionPreset
 banishment =
-    { spellBase
-        | customName = "Banished"
-        , note = "Banish"
-        , saveToEnd = Just (save "CHA" 14 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { spellBase
+            | customName = "Banished"
+            , note = "Fiend etc. stay gone"
+            , companions = [ "Incapacitated" ]
+        }
 
 
 stinkingCloud : ConditionPreset
 stinkingCloud =
     { spellBase
-        | conditionName = "Incapacitated"
-        , note = "Stink"
-        , saveToEnd = Just (save "CON" 14 AutoRollAtBegin)
+        | conditionName = "Poisoned"
+        , note = "Cloud: no action/BA"
+        , durationKind = DurKindThisTurn
     }
 
 
 greaterInvisibility : ConditionPreset
 greaterInvisibility =
-    { spellBase
-        | conditionName = "Invisible"
-        , note = "GtInv"
-    }
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Invisible"
+            , note = "Greater Invisibility"
+        }
 
 
 
@@ -748,8 +828,16 @@ petrifyingGaze : ConditionPreset
 petrifyingGaze =
     { monsterBase
         | conditionName = "Restrained"
-        , note = "Gaze"
-        , saveToEnd = Just (save "CON" 14 AutoRollAtEnd)
+        , note = "Medusa gaze"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 13
+                    , dcText = "13"
+                    , autoRoll = AutoRollAtEnd
+                    , failBecomesText = "Petrified"
+                }
     }
 
 
@@ -757,35 +845,39 @@ mindBlast : ConditionPreset
 mindBlast =
     { monsterBase
         | conditionName = "Stunned"
-        , note = "MBlast"
-        , saveToEnd = Just (save "INT" 15 AutoRollAtEnd)
+        , note = "till flayer turn end"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
     }
 
 
 frightfulPresence : ConditionPreset
 frightfulPresence =
-    { monsterBase
-        | conditionName = "Frightened"
-        , note = "Dragon"
-        , saveToEnd = Just (save "WIS" 18 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Frightened"
+            , note = "Dash; save if no LoS"
+            , saveToEnd = Just (save "WIS" 18 AutoRollAskAtEnd)
+        }
 
 
-horrifyingVisage : ConditionPreset
-horrifyingVisage =
+horrificVisage : ConditionPreset
+horrificVisage =
     { monsterBase
         | conditionName = "Frightened"
         , note = "Ghost"
-        , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
     }
 
 
-paralyzingTouch : ConditionPreset
-paralyzingTouch =
+ghoulClaw : ConditionPreset
+ghoulClaw =
     { monsterBase
         | conditionName = "Paralyzed"
-        , note = "Ghoul"
-        , saveToEnd = Just (save "CON" 10 AutoRollAtEnd)
+        , note = "Ghoul claw"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
     }
 
 
@@ -793,7 +885,7 @@ vampireCharm : ConditionPreset
 vampireCharm =
     { monsterBase
         | conditionName = "Charmed"
-        , note = "Vamp"
+        , note = "ends: vamp/ally dmg"
     }
 
 
@@ -801,8 +893,17 @@ luringSong : ConditionPreset
 luringSong =
     { monsterBase
         | conditionName = "Charmed"
-        , note = "Harpy"
-        , saveToEnd = Just (save "WIS" 11 AutoRollAtEnd)
+        , note = "Conc; moves to harpy"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "WIS"
+                    , dc = 11
+                    , dcText = "11"
+                    , autoRoll = AutoRollAtEnd
+                    , onDamage = Encounter.AskOnDamage
+                }
+        , companions = [ "Incapacitated" ]
     }
 
 
@@ -810,8 +911,7 @@ giantSpiderWeb : ConditionPreset
 giantSpiderWeb =
     { monsterBase
         | conditionName = "Restrained"
-        , note = "GSpider"
-        , saveToEnd = Just (save "STR" 12 AutoRollAtEnd)
+        , note = "web AC 10, HP 5"
     }
 
 
@@ -819,34 +919,37 @@ roperGrab : ConditionPreset
 roperGrab =
     { monsterBase
         | conditionName = "Grappled"
-        , note = "Roper"
-        , saveToEnd = Just (save "STR" 15 AutoRollAtEnd)
+        , note = "tentacle AC20 HP10"
+        , saveToEnd = Just (save "STR" 14 AutoRollManual)
+        , companions = [ "Poisoned" ]
     }
 
 
 beholderSleepRay : ConditionPreset
 beholderSleepRay =
-    { monsterBase
-        | conditionName = "Unconscious"
-        , note = "BholSlp"
-        , saveToEnd = Just (save "WIS" 16 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Unconscious"
+            , note = "ends on dmg/woken"
+        }
 
 
 carrionCrawler : ConditionPreset
 carrionCrawler =
-    { monsterBase
-        | conditionName = "Paralyzed"
-        , note = "C.Crawl"
-        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Poisoned"
+            , note = "Carrion Crawler"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+            , companions = [ "Paralyzed" ]
+        }
 
 
 mummyRot : ConditionPreset
 mummyRot =
     { monsterBase
         | customName = "Mummy Rot"
-        , note = "-HP max"
+        , note = "can't regain HP"
     }
 
 
@@ -856,27 +959,29 @@ mummyRot =
 
 wandOfParalysis : ConditionPreset
 wandOfParalysis =
-    { itemBase
-        | conditionName = "Paralyzed"
-        , note = "Wand"
-        , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Paralyzed"
+            , note = "Wand"
+            , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+        }
 
 
 wandOfFear : ConditionPreset
 wandOfFear =
-    { itemBase
-        | conditionName = "Frightened"
-        , note = "Wand"
-        , saveToEnd = Just (save "WIS" 15 AutoRollAtEnd)
-    }
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Frightened"
+            , note = "Dash; save if no LoS"
+            , saveToEnd = Just (save "WIS" 15 AutoRollAskAtEnd)
+        }
 
 
 staffOfCharming : ConditionPreset
 staffOfCharming =
     { itemBase
         | conditionName = "Charmed"
-        , note = "Staff"
+        , note = "1 hr; party dmg ends"
     }
 
 
@@ -884,24 +989,29 @@ potionOfInvisibility : ConditionPreset
 potionOfInvisibility =
     { itemBase
         | conditionName = "Invisible"
-        , note = "Potion"
+        , note = "ends: atk/dmg/spell"
     }
 
 
 dustOfSneezingAndChoking : ConditionPreset
 dustOfSneezingAndChoking =
     { itemBase
-        | conditionName = "Poisoned"
-        , note = "+Incap"
+        | conditionName = "Incapacitated"
+        , note = "+1 Exh at turn end"
         , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+        , companions = [ "Suffocating" ]
     }
 
 
+{-| The potion's own name on the chip keeps it apart from the
+Heroism spell's, which a creature could carry at the same time.
+-}
 potionOfHeroism : ConditionPreset
 potionOfHeroism =
     { itemBase
-        | customName = "Heroism"
-        , note = "+10 tmpHP"
+        | customName = "Potion of Heroism"
+        , note = "10 temp HP, 1 hr"
+        , companions = [ "Bless +d4" ]
     }
 
 
@@ -909,7 +1019,7 @@ potionOfGiantStrength : ConditionPreset
 potionOfGiantStrength =
     { itemBase
         | customName = "Giant STR"
-        , note = "1 hour"
+        , note = "STR 21-29 for 1 hr"
     }
 
 
@@ -917,7 +1027,7 @@ potionOfClimbing : ConditionPreset
 potionOfClimbing =
     { itemBase
         | customName = "Climbing"
-        , note = "1 hour"
+        , note = "Climb speed, 1 hr"
     }
 
 
@@ -925,7 +1035,7 @@ dustOfDisappearance : ConditionPreset
 dustOfDisappearance =
     { itemBase
         | conditionName = "Invisible"
-        , note = "Dust"
+        , note = "ends: atk/dmg/spell"
     }
 
 
@@ -933,8 +1043,8 @@ net : ConditionPreset
 net =
     { itemBase
         | conditionName = "Restrained"
-        , note = "Net"
-        , saveToEnd = Just (save "STR" 10 AutoRollAtEnd)
+        , note = "net AC 10, HP 5"
+        , saveToEnd = Just (save "STR" 10 AutoRollManual)
     }
 
 
@@ -946,8 +1056,8 @@ quicksand : ConditionPreset
 quicksand =
     { environmentBase
         | conditionName = "Restrained"
-        , note = "Quick"
-        , saveToEnd = Just (save "STR" 10 AutoRollAtEnd)
+        , note = "DC 10+ft; sinks 1d4"
+        , saveToEnd = Just (save "STR" 10 AutoRollManual)
     }
 
 
@@ -955,7 +1065,7 @@ slipperySurface : ConditionPreset
 slipperySurface =
     { environmentBase
         | conditionName = "Prone"
-        , note = "Slick"
+        , note = "Slippery ice"
     }
 
 
@@ -970,44 +1080,39 @@ heavyObscurement =
 drowning : ConditionPreset
 drowning =
     { environmentBase
-        | conditionName = "Unconscious"
-        , note = "Drown"
-        , durationKind = DurKindCountdown
-        , countdownTurnsText = "3"
-        , countdownTurns = 3
-        , countdownPhase = AtEnd
+        | customName = "Suffocating"
+        , note = "+1 Exh at turn end"
     }
 
 
 onFire : ConditionPreset
 onFire =
     { environmentBase
-        | customName = "On Fire"
-        , note = "1d10 fire"
+        | customName = "Burning"
+        , note = "1d4 fire, start turn"
     }
 
 
 extremeCold : ConditionPreset
 extremeCold =
     { environmentBase
-        | customName = "Cold"
-        , note = "+1 Exhst"
-        , saveToEnd = Just (save "CON" 10 AutoRollAtEnd)
+        | customName = "Extreme Cold"
+        , note = "CON 10/hr or +1 Exh"
     }
 
 
 extremeHeat : ConditionPreset
 extremeHeat =
     { environmentBase
-        | customName = "Heat"
-        , note = "+1 Exhst"
-        , saveToEnd = Just (save "CON" 10 AutoRollAtEnd)
+        | customName = "Extreme Heat"
+        , note = "CON 5+1/hr or +1 Exh"
     }
 
 
 pitTrap : ConditionPreset
 pitTrap =
     { environmentBase
-        | conditionName = "Restrained"
-        , note = "Pit"
+        | customName = "In Pit"
+        , note = "10ft; needs climbing"
+        , companions = [ "Prone" ]
     }
