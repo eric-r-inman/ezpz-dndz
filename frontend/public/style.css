@@ -8743,13 +8743,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-maxhp);
 }
 
-/* A condition's name, not one of the HP log's short tags, so it
-   can outrun the track it sits in. */
 .hp-change__log-kind--cond {
   color: var(--color-condition);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .hp-change__log-kind--open {
@@ -8771,14 +8766,6 @@ button.creature-card__lifecycle--dead:focus-visible {
    column size to its text while keeping the shared 8px gap. */
 .hp-change__log-entry--wide {
   grid-template-columns: auto minmax(0, 1fr) auto auto;
-}
-
-/* A condition row's three texts share the width in proportion,
-   the way the HP row's fixed kind column leaves its own room:
-   without a bound the condition's name would take the line and
-   leave the rest a few characters. */
-.hp-change__log-entry--cond {
-  grid-template-columns: auto minmax(0, 2fr) minmax(0, 2fr) minmax(0, 3fr) auto;
 }
 
 .hp-change__log-entry--flash {
@@ -8808,6 +8795,36 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-2);
+}
+
+/* A condition row reads as one sentence rather than a set of
+   columns, so its parts share a single box.  Folded, that box
+   clips once at its end; unfolded, it wraps inside a row that
+   still holds the undo beside it.  Column tracks would give each
+   part its own ellipsis and stretch the gaps between them.
+
+   This block has to stay below `.hp-change__log-entry--open`:
+   an unfolded row carries both classes, and the `nowrap` here
+   wins over that rule's `wrap` only on document order. */
+.hp-change__log-entry--cond {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.hp-change__log-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hp-change__log-text--open {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .hp-change__log-amount {

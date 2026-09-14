@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. A Condition/Effect log row reads as one sentence, clipping with an ellipsis
+   when folded.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

@@ -87,11 +87,15 @@ entry opts e =
     in
     li [ class rowClass ]
         [ View.LogRow.foldToggle (rowKey e) opts.expanded
-        , span
-            [ class (View.LogRow.openable "hp-change__log-kind" opts.expanded ++ " hp-change__log-kind--cond") ]
-            [ text e.conditionName ]
-        , span [ class (View.LogRow.openable "hp-change__log-target" opts.expanded) ] [ text names ]
-        , span [ class (View.LogRow.openable "hp-change__log-trans" opts.expanded) ] [ text detail ]
+        , span [ class (View.LogRow.openable "hp-change__log-text" opts.expanded) ]
+            [ span
+                [ class (View.LogRow.openable "hp-change__log-kind" opts.expanded ++ " hp-change__log-kind--cond") ]
+                [ text e.conditionName ]
+            , text " "
+            , span [ class (View.LogRow.openable "hp-change__log-target" opts.expanded) ] [ text names ]
+            , text " "
+            , span [ class (View.LogRow.openable "hp-change__log-trans" opts.expanded) ] [ text detail ]
+            ]
         , if opts.undoable then
             button
                 [ class "icon-btn icon-btn--sm hp-change__log-undo"
