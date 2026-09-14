@@ -6,9 +6,11 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.11.0
+** Maintenance
 1. The bundled lore-group write-ups no longer ship as a separate document.  No
    action needed.
-** Security
 * v0.10.0
 ** Added
 1. A Condition/Effect log row reads as one sentence, clipping with an ellipsis
