@@ -1,19 +1,22 @@
 module View.Inline.Duplicate exposing (view)
 
-{-| Duplicate editor body: flavor radios, the two apply
-buttons, and the newest log row.
+{-| Duplicate editor body.
 -}
 
-import Html exposing (Html, div, input, li, span, text, ul)
+import Html exposing (Html, div, input, span, text)
 import Html.Attributes as Attr exposing (checked, class, type_)
 import Html.Events exposing (onClick)
+import Html.Keyed
 import Msg exposing (DuplicateMode(..), Msg(..))
+import Set exposing (Set)
 import Ui.Duplicate exposing (DuplicateLogEntry, DuplicateUi)
 import View.Inline.ApplyButton as ApplyButton
+import View.Inline.Field as Field
+import View.LogRow
 
 
-view : Int -> Bool -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
-view selectedCount placeholderWarning log ui =
+view : Int -> Bool -> { open : Bool, expanded : Set String } -> List DuplicateLogEntry -> DuplicateUi -> Html Msg
+view selectedCount placeholderWarning logOpts log ui =
     div [ class "editor-body" ]
         [ modeSection ui
         , ApplyButton.row "Apply to:"
@@ -38,7 +41,7 @@ view selectedCount placeholderWarning log ui =
                 }
             ]
         , ApplyButton.placeholderNotice placeholderWarning
-        , latestLog log
+        , logSection logOpts log
         ]
 
 
@@ -99,20 +102,42 @@ modeCaption mode =
             "Splits into two half-HP copies and removes the original."
 
 
-latestLog : List DuplicateLogEntry -> Html Msg
-latestLog entries =
-    case entries of
-        newest :: _ ->
-            ul [ class "hp-change__log-list hp-change__log-list--latest" ]
-                [ li [ class "hp-change__log-entry hp-change__log-entry--wide" ]
-                    [ span [ class "hp-change__log-kind hp-change__log-kind--cond" ]
-                        [ text newest.modeLabel ]
-                    , span [ class "hp-change__log-target" ]
-                        [ text (String.join ", " newest.sources) ]
-                    , span [ class "hp-change__log-trans" ]
-                        [ text ("→ " ++ String.join ", " newest.created) ]
-                    ]
-                ]
+logSection : { open : Bool, expanded : Set String } -> List DuplicateLogEntry -> Html Msg
+logSection opts entries =
+    div [ class "cond-section" ]
+        (Field.foldHead
+            { open = opts.open
+            , title = "Log (" ++ String.fromInt (List.length entries) ++ ")"
+            , msg = DuplicateLogToggle
+            , trail = []
+            }
+            :: (if not opts.open then
+                    []
 
-        [] ->
-            text ""
+                else if List.isEmpty entries then
+                    [ div [ class "log-empty" ] [ text "Nothing duplicated yet." ] ]
+
+                else
+                    [ Html.Keyed.ul [ class "log-list" ]
+                        (List.map (row opts.expanded) entries)
+                    ]
+               )
+        )
+
+
+row : Set String -> DuplicateLogEntry -> ( String, Html Msg )
+row expanded e =
+    let
+        key =
+            "dup-" ++ String.fromInt e.seq
+    in
+    ( key
+    , View.LogRow.sentence
+        { key = key
+        , expanded = Set.member key expanded
+        , kind = e.modeLabel
+        , names = String.join ", " e.sources
+        , detail = "→ " ++ String.join ", " e.created
+        , trail = []
+        }
+    )

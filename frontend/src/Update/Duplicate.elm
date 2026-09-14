@@ -1,4 +1,4 @@
-module Update.Duplicate exposing (apply, applySelected, modeSet)
+module Update.Duplicate exposing (apply, applySelected, logToggle, modeSet)
 
 {-| Update branches for the Duplicate editor.
 
@@ -97,7 +97,8 @@ applyTo rawTargets model =
                         |> List.filter (\n -> not (Set.member n before))
 
                 entry =
-                    { modeLabel = modeLabel ui.mode
+                    { seq = model.nextDuplicateLogSeq
+                    , modeLabel = modeLabel ui.mode
                     , sources = targets
                     , created = created
                     }
@@ -112,6 +113,8 @@ applyTo rawTargets model =
                             :: List.take
                                 (DuplicateUi.maxDuplicateLogEntries - 1)
                                 afterModel.duplicateLog
+                    , nextDuplicateLogSeq = afterModel.nextDuplicateLogSeq + 1
+                    , duplicateLogOpen = True
                 }
             , Cmd.none
             )
@@ -352,3 +355,8 @@ compendiumDb model =
 
         _ ->
             Nothing
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | duplicateLogOpen = not model.duplicateLogOpen }, Cmd.none )

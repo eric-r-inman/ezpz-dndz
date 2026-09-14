@@ -19,11 +19,13 @@ type alias ReplaceUi =
     }
 
 
-{-| One row of the editor's recent-applies log: the creatures
-that were swapped out and the instances that took their places.
+{-| One row of the editor's recent-applies log. `seq` is the
+row's identity, handed out by `Model.nextReplaceLogSeq`, so a
+row's fold survives newer rows landing above it.
 -}
 type alias ReplaceLogEntry =
-    { olds : List String
+    { seq : Int
+    , olds : List String
     , news : List String
     }
 

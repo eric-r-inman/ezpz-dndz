@@ -28,12 +28,13 @@ type alias DuplicateUi =
     }
 
 
-{-| One row of the editor's recent-applies log: which flavor,
-which creatures it was applied to, and the copies that appeared
-(for Pudding, the two halves).
+{-| One row of the editor's recent-applies log. `seq` is the
+row's identity, handed out by `Model.nextDuplicateLogSeq`, so a
+row's fold survives newer rows landing above it.
 -}
 type alias DuplicateLogEntry =
-    { modeLabel : String
+    { seq : Int
+    , modeLabel : String
     , sources : List String
     , created : List String
     }

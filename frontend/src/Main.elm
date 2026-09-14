@@ -581,7 +581,11 @@ init flags url key =
         , conditionLogOpen = False
         , nextConditionLogSeq = 1
         , duplicateLog = []
+        , duplicateLogOpen = False
+        , nextDuplicateLogSeq = 1
         , replaceLog = []
+        , replaceLogOpen = False
+        , nextReplaceLogSeq = 1
         , modalChrome = Ui.ModalChrome.fresh
         , placeholderRename = Nothing
         , xpScope = ScopeXpEnemiesAndNpcs
@@ -1497,6 +1501,12 @@ updateInner msg model =
 
         ConditionLogToggle ->
             Update.Condition.logToggle model
+
+        DuplicateLogToggle ->
+            Update.Duplicate.logToggle model
+
+        ReplaceLogToggle ->
+            Update.Replace.logToggle model
 
         NoticeDismiss ->
             Update.Notice.dismiss model

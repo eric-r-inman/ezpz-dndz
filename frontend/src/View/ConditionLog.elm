@@ -8,7 +8,7 @@ its full text, with the undo on the newest.
 
 -}
 
-import Html exposing (Html, button, div, li, span, text)
+import Html exposing (Html, button, div, text)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -70,41 +70,29 @@ entry opts e =
     let
         names =
             String.join ", " (List.map .name e.targets)
-
-        detail =
+    in
+    View.LogRow.sentence
+        { key = rowKey e
+        , expanded = opts.expanded
+        , kind = e.conditionName
+        , names = names
+        , detail =
             if String.isEmpty e.note then
                 e.summary
 
             else
                 e.summary ++ " · " ++ e.note
-
-        rowClass =
-            if opts.expanded then
-                "hp-change__log-entry hp-change__log-entry--cond hp-change__log-entry--open"
+        , trail =
+            if opts.undoable then
+                [ button
+                    [ class "icon-btn icon-btn--sm hp-change__log-undo"
+                    , onClick ConditionUndoLatest
+                    , Tooltips.attr ("Undo: remove " ++ e.conditionName ++ " from " ++ names)
+                    , attribute "aria-label" ("Undo " ++ e.conditionName ++ " on " ++ names)
+                    ]
+                    [ text "↩" ]
+                ]
 
             else
-                "hp-change__log-entry hp-change__log-entry--cond"
-    in
-    li [ class rowClass ]
-        [ View.LogRow.foldToggle (rowKey e) opts.expanded
-        , span [ class (View.LogRow.openable "hp-change__log-text" opts.expanded) ]
-            [ span
-                [ class (View.LogRow.openable "hp-change__log-kind" opts.expanded ++ " hp-change__log-kind--cond") ]
-                [ text e.conditionName ]
-            , text " "
-            , span [ class (View.LogRow.openable "hp-change__log-target" opts.expanded) ] [ text names ]
-            , text " "
-            , span [ class (View.LogRow.openable "hp-change__log-trans" opts.expanded) ] [ text detail ]
-            ]
-        , if opts.undoable then
-            button
-                [ class "icon-btn icon-btn--sm hp-change__log-undo"
-                , onClick ConditionUndoLatest
-                , Tooltips.attr ("Undo: remove " ++ e.conditionName ++ " from " ++ names)
-                , attribute "aria-label" ("Undo " ++ e.conditionName ++ " on " ++ names)
-                ]
-                [ text "↩" ]
-
-          else
-            text ""
-        ]
+                []
+        }

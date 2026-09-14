@@ -1,4 +1,4 @@
-module Update.Replace exposing (apply, applySelected, pick, searchChanged)
+module Update.Replace exposing (apply, applySelected, logToggle, pick, searchChanged)
 
 {-| Update branches for the Replace editor: pick a compendium
 creature, then swap it in for the active creature (or every
@@ -96,7 +96,8 @@ applyTo targets model =
                                 targets
 
                         entry =
-                            { olds = targets
+                            { seq = model.nextReplaceLogSeq
+                            , olds = targets
                             , news = List.reverse result.news
                             }
 
@@ -113,6 +114,8 @@ applyTo targets model =
                                     :: List.take
                                         (ReplaceUi.maxReplaceLogEntries - 1)
                                         applied.replaceLog
+                            , nextReplaceLogSeq = applied.nextReplaceLogSeq + 1
+                            , replaceLogOpen = True
                         }
                     , Cmd.none
                     )
@@ -166,3 +169,8 @@ replaceOne source oldName acc =
 
     else
         acc
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | replaceLogOpen = not model.replaceLogOpen }, Cmd.none )

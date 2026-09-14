@@ -305,6 +305,7 @@ panelFor model index panel =
                     ("Target: " ++ ui.target)
                     (View.Inline.Replace.view model.compendium.db
                         selectedCount
+                        { open = model.replaceLogOpen, expanded = model.expandedLogRows }
                         model.replaceLog
                         ui
                     )
@@ -312,7 +313,12 @@ panelFor model index panel =
             SurfaceDuplicate ui ->
                 editor "Duplicate"
                     ("Target: " ++ ui.target)
-                    (View.Inline.Duplicate.view selectedCount (placeholderWarning ui.target) model.duplicateLog ui)
+                    (View.Inline.Duplicate.view selectedCount
+                        (placeholderWarning ui.target)
+                        { open = model.duplicateLogOpen, expanded = model.expandedLogRows }
+                        model.duplicateLog
+                        ui
+                    )
 
             SurfaceCrCalculator _ ->
                 View.Panel.CrCalculator.view header model
