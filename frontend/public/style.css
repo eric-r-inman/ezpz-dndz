@@ -43,6 +43,10 @@
   /* Borders + dividers — hairline, low contrast */
   --color-border: #e4e4e7;
 
+  /* Outline for a button on a card surface, where a
+     --color-border hairline all but vanishes. */
+  --card-outline-bd: #9ca3af;
+
   /* A shade stronger than --color-border: a field's edge has to
      read as an edge you can type inside, which the same hairline
      used for panel and divider rules does not manage.  The
@@ -367,6 +371,10 @@
  * which is the whole viewport.
  */
 [data-theme="dark"] {
+  /* A card surface is lighter here than the page, so the outline
+     needs less contrast than the light themes ask for. */
+  --card-outline-bd: #6b7280;
+
   /* Classic Dark keeps the system sans stack (no Inter swap)
      and the original radii — only colours change.  Restores
      `--font-ui` to the previous default. */
@@ -482,6 +490,7 @@
    *all* themes — even Modern / Dark users get the no-transition
    variant if their OS asks for it. */
 [data-theme="accessible"] {
+  --card-outline-bd: var(--color-border);
   --color-bg: #ffffff;
   --color-surface: #ffffff;
   --color-surface-2: #f0f0f0;
@@ -5314,7 +5323,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   appearance: none;
   background: transparent;
   border: none;
-  padding: 0 var(--space-1);
+  padding: 0 var(--space-0);
   font-family: inherit;
   font-size: var(--font-size-label);
   font-weight: 700;
@@ -6469,7 +6478,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 0;
 }
 
+/* "Ready" reads as a quieter, advisory affordance — light grey
+   instead of the full body text colour so it doesn't compete with
+   the active-state buttons next to it. */
 .action-btn--ready {
+  --btn-bd: var(--card-outline-bd);
   --btn-fg: var(--color-text-muted);
 }
 
@@ -6477,19 +6490,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-fg: var(--color-text);
 }
 
-/* Reaction pip (5e: one reaction per round).  Ready state reads
-   as a normal card button; spent state fills the button red so
-   the GM can tell at a glance that the creature has burned its
-   reaction for this round.  Auto-resets at the start of the
-   creature's next turn (see Encounter.Lifecycle.applyBeginOfTurn). */
-.action-btn--reaction-ready {
-  --btn-fg: var(--color-warn, #d97706);
-}
-
 .action-btn--reaction-ready:hover {
   --btn-fg: var(--color-text);
 }
 
+/* Reaction pip (5e: one reaction per round).  The spent state
+   fills the button red so the GM can tell at a glance that the
+   creature has burned its reaction for this round, and it resets
+   at the start of the creature's next turn (see
+   Encounter.Lifecycle.applyBeginOfTurn). */
 .action-btn--reaction-spent {
   --btn-bg: var(--color-btn-red);
 }
@@ -6569,45 +6578,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.95rem;
 }
 
-/* The card's outline buttons (Ready, Reaction, Memo, Timer in
-   their empty states) inherit `--btn-bd: var(--color-border)` and a
-   muted foreground from the base rule.  Against both the light
-   Modern card surface and the dark Dark card surface, that
-   default produced a barely-visible outline.  Override the
-   border and foreground for these four button classes in each
-   theme so they read clearly. */
-[data-theme="modern"] .creature-card .action-btn--reaction,
-[data-theme="modern"] .creature-card .action-btn--memo-empty,
-[data-theme="modern"] .creature-card .action-btn--timer-empty {
-  --btn-bd: #9ca3af; /* gray-400 — clearly visible on light card */
+.action-btn--reaction,
+.action-btn--memo-empty,
+.action-btn--timer-empty,
+.action-btn--gear {
+  --btn-bd: var(--card-outline-bd);
   --btn-fg: var(--color-text);
 }
 
-[data-theme="dark"] .creature-card .action-btn--reaction,
-[data-theme="dark"] .creature-card .action-btn--memo-empty,
-[data-theme="dark"] .creature-card .action-btn--timer-empty {
-  --btn-bd: #6b7280; /* gray-500 — visible against dark card */
-  --btn-fg: var(--color-text);
-}
-
-/* "Ready" reads as a quieter, advisory affordance — light
-   grey instead of the full body text colour so it doesn't
-   compete with the active-state buttons next to it. */
-[data-theme="modern"] .creature-card .action-btn--ready {
-  --btn-bd: #9ca3af;
-  --btn-fg: var(--color-text-muted);
-}
-
-[data-theme="dark"] .creature-card .action-btn--ready {
-  --btn-bd: #6b7280;
-  --btn-fg: var(--color-text-muted);
-}
-
-/* Keep the orange reaction-unspent fg so the GM still reads
-   "this creature still has a reaction available" — only the
-   border darkens / lightens per-theme above. */
-[data-theme="modern"] .creature-card .action-btn--reaction-ready,
-[data-theme="dark"] .creature-card .action-btn--reaction-ready {
+/* An unspent reaction keeps its orange, which has to outrank the
+   outline group above rather than sit with the other reaction
+   rules. */
+.action-btn--reaction-ready {
   --btn-fg: var(--color-warn, #d97706);
 }
 
@@ -9553,7 +9535,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* Card row 3 timer pill: shown in place of the ⏱ button when a
    timer is set. The ringing variant flashes a 0 to draw the eye. */
 .timer-pill {
-  padding: 2px 8px;
+  padding: var(--space-0) var(--space-1);
   background: rgba(120, 170, 255, 0.1);
   border: 1px solid rgba(120, 170, 255, 0.3);
   border-radius: var(--radius-sm);

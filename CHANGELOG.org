@@ -8,7 +8,12 @@
 2. The Duplicate and Replace editors keep a log of recent applications that
    opens on each apply, as the Manage HP and Condition/Effect logs do.  No
    action needed.
+3. A creature card's concentration note reads in parentheses after the status.
+   No action needed.
+4. A creature card's badge row sits tighter.  No action needed.
 ** Fixes
+1. A creature card's gear button is outlined like the toggles beside it.  No
+   action needed.
 ** Breaking
 ** Maintenance
 ** Security
