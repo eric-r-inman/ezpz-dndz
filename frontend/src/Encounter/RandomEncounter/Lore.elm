@@ -25,9 +25,7 @@ time via `Compendium.findByName`. Members whose names don't
 resolve are silently dropped (the bundle stays usable even if
 a creature is renamed or removed).
 
-Each group carries a one-line lore description. The reasoning
-behind each composition, which has no home here, is collected
-in `docs/LORE_GROUPS.org` beside the shipped text.
+Each group carries a one-line lore description.
 
 Each member carries a count range; the materialiser rolls
 within the range and scales the result down if total XP would
