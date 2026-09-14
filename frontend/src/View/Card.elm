@@ -1,4 +1,4 @@
-module View.Card exposing (Context, deathSaveColumn, editorTriggerClass, lifecycleBadge, lifecycleClasses, view)
+module View.Card exposing (Context, editorTriggerClass, lifecycleClasses, view)
 
 {-| Per-creature combat card.
 
@@ -15,8 +15,8 @@ is a drag source and a drop target, so a GM moves a creature by
 dragging its card. A card with an open inline field is a target
 but not a source — see `dragAttrs`.
 
-Between the center column and the right rail, a death-save
-column appears whenever the creature is at 0 HP.
+A strip rides the card's top border, carrying the lifecycle
+badge and, at 0 HP, the death-save controls.
 
 -}
 
@@ -212,8 +212,7 @@ view ctx index creature =
          ]
             ++ dragAttrs (holdsOpenField ctx creature) index
         )
-        [ lifecycleBadge creature
-        , div [ class "creature-card__rail creature-card__rail--left" ]
+        [ div [ class "creature-card__rail creature-card__rail--left" ]
             [ div [ class "creature-card__rail-group" ]
                 [ input
                     [ type_ "checkbox"
@@ -229,12 +228,14 @@ view ctx index creature =
                 ]
             ]
         , div [ class "creature-card__center" ]
-            [ rowTop isActive statBlockOpen creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
-            , rowMid ctx.flashConditions creature
-            , rowBot creature (surfaceFor ctx creature)
-            , inlineSurface ctx creature
+            [ topStrip creature
+            , div [ class "creature-card__rows" ]
+                [ rowTop isActive statBlockOpen creature hpEdit renameState (surfaceFor ctx creature) (specialReactionBadges ctx creature)
+                , rowMid ctx.flashConditions creature
+                , rowBot creature (surfaceFor ctx creature)
+                , inlineSurface ctx creature
+                ]
             ]
-        , deathSaveColumn creature
         , div [ class "creature-card__rail creature-card__rail--right" ]
             [ div [ class "creature-card__rail-group" ]
                 [ button
@@ -401,7 +402,20 @@ lifecycleClasses isActive creature =
         ]
 
 
-{-| Top-center status pill that floats above the card.
+{-| The strip that straddles the card's top border. It sits in
+the centre column so it starts where the creature's name does.
+-}
+topStrip : Creature -> Html Msg
+topStrip creature =
+    case List.filterMap identity [ lifecycleBadge creature, deathSaveRow creature ] of
+        [] ->
+            text ""
+
+        parts ->
+            div [ class "creature-card__top-strip" ] parts
+
+
+{-| Status pill that floats above the card.
 Renders nothing for alive, active-only creatures so the
 encounter queue isn't visually noisy when everyone's healthy.
 Inactive wins over unconscious on the label so a manually
@@ -422,7 +436,7 @@ non-interactive div; reversing it goes through the ∅ rail
 toggle as before.
 
 -}
-lifecycleBadge : Creature -> Html Msg
+lifecycleBadge : Creature -> Maybe (Html Msg)
 lifecycleBadge creature =
     let
         isDead =
@@ -450,36 +464,42 @@ lifecycleBadge creature =
                 ( "💤 DOWN", "down" )
     in
     if creature.inactive then
-        div
-            [ class (baseClass "inactive")
-            , attribute "role" "status"
-            ]
-            [ text "⏭ SKIPPED" ]
+        Just
+            (div
+                [ class (baseClass "inactive")
+                , attribute "role" "status"
+                ]
+                [ text "⏭ SKIPPED" ]
+            )
 
     else if isDead then
-        button
-            [ class (baseClass "dead")
-            , Attr.type_ "button"
-            , onClick (RevertCreatureToDown creature.name)
-            , Tooltips.attr Tooltips.lifecycleDeadToDown
-            , attribute "aria-label"
-                ("Mark " ++ creature.name ++ " not dead (revert)")
-            ]
-            [ text "💀 DEAD" ]
+        Just
+            (button
+                [ class (baseClass "dead")
+                , Attr.type_ "button"
+                , onClick (RevertCreatureToDown creature.name)
+                , Tooltips.attr Tooltips.lifecycleDeadToDown
+                , attribute "aria-label"
+                    ("Mark " ++ creature.name ++ " not dead (revert)")
+                ]
+                [ text "💀 DEAD" ]
+            )
 
     else if creature.currentHp == 0 then
-        button
-            [ class (baseClass downClass)
-            , Attr.type_ "button"
-            , onClick (MarkCreatureDead creature.name)
-            , Tooltips.attr Tooltips.lifecycleDownToDead
-            , attribute "aria-label"
-                ("Mark " ++ creature.name ++ " dead")
-            ]
-            [ text downLabel ]
+        Just
+            (button
+                [ class (baseClass downClass)
+                , Attr.type_ "button"
+                , onClick (MarkCreatureDead creature.name)
+                , Tooltips.attr Tooltips.lifecycleDownToDead
+                , attribute "aria-label"
+                    ("Mark " ++ creature.name ++ " dead")
+                ]
+                [ text downLabel ]
+            )
 
     else
-        text ""
+        Nothing
 
 
 {-| Click handler for the row 1 selection checkbox.
@@ -1548,114 +1568,95 @@ turnArrow isActive name =
         [ text "→" ]
 
 
-{-| The 5e death-save tracker, rendered as a side-by-side pair of
-vertical columns (✓ successes, ✗ failures) to the left of the
-legendary-pip rail. Visibility is keyed off `currentHp == 0`
-exclusively — the moment the creature is back above 0 HP they're
-conscious, and the tracker shouldn't be on screen at all. The
-HP-change engine already resets the counts on heal-to-positive,
-so when the columns re-appear (next time they hit 0) they start
+{-| The 5e death-save tracker, laid out along the card's top
+border beside the lifecycle badge.
+
+Visibility is keyed off `currentHp == 0` exclusively — the moment
+the creature is back above 0 HP they're conscious, and the tracker
+shouldn't be on screen at all. The HP-change engine already resets
+the counts on heal-to-positive, so a re-appearing strip starts
 fresh.
 
-Layout mirrors the legendary "LA"/"LR" columns but doubled: each
-column has its own header + 3 pips, and below the pair sits the
-shared 🎲 roll button. Once stable (3 successes) or dead (3
-failures), the Roll button is replaced by a 🛡 / 💀 badge — the
-GM can still un-set pips manually if they need to reset, but the
-automated flow stops.
+Resolution is not final: clearing a pip back below three
+returns the roll, so a misread save costs nothing.
 
 -}
-deathSaveColumn : Creature -> Html Msg
-deathSaveColumn creature =
+deathSaveRow : Creature -> Maybe (Html Msg)
+deathSaveRow creature =
     if creature.currentHp /= 0 then
-        text ""
+        Nothing
 
     else if not creature.acceptingDeathSaves then
-        -- Opt-in button.  Most downed enemies never need to roll
-        -- death saves (the DM just narrates them dead), so the
-        -- pip strip stays hidden until the GM explicitly asks
-        -- for it.  Click flips `acceptingDeathSaves = True` and
-        -- the full tracker renders on the next pass.
-        div [ class "death-save-cols death-save-cols--opt-in" ]
-            [ button
-                [ class "death-save-cols__begin"
+        -- Most downed enemies never roll a death save (the GM
+        -- narrates them dead), so the pips stay behind an opt-in
+        -- rather than crowding every downed card.
+        Just
+            (button
+                [ class "death-saves__begin"
                 , onClick (DeathSavesBegin creature.name)
                 , Tooltips.attr Tooltips.deathBegin
                 , attribute "aria-label" "Begin death saving throws"
                 ]
                 [ text "Death Saves" ]
-            ]
+            )
 
     else
         let
             ds =
                 creature.deathSaves
 
-            stable =
-                Encounter.isDeathSaveStable ds
-
-            dead =
-                Encounter.isDeathSaveDead ds
-
-            footer =
-                if dead then
+            roll =
+                if Encounter.isDeathSaveDead ds then
                     span
-                        [ class "death-save-cols__badge death-save-cols__badge--dead"
+                        [ class "death-saves__badge death-saves__badge--dead"
                         , Tooltips.attr Tooltips.deathDead
                         ]
                         [ text "💀" ]
 
-                else if stable then
+                else if Encounter.isDeathSaveStable ds then
                     span
-                        [ class "death-save-cols__badge death-save-cols__badge--stable"
+                        [ class "death-saves__badge death-saves__badge--stable"
                         , Tooltips.attr Tooltips.deathStable
                         ]
                         [ text "🛡" ]
 
                 else
                     button
-                        [ class "death-save-cols__roll"
+                        [ class "death-saves__roll"
                         , onClick (DeathSaveRoll creature.name)
                         , Tooltips.attr Tooltips.deathRoll
                         , attribute "aria-label" "Roll death save"
                         ]
                         [ text "🎲" ]
 
-            successColumn =
-                div [ class "death-save-col death-save-col--success" ]
-                    [ div [ class "death-save-col__header" ] [ text "✓" ]
-                    , deathSavePip "success" (0 < ds.successes) (DeathSaveToggleSuccess creature.name 0) "Success" 1
-                    , deathSavePip "success" (1 < ds.successes) (DeathSaveToggleSuccess creature.name 1) "Success" 2
-                    , deathSavePip "success" (2 < ds.successes) (DeathSaveToggleSuccess creature.name 2) "Success" 3
-                    ]
-
-            failureColumn =
-                div [ class "death-save-col death-save-col--failure" ]
-                    [ div [ class "death-save-col__header" ] [ text "✗" ]
-                    , deathSavePip "failure" (0 < ds.failures) (DeathSaveToggleFailure creature.name 0) "Failure" 1
-                    , deathSavePip "failure" (1 < ds.failures) (DeathSaveToggleFailure creature.name 1) "Failure" 2
-                    , deathSavePip "failure" (2 < ds.failures) (DeathSaveToggleFailure creature.name 2) "Failure" 3
-                    ]
+            pips kind filledCount toggle label =
+                List.map
+                    (\i -> deathSavePip kind (i < filledCount) (toggle creature.name i) label (i + 1))
+                    (List.range 0 2)
         in
-        div
-            [ class "death-save-cols"
-            , attribute "role" "group"
-            , attribute "aria-label" "Death saving throws"
-            ]
-            [ div [ class "death-save-cols__row" ]
-                [ successColumn, failureColumn ]
-            , footer
-            ]
+        Just
+            (div
+                [ class "death-saves"
+                , attribute "role" "group"
+                , attribute "aria-label" "Death saving throws"
+                ]
+                (roll
+                    :: span [ class "death-saves__mark death-saves__mark--success" ] [ text "✓" ]
+                    :: pips "success" ds.successes DeathSaveToggleSuccess "Success"
+                    ++ span [ class "death-saves__mark death-saves__mark--failure" ] [ text "✗" ]
+                    :: pips "failure" ds.failures DeathSaveToggleFailure "Failure"
+                )
+            )
 
 
 deathSavePip : String -> Bool -> Msg -> String -> Int -> Html Msg
 deathSavePip kind filled onToggle kindLabel ordinal =
     button
         [ class
-            ("death-save-col__pip death-save-col__pip--"
+            ("death-save__pip death-save__pip--"
                 ++ kind
                 ++ (if filled then
-                        " death-save-col__pip--filled"
+                        " death-save__pip--filled"
 
                     else
                         ""
