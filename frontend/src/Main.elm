@@ -1442,9 +1442,6 @@ updateInner msg model =
         ConditionSubmit ->
             Update.Condition.submit model
 
-        ConditionDelete ->
-            Update.Condition.delete model
-
         ConditionClear ->
             Update.Condition.clear model
 

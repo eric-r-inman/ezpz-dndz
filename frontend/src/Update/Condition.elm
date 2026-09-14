@@ -4,7 +4,6 @@ module Update.Condition exposing
     , countdownTurnsChanged
     , customNameChanged
     , damageTriggered
-    , delete
     , durationKindSet
     , durationOneMinute
     , failDamageLanded
@@ -45,12 +44,8 @@ module Update.Condition exposing
     , untilPhaseSet
     )
 
-{-| Update branches for the condition / effect modal: the radio
-list of standard conditions, custom-name field, the duration-kind
-selector (manual / until-turn / countdown), the optional save-to-end
-sub-form, the multi-target toggle, the submit / delete actions, the
-chip-level remove + roll-save buttons on cards, and the
-saving-throw result handler.
+{-| Update branches for the condition / effect editor, and for the
+condition chips a card carries.
 -}
 
 import Dice
@@ -804,28 +799,6 @@ undoLatest model =
             )
 
         [] ->
-            ( model, Cmd.none )
-
-
-{-| Delete from the modal's footer (only visible when editing).
--}
-delete : Model -> ( Model, Cmd Msg )
-delete model =
-    case drawerSurface model of
-        Just (SurfaceCondition ui) ->
-            case ui.editingId of
-                Just id ->
-                    ( { model
-                        | encounter = Encounter.removeCondition ui.target id model.encounter
-                        , surface = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( Model.foldDrawer Model.conditionLens model, Cmd.none )
-
-        _ ->
             ( model, Cmd.none )
 
 

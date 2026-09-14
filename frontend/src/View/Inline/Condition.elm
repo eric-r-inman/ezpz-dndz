@@ -476,28 +476,6 @@ footer ui selectedCount placeholderWarning =
             else
                 "Apply Changes"
 
-        -- Delete (when editing) precedes Apply so Apply is always
-        -- the last row — the commit action reads as the final
-        -- word on the panel, not something with more choices
-        -- beneath it. It's omitted entirely rather than rendered
-        -- empty when there's nothing to delete, so it doesn't
-        -- claim a row of its own in the now-stacked footer.
-        deleteRow =
-            case ui.editingId of
-                Just _ ->
-                    [ div [ class "cond-footer__actions" ]
-                        [ button
-                            [ class "action-btn action-btn--damage"
-                            , onClick ConditionDelete
-                            , Tooltips.attr Tooltips.chipRemoveModalRow
-                            ]
-                            [ text "Delete" ]
-                        ]
-                    ]
-
-                Nothing ->
-                    []
-
         placeholderRow =
             if placeholderWarning then
                 [ ApplyButton.placeholderNotice True ]
@@ -507,7 +485,6 @@ footer ui selectedCount placeholderWarning =
     in
     div [ class "cond-footer" ]
         (presetControls canSubmit
-            ++ deleteRow
             ++ [ applyControls ui canSubmit selectedCount applyLabel ]
             ++ placeholderRow
         )
