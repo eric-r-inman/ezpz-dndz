@@ -10955,9 +10955,23 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 /* ── Encounter save/load panel ──────────────────────────────────── */
 
+/* Padding sets the storage choice apart from the body it
+   reveals, which changes with the choice. */
+.save-load__storage-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-2);
+}
+
 .save-load__storage {
   display: flex;
   gap: var(--space-1);
+}
+
+.save-load__save {
+  display: flex;
+  flex-direction: column;
 }
 
 .save-load__storage-btn {
@@ -11001,9 +11015,17 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .save-load__row-name {
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-field);
   font-weight: var(--font-weight-label);
   overflow-wrap: anywhere;
+}
+
+/* A rename form is one field and two buttons, which fit the line
+   the read row's name and four buttons do not. */
+.save-load__row--renaming {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .save-load__row-actions {

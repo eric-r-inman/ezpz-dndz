@@ -14,9 +14,9 @@ import Html.Attributes
         , autofocus
         , class
         , disabled
+        , for
         , id
         , maxlength
-        , placeholder
         , type_
         , value
         )
@@ -39,7 +39,7 @@ view header model =
     case Model.drawerGet Model.saveLoadLens model of
         Just ui ->
             View.Panel.view
-                { title = "Encounter Saves"
+                { title = "Save/Load Encounter"
                 , titleTrail =
                     View.Panel.titleMarkIf
                         (Encounter.rosterDirty model.encounter model.savedSnapshot)
@@ -58,7 +58,7 @@ view header model =
             text ""
 
 
-{-| The server option reads "Browser" for an anonymous GM,
+{-| The server option names the browser for an anonymous GM,
 because their saves land in `localStorage` rather than an
 account.
 -}
@@ -68,14 +68,17 @@ storageSection auth ui =
         serverLabel =
             case auth of
                 Auth.AuthAuthenticated _ ->
-                    "Server"
+                    "This server"
 
                 _ ->
-                    "Browser"
+                    "This browser"
     in
-    div [ class "save-load__storage" ]
-        [ storageButton ui StorageServer serverLabel
-        , storageButton ui StorageDevice "Device file"
+    div [ class "save-load__storage-block" ]
+        [ span [ class "cond-label" ] [ text "Save this encounter to:" ]
+        , div [ class "save-load__storage" ]
+            [ storageButton ui StorageServer serverLabel
+            , storageButton ui StorageDevice "This device"
+            ]
         ]
 
 
@@ -120,33 +123,39 @@ name, save — never needs the mouse.
 -}
 saveRow : SaveLoadUi -> Html Msg
 saveRow ui =
-    div [ class "cond-row" ]
-        [ input
-            [ id "save-load-filename"
-            , class "cond-input cond-input--grow"
-            , type_ "text"
-            , placeholder "Encounter name"
-            , value ui.filename
-            , maxlength SaveLoadUi.maxNameLength
-            , autofocus True
-            , onInput SaveLoadFilenameChanged
-            , Html.Events.on "keydown" (Util.Keyboard.enterKey SaveLoadSaveSubmit)
+    div [ class "save-load__save" ]
+        [ div [ class "cond-row" ]
+            [ Html.label
+                [ for "save-load-filename", class "cond-label" ]
+                [ text "Encounter Name:" ]
+            , input
+                [ id "save-load-filename"
+                , class "cond-input cond-input--grow"
+                , type_ "text"
+                , value ui.filename
+                , maxlength SaveLoadUi.maxNameLength
+                , autofocus True
+                , onInput SaveLoadFilenameChanged
+                , Html.Events.on "keydown" (Util.Keyboard.enterKey SaveLoadSaveSubmit)
+                ]
+                []
             ]
-            []
-        , button
-            [ class "action-btn action-btn--green"
-            , type_ "button"
-            , onClick SaveLoadSaveSubmit
-            , disabled (ui.busy || String.isEmpty (String.trim ui.filename))
+        , div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ button
+                [ class "action-btn action-btn--green"
+                , type_ "button"
+                , onClick SaveLoadSaveSubmit
+                , disabled (ui.busy || String.isEmpty (String.trim ui.filename))
+                ]
+                [ text "Save" ]
             ]
-            [ text "Save" ]
         ]
 
 
 savesSection : SaveLoadUi -> Html Msg
 savesSection ui =
     div [ class "save-load__saves" ]
-        [ h3 [ class "cond-section__heading" ] [ text "Saved encounters" ]
+        [ h3 [ class "cond-section__heading" ] [ text "Saved Encounters:" ]
         , case ui.saves of
             ListLoading ->
                 p [ class "empty" ] [ text "Loading…" ]
@@ -191,17 +200,16 @@ readRow ui meta =
                 ui.busy
                 Tooltips.saveLoadRowLoad
                 "Load"
-            , rowButton "action-btn"
+            , rowButton "action-btn action-btn--orange"
                 (SaveLoadOverwriteRequested meta.name)
                 ui.busy
                 Tooltips.saveRowOverwrite
                 "Overwrite"
-            , rowIcon "action-btn"
+            , rowButton "action-btn action-btn--blue"
                 (SaveLoadRenameStart meta.name)
                 ui.busy
                 Tooltips.saveRowRename
                 "Rename"
-                "✎"
             , rowIcon "action-btn action-btn--red"
                 (SaveLoadDeleteRequested meta.name)
                 ui.busy
@@ -239,7 +247,7 @@ rowIcon cls msg busy tip label glyph =
 
 renameRow : SaveLoadUi -> String -> Html Msg
 renameRow ui draft =
-    li [ class "save-load__row" ]
+    li [ class "save-load__row save-load__row--renaming" ]
         [ input
             [ class "cond-input cond-input--grow"
             , type_ "text"

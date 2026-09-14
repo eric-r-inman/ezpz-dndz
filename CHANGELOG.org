@@ -21,6 +21,8 @@
    needed.
 9. The Encounter XP and Encounter Difficulty editors count enemies only until
    you widen the scope.  Pick another scope for the previous totals.
+10. The Encounter Saves panel is now Save/Load Encounter, with its fields
+    labelled.  No action needed.
 ** Fixes
 1. A creature card's gear button is outlined like the toggles beside it.  No
    action needed.
