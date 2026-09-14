@@ -37,7 +37,7 @@ view selectedCount placeholderWarning ui =
                     , type_ "text"
                     , value ui.concentrationNote
                     , maxlength Update.Status.maxConcentrationNoteLength
-                    , placeholder "note, e.g. Bless"
+                    , placeholder "on..."
                     , onInput StatusConcentrationNoteChanged
                     , attribute "aria-label" "What the creature is concentrating on"
                     ]

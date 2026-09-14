@@ -8939,11 +8939,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   justify-content: flex-start;
 }
 
-/* Initiative editor's Quick Sort row: centered, and closer to
-   the manual-value row above it than the shared 8px default —
-   it is a standalone shortcut, not another field in that group. */
+/* Initiative editor's Quick Sort row sits closer to the
+   manual-value row above it than the shared 8px default: it is
+   a standalone shortcut, not another field in that group. */
 .init-quicksort-row {
-  justify-content: center;
+  justify-content: flex-start;
   margin-top: 0;
 }
 
