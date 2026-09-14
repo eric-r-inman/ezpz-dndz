@@ -72,6 +72,11 @@
   --color-success: #16a34a;
   --color-success-soft: rgba(22, 163, 74, 0.1);
 
+  /* An empty death-save pip's interior.  Deliberately black in every
+     theme — the pips straddle the card's top border, and a solid
+     interior keeps that line from showing through the ring. */
+  --color-death-save-pip-empty: #000000;
+
   /* Shadows — minimal, layered.  Modern aesthetic avoids the
      "lifted card" 1990s shadow look in favour of barely-there
      shadows that read more as edges. */
@@ -5337,7 +5342,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding: 0;
   border: 2px solid currentColor;
   border-radius: 50%;
-  background: transparent;
+  background: var(--color-death-save-pip-empty);
   cursor: pointer;
 }
 
