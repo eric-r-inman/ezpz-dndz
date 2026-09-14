@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. The Save/Load Encounter panel folds its saved encounters into a scrolling
+   list; pick one to load, overwrite, rename, or delete it.  No action needed.
 ** Fixes
 1. A downed creature's empty death-save pips no longer show the card's border
    through them, and a stable creature's strip drops its shield.  No action

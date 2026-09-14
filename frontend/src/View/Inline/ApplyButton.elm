@@ -1,4 +1,4 @@
-module View.Inline.ApplyButton exposing (placeholderNotice, row, view)
+module View.Inline.ApplyButton exposing (icon, placeholderNotice, row, view)
 
 {-| One editor's Apply button.
 
@@ -26,13 +26,40 @@ view :
     }
     -> Html Msg
 view cfg =
+    build [] cfg cfg.label
+
+
+{-| An Apply button that shows a glyph. `label` names it for a
+screen reader, which cannot read the glyph as the action.
+-}
+icon :
+    { enabled : Bool
+    , cls : String
+    , msg : Msg
+    , tip : String
+    , label : String
+    , glyph : String
+    }
+    -> Html Msg
+icon cfg =
+    build [ attribute "aria-label" cfg.label ] cfg cfg.glyph
+
+
+build :
+    List (Html.Attribute Msg)
+    -> { a | enabled : Bool, cls : String, msg : Msg, tip : String }
+    -> String
+    -> Html Msg
+build extra cfg shown =
     if cfg.enabled then
         button
-            [ class cfg.cls
-            , onClick cfg.msg
-            , Tooltips.attr cfg.tip
-            ]
-            [ text cfg.label ]
+            ([ class cfg.cls
+             , onClick cfg.msg
+             , Tooltips.attr cfg.tip
+             ]
+                ++ extra
+            )
+            [ text shown ]
 
     else
         span
@@ -40,11 +67,13 @@ view cfg =
             , Tooltips.attr cfg.tip
             ]
             [ button
-                [ class (cfg.cls ++ " inline-btn-inert")
-                , disabled True
-                , attribute "aria-disabled" "true"
-                ]
-                [ text cfg.label ]
+                ([ class (cfg.cls ++ " inline-btn-inert")
+                 , disabled True
+                 , attribute "aria-disabled" "true"
+                 ]
+                    ++ extra
+                )
+                [ text shown ]
             ]
 
 

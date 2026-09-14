@@ -17,6 +17,8 @@ module Update.SaveLoad exposing
     , renameResponse
     , renameStart
     , renameSubmit
+    , savesToggle
+    , select
     , serverResponse
     , storageSet
     , submit
@@ -108,6 +110,37 @@ storageSet : SaveStorage -> Model -> ( Model, Cmd Msg )
 storageSet storage model =
     ( withUi
         (\ui -> { ui | storage = storage, error = Nothing })
+        model
+    , Cmd.none
+    )
+
+
+savesToggle : Model -> ( Model, Cmd Msg )
+savesToggle model =
+    ( withUi (\ui -> { ui | savesOpen = not ui.savesOpen }) model
+    , Cmd.none
+    )
+
+
+{-| Pick the save the list's actions work on. Picking a different
+one drops a rename or confirmation begun on the last, which would
+otherwise land on a save the GM has moved away from.
+-}
+select : String -> Model -> ( Model, Cmd Msg )
+select name model =
+    ( withUi
+        (\ui ->
+            if ui.selected == Just name then
+                ui
+
+            else
+                { ui
+                    | selected = Just name
+                    , renaming = Nothing
+                    , confirm = Nothing
+                    , error = Nothing
+                }
+        )
         model
     , Cmd.none
     )
@@ -533,6 +566,9 @@ renameSubmit model =
             ( model, Cmd.none )
 
 
+{-| Anonymous-mode rename. The pick follows the save to its new
+name, so the GM can go on working it.
+-}
 applyLocalRename : String -> String -> Model -> ( Model, Cmd Msg )
 applyLocalRename from to model =
     case Dict.get from model.localEncounterSaves of
@@ -561,6 +597,7 @@ applyLocalRename from to model =
                     { u
                         | busy = False
                         , renaming = Nothing
+                        , selected = Just to
                         , error = Nothing
                         , saves = ListLoaded (localSavesMetas next)
                     }
@@ -605,7 +642,7 @@ renameResponse { from, to } result model =
                         model
             in
             ( withUi
-                (\ui -> { ui | busy = False, renaming = Nothing })
+                (\ui -> { ui | busy = False, renaming = Nothing, selected = Just to })
                 renamedSavedAs
             , Encounter.Wire.listSavesCmd SaveLoadListLoaded
             )

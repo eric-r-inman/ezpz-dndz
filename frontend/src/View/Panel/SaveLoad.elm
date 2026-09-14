@@ -7,7 +7,7 @@ module View.Panel.SaveLoad exposing (view)
 import Auth
 import Encounter
 import Encounter.Wire exposing (SavedEncounterMeta)
-import Html exposing (Html, button, div, h3, input, li, p, span, text, ul)
+import Html exposing (Html, button, div, input, li, p, span, text, ul)
 import Html.Attributes
     exposing
         ( attribute
@@ -30,6 +30,8 @@ import Ui.SaveLoad as SaveLoadUi
         , SaveLoadUi
         )
 import Util.Keyboard
+import View.Inline.ApplyButton as ApplyButton
+import View.Inline.Field as Field
 import View.Panel
 import View.Tooltips as Tooltips
 
@@ -152,72 +154,207 @@ saveRow ui =
         ]
 
 
+{-| The saves fold away until the GM asks for them. A save is
+picked before anything is done to it, so its actions sit once
+under the list rather than on every row.
+-}
 savesSection : SaveLoadUi -> Html Msg
 savesSection ui =
     div [ class "save-load__saves" ]
-        [ h3 [ class "cond-section__heading" ] [ text "Saved Encounters:" ]
-        , case ui.saves of
-            ListLoading ->
-                p [ class "empty" ] [ text "Loading…" ]
+        (Field.foldHead
+            { open = ui.savesOpen
+            , title = "Saved Encounters" ++ savesCount ui.saves
+            , msg = SaveLoadSavesToggle
+            , trail = []
+            }
+            :: (if ui.savesOpen then
+                    savesBody ui
 
-            ListFailed err ->
-                p [ class "empty" ] [ text err ]
-
-            ListLoaded [] ->
-                p [ class "empty" ] [ text "No saved encounters yet." ]
-
-            ListLoaded metas ->
-                ul [ class "save-load__list" ]
-                    (List.map (saveRowItem ui) metas)
-        ]
+                else
+                    []
+               )
+        )
 
 
-{-| One save. The row is its own rename form while that rename
-is in flight, so the name stays where the GM clicked rather than
-moving to a field elsewhere.
+savesCount : ListState -> String
+savesCount saves =
+    case saves of
+        ListLoaded metas ->
+            " (" ++ String.fromInt (List.length metas) ++ ")"
+
+        _ ->
+            ""
+
+
+savesBody : SaveLoadUi -> List (Html Msg)
+savesBody ui =
+    case ui.saves of
+        ListLoading ->
+            [ p [ class "empty" ] [ text "Loading…" ] ]
+
+        ListFailed err ->
+            [ p [ class "empty" ] [ text err ] ]
+
+        ListLoaded [] ->
+            [ p [ class "empty" ] [ text "No saved encounters yet." ] ]
+
+        ListLoaded metas ->
+            let
+                picked =
+                    pickedSave ui metas
+            in
+            [ ul
+                [ class "quick-add__list quick-add__list--docked"
+                , attribute "role" "listbox"
+                ]
+                (List.map (saveListRow ui picked) metas)
+            , actions ui picked
+            ]
+
+
+{-| The picked save, while the listing still holds it: a save
+deleted or renamed away leaves nothing picked.
 -}
-saveRowItem : SaveLoadUi -> SavedEncounterMeta -> Html Msg
-saveRowItem ui meta =
+pickedSave : SaveLoadUi -> List SavedEncounterMeta -> Maybe String
+pickedSave ui metas =
+    ui.selected
+        |> Maybe.andThen
+            (\name ->
+                if List.any (\meta -> meta.name == name) metas then
+                    Just name
+
+                else
+                    Nothing
+            )
+
+
+{-| One save. The row being renamed becomes its own name field,
+so the name is edited where the GM picked it.
+-}
+saveListRow : SaveLoadUi -> Maybe String -> SavedEncounterMeta -> Html Msg
+saveListRow ui picked meta =
     case ui.renaming of
         Just draft ->
             if draft.original == meta.name then
-                renameRow ui draft.draft
+                renameRow draft.draft
 
             else
-                readRow ui meta
+                readRow picked meta
 
         Nothing ->
-            readRow ui meta
+            readRow picked meta
 
 
-readRow : SaveLoadUi -> SavedEncounterMeta -> Html Msg
-readRow ui meta =
-    li [ class "save-load__row" ]
-        [ span [ class "save-load__row-name" ] [ text meta.name ]
-        , div [ class "save-load__row-actions" ]
-            [ rowButton "action-btn action-btn--green"
-                (SaveLoadLoadRequested meta.name)
-                ui.busy
-                Tooltips.saveLoadRowLoad
-                "Load"
-            , rowButton "action-btn action-btn--orange"
-                (SaveLoadOverwriteRequested meta.name)
-                ui.busy
-                Tooltips.saveRowOverwrite
-                "Overwrite"
-            , rowButton "action-btn action-btn--blue"
-                (SaveLoadRenameStart meta.name)
-                ui.busy
-                Tooltips.saveRowRename
-                "Rename"
-            , rowIcon "action-btn action-btn--red"
-                (SaveLoadDeleteRequested meta.name)
-                ui.busy
-                Tooltips.saveRowDelete
-                "Delete"
-                "🗑"
-            ]
+readRow : Maybe String -> SavedEncounterMeta -> Html Msg
+readRow picked meta =
+    let
+        isPicked =
+            picked == Just meta.name
+    in
+    li
+        [ class
+            (if isPicked then
+                "quick-add__row quick-add__row--picked"
+
+             else
+                "quick-add__row"
+            )
+        , onClick (SaveLoadSelect meta.name)
+        , attribute "role" "option"
+        , attribute "aria-selected"
+            (if isPicked then
+                "true"
+
+             else
+                "false"
+            )
         ]
+        [ span [ class "quick-add__name" ] [ text meta.name ] ]
+
+
+renameRow : String -> Html Msg
+renameRow draft =
+    li [ class "quick-add__row quick-add__row--picked save-load__row--renaming" ]
+        [ input
+            [ class "cond-input cond-input--grow"
+            , type_ "text"
+            , value draft
+            , maxlength SaveLoadUi.maxNameLength
+            , autofocus True
+            , onInput SaveLoadRenameChange
+            , Html.Events.on "keydown" (Util.Keyboard.enterKey SaveLoadRenameSubmit)
+            , attribute "aria-label" "New name for the save"
+            ]
+            []
+        ]
+
+
+{-| What can be done to the picked save. With nothing picked the
+buttons stay where they are but dead, and say why.
+-}
+actions : SaveLoadUi -> Maybe String -> Html Msg
+actions ui picked =
+    div [ class "note-edit__buttons note-edit__buttons--start" ]
+        (case ui.renaming of
+            Just _ ->
+                [ rowButton "action-btn action-btn--green"
+                    SaveLoadRenameSubmit
+                    ui.busy
+                    Tooltips.saveLoadRenameSubmit
+                    "Rename"
+                , rowButton "action-btn"
+                    SaveLoadRenameCancel
+                    False
+                    Tooltips.saveLoadRenameCancel
+                    "Cancel"
+                ]
+
+            Nothing ->
+                let
+                    name =
+                        Maybe.withDefault "" picked
+
+                    enabled =
+                        picked /= Nothing && not ui.busy
+
+                    tip actionTip =
+                        if picked == Nothing then
+                            Tooltips.saveLoadPickFirst
+
+                        else
+                            actionTip
+                in
+                [ ApplyButton.view
+                    { enabled = enabled
+                    , cls = "action-btn action-btn--green"
+                    , msg = SaveLoadLoadRequested name
+                    , tip = tip Tooltips.saveLoadRowLoad
+                    , label = "Load"
+                    }
+                , ApplyButton.view
+                    { enabled = enabled
+                    , cls = "action-btn action-btn--orange"
+                    , msg = SaveLoadOverwriteRequested name
+                    , tip = tip Tooltips.saveRowOverwrite
+                    , label = "Overwrite"
+                    }
+                , ApplyButton.view
+                    { enabled = enabled
+                    , cls = "action-btn action-btn--blue"
+                    , msg = SaveLoadRenameStart name
+                    , tip = tip Tooltips.saveRowRename
+                    , label = "Rename"
+                    }
+                , ApplyButton.icon
+                    { enabled = enabled
+                    , cls = "action-btn action-btn--red"
+                    , msg = SaveLoadDeleteRequested name
+                    , tip = tip Tooltips.saveRowDelete
+                    , label = "Delete"
+                    , glyph = "🗑"
+                    }
+                ]
+        )
 
 
 rowButton : String -> Msg -> Bool -> String -> String -> Html Msg
@@ -230,47 +367,6 @@ rowButton cls msg busy tip label =
         , Tooltips.attr tip
         ]
         [ text label ]
-
-
-rowIcon : String -> Msg -> Bool -> String -> String -> String -> Html Msg
-rowIcon cls msg busy tip label glyph =
-    button
-        [ class cls
-        , type_ "button"
-        , onClick msg
-        , disabled busy
-        , Tooltips.attr tip
-        , attribute "aria-label" label
-        ]
-        [ text glyph ]
-
-
-renameRow : SaveLoadUi -> String -> Html Msg
-renameRow ui draft =
-    li [ class "save-load__row save-load__row--renaming" ]
-        [ input
-            [ class "cond-input cond-input--grow"
-            , type_ "text"
-            , value draft
-            , maxlength SaveLoadUi.maxNameLength
-            , autofocus True
-            , onInput SaveLoadRenameChange
-            , Html.Events.on "keydown" (Util.Keyboard.enterKey SaveLoadRenameSubmit)
-            ]
-            []
-        , div [ class "save-load__row-actions" ]
-            [ rowButton "action-btn action-btn--green"
-                SaveLoadRenameSubmit
-                ui.busy
-                Tooltips.saveLoadRenameSubmit
-                "Rename"
-            , rowButton "action-btn"
-                SaveLoadRenameCancel
-                False
-                Tooltips.saveLoadRenameCancel
-                "Cancel"
-            ]
-        ]
 
 
 {-| Device storage has no listing to work: a download writes the

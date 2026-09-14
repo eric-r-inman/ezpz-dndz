@@ -2397,6 +2397,12 @@ updateInner msg model =
         SaveLoadSaveSubmit ->
             Update.SaveLoad.submit model
 
+        SaveLoadSavesToggle ->
+            Update.SaveLoad.savesToggle model
+
+        SaveLoadSelect name ->
+            Update.SaveLoad.select name model
+
         SaveLoadListLoaded result ->
             Update.SaveLoad.listLoaded result model
 
