@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.13.0
+** Added
 1. Bundled Condition/Effect presets that apply a standard condition no longer
    carry a note.  Choose Restore bundled presets in the Load menu to drop the
    notes from copies saved before this release.
@@ -12,10 +18,6 @@
    with a red dot once a setting has changed.  No action needed.
 4. A creature card's Exhaustion chip reads "Exhaustion: X"; click the level to
    raise it, up to 6 and then back to 0.  No action needed.
-** Fixes
-** Breaking
-** Maintenance
-** Security
 * v0.12.0
 ** Added
 1. The Save/Load Encounter panel folds its saved encounters into a scrolling
