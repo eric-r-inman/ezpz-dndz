@@ -4,6 +4,9 @@
 * Upcoming
 ** Added
 ** Fixes
+1. A downed creature's empty death-save pips no longer show the card's border
+   through them, and a stable creature's strip drops its shield.  No action
+   needed.
 ** Breaking
 ** Maintenance
 ** Security

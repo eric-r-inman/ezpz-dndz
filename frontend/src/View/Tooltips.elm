@@ -64,7 +64,6 @@ module View.Tooltips exposing
     , deathBegin
     , deathDead
     , deathRoll
-    , deathStable
     , diceAdvantage
     , diceClearHistory
     , diceCoinFlip
@@ -491,11 +490,6 @@ bloodied =
 deathDead : String
 deathDead =
     "Dead — 3 failed death saves"
-
-
-deathStable : String
-deathStable =
-    "Stable — 3 successful death saves"
 
 
 deathRoll : String

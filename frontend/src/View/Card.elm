@@ -1607,27 +1607,26 @@ deathSaveRow creature =
 
             roll =
                 if Encounter.isDeathSaveDead ds then
-                    span
+                    [ span
                         [ class "death-saves__badge death-saves__badge--dead"
                         , Tooltips.attr Tooltips.deathDead
                         ]
                         [ text "💀" ]
+                    ]
 
                 else if Encounter.isDeathSaveStable ds then
-                    span
-                        [ class "death-saves__badge death-saves__badge--stable"
-                        , Tooltips.attr Tooltips.deathStable
-                        ]
-                        [ text "🛡" ]
+                    -- Three filled success pips already show it.
+                    []
 
                 else
-                    button
+                    [ button
                         [ class "death-saves__roll"
                         , onClick (DeathSaveRoll creature.name)
                         , Tooltips.attr Tooltips.deathRoll
                         , attribute "aria-label" "Roll death save"
                         ]
                         [ text "🎲" ]
+                    ]
 
             pips kind filledCount toggle label =
                 List.map
@@ -1641,7 +1640,7 @@ deathSaveRow creature =
                 , attribute "aria-label" "Death saving throws"
                 ]
                 (roll
-                    :: span [ class "death-saves__mark death-saves__mark--success" ] [ text "✓" ]
+                    ++ span [ class "death-saves__mark death-saves__mark--success" ] [ text "✓" ]
                     :: pips "success" ds.successes DeathSaveToggleSuccess "Success"
                     ++ span [ class "death-saves__mark death-saves__mark--failure" ] [ text "✗" ]
                     :: pips "failure" ds.failures DeathSaveToggleFailure "Failure"
