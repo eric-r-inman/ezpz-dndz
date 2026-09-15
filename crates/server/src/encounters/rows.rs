@@ -292,9 +292,9 @@ async fn insert_condition(
      duration_skip_next, save_ability, save_dc, save_bonus, \
      save_auto_roll, save_fail_damage, save_fail_becomes, \
      save_on_damage, linked_to, area_chain, area_ability, area_dc, \
-     area_bonus, area_phase) \
+     area_bonus, area_phase, level) \
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, \
-     $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)",
+     $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)",
   )
   .bind(row_id)
   .bind(position)
@@ -320,6 +320,7 @@ async fn insert_condition(
   .bind(area.map(|a| a.dc))
   .bind(area.map(|a| a.bonus))
   .bind(area.map(|a| a.phase.clone()))
+  .bind(cond.level)
   .execute(&mut *conn)
   .await
   .map_err(write_error)?;
@@ -892,6 +893,7 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
     save_to_end,
     linked_to: opt_int("linked_to")?,
     area,
+    level: opt_int("level")?,
   })
 }
 

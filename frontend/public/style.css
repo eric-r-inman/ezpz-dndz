@@ -5774,7 +5774,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-.condition-chip__name {
+.condition-chip__name,
+.condition-chip__level {
   appearance: none;
   background: transparent;
   border: none;
@@ -5788,7 +5789,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: nowrap;
 }
 
-.condition-chip__name:hover {
+.condition-chip__name:hover,
+.condition-chip__level:hover {
   text-decoration: underline;
 }
 

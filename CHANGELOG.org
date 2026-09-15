@@ -10,6 +10,8 @@
    field.  No action needed.
 3. The Condition/Effect editor names the loaded preset beside its Load button,
    with a red dot once a setting has changed.  No action needed.
+4. A creature card's Exhaustion chip reads "Exhaustion: X"; click the level to
+   raise it, up to 6 and then back to 0.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

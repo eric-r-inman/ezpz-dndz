@@ -1376,6 +1376,9 @@ updateInner msg model =
         ConditionOpenEdit name id ->
             Update.Condition.openEdit name id model
 
+        ConditionExhaustionStep name id ->
+            Update.Condition.exhaustionStep name id model
+
         OpenStatusAndConditionFor name ->
             Update.Encounter.openStatusAndConditionFor name model
 

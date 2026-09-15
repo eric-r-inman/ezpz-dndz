@@ -10,6 +10,7 @@ module Update.Condition exposing
     , damageTriggered
     , durationKindSet
     , durationOneMinute
+    , exhaustionStep
     , failDamageLanded
     , logToggle
     , maxConditionNoteLength
@@ -926,6 +927,22 @@ removeChip name id model =
     )
 
 
+{-| One click on an Exhaustion chip's level: up a step, and back to 0
+after 6.
+-}
+exhaustionStep : String -> Int -> Model -> ( Model, Cmd Msg )
+exhaustionStep name id model =
+    ( { model
+        | encounter =
+            Encounter.updateCondition name
+                id
+                (\c -> { c | level = Maybe.map Encounter.nextExhaustionLevel c.level })
+                model.encounter
+      }
+    , Cmd.none
+    )
+
+
 {-| Manual click on the chip's d20 save button. Same Cmd shape
 and same landing handler as the auto-roll path — a success posts
 the same "Saved: <name>" notice either way.
@@ -1260,6 +1277,7 @@ commitCondition targets ui name model =
                                 , note = draft.note
                                 , duration = draft.duration
                                 , saveToEnd = draft.saveToEnd
+                                , level = Encounter.conditionLevel draft.name c.level
                             }
                         )
                         model.encounter

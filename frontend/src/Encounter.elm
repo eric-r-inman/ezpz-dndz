@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, pruneOrphanedLinks, remindersAt, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -179,6 +179,8 @@ fire from torch").
     one goes and carries no save of its own.
   - `area` marks the condition as an area-effect tracker. See
     [`AreaTracker`](#AreaTracker).
+  - `level` is the Exhaustion level, 0 through 6, which the card
+    steps through; every other condition carries `Nothing`.
 
 -}
 type alias Condition =
@@ -189,12 +191,13 @@ type alias Condition =
     , saveToEnd : Maybe SaveToEnd
     , linkedTo : Maybe Int
     , area : Maybe AreaTracker
+    , level : Maybe Int
     }
 
 
-{-| Same shape as [`Condition`](#Condition) minus the `id` field —
-used by [`addCondition`](#addCondition) so callers don't have to
-allocate ids themselves. The encounter assigns ids monotonically.
+{-| Same shape as [`Condition`](#Condition) minus the `id` and `level`
+fields — used by [`addCondition`](#addCondition), which assigns both:
+ids monotonically, and the level the condition's name calls for.
 -}
 type alias ConditionDraft =
     { name : String
@@ -382,9 +385,8 @@ type alias Timer =
 {-| The 15 standard 5e conditions, in alphabetical order. Used to
 populate the radio-button section of the condition modal.
 
-Exhaustion is included as a single entry rather than the six
-levels, since the UI's `note` slot is a fine place for "Lvl 2"
-shorthand and the rules treat them as a stack on one condition.
+Exhaustion is a single entry rather than six: the condition
+carries its level, which the card steps through.
 
 -}
 standardConditions : List String
@@ -889,11 +891,35 @@ addConditionWithId target draft enc =
             , saveToEnd = draft.saveToEnd
             , linkedTo = draft.linkedTo
             , area = draft.area
+            , level = conditionLevel draft.name Nothing
             }
     in
     ( mapCreature target (\c -> { c | conditions = c.conditions ++ [ newCondition ] }) enc
     , nextId
     )
+
+
+{-| The level a condition named `name` carries: Exhaustion keeps the
+level it has, starting at 1, and no other condition has one.
+-}
+conditionLevel : String -> Maybe Int -> Maybe Int
+conditionLevel name level =
+    if name == "Exhaustion" then
+        Just (Maybe.withDefault 1 level)
+
+    else
+        Nothing
+
+
+{-| One step up the Exhaustion ladder: 1 through 6, then back to 0.
+-}
+nextExhaustionLevel : Int -> Int
+nextExhaustionLevel level =
+    if level >= 6 then
+        0
+
+    else
+        level + 1
 
 
 {-| Apply `fn` to one specific condition, identified by its id, on
