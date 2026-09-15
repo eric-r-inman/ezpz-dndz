@@ -6,7 +6,14 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump clap from 4.6.6 to 4.6.7
+2. Bump clap_builder from 4.6.6 to 4.6.7
+3. Bump clap_derive from 4.6.4 to 4.6.7
+4. Bump clap_lex from 1.1.0 to 1.1.1
+5. Bump rust-template-foundation from 0.123.0 to 0.124.0
+6. Bump rust-template-foundation-derive from 0.123.0 to 0.124.0
 ** Security
+1. Bump rustls from 0.23.44 to 0.23.45 (RUSTSEC-2026-0285)
 * v0.12.0
 ** Added
 1. The Save/Load Encounter panel folds its saved encounters into a scrolling
