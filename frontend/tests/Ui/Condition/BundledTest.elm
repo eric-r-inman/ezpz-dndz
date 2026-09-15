@@ -122,4 +122,10 @@ suite =
                 Dict.get "Heroism (Bard/Paladin)" Bundled.defaults
                     |> Maybe.map (\p -> ( p.durationKind, p.countdownTurns, p.companions ))
                     |> Expect.equal (Just ( DurKindCountdown, 10, [ "Immunity: Frightened" ] ))
+        , test "no preset that applies a standard condition carries a note" <|
+            \_ ->
+                Bundled.defaults
+                    |> Dict.filter (\_ p -> not (String.isEmpty p.conditionName || String.isEmpty p.note))
+                    |> Dict.keys
+                    |> Expect.equal []
         ]

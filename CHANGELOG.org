@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. Bundled Condition/Effect presets that apply a standard condition no longer
+   carry a note.  Choose Restore bundled presets in the Load menu to drop the
+   notes from copies saved before this release.
 ** Fixes
 ** Breaking
 ** Maintenance
