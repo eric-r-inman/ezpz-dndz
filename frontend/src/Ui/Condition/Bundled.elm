@@ -87,7 +87,7 @@ categories =
 defaults : Dict String ConditionPreset
 defaults =
     Dict.fromList
-        [ -- Player Classes (33)
+        [ -- Player Classes (34)
           ( "Stunning Strike (Monk)", stunningStrike )
         , ( "Trip Attack", tripAttack )
         , ( "Menacing Attack", menacingAttack )
@@ -121,6 +121,7 @@ defaults =
         , ( "Hexblade's Curse (Warlock)", hexbladeCurse )
         , ( "Shield (Wizard/Sorcerer)", shieldSpell )
         , ( "Haste (Wizard/Sorcerer)", haste )
+        , ( "Heroism (Bard/Paladin)", heroism )
 
         -- Spell Effects (20)
         , ( "Bane (−d4)", bane )
@@ -228,6 +229,7 @@ playerBase =
     , countdownPhase = AtEnd
     , saveToEnd = Nothing
     , category = categoryPlayer
+    , companions = []
     }
 
 
@@ -253,6 +255,19 @@ environmentBase =
 
 
 -- ── PLAYER CLASSES ───────────────────────────────────────────────────────
+
+
+heroism : ConditionPreset
+heroism =
+    { playerBase
+        | customName = "Heroism"
+        , note = "+mod temp HP/turn"
+        , durationKind = DurKindCountdown
+        , countdownTurnsText = "10"
+        , countdownTurns = 10
+        , countdownPhase = AtEnd
+        , companions = [ "Immunity: Frightened" ]
+    }
 
 
 stunningStrike : ConditionPreset

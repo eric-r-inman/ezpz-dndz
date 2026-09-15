@@ -1,6 +1,6 @@
 module Ui.Condition exposing
     ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
-    , ConditionLogEntry, ConditionPreset, applyPreset, maxConditionLogEntries, toPreset
+    , ConditionLogEntry, ConditionPreset, applyPreset, companionNames, maxConditionLogEntries, toPreset
     )
 
 {-| Condition / effect editor state.
@@ -26,6 +26,11 @@ visually deselect).
 
 `saveToEnd : Maybe SaveToEndUi` controls visibility of the save
 section: `Nothing` hides it, `Just _` reveals.
+
+`companions` are further conditions or effects applied alongside
+the named one, such as the immunity Heroism grants, each ending
+when that one ends. `companionDraft` is the one being typed, and
+`companionsOpen` keeps their row showing while it holds neither.
 
 @docs ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
 
@@ -61,6 +66,9 @@ type alias ConditionUi =
     , countdownTurns : Int
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
+    , companions : List String
+    , companionDraft : String
+    , companionsOpen : Bool
     , loadMenuOpen : Bool
     , pendingSaveName : Maybe String
     , pendingSaveCategory : String
@@ -153,6 +161,9 @@ fresh target =
     , countdownTurns = 1
     , countdownPhase = Encounter.AtEnd
     , saveToEnd = Nothing
+    , companions = []
+    , companionDraft = ""
+    , companionsOpen = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -232,6 +243,9 @@ fromCondition target cond =
     , countdownTurns = durFields.countdownTurns
     , countdownPhase = durFields.countdownPhase
     , saveToEnd = saveUi
+    , companions = []
+    , companionDraft = ""
+    , companionsOpen = False
     , loadMenuOpen = False
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
@@ -266,7 +280,25 @@ type alias ConditionPreset =
     , countdownPhase : Encounter.TurnPhase
     , saveToEnd : Maybe SaveToEndUi
     , category : String
+    , companions : List String
     }
+
+
+{-| The companions the form holds, counting one still being typed
+that was never added: an apply or a save takes the field as the GM
+left it.
+-}
+companionNames : ConditionUi -> List String
+companionNames ui =
+    let
+        draft =
+            String.trim ui.companionDraft
+    in
+    if String.isEmpty draft || draft == String.trim ui.name || List.member draft ui.companions then
+        ui.companions
+
+    else
+        ui.companions ++ [ draft ]
 
 
 {-| Project the current form state down to a savable preset.
@@ -288,6 +320,7 @@ toPreset ui =
     , countdownPhase = ui.countdownPhase
     , saveToEnd = ui.saveToEnd
     , category = ""
+    , companions = companionNames ui
     }
 
 
@@ -332,6 +365,9 @@ applyPreset presetName preset ui =
         , countdownTurns = preset.countdownTurns
         , countdownPhase = preset.countdownPhase
         , saveToEnd = preset.saveToEnd
+        , companions = preset.companions
+        , companionDraft = ""
+        , companionsOpen = False
         , loadMenuOpen = False
         , pendingSaveName = Nothing
         , pendingSaveCategory = ""

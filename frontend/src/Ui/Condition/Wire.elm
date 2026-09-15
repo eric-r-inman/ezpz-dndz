@@ -65,6 +65,7 @@ encodePreset p =
         , ( "countdownPhase", encodeTurnPhase p.countdownPhase )
         , ( "saveToEnd", encodeMaybe encodeSaveToEnd p.saveToEnd )
         , ( "category", E.string p.category )
+        , ( "companions", E.list E.string p.companions )
         ]
 
 
@@ -81,6 +82,7 @@ decodePreset =
         |> required "countdownPhase" decodeTurnPhase
         |> required "saveToEnd" (D.nullable decodeSaveToEnd)
         |> optional "category" D.string ""
+        |> optional "companions" (D.list D.string) []
 
 
 required : String -> D.Decoder a -> D.Decoder (a -> b) -> D.Decoder b
@@ -89,8 +91,8 @@ required name decoder =
 
 
 {-| Decode a field, falling back to a default when the field is
-absent or null. Used for the `category` field so presets saved
-before the bundled-defaults pass round-trip cleanly with `""`.
+absent or null, so a preset saved before the field existed still
+loads.
 -}
 optional : String -> D.Decoder a -> a -> D.Decoder (a -> b) -> D.Decoder b
 optional name decoder default =

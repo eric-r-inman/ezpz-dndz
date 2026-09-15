@@ -1,5 +1,9 @@
 module Update.Condition exposing
     ( clear
+    , companionAdd
+    , companionDraftChanged
+    , companionRemove
+    , companionsToggle
     , countdownPhaseSet
     , countdownTurnsChanged
     , customNameChanged
@@ -188,6 +192,76 @@ noteChanged : String -> Model -> ( Model, Cmd Msg )
 noteChanged text model =
     ( withConditionUi
         (\u -> { u | note = String.left maxConditionNoteLength text })
+        model
+    , Cmd.none
+    )
+
+
+{-| Open the companion row with its field ready to type in, or fold
+it away again.
+-}
+companionsToggle : Model -> ( Model, Cmd Msg )
+companionsToggle model =
+    case drawerSurface model of
+        Just (SurfaceCondition ui) ->
+            ( withConditionUi (\u -> { u | companionsOpen = not u.companionsOpen }) model
+            , if ui.companionsOpen then
+                Cmd.none
+
+              else
+                Effects.focusField "cond-companion"
+            )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+companionDraftChanged : String -> Model -> ( Model, Cmd Msg )
+companionDraftChanged text model =
+    ( withConditionUi
+        (\u -> { u | companionDraft = String.left maxConditionNoteLength text })
+        model
+    , Cmd.none
+    )
+
+
+{-| Add the typed companion. One already listed, or the condition's
+own name, is let go rather than applied twice.
+-}
+companionAdd : Model -> ( Model, Cmd Msg )
+companionAdd model =
+    ( withConditionUi
+        (\u ->
+            let
+                draft =
+                    String.trim u.companionDraft
+            in
+            if String.isEmpty draft || draft == String.trim u.name || List.member draft u.companions then
+                { u | companionDraft = "" }
+
+            else
+                { u | companions = u.companions ++ [ draft ], companionDraft = "" }
+        )
+        model
+    , Cmd.none
+    )
+
+
+{-| Drop one companion. The row stays open as it empties, so a
+replacement can go in where the chip was.
+-}
+companionRemove : Int -> Model -> ( Model, Cmd Msg )
+companionRemove index model =
+    ( withConditionUi
+        (\u ->
+            { u
+                | companions =
+                    List.indexedMap Tuple.pair u.companions
+                        |> List.filter (\( i, _ ) -> i /= index)
+                        |> List.map Tuple.second
+                , companionsOpen = True
+            }
+        )
         model
     , Cmd.none
     )
@@ -695,6 +769,8 @@ nameOnly ui =
         | note = ""
         , durationKind = DurKindManual
         , saveToEnd = Nothing
+        , companions = []
+        , companionDraft = ""
     }
 
 
@@ -1152,12 +1228,15 @@ commitCondition targets ui name model =
 
         Nothing ->
             let
+                companions =
+                    ConditionUi.companionNames ui
+
                 addOne tgt acc =
                     let
                         ( withAdded, newId ) =
                             Encounter.addConditionWithId tgt draft acc.encounter
                     in
-                    { encounter = withAdded
+                    { encounter = List.foldl (addCompanion tgt newId) withAdded companions
                     , applied = { name = tgt, conditionId = newId } :: acc.applied
                     }
 
@@ -1173,10 +1252,40 @@ commitCondition targets ui name model =
                     { seq = model.nextConditionLogSeq
                     , conditionName = draft.name
                     , note = draft.note
-                    , summary = summarize draft.duration saveToEnd
+                    , summary = summarize draft.duration saveToEnd ++ companionSummary companions
                     , targets = List.reverse result.applied
                     }
             )
+
+
+{-| Put one companion on `target`, riding on the condition
+`primaryId` names so it goes when that one goes. A condition the
+target already carries is left alone rather than doubled.
+-}
+addCompanion : String -> Int -> String -> Encounter.Encounter -> Encounter.Encounter
+addCompanion target primaryId name enc =
+    if Encounter.hasConditionNamed target name enc then
+        enc
+
+    else
+        Encounter.addCondition target
+            { name = name
+            , note = ""
+            , duration = Encounter.DurationManual
+            , saveToEnd = Nothing
+            , linkedTo = Just primaryId
+            , area = Nothing
+            }
+            enc
+
+
+companionSummary : List String -> String
+companionSummary companions =
+    if List.isEmpty companions then
+        ""
+
+    else
+        " · with " ++ String.join ", " companions
 
 
 {-| The log row's one-line account of what was applied: the

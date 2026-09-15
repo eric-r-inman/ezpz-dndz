@@ -7,9 +7,10 @@
 //!
 //! Per the Elm `decodePreset`, every field is required except
 //! `category` (defaults to `""` for presets saved before the
-//! bundled-defaults pass); `saveToEnd` must be PRESENT but may be
-//! null.  Unknown enum tokens (`durationKind`, phases, `autoRoll`)
-//! fail the payload, exactly as the Elm decoder does.
+//! bundled-defaults pass) and `companions` (defaults to none);
+//! `saveToEnd` must be PRESENT but may be null.  Unknown enum tokens
+//! (`durationKind`, phases, `autoRoll`) fail the payload, exactly as
+//! the Elm decoder does.
 
 use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::{json, Map, Value};
@@ -30,6 +31,9 @@ pub struct Preset {
   pub countdown_phase: String,
   pub save_to_end: Option<SaveToEnd>,
   pub category: String,
+  /// Further conditions the preset applies alongside its own, in the
+  /// order the GM listed them.
+  pub companions: Vec<String>,
 }
 
 pub struct SaveToEnd {
@@ -118,6 +122,19 @@ impl PerUserFeature for ConditionPresets {
       .bind(preset.save_to_end.as_ref().map(|s| s.on_damage.clone()))
       .execute(&mut *conn)
       .await?;
+
+      for (position, name) in preset.companions.iter().enumerate() {
+        sqlx::query(
+          "INSERT INTO condition_preset_companions (user_id, preset_key, \
+           position, name) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(user_id.as_str())
+        .bind(key)
+        .bind(position as i64)
+        .bind(name)
+        .execute(&mut *conn)
+        .await?;
+      }
     }
     Ok(())
   }
@@ -137,6 +154,25 @@ impl PerUserFeature for ConditionPresets {
       return Ok(None);
     }
 
+    let companions = sqlx::query(
+      "SELECT preset_key, name FROM condition_preset_companions \
+       WHERE user_id = $1 ORDER BY preset_key, position",
+    )
+    .bind(user_id.as_str())
+    .fetch_all(db.pool())
+    .await?
+    .iter()
+    .try_fold(
+      BTreeMap::<String, Vec<String>>::new(),
+      |mut acc, row| -> Result<_, sqlx::Error> {
+        acc
+          .entry(row.try_get::<String, _>("preset_key")?)
+          .or_default()
+          .push(row.try_get::<String, _>("name")?);
+        Ok(acc)
+      },
+    )?;
+
     sqlx::query(
       "SELECT preset_key, condition_name, custom_name, note, \
        duration_kind, until_phase, countdown_turns_text, \
@@ -150,8 +186,9 @@ impl PerUserFeature for ConditionPresets {
     .await?
     .iter()
     .map(|row| {
+      let key = row.try_get::<String, _>("preset_key")?;
       Ok((
-        row.try_get::<String, _>("preset_key")?,
+        key.clone(),
         Preset {
           condition_name: row.try_get("condition_name")?,
           custom_name: row.try_get("custom_name")?,
@@ -163,6 +200,7 @@ impl PerUserFeature for ConditionPresets {
           countdown_phase: row.try_get("countdown_phase")?,
           save_to_end: save_to_end_from_row(row)?,
           category: row.try_get("category")?,
+          companions: companions.get(&key).cloned().unwrap_or_default(),
         },
       ))
     })
@@ -220,7 +258,23 @@ fn decode_preset(raw: &Value, key: &str) -> Result<Preset, String> {
     countdown_phase: turn_phase(map, "countdownPhase", &context)?,
     save_to_end: decode_save_to_end(map, &context)?,
     category: opt_str_or(map, "category", ""),
+    companions: decode_companions(map),
   })
+}
+
+/// `optional "companions" (D.list D.string) []`: anything but a list
+/// of strings reads as none, as the Elm decoder's fallback does.
+fn decode_companions(map: &Map<String, Value>) -> Vec<String> {
+  map
+    .get("companions")
+    .and_then(Value::as_array)
+    .and_then(|items| {
+      items
+        .iter()
+        .map(|item| item.as_str().map(str::to_string))
+        .collect()
+    })
+    .unwrap_or_default()
 }
 
 fn duration_kind(
@@ -319,5 +373,6 @@ fn encode_preset(preset: &Preset) -> Value {
       "onDamage": s.on_damage,
     })),
     "category": preset.category,
+    "companions": preset.companions,
   })
 }

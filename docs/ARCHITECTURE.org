@@ -532,7 +532,7 @@ CASCADE~ back to ~users~), defined across the migrations under
 | ~users~                          | 0001      | One row per account; uniqueness enforced case-insensitively on email. |
 | ~dice_rolls~ (+ ~_expression_dice~ / ~_groups~ / ~_faces~ / ~_extras~ children) | 0001 | Fully normalized roll log; 30-entry cap is per-user.  Unknown top-level scalar fields round-trip via ~dice_roll_extras~. |
 | ~lore_group_sets~ → ~lore_groups~ → ~lore_group_members~ | 0002 | One of the five preset families; the ~_sets~ row is the presence parent (see below). |
-| ~condition_preset_sets~ → ~condition_presets~ | 0002, 0005, 0006 | Saved Add-Condition forms.                                        |
+| ~condition_preset_sets~ → ~condition_presets~ → ~condition_preset_companions~ | 0002, 0005, 0006, 0007 | Saved Add-Condition forms.                                        |
 | ~save_chain_sets~ → ~save_chains~ → ~save_chain_effects~ | 0002, 0005, 0006 | Save Chain preset recipes.                                        |
 | ~treasure_table_sets~ → brackets / individual rows / hoard rows / name entries / flat items / roll specs | 0002 | The user's singular treasure table. |
 | ~treasure_profile_sets~ → ~treasure_profiles~ | 0002 | Named "Tune your rolls" presets.                                  |

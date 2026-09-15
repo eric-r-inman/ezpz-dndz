@@ -574,7 +574,8 @@ fn full_condition_presets() -> Value {
         "failBecomes": "Stunned",
         "onDamage": "rollAdvantage"
       },
-      "category": ""
+      "category": "",
+      "companions": ["Incapacitated", "Immunity: Frightened"]
     },
     "Burning": {
       "conditionName": "Custom",
@@ -586,7 +587,8 @@ fn full_condition_presets() -> Value {
       "countdownTurns": 2,
       "countdownPhase": "atEnd",
       "saveToEnd": null,
-      "category": "srd"
+      "category": "srd",
+      "companions": []
     }
   })
 }

@@ -8,7 +8,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -196,6 +196,16 @@ there is no panel to scroll to.
 scrollDrawerIndex : Maybe Int -> Cmd Msg
 scrollDrawerIndex =
     Maybe.map scrollDrawerPanelIntoView >> Maybe.withDefault Cmd.none
+
+
+{-| Put the caret in the field `elementId` names, once the view
+that renders it is on the page. Focus is polish, so a field gone
+by then is simply left unfocused.
+-}
+focusField : String -> Cmd Msg
+focusField elementId =
+    Browser.Dom.focus elementId
+        |> Task.attempt (always NoOp)
 
 
 {-| Scroll so the panel at `index` sits at the top of the column,

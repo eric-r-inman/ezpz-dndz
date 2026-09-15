@@ -16,6 +16,7 @@ import Set exposing (Set)
 import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
+import Util.Keyboard
 import View.ConditionLog
 import View.Inline.ApplyButton as ApplyButton
 import View.Inline.Field as Field
@@ -155,19 +156,126 @@ customAndNoteSection ui =
             ]
          )
             ++ [ div [ class "cond-row" ]
-                    [ Html.label [ class "cond-label" ] [ text "Note:" ]
-                    , input
-                        [ class "cond-input cond-input--w20"
+                    (Html.label [ class "cond-label" ] [ text "Note:" ]
+                        :: input
+                            [ class "cond-input cond-input--w20"
+                            , type_ "text"
+                            , value ui.note
+                            , maxlength Update.Condition.maxConditionNoteLength
+                            , placeholder "e.g. from Lyra"
+                            , onInput ConditionNoteChanged
+                            ]
+                            []
+                        :: companionsToggle ui
+                    )
+               ]
+            ++ companionRow ui
+        )
+
+
+{-| Whether the condition can bring companions at all: it has to be
+named, and an edit changes that one condition alone.
+-}
+companionsAllowed : ConditionUi -> Bool
+companionsAllowed ui =
+    ui.editingId == Nothing && not (String.isEmpty (String.trim ui.name))
+
+
+{-| The row holds a companion, or one being typed, that the form
+would apply, so it has to stay in sight.
+-}
+companionsHeld : ConditionUi -> Bool
+companionsHeld ui =
+    not (List.isEmpty ui.companions && String.isEmpty (String.trim ui.companionDraft))
+
+
+{-| Opens the companion row from the Note row's spare right edge, so
+the editor grows no taller until the GM wants companions, and folds
+it again while it is empty.
+-}
+companionsToggle : ConditionUi -> List (Html Msg)
+companionsToggle ui =
+    if companionsAllowed ui && not (companionsHeld ui) then
+        [ button
+            [ class "action-btn cond-companions-toggle"
+            , type_ "button"
+            , onClick ConditionCompanionsToggle
+            , attribute "aria-expanded"
+                (if ui.companionsOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , Tooltips.attr
+                (if ui.companionsOpen then
+                    "Fold the empty With row away"
+
+                 else
+                    "Apply more conditions or effects with this one, each ending when it ends"
+                )
+            ]
+            [ text
+                (if ui.companionsOpen then
+                    "− With"
+
+                 else
+                    "+ With"
+                )
+            ]
+        ]
+
+    else
+        []
+
+
+{-| Further conditions or effects this one brings with it, each
+ending when it ends, such as the immunity Heroism grants. Enter
+turns the typed one into a chip, and one left typed still applies.
+-}
+companionRow : ConditionUi -> List (Html Msg)
+companionRow ui =
+    if companionsAllowed ui && (ui.companionsOpen || companionsHeld ui) then
+        [ div [ class "cond-row" ]
+            (Html.label [ for "cond-companion", class "cond-label" ] [ text "With:" ]
+                :: List.indexedMap companionChip ui.companions
+                ++ [ input
+                        [ id "cond-companion"
+                        , class "cond-input cond-input--grow"
                         , type_ "text"
-                        , value ui.note
+                        , value ui.companionDraft
                         , maxlength Update.Condition.maxConditionNoteLength
-                        , placeholder "e.g. from Lyra"
-                        , onInput ConditionNoteChanged
+                        , placeholder "e.g. Prone"
+                        , attribute "list" "cond-companion-list"
+                        , onInput ConditionCompanionDraftChanged
+                        , Html.Events.on "keydown" (Util.Keyboard.enterKey ConditionCompanionAdd)
+                        , Tooltips.attr "A condition or effect that goes on with this one and ends with it; Enter adds another"
                         ]
                         []
-                    ]
-               ]
-        )
+                   , Html.node "datalist"
+                        [ id "cond-companion-list" ]
+                        (List.map (\c -> Html.option [ value c ] []) Encounter.standardConditions)
+                   ]
+            )
+        ]
+
+    else
+        []
+
+
+companionChip : Int -> String -> Html Msg
+companionChip index name =
+    span [ class "condition-chip" ]
+        [ text name
+        , button
+            [ class "condition-chip__remove"
+            , type_ "button"
+            , onClick (ConditionCompanionRemove index)
+            , Tooltips.attr ("Leave " ++ name ++ " off")
+            , attribute "aria-label" ("Remove " ++ name)
+            ]
+            [ text "×" ]
+        ]
 
 
 durationSection : ConditionUi -> List String -> Html Msg
