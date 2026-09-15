@@ -6,6 +6,8 @@
 1. Bundled Condition/Effect presets that apply a standard condition no longer
    carry a note.  Choose Restore bundled presets in the Load menu to drop the
    notes from copies saved before this release.
+2. The Condition/Effect editor's + With button sits a little closer to the Note
+   field.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
