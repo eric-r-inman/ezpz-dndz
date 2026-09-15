@@ -26,8 +26,9 @@ presets.
 
 Each preset follows the 2024 rules (SRD 5.2.1 where the effect is
 in it) as far as the editor can express them; where it cannot,
-the note carries the reminder and `docs/CONDITION_PRESETS.org`
-records the gap. DC values are best-defaults; the GM adjusts per
+`docs/CONDITION_PRESETS.org` records the gap. Only a custom-named
+preset carries a note, since a standard condition's name already
+says what it does. DC values are best-defaults; the GM adjusts per
 cast (Stunning Strike's DC scales with Monk Wisdom, a dragon's
 Fear with its CR, and so on).
 
@@ -303,7 +304,6 @@ stunningStrike : ConditionPreset
 stunningStrike =
     { playerBase
         | conditionName = "Stunned"
-        , note = "Monk"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -313,7 +313,6 @@ tripAttack : ConditionPreset
 tripAttack =
     { playerBase
         | conditionName = "Prone"
-        , note = "Trip"
     }
 
 
@@ -321,7 +320,6 @@ menacingAttack : ConditionPreset
 menacingAttack =
     { playerBase
         | conditionName = "Frightened"
-        , note = "Menacing"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -332,7 +330,6 @@ wrathfulSmite =
     lastsOneMinute
         { playerBase
             | conditionName = "Frightened"
-            , note = "Wrath"
             , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
         }
 
@@ -352,7 +349,6 @@ turnUndead =
     lastsOneMinute
         { playerBase
             | conditionName = "Frightened"
-            , note = "ends on any damage"
             , companions = [ "Incapacitated" ]
         }
 
@@ -412,7 +408,6 @@ staggeringSmite : ConditionPreset
 staggeringSmite =
     { playerBase
         | conditionName = "Stunned"
-        , note = "Staggering Smite"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -555,7 +550,6 @@ ensnaringStrike =
     lastsOneMinute
         { playerBase
             | conditionName = "Restrained"
-            , note = "1d6 prc/turn, conc"
             , saveToEnd = Just (save "STR" 13 AutoRollManual)
         }
 
@@ -625,7 +619,6 @@ holdPerson =
     lastsOneMinute
         { spellBase
             | conditionName = "Paralyzed"
-            , note = "Hold Person"
             , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
         }
 
@@ -635,7 +628,6 @@ holdMonster =
     lastsOneMinute
         { spellBase
             | conditionName = "Paralyzed"
-            , note = "Hold Monster"
             , saveToEnd = Just (save "WIS" 14 AutoRollAtEnd)
         }
 
@@ -645,7 +637,6 @@ sleep =
     lastsOneMinute
         { spellBase
             | conditionName = "Incapacitated"
-            , note = "ends on dmg or shake"
             , saveToEnd =
                 Just
                     { emptySave
@@ -662,7 +653,6 @@ charmPerson : ConditionPreset
 charmPerson =
     { spellBase
         | conditionName = "Charmed"
-        , note = "caster/ally dmg ends"
     }
 
 
@@ -681,7 +671,6 @@ causeFear =
     lastsOneMinute
         { spellBase
             | conditionName = "Frightened"
-            , note = "Cause Fear"
             , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
         }
 
@@ -691,7 +680,6 @@ fear =
     lastsOneMinute
         { spellBase
             | conditionName = "Frightened"
-            , note = "Dash; save if no LoS"
             , saveToEnd = Just (save "WIS" 14 AutoRollAskAtEnd)
         }
 
@@ -701,7 +689,6 @@ hypnoticPattern =
     lastsOneMinute
         { spellBase
             | conditionName = "Charmed"
-            , note = "ends on dmg or shake"
             , companions = [ "Incapacitated", "Speed 0" ]
         }
 
@@ -711,7 +698,6 @@ hideousLaughter =
     lastsOneMinute
         { spellBase
             | conditionName = "Incapacitated"
-            , note = "laughing; can't rise"
             , saveToEnd =
                 Just
                     { emptySave
@@ -729,7 +715,6 @@ suggestion : ConditionPreset
 suggestion =
     { spellBase
         | conditionName = "Charmed"
-        , note = "caster/ally dmg ends"
     }
 
 
@@ -747,7 +732,6 @@ web : ConditionPreset
 web =
     { spellBase
         | conditionName = "Restrained"
-        , note = "action: Athletics"
         , saveToEnd = Just (save "STR" 13 AutoRollManual)
     }
 
@@ -757,7 +741,6 @@ entangle =
     lastsOneMinute
         { spellBase
             | conditionName = "Restrained"
-            , note = "action: Athletics"
             , saveToEnd = Just (save "STR" 13 AutoRollManual)
         }
 
@@ -767,7 +750,6 @@ blackTentacles =
     lastsOneMinute
         { spellBase
             | conditionName = "Restrained"
-            , note = "turn end: save/3d6"
             , saveToEnd = Just (save "STR" 14 AutoRollManual)
         }
 
@@ -787,7 +769,6 @@ blindness =
     lastsOneMinute
         { spellBase
             | conditionName = "Blinded"
-            , note = "Blindness/Deafness"
             , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
         }
 
@@ -806,7 +787,6 @@ stinkingCloud : ConditionPreset
 stinkingCloud =
     { spellBase
         | conditionName = "Poisoned"
-        , note = "Cloud: no action/BA"
         , durationKind = DurKindThisTurn
     }
 
@@ -816,7 +796,6 @@ greaterInvisibility =
     lastsOneMinute
         { spellBase
             | conditionName = "Invisible"
-            , note = "Greater Invisibility"
         }
 
 
@@ -828,7 +807,6 @@ petrifyingGaze : ConditionPreset
 petrifyingGaze =
     { monsterBase
         | conditionName = "Restrained"
-        , note = "Medusa gaze"
         , saveToEnd =
             Just
                 { emptySave
@@ -845,7 +823,6 @@ mindBlast : ConditionPreset
 mindBlast =
     { monsterBase
         | conditionName = "Stunned"
-        , note = "till flayer turn end"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -856,7 +833,6 @@ frightfulPresence =
     lastsOneMinute
         { monsterBase
             | conditionName = "Frightened"
-            , note = "Dash; save if no LoS"
             , saveToEnd = Just (save "WIS" 18 AutoRollAskAtEnd)
         }
 
@@ -865,7 +841,6 @@ horrificVisage : ConditionPreset
 horrificVisage =
     { monsterBase
         | conditionName = "Frightened"
-        , note = "Ghost"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -875,7 +850,6 @@ ghoulClaw : ConditionPreset
 ghoulClaw =
     { monsterBase
         | conditionName = "Paralyzed"
-        , note = "Ghoul claw"
         , durationKind = DurKindUntilTurn
         , untilPhase = AtEnd
     }
@@ -885,7 +859,6 @@ vampireCharm : ConditionPreset
 vampireCharm =
     { monsterBase
         | conditionName = "Charmed"
-        , note = "ends: vamp/ally dmg"
     }
 
 
@@ -893,7 +866,6 @@ luringSong : ConditionPreset
 luringSong =
     { monsterBase
         | conditionName = "Charmed"
-        , note = "Conc; moves to harpy"
         , saveToEnd =
             Just
                 { emptySave
@@ -911,7 +883,6 @@ giantSpiderWeb : ConditionPreset
 giantSpiderWeb =
     { monsterBase
         | conditionName = "Restrained"
-        , note = "web AC 10, HP 5"
     }
 
 
@@ -919,7 +890,6 @@ roperGrab : ConditionPreset
 roperGrab =
     { monsterBase
         | conditionName = "Grappled"
-        , note = "tentacle AC20 HP10"
         , saveToEnd = Just (save "STR" 14 AutoRollManual)
         , companions = [ "Poisoned" ]
     }
@@ -930,7 +900,6 @@ beholderSleepRay =
     lastsOneMinute
         { monsterBase
             | conditionName = "Unconscious"
-            , note = "ends on dmg/woken"
         }
 
 
@@ -939,7 +908,6 @@ carrionCrawler =
     lastsOneMinute
         { monsterBase
             | conditionName = "Poisoned"
-            , note = "Carrion Crawler"
             , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
             , companions = [ "Paralyzed" ]
         }
@@ -962,7 +930,6 @@ wandOfParalysis =
     lastsOneMinute
         { itemBase
             | conditionName = "Paralyzed"
-            , note = "Wand"
             , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
         }
 
@@ -972,7 +939,6 @@ wandOfFear =
     lastsOneMinute
         { itemBase
             | conditionName = "Frightened"
-            , note = "Dash; save if no LoS"
             , saveToEnd = Just (save "WIS" 15 AutoRollAskAtEnd)
         }
 
@@ -981,7 +947,6 @@ staffOfCharming : ConditionPreset
 staffOfCharming =
     { itemBase
         | conditionName = "Charmed"
-        , note = "1 hr; party dmg ends"
     }
 
 
@@ -989,7 +954,6 @@ potionOfInvisibility : ConditionPreset
 potionOfInvisibility =
     { itemBase
         | conditionName = "Invisible"
-        , note = "ends: atk/dmg/spell"
     }
 
 
@@ -997,7 +961,6 @@ dustOfSneezingAndChoking : ConditionPreset
 dustOfSneezingAndChoking =
     { itemBase
         | conditionName = "Incapacitated"
-        , note = "+1 Exh at turn end"
         , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
         , companions = [ "Suffocating" ]
     }
@@ -1035,7 +998,6 @@ dustOfDisappearance : ConditionPreset
 dustOfDisappearance =
     { itemBase
         | conditionName = "Invisible"
-        , note = "ends: atk/dmg/spell"
     }
 
 
@@ -1043,7 +1005,6 @@ net : ConditionPreset
 net =
     { itemBase
         | conditionName = "Restrained"
-        , note = "net AC 10, HP 5"
         , saveToEnd = Just (save "STR" 10 AutoRollManual)
     }
 
@@ -1056,7 +1017,6 @@ quicksand : ConditionPreset
 quicksand =
     { environmentBase
         | conditionName = "Restrained"
-        , note = "DC 10+ft; sinks 1d4"
         , saveToEnd = Just (save "STR" 10 AutoRollManual)
     }
 
@@ -1065,7 +1025,6 @@ slipperySurface : ConditionPreset
 slipperySurface =
     { environmentBase
         | conditionName = "Prone"
-        , note = "Slippery ice"
     }
 
 
@@ -1073,7 +1032,6 @@ heavyObscurement : ConditionPreset
 heavyObscurement =
     { environmentBase
         | conditionName = "Blinded"
-        , note = "Fog/Dk"
     }
 
 

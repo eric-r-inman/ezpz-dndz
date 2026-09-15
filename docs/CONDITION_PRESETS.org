@@ -15,8 +15,9 @@ books as recalled rather than as checked, and are marked /unverified/ below.
 
 * Where the editor falls short
 
-A preset holds what the editor's form holds, and its note carries whatever else
-the rule asks for the GM to act on.  Each gap names the presets it affects and
+A preset holds what the editor's form holds.  A custom-named preset's note
+carries a reminder of whatever else the rule asks; a preset that applies a
+standard condition carries no note.  Each gap names the presets it affects and
 how much supporting it would take.  /Simple/ is a setting or two of a shape the
 editor already has, /moderate/ is new state the editor and the encounter must
 both carry, and /complex/ is a mechanic the tracker does not model at all.
@@ -38,9 +39,9 @@ setting that aims the duration at the creature whose turn it is.
 
 Some effects end the moment the bearer takes damage, or damage from the caster's
 side.  The editor's damage settings belong to a save, which they roll or flag,
-and these rules want neither, so the presets name the trigger in their note and
-the GM removes the chip.  Supporting it takes an "ends when damaged" choice that
-needs no save, with the source of the damage left to the GM.
+and these rules want neither, so the GM removes the chip when the trigger lands.
+Supporting it takes an "ends when damaged" choice that needs no save, with the
+source of the damage left to the GM.
 
 - Turn Undead, Sleep, Hypnotic Pattern, Sleep Ray (Beholder) (unverified)
 - Charm Person, Suggestion, Vampire Charm, and Staff of Charming, which end on
@@ -51,9 +52,10 @@ needs no save, with the source of the damage left to the GM.
 Searing Smite burns its target at the start of each of the target's turns before
 the save, Ensnaring Strike deals piercing damage each turn the target stays
 restrained, and a burning creature takes fire damage at the start of each of its
-turns.  The failed-save damage setting fires only on a failure, so these presets
-name the damage in the note.  Supporting it takes a damage setting that fires on
-the bearer's turn rather than on the save.
+turns.  The failed-save damage setting fires only on a failure, so the GM deals
+that damage by hand; Searing Smite and On Fire name it in their note.
+Supporting it takes a damage setting that fires on the bearer's turn rather than
+on the save.
 
 - Searing Smite, Ensnaring Strike, On Fire
 
@@ -79,9 +81,9 @@ a moderate change.
 
 The countdown runs to 99 of the bearer's turns, just short of ten minutes, and
 no setting rolls a duration.  Presets for effects that last longer, or for a
-rolled number of minutes, last until removed and give the duration in the note
-where there is room.  Supporting it takes a longer countdown, and one that can
-roll its length.
+rolled number of minutes, last until removed, and the custom-named ones give the
+duration in their note where there is room.  Supporting it takes a longer
+countdown, and one that can roll its length.
 
 - Shield of Faith, Spike Growth, Hex, Hunter's Mark, Pass Without Trace, Wild
   Shape
@@ -93,9 +95,10 @@ roll its length.
 
 Most spell effects end when their caster's concentration does.  A condition
 keeps no link to its caster, so the GM removes the chip when concentration ends,
-and the note says "conc" where there is room.  The companion link, which already
-ends one condition with another on the same creature, is the natural start; this
-one would have to reach across to the caster's Concentrating status.
+and a custom-named preset's note says "conc" where there is room.  The companion
+link, which already ends one condition with another on the same creature, is the
+natural start; this one would have to reach across to the caster's Concentrating
+status.
 
 - Bless, Hex, Hunter's Mark, Guidance, Shield of Faith, Spike Growth, Shining
   Smite, Pass Without Trace, Ensnaring Strike, Haste, Heroism
@@ -148,10 +151,10 @@ turns.
 Suffocating adds a level of Exhaustion at the end of each of the bearer's turns,
 and extreme cold or heat adds one on each hour's failed save, without the effect
 ending.  A failed save can deal damage or change the condition but cannot add
-Exhaustion, so the notes carry the schedule and the GM adds the levels.  Extreme
-heat's DC also rises each hour, and quicksand's escape DC rises as the creature
-sinks.  Supporting it takes an Exhaustion step on a schedule, beside the
-failed-save outcomes.
+Exhaustion, so the GM adds the levels, and the custom-named presets' notes carry
+the schedule.  Extreme heat's DC also rises each hour, and quicksand's escape DC
+rises as the creature sinks.  Supporting it takes an Exhaustion step on a
+schedule, beside the failed-save outcomes.
 
 - Drowning, Dust of Sneezing and Choking, Extreme Cold, Extreme Heat, Quicksand
   (unverified)

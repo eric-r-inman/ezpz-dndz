@@ -287,4 +287,4 @@ The bundled Condition/Effect presets were checked against the 2024 rules (SRD
 5.2.1 where the effect is in it), and [[file:docs/CONDITION_PRESETS.org][docs/CONDITION_PRESETS.org]] records where
 each falls short and what supporting it would take.  The entries that name this
 one carry the simple and moderate settings it asks for; the complex gaps stay
-notes until the tracker models those mechanics.
+with the GM, as that document records, until the tracker models those mechanics.
