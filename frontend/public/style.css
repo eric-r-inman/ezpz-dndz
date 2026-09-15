@@ -9533,6 +9533,35 @@ button.creature-card__lifecycle--dead:focus-visible {
   position: relative;
 }
 
+/* The Condition editor's name for the preset its form came from,
+   beside the Load button.  A zero basis keeps it on the button's
+   line, where a long name ellipsizes rather than wrapping the row. */
+.cond-loaded {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.cond-loaded__name {
+  min-width: 0;
+  font-size: var(--font-size-field);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Marks a loaded preset whose settings have changed since. */
+.cond-loaded__dirty {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-danger);
+}
+
 .cond-footer__load-menu {
   position: absolute;
   bottom: calc(100% + 4px);

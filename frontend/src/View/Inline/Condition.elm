@@ -59,7 +59,44 @@ saved recipe is the first thing to reach for.
 loadRow : ConditionUi -> Dict String ConditionPreset -> Html Msg
 loadRow ui presets =
     div [ class "cond-section" ]
-        [ div [ class "cond-row" ] [ presetLoadControl ui presets ] ]
+        [ div [ class "cond-row" ] (presetLoadControl ui presets :: loadedPresetLabel ui presets) ]
+
+
+{-| Names the preset the form came from, with a red dot once any of
+its settings has changed.
+-}
+loadedPresetLabel : ConditionUi -> Dict String ConditionPreset -> List (Html Msg)
+loadedPresetLabel ui userPresets =
+    ui.loadedPresetName
+        |> Maybe.map
+            (\name ->
+                let
+                    changed =
+                        Dict.get name (Dict.union userPresets Bundled.defaults)
+                            |> Maybe.map (\preset -> not (Ui.Condition.matchesPreset preset ui))
+                            |> Maybe.withDefault False
+                in
+                [ span [ class "cond-loaded" ]
+                    [ span
+                        [ class "cond-loaded__name"
+                        , Tooltips.attr ("Loaded: " ++ name)
+                        ]
+                        [ text ("Loaded: " ++ name) ]
+                    , if changed then
+                        span
+                            [ class "cond-loaded__dirty"
+                            , Tooltips.attr "Unsaved changes"
+                            , attribute "role" "img"
+                            , attribute "aria-label" "Unsaved changes"
+                            ]
+                            []
+
+                      else
+                        text ""
+                    ]
+                ]
+            )
+        |> Maybe.withDefault []
 
 
 standardSection : ConditionUi -> Html Msg
