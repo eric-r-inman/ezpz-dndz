@@ -1,6 +1,6 @@
 module Ui.Condition exposing
     ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
-    , ConditionLogEntry, ConditionPreset, applyPreset, companionNames, maxConditionLogEntries, toPreset
+    , ConditionLogEntry, ConditionPreset, applyPreset, companionNames, matchesPreset, maxConditionLogEntries, toPreset
     )
 
 {-| Condition / effect editor state.
@@ -324,6 +324,48 @@ toPreset ui =
     }
 
 
+{-| Whether the form still holds a preset's settings. Only what a
+preset keeps counts, and a duration's timing only while that
+duration is the one picked.
+-}
+matchesPreset : ConditionPreset -> ConditionUi -> Bool
+matchesPreset preset ui =
+    let
+        effectiveName =
+            if String.isEmpty preset.conditionName then
+                preset.customName
+
+            else
+                preset.conditionName
+
+        sameTiming =
+            case ui.durationKind of
+                DurKindManual ->
+                    True
+
+                DurKindUntilTurn ->
+                    ui.untilPhase == preset.untilPhase
+
+                DurKindThisTurn ->
+                    True
+
+                DurKindCountdown ->
+                    ui.countdownTurns == preset.countdownTurns && ui.countdownPhase == preset.countdownPhase
+
+        -- A DC or bonus field keeps its last number while the typed
+        -- text doesn't read as one, so the numbers are what count.
+        saveSettings =
+            Maybe.map (\s -> { s | dcText = "", bonusText = "" })
+    in
+    (ui.name == effectiveName)
+        && (ui.customName == preset.customName)
+        && (ui.note == preset.note)
+        && (ui.durationKind == preset.durationKind)
+        && sameTiming
+        && (saveSettings ui.saveToEnd == saveSettings preset.saveToEnd)
+        && (companionNames ui == preset.companions)
+
+
 {-| Overlay a saved preset on the current form state. Keeps the
 form's per-application context (`target`, `editingId`) and reuses
 the current target as the `untilCreature` default — that's the
@@ -331,9 +373,9 @@ natural fit for self-effect presets like "Until self's next
 turn", which is what Stun and many other 5e conditions look like
 in practice.
 
-Stashes the preset name in `loadedPresetName` so the title bar
-shows "(loaded: Stun)". Closes any open load menu and clears the
-pending save-name input so the post-load footer reads cleanly.
+Stashes the preset name in `loadedPresetName` so the Load row
+names it. Closes any open load menu and clears the pending
+save-name input so the post-load footer reads cleanly.
 
 -}
 applyPreset : String -> ConditionPreset -> ConditionUi -> ConditionUi

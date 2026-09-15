@@ -8,6 +8,8 @@
    notes from copies saved before this release.
 2. The Condition/Effect editor's + With button sits a little closer to the Note
    field.  No action needed.
+3. The Condition/Effect editor names the loaded preset beside its Load button,
+   with a red dot once a setting has changed.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
