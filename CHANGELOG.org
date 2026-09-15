@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.12.0
+** Added
 1. The Save/Load Encounter panel folds its saved encounters into a scrolling
    list; pick one to load, overwrite, rename, or delete it.  No action needed.
 2. The Condition/Effect editor can apply further conditions alongside the one it
@@ -18,9 +24,6 @@
 2. The bundled Condition/Effect presets carry the durations, saves, and
    companion conditions their rules call for.  Choose Restore bundled presets in
    the Load menu once to replace the copies saved before this release.
-** Breaking
-** Maintenance
-** Security
 * v0.11.0
 ** Maintenance
 1. The bundled lore-group write-ups no longer ship as a separate document.  No
