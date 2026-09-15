@@ -814,6 +814,9 @@ type Msg
     | ConditionPresetLoadMenuClose
     | ConditionPresetLoad String
     | ConditionPresetDelete String
+      -- Lays the shipped presets over the stored ones, dropping the
+      -- names the bundle has retired.
+    | ConditionPresetRestoreBundled
     | ConditionPresetCategoryToggle String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int

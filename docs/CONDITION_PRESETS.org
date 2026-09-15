@@ -1,0 +1,215 @@
+#+title:     Condition/Effect presets
+#+language:  en
+
+The Condition/Effect editor ships presets for effects from the 2024 rules.  This
+document records where a preset falls short of its source — what the rule asks
+that the editor cannot carry — and what supporting it would take.  The presets
+themselves are the source of truth for their settings.
+
+The sources are SRD 5.2.1 wherever an effect appears there.  Several do not: the
+Battle Master maneuvers, Wrathful and Staggering Smite, and Cause Fear come from
+the 2024 Player's Handbook; the mind flayer, beholder, and carrion crawler from
+the 2024 Monster Manual; quicksand from the 2024 Dungeon Master's Guide; and
+Hexblade's Curse from Xanathar's Guide to Everything.  Those presets follow the
+books as recalled rather than as checked, and are marked /unverified/ below.
+
+* Where the editor falls short
+
+A preset holds what the editor's form holds, and its note carries whatever else
+the rule asks for the GM to act on.  Each gap names the presets it affects and
+how much supporting it would take.  /Simple/ is a setting or two of a shape the
+editor already has, /moderate/ is new state the editor and the encounter must
+both carry, and /complex/ is a mechanic the tracker does not model at all.
+
+** Timing an effect off its source's turn — simple
+
+Many effects last until the start or end of the caster's or attacker's next
+turn.  A preset cannot name that creature, so these presets run to the end of
+the target's own next turn, which covers the turn the effect is meant to cost
+the target but can keep it a little past the source's.  The GM can aim the
+duration at the source creature before applying.  Supporting it takes a preset
+setting that aims the duration at the creature whose turn it is.
+
+- Stunning Strike (Monk), Menacing Attack (unverified), Goading Attack
+  (unverified), Staggering Smite (unverified)
+- Mind Blast (Mind Flayer) (unverified), Horrific Visage (Ghost)
+
+** Ending on damage, without a save — simple
+
+Some effects end the moment the bearer takes damage, or damage from the caster's
+side.  The editor's damage settings belong to a save, which they roll or flag,
+and these rules want neither, so the presets name the trigger in their note and
+the GM removes the chip.  Supporting it takes an "ends when damaged" choice that
+needs no save, with the source of the damage left to the GM.
+
+- Turn Undead, Sleep, Hypnotic Pattern, Sleep Ray (Beholder) (unverified)
+- Charm Person, Suggestion, Vampire Charm, and Staff of Charming, which end on
+  damage from the caster or the caster's allies
+
+** Damage every turn, whatever the save — simple
+
+Searing Smite burns its target at the start of each of the target's turns before
+the save, Ensnaring Strike deals piercing damage each turn the target stays
+restrained, and a burning creature takes fire damage at the start of each of its
+turns.  The failed-save damage setting fires only on a failure, so these presets
+name the damage in the note.  Supporting it takes a damage setting that fires on
+the bearer's turn rather than on the save.
+
+- Searing Smite, Ensnaring Strike, On Fire
+
+** Escape checks rather than saves — simple
+
+Web, Entangle, Black Tentacles, Ensnaring Strike, a net, and quicksand end when
+a creature spends an action on a Strength (Athletics) check, and the roper's
+tentacle when its grapple is escaped.  The presets stand a manual save in for
+the check: the GM rolls it from the chip when the attempt is made, adding the
+creature's Athletics bonus, and a success removes the condition.  The ability
+picker offers only the six abilities, so the check reads as a Strength save.
+Supporting it takes a check beside the save, naming the skill it uses.
+
+- Web, Entangle, Black Tentacles, Ensnaring Strike
+- Tendril (Roper), Net, Quicksand (unverified)
+
+Black Tentacles also calls for a Strength save from a restrained creature that
+ends its turn in the area, which decides only whether the tentacles deal their
+damage again.  A save that cannot end the condition needs a setting of its own,
+a moderate change.
+
+** Durations beyond the countdown — simple
+
+The countdown runs to 99 of the bearer's turns, just short of ten minutes, and
+no setting rolls a duration.  Presets for effects that last longer, or for a
+rolled number of minutes, last until removed and give the duration in the note
+where there is room.  Supporting it takes a longer countdown, and one that can
+roll its length.
+
+- Shield of Faith, Spike Growth, Hex, Hunter's Mark, Pass Without Trace, Wild
+  Shape
+- Web, Charm Person, Suggestion, Vampire Charm
+- Staff of Charming, Potion of Invisibility, Potion of Heroism, Potion of Giant
+  Strength, Potion of Climbing, Dust of Disappearance
+
+** Concentration — moderate
+
+Most spell effects end when their caster's concentration does.  A condition
+keeps no link to its caster, so the GM removes the chip when concentration ends,
+and the note says "conc" where there is room.  The companion link, which already
+ends one condition with another on the same creature, is the natural start; this
+one would have to reach across to the caster's Concentrating status.
+
+- Bless, Hex, Hunter's Mark, Guidance, Shield of Faith, Spike Growth, Shining
+  Smite, Pass Without Trace, Ensnaring Strike, Haste, Heroism
+- Bane, Hold Person, Hold Monster, Sleep, Cause Fear (unverified), Fear,
+  Hypnotic Pattern, Hideous Laughter, Suggestion, Slow, Web, Entangle, Black
+  Tentacles, Faerie Fire, Banishment, Greater Invisibility
+- Frightful Presence (Dragon), Luring Song (Harpy), Wand of Fear
+
+** Roll modifiers — complex
+
+The tracker does not adjust rolls, so dice added to or taken from attacks,
+saves, and checks, changes to AC, and advantage or disadvantage stay reminders
+in the note.  Supporting them means modelling the rolls themselves.
+
+- Bardic Inspiration (+d6, +d8, +d10), Bless, Bane, Guidance, Hex, Hunter's
+  Mark, Hexblade's Curse (unverified), Rage, Reckless Attack, Patient Defense
+- Shining Smite, Faerie Fire, Pass Without Trace, Vicious Mockery, Goading
+  Attack (unverified), Slow, Haste, Shield, Shield of Faith
+
+** Temporary hit points — moderate
+
+Heroism grants temporary hit points equal to its caster's spellcasting modifier
+at the start of each of the target's turns, a Potion of Heroism grants 10, and
+Wild Shape grants the druid's level in them on taking the form.  The HP editor
+sets temporary hit points by hand, and a preset cannot grant them.  Supporting
+it takes a grant a condition makes when applied, or on each of the bearer's
+turns.
+
+- Heroism, Potion of Heroism, Wild Shape
+
+** Speed, resistances, actions, and ability scores — complex
+
+- Rage's resistances and Strength advantage
+- Haste's and Slow's changes to Speed and actions
+- Hypnotic Pattern's Speed of 0, which its companion only names
+- Stinking Cloud's lost action and Bonus Action
+- Potion of Giant Strength's Strength score and Potion of Climbing's climb Speed
+
+** Effects that end on the bearer's own actions — complex
+
+- Potion of Invisibility and Dust of Disappearance end when the bearer makes an
+  attack roll, deals damage, or casts a spell.
+- Sanctuary ends when the warded creature makes an attack roll, casts a spell,
+  or deals damage.
+- Vicious Mockery and Bardic Inspiration end with the roll they change.
+- Rage lasts only while the barbarian keeps extending it, turn by turn.
+
+** Growing effects — moderate
+
+Suffocating adds a level of Exhaustion at the end of each of the bearer's turns,
+and extreme cold or heat adds one on each hour's failed save, without the effect
+ending.  A failed save can deal damage or change the condition but cannot add
+Exhaustion, so the notes carry the schedule and the GM adds the levels.  Extreme
+heat's DC also rises each hour, and quicksand's escape DC rises as the creature
+sinks.  Supporting it takes an Exhaustion step on a schedule, beside the
+failed-save outcomes.
+
+- Drowning, Dust of Sneezing and Choking, Extreme Cold, Extreme Heat, Quicksand
+  (unverified)
+
+** Immunity after a successful save — moderate
+
+A creature that succeeds on its save against the ghost's Horrific Visage or the
+harpy's Luring Song is immune to it for a day.  The Save Chain editor grants
+timed immunity; the Condition/Effect editor does not, so the GM keeps track of
+who saved.
+
+- Horrific Visage (Ghost), Luring Song (Harpy)
+
+** Areas and zones — complex
+
+The Save Chain editor tracks the creatures standing in an area.  A condition
+preset covers one creature's condition, so a zone's own damage, terrain, and
+entry saves stay with the GM, or with a Save Chain preset.
+
+- Spike Growth, Web, Entangle, Black Tentacles, Stinking Cloud, Pass Without
+  Trace, Slippery Surface, Heavy Obscurement
+
+** Outcomes the editor has no setting for — complex
+
+- Web (Giant Spider), Tendril (Roper), and Net end when the web, tentacle, or
+  net, an object with its own AC and hit points, is destroyed.
+- Banishment keeps some extraplanar targets away for good when the spell lasts
+  its full minute.
+- Haste's ending costs its target the next turn.
+- Command's Grovel knocks the target Prone and ends its turn.
+
+** Instant effects
+
+Pushing Attack (unverified) and Sneak Attack leave nothing lasting.  Their
+presets clear themselves when the bearer's turn next ends: a Pushed chip on the
+creature pushed, and a reminder on the rogue that Sneak Attack is spent for the
+turn.
+
+* Readings to confirm
+
+- Hideous Laughter :: The 2024 spell gives its target the Prone condition for
+  the spell's duration and keeps the target from ending it, so this preset ends
+  Prone with the spell.  The Save Chain preset for the same spell leaves the
+  target Prone until it stands, which reads like the 2014 wording.  The two
+  should agree, and the 2024 wording favours this one.
+- Heroism :: The Heroism preset follows the spell, as the request that added it
+  described: a minute of immunity to Frightened.  Potion of Heroism shares the
+  name but not the effect — 10 temporary hit points and the Bless spell for an
+  hour, with no immunity — so its preset keeps to the potion, and its chip reads
+  Potion of Heroism.
+- Pit Trap :: The SRD's hidden pit deals falling damage, and a creature that
+  lands from a fall is Prone, so the preset marks the creature In Pit with Prone
+  beside it rather than Restrained.
+
+* Updating stored presets
+
+A stored copy of a bundled preset outranks the shipped one, so the presets the
+app seeded before these corrections keep their old settings and names.  Restore
+bundled presets, at the bottom of the Load menu, lays the shipped presets over
+the stored ones, drops the names the bundle has retired, and leaves the GM's own
+presets alone.

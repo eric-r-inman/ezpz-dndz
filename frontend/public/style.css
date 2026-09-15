@@ -9666,6 +9666,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   padding-left: 8px;
 }
 
+/* Sets the Load menu's restore row apart from the presets above it,
+   since it rewrites the stored presets rather than loading one.  The
+   row sits in the scrolling menu itself, where the item style's
+   clipping would let the menu squeeze it flat. */
+.cond-footer__load-restore {
+  flex: 0 0 auto;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-field);
+}
+
 .compendium__filter-bar {
   display: flex;
   gap: 12px;

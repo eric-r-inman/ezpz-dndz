@@ -219,3 +219,72 @@ settings the review asked for have landed; the one left open is deliberately a
 note: threshold outcomes — a drop to 0 hit points under a ceiling, and automatic
 failure for a creature type — cover too few effects to earn a setting, and the
 Fail button plus the effect's note carry them.
+
+* DONE Let a condition bring companions, and restore the bundled presets
+
+A condition can apply further conditions that end with it, which the presets use
+for conditions that arrive together, and the Load menu can lay the shipped
+presets over their stored copies.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Aim a preset's duration at the creature whose turn it is
+
+Effects that last until the caster's or attacker's next turn count the target's
+turn instead, since a preset cannot name the source.  A setting that aims the
+duration at the active creature when the preset is applied would carry them.
+Part of [[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO End a condition on damage without a save
+
+Some effects end the moment the bearer takes damage, which the save's damage
+settings can only flag or roll.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Deal a condition's damage on the bearer's turn
+
+Some effects deal damage every turn whatever the save does, where the
+failed-save damage fires only on a failure.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Offer an escape check beside the save to end
+
+Restraining effects and grapples end on a Strength (Athletics) check, which the
+presets stand in for with a manual Strength save.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Let a countdown run past 99 turns, or roll its length
+
+Ten-minute, hour-long, and rolled durations last until removed.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO End a spell effect with its caster's concentration
+
+Most spell presets end when the caster's concentration does, which the GM tracks
+by hand; the companion link would have to reach across creatures to the caster's
+Concentrating status.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Grant temporary hit points from a condition
+
+A few effects grant temporary hit points, once or on each of the bearer's turns,
+which the HP editor sets only by hand.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Add Exhaustion on a schedule
+
+Suffocation and extreme weather add a level of Exhaustion on a schedule without
+ending.  Part of [[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Grant immunity after a successful save
+
+A few monster effects leave a creature that saves immune for a day, which the
+Save Chain editor already grants.  Part of
+[[*Teach the Condition/Effect editor the rules its presets need]].
+
+* TODO Teach the Condition/Effect editor the rules its presets need
+
+The bundled Condition/Effect presets were checked against the 2024 rules (SRD
+5.2.1 where the effect is in it), and [[file:docs/CONDITION_PRESETS.org][docs/CONDITION_PRESETS.org]] records where
+each falls short and what supporting it would take.  The entries that name this
+one carry the simple and moderate settings it asks for; the complex gaps stay
+notes until the tracker models those mechanics.

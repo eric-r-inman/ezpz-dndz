@@ -1484,6 +1484,9 @@ updateInner msg model =
         ConditionPresetDelete name ->
             Update.Condition.presetDelete name model
 
+        ConditionPresetRestoreBundled ->
+            Update.Condition.presetRestoreBundled model
+
         ConditionPresetCategoryToggle category ->
             Update.Condition.presetCategoryToggle category model
 

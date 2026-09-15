@@ -9,10 +9,15 @@
    names, each ending when that one does.  No action needed.
 3. A new Heroism preset lasts the spell's minute and grants immunity to
    Frightened.  No action needed.
+4. The Condition/Effect editor's Load menu restores the bundled presets without
+   touching your own.  No action needed.
 ** Fixes
 1. A downed creature's empty death-save pips no longer show the card's border
    through them, and a stable creature's strip drops its shield.  No action
    needed.
+2. The bundled Condition/Effect presets carry the durations, saves, and
+   companion conditions their rules call for.  Choose Restore bundled presets in
+   the Load menu once to replace the copies saved before this release.
 ** Breaking
 ** Maintenance
 ** Security

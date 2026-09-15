@@ -744,11 +744,26 @@ presetLoadControl ui userPresets =
                 [ class "cond-footer__load-menu cond-footer__load-menu--below"
                 , attribute "role" "listbox"
                 ]
-                (List.map (presetMenuItem True) userNames ++ categorizedSections)
+                (List.map (presetMenuItem True) userNames ++ categorizedSections ++ [ restoreBundledItem ])
 
           else
             text ""
         ]
+
+
+{-| The Load menu's last row. A stored copy of a bundled preset
+outranks the shipped one, so this is how a copy saved before the
+bundle changed picks the changes up.
+-}
+restoreBundledItem : Html Msg
+restoreBundledItem =
+    button
+        [ class "cond-footer__load-item-name cond-footer__load-restore"
+        , type_ "button"
+        , onClick ConditionPresetRestoreBundled
+        , Tooltips.attr "Overwrite the bundled presets with their shipped values; your own presets are not changed"
+        ]
+        [ text "Restore bundled presets" ]
 
 
 categorySection : ConditionUi -> Dict String ConditionPreset -> Dict String ConditionPreset -> String -> Html Msg

@@ -22,6 +22,7 @@ module Update.Condition exposing
     , presetLoad
     , presetLoadMenuClose
     , presetLoadMenuToggle
+    , presetRestoreBundled
     , presetSaveCancel
     , presetSaveCategoryChanged
     , presetSaveNameChanged
@@ -66,7 +67,9 @@ import Msg
 import Set
 import Ui.Condition as ConditionUi exposing (ConditionUi)
 import Ui.Condition.Bundled as Bundled
+import Ui.Toast exposing (ToastKind(..))
 import Update.Notice
+import Update.Toast
 
 
 {-| The editor's own drawer entry, in the `Maybe Surface`
@@ -705,6 +708,44 @@ presetDelete name model =
             )
     , Cmd.none
     )
+
+
+{-| Put the shipped presets in place of their stored copies, leaving
+the GM's own untouched. The persist Cmd comes from `Main.elm`'s
+model-diff pass, as for every other preset change; the toast is the
+only feedback a restore that changes nothing visible would get.
+-}
+presetRestoreBundled : Model -> ( Model, Cmd Msg )
+presetRestoreBundled model =
+    let
+        restored =
+            Dict.union Bundled.defaults model.conditionPresets
+                |> Dict.filter (\name _ -> not (List.member name Bundled.retiredNames))
+
+        reload ui =
+            let
+                closed =
+                    { ui | loadMenuOpen = False }
+
+                reloaded name =
+                    if List.member name Bundled.retiredNames then
+                        { closed | loadedPresetName = Nothing }
+
+                    else
+                        Dict.get name Bundled.defaults
+                            |> Maybe.map (\preset -> ConditionUi.applyPreset name preset closed)
+                            |> Maybe.withDefault closed
+            in
+            ui.loadedPresetName
+                |> Maybe.map reloaded
+                |> Maybe.withDefault closed
+    in
+    Update.Toast.push ToastSuccess
+        ("Restored "
+            ++ String.fromInt (Dict.size Bundled.defaults)
+            ++ " bundled presets; your own presets are untouched."
+        )
+        ({ model | conditionPresets = restored } |> withConditionUi reload)
 
 
 {-| Flip the expand/collapse state of one category in the Load
