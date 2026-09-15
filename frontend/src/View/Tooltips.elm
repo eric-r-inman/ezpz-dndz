@@ -76,6 +76,7 @@ module View.Tooltips exposing
     , drawerPinPanel
     , drawerUnpinPanel
     , encounterBarSpellList
+    , exhaustionStep
     , fallDamage
     , flyHeightDown
     , flyHeightUp
@@ -472,6 +473,11 @@ reactionSpent =
 clickToEdit : String
 clickToEdit =
     "Click to edit"
+
+
+exhaustionStep : String
+exhaustionStep =
+    "Raise the Exhaustion level; after 6 it returns to 0"
 
 
 hpOpenManage : String

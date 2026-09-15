@@ -108,6 +108,7 @@ seedCreatures =
                         }
               , linkedTo = Nothing
               , area = Nothing
+              , level = Nothing
               }
             ]
       , saveNotices = []

@@ -1904,7 +1904,8 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
           "onDamage": "ask"
         },
         "linkedTo": null,
-        "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" }
+        "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" },
+        "level": null
       },
       {
         "id": 2,
@@ -1913,16 +1914,18 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
         "duration": { "kind": "untilTurn", "phase": "atBegin", "target": "next", "name": "Cleric" },
         "saveToEnd": null,
         "linkedTo": 1,
-        "area": null
+        "area": null,
+        "level": null
       },
       {
         "id": 3,
-        "name": "Burning",
+        "name": "Exhaustion",
         "note": "",
         "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 3, "skipNextTick": true },
         "saveToEnd": null,
         "linkedTo": null,
-        "area": null
+        "area": null,
+        "level": 2
       }
     ],
     "saveNotices": [

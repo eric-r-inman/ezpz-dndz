@@ -1055,23 +1055,11 @@ saveNoticeChip target notice =
         ]
 
 
-{-| One condition chip. Visible text is just the condition name +
-optional `(note)`; per the release-polish pass the duration glyph
-and the chip body itself stay minimal. Two action affordances sit
-inside the chip:
-
-  - The 🎲 save-roll button — when the condition has a
-    `saveToEnd` spec, or is an area marker. Fires a 1d20 vs. the
-    DC and posts a "Saved:" notice on success, same as an
-    auto-fired roll; an area marker's roll resolves its chain's
-    outcome instead.
-  - The × remove button — always present. One-click chip removal
-    without opening the edit modal.
-
-Both action buttons `stopPropagationOn "click"` so they don't
-also bubble up and open the edit modal (which the chip name
-itself triggers). The hover tooltip on the chip wrap composes
-the full duration + save terms via `chipTitle`.
+{-| One condition chip: the condition's name with its note, or with
+its level when it is Exhaustion, beside the chip's action buttons.
+The buttons `stopPropagationOn "click"` so they don't also open the
+edit modal that the chip name triggers. The hover tooltip on the
+chip wrap composes the full duration + save terms via `chipTitle`.
 
 A chip named in `flashConditions` pulses once — the reminder that
 the GM has to click its 🎲 themselves because nothing auto-fires
@@ -1100,14 +1088,8 @@ conditionChip flashConditions creature cond =
             , onClick (ConditionOpenEdit target cond.id)
             , Tooltips.attr Tooltips.clickToEdit
             ]
-            [ text cond.name
-            , if String.isEmpty cond.note then
-                text ""
-
-              else
-                span [ class "condition-chip__note" ]
-                    [ text (" (" ++ cond.note ++ ")") ]
-            ]
+            (chipLabel cond)
+        , exhaustionLevelButton target cond
         , chipSaveButton target cond
         , button
             [ class "condition-chip__remove"
@@ -1118,6 +1100,44 @@ conditionChip flashConditions creature cond =
             ]
             [ text "×" ]
         ]
+
+
+{-| The chip's name, followed by its note, or by a colon when an
+Exhaustion level stands in for the note.
+-}
+chipLabel : Encounter.Condition -> List (Html Msg)
+chipLabel cond =
+    cond.level
+        |> Maybe.map (\_ -> [ text (cond.name ++ ":") ])
+        |> Maybe.withDefault
+            [ text cond.name
+            , if String.isEmpty cond.note then
+                text ""
+
+              else
+                span [ class "condition-chip__note" ]
+                    [ text (" (" ++ cond.note ++ ")") ]
+            ]
+
+
+{-| Steps an Exhaustion chip's level without opening the editor the
+chip's name opens.
+-}
+exhaustionLevelButton : String -> Encounter.Condition -> Html Msg
+exhaustionLevelButton target cond =
+    cond.level
+        |> Maybe.map
+            (\level ->
+                button
+                    [ class "condition-chip__level"
+                    , stopPropagationOn "click"
+                        (Decode.succeed ( ConditionExhaustionStep target cond.id, True ))
+                    , Tooltips.attr Tooltips.exhaustionStep
+                    , attribute "aria-label" ("Exhaustion level " ++ String.fromInt level)
+                    ]
+                    [ text (String.fromInt level) ]
+            )
+        |> Maybe.withDefault (text "")
 
 
 {-| Tooltip text for the whole chip. Combines name, duration, and

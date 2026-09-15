@@ -1106,6 +1106,7 @@ encodeCondition cond =
         , ( "saveToEnd", encodeMaybe encodeSaveToEnd cond.saveToEnd )
         , ( "linkedTo", encodeMaybe E.int cond.linkedTo )
         , ( "area", encodeMaybe encodeArea cond.area )
+        , ( "level", encodeMaybe E.int cond.level )
         ]
 
 
@@ -1502,9 +1503,12 @@ decodeStringSet =
     D.list D.string |> D.map Set.fromList
 
 
+{-| A condition saved before levels existed reads back with the level
+its name calls for, so an older Exhaustion chip starts at 1.
+-}
 decodeCondition : D.Decoder Condition
 decodeCondition =
-    D.map7 Condition
+    D.map8 Condition
         (D.field "id" D.int)
         (D.field "name" D.string)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
@@ -1516,6 +1520,8 @@ decodeCondition =
         )
         (D.oneOf [ D.field "linkedTo" (D.nullable D.int), D.succeed Nothing ])
         (D.oneOf [ D.field "area" (D.nullable decodeArea), D.succeed Nothing ])
+        (D.oneOf [ D.field "level" (D.nullable D.int), D.succeed Nothing ])
+        |> D.map (\cond -> { cond | level = Encounter.conditionLevel cond.name cond.level })
 
 
 decodeArea : D.Decoder AreaTracker

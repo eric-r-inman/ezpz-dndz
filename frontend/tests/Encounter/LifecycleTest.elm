@@ -94,6 +94,7 @@ countdownCondition =
     , saveToEnd = Nothing
     , linkedTo = Nothing
     , area = Nothing
+    , level = Nothing
     }
 
 
@@ -325,6 +326,7 @@ untilTurnExpireSuite =
                         , saveToEnd = Nothing
                         , linkedTo = Nothing
                         , area = Nothing
+                        , level = Nothing
                         }
 
                     bearer =
@@ -358,6 +360,7 @@ untilTurnExpireSuite =
                         , saveToEnd = Nothing
                         , linkedTo = Nothing
                         , area = Nothing
+                        , level = Nothing
                         }
 
                     companion =
@@ -397,6 +400,7 @@ untilTurnExpireSuite =
                         , saveToEnd = Nothing
                         , linkedTo = Nothing
                         , area = Nothing
+                        , level = Nothing
                         }
 
                     bearer =

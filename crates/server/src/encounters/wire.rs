@@ -115,6 +115,8 @@ pub struct Condition {
   /// one.
   pub linked_to: Option<i64>,
   pub area: Option<AreaTracker>,
+  /// The Exhaustion level, on an Exhaustion condition.
+  pub level: Option<i64>,
 }
 
 /// An area-effect marker: the Save Chain preset the bearer stands
@@ -660,6 +662,7 @@ fn decode_condition(value: &Value) -> Result<Condition, String> {
       .and_then(|v| decode_save_to_end(v).ok()),
     linked_to: map.get("linkedTo").and_then(as_int),
     area: map.get("area").and_then(|v| decode_area(v).ok()),
+    level: map.get("level").and_then(as_int),
   })
 }
 
@@ -1055,6 +1058,7 @@ fn encode_condition(cond: &Condition) -> Value {
     "saveToEnd": cond.save_to_end.as_ref().map_or(Value::Null, encode_save_to_end),
     "linkedTo": cond.linked_to,
     "area": cond.area.as_ref().map_or(Value::Null, encode_area),
+    "level": cond.level,
   })
 }
 
@@ -1285,7 +1289,8 @@ mod tests {
               "onDamage": "rollAdvantage"
             },
             "linkedTo": null,
-            "area": null
+            "area": null,
+            "level": null
           },
           {
             "id": 2,
@@ -1294,16 +1299,18 @@ mod tests {
             "duration": { "kind": "untilTurn", "phase": "atBegin", "target": "next", "name": "Cleric" },
             "saveToEnd": null,
             "linkedTo": 1,
-            "area": null
+            "area": null,
+            "level": null
           },
           {
             "id": 3,
-            "name": "Burning",
+            "name": "Exhaustion",
             "note": "",
             "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 3, "skipNextTick": true },
             "saveToEnd": null,
             "linkedTo": null,
-            "area": null
+            "area": null,
+            "level": 2
           },
           {
             "id": 4,
@@ -1312,7 +1319,8 @@ mod tests {
             "duration": { "kind": "manual" },
             "saveToEnd": null,
             "linkedTo": null,
-            "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" }
+            "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" },
+            "level": null
           }
         ],
         "saveNotices": [

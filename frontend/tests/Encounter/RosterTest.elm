@@ -360,6 +360,7 @@ duplicateCreatureSuite =
                         , saveToEnd = Nothing
                         , linkedTo = Nothing
                         , area = Nothing
+                        , level = Nothing
                         }
 
                     enc =

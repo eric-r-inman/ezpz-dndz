@@ -151,6 +151,28 @@ walk target firstName remaining =
 
 
 
+-- ── EXHAUSTION ───────────────────────────────────────────────────────────────
+
+
+exhaustionSuite : Test
+exhaustionSuite =
+    describe "Exhaustion levels"
+        [ test "each step raises the level, and a step past 6 returns it to 0" <|
+            \_ ->
+                List.map Encounter.nextExhaustionLevel [ 0, 1, 5, 6 ]
+                    |> Expect.equal [ 1, 2, 6, 0 ]
+        , test "an Exhaustion condition starts at level 1 and keeps the level it has" <|
+            \_ ->
+                ( Encounter.conditionLevel "Exhaustion" Nothing, Encounter.conditionLevel "Exhaustion" (Just 4) )
+                    |> Expect.equal ( Just 1, Just 4 )
+        , test "no other condition carries a level" <|
+            \_ ->
+                Encounter.conditionLevel "Prone" (Just 3)
+                    |> Expect.equal Nothing
+        ]
+
+
+
 -- ── ENTRY ────────────────────────────────────────────────────────────────────
 
 
@@ -159,4 +181,5 @@ suite =
     describe "Encounter (pure rules engine)"
         [ deathSavesSuite
         , turnLifecycleSuite
+        , exhaustionSuite
         ]

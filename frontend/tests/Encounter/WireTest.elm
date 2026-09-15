@@ -36,6 +36,31 @@ suite =
         , test "multi-creature encounter with active marker survives" <|
             \_ ->
                 multiCreatureEncounter |> roundTripExpect
+        , test "an Exhaustion condition saved without a level reads back at level 1" <|
+            \_ ->
+                let
+                    unleveled =
+                        { id = 9
+                        , name = "Exhaustion"
+                        , note = ""
+                        , duration = DurationManual
+                        , saveToEnd = Nothing
+                        , linkedTo = Nothing
+                        , area = Nothing
+                        , level = Nothing
+                        }
+
+                    encounter =
+                        { singleCreatureEncounter
+                            | creatures =
+                                List.map (\c -> { c | conditions = [ unleveled ] })
+                                    singleCreatureEncounter.creatures
+                        }
+                in
+                E.encode 0 (Wire.encodeEncounter encounter)
+                    |> D.decodeString Wire.decodeEncounter
+                    |> Result.map (.creatures >> List.concatMap .conditions >> List.map .level)
+                    |> Expect.equal (Ok [ Just 1 ])
         , test "encoder includes the `activeName` field verbatim" <|
             \_ ->
                 let
@@ -153,6 +178,7 @@ fullyPopulatedCreature =
                     }
           , linkedTo = Nothing
           , area = Nothing
+          , level = Nothing
           }
         , { id = 2
           , name = "Slowed"
@@ -161,6 +187,7 @@ fullyPopulatedCreature =
           , saveToEnd = Nothing
           , linkedTo = Just 1
           , area = Nothing
+          , level = Nothing
           }
         , { id = 3
           , name = "In: Cloudkill"
@@ -169,6 +196,16 @@ fullyPopulatedCreature =
           , saveToEnd = Nothing
           , linkedTo = Nothing
           , area = Just { chain = "Cloudkill", ability = "CON", dc = 15, bonus = 2, phase = AtEnd }
+          , level = Nothing
+          }
+        , { id = 4
+          , name = "Exhaustion"
+          , note = ""
+          , duration = DurationManual
+          , saveToEnd = Nothing
+          , linkedTo = Nothing
+          , area = Nothing
+          , level = Just 3
           }
         ]
     , saveNotices =

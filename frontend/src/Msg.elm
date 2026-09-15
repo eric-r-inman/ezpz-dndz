@@ -755,6 +755,8 @@ type Msg
     | NoteEditCancel
       -- Conditions and effects, timed or open-ended.
     | ConditionOpenEdit String Int
+      -- An Exhaustion chip's level button: one step up the ladder.
+    | ConditionExhaustionStep String Int
       -- The card's gear icon: aims Status and Condition/Effect at
       -- the card's own creature and scrolls so the topmost of the
       -- two sits at the top of the column.
