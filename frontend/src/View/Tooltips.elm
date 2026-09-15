@@ -131,6 +131,7 @@ module View.Tooltips exposing
     , saveFlashOnDamage
     , saveLoadConfirmCancel
     , saveLoadConfirmGo
+    , saveLoadPickFirst
     , saveLoadRenameCancel
     , saveLoadRenameSubmit
     , saveLoadRowLoad
@@ -840,7 +841,12 @@ compendiumEditRemoveTag =
 
 
 
--- ── SAVE / LOAD PANEL ROW ICONS ──────────────────────────────────────────────
+-- ── SAVE / LOAD PANEL ACTIONS ────────────────────────────────────────────────
+
+
+saveLoadPickFirst : String
+saveLoadPickFirst =
+    "Pick a saved encounter first"
 
 
 saveRowOverwrite : String

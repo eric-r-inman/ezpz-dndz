@@ -51,6 +51,8 @@ type alias RenameDraft =
     an anonymous one; or a file on their machine.
   - `filename` — what the save will be called; `primeList`
     fills it in from the encounter's last save name.
+  - `selected` — the save the list's actions work on. A name the
+    listing no longer holds counts as nothing picked.
   - `busy` — a wire call is in flight; disables the actions that
     would double-fire.
 
@@ -59,6 +61,8 @@ type alias SaveLoadUi =
     { storage : SaveStorage
     , filename : String
     , saves : ListState
+    , savesOpen : Bool
+    , selected : Maybe String
     , busy : Bool
     , error : Maybe String
     , confirm : Maybe ConfirmAction
@@ -71,6 +75,8 @@ fresh =
     { storage = StorageServer
     , filename = ""
     , saves = ListLoading
+    , savesOpen = False
+    , selected = Nothing
     , busy = False
     , error = Nothing
     , confirm = Nothing

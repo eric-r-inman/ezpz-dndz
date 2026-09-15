@@ -1112,7 +1112,10 @@ type Msg
     | SaveLoadStorageSet SaveStorage
     | SaveLoadFilenameChanged String
     | SaveLoadSaveSubmit
-      -- Row actions.
+      -- The saves list, and the save its actions work on.
+    | SaveLoadSavesToggle
+    | SaveLoadSelect String
+      -- Actions on the picked save.
     | SaveLoadLoadRequested String
     | SaveLoadOverwriteRequested String
     | SaveLoadDeleteRequested String

@@ -6324,10 +6324,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: transparent;
 }
 
-/* Replace editor's compendium picker — the Quick Add list
-   restyled for the docked editor: capped height with its own
-   scroll, and a picked-row highlight since selection here is a
-   two-step pick-then-Apply rather than click-to-add. */
+/* The Quick Add list restyled for a docked picker: a picked-row
+   highlight, since selection here is a two-step pick-then-act
+   rather than click-to-add. */
 .quick-add__row--picked {
   outline: 1px solid var(--color-accent);
   outline-offset: -1px;
@@ -10996,41 +10995,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-1);
 }
 
-.save-load__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  max-height: var(--scroll-list-max-h);
-  overflow-y: auto;
-}
-
-/* A row stacks its name above its actions: four affordances and
-   a name do not share a drawer panel's width. */
-.save-load__row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-0);
-  padding: var(--space-1);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-}
-
-.save-load__row-name {
-  font-size: var(--font-size-field);
-  font-weight: var(--font-weight-label);
-  overflow-wrap: anywhere;
-}
-
-/* A rename form is one field and two buttons, which fit the line
-   the read row's name and four buttons do not. */
+/* The row being renamed holds a field rather than a pick. */
 .save-load__row--renaming {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-1);
+  cursor: default;
 }
 
 .save-load__row-actions {
@@ -11248,12 +11215,11 @@ button.creature-card__lifecycle--dead:focus-visible {
   overflow-y: auto;
 }
 
-/* The Replace editor's docked copy of the list: five rows (8px
-   vertical padding + ~19px text line + 1px border each, plus the
-   2px flex gaps), so the editor's Apply button stays a short
-   scroll away.  Must sit after the base rule above — at equal
-   specificity, the base 60vh cap would win the cascade
-   otherwise. */
+/* A docked copy of the list: five rows (8px vertical padding +
+   ~19px text line + 1px border each, plus the 2px flex gaps), so
+   what sits under it stays a short scroll away.  Must sit after
+   the base rule above — at equal specificity, the base 60vh cap
+   would win the cascade otherwise. */
 .quick-add__list--docked {
   max-height: 188px;
   border: 1px solid var(--color-border);
