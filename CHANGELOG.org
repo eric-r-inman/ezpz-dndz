@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. Several bundled Condition/Effect presets read more clearly, and Hunter's Mark
+   drops its note.  Choose Restore bundled presets in the Load menu to pick up
+   the new wording.
 ** Fixes
 ** Breaking
 ** Maintenance
