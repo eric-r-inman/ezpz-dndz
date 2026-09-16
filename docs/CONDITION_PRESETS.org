@@ -17,11 +17,11 @@ books as recalled rather than as checked, and are marked /unverified/ below.
 
 A preset holds what the editor's form holds.  A custom-named preset's note
 carries a reminder of whatever else the rule asks, where one fits; a preset that
-applies a standard condition carries no note.  Each gap names the presets it
-affects and how much supporting it would take.  /Simple/ is a setting or two of
-a shape the editor already has, /moderate/ is new state the editor and the
-encounter must both carry, and /complex/ is a mechanic the tracker does not
-model at all.
+applies a standard condition carries no note.  Each gap names presets that meet
+it — examples rather than a census — and how much supporting it would take.
+/Simple/ is a setting or two of a shape the editor already has, /moderate/ is
+new state the editor and the encounter must both carry, and /complex/ is a
+mechanic the tracker does not model at all.
 
 ** Timing an effect off its source's turn — simple
 
