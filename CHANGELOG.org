@@ -6,6 +6,8 @@
 1. Several bundled Condition/Effect presets read more clearly, and Hunter's Mark
    drops its note.  Choose Restore bundled presets in the Load menu to pick up
    the new wording.
+2. The Condition/Effect editor's Load menu carries 187 more presets.  Choose
+   Restore bundled presets in the Load menu to add them.
 ** Fixes
 ** Breaking
 ** Maintenance

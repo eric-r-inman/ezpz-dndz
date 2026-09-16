@@ -94,7 +94,7 @@ categories =
 defaults : Dict String ConditionPreset
 defaults =
     Dict.fromList
-        [ -- Player Classes (34)
+        [ -- Player Classes (64)
           ( "Stunning Strike (Monk)", stunningStrike )
         , ( "Trip Attack", tripAttack )
         , ( "Menacing Attack", menacingAttack )
@@ -129,8 +129,38 @@ defaults =
         , ( "Shield (Wizard/Sorcerer)", shieldSpell )
         , ( "Haste (Wizard/Sorcerer)", haste )
         , ( "Heroism (Bard/Paladin)", heroism )
+        , ( "Sap (Weapon Mastery)", sapMastery )
+        , ( "Vex (Weapon Mastery)", vexMastery )
+        , ( "Slow (Weapon Mastery)", slowMastery )
+        , ( "Grapple (Unarmed Strike)", grappleUnarmed )
+        , ( "Cunning Strike: Poison (Rogue)", cunningStrikePoison )
+        , ( "Open Hand: Addle (Monk)", openHandAddle )
+        , ( "Help: Assist an Attack", helpAssist )
+        , ( "Intimidating Presence (Berserker)", intimidatingPresence )
+        , ( "Abjure Foes (Paladin)", abjureFoes )
+        , ( "Devious Strikes: Obscure (Rogue)", deviousObscure )
+        , ( "Devious Strikes: Daze (Rogue)", deviousDaze )
+        , ( "Devious Strikes: Knock Out (Rogue)", deviousKnockOut )
+        , ( "Nature's Veil (Ranger)", naturesVeil )
+        , ( "Studied Attacks (Fighter)", studiedAttacks )
+        , ( "Brutal Strike: Hamstring (Barbarian)", hamstringBlow )
+        , ( "Brutal Strike: Staggering (Barbarian)", staggeringBlow )
+        , ( "Brutal Strike: Sundering (Barbarian)", sunderingBlow )
+        , ( "Mindless Rage (Berserker)", mindlessRage )
+        , ( "Aura of Courage (Paladin)", auraOfCourage )
+        , ( "Aura of Devotion (Paladin)", auraOfDevotion )
+        , ( "Frost's Chill (Goliath)", frostsChill )
+        , ( "Hurl Through Hell (Warlock)", hurlThroughHell )
+        , ( "Innate Sorcery (Sorcerer)", innateSorcery )
+        , ( "Sacred Weapon (Paladin)", sacredWeapon )
+        , ( "Heroic Inspiration", heroicInspiration )
+        , ( "Aura of Protection (Paladin)", auraOfProtection )
+        , ( "Stunning Strike, saved (Monk)", stunningStrikeSaved )
+        , ( "Superior Defense (Monk)", superiorDefense )
+        , ( "Quivering Palm (Monk)", quiveringPalm )
+        , ( "Large Form (Goliath)", largeForm )
 
-        -- Spell Effects (20)
+        -- Spell Effects (72)
         , ( "Bane (−d4)", bane )
         , ( "Hold Person", holdPerson )
         , ( "Hold Monster", holdMonster )
@@ -151,8 +181,60 @@ defaults =
         , ( "Banishment", banishment )
         , ( "Stinking Cloud", stinkingCloud )
         , ( "Greater Invisibility", greaterInvisibility )
+        , ( "Invisibility", invisibilitySpell )
+        , ( "Blur", blur )
+        , ( "Bestow Curse (Disadvantage)", bestowCurseDisadv )
+        , ( "Bestow Curse (Attack You)", bestowCurseAttack )
+        , ( "Bestow Curse (Dodge)", bestowCurseDodge )
+        , ( "Bestow Curse (+1d8 Necrotic)", bestowCurseNecrotic )
+        , ( "Confusion", confusion )
+        , ( "Charm Monster", charmMonster )
+        , ( "Dominate Person", dominatePerson )
+        , ( "Phantasmal Killer", phantasmalKiller )
+        , ( "Polymorph", polymorph )
+        , ( "Dominate Beast", dominateBeast )
+        , ( "Guiding Bolt", guidingBolt )
+        , ( "Ray of Sickness", rayOfSickness )
+        , ( "Color Spray", colorSpray )
+        , ( "Protection from Evil and Good", protectionEvilGood )
+        , ( "Shocking Grasp", shockingGrasp )
+        , ( "Ray of Frost", rayOfFrost )
+        , ( "Chill Touch", chillTouch )
+        , ( "Enlarge", enlarge )
+        , ( "Reduce", reduce )
+        , ( "Enhance Ability", enhanceAbility )
+        , ( "Ray of Enfeeblement", rayOfEnfeeblement )
+        , ( "Heat Metal", heatMetal )
+        , ( "Mirror Image", mirrorImage )
+        , ( "Levitate", levitate )
+        , ( "Warding Bond", wardingBond )
+        , ( "Calm Emotions (Immunity)", calmEmotions )
+        , ( "Calm Emotions (Indifferent)", calmEmotionsCalmed )
+        , ( "Beacon of Hope", beaconOfHope )
+        , ( "Protection from Energy (Acid)", protectionAcid )
+        , ( "Protection from Energy (Cold)", protectionCold )
+        , ( "Protection from Energy (Fire)", protectionFire )
+        , ( "Protection from Energy (Lightning)", protectionLightning )
+        , ( "Protection from Energy (Thunder)", protectionThunder )
+        , ( "Fly", flySpell )
+        , ( "Gaseous Form", gaseousForm )
+        , ( "Stoneskin", stoneskin )
+        , ( "Death Ward", deathWard )
+        , ( "Freedom of Movement", freedomOfMovement )
+        , ( "Fire Shield (Warm)", fireShieldWarm )
+        , ( "Fire Shield (Chill)", fireShieldChill )
+        , ( "Resilient Sphere", resilientSphere )
+        , ( "Compulsion", compulsion )
+        , ( "Contagion", contagion )
+        , ( "Geas", geas )
+        , ( "Eyebite (Panicked)", eyebitePanicked )
+        , ( "Eyebite (Asleep)", eyebiteAsleep )
+        , ( "Eyebite (Sickened)", eyebiteSickened )
+        , ( "Flesh to Stone", fleshToStone )
+        , ( "Irresistible Dance", irresistibleDance )
+        , ( "Power Word Stun", powerWordStun )
 
-        -- Monster Abilities (12)
+        -- Monster Abilities (51)
         , ( "Petrifying Gaze (Medusa)", petrifyingGaze )
         , ( "Mind Blast (Mind Flayer)", mindBlast )
         , ( "Frightful Presence (Dragon)", frightfulPresence )
@@ -165,8 +247,47 @@ defaults =
         , ( "Sleep Ray (Beholder)", beholderSleepRay )
         , ( "Tentacles (Carrion Crawler)", carrionCrawler )
         , ( "Mummy Rot", mummyRot )
+        , ( "Grappled (escape DC)", grappledEscape )
+        , ( "Constricted", constricted )
+        , ( "Swallowed", swallowed )
+        , ( "Venomous Bite (1 round)", venomousBite )
+        , ( "Petrifying Gaze (Basilisk)", basiliskGaze )
+        , ( "Frightened (save ends)", frightenedSaveEnds )
+        , ( "Frightened (1 round)", frightenedOneRound )
+        , ( "Paralyzing Tentacles (Chuul)", chuulTentacles )
+        , ( "Sleep Breath (Brass Dragon)", brassSleepBreath )
+        , ( "Paralyzing Breath (Silver Dragon)", silverParalyzingBreath )
+        , ( "Life Drain", lifeDrained )
+        , ( "Paralyzing Touch (Lich)", lichParalyzingTouch )
+        , ( "Possession (Ghost)", ghostPossession )
+        , ( "Enslave (Aboleth)", abolethEnslave )
+        , ( "Entangling Rope (Erinyes)", entanglingRope )
+        , ( "Engulfed (Gelatinous Cube)", cubeEngulf )
+        , ( "Engulfed (Shambling Mound)", shamblingEngulf )
+        , ( "Smothered (Rug of Smothering)", rugSmother )
+        , ( "Whelmed (Water Elemental)", waterWhelm )
+        , ( "Attached (Cloaker)", cloakerAttach )
+        , ( "Lycanthropy", lycanthropy )
+        , ( "Spores (Vrock)", vrockSpores )
+        , ( "Weight of Years (Sphinx)", weightOfYears )
+        , ( "Venom Coma (Phase Spider)", venomComa )
+        , ( "Sting (Pseudodragon)", pseudodragonSting )
+        , ( "Dreadful Glare (Mummy Lord)", mummyLordGlare )
+        , ( "Corrupting Touch (Lamia)", lamiaTouch )
+        , ( "Infernal Wound", infernalWound )
+        , ( "Diseased (Otyugh)", otyughDisease )
+        , ( "Stunning Screech (Vrock)", vrockScreech )
+        , ( "Blinded (1 round)", blindedOneRound )
+        , ( "Blinding Gaze (Solar)", solarGaze )
+        , ( "Incapacitated (1 round)", incapacitatedOneRound )
+        , ( "Charmed (1 round)", charmedOneRound )
+        , ( "Restless Curse (Incubus)", restlessCurse )
+        , ( "Mucus Curse (Aboleth)", abolethMucus )
+        , ( "Nightmare (Incubus)", incubusNightmare )
+        , ( "Devil's Poison (No Healing)", poisonNoHeal )
+        , ( "Deafened (1 round)", deafenedOneRound )
 
-        -- Items (10)
+        -- Items (57)
         , ( "Wand of Paralysis", wandOfParalysis )
         , ( "Wand of Fear", wandOfFear )
         , ( "Staff of Charming", staffOfCharming )
@@ -177,8 +298,55 @@ defaults =
         , ( "Potion of Climbing", potionOfClimbing )
         , ( "Dust of Disappearance", dustOfDisappearance )
         , ( "Net", net )
+        , ( "Wand of Binding", wandOfBinding )
+        , ( "Dagger of Venom", daggerOfVenom )
+        , ( "Mace of Terror", maceOfTerror )
+        , ( "Gem of Brightness", gemOfBrightness )
+        , ( "Horn of Blasting", hornOfBlasting )
+        , ( "Rod of Lordly Might (Paralyze)", rodParalyze )
+        , ( "Rod of Lordly Might (Terrify)", rodTerrify )
+        , ( "Rope of Entanglement", ropeOfEntanglement )
+        , ( "Iron Bands of Binding", ironBands )
+        , ( "Manacles", manacles )
+        , ( "Hunting Trap", huntingTrap )
+        , ( "Caltrops", caltrops )
+        , ( "Ring of Invisibility", ringOfInvisibility )
+        , ( "Cloak of Displacement", cloakOfDisplacement )
+        , ( "Sword of Wounding", swordOfWounding )
+        , ( "Sword of Sharpness", swordOfSharpness )
+        , ( "Berserker Axe", berserkerAxe )
+        , ( "Hammer of Thunderbolts", hammerOfThunderbolts )
+        , ( "Philter of Love", philterOfLove )
+        , ( "Potion of Poison", potionOfPoison )
+        , ( "Potion of Flying", potionOfFlying )
+        , ( "Winged Boots", wingedBoots )
+        , ( "Potion of Gaseous Form", potionGaseousForm )
+        , ( "Potion of Growth", potionOfGrowth )
+        , ( "Potion of Diminution", potionOfDiminution )
+        , ( "Potion of Invulnerability", potionOfInvulnerability )
+        , ( "Potion of Resistance", potionOfResistance )
+        , ( "Oil of Slipperiness", oilOfSlipperiness )
+        , ( "Ring of Free Action", ringOfFreeAction )
+        , ( "Boots of Speed", bootsOfSpeed )
+        , ( "Slippers of Spider Climbing", slippersSpiderClimb )
+        , ( "Ring of Regeneration", ringOfRegeneration )
+        , ( "Rod of Rulership", rodOfRulership )
+        , ( "Sentient Item Control", sentientItemControl )
+        , ( "Trident of Fish Command", tridentFishCommand )
+        , ( "Shield of Missile Attraction", shieldMissileAttraction )
+        , ( "Periapt of Proof against Poison", periaptPoison )
+        , ( "Crawler Mucus", crawlerMucus )
+        , ( "Malice", malice )
+        , ( "Essence of Ether", essenceOfEther )
+        , ( "Oil of Taggit", oilOfTaggit )
+        , ( "Spider's Sting", spidersSting )
+        , ( "Assassin's Blood", assassinsBlood )
+        , ( "Truth Serum", truthSerum )
+        , ( "Torpor", torpor )
+        , ( "Pale Tincture", paleTincture )
+        , ( "Burnt Othur Fumes", burntOthurFumes )
 
-        -- Environment (8)
+        -- Environment (27)
         , ( "Quicksand", quicksand )
         , ( "Slippery Surface", slipperySurface )
         , ( "Heavy Obscurement", heavyObscurement )
@@ -187,6 +355,25 @@ defaults =
         , ( "Extreme Cold", extremeCold )
         , ( "Extreme Heat", extremeHeat )
         , ( "Pit Trap", pitTrap )
+        , ( "Extended Travel", extendedTravel )
+        , ( "Dehydration", dehydration )
+        , ( "Malnutrition", malnutrition )
+        , ( "Frigid Water", frigidWater )
+        , ( "Deep Water", deepWater )
+        , ( "Underwater", underwater )
+        , ( "Strong Wind", strongWind )
+        , ( "Heavy Precipitation", heavyPrecipitation )
+        , ( "High Altitude", highAltitude )
+        , ( "Poisoned Needle (Trap)", poisonedNeedle )
+        , ( "Collapsing Roof (Trap)", collapsingRoof )
+        , ( "Sight Rot", sightRot )
+        , ( "Cackle Fever", cackleFever )
+        , ( "Cackling Fit", cacklingFit )
+        , ( "Sewer Plague", sewerPlague )
+        , ( "Demonic Possession", demonicPossession )
+        , ( "Mental Stress (Short-Term)", shortTermStress )
+        , ( "Mental Stress (Long-Term)", longTermStress )
+        , ( "Holding Breath", holdingBreath )
         ]
 
 
@@ -600,6 +787,283 @@ heroism =
         }
 
 
+sapMastery : ConditionPreset
+sapMastery =
+    { playerBase
+        | customName = "Sapped"
+        , note = "Dis on next attack"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+vexMastery : ConditionPreset
+vexMastery =
+    { playerBase
+        | customName = "Vexed"
+        , note = "Adv on next attack"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+slowMastery : ConditionPreset
+slowMastery =
+    { playerBase
+        | customName = "Slowed -10 ft"
+        , note = "Not cumulative"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+grappleUnarmed : ConditionPreset
+grappleUnarmed =
+    { playerBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 13 AutoRollManual)
+    }
+
+
+cunningStrikePoison : ConditionPreset
+cunningStrikePoison =
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Poisoned"
+            , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+        }
+
+
+openHandAddle : ConditionPreset
+openHandAddle =
+    { playerBase
+        | customName = "Addled"
+        , note = "No opportunity atks"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+helpAssist : ConditionPreset
+helpAssist =
+    { playerBase
+        | customName = "Distracted"
+        , note = "Adv: next ally atk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+intimidatingPresence : ConditionPreset
+intimidatingPresence =
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Frightened"
+            , saveToEnd = Just (save "WIS" 15 AutoRollAtEnd)
+        }
+
+
+abjureFoes : ConditionPreset
+abjureFoes =
+    lastsOneMinute
+        { playerBase
+            | customName = "Abjured"
+            , note = "1 action OR move"
+            , saveToEnd = Just (save "WIS" 15 AutoRollAtEnd)
+            , companions = [ "Frightened" ]
+        }
+
+
+deviousObscure : ConditionPreset
+deviousObscure =
+    { playerBase
+        | conditionName = "Blinded"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+deviousDaze : ConditionPreset
+deviousDaze =
+    { playerBase
+        | customName = "Dazed"
+        , note = "1 action OR move"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+deviousKnockOut : ConditionPreset
+deviousKnockOut =
+    lastsOneMinute
+        { playerBase
+            | conditionName = "Unconscious"
+            , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+        }
+
+
+naturesVeil : ConditionPreset
+naturesVeil =
+    { playerBase
+        | conditionName = "Invisible"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+studiedAttacks : ConditionPreset
+studiedAttacks =
+    { playerBase
+        | customName = "Studied"
+        , note = "Adv on next attack"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+hamstringBlow : ConditionPreset
+hamstringBlow =
+    { playerBase
+        | customName = "Hamstrung -15 ft"
+        , note = "One at a time"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+staggeringBlow : ConditionPreset
+staggeringBlow =
+    { playerBase
+        | customName = "Staggered"
+        , note = "Dis next save; no OA"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+sunderingBlow : ConditionPreset
+sunderingBlow =
+    { playerBase
+        | customName = "Sundering Blow +5"
+        , note = "Next atk vs it +5"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+mindlessRage : ConditionPreset
+mindlessRage =
+    { playerBase
+        | customName = "Immune: Charm/Fear"
+        , note = "While raging"
+    }
+
+
+auraOfCourage : ConditionPreset
+auraOfCourage =
+    { playerBase
+        | customName = "Immune: Frightened"
+        , note = "While in aura"
+    }
+
+
+auraOfDevotion : ConditionPreset
+auraOfDevotion =
+    { playerBase
+        | customName = "Immune: Charmed"
+        , note = "While in aura"
+    }
+
+
+frostsChill : ConditionPreset
+frostsChill =
+    { playerBase
+        | customName = "Chilled -10 ft"
+        , note = "To your next turn"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+hurlThroughHell : ConditionPreset
+hurlThroughHell =
+    { playerBase
+        | conditionName = "Incapacitated"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+        , companions = [ "Gone to the Hells" ]
+    }
+
+
+innateSorcery : ConditionPreset
+innateSorcery =
+    lastsOneMinute
+        { playerBase
+            | customName = "Innate Sorcery"
+            , note = "+1 DC, adv spell atk"
+        }
+
+
+sacredWeapon : ConditionPreset
+sacredWeapon =
+    { playerBase
+        | customName = "Sacred Weapon"
+        , note = "+CHA hit, radiant"
+    }
+
+
+heroicInspiration : ConditionPreset
+heroicInspiration =
+    { playerBase
+        | customName = "Heroic Inspiration"
+        , note = "Reroll any one die"
+    }
+
+
+auraOfProtection : ConditionPreset
+auraOfProtection =
+    { playerBase
+        | customName = "Aura of Protection"
+        , note = "+CHA to saves, 10ft"
+    }
+
+
+stunningStrikeSaved : ConditionPreset
+stunningStrikeSaved =
+    { playerBase
+        | customName = "Rattled"
+        , note = "Speed half; adv atk"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+superiorDefense : ConditionPreset
+superiorDefense =
+    lastsOneMinute
+        { playerBase
+            | customName = "Superior Defense"
+            , note = "Resist all but Force"
+        }
+
+
+quiveringPalm : ConditionPreset
+quiveringPalm =
+    { playerBase
+        | customName = "Quivering Palm"
+        , note = "10d12 when released"
+        , saveToEnd = Just (save "CON" 15 AutoRollManual)
+    }
+
+
+largeForm : ConditionPreset
+largeForm =
+    { playerBase
+        | customName = "Large Form"
+        , note = "Adv STR, +10 ft"
+    }
+
+
 
 -- ── SPELL EFFECTS ────────────────────────────────────────────────────────
 
@@ -798,6 +1262,492 @@ greaterInvisibility =
         }
 
 
+invisibilitySpell : ConditionPreset
+invisibilitySpell =
+    { spellBase
+        | conditionName = "Invisible"
+    }
+
+
+blur : ConditionPreset
+blur =
+    lastsOneMinute
+        { spellBase
+            | customName = "Blur: Atk Disadv"
+            , note = "Not vs Blindsight"
+        }
+
+
+bestowCurseDisadv : ConditionPreset
+bestowCurseDisadv =
+    lastsOneMinute
+        { spellBase
+            | customName = "Cursed: Disadv"
+            , note = "1 chosen ability"
+        }
+
+
+bestowCurseAttack : ConditionPreset
+bestowCurseAttack =
+    lastsOneMinute
+        { spellBase
+            | customName = "Cursed: Atk You"
+            , note = "Disadv vs caster"
+        }
+
+
+bestowCurseDodge : ConditionPreset
+bestowCurseDodge =
+    lastsOneMinute
+        { spellBase
+            | customName = "Cursed: Dodge"
+            , note = "WIS save or Dodge"
+        }
+
+
+bestowCurseNecrotic : ConditionPreset
+bestowCurseNecrotic =
+    lastsOneMinute
+        { spellBase
+            | customName = "Cursed: +1d8 Necr"
+            , note = "+1d8 from caster"
+        }
+
+
+confusion : ConditionPreset
+confusion =
+    lastsOneMinute
+        { spellBase
+            | customName = "Confused"
+            , note = "Roll 1d10 behavior"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAtEnd)
+        }
+
+
+charmMonster : ConditionPreset
+charmMonster =
+    { spellBase
+        | conditionName = "Charmed"
+    }
+
+
+dominatePerson : ConditionPreset
+dominatePerson =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Charmed"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollManual
+                        , onDamage = Encounter.RollOnDamage
+                    }
+            , companions = [ "Dominated" ]
+        }
+
+
+phantasmalKiller : ConditionPreset
+phantasmalKiller =
+    lastsOneMinute
+        { spellBase
+            | customName = "Nightmare"
+            , note = "Disadv: checks/atk"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollAtEnd
+                        , failDamageText = "4d10"
+                    }
+        }
+
+
+polymorph : ConditionPreset
+polymorph =
+    { spellBase
+        | customName = "Polymorphed"
+        , note = "Beast stats; temp HP"
+    }
+
+
+dominateBeast : ConditionPreset
+dominateBeast =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Charmed"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollManual
+                        , onDamage = Encounter.RollOnDamage
+                    }
+            , companions = [ "Dominated" ]
+        }
+
+
+guidingBolt : ConditionPreset
+guidingBolt =
+    { spellBase
+        | customName = "Atk vs has Adv"
+        , note = "Next attack only"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+rayOfSickness : ConditionPreset
+rayOfSickness =
+    { spellBase
+        | conditionName = "Poisoned"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+colorSpray : ConditionPreset
+colorSpray =
+    { spellBase
+        | conditionName = "Blinded"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+protectionEvilGood : ConditionPreset
+protectionEvilGood =
+    { spellBase
+        | customName = "Prot: Evil & Good"
+        , note = "vs 6 creature types"
+        , companions = [ "Immune: Charm/Fear" ]
+    }
+
+
+shockingGrasp : ConditionPreset
+shockingGrasp =
+    { spellBase
+        | customName = "No Opp. Attacks"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+rayOfFrost : ConditionPreset
+rayOfFrost =
+    { spellBase
+        | customName = "Speed -10 ft"
+        , note = "Caster's next turn"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+chillTouch : ConditionPreset
+chillTouch =
+    { spellBase
+        | customName = "No HP Regain"
+        , note = "Caster's next turn"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+enlarge : ConditionPreset
+enlarge =
+    lastsOneMinute
+        { spellBase
+            | customName = "Enlarged"
+            , note = "+1 size, +1d4 dmg"
+        }
+
+
+reduce : ConditionPreset
+reduce =
+    lastsOneMinute
+        { spellBase
+            | customName = "Reduced"
+            , note = "-1 size, -1d4 dmg"
+        }
+
+
+enhanceAbility : ConditionPreset
+enhanceAbility =
+    { spellBase
+        | customName = "Adv: Ability Chks"
+        , note = "One chosen ability"
+    }
+
+
+rayOfEnfeeblement : ConditionPreset
+rayOfEnfeeblement =
+    lastsOneMinute
+        { spellBase
+            | customName = "Enfeebled"
+            , note = "-1d8 dmg, STR disad"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+        }
+
+
+heatMetal : ConditionPreset
+heatMetal =
+    lastsOneMinute
+        { spellBase
+            | customName = "Heat Metal"
+            , note = "Drop it or disadv"
+            , saveToEnd = Just (save "CON" 13 AutoRollAskAtEnd)
+        }
+
+
+mirrorImage : ConditionPreset
+mirrorImage =
+    lastsOneMinute
+        { spellBase
+            | customName = "Mirror Image x3"
+            , note = "d6 per image, 3+"
+        }
+
+
+levitate : ConditionPreset
+levitate =
+    { spellBase
+        | customName = "Levitating"
+        , note = "Move by pushing only"
+    }
+
+
+wardingBond : ConditionPreset
+wardingBond =
+    { spellBase
+        | customName = "Warding Bond"
+        , note = "+1 AC/save, resist"
+    }
+
+
+calmEmotions : ConditionPreset
+calmEmotions =
+    lastsOneMinute
+        { spellBase
+            | customName = "Immune: Charm/Fear"
+            , note = "Suppresses existing"
+        }
+
+
+calmEmotionsCalmed : ConditionPreset
+calmEmotionsCalmed =
+    lastsOneMinute
+        { spellBase
+            | customName = "Calmed"
+            , note = "Indifferent"
+        }
+
+
+beaconOfHope : ConditionPreset
+beaconOfHope =
+    lastsOneMinute
+        { spellBase
+            | customName = "Beacon of Hope"
+            , note = "Max heal, adv WIS"
+        }
+
+
+protectionAcid : ConditionPreset
+protectionAcid =
+    { spellBase
+        | customName = "Resist: Acid"
+    }
+
+
+protectionCold : ConditionPreset
+protectionCold =
+    { spellBase
+        | customName = "Resist: Cold"
+    }
+
+
+protectionFire : ConditionPreset
+protectionFire =
+    { spellBase
+        | customName = "Resist: Fire"
+    }
+
+
+protectionLightning : ConditionPreset
+protectionLightning =
+    { spellBase
+        | customName = "Resist: Lightning"
+    }
+
+
+protectionThunder : ConditionPreset
+protectionThunder =
+    { spellBase
+        | customName = "Resist: Thunder"
+    }
+
+
+flySpell : ConditionPreset
+flySpell =
+    { spellBase
+        | customName = "Flying 60 ft"
+        , note = "Falls when it ends"
+    }
+
+
+gaseousForm : ConditionPreset
+gaseousForm =
+    { spellBase
+        | customName = "Gaseous Form"
+        , note = "No attacks or spells"
+        , companions = [ "Resist: B/P/S" ]
+    }
+
+
+stoneskin : ConditionPreset
+stoneskin =
+    { spellBase
+        | customName = "Resist: B/P/S"
+        , note = "Nonmagical only"
+    }
+
+
+deathWard : ConditionPreset
+deathWard =
+    { spellBase
+        | customName = "Death Ward"
+        , note = "Drops to 1 HP once"
+    }
+
+
+freedomOfMovement : ConditionPreset
+freedomOfMovement =
+    { spellBase
+        | customName = "Free Movement"
+        , note = "No difficult terr"
+        , companions = [ "Immune: Restrained" ]
+    }
+
+
+fireShieldWarm : ConditionPreset
+fireShieldWarm =
+    { spellBase
+        | customName = "Fire Shield: Warm"
+        , note = "2d8 to melee hitter"
+    }
+
+
+fireShieldChill : ConditionPreset
+fireShieldChill =
+    { spellBase
+        | customName = "Fire Shield: Chill"
+        , note = "2d8 to melee hitter"
+    }
+
+
+resilientSphere : ConditionPreset
+resilientSphere =
+    lastsOneMinute
+        { spellBase
+            | customName = "In Sphere"
+            , note = "Can roll it at 1/2"
+            , companions = [ "Incapacitated" ]
+        }
+
+
+compulsion : ConditionPreset
+compulsion =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Charmed"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAskAtEnd)
+            , companions = [ "Forced to move" ]
+        }
+
+
+contagion : ConditionPreset
+contagion =
+    { spellBase
+        | customName = "Contagion"
+        , note = "3 fails = 7 days"
+        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+        , companions = [ "Poisoned" ]
+    }
+
+
+geas : ConditionPreset
+geas =
+    { spellBase
+        | customName = "Geas"
+        , note = "5d10 psy if defied"
+        , companions = [ "Charmed" ]
+    }
+
+
+eyebitePanicked : ConditionPreset
+eyebitePanicked =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Frightened"
+        }
+
+
+eyebiteAsleep : ConditionPreset
+eyebiteAsleep =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Unconscious"
+        }
+
+
+eyebiteSickened : ConditionPreset
+eyebiteSickened =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Poisoned"
+        }
+
+
+fleshToStone : ConditionPreset
+fleshToStone =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Restrained"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "CON"
+                        , dc = 13
+                        , dcText = "13"
+                        , autoRoll = AutoRollAtEnd
+                        , failBecomesText = "Petrified"
+                    }
+        }
+
+
+irresistibleDance : ConditionPreset
+irresistibleDance =
+    lastsOneMinute
+        { spellBase
+            | conditionName = "Charmed"
+            , saveToEnd = Just (save "WIS" 13 AutoRollAtBegin)
+            , companions = [ "Dancing" ]
+        }
+
+
+powerWordStun : ConditionPreset
+powerWordStun =
+    { spellBase
+        | conditionName = "Stunned"
+        , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+    }
+
+
 
 -- ── MONSTER ABILITIES ────────────────────────────────────────────────────
 
@@ -920,6 +1870,387 @@ mummyRot =
     }
 
 
+grappledEscape : ConditionPreset
+grappledEscape =
+    { monsterBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 14 AutoRollManual)
+    }
+
+
+constricted : ConditionPreset
+constricted =
+    { monsterBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 16 AutoRollManual)
+        , companions = [ "Restrained" ]
+    }
+
+
+swallowed : ConditionPreset
+swallowed =
+    { monsterBase
+        | customName = "Swallowed"
+        , note = "Acid 5d6/turn start"
+        , saveToEnd = Just (save "STR" 19 AutoRollManual)
+        , companions = [ "Blinded", "Restrained" ]
+    }
+
+
+venomousBite : ConditionPreset
+venomousBite =
+    { monsterBase
+        | conditionName = "Poisoned"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+basiliskGaze : ConditionPreset
+basiliskGaze =
+    { monsterBase
+        | conditionName = "Restrained"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 12
+                    , dcText = "12"
+                    , autoRoll = AutoRollAtEnd
+                    , failBecomesText = "Petrified"
+                }
+    }
+
+
+frightenedSaveEnds : ConditionPreset
+frightenedSaveEnds =
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Frightened"
+            , saveToEnd = Just (save "WIS" 12 AutoRollAtEnd)
+        }
+
+
+frightenedOneRound : ConditionPreset
+frightenedOneRound =
+    { monsterBase
+        | conditionName = "Frightened"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+chuulTentacles : ConditionPreset
+chuulTentacles =
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Poisoned"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+            , companions = [ "Paralyzed" ]
+        }
+
+
+brassSleepBreath : ConditionPreset
+brassSleepBreath =
+    { monsterBase
+        | conditionName = "Incapacitated"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 11
+                    , dcText = "11"
+                    , autoRoll = AutoRollAtEnd
+                    , failBecomesText = "Unconscious"
+                }
+    }
+
+
+silverParalyzingBreath : ConditionPreset
+silverParalyzingBreath =
+    { monsterBase
+        | conditionName = "Incapacitated"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 13
+                    , dcText = "13"
+                    , autoRoll = AutoRollAtEnd
+                    , failBecomesText = "Paralyzed"
+                }
+    }
+
+
+lifeDrained : ConditionPreset
+lifeDrained =
+    { monsterBase
+        | customName = "Life Drained"
+        , note = "HP max reduced"
+    }
+
+
+lichParalyzingTouch : ConditionPreset
+lichParalyzingTouch =
+    { monsterBase
+        | conditionName = "Paralyzed"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+ghostPossession : ConditionPreset
+ghostPossession =
+    { monsterBase
+        | customName = "Possessed"
+        , note = "CHA 13 to resist"
+        , companions = [ "Incapacitated" ]
+    }
+
+
+abolethEnslave : ConditionPreset
+abolethEnslave =
+    { monsterBase
+        | conditionName = "Charmed"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "WIS"
+                    , dc = 16
+                    , dcText = "16"
+                    , autoRoll = AutoRollManual
+                    , onDamage = Encounter.RollOnDamage
+                }
+    }
+
+
+entanglingRope : ConditionPreset
+entanglingRope =
+    { monsterBase
+        | conditionName = "Restrained"
+        , saveToEnd = Just (save "STR" 16 AutoRollManual)
+    }
+
+
+cubeEngulf : ConditionPreset
+cubeEngulf =
+    { monsterBase
+        | conditionName = "Restrained"
+        , saveToEnd = Just (save "STR" 12 AutoRollManual)
+        , companions = [ "Engulfed" ]
+    }
+
+
+shamblingEngulf : ConditionPreset
+shamblingEngulf =
+    { monsterBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 14 AutoRollManual)
+        , companions = [ "Blinded", "Restrained" ]
+    }
+
+
+rugSmother : ConditionPreset
+rugSmother =
+    { monsterBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 13 AutoRollManual)
+        , companions = [ "Blinded", "Restrained", "Suffocating" ]
+    }
+
+
+waterWhelm : ConditionPreset
+waterWhelm =
+    { monsterBase
+        | conditionName = "Grappled"
+        , saveToEnd = Just (save "STR" 14 AutoRollManual)
+        , companions = [ "Restrained", "Suffocating" ]
+    }
+
+
+cloakerAttach : ConditionPreset
+cloakerAttach =
+    { monsterBase
+        | conditionName = "Blinded"
+        , saveToEnd = Just (save "STR" 14 AutoRollManual)
+        , companions = [ "Attached" ]
+    }
+
+
+lycanthropy : ConditionPreset
+lycanthropy =
+    { monsterBase
+        | customName = "Lycanthropy"
+        , note = "Turns at 0 HP"
+    }
+
+
+vrockSpores : ConditionPreset
+vrockSpores =
+    { monsterBase
+        | conditionName = "Poisoned"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 15
+                    , dcText = "15"
+                    , autoRoll = AutoRollAtEnd
+                    , failDamageText = "1d10"
+                }
+    }
+
+
+weightOfYears : ConditionPreset
+weightOfYears =
+    { monsterBase
+        | conditionName = "Exhaustion"
+    }
+
+
+venomComa : ConditionPreset
+venomComa =
+    { monsterBase
+        | conditionName = "Poisoned"
+        , companions = [ "Paralyzed" ]
+    }
+
+
+pseudodragonSting : ConditionPreset
+pseudodragonSting =
+    { monsterBase
+        | conditionName = "Poisoned"
+        , companions = [ "Unconscious" ]
+    }
+
+
+mummyLordGlare : ConditionPreset
+mummyLordGlare =
+    { monsterBase
+        | conditionName = "Paralyzed"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+lamiaTouch : ConditionPreset
+lamiaTouch =
+    { monsterBase
+        | conditionName = "Charmed"
+        , companions = [ "Poisoned" ]
+    }
+
+
+infernalWound : ConditionPreset
+infernalWound =
+    { monsterBase
+        | customName = "Infernal Wound"
+        , note = "Lose 1d10 at start"
+        , durationKind = DurKindCountdown
+        , countdownTurnsText = "10"
+        , countdownTurns = 10
+        , countdownPhase = AtBegin
+    }
+
+
+otyughDisease : ConditionPreset
+otyughDisease =
+    { monsterBase
+        | conditionName = "Poisoned"
+        , companions = [ "Diseased" ]
+    }
+
+
+vrockScreech : ConditionPreset
+vrockScreech =
+    { monsterBase
+        | conditionName = "Stunned"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+blindedOneRound : ConditionPreset
+blindedOneRound =
+    { monsterBase
+        | conditionName = "Blinded"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+solarGaze : ConditionPreset
+solarGaze =
+    lastsOneMinute
+        { monsterBase
+            | conditionName = "Blinded"
+        }
+
+
+incapacitatedOneRound : ConditionPreset
+incapacitatedOneRound =
+    { monsterBase
+        | conditionName = "Incapacitated"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+charmedOneRound : ConditionPreset
+charmedOneRound =
+    { monsterBase
+        | conditionName = "Charmed"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+restlessCurse : ConditionPreset
+restlessCurse =
+    { monsterBase
+        | customName = "No Rest Benefit"
+        , note = "24h or till it dies"
+    }
+
+
+abolethMucus : ConditionPreset
+abolethMucus =
+    { monsterBase
+        | customName = "Slimy Curse"
+        , note = "No HP regain on land"
+    }
+
+
+incubusNightmare : ConditionPreset
+incubusNightmare =
+    { monsterBase
+        | conditionName = "Unconscious"
+    }
+
+
+poisonNoHeal : ConditionPreset
+poisonNoHeal =
+    { monsterBase
+        | customName = "Poison: No Heal"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+        , companions = [ "Poisoned" ]
+    }
+
+
+deafenedOneRound : ConditionPreset
+deafenedOneRound =
+    { monsterBase
+        | conditionName = "Deafened"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
 
 -- ── ITEMS ────────────────────────────────────────────────────────────────
 
@@ -1008,6 +2339,425 @@ net =
     }
 
 
+wandOfBinding : ConditionPreset
+wandOfBinding =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Paralyzed"
+            , saveToEnd = Just (save "WIS" 17 AutoRollAtEnd)
+        }
+
+
+daggerOfVenom : ConditionPreset
+daggerOfVenom =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Poisoned"
+        }
+
+
+maceOfTerror : ConditionPreset
+maceOfTerror =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Frightened"
+            , saveToEnd = Just (save "WIS" 15 AutoRollAtEnd)
+            , companions = [ "Must flee & Dash" ]
+        }
+
+
+gemOfBrightness : ConditionPreset
+gemOfBrightness =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Blinded"
+            , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+        }
+
+
+hornOfBlasting : ConditionPreset
+hornOfBlasting =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Deafened"
+        }
+
+
+rodParalyze : ConditionPreset
+rodParalyze =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Paralyzed"
+            , saveToEnd = Just (save "CON" 17 AutoRollAtEnd)
+        }
+
+
+rodTerrify : ConditionPreset
+rodTerrify =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Frightened"
+            , saveToEnd = Just (save "WIS" 17 AutoRollAtEnd)
+        }
+
+
+ropeOfEntanglement : ConditionPreset
+ropeOfEntanglement =
+    { itemBase
+        | conditionName = "Restrained"
+        , saveToEnd = Just (save "STR" 15 AutoRollManual)
+    }
+
+
+ironBands : ConditionPreset
+ironBands =
+    { itemBase
+        | conditionName = "Restrained"
+        , saveToEnd = Just (save "STR" 20 AutoRollManual)
+    }
+
+
+manacles : ConditionPreset
+manacles =
+    { itemBase
+        | conditionName = "Restrained"
+        , saveToEnd = Just (save "DEX" 20 AutoRollManual)
+        , companions = [ "Dis: attacks" ]
+    }
+
+
+huntingTrap : ConditionPreset
+huntingTrap =
+    { itemBase
+        | customName = "Trapped"
+        , note = "Speed 0; chain 3 ft"
+        , saveToEnd = Just (save "STR" 13 AutoRollManual)
+    }
+
+
+caltrops : ConditionPreset
+caltrops =
+    { itemBase
+        | customName = "Speed 0"
+        , note = "Caltrops"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtBegin
+    }
+
+
+ringOfInvisibility : ConditionPreset
+ringOfInvisibility =
+    { itemBase
+        | conditionName = "Invisible"
+    }
+
+
+cloakOfDisplacement : ConditionPreset
+cloakOfDisplacement =
+    { itemBase
+        | customName = "Displaced"
+        , note = "Dis: attacks vs you"
+    }
+
+
+swordOfWounding : ConditionPreset
+swordOfWounding =
+    { itemBase
+        | customName = "No Healing"
+        , note = "Can't regain HP"
+        , saveToEnd = Just (save "CON" 15 AutoRollAtEnd)
+    }
+
+
+swordOfSharpness : ConditionPreset
+swordOfSharpness =
+    { itemBase
+        | conditionName = "Exhaustion"
+    }
+
+
+berserkerAxe : ConditionPreset
+berserkerAxe =
+    { itemBase
+        | customName = "Berserk"
+        , note = "Nearest foe is enemy"
+    }
+
+
+hammerOfThunderbolts : ConditionPreset
+hammerOfThunderbolts =
+    { itemBase
+        | conditionName = "Stunned"
+        , durationKind = DurKindUntilTurn
+        , untilPhase = AtEnd
+    }
+
+
+philterOfLove : ConditionPreset
+philterOfLove =
+    { itemBase
+        | conditionName = "Charmed"
+    }
+
+
+potionOfPoison : ConditionPreset
+potionOfPoison =
+    { itemBase
+        | conditionName = "Poisoned"
+    }
+
+
+potionOfFlying : ConditionPreset
+potionOfFlying =
+    { itemBase
+        | customName = "Flying"
+        , note = "Fly = Speed, 1 hr"
+    }
+
+
+wingedBoots : ConditionPreset
+wingedBoots =
+    { itemBase
+        | customName = "Flying"
+        , note = "Fly 30 ft, 1 hour"
+    }
+
+
+potionGaseousForm : ConditionPreset
+potionGaseousForm =
+    { itemBase
+        | customName = "Gaseous Form"
+        , note = "Fly 10, hover, 1 hr"
+        , companions = [ "Resist: B/P/S" ]
+    }
+
+
+potionOfGrowth : ConditionPreset
+potionOfGrowth =
+    { itemBase
+        | customName = "Enlarged"
+        , note = "10 min; +1 size"
+    }
+
+
+potionOfDiminution : ConditionPreset
+potionOfDiminution =
+    { itemBase
+        | customName = "Reduced"
+        , note = "1d4 hr, -1 size"
+    }
+
+
+potionOfInvulnerability : ConditionPreset
+potionOfInvulnerability =
+    lastsOneMinute
+        { itemBase
+            | customName = "Resist: All"
+        }
+
+
+potionOfResistance : ConditionPreset
+potionOfResistance =
+    { itemBase
+        | customName = "Resistance"
+        , note = "GM picks type, 1hr"
+    }
+
+
+oilOfSlipperiness : ConditionPreset
+oilOfSlipperiness =
+    { itemBase
+        | customName = "Free Action"
+        , note = "No Para/Restr/slow"
+    }
+
+
+ringOfFreeAction : ConditionPreset
+ringOfFreeAction =
+    { itemBase
+        | customName = "Free Action"
+        , note = "No Para/Restr/slow"
+    }
+
+
+bootsOfSpeed : ConditionPreset
+bootsOfSpeed =
+    { itemBase
+        | customName = "Speed Doubled"
+        , note = "Dis: OA vs you"
+    }
+
+
+slippersSpiderClimb : ConditionPreset
+slippersSpiderClimb =
+    { itemBase
+        | customName = "Spider Climb"
+        , note = "Climb Spd = Speed"
+    }
+
+
+ringOfRegeneration : ConditionPreset
+ringOfRegeneration =
+    { itemBase
+        | customName = "Regenerating"
+        , note = "1d6 HP/10 min"
+    }
+
+
+rodOfRulership : ConditionPreset
+rodOfRulership =
+    { itemBase
+        | conditionName = "Charmed"
+    }
+
+
+sentientItemControl : ConditionPreset
+sentientItemControl =
+    { itemBase
+        | conditionName = "Charmed"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CHA"
+                    , dc = 14
+                    , dcText = "14"
+                    , autoRoll = AutoRollManual
+                    , onDamage = Encounter.RollOnDamage
+                }
+    }
+
+
+tridentFishCommand : ConditionPreset
+tridentFishCommand =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Charmed"
+            , saveToEnd =
+                Just
+                    { emptySave
+                        | ability = "WIS"
+                        , dc = 15
+                        , dcText = "15"
+                        , autoRoll = AutoRollAtEnd
+                        , onDamage = Encounter.RollOnDamage
+                    }
+        }
+
+
+shieldMissileAttraction : ConditionPreset
+shieldMissileAttraction =
+    { itemBase
+        | customName = "Missile Magnet"
+        , note = "Ranged hits redirect"
+    }
+
+
+periaptPoison : ConditionPreset
+periaptPoison =
+    { itemBase
+        | customName = "Immunity: Poisoned"
+    }
+
+
+crawlerMucus : ConditionPreset
+crawlerMucus =
+    lastsOneMinute
+        { itemBase
+            | conditionName = "Poisoned"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+            , companions = [ "Paralyzed" ]
+        }
+
+
+malice : ConditionPreset
+malice =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Blinded" ]
+    }
+
+
+essenceOfEther : ConditionPreset
+essenceOfEther =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Unconscious" ]
+    }
+
+
+oilOfTaggit : ConditionPreset
+oilOfTaggit =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Unconscious" ]
+    }
+
+
+spidersSting : ConditionPreset
+spidersSting =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Unconscious" ]
+    }
+
+
+assassinsBlood : ConditionPreset
+assassinsBlood =
+    { itemBase
+        | conditionName = "Poisoned"
+    }
+
+
+truthSerum : ConditionPreset
+truthSerum =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Can't lie" ]
+    }
+
+
+torpor : ConditionPreset
+torpor =
+    { itemBase
+        | conditionName = "Poisoned"
+        , companions = [ "Speed halved" ]
+    }
+
+
+paleTincture : ConditionPreset
+paleTincture =
+    { itemBase
+        | conditionName = "Poisoned"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 16
+                    , dcText = "16"
+                    , autoRoll = AutoRollManual
+                    , failDamageText = "1d6"
+                }
+        , companions = [ "Can't regain HP" ]
+    }
+
+
+burntOthurFumes : ConditionPreset
+burntOthurFumes =
+    { itemBase
+        | customName = "Burnt Othur"
+        , note = "3 saves to end"
+        , saveToEnd =
+            Just
+                { emptySave
+                    | ability = "CON"
+                    , dc = 13
+                    , dcText = "13"
+                    , autoRoll = AutoRollAtBegin
+                    , failDamageText = "1d6"
+                }
+    }
+
+
 
 -- ── ENVIRONMENT ──────────────────────────────────────────────────────────
 
@@ -1072,4 +2822,156 @@ pitTrap =
         | customName = "In Pit"
         , note = "10ft; needs climbing"
         , companions = [ "Prone" ]
+    }
+
+
+extendedTravel : ConditionPreset
+extendedTravel =
+    { environmentBase
+        | conditionName = "Exhaustion"
+        , companions = [ "Extended Travel" ]
+    }
+
+
+dehydration : ConditionPreset
+dehydration =
+    { environmentBase
+        | conditionName = "Exhaustion"
+        , companions = [ "Dehydrated" ]
+    }
+
+
+malnutrition : ConditionPreset
+malnutrition =
+    { environmentBase
+        | conditionName = "Exhaustion"
+        , companions = [ "Malnourished" ]
+    }
+
+
+frigidWater : ConditionPreset
+frigidWater =
+    { environmentBase
+        | customName = "Frigid Water"
+        , note = "CON 10/min or +1 Exh"
+    }
+
+
+deepWater : ConditionPreset
+deepWater =
+    { environmentBase
+        | customName = "Deep Water"
+        , note = "CON 10/hr or +1 Exh"
+    }
+
+
+underwater : ConditionPreset
+underwater =
+    { environmentBase
+        | customName = "Underwater"
+        , note = "Disadv melee+ranged"
+    }
+
+
+strongWind : ConditionPreset
+strongWind =
+    { environmentBase
+        | customName = "Strong Wind"
+        , note = "Disadv ranged atk"
+    }
+
+
+heavyPrecipitation : ConditionPreset
+heavyPrecipitation =
+    { environmentBase
+        | customName = "Heavy Rain/Snow"
+        , note = "Disadv WIS (Percep)"
+    }
+
+
+highAltitude : ConditionPreset
+highAltitude =
+    { environmentBase
+        | customName = "High Altitude"
+        , note = "1 travel hr counts 2"
+    }
+
+
+poisonedNeedle : ConditionPreset
+poisonedNeedle =
+    { environmentBase
+        | conditionName = "Poisoned"
+    }
+
+
+collapsingRoof : ConditionPreset
+collapsingRoof =
+    { environmentBase
+        | customName = "In Rubble"
+        , note = "Difficult Terrain"
+    }
+
+
+sightRot : ConditionPreset
+sightRot =
+    { environmentBase
+        | conditionName = "Blinded"
+        , companions = [ "Sight Rot" ]
+    }
+
+
+cackleFever : ConditionPreset
+cackleFever =
+    { environmentBase
+        | conditionName = "Exhaustion"
+        , companions = [ "Cackle Fever" ]
+    }
+
+
+cacklingFit : ConditionPreset
+cacklingFit =
+    lastsOneMinute
+        { environmentBase
+            | conditionName = "Incapacitated"
+            , saveToEnd = Just (save "CON" 13 AutoRollAtEnd)
+        }
+
+
+sewerPlague : ConditionPreset
+sewerPlague =
+    { environmentBase
+        | conditionName = "Exhaustion"
+        , companions = [ "Sewer Plague", "No rest recovery" ]
+    }
+
+
+demonicPossession : ConditionPreset
+demonicPossession =
+    { environmentBase
+        | customName = "Demon Possessed"
+        , note = "d20 1: demon acts"
+        , saveToEnd = Just (save "CHA" 15 AutoRollAtEnd)
+    }
+
+
+shortTermStress : ConditionPreset
+shortTermStress =
+    { environmentBase
+        | conditionName = "Frightened"
+    }
+
+
+longTermStress : ConditionPreset
+longTermStress =
+    { environmentBase
+        | customName = "Mental Stress"
+        , note = "Disadv some checks"
+    }
+
+
+holdingBreath : ConditionPreset
+holdingBreath =
+    { environmentBase
+        | customName = "Holding Breath"
+        , note = "1+CON mod minutes"
     }
