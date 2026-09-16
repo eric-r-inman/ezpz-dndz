@@ -357,7 +357,7 @@ bardicInspiration : ConditionPreset
 bardicInspiration =
     { playerBase
         | customName = "Inspired +d6"
-        , note = "on failed D20 Test"
+        , note = "to failed D20"
     }
 
 
@@ -365,8 +365,8 @@ bless : ConditionPreset
 bless =
     lastsOneMinute
         { playerBase
-            | customName = "Bless +d4"
-            , note = "atk & saves, conc"
+            | customName = "Blessed +d4"
+            , note = "to atk & save"
         }
 
 
@@ -374,7 +374,7 @@ bardicInspirationD8 : ConditionPreset
 bardicInspirationD8 =
     { playerBase
         | customName = "Inspired +d8"
-        , note = "on failed D20 Test"
+        , note = "to failed D20"
     }
 
 
@@ -382,7 +382,7 @@ hex : ConditionPreset
 hex =
     { playerBase
         | customName = "Hexed"
-        , note = "+1d6, dis checks"
+        , note = "disadv abil cks"
     }
 
 
@@ -390,7 +390,6 @@ huntersMark : ConditionPreset
 huntersMark =
     { playerBase
         | customName = "Marked"
-        , note = "+d6 Force dmg, conc"
     }
 
 
@@ -417,7 +416,7 @@ bardicInspirationD10 : ConditionPreset
 bardicInspirationD10 =
     { playerBase
         | customName = "Inspired +d10"
-        , note = "on failed D20 Test"
+        , note = "to failed D20"
     }
 
 
@@ -974,7 +973,7 @@ potionOfHeroism =
     { itemBase
         | customName = "Potion of Heroism"
         , note = "10 temp HP, 1 hr"
-        , companions = [ "Bless +d4" ]
+        , companions = [ "Blessed +d4" ]
     }
 
 
