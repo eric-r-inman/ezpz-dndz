@@ -6,9 +6,11 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.14.0
+** Maintenance
 1. Bump rust-template-foundation from `f79d878` to `7c6e828`
    (https://github.com/eric-r-inman/ezpz-dndz/pull/122)
-** Security
 * v0.13.0
 ** Added
 1. Bundled Condition/Effect presets that apply a standard condition no longer
