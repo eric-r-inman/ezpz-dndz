@@ -820,6 +820,7 @@ type Msg
       -- names the bundle has retired.
     | ConditionPresetRestoreBundled
     | ConditionPresetCategoryToggle String
+    | ConditionPresetSearchChanged String
     | ConditionRemoveChip String Int
     | ConditionRollSave String Int
     | ConditionSaveLanded String Int Int Dice.Roll

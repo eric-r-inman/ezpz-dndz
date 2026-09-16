@@ -1493,6 +1493,9 @@ updateInner msg model =
         ConditionPresetCategoryToggle category ->
             Update.Condition.presetCategoryToggle category model
 
+        ConditionPresetSearchChanged text ->
+            Update.Condition.presetSearchChanged text model
+
         ConditionRemoveChip name id ->
             Update.Condition.removeChip name id model
 

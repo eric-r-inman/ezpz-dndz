@@ -8,6 +8,8 @@
    the new wording.
 2. The Condition/Effect editor's Load menu carries 187 more presets.  Choose
    Restore bundled presets in the Load menu to add them.
+3. The Condition/Effect editor's Load menu opens with a search box that filters
+   the presets by name.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
