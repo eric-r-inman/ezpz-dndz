@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.16.0
+** Added
 1. Several bundled Condition/Effect presets read more clearly, and Hunter's Mark
    drops its note.  Choose Restore bundled presets in the Load menu to pick up
    the new wording.
@@ -10,10 +16,6 @@
    Restore bundled presets in the Load menu to add them.
 3. The Condition/Effect editor's Load menu opens with a search box that filters
    the presets by name.  No action needed.
-** Fixes
-** Breaking
-** Maintenance
-** Security
 * v0.15.0
 ** Maintenance
 1. Bump clap from 4.6.6 to 4.6.7
