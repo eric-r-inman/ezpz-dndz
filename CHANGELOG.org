@@ -6,7 +6,17 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump clap from 4.6.6 to 4.6.7
+2. Bump clap_builder from 4.6.6 to 4.6.7
+3. Bump clap_derive from 4.6.4 to 4.6.7
+4. Bump clap_lex from 1.1.0 to 1.1.1
+5. Bump rust-template-foundation from 0.124.0 to 0.125.0
+6. Bump rust-template-foundation-derive from 0.124.0 to 0.125.0
+7. Bump synstructure from 0.13.2 to 0.14.0
+8. Bump yoke-derive from 0.8.2 to 0.8.3
+9. Bump zerofrom-derive from 0.1.7 to 0.1.8
 ** Security
+1. Bump rustls from 0.23.44 to 0.23.45 (RUSTSEC-2026-0285)
 * v0.14.0
 ** Maintenance
 1. Bump rust-template-foundation from `f79d878` to `7c6e828`
