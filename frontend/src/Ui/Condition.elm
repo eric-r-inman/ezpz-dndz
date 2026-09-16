@@ -1,6 +1,6 @@
 module Ui.Condition exposing
     ( ConditionUi, SaveToEndUi, freshSaveToEnd, fresh, fromCondition
-    , ConditionLogEntry, ConditionPreset, applyPreset, companionNames, matchesPreset, maxConditionLogEntries, toPreset
+    , ConditionLogEntry, ConditionPreset, applyPreset, companionNames, matchesPreset, matchesSearch, maxConditionLogEntries, toPreset
     )
 
 {-| Condition / effect editor state.
@@ -70,6 +70,7 @@ type alias ConditionUi =
     , companionDraft : String
     , companionsOpen : Bool
     , loadMenuOpen : Bool
+    , presetSearch : String
     , pendingSaveName : Maybe String
     , pendingSaveCategory : String
     , loadedPresetName : Maybe String
@@ -165,6 +166,7 @@ fresh target =
     , companionDraft = ""
     , companionsOpen = False
     , loadMenuOpen = False
+    , presetSearch = ""
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
     , loadedPresetName = Nothing
@@ -247,6 +249,7 @@ fromCondition target cond =
     , companionDraft = ""
     , companionsOpen = False
     , loadMenuOpen = False
+    , presetSearch = ""
     , pendingSaveName = Nothing
     , pendingSaveCategory = ""
     , loadedPresetName = Nothing
@@ -265,8 +268,8 @@ Excludes everything that's context-specific to one application:
   - `untilCreature` — references a specific name; on load the
     handler defaults it to the current target so "Until self's
     next turn" comes through correctly.
-  - `loadMenuOpen` / `pendingSaveName` / `loadedPresetName` —
-    transient UI state, not part of the preset.
+  - `loadMenuOpen` / `presetSearch` / `pendingSaveName` /
+    `loadedPresetName` — transient UI state, not part of the preset.
 
 -}
 type alias ConditionPreset =
@@ -282,6 +285,17 @@ type alias ConditionPreset =
     , category : String
     , companions : List String
     }
+
+
+{-| Whether a preset's name answers the Load menu's search box.
+A blank box matches everything, which is what leaves the
+unsearched menu whole.
+-}
+matchesSearch : String -> String -> Bool
+matchesSearch query name =
+    String.contains
+        (String.toLower (String.trim query))
+        (String.toLower name)
 
 
 {-| The companions the form holds, counting one still being typed
@@ -411,6 +425,7 @@ applyPreset presetName preset ui =
         , companionDraft = ""
         , companionsOpen = False
         , loadMenuOpen = False
+        , presetSearch = ""
         , pendingSaveName = Nothing
         , pendingSaveCategory = ""
         , loadedPresetName = Just presetName

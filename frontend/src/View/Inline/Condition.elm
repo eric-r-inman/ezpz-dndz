@@ -13,7 +13,7 @@ import Html.Events exposing (onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (DurationKind(..), Msg(..))
 import Set exposing (Set)
-import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi)
+import Ui.Condition exposing (ConditionLogEntry, ConditionPreset, ConditionUi, SaveToEndUi, matchesSearch)
 import Ui.Condition.Bundled as Bundled
 import Update.Condition
 import Util.Keyboard
@@ -750,6 +750,29 @@ presetLoadControl ui userPresets =
         categorizedSections =
             Bundled.categories
                 |> List.map (categorySection ui userPresets displayPresets)
+
+        searching =
+            String.trim ui.presetSearch /= ""
+
+        matches =
+            displayPresets
+                |> Dict.keys
+                |> List.filter (matchesSearch ui.presetSearch)
+                |> List.sortBy String.toLower
+
+        -- A search flattens the menu: the categories exist to keep a
+        -- long list scannable, and a query is the other way of doing
+        -- that, so matches come through whatever section they live in
+        -- and whether or not it is expanded.
+        menuBody =
+            if not searching then
+                List.map (presetMenuItem True) userNames ++ categorizedSections ++ [ restoreBundledItem ]
+
+            else if List.isEmpty matches then
+                [ div [ class "cond-footer__load-empty" ] [ text "No presets match" ] ]
+
+            else
+                List.map (\n -> presetMenuItem (Dict.member n userPresets) n) matches
     in
     div
         [ class "cond-footer__load-wrap"
@@ -781,11 +804,27 @@ presetLoadControl ui userPresets =
                 [ class "cond-footer__load-menu cond-footer__load-menu--below"
                 , attribute "role" "listbox"
                 ]
-                (List.map (presetMenuItem True) userNames ++ categorizedSections ++ [ restoreBundledItem ])
+                (searchField ui :: menuBody)
 
           else
             text ""
         ]
+
+
+{-| The Load menu's first row, rendered whether or not anything
+has been typed into it.
+-}
+searchField : ConditionUi -> Html Msg
+searchField ui =
+    input
+        [ class "cond-footer__load-search"
+        , type_ "search"
+        , value ui.presetSearch
+        , onInput ConditionPresetSearchChanged
+        , placeholder "Search presets"
+        , attribute "aria-label" "Search presets"
+        ]
+        []
 
 
 {-| The Load menu's last row. A stored copy of a bundled preset

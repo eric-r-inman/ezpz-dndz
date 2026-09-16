@@ -29,6 +29,7 @@ module Update.Condition exposing
     , presetSaveNameChanged
     , presetSaveStart
     , presetSaveSubmit
+    , presetSearchChanged
     , quickApply
     , removeChip
     , rollSave
@@ -546,6 +547,7 @@ presetSaveStart model =
                 | pendingSaveName = Just (Maybe.withDefault "" u.loadedPresetName)
                 , pendingSaveCategory = prefillCategory
                 , loadMenuOpen = False
+                , presetSearch = ""
             }
         )
         model
@@ -635,6 +637,7 @@ presetLoadMenuToggle model =
         (\u ->
             { u
                 | loadMenuOpen = not u.loadMenuOpen
+                , presetSearch = ""
                 , pendingSaveName = Nothing
                 , pendingSaveCategory = ""
             }
@@ -646,7 +649,19 @@ presetLoadMenuToggle model =
 
 presetLoadMenuClose : Model -> ( Model, Cmd Msg )
 presetLoadMenuClose model =
-    ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+    ( withConditionUi (\u -> { u | loadMenuOpen = False, presetSearch = "" }) model
+    , Cmd.none
+    )
+
+
+{-| Type into the Load menu's search box. The query lives only as
+long as the menu is open — every path that closes it clears the
+box — so the next open starts on the whole list rather than on
+whatever the GM last searched for.
+-}
+presetSearchChanged : String -> Model -> ( Model, Cmd Msg )
+presetSearchChanged text model =
+    ( withConditionUi (\u -> { u | presetSearch = text }) model
     , Cmd.none
     )
 
@@ -666,7 +681,7 @@ presetLoad name model =
             )
 
         Nothing ->
-            ( withConditionUi (\u -> { u | loadMenuOpen = False }) model
+            ( withConditionUi (\u -> { u | loadMenuOpen = False, presetSearch = "" }) model
             , Cmd.none
             )
 
@@ -726,7 +741,7 @@ presetRestoreBundled model =
         reload ui =
             let
                 closed =
-                    { ui | loadMenuOpen = False }
+                    { ui | loadMenuOpen = False, presetSearch = "" }
 
                 reloaded name =
                     if List.member name Bundled.retiredNames then
