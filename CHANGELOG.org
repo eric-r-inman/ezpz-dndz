@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.17.0
+** Added
 1. The Condition/Effect editor's quick-apply caret carries the note along with
    the condition.  No action needed.
 2. The Manage HP editor shows the target's current temporary hit points beside
@@ -22,9 +28,6 @@
    the left when folded.  No action needed.
 2. A Dice Roller log row offers its fold only when the text is too wide to read
    on one line.  No action needed.
-** Breaking
-** Maintenance
-** Security
 * v0.16.0
 ** Added
 1. Several bundled Condition/Effect presets read more clearly, and Hunter's Mark
