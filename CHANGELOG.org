@@ -14,6 +14,9 @@
    Condition/Effect editor's log does.  No action needed.
 5. The Status editor keeps a log of recent applies, with an undo on the newest.
    No action needed.
+6. The Encounter XP editor shows its working behind a fold, where a creature can
+   be switched out of the tally to see what the rest would be worth.  No action
+   needed.
 ** Fixes
 1. The Manage HP editor's log keeps its undo button on the row, and reads from
    the left when folded.  No action needed.

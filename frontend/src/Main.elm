@@ -594,6 +594,8 @@ init flags url key =
         , modalChrome = Ui.ModalChrome.fresh
         , placeholderRename = Nothing
         , xpScope = ScopeXpEnemiesOnly
+        , xpExcluded = Set.empty
+        , xpCalculationsOpen = False
         , queuePanels = Ui.QueuePanels.fresh
         , drawer = Model.defaultDrawer
         , drawerDrag = Nothing
@@ -2593,6 +2595,12 @@ updateInner msg model =
 
         XpScopeSet scope ->
             Update.Xp.scopeSet scope model
+
+        XpCalculationsToggle ->
+            Update.Xp.calculationsToggle model
+
+        XpExcludeToggle name ->
+            Update.Xp.excludeToggle name model
 
         QuickAddOpen ->
             Update.QuickAdd.open model

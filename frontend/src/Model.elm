@@ -1395,6 +1395,13 @@ type alias Model =
     , modalChrome : ModalChrome
     , placeholderRename : Maybe PlaceholderRenameState
     , xpScope : XpScope
+
+    -- Creatures the GM has switched off in the XP panel's
+    -- calculations tally, and whether that tally is showing.  The
+    -- exclusions are a what-if the tally answers on its own; the
+    -- panel's headline figure counts the encounter whole.
+    , xpExcluded : Set String
+    , xpCalculationsOpen : Bool
     , settingsOpen : Bool
 
     -- The editor column's drawer: every open panel, oldest

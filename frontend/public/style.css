@@ -7148,6 +7148,72 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 500;
 }
 
+/* The XP total's working: a line per creature counted. */
+.xp-calc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  margin-top: var(--space-3);
+}
+
+.xp-calc__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-section);
+}
+
+/* A row left out of the tally stays legible — it is what the GM
+   set aside, and the control that puts it back sits inside it, so
+   it is dimmed rather than struck through. */
+.xp-calc__row--excluded {
+  color: var(--color-text-muted);
+}
+
+.xp-calc__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xp-calc__xp {
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-calc__toggle {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 var(--space-1);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font: inherit;
+  line-height: 1;
+}
+
+.xp-calc__toggle:hover {
+  color: var(--color-text);
+}
+
+/* The tally's own sum, set apart from the lines above it the way
+   the app's other running totals are. */
+.xp-calc__total {
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-section);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+}
+
 @media (max-width: 1100px) {
   .btn-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
