@@ -6,7 +6,7 @@ Manage-HP editor's own log — the row markup exists once so the two
 mounts can't drift apart.
 -}
 
-import Html exposing (Html, button, div, li, span, text)
+import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Html.Keyed
@@ -94,22 +94,22 @@ entry opts e =
         ( kindLabel, kindClass ) =
             case e.kind of
                 Applied DamageKind ->
-                    ( "Damage", "hp-change__log-kind hp-change__log-kind--damage" )
+                    ( "Damage", "hp-change__log-kind--damage" )
 
                 Applied HealKind ->
-                    ( "Heal", "hp-change__log-kind hp-change__log-kind--heal" )
+                    ( "Heal", "hp-change__log-kind--heal" )
 
                 Applied TempHpKind ->
-                    ( "Temp HP", "hp-change__log-kind hp-change__log-kind--temp" )
+                    ( "Temp HP", "hp-change__log-kind--temp" )
 
                 Applied MaxHpKind ->
-                    ( "+Max HP", "hp-change__log-kind hp-change__log-kind--max" )
+                    ( "+Max HP", "hp-change__log-kind--max" )
 
                 SetPools ->
-                    ( "Set", "hp-change__log-kind hp-change__log-kind--set" )
+                    ( "Set", "hp-change__log-kind--set" )
 
                 RolledHp ->
-                    ( "Roll", "hp-change__log-kind hp-change__log-kind--roll" )
+                    ( "Roll", "hp-change__log-kind--roll" )
 
         names =
             String.join ", " (List.map .name e.targets)
@@ -127,46 +127,40 @@ entry opts e =
                 _ ->
                     ""
 
-        rowClass =
-            String.join " "
-                (List.filterMap identity
-                    [ Just "hp-change__log-entry"
-                    , if opts.flash then
-                        Just "hp-change__log-entry--flash"
-
-                      else
-                        Nothing
-                    , if opts.expanded then
-                        Just "hp-change__log-entry--open"
-
-                      else
-                        Nothing
-                    ]
-                )
+        -- An entry may carry no amount, and a multi-target one has
+        -- no before → after slug, so the empty parts drop out
+        -- rather than leaving the separator dangling.
+        detail =
+            [ Maybe.withDefault "" (Maybe.map String.fromInt e.amount)
+            , transition
+            ]
+                |> List.filter (not << String.isEmpty)
+                |> String.join " · "
     in
-    li [ class rowClass ]
-        [ View.LogRow.foldToggle (rowKey e) opts.expanded
-        , span [ class kindClass ] [ text kindLabel ]
-        , span [ class (View.LogRow.openable "hp-change__log-target" opts.expanded) ]
-            [ text names ]
-        , span [ class "hp-change__log-amount" ]
-            [ text (Maybe.withDefault "" (Maybe.map String.fromInt e.amount)) ]
-        , span [ class (View.LogRow.openable "hp-change__log-trans" opts.expanded) ]
-            [ text transition ]
-        , if opts.undoable then
-            button
-                [ class "icon-btn icon-btn--sm hp-change__log-undo"
-                , onClick HpChangeUndoLatest
-                , Tooltips.attr
-                    ("Undo: revert " ++ names ++ " to previous HP")
-                , attribute "aria-label"
-                    ("Undo " ++ kindLabel ++ " on " ++ names)
+    View.LogRow.sentence
+        { key = rowKey e
+        , expanded = opts.expanded
+        , kind = kindLabel
+        , kindClass = kindClass
+        , names = names
+        , detail = detail
+        , flash = opts.flash
+        , trail =
+            if opts.undoable then
+                [ button
+                    [ class "icon-btn icon-btn--sm hp-change__log-undo"
+                    , onClick HpChangeUndoLatest
+                    , Tooltips.attr
+                        ("Undo: revert " ++ names ++ " to previous HP")
+                    , attribute "aria-label"
+                        ("Undo " ++ kindLabel ++ " on " ++ names)
+                    ]
+                    [ text "↩" ]
                 ]
-                [ text "↩" ]
 
-          else
-            text ""
-        ]
+            else
+                []
+        }
 
 
 {-| Render an HP+temp[+max] slug: "27/59" or "27/59 +5" when temp

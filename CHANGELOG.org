@@ -10,6 +10,8 @@
    needed.
 3. A roll made in the Dice Roller pane floats its total over the pane, the way a
    roll made from a stat block does.  No action needed.
+4. The Manage HP editor's log reads as one sentence per row, as the
+   Condition/Effect editor's log does.  No action needed.
 ** Fixes
 1. The Manage HP editor's log keeps its undo button on the row, and reads from
    the left when folded.  No action needed.
